@@ -1,0 +1,8 @@
+# Frozen test-vector bytes must never be EOL-normalized. Files under
+# test-vectors/ are pinned by test-vectors/SHA256SUMS; any autocrlf newline
+# conversion would silently corrupt the frozen set. In-repo attributes override
+# every contributor's local git config so the published bytes are the bytes
+# everyone gets.
+test-vectors/** -text
+test-vectors/**/*.cose binary
+test-vectors/**/*.bin  binary
