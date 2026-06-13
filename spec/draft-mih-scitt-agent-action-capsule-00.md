@@ -68,9 +68,9 @@ auditor-grade evidence that a gate worked.
 
 This document is an individual submission. The intended venue for
 discussion is the SCITT Working Group (scitt@ietf.org). The source of
-truth for the profile's prose is the open specification repository from
-which this document is derived; see the section map accompanying this
-draft in that repository.
+truth for the profile's prose is the specification repository from which
+this document is derived; see the repository's `docs/ietf-draft/README.md`
+for the section mapping.
 
 --- middle
 
