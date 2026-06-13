@@ -1,0 +1,26 @@
+name: python
+on:
+  push:
+    paths: ["python/**", "spec/REGISTRY.md"]
+  pull_request:
+    paths: ["python/**", "spec/REGISTRY.md"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ matrix.python-version }}" }
+      - name: install
+        working-directory: python
+        run: pip install -e ".[dev]"
+      - name: ruff
+        working-directory: python
+        run: python -m ruff check .
+      - name: pytest
+        working-directory: python
+        run: python -m pytest -q
