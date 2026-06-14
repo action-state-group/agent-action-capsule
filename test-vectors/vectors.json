@@ -1,7 +1,7 @@
 {
   "format_version": "2",
   "spec": "draft-mih-scitt-agent-action-capsule-00",
-  "count": 28,
+  "count": 29,
   "cases": [
     {
       "name": "pos-executed-confirmed",
@@ -107,6 +107,11 @@
       "name": "neg-float-in-digest-field",
       "kind": "negative",
       "description": "a JSON floating-point value in a digest-bearing field -> structural failure (check 1, \u00a75.1)."
+    },
+    {
+      "name": "neg-unsafe-integer-in-digest-field",
+      "kind": "negative",
+      "description": "an integer beyond 2^53-1 in a digest-bearing field -> structural failure (check 1). IMPL GUARD ahead of -00; flagged for an -01 clarification (large integers MUST be decimal strings)."
     },
     {
       "name": "neg-attestation-present-when-not-applicable",

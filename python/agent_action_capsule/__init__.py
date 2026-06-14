@@ -6,7 +6,14 @@ Class 1 verifier (§6) + the typed producer carriers (§5). Substrate verificati
 reference, and is not implemented here. Class 2 / manifest-aware verification is
 out of scope.
 """
-from .canonical import compute_capsule_id, jcs, json_digest, normalize
+from .canonical import (
+    FloatInDigestError,
+    UnsafeIntegerError,
+    compute_capsule_id,
+    jcs,
+    json_digest,
+    normalize,
+)
 from .contracts import (
     AssuranceBlock,
     Chain,
@@ -46,6 +53,8 @@ __all__ = [
     "json_digest",
     "jcs",
     "normalize",
+    "FloatInDigestError",
+    "UnsafeIntegerError",
     # registries
     "load_registries",
     "REGISTRY_NAMES",

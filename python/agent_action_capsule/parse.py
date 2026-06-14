@@ -92,9 +92,22 @@ class Capsule:
         return sealed
 
 
-def _opt(d: Mapping[str, Any], key: str):
-    v = d.get(key)
-    return v if isinstance(v, Mapping) else None
+def _block(d: Mapping[str, Any], key: str) -> Mapping[str, Any] | None:
+    """A sub-block on the strict parse path: absent -> None, present-and-an-object
+    -> the object, present-but-wrong-typed -> InvariantError (NEVER a silent drop).
+
+    The earlier ``_opt`` returned None for a present-but-non-object block, so a
+    malformed ``effect: "garbage"`` or ``disposition: [...]`` vanished instead of
+    being rejected. The verifier reports such a block (block_not_object, check 1);
+    the strict producer/round-trip path must refuse to build from it."""
+    if key not in d:
+        return None
+    v = d[key]
+    if not isinstance(v, Mapping):
+        raise InvariantError(
+            f"{key} MUST be a JSON object when present (§5.1); got {type(v).__name__}"
+        )
+    return v
 
 
 def parse_capsule(d: Mapping[str, Any]) -> Capsule:
@@ -106,21 +119,28 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
         if not isinstance(d.get(fld), str):
             raise InvariantError(f"{fld} is REQUIRED and MUST be a string (§5.1)")
 
-    eff = _opt(d, "effect")
+    eff = _block(d, "effect")
+    if eff is not None and "status" not in eff:
+        # Without this guard, EffectRecord(**...) below raises a bare TypeError
+        # (missing positional 'status') instead of a structured InvariantError.
+        raise InvariantError("effect.status is REQUIRED when an effect is present (§5.2)")
     effect = EffectRecord(**{k: eff.get(k) for k in (
         "status", "type", "request_digest", "response_digest", "external_ref",
         "irreversibility_class", "effect_attestation") if k in eff}) if eff else None
 
-    asr = _opt(d, "assurance")
+    asr = _block(d, "assurance")
     assurance = AssuranceBlock(
         attestation_mode=asr.get("attestation_mode"),
         effect_mode=asr.get("effect_mode"),
         ledger_mode=asr.get("ledger_mode"),
     ) if asr else None
 
-    dis = _opt(d, "disposition")
+    dis = _block(d, "disposition")
     disposition = None
     if dis:
+        for req in ("decision", "human_disposed"):
+            if req not in dis:
+                raise InvariantError(f"disposition.{req} is REQUIRED (§5.4)")
         ep = dis.get("expiry_policy")
         expiry = ExpiryPolicy(ttl_seconds=ep.get("ttl_seconds"), on_expiry=ep.get("on_expiry")) if isinstance(ep, Mapping) else None
         disposition = Disposition(
@@ -133,16 +153,21 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
             expiry_policy=expiry,
         )
 
-    chn = _opt(d, "chain")
+    chn = _block(d, "chain")
     chain = Chain(parent_capsule_id=chn.get("parent_capsule_id"), relation=chn.get("relation")) if chn else None
 
     cons = d.get("constraints")
     constraints: tuple[ConstraintRecord, ...] = ()
-    if isinstance(cons, list):
+    if cons is not None:
+        if not isinstance(cons, list):
+            raise InvariantError("constraints MUST be an array when present (§8.1)")
+        for c in cons:
+            if not isinstance(c, Mapping):
+                raise InvariantError("each constraint MUST be a JSON object (§8.1)")
         constraints = tuple(
             ConstraintRecord(**{k: c.get(k) for k in (
                 "id", "result", "severity", "blocking", "check_type", "method", "evidence_digest") if k in c})
-            for c in cons if isinstance(c, Mapping)
+            for c in cons
         )
 
     return Capsule(

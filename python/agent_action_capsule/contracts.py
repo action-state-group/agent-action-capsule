@@ -134,6 +134,11 @@ class Disposition:
     expiry_policy: ExpiryPolicy | None = None
 
     def __post_init__(self) -> None:
+        # decision is REQUIRED (§5.4) — a non-empty string. Defense-in-depth so a
+        # directly-constructed Disposition(decision=None) also fails, not only the
+        # strict parse path. (Registry-governed value; not enum-checked here.)
+        if not isinstance(self.decision, str) or not self.decision:
+            raise InvariantError("disposition.decision is REQUIRED and a non-empty string (§5.4)")
         # Closed approver enum (§5.4): an unknown approver value is not a
         # conforming Capsule.
         if self.approver not in VALID_APPROVERS:
@@ -165,6 +170,12 @@ class EffectRecord:
     effect_attestation: str | None = None
 
     def __post_init__(self) -> None:
+        # status is REQUIRED (§5.2) — a non-empty string. Defense-in-depth so a
+        # directly-constructed EffectRecord(status=None) fails with a structured
+        # InvariantError rather than a downstream error. (Reserved-but-extensible
+        # value; not enum-checked here — an unknown status is informational.)
+        if not isinstance(self.status, str) or not self.status:
+            raise InvariantError("effect.status is REQUIRED and a non-empty string (§5.2)")
         # The confirmed-effect invariant (§5.2): MUST NOT emit confirmed without a
         # well-formed response_digest over the observed response.
         if self.status == "confirmed" and not is_hex64(self.response_digest):

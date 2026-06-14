@@ -19,7 +19,12 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from .canonical import FloatInDigestError, compute_capsule_id
+from .canonical import (
+    MAX_SAFE_INTEGER,
+    FloatInDigestError,
+    UnsafeIntegerError,
+    compute_capsule_id,
+)
 from .contracts import (
     LEDGER_MODE_RANK,
     NEVER_DISPATCH_VERDICT_CLASSES,
@@ -112,6 +117,26 @@ def _float_paths(v: Any, path: str = "") -> list[str]:
     return out
 
 
+def _unsafe_int_paths(v: Any, path: str = "") -> list[str]:
+    # Integers outside the IEEE-754-double safe range are a digest-reproducibility
+    # hazard (mirror of _float_paths; see canonical.MAX_SAFE_INTEGER). bool is an
+    # int subclass but is never a numeric value here.
+    out: list[str] = []
+    if isinstance(v, bool):
+        return out
+    if isinstance(v, int):
+        if v > MAX_SAFE_INTEGER or v < -MAX_SAFE_INTEGER:
+            return [path or "<root>"]
+        return out
+    if isinstance(v, Mapping):
+        for k, val in v.items():
+            out += _unsafe_int_paths(val, f"{path}.{k}" if path else str(k))
+    elif isinstance(v, (list, tuple)):
+        for i, val in enumerate(v):
+            out += _unsafe_int_paths(val, f"{path}[{i}]")
+    return out
+
+
 def _store_ids(store: Iterable[Any] | None) -> set[str] | None:
     if store is None:
         return None
@@ -172,6 +197,14 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         findings.append(Finding("constraints_not_array", "constraints MUST be an array when present (§8.1)", check=1))
     for p in _float_paths(capsule):
         findings.append(Finding("float_in_digest_field", f"floating-point value at {p}; §5.1 forbids it", check=1))
+    for p in _unsafe_int_paths(capsule):
+        findings.append(Finding(
+            "unsafe_integer_in_digest_field",
+            f"integer outside the JS-safe range (+/-{MAX_SAFE_INTEGER}) at {p}; "
+            "large integers MUST be exact decimal strings for cross-impl digest "
+            "reproducibility (impl guard ahead of -00; see -01 flag)",
+            check=1,
+        ))
 
     # Structural approver enum (check 1) + the defensive disposition-honesty
     # assert (§6). Honesty is structurally guaranteed at construction and is NOT
@@ -204,8 +237,8 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
     if cid is not None:
         try:
             recomputed = compute_capsule_id(dict(capsule))
-        except FloatInDigestError:
-            pass  # already reported as float_in_digest_field
+        except (FloatInDigestError, UnsafeIntegerError):
+            pass  # already reported structurally in check 1
         except Exception as exc:
             findings.append(Finding("capsule_id_uncomputable", repr(exc), check=2))
         if recomputed is not None and recomputed != cid:

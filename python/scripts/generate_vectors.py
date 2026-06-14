@@ -176,6 +176,21 @@ def build_cases() -> list[dict]:
         "a JSON floating-point value in a digest-bearing field -> structural failure (check 1, §5.1).",
         float_cap)
 
+    # Impl guard AHEAD of the -00 text: an integer beyond the IEEE-754-double safe
+    # range (2^53-1) is a cross-impl digest-reproducibility hazard. The -00 forbids
+    # floats and mandates decimal STRINGS for monetary/quantity values but does not
+    # yet state this integer bound — see the -01 FLAG in test-vectors/README.md.
+    unsafe_int_cap = {**ident("neg-unsafeint"),
+                      "effect": {"status": "confirmed", "type": "write_order", "response_digest": HEX_R,
+                                 "effect_attestation": "gate_executed", "amount": 2**53},
+                      "assurance": assurance("confirmed"),
+                      "disposition": {"decision": "accept", "approver": "human", "human_disposed": True},
+                      "capsule_id": "0" * 64}  # cannot recompute over an unsafe int; carried id is a placeholder
+    add("neg-unsafe-integer-in-digest-field", "negative",
+        "an integer beyond 2^53-1 in a digest-bearing field -> structural failure (check 1). "
+        "IMPL GUARD ahead of -00; flagged for an -01 clarification (large integers MUST be decimal strings).",
+        unsafe_int_cap)
+
     add("neg-attestation-present-when-not-applicable", "negative",
         "planned (not_applicable) with effect_attestation present -> matrix failure (check 5).",
         c_matrix("neg-planned-att", {"status": "planned", "type": "write_order", "effect_attestation": "gate_executed"}, "not_applicable", verdict_class="needs_decision"))

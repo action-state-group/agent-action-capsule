@@ -19,6 +19,8 @@ from typing import Any
 
 __all__ = [
     "FloatInDigestError",
+    "UnsafeIntegerError",
+    "MAX_SAFE_INTEGER",
     "normalize",
     "jcs",
     "json_digest",
@@ -31,9 +33,25 @@ __all__ = [
 # content-address is stable regardless of what later chains to it).
 CHAIN_LINKAGE_FIELDS = ("capsule_id", "chain")
 
+# IEEE-754 double "safe integer" bound (ECMAScript Number.MAX_SAFE_INTEGER). A
+# JSON integer whose magnitude exceeds this cannot be round-tripped through an
+# ECMAScript-Number-based reader, so two conforming verifiers could derive
+# different digests from the same bytes. §5.1 already mandates exact decimal
+# STRINGS for monetary/quantity values; this bound additionally catches ANY
+# other integer outside the safe range in a digest-bearing position. (The -00
+# text forbids floats but does not yet state this integer bound; see the -01
+# flag in test-vectors/README.md.)
+MAX_SAFE_INTEGER = 2**53 - 1  # 9007199254740991
+
 
 class FloatInDigestError(ValueError):
     """A JSON float reached a digest-bearing field. §5.1 forbids this."""
+
+
+class UnsafeIntegerError(ValueError):
+    """An integer outside the ±(2^53 - 1) JS-safe range reached a digest-bearing
+    field. Not reproducible across ECMAScript-Number-based readers; represent
+    large integers as exact decimal strings instead (§5.1)."""
 
 
 def normalize(v: Any) -> Any:
@@ -100,7 +118,14 @@ def _jcs_value(v: Any) -> str:
         return "true" if v else "false"
     if isinstance(v, int):
         # Canonical integers serialize as their decimal form. (bool is a subclass
-        # of int but is handled above.)
+        # of int but is handled above.) Guard the JS-safe range: a magnitude
+        # beyond 2^53-1 is not reproducible across ECMAScript-Number readers, so
+        # reject it rather than emit a digest a conforming reader can't match.
+        if v > MAX_SAFE_INTEGER or v < -MAX_SAFE_INTEGER:
+            raise UnsafeIntegerError(
+                f"integer {v} is outside the safe range +/-{MAX_SAFE_INTEGER}; "
+                "represent large integers as exact decimal strings (§5.1)"
+            )
         return str(v)
     if isinstance(v, float):
         raise FloatInDigestError(

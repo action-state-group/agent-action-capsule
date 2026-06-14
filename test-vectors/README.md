@@ -58,10 +58,33 @@ never rejected); and the store-level supersedes chain and concurrent-supersedes
 cases.
 
 Negative (`ok=false`): confirmed without `response_digest`; a float in a
-digest-bearing field; `effect_attestation` present where it MUST be absent and
-absent where REQUIRED; a never-dispatch `verdict_class` with a non-`not_applicable`
-effect_mode; a `capsule_id` that does not recompute; a chain referencing a
-missing parent; and an `approver` outside the closed enum.
+digest-bearing field; an integer beyond the JS-safe range in a digest-bearing
+field (see the -01 flag below); `effect_attestation` present where it MUST be
+absent and absent where REQUIRED; a never-dispatch `verdict_class` with a
+non-`not_applicable` effect_mode; a `capsule_id` that does not recompute; a chain
+referencing a missing parent; and an `approver` outside the closed enum.
+
+## Spec-independence note + -01 flags
+
+Every vector's expected output is confirmable from the -00 text **except one**,
+flagged here so the deviation is explicit rather than silently baked into a
+golden file:
+
+- **`neg-unsafe-integer-in-digest-field`** encodes an implementation guard that
+  is **ahead of the -00 spec text**. §5.1 forbids JSON floats and mandates exact
+  decimal **strings** for monetary/quantity values, but the -00 draft does *not*
+  yet state a bound on plain JSON **integers**. An integer beyond
+  `2^53 - 1` (`Number.MAX_SAFE_INTEGER`) cannot round-trip through an
+  ECMAScript-Number-based reader, so two conforming verifiers could derive
+  different digests from the same bytes — a real cross-implementation hazard.
+  This reference rejects such an integer (`unsafe_integer_in_digest_field`,
+  check 1); the expected `ok=false` therefore reflects the impl guard, not a
+  rule a third party can read out of -00 today.
+  **-01 FLAG:** the draft should state that integers outside the
+  IEEE-754-double safe range MUST be represented as exact decimal strings (the
+  same remedy §5.1 already gives monetary/quantity values). Until then, this is
+  the one vector an independent -00-only implementation may legitimately not
+  reproduce.
 
 Honesty (per §6): a parsed capsule with `human_disposed=true` and a non-human
 approver is reported as a **non-gating** defensive `warning`; `ok` still reflects

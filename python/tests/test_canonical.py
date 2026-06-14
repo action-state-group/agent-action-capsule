@@ -5,7 +5,11 @@ import hashlib
 import pytest
 
 from agent_action_capsule import compute_capsule_id, jcs, json_digest, normalize
-from agent_action_capsule.canonical import FloatInDigestError
+from agent_action_capsule.canonical import (
+    MAX_SAFE_INTEGER,
+    FloatInDigestError,
+    UnsafeIntegerError,
+)
 
 
 def test_normalize_removes_null_empty_bottom_up():
@@ -36,6 +40,27 @@ def test_json_digest_normalizes_before_hashing():
 def test_float_is_rejected():
     with pytest.raises(FloatInDigestError):
         json_digest({"amount": 12.50})
+
+
+def test_max_safe_integer_is_accepted():
+    # 2^53 - 1 round-trips through an ECMAScript Number, so it is digest-safe.
+    assert MAX_SAFE_INTEGER == 9007199254740991
+    assert json_digest({"n": MAX_SAFE_INTEGER}) == json_digest({"n": MAX_SAFE_INTEGER})
+    assert json_digest({"n": -MAX_SAFE_INTEGER})  # negative bound accepted too
+
+
+def test_unsafe_integer_is_rejected_both_signs():
+    # Just over the JS-safe range in a digest-bearing position -> rejected, rather
+    # than emit a digest an ECMAScript-Number-based reader could not reproduce.
+    with pytest.raises(UnsafeIntegerError):
+        json_digest({"n": MAX_SAFE_INTEGER + 1})
+    with pytest.raises(UnsafeIntegerError):
+        json_digest({"n": -(MAX_SAFE_INTEGER + 1)})
+
+
+def test_unsafe_integer_nested_is_rejected():
+    with pytest.raises(UnsafeIntegerError):
+        json_digest({"a": {"b": [1, 2, MAX_SAFE_INTEGER + 1]}})
 
 
 def test_capsule_id_excludes_capsule_id_and_chain():
