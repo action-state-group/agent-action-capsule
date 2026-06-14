@@ -102,6 +102,15 @@ def verify_transparent(
         report.substrate_errors.append(
             "receipt present but not verified — pass --log-key and --leaf-entry-hex to upgrade to 'anchored'"
         )
+    elif not receipts and receipt_requested:
+        # The caller asked to verify a receipt but the statement carries none —
+        # explain why the combined verdict below will be ok=False (they expected
+        # a Transparent Statement and got a bare Signed Statement).
+        report.receipt_verified = False
+        report.substrate_errors.append(
+            "receipt verification requested (--log-key/--leaf-entry-hex) but the "
+            "Signed Statement carries no receipt"
+        )
 
     # ---- attestation tier (spec §3.2): anchored ONLY with a verified receipt
     if report.receipt_verified is True:

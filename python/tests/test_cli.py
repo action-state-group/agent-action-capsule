@@ -113,6 +113,12 @@ def test_transparent_two_layers_self_attested_then_anchored(capsys, tmp_path):
     out = capsys.readouterr().out
     assert rc == 0 and "anchored" in out
 
+    # receipt verification requested, but the bare statement carries none ->
+    # ok=False WITH an explanation (not a silent failure).
+    rc = main(["verify", "--transparent", str(sf), "--issuer-key", str(pk), "--log-key", str(pk), "--leaf-entry-hex", leaf])
+    out = capsys.readouterr().out
+    assert rc == 1 and "carries no receipt" in out
+
 
 # --------------------------------------------------------------------- example
 def test_build_and_verify_example_runs():
