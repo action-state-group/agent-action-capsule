@@ -86,11 +86,18 @@ def _seeded_values_in_section(lines: list[str]) -> list[str]:
             i += 1
             continue
         # Inline "Initial contents ...: `a`, `b`, ..." — the value list may wrap
-        # across lines; collect backticks from the marker line through the rest
-        # of the paragraph (until a blank line).
+        # across lines; collect backticks from AFTER the marker on the marker
+        # line, then through the rest of the paragraph (until a blank line). Only
+        # text after the marker is the value list — prose backticks before it
+        # (e.g. guidance naming a value) are not seeded values.
         if "Initial contents" in stripped:
+            first = True
             while i < n and lines[i].strip() != "":
-                for tok in _TICK_RE.findall(lines[i]):
+                text = lines[i]
+                if first:
+                    text = text[text.find("Initial contents"):]
+                    first = False
+                for tok in _TICK_RE.findall(text):
                     add(tok)
                 i += 1
             continue

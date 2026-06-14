@@ -62,14 +62,22 @@ _REGISTRY_FIELDS = (
 
 @dataclass(frozen=True)
 class Finding:
-    """One structured verification finding. 'error' gates ok; 'info' is advisory."""
+    """One structured verification finding.
+
+    ``severity``: 'error' gates ``ok``; 'warning' is a non-gating defensive flag
+    (e.g. the disposition-honesty assert of §6, which is structurally guaranteed
+    at construction and is NOT a live gating check); 'info' is advisory.
+    ``check``: the §6 Class-1 check number (1..8) the finding belongs to, or None
+    for the defensive/structural-pre-checks that are not in the §6 enumeration.
+    """
 
     code: str
     detail: str
     severity: str = "error"
+    check: int | None = None
 
     def __str__(self) -> str:  # pragma: no cover - cosmetic
-        return f"[{self.severity}] {self.code}: {self.detail}"
+        return f"[{self.severity}] check {self.check} {self.code}: {self.detail}"
 
 
 @dataclass
@@ -138,7 +146,7 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         registries = load_registries()
 
     if not isinstance(capsule, Mapping):
-        findings.append(Finding("not_an_object", "Capsule is not a JSON object"))
+        findings.append(Finding("not_an_object", "Capsule is not a JSON object", check=1))
         return VerificationResult(ok=False, findings=findings)
 
     effect = _obj(capsule, "effect")
@@ -148,40 +156,48 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
     # ---- Check 1: Structural ------------------------------------------------
     for fld in REQUIRED_FIELDS:
         if fld not in capsule:
-            findings.append(Finding("missing_required_field", f"{fld} is REQUIRED (§5.1)"))
+            findings.append(Finding("missing_required_field", f"{fld} is REQUIRED (§5.1)", check=1))
         elif not isinstance(capsule[fld], str):
-            findings.append(Finding("field_not_string", f"{fld} MUST be a string (§5.1)"))
+            findings.append(Finding("field_not_string", f"{fld} MUST be a string (§5.1)", check=1))
     cid = capsule.get("capsule_id")
     if cid is not None and not is_hex64(cid):
-        findings.append(Finding("capsule_id_malformed", "capsule_id MUST be 64 lowercase hex (§5.1)"))
+        findings.append(Finding("capsule_id_malformed", "capsule_id MUST be 64 lowercase hex (§5.1)", check=1))
     at = capsule.get("action_type")
     if at is not None and at not in ("fyi", "decide"):
-        findings.append(Finding("action_type_invalid", "action_type MUST be 'fyi' or 'decide' (§5.1)"))
+        findings.append(Finding("action_type_invalid", "action_type MUST be 'fyi' or 'decide' (§5.1)", check=1))
     for fld in ("effect", "assurance", "disposition", "chain"):
         if fld in capsule and not isinstance(capsule[fld], Mapping):
-            findings.append(Finding("block_not_object", f"{fld} MUST be a JSON object when present"))
+            findings.append(Finding("block_not_object", f"{fld} MUST be a JSON object when present", check=1))
     if "constraints" in capsule and not isinstance(capsule["constraints"], list):
-        findings.append(Finding("constraints_not_array", "constraints MUST be an array when present (§8.1)"))
+        findings.append(Finding("constraints_not_array", "constraints MUST be an array when present (§8.1)", check=1))
     for p in _float_paths(capsule):
-        findings.append(Finding("float_in_digest_field", f"floating-point value at {p}; §5.1 forbids it"))
+        findings.append(Finding("float_in_digest_field", f"floating-point value at {p}; §5.1 forbids it", check=1))
 
-    # Structural approver enum + defensive disposition honesty (§5.4, §6).
+    # Structural approver enum (check 1) + the defensive disposition-honesty
+    # assert (§6). Honesty is structurally guaranteed at construction and is NOT
+    # one of the gating §6 checks; the verifier SHOULD assert it defensively over
+    # arbitrary bytes, but reports it as a non-gating 'warning' (not an error),
+    # so ok still reflects the gating checks.
     if disposition is not None:
         approver = disposition.get("approver")
         if approver is None:
-            findings.append(Finding("missing_required_field", "disposition.approver is REQUIRED (§5.4)"))
+            findings.append(Finding("missing_required_field", "disposition.approver is REQUIRED (§5.4)", check=1))
         elif approver not in VALID_APPROVERS:
             # Closed enum, structural — NOT an unknown-registry finding (§6).
-            findings.append(Finding("approver_invalid", f"disposition.approver MUST be human|policy (§5.4); got {approver!r}"))
+            findings.append(Finding("approver_invalid", f"disposition.approver MUST be human|policy (§5.4); got {approver!r}", check=1))
         if "decision" not in disposition:
-            findings.append(Finding("missing_required_field", "disposition.decision is REQUIRED (§5.4)"))
+            findings.append(Finding("missing_required_field", "disposition.decision is REQUIRED (§5.4)", check=1))
         hd = disposition.get("human_disposed")
         if not isinstance(hd, bool):
-            findings.append(Finding("field_not_bool", "disposition.human_disposed is REQUIRED and boolean (§5.4)"))
+            findings.append(Finding("field_not_bool", "disposition.human_disposed is REQUIRED and boolean (§5.4)", check=1))
         elif hd and approver != "human":
-            # SHOULD-level defensive assert over arbitrary bytes (§6). Structural
-            # invariant: a conforming producer cannot construct this.
-            findings.append(Finding("dishonest_human_disposed", "human_disposed=true REQUIRES approver='human' (§5.4)"))
+            findings.append(Finding(
+                "dishonest_human_disposed",
+                "human_disposed=true with a non-human approver (§5.4). Structurally "
+                "unconstructable by a conforming producer; reported as a non-gating "
+                "defensive warning, not a §6 gating check.",
+                severity="warning",
+            ))
 
     # ---- Check 2: Identity --------------------------------------------------
     recomputed = None
@@ -191,13 +207,13 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         except FloatInDigestError:
             pass  # already reported as float_in_digest_field
         except Exception as exc:
-            findings.append(Finding("capsule_id_uncomputable", repr(exc)))
+            findings.append(Finding("capsule_id_uncomputable", repr(exc), check=2))
         if recomputed is not None and recomputed != cid:
-            findings.append(Finding("capsule_id_mismatch", f"recomputed {recomputed} != carried {cid}"))
+            findings.append(Finding("capsule_id_mismatch", f"recomputed {recomputed} != carried {cid}", check=2))
 
     # ---- Check 3: Confirmed-effect binding ----------------------------------
     if effect is not None and effect.get("status") == "confirmed" and not is_hex64(effect.get("response_digest")):
-        findings.append(Finding("confirmed_without_response", "effect.status 'confirmed' requires a 64-hex response_digest (§5.2)"))
+        findings.append(Finding("confirmed_without_response", "effect.status 'confirmed' requires a 64-hex response_digest (§5.2)", check=3))
 
     effect_mode = derive_effect_mode(effect)
 
@@ -207,29 +223,30 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         findings.append(Finding(
             "verdict_effect_conflict",
             f"verdict_class {verdict_class!r} never dispatches, but derived effect_mode is {effect_mode!r} (§5.4.2)",
+            check=4,
         ))
 
     # ---- Check 5: Effect-attestation matrix ---------------------------------
     ea = effect.get("effect_attestation") if effect else None
     if effect_mode in ("confirmed", "dispatched_unconfirmed"):
         if ea is None:
-            findings.append(Finding("effect_attestation_missing", f"effect_attestation REQUIRED for effect_mode {effect_mode!r} (§5.2)"))
+            findings.append(Finding("effect_attestation_missing", f"effect_attestation REQUIRED for effect_mode {effect_mode!r} (§5.2)", check=5))
     else:  # not_applicable (includes the planned carve and the no-effect case)
         if ea is not None:
-            findings.append(Finding("effect_attestation_present", "effect_attestation MUST be absent for effect_mode 'not_applicable' (§5.2)"))
+            findings.append(Finding("effect_attestation_present", "effect_attestation MUST be absent for effect_mode 'not_applicable' (§5.2)", check=5))
 
     # ---- Check 6: Chain semantics (store-level) -----------------------------
     if chain is not None:
         parent = chain.get("parent_capsule_id")
         if not is_hex64(parent):
-            findings.append(Finding("chain_parent_malformed", "chain.parent_capsule_id MUST be a 64-hex capsule_id (§5.4.4)"))
+            findings.append(Finding("chain_parent_malformed", "chain.parent_capsule_id MUST be a 64-hex capsule_id (§5.4.4)", check=6))
         if "relation" not in chain:
-            findings.append(Finding("missing_required_field", "chain.relation is REQUIRED when a chain block is present (§5.4.4)"))
+            findings.append(Finding("missing_required_field", "chain.relation is REQUIRED when a chain block is present (§5.4.4)", check=6))
         ids = _store_ids(store)
         if ids is None:
-            findings.append(Finding("chain_check_store_level", "chain parent-existence and concurrent-supersedes are store-level checks (§6); not run without a store", severity="info"))
+            findings.append(Finding("chain_check_store_level", "chain parent-existence and concurrent-supersedes are store-level checks (§6); not run without a store", severity="info", check=6))
         elif isinstance(parent, str) and parent not in ids:
-            findings.append(Finding("chain_parent_missing", f"chain parent {parent} not found in the store (§6)"))
+            findings.append(Finding("chain_parent_missing", f"chain parent {parent} not found in the store (§6)", check=6))
 
     # ---- Check 7: Assurance reconciliation ----------------------------------
     derived = {
@@ -241,13 +258,13 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
     if isinstance(stated, Mapping):
         sm = stated.get("effect_mode")
         if sm in _EFFECT_MODE_RANK and _EFFECT_MODE_RANK[sm] > _EFFECT_MODE_RANK.get(effect_mode, 0):
-            findings.append(Finding("assurance_overclaim", f"claimed effect_mode {sm!r} but verifier derived {effect_mode!r} (§5.3)"))
+            findings.append(Finding("assurance_overclaim", f"claimed effect_mode {sm!r} but verifier derived {effect_mode!r} (§5.3)", check=7))
         sa = stated.get("attestation_mode")
         if sa in _ATTESTATION_RANK and _ATTESTATION_RANK[sa] > _ATTESTATION_RANK[derived["attestation_mode"]]:
-            findings.append(Finding("assurance_overclaim", f"claimed attestation_mode {sa!r} but no Receipt verified at this layer (§5.3)", severity="info"))
+            findings.append(Finding("assurance_overclaim", f"claimed attestation_mode {sa!r} but no Receipt verified at this layer (§5.3)", severity="info", check=7))
         sl = stated.get("ledger_mode")
         if sl in LEDGER_MODE_RANK and LEDGER_MODE_RANK[sl] > LEDGER_MODE_RANK[derived["ledger_mode"]]:
-            findings.append(Finding("assurance_overclaim", f"claimed ledger_mode {sl!r} but verifier derived {derived['ledger_mode']!r} (§5.3)", severity="info"))
+            findings.append(Finding("assurance_overclaim", f"claimed ledger_mode {sl!r} but verifier derived {derived['ledger_mode']!r} (§5.3)", severity="info", check=7))
 
     # ---- Check 8: Unknown registry values -----------------------------------
     for reg_name, (block, member) in _REGISTRY_FIELDS:
@@ -259,9 +276,9 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
             continue
         seeded = registries.get(reg_name, frozenset())
         if val not in seeded:
-            findings.append(Finding("unknown_registry_value", f"{block}.{member}={val!r} is not a seeded {reg_name} value; informational, not rejected (§12)", severity="info"))
+            findings.append(Finding("unknown_registry_value", f"{block}.{member}={val!r} is not a seeded {reg_name} value; informational, not rejected (§12)", severity="info", check=8))
             if reg_name == "effect_attestation":
-                findings.append(Finding("effect_attestation_graded_floor", "unknown effect_attestation graded no stronger than 'runtime_claimed' (§5.2)", severity="info"))
+                findings.append(Finding("effect_attestation_graded_floor", "unknown effect_attestation graded no stronger than 'runtime_claimed' (§5.2)", severity="info", check=8))
 
     ok = not any(f.severity == "error" for f in findings)
     return VerificationResult(ok=ok, findings=findings, assurance=derived, capsule_id=recomputed)
@@ -294,7 +311,7 @@ def verify_store(
         if not isinstance(parent, str):
             continue
         if parent in seen_parent:
-            res.findings.append(Finding("concurrent_supersedes", f"a later supersedes over parent {parent}; the earliest is authoritative (§5.4.4)", severity="info"))
+            res.findings.append(Finding("concurrent_supersedes", f"a later supersedes over parent {parent}; the earliest is authoritative (§5.4.4)", severity="info", check=6))
         else:
             seen_parent.add(parent)
     return results

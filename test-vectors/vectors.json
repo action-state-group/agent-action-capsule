@@ -1,0 +1,147 @@
+{
+  "format_version": "2",
+  "spec": "draft-mih-scitt-agent-action-capsule-00",
+  "count": 28,
+  "cases": [
+    {
+      "name": "pos-executed-confirmed",
+      "kind": "positive",
+      "description": "Clean executed capsule: confirmed effect (gate_executed), full identity, no verdict_class reason."
+    },
+    {
+      "name": "pos-blocked",
+      "kind": "positive",
+      "description": "blocked: a blocking constraint stopped it pre-dispatch; no effect, effect_mode not_applicable."
+    },
+    {
+      "name": "pos-denied",
+      "kind": "positive",
+      "description": "denied: operator/policy refused pre-dispatch; not_applicable."
+    },
+    {
+      "name": "pos-hitl-dispatched",
+      "kind": "positive",
+      "description": "hitl_dispatched: routed to a human, awaiting resolution; not_applicable, human_disposed false."
+    },
+    {
+      "name": "pos-deferred",
+      "kind": "positive",
+      "description": "deferred: a human postponed the decision; human_disposed true, not_applicable."
+    },
+    {
+      "name": "pos-errored",
+      "kind": "positive",
+      "description": "errored: action ran and threw, state unknown; effect dispatched -> dispatched_unconfirmed, attestation present."
+    },
+    {
+      "name": "pos-timeout-pre-dispatch",
+      "kind": "positive",
+      "description": "timeout before dispatch: no effect -> not_applicable (one timeout value covers both, per \u00a75.4.2)."
+    },
+    {
+      "name": "pos-timeout-post-dispatch",
+      "kind": "positive",
+      "description": "timeout after dispatch: effect dispatched -> dispatched_unconfirmed, attestation present."
+    },
+    {
+      "name": "pos-confirmed-runtime-claimed",
+      "kind": "positive",
+      "description": "confirmed -> effect_attestation REQUIRED (runtime_claimed variant)."
+    },
+    {
+      "name": "pos-dispatched-unconfirmed-required",
+      "kind": "positive",
+      "description": "dispatched_unconfirmed -> effect_attestation REQUIRED (present)."
+    },
+    {
+      "name": "pos-not-applicable-absent",
+      "kind": "positive",
+      "description": "not_applicable -> effect_attestation MUST be absent (no effect record)."
+    },
+    {
+      "name": "pos-planned-carve",
+      "kind": "positive",
+      "description": "planned carve: effect.status planned -> not_applicable, effect_attestation absent; no digests."
+    },
+    {
+      "name": "pos-failed-required",
+      "kind": "positive",
+      "description": "failed -> dispatched_unconfirmed, effect_attestation REQUIRED (present). (\u00a76 NOTE, conformant side.)"
+    },
+    {
+      "name": "pos-reverted-required",
+      "kind": "positive",
+      "description": "reverted -> dispatched_unconfirmed, effect_attestation REQUIRED; underlying effect via external_ref."
+    },
+    {
+      "name": "pos-unknown-effect-attestation",
+      "kind": "positive",
+      "description": "unknown effect_attestation value: informational + graded no stronger than runtime_claimed; ok stays true."
+    },
+    {
+      "name": "pos-unknown-verdict-class",
+      "kind": "positive",
+      "description": "unknown verdict_class value: informational finding, ok stays true."
+    },
+    {
+      "name": "pos-unknown-effect-type",
+      "kind": "positive",
+      "description": "unknown effect.type value: informational finding, ok stays true."
+    },
+    {
+      "name": "pos-supersedes-chain",
+      "kind": "store",
+      "description": "supersedes chain: a hitl_dispatched parent + a superseding resolution capsule; parent's open item is resolved."
+    },
+    {
+      "name": "pos-concurrent-supersedes",
+      "kind": "store",
+      "description": "two supersedes over one parent: earliest in ledger order is authoritative; the later one surfaces an info finding; both remain ok."
+    },
+    {
+      "name": "neg-confirmed-without-response",
+      "kind": "negative",
+      "description": "confirmed effect with NO response_digest -> confirmed-effect binding failure (check 3)."
+    },
+    {
+      "name": "neg-float-in-digest-field",
+      "kind": "negative",
+      "description": "a JSON floating-point value in a digest-bearing field -> structural failure (check 1, \u00a75.1)."
+    },
+    {
+      "name": "neg-attestation-present-when-not-applicable",
+      "kind": "negative",
+      "description": "planned (not_applicable) with effect_attestation present -> matrix failure (check 5)."
+    },
+    {
+      "name": "neg-attestation-missing-when-required",
+      "kind": "negative",
+      "description": "failed (dispatched_unconfirmed) with effect_attestation absent -> matrix failure (check 5, the \u00a76 NOTE)."
+    },
+    {
+      "name": "neg-never-dispatch-conflict",
+      "kind": "negative",
+      "description": "never-dispatch verdict_class (blocked) with a dispatched effect (dispatched_unconfirmed) -> orthogonality failure (check 4)."
+    },
+    {
+      "name": "neg-capsule-id-mismatch",
+      "kind": "negative",
+      "description": "a field mutated after sealing: capsule_id no longer recomputes over the canonical form (check 2)."
+    },
+    {
+      "name": "neg-chain-missing-parent",
+      "kind": "store",
+      "description": "a chain referencing a parent_capsule_id not present in the store -> chain failure (check 6)."
+    },
+    {
+      "name": "neg-approver-invalid",
+      "kind": "negative",
+      "description": "disposition.approver outside the closed {human, policy} enum (neutral invalid token) -> structural failure (check 1, \u00a75.4)."
+    },
+    {
+      "name": "honesty-dishonest-human-disposed",
+      "kind": "honesty",
+      "description": "human_disposed=true with a non-human (policy) approver in parsed bytes: \u00a76 makes this a structurally-guaranteed invariant, so the verifier reports a NON-GATING defensive warning; ok still reflects the gating checks (here, true)."
+    }
+  ]
+}

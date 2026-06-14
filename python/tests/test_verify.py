@@ -50,11 +50,17 @@ def test_invalid_approver_is_structural_not_unknown_registry(executed):
     assert "unknown_registry_value" not in codes(res)  # closed enum, not check 8
 
 
-def test_defensive_dishonest_human_disposed(executed):
+def test_defensive_dishonest_human_disposed_is_nongating_warning(executed):
+    # §6 / A1: disposition honesty is structurally guaranteed at construction and
+    # is NOT a gating §6 check. The verifier asserts it defensively over arbitrary
+    # bytes as a non-gating 'warning' — ok still reflects the gating checks.
     d = dict(executed)
     d["disposition"] = {"decision": "accept", "approver": "policy", "human_disposed": True}
     res = verify(reseal(d))
-    assert not res.ok and "dishonest_human_disposed" in codes(res)
+    f = next(f for f in res.findings if f.code == "dishonest_human_disposed")
+    assert f.severity == "warning"   # non-gating
+    assert res.ok                    # otherwise-valid capsule stays ok=true
+
 
 
 # ---- Check 2: Identity -----------------------------------------------------
