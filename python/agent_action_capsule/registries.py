@@ -32,11 +32,19 @@ _OL_ITEM_RE = re.compile(r"^\s*\d+\.\s+`([^`]+)`\s*$")
 
 
 def find_registry_md(start: Path | None = None) -> Path:
-    """Locate ``spec/REGISTRY.md``. Honors AAC_REGISTRY_PATH; otherwise walks up
-    from this module looking for a ``spec/REGISTRY.md`` sibling."""
+    """Locate ``spec/REGISTRY.md``. Search order:
+    1. ``AAC_REGISTRY_PATH`` env var (explicit override).
+    2. Bundled ``data/REGISTRY.md`` next to this module (wheel install path).
+    3. Walk up from this module looking for ``spec/REGISTRY.md`` (dev/source tree).
+    """
     override = os.environ.get("AAC_REGISTRY_PATH")
     if override:
         return Path(override)
+    # Bundled copy included in the wheel (agent_action_capsule/data/REGISTRY.md).
+    bundled = Path(__file__).resolve().parent / "data" / "REGISTRY.md"
+    if bundled.is_file():
+        return bundled
+    # Source-tree fallback: walk up looking for spec/REGISTRY.md.
     here = (start or Path(__file__)).resolve()
     for parent in [here, *here.parents]:
         candidate = parent / "spec" / "REGISTRY.md"

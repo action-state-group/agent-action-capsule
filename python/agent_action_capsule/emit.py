@@ -1,21 +1,29 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Rung 1 — emit: high-level sealed-Capsule builder with self-attestation.
+"""Rung 1 — emit: sealed-Capsule builder with self-attestation.
 
-``emit()`` is the single-call path from "I just ran an AI action" to a sealed,
-verifiable Agent Action Capsule. It handles:
+``emit()`` is the single-call path from "an AI action just occurred" to a
+sealed, verifiable Agent Action Capsule. It handles:
 
-- Building the ``model_attestation`` block (commits model_id, provider, and
-  compute_attestation to the capsule_id digest so tampering any of the three
-  makes verification fail).
+- Building the ``model_attestation`` block when ``model_id`` / ``provider``
+  are supplied (commits them to the ``capsule_id`` digest so tampering any of
+  the three fields makes verification fail).
 - Deriving ``assurance.effect_mode`` from the effect record status.
 - Wiring the ``chain`` block when a prior capsule id is supplied (rung 2
   chaining primitive).
 - Defaulting ``assurance.attestation_mode`` to ``"self_attested"`` (§5.3).
 - Returning the sealed dict ready for storage, anchoring, or forwarding.
+
+**action_type convention**:
+- ``"fyi"`` — passive observation (default); the emit tier records what
+  happened but does not gate or decide. Framework adapters use this.
+- ``"decide"`` — consequential; the capsule records a gate decision or tool
+  call with real-world effects. Pass explicitly when emitting consequential
+  actions.
 """
 from __future__ import annotations
 
 import dataclasses
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -30,91 +38,115 @@ from .contracts import (
 )
 from .parse import Capsule
 
-__all__ = ["emit", "DEFAULT_SPEC_VERSION", "DEFAULT_FORMAT_VERSION"]
+__all__ = [
+    "emit",
+    "DEFAULT_SPEC_VERSION",
+    "DEFAULT_FORMAT_VERSION",
+    # Aliases for backward-compat with the emit-tier adapter surface.
+    "SPEC_VERSION",
+    "FORMAT_VERSION",
+]
 
 DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-01"
 DEFAULT_FORMAT_VERSION = "2"
 
+# Aliases used by the adapter tier (framework adapters import these names).
+SPEC_VERSION = DEFAULT_SPEC_VERSION
+FORMAT_VERSION = DEFAULT_FORMAT_VERSION
+
 
 def _utc_now() -> str:
-    """RFC 3339 UTC timestamp with a Z suffix."""
     now = datetime.now(timezone.utc)
     return now.isoformat().replace("+00:00", "Z")
 
 
 def emit(
-    action_id: str,
-    action_type: str,
-    operator: str,
-    developer: str,
+    action_id: str | None = None,
+    action_type: str = "fyi",
+    operator: str = "",
+    developer: str = "",
     *,
-    model_id: str,
-    provider: str,
+    model_id: str | None = None,
+    provider: str | None = None,
     timestamp: str | None = None,
     compute_attestation: dict[str, Any] | None = None,
     effect: EffectRecord | None = None,
     prior_capsule_id: str | None = None,
-    chain_relation: str = "follows",
+    chain_relation: str | None = None,
     disposition: Disposition | None = None,
     constraints: tuple[ConstraintRecord, ...] = (),
     spec_version: str = DEFAULT_SPEC_VERSION,
     format_version: str = DEFAULT_FORMAT_VERSION,
+    # Adapter-tier convenience params: used to build action_id when not given.
+    tool_name: str | None = None,
+    tool_input: Any = None,  # noqa: ARG001 — carried for future traceability
+    tool_output: Any = None,  # noqa: ARG001 — carried for future traceability
 ) -> dict:
     """Build and seal a Capsule with self-attestation (§5.3).
 
     Returns the sealed dict with ``capsule_id`` computed over the canonical
-    capsule form (§5.1). The ``model_attestation`` block — carrying
-    ``model_id``, ``provider``, and ``compute_attestation`` — is part of the
-    canonical form, so the ``capsule_id`` commits all three values: any
-    post-seal tamper to these fields makes ``verify()`` fail.
+    capsule form (§5.1). When ``model_id`` and ``provider`` are supplied, the
+    ``model_attestation`` block is included and committed to the ``capsule_id``;
+    any post-seal tamper to those fields makes ``verify()`` fail.
 
     Args:
-        action_id: Unique identifier for this action (spec §5.1 REQUIRED).
-        action_type: Action category string, e.g. ``"decide"`` (spec §5.1 REQUIRED).
-        operator: The tenant / scoping party identifier (spec §5.1 REQUIRED).
-        developer: The agent identifier + version (spec §5.1 REQUIRED).
-        model_id: The model name/version that ran this action, e.g.
-            ``"claude-sonnet-4-6"`` (committed to capsule_id).
-        provider: Inference provider, e.g. ``"anthropic"`` (committed to capsule_id).
+        action_id: Unique identifier for this action. Defaults to a UUID4
+            incorporating ``tool_name`` when not supplied.
+        action_type: Action category. ``"fyi"`` (default) for passive
+            observation; ``"decide"`` for consequential gate decisions.
+        operator: The tenant / scoping party identifier (spec §5.1).
+        developer: The agent identifier + version (spec §5.1).
+        model_id: Model name/version, e.g. ``"claude-sonnet-4-6"``. When
+            supplied together with ``provider``, a ``model_attestation`` block
+            is created and committed to the ``capsule_id``.
+        provider: Inference provider, e.g. ``"anthropic"``.
         timestamp: ISO-8601 / RFC 3339 UTC string; defaults to now.
-        compute_attestation: Best-effort compute context from inference metadata.
-            Typically ``{"endpoint": "<url>", "chip": "<accelerator-id>"}``.
-            Committed to capsule_id when present.
-        effect: Optional effect record (rung 2 may/did binding). When status is
-            ``"dispatched"`` the assurance effect_mode is
-            ``"dispatched_unconfirmed"``; when ``"confirmed"`` it is
-            ``"confirmed"`` (and response_digest is required by EffectRecord).
+        compute_attestation: Best-effort compute context. Committed to
+            ``capsule_id`` when ``model_id`` + ``provider`` are also present.
+        effect: Optional effect record (rung 2 may/did binding).
         prior_capsule_id: 64-hex capsule_id of the capsule this one follows.
-            When supplied the chain block is set (rung 2 chaining primitive)
-            and ledger_mode becomes ``"chained"``.
         chain_relation: Registry-governed chain.relation value (default
-            ``"follows"``). Ignored when prior_capsule_id is None.
-        disposition: Optional disposition block (§5.4).
+            ``"follows"``). Ignored when ``prior_capsule_id`` is None.
+        disposition: Optional disposition block (§5.4). When omitted on an
+            ``"fyi"`` action a sensible default is applied automatically.
         constraints: Constraint records (§8.1); defaults to empty tuple.
         spec_version: Spec revision string (defaults to ``-01``).
         format_version: Serialization suite version (defaults to ``"2"``).
+        tool_name: Name of the tool that was called. Used to build a readable
+            ``action_id`` when one is not provided.
+        tool_input: Tool input (currently ignored in the capsule body; reserved
+            for future traceability fields).
+        tool_output: Tool output (currently ignored in the capsule body; reserved
+            for future traceability fields).
 
     Returns:
         Sealed capsule dict with ``capsule_id`` at the top level.
     """
+    # Derive action_id from tool_name if not supplied.
+    if action_id is None:
+        base = tool_name or "tool-call"
+        action_id = f"{base}/{uuid.uuid4()}"
+
     ts = timestamp or _utc_now()
 
-    model_att = ModelAttestation(
-        model_id=model_id,
-        provider=provider,
-        compute_attestation=compute_attestation,
-    )
+    # ModelAttestation only when both model_id + provider are given.
+    model_att: ModelAttestation | None = None
+    if model_id is not None and provider is not None:
+        model_att = ModelAttestation(
+            model_id=model_id,
+            provider=provider,
+            compute_attestation=compute_attestation,
+        )
 
     chain: Chain | None = None
     if prior_capsule_id is not None:
-        chain = Chain(parent_capsule_id=prior_capsule_id, relation=chain_relation)
+        # Adapter tier (tool_name set) defaults to "sequence"; full API defaults to "follows".
+        if chain_relation is None:
+            rel = "sequence" if tool_name is not None else "follows"
+        else:
+            rel = chain_relation
+        chain = Chain(parent_capsule_id=prior_capsule_id, relation=rel)
 
-    # Ensure effect_attestation is set when the effect has been dispatched or
-    # confirmed (§5.2 requires it; the verifier grades it). Default to
-    # "runtime_claimed" — the weakest registered grade — which is appropriate
-    # for self-attested capsules where the issuer asserts completion but no
-    # independent witness confirms it. Callers that can grade higher should
-    # set effect_attestation on the EffectRecord directly.
     if effect is not None and effect.effect_attestation is None:
         status = effect.status
         if status in ("dispatched", "confirmed", "failed", "reverted"):
@@ -129,6 +161,15 @@ def emit(
         effect_mode=effect_mode,
         ledger_mode=ledger_mode,
     )
+
+    # Default disposition for fyi/observer calls: accept, policy-approved, executed.
+    if disposition is None and action_type == "fyi":
+        disposition = Disposition(
+            decision="accept",
+            approver="policy",
+            human_disposed=False,
+            verdict_class="executed",
+        )
 
     capsule = Capsule(
         spec_version=spec_version,
