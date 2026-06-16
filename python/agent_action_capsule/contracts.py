@@ -32,6 +32,7 @@ __all__ = [
     "AssuranceBlock",
     "Chain",
     "ConstraintRecord",
+    "ModelAttestation",
     "InvariantError",
 ]
 
@@ -252,3 +253,29 @@ class ConstraintRecord:
             raise InvariantError("constraint.result MUST be 'pass', 'fail', or 'n/a' (§8.1)")
         if self.evidence_digest is not None and not is_hex64(self.evidence_digest):
             raise InvariantError("constraint.evidence_digest MUST be a 64-hex JSON-DIGEST when present")
+
+
+@dataclass(frozen=True)
+class ModelAttestation:
+    """Model identity and compute-context block — committed to capsule_id.
+
+    All three fields enter the canonical capsule form and therefore the
+    capsule_id digest: tampering model_id, provider, or compute_attestation
+    makes verification fail.
+
+    compute_attestation is best-effort from inference metadata:
+    {"endpoint": "<routed-inference-url>", "chip": "<accelerator-id>"}.
+    Absent when the runtime does not surface this information.
+    """
+
+    model_id: str
+    provider: str
+    compute_attestation: dict | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.model_id, str) or not self.model_id:
+            raise InvariantError("model_attestation.model_id MUST be a non-empty string")
+        if not isinstance(self.provider, str) or not self.provider:
+            raise InvariantError("model_attestation.provider MUST be a non-empty string")
+        if self.compute_attestation is not None and not isinstance(self.compute_attestation, dict):
+            raise InvariantError("model_attestation.compute_attestation MUST be an object when present")

@@ -21,6 +21,7 @@ from .contracts import (
     EffectRecord,
     ExpiryPolicy,
     InvariantError,
+    ModelAttestation,
 )
 
 __all__ = ["Capsule", "parse_capsule"]
@@ -55,6 +56,7 @@ class Capsule:
     disposition: Disposition | None = None
     chain: Chain | None = None
     constraints: tuple[ConstraintRecord, ...] = ()
+    model_attestation: ModelAttestation | None = None
 
     def to_dict(self) -> dict:
         """The envelope as a JSON object (without capsule_id)."""
@@ -67,6 +69,8 @@ class Capsule:
             "developer": self.developer,
             "timestamp": self.timestamp,
         }
+        if self.model_attestation is not None:
+            out["model_attestation"] = _block_to_dict(self.model_attestation)
         if self.effect is not None:
             out["effect"] = _block_to_dict(self.effect)
         if self.assurance is not None:
@@ -170,10 +174,21 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
             for c in cons
         )
 
+    ma = _block(d, "model_attestation")
+    model_attestation = None
+    if ma:
+        if "model_id" not in ma or "provider" not in ma:
+            raise InvariantError("model_attestation.model_id and .provider are REQUIRED when block is present")
+        model_attestation = ModelAttestation(
+            model_id=ma["model_id"],
+            provider=ma["provider"],
+            compute_attestation=ma.get("compute_attestation"),
+        )
+
     return Capsule(
         spec_version=d["spec_version"], format_version=d["format_version"],
         action_id=d["action_id"], action_type=d["action_type"], operator=d["operator"],
         developer=d["developer"], timestamp=d["timestamp"],
         effect=effect, assurance=assurance, disposition=disposition, chain=chain,
-        constraints=constraints,
+        constraints=constraints, model_attestation=model_attestation,
     )
