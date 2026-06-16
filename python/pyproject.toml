@@ -36,6 +36,10 @@ dev = ["pytest>=7.0", "ruff>=0.4"]
 # `verify --transparent`. scitt-cose is the public action-state-group/scitt-cose
 # package (deps: cbor2 + cryptography); it drags in nothing private.
 transparent = ["scitt-cose>=0.1.1"]
+# OPTIONAL anchor client (rung 6): async, digest-only TS submission. Depends on
+# scitt-cose (for COSE Signed Statement construction + receipt embedding) which
+# in turn pulls in cbor2 + cryptography. No private packages are introduced.
+anchor = ["scitt-cose>=0.1.1"]
 
 [project.scripts]
 agent-action-capsule = "agent_action_capsule.cli:main"
