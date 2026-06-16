@@ -19,7 +19,6 @@ from agent_action_capsule import (
 )
 from agent_action_capsule.anchor import anchor
 
-
 MODEL_KWARGS = dict(
     operator="acme-co",
     developer="hermes-agent@0.1.0",

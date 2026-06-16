@@ -5,10 +5,7 @@ import socket
 import threading
 import time
 
-import pytest
-
 from agent_action_capsule.anchor import DEFAULT_ANCHOR_ENDPOINT, anchor
-
 
 FAKE_CID = "a" * 64  # 64-char hex string (valid capsule_id shape)
 

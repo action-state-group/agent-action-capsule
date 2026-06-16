@@ -4,7 +4,6 @@
 Acceptance check: capsule_id commits model_id, provider, compute_attestation —
 tampering any of the three makes verify() report ok=False.
 """
-import json
 
 import pytest
 
@@ -16,7 +15,6 @@ from agent_action_capsule import (
     json_digest,
     verify,
 )
-
 
 EMIT_KWARGS = dict(
     action_id="act-001",
@@ -178,9 +176,11 @@ def test_emit_dispatched_then_chained_confirmed():
 
 
 def test_model_attestation_dataclass_validation():
-    with pytest.raises(Exception):
+    from agent_action_capsule.contracts import InvariantError
+
+    with pytest.raises(InvariantError):
         ModelAttestation(model_id="", provider="anthropic")
-    with pytest.raises(Exception):
+    with pytest.raises(InvariantError):
         ModelAttestation(model_id="gpt-4", provider="")
-    with pytest.raises(Exception):
+    with pytest.raises((InvariantError, TypeError)):
         ModelAttestation(model_id="gpt-4", provider="openai", compute_attestation="not-a-dict")
