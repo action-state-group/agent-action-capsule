@@ -151,10 +151,10 @@ def test_async_non_blocking():
     future = async_anchor(capsule_id, ts_url=_TS_URL)
     elapsed = time.monotonic() - t0
 
-    # Must return before any TS round-trip completes (well under 1 second)
+    # Must return before any TS round-trip completes (well under 1 second).
+    # elapsed < 1.0 is the non-blocking proof; future.done() is racy on fast networks.
     assert elapsed < 1.0, f"async_anchor blocked the caller for {elapsed:.3f}s"
     assert isinstance(future, AnchorFuture)
-    assert not future.done()  # still in flight
 
     # The future resolves within a generous timeout
     result = future.result(timeout=60.0)
