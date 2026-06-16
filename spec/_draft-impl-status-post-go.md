@@ -1,7 +1,9 @@
-# DRAFT: Implementation Status section — post-Go (-01 submission, swap in after Session 2)
+# DRAFT: Implementation Status section — -01 ACTIVE version (Session 2 confirmed)
 #
 # Per RFC 7942.  Insert immediately before Security Considerations in -01.
-# Prerequisite: Session 2 differential-fuzz confirms zero divergences.
+# Session 2 confirmed: Go 29/29 vectors pass, zero divergences vs Python.
+# This is the version to paste into -01.  _draft-impl-status-interim.md is
+# superseded and kept for reference only.
 # Do NOT commit this file into a filed I-D; copy the section below.
 # -----------------------------------------------------------------------
 
