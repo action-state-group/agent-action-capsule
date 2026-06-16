@@ -31,6 +31,14 @@ Draft = "https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/"
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "ruff>=0.4"]
+# OPTIONAL two-layer verification: the SCITT/COSE substrate verifier. The
+# payload-only core stays stdlib-only; this extra is needed only for
+# `verify --transparent`. scitt-cose is the public action-state-group/scitt-cose
+# package (deps: cbor2 + cryptography); it drags in nothing private.
+transparent = ["scitt-cose>=0.1.1"]
+
+[project.scripts]
+agent-action-capsule = "agent_action_capsule.cli:main"
 
 [tool.setuptools]
 packages = ["agent_action_capsule"]
