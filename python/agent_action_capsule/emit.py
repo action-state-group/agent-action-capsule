@@ -72,7 +72,7 @@ def emit(
     compute_attestation: dict[str, Any] | None = None,
     effect: EffectRecord | None = None,
     prior_capsule_id: str | None = None,
-    chain_relation: str = "follows",
+    chain_relation: str | None = None,
     disposition: Disposition | None = None,
     constraints: tuple[ConstraintRecord, ...] = (),
     spec_version: str = DEFAULT_SPEC_VERSION,
@@ -140,9 +140,12 @@ def emit(
 
     chain: Chain | None = None
     if prior_capsule_id is not None:
-        # Adapter-tier chains use "sequence"; full-API chains use "follows" or explicit.
-        # Preserve whatever chain_relation was passed; default is "follows".
-        chain = Chain(parent_capsule_id=prior_capsule_id, relation=chain_relation)
+        # Adapter tier (tool_name set) defaults to "sequence"; full API defaults to "follows".
+        if chain_relation is None:
+            rel = "sequence" if tool_name is not None else "follows"
+        else:
+            rel = chain_relation
+        chain = Chain(parent_capsule_id=prior_capsule_id, relation=rel)
 
     if effect is not None and effect.effect_attestation is None:
         status = effect.status
