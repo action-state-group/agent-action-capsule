@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-action-capsule"
-version = "0.0.1"
-description = "Reference parse + verify library for the Agent Action Capsule SCITT profile (draft-mih-scitt-agent-action-capsule)."
+version = "0.1.0"
+description = "Reference emit + verify library for the Agent Action Capsule SCITT profile (draft-mih-scitt-agent-action-capsule). Includes the rungs 1+2+6 CORE: emit, record, anchor client, self-attest."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "BSD-3-Clause" }
