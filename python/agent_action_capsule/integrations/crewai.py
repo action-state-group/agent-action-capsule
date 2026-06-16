@@ -13,7 +13,7 @@ Unlike LangChain's post-hoc callback, wrapping runs **in-line with the tool**,
 so the capsule is emitted before the result is returned to the agent.
 
 For constraint-running (rung-4, the verify tier), see
-``gopher-ai[crewai]`` — ``CrewAIVerifier`` / ``verified_tool``.
+``agent-action-capsule[crewai]`` — ``CrewAIVerifier`` / ``verified_tool``.
 
 Requires ``pip install agent-action-capsule[crewai]`` only for
 ``.as_crewai_tool()``; the decorator and ``.wrap()`` need nothing beyond CORE A.

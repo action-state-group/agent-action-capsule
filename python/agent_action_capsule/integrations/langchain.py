@@ -6,7 +6,7 @@ it builds and seals an Agent Action Capsule (§5.1) recording the event. No
 constraints run, no action is blocked — this is the emit-only on-ramp.
 
 For constraint-running (rung-4, the verify tier), see
-``gopher-ai[langchain]`` — ``LangChainVerifier``.
+``agent-action-capsule[langchain]`` — ``LangChainVerifier``.
 
     from agent_action_capsule.integrations.langchain import LangChainCapsuleEmitter
 

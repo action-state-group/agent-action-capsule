@@ -6,7 +6,7 @@ signed Agent Action Capsule for every tool call. They depend only on CORE A
 (this package); they run NO constraints and carry NO engine logic.
 
 For constraint-running (rung-4, the differentiating tier), see
-``gopher-ai[langchain]`` / ``gopher-ai[crewai]`` — the verify-tier adapters.
+``agent-action-capsule[langchain]`` / ``agent-action-capsule[crewai]`` — the verify-tier adapters.
 
 Adapters are re-exported lazily so importing this package never requires
 LangChain or CrewAI to be installed.
