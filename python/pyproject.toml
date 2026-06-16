@@ -30,7 +30,7 @@ Source = "https://github.com/action-state-group/agent-action-capsule"
 Draft = "https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/"
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "ruff>=0.4"]
+dev = ["pytest>=7.0", "ruff>=0.4", "langchain-core>=0.1"]
 # OPTIONAL two-layer verification: the SCITT/COSE substrate verifier. The
 # payload-only core stays stdlib-only; this extra is needed only for
 # `verify --transparent`. scitt-cose is the public action-state-group/scitt-cose
@@ -40,12 +40,22 @@ transparent = ["scitt-cose>=0.1.1"]
 # scitt-cose (for COSE Signed Statement construction + receipt embedding) which
 # in turn pulls in cbor2 + cryptography. No private packages are introduced.
 anchor = ["scitt-cose>=0.1.1"]
+# Emit-tier framework adapters: observe tool calls and emit capsules.
+# No engine dependency; CORE A only.
+langchain = ["langchain-core>=0.1"]
+# crewai extra: .as_crewai_tool() only; emit_tool decorator + CrewAICapsuleEmitter.wrap()
+# are framework-free and work without installing crewai.
+crewai = ["crewai>=0.40"]
 
 [project.scripts]
 agent-action-capsule = "agent_action_capsule.cli:main"
 
-[tool.setuptools]
-packages = ["agent_action_capsule"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agent_action_capsule*"]
+
+[tool.setuptools.package-data]
+"agent_action_capsule.data" = ["REGISTRY.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

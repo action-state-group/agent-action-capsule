@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Tests for rung 1 emit() and the ModelAttestation tamper-evidence guarantee.
+"""Tests for rung-1 emit() — both the full API and the adapter-tier API.
 
-Acceptance check: capsule_id commits model_id, provider, compute_attestation —
-tampering any of the three makes verify() report ok=False.
+Full API (action_type="decide", model_id, provider, compute_attestation):
+  - ModelAttestation tamper-evidence: capsule_id commits all three model fields.
+  - Effect records, chaining, confirmed/dispatched flows.
+
+Adapter-tier API (action_type="fyi", no model_id needed):
+  - emit(operator=..., developer=..., tool_name=...) returns a valid capsule.
+  - Dispositions, chaining, action_type defaults.
 """
-
 import pytest
 
 from agent_action_capsule import (
@@ -15,6 +19,12 @@ from agent_action_capsule import (
     json_digest,
     verify,
 )
+from agent_action_capsule.contracts import InvariantError
+from agent_action_capsule.emit import FORMAT_VERSION, SPEC_VERSION
+
+# ---------------------------------------------------------------------------
+# Full API tests (action_type="decide", model_id + provider required)
+# ---------------------------------------------------------------------------
 
 EMIT_KWARGS = dict(
     action_id="act-001",
@@ -49,9 +59,7 @@ def test_emit_model_attestation_in_body():
 
 
 def test_model_attestation_committed_to_capsule_id():
-    """capsule_id is a digest over the body including model_attestation."""
     sealed = emit(**EMIT_KWARGS)
-    # Recomputing capsule_id over the body (minus capsule_id + chain) must match.
     assert sealed["capsule_id"] == compute_capsule_id({k: v for k, v in sealed.items() if k != "chain"})
 
 
@@ -77,14 +85,13 @@ def test_tamper_compute_attestation_fails_verify():
     sealed = emit(**EMIT_KWARGS)
     tampered = dict(sealed)
     tampered["model_attestation"] = dict(tampered["model_attestation"])
-    tampered["model_attestation"]["compute_attestation"] = {"endpoint": "TAMPERED", "chip": "FAKE"}
+    tampered["model_attestation"]["compute_attestation"] = {"endpoint": "FAKE", "chip": "FAKE"}
     result = verify(tampered)
     assert not result.ok
 
 
 def test_emit_without_compute_attestation():
-    kw = {**EMIT_KWARGS, "compute_attestation": None}
-    del kw["compute_attestation"]
+    kw = {k: v for k, v in EMIT_KWARGS.items() if k != "compute_attestation"}
     sealed = emit(**kw)
     result = verify(sealed)
     assert result.ok
@@ -124,7 +131,6 @@ def test_emit_confirmed_effect():
 
 
 def test_emit_chained_capsule():
-    """Rung 2 chaining: second emit references the first by capsule_id."""
     kw = {k: v for k, v in EMIT_KWARGS.items() if k != "action_id"}
     first = emit(action_id="act-001", **kw)
     second = emit(
@@ -139,7 +145,6 @@ def test_emit_chained_capsule():
 
 
 def test_emit_dispatched_then_chained_confirmed():
-    """Full rung-2 round-trip: dispatched → chained confirmed capsule."""
     req_digest = json_digest({"call": "stripe_charge", "amount": "40.00"})
     kw = {k: v for k, v in EMIT_KWARGS.items() if k != "action_id"}
 
@@ -176,11 +181,93 @@ def test_emit_dispatched_then_chained_confirmed():
 
 
 def test_model_attestation_dataclass_validation():
-    from agent_action_capsule.contracts import InvariantError
-
     with pytest.raises(InvariantError):
         ModelAttestation(model_id="", provider="anthropic")
     with pytest.raises(InvariantError):
         ModelAttestation(model_id="gpt-4", provider="")
     with pytest.raises((InvariantError, TypeError)):
         ModelAttestation(model_id="gpt-4", provider="openai", compute_attestation="not-a-dict")
+
+
+# ---------------------------------------------------------------------------
+# Adapter-tier API tests (action_type="fyi", no model_id)
+# ---------------------------------------------------------------------------
+
+
+def test_emit_simple_returns_sealed_dict():
+    capsule = emit(operator="ACME-CO", developer="agent@v1")
+    assert isinstance(capsule, dict)
+    assert "capsule_id" in capsule
+    assert len(capsule["capsule_id"]) == 64
+
+
+def test_emit_simple_capsule_id_is_stable():
+    capsule = emit(operator="ACME-CO", developer="agent@v1")
+    recomputed = compute_capsule_id(capsule)
+    assert recomputed == capsule["capsule_id"]
+
+
+def test_emit_simple_required_fields():
+    capsule = emit(operator="ACME-CO", developer="agent@v1", tool_name="my_tool")
+    assert capsule["spec_version"] == SPEC_VERSION
+    assert capsule["format_version"] == FORMAT_VERSION
+    assert capsule["operator"] == "ACME-CO"
+    assert capsule["developer"] == "agent@v1"
+    assert capsule["action_type"] == "fyi"
+    assert "timestamp" in capsule
+
+
+def test_emit_simple_disposition_is_accept():
+    capsule = emit(operator="ACME-CO", developer="agent@v1", tool_name="search_web")
+    assert capsule["disposition"]["decision"] == "accept"
+    assert capsule["disposition"]["approver"] == "policy"
+    assert capsule["disposition"]["human_disposed"] is False
+    assert capsule["disposition"]["verdict_class"] == "executed"
+
+
+def test_emit_simple_chaining():
+    parent_id = "a" * 64
+    capsule = emit(
+        operator="ACME-CO",
+        developer="agent@v1",
+        tool_name="my_tool",
+        prior_capsule_id=parent_id,
+    )
+    assert capsule["chain"]["parent_capsule_id"] == parent_id
+    assert capsule["chain"]["relation"] == "sequence"
+
+
+def test_emit_simple_no_chain_when_none():
+    capsule = emit(operator="ACME-CO", developer="agent@v1")
+    assert "chain" not in capsule
+
+
+def test_emit_simple_capsule_verifies():
+    capsule = emit(operator="ACME-CO", developer="agent@v1", tool_name="my_tool")
+    result = verify(capsule)
+    assert result.ok, result.findings
+
+
+def test_emit_simple_custom_action_id_and_timestamp():
+    capsule = emit(
+        operator="ACME-CO",
+        developer="agent@v1",
+        action_id="test-action-42",
+        timestamp="2026-06-16T00:00:00Z",
+    )
+    assert capsule["action_id"] == "test-action-42"
+    assert capsule["timestamp"] == "2026-06-16T00:00:00Z"
+
+
+def test_emit_simple_capsule_tamper_changes_id():
+    capsule = emit(operator="ACME-CO", developer="agent@v1")
+    original_id = capsule["capsule_id"]
+    mutated = dict(capsule)
+    mutated["operator"] = "EVIL-CO"
+    new_id = compute_capsule_id(mutated)
+    assert new_id != original_id
+
+
+def test_emit_tool_name_in_action_id():
+    capsule = emit(operator="ACME-CO", developer="agent@v1", tool_name="search_web")
+    assert "search_web" in capsule["action_id"]

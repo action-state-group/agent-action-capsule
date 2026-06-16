@@ -2,10 +2,10 @@
 """Reference implementation of draft-mih-scitt-agent-action-capsule.
 
 Class 1 verifier (§6) + the typed producer carriers (§5) + the high-level
-emit/anchor surface (rungs 1+2+6). Substrate verification (COSE_Sign1
-signature, registration, Receipts) is the SCITT/COSE substrate's, by
-reference, and is not implemented here. Class 2 / manifest-aware verification
-is out of scope.
+emit/anchor surface (rungs 1+2+6) + emit-tier framework adapters. Substrate
+verification (COSE_Sign1 signature, registration, Receipts) is the SCITT/COSE
+substrate's, by reference, and is not implemented here. Class 2 / manifest-aware
+verification is out of scope.
 """
 from .anchor import DEFAULT_ANCHOR_ENDPOINT, anchor
 from .canonical import (
@@ -27,7 +27,7 @@ from .contracts import (
     ModelAttestation,
     derive_effect_mode,
 )
-from .emit import DEFAULT_FORMAT_VERSION, DEFAULT_SPEC_VERSION, emit
+from .emit import DEFAULT_FORMAT_VERSION, DEFAULT_SPEC_VERSION, FORMAT_VERSION, SPEC_VERSION, emit
 from .parse import Capsule, parse_capsule
 from .registries import REGISTRY_NAMES, load_registries
 from .verify import Finding, VerificationResult, verify, verify_store
@@ -40,6 +40,9 @@ __all__ = [
     "emit",
     "DEFAULT_SPEC_VERSION",
     "DEFAULT_FORMAT_VERSION",
+    # Aliases used by the emit-tier adapter surface.
+    "SPEC_VERSION",
+    "FORMAT_VERSION",
     # rung 6: anchor client
     "anchor",
     "DEFAULT_ANCHOR_ENDPOINT",
