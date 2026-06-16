@@ -200,7 +200,6 @@ def test_repoint_via_env_var(monkeypatch):
 
 def test_no_dependency_on_authority():
     """agent_action_capsule.anchor must NOT import action-state-authority (private)."""
-    import importlib
     import sys
 
     # Import the module fresh (may already be imported in prior tests — that's fine)
