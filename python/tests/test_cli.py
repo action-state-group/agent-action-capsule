@@ -7,6 +7,7 @@ environment: the real two-layer path runs only when scitt-cose is installed
 """
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -122,6 +123,12 @@ def test_transparent_two_layers_self_attested_then_anchored(capsys, tmp_path):
 
 # --------------------------------------------------------------------- example
 def test_build_and_verify_example_runs():
-    r = subprocess.run([sys.executable, str(EXAMPLE)], capture_output=True, text=True)
+    # Ensure the example is importable even in a clean env that hasn't run
+    # `pip install -e .`: the subprocess doesn't inherit pytest's sys.path, so
+    # we inject PYTHONPATH pointing at the package source tree.
+    src = Path(__file__).resolve().parents[1]  # python/
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(src) + (os.pathsep + env["PYTHONPATH"] if "PYTHONPATH" in env else "")
+    r = subprocess.run([sys.executable, str(EXAMPLE)], capture_output=True, text=True, env=env)
     assert r.returncode == 0, r.stderr
     assert "round trip ok" in r.stdout
