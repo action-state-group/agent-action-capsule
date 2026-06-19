@@ -668,7 +668,7 @@ indicator of its existence. This whole-envelope posture is sufficient for
 the common case where the unit of disclosure is the Capsule as a whole.
 
 For cases in which a producer must reveal a subset of payload fields to a
-counterparty while concealing both the values and the existence of
+verifier while concealing both the values and the existence of
 unrevealed fields, a per-field selective-disclosure mechanism is needed.
 This profile reserves an extension point in the Capsule payload for such
 a mechanism. The intended field-level technique is informatively
@@ -721,9 +721,9 @@ recorded as affirmative evidence.
 
 # Future Work {#future}
 
-A counterparty attestation extension is in preparation; it will define
-additional statement-type and verdict values, which are reserved for that
-purpose.
+An extension for additional attestation scenarios is in preparation; it
+will define additional statement-type and verdict values, which are
+reserved for that purpose.
 
 A companion Internet-Draft is planned to normatively profile the
 selective-disclosure extension point reserved in {{selectivedisclosure}},
