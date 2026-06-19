@@ -20,6 +20,11 @@ Thin wrapper over the library: argument parsing -> ``verify`` / ``verify_store``
         *payload* layer (Class-1) on the authenticated capsule. The substrate
         layer reports ``anchored`` ONLY when a receipt actually verifies.
 
+    agent-action-capsule anchor submit <capsule_id> [--ts-url URL] [--timeout SEC]
+        Submit a capsule_id digest to a SCITT Transparency Service (digest-only
+        POST; no business content crosses the wire). Returns a Transparent Statement
+        with an embedded COSE Receipt. Requires the ``[anchor]`` extra.
+
 Exit codes: 0 = ok; 1 = ran and NOT ok; 2 = could not run (bad input, missing
 key, optional dependency not installed). Never a bare traceback.
 """
@@ -193,6 +198,68 @@ def _cmd_transparent(args) -> int:
     return EXIT_OK if report.ok else EXIT_NOT_OK
 
 
+# ---------------------------------------------------------------- anchor handler
+def _cmd_anchor_submit(args) -> int:
+    try:
+        from .anchor import AnchorError, AnchorResult, submit_anchor
+    except ImportError as exc:  # pragma: no cover
+        print(
+            "error: anchor submit needs the optional anchor client.\n"
+            "       install it with:  pip install 'agent-action-capsule[anchor]'\n"
+            f"       (import error: {exc})",
+            file=sys.stderr,
+        )
+        return EXIT_CANNOT_RUN
+
+    capsule_id: str = args.capsule_id.strip()
+    if len(capsule_id) != 64 or not all(c in "0123456789abcdef" for c in capsule_id):
+        print(
+            f"error: capsule_id must be a 64-character lowercase hex string, got {capsule_id!r}",
+            file=sys.stderr,
+        )
+        return EXIT_CANNOT_RUN
+
+    try:
+        result = submit_anchor(capsule_id, ts_url=args.ts_url, timeout=args.timeout)
+    except Exception as exc:
+        if args.as_json:
+            print(json.dumps({"ok": False, "error": str(exc)}, indent=2))
+        else:
+            print(f"error: anchor submit failed: {exc}", file=sys.stderr)
+        return EXIT_NOT_OK
+
+    if isinstance(result, AnchorError):
+        if args.as_json:
+            print(json.dumps({"ok": False, "error": result.error, "ts_url": result.ts_url}, indent=2))
+        else:
+            print(f"error: anchor submit failed: {result.error}", file=sys.stderr)
+        return EXIT_NOT_OK
+
+    assert isinstance(result, AnchorResult)
+    if args.as_json:
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "capsule_id": result.capsule_id,
+                    "ts_url": result.ts_url,
+                    "entry_hash": result.entry_hash,
+                    "receipt_size": len(result.receipt),
+                    "transparent_size": len(result.transparent_statement),
+                },
+                indent=2,
+            )
+        )
+    else:
+        print("Agent Action Capsule — anchor submit")
+        print(f"  capsule_id  : {result.capsule_id}")
+        print(f"  ts_url      : {result.ts_url}")
+        print(f"  entry_hash  : {result.entry_hash}")
+        print(f"  receipt     : {len(result.receipt)} bytes")
+        print(f"  transparent : {len(result.transparent_statement)} bytes")
+    return EXIT_OK
+
+
 # ---------------------------------------------------------------------- parser
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -209,6 +276,15 @@ def _build_parser() -> argparse.ArgumentParser:
     v.add_argument("--log-key", dest="log_key", help="PEM public key of the transparency log (to verify a receipt)")
     v.add_argument("--leaf-entry-hex", dest="leaf_entry_hex", help="hex leaf entry the receipt proves inclusion of")
     v.add_argument("--json", dest="as_json", action="store_true", help="machine-readable JSON output")
+
+    a = sub.add_parser("anchor", help="submit a capsule_id digest to a SCITT Transparency Service")
+    a_sub = a.add_subparsers(dest="anchor_cmd", required=True)
+    a_s = a_sub.add_parser("submit", help="post capsule_id to a TS; receive a COSE Receipt")
+    a_s.add_argument("capsule_id", help="64-char lowercase-hex capsule_id to anchor")
+    a_s.add_argument("--ts-url", dest="ts_url", default=None, help="TS base URL (default: AAC_ANCHOR_URL env var)")
+    a_s.add_argument("--timeout", type=float, default=30.0, help="per-request HTTP timeout in seconds (default: 30)")
+    a_s.add_argument("--json", dest="as_json", action="store_true", help="machine-readable JSON output")
+
     return parser
 
 
@@ -226,6 +302,9 @@ def main(argv: list[str] | None = None) -> int:
         if not args.capsule:
             parser.error("verify requires a capsule path (or --store, or --transparent)")
         return _cmd_payload(args)
+    if args.command == "anchor":
+        if args.anchor_cmd == "submit":
+            return _cmd_anchor_submit(args)
     parser.error(f"unknown command {args.command!r}")
     return EXIT_CANNOT_RUN  # pragma: no cover
 
