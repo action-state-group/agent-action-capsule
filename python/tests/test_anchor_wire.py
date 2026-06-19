@@ -24,7 +24,7 @@ import pytest
 # Helpers
 # ---------------------------------------------------------------------------
 
-_DEFAULT_TS_URL = "https://as-authority-1020437450833.us-central1.run.app"
+_DEFAULT_TS_URL = "https://ts.agent-action-capsule.org"
 _TS_URL = os.environ.get("AAC_TS_URL", _DEFAULT_TS_URL)
 
 
