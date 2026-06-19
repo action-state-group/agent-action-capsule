@@ -138,6 +138,27 @@ are pinned in a publicly available specification. Such relations are anticipated
 in a future revision of the Internet-Draft and are registered into this same
 registry rather than establishing a new one.
 
+## 7. Reserved payload members — selective disclosure
+
+Reserved by the companion Internet-Draft
+`draft-mih-scitt-agent-action-capsule-sel-disc` (Selective Disclosure
+Profile), §9 (IANA Considerations). These members carry the salted-hash
+selective-disclosure structure and MUST NOT be used for any other purpose. They use
+the underscore-prefixed naming convention (following SD-JWT (RFC 9901)) to avoid
+collision with current or future Capsule payload members.
+
+| Member | Type | Location | Defined in |
+|---|---|---|---|
+| `_sd_alg` | string | Top-level Capsule object | Selective-Disclosure profile, "Algorithm Identifier" section (`"sha-256"` only) |
+| `_sd` | array of string | Any SD-eligible JSON object | Selective-Disclosure profile, "Salted-Hash Commitment Construction" section (commitment digests) |
+
+A plain (non-SD) Capsule carries neither member. The `_sd`/`_sd_alg` structure is
+part of the content-addressed form, so it is covered by `capsule_id` and is
+tamper-evident; a verifier unaware of the SD profile processes an SD-Capsule as a
+plain Capsule and sees the concealed REQUIRED fields as missing. See the companion
+draft for producer requirements, the eligible-field set, and the two-phase
+verifier checks.
+
 ## No registry
 
 The following vocabularies are deliberately **not** registries of this document:

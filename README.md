@@ -33,6 +33,38 @@ is the auditor-grade evidence that a gate worked.
 The authoritative version of the draft is the one on the Datatracker; the `.md`
 here is the editor's source from which it is built.
 
+## Quickstart — try the reference verifier
+
+Verify a capsule in under a minute. Class-1 verification is reproducible from the
+capsule bytes alone — no keys, no network, no clock.
+
+```bash
+git clone https://github.com/action-state-group/agent-action-capsule
+cd agent-action-capsule
+pip install -e python            # or, once published: pip install agent-action-capsule
+
+# a known-good conformance vector  ->  ok: True, findings: none
+agent-action-capsule verify test-vectors/pos-executed-confirmed/input.json
+
+# a tampered capsule               ->  ok: False, capsule_id_mismatch
+agent-action-capsule verify test-vectors/neg-capsule-id-mismatch/input.json
+```
+
+The good capsule recomputes its content-address and passes; the tampered one is
+rejected because the recomputed `capsule_id` no longer matches the carried value.
+Every directory under `test-vectors/` is one case — `input.json` is the capsule,
+`expected.json` is the verifier's expected result — so you can check the reference
+implementation against the frozen bytes the spec is conformance-tested on.
+
+```bash
+agent-action-capsule verify --help     # also: verify a store, or a full SCITT Signed Statement
+agent-action-capsule anchor --help     # submit a capsule_id digest to a SCITT Transparency Service
+```
+
+For the SCITT receipt + anchor paths: `pip install -e "python[transparent,anchor]"`. Full
+reference-library detail — the producer/emit side, `--transparent` Signed-Statement verification, and
+every option — is in [`python/README.md`](python/README.md).
+
 ## Repository layout
 
 ```

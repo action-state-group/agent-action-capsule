@@ -1,7 +1,7 @@
 ---
 title: "Selective Disclosure Profile for Agent Action Capsules"
-abbrev: "Capsule SD-CWT Profile"
-docname: draft-mih-scitt-agent-action-capsule-sd-cwt-00
+abbrev: "AAC Selective Disclosure"
+docname: draft-mih-scitt-agent-action-capsule-sel-disc-00
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -10,6 +10,7 @@ workgroup: "SCITT"
 keyword:
  - SCITT
  - selective disclosure
+ - SD-JWT
  - SD-CWT
  - AI agent
  - transparency
@@ -29,6 +30,7 @@ normative:
   RFC4648:
   RFC8259:
   RFC6234:
+  RFC9901:
   I-D.ietf-spice-sd-cwt:
   I-D.mih-scitt-agent-action-capsule:
     title: "An Agent Action Capsule Profile for SCITT"
@@ -41,21 +43,24 @@ normative:
 
 informative:
   RFC9052:
-  RFC8392:
   RFC8949:
   I-D.ietf-scitt-architecture:
-  I-D.ietf-oauth-selective-disclosure-jwt:
 
 --- abstract
 
 This document normatively profiles the per-field selective-disclosure
 extension point reserved in draft-mih-scitt-agent-action-capsule-01
-Section 6.2.  It defines the salted-hash commitment encoding, decoy-digest
+Section 9.2 (Selective Disclosure).  It defines the salted-hash commitment encoding, decoy-digest
 construction, disclosure format, producer requirements, and verifier
 checks for selectively disclosable fields in Agent Action Capsule
-payloads.  The mechanism is aligned with draft-ietf-spice-sd-cwt (the
-SPICE WG CWT selective-disclosure draft), adapted for the JSON payload
-format of a Capsule using JCS (RFC 8785) canonicalization.  Verifier
+payloads.  The mechanism follows the SD-JWT selective-disclosure model
+(RFC 9901) — salted-hash commitments, decoy digests, and disclosed
+`[salt, name, value]` triples — using JCS (RFC 8785) canonicalization,
+which is already the base Capsule profile's canonical form.  SD-JWT
+(RFC 9901) is the JSON form; SD-CWT (draft-ietf-spice-sd-cwt) is the
+CBOR/dCBOR sibling.  Because the Capsule payload is JSON, this profile
+uses the SD-JWT (JSON) construction, cited alongside the SPICE WG's
+SD-CWT work for SCITT-ecosystem consistency.  Verifier
 checks are deterministic and reproducible from the Capsule bytes plus a
 provided disclosure set alone; no clock, network access, model invocation,
 or external lookup beyond the provided disclosures is required.
@@ -80,14 +85,19 @@ and an auditing partner who receives only the disposition.
 
 This document profiles a per-field selective-disclosure mechanism for
 Capsule payloads that addresses these scenarios.  The mechanism follows
-the conceptual model of {{I-D.ietf-spice-sd-cwt}} — salted-hash
+the SD-JWT selective-disclosure model {{RFC9901}} — salted-hash
 commitments, decoy digests, and disclosed `[salt, name, value]` triples —
-adapted for the JSON encoding of the Capsule payload.  The adaptation uses
-{{RFC8785}} (JCS, JSON Canonicalization Scheme) to produce the byte string
-that SHA-256 is applied to, ensuring the commitment is deterministic across
-implementations.
+applied to the JSON {{RFC8259}} encoding of the Capsule payload.  SD-JWT {{RFC9901}}
+is the JSON form of this model; SD-CWT {{I-D.ietf-spice-sd-cwt}} is the
+CBOR/dCBOR sibling developed in the SPICE WG.  Because the Capsule
+payload is JSON, this profile uses the SD-JWT (JSON) construction and is
+aligned with the SD-CWT work for SCITT-ecosystem consistency.  The
+construction uses {{RFC8785}} (JCS, JSON Canonicalization Scheme) to
+produce the byte string that SHA-256 is applied to, ensuring the
+commitment is deterministic across implementations; JCS is already the
+canonical form of the base Capsule profile.
 
-An SD-Capsule is identical to a plain Capsule in its COSE_Sign1 envelope
+An SD-Capsule is identical to a plain Capsule in its COSE_Sign1 {{RFC9052}} envelope
 and its `content_type` header; the SD structure is a payload-level feature
 signaled by the presence of the `_sd_alg` member in the Capsule payload.
 A verifier unaware of this profile processes an SD-Capsule as a plain
@@ -146,20 +156,22 @@ verifier", and "Class 2 verifier" are as defined in
 
 # Design Rationale {#rationale}
 
-The SD-CWT mechanism ({{I-D.ietf-spice-sd-cwt}}) operates over CBOR
-payloads using deterministic CBOR (dCBOR) encoding for its hash inputs.
-Agent Action Capsule payloads are JSON objects, so a direct application of
-the SD-CWT byte-level construction is not available.  This profile adopts
-the same logical structure — salted-hash commitments in `_sd` arrays,
-disclosed triples, decoy digests — and substitutes JCS ({{RFC8785}}) for
-dCBOR as the canonicalization layer.  JCS is already used in the base
-Capsule profile for the `JSON-DIGEST` construction, making it the natural
-choice for consistency.
+The SD-JWT selective-disclosure model {{RFC9901}} operates over JSON,
+using salted-hash commitments, disclosed triples, and decoy digests.
+SD-CWT ({{I-D.ietf-spice-sd-cwt}}) is the CBOR/dCBOR sibling of that
+model, operating over CBOR payloads using deterministic CBOR (dCBOR) {{RFC8949}} for
+its hash inputs.  Agent Action Capsule payloads are JSON objects, so this
+profile uses the SD-JWT (JSON) construction directly, with JCS
+({{RFC8785}}) as the canonicalization layer that produces the byte string
+hashed.  JCS is already used in the base Capsule profile for the
+`JSON-DIGEST` construction, making it the natural choice for consistency.
+The profile stays aligned with the SPICE WG's SD-CWT work so that the
+two siblings remain consistent across the SCITT ecosystem.
 
 The commitment algorithm ({{commitment}}) hashes `UTF8(JCS(disclosure))`,
 where the disclosure array is the same `[salt, name, value]` or
-`[salt, value]` structure as in {{I-D.ietf-spice-sd-cwt}}.  This
-alignment ensures that the logical properties of the SD-CWT mechanism
+`[salt, value]` structure as in SD-JWT {{RFC9901}}.  This alignment
+ensures that the logical properties of the selective-disclosure model
 carry over: a commitment is binding under SHA-256's collision resistance;
 salts make commitments unlinkable across verifiers; decoy digests hide the
 count of concealed fields; and the `_sd_alg` member permits algorithm
@@ -722,7 +734,7 @@ distinction.
 The security considerations of {{I-D.mih-scitt-agent-action-capsule}}
 apply without modification.  Selective disclosure does not change the
 tamper-evidence properties of the COSE_Sign1 envelope, the
-append-only properties of a SCITT Transparency Service, or the honesty
+append-only properties of a SCITT Transparency Service {{I-D.ietf-scitt-architecture}}, or the honesty
 invariant of the `human_disposed` flag.  An SD-Capsule registered with
 a Transparency Service has its SD-encoded form logged and receipted;
 the commitment set is therefore tamper-evident and non-repudiable.
@@ -742,7 +754,8 @@ defined in this document.
 
 These members use the underscore-prefixed naming convention to avoid
 collision with existing or future Capsule payload members, following the
-same convention as SD-CWT ({{I-D.ietf-spice-sd-cwt}}).
+same convention as the SD-JWT selective-disclosure model {{RFC9901}} and
+its CBOR sibling SD-CWT ({{I-D.ietf-spice-sd-cwt}}).
 
 IANA is not requested to create a new registry for these members at this
 time.  The interim registry of record for Agent Action Capsule Parameters
@@ -752,20 +765,28 @@ time.  The interim registry of record for Agent Action Capsule Parameters
 
 --- back
 
-# Relationship to SD-CWT {#rel-sd-cwt}
+# Relationship to SD-JWT and SD-CWT {#rel-sd-cwt}
 {:numbered="false"}
 
-{{I-D.ietf-spice-sd-cwt}} defines selective disclosure for CBOR Web
-Tokens (CWTs) using deterministic CBOR (dCBOR) as the canonicalization
-layer.  This document adapts the same mechanism for JSON payloads by
-substituting JCS ({{RFC8785}}) for dCBOR.  The logical structure —
-salted-hash commitments, decoy digests, `[salt, name, value]` disclosure
-triples, and the `_sd`/`_sd_alg` payload vocabulary — is preserved.
+This profile follows the SD-JWT selective-disclosure model {{RFC9901}},
+the JSON form of selective disclosure: salted-hash commitments, decoy
+digests, `[salt, name, value]` disclosure triples, and the `_sd`/`_sd_alg`
+payload vocabulary.  Because the Capsule payload is JSON, this profile
+applies that model directly, using JCS ({{RFC8785}}) as the
+canonicalization layer that produces the byte string hashed.
 
-The key differences are:
+SD-CWT ({{I-D.ietf-spice-sd-cwt}}) is the CBOR/dCBOR sibling of the same
+model, developed in the SPICE WG for CBOR Web Tokens (CWTs) using
+deterministic CBOR (dCBOR) as its canonicalization layer.  This profile
+stays consistent with SD-CWT so the JSON and CBOR forms remain aligned
+across the SCITT ecosystem, while using the JSON construction that matches
+the Capsule payload.
 
-1. Byte-string input to SHA-256: this profile uses `UTF8(JCS(array))`
-   instead of `dCBOR(array)`.
+The substantive technical contrasts between the JSON construction used
+here and the CBOR sibling are:
+
+1. Byte-string input to SHA-256: this profile uses `UTF8(JCS(array))`;
+   SD-CWT uses `dCBOR(array)`.
 
 2. Payload medium: Capsule payloads are JSON objects, not CBOR maps.
 

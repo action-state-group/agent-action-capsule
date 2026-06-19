@@ -10,6 +10,7 @@ dist/
 # kramdown-rfc reference cache + v2 build intermediate
 spec/.refcache/
 spec/.draft-*.v2.xml
+*.v2.xml
 
 # never commit keys or demo artifacts
 *.pem
