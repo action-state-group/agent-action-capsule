@@ -50,6 +50,14 @@ informative:
   I-D.nivalto-agentroa-route-authorization:
   RFC8141:
   RFC6839:
+  I-D.mih-scitt-agent-action-capsule-sd-cwt:
+    title: "Selective Disclosure Profile for Agent Action Capsules"
+    seriesinfo:
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-sd-cwt-00
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
 
 --- abstract
 
@@ -677,12 +685,19 @@ disclosure draft, whose salted-hash commitment structure is COSE-native
 and consistent with Capsules expressed as COSE_Sign1 Signed Statements.
 
 The complete normative profile of this extension — including the
-commitment encoding, disclosure syntax, and verifier checks — is deferred
-to a companion Internet-Draft; see {{future}}.
+commitment encoding, disclosure syntax, and verifier checks — is defined
+in the companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-sd-cwt}}.
+That document profiles the `_sd_alg` / `_sd` payload vocabulary, the
+salted-hash commitment construction over JCS-serialized disclosure arrays,
+the decoy-digest mechanism, the set of eligible fields, and the ordered
+verifier check set (SD-1 through SD-6 plus integration with the base
+Class 1 and Class 2 checks).
 
 Implementations of this profile version MUST NOT generate or interpret
-selective-disclosure payload structures: the extension point is reserved,
-and no conformance claim or verification behavior is defined for it here.
+selective-disclosure payload structures unless they additionally implement
+{{I-D.mih-scitt-agent-action-capsule-sd-cwt}}: the extension point is
+defined only in that companion, and no conformance claim or verification
+behavior is defined for it in this document.
 
 # Related Work {#related}
 
@@ -725,10 +740,11 @@ An extension for additional attestation scenarios is in preparation; it
 will define additional statement-type and verdict values, which are
 reserved for that purpose.
 
-A companion Internet-Draft is planned to normatively profile the
-selective-disclosure extension point reserved in {{selectivedisclosure}},
-specifying the per-field commitment structure, disclosure syntax, and
-verifier checks, aligned with {{I-D.ietf-spice-sd-cwt}}.
+The companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-sd-cwt}}
+normatively profiles the selective-disclosure extension point reserved in
+{{selectivedisclosure}}, specifying the per-field commitment structure,
+disclosure syntax, eligible fields, and verifier checks, aligned with
+{{I-D.ietf-spice-sd-cwt}}.
 
 # IANA Considerations {#iana}
 

@@ -2,8 +2,13 @@
 
 A reader's guide to the Internet-Draft: what each section defines and which
 registry ([`REGISTRY.md`](REGISTRY.md)) it governs. Section numbers track the
-current revision (`-00`); see the built text (`draft-mih-scitt-agent-action-capsule-00.txt`)
-for the authoritative numbering.
+current revision (`-01`); see the built text (`draft-mih-scitt-agent-action-capsule-00.txt`)
+for the authoritative numbering of the prior revision.
+
+**Companion document:** `draft-mih-scitt-agent-action-capsule-sd-cwt-00.md`
+profiles the selective-disclosure extension point reserved in §6.2 of -01.
+It defines the `_sd_alg`/`_sd` vocabulary, commitment encoding, disclosure
+syntax, and verifier checks (SD-1 through SD-6).
 
 | I-D section | Defines | Registry governed |
 |---|---|---|
