@@ -44,11 +44,11 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 #: Default endpoint for the simple ``anchor()`` call (digest-only HTTP POST).
-DEFAULT_ANCHOR_ENDPOINT = "https://anchor.agent-action-capsule.org/v1/digest"
+DEFAULT_ANCHOR_ENDPOINT = "https://anchor.agentactioncapsule.org/v1/digest"
 
 #: Default SCITT TS URL for ``submit_anchor`` / ``async_anchor``.
 #: Override with the ``AAC_ANCHOR_URL`` env var or the ``ts_url`` kwarg.
-_DEFAULT_TS_URL = "https://ts.agent-action-capsule.org"
+_DEFAULT_TS_URL = "https://ts.agentactioncapsule.org"
 
 #: Env-var for overriding the SCITT TS URL without changing code.
 AUTHORITY_HINT_ENV = "AAC_ANCHOR_URL"

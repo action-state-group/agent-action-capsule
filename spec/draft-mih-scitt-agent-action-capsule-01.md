@@ -41,6 +41,7 @@ informative:
   I-D.ietf-spice-sd-cwt:
   RFC8949:
   RFC9053:
+  RFC9901:
   I-D.munoz-scitt-permit-profile:
   I-D.emirdag-scitt-ai-agent-execution:
   I-D.kamimura-scitt-refusal-events:
@@ -50,10 +51,10 @@ informative:
   I-D.nivalto-agentroa-route-authorization:
   RFC8141:
   RFC6839:
-  I-D.mih-scitt-agent-action-capsule-sd-cwt:
+  I-D.mih-scitt-agent-action-capsule-selective-disclosure:
     title: "Selective Disclosure Profile for Agent Action Capsules"
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-agent-action-capsule-sd-cwt-00
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-selective-disclosure-00
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -679,14 +680,15 @@ For cases in which a producer must reveal a subset of payload fields to a
 verifier while concealing both the values and the existence of
 unrevealed fields, a per-field selective-disclosure mechanism is needed.
 This profile reserves an extension point in the Capsule payload for such
-a mechanism. The intended field-level technique is informatively
-anticipated to follow {{I-D.ietf-spice-sd-cwt}}, the SPICE WG selective-
-disclosure draft, whose salted-hash commitment structure is COSE-native
-and consistent with Capsules expressed as COSE_Sign1 Signed Statements.
+a mechanism. The intended field-level technique follows the SD-JWT
+selective-disclosure model {{RFC9901}} — salted-hash commitments over
+JCS-canonicalized arrays — because the Capsule payload is JSON; it is
+written to stay aligned with SPICE's SD-CWT {{I-D.ietf-spice-sd-cwt}}
+(the CBOR sibling) for SCITT-ecosystem consistency.
 
 The complete normative profile of this extension — including the
 commitment encoding, disclosure syntax, and verifier checks — is defined
-in the companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-sd-cwt}}.
+in the companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-selective-disclosure}}.
 That document profiles the `_sd_alg` / `_sd` payload vocabulary, the
 salted-hash commitment construction over JCS-serialized disclosure arrays,
 the decoy-digest mechanism, the set of eligible fields, and the ordered
@@ -695,7 +697,7 @@ Class 1 and Class 2 checks).
 
 Implementations of this profile version MUST NOT generate or interpret
 selective-disclosure payload structures unless they additionally implement
-{{I-D.mih-scitt-agent-action-capsule-sd-cwt}}: the extension point is
+{{I-D.mih-scitt-agent-action-capsule-selective-disclosure}}: the extension point is
 defined only in that companion, and no conformance claim or verification
 behavior is defined for it in this document.
 
@@ -740,7 +742,7 @@ An extension for additional attestation scenarios is in preparation; it
 will define additional statement-type and verdict values, which are
 reserved for that purpose.
 
-The companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-sd-cwt}}
+The companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-selective-disclosure}}
 normatively profiles the selective-disclosure extension point reserved in
 {{selectivedisclosure}}, specifying the per-field commitment structure,
 disclosure syntax, eligible fields, and verifier checks, aligned with
