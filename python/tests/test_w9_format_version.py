@@ -94,14 +94,13 @@ def test_format_version_check_is_check_1():
 
 
 # ---------------------------------------------------------------------------
-# 6. VAAP v1 format is explicitly rejected (boundary guard)
+# 6. v1 format is explicitly rejected (boundary guard)
 # ---------------------------------------------------------------------------
 
-def test_vaap_v1_format_explicitly_rejected():
-    """gopher-ai/vaap uses format_version '1'. Verifiers MUST reject v1 explicitly
-    (no silent mis-parse across v1/v2 boundary). VAAP→v2 reconciliation is flagged
-    for the gopher-ai track only — NOT executed here per boundary constraints.
-    This test guards the 'no silent v1/v2 mis-parse' requirement."""
+def test_v1_format_explicitly_rejected():
+    """Verifiers MUST reject format_version='1' explicitly — no silent mis-parse
+    across the v1/v2 boundary. This test guards the 'no silent v1/v2 mis-parse'
+    requirement independently of any specific producer."""
     cap = base_executed()
     cap["format_version"] = "1"
     cap = reseal(cap)
@@ -117,8 +116,8 @@ def test_vaap_v1_format_explicitly_rejected():
 def _cleanroom_check(capsule: dict) -> bool:
     """Minimal clean-room structural check (independent-reader differential).
 
-    Checks only the invariants the VAAP harness would assert on the statement
-    layer: format_version=2, required fields present, capsule_id is 64 hex.
+    Checks the core invariants on the statement layer: format_version=2,
+    required fields present, capsule_id is 64 hex.
     """
     HEX64 = re.compile(r"\A[0-9a-f]{64}\Z")
     required = (
