@@ -51,12 +51,25 @@ def _load_json(path: str) -> Any:
 
 
 def _load_store(path: str) -> list[Any]:
-    """A store is a directory of ``*.json`` capsules, or a single file holding a
-    JSON array or a ``{"ledger": [...]}`` object."""
+    """A store is a directory of ``*.json`` capsules, a JSONL ledger, or a
+    single file holding a JSON array or a ``{"ledger": [...]}`` object."""
     p = Path(path)
     if p.is_dir():
         return [_load_json(str(f)) for f in sorted(p.glob("*.json"))]
-    doc = _load_json(path)
+    # Try JSONL first: if the file has multiple lines that each parse as JSON
+    # objects, treat it as a newline-delimited capsule ledger.
+    try:
+        with open(path, encoding="utf-8") as fh:
+            lines = [ln.strip() for ln in fh if ln.strip()]
+        if len(lines) >= 2:
+            parsed = [json.loads(ln) for ln in lines]
+            return parsed
+        if len(lines) == 1:
+            doc = json.loads(lines[0])
+        else:
+            doc = _load_json(path)
+    except (json.JSONDecodeError, OSError):
+        doc = _load_json(path)
     if isinstance(doc, dict) and "ledger" in doc:
         return list(doc["ledger"])
     if isinstance(doc, list):

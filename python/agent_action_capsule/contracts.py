@@ -259,23 +259,31 @@ class ConstraintRecord:
 class ModelAttestation:
     """Model identity and compute-context block — committed to capsule_id.
 
-    All three fields enter the canonical capsule form and therefore the
-    capsule_id digest: tampering model_id, provider, or compute_attestation
-    makes verification fail.
+    All fields enter the canonical capsule form and therefore the capsule_id
+    digest. model_id and provider are optional: a compute-only block (no model
+    identity) is valid for producers that cannot name the model but still want
+    to commit I/O digests. When present, model_id and provider MUST appear
+    together (§5.3).
 
     compute_attestation is best-effort from inference metadata:
-    {"endpoint": "<routed-inference-url>", "chip": "<accelerator-id>"}.
+    {"agent_input_digest": "...", "agent_output_digest": "...", "runtime": "..."}.
     Absent when the runtime does not surface this information.
     """
 
-    model_id: str
-    provider: str
+    model_id: str | None = None
+    provider: str | None = None
     compute_attestation: dict | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.model_id, str) or not self.model_id:
+        # model_id and provider MUST appear together when either is given.
+        if (self.model_id is None) != (self.provider is None):
+            raise InvariantError(
+                "model_attestation.model_id and .provider MUST both be present "
+                "or both absent (§5.3)"
+            )
+        if self.model_id is not None and (not isinstance(self.model_id, str) or not self.model_id):
             raise InvariantError("model_attestation.model_id MUST be a non-empty string")
-        if not isinstance(self.provider, str) or not self.provider:
+        if self.provider is not None and (not isinstance(self.provider, str) or not self.provider):
             raise InvariantError("model_attestation.provider MUST be a non-empty string")
         if self.compute_attestation is not None and not isinstance(self.compute_attestation, dict):
             raise InvariantError("model_attestation.compute_attestation MUST be an object when present")
