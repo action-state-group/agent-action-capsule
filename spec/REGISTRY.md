@@ -128,10 +128,11 @@ Initial contents:
 
 | Value | Semantics |
 |---|---|
+| `confirms` | Non-terminal: this capsule observes or records the outcome of the parent — the parent's open state remains. The most common chain link: *attempted → confirmed*. |
 | `supersedes` | Terminal transition over the parent — resolution, expiry, escalation close/replace the parent's open state. |
 
-**Designated-expert guidance (this registry).** Seeded with the single terminal
-relation. Additional non-terminal relations — deposit-toward-open and
+**Designated-expert guidance (this registry).** Seeded with the core non-terminal and terminal
+relations. Additional non-terminal relations — deposit-toward-open and
 effort-toward-open relations, or `amends` / `contradicts` — are expected future
 registrations, each admitted once its semantics and any verifier consequence
 are pinned in a publicly available specification. Such relations are anticipated

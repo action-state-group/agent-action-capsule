@@ -128,6 +128,7 @@ Initial contents:
 
 | Value | Semantics |
 |---|---|
+| `confirms` | Non-terminal: this capsule observes or records the outcome of the parent — the parent's open state remains. The most common chain link: *attempted → confirmed*. |
 | `supersedes` | Terminal transition over the parent — resolution, expiry, escalation close/replace the parent's open state. |
 
 **Designated-expert guidance (this registry).** Seeded with the single terminal
