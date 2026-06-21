@@ -190,6 +190,15 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
     at = capsule.get("action_type")
     if at is not None and at not in ("fyi", "decide"):
         findings.append(Finding("action_type_invalid", "action_type MUST be 'fyi' or 'decide' (§5.1)", check=1))
+    # format_version: only "2" is currently defined (§5.1); unknown → explicit error
+    fv = capsule.get("format_version")
+    if isinstance(fv, str) and fv not in ("2",):
+        findings.append(Finding(
+            "unsupported_format_version",
+            f"format_version {fv!r} is not a supported version; only \"2\" is defined (§5.1); "
+            "unknown versions must be explicitly rejected to prevent silent v1/v2 mis-parse",
+            check=1,
+        ))
     for fld in ("effect", "assurance", "disposition", "chain"):
         if fld in capsule and not isinstance(capsule[fld], Mapping):
             findings.append(Finding("block_not_object", f"{fld} MUST be a JSON object when present", check=1))

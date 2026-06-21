@@ -1,7 +1,7 @@
 {
   "format_version": "2",
   "spec": "draft-mih-scitt-agent-action-capsule-00",
-  "count": 29,
+  "count": 32,
   "cases": [
     {
       "name": "pos-executed-confirmed",
@@ -147,6 +147,21 @@
       "name": "honesty-dishonest-human-disposed",
       "kind": "honesty",
       "description": "human_disposed=true with a non-human (policy) approver in parsed bytes: \u00a76 makes this a structurally-guaranteed invariant, so the verifier reports a NON-GATING defensive warning; ok still reflects the gating checks (here, true)."
+    },
+    {
+      "name": "neg-format-version-unknown",
+      "kind": "negative",
+      "description": "format_version '1' (old/unknown) must be explicitly rejected \u2014 no silent v1/v2 mis-parse (\u00a75.1, W9)."
+    },
+    {
+      "name": "neg-never-dispatch-with-dispatched-effect",
+      "kind": "negative",
+      "description": "blocked verdict_class (NEVER_DISPATCH \u00a75.4.2) combined with effect.status='dispatched' \u2192 verdict/effect orthogonality failure (check 4)."
+    },
+    {
+      "name": "neg-never-dispatch-confirmed-no-response",
+      "kind": "negative",
+      "description": "denied (NEVER_DISPATCH) with effect.status='confirmed' and no response_digest \u2192 both check 3 (confirmed-effect binding) and check 4 (verdict/effect conflict)."
     }
   ]
 }
