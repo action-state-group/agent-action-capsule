@@ -58,6 +58,19 @@ class Capsule:
     constraints: tuple[ConstraintRecord, ...] = ()
     model_attestation: ModelAttestation | None = None
 
+    def __post_init__(self) -> None:
+        from .contracts import NEVER_DISPATCH_VERDICT_CLASSES
+        if self.disposition is not None and self.effect is not None:
+            vc = self.disposition.verdict_class
+            if vc in NEVER_DISPATCH_VERDICT_CLASSES and self.effect.status in (
+                "dispatched", "confirmed", "failed", "reverted"
+            ):
+                raise InvariantError(
+                    f"verdict_class {vc!r} is in NEVER_DISPATCH_VERDICT_CLASSES (§5.4.2) "
+                    f"and is incompatible with effect.status {self.effect.status!r}; "
+                    "a producer MUST NOT emit an effect for a categorically non-dispatching action"
+                )
+
     def to_dict(self) -> dict:
         """The envelope as a JSON object (without capsule_id)."""
         out: dict[str, Any] = {

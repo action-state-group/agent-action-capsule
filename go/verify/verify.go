@@ -290,6 +290,19 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		}
 	}
 
+	// format_version: only "2" is currently defined (§5.1); unknown → explicit error.
+	if fv, ok := capsuleMap["format_version"].(string); ok && fv != "2" {
+		findings = append(findings, Finding{
+			Code: "unsupported_format_version",
+			Detail: fmt.Sprintf(
+				"format_version %q is not a supported version; only \"2\" is defined (§5.1); "+
+					"unknown versions must be explicitly rejected to prevent silent v1/v2 mis-parse",
+				fv,
+			),
+			Severity: "error", Check: mkCheck(1),
+		})
+	}
+
 	// Sub-block type checks (effect, assurance, disposition, chain).
 	for _, fld := range []string{"effect", "assurance", "disposition", "chain"} {
 		if v, ok := capsuleMap[fld]; ok {
