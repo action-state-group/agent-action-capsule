@@ -190,11 +190,15 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
     ma = _block(d, "model_attestation")
     model_attestation = None
     if ma:
-        if "model_id" not in ma or "provider" not in ma:
-            raise InvariantError("model_attestation.model_id and .provider are REQUIRED when block is present")
+        # model_id and provider are optional (compute-only block allowed); when
+        # either is present both MUST be present — enforced by ModelAttestation.
+        has_id = "model_id" in ma
+        has_provider = "provider" in ma
+        if has_id != has_provider:
+            raise InvariantError("model_attestation: model_id and provider MUST appear together (§5.3)")
         model_attestation = ModelAttestation(
-            model_id=ma["model_id"],
-            provider=ma["provider"],
+            model_id=ma.get("model_id"),
+            provider=ma.get("provider"),
             compute_attestation=ma.get("compute_attestation"),
         )
 
