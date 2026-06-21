@@ -6,17 +6,18 @@ negative conformance tests for tampered capsules. Also exercises verify_store()
 at the store level.
 """
 import pytest
+from conftest import HEX_A
 
-from agent_action_capsule import verify, verify_store
-from agent_action_capsule.emit import emit
-from agent_action_capsule.contracts import (
-    NEVER_DISPATCH_VERDICT_CLASSES, VALID_APPROVERS, EFFECT_MODES, LEDGER_MODES,
-)
 from agent_action_capsule import (
-    AssuranceBlock, Capsule, Disposition, EffectRecord,
+    Disposition,
+    EffectRecord,
+    verify,
+    verify_store,
 )
-from conftest import reseal, HEX_A, HEX_B
-
+from agent_action_capsule.contracts import (
+    NEVER_DISPATCH_VERDICT_CLASSES,
+)
+from agent_action_capsule.emit import emit
 
 # ---------------------------------------------------------------------------
 # 1. Round-trip: every emitted capsule verifies

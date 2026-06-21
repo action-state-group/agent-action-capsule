@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_action_capsule import compute_capsule_id, emit, verify
+from agent_action_capsule import emit, verify
 
 _REQUIRE_GO = os.environ.get("AAC_REQUIRE_GO") == "1"
 

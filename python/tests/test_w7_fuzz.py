@@ -7,13 +7,10 @@ CLI exits nonzero on error and zero on success.
 import json
 import subprocess
 import sys
-import tempfile
-from pathlib import Path
 
 import pytest
 
 from agent_action_capsule import verify, verify_store
-
 
 # ---------------------------------------------------------------------------
 # 1. Malformed JSON types never crash verify()

@@ -8,11 +8,10 @@ reject any format_version other than "2" (the only currently defined value per
 import re
 
 import pytest
+from conftest import base_executed, reseal
 
 from agent_action_capsule import verify
-from agent_action_capsule.emit import emit, DEFAULT_FORMAT_VERSION, DEFAULT_SPEC_VERSION
-from conftest import reseal, base_executed
-
+from agent_action_capsule.emit import DEFAULT_FORMAT_VERSION, emit
 
 # ---------------------------------------------------------------------------
 # 1. v2 is the canonical declared version

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 import pytest
-from conftest import HEX_A, HEX_B, base_blocked, base_executed, reseal
+from conftest import base_executed, reseal
 
 from agent_action_capsule import verify
 

@@ -3,6 +3,7 @@ import copy
 import hashlib
 
 import pytest
+from conftest import base_executed
 
 from agent_action_capsule import (
     FloatInDigestError,
@@ -14,8 +15,6 @@ from agent_action_capsule import (
     verify,
 )
 from agent_action_capsule.canonical import CHAIN_LINKAGE_FIELDS, MAX_SAFE_INTEGER
-from conftest import base_executed, reseal
-
 
 # ---------------------------------------------------------------------------
 # 1. Key-order invariance
@@ -69,8 +68,8 @@ def test_jcs_no_whitespace_nested():
         ("\\", b'"\\\\"'),
         ('"', b'"\\""'),
         # A BMP char above the control-char range is passed through as UTF-8.
-        ("é", "é".encode("utf-8").join([b'"', b'"'])),
-        ("中", "中".encode("utf-8").join([b'"', b'"'])),
+        ("é", "é".encode().join([b'"', b'"'])),
+        ("中", "中".encode().join([b'"', b'"'])),
     ],
 )
 def test_string_escaping(char, expected_bytes):

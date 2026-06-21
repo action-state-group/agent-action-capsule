@@ -16,6 +16,7 @@ Groups:
 from __future__ import annotations
 
 import pytest
+from conftest import HEX_A, base_blocked, base_executed, reseal
 
 from agent_action_capsule import (
     AssuranceBlock,
@@ -33,10 +34,7 @@ from agent_action_capsule.contracts import (
     EFFECT_MODES,
     LEDGER_MODES,
     NEVER_DISPATCH_VERDICT_CLASSES,
-    VALID_APPROVERS,
 )
-
-from conftest import HEX_A, HEX_B, base_blocked, base_executed, reseal
 
 # ---------------------------------------------------------------------------
 # Helpers
