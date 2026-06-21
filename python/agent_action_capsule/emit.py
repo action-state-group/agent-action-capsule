@@ -138,7 +138,7 @@ def emit(
             provider=provider,
             compute_attestation=compute_attestation,
         )
-    elif compute_attestation:
+    elif compute_attestation is not None:
         model_att = ModelAttestation(compute_attestation=compute_attestation)
 
     chain: Chain | None = None

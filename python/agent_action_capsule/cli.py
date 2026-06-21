@@ -58,17 +58,18 @@ def _load_store(path: str) -> list[Any]:
         return [_load_json(str(f)) for f in sorted(p.glob("*.json"))]
     # Try JSONL first: if the file has multiple lines that each parse as JSON
     # objects, treat it as a newline-delimited capsule ledger.
+    with open(path, encoding="utf-8") as fh:
+        lines = [ln.strip() for ln in fh if ln.strip()]
+    if len(lines) == 0:
+        return []
+    if len(lines) >= 2:
+        try:
+            return [json.loads(ln) for ln in lines]
+        except json.JSONDecodeError:
+            pass  # not valid JSONL; fall through to single-doc parse
     try:
-        with open(path, encoding="utf-8") as fh:
-            lines = [ln.strip() for ln in fh if ln.strip()]
-        if len(lines) >= 2:
-            parsed = [json.loads(ln) for ln in lines]
-            return parsed
-        if len(lines) == 1:
-            doc = json.loads(lines[0])
-        else:
-            doc = _load_json(path)
-    except (json.JSONDecodeError, OSError):
+        doc = json.loads(lines[0])
+    except json.JSONDecodeError:
         doc = _load_json(path)
     if isinstance(doc, dict) and "ledger" in doc:
         return list(doc["ledger"])

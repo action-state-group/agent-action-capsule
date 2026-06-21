@@ -263,7 +263,7 @@ class ModelAttestation:
     digest. model_id and provider are optional: a compute-only block (no model
     identity) is valid for producers that cannot name the model but still want
     to commit I/O digests. When present, model_id and provider MUST appear
-    together (§5.3).
+    together (both or neither).
 
     compute_attestation is best-effort from inference metadata:
     {"agent_input_digest": "...", "agent_output_digest": "...", "runtime": "..."}.
@@ -279,7 +279,7 @@ class ModelAttestation:
         if (self.model_id is None) != (self.provider is None):
             raise InvariantError(
                 "model_attestation.model_id and .provider MUST both be present "
-                "or both absent (§5.3)"
+                "or both absent — supply both or neither"
             )
         if self.model_id is not None and (not isinstance(self.model_id, str) or not self.model_id):
             raise InvariantError("model_attestation.model_id MUST be a non-empty string")
