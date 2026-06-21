@@ -129,7 +129,8 @@ def emit(
 
     ts = timestamp or _utc_now()
 
-    # ModelAttestation only when both model_id + provider are given.
+    # ModelAttestation: with model identity when both are given; compute-only
+    # when only compute_attestation is present (commits I/O digests without model).
     model_att: ModelAttestation | None = None
     if model_id is not None and provider is not None:
         model_att = ModelAttestation(
@@ -137,6 +138,8 @@ def emit(
             provider=provider,
             compute_attestation=compute_attestation,
         )
+    elif compute_attestation is not None:
+        model_att = ModelAttestation(compute_attestation=compute_attestation)
 
     chain: Chain | None = None
     if prior_capsule_id is not None:
