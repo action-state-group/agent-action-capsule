@@ -25,6 +25,9 @@ __all__ = [
     "EFFECT_MODES",
     "LEDGER_MODES",
     "LEDGER_MODE_RANK",
+    "DOMAIN_VALUES",
+    "PROVENANCE_VALUES",
+    "PROVENANCE_RANK",
     "derive_effect_mode",
     "Disposition",
     "ExpiryPolicy",
@@ -33,6 +36,7 @@ __all__ = [
     "Chain",
     "ConstraintRecord",
     "ModelAttestation",
+    "SelfReportedReasoning",
     "InvariantError",
 ]
 
@@ -72,6 +76,14 @@ ATTESTATION_MODES = frozenset({"self_attested", "anchored"})
 EFFECT_MODES = frozenset({"not_applicable", "dispatched_unconfirmed", "confirmed"})
 LEDGER_MODES = frozenset({"standalone", "chained", "anchored"})
 LEDGER_MODE_RANK = {"standalone": 0, "chained": 1, "anchored": 2}
+
+# §-02 domain and provenance registry seeds (REGISTRY.md §8/§9).
+# domain: the capsule's epistemic role — "action" (default), "memory", or "reasoning".
+# provenance: dedup rank signal — "gate"(3) > "runtime"(2) > "collector"(1).
+# Both are open/registry-governed; unknown values are informational, never rejected.
+DOMAIN_VALUES = frozenset({"action", "memory", "reasoning"})
+PROVENANCE_VALUES = frozenset({"gate", "runtime", "collector"})
+PROVENANCE_RANK = {"gate": 3, "runtime": 2, "collector": 1}
 
 # Open-items predicate verdict_class set (§5.4.4).
 OPEN_ITEM_VERDICT_CLASSES = frozenset(
@@ -287,3 +299,24 @@ class ModelAttestation:
             raise InvariantError("model_attestation.provider MUST be a non-empty string")
         if self.compute_attestation is not None and not isinstance(self.compute_attestation, dict):
             raise InvariantError("model_attestation.compute_attestation MUST be an object when present")
+
+
+@dataclass(frozen=True)
+class SelfReportedReasoning:
+    """Self-reported reasoning trace — §-02 first-class layer.
+
+    A digest of the CoT or reasoning content that produced this action.
+    Explicitly self-reported and unattested: the producer asserts the digest,
+    and CoT faithfulness is not verifiable (models are known to produce
+    unfaithful CoT). Distinct from disposition.reason_digest (the gate's
+    verdict rationale) and from domain='reasoning' (a standalone reasoning
+    capsule rather than an action capsule).
+
+    Committed to capsule_id so any post-seal tamper is detectable.
+    """
+
+    digest: str
+
+    def __post_init__(self) -> None:
+        if not is_hex64(self.digest):
+            raise InvariantError("self_reported_reasoning.digest MUST be a 64-hex JSON-DIGEST (§-02)")

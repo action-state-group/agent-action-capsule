@@ -22,6 +22,7 @@ from .contracts import (
     ExpiryPolicy,
     InvariantError,
     ModelAttestation,
+    SelfReportedReasoning,
 )
 
 __all__ = ["Capsule", "parse_capsule"]
@@ -51,12 +52,15 @@ class Capsule:
     operator: str
     developer: str
     timestamp: str
+    domain: str | None = None
+    provenance: str | None = None
     effect: EffectRecord | None = None
     assurance: AssuranceBlock | None = None
     disposition: Disposition | None = None
     chain: Chain | None = None
     constraints: tuple[ConstraintRecord, ...] = ()
     model_attestation: ModelAttestation | None = None
+    self_reported_reasoning: SelfReportedReasoning | None = None
 
     def __post_init__(self) -> None:
         from .contracts import NEVER_DISPATCH_VERDICT_CLASSES
@@ -82,8 +86,14 @@ class Capsule:
             "developer": self.developer,
             "timestamp": self.timestamp,
         }
+        if self.domain is not None:
+            out["domain"] = self.domain
+        if self.provenance is not None:
+            out["provenance"] = self.provenance
         if self.model_attestation is not None:
             out["model_attestation"] = _block_to_dict(self.model_attestation)
+        if self.self_reported_reasoning is not None:
+            out["self_reported_reasoning"] = _block_to_dict(self.self_reported_reasoning)
         if self.effect is not None:
             out["effect"] = _block_to_dict(self.effect)
         if self.assurance is not None:
@@ -202,10 +212,27 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
             compute_attestation=ma.get("compute_attestation"),
         )
 
+    srr_d = _block(d, "self_reported_reasoning")
+    self_reported_reasoning = None
+    if srr_d:
+        digest = srr_d.get("digest")
+        if not isinstance(digest, str):
+            raise InvariantError("self_reported_reasoning.digest is REQUIRED and MUST be a string (§-02)")
+        self_reported_reasoning = SelfReportedReasoning(digest=digest)
+
+    domain = d.get("domain")
+    if domain is not None and not isinstance(domain, str):
+        raise InvariantError("domain MUST be a string when present (§-02)")
+    provenance = d.get("provenance")
+    if provenance is not None and not isinstance(provenance, str):
+        raise InvariantError("provenance MUST be a string when present (§-02)")
+
     return Capsule(
         spec_version=d["spec_version"], format_version=d["format_version"],
         action_id=d["action_id"], action_type=d["action_type"], operator=d["operator"],
         developer=d["developer"], timestamp=d["timestamp"],
+        domain=domain, provenance=provenance,
         effect=effect, assurance=assurance, disposition=disposition, chain=chain,
         constraints=constraints, model_attestation=model_attestation,
+        self_reported_reasoning=self_reported_reasoning,
     )

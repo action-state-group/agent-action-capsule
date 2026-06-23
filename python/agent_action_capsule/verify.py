@@ -26,8 +26,10 @@ from .canonical import (
     compute_capsule_id,
 )
 from .contracts import (
+    DOMAIN_VALUES,
     LEDGER_MODE_RANK,
     NEVER_DISPATCH_VERDICT_CLASSES,
+    PROVENANCE_VALUES,
     VALID_APPROVERS,
     derive_effect_mode,
     is_hex64,
@@ -199,9 +201,12 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
             "unknown versions must be explicitly rejected to prevent silent v1/v2 mis-parse",
             check=1,
         ))
-    for fld in ("effect", "assurance", "disposition", "chain"):
+    for fld in ("effect", "assurance", "disposition", "chain", "self_reported_reasoning"):
         if fld in capsule and not isinstance(capsule[fld], Mapping):
             findings.append(Finding("block_not_object", f"{fld} MUST be a JSON object when present", check=1))
+    for fld in ("domain", "provenance"):
+        if fld in capsule and not isinstance(capsule[fld], str):
+            findings.append(Finding(f"{fld}_not_string", f"{fld} MUST be a string when present (§-02)", check=1))
     if "constraints" in capsule and not isinstance(capsule["constraints"], list):
         findings.append(Finding("constraints_not_array", "constraints MUST be an array when present (§8.1)", check=1))
     for p in _float_paths(capsule):
@@ -321,6 +326,25 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
             findings.append(Finding("unknown_registry_value", f"{block}.{member}={val!r} is not a seeded {reg_name} value; informational, not rejected (§12)", severity="info", check=8))
             if reg_name == "effect_attestation":
                 findings.append(Finding("effect_attestation_graded_floor", "unknown effect_attestation graded no stronger than 'runtime_claimed' (§5.2)", severity="info", check=8))
+
+    # ---- Check 9: domain / provenance unknown-value (§-02) -----------------
+    # Type mismatches are already reported above (check 1); here we only check
+    # string values that aren't in the seeded registry — informational, never a
+    # rejection (the never-reject invariant, §4, §12).
+    domain_val = capsule.get("domain")
+    if isinstance(domain_val, str) and domain_val not in DOMAIN_VALUES and not domain_val.startswith("x-"):
+        findings.append(Finding(
+            "domain_unknown_value",
+            f"domain={domain_val!r} is not a seeded value; informational, not rejected (§-02 REGISTRY §8)",
+            severity="info",
+        ))
+    provenance_val = capsule.get("provenance")
+    if isinstance(provenance_val, str) and provenance_val not in PROVENANCE_VALUES and not provenance_val.startswith("x-"):
+        findings.append(Finding(
+            "provenance_unknown_value",
+            f"provenance={provenance_val!r} is not a seeded value; informational, not rejected (§-02 REGISTRY §9)",
+            severity="info",
+        ))
 
     ok = not any(f.severity == "error" for f in findings)
     return VerificationResult(ok=ok, findings=findings, assurance=derived, capsule_id=recomputed)
