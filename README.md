@@ -90,6 +90,17 @@ statement/claim semantics carried *inside* that payload. Substrate verification
 SCITT's and is verified by reference; the agent-domain checks defined in this
 draft are the part that is specific here.
 
+## Relationship to capsule-emit
+
+This repository is the **specification + reference verifier** (and the typed producer
+carriers). The easiest way to *produce* conforming capsules is
+[`action-state-group/capsule-emit`](https://github.com/action-state-group/capsule-emit) —
+a thin, neutral producer library (one `emit()` call, anchoring, a ledger CLI, framework
+adapters) built **on top of** this package. The dependency points one way —
+`capsule-emit` depends on `agent-action-capsule`, never the reverse — and the format
+defined here is open to *any* producer; `capsule-emit` is simply the convenient on-ramp.
+Both are neutral, donatable substrate.
+
 ## Building the draft
 
 ```bash

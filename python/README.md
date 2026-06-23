@@ -56,8 +56,7 @@ and pass `--transparent`:
 ```bash
 pip install 'agent-action-capsule[transparent]'     # adds the public scitt-cose verifier
 
-agent-action-capsule verify --transparent statement.cose --issuer-key issuer_pub.pem \
-    [--log-key log_pub.pem --leaf-entry-hex <hex>]
+agent-action-capsule verify --transparent statement.cose --issuer-key issuer_pub.pem [--log-key log_pub.pem --leaf-entry-hex <hex>]
 ```
 
 ```

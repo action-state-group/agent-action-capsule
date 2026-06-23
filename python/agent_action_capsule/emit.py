@@ -34,6 +34,7 @@ from .contracts import (
     Disposition,
     EffectRecord,
     ModelAttestation,
+    SelfReportedReasoning,
     derive_effect_mode,
 )
 from .parse import Capsule
@@ -47,7 +48,7 @@ __all__ = [
     "FORMAT_VERSION",
 ]
 
-DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-01"
+DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-02"
 DEFAULT_FORMAT_VERSION = "2"
 
 # Aliases used by the adapter tier (framework adapters import these names).
@@ -75,6 +76,9 @@ def emit(
     chain_relation: str | None = None,
     disposition: Disposition | None = None,
     constraints: tuple[ConstraintRecord, ...] = (),
+    domain: str | None = None,
+    provenance: str | None = None,
+    self_reported_reasoning_digest: str | None = None,
     spec_version: str = DEFAULT_SPEC_VERSION,
     format_version: str = DEFAULT_FORMAT_VERSION,
     # Adapter-tier convenience params: used to build action_id when not given.
@@ -110,7 +114,18 @@ def emit(
         disposition: Optional disposition block (§5.4). When omitted on an
             ``"fyi"`` action a sensible default is applied automatically.
         constraints: Constraint records (§8.1); defaults to empty tuple.
-        spec_version: Spec revision string (defaults to ``-01``).
+        domain: Capsule epistemic role — ``"action"`` (default when absent),
+            ``"memory"``, or ``"reasoning"``. ``"reasoning"`` marks a STANDALONE
+            reasoning/thinking step, not an action-with-reasoning (which stays
+            ``"action"``). Registry-governed; unknown values are informational.
+        provenance: Dedup rank signal — ``"gate"``(3), ``"runtime"``(2), or
+            ``"collector"``(1). Absent implies ``"runtime"``. Higher rank wins
+            on dedup. Registry-governed; unknown values are informational.
+        self_reported_reasoning_digest: 64-hex SHA-256 digest of the CoT
+            or reasoning content that produced this action. Self-reported and
+            unattested — committed to capsule_id so tampering is detectable,
+            but faithfulness is not verified (§-02).
+        spec_version: Spec revision string (defaults to ``-02``).
         format_version: Serialization suite version (defaults to ``"2"``).
         tool_name: Name of the tool that was called. Used to build a readable
             ``action_id`` when one is not provided.
@@ -174,6 +189,8 @@ def emit(
             verdict_class="executed",
         )
 
+    srr = SelfReportedReasoning(digest=self_reported_reasoning_digest) if self_reported_reasoning_digest is not None else None
+
     capsule = Capsule(
         spec_version=spec_version,
         format_version=format_version,
@@ -182,7 +199,10 @@ def emit(
         operator=operator,
         developer=developer,
         timestamp=ts,
+        domain=domain,
+        provenance=provenance,
         model_attestation=model_att,
+        self_reported_reasoning=srr,
         effect=effect,
         assurance=assurance,
         disposition=disposition,

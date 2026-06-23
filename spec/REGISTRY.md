@@ -160,6 +160,42 @@ plain Capsule and sees the concealed REQUIRED fields as missing. See the compani
 draft for producer requirements, the eligible-field set, and the two-phase
 verifier checks.
 
+## 8. `domain`
+
+Defined in §5.1 of Internet-Draft `-02` (`domain` / `provenance` addendum). The
+capsule's epistemic role — what kind of act this capsule records. **Optional**;
+absent implies the receiver SHOULD treat the capsule as `"action"`.
+
+| Value | Semantics |
+|---|---|
+| `action` | A tool call, side-effecting step, or any act that could in principle be confirmed against an external system. The most common value; applies to all capsules where the agent *did something*. |
+| `memory` | A write-to or read-from a persistent memory store (retrieval, consolidation, eviction). |
+| `reasoning` | A STANDALONE reasoning / chain-of-thought step that is itself the recorded act — not an action-with-reasoning (those stay `"action"`). A reasoning capsule typically carries no `effect`. |
+
+**Extension convention.** Values with an `x-` prefix are reserved for private
+experiments and MUST NOT be submitted for registration. A public extension MUST
+have a publicly available specification (Specification Required, §12).
+
+## 9. `provenance`
+
+Defined in §5.1 of Internet-Draft `-02` (`domain` / `provenance` addendum). A
+dedup rank signal: when the same logical event produces capsules from multiple
+tiers, the higher-ranked provenance is authoritative. **Optional**; absent
+implies receivers SHOULD treat the capsule as `"runtime"`. Rank order is
+strictly gate > runtime > collector; equal rank resolves by earliest timestamp.
+
+| Value | Rank | Semantics |
+|---|---|---|
+| `gate` | 3 | Emitted at the gate / policy-enforcement boundary. The most authoritative form: the capsule was produced at the point where the decision was made and committed. |
+| `runtime` | 2 | Emitted by the executing runtime (agent framework, tool adapter). Authoritative for the execution record but cannot see the gate's internal decision details. |
+| `collector` | 1 | Emitted by a general observability or telemetry system that observed the action passively. Lowest authority; used when neither the gate nor the runtime directly produce capsules. |
+
+**Dedup rule (verifier / ledger-reader, NOT wire).** On dedup, the capsule with
+the highest-ranked `provenance` wins; equal rank resolves by earliest timestamp.
+The dedup rule is a consumer-side read algorithm, not a wire constraint — a
+collector-provenance capsule is still valid; it loses only when a higher-ranked
+capsule for the same event is also present.
+
 ## No registry
 
 The following vocabularies are deliberately **not** registries of this document:
