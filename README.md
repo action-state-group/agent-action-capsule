@@ -22,9 +22,9 @@ is the auditor-grade evidence that a gate worked.
 ## The draft
 
 - **Datatracker:** https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/
-- **Editor's source (this repo):** [`spec/draft-mih-scitt-agent-action-capsule-00.md`](spec/draft-mih-scitt-agent-action-capsule-00.md)
-  (kramdown-rfc source), with built [`.xml`](spec/draft-mih-scitt-agent-action-capsule-00.xml)
-  (RFCXML v3) and [`.txt`](spec/draft-mih-scitt-agent-action-capsule-00.txt).
+- **Editor's source (this repo):** [`spec/draft-mih-scitt-agent-action-capsule-01.md`](spec/draft-mih-scitt-agent-action-capsule-01.md)
+  (kramdown-rfc source), with built [`.xml`](spec/draft-mih-scitt-agent-action-capsule-01.xml)
+  (RFCXML v3) and [`.txt`](spec/draft-mih-scitt-agent-action-capsule-01.txt).
 - **Registry of record:** [`spec/REGISTRY.md`](spec/REGISTRY.md) — the interim
   registry for the six profile vocabularies until IANA registries are
   established on RFC publication.
