@@ -134,24 +134,24 @@ VDS. The VDS (`vds` header in the Receipt) is the Transparency Service's choice.
 draft-ietf-cose-merkle-tree-proofs today, and the profile implemented in
 `scitt-cose` (both `build_receipt` and `verify_receipt`).
 
-**CCF (Microsoft Confidential Consortium Framework)** issues `vds=1` receipts per
-the CCF SCITT profile, so our `scitt-cose` verifier is **expected to** handle CCF
-receipts when CCF's TS key is supplied — the VDS is the same; only the signing key
-and registration API differ. *This is structurally proven against two independent
-local test TSes (`scitt-cose/tests/test_ccf_interop.py`) and remains subject to
-live verification against a CCF sandbox (`@pytest.mark.integration`).*
+**CCF (Microsoft Confidential Consortium Framework)** — tested against
+`scitt-ccf-ledger v7.0.6` (2026-06-26): CCF emits receipts with **`vds=2`**
+(`ccf.v1` Merkle format), not `vds=1` (RFC9162_SHA256). Our `scitt-cose`
+`verify_receipt` currently implements **`vds=1` only**; `vds=2` support is
+in progress and tracked in `scitt-cose`. Once landed, `verify_receipt` will
+accept real CCF receipts without any change to the capsule or Signed Statement
+format. See `scitt-cose/tests/test_ccf_interop.py` for the integration test.
 
-If a future TS introduces a new VDS (e.g. a different tree algorithm), adding
-support is a new `if vds == N` branch in `scitt-cose`'s verifier — the capsule
-format does not change.
+Adding support for a new VDS is a new `if vds == N` branch in `scitt-cose`'s
+verifier — the capsule format does not change.
 
 **What we are NOT saying:**
 - We are not claiming the capsule format requires CCF.
-- We are not claiming CCF's VDS is the same as ours by design — it is a coincidence
-  of both implementing RFC9162_SHA256 today, not a constraint on either party.
-- We are not claiming `LocalAnchorer` (the local self-attested log in `capsule-anchor`)
-  provides the same trust guarantees as CCF. The protocol is the same; the trust model
-  is not (`LocalAnchorer` is marked `log_type="self_attested_local"`).
+- We are not claiming CCF's VDS is the same as ours — CCF 7.0.6 uses `vds=2`
+  (its own Merkle format); our verifier uses `vds=1` (RFC9162_SHA256). Different
+  proof formats, same statement layer — the expected outcome during standardisation.
+- We are not claiming `capsule-anchor`'s local TS provides the same trust
+  guarantees as CCF. The SCITT protocol is the same; the trust model is not.
 
 ## Building the draft
 
