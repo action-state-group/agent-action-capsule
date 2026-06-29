@@ -1,0 +1,37 @@
+{
+  "spec_version": "draft-mih-scitt-agent-action-capsule-01",
+  "format_version": "2",
+  "capsule_id": "29b9a5569bc99585628040e3f262a3087809ce0044c79dbab98b5c7e9cae181b",
+  "action_id": "send_payment/fa929685-6db1-4332-ae6b-3b11e6a14e21",
+  "action_type": "decide",
+  "domain": "action",
+  "operator": "action-state-group",
+  "developer": "procurement-agent@v1",
+  "timestamp": "2026-06-29T20:05:26.527286Z",
+  "model_attestation": {
+    "model_id": "claude-sonnet-4-6",
+    "provider": "anthropic",
+    "compute_attestation": {
+      "agent_input_digest": "e4e17626f890da25d269e1a6e80c6c9b5e43403a38f5bdf76fc80e882eadcd08",
+      "agent_output_digest": "248cdd0827f66d2ac5dfa46cfb58d5d0a48c254a237ce4422a4345f33b53f56e"
+    }
+  },
+  "effect": {
+    "status": "confirmed",
+    "type": "send_payment",
+    "irreversibility_class": "one_way_consequential",
+    "response_digest": "248cdd0827f66d2ac5dfa46cfb58d5d0a48c254a237ce4422a4345f33b53f56e",
+    "effect_attestation": "runtime_claimed"
+  },
+  "assurance": {
+    "attestation_mode": "self_attested",
+    "effect_mode": "confirmed",
+    "ledger_mode": "standalone"
+  },
+  "disposition": {
+    "decision": "accept",
+    "approver": "policy",
+    "human_disposed": false,
+    "verdict_class": "executed"
+  }
+}

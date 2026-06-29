@@ -1,0 +1,10 @@
+{
+  "capsule_id": "29b9a5569bc99585628040e3f262a3087809ce0044c79dbab98b5c7e9cae181b",
+  "receipt_b64": "0oRHogEnGQGLAaEZAYyhIIFYSIMEA4JYIM6ef1L3fWsfmekhxus/h/CvzFR+NmhRoIj5tNPqybstWCBWrtv+syZpMz1A0QgGO5XHNJwp7vkvenEv+7zJOyjwd/ZYQNiJOU57SscGqnCtnZ8daxKse/BXLZF9Ks3+5UcP4jy/7ydfQ80DV3BGaW9Uknfi5DdSypRtBuzDRGNc6/u+Egc=",
+  "entry_hash": "8767e07982b43db647cb39451719c07364a13444cce0b0003854c270f27317e5",
+  "leaf_index": 3,
+  "tree_size": 4,
+  "anchor": "https://anchor.agentactioncapsule.org/v1/digest",
+  "key_id": "39bb654c9dc0afe1",
+  "alg": "Ed25519"
+}
