@@ -138,7 +138,7 @@ AEP bundle (via EATF / draft-sokolov-rats-aep-composition) {
 
 The AEP `hash.sha256` + the TPM quote together constitute the hardware-attested
 evidence that satisfies `hardware_tee_attested`. The SCITT receipt (Direction B
-in the digest-handshake spec) allows the AEP verifier to confirm the capsule was
+in the digest-binding spec) allows the AEP verifier to confirm the capsule was
 also committed to the neutral transparency log.
 
 ---

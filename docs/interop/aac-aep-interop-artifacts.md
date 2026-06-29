@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-29
 **Purpose:** Live capsule minted for the Anton Sokolov (Tyche / `draft-sokolov-rats-aep-composition`) ↔
-AAC bidirectional handshake. Steven committed "this week" to deliver these to Anton.
+AAC bidirectional cross-verify binding. Steven committed "this week" to deliver these to Anton.
 
 **Canonical example: a procurement payment.** A purchase is the textbook consequential action
 (money moves) — the exact case the permit → action → record → platform chain exists for, and the
@@ -150,10 +150,10 @@ Prompt digest, response digest, and capsule_id all reproduce from the preimages 
 
 ## How Anton uses these
 
-See `docs/interop/aac-aep-digest-handshake.md` for the full bidirectional protocol. Short version:
+See `docs/interop/aac-aep-digest-binding.md` for the full bidirectional protocol. Short version:
 
 1. He takes our `capsule_id` + `response_digest` and includes them in his AEP attestation
-   (`response.txt` / `metadata.json` — agreed encoding in the handshake doc).
+   (`response.txt` / `metadata.json` — agreed encoding in the binding doc).
 2. His AEP `hash.sha256` then commits to a document referencing our capsule — binding AEP evidence
    to the AAC record.
 3. He verifies our receipt (COSE Receipt, RFC 9162) once anchored — confirming `capsule_id` is in

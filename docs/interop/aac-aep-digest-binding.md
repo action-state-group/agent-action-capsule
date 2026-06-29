@@ -1,4 +1,4 @@
-# AAC ↔ AEP Digest Handshake Specification
+# AAC ↔ AEP Digest Binding Specification
 
 **Status:** Pinned protocol — agreed for the Anton Sokolov (Tyche) live cross-verify  
 **Date:** 2026-06-29  
@@ -9,7 +9,7 @@
 
 ## Purpose
 
-This document pins the digest-handshake protocol so that the bidirectional cross-verify
+This document pins the digest-binding protocol so that the bidirectional cross-verify
 passes on first attempt. It specifies which AAC fields Anton binds into an AEP/TPM
 quote, which AEP fields the AAC side verifies, and the exact byte encoding on both sides.
 
