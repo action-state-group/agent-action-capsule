@@ -1,5 +1,8 @@
 # agent-action-capsule
 
+[![CI](https://github.com/action-state-group/agent-action-capsule/actions/workflows/python.yml/badge.svg)](https://github.com/action-state-group/agent-action-capsule/actions/workflows/python.yml)
+[![Conformance](https://github.com/action-state-group/agent-action-capsule/actions/workflows/conformance.yml/badge.svg)](https://github.com/action-state-group/agent-action-capsule/actions/workflows/conformance.yml)
+
 An **open specification** for recording — and independently verifying — what an
 AI agent actually did. The **Agent Action Capsule** is a SCITT statement profile:
 a digest-committed, signed record of one agent action carrying its verdict-level
