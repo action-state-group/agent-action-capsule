@@ -1,0 +1,15 @@
+{
+  "task": "pay_invoice",
+  "instruction": "Pay approved vendor invoice INV-2026-0418 from Acme Office Supplies for the Q3 office chair order. Use the corporate ACH account. Only pay if the invoice is approved AND the amount matches the linked PO.",
+  "invoice": {
+    "id": "INV-2026-0418",
+    "vendor": "Acme Office Supplies",
+    "amount_cents": 425000,
+    "currency": "USD",
+    "po_ref": "PO-2026-0311"
+  },
+  "policy": {
+    "requires_approval": true,
+    "max_auto_pay_cents": 500000
+  }
+}

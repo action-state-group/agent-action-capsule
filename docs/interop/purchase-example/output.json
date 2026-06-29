@@ -1,0 +1,16 @@
+{
+  "decision": "pay",
+  "payment": {
+    "vendor": "Acme Office Supplies",
+    "amount_cents": 425000,
+    "currency": "USD",
+    "method": "ACH",
+    "invoice_id": "INV-2026-0418",
+    "po_ref": "PO-2026-0311"
+  },
+  "rationale": "Invoice approved; amount matches PO-2026-0311; under the $5,000 auto-pay ceiling.",
+  "confirmation": {
+    "payment_id": "ACH-7Q2F-20260629",
+    "status": "submitted"
+  }
+}
