@@ -63,6 +63,19 @@ Storage: Postgres-backed. Key_id: `39bb654c9dc0afe1` (Ed25519).
 Anton verifies: decode → check inclusion proof resolves `capsule_id` at `leaf_index=3, tree_size=4`
 → verify Ed25519 STH sig against anchor's published pubkey.
 
+### Anchor verifying key (hand to Anton for Direction B)
+
+```
+key_id        : 39bb654c9dc0afe1     (= first 8 bytes of the raw key)
+Ed25519 JWK x : ObtlTJ3Ar-HA7e8N7_qmkJm4UYg2ybom4EkVNYQPlrU
+raw hex       : 39bb654c9dc0afe1c0edef0deffaa69099b8518836c9ba26e0491535840f96b5
+resolve at    : https://anchor.agentactioncapsule.org/.well-known/did.json
+                https://anchor.agentactioncapsule.org/anchor/authority-pubkey
+```
+
+(NOTE: correct pubkey path is `/.well-known/did.json` + `/anchor/authority-pubkey`. An earlier draft
+pointed at `/attest/pubkey`, which does not exist — fixed 2026-06-29.)
+
 ---
 
 ## Full capsule JSON (format_version "2", spec -01)
