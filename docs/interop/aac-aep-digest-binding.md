@@ -116,9 +116,11 @@ The SCITT receipt from `docs/interop/aac-aep-interop-artifacts.md` (anchored 202
 Anchor public key (`key_id: 39bb654c9dc0afe1`):
 
 ```
-GET https://anchor.agentactioncapsule.org/attest/pubkey
-GET https://anchor.agentactioncapsule.org/.well-known/did.json
+GET https://anchor.agentactioncapsule.org/.well-known/did.json     # key_id + Ed25519 JWK
+GET https://anchor.agentactioncapsule.org/anchor/authority-pubkey   # raw authority pubkey
 ```
+Resolved value (`key_id 39bb654c9dc0afe1`, Ed25519): JWK `x = ObtlTJ3Ar-HA7e8N7_qmkJm4UYg2ybom4EkVNYQPlrU`;
+raw hex `39bb654c9dc0afe1c0edef0deffaa69099b8518836c9ba26e0491535840f96b5` (note: key_id = first 8 bytes of the raw key).
 
 **What Anton verifies:**
 
