@@ -62,6 +62,41 @@ are both hex strings. Confirm at the wire level before first cross-verify.
 
 ---
 
+## Machine-checkable interop vector
+
+The positive case and first negative cases are pinned in
+`docs/interop/aac-aep-scitt-digest-binding-vector.json` and checked by
+`python/tests/test_interop_digest_binding.py`. The vector is intentionally small:
+it binds the purchase-example AAC capsule, the AEP quote commitment, and the SCITT
+receipt to one digest thread.
+
+The verifier contract is:
+
+1. Recompute `capsule_id` from the canonical capsule form.
+2. Recompute `effect.response_digest` from JCS(`output.json`).
+3. Recompute `model_attestation.compute_attestation.agent_input_digest` from
+   JCS(`prompt.json`).
+4. Decode the AEP quote commitment as raw digest bytes and compare it to
+   `bytes.fromhex(response_digest)` or the explicitly selected digest.
+5. Require the shared profile label
+   `urn:action-state:aac-aep-scitt:digest-binding:2026-07-02`.
+6. Require the SCITT receipt to resolve to the same `capsule_id`.
+
+The negative cases are not advisory. A verifier MUST reject at least these
+classes of mismatch:
+
+- `digest_binding_encoding_mismatch`: the quote commits to ASCII hex string bytes
+  instead of raw digest bytes.
+- `digest_binding_mismatch`: the quote commits to 32 raw bytes, but not the AAC
+  digest selected for binding.
+- `profile_label_mismatch`: the same bytes are carried under another composition
+  label.
+- `canonicalization_mismatch`: a digest is computed from non-JCS JSON bytes.
+- `receipt_statement_mismatch`: the SCITT receipt resolves to a different
+  statement or `capsule_id`.
+
+---
+
 ## Direction A — Anton binds our capsule into his AEP/TPM quote
 
 **What he does:**

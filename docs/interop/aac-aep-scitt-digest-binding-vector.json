@@ -1,0 +1,102 @@
+{
+  "schema": "aac-aep-scitt-digest-binding-vector-01",
+  "name": "purchase-example-aac-aep-scitt-digest-binding",
+  "created": "2026-07-02",
+  "source_issue": "https://github.com/action-state-group/agent-action-capsule/issues/23",
+  "profile_label": "urn:action-state:aac-aep-scitt:digest-binding:2026-07-02",
+  "description": "Machine-checkable positive and negative vector for binding an AAC capsule, an AEP quote commitment, and a SCITT receipt to the same digest thread.",
+  "inputs": {
+    "capsule": "docs/interop/purchase-example/capsule.json",
+    "agent_input": "docs/interop/purchase-example/prompt.json",
+    "agent_output": "docs/interop/purchase-example/output.json",
+    "receipt": "docs/interop/purchase-example/receipt.json"
+  },
+  "digest_rules": {
+    "algorithm": "SHA-256",
+    "json_digest_encoding": "lowercase hexadecimal string, 64 characters",
+    "quote_digest_encoding": "raw 32 bytes decoded from the lowercase hexadecimal digest; never the ASCII bytes of the hexadecimal string",
+    "json_canonicalization": "RFC 8785 JCS over UTF-8 with no BOM; capsule_id excludes capsule_id and chain linkage fields",
+    "profile_label_required": true,
+    "receipt_binding": "The SCITT receipt MUST resolve to the same capsule_id and statement bytes referenced by the AEP binding."
+  },
+  "positive": {
+    "capsule_id": {
+      "hex": "29b9a5569bc99585628040e3f262a3087809ce0044c79dbab98b5c7e9cae181b",
+      "raw_b64": "KbmlVpvJlYVigEDj8mKjCHgJzgBEx526uYtcfpyuGBs="
+    },
+    "response_digest": {
+      "hex": "248cdd0827f66d2ac5dfa46cfb58d5d0a48c254a237ce4422a4345f33b53f56e",
+      "raw_b64": "JIzdCCf2bSrF36Rs+1jV0KSMJUojfORCKkNF8ztT9W4="
+    },
+    "agent_input_digest": {
+      "hex": "e4e17626f890da25d269e1a6e80c6c9b5e43403a38f5bdf76fc80e882eadcd08",
+      "raw_b64": "5OF2JviQ2iXSaeGm6Axsm15DQDo49b33b8gOiC6tzQg="
+    },
+    "aep_quote_commitment": {
+      "bound_digest": "response_digest",
+      "bound_digest_raw_b64": "JIzdCCf2bSrF36Rs+1jV0KSMJUojfORCKkNF8ztT9W4=",
+      "profile_label": "urn:action-state:aac-aep-scitt:digest-binding:2026-07-02",
+      "allowed_locations": [
+        "TPM quote nonce",
+        "PCR extension input",
+        "AEP evidence claim carrying the same raw digest bytes"
+      ]
+    },
+    "scitt_receipt": {
+      "receipt_b64": "0oRHogEnGQGLAaEZAYyhIIFYSIMEA4JYIM6ef1L3fWsfmekhxus/h/CvzFR+NmhRoIj5tNPqybstWCBWrtv+syZpMz1A0QgGO5XHNJwp7vkvenEv+7zJOyjwd/ZYQNiJOU57SscGqnCtnZ8daxKse/BXLZF9Ks3+5UcP4jy/7ydfQ80DV3BGaW9Uknfi5DdSypRtBuzDRGNc6/u+Egc=",
+      "entry_hash": "8767e07982b43db647cb39451719c07364a13444cce0b0003854c270f27317e5",
+      "leaf_index": 3,
+      "tree_size": 4,
+      "key_id": "39bb654c9dc0afe1",
+      "alg": "Ed25519"
+    }
+  },
+  "negative_cases": [
+    {
+      "id": "ascii_hex_string_in_quote",
+      "description": "The AEP quote binds the ASCII bytes of the 64-character response_digest string instead of the raw 32 digest bytes.",
+      "mutated": {
+        "bound_digest": "response_digest",
+        "bound_digest_raw_b64": "MjQ4Y2RkMDgyN2Y2NmQyYWM1ZGZhNDZjZmI1OGQ1ZDBhNDhjMjU0YTIzN2NlNDQyMmE0MzQ1ZjMzYjUzZjU2ZQ==",
+        "profile_label": "urn:action-state:aac-aep-scitt:digest-binding:2026-07-02"
+      },
+      "expected_error": "digest_binding_encoding_mismatch"
+    },
+    {
+      "id": "different_digest_bytes_in_quote",
+      "description": "The AEP quote binds 32 raw bytes, but they are not the response_digest bytes from the capsule.",
+      "mutated": {
+        "bound_digest": "response_digest",
+        "bound_digest_raw_b64": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "profile_label": "urn:action-state:aac-aep-scitt:digest-binding:2026-07-02"
+      },
+      "expected_error": "digest_binding_mismatch"
+    },
+    {
+      "id": "profile_label_mismatch",
+      "description": "The quote carries the right raw bytes but under a different profile label.",
+      "mutated": {
+        "bound_digest": "response_digest",
+        "bound_digest_raw_b64": "JIzdCCf2bSrF36Rs+1jV0KSMJUojfORCKkNF8ztT9W4=",
+        "profile_label": "urn:action-state:aep-only:digest-binding:2026-07-02"
+      },
+      "expected_error": "profile_label_mismatch"
+    },
+    {
+      "id": "noncanonical_json_input",
+      "description": "The response digest is computed over pretty-printed JSON bytes instead of the JCS canonical output preimage.",
+      "mutated": {
+        "response_digest_hex": "28b28bee743dea19955a0f14ec27e01f92af96de61c80ad84ff58b2d611da9f1"
+      },
+      "expected_error": "canonicalization_mismatch"
+    },
+    {
+      "id": "receipt_binds_different_capsule_id",
+      "description": "The SCITT receipt is interpreted as binding a different capsule_id than the AAC capsule and AEP quote reference.",
+      "mutated": {
+        "capsule_id": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "expected_error": "receipt_statement_mismatch"
+    }
+  ]
+}
