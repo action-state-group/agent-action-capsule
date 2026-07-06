@@ -17,6 +17,7 @@ wire. No business content, no action payload, no personal data.
 from __future__ import annotations
 
 import base64
+import concurrent.futures
 import dataclasses
 import hashlib
 import json
@@ -64,6 +65,28 @@ _ISSUER = "urn:agent-action-capsule:core:free-anchor"
 # Simple surface (stdlib-only)
 # ---------------------------------------------------------------------------
 
+# Bounded thread pool for digest-anchor HTTP submissions.
+# Caps concurrent anchor requests so burst agent activity (10k+ capsules) does
+# not spawn 10k threads.  Max workers: AAC_ANCHOR_POOL_SIZE env var (default 64).
+# Requests beyond pool capacity queue inside the executor (Python stdlib queue,
+# bounded by available memory, not by a hard cap — acceptable for fire-and-forget).
+# This is a module-level singleton; it starts no threads until the first anchor() call.
+_ANCHOR_POOL: concurrent.futures.ThreadPoolExecutor | None = None
+_ANCHOR_POOL_LOCK = threading.Lock()
+
+
+def _get_pool() -> concurrent.futures.ThreadPoolExecutor:
+    global _ANCHOR_POOL
+    if _ANCHOR_POOL is None:
+        with _ANCHOR_POOL_LOCK:
+            if _ANCHOR_POOL is None:
+                max_w = int(os.environ.get("AAC_ANCHOR_POOL_SIZE", "64"))
+                _ANCHOR_POOL = concurrent.futures.ThreadPoolExecutor(
+                    max_workers=max_w,
+                    thread_name_prefix="aac-anchor",
+                )
+    return _ANCHOR_POOL
+
 
 def anchor(
     capsule_id: str,
@@ -75,9 +98,13 @@ def anchor(
 ) -> None:
     """Post the capsule_id digest to a transparency log, non-blocking.
 
-    Returns immediately. The HTTP POST runs in a background daemon thread so
-    the agent's critical path is never blocked. Only the ``capsule_id`` hex
-    string is sent — no business content crosses the wire.
+    Returns immediately. The HTTP POST runs in a bounded background thread pool
+    so the agent's critical path is never blocked and burst activity does not
+    spawn an unbounded number of OS threads.  Only the ``capsule_id`` hex string
+    is sent — no business content crosses the wire.
+
+    Concurrency cap: ``AAC_ANCHOR_POOL_SIZE`` env var (default 64 workers).
+    Beyond the pool size, additional submissions queue inside the pool.
 
     Args:
         capsule_id: 64-character lowercase-hex SHA-256 capsule_id.
@@ -105,8 +132,7 @@ def anchor(
             if on_error is not None:
                 on_error(exc)
 
-    t = threading.Thread(target=_post, daemon=True, name="anchor-post")
-    t.start()
+    _get_pool().submit(_post)
 
 
 # ---------------------------------------------------------------------------

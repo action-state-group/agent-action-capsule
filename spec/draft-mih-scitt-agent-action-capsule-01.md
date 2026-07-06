@@ -46,6 +46,7 @@ informative:
   I-D.emirdag-scitt-ai-agent-execution:
   I-D.kamimura-scitt-refusal-events:
   I-D.kamimura-scitt-vcp:
+  I-D.kamimura-vap-framework:
   I-D.dawkins-scitt-ai-article50:
   I-D.sato-soos-gar:
   I-D.nivalto-agentroa-route-authorization:
@@ -722,7 +723,13 @@ claim set for AI content-refusal audit trails carried in SCITT Signed
 Statements; the same author's {{I-D.kamimura-scitt-vcp}} (VeritasChain
 Protocol) is a SCITT profile for verifiable audit trails in algorithmic
 trading — a vertical-specific application of the same transparency
-substrate. {{I-D.dawkins-scitt-ai-article50}} profiles SCITT receipts
+substrate. {{I-D.kamimura-vap-framework}}, by the same author, is a
+conformance-tiered Verifiable AI Provenance framework (hash-chaining,
+signatures, SCITT anchoring, and a completeness invariant) under which the
+trading profile sits; it shares this profile's SCITT-anchored,
+third-party-verifiable substrate, framed as a provenance architecture
+rather than a per-action verdict record. {{I-D.dawkins-scitt-ai-article50}}
+profiles SCITT receipts
 for the transparency obligations of EU AI Act Article 50.
 {{I-D.sato-soos-gar}} defines session-level Governance Audit Records
 produced by a governing enforcement component; this profile differs in
