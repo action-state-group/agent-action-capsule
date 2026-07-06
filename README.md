@@ -138,3 +138,5 @@ See [LICENSE](LICENSE): the specification text is governed by BCP 78 and the
 IETF Trust's Legal Provisions; code and reference-implementation material are
 under the Revised BSD License. Contributions follow [CONTRIBUTING.md](CONTRIBUTING.md)
 (DCO sign-off; no CLA).
+
+**Patent posture:** All six provisional patent applications related to this specification were expressly abandoned on July 6, 2026. No license is required. See [agentactioncapsule.org/ip](https://agentactioncapsule.org/ip) for details.
