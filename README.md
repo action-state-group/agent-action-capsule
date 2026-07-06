@@ -101,6 +101,58 @@ adapters) built **on top of** this package. The dependency points one way —
 defined here is open to *any* producer; `capsule-emit` is simply the convenient on-ramp.
 Both are neutral, donatable substrate.
 
+## Transparency-layer design — VDS-agnostic
+
+The Agent Action Capsule is a **statement-layer** profile. A capsule is a SCITT
+Signed Statement (COSE_Sign1 over a JSON payload); it makes no claim about how it
+is registered or which Verifiable Data Structure (VDS) algorithm the Transparency
+Service uses.
+
+```
+┌──────────────────────────────────────────────────┐
+│  Signed Statement  (COSE_Sign1, our format)      │  ← what we define/emit
+│   protected: { alg, content_type, CWT_Claims }   │
+│   payload:   application/agent-action-capsule+json│
+└──────────────────────────────────────────────────┘
+         │  (submitted to a Transparency Service)
+         ▼
+┌──────────────────────────────────────────────────┐
+│  SCITT Receipt  (COSE_Sign1, TS-minted)          │  ← what the TS adds
+│   protected: { alg, vds=1 (RFC9162_SHA256) }     │
+│   unprotected: { vdp: { inclusion_proof } }      │
+│   payload:   Merkle root (detached)              │
+└──────────────────────────────────────────────────┘
+         │
+         ▼
+  Transparent Statement = Signed Statement + Receipt(s)
+```
+
+`emit()` in `capsule-emit` produces the Signed Statement. It has no opinion on
+VDS. The VDS (`vds` header in the Receipt) is the Transparency Service's choice.
+
+**RFC9162_SHA256 (vds=1)** is the current default — the only VDS registered under
+draft-ietf-cose-merkle-tree-proofs today, and the profile implemented in
+`scitt-cose` (both `build_receipt` and `verify_receipt`).
+
+**CCF (Microsoft Confidential Consortium Framework)** — tested against
+`scitt-ccf-ledger v7.0.6` (2026-06-26): CCF emits receipts with **`vds=2`**
+(`ccf.v1` Merkle format), not `vds=1` (RFC9162_SHA256). Our `scitt-cose`
+`verify_receipt` currently implements **`vds=1` only**; `vds=2` support is
+in progress and tracked in `scitt-cose`. Once landed, `verify_receipt` will
+accept real CCF receipts without any change to the capsule or Signed Statement
+format. See `scitt-cose/tests/test_ccf_interop.py` for the integration test.
+
+Adding support for a new VDS is a new `if vds == N` branch in `scitt-cose`'s
+verifier — the capsule format does not change.
+
+**What we are NOT saying:**
+- We are not claiming the capsule format requires CCF.
+- We are not claiming CCF's VDS is the same as ours — CCF 7.0.6 uses `vds=2`
+  (its own Merkle format); our verifier uses `vds=1` (RFC9162_SHA256). Different
+  proof formats, same statement layer — the expected outcome during standardisation.
+- We are not claiming `capsule-anchor`'s local TS provides the same trust
+  guarantees as CCF. The SCITT protocol is the same; the trust model is not.
+
 ## Building the draft
 
 ```bash
