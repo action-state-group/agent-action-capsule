@@ -284,10 +284,71 @@ detail is specified in {{constraints}}.
 | operator | string | REQUIRED | The accountable tenant the action was performed for. |
 | developer | string | REQUIRED | The agent identity and version that performed the action. |
 | timestamp | string | REQUIRED | {{RFC3339}} UTC with "Z" suffix. |
+| epoch_id | string | OPTIONAL | An operator-assigned epoch identifier, stable within one operational configuration of the agent system. Producers SHOULD populate this field and rotate its value — together with an epoch-boundary Capsule ({{epochs}}) — when a configuration change that materially alters agent behavior occurs (for example, a model-version swap, a policy-manifest revision, or a significant constraint-schema change). A verifier or ledger consumer scopes a history window to a specific operational configuration by filtering on operator and epoch_id. Absent epoch_id implies a single, unnamed epoch; a producer MUST NOT back-fill epoch_id on Capsules already sealed. |
 
 Monetary and quantity values anywhere in a Capsule MUST be exact decimal
 strings, never JSON floating-point numbers; digests are not reproducible
 across implementations otherwise.
+
+## Configuration epochs {#epochs}
+
+A configuration epoch is the contiguous sequence of Capsules produced by
+one agent configuration — one model version, one policy-manifest version,
+one runtime variant — before any of those configuration dimensions changes.
+Epochs exist because a model swap or policy revision is a behavioral
+discontinuity; without a recorded epoch boundary, pre- and post-change
+history blend silently and a verifier cannot scope a query to "the current
+configuration."
+
+### The epoch_id field
+
+The `epoch_id` payload field ({{identity}}) carries the current epoch
+identifier. It is committed to `capsule_id` and is therefore tamper-evident.
+Producers that operate across multiple epochs SHOULD populate `epoch_id` and
+rotate its value on every configuration change. Producers that do not
+anticipate epoch changes MAY omit it; absent `epoch_id` implies a single,
+unnamed epoch.
+
+A producer MUST NOT assign the same `epoch_id` value across a configuration
+boundary. The invariant "all Capsules sharing an operator and epoch_id were
+produced under the same configuration" is what makes epoch-scoped history
+queries meaningful; violating it makes pre- and post-change records
+indistinguishable by `epoch_id` alone.
+
+### Epoch-boundary Capsules {#epochboundary}
+
+When an epoch opens, a producer SHOULD emit a single epoch-boundary Capsule
+before resuming normal action recording. An epoch-boundary Capsule is a
+regular Capsule (no new statement type) with:
+
+- `action_type: "fyi"` (it is an administrative record, not a decided
+  action);
+- the **new** `epoch_id` value — the epoch it opens;
+- `chain.relation: "epoch_opens"` linking to the last Capsule produced
+  under the prior epoch (registry-governed, {{iana}}); and
+- a RECOMMENDED `model_attestation` block ({{identity}}) recording the
+  new model and provider, so the transition is commit-addressed and verifiable
+  from the Capsule's own bytes.
+
+An epoch-boundary Capsule MAY additionally carry `disposition.verdict_class:
+"epoch_boundary"` (registry-governed, {{iana}}) and a `reason_digest`
+committing to a machine-readable record of what changed — at minimum the
+prior `epoch_id`, the new model identity, and the new policy-manifest
+version — so that a verifier can distinguish a configuration-change record
+from an ordinary `fyi` action.
+
+### Epoch-scoped verification {#epochverify}
+
+A verifier scoping a query to a specific epoch filters by `operator` and
+`epoch_id`. An epoch-boundary Capsule carrying `chain.relation: "epoch_opens"`
+marks the temporal left edge of that epoch; the next epoch-boundary Capsule
+whose chain parent lies within this epoch marks its right edge. A verifier
+SHOULD report, as an informational finding, any action Capsule whose
+`epoch_id` differs from the prevailing epoch established by the most recent
+epoch-boundary Capsule for that operator; such a discrepancy is not a
+verification failure (an epoch change mid-stream is not structurally
+non-conforming), but it is evidence that a configuration boundary occurred
+without a corresponding epoch-boundary Capsule.
 
 Chain-linkage fields are intentionally excluded from `capsule_id` so that
 a Capsule's content-address remains stable regardless of what later chains
@@ -510,6 +571,7 @@ value:
 | relation | Meaning |
 |---|---|
 | supersedes | Terminal transition over the parent — resolution, expiry, escalation close or replace the parent's open state. |
+| epoch_opens | Non-terminal: this Capsule opens a new operational epoch. The chain parent is the last Capsule produced under the prior epoch. The opening Capsule carries the new epoch_id ({{epochboundary}}); the prior epoch's last Capsule is the parent. |
 
 Single-parent is intentional: a Capsule chains to exactly one parent.
 
@@ -857,10 +919,14 @@ Initial contents are the seeded values of this document, verbatim:
 
 1. "verdict_class" registry ({{verdictclass}}): executed, blocked,
    hitl_dispatched, denied, timeout, errored, engine_failure, deferred,
-   needs_decision, expired, escalated, resolved.
+   needs_decision, expired, escalated, resolved, epoch_boundary.
    The `deferred` token's semantics are OWNED by this registry; the
    entry of the same spelling in the "disposition.decision" registry is
-   a cross-reference to it.
+   a cross-reference to it. The `epoch_boundary` token denotes an
+   administrative Capsule (`action_type: "fyi"`) that marks a
+   configuration-epoch transition ({{epochboundary}}); it REQUIRES
+   `effect_mode: "not_applicable"` (no effect is dispatched by an
+   administrative epoch record).
 2. "disposition.decision" registry ({{disposition}}): accept, reject,
    needs_input, deferred. The `deferred` entry is a cross-reference to
    the "verdict_class" registry, which owns the token's semantics.
@@ -879,13 +945,14 @@ Initial contents are the seeded values of this document, verbatim:
    independent sensor confirmation of a claimed effect, or hardware- or
    TEE-anchored execution; a registration states where its grade sits
    relative to the seeded values.
-6. "chain.relation" registry ({{hitl}}): supersedes. Designated-expert
-   guidance: this registry is seeded with the single terminal relation;
-   additional non-terminal relations (for example, deposit-toward-open
-   and effort-toward-open relations, or amends / contradicts) are
-   expected future registrations, each admitted once its semantics and
-   any verifier consequence are pinned in a publicly available
-   specification.
+6. "chain.relation" registry ({{hitl}}): supersedes, epoch_opens.
+   Designated-expert guidance: `supersedes` is the single terminal
+   relation; `epoch_opens` is a non-terminal relation for configuration-
+   epoch boundaries ({{epochboundary}}). Additional non-terminal
+   relations (for example, deposit-toward-open and effort-toward-open
+   relations, or amends / contradicts) are expected future registrations,
+   each admitted once its semantics and any verifier consequence are
+   pinned in a publicly available specification.
 
 Interim registry of record: until this document is published as an RFC,
 the registry of record is the `REGISTRY.md` file of the source
@@ -1039,6 +1106,21 @@ a quoted value matches its cited source, and via `model_attestation`
 ({{identity}}), which constrains the emitter identity. The remaining
 input-integrity surface is out of scope for this profile and is addressed
 by composing a dedicated input-integrity mechanism upstream.
+
+Payload-level identity is stable across signing-key rotation. The
+`operator` and `developer` fields in the Capsule payload ({{identity}})
+are plain strings committed to the `capsule_id` digest. They are
+independent of the signing key: a producer that rotates its COSE signing
+key (and therefore changes the `iss` claim in the protected header) without
+changing `operator` or `developer` preserves payload-level identity
+continuity across the rotation. A verifier accumulating long-horizon history
+SHOULD correlate Capsules by payload `operator` — and, when present,
+`epoch_id` ({{epochs}}) — rather than by the SCITT-layer `iss` claim, which
+may change on key rotation. Absent a recorded linkage, pre- and post-rotation
+Capsules are distinguishable by payload `operator` alone but not correlatable
+at the SCITT-header layer; a producer SHOULD treat a key rotation that
+coincides with a configuration change as an epoch boundary ({{epochboundary}})
+to make the transition explicit in the record.
 
 --- back
 
