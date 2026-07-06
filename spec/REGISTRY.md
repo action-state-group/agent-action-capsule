@@ -63,6 +63,7 @@ Initial contents:
 | `expired` | TTL policy on the deferral elapsed; terminal unless superseded by escalation. |
 | `escalated` | Expiry or policy routed the item to a higher authority; open item at the new authority. |
 | `resolved` | A terminal decision capsule closed the chain without executing (pairing rule, Internet-Draft §5.4.2). |
+| `epoch_boundary` | An administrative capsule (`action_type: "fyi"`) marking a configuration-epoch transition. REQUIRES `effect_mode: "not_applicable"` — no effect is dispatched by an administrative epoch record. Defined in §5.1 (Configuration epochs) of the Internet-Draft. |
 
 **`deferred` token ownership.** The `deferred` token's semantics are OWNED by
 the `verdict_class` registry; the `disposition.decision` entry of the same
@@ -130,14 +131,16 @@ Initial contents:
 |---|---|
 | `confirms` | Non-terminal: this capsule observes or records the outcome of the parent — the parent's open state remains. The most common chain link: *attempted → confirmed*. |
 | `supersedes` | Terminal transition over the parent — resolution, expiry, escalation close/replace the parent's open state. |
+| `epoch_opens` | Non-terminal: this capsule opens a new operational configuration epoch. The chain parent MUST be the last capsule produced under the prior epoch. The opening capsule carries the new `epoch_id`. Defined in §5.1 (Configuration epochs, Epoch-boundary Capsules) of the Internet-Draft. |
 
 **Designated-expert guidance (this registry).** Seeded with the core non-terminal and terminal
-relations. Additional non-terminal relations — deposit-toward-open and
-effort-toward-open relations, or `amends` / `contradicts` — are expected future
-registrations, each admitted once its semantics and any verifier consequence
-are pinned in a publicly available specification. Such relations are anticipated
-in a future revision of the Internet-Draft and are registered into this same
-registry rather than establishing a new one.
+relations, plus `epoch_opens` for configuration-epoch boundaries. Additional
+non-terminal relations — deposit-toward-open and effort-toward-open relations,
+or `amends` / `contradicts` — are expected future registrations, each admitted
+once its semantics and any verifier consequence are pinned in a publicly
+available specification. Such relations are anticipated in a future revision of
+the Internet-Draft and are registered into this same registry rather than
+establishing a new one.
 
 ## 7. Reserved payload members — selective disclosure
 

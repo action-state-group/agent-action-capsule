@@ -123,7 +123,9 @@ AAC's equivalent is `action_id: "write_order/<uuid>"` + `compute_attestation.age
 
 4. **SCITT receipt verification by Anton's toolchain.** He decodes our `receipt_b64` (COSE Receipt)
    and checks the RFC 9162 inclusion proof against the anchor's Ed25519 public key.
-   The anchor public key is at `https://anchor.agentactioncapsule.org/attest/pubkey`.
+   The anchor public key is at `https://anchor.agentactioncapsule.org/.well-known/did.json`
+   (and `/anchor/authority-pubkey`) — `key_id 39bb654c9dc0afe1`, Ed25519 JWK
+   `x = ObtlTJ3Ar-HA7e8N7_qmkJm4UYg2ybom4EkVNYQPlrU`.
 
 ---
 
