@@ -99,6 +99,7 @@ Defined in §5.4.4. Initial contents:
 
 | Value | Semantics |
 |---|---|
+| `confirms` | non-terminal |
 | `supersedes` | terminal |
 """
 
@@ -115,4 +116,4 @@ def test_parser_handles_multiline_wrapping(tmp_path: Path):
     }
     # prose backticks in the effect_attestation section must NOT leak in
     assert set(regs["effect_attestation"]) == {"gate_executed", "runtime_claimed"}
-    assert set(regs["chain.relation"]) == {"supersedes"}
+    assert set(regs["chain.relation"]) == {"confirms", "supersedes"}
