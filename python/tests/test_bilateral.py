@@ -2,12 +2,7 @@
 """Tests for agent_action_capsule.bilateral — pair-verify."""
 from __future__ import annotations
 
-import hashlib
-import json
-
-import pytest
-
-from agent_action_capsule.bilateral import PairFinding, PairVerifyResult, verify_pair
+from agent_action_capsule.bilateral import verify_pair
 from agent_action_capsule.emit import emit as _emit
 
 
