@@ -7,8 +7,6 @@ import json
 import os
 import tempfile
 
-import pytest
-
 from agent_action_capsule.emit import emit
 from agent_action_capsule.history import (
     ChainReport,
@@ -16,7 +14,6 @@ from agent_action_capsule.history import (
     list_capsules,
     verify_chain_completeness,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -143,8 +140,6 @@ def test_verify_chain_gap():
 def test_verify_chain_epoch_opens_not_a_gap():
     """A capsule with chain.relation == 'epoch_opens' is a legal chain-start, not a gap."""
     # Craft a capsule that claims to open an epoch (its parent won't be in the window).
-    import copy
-
     cap_a = emit(operator="op1", developer="dev/1.0")
     # Build a second capsule that follows from some external parent (not in window)
     # and marks itself as epoch_opens.
