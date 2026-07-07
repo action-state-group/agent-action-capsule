@@ -79,6 +79,14 @@ informative:
     title: "Verifiable Intent"
     author:
       - organization: Mastercard
+  I-D.rampalli-scitt-capsule-provenance-binding:
+    title: "SCITT Capsule Provenance Binding"
+    author:
+      - ins: K. Rampalli
+        name: Karthik Rampalli
+        organization: Glyphzero
+    seriesinfo:
+      Internet-Draft: draft-rampalli-scitt-capsule-provenance-binding
 
 --- abstract
 
@@ -857,6 +865,14 @@ complements it by recording general-purpose conduct, obligation, and
 refusal verdicts in an agent-to-agent lane, anchored to a neutral
 transparency log, without being coupled to a specific payment or
 checkout context.
+
+{{I-D.rampalli-scitt-capsule-provenance-binding}} binds a per-action
+delegation-authorization decision and provenance references into an Agent
+Action Capsule via namespaced payload extensions that leave the core fields
+untouched, recording that an action was taken under a stated authorization
+without asserting the authority. This specification is complementary; the
+profile is deliberately agnostic to the delegation mechanism, and such
+bindings compose by shared action digest.
 
 # Future Work {#future}
 

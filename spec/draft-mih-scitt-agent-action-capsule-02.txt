@@ -4,8 +4,8 @@
 
 SCITT                                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Standards Track                             5 July 2026
-Expires: 6 January 2027
+Intended status: Standards Track                             6 July 2026
+Expires: 7 January 2027
 
 
                An Agent Action Capsule Profile for SCITT
@@ -49,11 +49,11 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 6 January 2027.
+   This Internet-Draft will expire on 7 January 2027.
 
 
 
-Mih                      Expires 6 January 2027                 [Page 1]
+Mih                      Expires 7 January 2027                 [Page 1]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -83,41 +83,45 @@ Table of Contents
    4.  Registries of this profile (summary)  . . . . . . . . . . . .   7
    5.  The Agent Action Capsule  . . . . . . . . . . . . . . . . . .   7
      5.1.  Identity and parties  . . . . . . . . . . . . . . . . . .   7
-     5.2.  Effect Record and the confirmed-effect binding  . . . . .   8
-     5.3.  Assurance . . . . . . . . . . . . . . . . . . . . . . . .  11
-     5.4.  Disposition and the verdict reason-class  . . . . . . . .  11
-       5.4.1.  The verdict_class vocabulary  . . . . . . . . . . . .  12
-       5.4.2.  Orthogonality with effect_mode  . . . . . . . . . . .  14
-       5.4.3.  A Capsule on every verdict  . . . . . . . . . . . . .  14
-       5.4.4.  Chained Capsules and human-in-the-loop resolution . .  15
-   6.  Class 1 verification  . . . . . . . . . . . . . . . . . . . .  16
-   7.  Conformance: two verifier classes . . . . . . . . . . . . . .  17
-   8.  Manifest-dependent material . . . . . . . . . . . . . . . . .  18
-     8.1.  Constraint Records  . . . . . . . . . . . . . . . . . . .  18
-     8.2.  Class 2 verification  . . . . . . . . . . . . . . . . . .  18
-   9.  Extensibility . . . . . . . . . . . . . . . . . . . . . . . .  19
-     9.1.  Namespacing convention  . . . . . . . . . . . . . . . . .  19
-     9.2.  Selective Disclosure  . . . . . . . . . . . . . . . . . .  19
-   10. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  20
-   11. Future Work . . . . . . . . . . . . . . . . . . . . . . . . .  22
-   12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  22
-     12.1.  New registries . . . . . . . . . . . . . . . . . . . . .  22
-     12.2.  No new registry  . . . . . . . . . . . . . . . . . . . .  24
-     12.3.  Media Type Registrations . . . . . . . . . . . . . . . .  24
-   13. Security Considerations . . . . . . . . . . . . . . . . . . .  26
-   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  28
+     5.2.  Configuration epochs  . . . . . . . . . . . . . . . . . .   9
+       5.2.1.  The epoch_id field  . . . . . . . . . . . . . . . . .   9
+       5.2.2.  Epoch-boundary Capsules . . . . . . . . . . . . . . .   9
+       5.2.3.  Epoch-scoped verification . . . . . . . . . . . . . .  10
+     5.3.  Effect Record and the confirmed-effect binding  . . . . .  10
+     5.4.  Assurance . . . . . . . . . . . . . . . . . . . . . . . .  13
+     5.5.  Disposition and the verdict reason-class  . . . . . . . .  13
+       5.5.1.  The verdict_class vocabulary  . . . . . . . . . . . .  14
+       5.5.2.  Orthogonality with effect_mode  . . . . . . . . . . .  16
+       5.5.3.  A Capsule on every verdict  . . . . . . . . . . . . .  16
+       5.5.4.  Chained Capsules and human-in-the-loop resolution . .  17
+   6.  Class 1 verification  . . . . . . . . . . . . . . . . . . . .  18
+   7.  Conformance: two verifier classes . . . . . . . . . . . . . .  19
+   8.  Manifest-dependent material . . . . . . . . . . . . . . . . .  20
+     8.1.  Constraint Records  . . . . . . . . . . . . . . . . . . .  20
+     8.2.  Class 2 verification  . . . . . . . . . . . . . . . . . .  20
+   9.  Extensibility . . . . . . . . . . . . . . . . . . . . . . . .  21
+     9.1.  Namespacing convention  . . . . . . . . . . . . . . . . .  21
+     9.2.  Selective Disclosure  . . . . . . . . . . . . . . . . . .  21
+   10. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  22
+   11. Future Work . . . . . . . . . . . . . . . . . . . . . . . . .  24
+   12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  24
+     12.1.  New registries . . . . . . . . . . . . . . . . . . . . .  24
 
 
 
-Mih                      Expires 6 January 2027                 [Page 2]
+Mih                      Expires 7 January 2027                 [Page 2]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
 
-     14.1.  Normative References . . . . . . . . . . . . . . . . . .  28
-     14.2.  Informative References . . . . . . . . . . . . . . . . .  29
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  32
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  32
+     12.2.  No new registry  . . . . . . . . . . . . . . . . . . . .  26
+     12.3.  Media Type Registrations . . . . . . . . . . . . . . . .  27
+   13. Security Considerations . . . . . . . . . . . . . . . . . . .  29
+   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  30
+     14.1.  Normative References . . . . . . . . . . . . . . . . . .  30
+     14.2.  Informative References . . . . . . . . . . . . . . . . .  32
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  35
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  35
 
 1.  Introduction
 
@@ -135,12 +139,12 @@ Internet-Draft            Agent Action Capsules                July 2026
    commitments are:
 
    1.  The may/did distinction.  A Capsule records what occurred, with
-       an effect-state binding (Section 5.2) that structurally
+       an effect-state binding (Section 5.3) that structurally
        distinguishes "the effect was dispatched" from "the effect's
        result was observed and bound."  A producer cannot present an
        attempt as a completion.
 
-   2.  A Capsule on every verdict (Section 5.4.3).  Capsules are
+   2.  A Capsule on every verdict (Section 5.5.3).  Capsules are
        recorded for refusals, blocks, errors, and timeouts — not only
        for executed effects.  An evidence trail that records only
        successes is survivorship-biased and cannot prove its gates ever
@@ -161,11 +165,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-
-
-
-
-Mih                      Expires 6 January 2027                 [Page 3]
+Mih                      Expires 7 January 2027                 [Page 3]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -221,7 +221,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                 [Page 4]
+Mih                      Expires 7 January 2027                 [Page 4]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -277,7 +277,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                 [Page 5]
+Mih                      Expires 7 January 2027                 [Page 5]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -333,7 +333,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                 [Page 6]
+Mih                      Expires 7 January 2027                 [Page 6]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -389,7 +389,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                 [Page 7]
+Mih                      Expires 7 January 2027                 [Page 7]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -422,12 +422,120 @@ Internet-Draft            Agent Action Capsules                July 2026
    | timestamp      | string | REQUIRED | [RFC3339] UTC with "Z"      |
    |                |        |          | suffix.                     |
    +----------------+--------+----------+-----------------------------+
+   | epoch_id       | string | OPTIONAL | An operator-assigned epoch  |
+   |                |        |          | identifier, stable within   |
+   |                |        |          | one operational             |
+   |                |        |          | configuration of the agent  |
+   |                |        |          | system.  Producers SHOULD   |
+   |                |        |          | populate this field and     |
+   |                |        |          | rotate its value — together |
+   |                |        |          | with an epoch-boundary      |
+   |                |        |          | Capsule (Section 5.2) —     |
+   |                |        |          | when a configuration change |
+   |                |        |          | that materially alters      |
+   |                |        |          | agent behavior occurs (for  |
+   |                |        |          | example, a model-version    |
+   |                |        |          | swap, a policy-manifest     |
+   |                |        |          | revision, or a significant  |
+   |                |        |          | constraint-schema change).  |
+   |                |        |          | A verifier or ledger        |
+   |                |        |          | consumer scopes a history   |
+   |                |        |          | window to a specific        |
+   |                |        |          | operational configuration   |
+
+
+
+Mih                      Expires 7 January 2027                 [Page 8]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
+
+   |                |        |          | by filtering on operator    |
+   |                |        |          | and epoch_id.  Absent       |
+   |                |        |          | epoch_id implies a single,  |
+   |                |        |          | unnamed epoch; a producer   |
+   |                |        |          | MUST NOT back-fill epoch_id |
+   |                |        |          | on Capsules already sealed. |
+   +----------------+--------+----------+-----------------------------+
 
                                  Table 2
 
    Monetary and quantity values anywhere in a Capsule MUST be exact
    decimal strings, never JSON floating-point numbers; digests are not
    reproducible across implementations otherwise.
+
+5.2.  Configuration epochs
+
+   A configuration epoch is the contiguous sequence of Capsules produced
+   by one agent configuration — one model version, one policy-manifest
+   version, one runtime variant — before any of those configuration
+   dimensions changes.  Epochs exist because a model swap or policy
+   revision is a behavioral discontinuity; without a recorded epoch
+   boundary, pre- and post-change history blend silently and a verifier
+   cannot scope a query to "the current configuration."
+
+5.2.1.  The epoch_id field
+
+   The epoch_id payload field (Section 5.1) carries the current epoch
+   identifier.  It is committed to capsule_id and is therefore tamper-
+   evident.  Producers that operate across multiple epochs SHOULD
+   populate epoch_id and rotate its value on every configuration change.
+   Producers that do not anticipate epoch changes MAY omit it; absent
+   epoch_id implies a single, unnamed epoch.
+
+   A producer MUST NOT assign the same epoch_id value across a
+   configuration boundary.  The invariant "all Capsules sharing an
+   operator and epoch_id were produced under the same configuration" is
+   what makes epoch-scoped history queries meaningful; violating it
+   makes pre- and post-change records indistinguishable by epoch_id
+   alone.
+
+5.2.2.  Epoch-boundary Capsules
+
+   When an epoch opens, a producer SHOULD emit a single epoch-boundary
+   Capsule before resuming normal action recording.  An epoch-boundary
+   Capsule is a regular Capsule (no new statement type) with:
+
+   *  action_type: "fyi" (it is an administrative record, not a decided
+      action);
+
+
+
+Mih                      Expires 7 January 2027                 [Page 9]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
+
+   *  the *new* epoch_id value — the epoch it opens;
+
+   *  chain.relation: "epoch_opens" linking to the last Capsule produced
+      under the prior epoch (registry-governed, Section 12); and
+
+   *  a RECOMMENDED model_attestation block (Section 5.1) recording the
+      new model and provider, so the transition is commit-addressed and
+      verifiable from the Capsule's own bytes.
+
+   An epoch-boundary Capsule MAY additionally carry
+   disposition.verdict_class: "epoch_boundary" (registry-governed,
+   Section 12) and a reason_digest committing to a machine-readable
+   record of what changed — at minimum the prior epoch_id, the new model
+   identity, and the new policy-manifest version — so that a verifier
+   can distinguish a configuration-change record from an ordinary fyi
+   action.
+
+5.2.3.  Epoch-scoped verification
+
+   A verifier scoping a query to a specific epoch filters by operator
+   and epoch_id.  An epoch-boundary Capsule carrying chain.relation:
+   "epoch_opens" marks the temporal left edge of that epoch; the next
+   epoch-boundary Capsule whose chain parent lies within this epoch
+   marks its right edge.  A verifier SHOULD report, as an informational
+   finding, any action Capsule whose epoch_id differs from the
+   prevailing epoch established by the most recent epoch-boundary
+   Capsule for that operator; such a discrepancy is not a verification
+   failure (an epoch change mid-stream is not structurally non-
+   conforming), but it is evidence that a configuration boundary
+   occurred without a corresponding epoch-boundary Capsule.
 
    Chain-linkage fields are intentionally excluded from capsule_id so
    that a Capsule's content-address remains stable regardless of what
@@ -438,14 +546,18 @@ Internet-Draft            Agent Action Capsules                July 2026
    within the COSE_Sign1 envelope (Section 3.1), so the chain linkage is
    tamper-evident even though it is not part of the content-address.
 
-5.2.  Effect Record and the confirmed-effect binding
+5.3.  Effect Record and the confirmed-effect binding
 
    The Effect Record describes the side effect the action committed.
    Its status member takes one of five values:
 
 
 
-Mih                      Expires 6 January 2027                 [Page 8]
+
+
+
+
+Mih                      Expires 7 January 2027                [Page 10]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -501,7 +613,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                 [Page 9]
+Mih                      Expires 7 January 2027                [Page 11]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -521,7 +633,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
                                  Table 4
 
-   Validity is checked against the assurance effect_mode (Section 5.3):
+   Validity is checked against the assurance effect_mode (Section 5.4):
 
       +========================+====================================+
       | effect_mode            | effect_attestation                 |
@@ -541,7 +653,7 @@ Internet-Draft            Agent Action Capsules                July 2026
    phantom grade would poison grade-based queries.  It becomes REQUIRED
    the moment dispatch occurs.
 
-   The matrix is total over the effect.status values of Section 5.2.  An
+   The matrix is total over the effect.status values of Section 5.3.  An
    effect.status of failed (the effect was dispatched and the runtime
    reported a failure; state known) derives effect_mode:
    "dispatched_unconfirmed" — the effect was dispatched and its result,
@@ -550,14 +662,14 @@ Internet-Draft            Agent Action Capsules                July 2026
    effect was undone) likewise derives effect_mode:
    "dispatched_unconfirmed" and REQUIRES effect_attestation; the
    underlying committed effect it reverses is correlated separately via
-   external_ref / decision_id (the Effect Record fields, Section 5.2),
+   external_ref / decision_id (the Effect Record fields, Section 5.3),
    not by a distinct effect_mode.  So every effect.status other than
    planned (carved above) and the no-effect case (not_applicable)
    requires effect_attestation.
 
 
 
-Mih                      Expires 6 January 2027                [Page 10]
+Mih                      Expires 7 January 2027                [Page 12]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -573,7 +685,7 @@ Internet-Draft            Agent Action Capsules                July 2026
    once real transparency-log consumers exist.  This version
    deliberately claims no header-level visibility for the grade.
 
-5.3.  Assurance
+5.4.  Assurance
 
    Every Capsule carries an assurance object stating, as independently-
    rederivable claims: attestation_mode ("self_attested" or "anchored"),
@@ -593,7 +705,7 @@ Internet-Draft            Agent Action Capsules                July 2026
    verifier rederives each mode from the evidence present and reports
    any overclaim.
 
-5.4.  Disposition and the verdict reason-class
+5.5.  Disposition and the verdict reason-class
 
    A Capsule's disposition block records how the decision was disposed:
 
@@ -613,7 +725,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                [Page 11]
+Mih                      Expires 7 January 2027                [Page 13]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -623,7 +735,7 @@ Internet-Draft            Agent Action Capsules                July 2026
       at most the reference, never the authority's internal structure.
 
    *  verdict_class (OPTIONAL): the terminal-verdict reason-class
-      (Section 5.4.1).  It is RECOMMENDED for any non-executed verdict,
+      (Section 5.5.1).  It is RECOMMENDED for any non-executed verdict,
       where it carries the terminal reason; it is legitimately absent
       for a clean executed verdict (which has no reason-class, mirroring
       an absent reason_digest).
@@ -648,7 +760,7 @@ Internet-Draft            Agent Action Capsules                July 2026
       committed, content-side layer written once at deferral time; it
       MUST NOT be regenerated.
 
-5.4.1.  The verdict_class vocabulary
+5.5.1.  The verdict_class vocabulary
 
    verdict_class records WHY the action terminated as it did.  The
    seeded vocabulary (registry-governed, Section 12; unregistered values
@@ -669,7 +781,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                [Page 12]
+Mih                      Expires 7 January 2027                [Page 14]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -710,7 +822,7 @@ Internet-Draft            Agent Action Capsules                July 2026
     +-----------------+-----------------------------------------------+
     | resolved        | A terminal decision Capsule closed the chain  |
     |                 | without executing — the non-executing closure |
-    |                 | only (see the pairing rule, Section 5.4.2).   |
+    |                 | only (see the pairing rule, Section 5.5.2).   |
     +-----------------+-----------------------------------------------+
 
                                   Table 6
@@ -725,12 +837,12 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                [Page 13]
+Mih                      Expires 7 January 2027                [Page 15]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
 
-5.4.2.  Orthogonality with effect_mode
+5.5.2.  Orthogonality with effect_mode
 
    verdict_class (why the verdict) and assurance.effect_mode (what is
    known about the effect) are independent axes and MUST NOT be folded
@@ -759,7 +871,7 @@ Internet-Draft            Agent Action Capsules                July 2026
       closure (decline, waive, recorded-elsewhere) — it pairs with
       effect_mode: "not_applicable" and an absent effect_attestation.
       An EXECUTING closure is encoded as verdict_class: "executed"
-      chained supersedes to the deferral (Section 5.4.4) — one valid
+      chained supersedes to the deferral (Section 5.5.4) — one valid
       encoding of "closed with effect", never two.
 
    *  The effect status "failed" (ran and returned a clean failure,
@@ -767,7 +879,7 @@ Internet-Draft            Agent Action Capsules                July 2026
       threw, state unknown). "failed" is an effect status, never a
       reason-class.
 
-5.4.3.  A Capsule on every verdict
+5.5.3.  A Capsule on every verdict
 
    A conforming producer MUST record a Capsule for every verdict,
    whatever its disposition.  This requirement is universal over the
@@ -781,7 +893,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                [Page 14]
+Mih                      Expires 7 January 2027                [Page 16]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -790,20 +902,26 @@ Internet-Draft            Agent Action Capsules                July 2026
    only successes makes the evidence trail survivorship-biased and the
    refusal path unverifiable.
 
-5.4.4.  Chained Capsules and human-in-the-loop resolution
+5.5.4.  Chained Capsules and human-in-the-loop resolution
 
    Every Capsule that references a prior Capsule carries a digested
    chain block: {parent_capsule_id, relation}. The relation vocabulary
    is registry-governed (Section 12; Specification Required), seeded
    with one value:
 
-          +============+=======================================+
-          | relation   | Meaning                               |
-          +============+=======================================+
-          | supersedes | Terminal transition over the parent — |
-          |            | resolution, expiry, escalation close  |
-          |            | or replace the parent's open state.   |
-          +------------+---------------------------------------+
+   +=============+====================================================+
+   | relation    | Meaning                                            |
+   +=============+====================================================+
+   | supersedes  | Terminal transition over the parent — resolution,  |
+   |             | expiry, escalation close or replace the parent's   |
+   |             | open state.                                        |
+   +-------------+----------------------------------------------------+
+   | epoch_opens | Non-terminal: this Capsule opens a new operational |
+   |             | epoch.  The chain parent is the last Capsule       |
+   |             | produced under the prior epoch.  The opening       |
+   |             | Capsule carries the new epoch_id (Section 5.2.2);  |
+   |             | the prior epoch's last Capsule is the parent.      |
+   +-------------+----------------------------------------------------+
 
                                  Table 7
 
@@ -831,13 +949,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-
-
-
-
-
-
-Mih                      Expires 6 January 2027                [Page 15]
+Mih                      Expires 7 January 2027                [Page 17]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -866,20 +978,20 @@ Internet-Draft            Agent Action Capsules                July 2026
        and compare.
 
    3.  Confirmed-effect binding: effect.status: "confirmed" without a
-       well-formed response_digest is a failure (Section 5.2).
+       well-formed response_digest is a failure (Section 5.3).
 
    4.  Verdict/effect orthogonality: a never-dispatching verdict_class
        with a derived effect_mode other than "not_applicable" is a
-       failure (Section 5.4.2); resolved is in the never-dispatch set
+       failure (Section 5.5.2); resolved is in the never-dispatch set
        per the pairing rule.
 
    5.  Effect-attestation matrix: effect_attestation missing where the
        matrix REQUIRES it, or present where it MUST be absent —
-       including the planned carve — is a failure (Section 5.2).
+       including the planned carve — is a failure (Section 5.3).
 
    6.  Chain semantics (store-level): a missing chain parent is a
        failure; concurrent supersedes surface as findings per
-       Section 5.4.4.
+       Section 5.5.4.
 
    7.  Assurance reconciliation: rederive the assurance modes from
        evidence actually verified; report overclaims.
@@ -888,19 +1000,19 @@ Internet-Draft            Agent Action Capsules                July 2026
        irreversibility_class, effect_attestation, chain.relation):
        report as informational findings; MUST NOT reject (Section 12).
        An unknown effect_attestation is additionally graded no stronger
-       than runtime_claimed (Section 5.2).
+       than runtime_claimed (Section 5.3).
 
 
 
 
-Mih                      Expires 6 January 2027                [Page 16]
+Mih                      Expires 7 January 2027                [Page 18]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
 
    Disposition honesty is structurally guaranteed, not a live check
    above.  The honesty invariant — human_disposed: true REQUIRES
-   approver: "human" (Section 5.4) — is enforced when the disposition is
+   approver: "human" (Section 5.5) — is enforced when the disposition is
    constructed: the typed disposition carrier rejects human_disposed:
    true paired with any non-human approver, so a violating Capsule
    cannot be formed or signed at all.  A Class 1 verifier therefore does
@@ -910,13 +1022,13 @@ Internet-Draft            Agent Action Capsules                July 2026
    mode.  A verifier consuming arbitrary bytes not produced by a
    conforming constructor SHOULD nonetheless assert the invariant
    defensively against hand-crafted input.  The closed approver enum
-   (Section 5.4) is likewise structural: an approver value outside
+   (Section 5.5) is likewise structural: an approver value outside
    {human, policy} is non-conforming by construction and so is absent
    from the unknown-registry-value reporting of check 8.
 
    NOTE (Class 1 test vector, effect-attestation matrix, check 5): a
    Capsule carrying effect.status: "failed" derives effect_mode:
-   "dispatched_unconfirmed" (Section 5.2); the matrix therefore REQUIRES
+   "dispatched_unconfirmed" (Section 5.3); the matrix therefore REQUIRES
    effect_attestation.  A conforming verifier MUST report a check-5
    failure for such a Capsule when effect_attestation is absent, and
    MUST NOT treat the failed status as exempt (only planned is carved,
@@ -949,7 +1061,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                [Page 17]
+Mih                      Expires 7 January 2027                [Page 19]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -1005,7 +1117,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                [Page 18]
+Mih                      Expires 7 January 2027                [Page 20]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -1061,7 +1173,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                [Page 19]
+Mih                      Expires 7 January 2027                [Page 21]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -1117,7 +1229,7 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                [Page 20]
+Mih                      Expires 7 January 2027                [Page 22]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
@@ -1173,10 +1285,19 @@ Internet-Draft            Agent Action Capsules                July 2026
 
 
 
-Mih                      Expires 6 January 2027                [Page 21]
+Mih                      Expires 7 January 2027                [Page 23]
 
 Internet-Draft            Agent Action Capsules                July 2026
 
+
+   [I-D.rampalli-scitt-capsule-provenance-binding] binds a per-action
+   delegation-authorization decision and provenance references into an
+   Agent Action Capsule via namespaced payload extensions that leave the
+   core fields untouched, recording that an action was taken under a
+   stated authorization without asserting the authority.  This
+   specification is complementary; the profile is deliberately agnostic
+   to the delegation mechanism, and such bindings compose by shared
+   action digest.
 
 11.  Future Work
 
@@ -1214,6 +1335,17 @@ Internet-Draft            Agent Action Capsules                July 2026
    new CWT claim registry; the new registries here are payload-
    vocabulary registries only.
 
+
+
+
+
+
+
+Mih                      Expires 7 January 2027                [Page 24]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
+
    IANA is requested to create a new registry group, "Agent Action
    Capsule Parameters", containing the six registries below.  The
    registration policy for each is Specification Required ([RFC8126],
@@ -1226,20 +1358,12 @@ Internet-Draft            Agent Action Capsules                July 2026
    profile depends on would erode.  The mitigation is the policy's
    publicly-available-spec requirement: a value enters the shared
    vocabulary only once its semantics are pinned in a specification any
-
-
-
-Mih                      Expires 6 January 2027                [Page 22]
-
-Internet-Draft            Agent Action Capsules                July 2026
-
-
    implementer can read.  Accordingly, for each registry the designated
    expert approves a registration when (1) the citing specification
    defines the value's semantics precisely enough that two independent
    implementations would apply it identically — for verdict_class,
    including its dispatch consequence and its effect_mode pairing under
-   Section 5.4.2; (2) the value's meaning is not already expressible by
+   Section 5.5.2; (2) the value's meaning is not already expressible by
    an existing registered value; and (3) the citing specification is
    publicly available.
 
@@ -1250,30 +1374,44 @@ Internet-Draft            Agent Action Capsules                July 2026
 
    Initial contents are the seeded values of this document, verbatim:
 
-   1.  "verdict_class" registry (Section 5.4.1): executed, blocked,
+   1.  "verdict_class" registry (Section 5.5.1): executed, blocked,
        hitl_dispatched, denied, timeout, errored, engine_failure,
-       deferred, needs_decision, expired, escalated, resolved.  The
-       deferred token's semantics are OWNED by this registry; the entry
-       of the same spelling in the "disposition.decision" registry is a
-       cross-reference to it.
+       deferred, needs_decision, expired, escalated, resolved,
+       epoch_boundary.  The deferred token's semantics are OWNED by this
+       registry; the entry of the same spelling in the
+       "disposition.decision" registry is a cross-reference to it.  The
+       epoch_boundary token denotes an administrative Capsule
+       (action_type: "fyi") that marks a configuration-epoch transition
+       (Section 5.2.2); it REQUIRES effect_mode: "not_applicable" (no
+       effect is dispatched by an administrative epoch record).
 
-   2.  "disposition.decision" registry (Section 5.4): accept, reject,
+   2.  "disposition.decision" registry (Section 5.5): accept, reject,
        needs_input, deferred.  The deferred entry is a cross-reference
        to the "verdict_class" registry, which owns the token's
        semantics.
 
-   3.  "effect.type" registry (Section 5.2): write_order, send_payment.
+   3.  "effect.type" registry (Section 5.3): write_order, send_payment.
 
-   4.  "irreversibility_class" registry (Section 5.2; ordered by
+
+
+
+
+
+Mih                      Expires 7 January 2027                [Page 25]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
+
+   4.  "irreversibility_class" registry (Section 5.3; ordered by
        ascending consequence — a registration states its position):
        two_way, one_way_recoverable, one_way_consequential,
        one_way_terminal.
 
-   5.  "effect_attestation" registry (Section 5.2): gate_executed,
+   5.  "effect_attestation" registry (Section 5.3): gate_executed,
        runtime_claimed.  The registry definition carries the grade-floor
-       invariant of Section 5.2 — an unregistered or unrecognized value
+       invariant of Section 5.3 — an unregistered or unrecognized value
        is graded no stronger than runtime_claimed; unknown never grades
-       up — and the planned carve of Section 5.2: with effect.status:
+       up — and the planned carve of Section 5.3: with effect.status:
        "planned" the member MUST be absent, and it becomes REQUIRED the
        moment dispatch occurs.  Designated-expert guidance: plausible
        future registrations exist and are deliberately not seeded — for
@@ -1281,22 +1419,15 @@ Internet-Draft            Agent Action Capsules                July 2026
        hardware- or TEE-anchored execution; a registration states where
        its grade sits relative to the seeded values.
 
-
-
-
-
-Mih                      Expires 6 January 2027                [Page 23]
-
-Internet-Draft            Agent Action Capsules                July 2026
-
-
-   6.  "chain.relation" registry (Section 5.4.4): supersedes.
-       Designated-expert guidance: this registry is seeded with the
-       single terminal relation; additional non-terminal relations (for
-       example, deposit-toward-open and effort-toward-open relations, or
-       amends / contradicts) are expected future registrations, each
-       admitted once its semantics and any verifier consequence are
-       pinned in a publicly available specification.
+   6.  "chain.relation" registry (Section 5.5.4): supersedes,
+       epoch_opens.  Designated-expert guidance: supersedes is the
+       single terminal relation; epoch_opens is a non-terminal relation
+       for configuration- epoch boundaries (Section 5.2.2).  Additional
+       non-terminal relations (for example, deposit-toward-open and
+       effort-toward-open relations, or amends / contradicts) are
+       expected future registrations, each admitted once its semantics
+       and any verifier consequence are pinned in a publicly available
+       specification.
 
    Interim registry of record: until this document is published as an
    RFC, the registry of record is the REGISTRY.md file of the source
@@ -1319,6 +1450,14 @@ Internet-Draft            Agent Action Capsules                July 2026
       existing IANA "CWT Claims" registry ([RFC8392]), not in a new
       registry; the claim set is closed by this profile version.
 
+
+
+
+Mih                      Expires 7 January 2027                [Page 26]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
+
 12.3.  Media Type Registrations
 
    This profile mandates two media types (Section 3.1, Section 3.3);
@@ -1335,16 +1474,6 @@ Internet-Draft            Agent Action Capsules                July 2026
    *  Required parameters: N/A
 
    *  Optional parameters: N/A
-
-
-
-
-
-
-Mih                      Expires 6 January 2027                [Page 24]
-
-Internet-Draft            Agent Action Capsules                July 2026
-
 
    *  Encoding considerations: binary; the payload is JSON ([RFC8259])
       as defined in this document, carried as the payload of a
@@ -1378,6 +1507,13 @@ Internet-Draft            Agent Action Capsules                July 2026
    *  Change controller: Action State Group, Inc. (interim); the IETF on
       publication.
 
+
+
+Mih                      Expires 7 January 2027                [Page 27]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
+
    *  Provisional registration: yes (pending publication of this
       document).
 
@@ -1394,13 +1530,6 @@ Internet-Draft            Agent Action Capsules                July 2026
    *  Encoding considerations: binary; the payload is JSON ([RFC8259])
       as defined in Section 3.3 of this document, carried as the payload
       of a COSE_Sign1 ([RFC9052]) Signed Statement.
-
-
-
-Mih                      Expires 6 January 2027                [Page 25]
-
-Internet-Draft            Agent Action Capsules                July 2026
-
 
    *  Security considerations: see Section 13 of this document.
 
@@ -1434,6 +1563,13 @@ Internet-Draft            Agent Action Capsules                July 2026
    *  Provisional registration: yes (pending publication of this
       document).
 
+
+
+Mih                      Expires 7 January 2027                [Page 28]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
+
 13.  Security Considerations
 
    Tamper-evidence is for record bytes, not recorder honesty.  This
@@ -1450,14 +1586,6 @@ Internet-Draft            Agent Action Capsules                July 2026
    boundary extends one hop upstream: binding an observed response
    proves the producer observed those bytes, not that the responding
    system was authentic or that the channel was on-path-intact.  An
-
-
-
-Mih                      Expires 6 January 2027                [Page 26]
-
-Internet-Draft            Agent Action Capsules                July 2026
-
-
    attacker who substitutes or forges the response — a false success
    delivered on-path — induces an honest confirmed Capsule for an effect
    that did not land; this profile does not mitigate upstream spoofing
@@ -1473,7 +1601,7 @@ Internet-Draft            Agent Action Capsules                July 2026
    receipts.  A verifier reports the tier it actually verified and never
    upgrades a claim it could not check.
 
-   The honest human-in-the-loop flag (Section 5.4) is itself security-
+   The honest human-in-the-loop flag (Section 5.5) is itself security-
    relevant: it prevents a policy auto-approval from being presented as
    human oversight.  The invariant — human_disposed: true requires
    approver: "human" — is structurally guaranteed: a conforming producer
@@ -1490,6 +1618,14 @@ Internet-Draft            Agent Action Capsules                July 2026
    digesting candidate values and matching (a dictionary attack), so a
    reason_digest, evidence_digest, or any other digest over a low-
    entropy value is not confidential merely by being a digest.
+
+
+
+Mih                      Expires 7 January 2027                [Page 29]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
+
    Producers SHOULD commit such values under a per-tenant salt or via a
    tenant-private manifest rather than digesting the bare value, so that
    recovering the input requires the secret and not merely a guess of
@@ -1506,14 +1642,6 @@ Internet-Draft            Agent Action Capsules                July 2026
    producer that holds input-integrity evidence (a signed tool response,
    an attested transport record, a C2PA-style content credential, or an
    action-body HMAC with memory provenance attestation) MAY reference it
-
-
-
-Mih                      Expires 6 January 2027                [Page 27]
-
-Internet-Draft            Agent Action Capsules                July 2026
-
-
    by digest in the Capsule payload, preserving the verifier's
    disinterest — the verifier checks the binding without trusting the
    producer's claim about upstream systems it cannot observe.  This
@@ -1525,9 +1653,34 @@ Internet-Draft            Agent Action Capsules                July 2026
    addressed by composing a dedicated input-integrity mechanism
    upstream.
 
+   Payload-level identity is stable across signing-key rotation.  The
+   operator and developer fields in the Capsule payload (Section 5.1)
+   are plain strings committed to the capsule_id digest.  They are
+   independent of the signing key: a producer that rotates its COSE
+   signing key (and therefore changes the iss claim in the protected
+   header) without changing operator or developer preserves payload-
+   level identity continuity across the rotation.  A verifier
+   accumulating long-horizon history SHOULD correlate Capsules by
+   payload operator — and, when present, epoch_id (Section 5.2) — rather
+   than by the SCITT-layer iss claim, which may change on key rotation.
+   Absent a recorded linkage, pre- and post-rotation Capsules are
+   distinguishable by payload operator alone but not correlatable at the
+   SCITT-header layer; a producer SHOULD treat a key rotation that
+   coincides with a configuration change as an epoch boundary
+   (Section 5.2.2) to make the transition explicit in the record.
+
 14.  References
 
 14.1.  Normative References
+
+
+
+
+
+Mih                      Expires 7 January 2027                [Page 30]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -1561,15 +1714,6 @@ Internet-Draft            Agent Action Capsules                July 2026
               "CBOR Web Token (CWT)", RFC 8392, DOI 10.17487/RFC8392,
               May 2018, <https://www.rfc-editor.org/rfc/rfc8392>.
 
-
-
-
-
-Mih                      Expires 6 January 2027                [Page 28]
-
-Internet-Draft            Agent Action Capsules                July 2026
-
-
    [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
               Canonicalization Scheme (JCS)", RFC 8785,
               DOI 10.17487/RFC8785, June 2020,
@@ -1585,6 +1729,14 @@ Internet-Draft            Agent Action Capsules                July 2026
               Transparent Digital Supply Chains", RFC 9943,
               DOI 10.17487/RFC9943, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9943>.
+
+
+
+
+Mih                      Expires 7 January 2027                [Page 31]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
 
 14.2.  Informative References
 
@@ -1613,19 +1765,6 @@ Internet-Draft            Agent Action Capsules                July 2026
               <https://datatracker.ietf.org/doc/html/draft-ietf-cose-
               merkle-tree-proofs-18>.
 
-
-
-
-
-
-
-
-
-Mih                      Expires 6 January 2027                [Page 29]
-
-Internet-Draft            Agent Action Capsules                July 2026
-
-
    [I-D.ietf-scitt-receipts-ccf-profile]
               Birkholz, H., Delignat-Lavaud, A., Fournet, C., and A.
               Chamayou, "CCF Profile for COSE Receipts", Work in
@@ -1641,6 +1780,19 @@ Internet-Draft            Agent Action Capsules                July 2026
               scrapi-11, 26 June 2026,
               <https://datatracker.ietf.org/doc/html/draft-ietf-scitt-
               scrapi-11>.
+
+
+
+
+
+
+
+
+
+Mih                      Expires 7 January 2027                [Page 32]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
 
    [I-D.ietf-spice-sd-cwt]
               Prorock, M., Steele, O., Birkholz, H., and R. Mahy,
@@ -1672,16 +1824,6 @@ Internet-Draft            Agent Action Capsules                July 2026
               <https://datatracker.ietf.org/doc/html/draft-kamimura-vap-
               framework-00>.
 
-
-
-
-
-
-Mih                      Expires 6 January 2027                [Page 30]
-
-Internet-Draft            Agent Action Capsules                July 2026
-
-
    [I-D.mih-agent-bilateral-attestation]
               Mih, S., "Bilateral Agent Action Attestation", Work in
               Progress, Internet-Draft, draft-mih-agent-bilateral-
@@ -1695,6 +1837,18 @@ Internet-Draft            Agent Action Capsules                July 2026
               scitt-agent-action-capsule-selective-disclosure-00, n.d.,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
               agent-action-capsule-selective-disclosure-00>.
+
+
+
+
+
+
+
+
+Mih                      Expires 7 January 2027                [Page 33]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
 
    [I-D.munoz-scitt-permit-profile]
               Munoz, C., "A SCITT Profile for Pre-Execution AI Action
@@ -1710,6 +1864,13 @@ Internet-Draft            Agent Action Capsules                July 2026
               draft-nivalto-agentroa-route-authorization-01, 15 April
               2026, <https://datatracker.ietf.org/doc/html/draft-
               nivalto-agentroa-route-authorization-01>.
+
+   [I-D.rampalli-scitt-capsule-provenance-binding]
+              Rampalli, K., "SCITT Capsule Provenance Binding", Work in
+              Progress, Internet-Draft, draft-rampalli-scitt-capsule-
+              provenance-binding, n.d.,
+              <https://datatracker.ietf.org/doc/html/draft-rampalli-
+              scitt-capsule-provenance-binding>.
 
    [I-D.sato-soos-gar]
               Sato, "The Governance Audit Record (GAR) for Agentic AI
@@ -1731,17 +1892,19 @@ Internet-Draft            Agent Action Capsules                July 2026
               (URNs)", RFC 8141, DOI 10.17487/RFC8141, April 2017,
               <https://www.rfc-editor.org/rfc/rfc8141>.
 
-
-
-Mih                      Expires 6 January 2027                [Page 31]
-
-Internet-Draft            Agent Action Capsules                July 2026
-
-
    [RFC8949]  Bormann, C. and P. Hoffman, "Concise Binary Object
               Representation (CBOR)", STD 94, RFC 8949,
               DOI 10.17487/RFC8949, December 2020,
               <https://www.rfc-editor.org/rfc/rfc8949>.
+
+
+
+
+
+Mih                      Expires 7 January 2027                [Page 34]
+
+Internet-Draft            Agent Action Capsules                July 2026
+
 
    [RFC9053]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
               Initial Algorithms", RFC 9053, DOI 10.17487/RFC9053,
@@ -1789,4 +1952,9 @@ Author's Address
 
 
 
-Mih                      Expires 6 January 2027                [Page 32]
+
+
+
+
+
+Mih                      Expires 7 January 2027                [Page 35]
