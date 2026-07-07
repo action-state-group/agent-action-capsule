@@ -22,7 +22,7 @@ from agent_action_capsule.contracts import (
     InvariantError,
     SelfReportedReasoning,
 )
-from agent_action_capsule.parse import Capsule, parse_capsule
+from agent_action_capsule.parse import parse_capsule
 
 # ---------------------------------------------------------------------------
 # Helpers
