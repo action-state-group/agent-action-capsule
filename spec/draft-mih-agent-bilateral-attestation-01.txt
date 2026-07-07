@@ -81,21 +81,21 @@ Table of Contents
    5.  Refusal Across the Boundary . . . . . . . . . . . . . . . . .   6
    6.  Graceful Degradation  . . . . . . . . . . . . . . . . . . . .   6
    7.  Relationship to Existing Work . . . . . . . . . . . . . . . .   7
-   8.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
-     8.1.  Identity Is the Floor . . . . . . . . . . . . . . . . . .   7
+   8.  Security Considerations . . . . . . . . . . . . . . . . . . .   8
+     8.1.  Identity Is the Floor . . . . . . . . . . . . . . . . . .   8
      8.2.  Half-Completed Exchanges  . . . . . . . . . . . . . . . .   8
      8.3.  Downgrade Attacks . . . . . . . . . . . . . . . . . . . .   8
      8.4.  Replay and Cross-Binding  . . . . . . . . . . . . . . . .   8
-     8.5.  Key Establishment . . . . . . . . . . . . . . . . . . . .   8
+     8.5.  Key Establishment . . . . . . . . . . . . . . . . . . . .   9
      8.6.  Key Compromise and Revocation . . . . . . . . . . . . . .   9
      8.7.  Canonicalization and Hash Agility . . . . . . . . . . . .   9
      8.8.  Verification-Cost DoS . . . . . . . . . . . . . . . . . .   9
-   9.  Privacy Considerations  . . . . . . . . . . . . . . . . . . .   9
+   9.  Privacy Considerations  . . . . . . . . . . . . . . . . . . .  10
    10. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
    11. References  . . . . . . . . . . . . . . . . . . . . . . . . .  10
      11.1.  Normative References . . . . . . . . . . . . . . . . . .  10
-     11.2.  Informative References . . . . . . . . . . . . . . . . .  10
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  11
+     11.2.  Informative References . . . . . . . . . . . . . . . . .  11
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  12
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  12
 
 1.  Introduction
@@ -372,18 +372,18 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    records compose by shared action digest; a bilateral record naturally
    fills its cross-party leg.
 
-8.  Security Considerations
-
-8.1.  Identity Is the Floor
-
-   The evidentiary weight of a bilateral record is bounded by the
-   binding of keys to organizations.  This document inherits, and does
-   not solve, the organizational-identity problem; it requires only that
-   the credential chain to a root the relying party accepts, and that
-   identity be bound to the _record_, not merely the transport session.
-
-
-
+   Agent Transfer Protocol (AGTP) [I-D.hood-independent-agtp] defines
+   attestation within a dedicated transport, via a CONFIRM method
+   producing a signed acknowledgment of a prior action and an
+   Attribution-Record header for audit.  The bilateral attestation
+   specified here differs in three respects: it is transport-agnostic (a
+   SCITT Signed Statement that verifies identically over HTTP, A2A, MCP,
+   or AGTP); it is bilateral in the strict sense — each party holds the
+   other's signed attestation over the same action digest, rather than a
+   one-sided acknowledgment; and each record anchors to a transparency
+   service, so a party trusting neither agent can verify existence and
+   non-equivocation.  The two compose: an AGTP CONFIRM MAY carry and
+   anchor a capsule.
 
 
 
@@ -393,6 +393,21 @@ Mih                      Expires 7 January 2027                 [Page 7]
 
 Internet-Draft         Bilateral Agent Attestation             July 2026
 
+
+   [I-D.rampalli-scitt-capsule-provenance-binding] binds delegation-
+   authorization references into the capsule payload as namespaced
+   extensions, complementing both this profile and the base Agent Action
+   Capsule profile by shared action digest.
+
+8.  Security Considerations
+
+8.1.  Identity Is the Floor
+
+   The evidentiary weight of a bilateral record is bounded by the
+   binding of keys to organizations.  This document inherits, and does
+   not solve, the organizational-identity problem; it requires only that
+   the credential chain to a root the relying party accepts, and that
+   identity be bound to the _record_, not merely the transport session.
 
 8.2.  Half-Completed Exchanges
 
@@ -427,6 +442,14 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    reduced- assurance indicator.  The distinction matters: reduced
    assurance records a capability gap; denial records a protocol
    violation.  Two independent verifiers deriving disposition from the
+
+
+
+Mih                      Expires 7 January 2027                 [Page 8]
+
+Internet-Draft         Bilateral Agent Attestation             July 2026
+
+
    same canonical bytes MUST reach the same verdict.
 
 8.5.  Key Establishment
@@ -439,16 +462,6 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    bind signing keys to organizational identity via a credential
    chaining to a root the relying party accepts, independent of the
    communicating parties' infrastructure.
-
-
-
-
-
-
-Mih                      Expires 7 January 2027                 [Page 8]
-
-Internet-Draft         Bilateral Agent Attestation             July 2026
-
 
 8.6.  Key Compromise and Revocation
 
@@ -480,6 +493,19 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    before performing full verification, so request-attestation flooding
    cannot exhaust a performer at the effect boundary.
 
+
+
+
+
+
+
+
+
+Mih                      Expires 7 January 2027                 [Page 9]
+
+Internet-Draft         Bilateral Agent Attestation             July 2026
+
+
 9.  Privacy Considerations
 
    A bilateral record discloses, by construction, that two organizations
@@ -493,18 +519,6 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    (client-list reconstruction) is the residual risk; mitigations are
    TBD alongside the reputation layer's, which faces the same problem
    from the consumption side.
-
-
-
-
-
-
-
-
-Mih                      Expires 7 January 2027                 [Page 9]
-
-Internet-Draft         Bilateral Agent Attestation             July 2026
-
 
 10.  IANA Considerations
 
@@ -540,20 +554,6 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/rfc/rfc2119>.
 
-   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
-              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
-              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
-
-11.2.  Informative References
-
-   [I-D.mih-agent-reputation-predicates]
-              Mih, S., "Agent Reputation Predicates for SCITT-Anchored
-              Action Records", Work in Progress, Internet-Draft, I-
-              D.mih-agent-reputation-predicates-00, July 2026,
-              <https://datatracker.ietf.org/doc/html/I-D.mih-agent-
-              reputation-predicates-00>.
-
-
 
 
 
@@ -561,6 +561,15 @@ Mih                      Expires 7 January 2027                [Page 10]
 
 Internet-Draft         Bilateral Agent Attestation             July 2026
 
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
+
+11.2.  Informative References
+
+   [I-D.mih-agent-reputation-predicates]
+              "*** BROKEN REFERENCE ***".
 
    [I-D.mih-sato-agent-accountability-composition]
               Mih, S., Sato, Bu, S., and I. Schrock, "Agent
@@ -599,16 +608,7 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
               <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
               authorization-receipts-06>.
 
-   [RFC9334]  Birkholz, H., Thaler, D., Richardson, M., Smith, N., and
-              W. Pan, "Remote ATtestation procedureS (RATS)
-              Architecture", RFC 9334, DOI 10.17487/RFC9334, January
-              2023, <https://www.rfc-editor.org/rfc/rfc9334>.
 
-Acknowledgments
-
-   This exchange pattern owes its framing to discussions in the SCITT
-   and agent-accountability communities, and composes with the work of
-   the authors cited above.
 
 
 
@@ -618,35 +618,35 @@ Mih                      Expires 7 January 2027                [Page 11]
 Internet-Draft         Bilateral Agent Attestation             July 2026
 
 
+   [RFC9334]  Birkholz, H., Thaler, D., Richardson, M., Smith, N., and
+              W. Pan, "Remote ATtestation procedureS (RATS)
+              Architecture", RFC 9334, DOI 10.17487/RFC9334, January
+              2023, <https://www.rfc-editor.org/rfc/rfc9334>.
+
+   [I-D.hood-independent-agtp]
+              Hood, C., "Agent Transfer Protocol", Work in Progress,
+              Internet-Draft, draft-hood-independent-agtp, n.d.,
+              <https://datatracker.ietf.org/doc/html/draft-hood-
+              independent-agtp>.
+
+   [I-D.rampalli-scitt-capsule-provenance-binding]
+              Rampalli, K., "SCITT Capsule Provenance Binding", Work in
+              Progress, Internet-Draft, draft-rampalli-scitt-capsule-
+              provenance-binding, n.d.,
+              <https://datatracker.ietf.org/doc/html/draft-rampalli-
+              scitt-capsule-provenance-binding>.
+
+Acknowledgments
+
+   This exchange pattern owes its framing to discussions in the SCITT
+   and agent-accountability communities, and composes with the work of
+   the authors cited above.
+
 Author's Address
 
    Steven Mih
    Action State Group, Inc.
    Email: spec@actionstate.ai
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

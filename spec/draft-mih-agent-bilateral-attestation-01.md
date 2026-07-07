@@ -26,6 +26,22 @@ informative:
   I-D.kuehlewind-audit-architecture:
   I-D.schrock-ep-authorization-receipts:
   RFC9334:
+  I-D.hood-independent-agtp:
+    title: "Agent Transfer Protocol"
+    author:
+      - ins: C. Hood
+        name: Chris Hood
+        organization: Nomotic
+    seriesinfo:
+      Internet-Draft: draft-hood-independent-agtp
+  I-D.rampalli-scitt-capsule-provenance-binding:
+    title: "SCITT Capsule Provenance Binding"
+    author:
+      - ins: K. Rampalli
+        name: Karthik Rampalli
+        organization: Glyphzero
+    seriesinfo:
+      Internet-Draft: draft-rampalli-scitt-capsule-provenance-binding
 --- abstract
 
 When an agent operated by one organization requests a consequential action
@@ -265,6 +281,21 @@ sources this exchange can feed and reference. The accountability composition
 {{I-D.mih-sato-agent-accountability-composition}} describes how such records
 compose by shared action digest; a bilateral record naturally fills its
 cross-party leg.
+
+Agent Transfer Protocol (AGTP) {{I-D.hood-independent-agtp}} defines attestation
+within a dedicated transport, via a CONFIRM method producing a signed
+acknowledgment of a prior action and an Attribution-Record header for audit.
+The bilateral attestation specified here differs in three respects: it is
+transport-agnostic (a SCITT Signed Statement that verifies identically over
+HTTP, A2A, MCP, or AGTP); it is bilateral in the strict sense — each party
+holds the other's signed attestation over the same action digest, rather than
+a one-sided acknowledgment; and each record anchors to a transparency service,
+so a party trusting neither agent can verify existence and non-equivocation.
+The two compose: an AGTP CONFIRM MAY carry and anchor a capsule.
+
+{{I-D.rampalli-scitt-capsule-provenance-binding}} binds delegation-authorization
+references into the capsule payload as namespaced extensions, complementing both
+this profile and the base Agent Action Capsule profile by shared action digest.
 
 # Security Considerations
 
