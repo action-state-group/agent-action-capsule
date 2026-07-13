@@ -1,0 +1,5 @@
+{
+  "failed_stage": "what_class1",
+  "note": "the WHAT capsule fails Class-1 (capsule_id does not recompute) before composition is even considered",
+  "verified": false
+}
