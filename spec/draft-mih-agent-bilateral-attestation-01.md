@@ -15,10 +15,13 @@ author:
     org: Action State Group, Inc.
     email: spec@actionstate.ai
 normative:
+  RFC9942:
   RFC9943:
   RFC8785:
   I-D.mih-scitt-agent-action-capsule:
 informative:
+  RFC3461:
+  RFC8098:
   I-D.mih-agent-reputation-predicates:
   I-D.mih-sato-agent-accountability-composition:
   I-D.mih-scitt-agent-action-capsule-sel-disc:
@@ -249,6 +252,62 @@ a fully-bilateral record and a degraded record are never confusable, and
 consumers such as reputation predicates can require a minimum assurance
 (cf. the assurance ordering in {{I-D.mih-agent-reputation-predicates}}).
 Degradation MUST be recorded, never silent.
+
+# Dispositions Across the Asymmetry {#asymmetry-dispositions}
+
+The action dispositions above record what the performing party decided about
+the *action*. A second, smaller class records what happened to the *exchange*
+when it does not complete symmetrically; this class is meaningful only because
+the record is bilateral. Three asymmetry dispositions are defined, entered
+through the schema-extension protocol of
+{{I-D.mih-scitt-agent-action-capsule}} and kept distinct from the action
+vocabulary:
+
+- **`delivery_unconfirmed`:** the requesting party emitted its attestation but
+  delivery to the performing party could not be confirmed — the weakest
+  outcome, as the counterparty may never have received the request.
+- **`counterparty_timeout`:** delivery was confirmed, but the performing party
+  did not countersign within the request's validity window; the request lapses
+  into this disposition when the window closes.
+- **`countersign_refused`:** the performing party was reached and explicitly
+  refused to countersign.
+
+These are weaker than, and MUST NOT be conflated with, a declined action
+({{refusal-across-the-boundary}}): a decline is a *performed* boundary decision
+that the requester acknowledges — strong evidence — whereas a refusal to
+*countersign* is a failure of the exchange, not a decision about the action.
+For the same reason, a party that *declines to engage* before any request
+obligates it is not a party that *fails to countersign* a request already made;
+only the latter is evidentiary against the performing party.
+
+An asymmetry disposition binds to its request by correlation identifier and the
+shared action digest; a half that cannot be matched to a counterpart is an
+**orphan** — a defined state, not an error. A requesting party's half, anchored
+({{optional-relay}}) and marked with an asymmetry disposition, is admissible
+evidence that the attempt was made — the one fact neither party can establish
+alone — and a verifier weights an anchored-but-unacknowledged record
+accordingly.
+
+# The Optional Relay {#optional-relay}
+
+The exchange completes agent-to-agent; no intermediary is required, and the
+integrity of the record never depends on one. Where the parties are not
+simultaneously reachable, a *relay* MAY store and forward the attestations and
+issue delivery receipts. The relay is an optional, substitutable role: anyone
+can run one, relays federate, and the role reads no payloads — attestations
+traverse it as opaque, integrity-protected blobs, so a relay learns that a
+record moved, not what it said. A delivery receipt is itself an accountability
+claim, so a conformant relay MUST anchor the digests of the receipts it issues
+to a transparency log it advertises in discoverable metadata, where witnesses
+detect equivocation ({{RFC9943}}, {{RFC9942}}); the log is the relay's choice,
+this document names none, and a relay that will not anchor its own receipts is
+non-conformant. A receiving gate SHOULD countersign the envelope receipt, so
+that delivery becomes a fact both parties assert rather than one the relay
+asserts alone. Signed delivery receipts, and the fabrication attacks against
+them, are long-settled ground — the email DSN and MDN mechanisms
+({{RFC3461}}, {{RFC8098}}) addressed both decades ago — and this role inherits
+that discipline rather than reopening it. Reconciliation, directory, retry, and
+admission control are deployment concerns outside this document's scope.
 
 # Relationship to Existing Work
 
