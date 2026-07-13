@@ -1,0 +1,12 @@
+{
+  "failed_stage": null,
+  "stages": {
+    "digest_agreement": true,
+    "ref_binds": true,
+    "subject_digest_recompute": true,
+    "what_binds_subject": true,
+    "what_class1": true,
+    "who_authorization_present": true
+  },
+  "verified": true
+}

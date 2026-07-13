@@ -1,0 +1,5 @@
+{
+  "failed_stage": "digest_agreement",
+  "note": "WHO authorizes a different action than the capsule recorded; the shared-digest join is what catches it",
+  "verified": false
+}
