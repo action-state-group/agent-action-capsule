@@ -154,9 +154,11 @@ Action attestation:
 : A signed statement by the performing party, referencing a request
   attestation by digest, recording the deterministic constraint results
   evaluated at the effect boundary — each constraint identified by reference
-  so a third party can tell which check produced which result — and the
-  disposition of the request, bound to the performing party's verifiable
-  organizational identity.
+  so a third party can tell which check produced which result, pinned to a
+  digest of the constraint-set snapshot in effect and carrying a result for
+  every constraint in that set ({{constraint-records}}) — and the disposition
+  of the request, bound to the performing party's verifiable organizational
+  identity.
 
 Acknowledgment:
 : A signed statement by which a party records receipt of the counterparty's
@@ -219,6 +221,39 @@ semantics. A future revision fixing wire encodings MUST specify JCS
 ({{RFC8785}}) as the deterministic canonicalization for attested objects and
 carry an explicit hash-algorithm identifier for hash agility (see
 {{canonicalization}}).
+
+# Constraint Records {#constraint-records}
+
+The evidentiary value of an action attestation rests on *which* deterministic
+checks were applied and *what each returned*. Three obligations make that record
+complete and tamper-evident.
+
+**Constraint-set pinning.** The action attestation MUST bind a content digest of
+the constraint-set snapshot in effect at evaluation time, alongside the
+per-constraint results. The digest fixes *which* constraints — their identities
+and parameters — were in force when the request was disposed, so that a verifier
+can establish the applicable constraint set as of the attestation's anchored
+time, not merely at verification time — the same establishable-as-of-anchored-time
+property that {{key-compromise-revocation}} requires of key validity. A
+constraint set that can be silently re-parameterized after the fact would let a
+performing party restate what it was obligated to check; pinning its digest
+removes that degree of freedom.
+
+**Input-commitment digest.** For each evaluation, the performing party SHOULD
+bind an input-commitment digest — a digest over the inputs the constraints
+consulted — anchored as a commitment and disclosable to the counterparty or an
+auditor under the selective-disclosure model ({{privacy-considerations}}). This
+is a SHOULD, not a MUST: the state a constraint consults varies across
+deployments, and an honest SHOULD serves a verifier better than a nominal MUST
+that implementations cannot uniformly satisfy. A future revision MAY promote it
+on implementation experience.
+
+**Completeness.** The action attestation MUST carry a result for every
+constraint in the pinned set — each **pass**, **fail**, or **not-evaluated**
+(with a reason) — so that a constraint present in the pinned set but absent from
+the results is a *verifiable omission* rather than a silent gap. Selective
+reporting of only the favorable results is thereby detectable by any party
+holding the pinned constraint-set digest.
 
 # Refusal Across the Boundary {#refusal-across-the-boundary}
 
@@ -411,7 +446,7 @@ keys to organizational identity via a credential chaining to a root the
 relying party accepts, independent of the communicating parties'
 infrastructure.
 
-## Key Compromise and Revocation
+## Key Compromise and Revocation {#key-compromise-revocation}
 
 A signature valid at attestation time may
 be produced under a key compromised by verification time. A verifier SHOULD be
