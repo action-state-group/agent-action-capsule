@@ -45,6 +45,13 @@ informative:
         organization: Glyphzero
     seriesinfo:
       Internet-Draft: draft-rampalli-scitt-capsule-provenance-binding
+  I-D.morrison-solo-agent-earn-registration:
+    title: "Agent Earn Registration"
+    author:
+      - ins: B. Morrison
+        name: Blake Morrison
+    seriesinfo:
+      Internet-Draft: draft-morrison-solo-agent-earn-registration
 --- abstract
 
 When an agent operated by one organization requests a consequential action
@@ -165,6 +172,15 @@ Acknowledgment:
   attestation, completing the bilateral record. Receipt does not assert
   agreement with the attestation's contents; a party disputing a disposition
   does so in a subsequent linked record.
+
+Party identifier:
+: An opaque string naming a party (requesting or performing) within an
+  attestation.  A party identifier MAY resolve to a registration entry
+  admitted on the same transparency service (for example, one admitted under
+  {{I-D.morrison-solo-agent-earn-registration}}), in which case the party is
+  a registered principal with an admission record rather than a bare key.
+  Where it does, the attestation carries the digest of the admitted Signed
+  Statement as the reference.
 
 Verifiable organizational identity:
 : An organizational identity a relying party can validate independently of
@@ -502,3 +518,11 @@ objects and a registry for reduced-assurance indicator values. TBD.
 This exchange pattern owes its framing to discussions in the SCITT and
 agent-accountability communities, and composes with the work of the authors
 cited above.
+
+Iman Schrock (EMILIA Protocol) contributed the constraint-record obligations
+in this revision: constraint-set pinning (MUST), input-commitment digest
+(SHOULD), and completeness (MUST).
+
+Blake Morrison contributed the party-identifier MAY sentence in the
+Conventions and Definitions section, enabling party identifiers to resolve
+to registration entries admitted on the same transparency service.

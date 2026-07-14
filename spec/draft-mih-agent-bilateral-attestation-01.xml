@@ -155,6 +155,16 @@ attestation, completing the bilateral record. Receipt does not assert
 agreement with the attestation's contents; a party disputing a disposition
 does so in a subsequent linked record.</t>
         </dd>
+        <dt>Party identifier:</dt>
+        <dd>
+          <t>An opaque string naming a party (requesting or performing) within an
+attestation.  A party identifier <bcp14>MAY</bcp14> resolve to a registration
+entry admitted on the same transparency service (for example, one admitted
+under <xref target="I-D.morrison-solo-agent-earn-registration"/>), in which
+case the party is a registered principal with an admission record rather than
+a bare key.  Where it does, the attestation carries the digest of the
+admitted Signed Statement as the reference.</t>
+        </dd>
         <dt>Verifiable organizational identity:</dt>
         <dd>
           <t>An organizational identity a relying party can validate independently of
@@ -699,6 +709,16 @@ objects and a registry for reduced-assurance indicator values. TBD.</t>
           </front>
           <seriesInfo name="Internet-Draft" value="draft-rampalli-scitt-capsule-provenance-binding"/>
         </reference>
+        <reference anchor="I-D.morrison-solo-agent-earn-registration">
+          <front>
+            <title>Agent Earn Registration</title>
+            <author initials="B." surname="Morrison" fullname="Blake Morrison">
+              <organization/>
+            </author>
+            <date>n.d.</date>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-morrison-solo-agent-earn-registration"/>
+        </reference>
       </references>
     </references>
     <?line 421?>
@@ -708,6 +728,12 @@ objects and a registry for reduced-assurance indicator values. TBD.</t>
       <t>This exchange pattern owes its framing to discussions in the SCITT and
 agent-accountability communities, and composes with the work of the authors
 cited above.</t>
+      <t>Iman Schrock (EMILIA Protocol) contributed the constraint-record
+obligations in Section 3 of this revision: constraint-set pinning (MUST),
+input-commitment digest (SHOULD), and completeness (MUST).</t>
+      <t>Blake Morrison contributed the party-identifier MAY sentence in
+Section 2, enabling party identifiers to resolve to registration entries
+admitted on the same transparency service.</t>
     </section>
   </back>
   <!-- ##markdown-source:
