@@ -34,7 +34,7 @@ STAGES = [
     "what_binds_subject",         # capsule.compute_attestation.subject_digest == subject_digest
     "digest_agreement",           # WHO.action_hash (strip "sha256:") == subject_digest
     "who_authorization_present",  # WHO carries a signoff/signature (not an empty/unsigned ref)
-    "ref_binds",                  # capsule.human_authorization_ref.receipt_id == WHO.receipt_id
+    "ref_binds",                  # capsule.human_authorization_ref.digest == SHA-256(JCS(WHO))
 ]
 
 
@@ -66,7 +66,12 @@ def check(bundle: dict):
         return "who_authorization_present", r
 
     ref = ca.get("human_authorization_ref", {}) or {}
-    r["ref_binds"] = ref.get("receipt_id") == who.get("receipt_id")
+    # The ref binds the WHO document by CONTENT: human_authorization_ref.digest
+    # must equal SHA-256 over JCS of the WHO receipt. The receipt_id
+    # (ref.receipt_id vs who.receipt_id) is a human-readable label only, NOT the
+    # binding — the digest is, so a tampered WHO or a ref pointing elsewhere fails
+    # here even if the receipt_id string still matches.
+    r["ref_binds"] = ref.get("digest") == json_digest(who)
     if not r["ref_binds"]:
         return "ref_binds", r
 

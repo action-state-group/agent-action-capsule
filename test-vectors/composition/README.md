@@ -36,7 +36,9 @@ verifies the other's content; it is evidence that the digest-join composes.
 The staged verifier (`verify_composition.py`) checks, in order:
 `subject_digest_recompute` → `what_class1` → `what_binds_subject` →
 `digest_agreement` → `who_authorization_present` → `ref_binds`. A negative fails
-at exactly one documented stage.
+at exactly one documented stage. `ref_binds` binds the WHO document by **content**:
+`capsule.human_authorization_ref.digest` must equal `SHA-256(JCS(WHO))`, so a
+tampered WHO fails here; the `receipt_id` is a label, not the binding.
 
 ## Run
 
@@ -55,6 +57,6 @@ our side of the interop.
 ## Frozen
 
 `SHA256SUMS` fixes every file. The shared action and the WHO artifacts under
-`who/` are the EMILIA-supplied samples, included verbatim so the digest join is
-reproducible end to end. Terminology is neutral; EP-RECEIPT-v1 is named as the
-external WHO artifact it is.
+`who/` are produced with EMILIA Protocol tooling by Continuum, included verbatim
+so the digest join is reproducible end to end. Terminology is neutral;
+EP-RECEIPT-v1 is named as the external WHO artifact it is.
