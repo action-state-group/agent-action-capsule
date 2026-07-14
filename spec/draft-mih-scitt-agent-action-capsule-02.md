@@ -1138,6 +1138,58 @@ at the SCITT-header layer; a producer SHOULD treat a key rotation that
 coincides with a configuration change as an epoch boundary ({{epochboundary}})
 to make the transition explicit in the record.
 
+See also {{privacy}} of this document for the data-admission tiers that govern
+which runtime context fields MAY enter a Capsule, including the consequence of
+the low-entropy digest caveat above for end-user identity fields.
+
+# Privacy Considerations {#privacy}
+
+A Capsule is content-addressed, tamper-evident, and MAY be anchored to a
+Transparency Service. As a direct consequence, a committed Capsule cannot be
+retracted: there is no after-the-fact edit path, and an anchored record is durable
+beyond the producer's control. Therefore: anything admitted to a Capsule is
+admitted permanently, and PII or secrets in a content-addressed, tamper-evident,
+anchored record are unfixable by design. Producers MUST apply a default-deny
+posture to runtime context before it reaches a Capsule.
+
+## Data-Admission Tiers {#data-admission-tiers}
+
+Producer and adapter authors MUST classify every candidate field into exactly one
+of the following tiers before admission:
+
+1. **Clear-safe** — Opaque correlation handles that are joinable but
+   non-identifying: for example, `agent_name`, `function_call_id`,
+   `invocation_id`. A field is clear-safe when its value neither identifies a
+   natural person nor carries content material. These MAY be committed in clear.
+
+2. **Digest-only** — when a value must be *provable later* without being
+   *disclosed now*, it MUST be committed as a digest, never in clear. This tier
+   covers payload content: material a verifier may need to check but that must
+   not be exposed in the record. This tier is realized by the selective-disclosure
+   / detached-payload model ({{selectivedisclosure}}): the Capsule carries only a
+   digest; content is held under deployment controls and disclosed selectively.
+
+3. **Never-enters** — end-user identity (session identifiers, user identifiers,
+   account handles) and secrets/credentials (tokens, keys) MUST NOT enter a
+   Capsule, in clear or as a digest. Critical: hashing is not anonymization for
+   low-entropy identifiers. Session and user identifiers and similar low-entropy
+   values are recoverable by dictionary attack against their digest (see also
+   {{security}}). Therefore a digest of such an identifier is not a safe
+   substitute — the digest re-identifies. Identity MUST be excluded, not digested.
+   Where cross-record or cross-slot correlation of a subject is genuinely required,
+   a pairwise or encrypted correlation identifier SHOULD be used instead of the
+   raw or hashed user identifier.
+
+## Adapter Allow-List Pattern {#adapter-allow-list}
+
+Adapters SHOULD adopt an allow-list stance: enumerate the fields that MAY enter
+a Capsule (tier 1, plus tier-2 digests) and default-deny everything else. A
+block-list — enumerating what may NOT enter — fails open: when a runtime adds a
+new context field in a later version, a block-list silently admits it. An allow-list
+fails closed, which is the correct direction for a record that cannot be retracted
+once committed. Adapter authors SHOULD publish the allow-list in adapter
+documentation so deployers can audit admission without reading implementation code.
+
 --- back
 
 # Acknowledgments
@@ -1145,4 +1197,7 @@ to make the transition explicit in the record.
 
 The author thanks the reviewers and contributors who shaped the design
 recorded here, and the SCITT and COSE working groups whose substrate this
-profile builds on.
+profile builds on. The author additionally thanks Jody Edmondson for
+identifying the producer-context data-admission problem and the allow-list
+adapter pattern in capsule-emit issue #22, which shaped the Privacy
+Considerations of this document.
