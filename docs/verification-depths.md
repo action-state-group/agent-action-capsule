@@ -159,46 +159,51 @@ does not assert that one profile is a sub-profile of the other.
 
 ## Worked example — three-way composition (PermitReceipt + MachineMandate)
 
-This example threads all three depths using the Scott Lee / Anton Sokolov
-composition (see
+This example threads all three depths using the PermitReceipt + MachineMandate
+three-way composition (see
 `docs/interop/aac-permitreceipt-mandate-binding-profile.md`).
 
 **Setup:** An AI agent makes a EUR payment.  Two external artifacts authorize the
-action: a PermitReceipt (issued by the permit authority, Scott Lee's side) and a
-MachineMandate (issued by the AEP authority, Anton Sokolov's side).
+action: a PermitReceipt (a permit authority credential) and a MachineMandate (an
+AEP authority credential).  The bindings live in `effect.authorization`, a
+namespaced payload extension — not in `effect.request_digest`/`response_digest`,
+which retain their -02 semantics for the actual protected-action request and
+observed response.
 
 **Depth 1 — record integrity:**
 
 ```python
-from agent_action_capsule.canonical import json_digest
-import copy
+from agent_action_capsule.canonical import compute_capsule_id
 
-# Recompute capsule_id
-body = {k: v for k, v in capsule.items() if k not in ("capsule_id", "chain")}
-# absent-field normalization is applied inside json_digest
-assert json_digest(body) == capsule["capsule_id"]
+# Recompute capsule_id — effect.authorization is inside the JCS preimage
+assert compute_capsule_id(capsule) == capsule["capsule_id"]
 ```
 
 This check requires only the capsule record.  It does not require the
-PermitReceipt or MachineMandate documents.
+PermitReceipt or MachineMandate documents.  Both authorization references are
+inside the preimage, so tampering with either changes `capsule_id`.
 
 **Depth 2 — disclosure of both referenced artifacts:**
 
 ```python
-permit_digest = json_digest(permit_receipt)
-mandate_digest = json_digest(machine_mandate)
+from agent_action_capsule.canonical import json_digest
 
-assert permit_digest == capsule["effect"]["request_digest"]
-assert mandate_digest == capsule["effect"]["response_digest"]
+auth = capsule["effect"]["authorization"]
+
+permit_digest = json_digest(permit_receipt)
+assert permit_digest == auth["permit_receipt_digest"]["digest"]
+
+mandate_digest = json_digest(machine_mandate)
+assert mandate_digest == auth["machine_mandate_digest"]["digest"]
 ```
 
-Both digests are inside the capsule body and therefore covered by the
+Both typed references are inside `effect.authorization`, which is inside the
 `capsule_id` commitment from Depth 1.  Passing Depth 2 proves that these exact
 documents — `PermitReceipt.requested.amount = 425000` (EUR minor units,
 €4,250.00) and `MachineMandate.scope.max_spend = 500000` (EUR minor units,
 €5,000.00) — were the ones committed to at emission.
 
-For a runnable implementation:
+For a runnable implementation that also checks artifact structure:
 
 ```python
 from agent_action_capsule.verify_composition import verify_permitreceipt_mandate
