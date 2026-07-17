@@ -24,16 +24,16 @@ and the MachineMandate under which it was delegated.
 
 ---
 
-## 2. Binding location — `effect.authorization` payload extension
+## 2. Binding location — `effect.authorization` profile-defined payload extension
 
 This profile binds PermitReceipt and MachineMandate via **two typed references** in a
-namespaced payload extension under `effect.authorization`.  It does NOT overload
+profile-defined payload extension under `effect.authorization`.  It does NOT overload
 `effect.request_digest` or `effect.response_digest`, which retain their -02 semantics:
 
 | Field | -02 semantics (unchanged) |
 |---|---|
 | `effect.request_digest` | JSON-DIGEST of the actual protected-action request, when present |
-| `effect.response_digest` | JSON-DIGEST of the actual observed response (REQUIRED when `status: "confirmed"`) |
+| `effect.response_digest` | JSON-DIGEST of the actual observed response (REQUIRED when `status: "confirmed"`; this is the outcome weld for downstream consumers such as TPM PCR16) |
 
 The authorization references live alongside these fields:
 
@@ -58,40 +58,36 @@ post-emission change to either reference produces a different `capsule_id`.
 
 ## 3. Typed reference schema
 
-Each authorization reference is a JSON object with the following fields:
+Each authorization reference is a JSON object:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `type` | string | REQUIRED | Artifact type identifier, e.g. `"PermitReceipt"` or `"MachineMandate"` |
-| `digest_alg` | string | REQUIRED | Hash algorithm identifier, e.g. `"SHA-256"` |
-| `digest` | string | REQUIRED | 64-char lowercase hex SHA-256 of the canonical companion document |
+| `type` | string | REQUIRED | Artifact type identifier: `"PermitReceipt"` or `"MachineMandate"` |
+| `digest_alg` | string | REQUIRED | Hash algorithm: `"SHA-256"` |
+| `digest` | string | REQUIRED | 64-char lowercase hex SHA-256 — matches `^[0-9a-f]{64}$` |
+| `preimage` | string | optional | Preimage convention (see §3.1); defaults inferred from companion type |
 
 Additional fields (e.g., `profile`, `action_hash`) MAY be present; verifiers MUST
 ignore unrecognized fields.
 
-### Preimage definition
+### 3.1 Preimage conventions (profile-defined — exactly ONE per companion type)
 
-The digest is computed over the JCS-canonical form of the companion JSON document:
+| `preimage` value | Companion type | What is hashed |
+|---|---|---|
+| `json/jcs` (default for dict) | JSON document | SHA-256(JCS(normalize(companion_dict))) |
+| `jws/issuer-signed` (default for bytes) | SD-JWT credential | SHA-256(exact issuer-signed JWS component bytes) |
 
-1. Apply absent-field normalization: remove `null` values and empty containers
-   bottom-up.
-2. Serialize with RFC 8785 JCS: sort keys by UTF-16 code-unit order, compact
-   separators, UTF-8, no BOM.
-3. Compute SHA-256 of the resulting bytes; encode as lowercase hex (64 chars).
-
-### SD-JWT preimage
-
-When the companion document is an SD-JWT, use the exact bytes of the
-**issuer-signed JWT component** (the `~` separated JWT before the holder
-presentation suffix).  NEVER hash the holder-presentation/KB bytes or an unsigned
-companion descriptor — only the issuer-signed component is deterministic.
+**SD-JWT rule:** NEVER hash the holder-presentation or key-binding bytes; NEVER hash
+an unsigned companion descriptor.  The preimage MUST be the exact bytes of the
+issuer-signed component (the portion before the `~` separator in compact form).
 
 ---
 
 ## 4. Resolution and comparison procedure
 
-The companion documents are provided as parsed JSON objects alongside the capsule.
-The verifier resolves and passes them in; they are not fetched from a network.
+The companion documents are provided as parsed JSON objects (or raw JWS bytes for
+SD-JWT) alongside the capsule.  The verifier resolves and passes them in; they are not
+fetched from a network.
 
 ### Step-by-step for each reference
 
@@ -100,45 +96,42 @@ The verifier resolves and passes them in; they are not fetched from a network.
 1. Locate `capsule.effect.authorization`.  If absent or not an object, FAIL at gate
    `permit_receipt_bound`.
 2. Locate `.permit_receipt_digest`.  If absent, FAIL at gate `permit_receipt_bound`.
-3. Confirm `.permit_receipt_digest` is an object containing `type`, `digest_alg`,
-   and `digest`.  If any field is missing, FAIL at gate `permit_receipt_bound`.
+3. Confirm the reference is an object containing `type`, `digest_alg`, and `digest`.
+   If any field is missing, FAIL.
 4. Confirm `.type == "PermitReceipt"`.  FAIL on mismatch.
-5. Apply absent-field normalization to the PermitReceipt companion document.
-6. Serialize with RFC 8785 JCS.
-7. Compute SHA-256; encode as 64-char lowercase hex.
-8. Compare to `.digest`.  FAIL on mismatch.
+5. Confirm `.digest` matches `^[0-9a-f]{64}$`.  FAIL on mismatch.
+6. Compute the expected digest using the preimage convention declared in `.preimage`
+   (or the default for the companion type if absent).
+7. Compare to `.digest`.  FAIL on mismatch.
 
 **MachineMandate → `effect.authorization.machine_mandate_digest`**
 
-1. Locate `capsule.effect.authorization`.  If absent or not an object, FAIL at gate
-   `machine_mandate_bound`.
-2. Locate `.machine_mandate_digest`.  If absent, FAIL at gate `machine_mandate_bound`.
-3. Confirm `.machine_mandate_digest` is an object with `type`, `digest_alg`, `digest`.
-   FAIL on any missing field.
-4. Confirm `.type == "MachineMandate"`.  FAIL on mismatch.
-5. Apply absent-field normalization to the MachineMandate companion document.
-6. Serialize with RFC 8785 JCS.
-7. Compute SHA-256; encode as 64-char lowercase hex.
-8. Compare to `.digest`.  FAIL on mismatch.
+Same steps, with `.machine_mandate_digest` and `expected_type = "MachineMandate"`.
 
 Both references are evaluated independently.
 
 ---
 
-## 5. Fail-closed gates
+## 5. Binding-only verifier — four gates
 
-| Gate name | Input field | Failure condition | Effect |
-|---|---|---|---|
-| `permit_receipt_bound` | `effect.authorization.permit_receipt_digest` | Authorization block absent; reference absent; required field missing; type mismatch; digest mismatch | `ok=False` |
-| `machine_mandate_bound` | `effect.authorization.machine_mandate_digest` | Authorization block absent; reference absent; required field missing; type mismatch; digest mismatch | `ok=False` |
+This profile's verifier checks **cryptographic binding only**.  It does NOT perform
+owner appraisal.  Callers MUST supply the owner-appraisal result for each artifact
+as a mandatory input.  A digest match without a positive appraisal MUST NOT be
+treated as authorization success.
 
-`ok=True` only when **both** gates pass.
+| Gate name | Source | Failure condition |
+|---|---|---|
+| `permit_receipt_bound` | Digest binding check | Authorization block absent; reference absent; required field missing; type or digest mismatch |
+| `permit_receipt_appraised` | **Caller-supplied** (owner verifier result) | `None` (not provided) or `False` (owner rejected) |
+| `machine_mandate_bound` | Digest binding check | Authorization block absent; reference absent; required field missing; type or digest mismatch |
+| `machine_mandate_appraised` | **Caller-supplied** (owner verifier result) | `None` (not provided) or `False` (owner rejected) |
 
-**Gate failure semantics (per Scott Lee's correction):** "no effect-commit marker"
-means zero external-effect commits may proceed on the basis of this capsule's
-authorization binding.  A capsule whose gates fail MAY still be signed and
-registered as audit evidence — gate failure does not invalidate the capsule record
-itself.
+`bindings_ok` is True only when **all four** gates pass.
+
+**Gate failure semantics (per Scott Lee):** "no effect-commit marker" means zero
+external-effect commits may proceed on the basis of this capsule's authorization
+binding.  A capsule whose gates fail MAY still be signed and registered as audit
+evidence — gate failure does not invalidate the capsule record itself.
 
 ---
 
@@ -151,48 +144,16 @@ itself.
 | PermitReceipt | `requested.amount` | `425000` | EUR minor units (€4,250.00) — approved amount |
 | MachineMandate | `scope.max_spend` | `500000` | EUR minor units (€5,000.00) — delegated ceiling |
 
-### Minimal PermitReceipt
-
-```json
-{
-  "type": "PermitReceipt",
-  "version": "1",
-  "permit_id": "permit-2026-0716-001",
-  "issued_at": "2026-07-16T00:00:00Z",
-  "issuer": "example-permit-authority",
-  "requested": {
-    "currency": "EUR",
-    "amount": 425000,
-    "description": "Payment approved for INV-2026-0716 — server infrastructure renewal"
-  }
-}
-```
-
-### Minimal MachineMandate
-
-```json
-{
-  "type": "MachineMandate",
-  "version": "1",
-  "mandate_id": "mandate-2026-0716-001",
-  "issued_at": "2026-07-16T00:00:00Z",
-  "issuer": "example-aep-authority",
-  "scope": {
-    "currency": "EUR",
-    "max_spend": 500000,
-    "description": "Delegated payment authority for server infrastructure renewal"
-  }
-}
-```
-
-### Capsule effect block (after emission)
+### Capsule effect block (confirmed status, all fields)
 
 ```json
 {
   "effect": {
-    "status": "dispatched",
+    "status": "confirmed",
     "type": "payment",
     "effect_attestation": "runtime_claimed",
+    "request_digest": "<SHA-256(JCS(protected_action_request)) — actual I/O>",
+    "response_digest": "<SHA-256(JCS(observed_response)) — actual I/O, outcome weld>",
     "authorization": {
       "permit_receipt_digest": {
         "type": "PermitReceipt",
@@ -209,18 +170,22 @@ itself.
 }
 ```
 
+Note that `response_digest` is the outcome weld — it commits to the actual observed
+response, NOT the MachineMandate.  The two bindings are independent.
+
 ### Full digest thread
 
 ```
 PermitReceipt ──JCS+SHA-256──► effect.authorization.permit_receipt_digest.digest
                                         │
-                                        ▼
 MachineMandate ─JCS+SHA-256──► effect.authorization.machine_mandate_digest.digest
                                         │
-                                        ▼
-                capsule body (effect.authorization inside)
+protected_request ─JCS+SHA-256─► effect.request_digest (actual I/O)
+                                        │
+observed_response ─JCS+SHA-256─► effect.response_digest (outcome weld)
+                                        │
+                capsule body (all four inside)
                         │
-                        ▼
               capsule_id = SHA-256(JCS(capsule \ {capsule_id, chain}))
 ```
 
@@ -231,8 +196,22 @@ MachineMandate ─JCS+SHA-256──► effect.authorization.machine_mandate_dige
 ```python
 from agent_action_capsule.verify_composition import verify_permitreceipt_mandate
 
-result = verify_permitreceipt_mandate(capsule, permit_receipt, machine_mandate)
-# result = {"ok": True/False, "gates": [{"name": ..., "passed": ..., "reason": ...}, ...]}
+result = verify_permitreceipt_mandate(
+    capsule,
+    permit_receipt,        # dict or bytes (SD-JWT: issuer-signed JWS bytes)
+    machine_mandate,       # dict or bytes
+    permit_receipt_appraised=<bool from owner verifier>,
+    machine_mandate_appraised=<bool from owner verifier>,
+)
+# {
+#   "bindings_ok": True/False,
+#   "gates": [
+#     {"name": "permit_receipt_bound",      "passed": ..., "reason": "..."},
+#     {"name": "permit_receipt_appraised",  "passed": ..., "reason": "..."},
+#     {"name": "machine_mandate_bound",     "passed": ..., "reason": "..."},
+#     {"name": "machine_mandate_appraised", "passed": ..., "reason": "..."},
+#   ]
+# }
 ```
 
 Source: `python/agent_action_capsule/verify_composition.py`  

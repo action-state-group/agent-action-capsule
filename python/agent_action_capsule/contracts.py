@@ -181,6 +181,7 @@ class EffectRecord:
     external_ref: str | None = None
     irreversibility_class: str | None = None
     effect_attestation: str | None = None
+    authorization: dict | None = None
 
     def __post_init__(self) -> None:
         # status is REQUIRED (§5.2) — a non-empty string. Defense-in-depth so a

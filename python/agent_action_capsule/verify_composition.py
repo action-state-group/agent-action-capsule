@@ -1,32 +1,61 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""PermitReceipt + MachineMandate composition verifier.
+"""Binding-only verifier for the PermitReceipt + MachineMandate profile-defined
+payload extension.
 
-Implements the fail-closed gate checks defined in
-``docs/interop/aac-permitreceipt-mandate-binding-profile.md``.
+This module verifies **cryptographic binding only** — it confirms that the
+typed references in ``effect.authorization`` commit to the expected companion
+documents.  It does NOT perform owner appraisal of those documents.
 
-Each companion document is bound via a typed reference in the capsule's
-``effect.authorization`` payload extension — NOT via ``effect.request_digest``
-or ``effect.response_digest``, which retain their -02 semantics (actual
-protected-action request / actual observed response).
+Callers MUST supply the result of each artifact's owner appraisal as a separate
+mandatory input (``permit_receipt_appraised``, ``machine_mandate_appraised``).
+A positive digest-match without a corresponding appraisal MUST NOT be read as
+authorization success.
 
-    ``verify_permitreceipt_mandate(capsule, permit_receipt, machine_mandate)``
+See ``docs/interop/aac-permitreceipt-mandate-binding-profile.md`` for the full
+profile definition including gate semantics and preimage specification.
 
-Returns a result dict with:
+    ``verify_permitreceipt_mandate(
+        capsule,
+        permit_receipt,
+        machine_mandate,
+        *,
+        permit_receipt_appraised,
+        machine_mandate_appraised,
+    )``
 
-    ok    : bool  — True iff ALL gates pass
-    gates : list of {name, passed, reason}
+Returns a result dict:
 
-Both companion documents are resolved by the caller and passed directly.
-This function never raises on bad input — all failure modes produce ok=False
-with a descriptive reason.  A gate failure means zero external-effect commits
-may proceed; the capsule itself may still be signed and registered as audit
-evidence.
+    bindings_ok          : bool  — True iff ALL four gates pass
+    gates                : list of {name, passed, reason}
+
+Gate names (evaluated independently):
+    permit_receipt_bound      — digest binding check
+    permit_receipt_appraised  — owner-appraisal result (caller-supplied)
+    machine_mandate_bound     — digest binding check
+    machine_mandate_appraised — owner-appraisal result (caller-supplied)
+
+Gate failure semantics: "no effect-commit marker" means zero external-effect
+commits may proceed.  A capsule whose gates fail MAY still be signed and
+registered as audit evidence.
+
+Preimage conventions (profile-defined):
+    PREIMAGE_JSON_JCS       — SHA-256(JCS(normalize(companion_dict)))
+    PREIMAGE_JWS_ISSUER     — SHA-256(exact issuer-signed JWS component bytes)
 """
 from __future__ import annotations
 
+import hashlib
+
 from .canonical import json_digest
 
-__all__ = ["verify_permitreceipt_mandate"]
+__all__ = [
+    "verify_permitreceipt_mandate",
+    "PREIMAGE_JSON_JCS",
+    "PREIMAGE_JWS_ISSUER",
+]
+
+PREIMAGE_JSON_JCS = "json/jcs"
+PREIMAGE_JWS_ISSUER = "jws/issuer-signed"
 
 _REQUIRED_REF_FIELDS = ("type", "digest_alg", "digest")
 
@@ -35,20 +64,46 @@ def _gate(name: str, passed: bool, reason: str) -> dict:
     return {"name": name, "passed": passed, "reason": reason}
 
 
+def _compute_ref_digest(companion: dict | bytes, preimage: str | None) -> str:
+    """Compute the expected digest for a companion document.
+
+    ``preimage`` selects the preimage convention:
+    - ``PREIMAGE_JSON_JCS`` (default for dict companions): SHA-256(JCS(normalize(companion)))
+    - ``PREIMAGE_JWS_ISSUER`` (for SD-JWT companions supplied as bytes):
+      SHA-256(exact issuer-signed JWS component bytes)
+    """
+    if isinstance(companion, (bytes, bytearray)):
+        if preimage is None:
+            preimage = PREIMAGE_JWS_ISSUER
+        if preimage != PREIMAGE_JWS_ISSUER:
+            raise ValueError(
+                f"bytes companion requires preimage={PREIMAGE_JWS_ISSUER!r}; got {preimage!r}"
+            )
+        return hashlib.sha256(companion).hexdigest()
+    # dict companion
+    if preimage is None:
+        preimage = PREIMAGE_JSON_JCS
+    if preimage != PREIMAGE_JSON_JCS:
+        raise ValueError(
+            f"dict companion requires preimage={PREIMAGE_JSON_JCS!r}; got {preimage!r}"
+        )
+    return json_digest(companion)
+
+
 def _check_typed_reference(
     ref: object,
     expected_type: str,
-    companion: dict,
+    companion: dict | bytes,
     gate_name: str,
 ) -> dict:
-    """Appraise one typed authorization reference against its companion doc.
+    """Appraise one typed authorization reference against its companion document.
 
     Checks (in order):
     1. Reference is a JSON object.
     2. Required fields present: ``type``, ``digest_alg``, ``digest``.
     3. ``type`` matches expected_type.
-    4. ``digest`` is a 64-char hex string.
-    5. ``digest`` == SHA-256(JCS(companion)).
+    4. ``digest`` is a 64-char hex string matching ``^[0-9a-f]{64}$``.
+    5. ``digest`` == digest computed from companion using the declared preimage.
     """
     if not isinstance(ref, dict):
         return _gate(gate_name, False, "authorization reference is not an object")
@@ -59,61 +114,67 @@ def _check_typed_reference(
 
     if ref.get("type") != expected_type:
         return _gate(
-            gate_name,
-            False,
+            gate_name, False,
             f"type mismatch: expected {expected_type!r}, got {ref.get('type')!r}",
         )
 
     digest_in_ref = ref.get("digest")
-    if not isinstance(digest_in_ref, str) or len(digest_in_ref) != 64:
-        return _gate(gate_name, False, "reference.digest is missing or not a 64-char hex string")
+    if not isinstance(digest_in_ref, str) or len(digest_in_ref) != 64 or not all(
+        c in "0123456789abcdef" for c in digest_in_ref
+    ):
+        return _gate(gate_name, False, "reference.digest must be a 64-char lowercase hex string")
 
+    preimage = ref.get("preimage")
     try:
-        expected_digest = json_digest(companion)
+        expected_digest = _compute_ref_digest(companion, preimage)
     except Exception as exc:  # noqa: BLE001
-        return _gate(gate_name, False, f"failed to canonicalize companion document: {exc}")
+        return _gate(gate_name, False, f"failed to compute companion digest: {exc}")
 
     if digest_in_ref == expected_digest:
-        return _gate(
-            gate_name,
-            True,
-            f"reference.digest matches SHA-256(JCS({expected_type}))",
-        )
+        return _gate(gate_name, True, f"reference.digest matches {preimage or 'default preimage'}({expected_type})")
     return _gate(
-        gate_name,
-        False,
+        gate_name, False,
         f"digest mismatch: reference has {digest_in_ref!r}, computed {expected_digest!r}",
     )
 
 
 def verify_permitreceipt_mandate(
     capsule: dict,
-    permit_receipt: dict,
-    machine_mandate: dict,
+    permit_receipt: dict | bytes,
+    machine_mandate: dict | bytes,
+    *,
+    permit_receipt_appraised: bool | None,
+    machine_mandate_appraised: bool | None,
 ) -> dict:
-    """Verify that *capsule* cryptographically binds *permit_receipt* and
-    *machine_mandate* via ``effect.authorization`` typed references.
+    """Binding-only verifier for the PermitReceipt + MachineMandate extension.
+
+    Verifies cryptographic binding via ``effect.authorization`` typed references
+    AND incorporates owner-appraisal results as mandatory gate inputs.
 
     Parameters
     ----------
     capsule:
-        The AAC capsule dict (parsed JSON).  The binding is in
-        ``capsule.effect.authorization.permit_receipt_digest`` (typed reference
-        to PermitReceipt) and ``capsule.effect.authorization.machine_mandate_digest``
-        (typed reference to MachineMandate).
+        The AAC capsule dict.  Authorization references live in
+        ``capsule.effect.authorization.permit_receipt_digest`` and
+        ``capsule.effect.authorization.machine_mandate_digest``.
     permit_receipt:
-        The PermitReceipt companion document (parsed JSON).
+        The PermitReceipt companion document — either a parsed JSON dict
+        (preimage: json/jcs) or raw issuer-signed JWS bytes (preimage:
+        jws/issuer-signed).
     machine_mandate:
-        The MachineMandate companion document (parsed JSON).
+        The MachineMandate companion document — either a dict or bytes.
+    permit_receipt_appraised:
+        True if the owner verifier accepted the PermitReceipt; False if
+        rejected; None if the appraisal was not performed (gate fails).
+    machine_mandate_appraised:
+        True if the owner verifier accepted the MachineMandate; False if
+        rejected; None if the appraisal was not performed (gate fails).
 
     Returns
     -------
-    dict with keys ``ok`` (bool) and ``gates`` (list of gate result dicts).
-    ``ok`` is True only when ALL gates pass.
-
-    Gate failure semantics (per Scott Lee's correction):
-    "no effect-commit marker" means zero external-effect commits may proceed;
-    a failed capsule MAY still be signed and registered as audit evidence.
+    dict with keys ``bindings_ok`` (bool) and ``gates`` (list of gate result
+    dicts).  ``bindings_ok`` is True only when ALL four gates pass.
+    A digest match without a True appraisal is NOT authorization success.
     """
     gates: list[dict] = []
 
@@ -126,12 +187,20 @@ def verify_permitreceipt_mandate(
             "effect.authorization is missing or not an object",
         ))
         gates.append(_gate(
+            "permit_receipt_appraised", False,
+            "effect.authorization is missing — appraisal not applicable",
+        ))
+        gates.append(_gate(
             "machine_mandate_bound", False,
             "effect.authorization is missing or not an object",
         ))
-        return {"ok": False, "gates": gates}
+        gates.append(_gate(
+            "machine_mandate_appraised", False,
+            "effect.authorization is missing — appraisal not applicable",
+        ))
+        return {"bindings_ok": False, "gates": gates}
 
-    # Gate 1 — permit_receipt_bound
+    # Gate 1 — permit_receipt_bound (digest binding)
     permit_ref = authorization.get("permit_receipt_digest")
     if permit_ref is None:
         gates.append(_gate(
@@ -143,7 +212,18 @@ def verify_permitreceipt_mandate(
             permit_ref, "PermitReceipt", permit_receipt, "permit_receipt_bound",
         ))
 
-    # Gate 2 — machine_mandate_bound
+    # Gate 2 — permit_receipt_appraised (owner appraisal, caller-supplied)
+    if permit_receipt_appraised is True:
+        gates.append(_gate("permit_receipt_appraised", True, "owner verifier accepted PermitReceipt"))
+    elif permit_receipt_appraised is False:
+        gates.append(_gate("permit_receipt_appraised", False, "owner verifier rejected PermitReceipt"))
+    else:
+        gates.append(_gate(
+            "permit_receipt_appraised", False,
+            "owner appraisal result not provided — caller must supply the result of the owner verifier",
+        ))
+
+    # Gate 3 — machine_mandate_bound (digest binding)
     mandate_ref = authorization.get("machine_mandate_digest")
     if mandate_ref is None:
         gates.append(_gate(
@@ -155,5 +235,16 @@ def verify_permitreceipt_mandate(
             mandate_ref, "MachineMandate", machine_mandate, "machine_mandate_bound",
         ))
 
-    ok = all(g["passed"] for g in gates)
-    return {"ok": ok, "gates": gates}
+    # Gate 4 — machine_mandate_appraised (owner appraisal, caller-supplied)
+    if machine_mandate_appraised is True:
+        gates.append(_gate("machine_mandate_appraised", True, "owner verifier accepted MachineMandate"))
+    elif machine_mandate_appraised is False:
+        gates.append(_gate("machine_mandate_appraised", False, "owner verifier rejected MachineMandate"))
+    else:
+        gates.append(_gate(
+            "machine_mandate_appraised", False,
+            "owner appraisal result not provided — caller must supply the result of the owner verifier",
+        ))
+
+    bindings_ok = all(g["passed"] for g in gates)
+    return {"bindings_ok": bindings_ok, "gates": gates}

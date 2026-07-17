@@ -151,9 +151,14 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
         # Without this guard, EffectRecord(**...) below raises a bare TypeError
         # (missing positional 'status') instead of a structured InvariantError.
         raise InvariantError("effect.status is REQUIRED when an effect is present (§5.2)")
-    effect = EffectRecord(**{k: eff.get(k) for k in (
+    _effect_core_fields = (
         "status", "type", "request_digest", "response_digest", "external_ref",
-        "irreversibility_class", "effect_attestation") if k in eff}) if eff else None
+        "irreversibility_class", "effect_attestation",
+    )
+    _effect_kwargs = {k: eff.get(k) for k in _effect_core_fields if k in eff} if eff else {}
+    if eff is not None and "authorization" in eff and isinstance(eff.get("authorization"), dict):
+        _effect_kwargs["authorization"] = eff["authorization"]
+    effect = EffectRecord(**_effect_kwargs) if eff else None
 
     asr = _block(d, "assurance")
     assurance = AssuranceBlock(
