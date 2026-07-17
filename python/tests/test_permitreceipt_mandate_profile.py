@@ -1,34 +1,36 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Tests for the PermitReceipt + MachineMandate binding profile.
 
-Covers:
-  - Positive case: correct companion docs → ok=True, both gates pass.
-  - Missing effect.request_digest → permit_receipt_bound gate fails.
-  - Mismatched request_digest (wrong PermitReceipt) → permit_receipt_bound gate fails.
-  - Missing effect.response_digest → machine_mandate_bound gate fails.
-  - Mismatched response_digest (wrong MachineMandate) → machine_mandate_bound gate fails.
+Binding location (v2): ``effect.authorization`` namespaced payload extension,
+NOT ``effect.request_digest`` / ``effect.response_digest`` (those retain -02
+semantics: actual protected-action request / actual observed response).
 
 NOTE: this profile is OWNER-PROPOSED — REVIEW PENDING — NOT AGREED — NOT A RESULT.
-The extension field layout will move to a namespaced payload extension in a
-subsequent revision; these tests exercise the gate logic only.
 
 Illustrative composition paths (subject to revision):
   - PermitReceipt.requested.amount = 425000 (EUR minor units = €4,250.00)
   - MachineMandate.scope.max_spend   = 500000 (EUR minor units = €5,000.00)
+
+Covers:
+  - Round-trip: effect.authorization enters capsule_id JCS preimage.
+  - Positive case: correct typed references → ok=True, both gates pass.
+  - Missing effect.authorization → both gates fail.
+  - Missing permit_receipt_digest reference → permit_receipt_bound fails.
+  - Missing machine_mandate_digest reference → machine_mandate_bound fails.
+  - Wrong companion document → digest mismatch, named gate fails.
+  - Malformed reference (missing required field) → named gate fails.
 """
 from __future__ import annotations
 
 import copy
 
-import pytest
-
-from agent_action_capsule.canonical import json_digest
+from agent_action_capsule.canonical import compute_capsule_id, json_digest
 from agent_action_capsule.contracts import EffectRecord
 from agent_action_capsule.emit import emit
 from agent_action_capsule.verify_composition import verify_permitreceipt_mandate
 
 # ---------------------------------------------------------------------------
-# Illustrative test documents (subject to revision — profile not yet agreed)
+# Illustrative companion documents (subject to revision — profile not yet agreed)
 # ---------------------------------------------------------------------------
 
 PERMIT_RECEIPT: dict = {
@@ -59,39 +61,82 @@ MACHINE_MANDATE: dict = {
 
 
 # ---------------------------------------------------------------------------
-# Helper: mint a capsule with given request_digest / response_digest
+# Helper: build a typed authorization reference
+# ---------------------------------------------------------------------------
+
+def _typed_ref(artifact: dict, artifact_type: str) -> dict:
+    return {
+        "type": artifact_type,
+        "digest_alg": "SHA-256",
+        "digest": json_digest(artifact),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Helper: mint a capsule with an effect.authorization extension
 # ---------------------------------------------------------------------------
 
 def _mint_capsule(
-    request_digest: str | None = None,
-    response_digest: str | None = None,
+    permit_receipt: dict | None = None,
+    machine_mandate: dict | None = None,
 ) -> dict:
-    """Emit a capsule whose effect block carries the given digests.
+    """Emit a base capsule and inject effect.authorization typed references.
 
-    When response_digest is absent we use status='dispatched'; when it is
-    present we use status='confirmed' (which requires a well-formed response_digest).
+    The authorization extension is added to the effect sub-object BEFORE
+    capsule_id is computed, so both references enter the JCS preimage.
     """
-    if response_digest is not None:
-        effect = EffectRecord(
-            status="confirmed",
-            type="payment",
-            request_digest=request_digest,
-            response_digest=response_digest,
-        )
-    elif request_digest is not None:
-        effect = EffectRecord(
-            status="dispatched",
-            type="payment",
-            request_digest=request_digest,
-        )
-    else:
-        effect = EffectRecord(status="dispatched", type="payment")
-
-    return emit(
+    # Base capsule with a dispatched effect (no -02 request/response digests needed).
+    base = emit(
         action_type="decide",
         operator="asg-test",
         developer="test-agent@v1",
-        effect=effect,
+        effect=EffectRecord(status="dispatched", type="payment"),
+    )
+
+    authorization: dict = {}
+    if permit_receipt is not None:
+        authorization["permit_receipt_digest"] = _typed_ref(permit_receipt, "PermitReceipt")
+    if machine_mandate is not None:
+        authorization["machine_mandate_digest"] = _typed_ref(machine_mandate, "MachineMandate")
+
+    if not authorization:
+        return base
+
+    # Inject the authorization extension into the effect sub-object.
+    effect = dict(base["effect"])
+    effect["authorization"] = authorization
+
+    capsule = dict(base)
+    capsule["effect"] = effect
+    # Recompute capsule_id — effect.authorization is now inside the JCS preimage.
+    capsule["capsule_id"] = compute_capsule_id(capsule)
+    return capsule
+
+
+# ---------------------------------------------------------------------------
+# Round-trip / preimage test
+# ---------------------------------------------------------------------------
+
+def test_authorization_enters_capsule_id_preimage():
+    """effect.authorization must be inside the capsule_id JCS preimage.
+
+    Verifies that:
+    1. capsule_id == SHA-256(JCS(capsule \\ {capsule_id, chain})) — the
+       authorization extension is committed to.
+    2. Tampering with the authorization digest produces a different capsule_id.
+    """
+    capsule = _mint_capsule(permit_receipt=PERMIT_RECEIPT, machine_mandate=MACHINE_MANDATE)
+
+    # Recompute capsule_id independently and confirm it matches.
+    assert compute_capsule_id(capsule) == capsule["capsule_id"], (
+        "capsule_id does not match the recomputed digest — authorization may not be in preimage"
+    )
+
+    # Tamper with the authorization digest and confirm capsule_id changes.
+    tampered = copy.deepcopy(capsule)
+    tampered["effect"]["authorization"]["permit_receipt_digest"]["digest"] = "a" * 64
+    assert compute_capsule_id(tampered) != capsule["capsule_id"], (
+        "tampering with effect.authorization did not change capsule_id — preimage not covered"
     )
 
 
@@ -100,11 +145,8 @@ def _mint_capsule(
 # ---------------------------------------------------------------------------
 
 def test_positive_both_correct():
-    """Correct PermitReceipt + MachineMandate → ok=True, both gates pass."""
-    req_digest = json_digest(PERMIT_RECEIPT)
-    resp_digest = json_digest(MACHINE_MANDATE)
-
-    capsule = _mint_capsule(request_digest=req_digest, response_digest=resp_digest)
+    """Correct typed references → ok=True, both gates pass."""
+    capsule = _mint_capsule(permit_receipt=PERMIT_RECEIPT, machine_mandate=MACHINE_MANDATE)
     result = verify_permitreceipt_mandate(capsule, PERMIT_RECEIPT, MACHINE_MANDATE)
 
     assert result["ok"] is True
@@ -114,17 +156,34 @@ def test_positive_both_correct():
 
 
 # ---------------------------------------------------------------------------
-# Missing effect.request_digest
+# Missing effect.authorization
 # ---------------------------------------------------------------------------
 
-def test_missing_request_digest():
-    """Missing effect.request_digest → permit_receipt_bound gate fails, ok=False."""
-    resp_digest = json_digest(MACHINE_MANDATE)
-    # Only response_digest is present; request_digest absent (dispatched not valid here;
-    # use confirmed with just response_digest by manually patching the capsule).
-    capsule = _mint_capsule(response_digest=resp_digest)
-    # Confirm request_digest is not in the capsule effect
-    assert capsule.get("effect", {}).get("request_digest") is None
+def test_missing_authorization_block():
+    """Missing effect.authorization → both gates fail."""
+    base = emit(
+        action_type="decide",
+        operator="asg-test",
+        developer="test-agent@v1",
+        effect=EffectRecord(status="dispatched", type="payment"),
+    )
+    result = verify_permitreceipt_mandate(base, PERMIT_RECEIPT, MACHINE_MANDATE)
+
+    assert result["ok"] is False
+    gate_names = {g["name"]: g for g in result["gates"]}
+    assert gate_names["permit_receipt_bound"]["passed"] is False
+    assert gate_names["machine_mandate_bound"]["passed"] is False
+
+
+# ---------------------------------------------------------------------------
+# Missing permit_receipt_digest reference
+# ---------------------------------------------------------------------------
+
+def test_missing_permit_receipt_reference():
+    """Missing permit_receipt_digest → permit_receipt_bound fails; machine_mandate_bound passes."""
+    capsule = _mint_capsule(machine_mandate=MACHINE_MANDATE)
+    # Only machine_mandate_digest is in the authorization block.
+    assert "permit_receipt_digest" not in capsule.get("effect", {}).get("authorization", {})
 
     result = verify_permitreceipt_mandate(capsule, PERMIT_RECEIPT, MACHINE_MANDATE)
 
@@ -132,43 +191,17 @@ def test_missing_request_digest():
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["permit_receipt_bound"]["passed"] is False
     assert "missing" in gate_names["permit_receipt_bound"]["reason"].lower()
-
-
-# ---------------------------------------------------------------------------
-# Mismatched request_digest (wrong PermitReceipt document)
-# ---------------------------------------------------------------------------
-
-def test_mismatched_request_digest():
-    """Wrong PermitReceipt doc → permit_receipt_bound gate fails, ok=False."""
-    wrong_permit = copy.deepcopy(PERMIT_RECEIPT)
-    wrong_permit["requested"]["amount"] = 999999  # tampered amount
-
-    # Capsule was minted against the original PERMIT_RECEIPT
-    req_digest = json_digest(PERMIT_RECEIPT)
-    resp_digest = json_digest(MACHINE_MANDATE)
-    capsule = _mint_capsule(request_digest=req_digest, response_digest=resp_digest)
-
-    # Verify against the wrong permit receipt
-    result = verify_permitreceipt_mandate(capsule, wrong_permit, MACHINE_MANDATE)
-
-    assert result["ok"] is False
-    gate_names = {g["name"]: g for g in result["gates"]}
-    assert gate_names["permit_receipt_bound"]["passed"] is False
-    assert "mismatch" in gate_names["permit_receipt_bound"]["reason"].lower()
-    # Machine mandate gate should still pass since response_digest is correct
     assert gate_names["machine_mandate_bound"]["passed"] is True
 
 
 # ---------------------------------------------------------------------------
-# Missing effect.response_digest
+# Missing machine_mandate_digest reference
 # ---------------------------------------------------------------------------
 
-def test_missing_response_digest():
-    """Missing effect.response_digest → machine_mandate_bound gate fails, ok=False."""
-    req_digest = json_digest(PERMIT_RECEIPT)
-    # Mint with dispatched status so no response_digest is present
-    capsule = _mint_capsule(request_digest=req_digest)
-    assert capsule.get("effect", {}).get("response_digest") is None
+def test_missing_machine_mandate_reference():
+    """Missing machine_mandate_digest → machine_mandate_bound fails; permit_receipt_bound passes."""
+    capsule = _mint_capsule(permit_receipt=PERMIT_RECEIPT)
+    assert "machine_mandate_digest" not in capsule.get("effect", {}).get("authorization", {})
 
     result = verify_permitreceipt_mandate(capsule, PERMIT_RECEIPT, MACHINE_MANDATE)
 
@@ -176,28 +209,61 @@ def test_missing_response_digest():
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["machine_mandate_bound"]["passed"] is False
     assert "missing" in gate_names["machine_mandate_bound"]["reason"].lower()
+    assert gate_names["permit_receipt_bound"]["passed"] is True
 
 
 # ---------------------------------------------------------------------------
-# Mismatched response_digest (wrong MachineMandate document)
+# Wrong companion document (digest mismatch)
 # ---------------------------------------------------------------------------
 
-def test_mismatched_response_digest():
-    """Wrong MachineMandate doc → machine_mandate_bound gate fails, ok=False."""
+def test_mismatched_permit_receipt():
+    """Wrong PermitReceipt doc → permit_receipt_bound fails; machine_mandate_bound passes."""
+    capsule = _mint_capsule(permit_receipt=PERMIT_RECEIPT, machine_mandate=MACHINE_MANDATE)
+
+    wrong_permit = copy.deepcopy(PERMIT_RECEIPT)
+    wrong_permit["requested"]["amount"] = 999999  # tampered
+
+    result = verify_permitreceipt_mandate(capsule, wrong_permit, MACHINE_MANDATE)
+
+    assert result["ok"] is False
+    gate_names = {g["name"]: g for g in result["gates"]}
+    assert gate_names["permit_receipt_bound"]["passed"] is False
+    assert "mismatch" in gate_names["permit_receipt_bound"]["reason"].lower()
+    assert gate_names["machine_mandate_bound"]["passed"] is True
+
+
+def test_mismatched_machine_mandate():
+    """Wrong MachineMandate doc → machine_mandate_bound fails; permit_receipt_bound passes."""
+    capsule = _mint_capsule(permit_receipt=PERMIT_RECEIPT, machine_mandate=MACHINE_MANDATE)
+
     wrong_mandate = copy.deepcopy(MACHINE_MANDATE)
-    wrong_mandate["scope"]["max_spend"] = 100000  # tampered limit
+    wrong_mandate["scope"]["max_spend"] = 100000  # tampered
 
-    # Capsule was minted against the original MACHINE_MANDATE
-    req_digest = json_digest(PERMIT_RECEIPT)
-    resp_digest = json_digest(MACHINE_MANDATE)
-    capsule = _mint_capsule(request_digest=req_digest, response_digest=resp_digest)
-
-    # Verify against the wrong machine mandate
     result = verify_permitreceipt_mandate(capsule, PERMIT_RECEIPT, wrong_mandate)
 
     assert result["ok"] is False
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["machine_mandate_bound"]["passed"] is False
     assert "mismatch" in gate_names["machine_mandate_bound"]["reason"].lower()
-    # Permit receipt gate should still pass since request_digest is correct
     assert gate_names["permit_receipt_bound"]["passed"] is True
+
+
+# ---------------------------------------------------------------------------
+# Malformed reference (missing required field)
+# ---------------------------------------------------------------------------
+
+def test_malformed_reference_missing_type():
+    """Reference missing 'type' field → named gate fails."""
+    capsule = _mint_capsule(permit_receipt=PERMIT_RECEIPT, machine_mandate=MACHINE_MANDATE)
+
+    # Strip the 'type' field from the permit reference.
+    tampered = copy.deepcopy(capsule)
+    del tampered["effect"]["authorization"]["permit_receipt_digest"]["type"]
+    tampered["capsule_id"] = compute_capsule_id(tampered)
+
+    result = verify_permitreceipt_mandate(tampered, PERMIT_RECEIPT, MACHINE_MANDATE)
+
+    assert result["ok"] is False
+    gate_names = {g["name"]: g for g in result["gates"]}
+    assert gate_names["permit_receipt_bound"]["passed"] is False
+    assert gate_names["machine_mandate_bound"]["passed"] is True
