@@ -1,0 +1,61 @@
+> **Licensing note:** the code in this repository is BSD-3-Clause (see LICENSE).
+> The specification text under `spec/` is governed by BCP 78/79 — see LICENSING.md
+> for the full two-regime statement.
+
+This repository contains an IETF Internet-Draft and related material. Two
+licensing regimes apply, by content type.
+
+================================================================================
+1. SPECIFICATION TEXT
+   (the Internet-Draft "draft-mih-scitt-agent-action-capsule" under spec/,
+   its built .xml/.txt artifacts, and spec/REGISTRY.md and spec/section-map.md)
+================================================================================
+
+Copyright (c) 2026 IETF Trust and the persons identified as authors of the
+document. All rights reserved.
+
+This document is subject to BCP 78 and the IETF Trust's Legal Provisions
+Relating to IETF Documents (https://trustee.ietf.org/license-info) in effect on
+the date of submission of this document. Please review these documents
+carefully, as they describe your rights and restrictions with respect to this
+document. Code Components extracted from this document must include Revised BSD
+License text as described in Section 4.e of the Trust Legal Provisions and are
+provided without warranty as described in the Revised BSD License.
+
+Contributions to the specification text in this repository are made under, and
+are governed by, BCP 78 ("Rights Contributors Provide to the IETF Trust") and
+BCP 79 ("Intellectual Property Rights in IETF Technology"). See CONTRIBUTING.md.
+
+================================================================================
+2. CODE AND OTHER NON-DRAFT MATERIAL
+   (the contents of python/, test-vector generators, build scripts such as
+   spec/Makefile, and repository tooling)
+================================================================================
+
+Copyright (c) 2026 Action State Group, Inc.
+SPDX-License-Identifier: BSD-3-Clause
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
