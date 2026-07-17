@@ -8,7 +8,11 @@ Covers:
   - Missing effect.response_digest → machine_mandate_bound gate fails.
   - Mismatched response_digest (wrong MachineMandate) → machine_mandate_bound gate fails.
 
-Uses the frozen composition paths from Anton's matrix v0.3 (2026-07-16):
+NOTE: this profile is OWNER-PROPOSED — REVIEW PENDING — NOT AGREED — NOT A RESULT.
+The extension field layout will move to a namespaced payload extension in a
+subsequent revision; these tests exercise the gate logic only.
+
+Illustrative composition paths (subject to revision):
   - PermitReceipt.requested.amount = 425000 (EUR minor units = €4,250.00)
   - MachineMandate.scope.max_spend   = 500000 (EUR minor units = €5,000.00)
 """
@@ -24,7 +28,7 @@ from agent_action_capsule.emit import emit
 from agent_action_capsule.verify_composition import verify_permitreceipt_mandate
 
 # ---------------------------------------------------------------------------
-# Frozen test documents (Anton matrix v0.3, 2026-07-16)
+# Illustrative test documents (subject to revision — profile not yet agreed)
 # ---------------------------------------------------------------------------
 
 PERMIT_RECEIPT: dict = {
@@ -32,7 +36,7 @@ PERMIT_RECEIPT: dict = {
     "version": "1",
     "permit_id": "permit-2026-0716-001",
     "issued_at": "2026-07-16T00:00:00Z",
-    "issuer": "scott-lee-permit-authority",
+    "issuer": "example-permit-authority",
     "requested": {
         "currency": "EUR",
         "amount": 425000,
@@ -45,7 +49,7 @@ MACHINE_MANDATE: dict = {
     "version": "1",
     "mandate_id": "mandate-2026-0716-001",
     "issued_at": "2026-07-16T00:00:00Z",
-    "issuer": "anton-sokolov-aep-authority",
+    "issuer": "example-aep-authority",
     "scope": {
         "currency": "EUR",
         "max_spend": 500000,

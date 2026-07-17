@@ -1,8 +1,8 @@
 # AAC PermitReceipt + MachineMandate Binding Profile
 
-**Status:** Pinned protocol — agreed for the Scott Lee / Anton Sokolov three-way composition  
+**Status:** OWNER-PROPOSED — REVIEW PENDING — NOT AGREED — NOT A RESULT  
 **Date:** 2026-07-16  
-**Live cross-verify target:** Anton three-way run by 2026-07-21  
+**Live cross-verify target:** three-way run by 2026-07-21  
 **Applicable to:** `draft-mih-scitt-agent-action-capsule-02`
 
 ---
@@ -11,9 +11,9 @@
 
 This profile pins the digest-binding semantics for a three-way composition:
 
-1. **PermitReceipt** — issued by Scott Lee's permit authority; represents the approved
+1. **PermitReceipt** — a permit authority credential; represents the approved
    request (e.g., a payment authorization with currency and amount in EUR minor units).
-2. **MachineMandate** — issued by Anton Sokolov's AEP authority; represents the
+2. **MachineMandate** — an AEP authority credential; represents the
    delegated scope for the action (e.g., a maximum spend limit in EUR minor units).
 3. **AAC capsule** — the Agent Action Capsule that records the AI agent action that
    consumed both.
@@ -120,7 +120,7 @@ either gate fails.
 
 ---
 
-## 6. Worked example (Anton matrix v0.3, 2026-07-16)
+## 6. Worked example (illustrative — paths subject to revision)
 
 ### Frozen composition paths
 
@@ -140,7 +140,7 @@ action is within scope.
   "version": "1",
   "permit_id": "permit-2026-0716-001",
   "issued_at": "2026-07-16T00:00:00Z",
-  "issuer": "scott-lee-permit-authority",
+  "issuer": "example-permit-authority",
   "requested": {
     "currency": "EUR",
     "amount": 425000,
@@ -157,7 +157,7 @@ action is within scope.
   "version": "1",
   "mandate_id": "mandate-2026-0716-001",
   "issued_at": "2026-07-16T00:00:00Z",
-  "issuer": "anton-sokolov-aep-authority",
+  "issuer": "example-aep-authority",
   "scope": {
     "currency": "EUR",
     "max_spend": 500000,
