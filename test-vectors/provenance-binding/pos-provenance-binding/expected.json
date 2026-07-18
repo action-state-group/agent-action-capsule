@@ -1,0 +1,10 @@
+{
+  "verified": true,
+  "failed_stage": null,
+  "stages": {
+    "subject_digest_recompute": true,
+    "provenance_ref_binds": true,
+    "capsule_id_integrity": true,
+    "capsule_class1": true
+  }
+}

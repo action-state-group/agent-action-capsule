@@ -1,0 +1,82 @@
+{
+  "_note": "SYNTHETIC DATA \u2014 splice negative vector. The grant_doc in this bundle has been tampered (scope inflated to include delete:records). The capsule's provenance_binding.refs[0].digest commits to the ORIGINAL narrow-scope grant. json_digest(tampered_grant_doc) != refs[0].digest. Failure stage: provenance_ref_binds.",
+  "action": {
+    "action_type": "delegation.api_call",
+    "delegator": "org:alpha-corp:agent-A@v2",
+    "delegatee": "org:beta-systems:agent-B@v1",
+    "parameters": {
+      "api_endpoint": "https://api.beta-systems.example/v1/data-export",
+      "grant_id": "grant:alpha-corp:2026-Q3-0042",
+      "scope": [
+        "read:records",
+        "export:csv",
+        "delete:records"
+      ],
+      "not_after": "2026-07-18T23:59:59Z",
+      "max_records": "50000"
+    },
+    "policy_ref": "policy:alpha-corp:cross-org-delegation@v1",
+    "requested_at": "2026-07-18T10:00:00Z"
+  },
+  "grant_doc": {
+    "grant_id": "grant:alpha-corp:2026-Q3-0042",
+    "issued_by": "org:alpha-corp:authority@v1",
+    "issued_to": "org:beta-systems:agent-B@v1",
+    "scope": [
+      "read:records",
+      "export:csv",
+      "delete:records"
+    ],
+    "valid_from": "2026-07-01T00:00:00Z",
+    "valid_until": "2026-09-30T23:59:59Z",
+    "terms": "https://alpha-corp.example/legal/cross-org-data-sharing-v1"
+  },
+  "capsule": {
+    "spec_version": "draft-mih-scitt-agent-action-capsule-02",
+    "format_version": "2",
+    "capsule_id": "6dee7e46e88d4df2e58b58d5a7e09ea9adfa3fabd4e4dee21ca3fd2788565d15",
+    "action_id": "aac-prov-binding-b9-splice-0001",
+    "action_type": "decide",
+    "operator": "alpha-corp",
+    "developer": "alpha-corp:agent-A@v2",
+    "timestamp": "2026-07-18T10:05:00Z",
+    "model_attestation": {
+      "model_id": "claude-sonnet-4-6",
+      "provider": "anthropic",
+      "compute_attestation": {
+        "subject_digest": "7dbd940e7079ea67860bb9da27e9642c3de3b1f9e823923d615bb1606b71a803",
+        "runtime": "alpha-corp-delegation-engine@v2"
+      }
+    },
+    "effect": {
+      "status": "dispatched",
+      "type": "api_delegation",
+      "request_digest": "7dbd940e7079ea67860bb9da27e9642c3de3b1f9e823923d615bb1606b71a803",
+      "effect_attestation": "runtime_claimed"
+    },
+    "assurance": {
+      "attestation_mode": "self_attested",
+      "effect_mode": "dispatched_unconfirmed",
+      "ledger_mode": "standalone"
+    },
+    "disposition": {
+      "decision": "accept",
+      "approver": "policy",
+      "human_disposed": false,
+      "authority": "policy:alpha-corp:cross-org-delegation@v1",
+      "verdict_class": "executed"
+    },
+    "provenance_binding": {
+      "version": "1",
+      "refs": [
+        {
+          "ref_id": "grant:alpha-corp:2026-Q3-0042",
+          "ref_type": "delegation_grant",
+          "digest_alg": "SHA-256/JCS",
+          "digest": "ff1107b405a2a010046b14860618dcbc2e65979cc8af649dd931a10ef404d564"
+        }
+      ],
+      "subject_digest": "7dbd940e7079ea67860bb9da27e9642c3de3b1f9e823923d615bb1606b71a803"
+    }
+  }
+}

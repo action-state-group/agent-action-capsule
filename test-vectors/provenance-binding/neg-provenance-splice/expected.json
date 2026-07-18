@@ -1,0 +1,9 @@
+{
+  "verified": false,
+  "failed_stage": "provenance_ref_binds",
+  "reason": "refs[0].digest='ff1107b405a2a010046b14860618dcbc2e65979cc8af649dd931a10ef404d564' != json_digest(grant_doc)='55d76dd9e678e5df66e67de87f1ef740d7be132b4b4131bcadada0739a602742'; the provenance ref does not bind to the carried grant document (possible splice: this grant was issued for a different action)",
+  "stages": {
+    "subject_digest_recompute": true,
+    "provenance_ref_binds": false
+  }
+}
