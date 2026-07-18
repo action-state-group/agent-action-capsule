@@ -1,5 +1,7 @@
 {
   "failed_stage": null,
-  "note": "reserved stub \u2014 not runnable",
-  "verified": null
+  "note": "reserved stub — not runnable",
+  "verified": null,
+  "third_attestor_note": "synthetic claim — verify independently with third-attestor tooling",
+  "template_description": "The third_attestor field in input.json shows the composition pattern: an independent observer files a separate signed claim over the same subject_digest. verify_composition.py does not evaluate this field; a real third-attestor claim requires the observer's tooling to verify."
 }
