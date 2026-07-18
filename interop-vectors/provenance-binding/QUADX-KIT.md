@@ -66,7 +66,7 @@ Board rows should be filed only for what actually cross-verifies in your environ
 ```
 
 The full bundle (action + grant_doc + capsule) is in:
-`test-vectors/provenance-binding/pos-provenance-binding/input.json`
+`interop-vectors/provenance-binding/pos-provenance-binding/input.json`
 in the `agent-action-capsule` repo at
 `https://github.com/action-state-group/agent-action-capsule`
 
@@ -89,7 +89,7 @@ import sys; sys.path.insert(0, "python")
 import json
 from agent_action_capsule.canonical import json_digest
 
-bundle = json.load(open("test-vectors/provenance-binding/pos-provenance-binding/input.json"))
+bundle = json.load(open("interop-vectors/provenance-binding/pos-provenance-binding/input.json"))
 print(json_digest(bundle["action"]))
 # expected: 0b4da06b84263c0ee02746e52f6893a40586c0563e01961314b1bddf74d72cb6
 ```
@@ -103,7 +103,7 @@ print(json_digest(bundle["action"]))
 ```
 pip install "agent-action-capsule>=0.1.0"
 git clone https://github.com/action-state-group/agent-action-capsule
-cd agent-action-capsule/test-vectors/provenance-binding
+cd agent-action-capsule/interop-vectors/provenance-binding
 ```
 
 ### Run
@@ -220,8 +220,8 @@ Suggested row:
 ```
 repo:           https://github.com/action-state-group/agent-action-capsule
 branch:         feat/provenance-binding-vectors
-bundle:         test-vectors/provenance-binding/pos-provenance-binding/input.json
-verifier:       test-vectors/provenance-binding/verify_provenance.py
+bundle:         interop-vectors/provenance-binding/pos-provenance-binding/input.json
+verifier:       interop-vectors/provenance-binding/verify_provenance.py
 subject_digest: 0b4da06b84263c0ee02746e52f6893a40586c0563e01961314b1bddf74d72cb6
 capsule_id:     cd895b1f82fd11c4816cee542568b5d43358579424cab4b9d195a4dc98f91ff5
 grant_digest:   ff1107b405a2a010046b14860618dcbc2e65979cc8af649dd931a10ef404d564

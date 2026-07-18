@@ -19,7 +19,7 @@ pip install "agent-action-capsule>=0.1.0"
 
 ```
 git clone https://github.com/action-state-group/agent-action-capsule
-cd agent-action-capsule/test-vectors/provenance-binding
+cd agent-action-capsule/interop-vectors/provenance-binding
 ```
 
 ## Run the positive case (exit 0)
