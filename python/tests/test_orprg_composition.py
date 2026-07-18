@@ -400,7 +400,7 @@ def test_positive_all_six_gates_pass(positive_case, shared):
     # Verify specific gate names
     gates = result["gates"]
     for name in (
-        "permit_receipt_bound", "permit_receipt_appraised",
+        "permit_receipt_reference_bound", "permit_receipt_appraised",
         "machine_mandate_bound", "machine_mandate_appraised",
         "machine_mandate_action_hash", "machine_mandate_spend",
     ):
@@ -428,7 +428,7 @@ def test_over_limit_spend_gate_denies(over_limit_case, shared):
     gates = result["gates"]
     # All-pass gates
     for name in (
-        "permit_receipt_bound", "permit_receipt_appraised",
+        "permit_receipt_reference_bound", "permit_receipt_appraised",
         "machine_mandate_bound", "machine_mandate_appraised",
         "machine_mandate_action_hash",
     ):

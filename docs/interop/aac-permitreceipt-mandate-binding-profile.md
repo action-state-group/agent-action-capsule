@@ -63,7 +63,7 @@ Each authorization reference is a JSON object:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `type` | string | REQUIRED | Artifact type identifier: `"PermitReceipt"` or `"MachineMandate"` |
-| `digest_alg` | string | REQUIRED | Hash algorithm: `"SHA-256"` |
+| `digest_alg` | string | REQUIRED | Hash algorithm: MUST be exactly the string `"SHA-256"` — case-sensitive, no aliases |
 | `digest` | string | REQUIRED | 64-char lowercase hex SHA-256 — matches `^[0-9a-f]{64}$` |
 | `preimage` | string | optional | Preimage convention (see §3.1); defaults inferred from companion type |
 
@@ -121,9 +121,9 @@ treated as authorization success.
 
 | Gate name | Source | Failure condition |
 |---|---|---|
-| `permit_receipt_bound` | Digest binding check | Authorization block absent; reference absent; required field missing; type or digest mismatch |
+| `permit_receipt_reference_bound` | Digest binding check | Authorization block absent; reference absent; required field missing; `digest_alg` ≠ `"SHA-256"` (exact string); type or digest mismatch |
 | `permit_receipt_appraised` | **Caller-supplied** (owner verifier result) | `None` (not provided) or `False` (owner rejected) |
-| `machine_mandate_bound` | Digest binding check | Authorization block absent; reference absent; required field missing; type or digest mismatch |
+| `machine_mandate_bound` | Digest binding check | Authorization block absent; reference absent; required field missing; `digest_alg` ≠ `"SHA-256"` (exact string); type or digest mismatch |
 | `machine_mandate_appraised` | **Caller-supplied** (owner verifier result) | `None` (not provided) or `False` (owner rejected) |
 
 `bindings_ok` is True only when **all four** gates pass.
@@ -132,6 +132,19 @@ treated as authorization success.
 external-effect commits may proceed on the basis of this capsule's authorization
 binding.  A capsule whose gates fail MAY still be signed and registered as audit
 evidence — gate failure does not invalidate the capsule record itself.
+
+**Profile statement — `capsule_id` and `COSE_Sign1` semantics:**  
+`capsule_id` is a content address (SHA-256 over the JCS preimage of the full
+capsule body, §5.1), providing change detection: any mutation to
+`effect.authorization` or any other capsule field produces a different
+`capsule_id`, making post-seal tampering detectable without a separate
+signature.  Successful `COSE_Sign1` verification — as exercised by
+`test_cose_sign1_roundtrip_preserves_authorization` in the reference
+implementation — means: (a) the signing key's signature over the COSE
+payload is cryptographically valid, AND (b) the signed-payload integrity
+holds under the trust inputs selected by the relying party (issuer DID, key,
+algorithm).  These two properties are complementary: `capsule_id` binds
+content; `COSE_Sign1` binds provenance.
 
 ---
 

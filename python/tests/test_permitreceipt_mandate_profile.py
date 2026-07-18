@@ -28,6 +28,8 @@ import copy
 import hashlib
 import json
 
+import pathlib
+
 import pytest
 
 from agent_action_capsule.anchor import generate_issuer_keypair
@@ -319,8 +321,8 @@ def test_sdjwt_jws_preimage_known_answer():
     )
     assert result["bindings_ok"] is True
     gate_names = {g["name"]: g for g in result["gates"]}
-    assert gate_names["permit_receipt_bound"]["passed"] is True
-    assert PREIMAGE_JWS_ISSUER in gate_names["permit_receipt_bound"]["reason"]
+    assert gate_names["permit_receipt_reference_bound"]["passed"] is True
+    assert PREIMAGE_JWS_ISSUER in gate_names["permit_receipt_reference_bound"]["reason"]
 
 
 # ---------------------------------------------------------------------------
@@ -334,7 +336,7 @@ def test_positive_both_correct():
 
     assert result["bindings_ok"] is True
     gate_names = {g["name"]: g for g in result["gates"]}
-    assert gate_names["permit_receipt_bound"]["passed"] is True
+    assert gate_names["permit_receipt_reference_bound"]["passed"] is True
     assert gate_names["permit_receipt_appraised"]["passed"] is True
     assert gate_names["machine_mandate_bound"]["passed"] is True
     assert gate_names["machine_mandate_appraised"]["passed"] is True
@@ -356,7 +358,7 @@ def test_digest_match_without_appraisal_is_not_success():
     )
     assert result["bindings_ok"] is False
     gate_names = {g["name"]: g for g in result["gates"]}
-    assert gate_names["permit_receipt_bound"]["passed"] is True   # digest matched
+    assert gate_names["permit_receipt_reference_bound"]["passed"] is True   # digest matched
     assert gate_names["permit_receipt_appraised"]["passed"] is False  # no appraisal
     assert gate_names["machine_mandate_bound"]["passed"] is True
     assert gate_names["machine_mandate_appraised"]["passed"] is False
@@ -377,7 +379,7 @@ def test_missing_authorization_block():
     result = _positive_verify(base)
     assert result["bindings_ok"] is False
     gate_names = {g["name"]: g for g in result["gates"]}
-    assert gate_names["permit_receipt_bound"]["passed"] is False
+    assert gate_names["permit_receipt_reference_bound"]["passed"] is False
     assert gate_names["machine_mandate_bound"]["passed"] is False
 
 
@@ -386,14 +388,14 @@ def test_missing_authorization_block():
 # ---------------------------------------------------------------------------
 
 def test_missing_permit_receipt_reference():
-    """Missing permit_receipt_digest → permit_receipt_bound fails."""
+    """Missing permit_receipt_digest → permit_receipt_reference_bound fails."""
     capsule = _mint_capsule(machine_mandate=MACHINE_MANDATE)
     result = _positive_verify(capsule)
 
     assert result["bindings_ok"] is False
     gate_names = {g["name"]: g for g in result["gates"]}
-    assert gate_names["permit_receipt_bound"]["passed"] is False
-    assert "missing" in gate_names["permit_receipt_bound"]["reason"].lower()
+    assert gate_names["permit_receipt_reference_bound"]["passed"] is False
+    assert "missing" in gate_names["permit_receipt_reference_bound"]["reason"].lower()
     assert gate_names["machine_mandate_bound"]["passed"] is True
 
 
@@ -406,7 +408,7 @@ def test_missing_machine_mandate_reference():
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["machine_mandate_bound"]["passed"] is False
     assert "missing" in gate_names["machine_mandate_bound"]["reason"].lower()
-    assert gate_names["permit_receipt_bound"]["passed"] is True
+    assert gate_names["permit_receipt_reference_bound"]["passed"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -414,7 +416,7 @@ def test_missing_machine_mandate_reference():
 # ---------------------------------------------------------------------------
 
 def test_mismatched_permit_receipt():
-    """Wrong PermitReceipt doc → permit_receipt_bound fails with 'mismatch'."""
+    """Wrong PermitReceipt doc → permit_receipt_reference_bound fails with 'mismatch'."""
     capsule = _mint_capsule(permit_receipt=PERMIT_RECEIPT, machine_mandate=MACHINE_MANDATE)
 
     wrong_permit = copy.deepcopy(PERMIT_RECEIPT)
@@ -427,8 +429,8 @@ def test_mismatched_permit_receipt():
     )
     assert result["bindings_ok"] is False
     gate_names = {g["name"]: g for g in result["gates"]}
-    assert gate_names["permit_receipt_bound"]["passed"] is False
-    assert "mismatch" in gate_names["permit_receipt_bound"]["reason"].lower()
+    assert gate_names["permit_receipt_reference_bound"]["passed"] is False
+    assert "mismatch" in gate_names["permit_receipt_reference_bound"]["reason"].lower()
     assert gate_names["machine_mandate_bound"]["passed"] is True
 
 
@@ -448,7 +450,7 @@ def test_mismatched_machine_mandate():
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["machine_mandate_bound"]["passed"] is False
     assert "mismatch" in gate_names["machine_mandate_bound"]["reason"].lower()
-    assert gate_names["permit_receipt_bound"]["passed"] is True
+    assert gate_names["permit_receipt_reference_bound"]["passed"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -456,7 +458,7 @@ def test_mismatched_machine_mandate():
 # ---------------------------------------------------------------------------
 
 def test_malformed_reference_missing_type():
-    """Reference missing 'type' → permit_receipt_bound fails."""
+    """Reference missing 'type' → permit_receipt_reference_bound fails."""
     capsule = _mint_capsule(permit_receipt=PERMIT_RECEIPT, machine_mandate=MACHINE_MANDATE)
 
     tampered = copy.deepcopy(capsule)
@@ -466,7 +468,7 @@ def test_malformed_reference_missing_type():
     result = _positive_verify(tampered)
     assert result["bindings_ok"] is False
     gate_names = {g["name"]: g for g in result["gates"]}
-    assert gate_names["permit_receipt_bound"]["passed"] is False
+    assert gate_names["permit_receipt_reference_bound"]["passed"] is False
     assert gate_names["machine_mandate_bound"]["passed"] is True
 
 
@@ -486,7 +488,109 @@ def test_owner_appraisal_rejected():
     )
     assert result["bindings_ok"] is False
     gate_names = {g["name"]: g for g in result["gates"]}
-    assert gate_names["permit_receipt_bound"]["passed"] is True
+    assert gate_names["permit_receipt_reference_bound"]["passed"] is True
     assert gate_names["permit_receipt_appraised"]["passed"] is False
     assert gate_names["machine_mandate_bound"]["passed"] is True
     assert gate_names["machine_mandate_appraised"]["passed"] is True
+
+
+# ---------------------------------------------------------------------------
+# 14. Exact digest_alg enforcement — wrong value fails at the binding gate
+# ---------------------------------------------------------------------------
+
+def test_wrong_digest_alg_fails_binding_gate():
+    """digest_alg != 'SHA-256' (exact string) → binding gate fails.
+
+    Scott's NEGATIVE: sole mutation = typed-ref digest_alg set to a
+    mislabeled value. capsule_id is recomputed over the mutated body
+    (DERIVED, not injected).
+    """
+    capsule = _mint_capsule(permit_receipt=PERMIT_RECEIPT, machine_mandate=MACHINE_MANDATE)
+
+    tampered = copy.deepcopy(capsule)
+    # Mutate to a plausible but wrong label; recompute capsule_id (derived).
+    tampered["effect"]["authorization"]["permit_receipt_digest"]["digest_alg"] = "sha-256"
+    tampered["capsule_id"] = compute_capsule_id(tampered)
+
+    result = verify_permitreceipt_mandate(
+        tampered,
+        PERMIT_RECEIPT,
+        MACHINE_MANDATE,
+        permit_receipt_appraised=True,
+        machine_mandate_appraised=True,
+    )
+    assert result["bindings_ok"] is False
+    gate_names = {g["name"]: g for g in result["gates"]}
+    assert gate_names["permit_receipt_reference_bound"]["passed"] is False
+    assert "SHA-256" in gate_names["permit_receipt_reference_bound"]["reason"]
+    # machine_mandate_bound is unaffected — digest_alg still "SHA-256" there.
+    assert gate_names["machine_mandate_bound"]["passed"] is True
+
+
+# ---------------------------------------------------------------------------
+# 15. Real MachineMandate JWS preimage (published 1190-byte issuer-signed JWT)
+# ---------------------------------------------------------------------------
+
+_FIXTURE_DIR = pathlib.Path(__file__).parent / "fixtures"
+_REAL_JWS_PATH = _FIXTURE_DIR / "machine-mandate-run-credential-preimage.jwt"
+_REAL_JWS_SHA256 = "5df4d32df57650f27b6a65df041b708de80d69c0ca82a1044334f5e2edef5ce2"
+
+
+def test_real_machine_mandate_jws_preimage():
+    """Exercise the ACTUAL published 1190-byte MachineMandate issuer-JWS preimage.
+
+    Fixture: tyche-institute/machine-mandate@e4bc763a/interop/run-credential-preimage.jwt
+    SHA-256: 5df4d32df57650f27b6a65df041b708de80d69c0ca82a1044334f5e2edef5ce2
+
+    The fixture is loaded as raw bytes (preimage: jws/issuer-signed) in the
+    machine_mandate_digest slot, in addition to the synthetic JWS fixture in
+    test_sdjwt_jws_preimage_known_answer. This validates the real cross-party
+    preimage convention against the actual published artifact.
+    """
+    assert _REAL_JWS_PATH.exists(), (
+        f"Real JWS fixture not found at {_REAL_JWS_PATH}. "
+        "Store tyche-institute/machine-mandate@e4bc763a/interop/run-credential-preimage.jwt there."
+    )
+    jws_bytes = _REAL_JWS_PATH.read_bytes()
+
+    # Integrity check: must match the PM-verified SHA-256.
+    import hashlib
+    actual_sha256 = hashlib.sha256(jws_bytes).hexdigest()
+    assert actual_sha256 == _REAL_JWS_SHA256, (
+        f"Fixture SHA-256 mismatch: expected {_REAL_JWS_SHA256!r}, got {actual_sha256!r}. "
+        "Fixture file may be corrupt or replaced."
+    )
+    assert len(jws_bytes) == 1190, f"Expected 1190 bytes, got {len(jws_bytes)}"
+
+    # Build capsule with PermitReceipt as JSON dict + MachineMandate as real JWS bytes.
+    base = emit(
+        action_type="decide",
+        operator="asg-test",
+        developer="test-agent@v1",
+        effect=EffectRecord(status="dispatched", type="payment"),
+    )
+    capsule = dict(base)
+    capsule["effect"] = dict(base["effect"])
+    capsule["effect"]["authorization"] = {
+        "permit_receipt_digest": _typed_ref(PERMIT_RECEIPT, "PermitReceipt"),
+        "machine_mandate_digest": {
+            "type": "MachineMandate",
+            "digest_alg": "SHA-256",
+            "preimage": PREIMAGE_JWS_ISSUER,
+            "digest": actual_sha256,
+        },
+    }
+    capsule["capsule_id"] = compute_capsule_id(capsule)
+
+    result = verify_permitreceipt_mandate(
+        capsule,
+        PERMIT_RECEIPT,
+        jws_bytes,
+        permit_receipt_appraised=True,
+        machine_mandate_appraised=True,
+    )
+    assert result["bindings_ok"] is True
+    gate_names = {g["name"]: g for g in result["gates"]}
+    assert gate_names["permit_receipt_reference_bound"]["passed"] is True
+    assert gate_names["machine_mandate_bound"]["passed"] is True
+    assert PREIMAGE_JWS_ISSUER in gate_names["machine_mandate_bound"]["reason"]

@@ -29,10 +29,24 @@ Returns a result dict:
     gates                : list of {name, passed, reason}
 
 Gate names (evaluated independently):
-    permit_receipt_bound      — digest binding check
-    permit_receipt_appraised  — owner-appraisal result (caller-supplied)
-    machine_mandate_bound     — digest binding check
-    machine_mandate_appraised — owner-appraisal result (caller-supplied)
+    permit_receipt_reference_bound — digest binding check (digest_alg must be exactly "SHA-256")
+    permit_receipt_appraised       — owner-appraisal result (caller-supplied)
+    machine_mandate_bound          — digest binding check (digest_alg must be exactly "SHA-256")
+    machine_mandate_appraised      — owner-appraisal result (caller-supplied)
+
+Profile statement
+-----------------
+``capsule_id`` is a content address over the full capsule body (§5.1 JCS
+preimage).  It functions as change detection: any mutation to
+``effect.authorization`` or any other capsule field changes the
+``capsule_id``, making post-seal tampering detectable without a separate
+signature.  Successful ``COSE_Sign1`` verification (see
+``test_cose_sign1_roundtrip_preserves_authorization``) means: (a) the
+signing key's signature over the COSE payload is valid, AND (b) the
+signed-payload integrity holds under the trust inputs selected by the
+relying party (issuer DID, key, algorithm).  The two properties are
+complementary: ``capsule_id`` binds content; ``COSE_Sign1`` binds
+provenance.
 
 Gate failure semantics: "no effect-commit marker" means zero external-effect
 commits may proceed.  A capsule whose gates fail MAY still be signed and
@@ -118,6 +132,12 @@ def _check_typed_reference(
             f"type mismatch: expected {expected_type!r}, got {ref.get('type')!r}",
         )
 
+    if ref.get("digest_alg") != "SHA-256":
+        return _gate(
+            gate_name, False,
+            f"digest_alg must be exactly 'SHA-256'; got {ref.get('digest_alg')!r}",
+        )
+
     digest_in_ref = ref.get("digest")
     if not isinstance(digest_in_ref, str) or len(digest_in_ref) != 64 or not all(
         c in "0123456789abcdef" for c in digest_in_ref
@@ -183,7 +203,7 @@ def verify_permitreceipt_mandate(
 
     if not isinstance(authorization, dict):
         gates.append(_gate(
-            "permit_receipt_bound", False,
+            "permit_receipt_reference_bound", False,
             "effect.authorization is missing or not an object",
         ))
         gates.append(_gate(
@@ -200,16 +220,16 @@ def verify_permitreceipt_mandate(
         ))
         return {"bindings_ok": False, "gates": gates}
 
-    # Gate 1 — permit_receipt_bound (digest binding)
+    # Gate 1 — permit_receipt_reference_bound (digest binding)
     permit_ref = authorization.get("permit_receipt_digest")
     if permit_ref is None:
         gates.append(_gate(
-            "permit_receipt_bound", False,
+            "permit_receipt_reference_bound", False,
             "effect.authorization.permit_receipt_digest is missing",
         ))
     else:
         gates.append(_check_typed_reference(
-            permit_ref, "PermitReceipt", permit_receipt, "permit_receipt_bound",
+            permit_ref, "PermitReceipt", permit_receipt, "permit_receipt_reference_bound",
         ))
 
     # Gate 2 — permit_receipt_appraised (owner appraisal, caller-supplied)
