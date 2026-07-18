@@ -127,7 +127,7 @@ dispatched.
 
 ### Live Depth-3 examples
 
-**EP composition pack** (`test-vectors/composition/`, branch
+**EP composition pack** (`interop-vectors/composition/`, branch
 `composition-vectors-ep-cosa`) — a Class-1 (WHAT) AAC capsule composed with an
 EP-RECEIPT-v1 (WHO) artifact on a shared `subject_digest`.  Demonstrates that a
 human-authorization receipt from the EMILIA Protocol maps to the WHO slot without
