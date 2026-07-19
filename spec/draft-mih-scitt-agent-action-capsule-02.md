@@ -35,6 +35,7 @@ normative:
   RFC9943:
 
 informative:
+  RFC6973:
   I-D.ietf-cose-merkle-tree-proofs:
   I-D.ietf-scitt-scrapi:
   I-D.ietf-scitt-receipts-ccf-profile:
@@ -147,6 +148,17 @@ SCITT statement profile in the sense of {{RFC9943}}: a
 constraint on the protected header and payload of a Signed Statement. The
 word is never used in any other sense in this document.
 
+The design principle that unifies this profile's fields: **the Capsule
+is honest about its own limits, and never overstates.** It states how
+close its producer stood to the action ({{observationmode}}), what
+order among actions it actually observed ({{order}}), what it admitted
+into the record and what it kept out ({{privacy}}), and which assurance
+tier it genuinely achieved ({{assurance}}). A record that overclaims
+proximity, sequence, scope, or assurance is worse than no record,
+because it converts a verifier's trust into error with a signature on
+it; every field in this profile that could overclaim therefore
+carries a mode that makes the limit legible.
+
 # Conventions and Definitions {#conventions}
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
@@ -258,10 +270,11 @@ original is immutable.
 
 # Registries of this profile (summary) {#registries}
 
-Six vocabularies of this profile are registry-governed under a
+Seven vocabularies of this profile are registry-governed under a
 Specification Required policy ({{RFC8126}}, Section 4.6):
 `verdict_class`, `disposition.decision`, `effect.type`,
-`irreversibility_class`, `effect_attestation`, and `chain.relation`. The
+`irreversibility_class`, `effect_attestation`, `chain.relation`, and
+`observation_mode`. The
 registries and their initial contents are defined in {{iana}}, kept at
 the back of this document per convention.
 
@@ -457,6 +470,45 @@ standalone < chained < anchored for overclaim detection. A producer MUST
 NOT record an assurance mode it did not achieve; a verifier rederives each
 mode from the evidence present and reports any overclaim.
 
+## Observation mode {#observationmode}
+
+A Capsule MAY carry a `compute_attestation` map: producer-environment
+claims, digested with the rest of the payload — every member
+participates in the `capsule_id` digest and sits under the Signed
+Statement's signature, so the claims are tamper-evident even though
+they are testimony. The reference implementation already carries this
+map; this document defines its first registered member.
+`observation_mode` states how the producer observed the action it
+sealed. Two values are defined: `in_path` — the producer executed in
+the action's own path and bound input and output from its own
+position: a callback, a decorated tool, or a wire-level intermediary
+the action traverses (a gateway sealing at the boundary) — and
+`event_stream` — the producer observed the runtime's event narration
+after the fact and paired input to output from that narration. The
+distinction is provenance, not a quality score: under identifier-less
+concurrency an event-stream producer's input-to-output pairing is
+best-effort, and this field makes that proximity legible to the
+consumer, who decides what weight the pairing guarantee deserves.
+
+Like the assurance modes, `observation_mode` is producer testimony —
+but unlike them it is not independently rederivable from the record,
+which is precisely why it is recorded rather than inferred. The
+adversarial consequence is stated plainly: a producer can claim a
+proximity it did not have, and the signature proves the claim was
+made, not that it is true. The field therefore shifts evidentiary
+weight only downward — a verifier MAY discount event-stream pairing,
+but MUST NOT grant `in_path` any additional cryptographic assurance
+on the field's word alone. Proximity claims become verifiable only by
+composition with platform attestation, which is the registry's growth
+path: the value set is deliberately open, governed under the same
+Specification Required policy as the other vocabularies of this
+profile ({{registries}}), so stronger proximities — an in-path
+producer whose position is itself platform-attested — register as
+they mature. An absent `observation_mode` means unstated; a verifier
+treats an unrecognized value the same way — informational, unstated —
+and MUST NOT reject a Capsule for stating, omitting, or carrying an
+unrecognized value.
+
 ## Disposition and the verdict reason-class {#disposition}
 
 A Capsule's `disposition` block records how the decision was disposed:
@@ -601,6 +653,56 @@ Open-items predicate: an item is open when its Capsule's
 `hitl_dispatched`, `escalated`, or `blocked`, and no Capsule in the
 store carries `chain.parent_capsule_id` equal to its `capsule_id` with
 `relation: "supersedes"`.
+
+### Observed order and concurrency {#order}
+
+The chain block's single parent is intentional and remains so:
+`chain` records state transitions — supersession, epoch openings —
+and its authority rules ({{hitl}}) assume exactly one parent.
+Observed order is a different claim, and it gets a different, optional
+structure. A Capsule MAY carry a digested `order` block with two
+members, separately optional:
+
+`follows` — a list of `capsule_id` values naming the Capsules whose
+completion the producer actually observed before this action began.
+This expresses fan-in ("this followed several") without general graph
+semantics: no edge typing, no transitive claims, only direct observed
+precedence.
+
+`concurrency_group` — an opaque value shared by a set of Capsules
+whose mutual order the producer does not assert. Sealing is
+sequential per producer even when actions are not; a runtime that
+seals concurrent actions in completion order would otherwise write a
+linear sequence that never existed. The group marker tells a consumer
+exactly what not to infer. The group value MUST be opaque and freshly
+generated — a random value scoped to the group, never a reused
+internal identifier — since it is baked irreversibly into the record;
+the admission rules of {{privacy}} apply to it as to any clear field.
+
+The invariant: a producer MUST NOT assert order it did not observe.
+Seal order and ledger order are storage facts, not causal claims, and
+a consumer MUST NOT infer sequence among Capsules sharing a
+`concurrency_group`. Completion order is not causal order. The
+converse discipline also holds: a producer that observed an order
+SHOULD record it rather than mark the set unordered — concealing
+observed sequence is the same honesty failure in the other
+direction.
+
+One structure spans the scales this problem appears at. A runtime
+sealing parallel tool calls marks the set with one
+`concurrency_group`. A join step `follows` the several Capsules it
+actually waited for. And across organizations, a bilateral
+completion attestation is fan-in by design — both parties'
+attestations precede it — and the `order` block gives that shape a
+native expression: the bilateral companion
+(cf. {{?I-D.mih-agent-bilateral-attestation}}) is the intended first
+user, its reference implementation today chaining to a single parent
+until its wire encodings are fixed. Intra-agent parallelism and
+cross-organization exchange are the same partial-order question at
+different radii, and they share this one primitive. Full DAG
+semantics — typed after/concurrent-with edges, transitive closure —
+remain future work; `follows` plus `concurrency_group` eliminate the
+false-sequence inference without general graph verification.
 
 # Class 1 verification {#verification}
 
@@ -969,6 +1071,14 @@ Initial contents are the seeded values of this document, verbatim:
    relations, or amends / contradicts) are expected future registrations,
    each admitted once its semantics and any verifier consequence are
    pinned in a publicly available specification.
+7. "observation_mode" registry ({{observationmode}}): in_path,
+   event_stream.
+   Designated-expert guidance: `in_path` and `event_stream` record
+   observation posture, not assurance quality — both are producer
+   testimony and carry no additional cryptographic guarantee beyond the
+   Signed Statement's signature. Future registrations SHOULD state
+   whether the mode implies any ordering or sequencing constraint on the
+   sealed action.
 
 Interim registry of record: until this document is published as an RFC,
 the registry of record is the `REGISTRY.md` file of the source
@@ -1137,6 +1247,91 @@ Capsules are distinguishable by payload `operator` alone but not correlatable
 at the SCITT-header layer; a producer SHOULD treat a key rotation that
 coincides with a configuration change as an epoch boundary ({{epochboundary}})
 to make the transition explicit in the record.
+
+# Privacy Considerations {#privacy}
+
+Redaction is unfixable by design — the more durable the record, the
+higher the bar for admission. A Capsule is content-addressed: every
+field participates in the `capsule_id` digest, so removing or altering
+a field after sealing destroys the identity of the record and breaks
+any chain or registration built on it. Registration in a Transparency
+Service extends that permanence beyond the producer's custody. Privacy
+in this profile is therefore an admission-time discipline, not a
+retention-time one: the only reliable moment to protect a value is
+before it enters the record. This section applies the correlation,
+identification, and disclosure concerns of {{RFC6973}} to that
+admission decision. Producer context divides into three admission
+classes.
+
+Clear-safe: opaque correlation handles. An agent name, an invocation
+or run identifier MAY appear in clear. Correlation handles exist so a
+verifier can join related Capsules; they identify workflow, not
+people. Two constraints keep that true. First, a handle SHOULD be
+opaque, and producers MUST NOT derive one from end-user identity,
+directly or through a handle that is itself bound to one person: an
+identifier computed from an email address, an account name, or a
+per-user thread handle is an end-user identifier regardless of its
+format. Second, linkage makes
+identity out of reuse — a handle that recurs across many Capsules
+belonging to one person becomes a stable pseudonymous identifier by
+correlation alone, so producers SHOULD scope correlation handles to an
+invocation or workflow rather than to a user or long-lived session —
+minting a fresh random run identifier per invocation rather than
+propagating the runtime's session handle.
+The class test is binding, not naming: a runtime's randomly generated
+run or thread handle that resolves only to a workflow is a correlation
+handle; a session identifier that resolves to a person or account is
+end-user identity and belongs to the never-enters class below.
+Resolution here means from the record and public context alone —
+with operator-held auxiliary data every handle eventually resolves,
+which is precisely why that mapping stays operator-side.
+
+Digest-only: action payloads. Tool inputs and outputs MUST NOT appear
+in clear; they are committed by digest, which preserves provability
+without disclosure, and selective disclosure
+({{selectivedisclosure}}) is the mechanism for revealing a committed
+value later under the holder's control. Digest commitment hides only
+high-entropy values; low-entropy payload fields inherit the
+dictionary-attack exposure and the salting guidance of {{security}}.
+
+Never-enters: end-user identity and secrets. Identifiers that resolve
+to a person or account, credentials, tokens, and keys MUST NOT enter a
+Capsule in any form — including as digests, salted or otherwise. The
+exclusion is categorical, not entropy-contingent: a bare digest of a
+low-entropy identifier re-identifies under a dictionary attack, and
+salting does not cure the class — a salted identity digest is
+identity-derived material baked into an unerasable record,
+re-identifiable by whoever holds the salt and dependent on salt
+secrecy forever: harvest now, re-identify later.
+Identity also carries obligations that digests do not discharge:
+erasure, retention limits, and purpose binding cannot be honored
+against an append-only, content-addressed record, so the only
+admission decision compatible with those obligations is absence.
+This prohibition governs identity as record structure — fields and
+standalone commitments whose preimage is the identifier itself.
+Identity occurring inside action payload content (an email address in
+a tool argument) is governed by the digest-only class: it is committed
+only within the payload digest, never separately addressable, and
+revealed only through selective disclosure under the holder's control
+({{selectivedisclosure}}), with the low-entropy guidance of
+{{security}} applying where a payload is small enough to enumerate.
+Identity resolution belongs in operator-side systems with retention
+control, correlated to the record through opaque handles — a
+severable arrangement in a way no digest can be: because a
+never-derived handle places no function of the identity in the
+record, erasing the operator-side mapping fully severs
+re-identification, whereas identity-derived material baked into the
+record depends on secrecy forever. The Capsule proves conduct; it
+does not name the human behind the session.
+
+Producers SHOULD construct record context by allow-list — enumerating
+the fields that may enter — rather than by block-list. A block-list
+fails open: when a runtime adds a new context field, a block-list
+admits it silently, while an allow-list excludes it until a deliberate
+decision admits it. Implementation experience favors expressing the
+allow-list in code rather than in documentation: a list enforced
+structurally cannot admit a new runtime field without a deliberate
+change.
 
 --- back
 
