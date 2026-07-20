@@ -29,7 +29,7 @@ from typing import Any
 
 import pytest
 
-from agent_action_capsule.canonical import compute_capsule_id, json_digest
+from agent_action_capsule.canonical import compute_capsule_id, jcs, json_digest, normalize
 from agent_action_capsule.contracts import EffectRecord
 from agent_action_capsule.emit import emit
 from agent_action_capsule.verify_composition import verify_permitreceipt_mandate
@@ -260,6 +260,55 @@ def test_machine_mandate_jcs_digest():
         pytest.skip("ORPRG fixtures not available")
     mm = json.loads((root / "shared/machine-mandate-action.json").read_text())
     assert json_digest(mm) == MACHINE_MANDATE_ACTION_DIGEST
+
+
+def test_positive_permit_receipt_preimage_bytes_match_canonical_bin():
+    """Fixture-specific exact-byte assertion for the positive case.
+
+    The exact bytes that enter the PermitReceipt typed-reference digest —
+    jcs(normalize(receipt_core)) — must be byte-for-byte identical to
+    cases/positive/permit-receipt-core.canonical.bin in the frozen ORPRG tuple.
+
+    This is NOT a general canonicalization-equivalence claim.  It is scoped
+    to this specific case and this specific frozen artifact.  The companion
+    CP-JSON-2 known-answer test (test_jcs_digest_matches_orprg_expected_positive)
+    checks the SHA-256 of those same bytes; this test checks the preimage itself.
+    """
+    root = _orprg_root()
+    if root is None:
+        pytest.skip("ORPRG fixtures not available")
+    pr = json.loads((root / "cases/positive/permit-receipt.json").read_text())
+    our_bytes = jcs(normalize(pr["receipt_core"]))
+    canonical_bytes = (root / "cases/positive/permit-receipt-core.canonical.bin").read_bytes()
+    assert our_bytes == canonical_bytes, (
+        f"Preimage bytes mismatch for positive case: "
+        f"our JCS({len(our_bytes)}B) != canonical.bin({len(canonical_bytes)}B)"
+    )
+
+
+def test_over_limit_permit_receipt_preimage_bytes_match_canonical_bin():
+    """Fixture-specific exact-byte assertion for the mandate-over-limit case.
+
+    The exact bytes that enter the PermitReceipt typed-reference digest —
+    jcs(normalize(receipt_core)) — must be byte-for-byte identical to
+    cases/mandate-over-limit/permit-receipt-core.canonical.bin in the frozen
+    ORPRG tuple.
+
+    This is NOT a general canonicalization-equivalence claim.  It is scoped
+    to this specific case and this specific frozen artifact.  The companion
+    CP-JSON-2 known-answer test (test_jcs_digest_matches_orprg_expected_over_limit)
+    checks the SHA-256 of those same bytes; this test checks the preimage itself.
+    """
+    root = _orprg_root()
+    if root is None:
+        pytest.skip("ORPRG fixtures not available")
+    pr = json.loads((root / "cases/mandate-over-limit/permit-receipt.json").read_text())
+    our_bytes = jcs(normalize(pr["receipt_core"]))
+    canonical_bytes = (root / "cases/mandate-over-limit/permit-receipt-core.canonical.bin").read_bytes()
+    assert our_bytes == canonical_bytes, (
+        f"Preimage bytes mismatch for mandate-over-limit case: "
+        f"our JCS({len(our_bytes)}B) != canonical.bin({len(canonical_bytes)}B)"
+    )
 
 
 # ---------------------------------------------------------------------------
