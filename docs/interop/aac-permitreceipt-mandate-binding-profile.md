@@ -128,6 +128,18 @@ treated as authorization success.
 
 `bindings_ok` is True only when **all four** gates pass.
 
+### 5.1 MachineMandate-owned evaluation gates (namespace registration)
+
+Two additional gate names are owned by the MachineMandate evaluation layer and
+emitted by the ORPRG composition path.  They are registered here for namespace
+completeness; their semantics are defined by the MachineMandate owner
+(`tyche-institute/machine-mandate` @ `1a9013a902d4596d343a7289d058d5cd8f6aeaf8`).
+
+| Gate name | Owner layer | Purpose |
+|---|---|---|
+| `machine_mandate_action_hash` | MachineMandate evaluation | Verifies the MachineMandate action hash is derivable from the action object |
+| `machine_mandate_spend` | MachineMandate evaluation | Verifies the permit `scope.max_spend` does not exceed the mandate ceiling |
+
 **Gate failure semantics (per Scott Lee):** "no effect-commit marker" means zero
 external-effect commits may proceed on the basis of this capsule's authorization
 binding.  A capsule whose gates fail MAY still be signed and registered as audit
