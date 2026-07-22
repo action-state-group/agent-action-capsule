@@ -14,17 +14,18 @@ recorded on **every** verdict, including refusals — a blocked or denied Capsul
 is the auditor-grade evidence that a gate worked.
 
 > **Status / standards honesty.** This is an **individual** IETF Internet-Draft,
-> not a Working Group document, and not an RFC. The substrate it builds on (the
-> SCITT architecture and COSE Receipts) are themselves Internet-Drafts in the
-> RFC Editor Queue, not published RFCs. No RFC number is claimed; no WG adoption
+> not a Working Group document, and not an RFC. The substrate it builds on is
+> now published: the SCITT architecture is [RFC 9943](https://www.rfc-editor.org/rfc/rfc9943)
+> and COSE Receipts are [RFC 9942](https://www.rfc-editor.org/rfc/rfc9942)
+> (both June 2026). No RFC number is claimed for this profile; no WG adoption
 > is claimed.
 
 ## The draft
 
 - **Datatracker:** https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/
-- **Editor's source (this repo):** [`spec/draft-mih-scitt-agent-action-capsule-01.md`](spec/draft-mih-scitt-agent-action-capsule-01.md)
-  (kramdown-rfc source), with built [`.xml`](spec/draft-mih-scitt-agent-action-capsule-01.xml)
-  (RFCXML v3) and [`.txt`](spec/draft-mih-scitt-agent-action-capsule-01.txt).
+- **Editor's source (this repo):** [`spec/draft-mih-scitt-agent-action-capsule-02.md`](spec/draft-mih-scitt-agent-action-capsule-02.md)
+  (kramdown-rfc source), with built [`.xml`](spec/draft-mih-scitt-agent-action-capsule-02.xml)
+  (RFCXML v3) and [`.txt`](spec/draft-mih-scitt-agent-action-capsule-02.txt).
 - **Registry of record:** [`spec/REGISTRY.md`](spec/REGISTRY.md) — the interim
   registry for the six profile vocabularies until IANA registries are
   established on RFC publication.
