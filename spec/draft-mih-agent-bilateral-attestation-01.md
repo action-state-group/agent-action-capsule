@@ -8,7 +8,7 @@ ipr: trust200902
 area: Security
 keyword: [agent, attestation, bilateral, cross-organization, SCITT, transparency, refusal]
 stand_alone: yes
-date: 2026-07-06
+date: 2026-07-19
 author:
  -
     name: Steven Mih
@@ -360,6 +360,105 @@ them, are long-settled ground — the email DSN and MDN mechanisms
 that discipline rather than reopening it. Reconciliation, directory, retry, and
 admission control are deployment concerns outside this document's scope.
 
+# A Fully Peer-to-Peer Construction {#p2p-construction}
+
+This section demonstrates that the complete bilateral attestation lifecycle —
+including evidence for the unhappy path — is realizable by two parties using
+only (a) capsules, (b) the chain relations already defined, and (c) a
+Transparency Service both parties can write to and read. No intermediary role
+of any kind is required. The optional Relay role defined in {{optional-relay}}
+is an optimization over this construction, never a substitute for it; any
+conforming implementation MUST be able to interoperate using only the
+construction below.
+
+## Negotiation as a Capsule Chain {#p2p-negotiation}
+
+A proposal is a sealed capsule carrying the proposed terms committed by digest
+and an explicit expiry. A revised proposal is a new capsule chaining to its
+predecessor with `supersedes`. Acceptance is a capsule chaining to the
+accepted proposal with `confirms`, carrying both parties' signatures over the
+identical byte sequence, per the bilateral seal defined in this document. The
+negotiation history is therefore self-contained, ordered, and verifiable from
+the chain alone: which terms were proposed, revised, and agreed is
+reconstructable by any party holding the capsules, with no venue state to
+consult.
+
+## Delivery by Publication {#p2p-delivery}
+
+The evidentially hard problem in a two-party exchange is the attempt: Party A
+transmits a proposal; Party B later disputes ever having received it. Classical
+fair-exchange results establish that no two-party protocol resolves this
+without some witness. This construction uses the witness the parties have
+already accepted: the Transparency Service itself.
+
+- **Anchored offer.** At or before transmission, A registers the proposal
+  capsule's digest with the Transparency Service, together with a delivery
+  tag addressed to B (see {{p2p-privacy}}) and the proposal's expiry. The
+  receipt establishes, to any third party, that this exact proposal existed,
+  was committed to B, and was available from time T until expiry.
+- **Acknowledgment capsule.** B's first protocol act on receiving a proposal
+  SHOULD be a sealed acknowledgment capsule chaining to the proposal
+  (acknowledging receipt, not agreement), registered likewise.
+- **Asymmetric endings.** The two silence cases now produce distinguishable
+  evidence. If B acknowledged and never concluded, the chain shows receipt
+  without response (`counterparty_timeout` upon expiry). If B never
+  acknowledged, A holds proof of committed publication for the full validity
+  window (`delivery_unconfirmed` upon expiry). Neither verdict asserts more
+  than the evidence supports: publication proves committed availability, not
+  that B's software observed it. Verifiers weight the two endings accordingly
+  — an acknowledged-then-silent ending is materially stronger evidence of
+  non-performance than an unacknowledged one. What the construction eliminates
+  is the unverifiable narrative: every ending is a sealed, anchored record
+  rather than one party's word.
+
+## Peer Verification of Authority {#p2p-authority}
+
+Where a party's proposal or acceptance is constrained by a grant (an
+authorization document cited by digest), the counterparty MAY require
+disclosure of the specific grant fields relevant to the transaction — using
+the selective-disclosure mechanism of
+{{I-D.mih-scitt-agent-action-capsule-sel-disc}} — and verify the commitment
+against the grant before countersigning. A countersignature applied after such
+verification attests both to the terms and to the verifier's satisfaction that
+the counterparty acted within its cited authority. No third party is required
+for this check; parties unwilling or unable to perform it simply obtain weaker
+assurance, and their records say so.
+
+## Privacy Considerations for Delivery Tags {#p2p-privacy}
+
+A delivery tag published to the Transparency Service reveals, absent
+countermeasures, that *someone* addressed *some* proposal to a given party —
+transaction-graph metadata. Implementations SHOULD blind delivery tags (e.g.,
+a tag derived from an ECDH shared secret or an HMAC over the recipient's
+public key with a per-proposal salt, such that only the intended recipient can
+recognize tags addressed to it). Proposal content never appears on the log in
+any case; only digests and tags do.
+
+## Security Considerations for this Construction {#p2p-security}
+
+Publication is committed availability, not proven receipt; the construction is
+explicit about this limit, and the acknowledgment capsule exists to upgrade
+it. An adversary could anchor proposals to a party it never intends to
+transact with, to manufacture `delivery_unconfirmed` records against it;
+verifiers therefore treat unacknowledged endings as evidence about the
+*initiator's* conduct (a committed attempt) and not, alone, as adverse
+evidence about the addressee. Admission policies (a "declined to engage"
+pre-transaction state distinct from mid-transaction silence, as defined in
+{{asymmetry-dispositions}}) apply unchanged. Log availability becomes a
+liveness dependency for evidence generation, not for negotiation itself —
+parties may negotiate offline and anchor when connectivity permits, at the
+cost of weaker timing evidence.
+
+## Relationship to the Relay Role {#p2p-relay}
+
+The optional Relay provides store-and-forward delivery, signed delivery
+receipts, and reconciliation as conveniences layered over this construction.
+A Relay's delivery receipt MAY substitute for the anchored-offer step of
+{{p2p-delivery}} where both parties accept it; a Relay remains subject to
+the self-anchoring requirement defined in {{optional-relay}}. Nothing in the
+Relay role confers evidentiary capability unavailable to the peer-to-peer
+construction above.
+
 # Relationship to Existing Work
 
 **Record layer.** This document defines an exchange, not a record format:
@@ -506,9 +605,23 @@ reputation layer's, which faces the same problem from the consumption side.
 
 # IANA Considerations
 
-This document has no IANA actions at this time. A future revision defining
-wire encodings is expected to register media types for the four exchange
-objects and a registry for reduced-assurance indicator values. TBD.
+## `verdict_class` Extensions for Bilateral Exchanges
+
+This document registers the following values in the `verdict_class` registry
+established by {{I-D.mih-scitt-agent-action-capsule}}, §12. These values
+cover asymmetry dispositions meaningful only in a bilateral exchange; they
+record exchange outcomes, not action outcomes ({{asymmetry-dispositions}}),
+and MUST NOT be used as action dispositions.
+
+| Value | Semantics |
+|---|---|
+| `delivery_unconfirmed` | The requesting party emitted its attestation but delivery to the performing party could not be confirmed. |
+| `counterparty_timeout` | Delivery was confirmed; the performing party did not countersign within the request's validity window. |
+| `countersign_refused` | The performing party was reached and explicitly refused to countersign. |
+
+A future revision defining wire encodings is expected to register media types
+for the four exchange objects and a registry for reduced-assurance indicator
+values.
 
 --- back
 
