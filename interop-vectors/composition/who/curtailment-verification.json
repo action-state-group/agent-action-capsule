@@ -1,0 +1,12 @@
+{
+  "approver_keys": {
+    "ep:key:jkintzele-curtailment#1": {
+      "approver_id": "ep:approver:jkintzele",
+      "key_class": "A",
+      "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEufkmOYJ1kwzFW8CbNYWlfXfOqAI89lJFa6p-dHoLER7Q1QkvYvJHI7jv6LHn0ZslkqNkMFa4gOPkVmXgBqvPeg",
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_to": "2036-01-01T00:00:00Z"
+    }
+  },
+  "log_public_key": "MCowBQYDK2VwAyEAjYh4Ib4jKbX_83BSmt__39eRlN48kRqQj591C1GNbYI"
+}

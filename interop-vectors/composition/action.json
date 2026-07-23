@@ -1,0 +1,21 @@
+{
+  "action_type": "grid.curtailment",
+  "ep_version": "1.0",
+  "initiator": "ep:entity:cosa-agent",
+  "parameters": {
+    "envelope_max_mw": "15",
+    "event_id": "ercot-synth-2026-07-15-0001",
+    "facility": "dc-west-04.example",
+    "target_delta_kw": "12.0",
+    "window": {
+      "not_after": "2026-07-15T18:30:00Z",
+      "not_before": "2026-07-15T14:30:00Z"
+    }
+  },
+  "policy_id": "ep:policy:continuum-grid-curtailment@v1",
+  "requested_at": "2026-07-09T04:30:00Z",
+  "target": {
+    "resource": "dc-west-04.example",
+    "system": "cosa.scheduler"
+  }
+}

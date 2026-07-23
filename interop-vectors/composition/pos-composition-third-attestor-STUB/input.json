@@ -1,0 +1,27 @@
+{
+  "note": "RESERVED slot. A physically-measured meter reading is a THIRD attestor's separate signed claim over the SAME subject_digest (8cf0c36ee36a7b98f2ea7c39251ec4faa337393a8c2e14443c12783e3f51623d), joined at composition level — NOT a role added to the WHAT capsule or the bilateral spec. Fill when a third-attestor sample is supplied.",
+  "stub": true,
+  "template": {
+    "_description": "TEMPLATE — skeleton for a third-attestor claim. A third-attestor is a party independent of both the capsule producer (WHAT) and the receipt producer (WHO). It files its own signed claim over subject_digest, joined at composition level only — no embedding into either record.",
+    "subject_digest": "8cf0c36ee36a7b98f2ea7c39251ec4faa337393a8c2e14443c12783e3f51623d",
+    "action_reference": {
+      "_note": "The third-attestor anchors its claim to the same action — identified only by subject_digest = SHA-256(JCS(action)). It does not need a copy of the full action.",
+      "subject_digest": "8cf0c36ee36a7b98f2ea7c39251ec4faa337393a8c2e14443c12783e3f51623d"
+    },
+    "third_attestor_claim": {
+      "role": "metering",
+      "_role_note": "Role is declarative — the composition model supports any independent-observer role (metering, auditing, inspection, etc.).",
+      "claim": {
+        "subject_digest": "8cf0c36ee36a7b98f2ea7c39251ec4faa337393a8c2e14443c12783e3f51623d",
+        "observed_delta_kw": "11.8",
+        "observation_time": "2026-07-15T16:45:00Z",
+        "observer_id": "synth-meter-v1",
+        "result": "within_tolerance"
+      },
+      "_claim_note": "SYNTHETIC — this metering observation is fabricated for template purposes only. The observed_delta_kw (11.8 kW) is plausible given the action's target_delta_kw (12.0 kW). A real third attestor would independently observe and sign this claim.",
+      "signature": "SYNTHETIC-NOT-VALID",
+      "_signature_note": "A real third-attestor claim carries a cryptographic signature over the claim content from the observer's key. Replace this placeholder with an actual signature."
+    },
+    "freeze_rule": "This slot is filled when two independent implementations produce the same subject_digest AND a genuine third-attestor signs their claim over it. File as a PR to the agent-accountability org with your run output and the signed claim."
+  }
+}
