@@ -17,6 +17,10 @@ preimages, kept locally / shared only as needed).
 
 Files: `docs/interop/purchase-example/{prompt.json, output.json, capsule.json}`
 
+Machine-checkable cross-profile vector: `docs/interop/aac-aep-scitt-digest-binding-vector.json`.
+It pins the positive AAC/AEP/SCITT digest thread plus the first negative cases for raw-bytes-vs-hex,
+canonicalization, profile-label, and receipt-binding mismatches.
+
 ---
 
 ## PRIMARY DELIVERABLE — Hand these to Anton
