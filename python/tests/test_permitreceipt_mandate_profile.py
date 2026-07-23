@@ -338,7 +338,7 @@ def test_positive_both_correct():
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["permit_receipt_reference_bound"]["passed"] is True
     assert gate_names["permit_receipt_appraised"]["passed"] is True
-    assert gate_names["machine_mandate_bound"]["passed"] is True
+    assert gate_names["machine_mandate_reference_bound"]["passed"] is True
     assert gate_names["machine_mandate_appraised"]["passed"] is True
 
 
@@ -360,7 +360,7 @@ def test_digest_match_without_appraisal_is_not_success():
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["permit_receipt_reference_bound"]["passed"] is True   # digest matched
     assert gate_names["permit_receipt_appraised"]["passed"] is False  # no appraisal
-    assert gate_names["machine_mandate_bound"]["passed"] is True
+    assert gate_names["machine_mandate_reference_bound"]["passed"] is True
     assert gate_names["machine_mandate_appraised"]["passed"] is False
 
 
@@ -380,7 +380,7 @@ def test_missing_authorization_block():
     assert result["bindings_ok"] is False
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["permit_receipt_reference_bound"]["passed"] is False
-    assert gate_names["machine_mandate_bound"]["passed"] is False
+    assert gate_names["machine_mandate_reference_bound"]["passed"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -396,18 +396,18 @@ def test_missing_permit_receipt_reference():
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["permit_receipt_reference_bound"]["passed"] is False
     assert "missing" in gate_names["permit_receipt_reference_bound"]["reason"].lower()
-    assert gate_names["machine_mandate_bound"]["passed"] is True
+    assert gate_names["machine_mandate_reference_bound"]["passed"] is True
 
 
 def test_missing_machine_mandate_reference():
-    """Missing machine_mandate_digest → machine_mandate_bound fails."""
+    """Missing machine_mandate_digest → machine_mandate_reference_bound fails."""
     capsule = _mint_capsule(permit_receipt=PERMIT_RECEIPT)
     result = _positive_verify(capsule)
 
     assert result["bindings_ok"] is False
     gate_names = {g["name"]: g for g in result["gates"]}
-    assert gate_names["machine_mandate_bound"]["passed"] is False
-    assert "missing" in gate_names["machine_mandate_bound"]["reason"].lower()
+    assert gate_names["machine_mandate_reference_bound"]["passed"] is False
+    assert "missing" in gate_names["machine_mandate_reference_bound"]["reason"].lower()
     assert gate_names["permit_receipt_reference_bound"]["passed"] is True
 
 
@@ -431,11 +431,11 @@ def test_mismatched_permit_receipt():
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["permit_receipt_reference_bound"]["passed"] is False
     assert "mismatch" in gate_names["permit_receipt_reference_bound"]["reason"].lower()
-    assert gate_names["machine_mandate_bound"]["passed"] is True
+    assert gate_names["machine_mandate_reference_bound"]["passed"] is True
 
 
 def test_mismatched_machine_mandate():
-    """Wrong MachineMandate doc → machine_mandate_bound fails with 'mismatch'."""
+    """Wrong MachineMandate doc → machine_mandate_reference_bound fails with 'mismatch'."""
     capsule = _mint_capsule(permit_receipt=PERMIT_RECEIPT, machine_mandate=MACHINE_MANDATE)
 
     wrong_mandate = copy.deepcopy(MACHINE_MANDATE)
@@ -448,8 +448,8 @@ def test_mismatched_machine_mandate():
     )
     assert result["bindings_ok"] is False
     gate_names = {g["name"]: g for g in result["gates"]}
-    assert gate_names["machine_mandate_bound"]["passed"] is False
-    assert "mismatch" in gate_names["machine_mandate_bound"]["reason"].lower()
+    assert gate_names["machine_mandate_reference_bound"]["passed"] is False
+    assert "mismatch" in gate_names["machine_mandate_reference_bound"]["reason"].lower()
     assert gate_names["permit_receipt_reference_bound"]["passed"] is True
 
 
@@ -469,7 +469,7 @@ def test_malformed_reference_missing_type():
     assert result["bindings_ok"] is False
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["permit_receipt_reference_bound"]["passed"] is False
-    assert gate_names["machine_mandate_bound"]["passed"] is True
+    assert gate_names["machine_mandate_reference_bound"]["passed"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -490,7 +490,7 @@ def test_owner_appraisal_rejected():
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["permit_receipt_reference_bound"]["passed"] is True
     assert gate_names["permit_receipt_appraised"]["passed"] is False
-    assert gate_names["machine_mandate_bound"]["passed"] is True
+    assert gate_names["machine_mandate_reference_bound"]["passed"] is True
     assert gate_names["machine_mandate_appraised"]["passed"] is True
 
 
@@ -523,8 +523,8 @@ def test_wrong_digest_alg_fails_binding_gate():
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["permit_receipt_reference_bound"]["passed"] is False
     assert "SHA-256" in gate_names["permit_receipt_reference_bound"]["reason"]
-    # machine_mandate_bound is unaffected — digest_alg still "SHA-256" there.
-    assert gate_names["machine_mandate_bound"]["passed"] is True
+    # machine_mandate_reference_bound is unaffected — digest_alg still "SHA-256" there.
+    assert gate_names["machine_mandate_reference_bound"]["passed"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -592,5 +592,5 @@ def test_real_machine_mandate_jws_preimage():
     assert result["bindings_ok"] is True
     gate_names = {g["name"]: g for g in result["gates"]}
     assert gate_names["permit_receipt_reference_bound"]["passed"] is True
-    assert gate_names["machine_mandate_bound"]["passed"] is True
-    assert PREIMAGE_JWS_ISSUER in gate_names["machine_mandate_bound"]["reason"]
+    assert gate_names["machine_mandate_reference_bound"]["passed"] is True
+    assert PREIMAGE_JWS_ISSUER in gate_names["machine_mandate_reference_bound"]["reason"]

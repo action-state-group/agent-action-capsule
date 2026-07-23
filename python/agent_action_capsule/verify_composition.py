@@ -31,7 +31,7 @@ Returns a result dict:
 Gate names (evaluated independently):
     permit_receipt_reference_bound — digest binding check (digest_alg must be exactly "SHA-256")
     permit_receipt_appraised       — owner-appraisal result (caller-supplied)
-    machine_mandate_bound          — digest binding check (digest_alg must be exactly "SHA-256")
+    machine_mandate_reference_bound — digest binding check (digest_alg must be exactly "SHA-256")
     machine_mandate_appraised      — owner-appraisal result (caller-supplied)
 
 Profile statement
@@ -211,7 +211,7 @@ def verify_permitreceipt_mandate(
             "effect.authorization is missing — appraisal not applicable",
         ))
         gates.append(_gate(
-            "machine_mandate_bound", False,
+            "machine_mandate_reference_bound", False,
             "effect.authorization is missing or not an object",
         ))
         gates.append(_gate(
@@ -243,16 +243,16 @@ def verify_permitreceipt_mandate(
             "owner appraisal result not provided — caller must supply the result of the owner verifier",
         ))
 
-    # Gate 3 — machine_mandate_bound (digest binding)
+    # Gate 3 — machine_mandate_reference_bound (digest binding)
     mandate_ref = authorization.get("machine_mandate_digest")
     if mandate_ref is None:
         gates.append(_gate(
-            "machine_mandate_bound", False,
+            "machine_mandate_reference_bound", False,
             "effect.authorization.machine_mandate_digest is missing",
         ))
     else:
         gates.append(_check_typed_reference(
-            mandate_ref, "MachineMandate", machine_mandate, "machine_mandate_bound",
+            mandate_ref, "MachineMandate", machine_mandate, "machine_mandate_reference_bound",
         ))
 
     # Gate 4 — machine_mandate_appraised (owner appraisal, caller-supplied)

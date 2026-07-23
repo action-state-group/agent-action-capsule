@@ -94,8 +94,8 @@ fetched from a network.
 **PermitReceipt → `effect.authorization.permit_receipt_digest`**
 
 1. Locate `capsule.effect.authorization`.  If absent or not an object, FAIL at gate
-   `permit_receipt_bound`.
-2. Locate `.permit_receipt_digest`.  If absent, FAIL at gate `permit_receipt_bound`.
+   `permit_receipt_reference_bound`.
+2. Locate `.permit_receipt_digest`.  If absent, FAIL at gate `permit_receipt_reference_bound`.
 3. Confirm the reference is an object containing `type`, `digest_alg`, and `digest`.
    If any field is missing, FAIL.
 4. Confirm `.type == "PermitReceipt"`.  FAIL on mismatch.
@@ -123,7 +123,7 @@ treated as authorization success.
 |---|---|---|
 | `permit_receipt_reference_bound` | Digest binding check | Authorization block absent; reference absent; required field missing; `digest_alg` ≠ `"SHA-256"` (exact string); type or digest mismatch |
 | `permit_receipt_appraised` | **Caller-supplied** (owner verifier result) | `None` (not provided) or `False` (owner rejected) |
-| `machine_mandate_bound` | Digest binding check | Authorization block absent; reference absent; required field missing; `digest_alg` ≠ `"SHA-256"` (exact string); type or digest mismatch |
+| `machine_mandate_reference_bound` | Digest binding check | Authorization block absent; reference absent; required field missing; `digest_alg` ≠ `"SHA-256"` (exact string); type or digest mismatch |
 | `machine_mandate_appraised` | **Caller-supplied** (owner verifier result) | `None` (not provided) or `False` (owner rejected) |
 
 `bindings_ok` is True only when **all four** gates pass.
@@ -231,9 +231,9 @@ result = verify_permitreceipt_mandate(
 # {
 #   "bindings_ok": True/False,
 #   "gates": [
-#     {"name": "permit_receipt_bound",      "passed": ..., "reason": "..."},
+#     {"name": "permit_receipt_reference_bound",      "passed": ..., "reason": "..."},
 #     {"name": "permit_receipt_appraised",  "passed": ..., "reason": "..."},
-#     {"name": "machine_mandate_bound",     "passed": ..., "reason": "..."},
+#     {"name": "machine_mandate_reference_bound",     "passed": ..., "reason": "..."},
 #     {"name": "machine_mandate_appraised", "passed": ..., "reason": "..."},
 #   ]
 # }

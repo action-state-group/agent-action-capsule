@@ -446,13 +446,20 @@ def test_positive_all_six_gates_pass(positive_case, shared):
     assert result["first_rejecting_gate"] is None
     assert result["effect_commit_count"] == 1
 
-    # Verify specific gate names
+    # Verify gate-name set, emission order, and per-gate pass
     gates = result["gates"]
-    for name in (
+    _FROZEN_GATE_NAMES = [
         "permit_receipt_reference_bound", "permit_receipt_appraised",
-        "machine_mandate_bound", "machine_mandate_appraised",
+        "machine_mandate_reference_bound", "machine_mandate_appraised",
         "machine_mandate_action_hash", "machine_mandate_spend",
-    ):
+    ]
+    assert set(gates.keys()) == set(_FROZEN_GATE_NAMES), (
+        "composed gate-name set must be exactly the six frozen v0.5 names"
+    )
+    assert list(gates.keys()) == _FROZEN_GATE_NAMES, (
+        "gate emission order must match frozen v0.5 sequence"
+    )
+    for name in _FROZEN_GATE_NAMES:
         assert gates[name]["passed"] is True, f"gate {name!r} should pass"
 
     eg = shared["expected_gates"]["cases"]["positive"]
@@ -475,10 +482,21 @@ def test_over_limit_spend_gate_denies(over_limit_case, shared):
     assert result["effect_commit_count"] == 0
 
     gates = result["gates"]
+    _FROZEN_GATE_NAMES = [
+        "permit_receipt_reference_bound", "permit_receipt_appraised",
+        "machine_mandate_reference_bound", "machine_mandate_appraised",
+        "machine_mandate_action_hash", "machine_mandate_spend",
+    ]
+    assert set(gates.keys()) == set(_FROZEN_GATE_NAMES), (
+        "composed gate-name set must be exactly the six frozen v0.5 names"
+    )
+    assert list(gates.keys()) == _FROZEN_GATE_NAMES, (
+        "gate emission order must match frozen v0.5 sequence"
+    )
     # All-pass gates
     for name in (
         "permit_receipt_reference_bound", "permit_receipt_appraised",
-        "machine_mandate_bound", "machine_mandate_appraised",
+        "machine_mandate_reference_bound", "machine_mandate_appraised",
         "machine_mandate_action_hash",
     ):
         assert gates[name]["passed"] is True, f"gate {name!r} should pass"
