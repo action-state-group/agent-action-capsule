@@ -121,7 +121,7 @@ Internet-Draft          Canonical Payload Binding              July 2026
    12. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  15
    Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  16
    References  . . . . . . . . . . . . . . . . . . . . . . . . . . .  16
-     Normative References  . . . . . . . . . . . . . . . . . . . . .  16
+     Normative References  . . . . . . . . . . . . . . . . . . . . .  17
      Informative References  . . . . . . . . . . . . . . . . . . . .  17
    Appendix A.  Synthetic Registration Walkthrough . . . . . . . . .  19
    Appendix B.  Synthetic Two-Slot Composition . . . . . . . . . . .  20
@@ -848,7 +848,8 @@ Acknowledgments
    hackathon in Vienna that directly shaped the rules in this document.
    All attributions cite public artifacts.
 
-   *Contributors* [PENDING CONFIRM from each except Anton Sokolov]:
+   *Contributors* [PENDING CONFIRM from each except Anton Sokolov and
+   Iman Schrock, both confirmed 2026-07-24]:
 
    *  Anton Sokolov (Tyche Institute) — assurance-boundary discipline;
       the A2A boundary-seal instance in Appendix C.
@@ -872,9 +873,9 @@ Acknowledgments
       byte-agreement on subject_digest 0b4da06b..., demonstrating that
       jcs-n is reproducible across separately written implementations.
 
-   *  Iman Schrock (EMILIA/EP) — the three-computation single-digest
-      instance (8cf0c36e...) demonstrating byte-agreement across three
-      independent codebases.
+   *  Iman Schrock (EMILIA/EP) — confirmed 2026-07-24 — the three-
+      computation single-digest instance (8cf0c36e...) demonstrating
+      byte-agreement across three independent codebases.
 
    *Acknowledged* [PENDING CONFIRM from each]:
 
@@ -889,7 +890,6 @@ Acknowledgments
 
 References
 
-Normative References
 
 
 
@@ -897,6 +897,8 @@ Mih & Sokolov            Expires 25 January 2027               [Page 16]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
+
+Normative References
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -941,8 +943,6 @@ Informative References
               conversations-00, n.d.,
               <https://datatracker.ietf.org/doc/html/draft-birkholz-
               verifiable-agent-conversations-00>.
-
-
 
 
 
