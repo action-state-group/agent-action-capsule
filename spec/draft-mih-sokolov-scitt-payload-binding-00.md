@@ -49,7 +49,7 @@ informative:
         name: Steven Mih
         organization: Action State Group, Inc.
   I-D.hillier-scitt-arp:
-    title: "A Registered Profile for SCITT"
+    title: "Attestation Reconciliation Protocol"
     seriesinfo:
       Internet-Draft: draft-hillier-scitt-arp-00
     author:
@@ -205,6 +205,9 @@ Algorithm Registry ({{iana-alg}}) are:
 
 Entries in the Canonicalization Algorithm Registry are immutable: new
 behavior requires a new entry, never a retroactive edit to an existing one.
+The hash function is part of each algorithm's definition; migration to a
+different hash (for example, a future post-quantum function) is performed by
+registering a new algorithm entry, never by reinterpreting an existing one.
 
 ## Algorithm jcs-n {#algo-jcs-n}
 
@@ -244,9 +247,8 @@ valid under `jcs-n` without modification.
 
 ## Algorithm cde-n (Reserved) {#algo-cde-n}
 
-Algorithm `cde-n` is reserved for a CDE/dCBOR canonicalization suite.
-Authorship of this entry is open; interested contributors should contact the
-authors. The algorithm definition will be added in a subsequent revision.
+Algorithm `cde-n` is reserved for a CDE/dCBOR canonicalization suite. Its
+definition will be specified in a subsequent revision of this document.
 
 # The Derived Identifier {#derived-id}
 
@@ -294,8 +296,9 @@ A Signed Statement carrying a CPB-bound payload MUST be a COSE_Sign1
 * `alg`: the signing algorithm.
 * `kid` or `x5chain`: the signing key identifier or certificate chain.
 * `content_type`: the media type of the payload, as `application/CLASS+json`
-  where CLASS is the payload class name registered in the Artifact Type
-  Registry ({{iana-art}}).
+  or `application/CLASS+cbor` according to the serialization the payload
+  class declares, where CLASS is the payload class name registered in the
+  Artifact Type Registry ({{iana-art}}).
 
 A field belongs in the protected header only if a SCITT-generic party — a
 Transparency Service registration policy or a profile-unaware verifier —
@@ -365,7 +368,7 @@ A typed digest reference is a JSON object with the following fields:
 | Field | Type | Req | Meaning |
 |---|---|---|---|
 | type | string | REQUIRED | The artifact type, from the Artifact Type Registry ({{iana-art}}). |
-| digest_alg | string | REQUIRED | The canonicalization algorithm used to compute the digest, from the Canonicalization Algorithm Registry ({{iana-alg}}). |
+| digest_alg | string | REQUIRED | The hash algorithm of the digest value (e.g., "SHA-256"). The canonicalization context of the cited artifact is resolved from its artifact type's registry entry ({{iana-art}}), not from this field. |
 | digest | string | REQUIRED | The digest of the cited artifact, in the representation declared by its payload class. |
 
 Additional fields MAY be present and MUST be ignored by verifiers that do
@@ -379,7 +382,9 @@ set, the same canonicalization algorithm, the same domain separation, the
 same encoding, and the same representation.
 
 A verifier that encounters a typed digest reference MUST resolve the digest
-context from the referenced artifact type's registry entry. If the digest
+context (canonicalization algorithm, field selection, representation) from
+the referenced artifact type's registry entry, keyed by the `type` field;
+the `digest_alg` field names only the hash algorithm. If the digest
 contexts of the citing record and the cited artifact are not compatible, the
 verifier MUST return a result of indeterminate or deny rather than treating
 equal-looking hex strings as a match.
@@ -387,7 +392,9 @@ equal-looking hex strings as a match.
 Equal-looking hex values computed under incompatible digest contexts are
 coincidental, not equivalent.
 
-# Discovery Mirror (Informative) {#discovery}
+# Discovery Mirror {#discovery}
+
+This section is informative.
 
 A producer MAY place an unprotected COSE header parameter that mirrors the
 derived identifier of the record. This parameter is advisory only: it
@@ -492,9 +499,10 @@ MUST be registered; existing entries MUST NOT be modified retroactively.
 Maintainer is IANA per standard process; no other governance body is defined.
 
 Until these registries come into existence at RFC publication, the tables
-below serve as the provisional living registry. A repository in the SCITT
-Working Group's orbit is expected to host the provisional registry during
-the Internet-Draft phase.
+below serve as the provisional living registry, maintained in this
+document's source repository. If the document is adopted, the provisional
+registry moves with the document to a repository of the working group's
+choosing.
 
 ## Canonicalization Algorithm Registry {#iana-alg}
 
@@ -513,7 +521,7 @@ Initial contents:
 | Name | Description | Reference |
 |---|---|---|
 | jcs-n | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | This document |
-| cde-n | CDE/dCBOR normalization; SHA-256 | This document (pending contributor) |
+| cde-n | CDE/dCBOR normalization; SHA-256 | This document (reserved; subsequent revision) |
 
 ## Artifact Type Registry {#iana-art}
 
@@ -532,7 +540,7 @@ Initial contents:
 
 | Name | Digest Context | Reference |
 |---|---|---|
-| agent-action-capsule | jcs-n applied to the payload minus {capsule_id, chain-linkage fields}; lowercase 64-char hex | {{I-D.mih-scitt-agent-action-capsule}} |
+| agent-action-capsule | jcs-n; exclusion set {capsule_id, chain}; 64-char lowercase hex | {{I-D.mih-scitt-agent-action-capsule}} |
 
 # Related Work {#related}
 
@@ -542,8 +550,7 @@ structure. CPB is the statement-side complement: it defines how the payload
 content is canonicalized and identified so that the content-address is
 reproducible across implementations.
 
-The CCF Receipt Profile ({{I-D.ietf-scitt-receipts-ccf-profile}}) and the
-COSE Merkle Tree Proofs specification ({{RFC9942}}) are the receipt-side
+The CCF Receipt Profile ({{I-D.ietf-scitt-receipts-ccf-profile}}) and COSE Receipts ({{RFC9942}}) are the receipt-side
 twins: they define the Verifiable Data Structure formats that may appear in
 the unprotected headers of Transparent Statements whose binding layer is
 defined here.
@@ -711,7 +718,7 @@ Suppose the result is `"ab12cd34..."`.
   "action": "write",
   "authorization": {
     "type": "authorization-doc",
-    "digest_alg": "jcs-n",
+    "digest_alg": "SHA-256",
     "digest": "ab12cd34..."
   }
 }
@@ -793,8 +800,8 @@ treating the hex strings as directly comparable.
 
 **Mechanism illustrated:** {{typed-refs}} and {{comparability}}. Equal-looking
 hex strings computed under different digest contexts are not a match; a
-cross-context citation requires typed references with explicit algorithm
-declaration.
+cross-context citation requires typed references whose context is resolved
+from the artifact-type registry entry.
 
 **Consent:** Scott Lee (Meridian Verity) \[PENDING CONFIRM\].
 
