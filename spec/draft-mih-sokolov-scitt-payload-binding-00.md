@@ -324,9 +324,10 @@ the Transparency Service; this profile imposes no VDS requirement.
 A verifier MUST NOT report receipt-backed status without having verified
 a Receipt from a Transparency Service under a key the verifier trusts.
 
-The VDS identifier MUST be read from the protected header of the Signed
-Statement. Unknown VDS identifiers MUST be rejected; verifiers MUST NOT
-infer the VDS from the receipt structure.
+A verifier determining which VDS to apply when verifying a Receipt MUST
+read the VDS identifier from the protected header of the Receipt. The
+verifier MUST NOT infer the VDS from the COSE structure of the receipt
+alone. Unknown VDS identifiers MUST be rejected.
 
 ## Leaf Construction {#leaf-rule}
 
@@ -335,16 +336,16 @@ record, the log leaf MUST be computed over the raw bytes of the derived
 identifier, not over its hex-string encoding.
 
 That is, for a derived identifier whose string value is a 64-character
-hex string D, the log leaf input MUST be:
+hex string D, the log leaf input MUST be the raw 32-byte value:
 
 ~~~
-leaf_input = bytes.fromhex(D)   -- the 32-byte raw value
+leaf_input = bytes.fromhex(D)    -- correct: 32 raw bytes
 ~~~
 
-not:
+The following is incorrect and MUST NOT be used:
 
 ~~~
-leaf_input = D.encode("utf-8")  -- incorrect: hashes the hex characters
+leaf_input = D.encode("utf-8")  -- WRONG: 64 ASCII bytes
 ~~~
 
 A verifier constructing the leaf for proof verification MUST apply the same
