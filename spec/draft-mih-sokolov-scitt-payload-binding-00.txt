@@ -426,9 +426,10 @@ Internet-Draft          Canonical Payload Binding              July 2026
    verified a Receipt from a Transparency Service under a key the
    verifier trusts.
 
-   The VDS identifier MUST be read from the protected header of the
-   Signed Statement.  Unknown VDS identifiers MUST be rejected;
-   verifiers MUST NOT infer the VDS from the receipt structure.
+   A verifier determining which VDS to apply when verifying a Receipt
+   MUST read the VDS identifier from the protected header of the
+   Receipt.  The verifier MUST NOT infer the VDS from the COSE structure
+   of the receipt alone.  Unknown VDS identifiers MUST be rejected.
 
 6.1.  Leaf Construction
 
@@ -437,11 +438,10 @@ Internet-Draft          Canonical Payload Binding              July 2026
    derived identifier, not over its hex-string encoding.
 
    That is, for a derived identifier whose string value is a
-   64-character hex string D, the log leaf input MUST be:
+   64-character hex string D, the log leaf input MUST be the raw 32-byte
+   value:
 
-   leaf_input = bytes.fromhex(D)   -- the 32-byte raw value
-
-   not:
+   leaf_input = bytes.fromhex(D)    -- correct: 32 raw bytes
 
 
 
@@ -450,7 +450,9 @@ Mih & Sokolov            Expires 25 January 2027                [Page 8]
 Internet-Draft          Canonical Payload Binding              July 2026
 
 
- leaf_input = D.encode("utf-8")  -- incorrect: hashes the hex characters
+   The following is incorrect and MUST NOT be used:
+
+   leaf_input = D.encode("utf-8")  -- WRONG: 64 ASCII bytes
 
    A verifier constructing the leaf for proof verification MUST apply
    the same rule.  Failure to distinguish the byte sequence from its hex
@@ -496,8 +498,6 @@ Internet-Draft          Canonical Payload Binding              July 2026
    full digest contexts of both sides are established as compatible: the
    same field set, the same canonicalization algorithm, the same domain
    separation, the same encoding, and the same representation.
-
-
 
 
 
