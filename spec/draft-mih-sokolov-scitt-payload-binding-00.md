@@ -55,6 +55,16 @@ informative:
     author:
       - ins: J. Hillier
         name: Joel Hillier
+  I-D.mih-sato-agent-accountability-composition:
+    title: "Agent Accountability: Composition and Conformance"
+    seriesinfo:
+      Internet-Draft: draft-mih-sato-agent-accountability-composition-00
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
+      - ins: T. Sato
+        name: Tom Sato
   I-D.sokolov-rats-aep-composition:
     title: "Composing Application-Layer Action Evidence with Remote Attestation Procedures"
     seriesinfo:
@@ -586,10 +596,12 @@ that document.
 
 {{I-D.sokolov-rats-aep-composition}} addresses the complementary problem in
 the RATS domain: composing application-layer action evidence with remote
-attestation. Together with the CPB-based agent-action-capsule profile, it
-demonstrates that the canonicalize-and-derive-identifier construction is a
-recurring primitive across independent use cases — one shared binding layer
-serving both the SCITT and RATS composition contexts.
+attestation. {{I-D.mih-sato-agent-accountability-composition}} defines
+composition and conformance rules for multi-agent accountability chains.
+Together these documents demonstrate that the canonicalize-and-derive-identifier
+construction is a recurring primitive across independent use cases — one shared
+binding layer serving SCITT-anchored agent records, RATS attestation
+composition, and multi-agent accountability chains.
 
 # Acknowledgments {#acknowledgments}
 {:numbered="false"}
@@ -598,7 +610,7 @@ The following individuals contributed findings from the IETF 126 hackathon in
 Vienna that directly shaped the rules in this document. All attributions
 cite public artifacts.
 
-**Contributors** \[PENDING CONFIRM from each except Anton Sokolov (confirmed)\]:
+**Contributors** \[PENDING CONFIRM from each except Anton Sokolov\]:
 
 * Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
   boundary-seal instance in {{appendix-c}}.
@@ -759,9 +771,10 @@ the verification counterparty. The common counterparty in each case is the
 AAC reference implementation, which is present as a verifier, not as the
 subject.
 
-**Owner consent status:** each named party's consent to appear in this
-appendix is pending confirmation. This appendix will be finalized before
-submission to the datatracker.
+**Owner consent status:** Anton Sokolov (Tyche Institute) — confirmed
+2026-07-24. Consent from Scott Lee (Meridian Verity), Tymofii Pidlisnyi
+(APS), and Tom Sato (GAR/SOOS) is pending; their entries carry
+\[PENDING CONFIRM\] markers and will be finalized before submission.
 
 ## Deep Mechanism Instances {#appendix-c1}
 

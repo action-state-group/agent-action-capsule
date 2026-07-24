@@ -119,23 +119,23 @@ Internet-Draft          Canonical Payload Binding              July 2026
      11.1.  Canonicalization Algorithm Registry  . . . . . . . . . .  13
      11.2.  Artifact Type Registry . . . . . . . . . . . . . . . . .  14
    12. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  15
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  15
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  16
    References  . . . . . . . . . . . . . . . . . . . . . . . . . . .  16
      Normative References  . . . . . . . . . . . . . . . . . . . . .  16
      Informative References  . . . . . . . . . . . . . . . . . . . .  17
-   Appendix A.  Synthetic Registration Walkthrough . . . . . . . . .  18
+   Appendix A.  Synthetic Registration Walkthrough . . . . . . . . .  19
    Appendix B.  Synthetic Two-Slot Composition . . . . . . . . . . .  20
    Appendix C.  Field-Verified Instances . . . . . . . . . . . . . .  21
      C.1.  Deep Mechanism Instances  . . . . . . . . . . . . . . . .  21
        C.1.1.  GlyphZero Byte-Agreement — Algorithm Determinism  . .  21
-       C.1.2.  GAR Session Block — Leaf Construction Rule  . . . . .  21
+       C.1.2.  GAR Session Block — Leaf Construction Rule  . . . . .  22
        C.1.3.  ORPRG Cross-Context Join — Typed Digest References and
                DENY Discipline . . . . . . . . . . . . . . . . . . .  22
        C.1.4.  A2A Boundary Seal — Derived Identifier as Protocol
                Gate  . . . . . . . . . . . . . . . . . . . . . . . .  22
      C.2.  Field Table — IETF 126 Participants . . . . . . . . . . .  23
      C.3.  Agreed and Scheduled  . . . . . . . . . . . . . . . . . .  24
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  24
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  25
 
 1.  Introduction
 
@@ -823,17 +823,17 @@ Internet-Draft          Canonical Payload Binding              July 2026
 
    [I-D.sokolov-rats-aep-composition] addresses the complementary
    problem in the RATS domain: composing application-layer action
-   evidence with remote attestation.  Together with the CPB-based agent-
-   action-capsule profile, it demonstrates that the canonicalize-and-
+   evidence with remote attestation.
+   [I-D.mih-sato-agent-accountability-composition] defines composition
+   and conformance rules for multi-agent accountability chains.
+   Together these documents demonstrate that the canonicalize-and-
    derive-identifier construction is a recurring primitive across
-   independent use cases — one shared binding layer serving both the
-   SCITT and RATS composition contexts.
+   independent use cases — one shared binding layer serving SCITT-
+   anchored agent records, RATS attestation composition, and multi-agent
+   accountability chains.
 
-Acknowledgments
 
-   The following individuals contributed findings from the IETF 126
-   hackathon in Vienna that directly shaped the rules in this document.
-   All attributions cite public artifacts.
+
 
 
 
@@ -842,8 +842,13 @@ Mih & Sokolov            Expires 25 January 2027               [Page 15]
 Internet-Draft          Canonical Payload Binding              July 2026
 
 
-   *Contributors* [PENDING CONFIRM from each except Anton Sokolov
-   (confirmed)]:
+Acknowledgments
+
+   The following individuals contributed findings from the IETF 126
+   hackathon in Vienna that directly shaped the rules in this document.
+   All attributions cite public artifacts.
+
+   *Contributors* [PENDING CONFIRM from each except Anton Sokolov]:
 
    *  Anton Sokolov (Tyche Institute) — assurance-boundary discipline;
       the A2A boundary-seal instance in Appendix C.
@@ -886,17 +891,17 @@ References
 
 Normative References
 
-   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
-              Requirement Levels", BCP 14, RFC 2119,
-              DOI 10.17487/RFC2119, March 1997,
-              <https://www.rfc-editor.org/rfc/rfc2119>.
-
 
 
 Mih & Sokolov            Expires 25 January 2027               [Page 16]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
 
    [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
               Writing an IANA Considerations Section in RFCs", BCP 26,
@@ -937,6 +942,18 @@ Informative References
               <https://datatracker.ietf.org/doc/html/draft-birkholz-
               verifiable-agent-conversations-00>.
 
+
+
+
+
+
+
+
+Mih & Sokolov            Expires 25 January 2027               [Page 17]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
    [I-D.hillier-scitt-arp]
               Hillier, J., "Attestation Reconciliation Protocol", Work
               in Progress, Internet-Draft, draft-hillier-scitt-arp-00,
@@ -946,18 +963,17 @@ Informative References
    [I-D.ietf-scitt-receipts-ccf-profile]
               Birkholz, H., Delignat-Lavaud, A., Fournet, C., and A.
               Chamayou, "CCF Profile for COSE Receipts", Work in
-
-
-
-Mih & Sokolov            Expires 25 January 2027               [Page 17]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
-
               Progress, Internet-Draft, draft-ietf-scitt-receipts-ccf-
               profile-04, 24 June 2026,
               <https://datatracker.ietf.org/doc/html/draft-ietf-scitt-
               receipts-ccf-profile-04>.
+
+   [I-D.mih-sato-agent-accountability-composition]
+              Mih, S. and T. Sato, "Agent Accountability: Composition
+              and Conformance", Work in Progress, Internet-Draft, draft-
+              mih-sato-agent-accountability-composition-00, n.d.,
+              <https://datatracker.ietf.org/doc/html/draft-mih-sato-
+              agent-accountability-composition-00>.
 
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
@@ -987,6 +1003,13 @@ Internet-Draft          Canonical Payload Binding              July 2026
               DOI 10.17487/RFC9995, July 2026,
               <https://www.rfc-editor.org/rfc/rfc9995>.
 
+
+
+Mih & Sokolov            Expires 25 January 2027               [Page 18]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
 Appendix A.  Synthetic Registration Walkthrough
 
    This appendix illustrates the mechanics of Section 4, Section 5, and
@@ -999,16 +1022,6 @@ Appendix A.  Synthetic Registration Walkthrough
    Representation: bare 64-char lowercase hex.
 
    *Step 1 — Construct the payload:*
-
-
-
-
-
-
-Mih & Sokolov            Expires 25 January 2027               [Page 18]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
 
    {
      "station_id": "WS-42",
@@ -1045,6 +1058,14 @@ Internet-Draft          Canonical Payload Binding              July 2026
 
    *Step 5 — Register and receive a Receipt:*
 
+
+
+
+Mih & Sokolov            Expires 25 January 2027               [Page 19]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
    Submit the Signed Statement to a SCITT Transparency Service.  Attach
    the returned Receipt to the unprotected header.  The Transparent
    Statement is now suitable for distribution to verifiers.
@@ -1056,15 +1077,6 @@ Internet-Draft          Canonical Payload Binding              July 2026
    record_id.  The verifier then verifies the envelope signature and, if
    present, the Receipt under a trusted service key.  All three checks
    must pass for the record to be considered fully verified.
-
-
-
-
-
-Mih & Sokolov            Expires 25 January 2027               [Page 19]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
 
 Appendix B.  Synthetic Two-Slot Composition
 
@@ -1099,6 +1111,17 @@ Appendix B.  Synthetic Two-Slot Composition
      }
    }
 
+
+
+
+
+
+
+Mih & Sokolov            Expires 25 January 2027               [Page 20]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
    The typed reference authorization cites the authorization doc by its
    artifact type and derived identifier.  A verifier can confirm the doc
    was cited by resolving the authorization-doc artifact type from the
@@ -1111,17 +1134,6 @@ Appendix B.  Synthetic Two-Slot Composition
    verification is the interchangeability property of typed digest
    references: any registered artifact type fills any citation slot.
 
-
-
-
-
-
-
-Mih & Sokolov            Expires 25 January 2027               [Page 20]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
-
 Appendix C.  Field-Verified Instances
 
    The instances in this appendix were chosen to illustrate the
@@ -1131,9 +1143,11 @@ Appendix C.  Field-Verified Instances
    each case is the AAC reference implementation, which is present as a
    verifier, not as the subject.
 
-   *Owner consent status:* each named party's consent to appear in this
-   appendix is pending confirmation.  This appendix will be finalized
-   before submission to the datatracker.
+   *Owner consent status:* Anton Sokolov (Tyche Institute) — confirmed
+   2026-07-24.  Consent from Scott Lee (Meridian Verity), Tymofii
+   Pidlisnyi (APS), and Tom Sato (GAR/SOOS) is pending; their entries
+   carry [PENDING CONFIRM] markers and will be finalized before
+   submission.
 
 C.1.  Deep Mechanism Instances
 
@@ -1155,6 +1169,15 @@ C.1.1.  GlyphZero Byte-Agreement — Algorithm Determinism
 
    *Consent:* Karthik Rampalli (GlyphZero) [PENDING CONFIRM].
 
+
+
+
+
+Mih & Sokolov            Expires 25 January 2027               [Page 21]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
 C.1.2.  GAR Session Block — Leaf Construction Rule
 
    Public record: GAR Session Block anchor, IETF 126 hackathon; gar-
@@ -1166,17 +1189,6 @@ C.1.2.  GAR Session Block — Leaf Construction Rule
    bytes.fromhex(id), not id.encode("utf-8").  The inclusion proof
    verified correctly against the anchored Merkle root only when the
    leaf used the raw bytes.
-
-
-
-
-
-
-
-Mih & Sokolov            Expires 25 January 2027               [Page 21]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
 
    *Mechanism illustrated:* Section 6.1.  The leaf-bytes-not-hex rule
    was discovered during live anchoring when a leaf constructed from the
@@ -1214,6 +1226,14 @@ C.1.4.  A2A Boundary Seal — Derived Identifier as Protocol Gate
    Public record: capsule-emit issue #29, verified offline at
    https://github.com/action-state-group/capsule-emit/issues/29.
 
+
+
+
+Mih & Sokolov            Expires 25 January 2027               [Page 22]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
    *What ran:* An A2A-protocol boundary producer submitted a record to a
    SCITT Transparency Service and used the derived identifier as a
    protocol-layer gate (capsule.digest / capsule.resolve).  The receipt
@@ -1222,17 +1242,6 @@ C.1.4.  A2A Boundary Seal — Derived Identifier as Protocol Gate
    (verify_inclusion) folded to the anchored root.  A DENY negative case
    was also demonstrated: a fabricated derived identifier not present in
    the log returned 404 on the resolve step and DENY on the gate.
-
-
-
-
-
-
-
-Mih & Sokolov            Expires 25 January 2027               [Page 22]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
 
    *Classification (exact):* single-machine loopback rehearsal,
    independently reproduced.  The read-only resolve path (/anchor/
@@ -1273,6 +1282,14 @@ C.2.  Field Table — IETF 126 Participants
     |           | session block | CT leaf = SHA-    | commit fe18f24  |
     |           |               | 256(raw bytes of  |                 |
     |           |               | id); leaf 166     |                 |
+
+
+
+Mih & Sokolov            Expires 25 January 2027               [Page 23]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
     |           |               | verified          |                 |
     +-----------+---------------+-------------------+-----------------+
     |GlyphZero  | Delegation    | Two independent   | GlyphZero       |
@@ -1282,14 +1299,6 @@ C.2.  Field Table — IETF 126 Participants
     |           |               | 0b4da06b...       |                 |
     +-----------+---------------+-------------------+-----------------+
     |Microsoft  | Two-TS        | One payload, two  | scitt-ccf-      |
-
-
-
-Mih & Sokolov            Expires 25 January 2027               [Page 23]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
-
     |(Chamayou) | statement     | receipt profiles  | ledger PR #424  |
     |           |               | (ccf.v1 +         |                 |
     |           |               | RFC9162_SHA256)   |                 |
@@ -1329,6 +1338,14 @@ C.3.  Agreed and Scheduled
    Field-verified instances are expected to be added in future revisions
    as cross-verifications complete.
 
+
+
+
+Mih & Sokolov            Expires 25 January 2027               [Page 24]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
    The PermitReceipt × MachineMandate composition is excluded from this
    appendix.  It is recorded in the AAC interop registry (INTEROP.md).
 
@@ -1339,26 +1356,9 @@ Authors' Addresses
    Email: spec@actionstate.ai
 
 
-
-
-Mih & Sokolov            Expires 25 January 2027               [Page 24]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
-
    Anton Sokolov
    Tyche Institute
    Email: anton.sokolov@tyche.institute
-
-
-
-
-
-
-
-
-
-
 
 
 
