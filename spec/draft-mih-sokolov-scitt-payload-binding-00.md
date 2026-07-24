@@ -610,7 +610,8 @@ The following individuals contributed findings from the IETF 126 hackathon in
 Vienna that directly shaped the rules in this document. All attributions
 cite public artifacts.
 
-**Contributors** \[PENDING CONFIRM from each except Anton Sokolov\]:
+**Contributors** \[PENDING CONFIRM from each except Anton Sokolov and
+Iman Schrock, both confirmed 2026-07-24\]:
 
 * Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
   boundary-seal instance in {{appendix-c}}.
@@ -634,7 +635,7 @@ cite public artifacts.
   byte-agreement on `subject_digest` `0b4da06b...`, demonstrating that
   `jcs-n` is reproducible across separately written implementations.
 
-* Iman Schrock (EMILIA/EP) — the three-computation single-digest instance
+* Iman Schrock (EMILIA/EP) — confirmed 2026-07-24 — the three-computation single-digest instance
   (`8cf0c36e...`) demonstrating byte-agreement across three independent
   codebases.
 
