@@ -24,7 +24,7 @@ author:
  - ins: A. Sokolov
    name: Anton Sokolov
    organization: Tyche Institute
-   email: TBD
+   email: anton.sokolov@tyche.institute
 
 normative:
   RFC2119:
@@ -55,6 +55,14 @@ informative:
     author:
       - ins: J. Hillier
         name: Joel Hillier
+  I-D.sokolov-rats-aep-composition:
+    title: "Composing Application-Layer Action Evidence with Remote Attestation Procedures"
+    seriesinfo:
+      Internet-Draft: draft-sokolov-rats-aep-composition-03
+    author:
+      - ins: A. Sokolov
+        name: Anton Sokolov
+        organization: Tyche Institute
   I-D.birkholz-verifiable-agent-conversations:
     title: "Verifiable Agent Conversations"
     seriesinfo:
@@ -576,6 +584,13 @@ action-grain records and conversation-grain containers share one discovery
 layer. The alignment is informative; CPB does not normatively depend on
 that document.
 
+{{I-D.sokolov-rats-aep-composition}} addresses the complementary problem in
+the RATS domain: composing application-layer action evidence with remote
+attestation. Together with the CPB-based agent-action-capsule profile, it
+demonstrates that the canonicalize-and-derive-identifier construction is a
+recurring primitive across independent use cases — one shared binding layer
+serving both the SCITT and RATS composition contexts.
+
 # Acknowledgments {#acknowledgments}
 {:numbered="false"}
 
@@ -583,11 +598,10 @@ The following individuals contributed findings from the IETF 126 hackathon in
 Vienna that directly shaped the rules in this document. All attributions
 cite public artifacts.
 
-**Contributors** \[PENDING CONFIRM from each\]:
+**Contributors** \[PENDING CONFIRM from each except Anton Sokolov (confirmed)\]:
 
-* Anton Sokolov (Tyche Institute) — assurance-boundary discipline; CBOR
-  route for Algorithm 2 ({{algo-cde-n}}); the A2A boundary-seal instance
-  in {{appendix-c}}.
+* Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
+  boundary-seal instance in {{appendix-c}}.
 
 * Scott Lee (Meridian Verity) — the cross-profile comparability rule
   ({{comparability}}): digest values are comparable across a profile
@@ -828,7 +842,7 @@ pending counterparty schedule.
 a protocol boundary: the derived identifier is stable across network hops and
 usable as a verifiable join key without payload disclosure.
 
-**Consent:** Anton Sokolov (Tyche Institute) \[PENDING CONFIRM\].
+**Consent:** Anton Sokolov (Tyche Institute) — confirmed 2026-07-24.
 
 ## Field Table — IETF 126 Participants {#appendix-c2}
 
