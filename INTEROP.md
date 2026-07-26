@@ -30,7 +30,7 @@ Status: IETF 126, Vienna, Jul 18–22 2026.
 | GAR / SOOS | SOOS/GAR sealed + verified · AARM R5 | ran & verified | leaf 166 | [anchor.agentactioncapsule.org](https://anchor.agentactioncapsule.org) |
 | Continuum / COSA (Kintzele) | 32/32 Class-1 reproduction | ran — artifact pending | — | — |
 | VSO / VeritasChain (Kamimura) | layering agreed · vector exchange post-Vienna | agreed — scheduled | — | [scitt-cose PR #8](https://github.com/action-state-group/scitt-cose/pull/8) |
-| PermitReceipt (Lee) | freeze pending · evidentiary run Jul 23 | agreed — scheduled | — | — |
+| PermitReceipt (Lee) | Jul 23 evidentiary run attempted · results pending owner review | run attempted · pending | — | — |
 | libp2p / VTO (M.S. Gupta) | VTO × AAC interop agreed · post-Vienna | agreed — scheduled | — | — |
 
 ---
