@@ -1082,9 +1082,8 @@ AAC reference implementation, which is present as a verifier, not as the
 subject.</t>
       <t><strong>Owner consent status:</strong> Anton Sokolov (Tyche Institute) — confirmed
 2026-07-24. Tom Sato (GAR/SOOS) — confirmed 2026-07-26. Yong Bok Lee
-(Scott Lee), Meridian Verity Group — confirmed 2026-07-26. Consent from
-Tymofii Pidlisnyi (APS) is pending; their entry carries a
-[PENDING CONFIRM] marker and will be finalized before submission.</t>
+(Scott Lee), Meridian Verity Group — confirmed 2026-07-26. Tymofii
+Pidlisnyi (Agent Passport System) — confirmed 2026-07-24 (on-issue).</t>
       <section anchor="appendix-c1">
         <name>Deep Mechanism Instances</name>
         <section anchor="glyphzero-byte-agreement-algorithm-determinism">
@@ -1153,7 +1152,7 @@ order carries no ranking.</t>
           </thead>
           <tbody>
             <tr>
-              <td align="left">APS (Pidlisnyi)</td>
+              <td align="left">Agent Passport System (Pidlisnyi)</td>
               <td align="left">Decision record</td>
               <td align="left">Content-derived action reference; NFC + code-point sort + JCS; bidirectional cross-runs 6/6 + 24/24</td>
               <td align="left">draft-pidlisnyi-aps + hackathon coordinates</td>
@@ -1216,8 +1215,9 @@ It is recorded in the AAC interop registry (INTEROP.md).</t>
 Vienna that directly shaped the rules in this document. All attributions
 cite public artifacts.</t>
       <t><strong>Contributors</strong> [PENDING CONFIRM from each except Anton Sokolov,
-Iman Schrock (both confirmed 2026-07-24), and Tom Sato (confirmed
-2026-07-26)]:</t>
+Iman Schrock (both confirmed 2026-07-24), Tom Sato (confirmed
+2026-07-26), and Tymofii Pidlisnyi (Agent Passport System, confirmed
+2026-07-24 on-issue)]:</t>
       <ul spacing="normal">
         <li>
           <t>Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
@@ -1233,7 +1233,7 @@ contributed the representation-boundary distinction among raw digest bytes,
 bare lowercase hexadecimal text, and prefixed text.</t>
         </li>
         <li>
-          <t>Tymofii Pidlisnyi (APS) — the content-derived action reference pattern
+          <t>Tymofii Pidlisnyi (Agent Passport System) — the content-derived action reference pattern
 (NFC + code-point sort + JCS) demonstrating that <tt>jcs-n</tt> generalizes
 across canonicalization styles; bidirectional cross-runs with confirmed
 byte-agreement.</t>
@@ -1547,59 +1547,59 @@ S2TCrRlsLDa78kByDDV/ITWgGNwwbO8qve44Co3wJSe6Zu4q491SiH0N3WLu
 W6d3jkOqkKjiaKLX9M17P9AsqNeQzso6qtnfP4iIuOsH0xQkSu8Rn2d8obhU
 h/BAwtsJ49/dldJsDN/hKnpE/H1Qdkt7xo4bOzpfgTinM8S8Q7fNV4czfQNW
 BFYPWwJKO0vhqEav9k8fn717d9Z72vqnn0/snzEZ7EV1Y187Z0Zns6pt8SOQ
-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
+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
 
 -->
 

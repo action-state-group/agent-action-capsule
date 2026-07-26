@@ -1214,8 +1214,8 @@ Appendix C.  Field-Verified Instances
    *Owner consent status:* Anton Sokolov (Tyche Institute) — confirmed
    2026-07-24.  Tom Sato (GAR/SOOS) — confirmed 2026-07-26.  Yong Bok
    Lee (Scott Lee), Meridian Verity Group — confirmed 2026-07-26.
-   Consent from Tymofii Pidlisnyi (APS) is pending; their entry carries
-   a [PENDING CONFIRM] marker and will be finalized before submission.
+   Tymofii Pidlisnyi (Agent Passport System) — confirmed 2026-07-24 (on-
+   issue).
 
 C.1.  Deep Mechanism Instances
 
@@ -1349,10 +1349,10 @@ Internet-Draft          Canonical Payload Binding              July 2026
     +===========+=============+=================+=====================+
     |Party      |Record type  |What ran         | Public record       |
     +===========+=============+=================+=====================+
-    |APS        |Decision     |Content-derived  | draft-pidlisnyi-aps |
-    |(Pidlisnyi)|record       |action reference;| + hackathon         |
-    |           |             |NFC + code-point | coordinates         |
-    |           |             |sort + JCS;      |                     |
+    |Agent      |Decision     |Content-derived  | draft-pidlisnyi-aps |
+    |Passport   |record       |action reference;| + hackathon         |
+    |System     |             |NFC + code-point | coordinates         |
+    |(Pidlisnyi)|             |sort + JCS;      |                     |
     |           |             |bidirectional    |                     |
     |           |             |cross-runs 6/6 + |                     |
     |           |             |24/24            |                     |
@@ -1426,8 +1426,9 @@ Acknowledgments
    All attributions cite public artifacts.
 
    *Contributors* [PENDING CONFIRM from each except Anton Sokolov, Iman
-   Schrock (both confirmed 2026-07-24), and Tom Sato (confirmed
-   2026-07-26)]:
+   Schrock (both confirmed 2026-07-24), Tom Sato (confirmed 2026-07-26),
+   and Tymofii Pidlisnyi (Agent Passport System, confirmed 2026-07-24
+   on-issue)]:
 
    *  Anton Sokolov (Tyche Institute) — assurance-boundary discipline;
       the A2A boundary-seal instance in Appendix C.
@@ -1441,15 +1442,14 @@ Acknowledgments
       distinction among raw digest bytes, bare lowercase hexadecimal
       text, and prefixed text.
 
-   *  Tymofii Pidlisnyi (APS) — the content-derived action reference
-      pattern (NFC + code-point sort + JCS) demonstrating that jcs-n
-      generalizes across canonicalization styles; bidirectional cross-
-      runs with confirmed byte-agreement.
+   *  Tymofii Pidlisnyi (Agent Passport System) — the content-derived
+      action reference pattern (NFC + code-point sort + JCS)
+      demonstrating that jcs-n generalizes across canonicalization
+      styles; bidirectional cross-runs with confirmed byte-agreement.
 
    *  Tom Sato (GAR/SOOS) — the leaf-bytes-not-hex finding documented in
       Section 6.1: the log leaf hashes the raw bytes of the derived
       identifier, not the hex-string encoding.
-
 
 
 

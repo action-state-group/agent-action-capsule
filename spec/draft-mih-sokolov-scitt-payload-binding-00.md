@@ -825,9 +825,8 @@ subject.
 
 **Owner consent status:** Anton Sokolov (Tyche Institute) — confirmed
 2026-07-24. Tom Sato (GAR/SOOS) — confirmed 2026-07-26. Yong Bok Lee
-(Scott Lee), Meridian Verity Group — confirmed 2026-07-26. Consent from
-Tymofii Pidlisnyi (APS) is pending; their entry carries a
-\[PENDING CONFIRM\] marker and will be finalized before submission.
+(Scott Lee), Meridian Verity Group — confirmed 2026-07-26. Tymofii
+Pidlisnyi (Agent Passport System) — confirmed 2026-07-24 (on-issue).
 
 ## Deep Mechanism Instances {#appendix-c1}
 
@@ -898,7 +897,7 @@ order carries no ranking.
 
 | Party | Record type | What ran | Public record |
 |---|---|---|---|
-| APS (Pidlisnyi) | Decision record | Content-derived action reference; NFC + code-point sort + JCS; bidirectional cross-runs 6/6 + 24/24 | draft-pidlisnyi-aps + hackathon coordinates |
+| Agent Passport System (Pidlisnyi) | Decision record | Content-derived action reference; NFC + code-point sort + JCS; bidirectional cross-runs 6/6 + 24/24 | draft-pidlisnyi-aps + hackathon coordinates |
 | EP (Schrock) | Named-human approval | Three independent codebases produced `8cf0c36e...`; three-computation single-digest | EMILIA/EP hackathon record |
 | GAR (Sato) | Kernel session block | Sealed as record; CT leaf = SHA-256(raw bytes of id); leaf 166 verified | gar-core.ts commit fe18f24 |
 | Glyphzero (Rampalli) | Delegation record | Two independent JCS implementations; `subject_digest` `0b4da06b...` | Glyphzero PEDIGREE hackathon record |
@@ -929,8 +928,9 @@ Vienna that directly shaped the rules in this document. All attributions
 cite public artifacts.
 
 **Contributors** \[PENDING CONFIRM from each except Anton Sokolov,
-Iman Schrock (both confirmed 2026-07-24), and Tom Sato (confirmed
-2026-07-26)\]:
+Iman Schrock (both confirmed 2026-07-24), Tom Sato (confirmed
+2026-07-26), and Tymofii Pidlisnyi (Agent Passport System, confirmed
+2026-07-24 on-issue)\]:
 
 * Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
   boundary-seal instance in {{appendix-c}}.
@@ -943,7 +943,7 @@ Iman Schrock (both confirmed 2026-07-24), and Tom Sato (confirmed
   contributed the representation-boundary distinction among raw digest bytes,
   bare lowercase hexadecimal text, and prefixed text.
 
-* Tymofii Pidlisnyi (APS) — the content-derived action reference pattern
+* Tymofii Pidlisnyi (Agent Passport System) — the content-derived action reference pattern
   (NFC + code-point sort + JCS) demonstrating that `jcs-n` generalizes
   across canonicalization styles; bidirectional cross-runs with confirmed
   byte-agreement.
