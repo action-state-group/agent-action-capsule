@@ -432,14 +432,18 @@ the `digest_alg` field names only the hash algorithm. The canonicalization
 context of the cited artifact is resolved from the artifact-type registry
 entry, not from the `digest_alg` field.
 
+The verifier MUST confirm that the identifier carried by the reference is
+consistent with the established context. It MUST then recompute the
+referenced artifact's digest under that context and compare the recomputed
+digest with the digest carried by the reference.
+
 The citing record's own derived-identifier context need NOT be compatible
-with the referenced artifact's digest context. A verifier MUST NOT compare
-the citing record's derived identifier with a referenced digest on textual
-equality alone. Comparisons are valid only when both values are under the
-same established context and representation, or under an expressly specified
-deterministic conversion. If the established contexts are not compatible and
-no such conversion is specified, the comparison result is NOT verified; the
-consuming profile determines the error disposition.
+with the referenced artifact's digest context; those contexts govern
+different computations. If the complete comparison context cannot be
+established, if the identifier carried by the reference is inconsistent
+with that context, or if a required conversion is not expressly defined,
+the verifier MUST NOT report the typed reference as verified. The consuming
+profile determines the resulting error disposition.
 
 If the digest contexts of the citing record and the cited artifact are not
 compatible and no expressly specified deterministic conversion applies, the
@@ -680,10 +684,9 @@ content-addressed artifact layer combined with an attestation layer over
 the artifact's identifier. CPB formalizes the same pattern for the SCITT
 statement context.
 
-{{I-D.hillier-scitt-arp}} independently defines a canonical claim construction
-with its own key-sorting, NFC, number-rendering, undefined-value handling, and
-Claim Hash rules. It is related in purpose to `jcs-n` but defines a distinct
-preimage construction; implementations must not assume byte compatibility.
+{{I-D.hillier-scitt-arp}} defines its own canonical claim construction for
+attestation reconciliation. A detailed comparison with the algorithms of this
+document is deferred to a future revision.
 
 {{I-D.birkholz-verifiable-agent-conversations}} defines trace-metadata
 conventions at the conversation grain (§7.4). The discovery mirror in
@@ -845,7 +848,7 @@ beyond the algorithm definition.
 separately written implementations. The agreement was not premeditated; it
 emerged from two systems applying the same algorithm independently.
 
-**Consent:** Karthik Rampalli (Glyphzero) \[PENDING CONFIRM\].
+**Consent:** Karthik Rampalli (Glyphzero) confirmed 2026-07-25 (email, with corrections).
 
 ### GAR Session Block — Leaf Construction Rule
 
@@ -929,8 +932,9 @@ cite public artifacts.
 
 **Contributors** \[PENDING CONFIRM from each except Anton Sokolov,
 Iman Schrock (both confirmed 2026-07-24), Tom Sato (confirmed
-2026-07-26), and Tymofii Pidlisnyi (Agent Passport System, confirmed
-2026-07-24 on-issue)\]:
+2026-07-26), Tymofii Pidlisnyi (Agent Passport System, confirmed
+2026-07-24 on-issue), and Karthik Rampalli (Glyphzero, confirmed
+2026-07-25 email, with corrections)\]:
 
 * Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
   boundary-seal instance in {{appendix-c}}.
