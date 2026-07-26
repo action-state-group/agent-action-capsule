@@ -37,7 +37,7 @@ Description:
   for the Agent Action Capsule profile, together with typed builders, a
   command-line verifier (`agent-action-capsule verify`), and an optional
   two-layer composition path that calls the substrate verifier by reference
-  per {{I-D.ietf-scitt-architecture}}.
+  per {{RFC9943}}.
 
   The implementation covers: the complete §5 envelope schema (all REQUIRED
   and OPTIONAL fields, absent-field normalization); the `capsule_id`

@@ -32,7 +32,7 @@ normative:
   RFC8126:
   RFC6838:
   RFC8259:
-  I-D.ietf-scitt-architecture:
+  RFC9943:
 
 informative:
   I-D.ietf-cose-merkle-tree-proofs:
@@ -83,7 +83,7 @@ authorization records produced before execution. The question this profile
 answers is different: "what did the agent actually do?" — including the
 cases where the answer is "it was stopped."
 
-This document profiles SCITT {{I-D.ietf-scitt-architecture}} Signed
+This document profiles SCITT {{RFC9943}} Signed
 Statements to carry an Agent Action Capsule: a digest-committed record of
 one agent action and its verdict-level disposition. The profile's central
 design commitments are:
@@ -105,7 +105,7 @@ design commitments are:
    the record's own bytes, in two conformance classes ({{conformance}}).
 
 The terms "statement profile" and "profile" in this document always mean a
-SCITT statement profile in the sense of {{I-D.ietf-scitt-architecture}}: a
+SCITT statement profile in the sense of {{RFC9943}}: a
 constraint on the protected header and payload of a Signed Statement. The
 word is never used in any other sense in this document.
 
@@ -185,7 +185,7 @@ semantically rich stays in the payload.
 
 A producer makes a Capsule transparent by registering its Signed
 Statement with a SCITT Transparency Service per
-{{I-D.ietf-scitt-architecture}} and attaching the returned Receipt
+{{RFC9943}} and attaching the returned Receipt
 (COSE Receipts, {{I-D.ietf-cose-merkle-tree-proofs}}) to the unprotected
 header, forming a Transparent Statement. This profile does not define
 receipt formats or proof verification; both are the substrate's, by
@@ -497,7 +497,7 @@ store carries `chain.parent_capsule_id` equal to its `capsule_id` with
 Verification has two tiers. Substrate verification — the issuer's
 COSE_Sign1 signature, and for the transparent tier the Receipt's
 inclusion proof and Transparency Service signature — is performed by
-reference to {{RFC9052}}, {{I-D.ietf-scitt-architecture}}, and
+reference to {{RFC9052}}, {{RFC9943}}, and
 {{I-D.ietf-cose-merkle-tree-proofs}}; this profile does not respecify it.
 
 The agent-profile checks below are normative here and constitute Class 1
@@ -810,7 +810,7 @@ Agent Action Capsule media type:
 - Interoperability considerations: see this document.
 - Published specification: this document (and its successors).
 - Applications that use this media type: SCITT
-  ({{I-D.ietf-scitt-architecture}}) producers and verifiers recording and
+  ({{RFC9943}}) producers and verifiers recording and
   verifying AI agent actions.
 - Fragment identifier considerations: as for application/json
   ({{RFC8259}}) per the `+json` suffix ({{RFC6839}}).
@@ -838,7 +838,7 @@ Agent Action Capsule outcome media type:
 - Interoperability considerations: see this document.
 - Published specification: this document (and its successors).
 - Applications that use this media type: SCITT
-  ({{I-D.ietf-scitt-architecture}}) producers and verifiers recording
+  ({{RFC9943}}) producers and verifiers recording
   asynchronous outcomes correlated to an agent action.
 - Fragment identifier considerations: as for application/json
   ({{RFC8259}}) per the `+json` suffix ({{RFC6839}}).

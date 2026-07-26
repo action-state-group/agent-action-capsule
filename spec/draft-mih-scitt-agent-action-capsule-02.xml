@@ -1897,7 +1897,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
    [I-D.sato-soos-hem].  GAR answers the governance question: can any
    of this be proven to a regulator?  GAR is a domain-specific
    application of the SCITT (Supply Chain Integrity, Transparency and
-   Trust) architecture [I-D.ietf-scitt-architecture] extended with
+   Trust) architecture [RFC9943] extended with
    causal ordering semantics for agentic governance events.  GAR defines
    the Authority Lifecycle Event (ALE) category: a normative set of
    causally-ordered event types covering the complete agent session

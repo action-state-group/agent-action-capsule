@@ -44,7 +44,7 @@ normative:
 informative:
   RFC9052:
   RFC8949:
-  I-D.ietf-scitt-architecture:
+  RFC9943:
 
 --- abstract
 
@@ -734,7 +734,7 @@ distinction.
 The security considerations of {{I-D.mih-scitt-agent-action-capsule}}
 apply without modification.  Selective disclosure does not change the
 tamper-evidence properties of the COSE_Sign1 envelope, the
-append-only properties of a SCITT Transparency Service {{I-D.ietf-scitt-architecture}}, or the honesty
+append-only properties of a SCITT Transparency Service {{RFC9943}}, or the honesty
 invariant of the `human_disposed` flag.  An SD-Capsule registered with
 a Transparency Service has its SD-encoded form logged and receipted;
 the commitment set is therefore tamper-evident and non-repudiable.
