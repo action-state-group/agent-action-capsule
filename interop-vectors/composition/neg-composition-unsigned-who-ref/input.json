@@ -1,0 +1,121 @@
+{
+  "action": {
+    "action_type": "grid.curtailment",
+    "ep_version": "1.0",
+    "initiator": "ep:entity:cosa-agent",
+    "parameters": {
+      "envelope_max_mw": "15",
+      "event_id": "ercot-synth-2026-07-15-0001",
+      "facility": "dc-west-04.example",
+      "target_delta_kw": "12.0",
+      "window": {
+        "not_after": "2026-07-15T18:30:00Z",
+        "not_before": "2026-07-15T14:30:00Z"
+      }
+    },
+    "policy_id": "ep:policy:continuum-grid-curtailment@v1",
+    "requested_at": "2026-07-09T04:30:00Z",
+    "target": {
+      "resource": "dc-west-04.example",
+      "system": "cosa.scheduler"
+    }
+  },
+  "subject_digest": "8cf0c36ee36a7b98f2ea7c39251ec4faa337393a8c2e14443c12783e3f51623d",
+  "what": {
+    "action_id": "aac-composition-grid-curtailment-0001",
+    "action_type": "decide",
+    "assurance": {
+      "attestation_mode": "self_attested",
+      "effect_mode": "dispatched_unconfirmed",
+      "ledger_mode": "standalone"
+    },
+    "capsule_id": "785e62b0243fd5b8e1eb2cf820516b58ea3dfd3f2dfb144da5c6c46f09e6adaa",
+    "developer": "cosa-agent@v1",
+    "disposition": {
+      "approver": "policy",
+      "authority": "ep:receipt:jkintzele-curtailment-0001",
+      "decision": "accept",
+      "human_disposed": false,
+      "verdict_class": "executed"
+    },
+    "effect": {
+      "effect_attestation": "runtime_claimed",
+      "status": "dispatched",
+      "type": "grid_curtailment"
+    },
+    "format_version": "2",
+    "model_attestation": {
+      "compute_attestation": {
+        "human_authorization_ref": {
+          "digest": "a1bee3358bebec5bee352db25fa286a927c2c34992696d6aac06a0e80cad16ee",
+          "profile": "EP-RECEIPT-v1",
+          "receipt_id": "ep:receipt:jkintzele-curtailment-0001"
+        },
+        "subject_digest": "8cf0c36ee36a7b98f2ea7c39251ec4faa337393a8c2e14443c12783e3f51623d"
+      }
+    },
+    "operator": "cosa-agent",
+    "spec_version": "draft-mih-scitt-agent-action-capsule-02",
+    "timestamp": "2026-07-09T04:35:00Z"
+  },
+  "who": {
+    "action": {
+      "action_type": "grid.curtailment",
+      "ep_version": "1.0",
+      "initiator": "ep:entity:cosa-agent",
+      "parameters": {
+        "envelope_max_mw": "15",
+        "event_id": "ercot-synth-2026-07-15-0001",
+        "facility": "dc-west-04.example",
+        "target_delta_kw": "12.0",
+        "window": {
+          "not_after": "2026-07-15T18:30:00Z",
+          "not_before": "2026-07-15T14:30:00Z"
+        }
+      },
+      "policy_id": "ep:policy:continuum-grid-curtailment@v1",
+      "requested_at": "2026-07-09T04:30:00Z",
+      "target": {
+        "resource": "dc-west-04.example",
+        "system": "cosa.scheduler"
+      }
+    },
+    "action_hash": "sha256:8cf0c36ee36a7b98f2ea7c39251ec4faa337393a8c2e14443c12783e3f51623d",
+    "consumption": {
+      "committed_at": "2026-07-09T04:34:00.000Z",
+      "nonce": "3UP1Wo6MAHDxpxCJuOrC9w",
+      "state": "COMMITTED"
+    },
+    "contexts": [
+      {
+        "action_hash": "sha256:8cf0c36ee36a7b98f2ea7c39251ec4faa337393a8c2e14443c12783e3f51623d",
+        "approver": "ep:approver:jkintzele",
+        "approver_index": 1,
+        "context_type": "ep.signoff.v1",
+        "ep_version": "1.0",
+        "expires_at": "2026-07-09T05:34:00.000Z",
+        "initiator": "ep:entity:cosa-agent",
+        "issued_at": "2026-07-09T04:34:00.000Z",
+        "nonce": "ucsGnFZRPh8GRmfq-nBOkw",
+        "policy_hash": "sha256:0fd8f7ca53258d745dd2e44a25962da69a30cad6d32a5378b4e4d3f1a07e4dbe",
+        "policy_id": "ep:policy:continuum-grid-curtailment@v1",
+        "required_approvals": 1
+      }
+    ],
+    "log_proof": {
+      "alg": "EP-MERKLE-v2",
+      "checkpoint": {
+        "log_key_id": "ep:log:continuum-curtailment#1",
+        "log_signature": "EeYb5CTMMYFyZzMuHbyGT9j8pPfWBeKi5rN9D-6yXPVdUsw1WP-90p209v6GSuyckOtrhFW2zxgR9mtNDk2zBA",
+        "merkle_alg": "EP-MERKLE-v2",
+        "root_hash": "sha256:0d3fd28602fdb0ad684a7fb39b197dda7e455811267f297cdb5611a4928366a9",
+        "tree_size": 1
+      },
+      "inclusion_path": [],
+      "leaf_hash": "sha256:0d3fd28602fdb0ad684a7fb39b197dda7e455811267f297cdb5611a4928366a9",
+      "leaf_index": 0
+    },
+    "receipt_id": "ep:receipt:jkintzele-curtailment-0001",
+    "signoffs": []
+  }
+}
