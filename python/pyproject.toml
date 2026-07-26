@@ -30,7 +30,7 @@ Source = "https://github.com/action-state-group/agent-action-capsule"
 Draft = "https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/"
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "ruff>=0.4", "langchain-core>=0.1"]
+dev = ["pytest>=7.0", "ruff>=0.4,<0.16", "langchain-core>=0.1"]
 # OPTIONAL two-layer verification: the SCITT/COSE substrate verifier. The
 # payload-only core stays stdlib-only; this extra is needed only for
 # `verify --transparent`. scitt-cose is the public action-state-group/scitt-cose
