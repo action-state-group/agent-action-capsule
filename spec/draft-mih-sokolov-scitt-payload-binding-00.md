@@ -39,6 +39,7 @@ informative:
   RFC9901:
   RFC9942:
   RFC9995:
+  RFC4998:
   I-D.ietf-scitt-receipts-ccf-profile:
   I-D.mih-scitt-agent-action-capsule:
     title: "An Agent Action Capsule Profile for SCITT"
@@ -293,6 +294,11 @@ A verifier MUST recompute the identifier from the payload bytes and the
 declared exclusion set. If the recomputed value does not match the carried
 value, the verifier MUST treat this as a defect in the record.
 
+When selective disclosure is in use, the derived identifier MUST be computed over the
+SD-encoded form of the payload, not the plaintext payload. A payload profile MUST
+declare non-eligible for selective disclosure any field that the profile's own verifier
+requires in order to evaluate the binding.
+
 ## Representation {#representation}
 
 Representation is normative and must be declared by the payload class.
@@ -410,6 +416,19 @@ equal-looking hex strings as a match.
 Equal-looking hex values computed under incompatible digest contexts are
 coincidental, not equivalent.
 
+# Profile Independence {#profile-independence}
+
+A payload profile MUST NOT impose requirements on the internal structure or field
+values of another payload profile. Relationships between artifacts of different types
+are expressed solely through typed references ({{typed-refs}}) and entries in the
+artifact-type registry ({{iana-art}}).
+
+This constraint keeps verification of a multi-artifact chain decomposable: a verifier
+evaluates each binding under each profile's own semantics independently and never needs
+to evaluate a pair of profiles jointly. Implementations therefore need not implement,
+or be aware of, profiles they neither produce nor consume, and a new profile may be
+registered without revalidating existing profiles or implementations.
+
 # Discovery Mirror {#discovery}
 
 This section is informative.
@@ -430,6 +449,21 @@ in draft-birkholz-verifiable-agent-conversations §7.4
 unprotected-header mechanism for conversation-grain records. A record using
 CPB at the action grain and a conversation container using that convention
 can share one discovery layer.
+
+# Extensibility and Cross-Cutting Facilities {#cross-cutting}
+
+This section is informative.
+
+Several concerns are common to all payload profiles and, if defined independently per
+profile, would undermine decomposable verification or fragment the interoperability
+surface: selective disclosure, countersignature and multi-party attestation, record
+relations (supersedes, confirms, corrects), erasure tombstones, producer timestamps
+and validity periods, batch aggregation, and profile versioning.
+
+This specification does not define these facilities in this document. Each will be
+addressed in a companion document that payload profiles MUST reference rather than
+developing an incompatible per-profile variant. Defining any of these facilities
+per-profile would violate the constraint established in {{profile-independence}}.
 
 # Security Considerations {#security}
 
@@ -484,6 +518,22 @@ runtime was honest at the moment of recording. A producer that seals a false
 record produces a structurally valid record of a fiction. A Transparency
 Service's append-only property bounds the timing of such a record and makes
 its omission or substitution detectable; it does not make its content true.
+
+## Long-Term Verifiability Considerations {#ltv}
+
+Artifacts bound under this specification may need to remain verifiable over periods
+considerably longer than the lifetime of any particular digest or signature algorithm.
+Because a binding is expressed in terms of a registered algorithm identifier rather
+than a fixed algorithm, artifacts bound under different algorithms are each well-formed
+and independently verifiable.
+
+Preserving verifiability across an algorithm transition requires that evidence be
+re-established under a stronger algorithm *before* the original is considered weak;
+this cannot be done retroactively. Deployments with long retention requirements SHOULD
+adopt an evidence-renewal scheme. {{RFC4998}} specifies one such scheme and
+distinguishes timestamp renewal, which operates on archived evidence alone, from
+hash-tree renewal, which requires access to the original data objects. This
+specification does not mandate a particular scheme.
 
 # Privacy Considerations {#privacy}
 
