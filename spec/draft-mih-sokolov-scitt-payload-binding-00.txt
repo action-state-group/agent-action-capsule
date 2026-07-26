@@ -91,21 +91,21 @@ Table of Contents
    2.  Conventions and Definitions . . . . . . . . . . . . . . . . .   4
    3.  Payload Canonicalization Algorithms . . . . . . . . . . . . .   5
      3.1.  Algorithm jcs-n . . . . . . . . . . . . . . . . . . . . .   6
-     3.2.  Algorithm cde-n (Reserved)  . . . . . . . . . . . . . . .   6
+     3.2.  Algorithm cde-n (Reserved)  . . . . . . . . . . . . . . .   7
    4.  The Derived Identifier  . . . . . . . . . . . . . . . . . . .   7
-     4.1.  Representation  . . . . . . . . . . . . . . . . . . . . .   7
+     4.1.  Representation  . . . . . . . . . . . . . . . . . . . . .   8
    5.  Envelope Conventions  . . . . . . . . . . . . . . . . . . . .   8
-   6.  Statement-to-Receipt Binding  . . . . . . . . . . . . . . . .   8
+   6.  Statement-to-Receipt Binding  . . . . . . . . . . . . . . . .   9
      6.1.  Leaf Construction . . . . . . . . . . . . . . . . . . . .   9
-   7.  Typed Digest References . . . . . . . . . . . . . . . . . . .   9
+   7.  Typed Digest References . . . . . . . . . . . . . . . . . . .  10
      7.1.  Cross-Profile Comparability . . . . . . . . . . . . . . .  10
-   8.  Profile Independence  . . . . . . . . . . . . . . . . . . . .  11
-   9.  Discovery Mirror  . . . . . . . . . . . . . . . . . . . . . .  11
-   10. Extensibility and Cross-Cutting Facilities  . . . . . . . . .  11
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .  12
-     11.1.  Preimages Are Bytes, Not Renderings  . . . . . . . . . .  12
-     11.2.  Low-Entropy Fields . . . . . . . . . . . . . . . . . . .  12
-     11.3.  Float Values and Digest Reproducibility  . . . . . . . .  12
+     7.2.  Verification Scope  . . . . . . . . . . . . . . . . . . .  11
+   8.  Profile Independence  . . . . . . . . . . . . . . . . . . . .  12
+   9.  Discovery Mirror  . . . . . . . . . . . . . . . . . . . . . .  12
+   10. Extensibility and Cross-Cutting Facilities  . . . . . . . . .  12
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  13
+     11.1.  Preimages Are Bytes, Not Renderings  . . . . . . . . . .  13
+     11.2.  Low-Entropy Fields . . . . . . . . . . . . . . . . . . .  13
 
 
 
@@ -114,31 +114,30 @@ Mih & Sokolov            Expires 27 January 2027                [Page 2]
 Internet-Draft          Canonical Payload Binding              July 2026
 
 
-     11.4.  Immutable Coordinates  . . . . . . . . . . . . . . . . .  13
-     11.5.  Tamper Evidence and Runtime Honesty  . . . . . . . . . .  13
-     11.6.  Long-Term Verifiability Considerations . . . . . . . . .  13
-   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  13
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  14
-     13.1.  Canonicalization Algorithm Registry  . . . . . . . . . .  14
-     13.2.  Artifact Type Registry . . . . . . . . . . . . . . . . .  15
-   14. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  16
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  17
-   References  . . . . . . . . . . . . . . . . . . . . . . . . . . .  17
-     Normative References  . . . . . . . . . . . . . . . . . . . . .  18
-     Informative References  . . . . . . . . . . . . . . . . . . . .  18
+     11.3.  Float Values and Digest Reproducibility  . . . . . . . .  13
+     11.4.  Immutable Coordinates  . . . . . . . . . . . . . . . . .  14
+     11.5.  Tamper Evidence and Runtime Honesty  . . . . . . . . . .  14
+     11.6.  Long-Term Verifiability Considerations . . . . . . . . .  14
+   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  14
+   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  15
+     13.1.  Canonicalization Algorithm Registry  . . . . . . . . . .  15
+     13.2.  Artifact Type Registry . . . . . . . . . . . . . . . . .  16
+   14. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  17
+   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  17
+     15.1.  Normative References . . . . . . . . . . . . . . . . . .  17
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  18
    Appendix A.  Synthetic Registration Walkthrough . . . . . . . . .  20
    Appendix B.  Synthetic Two-Slot Composition . . . . . . . . . . .  21
    Appendix C.  Field-Verified Instances . . . . . . . . . . . . . .  22
      C.1.  Deep Mechanism Instances  . . . . . . . . . . . . . . . .  22
-       C.1.1.  GlyphZero Byte-Agreement — Algorithm Determinism  . .  22
+       C.1.1.  Glyphzero Byte-Agreement — Algorithm Determinism  . .  22
        C.1.2.  GAR Session Block — Leaf Construction Rule  . . . . .  23
-       C.1.3.  ORPRG Cross-Context Join — Typed Digest References and
-               DENY Discipline . . . . . . . . . . . . . . . . . . .  23
-       C.1.4.  A2A Boundary Seal — Derived Identifier as Protocol
+       C.1.3.  A2A Boundary Seal — Derived Identifier as Protocol
                Gate  . . . . . . . . . . . . . . . . . . . . . . . .  23
      C.2.  Field Table — IETF 126 Participants . . . . . . . . . . .  24
-     C.3.  Agreed and Scheduled  . . . . . . . . . . . . . . . . . .  25
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  26
+     C.3.  Agreed and Scheduled  . . . . . . . . . . . . . . . . . .  26
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  26
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  27
 
 1.  Introduction
 
@@ -156,12 +155,13 @@ Internet-Draft          Canonical Payload Binding              July 2026
    profile called the Canonical Payload Binding (CPB).  It is derived
    from [I-D.mih-scitt-agent-action-capsule] (§Conventions, §envelope,
    §registration, §identity), which first stated the construction in a
-   SCITT context, and generalized against seven independent
-   implementations that demonstrated byte-agreement with the same rules
-   at the IETF 126 hackathon in Vienna.  The provenance is stated here
-   once and not repeated in subsequent sections.
-
-
+   SCITT context, and generalized at the IETF 126 hackathon in Vienna,
+   where seven parties participated in the public interop program.  The
+   public record reports four codebases demonstrating byte agreement in
+   specific shared, declared contexts.  Other frozen artifacts retained
+   separately declared digest contexts.  ORPRG retained its CP-JSON-2
+   context and connected through a typed reference rather than through
+   an assertion of cross-profile digest equality.  Digests remain
 
 
 
@@ -169,6 +169,10 @@ Mih & Sokolov            Expires 27 January 2027                [Page 3]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
+
+   governed by their original contexts; CPB does not relabel an ORPRG
+   CP-JSON-2 commitment as jcs-n.  The provenance is stated here once
+   and not repeated in subsequent sections.
 
    A relying party verifying records from several producers gains
    interchangeability: any registered artifact type fills any citation
@@ -213,11 +217,7 @@ Internet-Draft          Canonical Payload Binding              July 2026
       value is advisory only and a mismatch is a defect.
 
    Digest Context:  The complete set of parameters that determine how a
-      digest was computed: the field set selected, the canonicalization
-      algorithm applied, any domain separation, the encoding of the pre-
-      image, and the representation of the output.  Two digest values
-      are comparable only when their full digest contexts are
-      established as compatible.
+
 
 
 
@@ -225,6 +225,12 @@ Mih & Sokolov            Expires 27 January 2027                [Page 4]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
+
+      digest was computed: the field set selected, the canonicalization
+      algorithm applied, any domain separation, the encoding of the pre-
+      image, and the representation of the output.  Two digest values
+      are comparable only when their full digest contexts are
+      established as compatible.
 
    CANONICAL-DIGEST:  A function parameterized by a canonicalization
       algorithm A: given a value v, CANONICAL-DIGEST(A, v) = HEX(SHA-
@@ -260,6 +266,22 @@ Internet-Draft          Canonical Payload Binding              July 2026
    The algorithms defined in this document and registered in the
    Canonicalization Algorithm Registry (Section 13.1) are:
 
+
+
+
+
+
+
+
+
+
+
+
+Mih & Sokolov            Expires 27 January 2027                [Page 5]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
         +=======+===================================+=============+
         | Name  | Summary                           | Reference   |
         +=======+===================================+=============+
@@ -271,16 +293,6 @@ Internet-Draft          Canonical Payload Binding              July 2026
         +-------+-----------------------------------+-------------+
 
                                   Table 1
-
-
-
-
-
-
-Mih & Sokolov            Expires 27 January 2027                [Page 5]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
 
    Entries in the Canonicalization Algorithm Registry are immutable: new
    behavior requires a new entry, never a retroactive edit to an
@@ -301,7 +313,11 @@ Internet-Draft          Canonical Payload Binding              July 2026
        or an empty object (zero members).  Members explicitly set to a
        non-null value are not removed.  Apply this normalization after
        the exclusion set is removed (Section 4) and before JCS
-       serialization.
+       serialization.  The semantic equivalence among JSON null, an
+       empty array, an empty object, and the absence of a field is a
+       payload-class (profile) decision; jcs-n defines only the byte
+       construction after the profile's declared normalization has been
+       applied.
 
    2.  Apply JCS [RFC8785] to produce the canonical UTF-8 octet string.
 
@@ -309,6 +325,18 @@ Internet-Draft          Canonical Payload Binding              July 2026
 
    4.  Encode the digest as lowercase hexadecimal.  The output is a
        64-character ASCII string.
+
+
+
+
+
+
+
+
+Mih & Sokolov            Expires 27 January 2027                [Page 6]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
 
    Additional constraint: monetary and quantity values anywhere in a
    payload using jcs-n MUST be exact decimal strings, not JSON floating-
@@ -321,22 +349,18 @@ Internet-Draft          Canonical Payload Binding              July 2026
    CANONICAL-DIGEST(jcs-n, P) =
        lowercase_hex(SHA-256(JCS(normalize(P minus exclusion_set))))
 
-   This algorithm is Suite 1 of this profile.  Every digest frozen at
-   the IETF 126 hackathon across seven independent implementations used
-   this algorithm; all are valid under jcs-n without modification.
+   This algorithm is Suite 1 of this profile.  The four codebases
+   demonstrating byte agreement at IETF 126 all used jcs-n in shared,
+   declared contexts; all are valid under jcs-n without modification.
+   Independently written implementations produced byte-identical
+   subject_digest values for the same input, with no coordination beyond
+   the specification; see Appendix C.
 
 3.2.  Algorithm cde-n (Reserved)
 
    Algorithm cde-n is reserved for a CDE/dCBOR canonicalization suite.
    Its definition will be specified in a subsequent revision of this
    document.
-
-
-
-Mih & Sokolov            Expires 27 January 2027                [Page 6]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
 
 4.  The Derived Identifier
 
@@ -357,6 +381,18 @@ Internet-Draft          Canonical Payload Binding              July 2026
    content-address stable regardless of what later chains to this
    record).  The exclusion set is normative for the payload class; a
    verifier MUST apply the same exclusion set as the producer.
+
+
+
+
+
+
+
+
+Mih & Sokolov            Expires 27 January 2027                [Page 7]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
 
    A producer MAY carry the derived identifier as a field in the
    payload.  A verifier MUST recompute the identifier from the payload
@@ -386,14 +422,6 @@ Internet-Draft          Canonical Payload Binding              July 2026
    field containing or referencing a derived identifier.  A verifier
    MUST NOT treat representations as equivalent.
 
-
-
-
-Mih & Sokolov            Expires 27 January 2027                [Page 7]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
-
 5.  Envelope Conventions
 
    A Signed Statement carrying a CPB-bound payload MUST be a COSE_Sign1
@@ -414,6 +442,13 @@ Internet-Draft          Canonical Payload Binding              July 2026
    verifier — must act on it without understanding the payload class.
    Everything semantically specific to the payload class stays in the
    payload.
+
+
+
+Mih & Sokolov            Expires 27 January 2027                [Page 8]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
 
    Protected-header claims are a closed set per payload class:
    extensions are payload-only.  A Transparency Service that does not
@@ -441,15 +476,6 @@ Internet-Draft          Canonical Payload Binding              July 2026
    verified a Receipt from a Transparency Service under a key the
    verifier trusts.
 
-
-
-
-
-Mih & Sokolov            Expires 27 January 2027                [Page 8]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
-
    A verifier determining which VDS to apply when verifying a Receipt
    MUST read the VDS identifier from the protected header of the
    Receipt.  The verifier MUST NOT infer the VDS from the COSE structure
@@ -471,6 +497,15 @@ Internet-Draft          Canonical Payload Binding              July 2026
 
    leaf_input = D.encode("utf-8")  -- WRONG: 64 ASCII bytes
 
+
+
+
+
+Mih & Sokolov            Expires 27 January 2027                [Page 9]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
    A verifier constructing the leaf for proof verification MUST apply
    the same rule.  Failure to distinguish the byte sequence from its hex
    encoding produces a silently wrong leaf hash that fails inclusion
@@ -484,27 +519,6 @@ Internet-Draft          Canonical Payload Binding              July 2026
    address without embedding it.
 
    A typed digest reference is a JSON object with the following fields:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih & Sokolov            Expires 27 January 2027                [Page 9]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
 
    +============+========+==========+=================================+
    | Field      | Type   | Req      | Meaning                         |
@@ -538,26 +552,68 @@ Internet-Draft          Canonical Payload Binding              July 2026
    same field set, the same canonicalization algorithm, the same domain
    separation, the same encoding, and the same representation.
 
-   A verifier that encounters a typed digest reference MUST resolve the
-   digest context (canonicalization algorithm, field selection,
-   representation) from the referenced artifact type's registry entry,
-   keyed by the type field; the digest_alg field names only the hash
-   algorithm.  If the digest contexts of the citing record and the cited
-   artifact are not compatible, the verifier MUST return a result of
-   indeterminate or deny rather than treating equal-looking hex strings
-   as a match.
-
-   Equal-looking hex values computed under incompatible digest contexts
-   are coincidental, not equivalent.
-
-
-
 
 
 
 
 
 Mih & Sokolov            Expires 27 January 2027               [Page 10]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
+   A verifier that encounters a typed digest reference MUST establish
+   the digest context from the REFERENCED artifact-type definition and
+   the identifier carried by the reference.  The digest context is
+   resolved from the referenced artifact type's registry entry, keyed by
+   the type field; the digest_alg field names only the hash algorithm.
+   The canonicalization context of the cited artifact is resolved from
+   the artifact-type registry entry, not from the digest_alg field.
+
+   The citing record's own derived-identifier context need NOT be
+   compatible with the referenced artifact's digest context.  A verifier
+   MUST NOT compare the citing record's derived identifier with a
+   referenced digest on textual equality alone.  Comparisons are valid
+   only when both values are under the same established context and
+   representation, or under an expressly specified deterministic
+   conversion.  If the established contexts are not compatible and no
+   such conversion is specified, the comparison result is NOT verified;
+   the consuming profile determines the error disposition.
+
+   If the digest contexts of the citing record and the cited artifact
+   are not compatible and no expressly specified deterministic
+   conversion applies, the verifier MUST return a result of
+   indeterminate or deny rather than treating equal-looking hex strings
+   as a match.
+
+   The two values actually being compared must share an established
+   comparison context.  Bare hexadecimal equality alone is not a join.
+
+   Equal-looking hex values computed under incompatible digest contexts
+   are coincidental, not equivalent.
+
+7.2.  Verification Scope
+
+   Successful verification of a typed digest reference establishes
+   content binding to the referenced artifact under the declared digest
+   context.  CPB verification alone MUST NOT be interpreted as
+   establishing issuer authority, artifact validity, scope, freshness,
+   revocation status, policy compliance, semantic acceptance, or
+   application authorization.  Any appraisal required by the referenced
+   artifact type or consuming application profile remains a separate
+   verification step.  Missing, indeterminate, or failed required
+   appraisal MUST NOT be treated as authorization success.
+
+   The interchangeability property of typed digest references -- that
+   any registered artifact type may fill a citation slot -- applies to
+   citation-binding interoperability only and does not extend to any
+   appraisal or authorization semantics defined by the artifact type or
+   consuming profile.
+
+
+
+
+Mih & Sokolov            Expires 27 January 2027               [Page 11]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
@@ -613,7 +669,7 @@ Internet-Draft          Canonical Payload Binding              July 2026
 
 
 
-Mih & Sokolov            Expires 27 January 2027               [Page 11]
+Mih & Sokolov            Expires 27 January 2027               [Page 12]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
@@ -669,7 +725,7 @@ Internet-Draft          Canonical Payload Binding              July 2026
 
 
 
-Mih & Sokolov            Expires 27 January 2027               [Page 12]
+Mih & Sokolov            Expires 27 January 2027               [Page 13]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
@@ -725,7 +781,7 @@ Internet-Draft          Canonical Payload Binding              July 2026
 
 
 
-Mih & Sokolov            Expires 27 January 2027               [Page 13]
+Mih & Sokolov            Expires 27 January 2027               [Page 14]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
@@ -781,7 +837,7 @@ Internet-Draft          Canonical Payload Binding              July 2026
 
 
 
-Mih & Sokolov            Expires 27 January 2027               [Page 14]
+Mih & Sokolov            Expires 27 January 2027               [Page 15]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
@@ -837,7 +893,7 @@ Internet-Draft          Canonical Payload Binding              July 2026
 
 
 
-Mih & Sokolov            Expires 27 January 2027               [Page 15]
+Mih & Sokolov            Expires 27 January 2027               [Page 16]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
@@ -861,14 +917,11 @@ Internet-Draft          Canonical Payload Binding              July 2026
    over the artifact's identifier.  CPB formalizes the same pattern for
    the SCITT statement context.
 
-   [I-D.hillier-scitt-arp] (version -00) independently derives a similar
-   canonical claim construction in its §2.  Its Canonical Claim defines
-   its own key-sort, NFC, number-rendering, and undefined-stripping
-   rules, plus a Claim Hash join key.  The construction is near-jcs-n
-   but not byte-compatible.  The independent re-derivation is evidence
-   that this layer is consistently re-invented when it is not
-   standardized; CPB exists to stop the re-invention.  The -00 version
-   is the latest tracker version; future work may explore alignment.
+   [I-D.hillier-scitt-arp] independently defines a canonical claim
+   construction with its own key-sorting, NFC, number-rendering,
+   undefined-value handling, and Claim Hash rules.  It is related in
+   purpose to jcs-n but defines a distinct preimage construction;
+   implementations must not assume byte compatibility.
 
    [I-D.birkholz-verifiable-agent-conversations] defines trace-metadata
    conventions at the conversation grain (§7.4).  The discovery mirror
@@ -888,63 +941,10 @@ Internet-Draft          Canonical Payload Binding              July 2026
    anchored agent records, RATS attestation composition, and multi-agent
    accountability chains.
 
+15.  References
 
+15.1.  Normative References
 
-
-
-
-Mih & Sokolov            Expires 27 January 2027               [Page 16]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
-
-Acknowledgments
-
-   The following individuals contributed findings from the IETF 126
-   hackathon in Vienna that directly shaped the rules in this document.
-   All attributions cite public artifacts.
-
-   *Contributors* [PENDING CONFIRM from each except Anton Sokolov and
-   Iman Schrock, both confirmed 2026-07-24]:
-
-   *  Anton Sokolov (Tyche Institute) — assurance-boundary discipline;
-      the A2A boundary-seal instance in Appendix C.
-
-   *  Scott Lee (Meridian Verity) — the cross-profile comparability rule
-      (Section 7.1): digest values are comparable across a profile
-      boundary only under compatible declared digest contexts; bare hex
-      equality is not a join.  The representation distinction (bare hex
-      vs. prefixed text vs. raw bytes) documented in Section 4.1.
-
-   *  Tymofii Pidlisnyi (APS) — the content-derived action reference
-      pattern (NFC + code-point sort + JCS) demonstrating that jcs-n
-      generalizes across canonicalization styles; bidirectional cross-
-      runs with confirmed byte-agreement.
-
-   *  Tom Sato (GAR/SOOS) — the leaf-bytes-not-hex finding documented in
-      Section 6.1: the log leaf hashes the raw bytes of the derived
-      identifier, not the hex-string encoding.
-
-   *  Karthik Rampalli (GlyphZero) — independent JCS implementation
-      byte-agreement on subject_digest 0b4da06b..., demonstrating that
-      jcs-n is reproducible across separately written implementations.
-
-   *  Iman Schrock (EMILIA/EP) — confirmed 2026-07-24 — the three-
-      computation single-digest instance (8cf0c36e...) demonstrating
-      byte-agreement across three independent codebases.
-
-   *Acknowledged* [PENDING CONFIRM from each]:
-
-   *  Songbo Bu — principal-binding vector reproduction.
-
-   *  Amaury Chamayou (Microsoft) — two-TS single-statement
-      demonstration; the vds-from-protected-header finding subsequently
-      mirrored in microsoft/scitt-ccf-ledger #424.
-
-   *  Henk Birkholz (Fraunhofer) — §7.4 trace-metadata discovery
-      convention alignment (Section 9).
-
-References
 
 
 
@@ -953,8 +953,6 @@ Mih & Sokolov            Expires 27 January 2027               [Page 17]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
-
-Normative References
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -991,7 +989,7 @@ Normative References
               DOI 10.17487/RFC9943, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9943>.
 
-Informative References
+15.2.  Informative References
 
    [I-D.birkholz-verifiable-agent-conversations]
               Birkholz, H., "Verifiable Agent Conversations", Work in
@@ -1005,6 +1003,8 @@ Informative References
 
 
 
+
+
 Mih & Sokolov            Expires 27 January 2027               [Page 18]
 
 Internet-Draft          Canonical Payload Binding              July 2026
@@ -1012,9 +1012,9 @@ Internet-Draft          Canonical Payload Binding              July 2026
 
    [I-D.hillier-scitt-arp]
               Hillier, J., "Attestation Reconciliation Protocol", Work
-              in Progress, Internet-Draft, draft-hillier-scitt-arp-00,
+              in Progress, Internet-Draft, draft-hillier-scitt-arp-01,
               n.d., <https://datatracker.ietf.org/doc/html/draft-
-              hillier-scitt-arp-00>.
+              hillier-scitt-arp-01>.
 
    [I-D.ietf-scitt-receipts-ccf-profile]
               Birkholz, H., Delignat-Lavaud, A., Fournet, C., and A.
@@ -1037,6 +1037,13 @@ Internet-Draft          Canonical Payload Binding              July 2026
               capsule-02, n.d., <https://datatracker.ietf.org/doc/html/
               draft-mih-scitt-agent-action-capsule-02>.
 
+   [I-D.rampalli-pedigree]
+              Rampalli, K., "PEDIGREE: Provenance and Delegation Records
+              for Digital Artifacts", Work in Progress, Internet-Draft,
+              draft-rampalli-pedigree-00, n.d.,
+              <https://datatracker.ietf.org/doc/html/draft-rampalli-
+              pedigree-00>.
+
    [I-D.sokolov-rats-aep-composition]
               Sokolov, A., "Composing Application-Layer Action Evidence
               with Remote Attestation Procedures", Work in Progress,
@@ -1048,6 +1055,17 @@ Internet-Draft          Canonical Payload Binding              July 2026
               Record Syntax (ERS)", RFC 4998, DOI 10.17487/RFC4998,
               August 2007, <https://www.rfc-editor.org/rfc/rfc4998>.
 
+
+
+
+
+
+
+Mih & Sokolov            Expires 27 January 2027               [Page 19]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
    [RFC9901]  Fett, D., Yasuda, K., and B. Campbell, "Selective
               Disclosure for JSON Web Tokens", RFC 9901,
               DOI 10.17487/RFC9901, November 2025,
@@ -1057,14 +1075,6 @@ Internet-Draft          Canonical Payload Binding              July 2026
               Fournet, "CBOR Object Signing and Encryption (COSE)
               Receipts", RFC 9942, DOI 10.17487/RFC9942, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9942>.
-
-
-
-
-Mih & Sokolov            Expires 27 January 2027               [Page 19]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
 
    [RFC9995]  Steele, O., Lasker, S., and H. Birkholz, "CBOR Object
               Signing and Encryption (COSE) Hash Envelope", RFC 9995,
@@ -1104,6 +1114,14 @@ Appendix A.  Synthetic Registration Walkthrough
 
    *Step 3 — Compute the derived identifier:*
 
+
+
+
+Mih & Sokolov            Expires 27 January 2027               [Page 20]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
    Apply JCS [RFC8785] to produce the canonical octet string.  Compute
    SHA-256 and encode as lowercase hex.  The result is the record_id
    value to be placed back into the payload for transport.
@@ -1114,13 +1132,6 @@ Appendix A.  Synthetic Registration Walkthrough
    a COSE_Sign1 with:
 
    *  content_type: application/temperature-record+json
-
-
-
-Mih & Sokolov            Expires 27 January 2027               [Page 20]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
 
    *  alg and kid: producer's signing algorithm and key identifier
 
@@ -1159,6 +1170,14 @@ Appendix B.  Synthetic Two-Slot Composition
    Its derived identifier is computed with doc_id in the exclusion set.
    Suppose the result is "ab12cd34...".
 
+
+
+
+Mih & Sokolov            Expires 27 January 2027               [Page 21]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
+
    *Decision record* (payload class decision-record; algorithm jcs-n):
 
    {
@@ -1170,13 +1189,6 @@ Appendix B.  Synthetic Two-Slot Composition
        "digest": "ab12cd34..."
      }
    }
-
-
-
-Mih & Sokolov            Expires 27 January 2027               [Page 21]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
 
    The typed reference authorization cites the authorization doc by its
    artifact type and derived identifier.  A verifier can confirm the doc
@@ -1200,30 +1212,18 @@ Appendix C.  Field-Verified Instances
    verifier, not as the subject.
 
    *Owner consent status:* Anton Sokolov (Tyche Institute) — confirmed
-   2026-07-24.  Consent from Scott Lee (Meridian Verity), Tymofii
-   Pidlisnyi (APS), and Tom Sato (GAR/SOOS) is pending; their entries
-   carry [PENDING CONFIRM] markers and will be finalized before
-   submission.
+   2026-07-24.  Tom Sato (GAR/SOOS) — confirmed 2026-07-26.  Yong Bok
+   Lee (Scott Lee), Meridian Verity Group — confirmed 2026-07-26.
+   Consent from Tymofii Pidlisnyi (APS) is pending; their entry carries
+   a [PENDING CONFIRM] marker and will be finalized before submission.
 
 C.1.  Deep Mechanism Instances
 
-C.1.1.  GlyphZero Byte-Agreement — Algorithm Determinism
+C.1.1.  Glyphzero Byte-Agreement — Algorithm Determinism
 
-   Public record: GlyphZero PEDIGREE delegation record, IETF 126
+   Public record: Glyphzero PEDIGREE delegation record, IETF 126
    hackathon.
 
-   *What ran:* Two independently written RFC 8785 JCS implementations —
-   GlyphZero's (Rampalli) and the AAC reference implementation — each
-   computed jcs-n over the same delegation record.  Both produced
-   subject_digest 0b4da06b... without any coordination on byte ordering
-   or normalization beyond the algorithm definition.
-
-   *Mechanism illustrated:* Section 3.1. jcs-n is reproducible across
-   separately written implementations.  The agreement was not
-   premeditated; it emerged from two systems applying the same algorithm
-   independently.
-
-   *Consent:* Karthik Rampalli (GlyphZero) [PENDING CONFIRM].
 
 
 
@@ -1233,6 +1233,20 @@ Mih & Sokolov            Expires 27 January 2027               [Page 22]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
+
+   *What ran:* Two independently written RFC 8785 JCS implementations —
+   Glyphzero's (Rampalli), used to produce its PEDIGREE delegation
+   records [I-D.rampalli-pedigree], and the AAC reference implementation
+   — each computed jcs-n over the same delegation record.  Both produced
+   subject_digest 0b4da06b... without any coordination on byte ordering
+   or normalization beyond the algorithm definition.
+
+   *Mechanism illustrated:* Section 3.1. jcs-n is reproducible across
+   separately written implementations.  The agreement was not
+   premeditated; it emerged from two systems applying the same algorithm
+   independently.
+
+   *Consent:* Karthik Rampalli (Glyphzero) [PENDING CONFIRM].
 
 C.1.2.  GAR Session Block — Leaf Construction Rule
 
@@ -1251,44 +1265,12 @@ C.1.2.  GAR Session Block — Leaf Construction Rule
    hex string failed to verify; switching to raw bytes produced the
    correct root.
 
-   *Consent:* Tom Sato (GAR/SOOS) [PENDING CONFIRM].
+   *Consent:* Tom Sato (GAR/SOOS) — confirmed 2026-07-26.
 
-C.1.3.  ORPRG Cross-Context Join — Typed Digest References and DENY
-        Discipline
-
-   Public record: PermitReceipt/ORPRG package ietf126-payment-
-   composition-v0.1, Meridian Verity; SHA-256
-   d13c740c47710e4b28a1d2d511aa63574200256ce310f0e03ec618b383583c2f.
-
-   *What ran:* The ORPRG PermitReceipt format (CP-JSON-2 profile) uses a
-   canonicalization distinct from jcs-n: its action_digest is unprefixed
-   hex and its action_commitment is sha256:-prefixed hex of the same
-   value.  A cross-profile citation from an AAC-format record to an
-   ORPRG record used a typed digest reference with type: "permit-
-   receipt".  The verifier confirmed the cited artifact by resolving the
-   permit-receipt digest context from the registry and recomputing the
-   digest under that context — not by treating the hex strings as
-   directly comparable.
-
-   *Mechanism illustrated:* Section 7 and Section 7.1.  Equal-looking
-   hex strings computed under different digest contexts are not a match;
-   a cross-context citation requires typed references whose context is
-   resolved from the artifact-type registry entry.
-
-   *Consent:* Scott Lee (Meridian Verity) [PENDING CONFIRM].
-
-C.1.4.  A2A Boundary Seal — Derived Identifier as Protocol Gate
+C.1.3.  A2A Boundary Seal — Derived Identifier as Protocol Gate
 
    Public record: capsule-emit issue #29, verified offline at
    https://github.com/action-state-group/capsule-emit/issues/29.
-
-
-
-
-Mih & Sokolov            Expires 27 January 2027               [Page 23]
-
-Internet-Draft          Canonical Payload Binding              July 2026
-
 
    *What ran:* An A2A-protocol boundary producer submitted a record to a
    SCITT Transparency Service and used the derived identifier as a
@@ -1298,6 +1280,15 @@ Internet-Draft          Canonical Payload Binding              July 2026
    (verify_inclusion) folded to the anchored root.  A DENY negative case
    was also demonstrated: a fabricated derived identifier not present in
    the log returned 404 on the resolve step and DENY on the gate.
+
+
+
+
+
+Mih & Sokolov            Expires 27 January 2027               [Page 23]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
 
    *Classification (exact):* single-machine loopback rehearsal,
    independently reproduced.  The read-only resolve path (/anchor/
@@ -1316,28 +1307,37 @@ C.2.  Field Table — IETF 126 Participants
    at the IETF 126 hackathon.  Rows appear in alphabetical order by
    party name; the order carries no ranking.
 
-    +===========+===============+===================+=================+
-    |Party      | Record type   | What ran          | Public record   |
-    +===========+===============+===================+=================+
-    |APS        | Decision      | Content-derived   | draft-          |
-    |(Pidlisnyi)| record        | action reference; | pidlisnyi-aps + |
-    |           |               | NFC + code-point  | hackathon       |
-    |           |               | sort + JCS;       | coordinates     |
-    |           |               | bidirectional     |                 |
-    |           |               | cross-runs 6/6 +  |                 |
-    |           |               | 24/24             |                 |
-    +-----------+---------------+-------------------+-----------------+
-    |EP         | Named-human   | Three independent | EMILIA/EP       |
-    |(Schrock)  | approval      | codebases         | hackathon       |
-    |           |               | produced          | record          |
-    |           |               | 8cf0c36e...;      |                 |
-    |           |               | three-computation |                 |
-    |           |               | single-digest     |                 |
-    +-----------+---------------+-------------------+-----------------+
-    |GAR (Sato) | Kernel        | Sealed as record; | gar-core.ts     |
-    |           | session block | CT leaf = SHA-    | commit fe18f24  |
-    |           |               | 256(raw bytes of  |                 |
-    |           |               | id); leaf 166     |                 |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1346,39 +1346,61 @@ Mih & Sokolov            Expires 27 January 2027               [Page 24]
 Internet-Draft          Canonical Payload Binding              July 2026
 
 
-    |           |               | verified          |                 |
-    +-----------+---------------+-------------------+-----------------+
-    |GlyphZero  | Delegation    | Two independent   | GlyphZero       |
-    |(Rampalli) | record        | JCS               | PEDIGREE        |
-    |           |               | implementations;  | hackathon       |
-    |           |               | subject_digest    | record          |
-    |           |               | 0b4da06b...       |                 |
-    +-----------+---------------+-------------------+-----------------+
-    |Microsoft  | Two-TS        | One payload, two  | scitt-ccf-      |
-    |(Chamayou) | statement     | receipt profiles  | ledger PR #424  |
-    |           |               | (ccf.v1 +         |                 |
-    |           |               | RFC9162_SHA256)   |                 |
-    |           |               | in conjunction    |                 |
-    +-----------+---------------+-------------------+-----------------+
-    |ORPRG (Lee)| PermitReceipt | CP-JSON-2         | meridianverity/ |
-    |           |               | canonicalization; | permit-receipt  |
-    |           |               | cross-profile     | ietf126-        |
-    |           |               | typed reference;  | payment-        |
-    |           |               | DENY discipline   | composition-    |
-    |           |               |                   | v0.1            |
-    +-----------+---------------+-------------------+-----------------+
-    |Sokolov    | Boundary-seal | A2A gate;         | capsule-emit    |
-    |(Tyche)    |               | derived-id as     | issue #29       |
-    |           |               | resolve key; DENY |                 |
-    |           |               | negative; offline |                 |
-    |           |               | Receipt verify    |                 |
-    +-----------+---------------+-------------------+-----------------+
-    |Songbo Bu  | Principal-    | Vector            | Hackathon       |
-    |           | binding       | reproduction      | coordination    |
-    |           |               | under jcs-n       | record          |
-    +-----------+---------------+-------------------+-----------------+
+    +===========+=============+=================+=====================+
+    |Party      |Record type  |What ran         | Public record       |
+    +===========+=============+=================+=====================+
+    |APS        |Decision     |Content-derived  | draft-pidlisnyi-aps |
+    |(Pidlisnyi)|record       |action reference;| + hackathon         |
+    |           |             |NFC + code-point | coordinates         |
+    |           |             |sort + JCS;      |                     |
+    |           |             |bidirectional    |                     |
+    |           |             |cross-runs 6/6 + |                     |
+    |           |             |24/24            |                     |
+    +-----------+-------------+-----------------+---------------------+
+    |EP         |Named-human  |Three independent| EMILIA/EP hackathon |
+    |(Schrock)  |approval     |codebases        | record              |
+    |           |             |produced         |                     |
+    |           |             |8cf0c36e...;     |                     |
+    |           |             |three-computation|                     |
+    |           |             |single-digest    |                     |
+    +-----------+-------------+-----------------+---------------------+
+    |GAR (Sato) |Kernel       |Sealed as record;| gar-core.ts commit  |
+    |           |session block|CT leaf = SHA-   | fe18f24             |
+    |           |             |256(raw bytes of |                     |
+    |           |             |id); leaf 166    |                     |
+    |           |             |verified         |                     |
+    +-----------+-------------+-----------------+---------------------+
+    |Glyphzero  |Delegation   |Two independent  | Glyphzero PEDIGREE  |
+    |(Rampalli) |record       |JCS              | hackathon record    |
+    |           |             |implementations; |                     |
+    |           |             |subject_digest   |                     |
+    |           |             |0b4da06b...      |                     |
+    +-----------+-------------+-----------------+---------------------+
+    |Microsoft  |Two-TS       |One payload, two | scitt-ccf-ledger PR |
+    |(Chamayou) |statement    |receipt profiles | #424                |
+    |           |             |(ccf.v1 +        |                     |
+    |           |             |RFC9162_SHA256)  |                     |
+    |           |             |in conjunction   |                     |
+    +-----------+-------------+-----------------+---------------------+
+    |Sokolov    |Boundary-seal|A2A gate;        | capsule-emit issue  |
+    |(Tyche)    |             |derived-id as    | #29                 |
+    |           |             |resolve key; DENY|                     |
+    |           |             |negative; offline|                     |
+    |           |             |Receipt verify   |                     |
+    +-----------+-------------+-----------------+---------------------+
 
                                   Table 5
+
+
+
+
+
+
+
+Mih & Sokolov            Expires 27 January 2027               [Page 25]
+
+Internet-Draft          Canonical Payload Binding              July 2026
+
 
 C.3.  Agreed and Scheduled
 
@@ -1394,16 +1416,64 @@ C.3.  Agreed and Scheduled
    Field-verified instances are expected to be added in future revisions
    as cross-verifications complete.
 
+   The PermitReceipt × MachineMandate composition is excluded from this
+   appendix.  It is recorded in the AAC interop registry (INTEROP.md).
+
+Acknowledgments
+
+   The following individuals contributed findings from the IETF 126
+   hackathon in Vienna that directly shaped the rules in this document.
+   All attributions cite public artifacts.
+
+   *Contributors* [PENDING CONFIRM from each except Anton Sokolov, Iman
+   Schrock (both confirmed 2026-07-24), and Tom Sato (confirmed
+   2026-07-26)]:
+
+   *  Anton Sokolov (Tyche Institute) — assurance-boundary discipline;
+      the A2A boundary-seal instance in Appendix C.
+
+   *  Yong Bok Lee (Scott Lee), Meridian Verity Group — ORPRG-specific
+      cross-profile digest-context discipline: equal-looking digest text
+      is not itself a valid join; a typed reference is verified by
+      recomputing the referenced artifact under its established digest
+      context rather than by comparing it with the citing record's own
+      derived identifier.  Also contributed the representation-boundary
+      distinction among raw digest bytes, bare lowercase hexadecimal
+      text, and prefixed text.
+
+   *  Tymofii Pidlisnyi (APS) — the content-derived action reference
+      pattern (NFC + code-point sort + JCS) demonstrating that jcs-n
+      generalizes across canonicalization styles; bidirectional cross-
+      runs with confirmed byte-agreement.
+
+   *  Tom Sato (GAR/SOOS) — the leaf-bytes-not-hex finding documented in
+      Section 6.1: the log leaf hashes the raw bytes of the derived
+      identifier, not the hex-string encoding.
 
 
 
-Mih & Sokolov            Expires 27 January 2027               [Page 25]
+
+Mih & Sokolov            Expires 27 January 2027               [Page 26]
 
 Internet-Draft          Canonical Payload Binding              July 2026
 
 
-   The PermitReceipt × MachineMandate composition is excluded from this
-   appendix.  It is recorded in the AAC interop registry (INTEROP.md).
+   *  Karthik Rampalli (Glyphzero) — independent JCS implementation
+      byte-agreement on subject_digest 0b4da06b..., demonstrating that
+      jcs-n is reproducible across separately written implementations.
+
+   *  Iman Schrock (EMILIA/EP) — confirmed 2026-07-24 — the three-
+      computation single-digest instance (8cf0c36e...) demonstrating
+      byte-agreement across three independent codebases.
+
+   *Acknowledged* [PENDING CONFIRM from each]:
+
+   *  Amaury Chamayou (Microsoft) — two-TS single-statement
+      demonstration; the vds-from-protected-header finding subsequently
+      mirrored in microsoft/scitt-ccf-ledger #424.
+
+   *  Henk Birkholz (Fraunhofer) — §7.4 trace-metadata discovery
+      convention alignment (Section 9).
 
 Authors' Addresses
 
@@ -1439,18 +1509,4 @@ Authors' Addresses
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih & Sokolov            Expires 27 January 2027               [Page 26]
+Mih & Sokolov            Expires 27 January 2027               [Page 27]

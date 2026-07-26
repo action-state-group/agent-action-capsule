@@ -52,7 +52,7 @@ informative:
   I-D.hillier-scitt-arp:
     title: "Attestation Reconciliation Protocol"
     seriesinfo:
-      Internet-Draft: draft-hillier-scitt-arp-00
+      Internet-Draft: draft-hillier-scitt-arp-01
     author:
       - ins: J. Hillier
         name: Joel Hillier
@@ -82,6 +82,14 @@ informative:
       - ins: H. Birkholz
         name: Henk Birkholz
         organization: Fraunhofer Institute for Secure Information Technology
+  I-D.rampalli-pedigree:
+    title: "PEDIGREE: Provenance and Delegation Records for Digital Artifacts"
+    seriesinfo:
+      Internet-Draft: draft-rampalli-pedigree-00
+    author:
+      - ins: K. Rampalli
+        name: Karthik Rampalli
+        organization: Glyphzero, Inc.
 
 --- abstract
 
@@ -126,9 +134,15 @@ This document extracts those four moves into a single reusable profile
 called the Canonical Payload Binding (CPB). It is derived from
 {{I-D.mih-scitt-agent-action-capsule}} (§Conventions, §envelope, §registration,
 §identity), which first stated the construction in a SCITT context, and
-generalized against seven independent implementations that demonstrated
-byte-agreement with the same rules at the IETF 126 hackathon in Vienna.
-The provenance is stated here once and not repeated in subsequent sections.
+generalized at the IETF 126 hackathon in Vienna, where seven parties
+participated in the public interop program. The public record reports four
+codebases demonstrating byte agreement in specific shared, declared contexts.
+Other frozen artifacts retained separately declared digest contexts. ORPRG
+retained its CP-JSON-2 context and connected through a typed reference rather
+than through an assertion of cross-profile digest equality. Digests remain
+governed by their original contexts; CPB does not relabel an ORPRG CP-JSON-2
+commitment as jcs-n. The provenance is stated here once and not repeated in
+subsequent sections.
 
 A relying party verifying records from several producers gains
 interchangeability: any registered artifact type fills any citation slot,
@@ -239,7 +253,10 @@ Pre-image construction:
    value is JSON null, an empty array (zero elements), or an empty object
    (zero members). Members explicitly set to a non-null value are not removed.
    Apply this normalization after the exclusion set is removed ({{derived-id}})
-   and before JCS serialization.
+   and before JCS serialization. The semantic equivalence among JSON null, an
+   empty array, an empty object, and the absence of a field is a payload-class
+   (profile) decision; `jcs-n` defines only the byte construction after the
+   profile's declared normalization has been applied.
 
 2. Apply JCS {{RFC8785}} to produce the canonical UTF-8 octet string.
 
@@ -260,9 +277,11 @@ CANONICAL-DIGEST(jcs-n, P) =
     lowercase_hex(SHA-256(JCS(normalize(P minus exclusion_set))))
 ~~~
 
-This algorithm is Suite 1 of this profile. Every digest frozen at the IETF 126
-hackathon across seven independent implementations used this algorithm; all are
-valid under `jcs-n` without modification.
+This algorithm is Suite 1 of this profile. The four codebases demonstrating
+byte agreement at IETF 126 all used `jcs-n` in shared, declared contexts; all
+are valid under `jcs-n` without modification. Independently written
+implementations produced byte-identical `subject_digest` values for the same
+input, with no coordination beyond the specification; see Appendix C.
 
 ## Algorithm cde-n (Reserved) {#algo-cde-n}
 
@@ -405,16 +424,49 @@ digest contexts of both sides are established as compatible: the same field
 set, the same canonicalization algorithm, the same domain separation, the
 same encoding, and the same representation.
 
-A verifier that encounters a typed digest reference MUST resolve the digest
-context (canonicalization algorithm, field selection, representation) from
+A verifier that encounters a typed digest reference MUST establish the
+digest context from the REFERENCED artifact-type definition and the
+identifier carried by the reference. The digest context is resolved from
 the referenced artifact type's registry entry, keyed by the `type` field;
-the `digest_alg` field names only the hash algorithm. If the digest
-contexts of the citing record and the cited artifact are not compatible, the
+the `digest_alg` field names only the hash algorithm. The canonicalization
+context of the cited artifact is resolved from the artifact-type registry
+entry, not from the `digest_alg` field.
+
+The citing record's own derived-identifier context need NOT be compatible
+with the referenced artifact's digest context. A verifier MUST NOT compare
+the citing record's derived identifier with a referenced digest on textual
+equality alone. Comparisons are valid only when both values are under the
+same established context and representation, or under an expressly specified
+deterministic conversion. If the established contexts are not compatible and
+no such conversion is specified, the comparison result is NOT verified; the
+consuming profile determines the error disposition.
+
+If the digest contexts of the citing record and the cited artifact are not
+compatible and no expressly specified deterministic conversion applies, the
 verifier MUST return a result of indeterminate or deny rather than treating
 equal-looking hex strings as a match.
 
+The two values actually being compared must share an established comparison
+context. Bare hexadecimal equality alone is not a join.
+
 Equal-looking hex values computed under incompatible digest contexts are
 coincidental, not equivalent.
+
+## Verification Scope {#verification-scope}
+
+Successful verification of a typed digest reference establishes content
+binding to the referenced artifact under the declared digest context. CPB
+verification alone MUST NOT be interpreted as establishing issuer authority,
+artifact validity, scope, freshness, revocation status, policy compliance,
+semantic acceptance, or application authorization. Any appraisal required
+by the referenced artifact type or consuming application profile remains a
+separate verification step. Missing, indeterminate, or failed required
+appraisal MUST NOT be treated as authorization success.
+
+The interchangeability property of typed digest references -- that any
+registered artifact type may fill a citation slot -- applies to
+citation-binding interoperability only and does not extend to any appraisal
+or authorization semantics defined by the artifact type or consuming profile.
 
 # Profile Independence {#profile-independence}
 
@@ -628,14 +680,10 @@ content-addressed artifact layer combined with an attestation layer over
 the artifact's identifier. CPB formalizes the same pattern for the SCITT
 statement context.
 
-{{I-D.hillier-scitt-arp}} (version -00) independently derives a similar
-canonical claim construction in its §2. Its Canonical Claim defines its own
-key-sort, NFC, number-rendering, and undefined-stripping rules, plus a
-Claim Hash join key. The construction is near-`jcs-n` but not byte-compatible.
-The independent re-derivation is evidence that this layer is consistently
-re-invented when it is not standardized; CPB exists to stop the re-invention.
-The -00 version is the latest tracker version; future work may explore
-alignment.
+{{I-D.hillier-scitt-arp}} independently defines a canonical claim construction
+with its own key-sorting, NFC, number-rendering, undefined-value handling, and
+Claim Hash rules. It is related in purpose to `jcs-n` but defines a distinct
+preimage construction; implementations must not assume byte compatibility.
 
 {{I-D.birkholz-verifiable-agent-conversations}} defines trace-metadata
 conventions at the conversation grain (§7.4). The discovery mirror in
@@ -652,53 +700,6 @@ Together these documents demonstrate that the canonicalize-and-derive-identifier
 construction is a recurring primitive across independent use cases — one shared
 binding layer serving SCITT-anchored agent records, RATS attestation
 composition, and multi-agent accountability chains.
-
-# Acknowledgments {#acknowledgments}
-{:numbered="false"}
-
-The following individuals contributed findings from the IETF 126 hackathon in
-Vienna that directly shaped the rules in this document. All attributions
-cite public artifacts.
-
-**Contributors** \[PENDING CONFIRM from each except Anton Sokolov and
-Iman Schrock, both confirmed 2026-07-24\]:
-
-* Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
-  boundary-seal instance in {{appendix-c}}.
-
-* Scott Lee (Meridian Verity) — the cross-profile comparability rule
-  ({{comparability}}): digest values are comparable across a profile
-  boundary only under compatible declared digest contexts; bare hex equality
-  is not a join. The representation distinction (bare hex vs. prefixed text
-  vs. raw bytes) documented in {{representation}}.
-
-* Tymofii Pidlisnyi (APS) — the content-derived action reference pattern
-  (NFC + code-point sort + JCS) demonstrating that `jcs-n` generalizes
-  across canonicalization styles; bidirectional cross-runs with confirmed
-  byte-agreement.
-
-* Tom Sato (GAR/SOOS) — the leaf-bytes-not-hex finding documented in
-  {{leaf-rule}}: the log leaf hashes the raw bytes of the derived
-  identifier, not the hex-string encoding.
-
-* Karthik Rampalli (GlyphZero) — independent JCS implementation
-  byte-agreement on `subject_digest` `0b4da06b...`, demonstrating that
-  `jcs-n` is reproducible across separately written implementations.
-
-* Iman Schrock (EMILIA/EP) — confirmed 2026-07-24 — the three-computation single-digest instance
-  (`8cf0c36e...`) demonstrating byte-agreement across three independent
-  codebases.
-
-**Acknowledged** \[PENDING CONFIRM from each\]:
-
-* Songbo Bu — principal-binding vector reproduction.
-
-* Amaury Chamayou (Microsoft) — two-TS single-statement demonstration;
-  the vds-from-protected-header finding subsequently mirrored in
-  microsoft/scitt-ccf-ledger #424.
-
-* Henk Birkholz (Fraunhofer) — §7.4 trace-metadata discovery convention
-  alignment ({{discovery}}).
 
 --- back
 
@@ -823,19 +824,21 @@ AAC reference implementation, which is present as a verifier, not as the
 subject.
 
 **Owner consent status:** Anton Sokolov (Tyche Institute) — confirmed
-2026-07-24. Consent from Scott Lee (Meridian Verity), Tymofii Pidlisnyi
-(APS), and Tom Sato (GAR/SOOS) is pending; their entries carry
-\[PENDING CONFIRM\] markers and will be finalized before submission.
+2026-07-24. Tom Sato (GAR/SOOS) — confirmed 2026-07-26. Yong Bok Lee
+(Scott Lee), Meridian Verity Group — confirmed 2026-07-26. Consent from
+Tymofii Pidlisnyi (APS) is pending; their entry carries a
+\[PENDING CONFIRM\] marker and will be finalized before submission.
 
 ## Deep Mechanism Instances {#appendix-c1}
 
-### GlyphZero Byte-Agreement — Algorithm Determinism
+### Glyphzero Byte-Agreement — Algorithm Determinism
 
-Public record: GlyphZero PEDIGREE delegation record, IETF 126 hackathon.
+Public record: Glyphzero PEDIGREE delegation record, IETF 126 hackathon.
 
 **What ran:** Two independently written RFC 8785 JCS implementations —
-GlyphZero's (Rampalli) and the AAC reference implementation — each computed
-`jcs-n` over the same delegation record. Both produced `subject_digest`
+Glyphzero's (Rampalli), used to produce its PEDIGREE delegation records
+{{I-D.rampalli-pedigree}}, and the AAC reference implementation — each
+computed `jcs-n` over the same delegation record. Both produced `subject_digest`
 `0b4da06b...` without any coordination on byte ordering or normalization
 beyond the algorithm definition.
 
@@ -843,7 +846,7 @@ beyond the algorithm definition.
 separately written implementations. The agreement was not premeditated; it
 emerged from two systems applying the same algorithm independently.
 
-**Consent:** Karthik Rampalli (GlyphZero) \[PENDING CONFIRM\].
+**Consent:** Karthik Rampalli (Glyphzero) \[PENDING CONFIRM\].
 
 ### GAR Session Block — Leaf Construction Rule
 
@@ -860,28 +863,7 @@ anchored Merkle root only when the leaf used the raw bytes.
 discovered during live anchoring when a leaf constructed from the hex string
 failed to verify; switching to raw bytes produced the correct root.
 
-**Consent:** Tom Sato (GAR/SOOS) \[PENDING CONFIRM\].
-
-### ORPRG Cross-Context Join — Typed Digest References and DENY Discipline
-
-Public record: PermitReceipt/ORPRG package `ietf126-payment-composition-v0.1`,
-Meridian Verity; SHA-256 `d13c740c47710e4b28a1d2d511aa63574200256ce310f0e03ec618b383583c2f`.
-
-**What ran:** The ORPRG PermitReceipt format (CP-JSON-2 profile) uses a
-canonicalization distinct from `jcs-n`: its `action_digest` is unprefixed
-hex and its `action_commitment` is `sha256:`-prefixed hex of the same value.
-A cross-profile citation from an AAC-format record to an ORPRG record used
-a typed digest reference with `type: "permit-receipt"`. The verifier
-confirmed the cited artifact by resolving the `permit-receipt` digest context
-from the registry and recomputing the digest under that context — not by
-treating the hex strings as directly comparable.
-
-**Mechanism illustrated:** {{typed-refs}} and {{comparability}}. Equal-looking
-hex strings computed under different digest contexts are not a match; a
-cross-context citation requires typed references whose context is resolved
-from the artifact-type registry entry.
-
-**Consent:** Scott Lee (Meridian Verity) \[PENDING CONFIRM\].
+**Consent:** Tom Sato (GAR/SOOS) — confirmed 2026-07-26.
 
 ### A2A Boundary Seal — Derived Identifier as Protocol Gate
 
@@ -919,11 +901,9 @@ order carries no ranking.
 | APS (Pidlisnyi) | Decision record | Content-derived action reference; NFC + code-point sort + JCS; bidirectional cross-runs 6/6 + 24/24 | draft-pidlisnyi-aps + hackathon coordinates |
 | EP (Schrock) | Named-human approval | Three independent codebases produced `8cf0c36e...`; three-computation single-digest | EMILIA/EP hackathon record |
 | GAR (Sato) | Kernel session block | Sealed as record; CT leaf = SHA-256(raw bytes of id); leaf 166 verified | gar-core.ts commit fe18f24 |
-| GlyphZero (Rampalli) | Delegation record | Two independent JCS implementations; `subject_digest` `0b4da06b...` | GlyphZero PEDIGREE hackathon record |
+| Glyphzero (Rampalli) | Delegation record | Two independent JCS implementations; `subject_digest` `0b4da06b...` | Glyphzero PEDIGREE hackathon record |
 | Microsoft (Chamayou) | Two-TS statement | One payload, two receipt profiles (ccf.v1 + RFC9162_SHA256) in conjunction | scitt-ccf-ledger PR #424 |
-| ORPRG (Lee) | PermitReceipt | CP-JSON-2 canonicalization; cross-profile typed reference; DENY discipline | meridianverity/permit-receipt `ietf126-payment-composition-v0.1` |
 | Sokolov (Tyche) | Boundary-seal | A2A gate; derived-id as resolve key; DENY negative; offline Receipt verify | capsule-emit issue #29 |
-| Songbo Bu | Principal-binding | Vector reproduction under `jcs-n` | Hackathon coordination record |
 
 ## Agreed and Scheduled {#appendix-c3}
 
@@ -939,3 +919,53 @@ cross-verifications complete.
 
 The PermitReceipt × MachineMandate composition is excluded from this appendix.
 It is recorded in the AAC interop registry (INTEROP.md).
+
+
+# Acknowledgments {#acknowledgments}
+{:numbered="false"}
+
+The following individuals contributed findings from the IETF 126 hackathon in
+Vienna that directly shaped the rules in this document. All attributions
+cite public artifacts.
+
+**Contributors** \[PENDING CONFIRM from each except Anton Sokolov,
+Iman Schrock (both confirmed 2026-07-24), and Tom Sato (confirmed
+2026-07-26)\]:
+
+* Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
+  boundary-seal instance in {{appendix-c}}.
+
+* Yong Bok Lee (Scott Lee), Meridian Verity Group — ORPRG-specific
+  cross-profile digest-context discipline: equal-looking digest text is not
+  itself a valid join; a typed reference is verified by recomputing the
+  referenced artifact under its established digest context rather than by
+  comparing it with the citing record's own derived identifier. Also
+  contributed the representation-boundary distinction among raw digest bytes,
+  bare lowercase hexadecimal text, and prefixed text.
+
+* Tymofii Pidlisnyi (APS) — the content-derived action reference pattern
+  (NFC + code-point sort + JCS) demonstrating that `jcs-n` generalizes
+  across canonicalization styles; bidirectional cross-runs with confirmed
+  byte-agreement.
+
+* Tom Sato (GAR/SOOS) — the leaf-bytes-not-hex finding documented in
+  {{leaf-rule}}: the log leaf hashes the raw bytes of the derived
+  identifier, not the hex-string encoding.
+
+* Karthik Rampalli (Glyphzero) — independent JCS implementation
+  byte-agreement on `subject_digest` `0b4da06b...`, demonstrating that
+  `jcs-n` is reproducible across separately written implementations.
+
+* Iman Schrock (EMILIA/EP) — confirmed 2026-07-24 — the three-computation single-digest instance
+  (`8cf0c36e...`) demonstrating byte-agreement across three independent
+  codebases.
+
+**Acknowledged** \[PENDING CONFIRM from each\]:
+
+
+* Amaury Chamayou (Microsoft) — two-TS single-statement demonstration;
+  the vds-from-protected-header finding subsequently mirrored in
+  microsoft/scitt-ccf-ledger #424.
+
+* Henk Birkholz (Fraunhofer) — §7.4 trace-metadata discovery convention
+  alignment ({{discovery}}).
