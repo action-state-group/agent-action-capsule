@@ -1037,7 +1037,7 @@ Internet-Draft          AAC Selective Disclosure               June 2026
    apply without modification.  Selective disclosure does not change the
    tamper-evidence properties of the COSE_Sign1 envelope, the append-
    only properties of a SCITT Transparency Service
-   [I-D.ietf-scitt-architecture], or the honesty invariant of the
+   [RFC9943], or the honesty invariant of the
    human_disposed flag.  An SD-Capsule registered with a Transparency
    Service has its SD-encoded form logged and receipted; the commitment
    set is therefore tamper-evident and non-repudiable.
@@ -1148,13 +1148,12 @@ Internet-Draft          AAC Selective Disclosure               June 2026
 
 10.2.  Informative References
 
-   [I-D.ietf-scitt-architecture]
+   [RFC9943]
               Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
               Y., and S. Lasker, "An Architecture for Trustworthy and
-              Transparent Digital Supply Chains", Work in Progress,
-              Internet-Draft, draft-ietf-scitt-architecture-22, 10
-              October 2025, <https://datatracker.ietf.org/doc/html/
-              draft-ietf-scitt-architecture-22>.
+              Transparent Digital Supply Chains", RFC 9943,
+              DOI 10.17487/RFC9943, June 2026,
+              <https://www.rfc-editor.org/rfc/rfc9943>.
 
    [RFC8949]  Bormann, C. and P. Hoffman, "Concise Binary Object
               Representation (CBOR)", STD 94, RFC 8949,

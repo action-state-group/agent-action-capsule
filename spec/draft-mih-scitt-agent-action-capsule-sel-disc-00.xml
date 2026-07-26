@@ -884,7 +884,7 @@ distinction.</t>
         <t>The security considerations of <xref target="I-D.mih-scitt-agent-action-capsule"/>
 apply without modification.  Selective disclosure does not change the
 tamper-evidence properties of the COSE_Sign1 envelope, the
-append-only properties of a SCITT Transparency Service <xref target="I-D.ietf-scitt-architecture"/>, or the honesty
+append-only properties of a SCITT Transparency Service <xref target="RFC9943"/>, or the honesty
 invariant of the <tt>human_disposed</tt> flag.  An SD-Capsule registered with
 a Transparency Service has its SD-encoded form logged and receipted;
 the commitment set is therefore tamper-evident and non-repudiable.</t>
@@ -1107,7 +1107,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
           <seriesInfo name="RFC" value="8949"/>
           <seriesInfo name="DOI" value="10.17487/RFC8949"/>
         </reference>
-        <reference anchor="I-D.ietf-scitt-architecture">
+        <reference anchor="RFC9943" target="https://www.rfc-editor.org/rfc/rfc9943">
           <front>
             <title>An Architecture for Trustworthy and Transparent Digital Supply Chains</title>
             <author fullname="Henk Birkholz" initials="H." surname="Birkholz">
@@ -1123,22 +1123,11 @@ disclosure of JSON Web Token (JWT) claims.</t>
               <organization>ARM</organization>
             </author>
             <author fullname="Steve Lasker" initials="S." surname="Lasker">
-         </author>
-            <date day="10" month="October" year="2025"/>
-            <abstract>
-              <t>   Traceability in supply chains is a growing security concern.  While
-   verifiable data structures have addressed specific issues, such as
-   equivocation over digital certificates, they lack a universal
-   architecture for all supply chains.  This document defines such an
-   architecture for single-issuer signed statement transparency.  It
-   ensures extensibility, interoperability between different
-   transparency services, and compliance with various auditing
-   procedures and regulatory requirements.
-
-              </t>
-            </abstract>
+            </author>
+            <date month="June" year="2026"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-ietf-scitt-architecture-22"/>
+          <seriesInfo name="RFC" value="9943"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9943"/>
         </reference>
       </references>
     </references>
