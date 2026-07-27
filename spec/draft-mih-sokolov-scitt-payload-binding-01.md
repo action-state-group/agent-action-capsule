@@ -91,7 +91,7 @@ informative:
         name: Karthik Rampalli
         organization: Glyphzero, Inc.
   I-D.lee-orprg-permit-receipts:
-    title: "ORPRG Permit Receipts"
+    title: "Permit Receipts for Permit-Before-Commit Authorization of AI-Agent and Workload External Effects"
     seriesinfo:
       Internet-Draft: draft-lee-orprg-permit-receipts-00
     author:

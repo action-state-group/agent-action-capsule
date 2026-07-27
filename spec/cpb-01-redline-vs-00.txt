@@ -1,0 +1,457 @@
+13c13
+<                draft-mih-sokolov-scitt-payload-binding-00
+---
+>                draft-mih-sokolov-scitt-payload-binding-01
+101c101
+<      7.1.  Cross-Profile Comparability . . . . . . . . . . . . . . .  10
+---
+>      7.1.  Cross-Profile Comparability . . . . . . . . . . . . . . .  11
+121c121
+<    12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  15
+---
+>    12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  14
+136c136
+<                Gate  . . . . . . . . . . . . . . . . . . . . . . . .  23
+---
+>                Gate  . . . . . . . . . . . . . . . . . . . . . . . .  24
+163,164c163,164
+<    context and connected through a typed reference rather than through
+<    an assertion of cross-profile digest equality.  Digests remain
+---
+>    context and was represented in the interop design through a typed
+>    reference rather than through an assertion of cross-profile digest
+173,175c173,176
+<    governed by their original contexts; CPB does not relabel an ORPRG
+<    CP-JSON-2 commitment as jcs-n.  The provenance is stated here once
+<    and not repeated in subsequent sections.
+---
+>    equality.  Digests remain governed by their original contexts; CPB
+>    does not relabel an ORPRG CP-JSON-2 commitment as jcs-n.  The
+>    provenance is stated here once and not repeated in subsequent
+>    sections.
+177,179c178,182
+<    A relying party verifying records from several producers gains
+<    interchangeability: any registered artifact type fills any citation
+<    slot, and adding a producer is a registry lookup, not an integration.
+---
+>    For generic citation-binding verification, a CPB verifier can process
+>    a typed reference to any registered artifact type.  Whether a
+>    particular citation slot permits that artifact type is determined by
+>    the consuming profile.  Artifact-specific appraisal, authorization
+>    semantics, and application integration remain separate.
+180a184,187
+>    Supporting a newly registered artifact type does not require a new
+>    generic citation-binding algorithm.  It may still require consuming-
+>    profile integration and artifact-specific appraisal.
+> 
+214,217d220
+<       CANONICAL-DIGEST applied to the canonical form of the payload with
+<       the exclusion set removed.  Verifiers MUST recompute the derived
+<       identifier from the payload bytes; a carried derived-identifier
+<       value is advisory only and a mismatch is a defect.
+219d221
+<    Digest Context:  The complete set of parameters that determine how a
+222,223d223
+< 
+< 
+228a229,234
+>       CANONICAL-DIGEST applied to the canonical form of the payload with
+>       the exclusion set removed.  Verifiers MUST recompute the derived
+>       identifier from the payload bytes; a carried derived-identifier
+>       value is advisory only and a mismatch is a defect.
+> 
+>    Digest Context:  The complete set of parameters that determine how a
+268,273d273
+< 
+< 
+< 
+< 
+< 
+< 
+411,413c411,413
+<    Representation is normative and must be declared by the payload
+<    class.  The following representations are distinct and not
+<    interchangeable:
+---
+>    Representation is normative and MUST be declared by the payload
+>    class.  The following representations are distinct and are not
+>    implicitly interchangeable:
+415c415
+<    *  Bare 64-character lowercase hex string (e.g., "0b4da06b...").
+---
+>    *  bare 64-character lowercase hexadecimal text;
+417c417
+<    *  Prefixed text string (e.g., "sha256:0b4da06b...").
+---
+>    *  prefixed textual representation; and
+419c419
+<    *  Raw 32-byte octet sequence.
+---
+>    *  raw 32-byte octet sequence.
+423c423
+<    MUST NOT treat representations as equivalent.
+---
+>    MUST NOT silently coerce among representations.
+424a425,430
+>    A deterministic conversion MAY be applied only where this
+>    specification or the applicable payload profile expressly defines
+>    both the conversion and the resulting comparison representation.
+>    Such a conversion is an explicit protocol operation and does not make
+>    the original representations byte-identical.
+> 
+440,444d445
+<    A field belongs in the protected header only if a SCITT-generic party
+<    — a Transparency Service registration policy or a profile-unaware
+<    verifier — must act on it without understanding the payload class.
+<    Everything semantically specific to the payload class stays in the
+<    payload.
+447d447
+< 
+452a453,458
+>    A field belongs in the protected header only if a SCITT-generic party
+>    — a Transparency Service registration policy or a profile-unaware
+>    verifier — must act on it without understanding the payload class.
+>    Everything semantically specific to the payload class stays in the
+>    payload.
+> 
+496d501
+<    The following is incorrect and MUST NOT be used:
+498d502
+<    leaf_input = D.encode("utf-8")  -- WRONG: 64 ASCII bytes
+500,503d503
+< 
+< 
+< 
+< 
+508a509,512
+>    The following is incorrect and MUST NOT be used:
+> 
+>    leaf_input = D.encode("utf-8")  -- WRONG: 64 ASCII bytes
+> 
+548d551
+< 7.1.  Cross-Profile Comparability
+550,553d552
+<    Digest values are comparable across a profile boundary only when the
+<    full digest contexts of both sides are established as compatible: the
+<    same field set, the same canonicalization algorithm, the same domain
+<    separation, the same encoding, and the same representation.
+559a559
+> 
+565,571c565
+<    A verifier that encounters a typed digest reference MUST establish
+<    the digest context from the REFERENCED artifact-type definition and
+<    the identifier carried by the reference.  The digest context is
+<    resolved from the referenced artifact type's registry entry, keyed by
+<    the type field; the digest_alg field names only the hash algorithm.
+<    The canonicalization context of the cited artifact is resolved from
+<    the artifact-type registry entry, not from the digest_alg field.
+---
+> 7.1.  Cross-Profile Comparability
+573,577c567,570
+<    The verifier MUST confirm that the identifier carried by the
+<    reference is consistent with the established context.  It MUST then
+<    recompute the referenced artifact's digest under that context and
+<    compare the recomputed digest with the digest carried by the
+<    reference.
+---
+>    Within typed-reference verification, the digest carried by the
+>    reference and the digest recomputed over the referenced artifact are
+>    comparable only when both are interpreted under the same established
+>    referenced-artifact digest context and comparison representation.
+578a572,585
+>    To verify the reference, the verifier MUST use the type field to
+>    resolve the referenced artifact's registered digest context.  It MUST
+>    confirm that digest_alg identifies a hash algorithm consistent with
+>    that context.  It MUST then recompute the referenced artifact's
+>    digest under that context and compare the recomputed value with the
+>    value carried in the digest field.
+> 
+>    If the context established from the type and digest_alg fields cannot
+>    be reconciled with the context used to recompute the referenced
+>    artifact, or if a required deterministic conversion to a common
+>    comparison representation is not expressly defined, the verifier MUST
+>    NOT report the typed reference as verified.  The consuming profile
+>    determines the resulting error disposition.
+> 
+581,586c588
+<    contexts govern different computations.  If the complete comparison
+<    context cannot be established, if the identifier carried by the
+<    reference is inconsistent with that context, or if a required
+<    conversion is not expressly defined, the verifier MUST NOT report the
+<    typed reference as verified.  The consuming profile determines the
+<    resulting error disposition.
+---
+>    contexts govern different computations.
+588,593d589
+<    If the digest contexts of the citing record and the cited artifact
+<    are not compatible and no expressly specified deterministic
+<    conversion applies, the verifier MUST return a result of
+<    indeterminate or deny rather than treating equal-looking hex strings
+<    as a match.
+< 
+597,599d592
+<    Equal-looking hex values computed under incompatible digest contexts
+<    are coincidental, not equivalent.
+< 
+611a605,609
+>    The interchangeability property of typed digest references -- that
+>    any registered artifact type may fill a citation slot -- applies to
+>    citation-binding interoperability only and does not extend to any
+>    appraisal or authorization semantics defined by the artifact type or
+>    consuming profile.
+615a614,615
+> 
+> 
+621,626d620
+<    The interchangeability property of typed digest references -- that
+<    any registered artifact type may fill a citation slot -- applies to
+<    citation-binding interoperability only and does not extend to any
+<    appraisal or authorization semantics defined by the artifact type or
+<    consuming profile.
+< 
+668,676d661
+< 
+< 
+< 
+< 
+< Mih & Sokolov            Expires 28 January 2027               [Page 12]
+< 
+< Internet-Draft          Canonical Payload Binding              July 2026
+< 
+< 
+684a670,676
+> 
+> 
+> Mih & Sokolov            Expires 28 January 2027               [Page 12]
+> 
+> Internet-Draft          Canonical Payload Binding              July 2026
+> 
+> 
+724a717,724
+>    portable encoding for monetary and quantity values.
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+733,734d732
+<    portable encoding for monetary and quantity values.
+< 
+774a773
+> 12.  Privacy Considerations
+775a775,779
+>    A record bound under this profile carries digests of content rather
+>    than the content itself.  The derived identifier and any typed digest
+>    references commit to the content without disclosing it; the record is
+>    therefore payload-blind to any verifier that does not independently
+>    possess the referenced artifacts.
+780,783d783
+< 
+< 
+< 
+< 
+789,796d788
+< 12.  Privacy Considerations
+< 
+<    A record bound under this profile carries digests of content rather
+<    than the content itself.  The derived identifier and any typed digest
+<    references commit to the content without disclosing it; the record is
+<    therefore payload-blind to any verifier that does not independently
+<    possess the referenced artifacts.
+< 
+838,844d829
+< 
+< 
+< Mih & Sokolov            Expires 28 January 2027               [Page 15]
+< 
+< Internet-Draft          Canonical Payload Binding              July 2026
+< 
+< 
+851a837,844
+> 
+> 
+> 
+> Mih & Sokolov            Expires 28 January 2027               [Page 15]
+> 
+> Internet-Draft          Canonical Payload Binding              July 2026
+> 
+> 
+885,887c878,886
+< 
+< 
+< 
+---
+>    +=========+==================+======================================+
+>    | Name    | Digest Context   | Reference                            |
+>    +=========+==================+======================================+
+>    | agent-  | jcs-n;           | [I-D.mih-scitt-agent-action-capsule] |
+>    | action- | exclusion set    |                                      |
+>    | capsule | {capsule_id,     |                                      |
+>    |         | chain}; 64-char  |                                      |
+>    |         | lowercase hex    |                                      |
+>    +---------+------------------+--------------------------------------+
+888a888
+>                                   Table 4
+901,912d900
+<    +=========+==================+======================================+
+<    | Name    | Digest Context   | Reference                            |
+<    +=========+==================+======================================+
+<    | agent-  | jcs-n;           | [I-D.mih-scitt-agent-action-capsule] |
+<    | action- | exclusion set    |                                      |
+<    | capsule | {capsule_id,     |                                      |
+<    |         | chain}; 64-char  |                                      |
+<    |         | lowercase hex    |                                      |
+<    +---------+------------------+--------------------------------------+
+< 
+<                                   Table 4
+< 
+932,934c920,929
+<    [I-D.hillier-scitt-arp] defines its own canonical claim construction
+<    for attestation reconciliation.  A detailed comparison with the
+<    algorithms of this document is deferred to a future revision.
+---
+>    [I-D.hillier-scitt-arp] independently derives a similar canonical
+>    claim construction in its §2.  Its Canonical Claim defines its own
+>    key-sort, NFC, number-rendering, and undefined-stripping rules, plus
+>    a Claim Hash join key.  The construction is near-jcs-n but not byte-
+>    compatible.  The independent re-derivation is evidence that this
+>    layer is consistently re-invented when it is not standardized; CPB
+>    exists to stop the re-invention.  Implementations must not assume
+>    byte compatibility; ARP's Canonical Claim carries an explicit
+>    construction identifier by which a consumer can determine
+>    compatibility.
+948a944,947
+>    derive-identifier construction is a recurring primitive across
+>    independent use cases — one shared binding layer serving SCITT-
+>    anchored agent records, RATS attestation composition, and multi-agent
+>    accountability chains.
+951a951
+> 
+957,961d956
+<    derive-identifier construction is a recurring primitive across
+<    independent use cases — one shared binding layer serving SCITT-
+<    anchored agent records, RATS attestation composition, and multi-agent
+<    accountability chains.
+< 
+1003c998,1003
+< 
+---
+>    [I-D.birkholz-verifiable-agent-conversations]
+>               Birkholz, H., "Verifiable Agent Conversations", Work in
+>               Progress, Internet-Draft, draft-birkholz-verifiable-agent-
+>               conversations-00, n.d.,
+>               <https://datatracker.ietf.org/doc/html/draft-birkholz-
+>               verifiable-agent-conversations-00>.
+1013,1019d1012
+<    [I-D.birkholz-verifiable-agent-conversations]
+<               Birkholz, H., "Verifiable Agent Conversations", Work in
+<               Progress, Internet-Draft, draft-birkholz-verifiable-agent-
+<               conversations-00, n.d.,
+<               <https://datatracker.ietf.org/doc/html/draft-birkholz-
+<               verifiable-agent-conversations-00>.
+< 
+1033a1027,1033
+>    [I-D.lee-orprg-permit-receipts]
+>               Lee, Y., "Permit Receipts for Permit-Before-Commit
+>               Authorization of AI-Agent and Workload External Effects",
+>               Work in Progress, Internet-Draft, draft-lee-orprg-permit-
+>               receipts-00, n.d., <https://datatracker.ietf.org/doc/html/
+>               draft-lee-orprg-permit-receipts-00>.
+> 
+1211,1213c1211,1216
+<    record format to verify the citation binding.  This payload-blind
+<    verification is the interchangeability property of typed digest
+<    references: any registered artifact type fills any citation slot.
+---
+>    record format to verify the citation binding.  For generic citation-
+>    binding verification, a CPB verifier can process a typed reference to
+>    any registered artifact type.  Whether a particular citation slot
+>    permits that artifact type is determined by the consuming profile.
+>    Artifact-specific appraisal, authorization semantics, and application
+>    integration remain separate.
+1224,1228d1226
+<    *Owner consent status:* Anton Sokolov (Tyche Institute) — confirmed
+<    2026-07-24.  Tom Sato (GAR/SOOS) — confirmed 2026-07-25.  Yong Bok
+<    Lee (Scott Lee), Meridian Verity Group — confirmed 2026-07-24.
+<    Tymofii Pidlisnyi (Agent Passport System) — confirmed 2026-07-24 (on-
+<    issue).
+1231a1230,1231
+> 
+> 
+1236a1237,1240
+>    *Owner consent status:* Anton Sokolov (Tyche Institute) — confirmed
+>    2026-07-24.  Tom Sato (GAR/SOOS) — confirmed 2026-07-25.  Tymofii
+>    Pidlisnyi (Agent Passport System) — confirmed 2026-07-24 (on-issue).
+> 
+1278d1281
+< C.1.3.  A2A Boundary Seal — Derived Identifier as Protocol Gate
+1280,1281d1282
+<    Public record: capsule-emit issue #29, verified offline at
+<    https://github.com/action-state-group/capsule-emit/issues/29.
+1287d1287
+< 
+1292a1293,1297
+> C.1.3.  A2A Boundary Seal — Derived Identifier as Protocol Gate
+> 
+>    Public record: capsule-emit issue #29, verified offline at
+>    https://github.com/action-state-group/capsule-emit/issues/29.
+> 
+1318,1320d1322
+< 
+< 
+< 
+1342,1343d1343
+< 
+< 
+1431,1434c1431,1434
+<    2026-07-25), Yong Bok Lee (Scott Lee) (confirmed 2026-07-24, email),
+<    Tymofii Pidlisnyi (Agent Passport System, confirmed 2026-07-24, on-
+<    issue), Karthik Rampalli (Glyphzero, confirmed 2026-07-25, email,
+<    with corrections)]:
+---
+>    2026-07-25), Yong Bok Lee (Scott Lee) (contributor attribution
+>    confirmed 2026-07-27), Tymofii Pidlisnyi (Agent Passport System,
+>    confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero,
+>    confirmed 2026-07-25, email, with corrections)]:
+1439c1439
+<    *  Yong Bok Lee (Scott Lee), Meridian Verity Group — ORPRG-specific
+---
+>    *  Yong Bok Lee (Scott Lee), Meridian Verity Group — ORPRG-derived
+1441c1441
+<       is not itself a valid join; a typed reference is verified by
+---
+>       alone is not a valid join; a typed reference is verified by
+1443,1446c1443,1449
+<       context rather than by comparing it with the citing record's own
+<       derived identifier.  Also contributed the representation-boundary
+<       distinction among raw digest bytes, bare lowercase hexadecimal
+<       text, and prefixed text.
+---
+>       context and comparing that result with the digest carried in the
+>       reference, not with the citing record's own derived identifier.
+>       Also contributed the representation-boundary distinction among raw
+>       digest bytes, bare lowercase hexadecimal text, and prefixed text,
+>       and the verification-scope boundary separating typed-reference
+>       content binding from artifact-specific appraisal and
+>       authorization.  See [I-D.lee-orprg-permit-receipts].
+1448,1451d1450
+<    *  Tymofii Pidlisnyi (Agent Passport System) — the content-derived
+<       action reference pattern (NFC + code-point sort + JCS)
+<       demonstrating that jcs-n generalizes across canonicalization
+<       styles; bidirectional cross-runs with confirmed byte-agreement.
+1455a1455
+> 
+1460a1461,1465
+>    *  Tymofii Pidlisnyi (Agent Passport System) — the content-derived
+>       action reference pattern (NFC + code-point sort + JCS)
+>       demonstrating that jcs-n generalizes across canonicalization
+>       styles; bidirectional cross-runs with confirmed byte-agreement.
+> 
+1507,1511d1511
+< 
+< 
+< 
+< 
+< 
