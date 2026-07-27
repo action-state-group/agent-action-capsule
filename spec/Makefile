@@ -11,16 +11,19 @@
 DRAFT    = draft-mih-scitt-agent-action-capsule-00
 BILATERAL = draft-mih-agent-bilateral-attestation-00
 CPB      = draft-mih-sokolov-scitt-payload-binding-00
+CPB01    = draft-mih-sokolov-scitt-payload-binding-01
 XML2RFC  ?= ~/.venvs/x2r/bin/xml2rfc
 KDRFC    ?= kramdown-rfc
 
-.PHONY: all bilateral cpb clean idnits
+.PHONY: all bilateral cpb cpb01 clean idnits
 
 all: $(DRAFT).xml $(DRAFT).txt
 
 bilateral: $(BILATERAL).xml $(BILATERAL).txt
 
 cpb: $(CPB).xml $(CPB).txt
+
+cpb01: $(CPB01).xml $(CPB01).txt
 
 # md -> v2 xml -> v3 xml (committed artifact is v3)
 $(DRAFT).xml: $(DRAFT).md
@@ -38,6 +41,11 @@ $(CPB).xml: $(CPB).md
 	$(XML2RFC) --v2v3 .$(CPB).v2.xml -o $(CPB).xml
 	@rm -f .$(CPB).v2.xml
 
+$(CPB01).xml: $(CPB01).md
+	$(KDRFC) $(CPB01).md > .$(CPB01).v2.xml
+	$(XML2RFC) --v2v3 .$(CPB01).v2.xml -o $(CPB01).xml
+	@rm -f .$(CPB01).v2.xml
+
 # v3 xml -> text
 $(DRAFT).txt: $(DRAFT).xml
 	$(XML2RFC) --text --v3 $(DRAFT).xml -o $(DRAFT).txt
@@ -48,8 +56,11 @@ $(BILATERAL).txt: $(BILATERAL).xml
 $(CPB).txt: $(CPB).xml
 	$(XML2RFC) --text --v3 $(CPB).xml -o $(CPB).txt
 
+$(CPB01).txt: $(CPB01).xml
+	$(XML2RFC) --text --v3 $(CPB01).xml -o $(CPB01).txt
+
 idnits: $(DRAFT).txt
 	npx --yes @ietf-tools/idnits $(DRAFT).txt
 
 clean:
-	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml
+	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml .$(CPB01).v2.xml
