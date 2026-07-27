@@ -1257,16 +1257,12 @@ byte-agreement on <tt>subject_digest</tt> <tt>0b4da06b...</tt>, demonstrating th
 codebases.</t>
         </li>
       </ul>
-      <t><strong>Acknowledged</strong> [PENDING CONFIRM from each]:</t>
+      <t><strong>Acknowledged</strong> [Amaury Chamayou confirmed 2026-07-24 (email)]:</t>
       <ul spacing="normal">
         <li>
           <t>Amaury Chamayou (Microsoft) — two-TS single-statement demonstration;
 the vds-from-protected-header finding subsequently mirrored in
 microsoft/scitt-ccf-ledger #424.</t>
-        </li>
-        <li>
-          <t>Henk Birkholz (Fraunhofer) — §7.4 trace-metadata discovery convention
-alignment (<xref target="discovery"/>).</t>
         </li>
       </ul>
     </section>
@@ -1600,10 +1596,9 @@ bHaFeVbRltINhZSwSJeVI/iQKXJIDLcYBeTg/dqWW1xzj7DgFkLa7K89Bcxw
 YUb6JsipScowp9ED4HM7vrOZxY56U+luN86oIPVD+mb9UuF2BRLpARQrZ0sP
 n+Xblr2vlQmwwaHTDvupRJh68UeyHkaOvFy73rz2F7VoO+9NV/3YqGuSXuw5
 fM/PFzy3FLl8ECquUQKN+4fB43hgu2CYh93f9ivc37icWKp7BP9AyEd36Ev2
-gIo6ZMbIlOizX48eMv+2b6LQsRUjhbM7vKJ22cMajeQ6CvZ5uoRTrbgaoJmC
-bWE8Adm8jg5rB/Otyj2YCMUosybBNyQDt90xo3aVYYUmsyvPzvXFj9eAN6Ju
-2pofXHljX0kGvh29rtNleV3BUefJUs58v09nlzwftKa0QYb6KEqlBxD0fwDw
-X4VNJqoAAA==
+gIo6ZMbIlOizX48eMv+2b6LQsRUjhbM7vKJ2GWm0/Xm6hEOrsHlDxIqEvxf1
+vZ+MPPwWVhTYzSvr0Hewgqrcg6lR1DJrEtSiycD9d8y6Xa1YoentysVzffHj
+NSiOOHxi/g914K1mz6kAAA==
 
 -->
 

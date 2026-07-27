@@ -964,12 +964,8 @@ Iman Schrock (both confirmed 2026-07-24), Tom Sato (confirmed
   (`8cf0c36e...`) demonstrating byte-agreement across three independent
   codebases.
 
-**Acknowledged** \[PENDING CONFIRM from each\]:
-
+**Acknowledged** \[Amaury Chamayou confirmed 2026-07-24 (email)\]:
 
 * Amaury Chamayou (Microsoft) — two-TS single-statement demonstration;
   the vds-from-protected-header finding subsequently mirrored in
   microsoft/scitt-ccf-ledger #424.
-
-* Henk Birkholz (Fraunhofer) — §7.4 trace-metadata discovery convention
-  alignment ({{discovery}}).
