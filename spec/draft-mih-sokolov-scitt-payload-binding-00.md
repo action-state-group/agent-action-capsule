@@ -109,8 +109,8 @@ types that may appear in typed references; entries are immutable.
 --- note_Note_to_Readers
 
 This document is an individual submission. The intended venue is the SCITT
-Working Group (scitt@ietf.org). Author attributions and contributor
-acknowledgments are pending individual confirmation by each named person.
+Working Group (scitt@ietf.org). named attributions and acknowledgments in this document were individually
+confirmed in writing by the named parties.
 The short name "Canonical Payload Binding" and the document title are
 expected to be settled by the adopting working group.
 
@@ -930,11 +930,12 @@ The following individuals contributed findings from the IETF 126 hackathon in
 Vienna that directly shaped the rules in this document. All attributions
 cite public artifacts.
 
-**Contributors** \[PENDING CONFIRM from each except Anton Sokolov,
-Iman Schrock (both confirmed 2026-07-24), Tom Sato (confirmed
-2026-07-26), Tymofii Pidlisnyi (Agent Passport System, confirmed
-2026-07-24 on-issue), and Karthik Rampalli (Glyphzero, confirmed
-2026-07-25 email, with corrections)\]:
+**Contributors** \[all named attributions and contributor acknowledgments
+individually confirmed: Anton Sokolov (confirmed 2026-07-24), Iman Schrock
+(confirmed 2026-07-24), Tom Sato (confirmed 2026-07-26), Yong Bok Lee (Scott
+Lee) (confirmed 2026-07-26, email), Tymofii Pidlisnyi (Agent Passport System,
+confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
+2026-07-25, email, with corrections)\]:
 
 * Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
   boundary-seal instance in {{appendix-c}}.
