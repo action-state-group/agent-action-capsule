@@ -1,7 +1,7 @@
 ---
-title: "Selective Disclosure Profile for Agent Action Capsules"
-abbrev: "AAC Selective Disclosure"
-docname: draft-mih-scitt-agent-action-capsule-sel-disc-00
+title: "Selective Disclosure for SCITT Payload Binding"
+abbrev: "CPB Selective Disclosure"
+docname: draft-mih-scitt-cpb-selective-disclosure-00
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -12,7 +12,6 @@ keyword:
  - selective disclosure
  - SD-JWT
  - SD-CWT
- - AI agent
  - transparency
 stand_alone: yes
 pi: [toc, sortrefs, symrefs]
@@ -32,6 +31,21 @@ normative:
   RFC6234:
   RFC9901:
   I-D.ietf-spice-sd-cwt:
+  I-D.mih-sokolov-scitt-payload-binding:
+    title: "SCITT Payload Binding"
+    seriesinfo:
+      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-00
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
+      - ins: A. Sokolov
+        name: Anton Sokolov
+
+informative:
+  RFC9052:
+  RFC8949:
+  RFC9943:
   I-D.mih-scitt-agent-action-capsule:
     title: "An Agent Action Capsule Profile for SCITT"
     seriesinfo:
@@ -41,50 +55,44 @@ normative:
         name: Steven Mih
         organization: Action State Group, Inc.
 
-informative:
-  RFC9052:
-  RFC8949:
-  RFC9943:
-
 --- abstract
 
-This document normatively profiles the per-field selective-disclosure
-extension point reserved in draft-mih-scitt-agent-action-capsule-01
-Section 9.2 (Selective Disclosure).  It defines the salted-hash commitment encoding, decoy-digest
-construction, disclosure format, producer requirements, and verifier
-checks for selectively disclosable fields in Agent Action Capsule
-payloads.  The mechanism follows the SD-JWT selective-disclosure model
+This document defines the per-field selective-disclosure mechanism for
+payload profiles conforming to the SCITT Payload Binding specification
+{{I-D.mih-sokolov-scitt-payload-binding}}.  It specifies the salted-hash
+commitment encoding, decoy-digest construction, disclosure format,
+producer requirements, and verifier checks for selectively disclosable
+fields.  The mechanism follows the SD-JWT selective-disclosure model
 (RFC 9901) — salted-hash commitments, decoy digests, and disclosed
 `[salt, name, value]` triples — using JCS (RFC 8785) canonicalization,
-which is already the base Capsule profile's canonical form.  SD-JWT
+which is already the base Payload Binding profile's canonical form.  SD-JWT
 (RFC 9901) is the JSON form; SD-CWT (draft-ietf-spice-sd-cwt) is the
-CBOR/dCBOR sibling.  Because the Capsule payload is JSON, this profile
-uses the SD-JWT (JSON) construction, cited alongside the SPICE WG's
-SD-CWT work for SCITT-ecosystem consistency.  Verifier
-checks are deterministic and reproducible from the Capsule bytes plus a
-provided disclosure set alone; no clock, network access, model invocation,
-or external lookup beyond the provided disclosures is required.
+CBOR/dCBOR sibling.  Because Payload Binding payloads are JSON, this
+profile uses the SD-JWT (JSON) construction, cited alongside the SPICE
+WG's SD-CWT work for SCITT-ecosystem consistency.  Verifier checks are
+deterministic and reproducible from the payload bytes plus a provided
+disclosure set alone; no clock, network access, model invocation, or
+external lookup beyond the provided disclosures is required.
 
 --- middle
 
 # Introduction {#introduction}
 
-The base confidentiality posture of an Agent Action Capsule
-{{I-D.mih-scitt-agent-action-capsule}} is whole-envelope: a producer
-either discloses the full Capsule payload to a verifier or withholds it
-entirely.  This posture is sufficient when the unit of trust decision is
-the Capsule as a whole.
+The base confidentiality posture of a SCITT Payload Binding record
+{{I-D.mih-sokolov-scitt-payload-binding}} is whole-envelope: a producer
+either discloses the full payload to a verifier or withholds it entirely.
+This posture is sufficient when the unit of trust decision is the record
+as a whole.
 
 Two kinds of scenario require finer granularity.  First, a producer may
-need to demonstrate that a gate fired — that a `blocked` or `denied`
-verdict was recorded — to a verifier who is not entitled to learn which
-operator initiated the action or what the specific constraint verdict was.
-Second, a producer may serve multiple verifiers with different disclosure
-needs from the same signed artifact: a regulator who receives all fields
-and an auditing partner who receives only the disposition.
+need to share evidence of a specific outcome with a verifier who is not
+entitled to learn other fields in the same record.  Second, a producer
+may serve multiple verifiers with different disclosure needs from the
+same signed artifact: a regulator who receives all fields and an auditing
+partner who receives only a subset.
 
 This document profiles a per-field selective-disclosure mechanism for
-Capsule payloads that addresses these scenarios.  The mechanism follows
+Payload Binding payloads that addresses these scenarios.  The mechanism follows
 the SD-JWT selective-disclosure model {{RFC9901}} — salted-hash
 commitments, decoy digests, and disclosed `[salt, name, value]` triples —
 applied to the JSON {{RFC8259}} encoding of the Capsule payload.  SD-JWT {{RFC9901}}
@@ -114,8 +122,8 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 as shown here.
 
 SD-Capsule:
-: A Capsule payload containing the `_sd_alg` member and one or more `_sd`
-  arrays with salted-hash commitments over concealed fields.
+: A Payload Binding payload containing the `_sd_alg` member and one or
+  more `_sd` arrays with salted-hash commitments over concealed fields.
 
 Disclosure:
 : A base64url-encoded byte string that encodes a JSON array
@@ -150,9 +158,9 @@ JCS:
 SHA-256:
 : The SHA-256 hash function per {{RFC6234}}.
 
-The terms "Capsule", "Producer", "Verifier", "JSON-DIGEST", "Class 1
-verifier", and "Class 2 verifier" are as defined in
-{{I-D.mih-scitt-agent-action-capsule}}.
+The terms "Producer", "Verifier", "JSON-DIGEST", "Class 1 verifier",
+and "Class 2 verifier" are as defined in
+{{I-D.mih-sokolov-scitt-payload-binding}}.
 
 # Design Rationale {#rationale}
 
@@ -160,10 +168,10 @@ The SD-JWT selective-disclosure model {{RFC9901}} operates over JSON,
 using salted-hash commitments, disclosed triples, and decoy digests.
 SD-CWT ({{I-D.ietf-spice-sd-cwt}}) is the CBOR/dCBOR sibling of that
 model, operating over CBOR payloads using deterministic CBOR (dCBOR) {{RFC8949}} for
-its hash inputs.  Agent Action Capsule payloads are JSON objects, so this
+its hash inputs.  Payload Binding payloads are JSON objects, so this
 profile uses the SD-JWT (JSON) construction directly, with JCS
 ({{RFC8785}}) as the canonicalization layer that produces the byte string
-hashed.  JCS is already used in the base Capsule profile for the
+hashed.  JCS is already used in the base Payload Binding profile for the
 `JSON-DIGEST` construction, making it the natural choice for consistency.
 The profile stays aligned with the SPICE WG's SD-CWT work so that the
 two siblings remain consistent across the SCITT ecosystem.
@@ -253,94 +261,50 @@ unconsumed digests as errors.
 
 ## SD-Eligible Fields {#eligible}
 
-The set of eligible fields — those that MAY be placed in an `_sd` array
-and thereby concealed — is enumerated below.  Producers MUST NOT conceal
-any field not in this set.  A Capsule with an `_sd` array that conceals a
-non-eligible field is non-conforming; verifiers MUST treat such a Capsule
-as a structural verification failure.
+The set of fields eligible for concealment, and the set of fields that
+MUST remain in plain text, are defined by the payload profile.
 
-### Top-Level Capsule Members {#eligible-top}
+A payload profile using this selective-disclosure mechanism MUST specify:
 
-The following top-level Capsule payload members MAY be concealed:
+1. The set of eligible fields: those that MAY be placed in an `_sd` array
+   and concealed.
 
-| Member | Description |
-|--------|-------------|
-| `operator` | The accountable tenant. |
-| `developer` | The agent identity and version. |
+2. The set of non-eligible fields: those that MUST remain in plain text.
 
-### `disposition` Sub-Object Members {#eligible-disposition}
+A profile MUST declare non-eligible any field whose presence or value its
+own verifier requires in order to perform base verification.  Concealing
+such a field makes the corresponding verification check non-performable.
 
-Within the `disposition` object, the following members MAY be concealed:
+A profile MUST also declare non-eligible the field carrying the profile's
+derived identifier ({{I-D.mih-sokolov-scitt-payload-binding}} Section 3),
+since the derived identifier is computed from the SD-encoded payload
+(see {{derived-id-coverage}}) and concealing it within `_sd` is incoherent.
 
-| Member | Description |
-|--------|-------------|
-| `verdict_class` | Terminal-verdict reason-class. |
-| `authority` | Opaque authority reference. |
-| `reason_digest` | Digest of the structured private reason. |
-
-### `effect` Sub-Object Members {#eligible-effect}
-
-Within the `effect` object, the following members MAY be concealed:
-
-| Member | Description |
-|--------|-------------|
-| `type` | Logical action type (registry-governed). |
-| `external_ref` | Join key for external outcome correlation. |
-| `irreversibility_class` | Consequence class (registry-governed). |
-| `effect_attestation` | Evidence grade of the effect claim. |
-
-### `constraints` Array Elements {#array-elements}
-
-Individual elements of the top-level `constraints` array MAY be
-individually concealed using the array-element mechanism ({{commitment}},
-step 2b): the element is replaced by `{"...": digest}` in the array.
-The disclosure for such an element is the two-element array
-`[salt_b64url, constraint_record_value]`, where
-`constraint_record_value` is the full JSON object of the concealed
-Constraint Record.
-
-The `constraints` array itself MUST NOT be removed or placed in an `_sd`
-array; the array with zero or more `{"...": digest}` placeholders MUST
-remain present.
-
-### `compliance` Sub-Object Members {#eligible-compliance}
-
-Within the `compliance` object (if present), the following members MAY
-be concealed:
-
-| Member | Description |
-|--------|-------------|
-| `framework_tags` | Compliance framework tags. |
-
-### Non-Eligible Fields {#non-eligible}
-
-The following fields MUST remain in plain text in the Capsule payload and
-MUST NOT appear in any `_sd` array:
-
-- `spec_version`, `format_version`: structural integrity.
-- `capsule_id`: the content-address; it is excluded from its own
-  computation and concealing it is incoherent.
-- `action_id`: the stable action identifier required for correlation and
-  chain linkage.
-- `action_type`: required for SCITT registration policy evaluation.
-- `timestamp`: required for temporal ordering and deferral-expiry
-  computation.
-- `disposition.decision`: the core verdict field.
-- `disposition.approver`: the disposition type.
-- `disposition.human_disposed`: the honest in-the-loop flag.
-- `effect.status`: the effect state; required for the effect-attestation
-  matrix and confirmed-effect binding check.
-- `effect.request_digest`, `effect.response_digest`: digest commitments
-  whose presence and value are checked by the base verifier; concealing
-  them would make the confirmed-effect binding check non-performable.
-- `assurance.*`: derived summary modes; rederivable by any verifier from
-  checked evidence and MUST remain visible.
-- `chain.*` (`parent_capsule_id`, `relation`): linkage integrity fields
-  required for chain verification.
-- `_sd_alg`, `_sd`: SD structure fields.
+Producers MUST NOT conceal any field not declared eligible by the profile.
+A Capsule with an `_sd` array that conceals a non-eligible field is
+non-conforming; verifiers MUST treat such a Capsule as a structural
+verification failure.
 
 A verifier MUST treat any `_sd` array entry that, when a disclosure is
 provided, resolves to a non-eligible field name as a structural failure.
+
+### Profile-Designated Array Elements {#array-elements}
+
+A profile MAY designate one or more arrays within the payload as
+supporting per-element selective disclosure.  Individual elements of a
+designated array MAY be individually concealed using the array-element
+mechanism ({{commitment}}, step 2b): the element is replaced by
+`{"...": digest}` in the array.  The disclosure for such an element is
+the two-element array `[salt_b64url, element_value]`, where
+`element_value` is the full JSON value of the concealed element.
+
+A designated array itself MUST NOT be removed or placed in an `_sd`
+array; the array with zero or more `{"...": digest}` placeholders MUST
+remain present.
+
+A profile MUST declare which arrays support per-element concealment.
+The Agent Action Capsule profile's eligible and non-eligible field sets,
+including its designated arrays, are specified in {{aac-eligibility}}.
 
 # SD-Capsule Production {#production}
 
@@ -362,26 +326,28 @@ the producer performs the following steps:
 
 4. Sort each `_sd` array in lexicographic byte order.
 
-5. Compute `capsule_id` per {{capsule-id-coverage}}.
+5. Compute the profile's derived identifier per {{derived-id-coverage}}.
 
-## capsule_id Coverage {#capsule-id-coverage}
+## Derived Identifier Coverage {#derived-id-coverage}
 
-An SD-Capsule's `capsule_id` is computed over the SD-encoded payload
-(the payload with concealed members absent and `_sd` arrays and `_sd_alg`
-present), not over the fully-revealed payload.  This follows the same
-construction as the base profile: `JSON-DIGEST` of the canonical capsule
-form (the full payload minus `capsule_id` and chain-linkage fields) after
-absent-field normalization, applied to the SD-encoded form.
+A profile's derived identifier ({{I-D.mih-sokolov-scitt-payload-binding}}
+Section 3) MUST be computed over the SD-encoded payload (the payload with
+concealed members absent and `_sd` arrays and `_sd_alg` present), not
+over the fully-revealed payload.  This follows the same construction as
+the base profile: the derived identifier is computed from the canonical
+payload form (the full payload minus the derived-identifier field and any
+profile-excluded fields) after absent-field normalization, applied to the
+SD-encoded form.
 
-This design means the `capsule_id` is stable regardless of which fields
-are later revealed to which verifiers.  The commitment set (the `_sd`
-arrays) is part of the content-addressed form and is therefore
-tamper-evident via `capsule_id`.
+This design means the derived identifier is stable regardless of which
+fields are later revealed to which verifiers.  The commitment set (the
+`_sd` arrays) is part of the content-addressed form and is therefore
+tamper-evident via the derived identifier.
 
-A verifier reconstructing the payload from disclosures MUST NOT
-recompute `capsule_id` over the reconstructed plain form; the recomputed
-`capsule_id` check (base profile Class 1 check 2) is performed over the
-SD-encoded form before disclosure application.
+A verifier reconstructing the payload from disclosures MUST NOT recompute
+the derived identifier over the reconstructed plain form; the derived
+identifier recomputation check (base profile Class 1 check 2) is performed
+over the SD-encoded form before disclosure application.
 
 ## Disclosure Encoding {#disclosure-encoding}
 
@@ -391,7 +357,7 @@ A disclosure for an object member `n` with value `v` is:
 encoded_disclosure = BASE64URL(UTF8(JCS([salt_b64url, n, v])))
 ~~~
 
-A disclosure for a `constraints` array element with value `elem` is:
+A disclosure for a profile-designated array element with value `elem` is:
 
 ~~~
 encoded_disclosure = BASE64URL(UTF8(JCS([salt_b64url, elem])))
@@ -452,7 +418,7 @@ For each string `d` in each `_sd` array at any nesting level:
   43 characters (the base64url encoding of 32 bytes).
 - Report `sd_malformed_digest` for any digest that does not conform.
 
-For each `{"...": v}` object in the `constraints` array:
+For each `{"...": v}` object in any profile-designated array:
 - `v` MUST be a base64url string conforming to the same length requirement.
 - Report `sd_malformed_placeholder` for any that does not conform.
 
@@ -487,10 +453,10 @@ For each valid object-member disclosure `[salt, name, value]`:
 1. Compute `computed = BASE64URL(SHA-256(UTF8(JCS([salt, name, value]))))`.
 
 2. Search the `_sd` array of the appropriate containing object for
-   `computed`.  The containing object for top-level member disclosures
-   is the Capsule root object; for `disposition` members it is the
-   `disposition` object; for `effect` members it is the `effect` object;
-   for `compliance` members it is the `compliance` object.
+   `computed`.  The containing object for a member is the direct JSON
+   parent object in the payload structure as defined by the profile.
+   For a top-level member, this is the payload root object; for a nested
+   member, this is its enclosing sub-object.
 
 3. If `computed` is not found in the appropriate `_sd` array: report
    `sd_commitment_mismatch` for this disclosure.
@@ -508,63 +474,64 @@ For each valid array-element disclosure `[salt, value]`:
 
 1. Compute `computed = BASE64URL(SHA-256(UTF8(JCS([salt, value]))))`.
 
-2. Search the `constraints` array for a `{"...": computed}` placeholder.
+2. Search the profile-designated arrays for a `{"...": computed}` placeholder.
 
 3. If not found: report `sd_commitment_mismatch` for this disclosure.
 
 4. If found but already consumed: report `sd_duplicate_disclosure`.
 
 5. Otherwise: mark the placeholder as consumed; replace it in the array
-   with `value`.  Verify that `value` is a well-formed Constraint Record
-   object (has `id`, `result`, `severity`, `blocking` members); if not,
-   report `sd_constraint_record_malformed` as an informational finding.
+   with `value`.  If the profile specifies a required element structure
+   for the array, verify that `value` conforms; if not, report
+   `sd_element_malformed` as an informational finding.
 
 ### SD-5: Residual Check
 
 After all provided disclosures have been processed, the remaining
 (unconsumed) entries in every `_sd` array and every remaining
-`{"...": digest}` placeholder in the `constraints` array are treated as
-decoy digests.  Verifiers MUST silently ignore them and MUST NOT report
+`{"...": digest}` placeholder in any profile-designated array are treated
+as decoy digests.  Verifiers MUST silently ignore them and MUST NOT report
 unconsumed digests as errors.
 
 ### SD-6: Reconstruction Cleanup
 
 Remove `_sd_alg` and all `_sd` arrays from the reconstructed object.
-Replace any remaining `{"...": digest}` placeholders in the `constraints`
-array with nothing (i.e., remove them from the array); the resulting
-`constraints` array reflects only those Constraint Records for which
-disclosures were provided.
+Replace any remaining `{"...": digest}` placeholders in each
+profile-designated array with nothing (i.e., remove them from the array);
+the resulting array reflects only those elements for which disclosures
+were provided.
 
-Verifiers MUST report the count of concealed-but-not-disclosed Constraint
-Records as an informational finding (`sd_undisclosed_constraints: N`) so
-that consumers know the visible constraint list may be incomplete.
+Verifiers MUST report the count of concealed-but-not-disclosed elements
+per designated array as an informational finding
+(`sd_undisclosed_elements: {array_name: N}`) so that consumers know the
+visible list may be incomplete.
 
 ## Phase 2: Base Verification on Reconstructed Payload {#base-phase}
 
 After Phase 1 completes without a structural failure, perform the full
-Class 1 verification check set of {{I-D.mih-scitt-agent-action-capsule}}
+Class 1 verification check set of {{I-D.mih-sokolov-scitt-payload-binding}}
 on the reconstructed payload.
 
-There is one adaptation to base Class 1 check 2 (capsule_id recomputation):
-the verifier MUST recompute `capsule_id` over the SD-encoded form (the
-original payload bytes as received, before disclosure application), not
-over the reconstructed plain form.  All other Class 1 checks are
-performed on the reconstructed payload.
+There is one adaptation to base Class 1 check 2 (derived identifier
+recomputation): the verifier MUST recompute the derived identifier over
+the SD-encoded form (the original payload bytes as received, before
+disclosure application), not over the reconstructed plain form.  All
+other Class 1 checks are performed on the reconstructed payload.
 
 If a REQUIRED field was concealed and no disclosure was provided for it,
 the reconstructed payload is missing that field and the base structural
 check (check 1) will fail.  The verifier MUST report this as
-`sd_required_field_not_disclosed: ["operator", ...]` (listing the missing
-REQUIRED field names) in addition to the base structural failure, so that
-the consumer can distinguish the missing-disclosure case from a
+`sd_required_field_not_disclosed: ["field_name", ...]` (listing the
+missing REQUIRED field names) in addition to the base structural failure,
+so that the consumer can distinguish the missing-disclosure case from a
 malformed-payload case.
 
 ## Class 1-SD Verifier {#class1-sd}
 
 A Class 1-SD verifier performs:
 - Phase 1 SD structure verification ({{sd-phase}}).
-- Base Class 1 verification per {{I-D.mih-scitt-agent-action-capsule}}
-  on the reconstructed payload, with the capsule_id adaptation above.
+- Base Class 1 verification per {{I-D.mih-sokolov-scitt-payload-binding}}
+  on the reconstructed payload, with the derived-identifier adaptation above.
 
 The overall `ok` result is `true` if and only if Phase 1 reports no
 structural failure (SD-1 through SD-4 produce no error-level findings)
@@ -573,10 +540,10 @@ and the base Class 1 check set reports `ok: true`.
 ## Class 2-SD Verifier {#class2-sd}
 
 A Class 2-SD verifier performs Class 1-SD verification and additionally
-the Class 2 manifest-aware checks of {{I-D.mih-scitt-agent-action-capsule}}
+the Class 2 manifest-aware checks of {{I-D.mih-sokolov-scitt-payload-binding}}
 on the reconstructed payload.  The Class 2 checks may apply only to
-disclosed Constraint Records; a verifier MUST report
-`sd_undisclosed_constraints` before applying Class 2 checks so that the
+disclosed array elements; a verifier MUST report
+`sd_undisclosed_elements` before applying Class 2 checks so that the
 consumer understands the completeness of the manifest check.
 
 ## Verification Result Fields
@@ -589,13 +556,16 @@ this profile SHOULD include in its structured result:
 | `sd_alg` | string or null | The `_sd_alg` value from the Capsule (`"sha-256"` or null if absent). |
 | `sd_disclosures_provided` | integer | Count of disclosure strings provided to the verifier. |
 | `sd_disclosures_applied` | integer | Count of disclosures successfully matched and applied. |
-| `sd_undisclosed_constraints` | integer | Count of `constraints` array elements still concealed after disclosure application. |
+| `sd_undisclosed_elements` | object | Count of concealed-but-undisclosed elements per profile-designated array, keyed by array name. |
 | `sd_findings` | array | List of finding codes from Phase 1 (e.g., `sd_duplicate_disclosure`, `sd_ineligible_field`). |
 | `sd_required_field_not_disclosed` | array of strings | REQUIRED field names absent in the reconstructed payload because their disclosure was not provided. |
 
 # Test Vectors {#test-vectors}
 
-The following non-normative examples illustrate the SD construction.
+The following non-normative examples illustrate the SD construction using
+the Agent Action Capsule profile ({{I-D.mih-scitt-agent-action-capsule}};
+see {{aac-eligibility}} for its field eligibility definition).  The
+construction is identical for any conforming payload profile.
 Values are abbreviated for readability.
 
 ## Example: Concealing `operator` {#tv-operator}
@@ -699,14 +669,15 @@ nesting depth of `_sd` arrays or the presence of a `compliance` object.
 Producers with high unlinkability requirements SHOULD generate decoy
 digests at every `_sd` array level, not only at the top level.
 
-## capsule_id Binding
+## Derived Identifier Binding
 
-The `capsule_id` commits to the SD-encoded form.  A verifier that accepts
-a capsule_id as identifying a Capsule is accepting the SD form — including
-the commitment set.  If the producer later delivers different disclosures
-to different verifiers, all resulting reconstructed payloads share the
-same `capsule_id`.  This is intentional: `capsule_id` identifies the
-event, not the view of the event.
+The derived identifier commits to the SD-encoded form.  A verifier that
+accepts a derived identifier as identifying a payload record is accepting
+the SD form — including the commitment set.  If the producer later
+delivers different disclosures to different verifiers, all resulting
+reconstructed payloads share the same derived identifier.  This is
+intentional: the derived identifier identifies the event, not the view
+of the event.
 
 ## Partial Disclosure and Missing Required Fields
 
@@ -723,45 +694,42 @@ guarantees.
 A producer that places a non-eligible field in an `_sd` array produces
 a non-conforming SD-Capsule.  Verifiers treat this as a structural
 failure ({{sd-phase}}, SD-4, step 6).  This prevents a producer from
-concealing fields (such as `effect.status` or `effect.response_digest`)
-whose visibility is required for the base verification invariants to hold.
-Concealing `effect.response_digest`, for example, would make the
-confirmed-effect binding check non-performable, undermining the `may/did`
-distinction.
+concealing fields whose visibility is required for the base verification
+invariants to hold.  Profiles MUST declare such fields non-eligible
+per the rule in {{eligible}}.
 
 ## Relationship to the Base Profile Security Considerations
 
-The security considerations of {{I-D.mih-scitt-agent-action-capsule}}
+The security considerations of {{I-D.mih-sokolov-scitt-payload-binding}}
 apply without modification.  Selective disclosure does not change the
-tamper-evidence properties of the COSE_Sign1 envelope, the
-append-only properties of a SCITT Transparency Service {{RFC9943}}, or the honesty
-invariant of the `human_disposed` flag.  An SD-Capsule registered with
-a Transparency Service has its SD-encoded form logged and receipted;
-the commitment set is therefore tamper-evident and non-repudiable.
+tamper-evidence properties of the COSE_Sign1 envelope or the
+append-only properties of a SCITT Transparency Service {{RFC9943}}.
+An SD-Capsule registered with a Transparency Service has its SD-encoded
+form logged and receipted; the commitment set is therefore
+tamper-evident and non-repudiable.
 
 # IANA Considerations {#iana}
 
-## Capsule Payload Reserved Members
+## Payload Reserved Members
 
-This document reserves the following members of the Agent Action Capsule
-payload.  These members MUST NOT be used for any purpose other than as
-defined in this document.
+This document reserves the following members in Payload Binding payloads
+conforming to {{I-D.mih-sokolov-scitt-payload-binding}}.  These members
+MUST NOT be used for any purpose other than as defined in this document.
 
 | Member name | Type | Location | Defined in |
 |-------------|------|----------|------------|
-| `_sd_alg` | string | Top-level Capsule object | {{alg-id}} |
+| `_sd_alg` | string | Top-level payload object | {{alg-id}} |
 | `_sd` | array of string | Any eligible JSON object | {{commitment}} |
 
 These members use the underscore-prefixed naming convention to avoid
-collision with existing or future Capsule payload members, following the
-same convention as the SD-JWT selective-disclosure model {{RFC9901}} and
-its CBOR sibling SD-CWT ({{I-D.ietf-spice-sd-cwt}}).
+collision with existing or future payload members, following the same
+convention as the SD-JWT selective-disclosure model {{RFC9901}} and its
+CBOR sibling SD-CWT ({{I-D.ietf-spice-sd-cwt}}).
 
 IANA is not requested to create a new registry for these members at this
-time.  The interim registry of record for Agent Action Capsule Parameters
-(the `REGISTRY.md` file of the source repository of
-{{I-D.mih-scitt-agent-action-capsule}}) is updated to list `_sd_alg` and
-`_sd` as reserved members defined by this companion document.
+time.  Individual payload profiles adopting this selective-disclosure
+mechanism SHOULD document `_sd_alg` and `_sd` as reserved members in
+their respective parameter registries.
 
 --- back
 
@@ -793,17 +761,114 @@ here and the CBOR sibling are:
 3. `_sd` array ordering: this profile requires lexicographic sort;
    SD-CWT requires no specific ordering.
 
-4. Array-element disclosures: this profile limits array-element SD to
-   the `constraints` array; SD-CWT applies it uniformly to any array.
+4. Array-element disclosures: profiles using this specification designate
+   specific arrays for per-element SD ({{array-elements}}); SD-CWT applies
+   array-element SD uniformly to any array.
 
 Implementations that also implement SD-CWT MUST use the correct
 canonicalization layer for each context.  A JCS-encoded disclosure is
 not compatible with a dCBOR-encoded commitment, and vice versa.
 
+
+# Agent Action Capsule Field Eligibility {#aac-eligibility}
+{:numbered="false"}
+
+This appendix defines the eligible and non-eligible fields for the Agent
+Action Capsule profile ({{I-D.mih-scitt-agent-action-capsule}}).  A
+producer implementing the Agent Action Capsule profile MUST NOT conceal
+any field not listed as eligible below.
+
+## Eligible Fields
+{:numbered="false"}
+
+### Top-Level Capsule Members
+{:numbered="false"}
+
+The following top-level Capsule payload members MAY be concealed:
+
+| Member | Description |
+|--------|-------------|
+| `operator` | The accountable tenant. |
+| `developer` | The agent identity and version. |
+
+### `disposition` Sub-Object Members
+{:numbered="false"}
+
+Within the `disposition` object, the following members MAY be concealed:
+
+| Member | Description |
+|--------|-------------|
+| `verdict_class` | Terminal-verdict reason-class. |
+| `authority` | Opaque authority reference. |
+| `reason_digest` | Digest of the structured private reason. |
+
+### `effect` Sub-Object Members
+{:numbered="false"}
+
+Within the `effect` object, the following members MAY be concealed:
+
+| Member | Description |
+|--------|-------------|
+| `type` | Logical action type (registry-governed). |
+| `external_ref` | Join key for external outcome correlation. |
+| `irreversibility_class` | Consequence class (registry-governed). |
+| `effect_attestation` | Evidence grade of the effect claim. |
+
+### Profile-Designated Array: `constraints`
+{:numbered="false"}
+
+Individual elements of the top-level `constraints` array MAY be
+individually concealed using the array-element mechanism ({{array-elements}}).
+The `constraints` array is the profile-designated array for the AAC
+profile.  The concealed element is a full Constraint Record JSON object;
+the profile's element structure requires `id`, `result`, `severity`, and
+`blocking` members.
+
+### `compliance` Sub-Object Members
+{:numbered="false"}
+
+Within the `compliance` object (if present), the following members MAY
+be concealed:
+
+| Member | Description |
+|--------|-------------|
+| `framework_tags` | Compliance framework tags. |
+
+## Non-Eligible Fields
+{:numbered="false"}
+
+The following fields MUST remain in plain text in an AAC payload and
+MUST NOT appear in any `_sd` array:
+
+- `spec_version`, `format_version`: structural integrity.
+- `capsule_id`: the derived identifier; excluded from its own computation
+  per {{derived-id-coverage}}.
+- `action_id`: required for correlation and chain linkage.
+- `action_type`: required for SCITT registration policy evaluation.
+- `timestamp`: required for temporal ordering and deferral-expiry
+  computation.
+- `disposition.decision`: the core verdict field.
+- `disposition.approver`: the disposition type.
+- `disposition.human_disposed`: the honest in-the-loop flag.
+- `effect.status`: required for the effect-attestation matrix and
+  confirmed-effect binding check.
+- `effect.request_digest`, `effect.response_digest`: digest commitments
+  required for the confirmed-effect binding check; concealing them would
+  make that check non-performable.
+- `assurance.*`: derived summary modes; rederivable by any verifier from
+  checked evidence.
+- `chain.*` (`parent_capsule_id`, `relation`): linkage integrity fields
+  required for chain verification.
+- `_sd_alg`, `_sd`: SD structure fields.
+
 # Change Log
 {:numbered="false"}
 
-Since -00 (this document):  initial publication.
+Since -00 (this document):  initial publication as CPB companion draft,
+re-scoped from draft-mih-scitt-agent-action-capsule-sel-disc-00;
+field eligibility tables moved to {{aac-eligibility}} annex; `capsule_id`
+coverage generalized to derived identifier; array-element mechanism
+generalized from `constraints` to profile-designated arrays.
 
 # Acknowledgments
 {:numbered="false"}
