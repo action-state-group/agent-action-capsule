@@ -109,7 +109,7 @@ types that may appear in typed references; entries are immutable.
 --- note_Note_to_Readers
 
 This document is an individual submission. The intended venue is the SCITT
-Working Group (scitt@ietf.org). named attributions and acknowledgments in this document were individually
+Working Group (scitt@ietf.org). Named attributions and acknowledgments in this document were individually
 confirmed in writing by the named parties.
 The short name "Canonical Payload Binding" and the document title are
 expected to be settled by the adopting working group.
