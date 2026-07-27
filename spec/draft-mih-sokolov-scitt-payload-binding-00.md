@@ -827,8 +827,8 @@ AAC reference implementation, which is present as a verifier, not as the
 subject.
 
 **Owner consent status:** Anton Sokolov (Tyche Institute) — confirmed
-2026-07-24. Tom Sato (GAR/SOOS) — confirmed 2026-07-26. Yong Bok Lee
-(Scott Lee), Meridian Verity Group — confirmed 2026-07-26. Tymofii
+2026-07-24. Tom Sato (GAR/SOOS) — confirmed 2026-07-25. Yong Bok Lee
+(Scott Lee), Meridian Verity Group — confirmed 2026-07-24. Tymofii
 Pidlisnyi (Agent Passport System) — confirmed 2026-07-24 (on-issue).
 
 ## Deep Mechanism Instances {#appendix-c1}
@@ -865,7 +865,7 @@ anchored Merkle root only when the leaf used the raw bytes.
 discovered during live anchoring when a leaf constructed from the hex string
 failed to verify; switching to raw bytes produced the correct root.
 
-**Consent:** Tom Sato (GAR/SOOS) — confirmed 2026-07-26.
+**Consent:** Tom Sato (GAR/SOOS) — confirmed 2026-07-25.
 
 ### A2A Boundary Seal — Derived Identifier as Protocol Gate
 
@@ -932,8 +932,8 @@ cite public artifacts.
 
 **Contributors** \[all named attributions and contributor acknowledgments
 individually confirmed: Anton Sokolov (confirmed 2026-07-24), Iman Schrock
-(confirmed 2026-07-24), Tom Sato (confirmed 2026-07-26), Yong Bok Lee (Scott
-Lee) (confirmed 2026-07-26, email), Tymofii Pidlisnyi (Agent Passport System,
+(confirmed 2026-07-24), Tom Sato (confirmed 2026-07-25), Yong Bok Lee (Scott
+Lee) (confirmed 2026-07-24, email), Tymofii Pidlisnyi (Agent Passport System,
 confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
 2026-07-25, email, with corrections)\]:
 

@@ -1083,8 +1083,8 @@ the verification counterparty. The common counterparty in each case is the
 AAC reference implementation, which is present as a verifier, not as the
 subject.</t>
       <t><strong>Owner consent status:</strong> Anton Sokolov (Tyche Institute) — confirmed
-2026-07-24. Tom Sato (GAR/SOOS) — confirmed 2026-07-26. Yong Bok Lee
-(Scott Lee), Meridian Verity Group — confirmed 2026-07-26. Tymofii
+2026-07-24. Tom Sato (GAR/SOOS) — confirmed 2026-07-25. Yong Bok Lee
+(Scott Lee), Meridian Verity Group — confirmed 2026-07-24. Tymofii
 Pidlisnyi (Agent Passport System) — confirmed 2026-07-24 (on-issue).</t>
       <section anchor="appendix-c1">
         <name>Deep Mechanism Instances</name>
@@ -1114,7 +1114,7 @@ anchored Merkle root only when the leaf used the raw bytes.</t>
           <t><strong>Mechanism illustrated:</strong> <xref target="leaf-rule"/>. The leaf-bytes-not-hex rule was
 discovered during live anchoring when a leaf constructed from the hex string
 failed to verify; switching to raw bytes produced the correct root.</t>
-          <t><strong>Consent:</strong> Tom Sato (GAR/SOOS) — confirmed 2026-07-26.</t>
+          <t><strong>Consent:</strong> Tom Sato (GAR/SOOS) — confirmed 2026-07-25.</t>
         </section>
         <section anchor="a2a-boundary-seal-derived-identifier-as-protocol-gate">
           <name>A2A Boundary Seal — Derived Identifier as Protocol Gate</name>
@@ -1218,8 +1218,8 @@ Vienna that directly shaped the rules in this document. All attributions
 cite public artifacts.</t>
       <t><strong>Contributors</strong> [all named attributions and contributor acknowledgments
 individually confirmed: Anton Sokolov (confirmed 2026-07-24), Iman Schrock
-(confirmed 2026-07-24), Tom Sato (confirmed 2026-07-26), Yong Bok Lee (Scott
-Lee) (confirmed 2026-07-26, email), Tymofii Pidlisnyi (Agent Passport System,
+(confirmed 2026-07-24), Tom Sato (confirmed 2026-07-25), Yong Bok Lee (Scott
+Lee) (confirmed 2026-07-24, email), Tymofii Pidlisnyi (Agent Passport System,
 confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
 2026-07-25, email, with corrections)]:</t>
       <ul spacing="normal">
