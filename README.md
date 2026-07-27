@@ -102,6 +102,17 @@ adapters) built **on top of** this package. The dependency points one way —
 defined here is open to *any* producer; `capsule-emit` is simply the convenient on-ramp.
 Both are neutral, donatable substrate.
 
+## Canonical Payload Binding (CPB)
+
+Agent Action Capsule is the first payload profile registered under the
+**Canonical Payload Binding** (CPB) profile — a payload-neutral SCITT binding
+(canonicalize → derive an identifier → bind a receipt → cite externals). CPB and
+its provisional registries have a dedicated repository:
+**[action-state-group/scitt-payload-binding](https://github.com/action-state-group/scitt-payload-binding)**.
+
+The CPB `-00`, as posted, references this repository as its source; the `-01`
+revision updates that pointer to the dedicated repository.
+
 ## Transparency-layer design — VDS-agnostic
 
 The Agent Action Capsule is a **statement-layer** profile. A capsule is a SCITT
