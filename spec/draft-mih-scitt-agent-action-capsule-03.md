@@ -230,6 +230,32 @@ this profile, and that everything semantically rich stays in the payload —
 is stated in {{I-D.mih-sokolov-scitt-payload-binding}} §5 and is
 instantiated by the closed `capsule_*` claim set above.
 
+## Issuer Binding {#issuer-binding}
+
+A Capsule's `iss` claim (CWT protected header) identifies the producer. Registration
+policies SHOULD authenticate that the signing key belongs to the claimed issuer;
+three supported binding patterns exist:
+
+1. **did:web** — `iss` is a DID URI; the verifier resolves it at verification time
+   to obtain the current signing key. Handles rotation without pinning a certificate.
+
+2. **x5chain** — an X.509 certificate chain in the COSE `x5chain` protected header;
+   the leaf's public key MUST match the signing key; the chain is anchored to a
+   configured CA trust root.
+
+3. **SPIFFE SVID** — a variant of x5chain in which the leaf MUST carry a SPIFFE ID
+   URI in its Subject Alternative Name; `iss` MUST equal that SPIFFE ID URI.
+   Trust anchor is a SPIFFE trust bundle. Rotation is SPIRE-managed; the SPIFFE ID
+   persists across certificate renewals.
+
+A Capsule whose signing key is a bare, unresolvable `kid` with no `x5chain` and no
+resolvable DID maps to a degraded assurance grade in the producing registration policy;
+this state MUST be reported, not silenced. The reference anchor
+(anchor.agentactioncapsule.org) runs an open registration policy and does not enforce
+issuer binding; production deployments SHOULD enforce at least one of the patterns above.
+No cross-pattern substitution is valid: a did:web resolution result does not satisfy
+x5chain trust-chain verification, and neither satisfies SPIFFE trust-bundle verification.
+
 ## Registration and Receipts {#registration}
 
 A producer makes a Capsule transparent by registering its Signed
@@ -1162,6 +1188,14 @@ to make the transition explicit in the record.
 See also {{privacy}} of this document for the data-admission tiers that govern
 which runtime context fields MAY enter a Capsule, including the consequence of
 the low-entropy digest caveat above for end-user identity fields.
+
+Issuer authentication is registration-policy territory, not payload territory.
+The three supported patterns for binding the `iss` claim to a verifiable signing key
+— did:web, x5chain, and SPIFFE SVID — are defined in {{issuer-binding}}. A
+registration policy that accepts a bare, unresolvable `kid` without enforcing at
+least one of these patterns reduces issuer accountability to key-material correlation
+only; verifiers relying on issuer identity for policy decisions SHOULD confirm which
+binding pattern, if any, was enforced at registration time.
 
 # Privacy Considerations {#privacy}
 
