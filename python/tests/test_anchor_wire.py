@@ -8,7 +8,7 @@ Acceptance criteria:
   4. async_anchor returns immediately (agent never blocks on the TS round-trip).
   5. digest-only: statement payload = capsule_id bytes; entry_hash = SHA-256(stmt).
   6. Repoint: AAC_ANCHOR_URL env var redirects the submission.
-  7. No dependency on action-state-authority (private package must NOT be imported).
+  7. No dependency on the private authority package (must NOT be imported).
 
 All network-touching tests skip cleanly when the TS is unreachable.
 """
@@ -199,7 +199,7 @@ def test_repoint_via_env_var(monkeypatch):
 
 
 def test_no_dependency_on_authority():
-    """agent_action_capsule.anchor must NOT import action-state-authority (private)."""
+    """agent_action_capsule.anchor must NOT import the private authority package."""
     import sys
 
     # Import the module fresh (may already be imported in prior tests — that's fine)
