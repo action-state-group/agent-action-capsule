@@ -1025,10 +1025,11 @@ Internet-Draft          Canonical Payload Binding              July 2026
               receipts-ccf-profile-04>.
 
    [I-D.lee-orprg-permit-receipts]
-              Lee, Y., "ORPRG Permit Receipts", Work in Progress,
-              Internet-Draft, draft-lee-orprg-permit-receipts-00, n.d.,
-              <https://datatracker.ietf.org/doc/html/draft-lee-orprg-
-              permit-receipts-00>.
+              Lee, Y., "Permit Receipts for Permit-Before-Commit
+              Authorization of AI-Agent and Workload External Effects",
+              Work in Progress, Internet-Draft, draft-lee-orprg-permit-
+              receipts-00, n.d., <https://datatracker.ietf.org/doc/html/
+              draft-lee-orprg-permit-receipts-00>.
 
    [I-D.mih-sato-agent-accountability-composition]
               Mih, S. and T. Sato, "Agent Accountability: Composition
@@ -1056,7 +1057,6 @@ Internet-Draft          Canonical Payload Binding              July 2026
               Internet-Draft, draft-sokolov-rats-aep-composition-03,
               n.d., <https://datatracker.ietf.org/doc/html/draft-
               sokolov-rats-aep-composition-03>.
-
 
 
 
