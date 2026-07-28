@@ -32,7 +32,8 @@ is the auditor-grade evidence that a gate worked.
 - **Reader's guide:** [`spec/section-map.md`](spec/section-map.md).
 
 The authoritative version of the draft is the one on the Datatracker; the `.md`
-here is the editor's source from which it is built.
+here is the editor's source from which it is built. Draft `-03` is currently in
+preparation.
 
 ## Quickstart — try the reference verifier
 
@@ -164,6 +165,29 @@ verifier — the capsule format does not change.
   proof formats, same statement layer — the expected outcome during standardisation.
 - We are not claiming `capsule-anchor`'s local TS provides the same trust
   guarantees as CCF. The SCITT protocol is the same; the trust model is not.
+
+## Interop & independent implementations
+
+[`INTEROP.md`](INTEROP.md) is the registry of record for cross-implementation
+runs and third-party verification events as of IETF 126 (Vienna, Jul 2026). It
+covers roughly a dozen rows across two tiers:
+
+**Independent implementations** (different organization, independently written
+codebase): EMILIA Protocol (Schrock), Tyche Institute (Sokolov), Microsoft/CCF
+(Chamayou), Songbo Bu, NANDA/MIT, GlyphZero, APS, COSA, GAR, and VeritasChain —
+each row links a public artifact (PR, release tag, or datatracker entry) as its
+evidence. "Ran and verified" means the result is on the public record; a link to
+a digest or PR is the evidence, not a name.
+
+**Same-team ports** (ASG's own dual runtime — Python reference library plus Go
+clean-room verifier): both track the same frozen conformance vectors and are
+cross-checked in CI; they are listed separately in `scitt-cose` rather than
+claimed as third-party implementations.
+
+The INTEROP.md table includes additional rows marked `agreed — scheduled` (runs
+coordinated, artifact exchange pending) and one row marked `HOLD` (PermitReceipt
+— wording fixed by agreement with the owner). Scheduled and HOLD rows are not
+counted as completed runs.
 
 ## Building the draft
 
