@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 [build-system]
-requires = ["setuptools>=68"]
+# >=77.0.3 for stable PEP 639 `license-files` support (bumped from >=68 to
+# ship LICENSE in wheel/sdist; see `license-files` below).
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,11 +12,11 @@ version = "0.1.0"
 description = "Reference emit + verify library for the Agent Action Capsule SCITT profile (draft-mih-scitt-agent-action-capsule). Includes the rungs 1+2+6 CORE: emit, record, anchor client, self-attest."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "BSD-3-Clause" }
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 authors = [{ name = "Action State Group" }]
 keywords = ["scitt", "cose", "agent", "capsule", "verification", "transparency"]
 classifiers = [
-    "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
     "Topic :: Security :: Cryptography",
     "Development Status :: 3 - Alpha",
