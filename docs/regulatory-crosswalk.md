@@ -24,8 +24,8 @@ in the public repository. It feeds two artefacts:
   rows; withheld-commitment block present → disclosure-control rows). No
   scores, no checkmarks against regulations. The panel header repeats the
   disclaimer above verbatim.
-- **Adoption Maturity Profile (AAM P3)** — the capability list that describes
-  what properties a conforming capsule carries. P3 borrows this document's
+- **Capability maturity tier P3** — the capability list that describes
+  what properties a conforming capsule carries. Tier P3 borrows this document's
   language discipline and property vocabulary directly.
 
 ## How to read each row
