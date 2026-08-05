@@ -101,3 +101,9 @@ Contributors section and in git history.
 
 If any entry above is inaccurate, out of date, or missing attribution, open
 a PR or an issue against this repository.
+
+No entry may appear in Bucket 2 (registry entries by other owners) or
+Bucket 4 (independent implementations) whose owner is an author or
+co-author of any ASG draft. Those buckets exist to demonstrate independent,
+arm's-length adoption; an author's own registration or citation is not
+independent, regardless of how it's worded.
