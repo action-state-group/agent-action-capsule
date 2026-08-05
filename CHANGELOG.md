@@ -2,6 +2,58 @@
 
 ## Unreleased
 
+### Spec
+- `spec/draft-mih-scitt-agent-action-capsule-03.md` §5.3 Assurance — added the
+  cross-party assurance rung, a FOURTH, orthogonal `assurance` claim
+  (`cross_party_rung`: `unilateral_fallback` < `acknowledged_receipt` <
+  `full_bilateral`) plus its supporting `cross_party` evidence block
+  (`initiator_ref`, `counterparty_ref`, `correlator`, `substantive`). Kept
+  orthogonal to `attestation_mode` rather than folded into it (log custody and
+  counterparty exchange evidence are independent facts a producer can hold in
+  any combination); the draft states this reasoning inline. Same
+  never-grades-up overclaim discipline as `attestation_mode` / `ledger_mode`.
+- `spec/draft-mih-scitt-agent-action-capsule-03.md` §5.4 Disposition —
+  extended the CLOSED `disposition.approver` enum from `{human, policy}` to
+  `{human, policy, counterparty}`. Stays closed (not registry-governed); the
+  pre-existing honesty invariant (`human_disposed: true` REQUIRES
+  `approver: "human"`) is unaffected.
+
+### Compat
+- **Migration path (never-grades-up):** an old verifier that does not
+  recognize `cross_party_rung` or the `cross_party` block simply does not see
+  them — it verifies the record on the three axes it already knows and never
+  errors on the unrecognized field/block, matching how it already tolerates
+  any other unrecognized value. A verifier that DOES recognize the field but
+  is handed a `cross_party_rung` value outside what it can independently
+  derive ranks the claim below what it knows: a `full_bilateral` or
+  `acknowledged_receipt` claim it cannot corroborate is treated no stronger
+  than `unilateral_fallback` (the same floor an unrecognized `attestation_mode`
+  value is already held to, §5.3) — nothing breaks, and no record is silently
+  over-trusted.
+- An old verifier encountering `disposition.approver: "counterparty"` before
+  this revision would reject the Capsule outright (closed two-member enum);
+  this revision is additive, not a relaxation — the enum grows from two
+  members to three, still closed, so no third-party value is newly admitted.
+
+### Added
+- `python/agent_action_capsule/contracts.py`: `CrossParty` producer-side
+  carrier (§5.3 Cross-party assurance evidence), `CROSS_PARTY_RUNGS`,
+  `CROSS_PARTY_RUNG_RANK`; `AssuranceBlock.cross_party_rung` (OPTIONAL);
+  `VALID_APPROVERS` extended to include `"counterparty"`.
+- `python/agent_action_capsule/verify.py`: check 7 (`assurance_overclaim`)
+  extended to `cross_party_rung` — a claimed rung above what the verifier
+  independently rederives from the `cross_party` block is flagged and the
+  reported `derived.cross_party_rung` is downgraded to the value the evidence
+  supports.
+- `python/agent_action_capsule/parse.py`: `Capsule.cross_party` /
+  `parse_capsule` round-trip the new block and `assurance.cross_party_rung`.
+- `test-vectors/`: four new conformance vectors — one per cross-party rung
+  (`pos-cross-party-full-bilateral`, `pos-cross-party-acknowledged-receipt`,
+  `pos-cross-party-unilateral-fallback`), and the named overclaim case
+  (`neg-cross-party-overclaim`: `full_bilateral` claimed with only the
+  initiator's half present) plus `pos-disposition-approver-counterparty`
+  confirming the honesty invariant holds against the new approver value.
+
 ### Fixed
 - Packaging: `python/pyproject.toml` now declares `license-files = ["LICENSE"]` (PEP 639) so the
   BSD-3-Clause `LICENSE` text ships inside both the wheel (`*.dist-info/licenses/LICENSE`) and the

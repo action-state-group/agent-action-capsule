@@ -1,0 +1,12 @@
+{
+  "capsule_id_recomputed": "7c23f653529d429e59ed68add5b31194c14242e6928fd4d59be4227b98b30555",
+  "derived": {
+    "attestation_mode": "self_attested",
+    "effect_mode": "not_applicable",
+    "ledger_mode": "standalone"
+  },
+  "description": "disposition.approver='counterparty': a valid third member of the closed approver enum; human_disposed stays false, confirming the honesty invariant (human_disposed=true REQUIRES approver='human') still holds against the new value.",
+  "findings": [],
+  "kind": "positive",
+  "ok": true
+}

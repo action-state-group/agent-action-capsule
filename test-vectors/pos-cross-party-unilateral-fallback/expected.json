@@ -1,0 +1,13 @@
+{
+  "capsule_id_recomputed": "db1f958f27a0ada03aaae966cd740442b70bb52917a2e669126f1f32e4c1d43a",
+  "derived": {
+    "attestation_mode": "self_attested",
+    "cross_party_rung": "unilateral_fallback",
+    "effect_mode": "not_applicable",
+    "ledger_mode": "standalone"
+  },
+  "description": "unilateral_fallback: only initiator_ref present, no counterparty evidence -> verifies clean.",
+  "findings": [],
+  "kind": "positive",
+  "ok": true
+}

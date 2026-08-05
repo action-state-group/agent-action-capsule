@@ -45,28 +45,29 @@ var requiredFields = []string{
 // neverDispatchVerdictClasses are verdict_class values that by their kind never
 // dispatch an effect (§5.4.2); each REQUIRES derived effect_mode "not_applicable".
 var neverDispatchVerdictClasses = map[string]bool{
-	"blocked":       true,
+	"blocked":         true,
 	"hitl_dispatched": true,
-	"denied":        true,
-	"engine_failure": true,
-	"deferred":      true,
-	"needs_decision": true,
-	"expired":       true,
-	"escalated":     true,
-	"resolved":      true,
+	"denied":          true,
+	"engine_failure":  true,
+	"deferred":        true,
+	"needs_decision":  true,
+	"expired":         true,
+	"escalated":       true,
+	"resolved":        true,
 }
 
 // validApprovers is the closed enum for disposition.approver (§5.4).
 var validApprovers = map[string]bool{
-	"human":  true,
-	"policy": true,
+	"human":        true,
+	"policy":       true,
+	"counterparty": true,
 }
 
 // effectModeRank for overclaim detection (§5.3).
 var effectModeRank = map[string]int{
-	"not_applicable":          0,
-	"dispatched_unconfirmed":  0,
-	"confirmed":               1,
+	"not_applicable":         0,
+	"dispatched_unconfirmed": 0,
+	"confirmed":              1,
 }
 
 // attestationRank for overclaim detection.
@@ -80,6 +81,13 @@ var ledgerModeRank = map[string]int{
 	"standalone": 0,
 	"chained":    1,
 	"anchored":   2,
+}
+
+// crossPartyRungRank for overclaim detection (§5.3 Cross-party assurance).
+var crossPartyRungRank = map[string]int{
+	"unilateral_fallback":  0,
+	"acknowledged_receipt": 1,
+	"full_bilateral":       2,
 }
 
 // registryFields maps (registry_name, block_key, member_key) in check-8 emission order.
@@ -128,6 +136,26 @@ func deriveEffectMode(effect map[string]interface{}) string {
 		return "dispatched_unconfirmed"
 	}
 	return "dispatched_unconfirmed"
+}
+
+// deriveCrossPartyRung derives assurance.cross_party_rung (§5.3 Cross-party
+// assurance) from the top-level cross_party evidence block alone — a
+// structural check over the block's own bytes, never a dereference of the
+// digests it cites. Returns "" (with ok=false) when crossParty is nil, i.e.
+// the capsule carries no cross-party evidence block at all.
+func deriveCrossPartyRung(crossParty map[string]interface{}) (string, bool) {
+	if crossParty == nil {
+		return "", false
+	}
+	counterpartyRef := crossParty["counterparty_ref"]
+	correlator, hasCorrelator := crossParty["correlator"].(string)
+	if !isHex64(counterpartyRef) || !hasCorrelator || correlator == "" {
+		return "unilateral_fallback", true
+	}
+	if substantive, ok := crossParty["substantive"].(bool); ok && substantive {
+		return "full_bilateral", true
+	}
+	return "acknowledged_receipt", true
 }
 
 // asMap returns v as a map if it is one, else nil.
@@ -248,6 +276,7 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 	effect := asMap(capsuleMap["effect"])
 	disposition := asMap(capsuleMap["disposition"])
 	chain := asMap(capsuleMap["chain"])
+	crossParty := asMap(capsuleMap["cross_party"])
 
 	// ---- Check 1: Structural ------------------------------------------------
 
@@ -303,8 +332,8 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		})
 	}
 
-	// Sub-block type checks (effect, assurance, disposition, chain).
-	for _, fld := range []string{"effect", "assurance", "disposition", "chain"} {
+	// Sub-block type checks (effect, assurance, disposition, chain, cross_party).
+	for _, fld := range []string{"effect", "assurance", "disposition", "chain", "cross_party"} {
 		if v, ok := capsuleMap[fld]; ok {
 			if _, isMap := v.(map[string]interface{}); !isMap {
 				findings = append(findings, Finding{
@@ -362,7 +391,7 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		} else if !validApprovers[approver] {
 			findings = append(findings, Finding{
 				Code:     "approver_invalid",
-				Detail:   fmt.Sprintf("disposition.approver MUST be human|policy (§5.4); got %q", approver),
+				Detail:   fmt.Sprintf("disposition.approver MUST be human|policy|counterparty (§5.4); got %q", approver),
 				Severity: "error", Check: mkCheck(1),
 			})
 		}
@@ -519,6 +548,10 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		"attestation_mode": "self_attested",
 		"ledger_mode":      ledgerMode,
 	}
+	derivedCrossPartyRung, hasCrossPartyRung := deriveCrossPartyRung(crossParty)
+	if crossParty != nil {
+		derived["cross_party_rung"] = derivedCrossPartyRung
+	}
 
 	stated := asMap(capsuleMap["assurance"])
 	if stated != nil {
@@ -550,6 +583,21 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 					findings = append(findings, Finding{
 						Code:     "assurance_overclaim",
 						Detail:   fmt.Sprintf("claimed ledger_mode %q but verifier derived %q (§5.3)", sl, derived["ledger_mode"]),
+						Severity: "info", Check: mkCheck(7),
+					})
+				}
+			}
+		}
+		if sc, ok := stated["cross_party_rung"].(string); ok {
+			if r, known := crossPartyRungRank[sc]; known {
+				derivedRank := 0
+				if hasCrossPartyRung {
+					derivedRank = crossPartyRungRank[derivedCrossPartyRung]
+				}
+				if r > derivedRank {
+					findings = append(findings, Finding{
+						Code:     "assurance_overclaim",
+						Detail:   fmt.Sprintf("claimed cross_party_rung %q but verifier derived %q (§5.3 Cross-party assurance)", sc, derivedCrossPartyRung),
 						Severity: "info", Check: mkCheck(7),
 					})
 				}

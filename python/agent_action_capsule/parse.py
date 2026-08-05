@@ -17,6 +17,7 @@ from .contracts import (
     AssuranceBlock,
     Chain,
     ConstraintRecord,
+    CrossParty,
     Disposition,
     EffectRecord,
     ExpiryPolicy,
@@ -58,6 +59,7 @@ class Capsule:
     assurance: AssuranceBlock | None = None
     disposition: Disposition | None = None
     chain: Chain | None = None
+    cross_party: CrossParty | None = None
     constraints: tuple[ConstraintRecord, ...] = ()
     model_attestation: ModelAttestation | None = None
     self_reported_reasoning: SelfReportedReasoning | None = None
@@ -104,6 +106,8 @@ class Capsule:
             out["constraints"] = [_block_to_dict(c) for c in self.constraints]
         if self.chain is not None:
             out["chain"] = _block_to_dict(self.chain)
+        if self.cross_party is not None:
+            out["cross_party"] = _block_to_dict(self.cross_party)
         return out
 
     def seal(self) -> dict:
@@ -160,6 +164,7 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
         attestation_mode=asr.get("attestation_mode"),
         effect_mode=asr.get("effect_mode"),
         ledger_mode=asr.get("ledger_mode"),
+        cross_party_rung=asr.get("cross_party_rung"),
     ) if asr else None
 
     dis = _block(d, "disposition")
@@ -182,6 +187,14 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
 
     chn = _block(d, "chain")
     chain = Chain(parent_capsule_id=chn.get("parent_capsule_id"), relation=chn.get("relation")) if chn else None
+
+    cpb = _block(d, "cross_party")
+    cross_party = CrossParty(
+        initiator_ref=cpb.get("initiator_ref"),
+        counterparty_ref=cpb.get("counterparty_ref"),
+        correlator=cpb.get("correlator"),
+        substantive=cpb.get("substantive"),
+    ) if cpb else None
 
     cons = d.get("constraints")
     constraints: tuple[ConstraintRecord, ...] = ()
@@ -233,6 +246,6 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
         developer=d["developer"], timestamp=d["timestamp"],
         domain=domain, provenance=provenance,
         effect=effect, assurance=assurance, disposition=disposition, chain=chain,
-        constraints=constraints, model_attestation=model_attestation,
+        cross_party=cross_party, constraints=constraints, model_attestation=model_attestation,
         self_reported_reasoning=self_reported_reasoning,
     )

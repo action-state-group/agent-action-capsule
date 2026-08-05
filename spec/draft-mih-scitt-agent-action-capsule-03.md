@@ -517,15 +517,98 @@ standalone < chained < anchored for overclaim detection. A producer MUST
 NOT record an assurance mode it did not achieve; a verifier rederives each
 mode from the evidence present and reports any overclaim.
 
+### Cross-party assurance {#crossparty}
+
+A Capsule's evidentiary weight along the *counterparty* dimension — how
+much of a counterparty's own attestation is structurally present in this
+record — is a fourth, orthogonal claim: `assurance.cross_party_rung`. It
+is a new axis, not a new value folded into `attestation_mode`, for the
+same reason {{orthogonality}} already gives for keeping `verdict_class`
+and `effect_mode` separate: `attestation_mode` answers "has this record
+been committed to an independent transparency log" (log custody);
+`cross_party_rung` answers "how much of the counterparty's own signed
+evidence is bound into this record" (exchange evidence). These are
+independent facts a producer can hold in any combination — a
+`self_attested` record can still be `full_bilateral` (both parties signed,
+neither side anchored yet), and an `anchored` record can still stand on
+`unilateral_fallback` evidence alone (a solo attestation that was
+independently anchored). Folding a `countersigned` value into
+`attestation_mode` would collapse these two facts into one claim and make
+that combination inexpressible, so this profile keeps them orthogonal.
+
+`cross_party_rung` takes one of three values, ordered
+`unilateral_fallback` < `acknowledged_receipt` < `full_bilateral` for
+overclaim detection — the same never-grades-up discipline
+{{assurance}} already applies to `attestation_mode`, `effect_mode`, and
+`ledger_mode`:
+
+| cross_party_rung | Meaning |
+|---|---|
+| unilateral_fallback | Only the initiator's own signed half is present; no counterparty evidence, or the counterparty was unreachable or its half did not verify. |
+| acknowledged_receipt | A counterparty reference and correlator are present and well-formed: the counterparty cryptographically acknowledged receipt, but the referenced half carries no substantive co-signed result. |
+| full_bilateral | A counterparty reference and correlator are present and well-formed, and the referenced half is marked as carrying a substantive co-signed result — both parties' evidence is bound to the same exchange. |
+
+`cross_party_rung` is REQUIRED when a `cross_party` evidence block (below)
+is present, and both are OPTIONAL on a Capsule with no cross-party
+exchange. A producer MUST NOT claim a `cross_party_rung` its evidence does
+not support. A Class-1 verifier independently rederives the highest rung
+the `cross_party` block supports and reports any claim above the derived
+rung as an `assurance_overclaim` ({{verification}}), downgrading the
+reported derived rung to the value the evidence actually supports — the
+same treatment {{verification}} already gives an overclaimed
+`attestation_mode` or `ledger_mode`.
+
+A Capsule that participates in a cross-party exchange carries an OPTIONAL
+top-level `cross_party` block:
+
+- `initiator_ref` (REQUIRED when the block is present): a `jcs-n` digest
+  ({{conventions}}) of the initiator's own signed half. A bare
+  intra-profile digest, not a CPB typed digest reference ({{effect}}).
+- `counterparty_ref` (OPTIONAL): a `jcs-n` digest of the counterparty's
+  signed half. Its absence means no usable counterparty evidence was
+  obtained — the counterparty was unreachable, or its half did not verify
+  at the layer that checked it.
+- `correlator` (REQUIRED when `counterparty_ref` is present): an opaque
+  profile-native correlation string joining `initiator_ref` and
+  `counterparty_ref` to the same exchange — the same kind of "opaque
+  correlation string" primitive `external_ref` already uses ({{effect}}),
+  not a CPB reference.
+- `substantive` (OPTIONAL boolean, meaningful only when `counterparty_ref`
+  is present): true only when the counterparty's referenced half carries a
+  substantively co-signed result rather than a bare receipt of the
+  initiator's half.
+
+A verifier derives `cross_party_rung` from this block's own bytes alone,
+never by dereferencing the digests it cites: `unilateral_fallback` when
+`counterparty_ref` is absent or malformed; `acknowledged_receipt` when
+`counterparty_ref` and `correlator` are both present and well-formed but
+`substantive` is absent or false; `full_bilateral` when
+`counterparty_ref` and `correlator` are both present and well-formed and
+`substantive` is true. This is a structural check, the same kind
+{{assurance}} already uses to derive "chained" from the mere presence of a
+well-formed `chain` block — it does not verify the counterparty's
+underlying signature itself, which is a substrate concern by reference
+({{verification}}), mirroring how this layer never derives `anchored`.
+The two-party wire encoding this rung summarizes — the initiator and
+counterparty attestation halves, their signatures, and the handshake that
+produces them — is the companion
+{{I-D.mih-agent-bilateral-attestation}}'s concern, not this profile's;
+this profile carries only the rung claim and the minimal correlation
+evidence needed to rederive it honestly.
+
 ## Disposition and the verdict reason-class {#disposition}
 
 A Capsule's `disposition` block records how the decision was disposed:
 
 - `decision` (REQUIRED): "accept", "reject", "needs_input", or "deferred"
   (registry-governed, {{iana}}).
-- `approver` (REQUIRED): a closed enum, exactly "human" or "policy".
-  The value domain is fixed by this specification (not registry-governed);
-  an unknown approver value is not a conforming Capsule.
+- `approver` (REQUIRED): a closed enum, exactly "human", "policy", or
+  "counterparty". The value domain is fixed by this specification (not
+  registry-governed); an unknown approver value is not a conforming
+  Capsule. Unlike the registry-governed vocabularies of this document
+  ({{iana}}), `approver` stays a closed three-member enum after this
+  addition — never a registry an implementation is expected to extend by
+  registration.
 - `human_disposed` (REQUIRED, boolean): the honest in-the-loop flag —
   true ONLY when a human actually acted. A policy auto-approval is false.
   `human_disposed: true` REQUIRES `approver: "human"`; a producer MUST
@@ -556,6 +639,12 @@ A Capsule's `disposition` block records how the decision was disposed:
   frozen summary is a
   digest-committed, content-side layer written once at deferral time; it
   MUST NOT be regenerated.
+
+- `approver: "counterparty"` (see {{crossparty}}) records that a
+  counterparty to a cross-party exchange, rather than this operator's own
+  human or policy, disposed the decision. The honesty invariant above is
+  unaffected: `human_disposed: true` still REQUIRES `approver: "human"`,
+  so a counterparty disposition is never claimed as human-in-the-loop.
 
 
 ### The verdict_class vocabulary {#verdictclass}

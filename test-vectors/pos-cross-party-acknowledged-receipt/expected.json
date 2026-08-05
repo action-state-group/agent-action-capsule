@@ -1,0 +1,13 @@
+{
+  "capsule_id_recomputed": "7bd0a9c26ed5b30a702da2b3c5a20a48016b1ee56841644b19fc1a96160e20c4",
+  "derived": {
+    "attestation_mode": "self_attested",
+    "cross_party_rung": "acknowledged_receipt",
+    "effect_mode": "not_applicable",
+    "ledger_mode": "standalone"
+  },
+  "description": "acknowledged_receipt: initiator_ref + counterparty_ref + correlator present, bare receipt (no substantive result) -> verifies clean.",
+  "findings": [],
+  "kind": "positive",
+  "ok": true
+}
