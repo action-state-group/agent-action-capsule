@@ -6,14 +6,18 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from pathlib import Path
 
 from agent_action_capsule.emit import emit
 from agent_action_capsule.history import (
+    RUNGS,
     ChainReport,
     export_verifiable_bundle,
     list_capsules,
     verify_chain_completeness,
 )
+
+_RUNG_VECTORS_PATH = Path(__file__).resolve().parent / "vectors" / "rung" / "vectors.json"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -218,3 +222,77 @@ def test_export_bundle_no_proofs_is_empty_list():
     caps = _make_chain(operator="op1", n=1)
     bundle = export_verifiable_bundle(caps)
     assert bundle["inclusion_proofs"] == []
+
+
+# ---------------------------------------------------------------------------
+# Anchoring-evidence rung (docs/ledger-grade.md §4)
+# ---------------------------------------------------------------------------
+
+def test_rung_default_is_standalone():
+    """No inclusion proofs, no countersignatures -> the floor rung."""
+    caps = _make_chain(operator="op1", n=2)
+    report = verify_chain_completeness(caps)
+    assert report.rung == "standalone"
+
+
+def test_rung_never_higher_than_evidence_supports_missing_capsule_id():
+    """A capsule with no capsule_id can never earn credit from evidence."""
+    cap = emit(operator="op1", developer="dev/1.0")
+    cap_no_id = {k: v for k, v in cap.items() if k != "capsule_id"}
+    proofs = [{"capsule_id": "anything", "visibility": "public"}]
+    report = verify_chain_completeness([cap_no_id], inclusion_proofs=proofs)
+    assert report.rung == "standalone"
+
+
+def test_export_bundle_carries_rung_alongside_chain_report():
+    """export_verifiable_bundle()'s output carries rung at the top level AND
+    inside chain_report, and both agree."""
+    caps = _make_chain(operator="op1", n=1)
+    proofs = [{"capsule_id": caps[0]["capsule_id"], "visibility": "public"}]
+    bundle = export_verifiable_bundle(caps, inclusion_proofs=proofs)
+    assert bundle["rung"] == "publicly-anchored"
+    assert bundle["chain_report"]["rung"] == "publicly-anchored"
+    assert bundle["countersignatures"] == []
+
+
+def test_export_bundle_countersignatures_preserved_and_drive_rung():
+    caps = _make_chain(operator="op1", n=1)
+    cs = [{"capsule_id": caps[0]["capsule_id"], "signer": "counterparty:acme"}]
+    bundle = export_verifiable_bundle(caps, countersignatures=cs)
+    assert bundle["countersignatures"] == cs
+    assert bundle["rung"] == "countersigned"
+
+
+def test_rung_bundle_is_minimum_across_capsules():
+    """Never-grades-up at the bundle level: one capsule's strong evidence must
+    not inflate a sibling capsule's absence of evidence."""
+    caps = _make_chain(operator="op1", n=2)
+    proofs = [{"capsule_id": caps[0]["capsule_id"], "visibility": "public"}]
+    report = verify_chain_completeness(caps, inclusion_proofs=proofs)
+    assert report.rung == "standalone"
+
+
+def _load_rung_vectors() -> list[dict]:
+    with open(_RUNG_VECTORS_PATH, encoding="utf-8") as fh:
+        return json.load(fh)["cases"]
+
+
+def test_rung_vectors_cover_all_five_rungs():
+    """Sanity: the frozen vector file exercises every rung at least once."""
+    cases = _load_rung_vectors()
+    covered = {c["expected_rung"] for c in cases}
+    assert covered == set(RUNGS)
+
+
+def test_rung_vectors():
+    """Each frozen vector's evidence justifies exactly its expected_rung and no higher."""
+    for case in _load_rung_vectors():
+        report = verify_chain_completeness(
+            case["capsules"],
+            inclusion_proofs=case["inclusion_proofs"],
+            countersignatures=case["countersignatures"],
+        )
+        assert report.rung == case["expected_rung"], (
+            f"vector {case['name']!r}: expected rung {case['expected_rung']!r}, "
+            f"got {report.rung!r}"
+        )
