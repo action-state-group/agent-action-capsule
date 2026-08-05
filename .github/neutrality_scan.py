@@ -53,9 +53,21 @@ def _load_config() -> tuple[re.Pattern[str], tuple[str, ...]]:
         raise SystemExit(2)
     try:
         cfg = json.loads(raw)
+        if isinstance(cfg, str):
+            # Some secret-setting paths double-encode the JSON (the secret's
+            # raw value is a JSON string literal containing the real object).
+            # One extra decode recovers the intended dict; anything else past
+            # that is a genuine config error, not a shape we paper over.
+            cfg = json.loads(cfg)
     except json.JSONDecodeError as exc:
         print(f"error: NEUTRALITY_TERMS is not valid JSON: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc
+    if not isinstance(cfg, dict):
+        print(
+            f"error: NEUTRALITY_TERMS must decode to a JSON object, got {type(cfg).__name__}.",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
     substring = tuple(cfg.get("substring", ()))
     word = tuple(cfg.get("word", ()))
     allow = tuple(p.lower() for p in cfg.get("allow_phrases", ()))
