@@ -61,6 +61,14 @@ informative:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
+  I-D.mih-scitt-agent-action-capsule-disclosure-envelope:
+    title: "Disclosure Envelope Profile for Agent Action Capsules"
+    seriesinfo:
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-disclosure-envelope-00
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
   I-D.mih-agent-bilateral-attestation:
     title: "Bilateral Agent Action Attestation"
     seriesinfo:
@@ -508,6 +516,18 @@ they mature. An absent `observation_mode` means unstated; a verifier
 treats an unrecognized value the same way — informational, unstated —
 and MUST NOT reject a Capsule for stating, omitting, or carrying an
 unrecognized value.
+
+`compute_attestation` MAY additionally carry `agent_input_digest` and
+`agent_output_digest`, each a JSON-DIGEST ({{conventions}}) of the raw agent
+input or output content associated with this action. Like other
+`compute_attestation` members these digests are digested with the rest of
+the payload and are therefore tamper-evident, but the content they commit
+to is not itself carried in the Capsule. A producer that later wishes to
+reveal that content to a specific verifier, without altering `capsule_id`
+or the signed bytes, does so with the companion Disclosure Envelope
+mechanism of {{I-D.mih-scitt-agent-action-capsule-disclosure-envelope}},
+which wraps the unmodified Capsule alongside an out-of-band `disclosures`
+object and defines the verifier's digest-recomputation checks.
 
 ## Disposition and the verdict reason-class {#disposition}
 

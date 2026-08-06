@@ -199,6 +199,34 @@ The dedup rule is a consumer-side read algorithm, not a wire constraint — a
 collector-provenance capsule is still valid; it loses only when a higher-ranked
 capsule for the same event is also present.
 
+## 10. Reserved wrapper members and disclosable fields — disclosure envelope
+
+Reserved by the companion Internet-Draft
+`draft-mih-scitt-agent-action-capsule-disclosure-envelope` (Disclosure
+Envelope Profile), §8 (IANA Considerations). `capsule` and `disclosures`
+are wrapper-level member names — never Capsule payload members — used only
+by a Disclosure Envelope, the out-of-band structure a producer builds
+around an unmodified, already-signed Capsule to reveal the raw content
+behind a digest-only field without altering `capsule_id`.
+
+| Member | Type | Location | Defined in |
+|---|---|---|---|
+| `capsule` | object | Top-level Disclosure Envelope object | Disclosure Envelope profile, "Envelope Object" section (the unmodified Capsule payload) |
+| `disclosures` | object | Top-level Disclosure Envelope object | Disclosure Envelope profile, "Envelope Object" section (OPTIONAL; absent members are WITHHELD) |
+
+The disclosure-eligible fields this initial revision defines:
+
+| `disclosures` member | Committed-digest field (in `capsule.model_attestation.compute_attestation`) |
+|---|---|
+| `agent_input` | `agent_input_digest` |
+| `agent_output` | `agent_output_digest` |
+
+A `disclosures` member outside this table is non-conforming; a verifier
+treats it as an unrecognized member rather than attempting to verify it.
+`capsule_id` is computed over `capsule` alone and is unaffected by the
+presence or absence of any `disclosures` member. See the companion draft
+for the full verifier checks (digest recomputation and comparison).
+
 ## No registry
 
 The following vocabularies are deliberately **not** registries of this document:

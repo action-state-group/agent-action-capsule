@@ -1,0 +1,23 @@
+{
+  "capsule": {
+    "capsule_id_recomputed": "3e3a019af1efb6f2b1b527bf474031a06a366bf01ebfc1c325bcc0249a0fe602",
+    "derived": {
+      "attestation_mode": "self_attested",
+      "effect_mode": "confirmed",
+      "ledger_mode": "standalone"
+    },
+    "findings": [],
+    "ok": true
+  },
+  "description": "Disclosure Envelope whose agent_input disclosure recomputes to the digest committed in model_attestation.compute_attestation.agent_input_digest: DE-3 reports disclosure_match, and the wrapped capsule's own capsule_id / Class 1 result is unaffected and still ok.",
+  "disclosure_findings": [
+    {
+      "code": "disclosure_match",
+      "member": "agent_input"
+    }
+  ],
+  "disclosures_checked": 1,
+  "disclosures_matched": 1,
+  "kind": "positive",
+  "ok": true
+}
