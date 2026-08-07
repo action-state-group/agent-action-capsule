@@ -1,0 +1,17 @@
+{
+  "format_version": "1",
+  "spec": "draft-mih-scitt-agent-action-capsule-disclosure-envelope-00",
+  "count": 2,
+  "cases": [
+    {
+      "name": "pos-disclosure-envelope-match",
+      "kind": "positive",
+      "description": "Disclosure Envelope whose agent_input disclosure recomputes to the digest committed in model_attestation.compute_attestation.agent_input_digest: DE-3 reports disclosure_match, and the wrapped capsule's own capsule_id / Class 1 result is unaffected and still ok."
+    },
+    {
+      "name": "neg-disclosure-envelope-mismatch",
+      "kind": "negative",
+      "description": "Disclosure Envelope whose agent_input disclosure does NOT recompute to the committed digest (same capsule as pos-disclosure-envelope-match, tampered disclosure value): DE-3 reports disclosure_mismatch and the envelope's ok is false, while the wrapped capsule's own capsule_id recomputation and Class 1 result are unchanged and still ok \u2014 a bad disclosure never gates the capsule's own verification."
+    }
+  ]
+}

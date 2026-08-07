@@ -1,11 +1,20 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate the frozen conformance vectors in ../../test-vectors/.
+"""Generate the frozen conformance vectors in ../../test-vectors/ and
+../../disclosure-envelope-vectors/.
 
 Vectors are DERIVED from the spec-faithful reference verifier and then FROZEN
 (the same discipline as golden digests): each case's expected.json is produced
 by running verify()/verify_store() over a hand-built input, and committed. A
 third party regenerates the capsule_id and checks ok + the §6 check numbers +
 derived modes against the spec text, without running this package.
+
+test-vectors/ is the Class-1 corpus and is cross-language-shared (the go/
+reference implementation's vector_runner reads test-vectors/vectors.json
+directly), so every case there is a bare Capsule or {"ledger": [...]}.
+disclosure-envelope-vectors/ is a separate corpus, in the same frozen-vector
+style, for the Disclosure Envelope companion profile's {"envelope": {...}}
+input shape — kept out of test-vectors/ so it never needs Go-side support to
+keep that corpus's cross-language conformance run passing.
 
 Run:  cd python && python -m scripts.generate_vectors
 """
@@ -14,9 +23,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agent_action_capsule import compute_capsule_id, verify, verify_store
+from agent_action_capsule import (
+    compute_capsule_id,
+    json_digest,
+    verify,
+    verify_disclosure_envelope,
+    verify_store,
+)
 
 OUT = Path(__file__).resolve().parents[2] / "test-vectors"
+DE_OUT = Path(__file__).resolve().parents[2] / "disclosure-envelope-vectors"
 SPEC = "draft-mih-scitt-agent-action-capsule-00"
 HEX_R = "1" * 64  # a stand-in response/request digest (64-hex); content is opaque here
 HEX_R2 = "2" * 64
@@ -235,12 +251,57 @@ def build_cases() -> list[dict]:
     return cases
 
 
+# ---- Disclosure Envelope vectors (draft-mih-scitt-agent-action-capsule-disclosure-envelope-00) ---
+# Written to a SEPARATE directory (DE_OUT), not test-vectors/: the envelope input shape
+# ({"envelope": {...}}) is not a bare Capsule or {"ledger": [...]}, and test-vectors/ is
+# cross-language-shared (go/cmd/vector_runner reads test-vectors/vectors.json and expects
+# every listed case to be Class-1-shape). Mixing shapes there would break that Go conformance
+# run rather than extend it.
+def build_disclosure_envelope_cases() -> list[dict]:
+    cases: list[dict] = []
+
+    def add(name, kind, description, inp):
+        cases.append({"name": name, "kind": kind, "description": description, "input": inp})
+
+    disclosed_input = {"amount": "500.00", "sku": "PO-9981"}
+    envelope_capsule = seal({**c_executed(),
+                              "model_attestation": {"compute_attestation": {"agent_input_digest": json_digest(disclosed_input)}}})
+    add("pos-disclosure-envelope-match", "positive",
+        "Disclosure Envelope whose agent_input disclosure recomputes to the digest committed in "
+        "model_attestation.compute_attestation.agent_input_digest: DE-3 reports disclosure_match, and "
+        "the wrapped capsule's own capsule_id / Class 1 result is unaffected and still ok.",
+        {"envelope": {"capsule": envelope_capsule, "disclosures": {"agent_input": disclosed_input}}})
+    add("neg-disclosure-envelope-mismatch", "negative",
+        "Disclosure Envelope whose agent_input disclosure does NOT recompute to the committed digest "
+        "(same capsule as pos-disclosure-envelope-match, tampered disclosure value): DE-3 reports "
+        "disclosure_mismatch and the envelope's ok is false, while the wrapped capsule's own capsule_id "
+        "recomputation and Class 1 result are unchanged and still ok — a bad disclosure never gates the "
+        "capsule's own verification.",
+        {"envelope": {"capsule": envelope_capsule, "disclosures": {"agent_input": {"amount": "999.00", "sku": "PO-9981"}}}})
+
+    return cases
+
+
 def result_to_expected(res) -> dict:
     return {
         "ok": res.ok,
         "derived": res.assurance,
         "capsule_id_recomputed": res.capsule_id,
         "findings": [{"check": f.check, "severity": f.severity, "code": f.code, "detail": f.detail} for f in res.findings],
+    }
+
+
+def envelope_result_to_expected(res) -> dict:
+    """`ok` here is the overall envelope result (capsule ok AND every disclosure
+    matches); the wrapped capsule's own Class 1 result — unaffected by a bad
+    disclosure — is nested under `capsule` so the two `ok` values can never
+    collide or be conflated by a consumer reading only the top level."""
+    return {
+        "ok": res.ok,
+        "capsule": result_to_expected(res.capsule_result),
+        "disclosures_checked": res.disclosures_checked,
+        "disclosures_matched": res.disclosures_matched,
+        "disclosure_findings": [{"member": f.member, "code": f.code} for f in res.disclosure_findings],
     }
 
 
@@ -269,6 +330,26 @@ def main() -> None:
         encoding="utf-8",
     )
     print(f"wrote {len(manifest)} vectors to {OUT}")
+
+    de_manifest = []
+    for case in build_disclosure_envelope_cases():
+        name, kind, desc, inp = case["name"], case["kind"], case["description"], case["input"]
+        case_dir = DE_OUT / name
+        case_dir.mkdir(parents=True, exist_ok=True)
+
+        res = verify_disclosure_envelope(inp["envelope"])
+        expected = {"description": desc, "kind": kind, **envelope_result_to_expected(res)}
+
+        (case_dir / "input.json").write_text(json.dumps(inp, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        (case_dir / "expected.json").write_text(json.dumps(expected, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        de_manifest.append({"name": name, "kind": kind, "description": desc})
+
+    (DE_OUT / "vectors.json").write_text(
+        json.dumps({"format_version": "1", "spec": "draft-mih-scitt-agent-action-capsule-disclosure-envelope-00",
+                    "count": len(de_manifest), "cases": de_manifest}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(f"wrote {len(de_manifest)} vectors to {DE_OUT}")
 
 
 if __name__ == "__main__":

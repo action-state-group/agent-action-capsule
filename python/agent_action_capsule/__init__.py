@@ -30,6 +30,12 @@ from .contracts import (
     ModelAttestation,
     derive_effect_mode,
 )
+from .disclosure_envelope import (
+    DISCLOSURE_ELIGIBLE_FIELDS,
+    DisclosureEnvelopeResult,
+    DisclosureFinding,
+    verify_disclosure_envelope,
+)
 from .emit import DEFAULT_FORMAT_VERSION, DEFAULT_SPEC_VERSION, FORMAT_VERSION, SPEC_VERSION, emit
 from .parse import Capsule, parse_capsule
 from .registries import REGISTRY_NAMES, load_registries
@@ -78,6 +84,11 @@ __all__ = [
     "verify_store",
     "VerificationResult",
     "Finding",
+    # disclosure envelope
+    "verify_disclosure_envelope",
+    "DisclosureEnvelopeResult",
+    "DisclosureFinding",
+    "DISCLOSURE_ELIGIBLE_FIELDS",
     # producer / typed
     "Capsule",
     "parse_capsule",

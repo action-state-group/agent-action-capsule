@@ -10,6 +10,16 @@ profiles the selective-disclosure extension point reserved in §6.2 of -01.
 It defines the `_sd_alg`/`_sd` vocabulary, commitment encoding, disclosure
 syntax, and verifier checks (SD-1 through SD-6).
 
+**Companion document:** `draft-mih-scitt-agent-action-capsule-disclosure-envelope-00.md`
+profiles the out-of-band disclosure of digest-only fields — currently
+`model_attestation.compute_attestation.agent_input_digest` and
+`.agent_output_digest` (-02 §5.3, Observation mode). It defines the
+`capsule`/`disclosures` wrapper vocabulary, the disclosure-eligible field
+table, and the verifier checks (DE-1 through DE-3). Unlike the
+selective-disclosure companion, it never modifies the Capsule payload or
+its `capsule_id`; the wrapper is a sibling structure entirely outside the
+signed bytes.
+
 | I-D section | Defines | Registry governed |
 |---|---|---|
 | §1 Introduction | The may/did distinction; the three design commitments (effect-state binding, a Capsule on every verdict, independent verifiability) | — |

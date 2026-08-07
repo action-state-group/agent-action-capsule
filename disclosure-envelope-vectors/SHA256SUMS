@@ -1,0 +1,4 @@
+7e9f8a6a670f58b7b7ccfec4d0f9e092cf60e00cb955e9ed211e696f237c609d  neg-disclosure-envelope-mismatch/expected.json
+eb9f0fafe2104cf0ff70174f9d5d211f0130e735992a71aa8b90e2ca1806efe4  neg-disclosure-envelope-mismatch/input.json
+bdc06fe5fc016715d15f6a4881e38f7afaa5d0d539169fb37891c6800a582040  pos-disclosure-envelope-match/expected.json
+673ee192f0c88a748709517dba8acd3373e81f0e18beb4e15599f13577b936b1  pos-disclosure-envelope-match/input.json
