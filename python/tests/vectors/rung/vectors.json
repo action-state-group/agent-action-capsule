@@ -1,0 +1,75 @@
+{
+  "format_version": "1",
+  "description": "Rung-transition vectors for agent_action_capsule.history's anchoring-evidence rung (docs/ledger-grade.md §4). Each case's evidence justifies exactly the named rung and no higher.",
+  "rungs": ["standalone", "countersigned", "local-anchored", "counterparty-visible", "publicly-anchored"],
+  "count": 8,
+  "cases": [
+    {
+      "name": "rung-standalone-no-evidence",
+      "description": "One capsule, no countersignatures, no inclusion proofs -> the floor rung.",
+      "capsules": [{"capsule_id": "1111111111111111111111111111111111111111111111111111111111111111"}],
+      "inclusion_proofs": [],
+      "countersignatures": [],
+      "expected_rung": "standalone"
+    },
+    {
+      "name": "rung-countersigned-only",
+      "description": "A matching countersignature and no inclusion proof -> countersigned, not higher.",
+      "capsules": [{"capsule_id": "2222222222222222222222222222222222222222222222222222222222222222"}],
+      "inclusion_proofs": [],
+      "countersignatures": [{"capsule_id": "2222222222222222222222222222222222222222222222222222222222222222", "signer": "counterparty:acme"}],
+      "expected_rung": "countersigned"
+    },
+    {
+      "name": "rung-local-anchored-explicit-visibility",
+      "description": "Inclusion proof with visibility=local -> local-anchored, not counterparty-visible or higher.",
+      "capsules": [{"capsule_id": "3333333333333333333333333333333333333333333333333333333333333333"}],
+      "inclusion_proofs": [{"capsule_id": "3333333333333333333333333333333333333333333333333333333333333333", "visibility": "local"}],
+      "countersignatures": [],
+      "expected_rung": "local-anchored"
+    },
+    {
+      "name": "rung-counterparty-visible",
+      "description": "Inclusion proof with visibility=counterparty -> counterparty-visible, not publicly-anchored.",
+      "capsules": [{"capsule_id": "4444444444444444444444444444444444444444444444444444444444444444"}],
+      "inclusion_proofs": [{"capsule_id": "4444444444444444444444444444444444444444444444444444444444444444", "visibility": "counterparty"}],
+      "countersignatures": [],
+      "expected_rung": "counterparty-visible"
+    },
+    {
+      "name": "rung-publicly-anchored",
+      "description": "Inclusion proof with visibility=public -> publicly-anchored, the ceiling rung.",
+      "capsules": [{"capsule_id": "5555555555555555555555555555555555555555555555555555555555555555"}],
+      "inclusion_proofs": [{"capsule_id": "5555555555555555555555555555555555555555555555555555555555555555", "visibility": "public"}],
+      "countersignatures": [],
+      "expected_rung": "publicly-anchored"
+    },
+    {
+      "name": "neg-inclusion-proof-no-visibility-does-not-default-to-public",
+      "description": "An inclusion proof with no visibility field is evidence of registration, not of PUBLIC registration -> local-anchored (the floor anchored tier), never publicly-anchored.",
+      "capsules": [{"capsule_id": "6666666666666666666666666666666666666666666666666666666666666666"}],
+      "inclusion_proofs": [{"capsule_id": "6666666666666666666666666666666666666666666666666666666666666666", "receipt": "opaque-bytes-no-visibility-hint"}],
+      "countersignatures": [],
+      "expected_rung": "local-anchored"
+    },
+    {
+      "name": "rung-per-capsule-takes-the-higher-of-multiple-evidence-items",
+      "description": "One capsule with BOTH a countersignature and a local-visibility inclusion proof -> local-anchored (the higher of the two it actually earned), not stuck at countersigned.",
+      "capsules": [{"capsule_id": "7777777777777777777777777777777777777777777777777777777777777777"}],
+      "inclusion_proofs": [{"capsule_id": "7777777777777777777777777777777777777777777777777777777777777777", "visibility": "local"}],
+      "countersignatures": [{"capsule_id": "7777777777777777777777777777777777777777777777777777777777777777", "signer": "counterparty:acme"}],
+      "expected_rung": "local-anchored"
+    },
+    {
+      "name": "neg-overclaim-misdirected-evidence-does-not-inflate-bundle",
+      "description": "Two capsules, A and B. A publicly-anchored inclusion proof is tied to A's capsule_id only; B has no evidence at all. The bundle rung is the MINIMUM across capsules (standalone, from B) -- A's strong evidence must never inflate the whole bundle's claim. This is the never-grades-up guard case (mutant target: dropping the capsule_id match in the inclusion-proof loop, or taking max() instead of min() across capsules, both make this vector wrongly report publicly-anchored).",
+      "capsules": [
+        {"capsule_id": "8888888888888888888888888888888888888888888888888888888888888888"},
+        {"capsule_id": "9999999999999999999999999999999999999999999999999999999999999999"}
+      ],
+      "inclusion_proofs": [{"capsule_id": "8888888888888888888888888888888888888888888888888888888888888888", "visibility": "public"}],
+      "countersignatures": [],
+      "expected_rung": "standalone"
+    }
+  ]
+}

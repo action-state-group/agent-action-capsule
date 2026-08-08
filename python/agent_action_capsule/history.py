@@ -10,10 +10,35 @@ from datetime import datetime, timezone
 
 __all__ = [
     "ChainReport",
+    "RUNGS",
     "list_capsules",
     "verify_chain_completeness",
     "export_verifiable_bundle",
 ]
+
+#: The anchoring-evidence rung, ordered least- to most-assured. Completeness
+#: (chain-gap-freeness, ``ChainReport.complete``) is an orthogonal axis — a
+#: capsule can be chain-complete at any rung, including "standalone".
+RUNGS: tuple[str, ...] = (
+    "standalone",
+    "countersigned",
+    "local-anchored",
+    "counterparty-visible",
+    "publicly-anchored",
+)
+
+_RUNG_RANK = {name: i for i, name in enumerate(RUNGS)}
+
+#: Maps an inclusion proof's ``visibility`` to the rung it justifies. A proof
+#: with no (or an unrecognised) ``visibility`` is credited only the floor of
+#: the anchored tiers — evidence of *some* registration is not evidence of
+#: *public* registration.
+_VISIBILITY_TO_RUNG = {
+    "local": "local-anchored",
+    "counterparty": "counterparty-visible",
+    "public": "publicly-anchored",
+}
+_DEFAULT_INCLUSION_RUNG = "local-anchored"
 
 
 @dataclass
@@ -22,6 +47,7 @@ class ChainReport:
     gaps: list[str] = field(default_factory=list)          # capsule_ids where chain.parent is missing from the window
     epoch_opens: list[str] = field(default_factory=list)   # capsule_ids where chain.relation == "epoch_opens"
     warnings: list[str] = field(default_factory=list)
+    rung: str = "standalone"   # one of RUNGS; see _compute_rung()
 
 
 # ---------------------------------------------------------------------------
@@ -79,6 +105,58 @@ def _capsule_epoch_id(capsule: dict) -> str | None:
     return None
 
 
+def _capsule_rung(
+    capsule_id: str,
+    countersignatures: list[dict],
+    inclusion_proofs: list[dict],
+) -> str:
+    """Derive the rung a single *capsule_id* has EARNED from the evidence.
+
+    Only evidence items whose own ``capsule_id`` matches are credited — a
+    countersignature or inclusion proof for a different capsule must never
+    inflate this one's rung (the never-grades-up guard).
+    """
+    rung = "standalone"
+
+    for cs in countersignatures:
+        if cs.get("capsule_id") == capsule_id:
+            rung = "countersigned"
+            break
+
+    for proof in inclusion_proofs:
+        if proof.get("capsule_id") != capsule_id:
+            continue
+        proof_rung = _VISIBILITY_TO_RUNG.get(proof.get("visibility"), _DEFAULT_INCLUSION_RUNG)
+        if _RUNG_RANK[proof_rung] > _RUNG_RANK[rung]:
+            rung = proof_rung
+
+    return rung
+
+
+def _compute_rung(
+    capsules: list[dict],
+    countersignatures: list[dict],
+    inclusion_proofs: list[dict],
+) -> str:
+    """Derive the rung for a *set* of capsules: the MINIMUM (weakest) rung any
+    one of them has earned. A bundle is never reported at a rung stronger than
+    its weakest member — partial evidence must not inflate the whole claim."""
+    if not capsules:
+        return "standalone"
+
+    worst = "publicly-anchored"
+    for cap in capsules:
+        cid = cap.get("capsule_id")
+        cap_rung = (
+            _capsule_rung(cid, countersignatures, inclusion_proofs)
+            if isinstance(cid, str) and cid
+            else "standalone"
+        )
+        if _RUNG_RANK[cap_rung] < _RUNG_RANK[worst]:
+            worst = cap_rung
+    return worst
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -130,15 +208,26 @@ def list_capsules(
 def verify_chain_completeness(
     capsules: list[dict],
     epoch_id: str | None = None,
+    inclusion_proofs: list[dict] | None = None,
+    countersignatures: list[dict] | None = None,
 ) -> ChainReport:
-    """Check that *capsules* form a complete chain (no gaps).
+    """Check that *capsules* form a complete chain (no gaps), and report the
+    anchoring-evidence rung the set has earned.
 
     A *gap* is a capsule whose ``chain.parent_capsule_id`` references a
     ``capsule_id`` NOT in the provided list — unless that capsule itself carries
     ``chain.relation == "epoch_opens"``, which is a legal chain-starter.
 
     When *epoch_id* is given the list is pre-filtered to capsules matching that
-    epoch before completeness is evaluated.
+    epoch before completeness (and the rung) is evaluated.
+
+    *inclusion_proofs* / *countersignatures* are optional lists of dicts keyed
+    by ``capsule_id`` (``{"capsule_id": ..., "visibility": "local"|"counterparty"|"public", ...}``
+    for inclusion proofs; ``{"capsule_id": ..., ...}`` for countersignatures).
+    Completeness is a receipt from *a* transparency service, which may be a
+    local one — the rung reports WHICH kind of evidence is present, it never
+    treats "not yet publicly anchored" as incomplete. See ``RUNGS`` and
+    ``docs/ledger-grade.md`` §4.
     """
     # Optional epoch-scope narrowing.
     if epoch_id is not None:
@@ -176,17 +265,21 @@ def verify_chain_completeness(
         if isinstance(parent_id, str) and parent_id and parent_id not in ids_in_window:
             gaps.append(cid)
 
+    rung = _compute_rung(capsules, countersignatures or [], inclusion_proofs or [])
+
     return ChainReport(
         complete=len(gaps) == 0,
         gaps=gaps,
         epoch_opens=epoch_opens,
         warnings=warnings,
+        rung=rung,
     )
 
 
 def export_verifiable_bundle(
     capsules: list[dict],
     inclusion_proofs: list[dict] | None = None,
+    countersignatures: list[dict] | None = None,
 ) -> dict:
     """Export a self-contained verifiable bundle.
 
@@ -196,16 +289,26 @@ def export_verifiable_bundle(
           "version": "1",
           "capsules": [...],
           "inclusion_proofs": [...] or [],
+          "countersignatures": [...] or [],
           "chain_report": ChainReport as dict,
+          "rung": chain_report.rung,   # carried alongside chain_report for convenience
         }
 
     The bundle is designed to be re-verified by passing ``bundle["capsules"]``
-    back through ``verify_chain_completeness()``.
+    back through ``verify_chain_completeness()`` (with the same
+    ``inclusion_proofs`` / ``countersignatures``, if the rung is to be
+    re-derived too).
     """
-    chain_report = verify_chain_completeness(capsules)
+    chain_report = verify_chain_completeness(
+        capsules,
+        inclusion_proofs=inclusion_proofs,
+        countersignatures=countersignatures,
+    )
     return {
         "version": "1",
         "capsules": capsules,
         "inclusion_proofs": inclusion_proofs if inclusion_proofs is not None else [],
+        "countersignatures": countersignatures if countersignatures is not None else [],
         "chain_report": dataclasses.asdict(chain_report),
+        "rung": chain_report.rung,
     }
