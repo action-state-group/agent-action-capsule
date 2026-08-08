@@ -25,6 +25,8 @@ __all__ = [
     "EFFECT_MODES",
     "LEDGER_MODES",
     "LEDGER_MODE_RANK",
+    "CROSS_PARTY_RUNGS",
+    "CROSS_PARTY_RUNG_RANK",
     "DOMAIN_VALUES",
     "PROVENANCE_VALUES",
     "PROVENANCE_RANK",
@@ -33,6 +35,7 @@ __all__ = [
     "ExpiryPolicy",
     "EffectRecord",
     "AssuranceBlock",
+    "CrossParty",
     "Chain",
     "ConstraintRecord",
     "ModelAttestation",
@@ -69,13 +72,18 @@ NEVER_DISPATCH_VERDICT_CLASSES = frozenset(
 )
 
 # disposition.approver is a closed enum (§5.4), not registry-governed.
-VALID_APPROVERS = frozenset({"human", "policy"})
+VALID_APPROVERS = frozenset({"human", "policy", "counterparty"})
 
 # assurance closed enums (§5.3).
 ATTESTATION_MODES = frozenset({"self_attested", "anchored"})
 EFFECT_MODES = frozenset({"not_applicable", "dispatched_unconfirmed", "confirmed"})
 LEDGER_MODES = frozenset({"standalone", "chained", "anchored"})
 LEDGER_MODE_RANK = {"standalone": 0, "chained": 1, "anchored": 2}
+
+# assurance.cross_party_rung — the fourth, orthogonal assurance axis (§5.3
+# Cross-party assurance): closed enum, never-grades-up gradient.
+CROSS_PARTY_RUNGS = frozenset({"unilateral_fallback", "acknowledged_receipt", "full_bilateral"})
+CROSS_PARTY_RUNG_RANK = {"unilateral_fallback": 0, "acknowledged_receipt": 1, "full_bilateral": 2}
 
 # §-02 domain and provenance registry seeds (REGISTRY.md §8/§9).
 # domain: the capsule's epistemic role — "action" (default), "memory", or "reasoning".
@@ -216,11 +224,13 @@ class EffectRecord:
 
 @dataclass(frozen=True)
 class AssuranceBlock:
-    """§5.3 assurance object — three closed-enum modes."""
+    """§5.3 assurance object — three closed-enum modes plus the OPTIONAL,
+    orthogonal cross_party_rung (§5.3 Cross-party assurance)."""
 
     attestation_mode: str
     effect_mode: str
     ledger_mode: str
+    cross_party_rung: str | None = None
 
     def __post_init__(self) -> None:
         if self.attestation_mode not in ATTESTATION_MODES:
@@ -229,6 +239,39 @@ class AssuranceBlock:
             raise InvariantError("assurance.effect_mode invalid (§5.3)")
         if self.ledger_mode not in LEDGER_MODES:
             raise InvariantError("assurance.ledger_mode invalid (§5.3)")
+        if self.cross_party_rung is not None and self.cross_party_rung not in CROSS_PARTY_RUNGS:
+            raise InvariantError("assurance.cross_party_rung invalid (§5.3 Cross-party assurance)")
+
+
+@dataclass(frozen=True)
+class CrossParty:
+    """§5.3 Cross-party assurance evidence block. A producer MUST NOT claim a
+    cross_party_rung this evidence does not support (enforced in verify.py,
+    since this is the producer-side shape only)."""
+
+    initiator_ref: str
+    counterparty_ref: str | None = None
+    correlator: str | None = None
+    substantive: bool | None = None
+
+    def __post_init__(self) -> None:
+        if not is_hex64(self.initiator_ref):
+            raise InvariantError(
+                "cross_party.initiator_ref MUST be a 64-hex JSON-DIGEST (§5.3 Cross-party assurance)"
+            )
+        if self.counterparty_ref is not None and not is_hex64(self.counterparty_ref):
+            raise InvariantError(
+                "cross_party.counterparty_ref MUST be a 64-hex JSON-DIGEST when present (§5.3 Cross-party assurance)"
+            )
+        if self.counterparty_ref is not None and not self.correlator:
+            raise InvariantError(
+                "cross_party.correlator is REQUIRED when counterparty_ref is present (§5.3 Cross-party assurance)"
+            )
+        if self.counterparty_ref is None and (self.correlator is not None or self.substantive is not None):
+            raise InvariantError(
+                "cross_party.correlator and .substantive are meaningful only when "
+                "counterparty_ref is present (§5.3 Cross-party assurance)"
+            )
 
 
 @dataclass(frozen=True)

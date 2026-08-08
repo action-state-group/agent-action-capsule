@@ -1,7 +1,7 @@
 {
   "format_version": "2",
   "spec": "draft-mih-scitt-agent-action-capsule-00",
-  "count": 32,
+  "count": 37,
   "cases": [
     {
       "name": "pos-executed-confirmed",
@@ -97,6 +97,31 @@
       "name": "pos-concurrent-supersedes",
       "kind": "store",
       "description": "two supersedes over one parent: earliest in ledger order is authoritative; the later one surfaces an info finding; both remain ok."
+    },
+    {
+      "name": "pos-cross-party-full-bilateral",
+      "kind": "positive",
+      "description": "full_bilateral: initiator_ref + counterparty_ref + correlator all present, substantive result -> verifies clean."
+    },
+    {
+      "name": "pos-cross-party-acknowledged-receipt",
+      "kind": "positive",
+      "description": "acknowledged_receipt: initiator_ref + counterparty_ref + correlator present, bare receipt (no substantive result) -> verifies clean."
+    },
+    {
+      "name": "pos-cross-party-unilateral-fallback",
+      "kind": "positive",
+      "description": "unilateral_fallback: only initiator_ref present, no counterparty evidence -> verifies clean."
+    },
+    {
+      "name": "neg-cross-party-overclaim",
+      "kind": "overclaim",
+      "description": "the named overclaim case: full_bilateral claimed with only the initiator's signed half present (no counterparty_ref) -> assurance_overclaim (check 7, info severity, non-gating), derived.cross_party_rung downgraded to unilateral_fallback."
+    },
+    {
+      "name": "pos-disposition-approver-counterparty",
+      "kind": "positive",
+      "description": "disposition.approver='counterparty': a valid third member of the closed approver enum; human_disposed stays false, confirming the honesty invariant (human_disposed=true REQUIRES approver='human') still holds against the new value."
     },
     {
       "name": "neg-confirmed-without-response",

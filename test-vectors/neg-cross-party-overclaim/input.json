@@ -1,0 +1,25 @@
+{
+  "action_id": "cp-overclaim",
+  "action_type": "decide",
+  "assurance": {
+    "attestation_mode": "self_attested",
+    "cross_party_rung": "full_bilateral",
+    "effect_mode": "not_applicable",
+    "ledger_mode": "standalone"
+  },
+  "capsule_id": "a02b8481d5583284f099d0c9896fc4ac358a05bca79b1d64eece12219d731b4e",
+  "cross_party": {
+    "initiator_ref": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "developer": "agent@v1",
+  "disposition": {
+    "approver": "human",
+    "decision": "accept",
+    "human_disposed": true,
+    "verdict_class": "executed"
+  },
+  "format_version": "2",
+  "operator": "ACME-CO",
+  "spec_version": "draft-mih-scitt-agent-action-capsule-00",
+  "timestamp": "2026-06-13T00:00:00Z"
+}

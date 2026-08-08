@@ -26,6 +26,7 @@ from .canonical import (
     compute_capsule_id,
 )
 from .contracts import (
+    CROSS_PARTY_RUNG_RANK,
     DOMAIN_VALUES,
     LEDGER_MODE_RANK,
     NEVER_DISPATCH_VERDICT_CLASSES,
@@ -55,6 +56,20 @@ REQUIRED_FIELDS = (
 # overclaim).
 _EFFECT_MODE_RANK = {"not_applicable": 0, "dispatched_unconfirmed": 0, "confirmed": 1}
 _ATTESTATION_RANK = {"self_attested": 0, "anchored": 1}
+
+
+def _derive_cross_party_rung(cross_party: Mapping[str, Any] | None) -> str | None:
+    """Derive assurance.cross_party_rung (§5.3 Cross-party assurance) from the
+    top-level cross_party evidence block alone — a structural check over the
+    block's own bytes, never a dereference of the digests it cites (mirrors how
+    ledger_mode "chained" is derived from chain-block presence, §5.3)."""
+    if cross_party is None:
+        return None
+    counterparty_ref = cross_party.get("counterparty_ref")
+    correlator = cross_party.get("correlator")
+    if not is_hex64(counterparty_ref) or not correlator:
+        return "unilateral_fallback"
+    return "full_bilateral" if cross_party.get("substantive") is True else "acknowledged_receipt"
 
 # Which capsule field maps to which registry, for the unknown-value check (§6 #8).
 _REGISTRY_FIELDS = (
@@ -179,6 +194,7 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
     effect = _obj(capsule, "effect")
     disposition = _obj(capsule, "disposition")
     chain = _obj(capsule, "chain")
+    cross_party = _obj(capsule, "cross_party")
 
     # ---- Check 1: Structural ------------------------------------------------
     for fld in REQUIRED_FIELDS:
@@ -201,7 +217,7 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
             "unknown versions must be explicitly rejected to prevent silent v1/v2 mis-parse",
             check=1,
         ))
-    for fld in ("effect", "assurance", "disposition", "chain", "self_reported_reasoning"):
+    for fld in ("effect", "assurance", "disposition", "chain", "cross_party", "self_reported_reasoning"):
         if fld in capsule and not isinstance(capsule[fld], Mapping):
             findings.append(Finding("block_not_object", f"{fld} MUST be a JSON object when present", check=1))
     for fld in ("domain", "provenance"):
@@ -231,7 +247,7 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
             findings.append(Finding("missing_required_field", "disposition.approver is REQUIRED (§5.4)", check=1))
         elif approver not in VALID_APPROVERS:
             # Closed enum, structural — NOT an unknown-registry finding (§6).
-            findings.append(Finding("approver_invalid", f"disposition.approver MUST be human|policy (§5.4); got {approver!r}", check=1))
+            findings.append(Finding("approver_invalid", f"disposition.approver MUST be human|policy|counterparty (§5.4); got {approver!r}", check=1))
         if "decision" not in disposition:
             findings.append(Finding("missing_required_field", "disposition.decision is REQUIRED (§5.4)", check=1))
         hd = disposition.get("human_disposed")
@@ -301,6 +317,9 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         "attestation_mode": "self_attested",  # no receipt verified at this layer
         "ledger_mode": "chained" if chain is not None else "standalone",
     }
+    derived_cross_party_rung = _derive_cross_party_rung(cross_party)
+    if cross_party is not None:
+        derived["cross_party_rung"] = derived_cross_party_rung
     stated = capsule.get("assurance")
     if isinstance(stated, Mapping):
         sm = stated.get("effect_mode")
@@ -312,6 +331,10 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         sl = stated.get("ledger_mode")
         if sl in LEDGER_MODE_RANK and LEDGER_MODE_RANK[sl] > LEDGER_MODE_RANK[derived["ledger_mode"]]:
             findings.append(Finding("assurance_overclaim", f"claimed ledger_mode {sl!r} but verifier derived {derived['ledger_mode']!r} (§5.3)", severity="info", check=7))
+        sc = stated.get("cross_party_rung")
+        derived_rank = CROSS_PARTY_RUNG_RANK.get(derived_cross_party_rung, 0)
+        if sc in CROSS_PARTY_RUNG_RANK and CROSS_PARTY_RUNG_RANK[sc] > derived_rank:
+            findings.append(Finding("assurance_overclaim", f"claimed cross_party_rung {sc!r} but verifier derived {derived_cross_party_rung!r} (§5.3 Cross-party assurance)", severity="info", check=7))
 
     # ---- Check 8: Unknown registry values -----------------------------------
     for reg_name, (block, member) in _REGISTRY_FIELDS:

@@ -51,8 +51,20 @@ def ident(action_id: str, action_type: str = "decide") -> dict:
     }
 
 
-def assurance(effect_mode: str, ledger_mode: str = "standalone") -> dict:
-    return {"attestation_mode": "self_attested", "effect_mode": effect_mode, "ledger_mode": ledger_mode}
+def assurance(effect_mode: str, ledger_mode: str = "standalone", cross_party_rung: str | None = None) -> dict:
+    a = {"attestation_mode": "self_attested", "effect_mode": effect_mode, "ledger_mode": ledger_mode}
+    if cross_party_rung is not None:
+        a["cross_party_rung"] = cross_party_rung
+    return a
+
+
+def cross_party_block(has_counterparty: bool, substantive: bool = False) -> dict:
+    cp = {"initiator_ref": HEX_R}
+    if has_counterparty:
+        cp["counterparty_ref"] = HEX_R2
+        cp["correlator"] = "exchange-corr-1"
+        cp["substantive"] = substantive
+    return cp
 
 
 def seal(cap: dict) -> dict:
@@ -177,6 +189,33 @@ def build_cases() -> list[dict]:
     add("pos-concurrent-supersedes", "store",
         "two supersedes over one parent: earliest in ledger order is authoritative; the later one surfaces an info finding; both remain ok.",
         {"ledger": [parent2, res_a, res_b]})
+
+    # ---- POSITIVE/OVERCLAIM: cross-party assurance rung (§5.3 Cross-party assurance) ----
+    cp_disp = {"decision": "accept", "approver": "human", "human_disposed": True, "verdict_class": "executed"}
+    add("pos-cross-party-full-bilateral", "positive",
+        "full_bilateral: initiator_ref + counterparty_ref + correlator all present, substantive result -> verifies clean.",
+        seal({**ident("cp-full"), "assurance": assurance("not_applicable", cross_party_rung="full_bilateral"),
+              "disposition": cp_disp, "cross_party": cross_party_block(has_counterparty=True, substantive=True)}))
+    add("pos-cross-party-acknowledged-receipt", "positive",
+        "acknowledged_receipt: initiator_ref + counterparty_ref + correlator present, bare receipt (no substantive result) -> verifies clean.",
+        seal({**ident("cp-ack"), "assurance": assurance("not_applicable", cross_party_rung="acknowledged_receipt"),
+              "disposition": cp_disp, "cross_party": cross_party_block(has_counterparty=True, substantive=False)}))
+    add("pos-cross-party-unilateral-fallback", "positive",
+        "unilateral_fallback: only initiator_ref present, no counterparty evidence -> verifies clean.",
+        seal({**ident("cp-uni"), "assurance": assurance("not_applicable", cross_party_rung="unilateral_fallback"),
+              "disposition": cp_disp, "cross_party": cross_party_block(has_counterparty=False)}))
+    add("neg-cross-party-overclaim", "overclaim",
+        "the named overclaim case: full_bilateral claimed with only the initiator's signed half present "
+        "(no counterparty_ref) -> assurance_overclaim (check 7, info severity, non-gating), "
+        "derived.cross_party_rung downgraded to unilateral_fallback.",
+        seal({**ident("cp-overclaim"), "assurance": assurance("not_applicable", cross_party_rung="full_bilateral"),
+              "disposition": cp_disp, "cross_party": cross_party_block(has_counterparty=False)}))
+    add("pos-disposition-approver-counterparty", "positive",
+        "disposition.approver='counterparty': a valid third member of the closed approver enum; "
+        "human_disposed stays false, confirming the honesty invariant (human_disposed=true REQUIRES "
+        "approver='human') still holds against the new value.",
+        seal({**ident("cp-approver"), "assurance": assurance("not_applicable"),
+              "disposition": {"decision": "accept", "approver": "counterparty", "human_disposed": False, "verdict_class": "executed"}}))
 
     # ---- NEGATIVE: MUST-reject (ok=false) ----
     add("neg-confirmed-without-response", "negative",
@@ -305,6 +344,20 @@ def envelope_result_to_expected(res) -> dict:
     }
 
 
+# Hand-authored hardening-pass vectors (the W9 pass) whose input.json/expected.json
+# predate this script's case builders and are NOT reproduced by build_cases(). They
+# are frozen files this script must not touch; only their manifest entries are
+# re-declared here so a full regeneration doesn't drop them from vectors.json.
+HAND_AUTHORED_CASES = [
+    {"name": "neg-format-version-unknown", "kind": "negative",
+     "description": "format_version '1' (old/unknown) must be explicitly rejected — no silent v1/v2 mis-parse (§5.1, W9)."},
+    {"name": "neg-never-dispatch-with-dispatched-effect", "kind": "negative",
+     "description": "blocked verdict_class (NEVER_DISPATCH §5.4.2) combined with effect.status='dispatched' → verdict/effect orthogonality failure (check 4)."},
+    {"name": "neg-never-dispatch-confirmed-no-response", "kind": "negative",
+     "description": "denied (NEVER_DISPATCH) with effect.status='confirmed' and no response_digest → both check 3 (confirmed-effect binding) and check 4 (verdict/effect conflict)."},
+]
+
+
 def main() -> None:
     OUT.mkdir(exist_ok=True)
     manifest = []
@@ -324,6 +377,8 @@ def main() -> None:
         (case_dir / "input.json").write_text(json.dumps(inp, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         (case_dir / "expected.json").write_text(json.dumps(expected, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         manifest.append({"name": name, "kind": kind, "description": desc})
+
+    manifest.extend(HAND_AUTHORED_CASES)
 
     (OUT / "vectors.json").write_text(
         json.dumps({"format_version": "2", "spec": SPEC, "count": len(manifest), "cases": manifest}, indent=2) + "\n",
