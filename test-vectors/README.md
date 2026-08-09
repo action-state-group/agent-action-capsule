@@ -97,3 +97,13 @@ The reference suite runs every vector through `verify()` / `verify_store()` and
 asserts each `expected.json` — see `python/tests/test_vectors.py`. To check an
 independent implementation, run it over each `input.json` and compare `ok`, the
 finding check-numbers/severities, the derived modes, and `capsule_id`.
+
+**The `transparent` extra is required for a clean run.** `pip install -e ".[dev]"`
+alone omits `scitt-cose` (`cryptography`/`cbor2`), so `tests/test_scitt_offline.py`
+fails to collect — a missing optional dependency reads as a failing suite rather
+than what it is. `pip install -e ".[dev,transparent]"` installs it. Reproduced in
+a fresh venv against this commit: **without** the extra, `615 passed, 8 skipped,
+4 errors` (all four errors are `ModuleNotFoundError: No module named
+'cryptography'` in `test_scitt_offline.py`); **with** it, `620 passed, 7 skipped`.
+Either count is a clean run — read the count against which extras you installed,
+not as a regression.
