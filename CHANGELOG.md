@@ -35,6 +35,15 @@
   this revision is additive, not a relaxation — the enum grows from two
   members to three, still closed, so no third-party value is newly admitted.
 
+### Docs
+- `docs/telemetry-binding-profile.md`: new informational profile (AARM R8,
+  `capsule-ledger`'s `ldg-otel-exporter-aarm-r8`) specifying the
+  reference-never-copy rule for telemetry export, the minimum attribute set,
+  and the mapping to OTLP/`gen_ai` (primary) and OCSF (secondary,
+  best-effort — documents the mismatch rather than presenting a native fit).
+  Not core spec: telemetry is a projection of the capsule, and this profile
+  moves at OTel/OCSF's release speed so core doesn't have to.
+
 ### Added
 - `python/agent_action_capsule/contracts.py`: `CrossParty` producer-side
   carrier (§5.3 Cross-party assurance evidence), `CROSS_PARTY_RUNGS`,
