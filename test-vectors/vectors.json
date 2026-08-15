@@ -4,7 +4,7 @@
     "4"
   ],
   "spec": "draft-mih-scitt-agent-action-capsule-04",
-  "count": 45,
+  "count": 69,
   "cases": [
     {
       "name": "pos-v4-jcs-chain-committed",
@@ -230,6 +230,126 @@
       "name": "neg-never-dispatch-confirmed-no-response",
       "kind": "negative",
       "description": "denied (NEVER_DISPATCH) with effect.status='confirmed' and no response_digest \u2192 both check 3 (confirmed-effect binding) and check 4 (verdict/effect conflict)."
+    },
+    {
+      "name": "canonical-null-member-removed",
+      "kind": "canonical",
+      "description": "normalize() removes a null-valued member (S:2 absent-field normalization)"
+    },
+    {
+      "name": "canonical-empty-object-removed",
+      "kind": "canonical",
+      "description": "normalize() removes an empty-object member (S:2 absent-field normalization)"
+    },
+    {
+      "name": "canonical-empty-array-removed",
+      "kind": "canonical",
+      "description": "normalize() removes an empty-array member (S:2 absent-field normalization)"
+    },
+    {
+      "name": "canonical-object-emptied-by-normalization",
+      "kind": "canonical",
+      "description": "normalize() bottom-up: object becomes empty after null member removed; parent removes it"
+    },
+    {
+      "name": "canonical-nested-two-deep-emptied",
+      "kind": "canonical",
+      "description": "normalize() bottom-up two levels: d->c->b all emptied and removed"
+    },
+    {
+      "name": "canonical-array-of-objects-normalized",
+      "kind": "canonical",
+      "description": "normalize() recurses into array elements; null member in nested object removed"
+    },
+    {
+      "name": "canonical-array-preserved-not-sorted",
+      "kind": "canonical",
+      "description": "Array elements preserved in insertion order, not sorted (RFC 8785 S:3.2.2)"
+    },
+    {
+      "name": "canonical-nested-member-named-capsule-id",
+      "kind": "canonical",
+      "description": "Top-level capsule_id/chain exclusion does not apply to nested members with those names"
+    },
+    {
+      "name": "canonical-nested-member-named-chain",
+      "kind": "canonical",
+      "description": "Top-level capsule_id/chain exclusion does not apply to nested members with those names"
+    },
+    {
+      "name": "canonical-key-sort-utf16-vs-codepoint",
+      "kind": "canonical",
+      "description": "UTF-16 key ordering: U+1F600 emoji (first surrogate 0xD83D) sorts after U+FF3A (single unit)"
+    },
+    {
+      "name": "canonical-key-nfc-vs-nfd",
+      "kind": "canonical",
+      "description": "JCS does not normalize Unicode; NFD key A+U+030A (first unit 0x0041) sorts before B (0x0042)"
+    },
+    {
+      "name": "canonical-string-escapes",
+      "kind": "canonical",
+      "description": "JCS mandatory escapes: \\\" \\\\ \\b \\t \\n \\f \\r in a single string value (RFC 8785 S:3.2.2.2)"
+    },
+    {
+      "name": "canonical-control-char-below-0x20",
+      "kind": "canonical",
+      "description": "Control char U+0001 not in named-shortcut set: serialized as \\u0001 (RFC 8785 S:3.2.2.2)"
+    },
+    {
+      "name": "canonical-non-bmp-value",
+      "kind": "canonical",
+      "description": "Non-BMP char U+1F600 in a string value passes through as UTF-8 (no \\uXXXX escaping needed)"
+    },
+    {
+      "name": "canonical-solidus-not-escaped",
+      "kind": "canonical",
+      "description": "Solidus / is NOT escaped in JCS (RFC 8785 S:3.2.2.2 forbids the \\/ escape)"
+    },
+    {
+      "name": "canonical-integer-zero",
+      "kind": "canonical",
+      "description": "Integer 0 serialized as '0' (int branch in _jcs_value, S:5.1)"
+    },
+    {
+      "name": "canonical-integer-negative",
+      "kind": "canonical",
+      "description": "Negative integer -1 serialized as '-1'"
+    },
+    {
+      "name": "canonical-integer-at-safe-max",
+      "kind": "canonical",
+      "description": "Integer at exactly Number.MAX_SAFE_INTEGER = 9007199254740991 accepted (S:5.1 boundary)"
+    },
+    {
+      "name": "canonical-integer-above-safe-max",
+      "kind": "canonical",
+      "description": "Integer one above Number.MAX_SAFE_INTEGER raises UnsafeIntegerError (S:5.1 guard)"
+    },
+    {
+      "name": "canonical-integer-at-safe-min",
+      "kind": "canonical",
+      "description": "Integer at exactly -Number.MAX_SAFE_INTEGER = -9007199254740991 accepted (S:5.1 boundary)"
+    },
+    {
+      "name": "canonical-float-in-value",
+      "kind": "canonical",
+      "description": "Float value raises FloatInDigestError (S:5.1 forbids floats in digest-bearing fields)"
+    },
+    {
+      "name": "canonical-float-integral-valued",
+      "kind": "canonical",
+      "description": "Integral-valued float 2.0 raises FloatInDigestError: the guard is a type check, not a value check"
+    },
+    {
+      "name": "canonical-bool-and-deep-nesting",
+      "kind": "canonical",
+      "description": "Boolean true and deep object nesting: exercises bool branch and recursive dict serialization"
+    },
+    {
+      "name": "canonical-all-members-removed",
+      "kind": "canonical",
+      "description": "After normalization all members removed; capsule_id = SHA-256(JCS({})) = SHA-256('{}')"
     }
   ]
 }
