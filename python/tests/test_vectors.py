@@ -6,8 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_action_capsule import verify, verify_store
-from agent_action_capsule import canonical
+from agent_action_capsule import canonical, verify, verify_store
 
 VECTORS = Path(__file__).resolve().parents[2] / "test-vectors"
 MANIFEST = json.loads((VECTORS / "vectors.json").read_text())
