@@ -174,9 +174,10 @@ The exchange has four moves:
 3. **Action attestation.** The performing party produces an action
    attestation referencing the request attestation by digest and recording
    the constraint results and the disposition. Dispositions use the
-   verdict-complete vocabulary of {{I-D.mih-scitt-agent-action-capsule}}
-   verbatim — *executed, blocked, denied, timeout, errored, deferred, expired,
-   escalated* — so the record covers every outcome, not only success. A
+   `verdict_class` vocabulary of {{I-D.mih-scitt-agent-action-capsule}};
+   that document is normative for the complete value set (e.g.,
+   *executed*, *denied*), so the record covers every outcome, not only
+   success. A
    performing party MUST produce at most one action attestation per request
    attestation; repeated execution of a single request is representable only
    as distinct request instances, each with its own request attestation.
