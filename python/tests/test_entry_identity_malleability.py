@@ -22,6 +22,7 @@ import hashlib
 
 import cbor2
 import pytest
+
 from agent_action_capsule import compute_capsule_id
 
 pytest.importorskip("scitt_cose", reason="scitt-cose not installed (agent-action-capsule[anchor] extra)")
