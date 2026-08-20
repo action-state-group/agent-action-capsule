@@ -50,7 +50,7 @@ informative:
   I-D.mih-sato-agent-accountability-composition:
     title: "Agent Accountability: Composition and Conformance"
     seriesinfo:
-      Internet-Draft: draft-mih-sato-agent-accountability-composition-00
+      Internet-Draft: draft-mih-sato-agent-accountability-composition-01
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -284,9 +284,25 @@ This revision:
   producer-side MUST.
 - Adds the governance-runtime framing of {{governanceruntime}}, the
   explicit relationship statement to CPB of {{cpb-relationship}}, and
-  cites {{I-D.mih-sato-agent-accountability-composition}} for the first
-  time; none of these three changes any normative Capsule field or
-  verifier behavior.
+  cites {{I-D.mih-sato-agent-accountability-composition}} at its posted
+  -01 revision for the first time; none of these three changes any
+  normative Capsule field or verifier behavior.
+- Restores and updates Issuer Binding ({{issuer-binding}}: did:web,
+  x5chain, and SPIFFE SVID binding patterns for the `iss` claim) and the
+  cross-party assurance rung ({{crossparty}}: `assurance.cross_party_rung`
+  and the `approver: "counterparty"` disposition value), both carried
+  forward from the prior `-03` candidate (PR #64) and reconciled against
+  every feature this revision adds — Observation mode, Observed order and
+  concurrency, the Disclosure Envelope companion, and the RFC 6973-grounded
+  Privacy Considerations — none of which existed when that candidate was
+  first written.
+- Adds normative verifier-behavior text for `canonicalization_id` across
+  -02/-03 record vintages ({{canonid-transition}}), so a -03 verifier's
+  treatment of a Capsule sealed before the field existed is specified
+  rather than left to accident.
+- Points to producer-local log checkpointing as planned scope for a
+  subsequent CPB revision ({{future}}); this document defines no
+  checkpointing behavior of its own.
 
 # Conventions and Definitions {#conventions}
 
@@ -412,6 +428,45 @@ unprotected-header, advisory field carrying no binding authority);
 `canonicalization_id` is a signed payload member and is part of the
 record's own claim about itself.
 
+## Verifier behavior across -02/-03 record vintages {#canonid-transition}
+
+This section states, for a Capsule produced under either revision and a
+verifier implementing either revision, what a verifier does. The terms
+used are:
+
+Pre-id record:
+: A Capsule produced before `canonicalization_id` was available to it:
+  the record carries no such field.
+
+Post-id record:
+: A Capsule produced by a producer that populates `canonicalization_id`,
+  declaring by reference the digest context that produced its
+  `capsule_id`.
+
+-02-era verifier:
+: A verifier implementing only the prior revision of this document. It
+  has no knowledge of `canonicalization_id` or the `jcs` digest context
+  ({{art-agent-action-capsule}}); it resolves `jcs-n` directly.
+
+-03 verifier:
+: A verifier implementing this revision.
+
+| Record vintage | -02-era verifier | -03 verifier |
+|---|---|---|
+| pre-id | Verifies exactly as under -02: resolves `jcs-n` from the registered artifact type alone. Unaffected by this revision. | Resolves the identifier digest context to `jcs` ({{art-agent-action-capsule}}) — the sole current context, since `jcs-n` is withdrawn — and recomputes `capsule_id` under it. The byte audit accompanying the withdrawal ({{changes}}) established that a pre-id record already in Presence-Rule normal form reproduces, under `jcs`, the identical `capsule_id` `jcs-n` produced at seal time, so verification succeeds without special-casing. A pre-id record among the 12 documented-historical exceptions to that audit is not byte-identical and is treated per the withdrawal record as historical, not as a live conformance case. |
+| post-id | Does not recognize `canonicalization_id`. Ignores it under this profile's payload-extensibility posture ({{extensibility}}) and verifies every other check normally. | Cross-checks the declared value against the resolved digest context per {{canonid}}, failing closed on a mismatch, an unknown identifier, or an identifier naming a withdrawn algorithm. |
+
+The invariant governing both cells of the pre-id row, already stated in
+{{canonid}} and repeated here because it is what makes the table above
+safe: a -03 verifier MUST NOT reject a pre-id record solely for
+predating `canonicalization_id`. This document registers only one
+artifact type ({{art-agent-action-capsule}}); an artifact type whose
+registered history contains exactly one digest context has no
+pre-id/post-id ambiguity to begin with, since there is only one
+candidate context to resolve to — the ambiguity this section resolves is
+specific to `agent-action-capsule` having registered two contexts
+(`jcs-n`, now withdrawn, and `jcs`) over its history.
+
 # The SCITT Signed Statement envelope {#projection}
 
 ## Protected header and payload media type {#envelope}
@@ -446,6 +501,32 @@ A field is a protected-header claim only if a SCITT-generic party (a
 Transparency Service registration policy, or a profile-unaware verifier)
 must act on it without understanding this profile; everything
 semantically rich stays in the payload.
+
+## Issuer Binding {#issuer-binding}
+
+A Capsule's `iss` claim (CWT protected header) identifies the producer. Registration
+policies SHOULD authenticate that the signing key belongs to the claimed issuer;
+three supported binding patterns exist:
+
+1. **did:web** — `iss` is a DID URI; the verifier resolves it at verification time
+   to obtain the current signing key. Handles rotation without pinning a certificate.
+
+2. **x5chain** — an X.509 certificate chain in the COSE `x5chain` protected header;
+   the leaf's public key MUST match the signing key; the chain is anchored to a
+   configured CA trust root.
+
+3. **SPIFFE SVID** — a variant of x5chain in which the leaf MUST carry a SPIFFE ID
+   URI in its Subject Alternative Name; `iss` MUST equal that SPIFFE ID URI.
+   Trust anchor is a SPIFFE trust bundle. Rotation is SPIRE-managed; the SPIFFE ID
+   persists across certificate renewals.
+
+A Capsule whose signing key is a bare, unresolvable `kid` with no `x5chain` and no
+resolvable DID maps to a degraded assurance grade in the producing registration policy;
+this state MUST be reported, not silenced. The reference anchor
+(anchor.agentactioncapsule.org) runs an open registration policy and does not enforce
+issuer binding; production deployments SHOULD enforce at least one of the patterns above.
+No cross-pattern substitution is valid: a did:web resolution result does not satisfy
+x5chain trust-chain verification, and neither satisfies SPIFFE trust-bundle verification.
 
 ## Registration and Receipts {#registration}
 
@@ -699,6 +780,85 @@ standalone < chained < anchored for overclaim detection. A producer MUST
 NOT record an assurance mode it did not achieve; a verifier rederives each
 mode from the evidence present and reports any overclaim.
 
+### Cross-party assurance {#crossparty}
+
+A Capsule's evidentiary weight along the *counterparty* dimension — how
+much of a counterparty's own attestation is structurally present in this
+record — is a fourth, orthogonal claim: `assurance.cross_party_rung`. It
+is a new axis, not a new value folded into `attestation_mode`, for the
+same reason {{orthogonality}} already gives for keeping `verdict_class`
+and `effect_mode` separate: `attestation_mode` answers "has this record
+been committed to an independent transparency log" (log custody);
+`cross_party_rung` answers "how much of the counterparty's own signed
+evidence is bound into this record" (exchange evidence). These are
+independent facts a producer can hold in any combination — a
+`self_attested` record can still be `full_bilateral` (both parties signed,
+neither side anchored yet), and an `anchored` record can still stand on
+`unilateral_fallback` evidence alone (a solo attestation that was
+independently anchored). Folding a `countersigned` value into
+`attestation_mode` would collapse these two facts into one claim and make
+that combination inexpressible, so this profile keeps them orthogonal.
+
+`cross_party_rung` takes one of three values, ordered
+`unilateral_fallback` < `acknowledged_receipt` < `full_bilateral` for
+overclaim detection — the same never-grades-up discipline
+{{assurance}} already applies to `attestation_mode`, `effect_mode`, and
+`ledger_mode`:
+
+| cross_party_rung | Meaning |
+|---|---|
+| unilateral_fallback | Only the initiator's own signed half is present; no counterparty evidence, or the counterparty was unreachable or its half did not verify. |
+| acknowledged_receipt | A counterparty reference and correlator are present and well-formed: the counterparty cryptographically acknowledged receipt, but the referenced half carries no substantive co-signed result. |
+| full_bilateral | A counterparty reference and correlator are present and well-formed, and the referenced half is marked as carrying a substantive co-signed result — both parties' evidence is bound to the same exchange. |
+
+`cross_party_rung` is REQUIRED when a `cross_party` evidence block (below)
+is present, and both are OPTIONAL on a Capsule with no cross-party
+exchange. A producer MUST NOT claim a `cross_party_rung` its evidence does
+not support. A Class-1 verifier independently rederives the highest rung
+the `cross_party` block supports and reports any claim above the derived
+rung as an `assurance_overclaim` ({{verification}}), downgrading the
+reported derived rung to the value the evidence actually supports — the
+same treatment {{verification}} already gives an overclaimed
+`attestation_mode` or `ledger_mode`.
+
+A Capsule that participates in a cross-party exchange carries an OPTIONAL
+top-level `cross_party` block:
+
+- `initiator_ref` (REQUIRED when the block is present): a JSON-DIGEST
+  ({{conventions}}) of the initiator's own signed half. A bare
+  intra-profile digest, not a CPB typed digest reference ({{effect}}).
+- `counterparty_ref` (OPTIONAL): a JSON-DIGEST of the counterparty's
+  signed half. Its absence means no usable counterparty evidence was
+  obtained — the counterparty was unreachable, or its half did not verify
+  at the layer that checked it.
+- `correlator` (REQUIRED when `counterparty_ref` is present): an opaque
+  profile-native correlation string joining `initiator_ref` and
+  `counterparty_ref` to the same exchange — the same kind of "opaque
+  correlation string" primitive `external_ref` already uses ({{effect}}),
+  not a CPB reference.
+- `substantive` (OPTIONAL boolean, meaningful only when `counterparty_ref`
+  is present): true only when the counterparty's referenced half carries a
+  substantively co-signed result rather than a bare receipt of the
+  initiator's half.
+
+A verifier derives `cross_party_rung` from this block's own bytes alone,
+never by dereferencing the digests it cites: `unilateral_fallback` when
+`counterparty_ref` is absent or malformed; `acknowledged_receipt` when
+`counterparty_ref` and `correlator` are both present and well-formed but
+`substantive` is absent or false; `full_bilateral` when
+`counterparty_ref` and `correlator` are both present and well-formed and
+`substantive` is true. This is a structural check, the same kind
+{{assurance}} already uses to derive "chained" from the mere presence of a
+well-formed `chain` block — it does not verify the counterparty's
+underlying signature itself, which is a substrate concern by reference
+({{verification}}), mirroring how this layer never derives `anchored`.
+The two-party wire encoding this rung summarizes — the initiator and
+counterparty attestation halves, their signatures, and the handshake that
+produces them — is the companion
+{{I-D.mih-agent-bilateral-attestation}}'s concern, not this profile's;
+this profile carries only the rung claim and the minimal correlation
+evidence needed to rederive it honestly.
+
 ## Observation mode {#observationmode}
 
 A Capsule MAY carry a `compute_attestation` map: producer-environment
@@ -756,9 +916,13 @@ A Capsule's `disposition` block records how the decision was disposed:
 
 - `decision` (REQUIRED): "accept", "reject", "needs_input", or "deferred"
   (registry-governed, {{iana}}).
-- `approver` (REQUIRED): a closed enum, exactly "human" or "policy".
-  The value domain is fixed by this specification (not registry-governed);
-  an unknown approver value is not a conforming Capsule.
+- `approver` (REQUIRED): a closed enum, exactly "human", "policy", or
+  "counterparty". The value domain is fixed by this specification (not
+  registry-governed); an unknown approver value is not a conforming
+  Capsule. Unlike the registry-governed vocabularies of this document
+  ({{iana}}), `approver` stays a closed three-member enum after this
+  addition — never a registry an implementation is expected to extend by
+  registration.
 - `human_disposed` (REQUIRED, boolean): the honest in-the-loop flag —
   true ONLY when a human actually acted. A policy auto-approval is false.
   `human_disposed: true` REQUIRES `approver: "human"`; a producer MUST
@@ -790,6 +954,11 @@ A Capsule's `disposition` block records how the decision was disposed:
   digest-committed, content-side layer written once at deferral time; it
   MUST NOT be regenerated.
 
+- `approver: "counterparty"` (see {{crossparty}}) records that a
+  counterparty to a cross-party exchange, rather than this operator's own
+  human or policy, disposed the decision. The honesty invariant above is
+  unaffected: `human_disposed: true` still REQUIRES `approver: "human"`,
+  so a counterparty disposition is never claimed as human-in-the-loop.
 
 ### The verdict_class vocabulary {#verdictclass}
 
@@ -1004,9 +1173,9 @@ than a runtime failure mode. A verifier consuming arbitrary bytes not
 produced by a conforming constructor SHOULD nonetheless assert the
 invariant defensively against hand-crafted input. The
 closed `approver` enum ({{disposition}}) is likewise structural: an
-approver value outside `{human, policy}` is non-conforming by
-construction and so is absent from the unknown-registry-value reporting
-of check 8.
+approver value outside `{human, policy, counterparty}` is non-conforming
+by construction and so is absent from the unknown-registry-value
+reporting of check 8.
 
 NOTE (Class 1 test vector, effect-attestation matrix, check 5): a Capsule
 carrying `effect.status: "failed"` derives `effect_mode:
@@ -1276,6 +1445,18 @@ normatively profiles the selective-disclosure extension point reserved in
 {{selectivedisclosure}}, specifying the per-field commitment structure,
 disclosure syntax, eligible fields, and verifier checks, aligned with
 {{I-D.ietf-spice-sd-cwt}}.
+
+Producer-local log checkpointing — a producer that maintains a local
+append-only log of Capsules periodically emitting signed, TS-registered
+checkpoints (log size, a Merkle Mountain Range peaks digest, monotonic
+consistency with the prior checkpoint, a declared cadence and lag policy,
+and independent witness countersignatures) so that a rollback of
+already-witnessed records is detectable by any party holding a prior
+checkpoint — is planned scope for a subsequent revision of
+{{I-D.mih-sokolov-scitt-payload-binding}}, which is where this capability
+belongs as a payload-neutral binding-layer facility rather than a
+Capsule-specific one ({{cpb-relationship}}); this document does not
+define it and takes no dependency on it.
 
 # Artifact Type Registry {#artifacttypes}
 
