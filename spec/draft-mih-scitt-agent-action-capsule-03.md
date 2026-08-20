@@ -36,7 +36,7 @@ normative:
   I-D.mih-sokolov-scitt-payload-binding:
     title: "Canonical Payload Binding: A Signed Statement Construction Profile"
     seriesinfo:
-      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-00
+      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-02
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -46,6 +46,25 @@ normative:
         organization: Tyche Institute
 
 informative:
+  RFC6973:
+  I-D.mih-sato-agent-accountability-composition:
+    title: "Agent Accountability: Composition and Conformance"
+    seriesinfo:
+      Internet-Draft: draft-mih-sato-agent-accountability-composition-00
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
+      - ins: T. Sato
+        name: Tom Sato
+  I-D.birkholz-verifiable-agent-conversations:
+    title: "Verifiable Agent Conversations"
+    seriesinfo:
+      Internet-Draft: draft-birkholz-verifiable-agent-conversations-00
+    author:
+      - ins: H. Birkholz
+        name: Henk Birkholz
+        organization: Fraunhofer Institute for Secure Information Technology
   I-D.ietf-cose-merkle-tree-proofs:
   I-D.ietf-scitt-scrapi:
   I-D.ietf-scitt-receipts-ccf-profile:
@@ -63,24 +82,22 @@ informative:
   I-D.nivalto-agentroa-route-authorization:
   RFC8141:
   RFC6839:
-  I-D.mih-scitt-cpb-selective-disclosure:
-    title: "Selective Disclosure Profile for Canonical Payload Binding"
+  I-D.mih-scitt-agent-action-capsule-selective-disclosure:
+    title: "Selective Disclosure Profile for Agent Action Capsules"
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-cpb-selective-disclosure-00
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-selective-disclosure-00
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-  I-D.mih-sato-agent-accountability-composition:
-    title: "Agent Accountability: Composition and Conformance"
+  I-D.mih-scitt-agent-action-capsule-disclosure-envelope:
+    title: "Disclosure Envelope Profile for Agent Action Capsules"
     seriesinfo:
-      Internet-Draft: draft-mih-sato-agent-accountability-composition-00
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-disclosure-envelope-00
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-      - ins: T. Sato
-        name: Tom Sato
   I-D.mih-agent-bilateral-attestation:
     title: "Bilateral Agent Action Attestation"
     seriesinfo:
@@ -121,12 +138,20 @@ observed result, and an honest human-in-the-loop flag. Capsules are
 expressed as SCITT Signed Statements (COSE_Sign1) and made transparent by
 registration in a SCITT Transparency Service. A Capsule is recorded on
 every verdict, including refusals: a blocked or denied Capsule is the
-auditor-grade evidence that a gate worked.
+auditor-grade evidence that a gate worked. This document expresses the
+Capsule as a payload class of the companion Canonical Payload Binding
+(CPB) construction profile: CPB supplies the canonicalization,
+derived-identifier, and typed-reference mechanisms; this document defines
+what a Capsule's fields mean, including the artifact types, wire grammar,
+and cross-record binding semantics specific to agent-action evidence.
 
 --- note_Note_to_Readers
 
 This document is an individual submission. The intended venue for
-discussion is the SCITT Working Group (scitt@ietf.org).
+discussion is the SCITT Working Group (scitt@ietf.org). The source of
+truth for the profile's prose is the specification repository from which
+this document is derived; see the repository's `docs/ietf-draft/README.md`
+for the section mapping.
 
 --- middle
 
@@ -165,6 +190,104 @@ SCITT statement profile in the sense of {{RFC9943}}: a
 constraint on the protected header and payload of a Signed Statement. The
 word is never used in any other sense in this document.
 
+The design principle that unifies this profile's fields: **the Capsule
+is honest about its own limits, and never overstates.** It states how
+close its producer stood to the action ({{observationmode}}), what
+order among actions it actually observed ({{order}}), what it admitted
+into the record and what it kept out ({{privacy}}), and which assurance
+tier it genuinely achieved ({{assurance}}). A record that overclaims
+proximity, sequence, scope, or assurance is worse than no record,
+because it converts a verifier's trust into error with a signature on
+it; every field in this profile that could overclaim therefore
+carries a mode that makes the limit legible.
+
+## Relationship to the Canonical Payload Binding {#cpb-relationship}
+
+This document is a payload class of the Canonical Payload Binding (CPB)
+{{I-D.mih-sokolov-scitt-payload-binding}}. The division of labor is fixed:
+CPB defines the mechanism — how a canonical octet string is produced from
+a structured value, how a derived identifier is computed from it, how a
+Signed Statement binds to a Receipt, and how one record cites another by
+digest — and never defines what a payload class's fields mean. This
+document defines the meaning: the Capsule's own fields, their vocabularies,
+and the semantic rules a producer and verifier apply to them. Where this
+document states a wire-level rule (canonicalization algorithm selection,
+presence and representation rules, typed references), it does so as a
+CPB payload class declaration, not as a restatement of CPB's own mechanism;
+{{canonpayload}} and {{artifacttypes}} state this profile's declarations
+without repeating CPB's mechanics.
+
+## This profile within a governance runtime {#governanceruntime}
+
+A Capsule is one leg of a larger accountability composition. Using the
+terms of {{I-D.mih-sato-agent-accountability-composition}}: whether an
+action was permitted at all is a **CAN** question, answered by a
+pre-action authorization record; which accountable human or policy
+authorized this exact action is a **WHO** question; the transparency
+substrate anchoring and cross-party assertion of any of the above is an
+**AUDIT** question. This document answers the remaining, complementary
+question — **WHAT** the agent actually did — and is the reference
+WHAT-record of that composition. A governance runtime that gates,
+routes, and disposes agent actions produces its record of doing so as a
+Capsule: `disposition` ({{disposition}}) is the runtime's decision
+surface, `verdict_class` ({{verdictclass}}) is the runtime's own
+vocabulary for why it decided as it did, and the chain and epoch
+mechanisms ({{hitl}}, {{epochs}}) are how the runtime's decisions
+compose into a queryable history. This profile does not define a
+governance runtime's policy engine, decision logic, or manifest format
+— those remain implementation-specific and are referenced only by digest
+({{constraints}}) — it defines the evidentiary record such a runtime
+leaves behind, so that a party who trusts neither the runtime nor its
+operator can verify what it decided and what happened as a result.
+
+# Changes from -02 {#changes}
+
+This revision:
+
+- Absorbs the payload-semantic content that the sibling Canonical
+  Payload Binding document sheds under its own charter-scoping revision
+  ({{I-D.mih-sokolov-scitt-payload-binding}}): the Artifact Type
+  Registry ({{artifacttypes}}), and this profile's own presence,
+  representation, and number-handling rules ({{canonpayload}}) — the
+  wire grammar previously stated as part of CPB's `jcs-n` algorithm
+  definition and CPB's Artifact Type Registry section. CPB retains only
+  the canonicalization-algorithm registry and the binding mechanism
+  ({{cpb-relationship}}).
+- Moves the capsule profile's `identifier` digest context from `jcs-n`
+  to `jcs` ({{art-agent-action-capsule}}) via a new, immutable digest
+  context entry: `jcs` performs no normalization of its own; the
+  equivalent null/empty removal is now this profile's own Presence Rule
+  ({{presence}}), applied before `jcs` rather than inside the withdrawn
+  `jcs-n` algorithm. The byte audit accompanying the `jcs-n` withdrawal
+  found the production capsule corpus (191 of 191 records examined)
+  byte-identical under both constructions, with 12 mesh proof-of-concept
+  demonstration artefacts documented as historical exceptions;
+  `capsule_id` values already sealed are unaffected by this change. The
+  full per-corpus accounting is filed with the `jcs-n` withdrawal record
+  in the CPB registry; this document states only the aggregate result
+  and does not reproduce it.
+- Declares `canonicalization_id` as a new OPTIONAL payload field
+  ({{canonid}}) and `conversation_ref` as a new OPTIONAL
+  (conditionally-REQUIRED) payload field ({{conversationbinding}}).
+- Narrows the prior blanket float prohibition to the per-field
+  Representation Rule ({{representation-rule}}): monetary and exact
+  quantities remain decimal strings; the rule for other digest-bearing
+  numeric fields (the HYBRID number discipline) is now stated
+  explicitly rather than left to the withdrawn algorithm's implicit
+  prohibition.
+- Changes conformance behavior for one input class: a null, empty-array,
+  or empty-object member in a digest-bearing field, which the prior
+  `jcs-n`-based construction silently normalized away, is now a
+  verification failure that a verifier reports naming the offending
+  member ({{presence}}) — consistent with `jcs` performing no
+  normalization and this profile's own Presence Rule instead being a
+  producer-side MUST.
+- Adds the governance-runtime framing of {{governanceruntime}}, the
+  explicit relationship statement to CPB of {{cpb-relationship}}, and
+  cites {{I-D.mih-sato-agent-accountability-composition}} for the first
+  time; none of these three changes any normative Capsule field or
+  verifier behavior.
+
 # Conventions and Definitions {#conventions}
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
@@ -195,11 +318,99 @@ Verifier:
   Producer. Verifier conformance is split into two classes
   ({{conformance}}).
 
-This profile computes every digest using the `jcs-n` algorithm of
-{{I-D.mih-sokolov-scitt-payload-binding}} exclusively. The canonical form,
-normalization rules, monetary/quantity decimal-string requirement, and
-float prohibition for `jcs-n` are defined in that document; this profile
-MUST NOT restate or alter them.
+JSON-DIGEST:
+: CANONICAL-DIGEST(jcs, P(v)), in the terms of
+  {{I-D.mih-sokolov-scitt-payload-binding}} — the CPB `jcs` canonicalization
+  algorithm (plain {{RFC8785}} JCS, SHA-256, lowercase hex) applied to a
+  value after this profile's own Presence Rule P has been applied
+  ({{presence}}). All JSON digests in this profile use this single
+  construction. This construction is byte-identical to the prior
+  revision's `HEX(SHA-256(JCS(normalize(v))))` for every value this
+  profile's Presence Rule accepts, because P performs the same bottom-up
+  null/empty-array/empty-object removal `normalize()` did; only the name
+  and the document of record for the canonicalization step change
+  ({{changes}}).
+
+# Canonical Payload Construction {#canonpayload}
+
+CPB requires every payload class to declare a canonicalization algorithm
+and its own presence and representation rules; this section is that
+declaration for the Capsule payload class. It states this profile's own
+rules and does not restate CPB's mechanics ({{cpb-relationship}}).
+
+## The Presence Rule (P) {#presence}
+
+Before a Capsule value is canonicalized, a producer and a verifier each
+apply the Presence Rule: recursively and bottom-up, remove every object
+member whose value is JSON null, an empty array (zero elements), or an
+empty object (zero members). Array elements are exempt — an element of
+an array is never removed by this rule, regardless of its value. Apply
+the Presence Rule after any exclusion set required by the computation
+(for example, `capsule_id` and chain-linkage fields when computing
+`capsule_id` itself, {{identity}}) and before the `jcs` canonicalization
+algorithm.
+
+A producer MUST emit values already in Presence-Rule normal form: a
+digest-bearing field MUST NOT carry a null, an empty array, or an empty
+object member that the rule would remove. A verifier that encounters
+such a member in a digest-bearing field MUST treat the Capsule as a
+verification failure and SHOULD name the offending member; a producer's
+non-conforming output is not silently repaired by re-normalizing it,
+because doing so would make two different byte sequences verify
+identically. This is a change from the prior revision, where `normalize()`
+was a step inside the digest construction that any input passed through
+regardless of its own shape ({{changes}}).
+
+## The Representation Rule (R) and number handling {#representation-rule}
+
+Every value entering a Capsule digest MUST already be in a single,
+producer-chosen token form: object members carry no duplicate keys;
+array element order is the order the producer observed or constructed,
+never reordered by a verifier; strings carry no representation choice
+this profile leaves open beyond RFC 8785's own string-escaping rules.
+
+Numbers are HYBRID. A producer MUST emit every digest-bearing numeric
+quantity as a token in canonical integer form (no exponent notation, no
+leading zeros, no `-0`) when the quantity is a count or an identifier,
+and as an exact decimal string, never a JSON floating-point literal,
+when the quantity is monetary or otherwise requires exact-value
+reproducibility ({{identity}}). A verifier applies the value rule — it
+compares numeric quantities by value, not by lexical token — because a
+standard JSON parser cannot see a digest-bearing field's original
+lexical form once parsed, and this profile does not require a
+non-standard parser of a Class 1 verifier. This is a declared gap: a
+producer that violates the token-form MUST above and a verifier that
+applies only the value rule can, in principle, both regard a
+non-canonical numeric literal as valid, even though two producers could
+have serialized the same value differently and produced different
+digests. A verifier operating in an environment where byte-exact input
+is available MAY additionally implement a strict tier that inspects the
+raw pre-parse bytes and rejects a non-canonical numeric token; this
+strict tier is OPTIONAL and its absence does not make a Class 1
+verifier non-conforming.
+
+## canonicalization_id {#canonid}
+
+A Capsule MAY carry a `canonicalization_id` field: the name of the
+Artifact Type Registry digest context ({{artifacttypes}}) that produced
+`capsule_id`. The field is a declaration, not a source of truth: it
+confirms the registry entry the producer used and never overrides it. A
+verifier that reads a `canonicalization_id` value MUST cross-check it
+against the digest context the Capsule's own registered artifact type
+and profile version resolve to; a mismatch, an unknown identifier, or an
+identifier naming an algorithm withdrawn in the Canonicalization Algorithm
+Registry of {{I-D.mih-sokolov-scitt-payload-binding}} is a verification
+failure — the verifier MUST fail closed on all three rather than fall
+back to resolving the digest context some other way. A Capsule omitting
+`canonicalization_id` is not thereby non-conforming: the digest context
+is otherwise resolved from the registered artifact type and profile
+version alone ({{artifacttypes}}), exactly as before this field existed;
+`canonicalization_id` is a redundant, self-describing confirmation, not
+a required index. `canonicalization_id` MUST NOT be confused with the
+discovery-mirror mechanism of {{I-D.mih-sokolov-scitt-payload-binding}} (an
+unprotected-header, advisory field carrying no binding authority);
+`canonicalization_id` is a signed payload member and is part of the
+record's own claim about itself.
 
 # The SCITT Signed Statement envelope {#projection}
 
@@ -231,36 +442,10 @@ form) is under consideration for that revision, since the CWT `sub` claim
 does not require URN syntax; the choice is deferred to avoid churning the
 protected-header subject format in this revision.
 
-The envelope-discipline principle governing protected-header claim
-placement is defined in {{I-D.mih-sokolov-scitt-payload-binding}}'s
-Envelope Conventions section and is instantiated by the closed `capsule_*`
-claim set above.
-
-## Issuer Binding {#issuer-binding}
-
-A Capsule's `iss` claim (CWT protected header) identifies the producer. Registration
-policies SHOULD authenticate that the signing key belongs to the claimed issuer;
-three supported binding patterns exist:
-
-1. **did:web** — `iss` is a DID URI; the verifier resolves it at verification time
-   to obtain the current signing key. Handles rotation without pinning a certificate.
-
-2. **x5chain** — an X.509 certificate chain in the COSE `x5chain` protected header;
-   the leaf's public key MUST match the signing key; the chain is anchored to a
-   configured CA trust root.
-
-3. **SPIFFE SVID** — a variant of x5chain in which the leaf MUST carry a SPIFFE ID
-   URI in its Subject Alternative Name; `iss` MUST equal that SPIFFE ID URI.
-   Trust anchor is a SPIFFE trust bundle. Rotation is SPIRE-managed; the SPIFFE ID
-   persists across certificate renewals.
-
-A Capsule whose signing key is a bare, unresolvable `kid` with no `x5chain` and no
-resolvable DID maps to a degraded assurance grade in the producing registration policy;
-this state MUST be reported, not silenced. The reference anchor
-(anchor.agentactioncapsule.org) runs an open registration policy and does not enforce
-issuer binding; production deployments SHOULD enforce at least one of the patterns above.
-No cross-pattern substitution is valid: a did:web resolution result does not satisfy
-x5chain trust-chain verification, and neither satisfies SPIFFE trust-bundle verification.
+A field is a protected-header claim only if a SCITT-generic party (a
+Transparency Service registration policy, or a profile-unaware verifier)
+must act on it without understanding this profile; everything
+semantically rich stays in the payload.
 
 ## Registration and Receipts {#registration}
 
@@ -279,15 +464,15 @@ reference registration API, and a Transparency Service may employ a
 receipt profile such as {{I-D.ietf-scitt-receipts-ccf-profile}}; this
 profile is indifferent to both choices.
 
-Statement-to-Receipt Binding, VDS-agnosticism, and the leaf construction
-rule are defined in {{I-D.mih-sokolov-scitt-payload-binding}}'s
-Statement-to-Receipt Binding section (and its Leaf Construction
-subsection). This profile imposes no VDS requirement; a Capsule submitted
-to any conforming SCITT Transparency Service produces a valid Transparent
-Statement, and leaf construction over the derived identifier MUST follow
-that subsection's rule. An optional unprotected-header discovery
-parameter mirroring the derived identifier MAY be included per
-{{I-D.mih-sokolov-scitt-payload-binding}}'s Discovery Mirror section.
+This profile is VDS-agnostic at the statement layer. Receipt format and
+proof verification are governed by the Verifiable Data Structure (VDS)
+of the chosen Transparency Service; this profile imposes no VDS
+requirement. RFC9162_SHA256 ({{I-D.ietf-cose-merkle-tree-proofs}}) is
+the default neutral VDS used by reference implementations; the CCF
+receipt profile ({{I-D.ietf-scitt-receipts-ccf-profile}}) is a
+conforming optional alternative. A Capsule submitted to any conforming
+SCITT Transparency Service produces a valid Transparent Statement
+regardless of which VDS that service employs.
 
 ## Outcomes {#outcomes}
 
@@ -301,12 +486,22 @@ original is immutable.
 
 # Registries of this profile (summary) {#registries}
 
-Six vocabularies of this profile are registry-governed under a
+Seven vocabularies of this profile are registry-governed under a
 Specification Required policy ({{RFC8126}}, Section 4.6):
 `verdict_class`, `disposition.decision`, `effect.type`,
-`irreversibility_class`, `effect_attestation`, and `chain.relation`. The
+`irreversibility_class`, `effect_attestation`, `chain.relation`, and
+`observation_mode`. The
 registries and their initial contents are defined in {{iana}}, kept at
 the back of this document per convention.
+
+A separate registry, the Artifact Type Registry ({{artifacttypes}}), is
+also hosted by this document as of this revision: it governs the
+payload-content vocabulary that a CPB typed digest reference's `type`
+field may name ({{I-D.mih-sokolov-scitt-payload-binding}}). It differs
+from the seven vocabularies above in shape (a digest-context template,
+not a flat token list) and in scope — it is not limited to values this
+profile itself defines — and so is addressed on its own in
+{{artifacttypes}} rather than folded into the list above.
 
 The binding invariant, stated once here and again in {{iana}}: verifiers
 MUST treat unregistered values as informational and MUST NOT reject a
@@ -327,19 +522,22 @@ detail is specified in {{constraints}}.
 
 | Field | Type | Req | Meaning |
 |---|---|---|---|
-| spec_version | string | REQUIRED | The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-02"; it tracks the document name and advances with each revision. |
+| spec_version | string | REQUIRED | The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-03"; it tracks the document name and advances with each revision. |
 | format_version | string | REQUIRED | The serialization-suite version of the envelope. The value defined by this profile version is "2"; the value reflects the pre-IETF reference-implementation serialization lineage this profile inherits, which is why a -00 document begins at "2" rather than "1". |
-| capsule_id | string (64 hex) | REQUIRED | The CPB derived identifier, exclusion set {capsule_id, chain}, per {{I-D.mih-sokolov-scitt-payload-binding}}'s Derived Identifier section. Verifiers MUST recompute; carried values MUST NOT be trusted. |
+| capsule_id | string (64 hex) | REQUIRED | JSON-DIGEST of the canonical capsule form: the envelope minus capsule_id and chain-linkage fields, after the Presence Rule ({{presence}}). Content-addresses the envelope. |
 | action_id | string | REQUIRED | Stable identifier of the action; unique within one producer ledger. |
 | action_type | string | REQUIRED | "fyi" (informational) or "decide" (a disposition was required). |
 | operator | string | REQUIRED | The accountable tenant the action was performed for. |
 | developer | string | REQUIRED | The agent identity and version that performed the action. |
 | timestamp | string | REQUIRED | {{RFC3339}} UTC with "Z" suffix. |
 | epoch_id | string | OPTIONAL | An operator-assigned epoch identifier, stable within one operational configuration of the agent system. Producers SHOULD populate this field and rotate its value — together with an epoch-boundary Capsule ({{epochs}}) — when a configuration change that materially alters agent behavior occurs (for example, a model-version swap, a policy-manifest revision, or a significant constraint-schema change). A verifier or ledger consumer scopes a history window to a specific operational configuration by filtering on operator and epoch_id. Absent epoch_id implies a single, unnamed epoch; a producer MUST NOT back-fill epoch_id on Capsules already sealed. |
+| canonicalization_id | string | OPTIONAL | The Artifact Type Registry digest-context name that produced capsule_id ({{canonid}}). A self-describing confirmation, not a required index. |
+| conversation_ref | typed digest reference | OPTIONAL (REQUIRED when applicable) | A CPB typed digest reference citing the enclosing conversation-grain record when the action was sealed inside one ({{conversationbinding}}). |
 
-Monetary and quantity values are subject to the exact-decimal-string
-requirement of the `jcs-n` algorithm ({{I-D.mih-sokolov-scitt-payload-binding}};
-see {{conventions}}).
+Monetary and quantity values anywhere in a Capsule MUST be exact decimal
+strings, never JSON floating-point numbers; digests are not reproducible
+across implementations otherwise. This is the Capsule-specific instance
+of the Representation Rule ({{representation-rule}}).
 
 ## Configuration epochs {#epochs}
 
@@ -401,11 +599,13 @@ verification failure (an epoch change mid-stream is not structurally
 non-conforming), but it is evidence that a configuration boundary occurred
 without a corresponding epoch-boundary Capsule.
 
-The `chain` block is excluded from `capsule_id` per the exclusion-set
-discipline of {{I-D.mih-sokolov-scitt-payload-binding}}'s Derived Identifier
-section. The excluded `chain` block is nonetheless signed within the
-COSE_Sign1 envelope ({{envelope}}) along with the rest of the payload, so
-the chain linkage remains tamper-evident even though it is outside the
+Chain-linkage fields are intentionally excluded from `capsule_id` so that
+a Capsule's content-address remains stable regardless of what later chains
+to it — including the chain block itself, which references a parent's
+`capsule_id` and so could not be inside the address it helps compute. This
+exclusion does not weaken integrity: the entire Capsule payload, the chain
+block included, is signed within the COSE_Sign1 envelope ({{envelope}}),
+so the chain linkage is tamper-evident even though it is not part of the
 content-address.
 
 ## Effect Record and the confirmed-effect binding {#effect}
@@ -417,7 +617,7 @@ The Effect Record describes the side effect the action committed. Its
 |---|---|---|
 | planned | Intended, not dispatched. | request_digest and response_digest MUST be absent. |
 | dispatched | Sent; result not observed. | request_digest SHOULD be present; response_digest MUST be absent. |
-| confirmed | Result observed and bound. | response_digest MUST be present and MUST be a `jcs-n` digest ({{conventions}}) of the actual response. |
+| confirmed | Result observed and bound. | response_digest MUST be present and MUST be the JSON-DIGEST of the actual response. |
 | failed | Attempted; runtime reported failure (state known). | response_digest, when present, digests the failure response. |
 | reverted | A committed effect was undone. | Correlated via external_ref / decision_id. |
 
@@ -476,28 +676,10 @@ informational, never a verification failure, and unknown never grades up.
 The grade is digest-committed in the Capsule payload and is available to
 any payload-bearing verifier, which can thereby distinguish gate-observed
 execution from runtime-claimed execution; promotion of the grade to a
-protected-header (CWT claim) position is an explicit candidate for a -02
-revision, to be decided once real transparency-log consumers exist. This
-version deliberately claims no header-level visibility for the grade.
-
-References to external authorization records carried in the Effect Record
-(for example, permit receipts per {{I-D.munoz-scitt-permit-profile}}, or
-machine mandates) are typed digest references per
-{{I-D.mih-sokolov-scitt-payload-binding}}'s Typed Digest References
-section, with artifact types drawn from the CPB Artifact Type registry.
-Cross-profile comparability of digest values (comparable only under
-compatible declared digest contexts; otherwise indeterminate/deny, never
-equal-looking-hex) follows that document's Cross-Profile Comparability
-subsection.
-
-This profile's own `chain.parent_capsule_id`, `reason_digest`,
-`evidence_digest`, and `external_ref` fields are a distinct concept from
-the typed digest reference above: they are bare intra-profile digests and
-join keys — a `jcs-n` digest or an opaque correlation string — not
-`{type, digest_alg, digest}` objects citing an external artifact by
-registered artifact type. They MUST NOT be interpreted as CPB typed digest
-references. Only the external-authorization references described in this
-paragraph use the CPB typed-reference mechanism.
+protected-header (CWT claim) position is an explicit candidate for a
+future revision, to be decided once real transparency-log consumers
+exist. This version deliberately claims no header-level visibility for
+the grade.
 
 ## Assurance {#assurance}
 
@@ -517,84 +699,56 @@ standalone < chained < anchored for overclaim detection. A producer MUST
 NOT record an assurance mode it did not achieve; a verifier rederives each
 mode from the evidence present and reports any overclaim.
 
-### Cross-party assurance {#crossparty}
+## Observation mode {#observationmode}
 
-A Capsule's evidentiary weight along the *counterparty* dimension — how
-much of a counterparty's own attestation is structurally present in this
-record — is a fourth, orthogonal claim: `assurance.cross_party_rung`. It
-is a new axis, not a new value folded into `attestation_mode`, for the
-same reason {{orthogonality}} already gives for keeping `verdict_class`
-and `effect_mode` separate: `attestation_mode` answers "has this record
-been committed to an independent transparency log" (log custody);
-`cross_party_rung` answers "how much of the counterparty's own signed
-evidence is bound into this record" (exchange evidence). These are
-independent facts a producer can hold in any combination — a
-`self_attested` record can still be `full_bilateral` (both parties signed,
-neither side anchored yet), and an `anchored` record can still stand on
-`unilateral_fallback` evidence alone (a solo attestation that was
-independently anchored). Folding a `countersigned` value into
-`attestation_mode` would collapse these two facts into one claim and make
-that combination inexpressible, so this profile keeps them orthogonal.
+A Capsule MAY carry a `compute_attestation` map: producer-environment
+claims, digested with the rest of the payload — every member
+participates in the `capsule_id` digest and sits under the Signed
+Statement's signature, so the claims are tamper-evident even though
+they are testimony. The reference implementation already carries this
+map; this document defines its first registered member.
+`observation_mode` states how the producer observed the action it
+sealed. Two values are defined: `in_path` — the producer executed in
+the action's own path and bound input and output from its own
+position: a callback, a decorated tool, or a wire-level intermediary
+the action traverses (a gateway sealing at the boundary) — and
+`event_stream` — the producer observed the runtime's event narration
+after the fact and paired input to output from that narration. The
+distinction is provenance, not a quality score: under identifier-less
+concurrency an event-stream producer's input-to-output pairing is
+best-effort, and this field makes that proximity legible to the
+consumer, who decides what weight the pairing guarantee deserves.
 
-`cross_party_rung` takes one of three values, ordered
-`unilateral_fallback` < `acknowledged_receipt` < `full_bilateral` for
-overclaim detection — the same never-grades-up discipline
-{{assurance}} already applies to `attestation_mode`, `effect_mode`, and
-`ledger_mode`:
+Like the assurance modes, `observation_mode` is producer testimony —
+but unlike them it is not independently rederivable from the record,
+which is precisely why it is recorded rather than inferred. The
+adversarial consequence is stated plainly: a producer can claim a
+proximity it did not have, and the signature proves the claim was
+made, not that it is true. The field therefore shifts evidentiary
+weight only downward — a verifier MAY discount event-stream pairing,
+but MUST NOT grant `in_path` any additional cryptographic assurance
+on the field's word alone. Proximity claims become verifiable only by
+composition with platform attestation, which is the registry's growth
+path: the value set is deliberately open, governed under the same
+Specification Required policy as the other vocabularies of this
+profile ({{registries}}), so stronger proximities — an in-path
+producer whose position is itself platform-attested — register as
+they mature. An absent `observation_mode` means unstated; a verifier
+treats an unrecognized value the same way — informational, unstated —
+and MUST NOT reject a Capsule for stating, omitting, or carrying an
+unrecognized value.
 
-| cross_party_rung | Meaning |
-|---|---|
-| unilateral_fallback | Only the initiator's own signed half is present; no counterparty evidence, or the counterparty was unreachable or its half did not verify. |
-| acknowledged_receipt | A counterparty reference and correlator are present and well-formed: the counterparty cryptographically acknowledged receipt, but the referenced half carries no substantive co-signed result. |
-| full_bilateral | A counterparty reference and correlator are present and well-formed, and the referenced half is marked as carrying a substantive co-signed result — both parties' evidence is bound to the same exchange. |
-
-`cross_party_rung` is REQUIRED when a `cross_party` evidence block (below)
-is present, and both are OPTIONAL on a Capsule with no cross-party
-exchange. A producer MUST NOT claim a `cross_party_rung` its evidence does
-not support. A Class-1 verifier independently rederives the highest rung
-the `cross_party` block supports and reports any claim above the derived
-rung as an `assurance_overclaim` ({{verification}}), downgrading the
-reported derived rung to the value the evidence actually supports — the
-same treatment {{verification}} already gives an overclaimed
-`attestation_mode` or `ledger_mode`.
-
-A Capsule that participates in a cross-party exchange carries an OPTIONAL
-top-level `cross_party` block:
-
-- `initiator_ref` (REQUIRED when the block is present): a `jcs-n` digest
-  ({{conventions}}) of the initiator's own signed half. A bare
-  intra-profile digest, not a CPB typed digest reference ({{effect}}).
-- `counterparty_ref` (OPTIONAL): a `jcs-n` digest of the counterparty's
-  signed half. Its absence means no usable counterparty evidence was
-  obtained — the counterparty was unreachable, or its half did not verify
-  at the layer that checked it.
-- `correlator` (REQUIRED when `counterparty_ref` is present): an opaque
-  profile-native correlation string joining `initiator_ref` and
-  `counterparty_ref` to the same exchange — the same kind of "opaque
-  correlation string" primitive `external_ref` already uses ({{effect}}),
-  not a CPB reference.
-- `substantive` (OPTIONAL boolean, meaningful only when `counterparty_ref`
-  is present): true only when the counterparty's referenced half carries a
-  substantively co-signed result rather than a bare receipt of the
-  initiator's half.
-
-A verifier derives `cross_party_rung` from this block's own bytes alone,
-never by dereferencing the digests it cites: `unilateral_fallback` when
-`counterparty_ref` is absent or malformed; `acknowledged_receipt` when
-`counterparty_ref` and `correlator` are both present and well-formed but
-`substantive` is absent or false; `full_bilateral` when
-`counterparty_ref` and `correlator` are both present and well-formed and
-`substantive` is true. This is a structural check, the same kind
-{{assurance}} already uses to derive "chained" from the mere presence of a
-well-formed `chain` block — it does not verify the counterparty's
-underlying signature itself, which is a substrate concern by reference
-({{verification}}), mirroring how this layer never derives `anchored`.
-The two-party wire encoding this rung summarizes — the initiator and
-counterparty attestation halves, their signatures, and the handshake that
-produces them — is the companion
-{{I-D.mih-agent-bilateral-attestation}}'s concern, not this profile's;
-this profile carries only the rung claim and the minimal correlation
-evidence needed to rederive it honestly.
+`compute_attestation` MAY additionally carry `agent_input_digest` and
+`agent_output_digest`, each a JSON-DIGEST ({{conventions}}) of the raw agent
+input or output content associated with this action. Like other
+`compute_attestation` members these digests are digested with the rest of
+the payload and are therefore tamper-evident, but the content they commit
+to is not itself carried in the Capsule. A producer that later wishes to
+reveal that content to a specific verifier, without altering `capsule_id`
+or the signed bytes, does so with the companion Disclosure Envelope
+mechanism of {{I-D.mih-scitt-agent-action-capsule-disclosure-envelope}},
+which wraps the unmodified Capsule alongside an out-of-band `disclosures`
+object and defines the verifier's digest-recomputation checks.
 
 ## Disposition and the verdict reason-class {#disposition}
 
@@ -602,13 +756,9 @@ A Capsule's `disposition` block records how the decision was disposed:
 
 - `decision` (REQUIRED): "accept", "reject", "needs_input", or "deferred"
   (registry-governed, {{iana}}).
-- `approver` (REQUIRED): a closed enum, exactly "human", "policy", or
-  "counterparty". The value domain is fixed by this specification (not
-  registry-governed); an unknown approver value is not a conforming
-  Capsule. Unlike the registry-governed vocabularies of this document
-  ({{iana}}), `approver` stays a closed three-member enum after this
-  addition — never a registry an implementation is expected to extend by
-  registration.
+- `approver` (REQUIRED): a closed enum, exactly "human" or "policy".
+  The value domain is fixed by this specification (not registry-governed);
+  an unknown approver value is not a conforming Capsule.
 - `human_disposed` (REQUIRED, boolean): the honest in-the-loop flag —
   true ONLY when a human actually acted. A policy auto-approval is false.
   `human_disposed: true` REQUIRES `approver: "human"`; a producer MUST
@@ -621,7 +771,7 @@ A Capsule's `disposition` block records how the decision was disposed:
   where it carries the terminal reason; it is legitimately absent for a
   clean `executed` verdict (which has no reason-class, mirroring an absent
   `reason_digest`).
-- `reason_digest` (OPTIONAL): a `jcs-n` digest ({{conventions}}) of a structured, private reason
+- `reason_digest` (OPTIONAL): JSON-DIGEST of a structured, private reason
   object — machine-readable members such as the constraint identifier,
   the threshold, and the observed value; never free prose — so two
   engines attesting the same refusal produce the same digest. The member
@@ -639,12 +789,6 @@ A Capsule's `disposition` block records how the decision was disposed:
   frozen summary is a
   digest-committed, content-side layer written once at deferral time; it
   MUST NOT be regenerated.
-
-- `approver: "counterparty"` (see {{crossparty}}) records that a
-  counterparty to a cross-party exchange, rather than this operator's own
-  human or policy, disposed the decision. The honesty invariant above is
-  unaffected: `human_disposed: true` still REQUIRES `approver: "human"`,
-  so a counterparty disposition is never claimed as human-in-the-loop.
 
 
 ### The verdict_class vocabulary {#verdictclass}
@@ -751,6 +895,56 @@ Open-items predicate: an item is open when its Capsule's
 store carries `chain.parent_capsule_id` equal to its `capsule_id` with
 `relation: "supersedes"`.
 
+### Observed order and concurrency {#order}
+
+The chain block's single parent is intentional and remains so:
+`chain` records state transitions — supersession, epoch openings —
+and its authority rules ({{hitl}}) assume exactly one parent.
+Observed order is a different claim, and it gets a different, optional
+structure. A Capsule MAY carry a digested `order` block with two
+members, separately optional:
+
+`follows` — a list of `capsule_id` values naming the Capsules whose
+completion the producer actually observed before this action began.
+This expresses fan-in ("this followed several") without general graph
+semantics: no edge typing, no transitive claims, only direct observed
+precedence.
+
+`concurrency_group` — an opaque value shared by a set of Capsules
+whose mutual order the producer does not assert. Sealing is
+sequential per producer even when actions are not; a runtime that
+seals concurrent actions in completion order would otherwise write a
+linear sequence that never existed. The group marker tells a consumer
+exactly what not to infer. The group value MUST be opaque and freshly
+generated — a random value scoped to the group, never a reused
+internal identifier — since it is baked irreversibly into the record;
+the admission rules of {{privacy}} apply to it as to any clear field.
+
+The invariant: a producer MUST NOT assert order it did not observe.
+Seal order and ledger order are storage facts, not causal claims, and
+a consumer MUST NOT infer sequence among Capsules sharing a
+`concurrency_group`. Completion order is not causal order. The
+converse discipline also holds: a producer that observed an order
+SHOULD record it rather than mark the set unordered — concealing
+observed sequence is the same honesty failure in the other
+direction.
+
+One structure spans the scales this problem appears at. A runtime
+sealing parallel tool calls marks the set with one
+`concurrency_group`. A join step `follows` the several Capsules it
+actually waited for. And across organizations, a bilateral
+completion attestation is fan-in by design — both parties'
+attestations precede it — and the `order` block gives that shape a
+native expression: the bilateral companion
+(cf. {{?I-D.mih-agent-bilateral-attestation}}) is the intended first
+user, its reference implementation today chaining to a single parent
+until its wire encodings are fixed. Intra-agent parallelism and
+cross-organization exchange are the same partial-order question at
+different radii, and they share this one primitive. Full DAG
+semantics — typed after/concurrent-with edges, transitive closure —
+remain future work; `follows` plus `concurrency_group` eliminate the
+false-sequence inference without general graph verification.
+
 # Class 1 verification {#verification}
 
 Verification has two tiers. Substrate verification — the issuer's
@@ -768,10 +962,16 @@ result, never throw; a single `ok` boolean gates trust in every other
 reported field; findings are reported in a fixed order.
 
 1. Structural: REQUIRED fields present and typed; no floating-point
-   values in digest-bearing fields.
-2. Identity: recompute the CPB derived identifier per
-   {{I-D.mih-sokolov-scitt-payload-binding}}'s Derived Identifier section
-   and compare against the carried `capsule_id`.
+   values in digest-bearing fields; no null, empty-array, or
+   empty-object member present in a digest-bearing field — the Presence
+   Rule ({{presence}}) is a producer-side MUST, and a verifier finds a
+   violation by inspection, not by digest mismatch, since recomputation
+   would otherwise silently absorb it.
+2. Identity: recompute `capsule_id` over the canonical capsule form and
+   compare; when `canonicalization_id` ({{canonid}}) is present, cross-
+   check it against the resolved digest context and fail closed on a
+   mismatch, an unknown identifier, or an identifier naming a withdrawn
+   algorithm.
 3. Confirmed-effect binding: `effect.status: "confirmed"` without a
    well-formed `response_digest` is a failure ({{effect}}).
 4. Verdict/effect orthogonality: a never-dispatching `verdict_class`
@@ -864,8 +1064,8 @@ A Constraint Record is the public verdict of one deterministic check that
 ran against the action. It carries only sanitized categories — an `id`,
 optional `check_type` and `method` labels, a `result` of "pass" / "fail" /
 "n/a", `severity`, a `blocking` flag recording whether the check actually
-gated this decision, and an optional `evidence_digest` (a `jcs-n` digest,
-{{conventions}}) binding the verdict to the private evidence the check evaluated. The
+gated this decision, and an optional `evidence_digest` (JSON-DIGEST)
+binding the verdict to the private evidence the check evaluated. The
 content a check evaluated MUST NOT appear in the public record; it is
 bound by digest only. The check's predicate, evidence schema, and
 thresholds live in the producer's manifest.
@@ -936,20 +1136,54 @@ JCS-canonicalized arrays — because the Capsule payload is JSON; it is
 written to stay aligned with SPICE's SD-CWT {{I-D.ietf-spice-sd-cwt}}
 (the CBOR sibling) for SCITT-ecosystem consistency.
 
-The complete normative profile of this mechanism — including the
+The complete normative profile of this extension — including the
 commitment encoding, disclosure syntax, and verifier checks — is defined
-in the companion Internet-Draft {{I-D.mih-scitt-cpb-selective-disclosure}}.
-That companion is a CPB payload-class document; the mechanism is
-payload-class-generic. This profile (AAC) retains only the
-eligibility-policy annex: the declaration of which AAC payload fields are
-eligible for selective disclosure and which are non-eligible because this
-profile's own verifier requires their values in clear.
+in the companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-selective-disclosure}}.
+That document profiles the `_sd_alg` / `_sd` payload vocabulary, the
+salted-hash commitment construction over JCS-serialized disclosure arrays,
+the decoy-digest mechanism, the set of eligible fields, and the ordered
+verifier check set (SD-1 through SD-6 plus integration with the base
+Class 1 and Class 2 checks).
 
 Implementations of this profile version MUST NOT generate or interpret
 selective-disclosure payload structures unless they additionally implement
-{{I-D.mih-scitt-cpb-selective-disclosure}}: the extension point is
+{{I-D.mih-scitt-agent-action-capsule-selective-disclosure}}: the extension point is
 defined only in that companion, and no conformance claim or verification
 behavior is defined for it in this document.
+
+## Binding to conversation-grain records {#conversationbinding}
+
+An agent action frequently occurs inside a multi-turn conversation
+between an agent and a counterparty, a user, or another agent.
+{{I-D.birkholz-verifiable-agent-conversations}} (Verifiable Agent
+Conversations, VAC) defines a conversation-grain Signed Statement for
+exactly this container. A Capsule and a VAC record are complementary,
+not competing: a Capsule records what one action did; a VAC record
+records the conversation that action occurred within. This document
+states the Capsule-side binding normatively; it does not, and cannot on
+its own, make the binding independently verifiable, because that
+additionally requires an Artifact Type Registry entry for the VAC
+record ({{artifacttypes}}), which is a separate registration act by that
+document's own editors.
+
+A producer whose runtime sealed an action inside a VAC-conveyed
+conversation MUST populate `conversation_ref` ({{identity}}) with a CPB
+typed digest reference {{I-D.mih-sokolov-scitt-payload-binding}} citing
+the conversation's Signed Statement; a producer MUST NOT omit
+`conversation_ref` when the runtime observed such an enclosing
+conversation. `conversation_ref` is otherwise absent — an action with no
+observed enclosing conversation carries no reference to fabricate one
+against.
+
+Until an Artifact Type Registry entry for the VAC conversation record
+exists, a verifier resolving a populated `conversation_ref` follows
+{{I-D.mih-sokolov-scitt-payload-binding}}'s rule for an unregistered
+`type`: the citation is structurally present and recorded, but not
+verified — it is not evidence, and its presence is not a defect in the
+Capsule. The requirement to populate `conversation_ref` above binds a
+producer regardless of registry state; only the verifier's ability to
+independently confirm the citation depends on the registry entry's
+completion, which this document does not control.
 
 # Related Work {#related}
 
@@ -1000,11 +1234,7 @@ anchor, with an explicit disposition vocabulary (executed, blocked,
 denied, timeout, errored, deferred, expired, escalated) that
 distinguishes outcome categories rather than receiver attestation alone.
 The companion Internet-Draft {{I-D.mih-agent-bilateral-attestation}}
-profiles the two-party extension. {{I-D.mih-sato-agent-accountability-composition}}
-defines composition and conformance rules for multi-agent accountability
-chains built on the same CPB derived-identifier primitive this profile
-uses; Capsules chained via {{hitl}} and bilaterally attested Capsules
-compose under those rules.
+profiles the two-party extension.
 
 {{ERC8004}} defines on-chain identity, reputation, and validation
 registries for AI agents on a public blockchain. This profile differs in
@@ -1041,11 +1271,108 @@ can verify the record end-to-end. Statement-type and verdict-class
 values reserved in this document for that extension are governed by
 the registries in {{iana}}.
 
-The companion Internet-Draft {{I-D.mih-scitt-cpb-selective-disclosure}}
+The companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-selective-disclosure}}
 normatively profiles the selective-disclosure extension point reserved in
 {{selectivedisclosure}}, specifying the per-field commitment structure,
 disclosure syntax, eligible fields, and verifier checks, aligned with
 {{I-D.ietf-spice-sd-cwt}}.
+
+# Artifact Type Registry {#artifacttypes}
+
+This section hosts the Artifact Type Registry: the registry of the
+artifact types that may appear in the `type` field of a CPB typed digest
+reference {{I-D.mih-sokolov-scitt-payload-binding}}. Per the charter
+scoping that separates CPB's binding mechanism from the payload-content
+vocabularies that use it, this registry moves here from CPB as of this
+revision; CPB retains only the canonicalization-algorithm registry. The
+registration template, the purpose-label vocabulary a multi-context
+artifact type's digest contexts draw from, and the resolution rules a
+verifier applies to a `type` (and, where needed, `purpose`) value remain
+CPB's mechanism and are not restated here — see
+{{I-D.mih-sokolov-scitt-payload-binding}} for the full template and the
+present-but-not-verified handling of an unregistered `type`.
+
+This registry's hosting by this document is a charter-scope consequence,
+not a scope narrowing of the registry itself: any party MAY register an
+artifact type here under the same Specification Required policy and the
+same third-party-registration rules CPB defined, whether or not the
+artifact type is a Capsule-family record. The two entries below are the
+entries carried over from CPB's registry as of this revision.
+
+## `agent-action-capsule` {#art-agent-action-capsule}
+
+Reference: this document.
+
+Digest context (`identifier`):
+
+* Profile version: `draft-mih-scitt-agent-action-capsule-03` and later
+  revisions that do not change this digest context.
+* Canonicalization algorithm: `jcs` (plain RFC 8785, no normalization
+  pass) applied after this profile's own Presence Rule ({{presence}}).
+* Field set: all capsule fields.
+* Exclusion set: `{capsule_id, chain}`.
+* Domain separation: none.
+* Pre-image encoding: JCS UTF-8 octets, per `jcs`.
+* Representation: 64-char lowercase hex.
+
+This digest context supersedes the prior revision's `jcs-n`-algorithm
+context. The two are byte-identical for every value already in this
+profile's Presence-Rule normal form ({{presence}}), because Presence and
+`jcs-n`'s normalization pass perform the same bottom-up removal; the
+change is which document defines the removal step and what the
+combination is named, not what bytes it produces ({{changes}}). `jcs-n`
+is withdrawn in the current revision of
+{{I-D.mih-sokolov-scitt-payload-binding}}; a Capsule or reference naming
+it MUST be treated as unverifiable per that document's fail-closed rule
+for a withdrawn algorithm.
+
+## `machine-mandate` {#art-machine-mandate}
+
+Owner: Anton Sokolov, Tyche Institute. Reference: `tyche-institute/machine-mandate`
+@ `524e6a3129b7f1ab850dd9471967458d3cb6f4cd`. This entry is carried over
+from CPB's registry unchanged in substance; its provenance, disclosure,
+and vector pins remain as CPB recorded them, and this document does not
+restate or re-confirm them independently. This entry is not a
+Capsule-family artifact type; it is hosted here solely because this
+document is now the Artifact Type Registry's host document under the
+charter split ({{cpb-relationship}}), and remains the owner's construction
+in every other respect.
+
+Digest context (`identifier`):
+
+* Profile version: N/A
+* Canonicalization algorithm: `as-transmitted`
+* Field set: byte-boundary selector — the issuer-signed JWS component of
+  the SD-JWT (RFC 7515 §7.1 compact serialization; the first
+  `~`-separated component exactly as transmitted); everything after the
+  first `~` (salted disclosures and the KB-JWT) is outside the pre-image.
+* Exclusion set: N/A — `as-transmitted` has no field set and therefore
+  no exclusion set.
+* Domain separation: none.
+* Pre-image encoding: N/A — the pre-image is the exact transmitted
+  octets.
+* Representation: bare 64-char lowercase hex.
+
+Digest context (`equivalence`):
+
+* Profile version: N/A
+* Canonicalization algorithm: `jcs`
+* Field set: `{action_id, outcome}`, closed.
+* Exclusion set: none.
+* Domain separation: none.
+* Pre-image encoding: JCS UTF-8 octets, per `jcs`.
+* Representation: `sha256:` + 64-char lowercase hex, as carried in the
+  in-document `action_hash` claim.
+
+Conformance vectors: `tyche-institute/machine-mandate`, branch
+`feat/cpb-registry-vectors-v0.1`, commit `5605783a` (supersedes
+`640f2a668cfc4a357f9b34ecb0add5faf8bbdda1`),
+`vectors/cpb-registry/machine-mandate-vectors-v0.1.json`, file SHA-256
+`06572fccb7afa3eda4c68604221a83476faac8f8509b7165724553d58384d816`.
+
+Proposed Artifact Type entries awaiting their owners' confirmation
+continue to be tracked in the source repository's provisional-registry
+document, independent of which document hosts the live tables.
 
 # IANA Considerations {#iana}
 
@@ -1063,8 +1390,13 @@ header parameter registry and no new CWT claim registry; the new
 registries here are payload-vocabulary registries only.
 
 IANA is requested to create a new registry group, "Agent Action Capsule
-Parameters", containing the six registries below. The registration
+Parameters", containing the registries below. The registration
 policy for each is Specification Required ({{RFC8126}}, Section 4.6).
+The Artifact Type Registry ({{artifacttypes}}) is requested as a
+separate registry, migrated from {{I-D.mih-sokolov-scitt-payload-binding}}
+under the charter split ({{cpb-relationship}}); it is not one of the
+registries in this group, since its scope is not limited to vocabulary
+this document itself defines.
 
 Specification Required is chosen deliberately. The threat it answers is a
 vocabulary value whose meaning is defined only inside a closed product —
@@ -1123,6 +1455,14 @@ Initial contents are the seeded values of this document, verbatim:
    relations, or amends / contradicts) are expected future registrations,
    each admitted once its semantics and any verifier consequence are
    pinned in a publicly available specification.
+7. "observation_mode" registry ({{observationmode}}): in_path,
+   event_stream.
+   Designated-expert guidance: `in_path` and `event_stream` record
+   observation posture, not assurance quality — both are producer
+   testimony and carry no additional cryptographic guarantee beyond the
+   Signed Statement's signature. Future registrations SHOULD state
+   whether the mode implies any ordering or sequencing constraint on the
+   sealed action.
 
 Interim registry of record: until this document is published as an RFC,
 the registry of record is the `REGISTRY.md` file of the source
@@ -1130,6 +1470,20 @@ specification repository, seeded with the same initial contents and the
 same policy; on publication the IANA registries become the registry of
 record. Change controller: Action State Group, Inc. (interim); the IETF
 on publication.
+
+## Artifact Type Registry (registry request) {#iana-art-request}
+
+IANA is requested to create the Artifact Type Registry described in
+{{artifacttypes}}, under Specification Required policy
+({{RFC8126}}, Section 4.6), with a Designated Expert. Entries are
+immutable: a behavior change registers a new entry rather than modifying
+an existing one, consistent with the immutability rule
+{{I-D.mih-sokolov-scitt-payload-binding}} states for this registry.
+This request migrates the registry from CPB per the charter split
+({{cpb-relationship}}); it does not by itself relocate the interim
+living record from wherever it is currently kept, which remains an
+implementation and process decision for the document editors rather
+than a normative statement of this document.
 
 ## No new registry {#no-new-registry}
 
@@ -1208,12 +1562,13 @@ Agent Action Capsule outcome media type:
 
 # Security Considerations {#security}
 
-The tamper-evidence-versus-runtime-honesty boundary — that the envelope
-signature and registration Receipt attest record bytes and their timing,
-not the recording runtime's honesty at the moment of recording — is given
-in {{I-D.mih-sokolov-scitt-payload-binding}}'s Security Considerations
-(Tamper Evidence and Runtime Honesty). This profile inherits that
-boundary; the following extends it to the confirmed-effect binding.
+Tamper-evidence is for record bytes, not recorder honesty. This profile
+attests what was recorded; it cannot prove the recording runtime was
+honest at the moment of recording. A dishonest runtime with no external
+witness can produce an internally valid record of a fiction. Registration
+in a Transparency Service bounds the timing of such a record and makes
+its omission or later substitution detectable; it does not make its
+content true.
 
 Confirmed means observed-and-bound, not world-state. A `confirmed`
 effect proves the producer bound the bytes of an observed response, not
@@ -1245,14 +1600,16 @@ is falsifiable from the record alone. A verifier consuming
 non-constructor-produced bytes SHOULD assert the invariant defensively
 against hand-crafted input ({{verification}}).
 
-The low-entropy digest leakage risk — that a digest over a small
-enumeration, short identifier, or bounded value space is recoverable by an
-adversary via a dictionary attack, and so is not confidential merely by
-being a digest — is given in {{I-D.mih-sokolov-scitt-payload-binding}}'s
-Security Considerations (Low-Entropy Fields). This profile's
-`reason_digest` and `evidence_digest` fields are subject to that caveat;
-producers SHOULD commit such values under a per-tenant salt or via a
-tenant-private manifest rather than digesting the bare value.
+Digests can leak the values they commit. A digest is hiding only to the
+extent its committed value space is large and unguessable; when the
+committed value is low-entropy — a small enumeration, a short identifier,
+a bounded amount — an adversary can recover it by digesting candidate
+values and matching (a dictionary attack), so a `reason_digest`,
+`evidence_digest`, or any other digest over a low-entropy value is not
+confidential merely by being a digest. Producers SHOULD commit such values
+under a per-tenant salt or via a tenant-private manifest rather than
+digesting the bare value, so that recovering the input requires the secret
+and not merely a guess of the value space.
 
 Input integrity is a composable upstream concern. This profile records
 what the producer observed and bound at seal time; it does not
@@ -1288,66 +1645,91 @@ Capsules are distinguishable by payload `operator` alone but not correlatable
 at the SCITT-header layer; a producer SHOULD treat a key rotation that
 coincides with a configuration change as an epoch boundary ({{epochboundary}})
 to make the transition explicit in the record.
-See also {{privacy}} of this document for the data-admission tiers that govern
-which runtime context fields MAY enter a Capsule, including the consequence of
-the low-entropy digest caveat above for end-user identity fields.
-
-Issuer authentication is registration-policy territory, not payload territory.
-The three supported patterns for binding the `iss` claim to a verifiable signing key
-— did:web, x5chain, and SPIFFE SVID — are defined in {{issuer-binding}}. A
-registration policy that accepts a bare, unresolvable `kid` without enforcing at
-least one of these patterns reduces issuer accountability to key-material correlation
-only; verifiers relying on issuer identity for policy decisions SHOULD confirm which
-binding pattern, if any, was enforced at registration time.
 
 # Privacy Considerations {#privacy}
 
-A Capsule is content-addressed, tamper-evident, and MAY be anchored to a
-Transparency Service. As a direct consequence, a committed Capsule cannot be
-retracted: there is no after-the-fact edit path, and an anchored record is durable
-beyond the producer's control. Therefore: anything admitted to a Capsule is
-admitted permanently, and PII or secrets in a content-addressed, tamper-evident,
-anchored record are unfixable by design. Producers MUST apply a default-deny
-posture to runtime context before it reaches a Capsule.
+Redaction is unfixable by design — the more durable the record, the
+higher the bar for admission. A Capsule is content-addressed: every
+field participates in the `capsule_id` digest, so removing or altering
+a field after sealing destroys the identity of the record and breaks
+any chain or registration built on it. Registration in a Transparency
+Service extends that permanence beyond the producer's custody. Privacy
+in this profile is therefore an admission-time discipline, not a
+retention-time one: the only reliable moment to protect a value is
+before it enters the record. This section applies the correlation,
+identification, and disclosure concerns of {{RFC6973}} to that
+admission decision. Producer context divides into three admission
+classes.
 
-## Data-Admission Tiers {#data-admission-tiers}
+Clear-safe: opaque correlation handles. An agent name, an invocation
+or run identifier MAY appear in clear. Correlation handles exist so a
+verifier can join related Capsules; they identify workflow, not
+people. Two constraints keep that true. First, a handle SHOULD be
+opaque, and producers MUST NOT derive one from end-user identity,
+directly or through a handle that is itself bound to one person: an
+identifier computed from an email address, an account name, or a
+per-user thread handle is an end-user identifier regardless of its
+format. Second, linkage makes
+identity out of reuse — a handle that recurs across many Capsules
+belonging to one person becomes a stable pseudonymous identifier by
+correlation alone, so producers SHOULD scope correlation handles to an
+invocation or workflow rather than to a user or long-lived session —
+minting a fresh random run identifier per invocation rather than
+propagating the runtime's session handle.
+The class test is binding, not naming: a runtime's randomly generated
+run or thread handle that resolves only to a workflow is a correlation
+handle; a session identifier that resolves to a person or account is
+end-user identity and belongs to the never-enters class below.
+Resolution here means from the record and public context alone —
+with operator-held auxiliary data every handle eventually resolves,
+which is precisely why that mapping stays operator-side.
 
-Producer and adapter authors MUST classify every candidate field into exactly one
-of the following tiers before admission:
+Digest-only: action payloads. Tool inputs and outputs MUST NOT appear
+in clear; they are committed by digest, which preserves provability
+without disclosure, and selective disclosure
+({{selectivedisclosure}}) is the mechanism for revealing a committed
+value later under the holder's control. Digest commitment hides only
+high-entropy values; low-entropy payload fields inherit the
+dictionary-attack exposure and the salting guidance of {{security}}.
 
-1. **Clear-safe** — Opaque correlation handles that are joinable but
-   non-identifying: for example, `agent_name`, `function_call_id`,
-   `invocation_id`. A field is clear-safe when its value neither identifies a
-   natural person nor carries content material. These MAY be committed in clear.
+Never-enters: end-user identity and secrets. Identifiers that resolve
+to a person or account, credentials, tokens, and keys MUST NOT enter a
+Capsule in any form — including as digests, salted or otherwise. The
+exclusion is categorical, not entropy-contingent: a bare digest of a
+low-entropy identifier re-identifies under a dictionary attack, and
+salting does not cure the class — a salted identity digest is
+identity-derived material baked into an unerasable record,
+re-identifiable by whoever holds the salt and dependent on salt
+secrecy forever: harvest now, re-identify later.
+Identity also carries obligations that digests do not discharge:
+erasure, retention limits, and purpose binding cannot be honored
+against an append-only, content-addressed record, so the only
+admission decision compatible with those obligations is absence.
+This prohibition governs identity as record structure — fields and
+standalone commitments whose preimage is the identifier itself.
+Identity occurring inside action payload content (an email address in
+a tool argument) is governed by the digest-only class: it is committed
+only within the payload digest, never separately addressable, and
+revealed only through selective disclosure under the holder's control
+({{selectivedisclosure}}), with the low-entropy guidance of
+{{security}} applying where a payload is small enough to enumerate.
+Identity resolution belongs in operator-side systems with retention
+control, correlated to the record through opaque handles — a
+severable arrangement in a way no digest can be: because a
+never-derived handle places no function of the identity in the
+record, erasing the operator-side mapping fully severs
+re-identification, whereas identity-derived material baked into the
+record depends on secrecy forever. The Capsule proves conduct; it
+does not name the human behind the session.
 
-2. **Digest-only** — when a value must be *provable later* without being
-   *disclosed now*, it MUST be committed as a digest, never in clear. This tier
-   covers payload content: material a verifier may need to check but that must
-   not be exposed in the record. This tier is realized by the selective-disclosure
-   / detached-payload model ({{selectivedisclosure}}): the Capsule carries only a
-   digest; content is held under deployment controls and disclosed selectively.
-
-3. **Never-enters** — end-user identity (session identifiers, user identifiers,
-   account handles) and secrets/credentials (tokens, keys) MUST NOT enter a
-   Capsule, in clear or as a digest. Critical: hashing is not anonymization for
-   low-entropy identifiers. Session and user identifiers and similar low-entropy
-   values are recoverable by dictionary attack against their digest (see also
-   {{security}}). Therefore a digest of such an identifier is not a safe
-   substitute — the digest re-identifies. Identity MUST be excluded, not digested.
-   Where cross-record or cross-slot correlation of a subject is genuinely required,
-   a pairwise or encrypted correlation identifier SHOULD be used instead of the
-   raw or hashed user identifier.
-
-## Adapter Allow-List Pattern {#adapter-allow-list}
-
-Adapters SHOULD adopt an allow-list stance: enumerate the fields that MAY enter
-a Capsule (tier 1, plus tier-2 digests) and default-deny everything else. A
-block-list — enumerating what may NOT enter — fails open: when a runtime adds a
-new context field in a later version, a block-list silently admits it. An allow-list
-fails closed, which is the correct direction for a record that cannot be retracted
-once committed. Adapter authors SHOULD publish the allow-list in adapter
-documentation so deployers can audit admission without reading implementation code.
-
+Producers SHOULD construct record context by allow-list — enumerating
+the fields that may enter — rather than by block-list. A block-list
+fails open: when a runtime adds a new context field, a block-list
+admits it silently, while an allow-list excludes it until a deliberate
+decision admits it. Implementation experience favors expressing the
+allow-list in code rather than in documentation: a list enforced
+structurally cannot admit a new runtime field without a deliberate
+change.
 
 --- back
 
@@ -1356,7 +1738,4 @@ documentation so deployers can audit admission without reading implementation co
 
 The author thanks the reviewers and contributors who shaped the design
 recorded here, and the SCITT and COSE working groups whose substrate this
-profile builds on. The author additionally thanks Jody Edmondson for
-identifying the producer-context data-admission problem and the allow-list
-adapter pattern in capsule-emit issue #22, which shaped the Privacy
-Considerations of this document.
+profile builds on.
