@@ -133,7 +133,7 @@ def main() -> None:
     ]
     manifest = {
         "format_version": "1",
-        "profile": "draft-mih-scitt-agent-action-capsule-03#producer-envelope",
+        "profile": "draft-mih-scitt-agent-action-capsule-04#producer-envelope",
         "count": len(cases),
         "cases": cases,
     }

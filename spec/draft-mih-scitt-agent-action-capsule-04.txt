@@ -9,7 +9,7 @@ Expires: 26 February 2027
 
 
                An Agent Action Capsule Profile for SCITT
-                draft-mih-scitt-agent-action-capsule-03
+                draft-mih-scitt-agent-action-capsule-04
 
 Abstract
 
@@ -385,7 +385,7 @@ Internet-Draft            Agent Action Capsules              August 2026
    |                     |           |          | this profile         |
    |                     |           |          | version is "draft-   |
    |                     |           |          | mih-scitt-agent-     |
-   |                     |           |          | action-capsule-03".  |
+   |                     |           |          | action-capsule-04".  |
 
 
 

@@ -35,7 +35,7 @@ from agent_action_capsule import (
 OUT = Path(__file__).resolve().parents[2] / "test-vectors"
 DE_OUT = Path(__file__).resolve().parents[2] / "disclosure-envelope-vectors"
 VINTAGE_SPEC = "draft-mih-scitt-agent-action-capsule-00"
-CURRENT_SPEC = "draft-mih-scitt-agent-action-capsule-03"
+CURRENT_SPEC = "draft-mih-scitt-agent-action-capsule-04"
 HEX_R = "1" * 64  # a stand-in response/request digest (64-hex); content is opaque here
 HEX_R2 = "2" * 64
 MISSING_PARENT = "9" * 64

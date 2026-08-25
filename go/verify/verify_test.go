@@ -31,7 +31,7 @@ func loadCapsule(t *testing.T, vector string) map[string]interface{} {
 
 func TestVerifyDeclaredJCSCommitsChain(t *testing.T) {
 	capsule := loadCapsule(t, "pos-executed-confirmed")
-	capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-03"
+	capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-04"
 	capsule["format_version"] = "3"
 	capsule["canonicalization_id"] = canonical.CanonicalizationJCS
 	chain := map[string]interface{}{
@@ -61,7 +61,7 @@ func TestVerifyRejectsUnsupportedCanonicalizationID(t *testing.T) {
 	for _, algorithm := range []string{"jcs-n", "future-algorithm"} {
 		t.Run(algorithm, func(t *testing.T) {
 			capsule := loadCapsule(t, "pos-executed-confirmed")
-			capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-03"
+			capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-04"
 			capsule["format_version"] = "3"
 			capsule["canonicalization_id"] = algorithm
 
@@ -93,7 +93,7 @@ func TestVerifyCanonicalizationProfileMatrix(t *testing.T) {
 			capsule := loadCapsule(t, "pos-executed-confirmed")
 			capsule["format_version"] = test.formatVersion
 			if test.formatVersion == "3" {
-				capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-03"
+				capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-04"
 			}
 			if test.declared {
 				capsule["canonicalization_id"] = test.declaration

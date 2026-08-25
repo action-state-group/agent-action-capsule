@@ -539,7 +539,7 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
               capsule-03, n.d., <https://datatracker.ietf.org/doc/html/
-              draft-mih-scitt-agent-action-capsule-03>.
+              draft-mih-scitt-agent-action-capsule-04>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,

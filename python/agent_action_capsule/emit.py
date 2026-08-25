@@ -50,7 +50,7 @@ __all__ = [
     "FORMAT_VERSION",
 ]
 
-DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-03"
+DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-04"
 DEFAULT_FORMAT_VERSION = "3"
 
 # Aliases used by the adapter tier (framework adapters import these names).

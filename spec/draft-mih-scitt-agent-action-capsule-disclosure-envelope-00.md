@@ -31,7 +31,7 @@ normative:
   I-D.mih-scitt-agent-action-capsule:
     title: "An Agent Action Capsule Profile for SCITT"
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-agent-action-capsule-03
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-04
     author:
       - ins: S. Mih
         name: Steven Mih

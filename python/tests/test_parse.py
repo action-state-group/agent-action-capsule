@@ -30,7 +30,7 @@ BASE = {
 
 BASE_V3 = {
     **BASE,
-    "spec_version": "draft-mih-scitt-agent-action-capsule-03",
+    "spec_version": "draft-mih-scitt-agent-action-capsule-04",
     "format_version": "3",
     "canonicalization_id": "jcs",
 }

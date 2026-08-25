@@ -7,7 +7,7 @@ on:
       - "python/**"
       - "test-vectors/**"
       - "producer-envelope-vectors/**"
-      - "spec/draft-mih-scitt-agent-action-capsule-03.md"
+      - "spec/draft-mih-scitt-agent-action-capsule-04.md"
       - "spec/REGISTRY.md"
       - ".github/workflows/conformance.yml"
   pull_request:
@@ -16,7 +16,7 @@ on:
       - "python/**"
       - "test-vectors/**"
       - "producer-envelope-vectors/**"
-      - "spec/draft-mih-scitt-agent-action-capsule-03.md"
+      - "spec/draft-mih-scitt-agent-action-capsule-04.md"
       - "spec/REGISTRY.md"
       - ".github/workflows/conformance.yml"
 

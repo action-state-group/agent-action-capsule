@@ -1,5 +1,5 @@
 {
-  "capsule_id_recomputed": "513307a062bd646f78f7cac26391ddfca8536451df57855aa65f1b0a57493991",
+  "capsule_id_recomputed": "d33a2f099452d918601282bb8a693fe07335f966256e9a880d78bcda6d55ec78",
   "derived": {
     "attestation_mode": "self_attested",
     "effect_mode": "not_applicable",
@@ -16,7 +16,7 @@
     {
       "check": 2,
       "code": "capsule_id_mismatch",
-      "detail": "recomputed 513307a062bd646f78f7cac26391ddfca8536451df57855aa65f1b0a57493991 != carried ae180713f62a5d81cfa3a600951667fd1924caa808609d4a142c56238597f399",
+      "detail": "recomputed d33a2f099452d918601282bb8a693fe07335f966256e9a880d78bcda6d55ec78 != carried 8087acba6ad0156e7102f49f42ea439b2a57143ffe3f9ecaa6a5660b2f422ad8",
       "severity": "error"
     },
     {

@@ -211,7 +211,7 @@ def test_emit_simple_required_fields():
     capsule = emit(operator="ACME-CO", developer="agent@v1", tool_name="my_tool")
     assert capsule["spec_version"] == SPEC_VERSION
     assert capsule["format_version"] == FORMAT_VERSION
-    assert capsule["spec_version"] == "draft-mih-scitt-agent-action-capsule-03"
+    assert capsule["spec_version"] == "draft-mih-scitt-agent-action-capsule-04"
     assert capsule["format_version"] == "3"
     assert capsule["canonicalization_id"] == "jcs"
     assert capsule["operator"] == "ACME-CO"

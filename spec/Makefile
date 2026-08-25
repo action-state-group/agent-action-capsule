@@ -8,7 +8,7 @@
 #   gem install kramdown-rfc
 #   python3 -m venv ~/.venvs/x2r && ~/.venvs/x2r/bin/pip install xml2rfc
 
-DRAFT    = draft-mih-scitt-agent-action-capsule-03
+DRAFT    = draft-mih-scitt-agent-action-capsule-04
 BILATERAL = draft-mih-agent-bilateral-attestation-00
 XML2RFC  ?= ~/.venvs/x2r/bin/xml2rfc
 KDRFC    ?= kramdown-rfc

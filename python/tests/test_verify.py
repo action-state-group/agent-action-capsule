@@ -218,7 +218,7 @@ def test_identity_profile_findings(executed, format_version, declaration, expect
     capsule = dict(executed)
     capsule["format_version"] = format_version
     if format_version == "3":
-        capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-03"
+        capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-04"
     if declaration is not None or format_version == "2":
         capsule["canonicalization_id"] = declaration
     else:

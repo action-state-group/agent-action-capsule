@@ -7,7 +7,7 @@
     "ledger_mode": "chained"
   },
   "canonicalization_id": "jcs",
-  "capsule_id": "ae180713f62a5d81cfa3a600951667fd1924caa808609d4a142c56238597f399",
+  "capsule_id": "8087acba6ad0156e7102f49f42ea439b2a57143ffe3f9ecaa6a5660b2f422ad8",
   "chain": {
     "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "relation": "confirms"
@@ -22,6 +22,6 @@
   },
   "format_version": "3",
   "operator": "ACME-CO",
-  "spec_version": "draft-mih-scitt-agent-action-capsule-03",
+  "spec_version": "draft-mih-scitt-agent-action-capsule-04",
   "timestamp": "2026-08-24T00:00:00Z"
 }
