@@ -62,6 +62,22 @@ informative:
   I-D.sato-soos-gar:
   I-D.nivalto-agentroa-route-authorization:
   RFC6839:
+  I-D.birkholz-verifiable-agent-conversations:
+    title: "Verifiable Agent Conversations"
+    seriesinfo:
+      Internet-Draft: draft-birkholz-verifiable-agent-conversations-00
+    author:
+      - ins: H. Birkholz
+        name: Henk Birkholz
+        organization: Fraunhofer Institute for Secure Information Technology
+  I-D.mih-scitt-agent-action-capsule-disclosure-envelope:
+    title: "Disclosure Envelope Profile for Agent Action Capsules"
+    seriesinfo:
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-disclosure-envelope-00
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
   I-D.mih-scitt-cpb-selective-disclosure:
     title: "Selective Disclosure Profile for Canonical Payload Binding"
     seriesinfo:
@@ -165,6 +181,45 @@ The term "Producer Envelope profile" means the exact COSE protected-header,
 payload, and signature constraints in {{envelope}}. The Capsule JSON and its
 identity construction remain independently verifiable without an envelope.
 
+## Relationship to the Canonical Payload Binding {#cpb-relationship}
+
+This document is a payload class of the Canonical Payload Binding (CPB)
+{{I-D.mih-sokolov-scitt-payload-binding}}. The division of labor is fixed:
+CPB defines the mechanism — how a canonical octet string is produced from
+a structured value, how a derived identifier is computed from it, how a
+Signed Statement binds to a Receipt, and how one record cites another by
+digest — and never defines what a payload class's fields mean. This
+document defines the meaning: the Capsule's own fields, their vocabularies,
+and the semantic rules a producer and verifier apply to them. Where this
+document states a wire-level rule (canonicalization algorithm selection,
+value representation, typed references), it does so as a CPB payload class
+declaration, not as a restatement of CPB's own mechanism; the Capsule field
+table ({{capsule}}) and the shared Artifact Type Registry maintained with
+CPB state this profile's declarations without repeating CPB's mechanics.
+
+## This profile within a governance runtime {#governanceruntime}
+
+A Capsule is one leg of a larger accountability composition. Using the
+terms of {{I-D.mih-sato-agent-accountability-composition}}: whether an
+action was permitted at all is a **CAN** question, answered by a
+pre-action authorization record; which accountable human or policy
+authorized this exact action is a **WHO** question; the transparency
+substrate anchoring and cross-party assertion of any of the above is an
+**AUDIT** question. This document answers the remaining, complementary
+question — **WHAT** the agent actually did — and is the reference
+WHAT-record of that composition. A governance runtime that gates,
+routes, and disposes agent actions produces its record of doing so as a
+Capsule: `disposition` ({{disposition}}) is the runtime's decision
+surface, `verdict_class` ({{verdictclass}}) is the runtime's own
+vocabulary for why it decided as it did, and the chain and epoch
+mechanisms ({{hitl}}, {{epochs}}) are how the runtime's decisions
+compose into a queryable history. This profile does not define a
+governance runtime's policy engine, decision logic, or manifest format
+— those remain implementation-specific and are referenced only by digest
+({{constraints}}) — it defines the evidentiary record such a runtime
+leaves behind, so that a party who trusts neither the runtime nor its
+operator can verify what it decided and what happened as a result.
+
 # Conventions and Definitions {#conventions}
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
@@ -212,6 +267,34 @@ The withdrawn `jcs-n` construction of
 Capsule-ID verification path. It is selected by a format-2 Capsule in which
 `canonicalization_id` is absent. A producer MUST NOT emit `jcs-n`, and a
 verifier MUST reject any explicit `canonicalization_id: "jcs-n"` declaration.
+
+## The Representation Rule (R) and number handling {#representation-rule}
+
+Every value entering a Capsule digest MUST already be in a single,
+producer-chosen token form: object members carry no duplicate keys;
+array element order is the order the producer observed or constructed,
+never reordered by a verifier; strings carry no representation choice
+this profile leaves open beyond RFC 8785's own string-escaping rules.
+
+Numbers are HYBRID. A producer MUST emit every digest-bearing numeric
+quantity as a token in canonical integer form (no exponent notation, no
+leading zeros, no `-0`) when the quantity is a count or an identifier,
+and as an exact decimal string, never a JSON floating-point literal,
+when the quantity is monetary or otherwise requires exact-value
+reproducibility ({{identity}}). A verifier applies the value rule — it
+compares numeric quantities by value, not by lexical token — because a
+standard JSON parser cannot see a digest-bearing field's original
+lexical form once parsed, and this profile does not require a
+non-standard parser of a Class 1 verifier. This is a declared gap: a
+producer that violates the token-form MUST above and a verifier that
+applies only the value rule can, in principle, both regard a
+non-canonical numeric literal as valid, even though two producers could
+have serialized the same value differently and produced different
+digests. A verifier operating in an environment where byte-exact input
+is available MAY additionally implement a strict tier that inspects the
+raw pre-parse bytes and rejects a non-canonical numeric token; this
+strict tier is OPTIONAL and its absence does not make a Class 1
+verifier non-conforming.
 
 # Producer Envelopes and SCITT registration {#projection}
 
@@ -585,6 +668,57 @@ produces them — is the companion
 this profile carries only the rung claim and the minimal correlation
 evidence needed to rederive it honestly.
 
+## Observation mode {#observationmode}
+
+A Capsule MAY carry a `compute_attestation` map: producer-environment
+claims, digested with the rest of the payload — every member
+participates in the `capsule_id` digest and sits under the Signed
+Statement's signature, so the claims are tamper-evident even though
+they are testimony. The reference implementation already carries this
+map; this document defines its first registered member.
+`observation_mode` states how the producer observed the action it
+sealed. Two values are defined: `in_path` — the producer executed in
+the action's own path and bound input and output from its own
+position: a callback, a decorated tool, or a wire-level intermediary
+the action traverses (a gateway sealing at the boundary) — and
+`event_stream` — the producer observed the runtime's event narration
+after the fact and paired input to output from that narration. The
+distinction is provenance, not a quality score: under identifier-less
+concurrency an event-stream producer's input-to-output pairing is
+best-effort, and this field makes that proximity legible to the
+consumer, who decides what weight the pairing guarantee deserves.
+
+Like the assurance modes, `observation_mode` is producer testimony —
+but unlike them it is not independently rederivable from the record,
+which is precisely why it is recorded rather than inferred. The
+adversarial consequence is stated plainly: a producer can claim a
+proximity it did not have, and the signature proves the claim was
+made, not that it is true. The field therefore shifts evidentiary
+weight only downward — a verifier MAY discount event-stream pairing,
+but MUST NOT grant `in_path` any additional cryptographic assurance
+on the field's word alone. Proximity claims become verifiable only by
+composition with platform attestation, which is the registry's growth
+path: the value set is deliberately open, governed under the same
+Specification Required policy as the other vocabularies of this
+profile ({{registries}}), so stronger proximities — an in-path
+producer whose position is itself platform-attested — register as
+they mature. An absent `observation_mode` means unstated; a verifier
+treats an unrecognized value the same way — informational, unstated —
+and MUST NOT reject a Capsule for stating, omitting, or carrying an
+unrecognized value.
+
+`compute_attestation` MAY additionally carry `agent_input_digest` and
+`agent_output_digest`, each a JSON-DIGEST ({{conventions}}) of the raw agent
+input or output content associated with this action. Like other
+`compute_attestation` members these digests are digested with the rest of
+the payload and are therefore tamper-evident, but the content they commit
+to is not itself carried in the Capsule. A producer that later wishes to
+reveal that content to a specific verifier, without altering `capsule_id`
+or the signed bytes, does so with the companion Disclosure Envelope
+mechanism of {{I-D.mih-scitt-agent-action-capsule-disclosure-envelope}},
+which wraps the unmodified Capsule alongside an out-of-band `disclosures`
+object and defines the verifier's digest-recomputation checks.
+
 ## Disposition and the verdict reason-class {#disposition}
 
 A Capsule's `disposition` block records how the decision was disposed:
@@ -740,6 +874,56 @@ Open-items predicate: an item is open when its Capsule's
 `hitl_dispatched`, `escalated`, or `blocked`, and no Capsule in the
 store carries `chain.parent_capsule_id` equal to its `capsule_id` with
 `relation: "supersedes"`.
+
+### Observed order and concurrency {#order}
+
+The chain block's single parent is intentional and remains so:
+`chain` records state transitions — supersession, epoch openings —
+and its authority rules ({{hitl}}) assume exactly one parent.
+Observed order is a different claim, and it gets a different, optional
+structure. A Capsule MAY carry a digested `order` block with two
+members, separately optional:
+
+`follows` — a list of `capsule_id` values naming the Capsules whose
+completion the producer actually observed before this action began.
+This expresses fan-in ("this followed several") without general graph
+semantics: no edge typing, no transitive claims, only direct observed
+precedence.
+
+`concurrency_group` — an opaque value shared by a set of Capsules
+whose mutual order the producer does not assert. Sealing is
+sequential per producer even when actions are not; a runtime that
+seals concurrent actions in completion order would otherwise write a
+linear sequence that never existed. The group marker tells a consumer
+exactly what not to infer. The group value MUST be opaque and freshly
+generated — a random value scoped to the group, never a reused
+internal identifier — since it is baked irreversibly into the record;
+the admission rules of {{privacy}} apply to it as to any clear field.
+
+The invariant: a producer MUST NOT assert order it did not observe.
+Seal order and ledger order are storage facts, not causal claims, and
+a consumer MUST NOT infer sequence among Capsules sharing a
+`concurrency_group`. Completion order is not causal order. The
+converse discipline also holds: a producer that observed an order
+SHOULD record it rather than mark the set unordered — concealing
+observed sequence is the same honesty failure in the other
+direction.
+
+One structure spans the scales this problem appears at. A runtime
+sealing parallel tool calls marks the set with one
+`concurrency_group`. A join step `follows` the several Capsules it
+actually waited for. And across organizations, a bilateral
+completion attestation is fan-in by design — both parties'
+attestations precede it — and the `order` block gives that shape a
+native expression: the bilateral companion
+(cf. {{?I-D.mih-agent-bilateral-attestation}}) is the intended first
+user, its reference implementation today chaining to a single parent
+until its wire encodings are fixed. Intra-agent parallelism and
+cross-organization exchange are the same partial-order question at
+different radii, and they share this one primitive. Full DAG
+semantics — typed after/concurrent-with edges, transitive closure —
+remain future work; `follows` plus `concurrency_group` eliminate the
+false-sequence inference without general graph verification.
 
 # Class 1 verification {#verification}
 
@@ -952,6 +1136,40 @@ selective-disclosure payload structures unless they additionally implement
 {{I-D.mih-scitt-cpb-selective-disclosure}}: the extension point is
 defined only in that companion, and no conformance claim or verification
 behavior is defined for it in this document.
+
+## Binding to conversation-grain records {#conversationbinding}
+
+An agent action frequently occurs inside a multi-turn conversation
+between an agent and a counterparty, a user, or another agent.
+{{I-D.birkholz-verifiable-agent-conversations}} (Verifiable Agent
+Conversations, VAC) defines a conversation-grain Signed Statement for
+exactly this container. A Capsule and a VAC record are complementary,
+not competing: a Capsule records what one action did; a VAC record
+records the conversation that action occurred within. This document
+states the Capsule-side binding normatively; it does not, and cannot on
+its own, make the binding independently verifiable, because that
+additionally requires an entry for the VAC record in the shared Artifact
+Type Registry maintained with {{I-D.mih-sokolov-scitt-payload-binding}},
+which is a separate registration act by that document's own editors.
+
+A producer whose runtime sealed an action inside a VAC-conveyed
+conversation MUST populate `conversation_ref` ({{identity}}) with a CPB
+typed digest reference {{I-D.mih-sokolov-scitt-payload-binding}} citing
+the conversation's Signed Statement; a producer MUST NOT omit
+`conversation_ref` when the runtime observed such an enclosing
+conversation. `conversation_ref` is otherwise absent — an action with no
+observed enclosing conversation carries no reference to fabricate one
+against.
+
+Until an Artifact Type Registry entry for the VAC conversation record
+exists, a verifier resolving a populated `conversation_ref` follows
+{{I-D.mih-sokolov-scitt-payload-binding}}'s rule for an unregistered
+`type`: the citation is structurally present and recorded, but not
+verified — it is not evidence, and its presence is not a defect in the
+Capsule. The requirement to populate `conversation_ref` above binds a
+producer regardless of registry state; only the verifier's ability to
+independently confirm the citation depends on the registry entry's
+completion, which this document does not control.
 
 # Related Work {#related}
 
