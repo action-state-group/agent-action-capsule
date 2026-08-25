@@ -160,16 +160,16 @@ def test_json_digest_matches_manual_sha256():
     assert json_digest(v) == expected
 
 
-def test_json_digest_normalizes_before_hashing():
-    assert json_digest({"a": 1, "b": None}) == json_digest({"a": 1})
+def test_json_digest_commits_present_null():
+    assert json_digest({"a": 1, "b": None}) != json_digest({"a": 1})
 
 
 # ---------------------------------------------------------------------------
-# 7. capsule_id stability under chain linking
+# 7. Vintage format-2 capsule_id stability under chain linking
 # ---------------------------------------------------------------------------
 
 
-def test_capsule_id_stable_when_chain_added():
+def test_vintage_capsule_id_stable_when_chain_added():
     body = {"spec_version": "x", "format_version": "2", "action_id": "a1"}
     cid = compute_capsule_id(body)
     with_chain = dict(body)
@@ -177,8 +177,8 @@ def test_capsule_id_stable_when_chain_added():
     assert compute_capsule_id(with_chain) == cid
 
 
-def test_capsule_id_stable_chain_linkage_fields_excluded():
-    # All CHAIN_LINKAGE_FIELDS must be excluded from the digest
+def test_vintage_capsule_id_excludes_chain_linkage_fields():
+    # All CHAIN_LINKAGE_FIELDS are excluded from the vintage digest.
     body = {"spec_version": "x", "format_version": "2", "action_id": "a2"}
     cid = compute_capsule_id(body)
     with_extras = dict(body)

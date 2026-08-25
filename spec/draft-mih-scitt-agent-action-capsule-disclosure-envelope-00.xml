@@ -109,7 +109,8 @@ member of the <tt>disclosures</tt> object.</t>
         <dd>
           <t>As defined in <xref target="I-D.mih-scitt-agent-action-capsule"/>: the lowercase-hex
 SHA-256 digest of the <xref target="RFC8785"/> JCS serialization of a value, after
-that profile's absent-field normalization.</t>
+selecting the embedded Capsule's identity profile. Format 3 uses plain JCS.
+Vintage format 2 applies absent-field normalization.</t>
         </dd>
         <dt>JCS:</dt>
         <dd>
@@ -263,11 +264,11 @@ against.</t>
         </section>
         <section anchor="de-3-digest-recomputation-and-comparison">
           <name>DE-3: Digest Recomputation and Comparison</name>
-          <t>Compute <tt>computed = JSON-DIGEST(value)</tt> — the lowercase-hex SHA-256 of
-<tt>UTF8(JCS(value))</tt>, applying the same absent-field normalization the base
-profile applies when computing <tt>capsule_id</tt>. This is the same
-canonicalization primitive the base profile already defines; this document
-introduces no second hashing path.</t>
+          <t>Compute <tt>computed = JSON-DIGEST(value)</tt> using the embedded Capsule's
+identity profile. Format 3 computes the lowercase-hex SHA-256 of
+<tt>UTF8(JCS(value))</tt> without normalization. Vintage format 2 applies the same
+absent-field normalization used for its <tt>capsule_id</tt>. This document introduces
+no second profile-selection or hashing path.</t>
           <t>Compare <tt>computed</tt> to the committed digest located in DE-2:</t>
           <ul spacing="normal">
             <li>
@@ -498,7 +499,7 @@ still pass.</t>
             </author>
             <date>n.d.</date>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-02"/>
+          <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-04"/>
         </reference>
       </references>
       <references anchor="sec-informative-references">

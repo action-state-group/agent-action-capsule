@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from typing import Any
 
-from .canonical import compute_capsule_id
+from .canonical import CANONICALIZATION_JCS, compute_capsule_id
 from .contracts import (
     AssuranceBlock,
     Chain,
@@ -44,7 +44,7 @@ def _block_to_dict(obj: Any) -> dict:
 
 @dataclass(frozen=True)
 class Capsule:
-    """The Agent Action Capsule envelope (§5.1) plus its typed sub-blocks."""
+    """The Agent Action Capsule record (§5.1) plus its typed sub-blocks."""
 
     spec_version: str
     format_version: str
@@ -63,9 +63,27 @@ class Capsule:
     constraints: tuple[ConstraintRecord, ...] = ()
     model_attestation: ModelAttestation | None = None
     self_reported_reasoning: SelfReportedReasoning | None = None
+    canonicalization_id: str | None = None
 
     def __post_init__(self) -> None:
         from .contracts import NEVER_DISPATCH_VERDICT_CLASSES
+
+        if self.format_version == "4":
+            if self.canonicalization_id != CANONICALIZATION_JCS:
+                raise InvariantError(
+                    "format_version '4' REQUIRES canonicalization_id='jcs' (§5.1)"
+                )
+        elif self.format_version == "2":
+            if self.canonicalization_id is not None:
+                raise InvariantError(
+                    "format_version '2' is the vintage absent-field profile and "
+                    "MUST NOT declare canonicalization_id (§5.1)"
+                )
+        else:
+            raise InvariantError(
+                f"unsupported format_version {self.format_version!r}; expected '2' or '4' (§5.1)"
+            )
+
         if self.disposition is not None and self.effect is not None:
             vc = self.disposition.verdict_class
             if vc in NEVER_DISPATCH_VERDICT_CLASSES and self.effect.status in (
@@ -88,6 +106,8 @@ class Capsule:
             "developer": self.developer,
             "timestamp": self.timestamp,
         }
+        if self.canonicalization_id is not None:
+            out["canonicalization_id"] = self.canonicalization_id
         if self.domain is not None:
             out["domain"] = self.domain
         if self.provenance is not None:
@@ -113,6 +133,11 @@ class Capsule:
     def seal(self) -> dict:
         """Return the full Capsule dict with ``capsule_id`` computed over the
         canonical capsule form (§5.1)."""
+        if self.format_version != "4":
+            raise InvariantError(
+                "Capsule.seal() creates only format_version '4'; "
+                "format_version '2' is verification-only"
+            )
         body = self.to_dict()
         cid = compute_capsule_id(body)
         # capsule_id is excluded from its own digest; place it on the sealed dict.
@@ -149,6 +174,9 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
     for fld in ("spec_version", "format_version", "action_id", "action_type", "operator", "developer", "timestamp"):
         if not isinstance(d.get(fld), str):
             raise InvariantError(f"{fld} is REQUIRED and MUST be a string (§5.1)")
+    canonicalization_id = d.get("canonicalization_id")
+    if "canonicalization_id" in d and not isinstance(canonicalization_id, str):
+        raise InvariantError("canonicalization_id MUST be a string when present (§5.1)")
 
     eff = _block(d, "effect")
     if eff is not None and "status" not in eff:
@@ -244,6 +272,7 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
         spec_version=d["spec_version"], format_version=d["format_version"],
         action_id=d["action_id"], action_type=d["action_type"], operator=d["operator"],
         developer=d["developer"], timestamp=d["timestamp"],
+        canonicalization_id=canonicalization_id,
         domain=domain, provenance=provenance,
         effect=effect, assurance=assurance, disposition=disposition, chain=chain,
         cross_party=cross_party, constraints=constraints, model_attestation=model_attestation,

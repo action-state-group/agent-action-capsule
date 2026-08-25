@@ -6,6 +6,8 @@ on:
       - "go/**"
       - "python/**"
       - "test-vectors/**"
+      - "producer-envelope-vectors/**"
+      - "spec/draft-mih-scitt-agent-action-capsule-04.md"
       - "spec/REGISTRY.md"
       - ".github/workflows/conformance.yml"
   pull_request:
@@ -13,6 +15,8 @@ on:
       - "go/**"
       - "python/**"
       - "test-vectors/**"
+      - "producer-envelope-vectors/**"
+      - "spec/draft-mih-scitt-agent-action-capsule-04.md"
       - "spec/REGISTRY.md"
       - ".github/workflows/conformance.yml"
 
@@ -33,9 +37,13 @@ jobs:
       - name: python — install
         working-directory: python
         run: pip install -e ".[dev]"
-      - name: python — vector runner (29 vectors)
+      - name: python — lint
         working-directory: python
-        run: python -m pytest tests/test_vectors.py -v
+        run: python -m ruff check .
+
+      - name: python — full tests and shared vectors
+        working-directory: python
+        run: python -m pytest -v
 
       # ── Go runtime ──────────────────────────────────────────────────────────
       - uses: actions/setup-go@v5
@@ -45,19 +53,34 @@ jobs:
       - name: go — build
         working-directory: go
         run: go build ./...
-      - name: go — vector runner (29 vectors)
+
+      - name: go — formatting
+        working-directory: go
+        run: test -z "$(gofmt -l .)"
+
+      - name: go — vet
+        working-directory: go
+        run: go vet ./...
+
+      - name: go — full tests and shared envelope vectors
+        working-directory: go
+        run: go test ./...
+
+      - name: go — race tests
+        working-directory: go
+        run: go test -race ./...
+      - name: go — shared Capsule vector runner
         working-directory: go
         run: go run ./cmd/vector_runner/
 
       # ── Differential summary ────────────────────────────────────────────────
-      # Both runners independently validated the same 29 frozen expected.json
-      # files. If either step fails, this step is unreachable and the job fails.
+      # Both runtimes independently validate the frozen Capsule and Producer
+      # Envelope corpora. If either fails, this step is unreachable.
       # This step records the zero-divergence assertion in the CI log.
       - name: differential check — zero divergences
         run: |
           echo "Both runtimes completed."
-          echo "Python: 29/29 vectors passed against frozen expected.json"
-          echo "Go:     29/29 vectors passed against frozen expected.json"
+          echo "Python and Go passed both shared conformance corpora."
           echo ""
-          echo "Conformance assertion: two independent runtimes, 29/29 vectors, zero divergences."
-          echo "RFC 7942 readiness: implemented, two independent runtimes, 29/29 vectors, zero divergences."
+          echo "Conformance assertion: two independent runtimes, all frozen vectors, zero divergences."
+          echo "RFC 7942 readiness: implemented and cross-runtime checked."

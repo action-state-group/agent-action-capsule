@@ -1,10 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""W9 format_version validation tests.
-
-Guards the 'no silent v1/v2 mis-parse' invariant. The verifier MUST explicitly
-reject any format_version other than "2" (the only currently defined value per
-§5.1 of draft-mih-scitt-agent-action-capsule-01).
-"""
+"""W9 format-version and canonicalization-profile validation tests."""
 import re
 
 import pytest
@@ -17,15 +12,16 @@ from agent_action_capsule.emit import DEFAULT_FORMAT_VERSION, emit
 # 1. v2 is the canonical declared version
 # ---------------------------------------------------------------------------
 
-def test_default_format_version_is_v2():
-    """The library constant must declare version '2'."""
-    assert DEFAULT_FORMAT_VERSION == "2"
+def test_default_format_version_is_v4():
+    """New emission uses the declared-JCS format."""
+    assert DEFAULT_FORMAT_VERSION == "4"
 
 
-def test_emit_produces_v2():
-    """emit() must always stamp format_version='2' on the sealed capsule."""
+def test_emit_produces_v4_declared_jcs():
+    """emit() stamps the current format and declaration."""
     capsule = emit("test/fv", "fyi", "OP", "DEV")
-    assert capsule["format_version"] == "2"
+    assert capsule["format_version"] == "4"
+    assert capsule["canonicalization_id"] == "jcs"
 
 
 # ---------------------------------------------------------------------------
@@ -34,7 +30,7 @@ def test_emit_produces_v2():
 
 def test_v2_capsule_accepted():
     """A well-formed v2 capsule verifies without any format_version finding."""
-    capsule = emit("test/v2", "fyi", "OP", "DEV")
+    capsule = base_executed()
     res = verify(capsule)
     assert res.ok
     codes = {f.code for f in res.findings}
@@ -47,7 +43,7 @@ def test_v2_capsule_accepted():
 
 @pytest.mark.parametrize("fv", ["1", "3", "v2", "2.0", "", "unknown", "draft-01", "2a"])
 def test_unknown_format_version_rejected(fv):
-    """Any format_version other than '2' MUST be explicitly rejected."""
+    """Any format_version other than '2' or '4' is explicitly rejected."""
     cap = base_executed()
     cap["format_version"] = fv
     cap = reseal(cap)
@@ -116,8 +112,7 @@ def test_v1_format_explicitly_rejected():
 def _cleanroom_check(capsule: dict) -> bool:
     """Minimal clean-room structural check (independent-reader differential).
 
-    Checks the core invariants on the statement layer: format_version=2,
-    required fields present, capsule_id is 64 hex.
+    Checks the format profile, required fields, and 64-hex Capsule ID.
     """
     HEX64 = re.compile(r"\A[0-9a-f]{64}\Z")
     required = (
@@ -126,7 +121,12 @@ def _cleanroom_check(capsule: dict) -> bool:
     )
     if not isinstance(capsule, dict):
         return False
-    if capsule.get("format_version") != "2":
+    format_version = capsule.get("format_version")
+    if format_version == "2" and "canonicalization_id" in capsule:
+        return False
+    if format_version == "4" and capsule.get("canonicalization_id") != "jcs":
+        return False
+    if format_version not in {"2", "4"}:
         return False
     for fld in required:
         if not isinstance(capsule.get(fld), str):

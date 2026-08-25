@@ -92,12 +92,11 @@ def test_submit_and_transparent_anchored(tmp_path):
         f"Expected 'anchored', got {report.attestation_tier!r}; "
         f"substrate_errors={report.substrate_errors}"
     )
-    # report.ok is the COMBINED verdict (signature + receipt + Class-1 payload).
-    # For digest-only anchoring the payload is capsule_id bytes (not a JSON capsule),
-    # so Class-1 verification is skipped and report.payload is None.
-    # The attestation_tier='anchored' is the key criterion: the receipt DID verify.
-    # report.ok would be True only for a full Transparent Statement whose payload is
-    # a valid Agent Action Capsule JSON object.
+    # Registration authenticates the raw Capsule ID. Class-1 Capsule
+    # verification remains a separate operation over the Capsule JSON.
+    assert report.ok
+    assert report.payload is None
+    assert report.authenticated_capsule_id == capsule_id
 
 
 @skip_if_offline
@@ -136,9 +135,16 @@ def test_digest_only():
     outer = cbor2.loads(result.signed_statement)
     payload_bytes = outer.value[2]  # COSE_Sign1: [protected, unprotected, payload, sig]
     assert isinstance(payload_bytes, (bytes, bytearray))
-    assert payload_bytes == capsule_id.encode("ascii"), (
+    assert payload_bytes == bytes.fromhex(capsule_id), (
         "Statement payload must be the capsule_id digest only — no business content"
     )
+
+    # This is an RFC 9943 registration statement, not the intentionally
+    # three-header Producer Envelope. CWT issuer and subject are mandatory.
+    protected = cbor2.loads(outer.value[0])
+    assert protected[3] == "application/agent-action-capsule-id"
+    assert protected[15][1] == "urn:agent-action-capsule:core:free-anchor"
+    assert protected[15][2] == capsule_id
 
 
 @skip_if_offline

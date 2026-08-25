@@ -3,7 +3,7 @@
 
 The carriers here are the *producer* path: their constructors enforce the
 invariants the spec states a producer MUST NOT violate, so a non-conforming
-Capsule cannot be built or signed (§5.4 disposition honesty + closed approver
+Capsule cannot be built or sealed (§5.4 disposition honesty + closed approver
 enum; §5.2 the confirmed-effect binding and the status/digest table). The
 *consumer* path is the verifier (verify.py), which never raises and instead
 reports findings over arbitrary bytes.

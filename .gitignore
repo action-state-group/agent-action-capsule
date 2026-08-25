@@ -19,3 +19,4 @@ spec/.draft-*.v2.xml
 # test vectors are FROZEN committed bytes — exempt from the key/artifact ignore
 !test-vectors/**/*.cose
 !test-vectors/**/*.pem
+!producer-envelope-vectors/**/*.cose

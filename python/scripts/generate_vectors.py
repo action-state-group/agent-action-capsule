@@ -20,6 +20,7 @@ Run:  cd python && python -m scripts.generate_vectors
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -33,7 +34,8 @@ from agent_action_capsule import (
 
 OUT = Path(__file__).resolve().parents[2] / "test-vectors"
 DE_OUT = Path(__file__).resolve().parents[2] / "disclosure-envelope-vectors"
-SPEC = "draft-mih-scitt-agent-action-capsule-00"
+VINTAGE_SPEC = "draft-mih-scitt-agent-action-capsule-00"
+CURRENT_SPEC = "draft-mih-scitt-agent-action-capsule-04"
 HEX_R = "1" * 64  # a stand-in response/request digest (64-hex); content is opaque here
 HEX_R2 = "2" * 64
 MISSING_PARENT = "9" * 64
@@ -41,13 +43,27 @@ MISSING_PARENT = "9" * 64
 
 def ident(action_id: str, action_type: str = "decide") -> dict:
     return {
-        "spec_version": SPEC,
+        "spec_version": VINTAGE_SPEC,
         "format_version": "2",
         "action_id": action_id,
         "action_type": action_type,
         "operator": "ACME-CO",
         "developer": "agent@v1",
         "timestamp": "2026-06-13T00:00:00Z",
+    }
+
+
+def ident_v4(action_id: str, action_type: str = "decide") -> dict:
+    """Identity fields for the current declared-JCS serialization suite."""
+    return {
+        "spec_version": CURRENT_SPEC,
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": action_id,
+        "action_type": action_type,
+        "operator": "ACME-CO",
+        "developer": "agent@v1",
+        "timestamp": "2026-08-24T00:00:00Z",
     }
 
 
@@ -104,6 +120,85 @@ def build_cases() -> list[dict]:
 
     def add(name, kind, description, inp):
         cases.append({"name": name, "kind": kind, "description": description, "input": inp})
+
+    # ---- IDENTITY PROFILE: current format 4 and vintage format 2 ----
+    current = seal({
+        **ident_v4("v4-chain"),
+        "assurance": assurance("not_applicable", ledger_mode="chained"),
+        "disposition": {
+            "decision": "accept",
+            "approver": "policy",
+            "human_disposed": False,
+            "verdict_class": "executed",
+        },
+        "chain": {
+            "parent_capsule_id": "a" * 64,
+            "relation": "confirms",
+        },
+        "constraints": [],
+    })
+    add(
+        "pos-v4-jcs-chain-committed",
+        "positive",
+        "Format 4 plain JCS commits the chain block and a present empty array to capsule_id.",
+        current,
+    )
+
+    format3_unsupported = seal({**current, "format_version": "3"})
+    add(
+        "neg-v3-format-version-unsupported",
+        "negative",
+        "Format 3 was never published and must fail closed rather than aliasing format 4.",
+        format3_unsupported,
+    )
+
+    chain_tampered = json.loads(json.dumps(current))
+    chain_tampered["chain"]["relation"] = "supersedes"
+    add(
+        "neg-v4-chain-tampered",
+        "negative",
+        "Changing a format-4 chain member after sealing causes capsule_id mismatch.",
+        chain_tampered,
+    )
+
+    missing_declaration = dict(current)
+    missing_declaration.pop("canonicalization_id")
+    add(
+        "neg-v4-canonicalization-missing",
+        "negative",
+        "Format 4 without canonicalization_id is a profile mismatch.",
+        missing_declaration,
+    )
+
+    for name, declaration, description in (
+        (
+            "neg-v4-canonicalization-jcs-n",
+            "jcs-n",
+            "Format 4 explicitly declaring withdrawn jcs-n is rejected.",
+        ),
+        (
+            "neg-v4-canonicalization-unknown",
+            "future-algorithm",
+            "Format 4 declaring an unknown canonicalization algorithm is rejected.",
+        ),
+        (
+            "neg-v4-canonicalization-non-string",
+            7,
+            "Format 4 declaring a non-string canonicalization identifier is rejected.",
+        ),
+    ):
+        malformed = dict(current)
+        malformed["canonicalization_id"] = declaration
+        add(name, "negative", description, malformed)
+
+    vintage_with_declaration = c_executed()
+    vintage_with_declaration["canonicalization_id"] = "jcs"
+    add(
+        "neg-v2-canonicalization-declared",
+        "negative",
+        "Format 2 is the absent-field vintage profile and rejects any canonicalization_id declaration.",
+        vintage_with_declaration,
+    )
 
     # ---- POSITIVE: identity + verdict_class categories ----
     add("pos-executed-confirmed", "positive",
@@ -231,10 +326,10 @@ def build_cases() -> list[dict]:
         "a JSON floating-point value in a digest-bearing field -> structural failure (check 1, §5.1).",
         float_cap)
 
-    # Impl guard AHEAD of the -00 text: an integer beyond the IEEE-754-double safe
-    # range (2^53-1) is a cross-impl digest-reproducibility hazard. The -00 forbids
-    # floats and mandates decimal STRINGS for monetary/quantity values but does not
-    # yet state this integer bound — see the -01 FLAG in test-vectors/README.md.
+    # Historical format-2 guard: an integer beyond the IEEE-754-double safe range
+    # (2^53-1) is a cross-implementation digest-reproducibility hazard. The
+    # current draft codifies the bound; this vector preserves coverage for the
+    # older wire profile that first exposed it.
     unsafe_int_cap = {**ident("neg-unsafeint"),
                       "effect": {"status": "confirmed", "type": "write_order", "response_digest": HEX_R,
                                  "effect_attestation": "gate_executed", "amount": 2**53},
@@ -242,8 +337,8 @@ def build_cases() -> list[dict]:
                       "disposition": {"decision": "accept", "approver": "human", "human_disposed": True},
                       "capsule_id": "0" * 64}  # cannot recompute over an unsafe int; carried id is a placeholder
     add("neg-unsafe-integer-in-digest-field", "negative",
-        "an integer beyond 2^53-1 in a digest-bearing field -> structural failure (check 1). "
-        "IMPL GUARD ahead of -00; flagged for an -01 clarification (large integers MUST be decimal strings).",
+        "an integer beyond 2^53-1 in a digest-bearing field -> structural failure (check 1); "
+        "the current draft requires large integers to be decimal strings.",
         unsafe_int_cap)
 
     add("neg-attestation-present-when-not-applicable", "negative",
@@ -381,8 +476,25 @@ def main() -> None:
     manifest.extend(HAND_AUTHORED_CASES)
 
     (OUT / "vectors.json").write_text(
-        json.dumps({"format_version": "2", "spec": SPEC, "count": len(manifest), "cases": manifest}, indent=2) + "\n",
+        json.dumps(
+            {
+                "format_versions": ["2", "4"],
+                "spec": CURRENT_SPEC,
+                "count": len(manifest),
+                "cases": manifest,
+            },
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
+    )
+    checksum_lines = []
+    for path in sorted(OUT.glob("*/*.json")):
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        checksum_lines.append(f"{digest}  {path.relative_to(OUT)}")
+    (OUT / "SHA256SUMS").write_text(
+        "\n".join(checksum_lines) + "\n",
+        encoding="ascii",
     )
     print(f"wrote {len(manifest)} vectors to {OUT}")
 

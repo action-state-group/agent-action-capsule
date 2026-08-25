@@ -28,9 +28,41 @@ BASE = {
     "timestamp": "2026-01-01T00:00:00Z",
 }
 
+BASE_V4 = {
+    **BASE,
+    "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+    "format_version": "4",
+    "canonicalization_id": "jcs",
+}
+
 
 def _parse(**extra):
     return parse_capsule({**BASE, **extra})
+
+
+@pytest.mark.parametrize(
+    "base,extra",
+    [
+        (BASE_V4, {"canonicalization_id": None}),
+        (BASE_V4, {"canonicalization_id": "jcs-n"}),
+        (BASE_V4, {"canonicalization_id": "future-algorithm"}),
+        (BASE_V4, {"canonicalization_id": 7}),
+        (BASE, {"canonicalization_id": "jcs"}),
+    ],
+)
+def test_identity_profile_mismatch_is_rejected(base, extra):
+    with pytest.raises(InvariantError):
+        parse_capsule({**base, **extra})
+
+
+def test_format_4_declared_jcs_parses():
+    assert parse_capsule(BASE_V4).canonicalization_id == "jcs"
+
+
+def test_format_2_parses_but_cannot_be_sealed():
+    vintage = parse_capsule(BASE)
+    with pytest.raises(InvariantError, match="verification-only"):
+        vintage.seal()
 
 
 # (a) present-but-wrong-typed blocks -> rejected, not silently dropped ---------

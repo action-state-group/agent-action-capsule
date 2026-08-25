@@ -15,7 +15,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from .canonical import FloatInDigestError, UnsafeIntegerError, json_digest
+from .canonical import FloatInDigestError, UnsafeIntegerError, json_digest, vintage_json_digest
 from .verify import VerificationResult, verify
 
 # disclosures member name -> dotted path of the committed-digest field within
@@ -94,7 +94,10 @@ def verify_disclosure_envelope(envelope: Any) -> DisclosureEnvelopeResult:
                 continue
 
             try:
-                computed = json_digest(value)
+                if capsule.get("format_version") == "2":
+                    computed = vintage_json_digest(value)
+                else:
+                    computed = json_digest(value)
                 matches = computed == stored
             except (FloatInDigestError, UnsafeIntegerError, TypeError, ValueError):
                 matches = False

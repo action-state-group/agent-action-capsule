@@ -1,0 +1,7 @@
+{
+  "ok": false,
+  "finding_codes": [
+    "envelope_signature_invalid"
+  ],
+  "public_key_hex": null
+}

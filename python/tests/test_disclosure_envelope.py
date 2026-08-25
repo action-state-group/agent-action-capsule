@@ -3,6 +3,7 @@
 from conftest import reseal
 
 from agent_action_capsule import ModelAttestation, json_digest, verify_disclosure_envelope
+from agent_action_capsule.canonical import vintage_json_digest
 from agent_action_capsule.disclosure_envelope import MATCH, MISMATCH
 
 
@@ -24,6 +25,24 @@ def test_matching_disclosure(executed):
     assert res.disclosures_checked == 1
     assert res.disclosures_matched == 1
     assert res.disclosure_findings[0].code == MATCH
+
+
+def test_vintage_disclosure_uses_absent_field_normalization(executed):
+    value = {"amount": "500.00", "metadata": {}}
+    capsule = dict(executed)
+    capsule["format_version"] = "2"
+    capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-02"
+    capsule.pop("canonicalization_id")
+    capsule = with_compute_attestation(
+        capsule, agent_input_digest=vintage_json_digest(value)
+    )
+
+    result = verify_disclosure_envelope(
+        {"capsule": capsule, "disclosures": {"agent_input": value}}
+    )
+
+    assert result.ok
+    assert result.disclosure_findings[0].code == MATCH
 
 
 def test_mismatching_disclosure_does_not_affect_capsule_verification(executed):

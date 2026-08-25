@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Canonicalization and JSON-DIGEST (draft-mih-scitt-agent-action-capsule, §2, §5.1).
 //
-// JSON-DIGEST := HEX(SHA-256(JCS(normalize(v)))) — the lowercase-hex SHA-256 of the
-// RFC 8785 JSON Canonicalization Scheme serialization of a value after absent-field
-// normalization (§2).
+// Current JSON-DIGEST := HEX(SHA-256(JCS(v))) using plain RFC 8785 JCS.
+// Absent-field normalization remains only for vintage Capsule-ID verification.
 //
 // The profile forbids JSON floating-point numbers in any digest-bearing field (§5.1);
 // a float reaching the serializer is a producer error and is rejected.
@@ -24,8 +23,11 @@ import (
 // MaxSafeInteger is IEEE-754 double Number.MAX_SAFE_INTEGER = 2^53 − 1.
 const MaxSafeInteger = int64(1<<53 - 1) // 9007199254740991
 
-// ChainLinkageFields are excluded from the canonical capsule form (§5.1):
-// capsule_id (cannot contain itself) and chain (stable content-address regardless of chaining).
+// CanonicalizationJCS selects plain RFC 8785 JCS for new Capsule IDs.
+const CanonicalizationJCS = "jcs"
+
+// ChainLinkageFields are excluded by the vintage absent-field jcs-n identity
+// construction. Declared jcs Capsules exclude only capsule_id and commit chain.
 var ChainLinkageFields = map[string]bool{
 	"capsule_id": true,
 	"chain":      true,
@@ -227,9 +229,15 @@ func JCS(v interface{}) ([]byte, error) {
 	return []byte(s), nil
 }
 
-// JSONDigest computes JSON-DIGEST (§2): lowercase-hex SHA-256 of JCS(Normalize(v)).
+// JSONDigest computes the current JSON-DIGEST (§2): lowercase-hex SHA-256 of
+// plain RFC 8785 JCS. Absent-field normalization is reserved for vintage
+// Capsule-ID verification and is not used for newly produced digests.
 func JSONDigest(v interface{}) (string, error) {
-	b, err := JCS(Normalize(v))
+	return digestJCS(v)
+}
+
+func digestJCS(v interface{}) (string, error) {
+	b, err := JCS(v)
 	if err != nil {
 		return "", err
 	}
@@ -237,15 +245,49 @@ func JSONDigest(v interface{}) (string, error) {
 	return hex.EncodeToString(h[:]), nil
 }
 
-// ComputeCapsuleID recomputes capsule_id (§5.1): the JSON-DIGEST of the canonical
-// capsule form — the envelope minus capsule_id and chain-linkage fields, after
-// absent-field normalization.
+// ComputeCapsuleID recomputes capsule_id using the Capsule's declared
+// canonicalization algorithm.
+//
+// A record without canonicalization_id uses the vintage jcs-n construction:
+// remove capsule_id and chain, normalize absent fields, then apply JCS. This
+// compatibility path is selected only by the field's absence.
+//
+// A record declaring jcs removes only capsule_id, then applies plain RFC 8785
+// JCS. The declaration and chain therefore participate in the Capsule ID.
+// Unknown, null, and non-string declarations fail closed.
 func ComputeCapsuleID(capsule map[string]interface{}) (string, error) {
+	declared, present := capsule["canonicalization_id"]
+	if !present {
+		return computeVintageCapsuleID(capsule)
+	}
+
+	algorithm, ok := declared.(string)
+	if !ok {
+		return "", fmt.Errorf("canonicalization_id must be a string")
+	}
+	if algorithm != CanonicalizationJCS {
+		return "", fmt.Errorf("unsupported canonicalization_id %q", algorithm)
+	}
+	return computeJCSCapsuleID(capsule)
+}
+
+func computeVintageCapsuleID(capsule map[string]interface{}) (string, error) {
 	canonical := make(map[string]interface{})
 	for k, v := range capsule {
 		if !ChainLinkageFields[k] {
 			canonical[k] = v
 		}
 	}
-	return JSONDigest(canonical)
+	return digestJCS(Normalize(canonical))
+}
+
+func computeJCSCapsuleID(capsule map[string]interface{}) (string, error) {
+	canonical := make(map[string]interface{})
+	for k, v := range capsule {
+		if k == "capsule_id" {
+			continue
+		}
+		canonical[k] = v
+	}
+	return digestJCS(canonical)
 }

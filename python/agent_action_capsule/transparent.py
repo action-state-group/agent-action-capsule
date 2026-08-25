@@ -30,6 +30,7 @@ from scitt_cose import (  # type: ignore
 )
 
 from . import VerificationResult, verify
+from .media_types import CAPSULE_ID_MEDIA_TYPE
 
 
 class SubstrateInputError(Exception):
@@ -43,6 +44,7 @@ class TransparentReport:
     receipt_verified: bool | None = None
     attestation_tier: str = "signature-invalid"
     content_type: str | None = None
+    authenticated_capsule_id: str | None = None
     substrate_errors: list[str] = field(default_factory=list)
     payload: VerificationResult | None = None
     ok: bool = False
@@ -124,9 +126,19 @@ def verify_transparent(
         report.substrate_errors.append("authenticated statement carried no payload")
         report.ok = False
         return report
+    if report.content_type == CAPSULE_ID_MEDIA_TYPE:
+        if len(payload_bytes) != 32:
+            report.substrate_errors.append("authenticated Capsule-ID payload is not 32 bytes")
+            report.ok = False
+            return report
+        report.authenticated_capsule_id = bytes(payload_bytes).hex()
+        report.ok = report.signature_verified is True and (
+            not receipt_requested or report.receipt_verified is True
+        )
+        return report
     try:
         capsule = json.loads(payload_bytes)
-    except json.JSONDecodeError as exc:
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         report.substrate_errors.append(f"authenticated payload is not valid JSON: {exc}")
         report.ok = False
         return report

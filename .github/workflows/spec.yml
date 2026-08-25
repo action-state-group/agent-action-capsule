@@ -23,7 +23,7 @@ jobs:
         run: make XML2RFC=xml2rfc
       - name: assert RFCXML v3
         working-directory: spec
-        run: grep -q 'version="3"' draft-mih-scitt-agent-action-capsule-00.xml
+        run: grep -q 'version="3"' draft-mih-scitt-agent-action-capsule-04.xml
       - name: idnits
         working-directory: spec
-        run: npx --yes @ietf-tools/idnits draft-mih-scitt-agent-action-capsule-00.txt || true
+        run: npx --yes @ietf-tools/idnits draft-mih-scitt-agent-action-capsule-04.txt || true

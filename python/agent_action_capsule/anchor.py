@@ -26,6 +26,8 @@ from collections.abc import Callable
 from typing import Any
 from urllib.request import Request, urlopen
 
+from .media_types import CAPSULE_ID_MEDIA_TYPE
+
 __all__ = [
     # Simple surface (stdlib-only)
     "anchor",
@@ -56,7 +58,6 @@ AUTHORITY_HINT_ENV = "AAC_ANCHOR_URL"
 _PUBKEY_PATH = "/anchor/authority-pubkey"
 _REGISTER_PATH = "/transparency/register-statement"
 
-_CONTENT_TYPE_DIGEST = "application/vnd.agent-action-capsule.id+hex"
 _ISSUER = "urn:agent-action-capsule:core:free-anchor"
 
 
@@ -242,25 +243,33 @@ def submit_anchor(
     )
     from scitt_cose.statement import attach_receipts, build_signed_statement  # type: ignore
 
-    if signing_key_pem is None:
-        signing_key_pem, issuer_pubkey_pem = generate_issuer_keypair()
-    else:
-        priv = load_pem_private_key(signing_key_pem, password=None)
-        issuer_pubkey_pem = priv.public_key().public_bytes(
-            encoding=Encoding.PEM,
-            format=PublicFormat.SubjectPublicKeyInfo,
-        )
+    try:
+        payload = bytes.fromhex(capsule_id)
+    except ValueError as exc:
+        raise ValueError("capsule_id must be 64 lowercase hexadecimal characters") from exc
+    if len(capsule_id) != 64 or capsule_id != capsule_id.lower() or len(payload) != 32:
+        raise ValueError("capsule_id must be 64 lowercase hexadecimal characters")
 
+    if signing_key_pem is None:
+        signing_key_pem, _ = generate_issuer_keypair()
+    priv = load_pem_private_key(signing_key_pem, password=None)
+    issuer_pubkey_pem = priv.public_key().public_bytes(
+        encoding=Encoding.PEM,
+        format=PublicFormat.SubjectPublicKeyInfo,
+    )
     resolved = _resolved_ts_url(ts_url)
     log_pubkey_pem = _fetch_log_pubkey_pem(resolved, timeout)
 
+    # This is a distinct RFC 9943 registration statement, not the narrower
+    # three-header AAC Producer Envelope. RFC 9943 requires protected CWT iss
+    # and sub claims on every Signed Statement.
     statement_bytes = build_signed_statement(
-        capsule_id.encode("ascii"),
+        payload,
         alg="EdDSA",
         private_key_pem=signing_key_pem,
         issuer=_ISSUER,
         subject=capsule_id,
-        content_type=_CONTENT_TYPE_DIGEST,
+        content_type=CAPSULE_ID_MEDIA_TYPE,
     )
 
     resp = _post_statement(statement_bytes, resolved, timeout)

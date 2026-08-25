@@ -1,0 +1,7 @@
+{
+  "ok": false,
+  "finding_codes": [
+    "envelope_kid_invalid"
+  ],
+  "public_key_hex": null
+}

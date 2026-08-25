@@ -71,7 +71,7 @@ func main() {
 
 // manifest is the shape of vectors.json.
 type manifest struct {
-	Count int    `json:"count"`
+	Count int `json:"count"`
 	Cases []struct {
 		Name string `json:"name"`
 		Kind string `json:"kind"`
@@ -92,10 +92,10 @@ func loadManifest(path string) (*manifest, error) {
 
 // expectedSingle is the shape of a single-capsule expected.json.
 type expectedSingle struct {
-	OK                bool                   `json:"ok"`
-	Derived           map[string]string      `json:"derived"`
-	CapsuleIDRecomputed *string              `json:"capsule_id_recomputed"`
-	Findings          []expectedFinding      `json:"findings"`
+	OK                  bool              `json:"ok"`
+	Derived             map[string]string `json:"derived"`
+	CapsuleIDRecomputed *string           `json:"capsule_id_recomputed"`
+	Findings            []expectedFinding `json:"findings"`
 }
 
 // expectedStore is the shape of a store-level expected.json.

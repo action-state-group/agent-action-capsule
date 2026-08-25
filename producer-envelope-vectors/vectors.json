@@ -1,0 +1,39 @@
+{
+  "format_version": "1",
+  "profile": "draft-mih-scitt-agent-action-capsule-04#producer-envelope",
+  "count": 8,
+  "cases": [
+    {
+      "name": "valid",
+      "description": "valid self-contained Ed25519 producer envelope"
+    },
+    {
+      "name": "bad-signature",
+      "description": "signature byte changed after signing"
+    },
+    {
+      "name": "payload-mismatch",
+      "description": "valid envelope presented for a different Capsule ID"
+    },
+    {
+      "name": "wrong-algorithm",
+      "description": "otherwise valid Ed25519 envelope declares ES256"
+    },
+    {
+      "name": "wrong-content-type",
+      "description": "signed envelope declares the wrong payload media type"
+    },
+    {
+      "name": "nonempty-unprotected",
+      "description": "unprotected header carries a profile-forbidden member"
+    },
+    {
+      "name": "extra-protected-header",
+      "description": "protected header carries a profile-forbidden extra member"
+    },
+    {
+      "name": "invalid-kid",
+      "description": "protected kid is not a raw 32-byte Ed25519 public key"
+    }
+  ]
+}

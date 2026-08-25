@@ -174,7 +174,9 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
 
    JSON-DIGEST:  As defined in [I-D.mih-scitt-agent-action-capsule]: the
       lowercase-hex SHA-256 digest of the [RFC8785] JCS serialization of
-      a value, after that profile's absent-field normalization.
+      a value under the embedded Capsule's identity profile.  Format 3
+      uses plain JCS.  Vintage format 2 applies absent-field
+      normalization.
 
    JCS:  JSON Canonicalization Scheme per [RFC8785].
 
@@ -354,11 +356,11 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
 
 5.1.3.  DE-3: Digest Recomputation and Comparison
 
-   Compute computed = JSON-DIGEST(value) — the lowercase-hex SHA-256 of
-   UTF8(JCS(value)), applying the same absent-field normalization the
-   base profile applies when computing capsule_id.  This is the same
-   canonicalization primitive the base profile already defines; this
-   document introduces no second hashing path.
+   Compute computed = JSON-DIGEST(value) using the embedded Capsule's
+   identity profile.  Format 3 computes the lowercase-hex SHA-256 of
+   UTF8(JCS(value)) without normalization.  Vintage format 2 applies the
+   same absent-field normalization used for its capsule_id.  This
+   document introduces no second profile-selection or hashing path.
 
    Compare computed to the committed digest located in DE-2:
 
@@ -536,8 +538,8 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
-              capsule-02, n.d., <https://datatracker.ietf.org/doc/html/
-              draft-mih-scitt-agent-action-capsule-02>.
+              capsule-03, n.d., <https://datatracker.ietf.org/doc/html/
+              draft-mih-scitt-agent-action-capsule-04>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
