@@ -2204,9 +2204,9 @@ Internet-Draft            Agent Action Capsules              August 2026
    [I-D.sato-soos-gar]
               Sato, "The Governance Audit Record (GAR) for Agentic AI
               Systems", Work in Progress, Internet-Draft, draft-sato-
-              soos-gar-05, 17 August 2026,
+              soos-gar-06, 25 August 2026,
               <https://datatracker.ietf.org/doc/html/draft-sato-soos-
-              gar-05>.
+              gar-06>.
 
    [NotarizedAgents]
               "Notarized Agents: Decentralized, Verifiable AI Agent

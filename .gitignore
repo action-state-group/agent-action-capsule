@@ -7,10 +7,12 @@ dist/
 .ruff_cache/
 .DS_Store
 
-# kramdown-rfc reference cache + v2 build intermediate
-spec/.refcache/
+# kramdown-rfc v2 build intermediate + CI staleness-check scratch dir.
+# spec/.refcache/ is deliberately NOT ignored -- it is committed so builds
+# are hermetic and don't depend on bib.ietf.org being reachable at CI time.
 spec/.draft-*.v2.xml
 *.v2.xml
+spec/_ci_build/
 
 # never commit keys or demo artifacts
 *.pem
