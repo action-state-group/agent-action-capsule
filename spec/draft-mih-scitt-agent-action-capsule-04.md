@@ -36,7 +36,7 @@ normative:
   I-D.mih-sokolov-scitt-payload-binding:
     title: "Canonical Payload Binding: A Signed Statement Construction Profile"
     seriesinfo:
-      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-00
+      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-02
     author:
       - ins: S. Mih
         name: Steven Mih

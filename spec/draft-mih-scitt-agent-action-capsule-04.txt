@@ -2003,8 +2003,8 @@ Internet-Draft            Agent Action Capsules              August 2026
               Mih, S. and A. Sokolov, "Canonical Payload Binding: A
               Signed Statement Construction Profile", Work in Progress,
               Internet-Draft, draft-mih-sokolov-scitt-payload-binding-
-              00, n.d., <https://datatracker.ietf.org/doc/html/draft-
-              mih-sokolov-scitt-payload-binding-00>.
+              02, n.d., <https://datatracker.ietf.org/doc/html/draft-
+              mih-sokolov-scitt-payload-binding-02>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
