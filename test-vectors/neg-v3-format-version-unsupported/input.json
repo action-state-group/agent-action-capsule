@@ -1,12 +1,13 @@
 {
-  "action_id": "v3-chain",
+  "action_id": "v4-chain",
   "action_type": "decide",
   "assurance": {
     "attestation_mode": "self_attested",
     "effect_mode": "not_applicable",
     "ledger_mode": "chained"
   },
-  "capsule_id": "8087acba6ad0156e7102f49f42ea439b2a57143ffe3f9ecaa6a5660b2f422ad8",
+  "canonicalization_id": "jcs",
+  "capsule_id": "b1baafb8bffdcd99b3c76ba742926e9497fce3d38bf0dc253be6ec3f0f2245b6",
   "chain": {
     "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "relation": "confirms"

@@ -5,12 +5,12 @@
     "effect_mode": "not_applicable",
     "ledger_mode": "chained"
   },
-  "description": "Format 3 explicitly declaring withdrawn jcs-n is rejected.",
+  "description": "Format 4 explicitly declaring withdrawn jcs-n is rejected.",
   "findings": [
     {
       "check": 1,
       "code": "canonicalization_profile_mismatch",
-      "detail": "format_version '3' REQUIRES canonicalization_id='jcs' (\u00a75.1)",
+      "detail": "format_version '4' REQUIRES canonicalization_id='jcs' (\u00a75.1)",
       "severity": "error"
     },
     {

@@ -320,7 +320,7 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 	}
 
 	// format_version selects the identity profile. Format 2 is the vintage
-	// absent-field construction; format 3 requires declared plain JCS.
+	// absent-field construction; format 4 requires declared plain JCS.
 	if fv, ok := capsuleMap["format_version"].(string); ok {
 		switch fv {
 		case "2":
@@ -331,12 +331,12 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 					Severity: "error", Check: mkCheck(1),
 				})
 			}
-		case "3":
+		case "4":
 			declared, present := capsuleMap["canonicalization_id"]
 			if !present {
 				findings = append(findings, Finding{
 					Code:     "canonicalization_id_missing",
-					Detail:   "format_version \"3\" REQUIRES canonicalization_id=\"jcs\" (§5.1)",
+					Detail:   "format_version \"4\" REQUIRES canonicalization_id=\"jcs\" (§5.1)",
 					Severity: "error", Check: mkCheck(1),
 				})
 			} else if algorithm, isString := declared.(string); !isString {
@@ -348,14 +348,14 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 			} else if algorithm != canonical.CanonicalizationJCS {
 				findings = append(findings, Finding{
 					Code:     "canonicalization_profile_mismatch",
-					Detail:   "format_version \"3\" REQUIRES canonicalization_id=\"jcs\" (§5.1)",
+					Detail:   "format_version \"4\" REQUIRES canonicalization_id=\"jcs\" (§5.1)",
 					Severity: "error", Check: mkCheck(1),
 				})
 			}
 		default:
 			findings = append(findings, Finding{
 				Code:     "unsupported_format_version",
-				Detail:   fmt.Sprintf("format_version %q is not supported; expected \"2\" or \"3\" (§5.1)", fv),
+				Detail:   fmt.Sprintf("format_version %q is not supported; expected \"2\" or \"4\" (§5.1)", fv),
 				Severity: "error", Check: mkCheck(1),
 			})
 		}

@@ -206,10 +206,10 @@ def test_parse_rejects_dishonest_capsule(executed):
 @pytest.mark.parametrize(
     "format_version,declaration,expected_code",
     [
-        ("3", None, "canonicalization_id_missing"),
-        ("3", "jcs-n", "canonicalization_profile_mismatch"),
-        ("3", "future-algorithm", "canonicalization_profile_mismatch"),
-        ("3", 7, "canonicalization_id_not_string"),
+        ("4", None, "canonicalization_id_missing"),
+        ("4", "jcs-n", "canonicalization_profile_mismatch"),
+        ("4", "future-algorithm", "canonicalization_profile_mismatch"),
+        ("4", 7, "canonicalization_id_not_string"),
         ("2", "jcs", "canonicalization_profile_mismatch"),
         ("2", None, "canonicalization_profile_mismatch"),
     ],
@@ -217,7 +217,7 @@ def test_parse_rejects_dishonest_capsule(executed):
 def test_identity_profile_findings(executed, format_version, declaration, expected_code):
     capsule = dict(executed)
     capsule["format_version"] = format_version
-    if format_version == "3":
+    if format_version == "4":
         capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-04"
     if declaration is not None or format_version == "2":
         capsule["canonicalization_id"] = declaration

@@ -210,12 +210,12 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
     if at is not None and at not in ("fyi", "decide"):
         findings.append(Finding("action_type_invalid", "action_type MUST be 'fyi' or 'decide' (§5.1)", check=1))
     # format_version selects the identity profile. Format 2 is the vintage
-    # absent-field construction; format 3 requires declared plain JCS.
+    # absent-field construction; format 4 requires declared plain JCS.
     fv = capsule.get("format_version")
-    if isinstance(fv, str) and fv not in ("2", "3"):
+    if isinstance(fv, str) and fv not in ("2", "4"):
         findings.append(Finding(
             "unsupported_format_version",
-            f"format_version {fv!r} is not supported; expected \"2\" or \"3\" (§5.1)",
+            f"format_version {fv!r} is not supported; expected \"2\" or \"4\" (§5.1)",
             check=1,
         ))
     elif fv == "2":
@@ -225,11 +225,11 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
                 "format_version '2' is the vintage absent-field profile and MUST NOT declare canonicalization_id (§5.1)",
                 check=1,
             ))
-    elif fv == "3":
+    elif fv == "4":
         if "canonicalization_id" not in capsule:
             findings.append(Finding(
                 "canonicalization_id_missing",
-                "format_version '3' REQUIRES canonicalization_id='jcs' (§5.1)",
+                "format_version '4' REQUIRES canonicalization_id='jcs' (§5.1)",
                 check=1,
             ))
         elif not isinstance(capsule["canonicalization_id"], str):
@@ -241,7 +241,7 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         elif capsule["canonicalization_id"] != CANONICALIZATION_JCS:
             findings.append(Finding(
                 "canonicalization_profile_mismatch",
-                "format_version '3' REQUIRES canonicalization_id='jcs' (§5.1)",
+                "format_version '4' REQUIRES canonicalization_id='jcs' (§5.1)",
                 check=1,
             ))
     for fld in ("effect", "assurance", "disposition", "chain", "cross_party", "self_reported_reasoning"):

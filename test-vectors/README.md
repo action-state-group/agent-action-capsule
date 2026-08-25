@@ -2,7 +2,7 @@
 
 Frozen Class-1 conformance vectors for the Agent Action Capsule profile
 (`../spec/`). Each case is an input plus the expected Class-1 verifier result,
-version-pinned and hand-checkable. The corpus covers both the current format-3
+version-pinned and hand-checkable. The corpus covers both the current format-4
 identity profile and the absent-field format-2 vintage verification path.
 
 ## These are DERIVED and FROZEN (not hand-authored)
@@ -28,7 +28,7 @@ from the draft text without running this package:
 - `derived` — `effect_mode` / `attestation_mode` / `ledger_mode`, rederived per
   §5.2/§5.3. (This payload layer never derives `anchored`; substrate/Receipt
   verification is by reference, §6.)
-- `capsule_id_recomputed` — the derived Capsule ID (§5.1). Format 3 removes
+- `capsule_id_recomputed` — the derived Capsule ID (§5.1). Format 4 removes
   only `capsule_id` and uses plain JCS; vintage format 2 removes `capsule_id`
   and `chain` and applies absent-field normalization before JCS.
 
@@ -59,7 +59,7 @@ failed→REQUIRED, reverted→REQUIRED); unknown registry values (informational,
 never rejected); and the store-level supersedes chain and concurrent-supersedes
 cases.
 
-Identity cases include a current format-3 Capsule with a committed chain,
+Identity cases include a current format-4 Capsule with a committed chain,
 post-seal chain tampering, a missing declaration, explicit withdrawn `jcs-n`,
 an unknown declaration, a non-string declaration, and a format-2 Capsule that
 incorrectly declares an algorithm.

@@ -32,7 +32,7 @@ __all__ = [
 # Plain RFC 8785 JCS is the only algorithm new Capsules may declare.
 CANONICALIZATION_JCS = "jcs"
 
-# Fields excluded by the vintage absent-field identity construction. Format-3
+# Fields excluded by the vintage absent-field identity construction. Format-4
 # Capsules declare jcs and exclude only capsule_id, so chain is committed.
 CHAIN_LINKAGE_FIELDS = ("capsule_id", "chain")
 

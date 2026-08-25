@@ -53,11 +53,11 @@ def ident(action_id: str, action_type: str = "decide") -> dict:
     }
 
 
-def ident_v3(action_id: str, action_type: str = "decide") -> dict:
+def ident_v4(action_id: str, action_type: str = "decide") -> dict:
     """Identity fields for the current declared-JCS serialization suite."""
     return {
         "spec_version": CURRENT_SPEC,
-        "format_version": "3",
+        "format_version": "4",
         "canonicalization_id": "jcs",
         "action_id": action_id,
         "action_type": action_type,
@@ -121,9 +121,9 @@ def build_cases() -> list[dict]:
     def add(name, kind, description, inp):
         cases.append({"name": name, "kind": kind, "description": description, "input": inp})
 
-    # ---- IDENTITY PROFILE: current format 3 and vintage format 2 ----
+    # ---- IDENTITY PROFILE: current format 4 and vintage format 2 ----
     current = seal({
-        **ident_v3("v3-chain"),
+        **ident_v4("v4-chain"),
         "assurance": assurance("not_applicable", ledger_mode="chained"),
         "disposition": {
             "decision": "accept",
@@ -138,45 +138,53 @@ def build_cases() -> list[dict]:
         "constraints": [],
     })
     add(
-        "pos-v3-jcs-chain-committed",
+        "pos-v4-jcs-chain-committed",
         "positive",
-        "Format 3 plain JCS commits the chain block and a present empty array to capsule_id.",
+        "Format 4 plain JCS commits the chain block and a present empty array to capsule_id.",
         current,
+    )
+
+    format3_unsupported = seal({**current, "format_version": "3"})
+    add(
+        "neg-v3-format-version-unsupported",
+        "negative",
+        "Format 3 was never published and must fail closed rather than aliasing format 4.",
+        format3_unsupported,
     )
 
     chain_tampered = json.loads(json.dumps(current))
     chain_tampered["chain"]["relation"] = "supersedes"
     add(
-        "neg-v3-chain-tampered",
+        "neg-v4-chain-tampered",
         "negative",
-        "Changing a format-3 chain member after sealing causes capsule_id mismatch.",
+        "Changing a format-4 chain member after sealing causes capsule_id mismatch.",
         chain_tampered,
     )
 
     missing_declaration = dict(current)
     missing_declaration.pop("canonicalization_id")
     add(
-        "neg-v3-canonicalization-missing",
+        "neg-v4-canonicalization-missing",
         "negative",
-        "Format 3 without canonicalization_id is a profile mismatch.",
+        "Format 4 without canonicalization_id is a profile mismatch.",
         missing_declaration,
     )
 
     for name, declaration, description in (
         (
-            "neg-v3-canonicalization-jcs-n",
+            "neg-v4-canonicalization-jcs-n",
             "jcs-n",
-            "Format 3 explicitly declaring withdrawn jcs-n is rejected.",
+            "Format 4 explicitly declaring withdrawn jcs-n is rejected.",
         ),
         (
-            "neg-v3-canonicalization-unknown",
+            "neg-v4-canonicalization-unknown",
             "future-algorithm",
-            "Format 3 declaring an unknown canonicalization algorithm is rejected.",
+            "Format 4 declaring an unknown canonicalization algorithm is rejected.",
         ),
         (
-            "neg-v3-canonicalization-non-string",
+            "neg-v4-canonicalization-non-string",
             7,
-            "Format 3 declaring a non-string canonicalization identifier is rejected.",
+            "Format 4 declaring a non-string canonicalization identifier is rejected.",
         ),
     ):
         malformed = dict(current)
@@ -470,7 +478,7 @@ def main() -> None:
     (OUT / "vectors.json").write_text(
         json.dumps(
             {
-                "format_versions": ["2", "3"],
+                "format_versions": ["2", "4"],
                 "spec": CURRENT_SPEC,
                 "count": len(manifest),
                 "cases": manifest,

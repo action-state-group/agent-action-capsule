@@ -317,9 +317,9 @@ detail is specified in {{constraints}}.
 | Field | Type | Req | Meaning |
 |---|---|---|---|
 | spec_version | string | REQUIRED | The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-04". |
-| format_version | string | REQUIRED | The serialization-suite version. New Capsules use "3". Vintage format-2 Capsules remain verifiable only under the compatibility rule below. |
-| canonicalization_id | string | REQUIRED for format 3; MUST be absent for format 2 | New Capsules MUST carry exactly "jcs". Explicit "jcs-n", empty, null, non-string, and unknown declarations are invalid. |
-| capsule_id | string (64 lowercase hex) | REQUIRED | The derived identifier. For format 3, compute SHA-256 over plain JCS of the Capsule with only `capsule_id` removed. The `canonicalization_id` declaration and `chain` block participate. Verifiers MUST recompute; carried values MUST NOT be trusted. |
+| format_version | string | REQUIRED | The serialization-suite version. New Capsules use "4". Vintage format-2 Capsules remain verifiable only under the compatibility rule below. |
+| canonicalization_id | string | REQUIRED for format 4; MUST be absent for format 2 | New Capsules MUST carry exactly "jcs". Explicit "jcs-n", empty, null, non-string, and unknown declarations are invalid. |
+| capsule_id | string (64 lowercase hex) | REQUIRED | The derived identifier. For format 4, compute SHA-256 over plain JCS of the Capsule with only `capsule_id` removed. The `canonicalization_id` declaration and `chain` block participate. Verifiers MUST recompute; carried values MUST NOT be trusted. |
 | action_id | string | REQUIRED | Stable identifier of the action; unique within one producer ledger. |
 | action_type | string | REQUIRED | "fyi" (informational) or "decide" (a disposition was required). |
 | operator | string | REQUIRED | The accountable tenant the action was performed for. |
@@ -395,7 +395,7 @@ verification failure (an epoch change mid-stream is not structurally
 non-conforming), but it is evidence that a configuration boundary occurred
 without a corresponding epoch-boundary Capsule.
 
-For format 3, the `chain` block participates in `capsule_id`. Changing a
+For format 4, the `chain` block participates in `capsule_id`. Changing a
 parent identifier or relation after sealing therefore changes the recomputed
 identity and invalidates every Producer Envelope over the prior Capsule ID.
 Only vintage format-2 verification excludes `chain`.
@@ -771,10 +771,10 @@ result, never throw; a single `ok` boolean gates trust in every other
 reported field; findings are reported in a fixed order.
 
 1. Structural: REQUIRED fields present and typed; no floating-point
-   values in digest-bearing fields; format 3 requires exactly
+   values in digest-bearing fields; format 4 requires exactly
    `canonicalization_id: "jcs"`; format 2 requires the field to be absent;
    unknown formats and all other declarations fail closed.
-2. Identity: for format 3, remove only `capsule_id` and compute SHA-256 over
+2. Identity: for format 4, remove only `capsule_id` and compute SHA-256 over
    plain JCS. For vintage format 2, remove `capsule_id` and `chain`, apply
    absent-field normalization, then JCS and SHA-256. Compare the result with
    the carried `capsule_id`.

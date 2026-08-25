@@ -62,7 +62,7 @@ def _make_capsule(
     eff_mode = _derive(eff_dict)
     return Capsule(
         spec_version="draft-mih-scitt-agent-action-capsule-04",
-        format_version="3",
+        format_version="4",
         canonicalization_id="jcs",
         action_id="act-x",
         action_type="decide",

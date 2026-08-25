@@ -6,7 +6,7 @@
 An **open specification** for recording and independently verifying what an
 AI agent actually did. An Agent Action Capsule is a digest-committed JSON record
 with a signer-independent identity. New Capsules declare plain RFC 8785 JCS,
-commit `chain` to `capsule_id`, and use format version 3.
+commit `chain` to `capsule_id`, and use format version 4.
 
 A Capsule is recorded on every verdict. One or more independent COSE_Sign1
 Producer Envelopes may authenticate the raw 32-byte Capsule ID. Signing never
@@ -45,10 +45,10 @@ cd agent-action-capsule
 pip install -e python            # or, once published: pip install agent-action-capsule
 
 # a known-good conformance vector  ->  ok: True, findings: none
-agent-action-capsule verify test-vectors/pos-v3-jcs-chain-committed/input.json
+agent-action-capsule verify test-vectors/pos-v4-jcs-chain-committed/input.json
 
 # a tampered capsule               ->  ok: False, capsule_id_mismatch
-agent-action-capsule verify test-vectors/neg-v3-chain-tampered/input.json
+agent-action-capsule verify test-vectors/neg-v4-chain-tampered/input.json
 ```
 
 The good capsule recomputes its content-address and passes; the tampered one is

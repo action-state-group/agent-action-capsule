@@ -32,7 +32,7 @@ func loadCapsule(t *testing.T, vector string) map[string]interface{} {
 func TestVerifyDeclaredJCSCommitsChain(t *testing.T) {
 	capsule := loadCapsule(t, "pos-executed-confirmed")
 	capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-04"
-	capsule["format_version"] = "3"
+	capsule["format_version"] = "4"
 	capsule["canonicalization_id"] = canonical.CanonicalizationJCS
 	chain := map[string]interface{}{
 		"parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -62,7 +62,7 @@ func TestVerifyRejectsUnsupportedCanonicalizationID(t *testing.T) {
 		t.Run(algorithm, func(t *testing.T) {
 			capsule := loadCapsule(t, "pos-executed-confirmed")
 			capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-04"
-			capsule["format_version"] = "3"
+			capsule["format_version"] = "4"
 			capsule["canonicalization_id"] = algorithm
 
 			result := verify.Verify(capsule, nil, nil)
@@ -80,10 +80,11 @@ func TestVerifyCanonicalizationProfileMatrix(t *testing.T) {
 		declared      bool
 		wantCode      string
 	}{
-		{name: "format 3 missing", formatVersion: "3", wantCode: "canonicalization_id_missing"},
-		{name: "format 3 withdrawn", formatVersion: "3", declaration: "jcs-n", declared: true, wantCode: "canonicalization_profile_mismatch"},
-		{name: "format 3 unknown", formatVersion: "3", declaration: "future-algorithm", declared: true, wantCode: "canonicalization_profile_mismatch"},
-		{name: "format 3 non-string", formatVersion: "3", declaration: json.Number("7"), declared: true, wantCode: "canonicalization_id_not_string"},
+		{name: "format 4 missing", formatVersion: "4", wantCode: "canonicalization_id_missing"},
+		{name: "format 4 withdrawn", formatVersion: "4", declaration: "jcs-n", declared: true, wantCode: "canonicalization_profile_mismatch"},
+		{name: "format 4 unknown", formatVersion: "4", declaration: "future-algorithm", declared: true, wantCode: "canonicalization_profile_mismatch"},
+		{name: "format 4 non-string", formatVersion: "4", declaration: json.Number("7"), declared: true, wantCode: "canonicalization_id_not_string"},
+		{name: "format 3 unsupported", formatVersion: "3", declaration: "jcs", declared: true, wantCode: "unsupported_format_version"},
 		{name: "format 2 declared", formatVersion: "2", declaration: "jcs", declared: true, wantCode: "canonicalization_profile_mismatch"},
 		{name: "format 2 null declaration", formatVersion: "2", declaration: nil, declared: true, wantCode: "canonicalization_profile_mismatch"},
 	}
@@ -92,7 +93,7 @@ func TestVerifyCanonicalizationProfileMatrix(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			capsule := loadCapsule(t, "pos-executed-confirmed")
 			capsule["format_version"] = test.formatVersion
-			if test.formatVersion == "3" {
+			if test.formatVersion == "4" {
 				capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-04"
 			}
 			if test.declared {

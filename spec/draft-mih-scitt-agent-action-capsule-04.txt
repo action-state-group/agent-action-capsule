@@ -397,7 +397,7 @@ Internet-Draft            Agent Action Capsules              August 2026
    +---------------------+-----------+----------+----------------------+
    | format_version      | string    | REQUIRED | The serialization-   |
    |                     |           |          | suite version.  New  |
-   |                     |           |          | Capsules use "3".    |
+   |                     |           |          | Capsules use "4".    |
    |                     |           |          | Vintage format-2     |
    |                     |           |          | Capsules remain      |
    |                     |           |          | verifiable only      |
@@ -408,7 +408,7 @@ Internet-Draft            Agent Action Capsules              August 2026
    | canonicalization_id | string    | REQUIRED | New Capsules MUST    |
    |                     |           | for      | carry exactly        |
    |                     |           | format   | "jcs".  Explicit     |
-   |                     |           | 3; MUST  | "jcs-n", empty,      |
+   |                     |           | 4; MUST  | "jcs-n", empty,      |
    |                     |           | be       | null, non-string,    |
    |                     |           | absent   | and unknown          |
    |                     |           | for      | declarations are     |
@@ -416,7 +416,7 @@ Internet-Draft            Agent Action Capsules              August 2026
    +---------------------+-----------+----------+----------------------+
    | capsule_id          | string    | REQUIRED | The derived          |
    |                     | (64       |          | identifier.  For     |
-   |                     | lowercase |          | format 3, compute    |
+   |                     | lowercase |          | format 4, compute    |
    |                     | hex)      |          | SHA-256 over plain   |
    |                     |           |          | JCS of the Capsule   |
    |                     |           |          | with only            |
@@ -602,7 +602,7 @@ Internet-Draft            Agent Action Capsules              August 2026
    conforming), but it is evidence that a configuration boundary
    occurred without a corresponding epoch-boundary Capsule.
 
-   For format 3, the chain block participates in capsule_id.  Changing a
+   For format 4, the chain block participates in capsule_id.  Changing a
    parent identifier or relation after sealing therefore changes the
    recomputed identity and invalidates every Producer Envelope over the
    prior Capsule ID.  Only vintage format-2 verification excludes chain.
@@ -1221,7 +1221,7 @@ Internet-Draft            Agent Action Capsules              August 2026
    reported in a fixed order.
 
    1.  Structural: REQUIRED fields present and typed; no floating-point
-       values in digest-bearing fields; format 3 requires exactly
+       values in digest-bearing fields; format 4 requires exactly
        canonicalization_id: "jcs"; format 2 requires the field to be
        absent; unknown formats and all other declarations fail closed.
 
@@ -1234,7 +1234,7 @@ Mih                     Expires 26 February 2027               [Page 22]
 Internet-Draft            Agent Action Capsules              August 2026
 
 
-   2.  Identity: for format 3, remove only capsule_id and compute
+   2.  Identity: for format 4, remove only capsule_id and compute
        SHA-256 over plain JCS.  For vintage format 2, remove capsule_id
        and chain, apply absent-field normalization, then JCS and SHA-
        256.  Compare the result with the carried capsule_id.

@@ -1,5 +1,5 @@
 {
-  "action_id": "v3-chain",
+  "action_id": "v4-chain",
   "action_type": "decide",
   "assurance": {
     "attestation_mode": "self_attested",
@@ -7,7 +7,7 @@
     "ledger_mode": "chained"
   },
   "canonicalization_id": "future-algorithm",
-  "capsule_id": "8087acba6ad0156e7102f49f42ea439b2a57143ffe3f9ecaa6a5660b2f422ad8",
+  "capsule_id": "862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2",
   "chain": {
     "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "relation": "confirms"
@@ -20,7 +20,7 @@
     "human_disposed": false,
     "verdict_class": "executed"
   },
-  "format_version": "3",
+  "format_version": "4",
   "operator": "ACME-CO",
   "spec_version": "draft-mih-scitt-agent-action-capsule-04",
   "timestamp": "2026-08-24T00:00:00Z"

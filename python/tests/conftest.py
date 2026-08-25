@@ -24,7 +24,7 @@ def base_executed() -> dict:
     """A valid 'executed' Capsule with a confirmed effect, sealed."""
     return Capsule(
         spec_version="draft-mih-scitt-agent-action-capsule-04",
-        format_version="3",
+        format_version="4",
         canonicalization_id="jcs",
         action_id="act-1",
         action_type="decide",
@@ -51,7 +51,7 @@ def base_blocked() -> dict:
     """A valid 'blocked' Capsule: no effect, not_applicable, sealed."""
     return Capsule(
         spec_version="draft-mih-scitt-agent-action-capsule-04",
-        format_version="3",
+        format_version="4",
         canonicalization_id="jcs",
         action_id="act-2",
         action_type="decide",

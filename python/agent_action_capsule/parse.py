@@ -68,10 +68,10 @@ class Capsule:
     def __post_init__(self) -> None:
         from .contracts import NEVER_DISPATCH_VERDICT_CLASSES
 
-        if self.format_version == "3":
+        if self.format_version == "4":
             if self.canonicalization_id != CANONICALIZATION_JCS:
                 raise InvariantError(
-                    "format_version '3' REQUIRES canonicalization_id='jcs' (§5.1)"
+                    "format_version '4' REQUIRES canonicalization_id='jcs' (§5.1)"
                 )
         elif self.format_version == "2":
             if self.canonicalization_id is not None:
@@ -81,7 +81,7 @@ class Capsule:
                 )
         else:
             raise InvariantError(
-                f"unsupported format_version {self.format_version!r}; expected '2' or '3' (§5.1)"
+                f"unsupported format_version {self.format_version!r}; expected '2' or '4' (§5.1)"
             )
 
         if self.disposition is not None and self.effect is not None:
@@ -133,9 +133,9 @@ class Capsule:
     def seal(self) -> dict:
         """Return the full Capsule dict with ``capsule_id`` computed over the
         canonical capsule form (§5.1)."""
-        if self.format_version != "3":
+        if self.format_version != "4":
             raise InvariantError(
-                "Capsule.seal() creates only format_version '3'; "
+                "Capsule.seal() creates only format_version '4'; "
                 "format_version '2' is verification-only"
             )
         body = self.to_dict()

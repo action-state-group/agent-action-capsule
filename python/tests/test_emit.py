@@ -212,7 +212,7 @@ def test_emit_simple_required_fields():
     assert capsule["spec_version"] == SPEC_VERSION
     assert capsule["format_version"] == FORMAT_VERSION
     assert capsule["spec_version"] == "draft-mih-scitt-agent-action-capsule-04"
-    assert capsule["format_version"] == "3"
+    assert capsule["format_version"] == "4"
     assert capsule["canonicalization_id"] == "jcs"
     assert capsule["operator"] == "ACME-CO"
     assert capsule["developer"] == "agent@v1"

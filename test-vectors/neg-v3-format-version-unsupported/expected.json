@@ -1,16 +1,16 @@
 {
-  "capsule_id_recomputed": "22d10234ac817bb14f943681ff3b8eb8a2725f7fe1551b8b92c0bd8f4da64da7",
+  "capsule_id_recomputed": "b1baafb8bffdcd99b3c76ba742926e9497fce3d38bf0dc253be6ec3f0f2245b6",
   "derived": {
     "attestation_mode": "self_attested",
     "effect_mode": "not_applicable",
     "ledger_mode": "chained"
   },
-  "description": "Changing a format-3 chain member after sealing causes capsule_id mismatch.",
+  "description": "Format 3 was never published and must fail closed rather than aliasing format 4.",
   "findings": [
     {
-      "check": 2,
-      "code": "capsule_id_mismatch",
-      "detail": "recomputed 22d10234ac817bb14f943681ff3b8eb8a2725f7fe1551b8b92c0bd8f4da64da7 != carried 8087acba6ad0156e7102f49f42ea439b2a57143ffe3f9ecaa6a5660b2f422ad8",
+      "check": 1,
+      "code": "unsupported_format_version",
+      "detail": "format_version '3' is not supported; expected \"2\" or \"4\" (\u00a75.1)",
       "severity": "error"
     },
     {

@@ -77,7 +77,7 @@ def test_vintage_capsule_id_excludes_capsule_id_and_chain():
 def test_declared_jcs_capsule_id_commits_chain_and_absent_fields():
     body = {
         "spec_version": "draft-mih-scitt-agent-action-capsule-04",
-        "format_version": "3",
+        "format_version": "4",
         "canonicalization_id": "jcs",
         "action_id": "a",
         "chain": {"parent_capsule_id": "b" * 64, "relation": "sequence"},

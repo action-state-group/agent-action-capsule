@@ -1,22 +1,22 @@
 {
-  "capsule_id_recomputed": null,
+  "capsule_id_recomputed": "1712e6f460b1c67968f017d6152ab06b6bdb6a35f405934545af23b4e0af3159",
   "derived": {
     "attestation_mode": "self_attested",
     "effect_mode": "not_applicable",
     "ledger_mode": "chained"
   },
-  "description": "Format 3 declaring an unknown canonicalization algorithm is rejected.",
+  "description": "Format 4 without canonicalization_id is a profile mismatch.",
   "findings": [
     {
       "check": 1,
-      "code": "canonicalization_profile_mismatch",
-      "detail": "format_version '3' REQUIRES canonicalization_id='jcs' (\u00a75.1)",
+      "code": "canonicalization_id_missing",
+      "detail": "format_version '4' REQUIRES canonicalization_id='jcs' (\u00a75.1)",
       "severity": "error"
     },
     {
       "check": 2,
-      "code": "capsule_id_uncomputable",
-      "detail": "ValueError(\"unsupported canonicalization_id 'future-algorithm'\")",
+      "code": "capsule_id_mismatch",
+      "detail": "recomputed 1712e6f460b1c67968f017d6152ab06b6bdb6a35f405934545af23b4e0af3159 != carried 862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2",
       "severity": "error"
     },
     {

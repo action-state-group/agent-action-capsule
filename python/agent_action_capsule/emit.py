@@ -51,7 +51,7 @@ __all__ = [
 ]
 
 DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-04"
-DEFAULT_FORMAT_VERSION = "3"
+DEFAULT_FORMAT_VERSION = "4"
 
 # Aliases used by the adapter tier (framework adapters import these names).
 SPEC_VERSION = DEFAULT_SPEC_VERSION
@@ -127,8 +127,8 @@ def emit(
             or reasoning content that produced this action. Self-reported and
             unattested — committed to capsule_id so tampering is detectable,
             but faithfulness is not verified (§-02).
-        spec_version: Spec revision string (defaults to ``-03``).
-        format_version: Serialization suite version (defaults to ``"3"``).
+        spec_version: Spec revision string (defaults to ``-04``).
+        format_version: Serialization suite version (defaults to ``"4"``).
         tool_name: Name of the tool that was called. Used to build a readable
             ``action_id`` when one is not provided.
         tool_input: Tool input (currently ignored in the capsule body; reserved
@@ -148,7 +148,7 @@ def emit(
 
     if format_version != DEFAULT_FORMAT_VERSION:
         raise InvariantError(
-            "emit() creates only format_version '3'; format_version '2' is verification-only"
+            "emit() creates only format_version '4'; format_version '2' is verification-only"
         )
 
     # ModelAttestation: with model identity when both are given; compute-only

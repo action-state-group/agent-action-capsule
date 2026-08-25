@@ -109,7 +109,7 @@ derived modes, the recomputed `capsule_id`). See
 
 | Module | Spec | Implements |
 |---|---|---|
-| `canonical.py` | §2, §5.1 | Current JSON-DIGEST uses plain RFC 8785 JCS. Format-3 `capsule_id` excludes only itself and commits the declaration and chain. The absent-field normalized construction remains only for vintage format-2 verification. |
+| `canonical.py` | §2, §5.1 | Current JSON-DIGEST uses plain RFC 8785 JCS. Format-4 `capsule_id` excludes only itself and commits the declaration and chain. The absent-field normalized construction remains only for vintage format-2 verification. |
 | `producer_envelope.py` | §3, §6 | Optional exact-profile COSE_Sign1 verification over the raw 32-byte Capsule ID. Returns the authenticated Ed25519 key; caller authorization remains separate. |
 | `registries.py` | §12 | Loads the six registries from `../spec/REGISTRY.md` (single-sourced — the code hard-codes no seeded values, so it cannot drift from the spec). |
 | `contracts.py` | §5.2–§5.4 | Typed **producer** carriers whose constructors enforce the invariants a producer MUST NOT violate: the disposition honesty invariant and the closed `approver` enum (§5.4), the confirmed-effect binding and the status/digest table (§5.2). A non-conforming Capsule cannot be built. Also the `effect_mode` derivation (§5.2) and the never-dispatch set (§5.4.2). |
@@ -120,7 +120,7 @@ derived modes, the recomputed `capsule_id`). See
 from agent_action_capsule import verify, Capsule, EffectRecord, Disposition, AssuranceBlock
 
 capsule = Capsule(
-    spec_version="draft-mih-scitt-agent-action-capsule-04", format_version="3",
+    spec_version="draft-mih-scitt-agent-action-capsule-04", format_version="4",
     canonicalization_id="jcs",
     action_id="po-12345", action_type="decide", operator="ACME-CO", developer="agent@v1",
     timestamp="2026-06-13T00:00:00Z",

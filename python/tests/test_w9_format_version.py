@@ -12,15 +12,15 @@ from agent_action_capsule.emit import DEFAULT_FORMAT_VERSION, emit
 # 1. v2 is the canonical declared version
 # ---------------------------------------------------------------------------
 
-def test_default_format_version_is_v3():
+def test_default_format_version_is_v4():
     """New emission uses the declared-JCS format."""
-    assert DEFAULT_FORMAT_VERSION == "3"
+    assert DEFAULT_FORMAT_VERSION == "4"
 
 
-def test_emit_produces_v3_declared_jcs():
+def test_emit_produces_v4_declared_jcs():
     """emit() stamps the current format and declaration."""
     capsule = emit("test/fv", "fyi", "OP", "DEV")
-    assert capsule["format_version"] == "3"
+    assert capsule["format_version"] == "4"
     assert capsule["canonicalization_id"] == "jcs"
 
 
@@ -41,9 +41,9 @@ def test_v2_capsule_accepted():
 # 3. Unknown format_version is explicitly rejected (not silent)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("fv", ["1", "v2", "2.0", "", "unknown", "draft-01", "2a"])
+@pytest.mark.parametrize("fv", ["1", "3", "v2", "2.0", "", "unknown", "draft-01", "2a"])
 def test_unknown_format_version_rejected(fv):
-    """Any format_version other than '2' or '3' is explicitly rejected."""
+    """Any format_version other than '2' or '4' is explicitly rejected."""
     cap = base_executed()
     cap["format_version"] = fv
     cap = reseal(cap)
@@ -124,9 +124,9 @@ def _cleanroom_check(capsule: dict) -> bool:
     format_version = capsule.get("format_version")
     if format_version == "2" and "canonicalization_id" in capsule:
         return False
-    if format_version == "3" and capsule.get("canonicalization_id") != "jcs":
+    if format_version == "4" and capsule.get("canonicalization_id") != "jcs":
         return False
-    if format_version not in {"2", "3"}:
+    if format_version not in {"2", "4"}:
         return False
     for fld in required:
         if not isinstance(capsule.get(fld), str):
