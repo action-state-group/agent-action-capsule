@@ -9,7 +9,14 @@
 #   python3 -m venv ~/.venvs/x2r && ~/.venvs/x2r/bin/pip install xml2rfc
 
 DRAFT    = draft-mih-scitt-agent-action-capsule-04
-BILATERAL = draft-mih-agent-bilateral-attestation-00
+# NOTE: this draft is NOT covered by the spec staleness gate, which follows
+# DRAFT above.  It cannot be, yet: a rebuild of -02 today renders
+# I-D.mih-agent-reputation-predicates as "*** BROKEN REFERENCE ***" because
+# that draft no longer resolves (datatracker doc page and bibxml3 endpoint both
+# return 404), while the committed .txt still carries the fully rendered
+# citation.  All three revisions -00/-01/-02 cite it.  Gating this draft before
+# that is resolved would simply land a red gate.
+BILATERAL = draft-mih-agent-bilateral-attestation-02
 XML2RFC  ?= ~/.venvs/x2r/bin/xml2rfc
 KDRFC    ?= kramdown-rfc
 
