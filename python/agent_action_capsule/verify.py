@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .canonical import (
+    CANONICALIZATION_JCS,
     MAX_SAFE_INTEGER,
     FloatInDigestError,
     UnsafeIntegerError,
@@ -208,15 +209,41 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
     at = capsule.get("action_type")
     if at is not None and at not in ("fyi", "decide"):
         findings.append(Finding("action_type_invalid", "action_type MUST be 'fyi' or 'decide' (§5.1)", check=1))
-    # format_version: only "2" is currently defined (§5.1); unknown → explicit error
+    # format_version selects the identity profile. Format 2 is the vintage
+    # absent-field construction; format 3 requires declared plain JCS.
     fv = capsule.get("format_version")
-    if isinstance(fv, str) and fv not in ("2",):
+    if isinstance(fv, str) and fv not in ("2", "3"):
         findings.append(Finding(
             "unsupported_format_version",
-            f"format_version {fv!r} is not a supported version; only \"2\" is defined (§5.1); "
-            "unknown versions must be explicitly rejected to prevent silent v1/v2 mis-parse",
+            f"format_version {fv!r} is not supported; expected \"2\" or \"3\" (§5.1)",
             check=1,
         ))
+    elif fv == "2":
+        if "canonicalization_id" in capsule:
+            findings.append(Finding(
+                "canonicalization_profile_mismatch",
+                "format_version '2' is the vintage absent-field profile and MUST NOT declare canonicalization_id (§5.1)",
+                check=1,
+            ))
+    elif fv == "3":
+        if "canonicalization_id" not in capsule:
+            findings.append(Finding(
+                "canonicalization_id_missing",
+                "format_version '3' REQUIRES canonicalization_id='jcs' (§5.1)",
+                check=1,
+            ))
+        elif not isinstance(capsule["canonicalization_id"], str):
+            findings.append(Finding(
+                "canonicalization_id_not_string",
+                "canonicalization_id MUST be a string (§5.1)",
+                check=1,
+            ))
+        elif capsule["canonicalization_id"] != CANONICALIZATION_JCS:
+            findings.append(Finding(
+                "canonicalization_profile_mismatch",
+                "format_version '3' REQUIRES canonicalization_id='jcs' (§5.1)",
+                check=1,
+            ))
     for fld in ("effect", "assurance", "disposition", "chain", "cross_party", "self_reported_reasoning"):
         if fld in capsule and not isinstance(capsule[fld], Mapping):
             findings.append(Finding("block_not_object", f"{fld} MUST be a JSON object when present", check=1))

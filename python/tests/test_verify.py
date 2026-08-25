@@ -201,3 +201,29 @@ def test_parse_rejects_dishonest_capsule(executed):
     d["disposition"] = {"decision": "accept", "approver": "policy", "human_disposed": True}
     with pytest.raises(InvariantError):
         parse_capsule(reseal(d))
+
+
+@pytest.mark.parametrize(
+    "format_version,declaration,expected_code",
+    [
+        ("3", None, "canonicalization_id_missing"),
+        ("3", "jcs-n", "canonicalization_profile_mismatch"),
+        ("3", "future-algorithm", "canonicalization_profile_mismatch"),
+        ("3", 7, "canonicalization_id_not_string"),
+        ("2", "jcs", "canonicalization_profile_mismatch"),
+        ("2", None, "canonicalization_profile_mismatch"),
+    ],
+)
+def test_identity_profile_findings(executed, format_version, declaration, expected_code):
+    capsule = dict(executed)
+    capsule["format_version"] = format_version
+    if format_version == "3":
+        capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-03"
+    if declaration is not None or format_version == "2":
+        capsule["canonicalization_id"] = declaration
+    else:
+        capsule.pop("canonicalization_id", None)
+
+    result = verify(capsule)
+    assert not result.ok
+    assert expected_code in codes(result)

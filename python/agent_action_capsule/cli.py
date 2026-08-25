@@ -202,11 +202,16 @@ def _cmd_transparent(args) -> int:
         print(f"    signature_verified : {report.signature_verified}")
         print(f"    receipt_verified   : {report.receipt_verified}")
         print(f"    attestation_tier   : {report.attestation_tier}")
+        if report.authenticated_capsule_id is not None:
+            print(f"    capsule_id         : {report.authenticated_capsule_id}")
         for e in report.substrate_errors:
             print(f"    [ERR] {e}")
         print("  payload (Agent Action Capsule, Class-1):")
         if report.payload is None:
-            print("    skipped — substrate did not authenticate the payload")
+            if report.authenticated_capsule_id is not None:
+                print("    skipped — registration authenticates Capsule ID, not Capsule JSON")
+            else:
+                print("    skipped — substrate did not authenticate the payload")
         else:
             _print_result(report.payload)
     return EXIT_OK if report.ok else EXIT_NOT_OK

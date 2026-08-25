@@ -1,8 +1,46 @@
 {
-  "format_version": "2",
-  "spec": "draft-mih-scitt-agent-action-capsule-00",
-  "count": 37,
+  "format_versions": [
+    "2",
+    "3"
+  ],
+  "spec": "draft-mih-scitt-agent-action-capsule-03",
+  "count": 44,
   "cases": [
+    {
+      "name": "pos-v3-jcs-chain-committed",
+      "kind": "positive",
+      "description": "Format 3 plain JCS commits the chain block and a present empty array to capsule_id."
+    },
+    {
+      "name": "neg-v3-chain-tampered",
+      "kind": "negative",
+      "description": "Changing a format-3 chain member after sealing causes capsule_id mismatch."
+    },
+    {
+      "name": "neg-v3-canonicalization-missing",
+      "kind": "negative",
+      "description": "Format 3 without canonicalization_id is a profile mismatch."
+    },
+    {
+      "name": "neg-v3-canonicalization-jcs-n",
+      "kind": "negative",
+      "description": "Format 3 explicitly declaring withdrawn jcs-n is rejected."
+    },
+    {
+      "name": "neg-v3-canonicalization-unknown",
+      "kind": "negative",
+      "description": "Format 3 declaring an unknown canonicalization algorithm is rejected."
+    },
+    {
+      "name": "neg-v3-canonicalization-non-string",
+      "kind": "negative",
+      "description": "Format 3 declaring a non-string canonicalization identifier is rejected."
+    },
+    {
+      "name": "neg-v2-canonicalization-declared",
+      "kind": "negative",
+      "description": "Format 2 is the absent-field vintage profile and rejects any canonicalization_id declaration."
+    },
     {
       "name": "pos-executed-confirmed",
       "kind": "positive",
@@ -136,7 +174,7 @@
     {
       "name": "neg-unsafe-integer-in-digest-field",
       "kind": "negative",
-      "description": "an integer beyond 2^53-1 in a digest-bearing field -> structural failure (check 1). IMPL GUARD ahead of -00; flagged for an -01 clarification (large integers MUST be decimal strings)."
+      "description": "an integer beyond 2^53-1 in a digest-bearing field -> structural failure (check 1); the current draft requires large integers to be decimal strings."
     },
     {
       "name": "neg-attestation-present-when-not-applicable",

@@ -2,7 +2,8 @@
 
 Frozen Class-1 conformance vectors for the Agent Action Capsule profile
 (`../spec/`). Each case is an input plus the expected Class-1 verifier result,
-version-pinned and hand-checkable.
+version-pinned and hand-checkable. The corpus covers both the current format-3
+identity profile and the absent-field format-2 vintage verification path.
 
 ## These are DERIVED and FROZEN (not hand-authored)
 
@@ -27,8 +28,9 @@ from the draft text without running this package:
 - `derived` — `effect_mode` / `attestation_mode` / `ledger_mode`, rederived per
   §5.2/§5.3. (This payload layer never derives `anchored`; substrate/Receipt
   verification is by reference, §6.)
-- `capsule_id_recomputed` — the JSON-DIGEST of the canonical capsule form
-  (§5.1). A third party regenerating it can compare byte-for-byte.
+- `capsule_id_recomputed` — the derived Capsule ID (§5.1). Format 3 removes
+  only `capsule_id` and uses plain JCS; vintage format 2 removes `capsule_id`
+  and `chain` and applies absent-field normalization before JCS.
 
 The `code` and `detail` strings are this implementation's labels (for
 debugging); a conforming verifier may use its own. Conformance is agreement on
@@ -57,18 +59,22 @@ failed→REQUIRED, reverted→REQUIRED); unknown registry values (informational,
 never rejected); and the store-level supersedes chain and concurrent-supersedes
 cases.
 
-Negative (`ok=false`): confirmed without `response_digest`; a float in a
+Identity cases include a current format-3 Capsule with a committed chain,
+post-seal chain tampering, a missing declaration, explicit withdrawn `jcs-n`,
+an unknown declaration, a non-string declaration, and a format-2 Capsule that
+incorrectly declares an algorithm.
+
+Other negative (`ok=false`) cases include confirmed without `response_digest`; a float in a
 digest-bearing field; an integer beyond the JS-safe range in a digest-bearing
-field (see the -01 flag below); `effect_attestation` present where it MUST be
+field (see the historical note below); `effect_attestation` present where it MUST be
 absent and absent where REQUIRED; a never-dispatch `verdict_class` with a
 non-`not_applicable` effect_mode; a `capsule_id` that does not recompute; a chain
 referencing a missing parent; and an `approver` outside the closed enum.
 
-## Spec-independence note + -01 flags
+## Spec-independence note
 
-Every vector's expected output is confirmable from the -00 text **except one**,
-flagged here so the deviation is explicit rather than silently baked into a
-golden file:
+Every vector's expected output is confirmable from the current draft except
+the historical note below:
 
 - **`neg-unsafe-integer-in-digest-field`** encodes an implementation guard that
   is **ahead of the -00 spec text**. §5.1 forbids JSON floats and mandates exact
@@ -77,14 +83,9 @@ golden file:
   `2^53 - 1` (`Number.MAX_SAFE_INTEGER`) cannot round-trip through an
   ECMAScript-Number-based reader, so two conforming verifiers could derive
   different digests from the same bytes — a real cross-implementation hazard.
-  This reference rejects such an integer (`unsafe_integer_in_digest_field`,
-  check 1); the expected `ok=false` therefore reflects the impl guard, not a
-  rule a third party can read out of -00 today.
-  **-01 FLAG:** the draft should state that integers outside the
-  IEEE-754-double safe range MUST be represented as exact decimal strings (the
-  same remedy §5.1 already gives monetary/quantity values). Until then, this is
-  the one vector an independent -00-only implementation may legitimately not
-  reproduce.
+  The current draft now requires integers outside the IEEE-754 safe range to be
+  represented as decimal strings. The vector is retained to prove the guard and
+  remains ahead only of the historical -00 text.
 
 Honesty (per §6): a parsed capsule with `human_disposed=true` and a non-human
 approver is reported as a **non-gating** defensive `warning`; `ok` still reflects

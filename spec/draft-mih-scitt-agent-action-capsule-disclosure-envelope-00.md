@@ -31,7 +31,7 @@ normative:
   I-D.mih-scitt-agent-action-capsule:
     title: "An Agent Action Capsule Profile for SCITT"
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-agent-action-capsule-02
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-03
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -127,7 +127,8 @@ Disclosure:
 JSON-DIGEST:
 : As defined in {{I-D.mih-scitt-agent-action-capsule}}: the lowercase-hex
   SHA-256 digest of the {{RFC8785}} JCS serialization of a value, after
-  that profile's absent-field normalization.
+  selecting the embedded Capsule's identity profile. Format 3 uses plain JCS.
+  Vintage format 2 applies absent-field normalization.
 
 JCS:
 : JSON Canonicalization Scheme per {{RFC8785}}.
@@ -271,11 +272,11 @@ against.
 
 ### DE-3: Digest Recomputation and Comparison
 
-Compute `computed = JSON-DIGEST(value)` — the lowercase-hex SHA-256 of
-`UTF8(JCS(value))`, applying the same absent-field normalization the base
-profile applies when computing `capsule_id`. This is the same
-canonicalization primitive the base profile already defines; this document
-introduces no second hashing path.
+Compute `computed = JSON-DIGEST(value)` using the embedded Capsule's identity
+profile. Format 3 computes the lowercase-hex SHA-256 of `UTF8(JCS(value))`
+without normalization. Vintage format 2 applies the same absent-field
+normalization used for its `capsule_id`. This document introduces no second
+profile-selection or hashing path.
 
 Compare `computed` to the committed digest located in DE-2:
 

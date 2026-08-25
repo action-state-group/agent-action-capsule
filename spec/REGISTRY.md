@@ -206,7 +206,7 @@ Reserved by the companion Internet-Draft
 Envelope Profile), §8 (IANA Considerations). `capsule` and `disclosures`
 are wrapper-level member names — never Capsule payload members — used only
 by a Disclosure Envelope, the out-of-band structure a producer builds
-around an unmodified, already-signed Capsule to reveal the raw content
+around an unmodified, already-sealed Capsule to reveal the raw content
 behind a digest-only field without altering `capsule_id`.
 
 | Member | Type | Location | Defined in |

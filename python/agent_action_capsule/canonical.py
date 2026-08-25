@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Canonicalization and JSON-DIGEST (draft-mih-scitt-agent-action-capsule, §2, §5.1).
 
-JSON-DIGEST := HEX(SHA-256(JCS(normalize(v)))) — the lowercase-hex SHA-256 of the
-RFC 8785 JSON Canonicalization Scheme serialization of a value after absent-field
-normalization (§2).
+Current JSON-DIGEST is ``HEX(SHA-256(JCS(v)))`` using plain RFC 8785 JCS.
+Absent-field normalization remains only in the vintage format-2 Capsule-ID
+verification path.
 
 This module implements JCS for the value domain the profile permits: strings,
 booleans, null, integers, arrays, and objects. The profile forbids JSON
@@ -26,11 +26,14 @@ __all__ = [
     "json_digest",
     "compute_capsule_id",
     "CHAIN_LINKAGE_FIELDS",
+    "CANONICALIZATION_JCS",
 ]
 
-# Fields excluded from the canonical capsule form (§5.1): capsule_id (the digest
-# cannot contain itself) and the chain-linkage block (so a Capsule's
-# content-address is stable regardless of what later chains to it).
+# Plain RFC 8785 JCS is the only algorithm new Capsules may declare.
+CANONICALIZATION_JCS = "jcs"
+
+# Fields excluded by the vintage absent-field identity construction. Format-3
+# Capsules declare jcs and exclude only capsule_id, so chain is committed.
 CHAIN_LINKAGE_FIELDS = ("capsule_id", "chain")
 
 # IEEE-754 double "safe integer" bound (ECMAScript Number.MAX_SAFE_INTEGER). A
@@ -149,16 +152,38 @@ def jcs(v: Any) -> bytes:
 
 
 def json_digest(v: Any) -> str:
-    """JSON-DIGEST (§2): lowercase-hex SHA-256 of JCS(normalize(v))."""
+    """Current JSON-DIGEST (§2): lowercase-hex SHA-256 of plain JCS.
+
+    Absent-field normalization is reserved for vintage Capsule-ID verification
+    and is not used for newly produced digests.
+    """
+    return hashlib.sha256(jcs(v)).hexdigest()
+
+
+def vintage_json_digest(v: Any) -> str:
+    """Verification-only format-2 JSON-DIGEST using absent-field normalization."""
     return hashlib.sha256(jcs(normalize(v))).hexdigest()
 
 
 def compute_capsule_id(capsule: dict) -> str:
-    """Recompute ``capsule_id`` (§5.1): the JSON-DIGEST of the canonical capsule
-    form — the envelope minus ``capsule_id`` and chain-linkage fields, after
-    absent-field normalization.
+    """Recompute ``capsule_id`` using the Capsule's declared profile.
+
+    Missing ``canonicalization_id`` selects the vintage format-2 construction:
+    remove ``capsule_id`` and ``chain``, normalize absent fields, then apply JCS.
+    A present declaration must be exactly ``"jcs"``; it removes only
+    ``capsule_id`` and applies plain RFC 8785 JCS, committing both the declaration
+    and ``chain``. Explicit ``jcs-n`` and unknown declarations fail closed.
     """
     if not isinstance(capsule, dict):
         raise TypeError("capsule must be a JSON object")
-    canonical = {k: val for k, val in capsule.items() if k not in CHAIN_LINKAGE_FIELDS}
+    if "canonicalization_id" not in capsule:
+        canonical = {k: val for k, val in capsule.items() if k not in CHAIN_LINKAGE_FIELDS}
+        return vintage_json_digest(canonical)
+
+    algorithm = capsule["canonicalization_id"]
+    if not isinstance(algorithm, str):
+        raise TypeError("canonicalization_id must be a string")
+    if algorithm != CANONICALIZATION_JCS:
+        raise ValueError(f"unsupported canonicalization_id {algorithm!r}")
+    canonical = {k: val for k, val in capsule.items() if k != "capsule_id"}
     return json_digest(canonical)

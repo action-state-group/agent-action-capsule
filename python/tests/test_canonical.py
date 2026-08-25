@@ -33,8 +33,9 @@ def test_json_digest_matches_manual():
     assert json_digest(v) == expected
 
 
-def test_json_digest_normalizes_before_hashing():
-    assert json_digest({"a": 1, "b": None}) == json_digest({"a": 1})
+def test_json_digest_commits_null_and_empty_values():
+    assert json_digest({"a": 1, "b": None}) != json_digest({"a": 1})
+    assert json_digest({"a": 1, "b": []}) != json_digest({"a": 1})
 
 
 def test_float_is_rejected():
@@ -63,7 +64,7 @@ def test_unsafe_integer_nested_is_rejected():
         json_digest({"a": {"b": [1, 2, MAX_SAFE_INTEGER + 1]}})
 
 
-def test_capsule_id_excludes_capsule_id_and_chain():
+def test_vintage_capsule_id_excludes_capsule_id_and_chain():
     body = {"spec_version": "x", "format_version": "2", "action_id": "a"}
     cid = compute_capsule_id(body)
     # Adding capsule_id and a chain block must NOT change the content-address.
@@ -71,6 +72,32 @@ def test_capsule_id_excludes_capsule_id_and_chain():
     with_extras["capsule_id"] = cid
     with_extras["chain"] = {"parent_capsule_id": "b" * 64, "relation": "supersedes"}
     assert compute_capsule_id(with_extras) == cid
+
+
+def test_declared_jcs_capsule_id_commits_chain_and_absent_fields():
+    body = {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-03",
+        "format_version": "3",
+        "canonicalization_id": "jcs",
+        "action_id": "a",
+        "chain": {"parent_capsule_id": "b" * 64, "relation": "sequence"},
+        "optional": None,
+    }
+    cid = compute_capsule_id(body)
+
+    changed_chain = dict(body)
+    changed_chain["chain"] = dict(body["chain"], relation="supersedes")
+    assert compute_capsule_id(changed_chain) != cid
+
+    absent_optional = dict(body)
+    absent_optional.pop("optional")
+    assert compute_capsule_id(absent_optional) != cid
+
+
+@pytest.mark.parametrize("declaration", ["jcs-n", "future-algorithm", "", None, 7])
+def test_capsule_id_rejects_invalid_declaration(declaration):
+    with pytest.raises((TypeError, ValueError)):
+        compute_capsule_id({"canonicalization_id": declaration})
 
 
 def test_capsule_id_is_64_lowercase_hex():

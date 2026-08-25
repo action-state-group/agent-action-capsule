@@ -319,17 +319,46 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		}
 	}
 
-	// format_version: only "2" is currently defined (§5.1); unknown → explicit error.
-	if fv, ok := capsuleMap["format_version"].(string); ok && fv != "2" {
-		findings = append(findings, Finding{
-			Code: "unsupported_format_version",
-			Detail: fmt.Sprintf(
-				"format_version %q is not a supported version; only \"2\" is defined (§5.1); "+
-					"unknown versions must be explicitly rejected to prevent silent v1/v2 mis-parse",
-				fv,
-			),
-			Severity: "error", Check: mkCheck(1),
-		})
+	// format_version selects the identity profile. Format 2 is the vintage
+	// absent-field construction; format 3 requires declared plain JCS.
+	if fv, ok := capsuleMap["format_version"].(string); ok {
+		switch fv {
+		case "2":
+			if _, present := capsuleMap["canonicalization_id"]; present {
+				findings = append(findings, Finding{
+					Code:     "canonicalization_profile_mismatch",
+					Detail:   "format_version \"2\" is the vintage absent-field profile and MUST NOT declare canonicalization_id (§5.1)",
+					Severity: "error", Check: mkCheck(1),
+				})
+			}
+		case "3":
+			declared, present := capsuleMap["canonicalization_id"]
+			if !present {
+				findings = append(findings, Finding{
+					Code:     "canonicalization_id_missing",
+					Detail:   "format_version \"3\" REQUIRES canonicalization_id=\"jcs\" (§5.1)",
+					Severity: "error", Check: mkCheck(1),
+				})
+			} else if algorithm, isString := declared.(string); !isString {
+				findings = append(findings, Finding{
+					Code:     "canonicalization_id_not_string",
+					Detail:   "canonicalization_id MUST be a string (§5.1)",
+					Severity: "error", Check: mkCheck(1),
+				})
+			} else if algorithm != canonical.CanonicalizationJCS {
+				findings = append(findings, Finding{
+					Code:     "canonicalization_profile_mismatch",
+					Detail:   "format_version \"3\" REQUIRES canonicalization_id=\"jcs\" (§5.1)",
+					Severity: "error", Check: mkCheck(1),
+				})
+			}
+		default:
+			findings = append(findings, Finding{
+				Code:     "unsupported_format_version",
+				Detail:   fmt.Sprintf("format_version %q is not supported; expected \"2\" or \"3\" (§5.1)", fv),
+				Severity: "error", Check: mkCheck(1),
+			})
+		}
 	}
 
 	// Sub-block type checks (effect, assurance, disposition, chain, cross_party).

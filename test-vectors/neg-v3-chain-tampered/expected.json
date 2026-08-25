@@ -1,0 +1,25 @@
+{
+  "capsule_id_recomputed": "3cea95de87804135bd2da9163c3890a100837b41de62740d7bf7e33a309e540b",
+  "derived": {
+    "attestation_mode": "self_attested",
+    "effect_mode": "not_applicable",
+    "ledger_mode": "chained"
+  },
+  "description": "Changing a format-3 chain member after sealing causes capsule_id mismatch.",
+  "findings": [
+    {
+      "check": 2,
+      "code": "capsule_id_mismatch",
+      "detail": "recomputed 3cea95de87804135bd2da9163c3890a100837b41de62740d7bf7e33a309e540b != carried ae180713f62a5d81cfa3a600951667fd1924caa808609d4a142c56238597f399",
+      "severity": "error"
+    },
+    {
+      "check": 6,
+      "code": "chain_check_store_level",
+      "detail": "chain parent-existence and concurrent-supersedes are store-level checks (\u00a76); not run without a store",
+      "severity": "info"
+    }
+  ],
+  "kind": "negative",
+  "ok": false
+}

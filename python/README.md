@@ -48,7 +48,20 @@ Verification is two layers, and this package is honest about which it does:
 | Layer | Who verifies it | This package |
 |---|---|---|
 | **payload** — the Agent Action Capsule (Class-1, §6): capsule_id, confirmed-effect binding, effect_attestation matrix, disposition, assurance | **this profile** | ✅ implemented |
-| **substrate** — the SCITT/COSE envelope: the `COSE_Sign1` signature and the RFC 9162 Receipt / inclusion proof (§3.2) | **SCITT/COSE, by reference** | calls [`scitt-cose`](https://github.com/action-state-group/scitt-cose) — never reimplemented |
+| **producer authentication** — exact three-header Producer Envelope over the raw Capsule ID | **this profile** | ✅ implemented by `producer_envelope.py` |
+| **transparency substrate** — distinct RFC 9943 registration statement plus Receipt / inclusion proof | **SCITT/COSE, by reference** | calls [`scitt-cose`](https://github.com/action-state-group/scitt-cose) — never reimplemented |
+
+The current AAC Producer Envelope is separate from an RFC 9943 Signed Statement:
+it signs the raw 32-byte Capsule ID with exactly three protected headers and
+does not carry RFC 9943's required CWT claims. Install
+`agent-action-capsule[envelope]` and call
+`verify_producer_envelope(capsule_id, envelope_bytes)` to verify that profile.
+The function returns the authenticated public key; it does not decide whether
+the key is authorized for an operator or developer.
+
+```python
+from agent_action_capsule.producer_envelope import verify_producer_envelope
+```
 
 To verify both layers of a SCITT **Signed Statement**, install the optional extra
 and pass `--transparent`:
@@ -58,6 +71,11 @@ pip install 'agent-action-capsule[transparent]'     # adds the public scitt-cose
 
 agent-action-capsule verify --transparent statement.cose --issuer-key issuer_pub.pem [--log-key log_pub.pem --leaf-entry-hex <hex>]
 ```
+
+For an RFC 9943 Capsule-ID registration statement, this command authenticates
+and prints the raw Capsule ID. Class-1 verification of the Capsule JSON is a
+separate operation. For a JSON-bearing Signed Statement, it also runs Class-1
+verification over the authenticated payload.
 
 ```
   substrate (SCITT/COSE, via scitt-cose):
@@ -91,7 +109,8 @@ derived modes, the recomputed `capsule_id`). See
 
 | Module | Spec | Implements |
 |---|---|---|
-| `canonical.py` | §2, §5.1 | JSON-DIGEST = `HEX(SHA-256(JCS(normalize(v))))`; RFC 8785 JCS; absent-field normalization; `capsule_id` over the canonical capsule form (envelope minus `capsule_id` and the chain block). Floats in digest fields are rejected (§5.1). |
+| `canonical.py` | §2, §5.1 | Current JSON-DIGEST uses plain RFC 8785 JCS. Format-3 `capsule_id` excludes only itself and commits the declaration and chain. The absent-field normalized construction remains only for vintage format-2 verification. |
+| `producer_envelope.py` | §3, §6 | Optional exact-profile COSE_Sign1 verification over the raw 32-byte Capsule ID. Returns the authenticated Ed25519 key; caller authorization remains separate. |
 | `registries.py` | §12 | Loads the six registries from `../spec/REGISTRY.md` (single-sourced — the code hard-codes no seeded values, so it cannot drift from the spec). |
 | `contracts.py` | §5.2–§5.4 | Typed **producer** carriers whose constructors enforce the invariants a producer MUST NOT violate: the disposition honesty invariant and the closed `approver` enum (§5.4), the confirmed-effect binding and the status/digest table (§5.2). A non-conforming Capsule cannot be built. Also the `effect_mode` derivation (§5.2) and the never-dispatch set (§5.4.2). |
 | `verify.py` | §6 | The **Class 1 verifier**: the eight checks in fixed order, a structured result that never throws, a single `ok` boolean, store-level chain checks (`verify_store`), and the SHOULD-level defensive disposition-honesty assert over arbitrary bytes. Unknown registry values are informational, never a rejection. |
@@ -101,7 +120,8 @@ derived modes, the recomputed `capsule_id`). See
 from agent_action_capsule import verify, Capsule, EffectRecord, Disposition, AssuranceBlock
 
 capsule = Capsule(
-    spec_version="draft-mih-scitt-agent-action-capsule-00", format_version="2",
+    spec_version="draft-mih-scitt-agent-action-capsule-03", format_version="3",
+    canonicalization_id="jcs",
     action_id="po-12345", action_type="decide", operator="ACME-CO", developer="agent@v1",
     timestamp="2026-06-13T00:00:00Z",
     effect=EffectRecord(status="confirmed", type="write_order",

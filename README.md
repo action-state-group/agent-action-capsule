@@ -3,18 +3,15 @@
 [![CI](https://github.com/action-state-group/agent-action-capsule/actions/workflows/python.yml/badge.svg)](https://github.com/action-state-group/agent-action-capsule/actions/workflows/python.yml)
 [![Conformance](https://github.com/action-state-group/agent-action-capsule/actions/workflows/conformance.yml/badge.svg)](https://github.com/action-state-group/agent-action-capsule/actions/workflows/conformance.yml)
 
-An **open specification** for recording — and independently verifying — what an
-AI agent actually did. The **Agent Action Capsule** is a SCITT statement profile:
-a digest-committed, signed record of one agent action carrying its verdict-level
-disposition (executed, blocked, denied, errored, timed out), the deterministic
-constraints that were evaluated, the effect that was committed together with a
-confirmed-effect binding that distinguishes a *dispatched attempt* from an
-*observed result*, and an honest human-in-the-loop flag.
+An **open specification** for recording and independently verifying what an
+AI agent actually did. An Agent Action Capsule is a digest-committed JSON record
+with a signer-independent identity. New Capsules declare plain RFC 8785 JCS,
+commit `chain` to `capsule_id`, and use format version 3.
 
-Capsules are expressed as SCITT Signed Statements (COSE_Sign1) and made
-transparent by registration in a SCITT Transparency Service. A Capsule is
-recorded on **every** verdict, including refusals — a blocked or denied Capsule
-is the auditor-grade evidence that a gate worked.
+A Capsule is recorded on every verdict. One or more independent COSE_Sign1
+Producer Envelopes may authenticate the raw 32-byte Capsule ID. Signing never
+changes the Capsule or its identity. Refusals are Capsules too, so a blocked or
+denied Capsule is affirmative evidence that a gate worked.
 
 > **Status / standards honesty.** This is an **individual** IETF Internet-Draft,
 > not a Working Group document, and not an RFC. The substrate it builds on is
@@ -26,9 +23,8 @@ is the auditor-grade evidence that a gate worked.
 ## The draft
 
 - **Datatracker:** https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/
-- **Editor's source (this repo):** [`spec/draft-mih-scitt-agent-action-capsule-02.md`](spec/draft-mih-scitt-agent-action-capsule-02.md)
-  (kramdown-rfc source), with built [`.xml`](spec/draft-mih-scitt-agent-action-capsule-02.xml)
-  (RFCXML v3) and [`.txt`](spec/draft-mih-scitt-agent-action-capsule-02.txt).
+- **Editor's source (this repo):** [`spec/draft-mih-scitt-agent-action-capsule-03.md`](spec/draft-mih-scitt-agent-action-capsule-03.md)
+  (kramdown-rfc source).
 - **Registry of record:** [`spec/REGISTRY.md`](spec/REGISTRY.md) — the interim
   registry for the six profile vocabularies until IANA registries are
   established on RFC publication.
@@ -49,10 +45,10 @@ cd agent-action-capsule
 pip install -e python            # or, once published: pip install agent-action-capsule
 
 # a known-good conformance vector  ->  ok: True, findings: none
-agent-action-capsule verify test-vectors/pos-executed-confirmed/input.json
+agent-action-capsule verify test-vectors/pos-v3-jcs-chain-committed/input.json
 
 # a tampered capsule               ->  ok: False, capsule_id_mismatch
-agent-action-capsule verify test-vectors/neg-capsule-id-mismatch/input.json
+agent-action-capsule verify test-vectors/neg-v3-chain-tampered/input.json
 ```
 
 The good capsule recomputes its content-address and passes; the tampered one is
@@ -76,7 +72,9 @@ every option — is in [`python/README.md`](python/README.md).
 spec/            the Internet-Draft (.md source + built .xml/.txt), REGISTRY.md,
                  section-map.md, Makefile
 python/          reference library (capsule parse + verify) -> PyPI agent-action-capsule
+go/              independent Go canonicalization and verification runtime
 test-vectors/    conformance vectors (frozen bytes; the scitt-cose pattern)
+producer-envelope-vectors/  shared binary COSE Producer Envelope vectors
 LICENSE          BCP 78/79 for the specification; Revised BSD for code components
 NOTICE           attribution + neutrality intent
 CONTRIBUTING.md  IETF process (BCP 78/79), DCO, scope gates
@@ -89,22 +87,20 @@ This profile builds **on top of** the neutral substrate in
 [`action-state-group/scitt-cose`](https://github.com/action-state-group/scitt-cose):
 that package verifies *anyone's* SCITT Signed Statements and COSE Receipts and
 treats the statement payload as **opaque bytes**, with no profile baked in. The
-Agent Action Capsule is one example consumer that defines the
-statement/claim semantics carried *inside* that payload. Substrate verification
-(the COSE_Sign1 signature, registration, the Receipt's inclusion proof) is
-SCITT's and is verified by reference; the agent-domain checks defined in this
-draft are the part that is specific here.
+AAC registration statement uses those opaque bytes for the raw 32-byte Capsule
+ID. A Producer Envelope is a separate, narrower COSE_Sign1 profile and is not
+itself an RFC 9943 Signed Statement. This repository adds both exact profiles,
+the Capsule-ID match, and Capsule-domain checks. Generic SCITT registration,
+Receipt, and inclusion-proof verification remain substrate concerns.
 
-## Relationship to capsule-emit
+## Relationship to capsule-producer-go
 
-This repository is the **specification + reference verifier** (and the typed producer
-carriers). The easiest way to *produce* conforming capsules is
-[`action-state-group/capsule-emit`](https://github.com/action-state-group/capsule-emit) —
-a thin, neutral producer library (one `emit()` call, anchoring, a ledger CLI, framework
-adapters) built **on top of** this package. The dependency points one way —
-`capsule-emit` depends on `agent-action-capsule`, never the reverse — and the format
-defined here is open to *any* producer; `capsule-emit` is simply the convenient on-ramp.
-Both are neutral, donatable substrate.
+This repository owns the public protocol contract: specification, registries,
+canonicalization, verification helpers, and shared conformance vectors.
+[`action-state-group/capsule-producer-go`](https://github.com/action-state-group/capsule-producer-go)
+owns producer workflow and creates Capsules through Build, Sign, Seal, Carry,
+Received, and Compose. The producer consumes this repository's contract; this
+repository does not depend on the producer.
 
 ## Canonical Payload Binding (CPB)
 
@@ -119,16 +115,29 @@ revision updates that pointer to the dedicated repository.
 
 ## Transparency-layer design — VDS-agnostic
 
-The Agent Action Capsule is a **statement-layer** profile. A capsule is a SCITT
-Signed Statement (COSE_Sign1 over a JSON payload); it makes no claim about how it
-is registered or which Verifiable Data Structure (VDS) algorithm the Transparency
-Service uses.
+The Capsule is signer-independent. A Producer Envelope authenticates the raw
+32-byte Capsule ID. A distinct RFC 9943 Signed Statement registers that same ID
+with SCITT because RFC 9943 requires protected CWT claims that the intentionally
+minimal Producer Envelope does not contain.
+
+Verification is split into Capsule Class 1, per-envelope cryptographic
+verification, caller-defined signer authorization, and optional Receipt
+verification. Merkle trees, Merkle mountains, and other VDS choices live only
+behind the SCITT registration boundary. They do not participate in Capsule
+construction or identity.
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  Signed Statement  (COSE_Sign1, our format)      │  ← what we define/emit
-│   protected: { alg, content_type, CWT_Claims }   │
-│   payload:   application/agent-action-capsule+json│
+│  Producer Envelope (COSE_Sign1, tag 18)          │  ← independent signer
+│   protected: { alg=-8, content_type, kid=raw key }│
+│   payload:   raw 32-byte Capsule ID              │
+└──────────────────────────────────────────────────┘
+         │  verifies independently
+         │
+┌──────────────────────────────────────────────────┐
+│  SCITT Signed Statement (RFC 9943)               │  ← separate registrar
+│   protected: { alg, content_type, kid, CWT claims }│
+│   payload:   same raw 32-byte Capsule ID         │
 └──────────────────────────────────────────────────┘
          │  (submitted to a Transparency Service)
          ▼
@@ -140,11 +149,12 @@ Service uses.
 └──────────────────────────────────────────────────┘
          │
          ▼
-  Transparent Statement = Signed Statement + Receipt(s)
+  Transparent Statement = SCITT Signed Statement + Receipt(s)
 ```
 
-`emit()` in `capsule-emit` produces the Signed Statement. It has no opinion on
-VDS. The VDS (`vds` header in the Receipt) is the Transparency Service's choice.
+`capsule-producer-go` creates Capsules and Producer Envelopes. It has no opinion
+on VDS selection. Registration tooling creates the RFC 9943 statement. The
+Receipt's `vds` header is the Transparency Service's choice.
 
 **RFC9162_SHA256 (vds=1)** is the current default — the only VDS registered under
 draft-ietf-cose-merkle-tree-proofs today, and the profile implemented in

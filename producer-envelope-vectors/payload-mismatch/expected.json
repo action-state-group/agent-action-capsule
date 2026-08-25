@@ -1,0 +1,7 @@
+{
+  "ok": false,
+  "finding_codes": [
+    "envelope_payload_mismatch"
+  ],
+  "public_key_hex": null
+}

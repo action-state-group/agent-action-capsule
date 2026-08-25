@@ -61,7 +61,6 @@ informative:
   I-D.dawkins-scitt-ai-article50:
   I-D.sato-soos-gar:
   I-D.nivalto-agentroa-route-authorization:
-  RFC8141:
   RFC6839:
   I-D.mih-scitt-cpb-selective-disclosure:
     title: "Selective Disclosure Profile for Canonical Payload Binding"
@@ -118,8 +117,9 @@ blocked, denied, errored, timed out), the deterministic constraints that
 were evaluated, the effect that was committed together with a
 confirmed-effect binding that distinguishes a dispatched attempt from an
 observed result, and an honest human-in-the-loop flag. Capsules are
-expressed as SCITT Signed Statements (COSE_Sign1) and made transparent by
-registration in a SCITT Transparency Service. A Capsule is recorded on
+identified independently of signing and MAY be authenticated by one or more
+COSE_Sign1 Producer Envelopes. Its Capsule ID can separately be made
+transparent by registration in a SCITT Transparency Service. A Capsule is recorded on
 every verdict, including refusals: a blocked or denied Capsule is the
 auditor-grade evidence that a gate worked.
 
@@ -139,9 +139,10 @@ authorization records produced before execution. The question this profile
 answers is different: "what did the agent actually do?" — including the
 cases where the answer is "it was stopped."
 
-This document profiles SCITT {{RFC9943}} Signed
-Statements to carry an Agent Action Capsule: a digest-committed record of
-one agent action and its verdict-level disposition. The profile's central
+This document defines the Agent Action Capsule, its signer-independent
+identity, a COSE_Sign1 Producer Envelope, and a separate SCITT {{RFC9943}}
+registration statement for making the Capsule ID transparent. The Capsule is a digest-committed
+record of one agent action and its verdict-level disposition. The profile's central
 design commitments are:
 
 1. The may/did distinction. A Capsule records what occurred, with an
@@ -160,10 +161,9 @@ design commitments are:
    {{class2}}) are deterministic and reproducible by any verifier from
    the record's own bytes, in two conformance classes ({{conformance}}).
 
-The terms "statement profile" and "profile" in this document always mean a
-SCITT statement profile in the sense of {{RFC9943}}: a
-constraint on the protected header and payload of a Signed Statement. The
-word is never used in any other sense in this document.
+The term "Producer Envelope profile" means the exact COSE protected-header,
+payload, and signature constraints in {{envelope}}. The Capsule JSON and its
+identity construction remain independently verifiable without an envelope.
 
 # Conventions and Definitions {#conventions}
 
@@ -174,8 +174,8 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 as shown here.
 
 Capsule:
-: The Agent Action Capsule — the JSON payload of a profiled Signed
-  Statement, recording one agent action.
+: The Agent Action Capsule, a JSON record of one agent action with a
+  signer-independent content identity.
 
 Verdict:
 : The terminal outcome of one agent action — what the decision gate
@@ -187,117 +187,106 @@ Disposition:
   human-in-the-loop flag, and optionally a verdict reason-class.
 
 Producer:
-: The party that constructs, signs, and (for the transparent tier)
-  registers Capsules.
+: The party that constructs Capsules and may create one or more independent
+  Producer Envelopes over a Capsule ID.
+
+Producer Envelope:
+: A COSE_Sign1 object whose attached payload is the raw 32-byte Capsule ID.
+  It authenticates one signing key's commitment to that identity without
+  changing the Capsule or its `capsule_id`.
 
 Verifier:
 : Any party that validates a Capsule from its bytes, without trusting the
   Producer. Verifier conformance is split into two classes
   ({{conformance}}).
 
-This profile computes every digest using the `jcs-n` algorithm of
-{{I-D.mih-sokolov-scitt-payload-binding}} exclusively. The canonical form,
-normalization rules, monetary/quantity decimal-string requirement, and
-float prohibition for `jcs-n` are defined in that document; this profile
-MUST NOT restate or alter them.
+New Capsules compute JSON digests with plain JSON Canonicalization Scheme
+(JCS) {{RFC8785}} and declare `canonicalization_id: "jcs"`. No absent-field
+normalization is applied: `null`, empty arrays, and empty objects participate
+when present. JSON floating-point values are forbidden in digest-bearing
+material, and integers outside the IEEE-754 safe range MUST be represented as
+decimal strings.
 
-# The SCITT Signed Statement envelope {#projection}
+The withdrawn `jcs-n` construction of
+{{I-D.mih-sokolov-scitt-payload-binding}} remains only as a vintage
+Capsule-ID verification path. It is selected by a format-2 Capsule in which
+`canonicalization_id` is absent. A producer MUST NOT emit `jcs-n`, and a
+verifier MUST reject any explicit `canonicalization_id: "jcs-n"` declaration.
 
-## Protected header and payload media type {#envelope}
+# Producer Envelopes and SCITT registration {#projection}
 
-A Capsule is carried as the payload of a SCITT Signed Statement — a
-COSE_Sign1 {{RFC9052}} (a CBOR structure, {{RFC8949}}). The protected
-header MUST carry the CWT Claims parameter (label 15) {{RFC8392}} with:
+## Producer Envelope wire profile {#envelope}
 
-| Claim | Req | Meaning |
+A Producer Envelope is a tagged COSE_Sign1 {{RFC9052}} object (CBOR tag 18,
+{{RFC8949}}). It signs the Capsule's stable identity, not the Capsule JSON.
+Its attached payload MUST be the raw 32 bytes obtained by decoding the
+Capsule's 64-character lowercase hexadecimal `capsule_id`. The payload MUST
+NOT be hexadecimal text or a JSON serialization.
+
+The protected header map MUST contain exactly these three entries:
+
+| COSE label | Value | Meaning |
 |---|---|---|
-| iss (CWT 1) | REQUIRED | The signing agent identity (the Capsule's developer). |
-| sub (CWT 2) | REQUIRED | urn:agent-action-capsule:OPERATOR:ACTION_ID — the tenant-scoped action subject (provisional URN namespace; see below). |
-| capsule_statement_type | REQUIRED | "agent_action" or "outcome". Additional values are reserved ({{future}}). |
-| capsule_action_type | RECOMMENDED | "fyi" or "decide" — lets a registration policy gate by action class without parsing the payload. |
-| capsule_decision_id | RECOMMENDED | Correlates the statements of one decision (and its outcomes) at the SCITT layer. |
+| 1 (`alg`) | -8 | EdDSA using Ed25519. |
+| 3 (`content type`) | `application/agent-action-capsule-id` | The attached raw Capsule-ID payload. |
+| 4 (`kid`) | raw 32-byte Ed25519 public key | Self-contained verification key and self-attested signer identifier. |
 
-plus `alg`, `kid`, and `content_type` per COSE. The `content_type` MUST
-be `application/agent-action-capsule+json` (or the outcome media type,
-{{outcomes}}). The `capsule_*` protected-header claim set is CLOSED:
-extensions are payload-only ({{extensibility}}). The `capsule_*` claim
-labels are provisional string-keyed names pending registration in the
-existing IANA "CWT Claims" registry; a future revision pins integer
-labels. The `urn:agent-action-capsule:` namespace of the `sub` claim is
-likewise provisional and used here by example; a future revision either
-registers a formal URN namespace ({{RFC8141}}) or replaces it with a
-profile-defined subject scheme. A plain structured-string subject (no URN
-form) is under consideration for that revision, since the CWT `sub` claim
-does not require URN syntax; the choice is deferred to avoid churning the
-protected-header subject format in this revision.
+The unprotected header map MUST be empty in a bare Producer Envelope. The
+signature MUST be a 64-byte Ed25519 signature over the COSE Sig_structure
+with context `Signature1`, the encoded protected map, an empty external AAD,
+and the attached payload.
 
-The envelope-discipline principle governing protected-header claim
-placement is defined in {{I-D.mih-sokolov-scitt-payload-binding}}'s
-Envelope Conventions section and is instantiated by the closed `capsule_*`
-claim set above.
+A Capsule MAY have zero, one, or multiple Producer Envelopes. Each envelope
+is an independent object and MUST verify independently against the same
+Capsule ID. Envelopes are not embedded in the Capsule-ID preimage. Adding,
+removing, or replacing an envelope therefore never changes `capsule_id`.
+This document does not mandate a container representation for carrying a
+Capsule together with its envelopes.
 
 ## Issuer Binding {#issuer-binding}
 
-A Capsule's `iss` claim (CWT protected header) identifies the producer. Registration
-policies SHOULD authenticate that the signing key belongs to the claimed issuer;
-three supported binding patterns exist:
-
-1. **did:web** — `iss` is a DID URI; the verifier resolves it at verification time
-   to obtain the current signing key. Handles rotation without pinning a certificate.
-
-2. **x5chain** — an X.509 certificate chain in the COSE `x5chain` protected header;
-   the leaf's public key MUST match the signing key; the chain is anchored to a
-   configured CA trust root.
-
-3. **SPIFFE SVID** — a variant of x5chain in which the leaf MUST carry a SPIFFE ID
-   URI in its Subject Alternative Name; `iss` MUST equal that SPIFFE ID URI.
-   Trust anchor is a SPIFFE trust bundle. Rotation is SPIRE-managed; the SPIFFE ID
-   persists across certificate renewals.
-
-A Capsule whose signing key is a bare, unresolvable `kid` with no `x5chain` and no
-resolvable DID maps to a degraded assurance grade in the producing registration policy;
-this state MUST be reported, not silenced. The reference anchor
-(anchor.agentactioncapsule.org) runs an open registration policy and does not enforce
-issuer binding; production deployments SHOULD enforce at least one of the patterns above.
-No cross-pattern substitution is valid: a did:web resolution result does not satisfy
-x5chain trust-chain verification, and neither satisfies SPIFFE trust-bundle verification.
+Successful Producer Envelope verification proves that the holder of the
+private key corresponding to the protected `kid` signed the Capsule ID. It
+does not prove that this key is authorized for the Capsule's `operator`,
+`developer`, or action. Key authorization is caller policy and is deliberately
+separate from the cryptographic verdict. A verifier MUST return the
+authenticated public key so the caller can apply an allow-list, certificate,
+DID, SPIFFE, or other authorization policy without changing this wire profile.
 
 ## Registration and Receipts {#registration}
 
-A producer makes a Capsule transparent by registering its Signed
-Statement with a SCITT Transparency Service per
-{{RFC9943}} and attaching the returned Receipt
-(COSE Receipts, {{I-D.ietf-cose-merkle-tree-proofs}}) to the unprotected
-header, forming a Transparent Statement. This profile does not define
-receipt formats or proof verification; both are the substrate's, by
-reference. A verifier MUST NOT report `attestation_mode: "anchored"`
-without having verified a Receipt from a Transparency Service whose key
-it trusts. A conforming anchor is any SCITT Transparency Service; this
-profile requires no specific operator. The transport of registration
-requests is likewise out of scope: {{I-D.ietf-scitt-scrapi}} defines a
-reference registration API, and a Transparency Service may employ a
-receipt profile such as {{I-D.ietf-scitt-receipts-ccf-profile}}; this
-profile is indifferent to both choices.
+A bare Producer Envelope is not an {{RFC9943}} Signed Statement. Its protected
+map intentionally contains only the three entries in {{envelope}}, whereas an
+RFC 9943 Signed Statement additionally requires protected CWT `iss` and `sub`
+claims. A conforming Transparency Service therefore MUST NOT treat a bare
+Producer Envelope as an RFC 9943 Signed Statement.
 
-Statement-to-Receipt Binding, VDS-agnosticism, and the leaf construction
-rule are defined in {{I-D.mih-sokolov-scitt-payload-binding}}'s
-Statement-to-Receipt Binding section (and its Leaf Construction
-subsection). This profile imposes no VDS requirement; a Capsule submitted
-to any conforming SCITT Transparency Service produces a valid Transparent
-Statement, and leaf construction over the derived identifier MUST follow
-that subsection's rule. An optional unprotected-header discovery
-parameter mirroring the derived identifier MAY be included per
-{{I-D.mih-sokolov-scitt-payload-binding}}'s Discovery Mirror section.
+To make a Capsule ID transparent, a registrar creates a distinct RFC 9943
+Signed Statement whose attached payload is the same raw 32-byte Capsule ID and
+whose content type is `application/agent-action-capsule-id`. That registration
+statement MUST satisfy every RFC 9943 protected-header requirement, including
+CWT `iss` and `sub`. The returned Receipt binds the registration statement to
+the service's append-only log. It does not replace or modify any Producer
+Envelope and does not by itself authorize a Producer Envelope key.
+
+Receipt format, Merkle-tree proof construction, and proof verification are
+SCITT substrate concerns defined by reference to
+{{I-D.ietf-cose-merkle-tree-proofs}} and an applicable receipt profile such as
+{{I-D.ietf-scitt-receipts-ccf-profile}}. Verification is compositional: verify
+the Capsule ID, verify each Producer Envelope independently, require the SCITT
+registration statement payload to equal that raw Capsule ID, then verify its
+Receipt under a trusted Transparency Service key. A verifier MUST NOT report
+`attestation_mode: "anchored"` unless all applicable registration-statement and
+Receipt checks succeed.
 
 ## Outcomes {#outcomes}
 
-An asynchronously observed consequence — a reversal, dispute, correction,
-or confirmation — is recorded as its own Signed Statement
-(`capsule_statement_type: "outcome"`, content type
-`application/agent-action-capsule-outcome+json`) whose `sub` equals the
-original action's `sub`. Correlation is by subject and decision id, never
-by mutating the original statement: the log is append-only and the
-original is immutable.
+An asynchronously observed consequence, such as a reversal, dispute,
+correction, or confirmation, is recorded as a new Capsule with its own
+Capsule ID. It MAY carry its own Producer Envelopes. Correlation uses payload
+fields such as `action_id`, `decision_id`, `external_ref`, and `chain`; it does
+not mutate the original Capsule. The log remains append-only and the original
+identity remains immutable.
 
 # Registries of this profile (summary) {#registries}
 
@@ -327,9 +316,10 @@ detail is specified in {{constraints}}.
 
 | Field | Type | Req | Meaning |
 |---|---|---|---|
-| spec_version | string | REQUIRED | The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-02"; it tracks the document name and advances with each revision. |
-| format_version | string | REQUIRED | The serialization-suite version of the envelope. The value defined by this profile version is "2"; the value reflects the pre-IETF reference-implementation serialization lineage this profile inherits, which is why a -00 document begins at "2" rather than "1". |
-| capsule_id | string (64 hex) | REQUIRED | The CPB derived identifier, exclusion set {capsule_id, chain}, per {{I-D.mih-sokolov-scitt-payload-binding}}'s Derived Identifier section. Verifiers MUST recompute; carried values MUST NOT be trusted. |
+| spec_version | string | REQUIRED | The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-03". |
+| format_version | string | REQUIRED | The serialization-suite version. New Capsules use "3". Vintage format-2 Capsules remain verifiable only under the compatibility rule below. |
+| canonicalization_id | string | REQUIRED for format 3; MUST be absent for format 2 | New Capsules MUST carry exactly "jcs". Explicit "jcs-n", empty, null, non-string, and unknown declarations are invalid. |
+| capsule_id | string (64 lowercase hex) | REQUIRED | The derived identifier. For format 3, compute SHA-256 over plain JCS of the Capsule with only `capsule_id` removed. The `canonicalization_id` declaration and `chain` block participate. Verifiers MUST recompute; carried values MUST NOT be trusted. |
 | action_id | string | REQUIRED | Stable identifier of the action; unique within one producer ledger. |
 | action_type | string | REQUIRED | "fyi" (informational) or "decide" (a disposition was required). |
 | operator | string | REQUIRED | The accountable tenant the action was performed for. |
@@ -337,9 +327,13 @@ detail is specified in {{constraints}}.
 | timestamp | string | REQUIRED | {{RFC3339}} UTC with "Z" suffix. |
 | epoch_id | string | OPTIONAL | An operator-assigned epoch identifier, stable within one operational configuration of the agent system. Producers SHOULD populate this field and rotate its value — together with an epoch-boundary Capsule ({{epochs}}) — when a configuration change that materially alters agent behavior occurs (for example, a model-version swap, a policy-manifest revision, or a significant constraint-schema change). A verifier or ledger consumer scopes a history window to a specific operational configuration by filtering on operator and epoch_id. Absent epoch_id implies a single, unnamed epoch; a producer MUST NOT back-fill epoch_id on Capsules already sealed. |
 
+For a vintage format-2 Capsule, `canonicalization_id` MUST be absent. Its
+Capsule ID is verified by removing `capsule_id` and `chain`, applying the
+legacy absent-field normalization, then applying JCS and SHA-256. This path is
+verification-only. A producer MUST NOT emit a new format-2 Capsule.
+
 Monetary and quantity values are subject to the exact-decimal-string
-requirement of the `jcs-n` algorithm ({{I-D.mih-sokolov-scitt-payload-binding}};
-see {{conventions}}).
+requirement in {{conventions}}.
 
 ## Configuration epochs {#epochs}
 
@@ -401,12 +395,10 @@ verification failure (an epoch change mid-stream is not structurally
 non-conforming), but it is evidence that a configuration boundary occurred
 without a corresponding epoch-boundary Capsule.
 
-The `chain` block is excluded from `capsule_id` per the exclusion-set
-discipline of {{I-D.mih-sokolov-scitt-payload-binding}}'s Derived Identifier
-section. The excluded `chain` block is nonetheless signed within the
-COSE_Sign1 envelope ({{envelope}}) along with the rest of the payload, so
-the chain linkage remains tamper-evident even though it is outside the
-content-address.
+For format 3, the `chain` block participates in `capsule_id`. Changing a
+parent identifier or relation after sealing therefore changes the recomputed
+identity and invalidates every Producer Envelope over the prior Capsule ID.
+Only vintage format-2 verification excludes `chain`.
 
 ## Effect Record and the confirmed-effect binding {#effect}
 
@@ -417,7 +409,7 @@ The Effect Record describes the side effect the action committed. Its
 |---|---|---|
 | planned | Intended, not dispatched. | request_digest and response_digest MUST be absent. |
 | dispatched | Sent; result not observed. | request_digest SHOULD be present; response_digest MUST be absent. |
-| confirmed | Result observed and bound. | response_digest MUST be present and MUST be a `jcs-n` digest ({{conventions}}) of the actual response. |
+| confirmed | Result observed and bound. | response_digest MUST be present and MUST be a JSON digest ({{conventions}}) of the actual response. |
 | failed | Attempted; runtime reported failure (state known). | response_digest, when present, digests the failure response. |
 | reverted | A committed effect was undone. | Correlated via external_ref / decision_id. |
 
@@ -474,11 +466,8 @@ Consumers MUST treat an unregistered or unrecognized `effect_attestation`
 value as no stronger than `runtime_claimed`; unknown values are
 informational, never a verification failure, and unknown never grades up.
 The grade is digest-committed in the Capsule payload and is available to
-any payload-bearing verifier, which can thereby distinguish gate-observed
-execution from runtime-claimed execution; promotion of the grade to a
-protected-header (CWT claim) position is an explicit candidate for a -02
-revision, to be decided once real transparency-log consumers exist. This
-version deliberately claims no header-level visibility for the grade.
+any payload-bearing verifier, distinguishing gate-observed execution from
+runtime-claimed execution. It is not copied into a Producer Envelope header.
 
 References to external authorization records carried in the Effect Record
 (for example, permit receipts per {{I-D.munoz-scitt-permit-profile}}, or
@@ -493,7 +482,7 @@ subsection.
 This profile's own `chain.parent_capsule_id`, `reason_digest`,
 `evidence_digest`, and `external_ref` fields are a distinct concept from
 the typed digest reference above: they are bare intra-profile digests and
-join keys — a `jcs-n` digest or an opaque correlation string — not
+join keys, either a current JSON digest or an opaque correlation string, not
 `{type, digest_alg, digest}` objects citing an external artifact by
 registered artifact type. They MUST NOT be interpreted as CPB typed digest
 references. Only the external-authorization references described in this
@@ -561,10 +550,10 @@ same treatment {{verification}} already gives an overclaimed
 A Capsule that participates in a cross-party exchange carries an OPTIONAL
 top-level `cross_party` block:
 
-- `initiator_ref` (REQUIRED when the block is present): a `jcs-n` digest
+- `initiator_ref` (REQUIRED when the block is present): a JSON digest
   ({{conventions}}) of the initiator's own signed half. A bare
   intra-profile digest, not a CPB typed digest reference ({{effect}}).
-- `counterparty_ref` (OPTIONAL): a `jcs-n` digest of the counterparty's
+- `counterparty_ref` (OPTIONAL): a JSON digest of the counterparty's
   signed half. Its absence means no usable counterparty evidence was
   obtained — the counterparty was unreachable, or its half did not verify
   at the layer that checked it.
@@ -621,7 +610,7 @@ A Capsule's `disposition` block records how the decision was disposed:
   where it carries the terminal reason; it is legitimately absent for a
   clean `executed` verdict (which has no reason-class, mirroring an absent
   `reason_digest`).
-- `reason_digest` (OPTIONAL): a `jcs-n` digest ({{conventions}}) of a structured, private reason
+- `reason_digest` (OPTIONAL): a JSON digest ({{conventions}}) of a structured, private reason
   object — machine-readable members such as the constraint identifier,
   the threshold, and the observed value; never free prose — so two
   engines attesting the same refusal produce the same digest. The member
@@ -727,6 +716,7 @@ value:
 
 | relation | Meaning |
 |---|---|
+| confirms | Non-terminal: this Capsule observes or records the outcome of the parent; the parent's open state remains. |
 | supersedes | Terminal transition over the parent — resolution, expiry, escalation close or replace the parent's open state. |
 | epoch_opens | Non-terminal: this Capsule opens a new operational epoch. The chain parent is the last Capsule produced under the prior epoch. The opening Capsule carries the new epoch_id ({{epochboundary}}); the prior epoch's last Capsule is the parent. |
 
@@ -753,25 +743,41 @@ store carries `chain.parent_capsule_id` equal to its `capsule_id` with
 
 # Class 1 verification {#verification}
 
-Verification has two tiers. Substrate verification — the issuer's
-COSE_Sign1 signature, and for the transparent tier the Receipt's
-inclusion proof and Transparency Service signature — is performed by
-reference to {{RFC9052}}, {{RFC9943}}, and
-{{I-D.ietf-cose-merkle-tree-proofs}}; this profile does not respecify it.
+Capsule verification and Producer Envelope verification are independent.
+A verifier can validate a Capsule with no envelope, and can validate any
+number of envelopes against a Capsule ID without changing the Capsule result.
+
+For each Producer Envelope, a verifier MUST:
+
+1. validate the exact tag, protected map, empty unprotected map, attached
+   payload, and signature sizes in {{envelope}};
+2. require the attached payload to equal the raw 32 bytes of the Capsule ID;
+3. verify the Ed25519 signature under the public key carried in `kid`; and
+4. return that authenticated public key separately from any caller-defined
+   authorization decision.
+
+Malformed or unverifiable envelopes MUST produce structured failures and MUST
+NOT cause the verifier to throw or panic. One invalid envelope does not erase
+the validity of another independent envelope over the same Capsule ID.
+Receipt verification is a separate substrate step performed by reference to
+{{RFC9943}} and {{I-D.ietf-cose-merkle-tree-proofs}}.
 
 The agent-profile checks below are normative here and constitute Class 1
 verification ({{conformance}}): every check is performable from the
-Signed Statement, the Capsule payload, the registry contents
+Capsule JSON, the registry contents
 ({{registries}}), and — for the chain checks — the producer's store of
 Capsules; no other input is needed. A verifier MUST return a structured
 result, never throw; a single `ok` boolean gates trust in every other
 reported field; findings are reported in a fixed order.
 
 1. Structural: REQUIRED fields present and typed; no floating-point
-   values in digest-bearing fields.
-2. Identity: recompute the CPB derived identifier per
-   {{I-D.mih-sokolov-scitt-payload-binding}}'s Derived Identifier section
-   and compare against the carried `capsule_id`.
+   values in digest-bearing fields; format 3 requires exactly
+   `canonicalization_id: "jcs"`; format 2 requires the field to be absent;
+   unknown formats and all other declarations fail closed.
+2. Identity: for format 3, remove only `capsule_id` and compute SHA-256 over
+   plain JCS. For vintage format 2, remove `capsule_id` and `chain`, apply
+   absent-field normalization, then JCS and SHA-256. Compare the result with
+   the carried `capsule_id`.
 3. Confirmed-effect binding: `effect.status: "confirmed"` without a
    well-formed `response_digest` is a failure ({{effect}}).
 4. Verdict/effect orthogonality: a never-dispatching `verdict_class`
@@ -833,12 +839,12 @@ conforming producer emits the same Capsules regardless of which verifier
 class consumes them.
 
 Class 1 verifier:
-: Verifies the Signed Statement envelope and the Capsule payload WITHOUT
-  any constraint manifest: substrate verification by reference, the
-  structural and identity checks, the registry vocabularies, the digest
+: Verifies the Capsule payload WITHOUT any constraint manifest: the structural
+  and identity checks, the registry vocabularies, the digest
   recomputations, and the validity matrices (confirmed-effect binding,
   verdict/effect orthogonality, effect-attestation, chain semantics).
-  The complete Class 1 check set is {{verification}}.
+  The complete Class 1 check set is {{verification}}. Producer Envelope and
+  Receipt results are reported independently and do not alter payload Class 1.
 
 Class 2 verifier:
 : A Class 1 verifier that additionally performs manifest-aware
@@ -864,7 +870,7 @@ A Constraint Record is the public verdict of one deterministic check that
 ran against the action. It carries only sanitized categories — an `id`,
 optional `check_type` and `method` labels, a `result` of "pass" / "fail" /
 "n/a", `severity`, a `blocking` flag recording whether the check actually
-gated this decision, and an optional `evidence_digest` (a `jcs-n` digest,
+gated this decision, and an optional `evidence_digest` (a JSON digest,
 {{conventions}}) binding the verdict to the private evidence the check evaluated. The
 content a check evaluated MUST NOT appear in the public record; it is
 bound by digest only. The check's predicate, evidence schema, and
@@ -898,14 +904,10 @@ result — they extend it.
 
 # Extensibility {#extensibility}
 
-All extension points are payload-only. The protected-header `capsule_*`
-claim set is closed by this profile version: a strict Transparency
-Service registration policy may reject statements bearing header claims
-it does not recognize, while payload bytes are opaque to it — so a
-payload-only extension can never make a Capsule unregistrable. A verifier
-encountering an unrecognized `capsule_*` header claim MUST still verify
-and report it as informational; rejection of unknown header claims is a
-registration-policy prerogative, not a verifier behavior.
+All Capsule extension points are in the Capsule JSON. The Producer Envelope
+protected map is exact and closed by {{envelope}}. An extra protected entry is
+a profile failure, not an extension mechanism. New envelope metadata requires
+a future format version or a separate carrying structure.
 
 ## Namespacing convention {#namespacing}
 
@@ -1052,15 +1054,12 @@ disclosure syntax, eligible fields, and verifier checks, aligned with
 ## New registries
 
 Every registry requested below governs a vocabulary that lives entirely
-in the Capsule *payload* — values a SCITT-generic Transparency Service
-never parses, since registration, inclusion, and Receipt issuance operate
-on the COSE_Sign1 envelope and its protected header, not on payload
-content. The registrations this profile requests against *existing* IANA
-registries are the `capsule_*` CWT claims ({{no-new-registry}}) and the
-two media types of {{media-types}}; both are addressed separately from the
-payload-vocabulary registries here. This profile requests no new COSE
-header parameter registry and no new CWT claim registry; the new
-registries here are payload-vocabulary registries only.
+in the Capsule JSON. A SCITT-generic Transparency Service does not need to
+parse those values because registration, inclusion, and Receipt issuance
+operate on the separate SCITT registration statement. The media-type registrations are addressed
+separately in {{media-types}}. This profile requests no new COSE header
+parameter or CWT claim registry; the new registries here are payload
+vocabularies only.
 
 IANA is requested to create a new registry group, "Agent Action Capsule
 Parameters", containing the six registries below. The registration
@@ -1115,10 +1114,11 @@ Initial contents are the seeded values of this document, verbatim:
    independent sensor confirmation of a claimed effect, or hardware- or
    TEE-anchored execution; a registration states where its grade sits
    relative to the seeded values.
-6. "chain.relation" registry ({{hitl}}): supersedes, epoch_opens.
+6. "chain.relation" registry ({{hitl}}): confirms, supersedes, epoch_opens.
    Designated-expert guidance: `supersedes` is the single terminal
-   relation; `epoch_opens` is a non-terminal relation for configuration-
-   epoch boundaries ({{epochboundary}}). Additional non-terminal
+   relation; `confirms` and `epoch_opens` are non-terminal relations, with
+   `epoch_opens` reserved for configuration-epoch boundaries
+   ({{epochboundary}}). Additional non-terminal
    relations (for example, deposit-toward-open and effort-toward-open
    relations, or amends / contradicts) are expected future registrations,
    each admitted once its semantics and any verifier consequence are
@@ -1139,16 +1139,16 @@ on publication.
 - Constraint `id`/`check_type`, `compliance.framework_tags`, and
   `assurance.sources[].kind`: no registry; governed by the namespacing
   convention of {{namespacing}}.
-- The `capsule_*` CWT claim labels: registration is requested in the
-  existing IANA "CWT Claims" registry ({{RFC8392}}), not in a new
-  registry; the claim set is closed by this profile version.
+- Producer Envelopes use only existing COSE header labels `alg`, content
+  type, and `kid`. This document requests no new COSE header or CWT claim.
 
 ## Media Type Registrations {#media-types}
 
-This profile mandates two media types ({{envelope}}, {{outcomes}}); IANA is
-requested to register both in the "Media Types" registry per the templates
-below ({{RFC6838}}, with the `+json` structured-syntax suffix of
-{{RFC8259}}).
+IANA is requested to register the Capsule JSON media type and the raw
+Capsule-ID payload media type in the "Media Types" registry per the templates
+below ({{RFC6838}}). The JSON representation uses the `+json`
+structured-syntax suffix of {{RFC8259}}. The raw identity payload has no
+structured-syntax suffix.
 
 Agent Action Capsule media type:
 
@@ -1156,15 +1156,13 @@ Agent Action Capsule media type:
 - Subtype name: agent-action-capsule+json
 - Required parameters: N/A
 - Optional parameters: N/A
-- Encoding considerations: binary; the payload is JSON ({{RFC8259}}) as
-  defined in this document, carried as the payload of a COSE_Sign1
-  ({{RFC9052}}) Signed Statement.
+- Encoding considerations: binary; the representation is JSON
+  ({{RFC8259}}) as defined in this document.
 - Security considerations: see {{security}} of this document.
 - Interoperability considerations: see this document.
 - Published specification: this document (and its successors).
-- Applications that use this media type: SCITT
-  ({{RFC9943}}) producers and verifiers recording and
-  verifying AI agent actions.
+- Applications that use this media type: producers, ledgers, transports, and
+  verifiers recording and verifying AI agent actions.
 - Fragment identifier considerations: as for application/json
   ({{RFC8259}}) per the `+json` suffix ({{RFC6839}}).
 - Additional information: Deprecated alias names: N/A. Magic number(s):
@@ -1178,23 +1176,21 @@ Agent Action Capsule media type:
   publication.
 - Provisional registration: yes (pending publication of this document).
 
-Agent Action Capsule outcome media type:
+Agent Action Capsule ID media type:
 
 - Type name: application
-- Subtype name: agent-action-capsule-outcome+json
+- Subtype name: agent-action-capsule-id
 - Required parameters: N/A
 - Optional parameters: N/A
-- Encoding considerations: binary; the payload is JSON ({{RFC8259}}) as
-  defined in {{outcomes}} of this document, carried as the payload of a
-  COSE_Sign1 ({{RFC9052}}) Signed Statement.
+- Encoding considerations: binary; exactly 32 octets containing the raw
+  SHA-256 Capsule ID represented in Capsule JSON as 64 lowercase hexadecimal
+  characters.
 - Security considerations: see {{security}} of this document.
 - Interoperability considerations: see this document.
 - Published specification: this document (and its successors).
-- Applications that use this media type: SCITT
-  ({{RFC9943}}) producers and verifiers recording
-  asynchronous outcomes correlated to an agent action.
-- Fragment identifier considerations: as for application/json
-  ({{RFC8259}}) per the `+json` suffix ({{RFC6839}}).
+- Applications that use this media type: COSE Producer Envelopes and SCITT
+  Transparency Services registering Capsule identities.
+- Fragment identifier considerations: N/A.
 - Additional information: Deprecated alias names: N/A. Magic number(s):
   N/A. File extension(s): N/A. Macintosh file type code(s): N/A.
 - Person & email address to contact for further information: the author of
@@ -1239,7 +1235,7 @@ The honest human-in-the-loop flag ({{disposition}}) is itself
 security-relevant: it prevents a policy auto-approval from being
 presented as human oversight. The invariant — `human_disposed: true`
 requires `approver: "human"` — is structurally guaranteed: a conforming
-producer cannot construct or sign a Capsule that violates it, so the
+producer cannot construct a Capsule that violates it, so the
 combination simply does not arise in well-formed records, and the claim
 is falsifiable from the record alone. A verifier consuming
 non-constructor-produced bytes SHOULD assert the invariant defensively
@@ -1274,31 +1270,24 @@ a quoted value matches its cited source, and via `model_attestation`
 input-integrity surface is out of scope for this profile and is addressed
 by composing a dedicated input-integrity mechanism upstream.
 
-Payload-level identity is stable across signing-key rotation. The
-`operator` and `developer` fields in the Capsule payload ({{identity}})
-are plain strings committed to the `capsule_id` digest. They are
-independent of the signing key: a producer that rotates its COSE signing
-key (and therefore changes the `iss` claim in the protected header) without
-changing `operator` or `developer` preserves payload-level identity
-continuity across the rotation. A verifier accumulating long-horizon history
-SHOULD correlate Capsules by payload `operator` — and, when present,
-`epoch_id` ({{epochs}}) — rather than by the SCITT-layer `iss` claim, which
-may change on key rotation. Absent a recorded linkage, pre- and post-rotation
-Capsules are distinguishable by payload `operator` alone but not correlatable
-at the SCITT-header layer; a producer SHOULD treat a key rotation that
-coincides with a configuration change as an epoch boundary ({{epochboundary}})
-to make the transition explicit in the record.
+Capsule identity is stable across signing-key rotation. The `operator` and
+`developer` fields in the Capsule payload ({{identity}}) are plain strings
+committed to `capsule_id` and are independent of the signing key. Rotating a
+COSE signing key creates a new Producer Envelope but does not change the
+Capsule ID. A verifier accumulating long-horizon history SHOULD correlate
+Capsules by payload `operator` and, when present, `epoch_id` ({{epochs}}),
+then apply its own authorization policy to each authenticated envelope key.
+A producer SHOULD treat a key rotation that coincides with a configuration
+change as an epoch boundary ({{epochboundary}}).
 See also {{privacy}} of this document for the data-admission tiers that govern
 which runtime context fields MAY enter a Capsule, including the consequence of
 the low-entropy digest caveat above for end-user identity fields.
 
-Issuer authentication is registration-policy territory, not payload territory.
-The three supported patterns for binding the `iss` claim to a verifiable signing key
-— did:web, x5chain, and SPIFFE SVID — are defined in {{issuer-binding}}. A
-registration policy that accepts a bare, unresolvable `kid` without enforcing at
-least one of these patterns reduces issuer accountability to key-material correlation
-only; verifiers relying on issuer identity for policy decisions SHOULD confirm which
-binding pattern, if any, was enforced at registration time.
+Signer authorization is caller-policy territory, not Capsule or envelope
+cryptography. The raw public key in `kid` is self-attested. A verifier relying
+on producer identity for a policy decision MUST apply an external authorization
+rule to the authenticated key and MUST NOT infer authority from signature
+validity alone.
 
 # Privacy Considerations {#privacy}
 
