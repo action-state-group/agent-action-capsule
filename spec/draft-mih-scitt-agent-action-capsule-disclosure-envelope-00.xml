@@ -109,7 +109,7 @@ member of the <tt>disclosures</tt> object.</t>
         <dd>
           <t>As defined in <xref target="I-D.mih-scitt-agent-action-capsule"/>: the lowercase-hex
 SHA-256 digest of the <xref target="RFC8785"/> JCS serialization of a value, after
-selecting the embedded Capsule's identity profile. Format 3 uses plain JCS.
+selecting the embedded Capsule's identity profile. Format 4 uses plain JCS.
 Vintage format 2 applies absent-field normalization.</t>
         </dd>
         <dt>JCS:</dt>
@@ -265,7 +265,7 @@ against.</t>
         <section anchor="de-3-digest-recomputation-and-comparison">
           <name>DE-3: Digest Recomputation and Comparison</name>
           <t>Compute <tt>computed = JSON-DIGEST(value)</tt> using the embedded Capsule's
-identity profile. Format 3 computes the lowercase-hex SHA-256 of
+identity profile. Format 4 computes the lowercase-hex SHA-256 of
 <tt>UTF8(JCS(value))</tt> without normalization. Vintage format 2 applies the same
 absent-field normalization used for its <tt>capsule_id</tt>. This document introduces
 no second profile-selection or hashing path.</t>
