@@ -83,8 +83,8 @@ Table of Contents
    7.  Graceful Degradation  . . . . . . . . . . . . . . . . . . . .   8
    8.  Dispositions Across the Asymmetry . . . . . . . . . . . . . .   8
    9.  The Optional Relay  . . . . . . . . . . . . . . . . . . . . .   9
-   10. Relationship to Existing Work . . . . . . . . . . . . . . . .   9
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .  10
+   10. Relationship to Existing Work . . . . . . . . . . . . . . . .  10
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  11
      11.1.  Identity Is the Floor  . . . . . . . . . . . . . . . . .  11
      11.2.  Half-Completed Exchanges . . . . . . . . . . . . . . . .  11
      11.3.  Downgrade Attacks  . . . . . . . . . . . . . . . . . . .  11
@@ -147,8 +147,8 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    record layer [I-D.mih-scitt-agent-action-capsule] rather than
    defining a new one, and its records are designed to be consumable by
    the layers above the record — accountability composition
-   [I-D.mih-sato-agent-accountability-composition] and reputation
-   [I-D.mih-agent-reputation-predicates].
+   [I-D.mih-sato-agent-accountability-composition] and reputation-
+   predicate consumers.
 
 2.  Motivating Scenarios
 
@@ -184,8 +184,7 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
    *Feeding reputation.* Every completed handshake yields a
    counterparty-attested record — the highest-assurance evidence class a
-   reputation predicate can consume
-   [I-D.mih-agent-reputation-predicates].  Two organizations that
+   reputation-predicate consumer can consume.  Two organizations that
    transact build verifiable shared history as a side effect of
    transacting.
 
@@ -218,6 +217,7 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
       deterministic constraint results evaluated at the effect boundary
       — each constraint identified by reference so a third party can
       tell which check produced which result, pinned to a digest of the
+      constraint-set snapshot in effect and carrying a result for every
 
 
 
@@ -226,7 +226,6 @@ Mih                      Expires 20 January 2027                [Page 4]
 Internet-Draft         Bilateral Agent Attestation             July 2026
 
 
-      constraint-set snapshot in effect and carrying a result for every
       constraint in that set (Section 5) — and the disposition of the
       request, bound to the performing party's verifiable organizational
       identity.
@@ -277,6 +276,7 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
 
 
+
 Mih                      Expires 20 January 2027                [Page 5]
 
 Internet-Draft         Bilateral Agent Attestation             July 2026
@@ -285,12 +285,12 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    3.  *Action attestation.* The performing party produces an action
        attestation referencing the request attestation by digest and
        recording the constraint results and the disposition.
-       Dispositions use the verdict-complete vocabulary of
-       [I-D.mih-scitt-agent-action-capsule] verbatim — _executed,
-       blocked, denied, timeout, errored, deferred, expired, escalated_
-       — so the record covers every outcome, not only success.  A
-       performing party MUST produce at most one action attestation per
-       request attestation; repeated execution of a single request is
+       Dispositions use the verdict_class vocabulary of
+       [I-D.mih-scitt-agent-action-capsule]; that document is normative
+       for the complete value set (e.g., _executed_, _denied_), so the
+       record covers every outcome, not only success.  A performing
+       party MUST produce at most one action attestation per request
+       attestation; repeated execution of a single request is
        representable only as distinct request instances, each with its
        own request attestation.
 
@@ -378,10 +378,10 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
    For the performing party, a bilaterally-acknowledged decline is
    evidence, verifiable by an auditor who trusts neither party, that its
-   boundary enforcement works — the strongest form of the refusal-as-
-   positive-signal reputation input described in
-   [I-D.mih-agent-reputation-predicates], because here even the
-   _counterparty that was refused_ has signed the record.
+   boundary enforcement works — the strongest form of refusal-as-
+   positive-signal reputation input, because here even the _counterparty
+   that was refused_ has signed the record.
+
 
 
 
@@ -411,9 +411,8 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    peers while preserving the distinction relying parties need: a fully-
    bilateral record and a degraded record are never confusable, and
    consumers such as reputation predicates can require a minimum
-   assurance (cf. the assurance ordering in
-   [I-D.mih-agent-reputation-predicates]).  Degradation MUST be
-   recorded, never silent.
+   assurance level before treating a record as input.  Degradation MUST
+   be recorded, never silent.
 
 8.  Dispositions Across the Asymmetry
 
@@ -437,11 +436,12 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    *  *countersign_refused:* the performing party was reached and
       explicitly refused to countersign.
 
-   These are weaker than, and MUST NOT be conflated with, a declined
-   action (Section 6): a decline is a _performed_ boundary decision that
-   the requester acknowledges — strong evidence — whereas a refusal to
-   _countersign_ is a failure of the exchange, not a decision about the
-   action.  For the same reason, a party that _declines to engage_
+
+
+
+
+
+
 
 
 
@@ -450,6 +450,11 @@ Mih                      Expires 20 January 2027                [Page 8]
 Internet-Draft         Bilateral Agent Attestation             July 2026
 
 
+   These are weaker than, and MUST NOT be conflated with, a declined
+   action (Section 6): a decline is a _performed_ boundary decision that
+   the requester acknowledges — strong evidence — whereas a refusal to
+   _countersign_ is a failure of the exchange, not a decision about the
+   action.  For the same reason, a party that _declines to engage_
    before any request obligates it is not a party that _fails to
    countersign_ a request already made; only the latter is evidentiary
    against the performing party.
@@ -487,6 +492,20 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    directory, retry, and admission control are deployment concerns
    outside this document's scope.
 
+
+
+
+
+
+
+
+
+
+Mih                      Expires 20 January 2027                [Page 9]
+
+Internet-Draft         Bilateral Agent Attestation             July 2026
+
+
 10.  Relationship to Existing Work
 
    *Record layer.* This document defines an exchange, not a record
@@ -497,14 +516,6 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    on, and its selective-disclosure profile
    [I-D.mih-scitt-agent-action-capsule-sel-disc] applies to cross-
    boundary privacy (Section 12).
-
-
-
-
-Mih                      Expires 20 January 2027                [Page 9]
-
-Internet-Draft         Bilateral Agent Attestation             July 2026
-
 
    *Delegation receipts.* [I-D.nelson-agent-delegation-receipts] binds a
    _principal_ (the delegating user) to an authorization before any
@@ -542,17 +553,6 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    non-equivocation.  The two compose: an AGTP CONFIRM MAY carry and
    anchor a capsule.
 
-   [I-D.rampalli-scitt-capsule-provenance-binding] binds delegation-
-   authorization references into the capsule payload as namespaced
-   extensions, complementing both this profile and the base Agent Action
-   Capsule profile by shared action digest.
-
-11.  Security Considerations
-
-
-
-
-
 
 
 
@@ -561,6 +561,13 @@ Mih                      Expires 20 January 2027               [Page 10]
 
 Internet-Draft         Bilateral Agent Attestation             July 2026
 
+
+   [I-D.rampalli-scitt-capsule-provenance-binding] binds delegation-
+   authorization references into the capsule payload as namespaced
+   extensions, complementing both this profile and the base Agent Action
+   Capsule profile by shared action digest.
+
+11.  Security Considerations
 
 11.1.  Identity Is the Floor
 
@@ -603,13 +610,6 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    reduced- assurance indicator.  The distinction matters: reduced
    assurance records a capability gap; denial records a protocol
    violation.  Two independent verifiers deriving disposition from the
-   same canonical bytes MUST reach the same verdict.
-
-
-
-
-
-
 
 
 
@@ -617,6 +617,8 @@ Mih                      Expires 20 January 2027               [Page 11]
 
 Internet-Draft         Bilateral Agent Attestation             July 2026
 
+
+   same canonical bytes MUST reach the same verdict.
 
 11.5.  Key Establishment
 
@@ -658,8 +660,6 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    SHOULD be able to cheaply reject unverifiable request attestations
    before performing full verification, so request-attestation flooding
    cannot exhaust a performer at the effect boundary.
-
-
 
 
 
@@ -750,20 +750,13 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
               Notification", STD 85, RFC 8098, DOI 10.17487/RFC8098,
               February 2017, <https://www.rfc-editor.org/rfc/rfc8098>.
 
-   [I-D.mih-agent-reputation-predicates]
-              Mih, S., "Agent Reputation Predicates for SCITT-Anchored
-              Action Records", Work in Progress, Internet-Draft, I-
-              D.mih-agent-reputation-predicates-00, July 2026,
-              <https://datatracker.ietf.org/doc/html/I-D.mih-agent-
-              reputation-predicates-00>.
-
    [I-D.mih-sato-agent-accountability-composition]
-              Mih, S., Sato, Bu, S., and I. Schrock, "Agent
+              Mih, S., Sato, Schrock, I., Bu, S., and A. Sokolov, "Agent
               Accountability: Composition and Conformance", Work in
               Progress, Internet-Draft, draft-mih-sato-agent-
-              accountability-composition-00, 5 July 2026,
+              accountability-composition-01, 16 August 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-sato-
-              agent-accountability-composition-00>.
+              agent-accountability-composition-01>.
 
    [I-D.mih-scitt-agent-action-capsule-sel-disc]
               Mih, S., "Selective Disclosure Profile for Agent Action
@@ -778,6 +771,13 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
               nelson-agent-delegation-receipts-10, 13 June 2026,
               <https://datatracker.ietf.org/doc/html/draft-nelson-agent-
               delegation-receipts-10>.
+
+
+
+
+
+
+
 
 
 
@@ -797,9 +797,9 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
               Actions", Work in Progress, Internet-Draft, draft-schrock-
-              ep-authorization-receipts-09, 3 August 2026,
+              ep-authorization-receipts-12, 16 August 2026,
               <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
-              authorization-receipts-09>.
+              authorization-receipts-12>.
 
    [RFC9334]  Birkholz, H., Thaler, D., Richardson, M., Smith, N., and
               W. Pan, "Remote ATtestation procedureS (RATS)

@@ -21,7 +21,6 @@ normative:
 informative:
   RFC3461:
   RFC8098:
-  I-D.mih-agent-reputation-predicates:
   I-D.mih-sato-agent-accountability-composition:
   I-D.mih-scitt-agent-action-capsule-sel-disc:
   I-D.nelson-agent-delegation-receipts:
@@ -100,8 +99,8 @@ composes with the existing agent action record layer
 {{I-D.mih-scitt-agent-action-capsule}} rather than defining a new one, and
 its records are designed to be consumable by the layers above the record —
 accountability composition
-{{I-D.mih-sato-agent-accountability-composition}} and reputation
-{{I-D.mih-agent-reputation-predicates}}.
+{{I-D.mih-sato-agent-accountability-composition}} and reputation-predicate
+consumers.
 
 # Motivating Scenarios
 
@@ -128,9 +127,8 @@ its gate worked; for A, that the request was made and declined
 
 **Feeding reputation.** Every completed handshake yields a
 counterparty-attested record — the highest-assurance evidence class a
-reputation predicate can consume {{I-D.mih-agent-reputation-predicates}}.
-Two organizations that transact build verifiable shared history as a side
-effect of transacting.
+reputation-predicate consumer can consume. Two organizations that transact
+build verifiable shared history as a side effect of transacting.
 
 # Conventions and Definitions
 
@@ -277,10 +275,9 @@ completes the record. This has two consequences.
 
 For the performing party, a bilaterally-acknowledged decline is evidence,
 verifiable by an auditor who trusts neither party, that its boundary
-enforcement works — the strongest
-form of the refusal-as-positive-signal reputation input described in
-{{I-D.mih-agent-reputation-predicates}}, because here even the *counterparty
-that was refused* has signed the record.
+enforcement works — the strongest form of refusal-as-positive-signal
+reputation input, because here even the *counterparty that was refused*
+has signed the record.
 
 For the requesting party, a history of acknowledged declines is legible too:
 a pattern of out-of-policy requests is now provable by its counterparties.
@@ -298,7 +295,7 @@ format is the same; the assurance marking differs. This keeps one protocol
 across mixed peers while preserving the distinction relying parties need:
 a fully-bilateral record and a degraded record are never confusable, and
 consumers such as reputation predicates can require a minimum assurance
-(cf. the assurance ordering in {{I-D.mih-agent-reputation-predicates}}).
+level before treating a record as input.
 Degradation MUST be recorded, never silent.
 
 # Dispositions Across the Asymmetry {#asymmetry-dispositions}

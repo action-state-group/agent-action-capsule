@@ -18,7 +18,7 @@
         <email>spec@actionstate.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="06"/>
+    <date year="2026" month="August" day="25"/>
     <area>Security</area>
     <keyword>agent</keyword>
     <keyword>attestation</keyword>
@@ -28,7 +28,7 @@
     <keyword>transparency</keyword>
     <keyword>refusal</keyword>
     <abstract>
-      <?line 28?>
+      <?line 27?>
 
 <t>When an agent operated by one organization requests a consequential action
 from an agent operated by another, today's record of that exchange — if one
@@ -50,7 +50,7 @@ than blocking the transaction.</t>
     </abstract>
   </front>
   <middle>
-    <?line 48?>
+    <?line 47?>
 
 <section anchor="introduction">
       <name>Introduction</name>
@@ -80,8 +80,8 @@ composes with the existing agent action record layer
 <xref target="I-D.mih-scitt-agent-action-capsule"/> rather than defining a new one, and
 its records are designed to be consumable by the layers above the record —
 accountability composition
-<xref target="I-D.mih-sato-agent-accountability-composition"/> and reputation
-<xref target="I-D.mih-agent-reputation-predicates"/>.</t>
+<xref target="I-D.mih-sato-agent-accountability-composition"/> and reputation-predicate
+consumers.</t>
     </section>
     <section anchor="motivating-scenarios">
       <name>Motivating Scenarios</name>
@@ -105,9 +105,8 @@ its gate worked; for A, that the request was made and declined
 (see <xref target="refusal-across-the-boundary"/>).</t>
       <t><strong>Feeding reputation.</strong> Every completed handshake yields a
 counterparty-attested record — the highest-assurance evidence class a
-reputation predicate can consume <xref target="I-D.mih-agent-reputation-predicates"/>.
-Two organizations that transact build verifiable shared history as a side
-effect of transacting.</t>
+reputation-predicate consumer can consume. Two organizations that transact
+build verifiable shared history as a side effect of transacting.</t>
     </section>
     <section anchor="conventions-and-definitions">
       <name>Conventions and Definitions</name>
@@ -191,9 +190,10 @@ operation; see <xref target="graceful-degradation"/>).</t>
           <t><strong>Action attestation.</strong> The performing party produces an action
 attestation referencing the request attestation by digest and recording
 the constraint results and the disposition. Dispositions use the
-verdict-complete vocabulary of <xref target="I-D.mih-scitt-agent-action-capsule"/>
-verbatim — <em>executed, blocked, denied, timeout, errored, deferred, expired,
-escalated</em> — so the record covers every outcome, not only success. A
+<tt>verdict_class</tt> vocabulary of <xref target="I-D.mih-scitt-agent-action-capsule"/>;
+that document is normative for the complete value set (e.g.,
+<em>executed</em>, <em>denied</em>), so the record covers every outcome, not only
+success. A
 performing party <bcp14>MUST</bcp14> produce at most one action attestation per request
 attestation; repeated execution of a single request is representable only
 as distinct request instances, each with its own request attestation.</t>
@@ -226,10 +226,9 @@ declined and <em>on what constraint basis</em>; the requester's acknowledgment
 completes the record. This has two consequences.</t>
       <t>For the performing party, a bilaterally-acknowledged decline is evidence,
 verifiable by an auditor who trusts neither party, that its boundary
-enforcement works — the strongest
-form of the refusal-as-positive-signal reputation input described in
-<xref target="I-D.mih-agent-reputation-predicates"/>, because here even the <em>counterparty
-that was refused</em> has signed the record.</t>
+enforcement works — the strongest form of refusal-as-positive-signal
+reputation input, because here even the <em>counterparty that was refused</em>
+has signed the record.</t>
       <t>For the requesting party, a history of acknowledged declines is legible too:
 a pattern of out-of-policy requests is now provable by its counterparties.
 Bilateral records cut both ways by construction; parties should expect their
@@ -246,7 +245,7 @@ format is the same; the assurance marking differs. This keeps one protocol
 across mixed peers while preserving the distinction relying parties need:
 a fully-bilateral record and a degraded record are never confusable, and
 consumers such as reputation predicates can require a minimum assurance
-(cf. the assurance ordering in <xref target="I-D.mih-agent-reputation-predicates"/>).
+level before treating a record as input.
 Degradation <bcp14>MUST</bcp14> be recorded, never silent.</t>
     </section>
     <section anchor="relationship-to-existing-work">
@@ -421,16 +420,29 @@ objects and a registry for reduced-assurance indicator values. TBD.</t>
         </reference>
         <reference anchor="I-D.mih-scitt-agent-action-capsule">
           <front>
-            <title>Agent Action Capsule: A SCITT Profile for Autonomous Agent Actions</title>
+            <title>An Agent Action Capsule Profile for SCITT</title>
             <author fullname="Steven Mih" initials="S." surname="Mih">
               <organization>Action State Group, Inc.</organization>
             </author>
-            <date month="July" year="2026"/>
+            <date day="6" month="July" year="2026"/>
             <abstract>
-              <t>This document defines the Agent Action Capsule, a SCITT Signed Statement profile for recording autonomous agent actions with cryptographic accountability.</t>
+              <t>   This document defines a SCITT statement profile for recording what an
+   AI agent did: the Agent Action Capsule.  A Capsule is a digest-
+   committed record of one agent action carrying its verdict-level
+   disposition (executed, blocked, denied, errored, timed out), the
+   deterministic constraints that were evaluated, the effect that was
+   committed together with a confirmed-effect binding that distinguishes
+   a dispatched attempt from an observed result, and an honest human-in-
+   the-loop flag.  Capsules are expressed as SCITT Signed Statements
+   (COSE_Sign1) and made transparent by registration in a SCITT
+   Transparency Service.  A Capsule is recorded on every verdict,
+   including refusals: a blocked or denied Capsule is the auditor-grade
+   evidence that a gate worked.
+
+              </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-01"/>
+          <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-02"/>
         </reference>
         <reference anchor="RFC2119">
           <front>
@@ -461,83 +473,190 @@ objects and a registry for reduced-assurance indicator values. TBD.</t>
       </references>
       <references anchor="sec-informative-references">
         <name>Informative References</name>
-        <reference anchor="I-D.mih-agent-reputation-predicates">
-          <front>
-            <title>Agent Reputation Predicates for SCITT-Anchored Action Records</title>
-            <author fullname="Steven Mih" initials="S." surname="Mih">
-              <organization/>
-            </author>
-            <date month="July" year="2026"/>
-            <abstract>
-              <t>Work in progress.</t>
-            </abstract>
-          </front>
-          <seriesInfo name="Internet-Draft" value="I-D.mih-agent-reputation-predicates-00"/>
-        </reference>
         <reference anchor="I-D.mih-sato-agent-accountability-composition">
           <front>
-            <title>Agent Accountability Composition with SCITT</title>
+            <title>Agent Accountability: Composition and Conformance</title>
             <author fullname="Steven Mih" initials="S." surname="Mih">
-              <organization/>
+              <organization>Action State Group, Inc.</organization>
             </author>
-            <date month="July" year="2026"/>
+            <author fullname="Tom Sato" initials="" surname="Sato">
+              <organization>MyAuberge K.K.</organization>
+            </author>
+            <author fullname="Iman Schrock" initials="I." surname="Schrock">
+              <organization>EMILIA Protocol, Inc.</organization>
+            </author>
+            <author fullname="Songbo Bu" initials="S." surname="Bu">
+              <organization>Independent</organization>
+            </author>
+            <author fullname="Anton Sokolov" initials="A." surname="Sokolov">
+              <organization>Tyche Institute</organization>
+            </author>
+            <date day="16" month="August" year="2026"/>
             <abstract>
-              <t>Work in progress.</t>
+              <t>   Autonomous and semi-autonomous software agents increasingly take
+   consequential actions across administrative and trust domains.
+   Holding such an action accountable — to a regulator, auditor, or
+   counterparty who does not trust the operator — requires answering
+   several questions, each answerable by an independently-verifiable
+   profile: whether the agent was permitted to act (CAN), which
+   accountable human authorized the specific action (WHO), what the
+   agent actually did (WHAT), and whether the runtime enforced correctly
+   (AUDIT).
+
+   This document specifies, in Informational terms, how such profiles
+   compose — by a shared action-digest, each verifying independently —
+   and defines a shared conformance-vector suite against which any
+   profile may be tested.  It complements existing audit-architecture
+   and record-format work rather than replacing it, reusing existing
+   signing, transport, and transparency mechanisms.  Its focus is an
+   assurance tier those documents leave open: most agent records today
+   are self-attested by an interested party; this document makes
+   reachable and testable an anchored, third-party-verifiable tier, in
+   which a record is registered to a transparency service (SCITT) so a
+   party who trusts neither the agent nor the operator can verify it.
+   Self-attestation remains a valid baseline; convergence on the
+   disinterested tier — by any conforming profile — is the goal, not a
+   single mandated format.
+
+              </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="I-D.mih-sato-agent-accountability-composition-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-mih-sato-agent-accountability-composition-01"/>
         </reference>
         <reference anchor="I-D.mih-scitt-agent-action-capsule-sel-disc">
           <front>
-            <title>Agent Action Capsule Selective Disclosure Profile</title>
+            <title>Selective Disclosure Profile for Agent Action Capsules</title>
             <author fullname="Steven Mih" initials="S." surname="Mih">
-              <organization/>
+              <organization>Action State Group, Inc.</organization>
             </author>
-            <date month="July" year="2026"/>
+            <date day="19" month="June" year="2026"/>
             <abstract>
-              <t>Work in progress.</t>
+              <t>   This document normatively profiles the per-field selective-disclosure
+   extension point reserved in draft-mih-scitt-agent-action-capsule-01
+   Section 9.2 (Selective Disclosure).  It defines the salted-hash
+   commitment encoding, decoy-digest construction, disclosure format,
+   producer requirements, and verifier checks for selectively
+   disclosable fields in Agent Action Capsule payloads.  The mechanism
+   follows the SD-JWT selective-disclosure model (RFC 9901) — salted-
+   hash commitments, decoy digests, and disclosed [salt, name, value]
+   triples — using JCS (RFC 8785) canonicalization, which is already the
+   base Capsule profile's canonical form.  SD-JWT (RFC 9901) is the JSON
+   form; SD-CWT (draft-ietf-spice-sd-cwt) is the CBOR/dCBOR sibling.
+   Because the Capsule payload is JSON, this profile uses the SD-JWT
+   (JSON) construction, cited alongside the SPICE WG's SD-CWT work for
+   SCITT-ecosystem consistency.  Verifier checks are deterministic and
+   reproducible from the Capsule bytes plus a provided disclosure set
+   alone; no clock, network access, model invocation, or external lookup
+   beyond the provided disclosures is required.
+
+              </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="I-D.mih-scitt-agent-action-capsule-sel-disc-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-sel-disc-00"/>
         </reference>
         <reference anchor="I-D.nelson-agent-delegation-receipts">
           <front>
-            <title>Agent Delegation Receipts</title>
-            <author fullname="Steven Mih" initials="S." surname="Mih">
-              <organization/>
+            <title>Delegation Receipt Protocol for AI Agent Authorization</title>
+            <author fullname="Ryan Nelson" initials="R." surname="Nelson">
+              <organization>Authproof</organization>
             </author>
-            <date month="July" year="2026"/>
+            <date day="13" month="June" year="2026"/>
             <abstract>
-              <t>Work in progress.</t>
+              <t>   This document defines the Delegation Receipt Protocol (DRP), a
+   cryptographic authorization primitive for AI agent deployments.
+   Before any agent action executes, the authorizing user signs an
+   Authorization Object containing scope boundaries, time window,
+   operator instruction hash, and model state commitment.  This signed
+   receipt is published to an append-only log before the agent runtime
+   receives control.  The protocol reduces reliance on the operator as a
+   trusted intermediary by making the user's private key the sole
+   signing authority over the delegation record.
+
+              </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="I-D.nelson-agent-delegation-receipts-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-nelson-agent-delegation-receipts-10"/>
         </reference>
         <reference anchor="I-D.kuehlewind-audit-architecture">
           <front>
-            <title>A Common Architecture for Audit Logging</title>
-            <author fullname="Steven Mih" initials="S." surname="Mih">
-              <organization/>
+            <title>An Architecture for Auditing AI Agent Delegation and Interactions</title>
+            <author fullname="Mirja Kühlewind" initials="M." surname="Kühlewind">
+              <organization>Ericsson</organization>
             </author>
-            <date month="July" year="2026"/>
+            <author fullname="Henk Birkholz" initials="H." surname="Birkholz">
+              <organization>Fraunhofer SIT</organization>
+            </author>
+            <date day="18" month="May" year="2026"/>
             <abstract>
-              <t>Work in progress.</t>
+              <t>   This document describes an architecture for auditing of agent-driven
+   interactions on the Internet.  Autonomous and semi-autonomous
+   software agents, including those based on artificial intelligence,
+   increasingly act on behalf of users, organizations, and services.
+   Existing auditing mechanisms often capture isolated system events but
+   do not consistently represent delegation relationships, user intent,
+   or evolving authorization.  In agent-driven systems, auditability
+   requires linking intent, delegation, authorization, and execution.
+   The proposed architecture enables this through distributed audit
+   record generation, propagation of audit context, optional
+   attestation, and additonal logging for transparency.
+
+              </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="I-D.kuehlewind-audit-architecture-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-kuehlewind-audit-architecture-00"/>
         </reference>
         <reference anchor="I-D.schrock-ep-authorization-receipts">
           <front>
-            <title>Authorization Receipts for Agent Actions</title>
-            <author fullname="Steven Mih" initials="S." surname="Mih">
-              <organization/>
+            <title>Authorization Receipts for High-Risk Agent Actions</title>
+            <author fullname="Iman Schrock" initials="I." surname="Schrock">
+              <organization>EMILIA Protocol, Inc.</organization>
             </author>
-            <date month="July" year="2026"/>
+            <date day="16" month="August" year="2026"/>
             <abstract>
-              <t>Work in progress.</t>
+              <t>   This document defines the EMILIA Protocol (EP) authorization receipt,
+   an evidence artifact binding an enrolled approver key to one
+   canonical action before execution.  An approver-held key signs an
+   Authorization Context containing the action hash, policy reference,
+   shared authorization instance, per-signoff nonce, audience, and
+   validity window.  A Trust Receipt carries the signed contexts,
+   terminal consumption record, and Merkle inclusion material so a
+   relying party can verify the recorded event offline under
+   independently selected log, directory, policy, and approver trust
+   inputs.
+
+   The receipt establishes only the guarantees of the selected
+   verification profile.  The mapping from an enrolled approver
+   identifier to a natural person is asserted by the directory
+   authority.  Offline verification does not establish current
+   revocation status, global non-replay, comprehension, legality,
+   safety, or execution.  Replay prevention requires an online atomic
+   consumption store at the executor.  The state-machine invariants are
+   machine-checked under the assumptions stated in this document.
+
+   This revision defines the closed EP-AUTHORIZATION-BUNDLE-v1 pre-
+   execution profile and its verification algorithm.  The bundle carries
+   the Action Object, signed Authorization Contexts, signoffs, key
+   proofs, and presentation evidence; it deliberately carries no
+   terminal consumption or execution claim.  An optional, profile-
+   identified authorization binding can commit the human evidence to an
+   independently verified native authorization artifact without
+   replacing that artifact or making this receipt format depend on its
+   transport or trust model.
+
+   A receipt is evidence, not authorization.  This document does not
+   treat a local user interaction as an authorization decision.  It
+   defines one evidence artifact that an authorization architecture can
+   use in a human-confirmation flow: the signed Authorization Context is
+   action-bound confirmation evidence an authorization server MAY
+   validate and bind to the grant it issues.  The resulting Trust
+   Receipt records terminal consumption and remains evidence; neither
+   object makes the authorization decision.  That decision remains with
+   the authorization server.
+
+              </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="I-D.schrock-ep-authorization-receipts-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-12"/>
         </reference>
         <reference anchor="RFC9334">
           <front>
@@ -549,7 +668,7 @@ objects and a registry for reduced-assurance indicator values. TBD.</t>
             <author fullname="W. Pan" initials="W." surname="Pan"/>
             <date month="January" year="2023"/>
             <abstract>
-              <t>In network protocol exchanges, it is often useful for one end of a communication to authenticate the identity of another end of the communication, and to verify the integrity of software running on the system at the other end. This document defines RATS - an architecture for such remote attestation procedures.</t>
+              <t>In network protocol exchanges, it is often useful for one end of a communication to know whether the other end is in an intended operating state. This document provides an architectural overview of the entities involved that make such tests possible through the process of generating, conveying, and evaluating evidentiary Claims. It provides a model that is neutral toward processor architectures, the content of Claims, and protocols.</t>
             </abstract>
           </front>
           <seriesInfo name="RFC" value="9334"/>
@@ -557,7 +676,7 @@ objects and a registry for reduced-assurance indicator values. TBD.</t>
         </reference>
       </references>
     </references>
-    <?line 389?>
+    <?line 387?>
 
 <section numbered="false" anchor="acknowledgments">
       <name>Acknowledgments</name>
@@ -567,162 +686,162 @@ cited above.</t>
     </section>
   </back>
   <!-- ##markdown-source:
-H4sIAAAAAAAAA61c7ZLbyHX930/R0f6QxCLo1Uop7844dkYzklfJStpoZrPl
-crm8TaBJwgMCDBoYilapKg+RB8iz5FHyJLnn3u5GA+RI2qq4XLUcErjdfT/P
-/WhlWaa6sqvsmX7wvKxMZ1tT6Yuus64zXdnUulnpy7ZxLnvbrk1d/l2+vVjb
-utMXOf5wD5RZLlt7N6YhTwyUHqiiyWuzpaWK1qy6bFtuMoOnsmV4KzPD89nX
-X6ucvl437eFMl/WqUa5fbkvn6MfusCM6r17cvFTlrj3TXdu77puvv/7u62+U
-aa0509c279uyO6hbe9g3bXGm/8yLzXWyxlzHpec652M2yTHn+vry1c3NnMib
-2u2IcJ0f5rq1q96Z6i+KqNTFX03V1LSZg3XK9N2mac+UzpSm/8lprzt7Z2v9
-utzwl7TAmecc/USL6z+2Tb+b61d1vuAn7NaU1Zl2O5v/sxEW47mFKVXdtFva
-2p2lNfS7l5fffffsqf/47W+//Ud8fJVdLcBal5dd5xksVLLc7FxPslbgZkIo
-vCIPt3bXexHsWluUEIIbUTZdEwnnTV93hthIvM7yZrtrXIl3v2wrmbNVVpQu
-D4/XtnL0szxb2MquZSetzW256+I+bnu7qey+rIvM9EVJdNt8U3Y27/o2nsnl
-m7bJbzO7y0QyXq4jauDi06fPzlSWZdosHck675T6eUMyM/R/1uNmRzrS2UIv
-D5qkrVMtIX34j540ymmjc5IV/qq7kmxAzqpWbbM9TcrUTbexLSlYU5jDQ0ek
-ctJVGF23MZ227/ONqddW/+9//pcuV1ha2fcl1uJvnL61uy5sypWFnWuSGMmj
-sviWicjXpKm6sHU5/GQVL77QV6UjiVusXvS5pc3o7SGrmnV2Z1vXu+zQ9C3+
-XuibDa1JdtxvcZTCurwtl/SmUdGQUvsaDkD6pl2fbzxP3Bk2EDhX1usRR5Ur
-1zXY6X8fkVySzPFC2WGjoCIk+YQlcWaLfYD99J+tO1d4hHgOjZ8upO2dqXro
-d7odEpQpyebofCBR1sTwMleQLSlHWUPSHb+wJOUvTHvQe2KkTTfTmVsialcr
-0kjemT9SHZQiPZJIHZsDhWEd+oGMBMsRAfxElhLsixXAH8sWc1XYvCpr+kQH
-1CQXU7GSEYuM3vRbIy+Q4Ml7WTgyG9jnT33Oq1iTbxR5uo6UM7+tm31li7Vn
-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
-U7xlnMOXfBfq/wBQ8zdsA0sAAA==
+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
+SgAA
 
 -->
 

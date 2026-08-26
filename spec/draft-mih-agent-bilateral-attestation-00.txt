@@ -4,8 +4,8 @@
 
 Network Working Group                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Informational                               6 July 2026
-Expires: 7 January 2027
+Intended status: Informational                            25 August 2026
+Expires: 26 February 2027
 
 
        Bilateral Attestation of Cross-Organization Agent Actions
@@ -48,14 +48,14 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 7 January 2027.
+   This Internet-Draft will expire on 26 February 2027.
 
 
 
 
-Mih                      Expires 7 January 2027                 [Page 1]
+Mih                     Expires 26 February 2027                [Page 1]
 
-Internet-Draft         Bilateral Agent Attestation             July 2026
+Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
 Copyright Notice
@@ -109,9 +109,9 @@ Table of Contents
 
 
 
-Mih                      Expires 7 January 2027                 [Page 2]
+Mih                     Expires 26 February 2027                [Page 2]
 
-Internet-Draft         Bilateral Agent Attestation             July 2026
+Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
    party, and carrying no assent from the other.  When the payment posts
@@ -139,8 +139,8 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    record layer [I-D.mih-scitt-agent-action-capsule] rather than
    defining a new one, and its records are designed to be consumable by
    the layers above the record — accountability composition
-   [I-D.mih-sato-agent-accountability-composition] and reputation
-   [I-D.mih-agent-reputation-predicates].
+   [I-D.mih-sato-agent-accountability-composition] and reputation-
+   predicate consumers.
 
 2.  Motivating Scenarios
 
@@ -165,9 +165,9 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
 
 
-Mih                      Expires 7 January 2027                 [Page 3]
+Mih                     Expires 26 February 2027                [Page 3]
 
-Internet-Draft         Bilateral Agent Attestation             July 2026
+Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
    The refusal becomes durable, third-party-verifiable evidence — for B,
@@ -176,8 +176,7 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
    *Feeding reputation.* Every completed handshake yields a
    counterparty-attested record — the highest-assurance evidence class a
-   reputation predicate can consume
-   [I-D.mih-agent-reputation-predicates].  Two organizations that
+   reputation-predicate consumer can consume.  Two organizations that
    transact build verifiable shared history as a side effect of
    transacting.
 
@@ -221,9 +220,10 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
 
 
-Mih                      Expires 7 January 2027                 [Page 4]
+
+Mih                     Expires 26 February 2027                [Page 4]
 
-Internet-Draft         Bilateral Agent Attestation             July 2026
+Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
    Verifiable organizational identity:  An organizational identity a
@@ -257,12 +257,12 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    3.  *Action attestation.* The performing party produces an action
        attestation referencing the request attestation by digest and
        recording the constraint results and the disposition.
-       Dispositions use the verdict-complete vocabulary of
-       [I-D.mih-scitt-agent-action-capsule] verbatim — _executed,
-       blocked, denied, timeout, errored, deferred, expired, escalated_
-       — so the record covers every outcome, not only success.  A
-       performing party MUST produce at most one action attestation per
-       request attestation; repeated execution of a single request is
+       Dispositions use the verdict_class vocabulary of
+       [I-D.mih-scitt-agent-action-capsule]; that document is normative
+       for the complete value set (e.g., _executed_, _denied_), so the
+       record covers every outcome, not only success.  A performing
+       party MUST produce at most one action attestation per request
+       attestation; repeated execution of a single request is
        representable only as distinct request instances, each with its
        own request attestation.
 
@@ -277,9 +277,9 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
 
 
-Mih                      Expires 7 January 2027                 [Page 5]
+Mih                     Expires 26 February 2027                [Page 5]
 
-Internet-Draft         Bilateral Agent Attestation             July 2026
+Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
    equivocation are verifiable by a party who trusts neither
@@ -304,10 +304,9 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
    For the performing party, a bilaterally-acknowledged decline is
    evidence, verifiable by an auditor who trusts neither party, that its
-   boundary enforcement works — the strongest form of the refusal-as-
-   positive-signal reputation input described in
-   [I-D.mih-agent-reputation-predicates], because here even the
-   _counterparty that was refused_ has signed the record.
+   boundary enforcement works — the strongest form of refusal-as-
+   positive-signal reputation input, because here even the _counterparty
+   that was refused_ has signed the record.
 
    For the requesting party, a history of acknowledged declines is
    legible too: a pattern of out-of-policy requests is now provable by
@@ -326,16 +325,17 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
    peers while preserving the distinction relying parties need: a fully-
    bilateral record and a degraded record are never confusable, and
    consumers such as reputation predicates can require a minimum
-   assurance (cf. the assurance ordering in
-   [I-D.mih-agent-reputation-predicates]).  Degradation MUST be
-   recorded, never silent.
+   assurance level before treating a record as input.  Degradation MUST
+   be recorded, never silent.
 
 
 
 
-Mih                      Expires 7 January 2027                 [Page 6]
+
+
+Mih                     Expires 26 February 2027                [Page 6]
 
-Internet-Draft         Bilateral Agent Attestation             July 2026
+Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
 7.  Relationship to Existing Work
@@ -389,9 +389,9 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
 
 
-Mih                      Expires 7 January 2027                 [Page 7]
+Mih                     Expires 26 February 2027                [Page 7]
 
-Internet-Draft         Bilateral Agent Attestation             July 2026
+Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
 8.2.  Half-Completed Exchanges
@@ -445,9 +445,9 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
 
 
-Mih                      Expires 7 January 2027                 [Page 8]
+Mih                     Expires 26 February 2027                [Page 8]
 
-Internet-Draft         Bilateral Agent Attestation             July 2026
+Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
 8.6.  Key Compromise and Revocation
@@ -501,9 +501,9 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
 
 
-Mih                      Expires 7 January 2027                 [Page 9]
+Mih                     Expires 26 February 2027                [Page 9]
 
-Internet-Draft         Bilateral Agent Attestation             July 2026
+Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
 10.  IANA Considerations
@@ -529,11 +529,11 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
               <https://www.rfc-editor.org/rfc/rfc8785>.
 
    [I-D.mih-scitt-agent-action-capsule]
-              Mih, S., "Agent Action Capsule: A SCITT Profile for
-              Autonomous Agent Actions", Work in Progress, Internet-
-              Draft, draft-mih-scitt-agent-action-capsule-01, July 2026,
+              Mih, S., "An Agent Action Capsule Profile for SCITT", Work
+              in Progress, Internet-Draft, draft-mih-scitt-agent-action-
+              capsule-02, 6 July 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
-              agent-action-capsule-01>.
+              agent-action-capsule-02>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -546,55 +546,50 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
 11.2.  Informative References
 
-   [I-D.mih-agent-reputation-predicates]
-              Mih, S., "Agent Reputation Predicates for SCITT-Anchored
-              Action Records", Work in Progress, Internet-Draft, I-
-              D.mih-agent-reputation-predicates-00, July 2026,
-              <https://datatracker.ietf.org/doc/html/I-D.mih-agent-
-              reputation-predicates-00>.
-
-
-
-
-
-Mih                      Expires 7 January 2027                [Page 10]
-
-Internet-Draft         Bilateral Agent Attestation             July 2026
-
-
    [I-D.mih-sato-agent-accountability-composition]
-              Mih, S., "Agent Accountability Composition with SCITT",
-              Work in Progress, Internet-Draft, I-D.mih-sato-agent-
-              accountability-composition-00, July 2026,
-              <https://datatracker.ietf.org/doc/html/I-D.mih-sato-agent-
-              accountability-composition-00>.
+              Mih, S., Sato, Schrock, I., Bu, S., and A. Sokolov, "Agent
+              Accountability: Composition and Conformance", Work in
+              Progress, Internet-Draft, draft-mih-sato-agent-
+              accountability-composition-01, 16 August 2026,
+              <https://datatracker.ietf.org/doc/html/draft-mih-sato-
+              agent-accountability-composition-01>.
+
+
+
+
+Mih                     Expires 26 February 2027               [Page 10]
+
+Internet-Draft         Bilateral Agent Attestation           August 2026
+
 
    [I-D.mih-scitt-agent-action-capsule-sel-disc]
-              Mih, S., "Agent Action Capsule Selective Disclosure
-              Profile", Work in Progress, Internet-Draft, I-D.mih-scitt-
-              agent-action-capsule-sel-disc-00, July 2026,
-              <https://datatracker.ietf.org/doc/html/I-D.mih-scitt-
+              Mih, S., "Selective Disclosure Profile for Agent Action
+              Capsules", Work in Progress, Internet-Draft, draft-mih-
+              scitt-agent-action-capsule-sel-disc-00, 19 June 2026,
+              <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
               agent-action-capsule-sel-disc-00>.
 
    [I-D.nelson-agent-delegation-receipts]
-              Mih, S., "Agent Delegation Receipts", Work in Progress,
-              Internet-Draft, I-D.nelson-agent-delegation-receipts-00,
-              July 2026, <https://datatracker.ietf.org/doc/html/I-
-              D.nelson-agent-delegation-receipts-00>.
+              Nelson, R., "Delegation Receipt Protocol for AI Agent
+              Authorization", Work in Progress, Internet-Draft, draft-
+              nelson-agent-delegation-receipts-10, 13 June 2026,
+              <https://datatracker.ietf.org/doc/html/draft-nelson-agent-
+              delegation-receipts-10>.
 
    [I-D.kuehlewind-audit-architecture]
-              Mih, S., "A Common Architecture for Audit Logging", Work
-              in Progress, Internet-Draft, I-D.kuehlewind-audit-
-              architecture-00, July 2026,
-              <https://datatracker.ietf.org/doc/html/I-D.kuehlewind-
+              Kühlewind, M. and H. Birkholz, "An Architecture for
+              Auditing AI Agent Delegation and Interactions", Work in
+              Progress, Internet-Draft, draft-kuehlewind-audit-
+              architecture-00, 18 May 2026,
+              <https://datatracker.ietf.org/doc/html/draft-kuehlewind-
               audit-architecture-00>.
 
    [I-D.schrock-ep-authorization-receipts]
-              Mih, S., "Authorization Receipts for Agent Actions", Work
-              in Progress, Internet-Draft, I-D.schrock-ep-authorization-
-              receipts-00, July 2026,
-              <https://datatracker.ietf.org/doc/html/I-D.schrock-ep-
-              authorization-receipts-00>.
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-authorization-receipts-12, 16 August 2026,
+              <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
+              authorization-receipts-12>.
 
    [RFC9334]  Birkholz, H., Thaler, D., Richardson, M., Smith, N., and
               W. Pan, "Remote ATtestation procedureS (RATS)
@@ -609,15 +604,6 @@ Acknowledgments
 
 Author's Address
 
-
-
-
-
-Mih                      Expires 7 January 2027                [Page 11]
-
-Internet-Draft         Bilateral Agent Attestation             July 2026
-
-
    Steven Mih
    Action State Group, Inc.
    Email: spec@actionstate.ai
@@ -627,46 +613,4 @@ Internet-Draft         Bilateral Agent Attestation             July 2026
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                      Expires 7 January 2027                [Page 12]
+Mih                     Expires 26 February 2027               [Page 11]
