@@ -27,7 +27,7 @@ signed bytes.
 | §3.2 SCITT registration | Distinct RFC 9943 registration statement over the same raw Capsule ID; Receipt and VDS verification remain substrate concerns | — |
 | §3.x Outcomes | Asynchronous consequences represented as new Capsules with independent identities and envelopes | — |
 | §4 Registries (summary) | The six registry-governed vocabularies, stated once with the binding invariant | all six |
-| §5.1 Identity | Format 3 declared `jcs`, chain-committed Capsule ID, and the absent-field format-2 vintage verification path | — |
+| §5.1 Identity | Format 4 declared `jcs`, chain-committed Capsule ID, and the absent-field format-2 vintage verification path | — |
 | §5.2 Effect Record | `effect.status`, the confirmed-effect binding (request/response digests), `effect.type`, `irreversibility_class`, `effect_attestation` and the validity matrix | `effect.type`, `irreversibility_class`, `effect_attestation` |
 | §5.3 Assurance | `attestation_mode` / `effect_mode` / `ledger_mode` as independently-rederivable claims | — |
 | §5.4 Disposition | `decision`, `approver` (closed enum), the honest `human_disposed` flag, `reason_digest`, `expiry_policy` | `disposition.decision` |

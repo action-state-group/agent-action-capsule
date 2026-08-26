@@ -127,7 +127,7 @@ Disclosure:
 JSON-DIGEST:
 : As defined in {{I-D.mih-scitt-agent-action-capsule}}: the lowercase-hex
   SHA-256 digest of the {{RFC8785}} JCS serialization of a value, after
-  selecting the embedded Capsule's identity profile. Format 3 uses plain JCS.
+  selecting the embedded Capsule's identity profile. Format 4 uses plain JCS.
   Vintage format 2 applies absent-field normalization.
 
 JCS:
@@ -273,7 +273,7 @@ against.
 ### DE-3: Digest Recomputation and Comparison
 
 Compute `computed = JSON-DIGEST(value)` using the embedded Capsule's identity
-profile. Format 3 computes the lowercase-hex SHA-256 of `UTF8(JCS(value))`
+profile. Format 4 computes the lowercase-hex SHA-256 of `UTF8(JCS(value))`
 without normalization. Vintage format 2 applies the same absent-field
 normalization used for its `capsule_id`. This document introduces no second
 profile-selection or hashing path.
