@@ -411,7 +411,7 @@ Internet-Draft            Agent Action Capsules              August 2026
    |spec_version  |string|REQUIRED|The profile prose version the Capsule    |
    |              |      |        |conforms to.  The value defined by this  |
    |              |      |        |profile version is "draft-mih-scitt-     |
-   |              |      |        |agent-action-capsule-02"; it tracks the  |
+   |              |      |        |agent-action-capsule-03"; it tracks the  |
    |              |      |        |document name and advances with each     |
    |              |      |        |revision.                                |
    +--------------+------+--------+-----------------------------------------+
