@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/agent-action-capsule/go/registries"
 	"github.com/action-state-group/agent-action-capsule/go/verify"
 )
@@ -98,6 +99,13 @@ type expectedSingle struct {
 	Findings            []expectedFinding `json:"findings"`
 }
 
+// expectedCanonical is the shape of a kind=canonical expected.json.
+type expectedCanonical struct {
+	Kind                string  `json:"kind"`
+	CapsuleIDRecomputed *string `json:"capsule_id_recomputed"`
+	Exception           *string `json:"exception"`
+}
+
 // expectedStore is the shape of a store-level expected.json.
 type expectedStore struct {
 	Results []expectedSingle `json:"results"`
@@ -121,6 +129,17 @@ func runCase(vdir, name string, regs map[string]map[string]bool) error {
 		return fmt.Errorf("reading expected.json: %w", err)
 	}
 
+	// Peek at kind before decoding input, to dispatch canonical vectors early.
+	var kindProbe struct {
+		Kind string `json:"kind"`
+	}
+	if err := json.Unmarshal(expectedData, &kindProbe); err != nil {
+		return fmt.Errorf("peeking kind in expected.json: %w", err)
+	}
+	if kindProbe.Kind == "canonical" {
+		return runCanonicalCase(inputData, expectedData)
+	}
+
 	input, err := decodeWithNumbers(inputData)
 	if err != nil {
 		return fmt.Errorf("decoding input.json: %w", err)
@@ -133,6 +152,64 @@ func runCase(vdir, name string, regs map[string]map[string]bool) error {
 		}
 	}
 	return runSingleCase(input, expectedData, regs)
+}
+
+func runCanonicalCase(inputData, expectedData []byte) error {
+	var exp expectedCanonical
+	if err := json.Unmarshal(expectedData, &exp); err != nil {
+		return fmt.Errorf("parsing expected.json (canonical): %w", err)
+	}
+
+	var inputMap map[string]interface{}
+	d := json.NewDecoder(strings.NewReader(string(inputData)))
+	d.UseNumber()
+	if err := d.Decode(&inputMap); err != nil {
+		return fmt.Errorf("decoding input.json (canonical): %w", err)
+	}
+
+	gotID, cerr := canonical.ComputeCapsuleID(inputMap)
+
+	// Map canonical error types to the Python exception class names.
+	var gotExc *string
+	if cerr != nil {
+		var excName string
+		switch cerr.(type) {
+		case *canonical.FloatError:
+			excName = "FloatInDigestError"
+		case *canonical.UnsafeIntError:
+			excName = "UnsafeIntegerError"
+		default:
+			excName = fmt.Sprintf("%T", cerr)
+		}
+		gotExc = &excName
+	}
+
+	var gotIDPtr *string
+	if cerr == nil {
+		gotIDPtr = &gotID
+	}
+
+	var errs []string
+	switch {
+	case gotIDPtr == nil && exp.CapsuleIDRecomputed != nil:
+		errs = append(errs, fmt.Sprintf("capsule_id_recomputed: got null, expected %q", *exp.CapsuleIDRecomputed))
+	case gotIDPtr != nil && exp.CapsuleIDRecomputed == nil:
+		errs = append(errs, fmt.Sprintf("capsule_id_recomputed: got %q, expected null", *gotIDPtr))
+	case gotIDPtr != nil && exp.CapsuleIDRecomputed != nil && *gotIDPtr != *exp.CapsuleIDRecomputed:
+		errs = append(errs, fmt.Sprintf("capsule_id_recomputed: got %q, expected %q", *gotIDPtr, *exp.CapsuleIDRecomputed))
+	}
+	switch {
+	case gotExc == nil && exp.Exception != nil:
+		errs = append(errs, fmt.Sprintf("exception: got nil, expected %q", *exp.Exception))
+	case gotExc != nil && exp.Exception == nil:
+		errs = append(errs, fmt.Sprintf("exception: got %q, expected nil", *gotExc))
+	case gotExc != nil && exp.Exception != nil && *gotExc != *exp.Exception:
+		errs = append(errs, fmt.Sprintf("exception: got %q, expected %q", *gotExc, *exp.Exception))
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("%s", strings.Join(errs, "; "))
+	}
+	return nil
 }
 
 func runSingleCase(input interface{}, expectedData []byte, regs map[string]map[string]bool) error {

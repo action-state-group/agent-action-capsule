@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_action_capsule import verify, verify_store
+from agent_action_capsule import canonical, verify, verify_store
 
 VECTORS = Path(__file__).resolve().parents[2] / "test-vectors"
 MANIFEST = json.loads((VECTORS / "vectors.json").read_text())
@@ -29,13 +29,31 @@ def _assert_single(res, exp):
     assert _findings(res) == _expected_findings(exp)
 
 
+def _assert_canonical(inp, exp):
+    """Assert a kind=canonical vector: test compute_capsule_id directly."""
+    exc = None
+    cap_id = None
+    try:
+        cap_id = canonical.compute_capsule_id(inp)
+    except Exception as e:
+        exc = type(e).__name__
+    assert cap_id == exp["capsule_id_recomputed"], (
+        f"capsule_id mismatch: got {cap_id!r}, expected {exp['capsule_id_recomputed']!r}"
+    )
+    assert exc == exp["exception"], (
+        f"exception mismatch: got {exc!r}, expected {exp['exception']!r}"
+    )
+
+
 @pytest.mark.parametrize("name", CASES)
 def test_vector(name):
     case = VECTORS / name
     inp = json.loads((case / "input.json").read_text())
     exp = json.loads((case / "expected.json").read_text())
 
-    if isinstance(inp, dict) and "ledger" in inp:
+    if exp.get("kind") == "canonical":
+        _assert_canonical(inp, exp)
+    elif isinstance(inp, dict) and "ledger" in inp:
         results = verify_store(inp["ledger"])
         assert len(results) == len(exp["results"])
         for res, e in zip(results, exp["results"]):
