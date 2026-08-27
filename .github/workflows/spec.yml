@@ -96,3 +96,6 @@ jobs:
       - name: idnits
         working-directory: spec
         run: npx --yes @ietf-tools/idnits _ci_build/"${DRAFT}.txt" || true
+      - name: check verdict_class vocabulary references
+        working-directory: spec
+        run: python3 check_verdict_class_refs.py
