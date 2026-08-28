@@ -41,7 +41,7 @@ from .parse import Capsule, parse_capsule
 from .registries import REGISTRY_NAMES, load_registries
 from .verify import Finding, VerificationResult, verify, verify_store
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 
 def anchor(*args, **kwargs):
