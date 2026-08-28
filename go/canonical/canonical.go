@@ -26,8 +26,23 @@ const MaxSafeInteger = int64(1<<53 - 1) // 9007199254740991
 // CanonicalizationJCS selects plain RFC 8785 JCS for new Capsule IDs.
 const CanonicalizationJCS = "jcs"
 
+// LocalOnlyFields are producer-envelope bookkeeping fields that are NEVER part
+// of any capsule_id preimage, under ANY format. The COSE_Sign1 producer envelope
+// (signature) and its signing key_id are attached to a ledger line AFTER the
+// capsule_id is computed — you cannot hash a signature into the id it signs — so
+// they MUST be excluded before recomputing the id, regardless of the declared
+// format. This mirrors Python canonical.LOCAL_ONLY_FIELDS (and capsule-emit's
+// _LOCAL_ONLY_FIELDS, the producer of these capsules); omitting it makes every
+// emitted capsule fail check-2 with capsule_id_mismatch.
+var LocalOnlyFields = map[string]bool{
+	"signature": true,
+	"key_id":    true,
+}
+
 // ChainLinkageFields are excluded by the vintage absent-field jcs-n identity
-// construction. Declared jcs Capsules exclude only capsule_id and commit chain.
+// construction, in addition to the local-only envelope fields above. Declared
+// jcs Capsules exclude only capsule_id (plus the local-only envelope fields) and
+// commit chain.
 var ChainLinkageFields = map[string]bool{
 	"capsule_id": true,
 	"chain":      true,
@@ -255,6 +270,10 @@ func digestJCS(v interface{}) (string, error) {
 // A record declaring jcs removes only capsule_id, then applies plain RFC 8785
 // JCS. The declaration and chain therefore participate in the Capsule ID.
 // Unknown, null, and non-string declarations fail closed.
+//
+// Under BOTH constructions the local-only producer-envelope fields (signature,
+// key_id) are removed first: they are attached to a ledger line after the id is
+// computed and are never part of any preimage.
 func ComputeCapsuleID(capsule map[string]interface{}) (string, error) {
 	declared, present := capsule["canonicalization_id"]
 	if !present {
@@ -274,9 +293,12 @@ func ComputeCapsuleID(capsule map[string]interface{}) (string, error) {
 func computeVintageCapsuleID(capsule map[string]interface{}) (string, error) {
 	canonical := make(map[string]interface{})
 	for k, v := range capsule {
-		if !ChainLinkageFields[k] {
-			canonical[k] = v
+		// Envelope fields (LocalOnlyFields) are excluded regardless of format;
+		// ChainLinkageFields additionally drops capsule_id and chain.
+		if ChainLinkageFields[k] || LocalOnlyFields[k] {
+			continue
 		}
+		canonical[k] = v
 	}
 	return digestJCS(Normalize(canonical))
 }
@@ -284,7 +306,10 @@ func computeVintageCapsuleID(capsule map[string]interface{}) (string, error) {
 func computeJCSCapsuleID(capsule map[string]interface{}) (string, error) {
 	canonical := make(map[string]interface{})
 	for k, v := range capsule {
-		if k == "capsule_id" {
+		// Declared jcs excludes only capsule_id, plus the local-only
+		// producer-envelope fields (signature, key_id) which the producer
+		// attaches after computing the id.
+		if k == "capsule_id" || LocalOnlyFields[k] {
 			continue
 		}
 		canonical[k] = v
