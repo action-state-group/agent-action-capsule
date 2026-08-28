@@ -26,14 +26,26 @@ __all__ = [
     "json_digest",
     "compute_capsule_id",
     "CHAIN_LINKAGE_FIELDS",
+    "LOCAL_ONLY_FIELDS",
     "CANONICALIZATION_JCS",
 ]
 
 # Plain RFC 8785 JCS is the only algorithm new Capsules may declare.
 CANONICALIZATION_JCS = "jcs"
 
-# Fields excluded by the vintage absent-field identity construction. Format-4
-# Capsules declare jcs and exclude only capsule_id, so chain is committed.
+# Producer-envelope bookkeeping fields that are NEVER part of any capsule_id
+# preimage, under ANY format. The COSE_Sign1 producer envelope (``signature``)
+# and its signing ``key_id`` are attached to a ledger line AFTER the capsule_id
+# is computed — you cannot hash a signature into the id it signs — so they MUST
+# be excluded before recomputing the id, regardless of the declared format.
+# This mirrors capsule-emit's ``_LOCAL_ONLY_FIELDS`` (the producer of these
+# capsules); omitting it makes every emitted capsule fail check-2 with
+# capsule_id_mismatch.
+LOCAL_ONLY_FIELDS = ("signature", "key_id")
+
+# Fields excluded by the vintage absent-field identity construction, in addition
+# to the local-only envelope fields above. Format-4 Capsules declare jcs and
+# exclude only capsule_id (plus the local-only fields), so chain is committed.
 CHAIN_LINKAGE_FIELDS = ("capsule_id", "chain")
 
 # IEEE-754 double "safe integer" bound (ECMAScript Number.MAX_SAFE_INTEGER). A
@@ -173,11 +185,17 @@ def compute_capsule_id(capsule: dict) -> str:
     A present declaration must be exactly ``"jcs"``; it removes only
     ``capsule_id`` and applies plain RFC 8785 JCS, committing both the declaration
     and ``chain``. Explicit ``jcs-n`` and unknown declarations fail closed.
+
+    Under BOTH constructions the local-only producer-envelope fields
+    (``signature``, ``key_id``) are removed first: they are attached to a ledger
+    line after the id is computed and are never part of any preimage. The vintage
+    ``CHAIN_LINKAGE_FIELDS`` set therefore additionally drops ``chain``.
     """
     if not isinstance(capsule, dict):
         raise TypeError("capsule must be a JSON object")
     if "canonicalization_id" not in capsule:
-        canonical = {k: val for k, val in capsule.items() if k not in CHAIN_LINKAGE_FIELDS}
+        excluded = set(CHAIN_LINKAGE_FIELDS) | set(LOCAL_ONLY_FIELDS)
+        canonical = {k: val for k, val in capsule.items() if k not in excluded}
         return vintage_json_digest(canonical)
 
     algorithm = capsule["canonicalization_id"]
@@ -185,5 +203,6 @@ def compute_capsule_id(capsule: dict) -> str:
         raise TypeError("canonicalization_id must be a string")
     if algorithm != CANONICALIZATION_JCS:
         raise ValueError(f"unsupported canonicalization_id {algorithm!r}")
-    canonical = {k: val for k, val in capsule.items() if k != "capsule_id"}
+    excluded = {"capsule_id", *LOCAL_ONLY_FIELDS}
+    canonical = {k: val for k, val in capsule.items() if k not in excluded}
     return json_digest(canonical)
