@@ -1,0 +1,20 @@
+{
+  "capsule_id_recomputed": "a02b8481d5583284f099d0c9896fc4ac358a05bca79b1d64eece12219d731b4e",
+  "derived": {
+    "attestation_mode": "self_attested",
+    "cross_party_rung": "unilateral_fallback",
+    "effect_mode": "not_applicable",
+    "ledger_mode": "standalone"
+  },
+  "description": "the named overclaim case: full_bilateral claimed with only the initiator's signed half present (no counterparty_ref) -> assurance_overclaim (check 7, info severity, non-gating), derived.cross_party_rung downgraded to unilateral_fallback.",
+  "findings": [
+    {
+      "check": 7,
+      "code": "assurance_overclaim",
+      "detail": "claimed cross_party_rung 'full_bilateral' but verifier derived 'unilateral_fallback' (\u00a75.3 Cross-party assurance)",
+      "severity": "info"
+    }
+  ],
+  "kind": "overclaim",
+  "ok": true
+}

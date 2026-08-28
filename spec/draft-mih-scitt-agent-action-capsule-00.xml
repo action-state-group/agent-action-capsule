@@ -63,7 +63,7 @@ questions follow. The question "was this action permitted?" is answered by
 authorization records produced before execution. The question this profile
 answers is different: "what did the agent actually do?" — including the
 cases where the answer is "it was stopped."</t>
-      <t>This document profiles SCITT <xref target="I-D.ietf-scitt-architecture"/> Signed
+      <t>This document profiles SCITT <xref target="RFC9943"/> Signed
 Statements to carry an Agent Action Capsule: a digest-committed record of
 one agent action and its verdict-level disposition. The profile's central
 design commitments are:</t>
@@ -88,7 +88,7 @@ the record's own bytes, in two conformance classes (<xref target="conformance"/>
         </li>
       </ol>
       <t>The terms "statement profile" and "profile" in this document always mean a
-SCITT statement profile in the sense of <xref target="I-D.ietf-scitt-architecture"/>: a
+SCITT statement profile in the sense of <xref target="RFC9943"/>: a
 constraint on the protected header and payload of a Signed Statement. The
 word is never used in any other sense in this document.</t>
     </section>
@@ -202,7 +202,7 @@ semantically rich stays in the payload.</t>
         <name>Registration and Receipts</name>
         <t>A producer makes a Capsule transparent by registering its Signed
 Statement with a SCITT Transparency Service per
-<xref target="I-D.ietf-scitt-architecture"/> and attaching the returned Receipt
+<xref target="RFC9943"/> and attaching the returned Receipt
 (COSE Receipts, <xref target="I-D.ietf-cose-merkle-tree-proofs"/>) to the unprotected
 header, forming a Transparent Statement. This profile does not define
 receipt formats or proof verification; both are the substrate's, by
@@ -686,7 +686,7 @@ store carries <tt>chain.parent_capsule_id</tt> equal to its <tt>capsule_id</tt> 
       <t>Verification has two tiers. Substrate verification — the issuer's
 COSE_Sign1 signature, and for the transparent tier the Receipt's
 inclusion proof and Transparency Service signature — is performed by
-reference to <xref target="RFC9052"/>, <xref target="I-D.ietf-scitt-architecture"/>, and
+reference to <xref target="RFC9052"/>, <xref target="RFC9943"/>, and
 <xref target="I-D.ietf-cose-merkle-tree-proofs"/>; this profile does not respecify it.</t>
       <t>The agent-profile checks below are normative here and constitute Class 1
 verification (<xref target="conformance"/>): every check is performable from the
@@ -1047,7 +1047,7 @@ defined in this document, carried as the payload of a COSE_Sign1
           </li>
           <li>
             <t>Applications that use this media type: SCITT
-(<xref target="I-D.ietf-scitt-architecture"/>) producers and verifiers recording and
+(<xref target="RFC9943"/>) producers and verifiers recording and
 verifying AI agent actions.</t>
           </li>
           <li>
@@ -1109,7 +1109,7 @@ COSE_Sign1 (<xref target="RFC9052"/>) Signed Statement.</t>
           </li>
           <li>
             <t>Applications that use this media type: SCITT
-(<xref target="I-D.ietf-scitt-architecture"/>) producers and verifiers recording
+(<xref target="RFC9943"/>) producers and verifiers recording
 asynchronous outcomes correlated to an agent action.</t>
           </li>
           <li>
@@ -1325,7 +1325,7 @@ and not merely a guess of the value space.</t>
           <seriesInfo name="RFC" value="8259"/>
           <seriesInfo name="DOI" value="10.17487/RFC8259"/>
         </reference>
-        <reference anchor="I-D.ietf-scitt-architecture">
+        <reference anchor="RFC9943" target="https://www.rfc-editor.org/rfc/rfc9943">
           <front>
             <title>An Architecture for Trustworthy and Transparent Digital Supply Chains</title>
             <author fullname="Henk Birkholz" initials="H." surname="Birkholz">
@@ -1341,22 +1341,11 @@ and not merely a guess of the value space.</t>
               <organization>ARM</organization>
             </author>
             <author fullname="Steve Lasker" initials="S." surname="Lasker">
-         </author>
-            <date day="10" month="October" year="2025"/>
-            <abstract>
-              <t>   Traceability in supply chains is a growing security concern.  While
-   verifiable data structures have addressed specific issues, such as
-   equivocation over digital certificates, they lack a universal
-   architecture for all supply chains.  This document defines such an
-   architecture for single-issuer signed statement transparency.  It
-   ensures extensibility, interoperability between different
-   transparency services, and compliance with various auditing
-   procedures and regulatory requirements.
-
-              </t>
-            </abstract>
+            </author>
+            <date month="June" year="2026"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-ietf-scitt-architecture-22"/>
+          <seriesInfo name="RFC" value="9943"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9943"/>
         </reference>
       </references>
       <references anchor="sec-informative-references">
@@ -1636,7 +1625,7 @@ and not merely a guess of the value space.</t>
    [I-D.sato-soos-hem].  GAR answers the governance question: can any
    of this be proven to a regulator?  GAR is a domain-specific
    application of the SCITT (Supply Chain Integrity, Transparency and
-   Trust) architecture [I-D.ietf-scitt-architecture] extended with
+   Trust) architecture [RFC9943] extended with
    causal ordering semantics for agentic governance events.  GAR defines
    the Authority Lifecycle Event (ALE) category: a normative set of
    causally-ordered event types covering the complete agent session

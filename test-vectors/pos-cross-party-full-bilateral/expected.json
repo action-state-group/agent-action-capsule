@@ -1,0 +1,13 @@
+{
+  "capsule_id_recomputed": "77acbb4c73f23fa7bc3cbf7c2127952110baa6de0214dd628eb40b3b008c2910",
+  "derived": {
+    "attestation_mode": "self_attested",
+    "cross_party_rung": "full_bilateral",
+    "effect_mode": "not_applicable",
+    "ledger_mode": "standalone"
+  },
+  "description": "full_bilateral: initiator_ref + counterparty_ref + correlator all present, substantive result -> verifies clean.",
+  "findings": [],
+  "kind": "positive",
+  "ok": true
+}

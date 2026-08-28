@@ -211,6 +211,9 @@ def test_emit_simple_required_fields():
     capsule = emit(operator="ACME-CO", developer="agent@v1", tool_name="my_tool")
     assert capsule["spec_version"] == SPEC_VERSION
     assert capsule["format_version"] == FORMAT_VERSION
+    assert capsule["spec_version"] == "draft-mih-scitt-agent-action-capsule-04"
+    assert capsule["format_version"] == "4"
+    assert capsule["canonicalization_id"] == "jcs"
     assert capsule["operator"] == "ACME-CO"
     assert capsule["developer"] == "agent@v1"
     assert capsule["action_type"] == "fyi"
@@ -246,6 +249,11 @@ def test_emit_simple_capsule_verifies():
     capsule = emit(operator="ACME-CO", developer="agent@v1", tool_name="my_tool")
     result = verify(capsule)
     assert result.ok, result.findings
+
+
+def test_emit_rejects_vintage_format():
+    with pytest.raises(InvariantError, match="verification-only"):
+        emit(operator="ACME-CO", developer="agent@v1", format_version="2")
 
 
 def test_emit_simple_custom_action_id_and_timestamp():

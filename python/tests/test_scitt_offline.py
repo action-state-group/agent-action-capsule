@@ -151,6 +151,14 @@ def test_anchor_verify_offline(ts_stub, tmp_path):
     assert result.transparent_statement
     assert result.entry_hash == hashlib.sha256(result.signed_statement).hexdigest()
 
+    import cbor2
+
+    outer = cbor2.loads(result.signed_statement)
+    protected = cbor2.loads(outer.value[0])
+    assert protected[3] == "application/agent-action-capsule-id"
+    assert protected[15][1] == "urn:agent-action-capsule:core:free-anchor"
+    assert protected[15][2] == capsule_id
+
     # Write artefacts to tmp files for verify_transparent
     stmt_path = tmp_path / "statement.cose"
     stmt_path.write_bytes(result.transparent_statement)
@@ -169,12 +177,22 @@ def test_anchor_verify_offline(ts_stub, tmp_path):
     assert report.signature_verified is True, report.substrate_errors
     assert report.receipt_present is True
     assert report.receipt_verified is True, report.substrate_errors
-    # Digest-only payload (capsule_id bytes) is not a JSON capsule, so
-    # report.ok is False (Class-1 skipped), but attestation_tier is the key.
+    # Registration authenticates the raw Capsule ID. Class-1 Capsule
+    # verification remains a separate operation over the Capsule JSON.
+    assert report.ok
+    assert report.payload is None
+    assert report.authenticated_capsule_id == capsule_id
     assert report.attestation_tier == "anchored", (
         f"Expected 'anchored', got {report.attestation_tier!r}; "
         f"substrate_errors={report.substrate_errors}"
     )
+
+
+def test_submit_anchor_validates_capsule_id_before_network():
+    from agent_action_capsule.anchor import submit_anchor
+
+    with pytest.raises(ValueError, match="64 lowercase hexadecimal"):
+        submit_anchor("not-a-capsule-id", ts_url="http://127.0.0.1:1")
 
 
 def test_tamper_invalid(ts_stub, tmp_path):

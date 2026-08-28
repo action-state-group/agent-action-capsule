@@ -14,7 +14,7 @@ HEX_B = "b" * 64
 
 
 def reseal(d: dict) -> dict:
-    """Recompute capsule_id over the mutated dict (capsule_id + chain excluded)."""
+    """Recompute capsule_id over the mutated dict using its selected profile."""
     out = dict(d)
     out["capsule_id"] = compute_capsule_id(out)
     return out
@@ -23,8 +23,9 @@ def reseal(d: dict) -> dict:
 def base_executed() -> dict:
     """A valid 'executed' Capsule with a confirmed effect, sealed."""
     return Capsule(
-        spec_version="draft-mih-scitt-agent-action-capsule-00",
-        format_version="2",
+        spec_version="draft-mih-scitt-agent-action-capsule-04",
+        format_version="4",
+        canonicalization_id="jcs",
         action_id="act-1",
         action_type="decide",
         operator="ACME-CO",
@@ -49,8 +50,9 @@ def base_executed() -> dict:
 def base_blocked() -> dict:
     """A valid 'blocked' Capsule: no effect, not_applicable, sealed."""
     return Capsule(
-        spec_version="draft-mih-scitt-agent-action-capsule-00",
-        format_version="2",
+        spec_version="draft-mih-scitt-agent-action-capsule-04",
+        format_version="4",
+        canonicalization_id="jcs",
         action_id="act-2",
         action_type="decide",
         operator="ACME-CO",

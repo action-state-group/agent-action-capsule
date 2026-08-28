@@ -27,12 +27,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from .canonical import CANONICALIZATION_JCS
 from .contracts import (
     AssuranceBlock,
     Chain,
     ConstraintRecord,
     Disposition,
     EffectRecord,
+    InvariantError,
     ModelAttestation,
     SelfReportedReasoning,
     derive_effect_mode,
@@ -48,8 +50,8 @@ __all__ = [
     "FORMAT_VERSION",
 ]
 
-DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-02"
-DEFAULT_FORMAT_VERSION = "2"
+DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-04"
+DEFAULT_FORMAT_VERSION = "4"
 
 # Aliases used by the adapter tier (framework adapters import these names).
 SPEC_VERSION = DEFAULT_SPEC_VERSION
@@ -125,8 +127,8 @@ def emit(
             or reasoning content that produced this action. Self-reported and
             unattested — committed to capsule_id so tampering is detectable,
             but faithfulness is not verified (§-02).
-        spec_version: Spec revision string (defaults to ``-02``).
-        format_version: Serialization suite version (defaults to ``"2"``).
+        spec_version: Spec revision string (defaults to ``-04``).
+        format_version: Serialization suite version (defaults to ``"4"``).
         tool_name: Name of the tool that was called. Used to build a readable
             ``action_id`` when one is not provided.
         tool_input: Tool input (currently ignored in the capsule body; reserved
@@ -143,6 +145,11 @@ def emit(
         action_id = f"{base}/{uuid.uuid4()}"
 
     ts = timestamp or _utc_now()
+
+    if format_version != DEFAULT_FORMAT_VERSION:
+        raise InvariantError(
+            "emit() creates only format_version '4'; format_version '2' is verification-only"
+        )
 
     # ModelAttestation: with model identity when both are given; compute-only
     # when only compute_attestation is present (commits I/O digests without model).
@@ -199,6 +206,7 @@ def emit(
         operator=operator,
         developer=developer,
         timestamp=ts,
+        canonicalization_id=CANONICALIZATION_JCS,
         domain=domain,
         provenance=provenance,
         model_attestation=model_att,

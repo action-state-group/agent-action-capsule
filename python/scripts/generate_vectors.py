@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate the frozen conformance vectors in ../../test-vectors/.
+"""Generate the frozen conformance vectors in ../../test-vectors/ and
+../../disclosure-envelope-vectors/.
 
 Vectors are DERIVED from the spec-faithful reference verifier and then FROZEN
 (the same discipline as golden digests): each case's expected.json is produced
@@ -7,17 +8,34 @@ by running verify()/verify_store() over a hand-built input, and committed. A
 third party regenerates the capsule_id and checks ok + the §6 check numbers +
 derived modes against the spec text, without running this package.
 
+test-vectors/ is the Class-1 corpus and is cross-language-shared (the go/
+reference implementation's vector_runner reads test-vectors/vectors.json
+directly), so every case there is a bare Capsule or {"ledger": [...]}.
+disclosure-envelope-vectors/ is a separate corpus, in the same frozen-vector
+style, for the Disclosure Envelope companion profile's {"envelope": {...}}
+input shape — kept out of test-vectors/ so it never needs Go-side support to
+keep that corpus's cross-language conformance run passing.
+
 Run:  cd python && python -m scripts.generate_vectors
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
-from agent_action_capsule import compute_capsule_id, verify, verify_store
+from agent_action_capsule import (
+    compute_capsule_id,
+    json_digest,
+    verify,
+    verify_disclosure_envelope,
+    verify_store,
+)
 
 OUT = Path(__file__).resolve().parents[2] / "test-vectors"
-SPEC = "draft-mih-scitt-agent-action-capsule-00"
+DE_OUT = Path(__file__).resolve().parents[2] / "disclosure-envelope-vectors"
+VINTAGE_SPEC = "draft-mih-scitt-agent-action-capsule-00"
+CURRENT_SPEC = "draft-mih-scitt-agent-action-capsule-04"
 HEX_R = "1" * 64  # a stand-in response/request digest (64-hex); content is opaque here
 HEX_R2 = "2" * 64
 MISSING_PARENT = "9" * 64
@@ -25,7 +43,7 @@ MISSING_PARENT = "9" * 64
 
 def ident(action_id: str, action_type: str = "decide") -> dict:
     return {
-        "spec_version": SPEC,
+        "spec_version": VINTAGE_SPEC,
         "format_version": "2",
         "action_id": action_id,
         "action_type": action_type,
@@ -35,8 +53,34 @@ def ident(action_id: str, action_type: str = "decide") -> dict:
     }
 
 
-def assurance(effect_mode: str, ledger_mode: str = "standalone") -> dict:
-    return {"attestation_mode": "self_attested", "effect_mode": effect_mode, "ledger_mode": ledger_mode}
+def ident_v4(action_id: str, action_type: str = "decide") -> dict:
+    """Identity fields for the current declared-JCS serialization suite."""
+    return {
+        "spec_version": CURRENT_SPEC,
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": action_id,
+        "action_type": action_type,
+        "operator": "ACME-CO",
+        "developer": "agent@v1",
+        "timestamp": "2026-08-24T00:00:00Z",
+    }
+
+
+def assurance(effect_mode: str, ledger_mode: str = "standalone", cross_party_rung: str | None = None) -> dict:
+    a = {"attestation_mode": "self_attested", "effect_mode": effect_mode, "ledger_mode": ledger_mode}
+    if cross_party_rung is not None:
+        a["cross_party_rung"] = cross_party_rung
+    return a
+
+
+def cross_party_block(has_counterparty: bool, substantive: bool = False) -> dict:
+    cp = {"initiator_ref": HEX_R}
+    if has_counterparty:
+        cp["counterparty_ref"] = HEX_R2
+        cp["correlator"] = "exchange-corr-1"
+        cp["substantive"] = substantive
+    return cp
 
 
 def seal(cap: dict) -> dict:
@@ -76,6 +120,85 @@ def build_cases() -> list[dict]:
 
     def add(name, kind, description, inp):
         cases.append({"name": name, "kind": kind, "description": description, "input": inp})
+
+    # ---- IDENTITY PROFILE: current format 4 and vintage format 2 ----
+    current = seal({
+        **ident_v4("v4-chain"),
+        "assurance": assurance("not_applicable", ledger_mode="chained"),
+        "disposition": {
+            "decision": "accept",
+            "approver": "policy",
+            "human_disposed": False,
+            "verdict_class": "executed",
+        },
+        "chain": {
+            "parent_capsule_id": "a" * 64,
+            "relation": "confirms",
+        },
+        "constraints": [],
+    })
+    add(
+        "pos-v4-jcs-chain-committed",
+        "positive",
+        "Format 4 plain JCS commits the chain block and a present empty array to capsule_id.",
+        current,
+    )
+
+    format3_unsupported = seal({**current, "format_version": "3"})
+    add(
+        "neg-v3-format-version-unsupported",
+        "negative",
+        "Format 3 was never published and must fail closed rather than aliasing format 4.",
+        format3_unsupported,
+    )
+
+    chain_tampered = json.loads(json.dumps(current))
+    chain_tampered["chain"]["relation"] = "supersedes"
+    add(
+        "neg-v4-chain-tampered",
+        "negative",
+        "Changing a format-4 chain member after sealing causes capsule_id mismatch.",
+        chain_tampered,
+    )
+
+    missing_declaration = dict(current)
+    missing_declaration.pop("canonicalization_id")
+    add(
+        "neg-v4-canonicalization-missing",
+        "negative",
+        "Format 4 without canonicalization_id is a profile mismatch.",
+        missing_declaration,
+    )
+
+    for name, declaration, description in (
+        (
+            "neg-v4-canonicalization-jcs-n",
+            "jcs-n",
+            "Format 4 explicitly declaring withdrawn jcs-n is rejected.",
+        ),
+        (
+            "neg-v4-canonicalization-unknown",
+            "future-algorithm",
+            "Format 4 declaring an unknown canonicalization algorithm is rejected.",
+        ),
+        (
+            "neg-v4-canonicalization-non-string",
+            7,
+            "Format 4 declaring a non-string canonicalization identifier is rejected.",
+        ),
+    ):
+        malformed = dict(current)
+        malformed["canonicalization_id"] = declaration
+        add(name, "negative", description, malformed)
+
+    vintage_with_declaration = c_executed()
+    vintage_with_declaration["canonicalization_id"] = "jcs"
+    add(
+        "neg-v2-canonicalization-declared",
+        "negative",
+        "Format 2 is the absent-field vintage profile and rejects any canonicalization_id declaration.",
+        vintage_with_declaration,
+    )
 
     # ---- POSITIVE: identity + verdict_class categories ----
     add("pos-executed-confirmed", "positive",
@@ -162,6 +285,33 @@ def build_cases() -> list[dict]:
         "two supersedes over one parent: earliest in ledger order is authoritative; the later one surfaces an info finding; both remain ok.",
         {"ledger": [parent2, res_a, res_b]})
 
+    # ---- POSITIVE/OVERCLAIM: cross-party assurance rung (§5.3 Cross-party assurance) ----
+    cp_disp = {"decision": "accept", "approver": "human", "human_disposed": True, "verdict_class": "executed"}
+    add("pos-cross-party-full-bilateral", "positive",
+        "full_bilateral: initiator_ref + counterparty_ref + correlator all present, substantive result -> verifies clean.",
+        seal({**ident("cp-full"), "assurance": assurance("not_applicable", cross_party_rung="full_bilateral"),
+              "disposition": cp_disp, "cross_party": cross_party_block(has_counterparty=True, substantive=True)}))
+    add("pos-cross-party-acknowledged-receipt", "positive",
+        "acknowledged_receipt: initiator_ref + counterparty_ref + correlator present, bare receipt (no substantive result) -> verifies clean.",
+        seal({**ident("cp-ack"), "assurance": assurance("not_applicable", cross_party_rung="acknowledged_receipt"),
+              "disposition": cp_disp, "cross_party": cross_party_block(has_counterparty=True, substantive=False)}))
+    add("pos-cross-party-unilateral-fallback", "positive",
+        "unilateral_fallback: only initiator_ref present, no counterparty evidence -> verifies clean.",
+        seal({**ident("cp-uni"), "assurance": assurance("not_applicable", cross_party_rung="unilateral_fallback"),
+              "disposition": cp_disp, "cross_party": cross_party_block(has_counterparty=False)}))
+    add("neg-cross-party-overclaim", "overclaim",
+        "the named overclaim case: full_bilateral claimed with only the initiator's signed half present "
+        "(no counterparty_ref) -> assurance_overclaim (check 7, info severity, non-gating), "
+        "derived.cross_party_rung downgraded to unilateral_fallback.",
+        seal({**ident("cp-overclaim"), "assurance": assurance("not_applicable", cross_party_rung="full_bilateral"),
+              "disposition": cp_disp, "cross_party": cross_party_block(has_counterparty=False)}))
+    add("pos-disposition-approver-counterparty", "positive",
+        "disposition.approver='counterparty': a valid third member of the closed approver enum; "
+        "human_disposed stays false, confirming the honesty invariant (human_disposed=true REQUIRES "
+        "approver='human') still holds against the new value.",
+        seal({**ident("cp-approver"), "assurance": assurance("not_applicable"),
+              "disposition": {"decision": "accept", "approver": "counterparty", "human_disposed": False, "verdict_class": "executed"}}))
+
     # ---- NEGATIVE: MUST-reject (ok=false) ----
     add("neg-confirmed-without-response", "negative",
         "confirmed effect with NO response_digest -> confirmed-effect binding failure (check 3).",
@@ -176,10 +326,10 @@ def build_cases() -> list[dict]:
         "a JSON floating-point value in a digest-bearing field -> structural failure (check 1, §5.1).",
         float_cap)
 
-    # Impl guard AHEAD of the -00 text: an integer beyond the IEEE-754-double safe
-    # range (2^53-1) is a cross-impl digest-reproducibility hazard. The -00 forbids
-    # floats and mandates decimal STRINGS for monetary/quantity values but does not
-    # yet state this integer bound — see the -01 FLAG in test-vectors/README.md.
+    # Historical format-2 guard: an integer beyond the IEEE-754-double safe range
+    # (2^53-1) is a cross-implementation digest-reproducibility hazard. The
+    # current draft codifies the bound; this vector preserves coverage for the
+    # older wire profile that first exposed it.
     unsafe_int_cap = {**ident("neg-unsafeint"),
                       "effect": {"status": "confirmed", "type": "write_order", "response_digest": HEX_R,
                                  "effect_attestation": "gate_executed", "amount": 2**53},
@@ -187,8 +337,8 @@ def build_cases() -> list[dict]:
                       "disposition": {"decision": "accept", "approver": "human", "human_disposed": True},
                       "capsule_id": "0" * 64}  # cannot recompute over an unsafe int; carried id is a placeholder
     add("neg-unsafe-integer-in-digest-field", "negative",
-        "an integer beyond 2^53-1 in a digest-bearing field -> structural failure (check 1). "
-        "IMPL GUARD ahead of -00; flagged for an -01 clarification (large integers MUST be decimal strings).",
+        "an integer beyond 2^53-1 in a digest-bearing field -> structural failure (check 1); "
+        "the current draft requires large integers to be decimal strings.",
         unsafe_int_cap)
 
     add("neg-attestation-present-when-not-applicable", "negative",
@@ -235,6 +385,37 @@ def build_cases() -> list[dict]:
     return cases
 
 
+# ---- Disclosure Envelope vectors (draft-mih-scitt-agent-action-capsule-disclosure-envelope-00) ---
+# Written to a SEPARATE directory (DE_OUT), not test-vectors/: the envelope input shape
+# ({"envelope": {...}}) is not a bare Capsule or {"ledger": [...]}, and test-vectors/ is
+# cross-language-shared (go/cmd/vector_runner reads test-vectors/vectors.json and expects
+# every listed case to be Class-1-shape). Mixing shapes there would break that Go conformance
+# run rather than extend it.
+def build_disclosure_envelope_cases() -> list[dict]:
+    cases: list[dict] = []
+
+    def add(name, kind, description, inp):
+        cases.append({"name": name, "kind": kind, "description": description, "input": inp})
+
+    disclosed_input = {"amount": "500.00", "sku": "PO-9981"}
+    envelope_capsule = seal({**c_executed(),
+                              "model_attestation": {"compute_attestation": {"agent_input_digest": json_digest(disclosed_input)}}})
+    add("pos-disclosure-envelope-match", "positive",
+        "Disclosure Envelope whose agent_input disclosure recomputes to the digest committed in "
+        "model_attestation.compute_attestation.agent_input_digest: DE-3 reports disclosure_match, and "
+        "the wrapped capsule's own capsule_id / Class 1 result is unaffected and still ok.",
+        {"envelope": {"capsule": envelope_capsule, "disclosures": {"agent_input": disclosed_input}}})
+    add("neg-disclosure-envelope-mismatch", "negative",
+        "Disclosure Envelope whose agent_input disclosure does NOT recompute to the committed digest "
+        "(same capsule as pos-disclosure-envelope-match, tampered disclosure value): DE-3 reports "
+        "disclosure_mismatch and the envelope's ok is false, while the wrapped capsule's own capsule_id "
+        "recomputation and Class 1 result are unchanged and still ok — a bad disclosure never gates the "
+        "capsule's own verification.",
+        {"envelope": {"capsule": envelope_capsule, "disclosures": {"agent_input": {"amount": "999.00", "sku": "PO-9981"}}}})
+
+    return cases
+
+
 def result_to_expected(res) -> dict:
     return {
         "ok": res.ok,
@@ -242,6 +423,34 @@ def result_to_expected(res) -> dict:
         "capsule_id_recomputed": res.capsule_id,
         "findings": [{"check": f.check, "severity": f.severity, "code": f.code, "detail": f.detail} for f in res.findings],
     }
+
+
+def envelope_result_to_expected(res) -> dict:
+    """`ok` here is the overall envelope result (capsule ok AND every disclosure
+    matches); the wrapped capsule's own Class 1 result — unaffected by a bad
+    disclosure — is nested under `capsule` so the two `ok` values can never
+    collide or be conflated by a consumer reading only the top level."""
+    return {
+        "ok": res.ok,
+        "capsule": result_to_expected(res.capsule_result),
+        "disclosures_checked": res.disclosures_checked,
+        "disclosures_matched": res.disclosures_matched,
+        "disclosure_findings": [{"member": f.member, "code": f.code} for f in res.disclosure_findings],
+    }
+
+
+# Hand-authored hardening-pass vectors (the W9 pass) whose input.json/expected.json
+# predate this script's case builders and are NOT reproduced by build_cases(). They
+# are frozen files this script must not touch; only their manifest entries are
+# re-declared here so a full regeneration doesn't drop them from vectors.json.
+HAND_AUTHORED_CASES = [
+    {"name": "neg-format-version-unknown", "kind": "negative",
+     "description": "format_version '1' (old/unknown) must be explicitly rejected — no silent v1/v2 mis-parse (§5.1, W9)."},
+    {"name": "neg-never-dispatch-with-dispatched-effect", "kind": "negative",
+     "description": "blocked verdict_class (NEVER_DISPATCH §5.4.2) combined with effect.status='dispatched' → verdict/effect orthogonality failure (check 4)."},
+    {"name": "neg-never-dispatch-confirmed-no-response", "kind": "negative",
+     "description": "denied (NEVER_DISPATCH) with effect.status='confirmed' and no response_digest → both check 3 (confirmed-effect binding) and check 4 (verdict/effect conflict)."},
+]
 
 
 def main() -> None:
@@ -264,11 +473,50 @@ def main() -> None:
         (case_dir / "expected.json").write_text(json.dumps(expected, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         manifest.append({"name": name, "kind": kind, "description": desc})
 
+    manifest.extend(HAND_AUTHORED_CASES)
+
     (OUT / "vectors.json").write_text(
-        json.dumps({"format_version": "2", "spec": SPEC, "count": len(manifest), "cases": manifest}, indent=2) + "\n",
+        json.dumps(
+            {
+                "format_versions": ["2", "4"],
+                "spec": CURRENT_SPEC,
+                "count": len(manifest),
+                "cases": manifest,
+            },
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
     )
+    checksum_lines = []
+    for path in sorted(OUT.glob("*/*.json")):
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        checksum_lines.append(f"{digest}  {path.relative_to(OUT)}")
+    (OUT / "SHA256SUMS").write_text(
+        "\n".join(checksum_lines) + "\n",
+        encoding="ascii",
+    )
     print(f"wrote {len(manifest)} vectors to {OUT}")
+
+    de_manifest = []
+    for case in build_disclosure_envelope_cases():
+        name, kind, desc, inp = case["name"], case["kind"], case["description"], case["input"]
+        case_dir = DE_OUT / name
+        case_dir.mkdir(parents=True, exist_ok=True)
+
+        res = verify_disclosure_envelope(inp["envelope"])
+        expected = {"description": desc, "kind": kind, **envelope_result_to_expected(res)}
+
+        (case_dir / "input.json").write_text(json.dumps(inp, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        (case_dir / "expected.json").write_text(json.dumps(expected, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        de_manifest.append({"name": name, "kind": kind, "description": desc})
+
+    (DE_OUT / "vectors.json").write_text(
+        json.dumps({"format_version": "1", "spec": "draft-mih-scitt-agent-action-capsule-disclosure-envelope-00",
+                    "count": len(de_manifest), "cases": de_manifest}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(f"wrote {len(de_manifest)} vectors to {DE_OUT}")
 
 
 if __name__ == "__main__":

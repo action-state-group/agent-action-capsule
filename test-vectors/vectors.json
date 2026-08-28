@@ -1,8 +1,51 @@
 {
-  "format_version": "2",
-  "spec": "draft-mih-scitt-agent-action-capsule-00",
-  "count": 32,
+  "format_versions": [
+    "2",
+    "4"
+  ],
+  "spec": "draft-mih-scitt-agent-action-capsule-04",
+  "count": 69,
   "cases": [
+    {
+      "name": "pos-v4-jcs-chain-committed",
+      "kind": "positive",
+      "description": "Format 4 plain JCS commits the chain block and a present empty array to capsule_id."
+    },
+    {
+      "name": "neg-v3-format-version-unsupported",
+      "kind": "negative",
+      "description": "Format 3 was never published and must fail closed rather than aliasing format 4."
+    },
+    {
+      "name": "neg-v4-chain-tampered",
+      "kind": "negative",
+      "description": "Changing a format-4 chain member after sealing causes capsule_id mismatch."
+    },
+    {
+      "name": "neg-v4-canonicalization-missing",
+      "kind": "negative",
+      "description": "Format 4 without canonicalization_id is a profile mismatch."
+    },
+    {
+      "name": "neg-v4-canonicalization-jcs-n",
+      "kind": "negative",
+      "description": "Format 4 explicitly declaring withdrawn jcs-n is rejected."
+    },
+    {
+      "name": "neg-v4-canonicalization-unknown",
+      "kind": "negative",
+      "description": "Format 4 declaring an unknown canonicalization algorithm is rejected."
+    },
+    {
+      "name": "neg-v4-canonicalization-non-string",
+      "kind": "negative",
+      "description": "Format 4 declaring a non-string canonicalization identifier is rejected."
+    },
+    {
+      "name": "neg-v2-canonicalization-declared",
+      "kind": "negative",
+      "description": "Format 2 is the absent-field vintage profile and rejects any canonicalization_id declaration."
+    },
     {
       "name": "pos-executed-confirmed",
       "kind": "positive",
@@ -99,6 +142,31 @@
       "description": "two supersedes over one parent: earliest in ledger order is authoritative; the later one surfaces an info finding; both remain ok."
     },
     {
+      "name": "pos-cross-party-full-bilateral",
+      "kind": "positive",
+      "description": "full_bilateral: initiator_ref + counterparty_ref + correlator all present, substantive result -> verifies clean."
+    },
+    {
+      "name": "pos-cross-party-acknowledged-receipt",
+      "kind": "positive",
+      "description": "acknowledged_receipt: initiator_ref + counterparty_ref + correlator present, bare receipt (no substantive result) -> verifies clean."
+    },
+    {
+      "name": "pos-cross-party-unilateral-fallback",
+      "kind": "positive",
+      "description": "unilateral_fallback: only initiator_ref present, no counterparty evidence -> verifies clean."
+    },
+    {
+      "name": "neg-cross-party-overclaim",
+      "kind": "overclaim",
+      "description": "the named overclaim case: full_bilateral claimed with only the initiator's signed half present (no counterparty_ref) -> assurance_overclaim (check 7, info severity, non-gating), derived.cross_party_rung downgraded to unilateral_fallback."
+    },
+    {
+      "name": "pos-disposition-approver-counterparty",
+      "kind": "positive",
+      "description": "disposition.approver='counterparty': a valid third member of the closed approver enum; human_disposed stays false, confirming the honesty invariant (human_disposed=true REQUIRES approver='human') still holds against the new value."
+    },
+    {
       "name": "neg-confirmed-without-response",
       "kind": "negative",
       "description": "confirmed effect with NO response_digest -> confirmed-effect binding failure (check 3)."
@@ -111,7 +179,7 @@
     {
       "name": "neg-unsafe-integer-in-digest-field",
       "kind": "negative",
-      "description": "an integer beyond 2^53-1 in a digest-bearing field -> structural failure (check 1). IMPL GUARD ahead of -00; flagged for an -01 clarification (large integers MUST be decimal strings)."
+      "description": "an integer beyond 2^53-1 in a digest-bearing field -> structural failure (check 1); the current draft requires large integers to be decimal strings."
     },
     {
       "name": "neg-attestation-present-when-not-applicable",
@@ -162,6 +230,126 @@
       "name": "neg-never-dispatch-confirmed-no-response",
       "kind": "negative",
       "description": "denied (NEVER_DISPATCH) with effect.status='confirmed' and no response_digest \u2192 both check 3 (confirmed-effect binding) and check 4 (verdict/effect conflict)."
+    },
+    {
+      "name": "canonical-null-member-removed",
+      "kind": "canonical",
+      "description": "normalize() removes a null-valued member (S:2 absent-field normalization)"
+    },
+    {
+      "name": "canonical-empty-object-removed",
+      "kind": "canonical",
+      "description": "normalize() removes an empty-object member (S:2 absent-field normalization)"
+    },
+    {
+      "name": "canonical-empty-array-removed",
+      "kind": "canonical",
+      "description": "normalize() removes an empty-array member (S:2 absent-field normalization)"
+    },
+    {
+      "name": "canonical-object-emptied-by-normalization",
+      "kind": "canonical",
+      "description": "normalize() bottom-up: object becomes empty after null member removed; parent removes it"
+    },
+    {
+      "name": "canonical-nested-two-deep-emptied",
+      "kind": "canonical",
+      "description": "normalize() bottom-up two levels: d->c->b all emptied and removed"
+    },
+    {
+      "name": "canonical-array-of-objects-normalized",
+      "kind": "canonical",
+      "description": "normalize() recurses into array elements; null member in nested object removed"
+    },
+    {
+      "name": "canonical-array-preserved-not-sorted",
+      "kind": "canonical",
+      "description": "Array elements preserved in insertion order, not sorted (RFC 8785 S:3.2.2)"
+    },
+    {
+      "name": "canonical-nested-member-named-capsule-id",
+      "kind": "canonical",
+      "description": "Top-level capsule_id/chain exclusion does not apply to nested members with those names"
+    },
+    {
+      "name": "canonical-nested-member-named-chain",
+      "kind": "canonical",
+      "description": "Top-level capsule_id/chain exclusion does not apply to nested members with those names"
+    },
+    {
+      "name": "canonical-key-sort-utf16-vs-codepoint",
+      "kind": "canonical",
+      "description": "UTF-16 key ordering: U+1F600 emoji (first surrogate 0xD83D) sorts after U+FF3A (single unit)"
+    },
+    {
+      "name": "canonical-key-nfc-vs-nfd",
+      "kind": "canonical",
+      "description": "JCS does not normalize Unicode; NFD key A+U+030A (first unit 0x0041) sorts before B (0x0042)"
+    },
+    {
+      "name": "canonical-string-escapes",
+      "kind": "canonical",
+      "description": "JCS mandatory escapes: \\\" \\\\ \\b \\t \\n \\f \\r in a single string value (RFC 8785 S:3.2.2.2)"
+    },
+    {
+      "name": "canonical-control-char-below-0x20",
+      "kind": "canonical",
+      "description": "Control char U+0001 not in named-shortcut set: serialized as \\u0001 (RFC 8785 S:3.2.2.2)"
+    },
+    {
+      "name": "canonical-non-bmp-value",
+      "kind": "canonical",
+      "description": "Non-BMP char U+1F600 in a string value passes through as UTF-8 (no \\uXXXX escaping needed)"
+    },
+    {
+      "name": "canonical-solidus-not-escaped",
+      "kind": "canonical",
+      "description": "Solidus / is NOT escaped in JCS (RFC 8785 S:3.2.2.2 forbids the \\/ escape)"
+    },
+    {
+      "name": "canonical-integer-zero",
+      "kind": "canonical",
+      "description": "Integer 0 serialized as '0' (int branch in _jcs_value, S:5.1)"
+    },
+    {
+      "name": "canonical-integer-negative",
+      "kind": "canonical",
+      "description": "Negative integer -1 serialized as '-1'"
+    },
+    {
+      "name": "canonical-integer-at-safe-max",
+      "kind": "canonical",
+      "description": "Integer at exactly Number.MAX_SAFE_INTEGER = 9007199254740991 accepted (S:5.1 boundary)"
+    },
+    {
+      "name": "canonical-integer-above-safe-max",
+      "kind": "canonical",
+      "description": "Integer one above Number.MAX_SAFE_INTEGER raises UnsafeIntegerError (S:5.1 guard)"
+    },
+    {
+      "name": "canonical-integer-at-safe-min",
+      "kind": "canonical",
+      "description": "Integer at exactly -Number.MAX_SAFE_INTEGER = -9007199254740991 accepted (S:5.1 boundary)"
+    },
+    {
+      "name": "canonical-float-in-value",
+      "kind": "canonical",
+      "description": "Float value raises FloatInDigestError (S:5.1 forbids floats in digest-bearing fields)"
+    },
+    {
+      "name": "canonical-float-integral-valued",
+      "kind": "canonical",
+      "description": "Integral-valued float 2.0 raises FloatInDigestError: the guard is a type check, not a value check"
+    },
+    {
+      "name": "canonical-bool-and-deep-nesting",
+      "kind": "canonical",
+      "description": "Boolean true and deep object nesting: exercises bool branch and recursive dict serialization"
+    },
+    {
+      "name": "canonical-all-members-removed",
+      "kind": "canonical",
+      "description": "After normalization all members removed; capsule_id = SHA-256(JCS({})) = SHA-256('{}')"
     }
   ]
 }

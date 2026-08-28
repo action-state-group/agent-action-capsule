@@ -10,7 +10,7 @@
     {
       "check": 1,
       "code": "approver_invalid",
-      "detail": "disposition.approver MUST be human|policy (\u00a75.4); got 'vendor_bot'",
+      "detail": "disposition.approver MUST be human|policy|counterparty (\u00a75.4); got 'vendor_bot'",
       "severity": "error"
     }
   ],

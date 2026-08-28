@@ -1,0 +1,25 @@
+{
+  "capsule_id_recomputed": "07dd16c1e12682744fadd46cd956dee47146a077d1c1df7536f8ec0e62f6d695",
+  "derived": {
+    "attestation_mode": "self_attested",
+    "effect_mode": "confirmed",
+    "ledger_mode": "standalone"
+  },
+  "description": "Format 2 is the absent-field vintage profile and rejects any canonicalization_id declaration.",
+  "findings": [
+    {
+      "check": 1,
+      "code": "canonicalization_profile_mismatch",
+      "detail": "format_version '2' is the vintage absent-field profile and MUST NOT declare canonicalization_id (\u00a75.1)",
+      "severity": "error"
+    },
+    {
+      "check": 2,
+      "code": "capsule_id_mismatch",
+      "detail": "recomputed 07dd16c1e12682744fadd46cd956dee47146a077d1c1df7536f8ec0e62f6d695 != carried 5b7c4ff1bcf4364e0dd8c8b65eddddbb1d6102f27bed3ad1a3595cba51d3502a",
+      "severity": "error"
+    }
+  ],
+  "kind": "negative",
+  "ok": false
+}

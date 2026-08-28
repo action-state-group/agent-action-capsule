@@ -16,21 +16,22 @@ EXPECTED = {
     "verdict_class": {
         "executed", "blocked", "hitl_dispatched", "denied", "timeout", "errored",
         "engine_failure", "deferred", "needs_decision", "expired", "escalated", "resolved",
+        "epoch_boundary",
     },
     "disposition.decision": {"accept", "reject", "needs_input", "deferred"},
     "effect.type": {"write_order", "send_payment"},
     "irreversibility_class": {"two_way", "one_way_recoverable", "one_way_consequential", "one_way_terminal"},
     "effect_attestation": {"gate_executed", "runtime_claimed"},
-    "chain.relation": {"confirms", "supersedes"},
+    "chain.relation": {"confirms", "supersedes", "epoch_opens"},
 }
 # Pinned counts (the freeze surface — a dropped value changes the count).
 EXPECTED_COUNTS = {
-    "verdict_class": 12,
+    "verdict_class": 13,
     "disposition.decision": 4,
     "effect.type": 2,
     "irreversibility_class": 4,
     "effect_attestation": 2,
-    "chain.relation": 2,
+    "chain.relation": 3,
 }
 
 
@@ -48,7 +49,7 @@ def test_seeded_values_exact_membership_and_count():
 
 
 def test_chain_relation_includes_confirms_and_supersedes():
-    assert set(load_registries()["chain.relation"]) == {"confirms", "supersedes"}
+    assert set(load_registries()["chain.relation"]) == {"confirms", "supersedes", "epoch_opens"}
 
 
 # --- Parser robustness: multi-line continuation for every locus shape -------
@@ -99,6 +100,7 @@ Defined in §5.4.4. Initial contents:
 
 | Value | Semantics |
 |---|---|
+| `confirms` | non-terminal |
 | `supersedes` | terminal |
 """
 
@@ -115,4 +117,4 @@ def test_parser_handles_multiline_wrapping(tmp_path: Path):
     }
     # prose backticks in the effect_attestation section must NOT leak in
     assert set(regs["effect_attestation"]) == {"gate_executed", "runtime_claimed"}
-    assert set(regs["chain.relation"]) == {"supersedes"}
+    assert set(regs["chain.relation"]) == {"confirms", "supersedes"}

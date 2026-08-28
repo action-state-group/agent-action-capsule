@@ -1,0 +1,23 @@
+{
+  "capsule": {
+    "capsule_id_recomputed": "3e3a019af1efb6f2b1b527bf474031a06a366bf01ebfc1c325bcc0249a0fe602",
+    "derived": {
+      "attestation_mode": "self_attested",
+      "effect_mode": "confirmed",
+      "ledger_mode": "standalone"
+    },
+    "findings": [],
+    "ok": true
+  },
+  "description": "Disclosure Envelope whose agent_input disclosure does NOT recompute to the committed digest (same capsule as pos-disclosure-envelope-match, tampered disclosure value): DE-3 reports disclosure_mismatch and the envelope's ok is false, while the wrapped capsule's own capsule_id recomputation and Class 1 result are unchanged and still ok \u2014 a bad disclosure never gates the capsule's own verification.",
+  "disclosure_findings": [
+    {
+      "code": "disclosure_mismatch",
+      "member": "agent_input"
+    }
+  ],
+  "disclosures_checked": 1,
+  "disclosures_matched": 0,
+  "kind": "negative",
+  "ok": false
+}

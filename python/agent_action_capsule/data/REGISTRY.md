@@ -63,6 +63,7 @@ Initial contents:
 | `expired` | TTL policy on the deferral elapsed; terminal unless superseded by escalation. |
 | `escalated` | Expiry or policy routed the item to a higher authority; open item at the new authority. |
 | `resolved` | A terminal decision capsule closed the chain without executing (pairing rule, Internet-Draft §5.4.2). |
+| `epoch_boundary` | An administrative capsule (`action_type: "fyi"`) marking a configuration-epoch transition. REQUIRES `effect_mode: "not_applicable"` — no effect is dispatched by an administrative epoch record. Defined in §5.1 (Configuration epochs) of the Internet-Draft. |
 
 **`deferred` token ownership.** The `deferred` token's semantics are OWNED by
 the `verdict_class` registry; the `disposition.decision` entry of the same
@@ -130,14 +131,101 @@ Initial contents:
 |---|---|
 | `confirms` | Non-terminal: this capsule observes or records the outcome of the parent — the parent's open state remains. The most common chain link: *attempted → confirmed*. |
 | `supersedes` | Terminal transition over the parent — resolution, expiry, escalation close/replace the parent's open state. |
+| `epoch_opens` | Non-terminal: this capsule opens a new operational configuration epoch. The chain parent MUST be the last capsule produced under the prior epoch. The opening capsule carries the new `epoch_id`. Defined in §5.1 (Configuration epochs, Epoch-boundary Capsules) of the Internet-Draft. |
 
-**Designated-expert guidance (this registry).** Seeded with the single terminal
-relation. Additional non-terminal relations — deposit-toward-open and
-effort-toward-open relations, or `amends` / `contradicts` — are expected future
-registrations, each admitted once its semantics and any verifier consequence
-are pinned in a publicly available specification. Such relations are anticipated
-in a future revision of the Internet-Draft and are registered into this same
-registry rather than establishing a new one.
+**Designated-expert guidance (this registry).** Seeded with the core non-terminal and terminal
+relations, plus `epoch_opens` for configuration-epoch boundaries. Additional
+non-terminal relations — deposit-toward-open and effort-toward-open relations,
+or `amends` / `contradicts` — are expected future registrations, each admitted
+once its semantics and any verifier consequence are pinned in a publicly
+available specification. Such relations are anticipated in a future revision of
+the Internet-Draft and are registered into this same registry rather than
+establishing a new one.
+
+## 7. Reserved payload members — selective disclosure
+
+Reserved by the companion Internet-Draft
+`draft-mih-scitt-agent-action-capsule-sel-disc` (Selective Disclosure
+Profile), §9 (IANA Considerations). These members carry the salted-hash
+selective-disclosure structure and MUST NOT be used for any other purpose. They use
+the underscore-prefixed naming convention (following SD-JWT (RFC 9901)) to avoid
+collision with current or future Capsule payload members.
+
+| Member | Type | Location | Defined in |
+|---|---|---|---|
+| `_sd_alg` | string | Top-level Capsule object | Selective-Disclosure profile, "Algorithm Identifier" section (`"sha-256"` only) |
+| `_sd` | array of string | Any SD-eligible JSON object | Selective-Disclosure profile, "Salted-Hash Commitment Construction" section (commitment digests) |
+
+A plain (non-SD) Capsule carries neither member. The `_sd`/`_sd_alg` structure is
+part of the content-addressed form, so it is covered by `capsule_id` and is
+tamper-evident; a verifier unaware of the SD profile processes an SD-Capsule as a
+plain Capsule and sees the concealed REQUIRED fields as missing. See the companion
+draft for producer requirements, the eligible-field set, and the two-phase
+verifier checks.
+
+## 8. `domain`
+
+Defined in §5.1 of Internet-Draft `-02` (`domain` / `provenance` addendum). The
+capsule's epistemic role — what kind of act this capsule records. **Optional**;
+absent implies the receiver SHOULD treat the capsule as `"action"`.
+
+| Value | Semantics |
+|---|---|
+| `action` | A tool call, side-effecting step, or any act that could in principle be confirmed against an external system. The most common value; applies to all capsules where the agent *did something*. |
+| `memory` | A write-to or read-from a persistent memory store (retrieval, consolidation, eviction). |
+| `reasoning` | A STANDALONE reasoning / chain-of-thought step that is itself the recorded act — not an action-with-reasoning (those stay `"action"`). A reasoning capsule typically carries no `effect`. |
+
+**Extension convention.** Values with an `x-` prefix are reserved for private
+experiments and MUST NOT be submitted for registration. A public extension MUST
+have a publicly available specification (Specification Required, §12).
+
+## 9. `provenance`
+
+Defined in §5.1 of Internet-Draft `-02` (`domain` / `provenance` addendum). A
+dedup rank signal: when the same logical event produces capsules from multiple
+tiers, the higher-ranked provenance is authoritative. **Optional**; absent
+implies receivers SHOULD treat the capsule as `"runtime"`. Rank order is
+strictly gate > runtime > collector; equal rank resolves by earliest timestamp.
+
+| Value | Rank | Semantics |
+|---|---|---|
+| `gate` | 3 | Emitted at the gate / policy-enforcement boundary. The most authoritative form: the capsule was produced at the point where the decision was made and committed. |
+| `runtime` | 2 | Emitted by the executing runtime (agent framework, tool adapter). Authoritative for the execution record but cannot see the gate's internal decision details. |
+| `collector` | 1 | Emitted by a general observability or telemetry system that observed the action passively. Lowest authority; used when neither the gate nor the runtime directly produce capsules. |
+
+**Dedup rule (verifier / ledger-reader, NOT wire).** On dedup, the capsule with
+the highest-ranked `provenance` wins; equal rank resolves by earliest timestamp.
+The dedup rule is a consumer-side read algorithm, not a wire constraint — a
+collector-provenance capsule is still valid; it loses only when a higher-ranked
+capsule for the same event is also present.
+
+## 10. Reserved wrapper members and disclosable fields — disclosure envelope
+
+Reserved by the companion Internet-Draft
+`draft-mih-scitt-agent-action-capsule-disclosure-envelope` (Disclosure
+Envelope Profile), §8 (IANA Considerations). `capsule` and `disclosures`
+are wrapper-level member names — never Capsule payload members — used only
+by a Disclosure Envelope, the out-of-band structure a producer builds
+around an unmodified, already-sealed Capsule to reveal the raw content
+behind a digest-only field without altering `capsule_id`.
+
+| Member | Type | Location | Defined in |
+|---|---|---|---|
+| `capsule` | object | Top-level Disclosure Envelope object | Disclosure Envelope profile, "Envelope Object" section (the unmodified Capsule payload) |
+| `disclosures` | object | Top-level Disclosure Envelope object | Disclosure Envelope profile, "Envelope Object" section (OPTIONAL; absent members are WITHHELD) |
+
+The disclosure-eligible fields this initial revision defines:
+
+| `disclosures` member | Committed-digest field (in `capsule.model_attestation.compute_attestation`) |
+|---|---|
+| `agent_input` | `agent_input_digest` |
+| `agent_output` | `agent_output_digest` |
+
+A `disclosures` member outside this table is non-conforming; a verifier
+treats it as an unrecognized member rather than attempting to verify it.
+`capsule_id` is computed over `capsule` alone and is unaffected by the
+presence or absence of any `disclosures` member. See the companion draft
+for the full verifier checks (digest recomputation and comparison).
 
 ## No registry
 

@@ -8,7 +8,6 @@ dist/
 .DS_Store
 
 # kramdown-rfc reference cache + v2 build intermediate
-spec/.refcache/
 spec/.draft-*.v2.xml
 *.v2.xml
 
@@ -19,3 +18,4 @@ spec/.draft-*.v2.xml
 # test vectors are FROZEN committed bytes — exempt from the key/artifact ignore
 !test-vectors/**/*.cose
 !test-vectors/**/*.pem
+!producer-envelope-vectors/**/*.cose
