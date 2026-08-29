@@ -480,6 +480,11 @@ compatible declared digest contexts; otherwise indeterminate/deny, never
 equal-looking-hex) follows that document's Cross-Profile Comparability
 subsection.
 
+NOTE: `docs/interop/aac-aep-scitt-digest-binding-vector.json` pins a
+machine-checkable positive/negative demonstration of this Cross-Profile
+Comparability rule across AAC, AEP, and SCITT under the profile label
+`urn:action-state:aac-aep-scitt:digest-binding:2026-07-02`.
+
 This profile's own `chain.parent_capsule_id`, `reason_digest`,
 `evidence_digest`, and `external_ref` fields are a distinct concept from
 the typed digest reference above: they are bare intra-profile digests and

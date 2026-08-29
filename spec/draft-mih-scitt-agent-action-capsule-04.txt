@@ -754,6 +754,12 @@ Internet-Draft            Agent Action Capsules              August 2026
    indeterminate/deny, never equal-looking-hex) follows that document's
    Cross-Profile Comparability subsection.
 
+   NOTE: docs/interop/aac-aep-scitt-digest-binding-vector.json pins a
+   machine-checkable positive/negative demonstration of this Cross-
+   Profile Comparability rule across AAC, AEP, and SCITT under the
+   profile label urn:action-state:aac-aep-scitt:digest-
+   binding:2026-07-02.
+
    This profile's own chain.parent_capsule_id, reason_digest,
    evidence_digest, and external_ref fields are a distinct concept from
    the typed digest reference above: they are bare intra-profile digests
@@ -772,12 +778,6 @@ Internet-Draft            Agent Action Capsules              August 2026
    "confirmed"), and ledger_mode ("standalone", "chained", or
    "anchored"). ledger_mode records the custody tier of the record:
    "standalone" is a lone Capsule (no chain linkage); "chained" is a
-   Capsule whose hash-chain linkage to a predecessor is present and
-   intact; "anchored" is a chained Capsule whose chain root has
-   additionally been committed to an independent transparency log.  A
-   verifier rederives ledger_mode from the bytes it can check —
-   "standalone" versus "chained" from the presence and integrity of the
-   hash-chain linkage, and "anchored" only after it verifies an
 
 
 
@@ -786,6 +786,12 @@ Mih                       Expires 1 March 2027                 [Page 14]
 Internet-Draft            Agent Action Capsules              August 2026
 
 
+   Capsule whose hash-chain linkage to a predecessor is present and
+   intact; "anchored" is a chained Capsule whose chain root has
+   additionally been committed to an independent transparency log.  A
+   verifier rederives ledger_mode from the bytes it can check —
+   "standalone" versus "chained" from the presence and integrity of the
+   hash-chain linkage, and "anchored" only after it verifies an
    inclusion proof against a trusted log key — and the three tiers are
    ordered standalone < chained < anchored for overclaim detection.  A
    producer MUST NOT record an assurance mode it did not achieve; a
@@ -816,12 +822,6 @@ Internet-Draft            Agent Action Capsules              August 2026
    unilateral_fallback < acknowledged_receipt < full_bilateral for
    overclaim detection — the same never-grades-up discipline Section 5.4
    already applies to attestation_mode, effect_mode, and ledger_mode:
-
-
-
-
-
-
 
 
 

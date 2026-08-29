@@ -124,7 +124,7 @@ registration MUST state where its grade sits relative to the seeded values.
 
 ## 6. `chain.relation`
 
-Defined in §5.4.4 of the Internet-Draft (Chained Capsules; the chain block).
+Defined in §5.5.4 of the Internet-Draft (Chained Capsules; the chain block).
 Initial contents:
 
 | Value | Semantics |
