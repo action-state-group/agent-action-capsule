@@ -290,10 +290,11 @@ identity remains immutable.
 
 # Registries of this profile (summary) {#registries}
 
-Six vocabularies of this profile are registry-governed under a
+Seven vocabularies of this profile are registry-governed under a
 Specification Required policy ({{RFC8126}}, Section 4.6):
 `verdict_class`, `disposition.decision`, `effect.type`,
-`irreversibility_class`, `effect_attestation`, and `chain.relation`. The
+`irreversibility_class`, `effect_attestation`, `chain.relation`, and
+`citation_purpose`. The
 registries and their initial contents are defined in {{iana}}, kept at
 the back of this document per convention.
 
@@ -741,6 +742,82 @@ Open-items predicate: an item is open when its Capsule's
 store carries `chain.parent_capsule_id` equal to its `capsule_id` with
 `relation: "supersedes"`.
 
+### Cross-record references {#xref}
+
+`chain` presupposes the cited Capsule is this producer's own: it is
+scoped to same-custody-stream, single-parent state transitions
+({{hitl}}). It has no shape for citing a record outside that stream —
+a different producer's Capsule, or any other artifact this Capsule's
+action was performed on or in response to. A Capsule MAY carry a
+digested `references` array for exactly that case; absent or empty
+means the Capsule makes no such citation. Like the rest of the payload,
+`references` participates in the `capsule_id` digest ({{identity}}):
+citing a record is itself a claim this Capsule's signature covers.
+
+**Boundary rule.** `chain` is exclusively the producer's own same-stream
+parent and is the only field {{assurance}}'s `ledger_mode` derivation
+reads. `references` is exclusively for everything else. A `references`
+entry MUST NOT name the same target as `chain.parent_capsule_id` — a
+producer citing its own same-stream parent states that once, in
+`chain`, never redundantly in `references`.
+
+**Shape.** Each `references` entry's identity is a CPB typed digest
+reference {{I-D.mih-sokolov-scitt-payload-binding}}: `{type, digest_alg,
+digest}`, the same mechanism this profile already uses for the
+external-authorization references of the Effect Record ({{effect}}).
+`type` names an artifact type per the CPB Artifact Type registry; this
+document defines the `references` entry shape, not an exhaustive list
+of what may be cited.
+
+A reference MAY additionally carry `log_coordinates`, an object
+`{log_id, leaf_index, inclusion_proof}`, present as a unit when the
+cited record has been registered to an append-only log a verifier can
+consult. `log_coordinates` is an upgrade, not a second identity: it
+proves the exact referenced bytes were found at the stated log
+position, and its presence or absence never changes what `type` +
+`digest_alg` + `digest` already identify. Producer-local log
+checkpointing is future scope at the CPB binding layer, not this
+document ({{future}}); until that mechanism is specified, a Class 1
+verifier treats a present `log_coordinates` member as structurally
+recorded and MUST NOT report it as independently verified.
+
+**Citation purpose.** A `references` entry MAY carry `citation_purpose`,
+a registry-governed (Specification Required, {{iana}}) string stating
+why this Capsule cites the target. `citation_purpose` is a distinct
+vocabulary from CPB's own `purpose` field on a typed digest reference:
+CPB's `purpose` selects among an artifact type's registered digest
+contexts, and `citation_purpose` is this profile's own, separately-named
+field for the citing relationship, never a repurposing of CPB's field.
+The seeded vocabulary:
+
+| citation_purpose | Meaning |
+|---|---|
+| acted_on | This Capsule's action targeted, consumed, or was performed against the cited record's declared content — a stream boundary, not a custody claim: the cited record may belong to a different producer or stream entirely, and citing it asserts only that this action is about that content, never that the citing producer holds or continues its custody. |
+| responds_to | This Capsule addresses or answers the cited record without a same-stream chain relationship to it — the cited record is not this Capsule's `chain.parent_capsule_id` and MAY be a different producer's record or otherwise outside this producer's own stream. |
+
+Designated-expert guidance: both seeded values name a cross-stream
+citation intent that `chain.relation` cannot express because
+`chain.relation` is scoped to same-stream transitions ({{hitl}}). A
+producer whose citation is a same-stream state transition over its own
+parent uses `chain` instead and never mints a `references` entry for it
+(the boundary rule above). Additional `citation_purpose` values are
+expected future registrations, each admitted once its semantics are
+pinned in a publicly available specification, per this document's
+Specification Required policy ({{iana}}).
+
+**Relation to `chain.relation`'s `confirms` value in deployed
+implementations.** A cross-stream citation — for example, a denial
+Capsule addressing a prior record that is not its own chain parent — is
+not a same-stream state transition and so is not a `chain.relation`
+value under this profile; `chain.relation` registers no value for it,
+and none is added by this revision. Such a citation is a `references`
+entry with `citation_purpose: "responds_to"` (or `"acted_on"`, if it is
+the affirmative case). An implementation using `chain` with a
+`confirms`-shaped relation for a citation that is not the same-stream
+parent is not using `chain` as this document defines it; the compatible
+migration is a `references` entry with the appropriate
+`citation_purpose`, not a fourth `chain.relation` value.
+
 # Class 1 verification {#verification}
 
 Capsule verification and Producer Envelope verification are independent.
@@ -788,14 +865,20 @@ reported field; findings are reported in a fixed order.
    matrix REQUIRES it, or present where it MUST be absent — including
    the planned carve — is a failure ({{effect}}).
 6. Chain semantics (store-level): a missing chain parent is a failure;
-   concurrent supersedes surface as findings per {{hitl}}.
+   concurrent supersedes surface as findings per {{hitl}}. A
+   `references` entry ({{xref}}) is a different claim: it is informational
+   cross-stream correlation, never a chain-integrity input, and a
+   verifier MUST NOT treat a `references` entry naming an unresolvable
+   or absent target as a chain-semantics failure — only a `references`
+   entry that duplicates `chain.parent_capsule_id` is a failure, per the
+   boundary rule of {{xref}}.
 7. Assurance reconciliation: rederive the assurance modes from evidence
    actually verified; report overclaims.
 8. Unknown registry values (`verdict_class`, `decision`,
    `effect.type`, `irreversibility_class`, `effect_attestation`,
-   `chain.relation`): report as informational findings; MUST NOT reject
-   ({{iana}}). An unknown `effect_attestation` is additionally graded no
-   stronger than `runtime_claimed` ({{effect}}).
+   `chain.relation`, `citation_purpose`): report as informational
+   findings; MUST NOT reject ({{iana}}). An unknown `effect_attestation`
+   is additionally graded no stronger than `runtime_claimed` ({{effect}}).
 
 Disposition honesty is structurally guaranteed, not a live check above.
 The honesty invariant — `human_disposed: true` REQUIRES `approver:
@@ -1062,7 +1145,7 @@ parameter or CWT claim registry; the new registries here are payload
 vocabularies only.
 
 IANA is requested to create a new registry group, "Agent Action Capsule
-Parameters", containing the six registries below. The registration
+Parameters", containing the seven registries below. The registration
 policy for each is Specification Required ({{RFC8126}}, Section 4.6).
 
 Specification Required is chosen deliberately. The threat it answers is a
@@ -1080,7 +1163,7 @@ pairing under {{orthogonality}}; (2) the value's meaning is not already
 expressible by an existing registered value; and (3) the citing
 specification is publicly available.
 
-Binding invariant for all six registries: verifiers MUST treat
+Binding invariant for all seven registries: verifiers MUST treat
 unregistered values as informational and MUST NOT reject a Capsule for
 carrying one. Registration governs shared meaning, never acceptance.
 
@@ -1123,6 +1206,19 @@ Initial contents are the seeded values of this document, verbatim:
    relations, or amends / contradicts) are expected future registrations,
    each admitted once its semantics and any verifier consequence are
    pinned in a publicly available specification.
+7. "citation_purpose" registry ({{xref}}): acted_on, responds_to.
+   This registry is distinct from, and never a repurposing of, CPB's own
+   `purpose` field on a typed digest reference
+   ({{I-D.mih-sokolov-scitt-payload-binding}}), which selects among an
+   artifact type's registered digest contexts and is orthogonal to any
+   role a companion profile assigns a digest within a cross-document
+   citation. Designated-expert guidance: both seeded values name a
+   citation whose target is outside the citing Capsule's own chain — a
+   different producer or a different stream ({{xref}}); a citation to
+   the producer's own same-stream `chain` parent is never expressed
+   here. Additional values are expected future registrations, each
+   admitted once its semantics are pinned in a publicly available
+   specification.
 
 Interim registry of record: until this document is published as an RFC,
 the registry of record is the `REGISTRY.md` file of the source
