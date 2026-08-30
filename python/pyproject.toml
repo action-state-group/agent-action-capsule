@@ -58,7 +58,7 @@ where = ["."]
 include = ["agent_action_capsule*"]
 
 [tool.setuptools.package-data]
-"agent_action_capsule.data" = ["REGISTRY.md"]
+"agent_action_capsule.data" = ["REGISTRY.md", "cpb_registry.json", "cpb_provisional.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -183,6 +183,47 @@ def test_unknown_chain_relation_is_informational(executed):
     assert res.ok and "unknown_registry_value" in codes(res)
 
 
+# ---- Check 8: vendored CPB provisional resolution --------------------------
+def test_mesh_effect_type_resolves_known_provisional(executed):
+    # effect.type='inference_completion' is set by the mesh-inference-exchange
+    # provisional payload class (vendored CPB registry): known-provisional, not
+    # unknown, and still never a rejection.
+    d = dict(executed)
+    d["effect"] = dict(d["effect"], type="inference_completion")
+    res = verify(reseal(d))
+    assert res.ok
+    c = codes(res)
+    assert "known_provisional_registry_value" in c
+    # The unknown finding for this specific field must be gone.
+    unknown_details = [
+        f.detail for f in res.findings if f.code == "unknown_registry_value"
+    ]
+    assert not any("inference_completion" in det for det in unknown_details)
+
+
+def test_mesh_effect_attestation_resolves_known_provisional_no_floor(executed):
+    d = dict(executed)
+    d["effect"] = dict(d["effect"], effect_attestation="host_served_observed")
+    res = verify(reseal(d))
+    assert res.ok
+    c = codes(res)
+    assert "known_provisional_registry_value" in c
+    # A known-provisional effect_attestation is neither unknown nor graded to the
+    # floor (the floor only fires on an *unknown* effect_attestation).
+    assert "unknown_registry_value" not in c
+    assert "effect_attestation_graded_floor" not in c
+
+
+def test_genuinely_unknown_value_still_unknown(executed):
+    # A value NOT carried by any vendored provisional class stays unknown —
+    # the provisional consult must not swallow real unknowns.
+    d = dict(executed)
+    d["effect"] = dict(d["effect"], type="teleport_completion")
+    res = verify(reseal(d))
+    assert res.ok and "unknown_registry_value" in codes(res)
+    assert "known_provisional_registry_value" not in codes(res)
+
+
 # ---- Never throw -----------------------------------------------------------
 @pytest.mark.parametrize("garbage", [None, 123, "x", [], {}, {"effect": 5}, {"disposition": "no"}])
 def test_verify_never_throws(garbage):

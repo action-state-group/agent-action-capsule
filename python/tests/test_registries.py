@@ -118,3 +118,23 @@ def test_parser_handles_multiline_wrapping(tmp_path: Path):
     # prose backticks in the effect_attestation section must NOT leak in
     assert set(regs["effect_attestation"]) == {"gate_executed", "runtime_claimed"}
     assert set(regs["chain.relation"]) == {"confirms", "supersedes"}
+
+
+# ---- Vendored CPB provisional registry -------------------------------------
+def test_cpb_provisional_snapshot_resolves_mesh_values():
+    """The vendored CPB provisional snapshot maps the mesh-inference-exchange
+    class's surrounding-capsule field values to that payload class."""
+    from agent_action_capsule.registries import load_cpb_provisional_values
+
+    vals = load_cpb_provisional_values()
+    assert vals.get("effect.type", {}).get("inference_completion") == "mesh-inference-exchange"
+    assert vals.get("effect_attestation", {}).get("host_served_observed") == "mesh-inference-exchange"
+
+
+def test_cpb_provisional_missing_snapshot_is_empty_not_error(monkeypatch, tmp_path: Path):
+    """Absence of the snapshot yields {} — provisional resolution is optional
+    enrichment, never a hard dependency (the verifier must still run)."""
+    from agent_action_capsule.registries import load_cpb_provisional_values
+
+    monkeypatch.setenv("AAC_CPB_PROVISIONAL_PATH", str(tmp_path / "nope.json"))
+    assert load_cpb_provisional_values() == {}
