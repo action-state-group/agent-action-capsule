@@ -9,11 +9,18 @@ reports which values are seeded.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 from pathlib import Path
 
-__all__ = ["REGISTRY_NAMES", "load_registries", "find_registry_md"]
+__all__ = [
+    "REGISTRY_NAMES",
+    "load_registries",
+    "find_registry_md",
+    "load_cpb_provisional_values",
+    "find_cpb_provisional",
+]
 
 # The six registry-governed vocabularies (§4). approver is deliberately NOT here:
 # it is a closed enum fixed by the spec (§5.4), not registry-governed.
@@ -141,4 +148,67 @@ def load_registries(path: Path | None = None) -> dict[str, frozenset[str]]:
         if not vals:
             raise ValueError(f"registry {name!r} parsed with no seeded values")
         out[name] = frozenset(vals)
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# Vendored CPB provisional registry (§12 known-provisional resolution).
+#
+# The machine-readable CPB registry of record lives in
+# ``action-state-group/scitt-payload-binding``; its *provisional* (Rung 3)
+# artifact-type entries are vendored here as a local, no-network snapshot
+# (``data/cpb_provisional.json``, refreshed by ``scripts/vendor_cpb_registry.py``,
+# pinned to an upstream commit). The verifier consults it so that a value a
+# provisional payload class is known to set — e.g. the mesh-inference-exchange
+# class's ``effect.type='inference_completion'`` — resolves as *known with
+# status provisional* rather than unknown. The never-reject invariant (§4, §12)
+# is unchanged: a provisional value is still informational, never a rejection,
+# and a genuinely unknown value still surfaces as ``unknown_registry_value``.
+# --------------------------------------------------------------------------- #
+def find_cpb_provisional(start: Path | None = None) -> Path | None:
+    """Locate the vendored ``data/cpb_provisional.json``. Returns ``None`` if it
+    is not present (the snapshot is optional; absence means no provisional
+    resolution, never an error). Honors ``AAC_CPB_PROVISIONAL_PATH`` override."""
+    override = os.environ.get("AAC_CPB_PROVISIONAL_PATH")
+    if override:
+        p = Path(override)
+        return p if p.is_file() else None
+    bundled = Path(__file__).resolve().parent / "data" / "cpb_provisional.json"
+    return bundled if bundled.is_file() else None
+
+
+def load_cpb_provisional_values(
+    path: Path | None = None,
+) -> dict[str, dict[str, str]]:
+    """Return ``{aac_registry_name: {value: payload_class_name}}`` for the values
+    that vendored *provisional* CPB payload classes are known to set on the
+    surrounding capsule's six AAC registry fields.
+
+    Returns an empty dict if the vendored snapshot is absent or malformed —
+    provisional resolution is a best-effort enrichment, never a hard dependency
+    (the verifier must still run, and never reject, without it)."""
+    p = path or find_cpb_provisional()
+    if p is None:
+        return {}
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out: dict[str, dict[str, str]] = {}
+    types = doc.get("provisional_artifact_types", {})
+    if not isinstance(types, dict):
+        return {}
+    for type_name, entry in types.items():
+        if not isinstance(entry, dict):
+            continue
+        cfv = entry.get("capsule_field_values", {})
+        if not isinstance(cfv, dict):
+            continue
+        for reg_name, values in cfv.items():
+            if reg_name not in REGISTRY_NAMES or not isinstance(values, list):
+                continue
+            bucket = out.setdefault(reg_name, {})
+            for v in values:
+                if isinstance(v, str):
+                    bucket.setdefault(v, type_name)
     return out

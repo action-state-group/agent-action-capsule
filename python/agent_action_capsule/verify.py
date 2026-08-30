@@ -36,9 +36,17 @@ from .contracts import (
     derive_effect_mode,
     is_hex64,
 )
-from .registries import load_registries
+from .registries import load_cpb_provisional_values, load_registries
 
 __all__ = ["Finding", "VerificationResult", "verify", "verify_store"]
+
+
+def _load_provisional() -> dict:
+    """Best-effort load of the vendored CPB provisional values; never raises."""
+    try:
+        return load_cpb_provisional_values()
+    except Exception:  # provisional enrichment is optional, never gating
+        return {}
 
 REQUIRED_FIELDS = (
     "spec_version",
@@ -364,6 +372,13 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
             findings.append(Finding("assurance_overclaim", f"claimed cross_party_rung {sc!r} but verifier derived {derived_cross_party_rung!r} (§5.3 Cross-party assurance)", severity="info", check=7))
 
     # ---- Check 8: Unknown registry values -----------------------------------
+    # A value not seeded in the six §12 registries is informational (never a
+    # rejection — §4, §12). Before calling it "unknown", we consult the vendored
+    # CPB *provisional* registry snapshot: a value a provisional payload class is
+    # known to set (e.g. the mesh-inference-exchange class's
+    # effect.type='inference_completion') resolves as *known with status
+    # provisional* — still informational, but no longer unknown.
+    provisional = _load_provisional()
     for reg_name, (block, member) in _REGISTRY_FIELDS:
         blk = _obj(capsule, block)
         if blk is None:
@@ -372,10 +387,21 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         if val is None:
             continue
         seeded = registries.get(reg_name, frozenset())
-        if val not in seeded:
-            findings.append(Finding("unknown_registry_value", f"{block}.{member}={val!r} is not a seeded {reg_name} value; informational, not rejected (§12)", severity="info", check=8))
-            if reg_name == "effect_attestation":
-                findings.append(Finding("effect_attestation_graded_floor", "unknown effect_attestation graded no stronger than 'runtime_claimed' (§5.2)", severity="info", check=8))
+        if val in seeded:
+            continue
+        prov_class = provisional.get(reg_name, {}).get(val)
+        if prov_class is not None:
+            findings.append(Finding(
+                "known_provisional_registry_value",
+                f"{block}.{member}={val!r} resolves as known with status "
+                f"'provisional' via the vendored CPB registry (payload class "
+                f"{prov_class!r}); informational, not rejected (§12)",
+                severity="info", check=8,
+            ))
+            continue
+        findings.append(Finding("unknown_registry_value", f"{block}.{member}={val!r} is not a seeded {reg_name} value; informational, not rejected (§12)", severity="info", check=8))
+        if reg_name == "effect_attestation":
+            findings.append(Finding("effect_attestation_graded_floor", "unknown effect_attestation graded no stronger than 'runtime_claimed' (§5.2)", severity="info", check=8))
 
     # ---- Check 9: domain / provenance unknown-value (§-02) -----------------
     # Type mismatches are already reported above (check 1); here we only check
