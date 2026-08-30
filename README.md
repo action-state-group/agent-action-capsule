@@ -31,8 +31,8 @@ denied Capsule is affirmative evidence that a gate worked.
 - **Reader's guide:** [`spec/section-map.md`](spec/section-map.md).
 
 The authoritative version of the draft is the one on the Datatracker; the `.md`
-here is the editor's source from which it is built. Draft `-03` is currently in
-preparation.
+here is the editor's source from which it is built. `-04` is the current posted
+revision; `-05` is in preparation.
 
 ## Quickstart — try the reference verifier
 
@@ -93,14 +93,17 @@ itself an RFC 9943 Signed Statement. This repository adds both exact profiles,
 the Capsule-ID match, and Capsule-domain checks. Generic SCITT registration,
 Receipt, and inclusion-proof verification remain substrate concerns.
 
-## Relationship to capsule-producer-go
+## Relationship to the producer (`capsule-emit`)
 
 This repository owns the public protocol contract: specification, registries,
-canonicalization, verification helpers, and shared conformance vectors.
-[`action-state-group/capsule-producer-go`](https://github.com/action-state-group/capsule-producer-go)
-owns producer workflow and creates Capsules through Build, Sign, Seal, Carry,
-Received, and Compose. The producer consumes this repository's contract; this
-repository does not depend on the producer.
+canonicalization, verification helpers, and shared conformance vectors. The
+producer layer — the one-call `seal()` on-ramp that mints Capsules from a live
+agent, plus its framework adapters — lives in
+[`action-state-group/capsule-emit`](https://github.com/action-state-group/capsule-emit).
+The producer consumes this repository's contract; this repository does not depend
+on the producer. (This repo also ships a `go/` directory — an independent Go
+canonicalization and verification runtime — used to cross-check the contract, not
+a producer.)
 
 ## Canonical Payload Binding (CPB)
 
@@ -152,8 +155,8 @@ construction or identity.
   Transparent Statement = SCITT Signed Statement + Receipt(s)
 ```
 
-`capsule-producer-go` creates Capsules and Producer Envelopes. It has no opinion
-on VDS selection. Registration tooling creates the RFC 9943 statement. The
+The producer (`capsule-emit`) creates Capsules and Producer Envelopes. It has no
+opinion on VDS selection. Registration tooling creates the RFC 9943 statement. The
 Receipt's `vds` header is the Transparency Service's choice.
 
 **RFC9162_SHA256 (vds=1)** is the current default — the only VDS registered under
