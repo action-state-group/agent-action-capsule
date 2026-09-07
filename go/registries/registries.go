@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Parse spec/REGISTRY.md for the six profile registries (§12).
+// Parse spec/REGISTRY.md for the profile registries (§12).
 // Seeded values are NOT hard-coded; they are parsed at load time from the
 // interim registry of record (spec/REGISTRY.md) so the code and spec cannot drift.
 package registries
@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// RegistryNames is the ordered list of the six registry-governed vocabularies (§4).
+// RegistryNames is the ordered list of registry-governed vocabularies (§4).
 // disposition.approver is deliberately absent: it is a closed enum (§5.4), not registry-governed.
 var RegistryNames = []string{
 	"verdict_class",
@@ -22,6 +22,7 @@ var RegistryNames = []string{
 	"irreversibility_class",
 	"effect_attestation",
 	"chain.relation",
+	"citation_purpose",
 }
 
 var (
@@ -146,7 +147,7 @@ func seededValuesInSection(lines []string) []string {
 }
 
 // Load parses spec/REGISTRY.md at path (empty → auto-locate) and returns
-// {registry_name: set_of_seeded_values} for the six registries.
+// {registry_name: set_of_seeded_values} for the profile registries.
 func Load(path string) (map[string]map[string]bool, error) {
 	if path == "" {
 		var err error
@@ -191,6 +192,12 @@ func Load(path string) (map[string]map[string]bool, error) {
 	for _, name := range RegistryNames {
 		sec, ok := sections[name]
 		if !ok {
+			if name == "citation_purpose" {
+				// Older snapshots predate references. Their existing vocabulary
+				// remains usable; new purposes are simply informationally unknown.
+				out[name] = make(map[string]bool)
+				continue
+			}
 			return nil, fmt.Errorf("registry %q not found in REGISTRY.md", name)
 		}
 		vals := seededValuesInSection(sec)
