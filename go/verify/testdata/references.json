@@ -1,0 +1,844 @@
+{
+  "source": "draft-04 section 5.5.5; Python agent-action-capsule 0.2.0 JCS and identity",
+  "cases": [
+    {
+      "name": "absent",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "capsule_id": "8e6fc40e4da1da44be288d4be8ab735c43e786697e1317ed095b93bda75b9094"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"8e6fc40e4da1da44be288d4be8ab735c43e786697e1317ed095b93bda75b9094\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": true,
+      "codes": []
+    },
+    {
+      "name": "empty",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [],
+        "capsule_id": "c591fa27f5e88dd8c8bb5e6326c0cc00ee7226d3b75726f672510145669f2f7e"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"c591fa27f5e88dd8c8bb5e6326c0cc00ee7226d3b75726f672510145669f2f7e\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": true,
+      "codes": []
+    },
+    {
+      "name": "vintage-extension",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-02",
+        "format_version": "2",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": null,
+        "capsule_id": "01205ca534ecb7de84e3cdfdd10d0fa25bb72ccc67cec3073f17a889c94f2361"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"capsule_id\":\"01205ca534ecb7de84e3cdfdd10d0fa25bb72ccc67cec3073f17a889c94f2361\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"2\",\"operator\":\"example-org\",\"references\":null,\"spec_version\":\"draft-mih-scitt-agent-action-capsule-02\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": true,
+      "codes": []
+    },
+    {
+      "name": "unregistered-capsule-token",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "capsule",
+            "digest_alg": "SHA-256",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "capsule_id": "98dc5281f349afa547f24a610bfb93b59755c6726247eeea6592c7ec1581fb3d"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"98dc5281f349afa547f24a610bfb93b59755c6726247eeea6592c7ec1581fb3d\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"digest_alg\":\"SHA-256\",\"type\":\"capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": true,
+      "codes": []
+    },
+    {
+      "name": "external-capsule",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "citation_purpose": "responds_to"
+          }
+        ],
+        "capsule_id": "2727a6f4f3c559bcf6aa4dd6930f6103afb2a755e93959db3cebcfbe623eff9f"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"2727a6f4f3c559bcf6aa4dd6930f6103afb2a755e93959db3cebcfbe623eff9f\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"citation_purpose\":\"responds_to\",\"digest\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"digest_alg\":\"SHA-256\",\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": true,
+      "codes": []
+    },
+    {
+      "name": "unknown-type-algorithm",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "future-artifact",
+            "digest_alg": "future-hash",
+            "digest": "opaque-digest"
+          }
+        ],
+        "capsule_id": "982b9742e8c101afc815f1b002bc953af7ca61d604ec09719686c8ff3636df4b"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"982b9742e8c101afc815f1b002bc953af7ca61d604ec09719686c8ff3636df4b\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"opaque-digest\",\"digest_alg\":\"future-hash\",\"type\":\"future-artifact\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": true,
+      "codes": []
+    },
+    {
+      "name": "same-hex-other-type",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "foreign-artifact",
+            "digest_alg": "SHA-256",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "capsule_id": "abba2246f0d9f6fd848a9cf58113e6740b415e063f5cf6dc3505f49c9f67c7e7"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"abba2246f0d9f6fd848a9cf58113e6740b415e063f5cf6dc3505f49c9f67c7e7\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"digest_alg\":\"SHA-256\",\"type\":\"foreign-artifact\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": true,
+      "codes": []
+    },
+    {
+      "name": "same-hex-other-algorithm",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "future-hash",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "capsule_id": "ca5276a79187a508450f60e776632fcb0d34021cec98c7b792067fa7dfd5566f"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"ca5276a79187a508450f60e776632fcb0d34021cec98c7b792067fa7dfd5566f\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"digest_alg\":\"future-hash\",\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": true,
+      "codes": []
+    },
+    {
+      "name": "duplicate-parent",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "capsule_id": "88833cc94720be2d4ec7a31ccd2beb0865fbc1877c2d0444c6da496c1dfeba0e"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"88833cc94720be2d4ec7a31ccd2beb0865fbc1877c2d0444c6da496c1dfeba0e\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"digest_alg\":\"SHA-256\",\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "reference_duplicates_chain_parent"
+      ]
+    },
+    {
+      "name": "future-purpose",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "citation_purpose": "example-purpose"
+          }
+        ],
+        "capsule_id": "5c208409f977111838ede6cade61be5545b682b6a33a4dc080cebabf81f314ab"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"5c208409f977111838ede6cade61be5545b682b6a33a4dc080cebabf81f314ab\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"citation_purpose\":\"example-purpose\",\"digest\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"digest_alg\":\"SHA-256\",\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": true,
+      "codes": [
+        "unknown_registry_value"
+      ]
+    },
+    {
+      "name": "null-references",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": null,
+        "capsule_id": "f2069fbc815a249875536d810d7fa399e3078a92211b1ba445e85359624962f3"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"f2069fbc815a249875536d810d7fa399e3078a92211b1ba445e85359624962f3\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":null,\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "references_malformed"
+      ]
+    },
+    {
+      "name": "object-references",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": {},
+        "capsule_id": "3dbdbe296161e3b2bc88839c3b10f1c2564197419d65c4150ce5224f9e0ff2ee"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"3dbdbe296161e3b2bc88839c3b10f1c2564197419d65c4150ce5224f9e0ff2ee\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":{},\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "references_malformed"
+      ]
+    },
+    {
+      "name": "nonobject-reference",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          false
+        ],
+        "capsule_id": "f4bcc404b1f7c634b182e1787925cd150c53305d8bb5973b56714cff2be65649"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"f4bcc404b1f7c634b182e1787925cd150c53305d8bb5973b56714cff2be65649\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[false],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "reference_malformed"
+      ]
+    },
+    {
+      "name": "missing-type",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "digest_alg": "SHA-256",
+            "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "capsule_id": "01d338667819c5a0752d9dfec6ab914354ebb1c44133f57cb0e3bcf66eafab8a"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"01d338667819c5a0752d9dfec6ab914354ebb1c44133f57cb0e3bcf66eafab8a\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"digest_alg\":\"SHA-256\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "reference_malformed"
+      ]
+    },
+    {
+      "name": "empty-algorithm",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "",
+            "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "capsule_id": "add483244abd91b7dec4a3c1787166414398825f39d4f6a754350f822b0f84c0"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"add483244abd91b7dec4a3c1787166414398825f39d4f6a754350f822b0f84c0\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"digest_alg\":\"\",\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "reference_malformed"
+      ]
+    },
+    {
+      "name": "null-digest",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": null
+          }
+        ],
+        "capsule_id": "49a309777d8ffb55011d50bf2886bc8c7a8d92824974f2981c08353ad470a574"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"49a309777d8ffb55011d50bf2886bc8c7a8d92824974f2981c08353ad470a574\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":null,\"digest_alg\":\"SHA-256\",\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "reference_malformed"
+      ]
+    },
+    {
+      "name": "empty-digest",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": ""
+          }
+        ],
+        "capsule_id": "ea632e5a57fa59aa0f19096abdee1f013caeaa30db0c9a4aad3b6a72a0b5d4e6"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"ea632e5a57fa59aa0f19096abdee1f013caeaa30db0c9a4aad3b6a72a0b5d4e6\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"\",\"digest_alg\":\"SHA-256\",\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "reference_malformed"
+      ]
+    },
+    {
+      "name": "boolean-digest",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": false
+          }
+        ],
+        "capsule_id": "8b0afc1bc1244e986a1b1eda4173c11abbddcc5aa1438e33923e1b172264ddd1"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"8b0afc1bc1244e986a1b1eda4173c11abbddcc5aa1438e33923e1b172264ddd1\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":false,\"digest_alg\":\"SHA-256\",\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "reference_malformed"
+      ]
+    },
+    {
+      "name": "mixed-checks",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": null,
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "citation_purpose": "example-purpose"
+          }
+        ],
+        "capsule_id": "fd49cde30e522d65c884aa287fcd7c46eb158696b0169f6c356daeacd17c8cfc"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"fd49cde30e522d65c884aa287fcd7c46eb158696b0169f6c356daeacd17c8cfc\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":null,\"references\":[{\"citation_purpose\":\"example-purpose\",\"digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"digest_alg\":\"SHA-256\",\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "field_not_string",
+        "reference_duplicates_chain_parent",
+        "unknown_registry_value"
+      ]
+    },
+    {
+      "name": "bad-capsule-id",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "bad"
+          }
+        ],
+        "capsule_id": "58aee6b099fe64568356f48e732040d1f7ae8bec213cabf9c131bdc0bcb2510f"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"58aee6b099fe64568356f48e732040d1f7ae8bec213cabf9c131bdc0bcb2510f\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"bad\",\"digest_alg\":\"SHA-256\",\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "reference_malformed"
+      ]
+    },
+    {
+      "name": "nonstring-purpose",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "citation_purpose": false
+          }
+        ],
+        "capsule_id": "a8db419bcc6f2a95ff79ad55733470b4d9897c47e373585be625fb7475ddfaa7"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"a8db419bcc6f2a95ff79ad55733470b4d9897c47e373585be625fb7475ddfaa7\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"citation_purpose\":false,\"digest\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"digest_alg\":\"SHA-256\",\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "reference_malformed"
+      ]
+    },
+    {
+      "name": "null-coordinates",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "log_coordinates": null
+          }
+        ],
+        "capsule_id": "90b52b1abd6d2a4a7f5f4c652474aa4d2827386d4428adaf4ab76f32f9735c35"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"90b52b1abd6d2a4a7f5f4c652474aa4d2827386d4428adaf4ab76f32f9735c35\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"digest_alg\":\"SHA-256\",\"log_coordinates\":null,\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "reference_log_coordinates_malformed"
+      ]
+    },
+    {
+      "name": "partial-coordinates",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "log_coordinates": {
+              "log_id": "example",
+              "leaf_index": 0
+            }
+          }
+        ],
+        "capsule_id": "3e8cdd0a6ad1a71f16473c9f21943e9d0a85eaca5719f20e9a17e85f6dc5c1b2"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"3e8cdd0a6ad1a71f16473c9f21943e9d0a85eaca5719f20e9a17e85f6dc5c1b2\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"digest_alg\":\"SHA-256\",\"log_coordinates\":{\"leaf_index\":0,\"log_id\":\"example\"},\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": false,
+      "codes": [
+        "reference_log_coordinates_malformed"
+      ]
+    },
+    {
+      "name": "opaque-proof",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "log_coordinates": {
+              "log_id": "example",
+              "leaf_index": 0,
+              "inclusion_proof": {
+                "future-format": "unverified"
+              }
+            }
+          }
+        ],
+        "capsule_id": "82ac56db218768ae1486125efc465569ccbaf1d32c28705cfb71810de23253a1"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"82ac56db218768ae1486125efc465569ccbaf1d32c28705cfb71810de23253a1\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"digest_alg\":\"SHA-256\",\"log_coordinates\":{\"inclusion_proof\":{\"future-format\":\"unverified\"},\"leaf_index\":0,\"log_id\":\"example\"},\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": true,
+      "codes": []
+    },
+    {
+      "name": "future-extension",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "reference/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "assurance": {
+          "effect_mode": "not_applicable",
+          "attestation_mode": "self_attested",
+          "ledger_mode": "chained"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "future-member": {
+              "value": 1
+            }
+          }
+        ],
+        "capsule_id": "97871a2a3db42cc63cf540d6ea911a8a83dc6ae4cd10ba8fa286ac2893d04a69"
+      },
+      "canonical": "{\"action_id\":\"reference/example\",\"action_type\":\"fyi\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"capsule_id\":\"97871a2a3db42cc63cf540d6ea911a8a83dc6ae4cd10ba8fa286ac2893d04a69\",\"chain\":{\"parent_capsule_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"relation\":\"confirms\"},\"developer\":\"example-agent@v1\",\"format_version\":\"4\",\"operator\":\"example-org\",\"references\":[{\"digest\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"digest_alg\":\"SHA-256\",\"future-member\":{\"value\":1},\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-09-07T12:00:00Z\"}",
+      "ok": true,
+      "codes": []
+    }
+  ]
+}

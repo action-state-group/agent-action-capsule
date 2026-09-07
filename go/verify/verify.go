@@ -277,6 +277,14 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 	disposition := asMap(capsuleMap["disposition"])
 	chain := asMap(capsuleMap["chain"])
 	crossParty := asMap(capsuleMap["cross_party"])
+	// References contribute to checks 1, 6 and 8; keep their findings in
+	// the same check order as the rest of the verifier.
+	referenceChecks := make(map[int][]Finding)
+	for _, finding := range referenceFindings(capsuleMap, regs) {
+		if finding.Check != nil {
+			referenceChecks[*finding.Check] = append(referenceChecks[*finding.Check], finding)
+		}
+	}
 
 	// ---- Check 1: Structural ------------------------------------------------
 
@@ -451,6 +459,8 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		}
 	}
 
+	findings = append(findings, referenceChecks[1]...)
+
 	// ---- Check 2: Identity --------------------------------------------------
 	var recomputedID *string
 	if cidPresent {
@@ -567,6 +577,8 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		}
 	}
 
+	findings = append(findings, referenceChecks[6]...)
+
 	// ---- Check 7: Assurance reconciliation ----------------------------------
 	ledgerMode := "standalone"
 	if chain != nil {
@@ -635,6 +647,10 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 	}
 
 	// ---- Check 8: Unknown registry values -----------------------------------
+	provisional, provisionalErr := registries.ProvisionalValues()
+	if provisionalErr != nil {
+		findings = append(findings, Finding{Code: "registry_snapshot_unavailable", Detail: provisionalErr.Error(), Severity: "warning", Check: mkCheck(8)})
+	}
 	for _, rf := range registryFields {
 		blk := asMap(capsuleMap[rf.block])
 		if blk == nil {
@@ -650,6 +666,10 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		}
 		seeded := regs[rf.reg]
 		if !seeded[valStr] {
+			if class, ok := provisional[rf.reg][valStr]; ok {
+				findings = append(findings, Finding{Code: "known_provisional_registry_value", Detail: fmt.Sprintf("%s.%s=%q resolves known status 'provisional' via vendored CPB registry (payload class %q); informational, not rejected (§12)", rf.block, rf.member, valStr, class), Severity: "info", Check: mkCheck(8)})
+				continue
+			}
 			findings = append(findings, Finding{
 				Code: "unknown_registry_value",
 				Detail: fmt.Sprintf("%s.%s=%q is not a seeded %s value; informational, not rejected (§12)",
@@ -665,6 +685,8 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 			}
 		}
 	}
+
+	findings = append(findings, referenceChecks[8]...)
 
 	ok := true
 	for _, f := range findings {

@@ -1,0 +1,201 @@
+{
+  "source": "Python agent-action-capsule 0.2.0 at bb648e1",
+  "cases": [
+    {
+      "name": "mesh-provisional",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "vocabulary/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "follows"
+        },
+        "effect": {
+          "type": "inference_completion",
+          "status": "confirmed",
+          "irreversibility_class": "two_way",
+          "response_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "effect_attestation": "host_served_observed"
+        },
+        "capsule_id": "b84f87d8e744960f03f989e24e70869b60d29a7b690f5b24514a9b45be3350ec"
+      },
+      "ok": true,
+      "assurance": {
+        "effect_mode": "confirmed",
+        "attestation_mode": "self_attested",
+        "ledger_mode": "chained"
+      },
+      "findings": [
+        {
+          "code": "chain_check_store_level",
+          "severity": "info"
+        },
+        {
+          "code": "known_provisional_registry_value",
+          "severity": "info"
+        },
+        {
+          "code": "known_provisional_registry_value",
+          "severity": "info"
+        },
+        {
+          "code": "known_provisional_registry_value",
+          "severity": "info"
+        }
+      ]
+    },
+    {
+      "name": "future-unknown",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "vocabulary/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "future-relation"
+        },
+        "effect": {
+          "type": "future-effect",
+          "status": "confirmed",
+          "irreversibility_class": "two_way",
+          "response_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "effect_attestation": "future-attestation"
+        },
+        "capsule_id": "ba1fe2157d28611328bbc34e0e7fadf967679c1aab228e0702257f1e69f99c48"
+      },
+      "ok": true,
+      "assurance": {
+        "effect_mode": "confirmed",
+        "attestation_mode": "self_attested",
+        "ledger_mode": "chained"
+      },
+      "findings": [
+        {
+          "code": "chain_check_store_level",
+          "severity": "info"
+        },
+        {
+          "code": "unknown_registry_value",
+          "severity": "info"
+        },
+        {
+          "code": "unknown_registry_value",
+          "severity": "info"
+        },
+        {
+          "code": "effect_attestation_graded_floor",
+          "severity": "info"
+        },
+        {
+          "code": "unknown_registry_value",
+          "severity": "info"
+        }
+      ]
+    },
+    {
+      "name": "seeded",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "vocabulary/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "confirms"
+        },
+        "effect": {
+          "type": "write_order",
+          "status": "confirmed",
+          "irreversibility_class": "two_way",
+          "response_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "effect_attestation": "gate_executed"
+        },
+        "capsule_id": "8ce7f44c10e1b910b9de346358f4eed51a910ce58251da4a9a5cf381ef75f1ba"
+      },
+      "ok": true,
+      "assurance": {
+        "effect_mode": "confirmed",
+        "attestation_mode": "self_attested",
+        "ledger_mode": "chained"
+      },
+      "findings": [
+        {
+          "code": "chain_check_store_level",
+          "severity": "info"
+        }
+      ]
+    },
+    {
+      "name": "adjudication-shape",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "vocabulary/example",
+        "action_type": "fyi",
+        "operator": "example-org",
+        "developer": "example-agent@v1",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "chain": {
+          "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relation": "adjudicates"
+        },
+        "disposition": {
+          "decision": "accept",
+          "approver": "policy",
+          "human_disposed": false,
+          "verdict_class": "assessed"
+        },
+        "model_attestation": {
+          "compute_attestation": {
+            "adjudication": {
+              "source": "twin_comparison",
+              "capture_method": "deterministic_replay",
+              "verdict": "corroborated",
+              "half_a_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "half_b_capsule_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "margin": "1",
+              "margin_tau": "0"
+            }
+          }
+        },
+        "capsule_id": "0f72267ed333df7ddda6b225822abb6f0d05969a4452d60e4446b60208af4fd2"
+      },
+      "ok": true,
+      "assurance": {
+        "effect_mode": "not_applicable",
+        "attestation_mode": "self_attested",
+        "ledger_mode": "chained"
+      },
+      "findings": [
+        {
+          "code": "chain_check_store_level",
+          "severity": "info"
+        },
+        {
+          "code": "unknown_registry_value",
+          "severity": "info"
+        },
+        {
+          "code": "unknown_registry_value",
+          "severity": "info"
+        }
+      ]
+    }
+  ]
+}
