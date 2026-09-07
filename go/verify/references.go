@@ -41,11 +41,14 @@ func referenceFindings(capsule map[string]interface{}, known map[string]map[stri
 		}
 		// Compare only a known AAC identity context, never equal-looking digests
 		// belonging to a different artifact type or hash algorithm (CPB §7).
-		if ref["type"] == "agent-action-capsule" && ref["digest_alg"] == "SHA-256" && !isHex64(ref["digest"]) {
-			add("reference_malformed", path+".digest MUST be an AAC Capsule ID for agent-action-capsule/SHA-256 (§5.5.5)", 1, "error")
-		}
-		if ref["type"] == "agent-action-capsule" && ref["digest_alg"] == "SHA-256" && parent != "" && ref["digest"] == parent {
-			add("reference_duplicates_chain_parent", path+" duplicates chain.parent_capsule_id (§5.5.5)", 6, "error")
+		digest, _ := ref["digest"].(string)
+		if ref["type"] == "agent-action-capsule" && ref["digest_alg"] == "SHA-256" {
+			if digest != "" && !isHex64(digest) {
+				add("reference_malformed", path+".digest MUST be an AAC Capsule ID for agent-action-capsule/SHA-256 (§5.5.5)", 1, "error")
+			}
+			if parent != "" && digest == parent {
+				add("reference_duplicates_chain_parent", path+" duplicates chain.parent_capsule_id (§5.5.5)", 6, "error")
+			}
 		}
 		if rawPurpose, present := ref["citation_purpose"]; present {
 			purpose, ok := rawPurpose.(string)

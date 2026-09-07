@@ -37,7 +37,7 @@ go vet ./...
 go test -race ./...
 ```
 
-`verify/testdata/references.json` is shared with the Go and TypeScript emitters.
+`verify/testdata/references.json` is available for downstream emitters to reuse.
 Its identity and canonical bytes come from unmodified Python 0.2.0 primitives;
 its structural outcomes come from draft-04 §5.5.5. Python 0.2.0 does not yet
 enforce those reference checks. `verify/testdata/vocabulary.json` instead freezes

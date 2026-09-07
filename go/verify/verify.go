@@ -277,7 +277,14 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 	disposition := asMap(capsuleMap["disposition"])
 	chain := asMap(capsuleMap["chain"])
 	crossParty := asMap(capsuleMap["cross_party"])
-	findings = append(findings, referenceFindings(capsuleMap, regs)...)
+	// References contribute to checks 1, 6 and 8; keep their findings in
+	// the same check order as the rest of the verifier.
+	referenceChecks := make(map[int][]Finding)
+	for _, finding := range referenceFindings(capsuleMap, regs) {
+		if finding.Check != nil {
+			referenceChecks[*finding.Check] = append(referenceChecks[*finding.Check], finding)
+		}
+	}
 
 	// ---- Check 1: Structural ------------------------------------------------
 
@@ -452,6 +459,8 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		}
 	}
 
+	findings = append(findings, referenceChecks[1]...)
+
 	// ---- Check 2: Identity --------------------------------------------------
 	var recomputedID *string
 	if cidPresent {
@@ -568,6 +577,8 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		}
 	}
 
+	findings = append(findings, referenceChecks[6]...)
+
 	// ---- Check 7: Assurance reconciliation ----------------------------------
 	ledgerMode := "standalone"
 	if chain != nil {
@@ -674,6 +685,8 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 			}
 		}
 	}
+
+	findings = append(findings, referenceChecks[8]...)
 
 	ok := true
 	for _, f := range findings {
