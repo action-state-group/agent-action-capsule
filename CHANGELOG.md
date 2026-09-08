@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 — 2026-09-08 (Python library)
+
+### Python
+- **draft-04 `references[]` — parity with the Go reference implementation.** The
+  builder, `Capsule` model, parser, and serialization now carry `references[]`,
+  preserving the tri-state **absent ≠ empty ≠ populated**. Reference validation
+  mirrors `go/verify/references.go` 1:1 (entry structure; AAC/SHA-256 digest
+  format; no duplicate chain-parent target; optional citation-purpose /
+  log-coordinate checks). Foreign reference types / digest contexts remain open;
+  unknown citation purposes are informational; coordinate checks do not verify
+  inclusion proofs. Adds the `citation_purpose` registry (7th §12 registry) and
+  validates against the 25 shared Go test vectors + producer-path unit tests.
+  This is the version emit/CLL should pin as their AAC floor for `references[]`.
+
 ## Unreleased
 
 ### Spec
