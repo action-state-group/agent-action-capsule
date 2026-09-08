@@ -227,6 +227,25 @@ treats it as an unrecognized member rather than attempting to verify it.
 presence or absence of any `disclosures` member. See the companion draft
 for the full verifier checks (digest recomputation and comparison).
 
+## 11. `citation_purpose`
+
+Defined in the Internet-Draft's Cross-record references section (`-04` and
+later revisions). Governs the `citation_purpose` field of a `references[]`
+entry — a Capsule's citation of a record outside its own `chain` scope (a
+different producer or stream). Distinct from, and never a repurposing of,
+CPB's own `purpose` field on a typed digest reference
+(scitt-payload-binding), which selects among an artifact type's registered
+digest contexts.
+
+| Value | Semantics |
+|---|---|
+| `acted_on` | The citing Capsule's action targeted, consumed, or was performed against the cited record's declared content. Not a custody claim. |
+| `responds_to` | The citing Capsule addresses or answers the cited record without a same-stream chain relationship to it. |
+
+**Boundary rule.** A citation to the producer's own same-stream `chain`
+parent is never expressed via `references`/`citation_purpose`; a
+`references` entry MUST NOT duplicate `chain.parent_capsule_id`.
+
 ## No registry
 
 The following vocabularies are deliberately **not** registries of this document:

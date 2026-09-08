@@ -38,6 +38,8 @@ __all__ = [
     "CrossParty",
     "Chain",
     "ConstraintRecord",
+    "LogCoordinates",
+    "ReferenceEntry",
     "ModelAttestation",
     "SelfReportedReasoning",
     "InvariantError",
@@ -288,6 +290,63 @@ class Chain:
             raise InvariantError("chain.parent_capsule_id MUST be a 64-hex capsule_id (§5.1, §5.4.4)")
         if not isinstance(self.relation, str) or not self.relation:
             raise InvariantError("chain.relation MUST be a non-empty string")
+
+
+@dataclass(frozen=True)
+class LogCoordinates:
+    """§5.5.5 references[] entry log_coordinates — an upgrade, not a second
+    identity: present as a unit (all three members) when the cited record has
+    been registered to an append-only log a verifier can consult.
+    ``inclusion_proof`` is opaque; Class 1 records it as structural only and
+    MUST NOT treat it as independently verified (§5.5.5), so it is not typed
+    or validated here beyond presence, mirroring the Go verifier's checks."""
+
+    log_id: Any
+    leaf_index: Any
+    inclusion_proof: Any
+
+    def __post_init__(self) -> None:
+        for name in ("log_id", "leaf_index", "inclusion_proof"):
+            if getattr(self, name) is None:
+                raise InvariantError(
+                    f"reference.log_coordinates.{name} is REQUIRED when "
+                    "log_coordinates is present (§5.5.5)"
+                )
+
+
+@dataclass(frozen=True)
+class ReferenceEntry:
+    """§5.5.5 references[] entry — a CPB typed digest reference to a record
+    outside this Capsule's own `chain` scope. `type`/`digest_alg`/`digest`
+    identify the cited record; only the `agent-action-capsule`/`SHA-256`
+    self-identity context constrains `digest` to 64-lowercase-hex — CPB owns
+    digest representation and comparison context for every other type/algorithm
+    combination, so a foreign reference stays open and is not constrained here.
+    `citation_purpose` is registry-governed (§12); an unknown value is
+    informational, so it is NOT enum-checked here, mirroring `chain.relation`.
+    The "MUST NOT duplicate chain.parent_capsule_id" boundary rule needs the
+    sibling `chain` block and is enforced at `Capsule.__post_init__` instead."""
+
+    type: str
+    digest_alg: str
+    digest: str
+    citation_purpose: str | None = None
+    log_coordinates: LogCoordinates | None = None
+
+    def __post_init__(self) -> None:
+        for name in ("type", "digest_alg", "digest"):
+            v = getattr(self, name)
+            if not isinstance(v, str) or not v:
+                raise InvariantError(f"reference.{name} MUST be a non-empty string (§5.5.5)")
+        if self.type == "agent-action-capsule" and self.digest_alg == "SHA-256" and not is_hex64(self.digest):
+            raise InvariantError(
+                "reference.digest MUST be an AAC Capsule ID (64-hex) for "
+                "agent-action-capsule/SHA-256 (§5.5.5)"
+            )
+        if self.citation_purpose is not None and (
+            not isinstance(self.citation_purpose, str) or not self.citation_purpose
+        ):
+            raise InvariantError("reference.citation_purpose MUST be a non-empty string when present (§5.5.5)")
 
 
 @dataclass(frozen=True)

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""The six profile registries (§12), sourced from ``spec/REGISTRY.md``.
+"""The seven profile registries (§12), sourced from ``spec/REGISTRY.md``.
 
 The seeded values are NOT hard-coded here: they are parsed at load time from the
 interim registry of record (``spec/REGISTRY.md``) so the code and the spec cannot
@@ -22,8 +22,8 @@ __all__ = [
     "find_cpb_provisional",
 ]
 
-# The six registry-governed vocabularies (§4). approver is deliberately NOT here:
-# it is a closed enum fixed by the spec (§5.4), not registry-governed.
+# The seven registry-governed vocabularies (§4). approver is deliberately NOT
+# here: it is a closed enum fixed by the spec (§5.4), not registry-governed.
 REGISTRY_NAMES = (
     "verdict_class",
     "disposition.decision",
@@ -31,6 +31,7 @@ REGISTRY_NAMES = (
     "irreversibility_class",
     "effect_attestation",
     "chain.relation",
+    "citation_purpose",
 )
 
 _HEADER_RE = re.compile(r"^##\s+\d+\.\s+`([^`]+)`\s*$")
@@ -122,7 +123,12 @@ def _seeded_values_in_section(lines: list[str]) -> list[str]:
 
 def load_registries(path: Path | None = None) -> dict[str, frozenset[str]]:
     """Parse ``spec/REGISTRY.md`` and return ``{registry_name: frozenset(values)}``
-    for the six registries. Raises if a named registry is missing or empty."""
+    for the seven registries. Raises if a named registry is missing or empty —
+    except ``citation_purpose`` (a draft-04 addition), which resolves to an
+    empty frozenset against an older REGISTRY.md snapshot that predates its
+    section rather than raising: its existing vocabulary remains usable, and
+    new purposes simply surface as informationally unknown (mirrors the Go
+    loader's fallback)."""
     md = (path or find_registry_md()).read_text(encoding="utf-8")
     lines = md.splitlines()
 
@@ -143,6 +149,9 @@ def load_registries(path: Path | None = None) -> dict[str, frozenset[str]]:
     out: dict[str, frozenset[str]] = {}
     for name in REGISTRY_NAMES:
         if name not in sections:
+            if name == "citation_purpose":
+                out[name] = frozenset()
+                continue
             raise ValueError(f"registry {name!r} not found in REGISTRY.md")
         vals = _seeded_values_in_section(sections[name])
         if not vals:

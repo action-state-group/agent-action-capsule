@@ -111,10 +111,10 @@ derived modes, the recomputed `capsule_id`). See
 |---|---|---|
 | `canonical.py` | §2, §5.1 | Current JSON-DIGEST uses plain RFC 8785 JCS. Format-4 `capsule_id` excludes itself **and** the local-only producer-envelope fields (`signature`, `key_id`) — those are attached to the ledger line after the id is computed, so they can never be part of its preimage — while committing the declaration and chain. The absent-field normalized construction remains only for vintage format-2 verification. |
 | `producer_envelope.py` | §3, §6 | Optional exact-profile COSE_Sign1 verification over the raw 32-byte Capsule ID. Returns the authenticated Ed25519 key; caller authorization remains separate. |
-| `registries.py` | §12 | Loads the six registries from `../spec/REGISTRY.md` (single-sourced — the code hard-codes no seeded values, so it cannot drift from the spec). |
-| `contracts.py` | §5.2–§5.4 | Typed **producer** carriers whose constructors enforce the invariants a producer MUST NOT violate: the disposition honesty invariant and the closed `approver` enum (§5.4), the confirmed-effect binding and the status/digest table (§5.2). A non-conforming Capsule cannot be built. Also the `effect_mode` derivation (§5.2) and the never-dispatch set (§5.4.2). |
-| `verify.py` | §6 | The **Class 1 verifier**: the eight checks in fixed order, a structured result that never throws, a single `ok` boolean, store-level chain checks (`verify_store`), and the SHOULD-level defensive disposition-honesty assert over arbitrary bytes. Unknown registry values are informational, never a rejection. |
-| `parse.py` | §5 | `Capsule` builder + `seal()` (computes `capsule_id`); strict `parse_capsule` (raises on a non-conforming Capsule). |
+| `registries.py` | §12 | Loads the seven registries (incl. `citation_purpose`, draft-04) from `../spec/REGISTRY.md` (single-sourced — the code hard-codes no seeded values, so it cannot drift from the spec). |
+| `contracts.py` | §5.2–§5.4, §5.5.5 | Typed **producer** carriers whose constructors enforce the invariants a producer MUST NOT violate: the disposition honesty invariant and the closed `approver` enum (§5.4), the confirmed-effect binding and the status/digest table (§5.2), and `references[]` entry structure / AAC self-identity digest format (§5.5.5). A non-conforming Capsule cannot be built. Also the `effect_mode` derivation (§5.2) and the never-dispatch set (§5.4.2). |
+| `verify.py` | §6, §5.5.5 | The **Class 1 verifier**: the eight checks in fixed order plus `references[]` findings (§5.5.5, spliced into checks 1/6/8), a structured result that never throws, a single `ok` boolean, store-level chain checks (`verify_store`), and the SHOULD-level defensive disposition-honesty assert over arbitrary bytes. Unknown registry values are informational, never a rejection. |
+| `parse.py` | §5, §5.5.5 | `Capsule` builder + `seal()` (computes `capsule_id`); strict `parse_capsule` (raises on a non-conforming Capsule). `references[]` is tri-state: absent, present-and-empty, and present-and-populated are three distinct wire forms (and therefore three distinct `capsule_id` digests). |
 
 ```python
 from agent_action_capsule import verify, Capsule, EffectRecord, Disposition, AssuranceBlock
@@ -135,6 +135,48 @@ capsule = Capsule(
 result = verify(capsule)        # never throws
 assert result.ok               # a single `ok` gates trust in every other field
 ```
+
+### Cross-record references (`references[]`, §5.5.5)
+
+`chain` is exclusively a Capsule's own same-stream parent. `references` cites
+everything else — a different producer's Capsule, or any other artifact this
+action targeted or responded to. Absent and an explicit empty array are
+semantically the same ("no such citation") but are **distinct bytes**, so they
+produce different `capsule_id` digests — pass `references=()` only when that
+distinction matters to a caller:
+
+```python
+from agent_action_capsule import Capsule, ReferenceEntry, LogCoordinates
+
+capsule = Capsule(
+    spec_version="draft-mih-scitt-agent-action-capsule-04", format_version="4",
+    canonicalization_id="jcs",
+    action_id="deny-42", action_type="decide", operator="ACME-CO", developer="agent@v1",
+    timestamp="2026-09-08T00:00:00Z",
+    references=(
+        ReferenceEntry(
+            type="agent-action-capsule", digest_alg="SHA-256",
+            digest="b" * 64,                    # the cited Capsule's capsule_id
+            citation_purpose="responds_to",      # or "acted_on"; §12 citation_purpose registry
+        ),
+        ReferenceEntry(
+            type="foreign-artifact", digest_alg="future-hash", digest="opaque-digest",
+            log_coordinates=LogCoordinates(log_id="example-log", leaf_index=3, inclusion_proof={...}),
+        ),
+    ),
+).seal()
+
+capsule["references"]  # [{"type": ..., "digest_alg": ..., "digest": ..., "citation_purpose": ...}, {...}]
+```
+
+A `references` entry MUST NOT duplicate `chain.parent_capsule_id` — citing the
+producer's own same-stream parent is stated once, in `chain`, never
+redundantly in `references` (`Capsule(...)` raises `InvariantError` if it
+does). Only the `agent-action-capsule`/`SHA-256` self-identity context
+constrains `digest` to 64-lowercase-hex; every other `type`/`digest_alg`
+combination is CPB's to define and stays open. `log_coordinates`, when
+present, is an upgrade (not a second identity) and its `inclusion_proof` is
+never independently verified by Class 1.
 
 ## Scope boundary (deliberate)
 
