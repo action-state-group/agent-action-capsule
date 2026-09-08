@@ -2,7 +2,7 @@
 """§12 registries, single-sourced from spec/REGISTRY.md.
 
 Freeze-guard: the EXACT seeded value set (count AND membership) for every one of
-the six registries is pinned here against a hard-coded expectation. The
+the seven registries is pinned here against a hard-coded expectation. The
 production loader hard-codes NONE of these — it parses spec/REGISTRY.md — so a
 future REGISTRY.md reflow that drops, adds, or mangles a value (including across
 a line wrap) fails this test loudly instead of silently shrinking a vocabulary.
@@ -23,6 +23,7 @@ EXPECTED = {
     "irreversibility_class": {"two_way", "one_way_recoverable", "one_way_consequential", "one_way_terminal"},
     "effect_attestation": {"gate_executed", "runtime_claimed"},
     "chain.relation": {"confirms", "supersedes", "epoch_opens"},
+    "citation_purpose": {"acted_on", "responds_to"},
 }
 # Pinned counts (the freeze surface — a dropped value changes the count).
 EXPECTED_COUNTS = {
@@ -32,10 +33,11 @@ EXPECTED_COUNTS = {
     "irreversibility_class": 4,
     "effect_attestation": 2,
     "chain.relation": 3,
+    "citation_purpose": 2,
 }
 
 
-def test_six_registries_loaded():
+def test_seven_registries_loaded():
     regs = load_registries()
     assert set(regs) == set(REGISTRY_NAMES) == set(EXPECTED)
 

@@ -27,7 +27,9 @@ from .contracts import (
     EffectRecord,
     ExpiryPolicy,
     InvariantError,
+    LogCoordinates,
     ModelAttestation,
+    ReferenceEntry,
     derive_effect_mode,
 )
 from .disclosure_envelope import (
@@ -98,6 +100,8 @@ __all__ = [
     "Chain",
     "ConstraintRecord",
     "ExpiryPolicy",
+    "LogCoordinates",
+    "ReferenceEntry",
     "ModelAttestation",
     "InvariantError",
     "derive_effect_mode",

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 — 2026-09-08 (Python library)
+
+### Python
+- **draft-04 `references[]` — parity with the Go reference implementation.** The
+  builder, `Capsule` model, parser, and serialization now carry `references[]`,
+  preserving the tri-state **absent ≠ empty ≠ populated**. Reference validation
+  mirrors `go/verify/references.go` 1:1 (entry structure; AAC/SHA-256 digest
+  format; no duplicate chain-parent target; optional citation-purpose /
+  log-coordinate checks). Foreign reference types / digest contexts remain open;
+  unknown citation purposes are informational; coordinate checks do not verify
+  inclusion proofs. Adds the `citation_purpose` registry (7th §12 registry) and
+  validates against the 25 shared Go test vectors + producer-path unit tests.
+  This is the version emit/CLL should pin as their AAC floor for `references[]`.
+
 ## Unreleased
 
 ### Spec
@@ -45,6 +59,28 @@
   moves at OTel/OCSF's release speed so core doesn't have to.
 
 ### Added
+- **Python `references[]` parity with Go (draft-04 §5.5.5, {{xref}}).**
+  `python/agent_action_capsule/contracts.py`: `ReferenceEntry` and
+  `LogCoordinates` producer-side carriers. `python/agent_action_capsule/parse.py`:
+  `Capsule.references` — a genuine tri-state (`None` omits the key; `()` emits
+  `"references": []`; a populated tuple emits the entries), since absent and
+  empty are the same claim but distinct bytes and therefore distinct
+  `capsule_id` digests; the "MUST NOT duplicate `chain.parent_capsule_id`"
+  boundary rule is enforced at `Capsule.__post_init__`.
+  `python/agent_action_capsule/verify.py`: `references[]` findings (entry
+  structure, the AAC/SHA-256 self-identity digest-format gate, the duplicate-
+  chain-parent check, `citation_purpose` and `log_coordinates` checks) spliced
+  into checks 1/6/8, mirroring `go/verify/references.go` finding-for-finding —
+  foreign reference types/digest contexts stay open, unknown `citation_purpose`
+  values are informational (never rejected), and `log_coordinates.inclusion_proof`
+  is recorded as structural only, never independently verified.
+  `python/agent_action_capsule/registries.py`: `citation_purpose` added as the
+  seventh registry (§12), with the same missing-section fallback as the Go
+  loader for an older `REGISTRY.md` snapshot. `python/agent_action_capsule/emit.py`:
+  `emit(references=...)`. Validated against the 25 shared vectors in
+  `go/verify/testdata/references.json` (`python/tests/test_references.py`),
+  replaying the same store and check-order assertions as
+  `go/verify/references_test.go`.
 - `python/agent_action_capsule/contracts.py`: `CrossParty` producer-side
   carrier (§5.3 Cross-party assurance evidence), `CROSS_PARTY_RUNGS`,
   `CROSS_PARTY_RUNG_RANK`; `AssuranceBlock.cross_party_rung` (OPTIONAL);

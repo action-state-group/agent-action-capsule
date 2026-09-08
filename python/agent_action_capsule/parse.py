@@ -22,7 +22,9 @@ from .contracts import (
     EffectRecord,
     ExpiryPolicy,
     InvariantError,
+    LogCoordinates,
     ModelAttestation,
+    ReferenceEntry,
     SelfReportedReasoning,
 )
 
@@ -36,7 +38,7 @@ def _block_to_dict(obj: Any) -> dict:
         v = getattr(obj, f.name)
         if v is None:
             continue
-        if isinstance(v, ExpiryPolicy):
+        if isinstance(v, (ExpiryPolicy, LogCoordinates)):
             v = _block_to_dict(v)
         out[f.name] = v
     return out
@@ -61,6 +63,13 @@ class Capsule:
     chain: Chain | None = None
     cross_party: CrossParty | None = None
     constraints: tuple[ConstraintRecord, ...] = ()
+    # Tri-state (§5.5.5, {{xref}}): None -> `references` key omitted (absent);
+    # `()` -> `"references": []` is emitted (present-and-empty); a non-empty
+    # tuple -> the entries are emitted. Absent and empty are semantically the
+    # same ("no such citation") but are DISTINCT bytes and therefore distinct
+    # capsule_id digests, so this field must not collapse the two like
+    # `constraints` does.
+    references: tuple[ReferenceEntry, ...] | None = None
     model_attestation: ModelAttestation | None = None
     self_reported_reasoning: SelfReportedReasoning | None = None
     canonicalization_id: str | None = None
@@ -95,6 +104,23 @@ class Capsule:
                     "a producer MUST NOT emit an effect for a categorically non-dispatching action"
                 )
 
+        # Boundary rule ({{xref}}, §5.5.5): a references[] entry MUST NOT
+        # duplicate chain.parent_capsule_id — the same-stream parent is stated
+        # once, in chain, never redundantly in references.
+        if self.chain is not None and self.references:
+            for ref in self.references:
+                if (
+                    ref.type == "agent-action-capsule"
+                    and ref.digest_alg == "SHA-256"
+                    and ref.digest == self.chain.parent_capsule_id
+                ):
+                    raise InvariantError(
+                        "a references[] entry MUST NOT duplicate "
+                        "chain.parent_capsule_id (§5.5.5); a producer citing its "
+                        "own same-stream parent states that once, in chain, "
+                        "never redundantly in references"
+                    )
+
     def to_dict(self) -> dict:
         """The envelope as a JSON object (without capsule_id)."""
         out: dict[str, Any] = {
@@ -124,6 +150,8 @@ class Capsule:
             out["disposition"] = _block_to_dict(self.disposition)
         if self.constraints:
             out["constraints"] = [_block_to_dict(c) for c in self.constraints]
+        if self.references is not None:
+            out["references"] = [_block_to_dict(r) for r in self.references]
         if self.chain is not None:
             out["chain"] = _block_to_dict(self.chain)
         if self.cross_party is not None:
@@ -238,6 +266,41 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
             for c in cons
         )
 
+    # Tri-state (§5.5.5): key absent -> None; key present -> a (possibly empty)
+    # tuple, never silently dropped or collapsed with absent (see Capsule.references).
+    references: tuple[ReferenceEntry, ...] | None = None
+    if "references" in d:
+        refs_raw = d["references"]
+        if not isinstance(refs_raw, list):
+            raise InvariantError("references MUST be an array when present (§5.5.5)")
+        entries = []
+        for r in refs_raw:
+            if not isinstance(r, Mapping):
+                raise InvariantError("each references[] entry MUST be a JSON object (§5.5.5)")
+            for req in ("type", "digest_alg", "digest"):
+                if req not in r:
+                    raise InvariantError(f"references[].{req} is REQUIRED (§5.5.5)")
+            log_coordinates = None
+            if "log_coordinates" in r:
+                lc_raw = r["log_coordinates"]
+                if not isinstance(lc_raw, Mapping):
+                    raise InvariantError(
+                        "references[].log_coordinates MUST be a JSON object when present (§5.5.5)"
+                    )
+                log_coordinates = LogCoordinates(
+                    log_id=lc_raw.get("log_id"),
+                    leaf_index=lc_raw.get("leaf_index"),
+                    inclusion_proof=lc_raw.get("inclusion_proof"),
+                )
+            entries.append(ReferenceEntry(
+                type=r.get("type"),
+                digest_alg=r.get("digest_alg"),
+                digest=r.get("digest"),
+                citation_purpose=r.get("citation_purpose"),
+                log_coordinates=log_coordinates,
+            ))
+        references = tuple(entries)
+
     ma = _block(d, "model_attestation")
     model_attestation = None
     if ma:
@@ -275,6 +338,7 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
         canonicalization_id=canonicalization_id,
         domain=domain, provenance=provenance,
         effect=effect, assurance=assurance, disposition=disposition, chain=chain,
-        cross_party=cross_party, constraints=constraints, model_attestation=model_attestation,
+        cross_party=cross_party, constraints=constraints, references=references,
+        model_attestation=model_attestation,
         self_reported_reasoning=self_reported_reasoning,
     )

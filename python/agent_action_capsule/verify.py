@@ -128,6 +128,84 @@ def _obj(capsule: Mapping[str, Any], key: str) -> Mapping[str, Any] | None:
     return v if isinstance(v, Mapping) else None
 
 
+def _reference_findings(
+    capsule: Mapping[str, Any], registries: Mapping[str, frozenset]
+) -> list[Finding]:
+    """§5.5.5 ``references[]`` findings, over raw bytes, without resolving cited
+    artifacts. CPB owns digest representation and comparison context, so a
+    foreign reference is never constrained to AAC's SHA-256 hex encoding. Log
+    coordinates are recorded claims only; Class 1 never authenticates their
+    inclusion proofs. Mirrors the Go verifier's ``referenceFindings`` 1:1,
+    including which §6 check each finding is attributed to (checks 1, 6, 8) so
+    callers can splice these findings into the same fixed check order."""
+    if capsule.get("format_version") != "4":
+        return []  # a draft-04 addition; preserve vintage (format 2) handling
+    if "references" not in capsule:
+        return []
+    raw = capsule["references"]
+    if not isinstance(raw, list):
+        return [Finding("references_malformed", "references MUST be an array (§5.5.5)", check=1)]
+    findings: list[Finding] = []
+    chain = _obj(capsule, "chain")
+    parent = chain.get("parent_capsule_id") if chain else None
+    known_purposes = registries.get("citation_purpose", frozenset())
+    for i, raw_ref in enumerate(raw):
+        path = f"references[{i}]"
+        ref = raw_ref if isinstance(raw_ref, Mapping) else None
+        if ref is None:
+            findings.append(Finding("reference_malformed", f"{path} MUST be an object (§5.5.5)", check=1))
+            continue
+        for fld in ("type", "digest_alg", "digest"):
+            value = ref.get(fld)
+            if not isinstance(value, str) or not value:
+                findings.append(Finding(
+                    "reference_malformed", f"{path}.{fld} MUST be a non-empty string (§5.5.5)", check=1
+                ))
+        # Compare only a known AAC identity context, never equal-looking digests
+        # belonging to a different artifact type or hash algorithm (CPB §7).
+        digest = ref.get("digest")
+        if ref.get("type") == "agent-action-capsule" and ref.get("digest_alg") == "SHA-256":
+            if isinstance(digest, str) and digest != "" and not is_hex64(digest):
+                findings.append(Finding(
+                    "reference_malformed",
+                    f"{path}.digest MUST be an AAC Capsule ID for agent-action-capsule/SHA-256 (§5.5.5)",
+                    check=1,
+                ))
+            if isinstance(parent, str) and parent != "" and digest == parent:
+                findings.append(Finding(
+                    "reference_duplicates_chain_parent",
+                    f"{path} duplicates chain.parent_capsule_id (§5.5.5)",
+                    check=6,
+                ))
+        if "citation_purpose" in ref:
+            purpose = ref.get("citation_purpose")
+            if not isinstance(purpose, str) or not purpose:
+                findings.append(Finding(
+                    "reference_malformed", f"{path}.citation_purpose MUST be a non-empty string (§5.5.5)", check=1
+                ))
+            elif purpose not in known_purposes:
+                findings.append(Finding(
+                    "unknown_registry_value",
+                    f"{path}.citation_purpose is not seeded; informational, not rejected (§12)",
+                    severity="info", check=8,
+                ))
+        if "log_coordinates" in ref:
+            coordinates = ref.get("log_coordinates")
+            if not isinstance(coordinates, Mapping):
+                findings.append(Finding(
+                    "reference_log_coordinates_malformed", f"{path}.log_coordinates MUST be an object (§5.5.5)", check=1
+                ))
+                continue
+            for fld in ("log_id", "leaf_index", "inclusion_proof"):
+                if fld not in coordinates or coordinates.get(fld) is None:
+                    findings.append(Finding(
+                        "reference_log_coordinates_malformed",
+                        f"{path}.log_coordinates requires {fld} (§5.5.5)",
+                        check=1,
+                    ))
+    return findings
+
+
 def _float_paths(v: Any, path: str = "") -> list[str]:
     out: list[str] = []
     if isinstance(v, bool):
@@ -204,6 +282,13 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
     disposition = _obj(capsule, "disposition")
     chain = _obj(capsule, "chain")
     cross_party = _obj(capsule, "cross_party")
+
+    # References contribute to checks 1, 6 and 8; bucket by check so they can
+    # be spliced into the same fixed check order as the rest of the verifier.
+    reference_checks: dict[int, list[Finding]] = {}
+    for finding in _reference_findings(capsule, registries):
+        if finding.check is not None:
+            reference_checks.setdefault(finding.check, []).append(finding)
 
     # ---- Check 1: Structural ------------------------------------------------
     for fld in REQUIRED_FIELDS:
@@ -297,6 +382,8 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
                 severity="warning",
             ))
 
+    findings.extend(reference_checks.get(1, []))
+
     # ---- Check 2: Identity --------------------------------------------------
     recomputed = None
     if cid is not None:
@@ -345,6 +432,8 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
             findings.append(Finding("chain_check_store_level", "chain parent-existence and concurrent-supersedes are store-level checks (§6); not run without a store", severity="info", check=6))
         elif isinstance(parent, str) and parent not in ids:
             findings.append(Finding("chain_parent_missing", f"chain parent {parent} not found in the store (§6)", check=6))
+
+    findings.extend(reference_checks.get(6, []))
 
     # ---- Check 7: Assurance reconciliation ----------------------------------
     derived = {
@@ -402,6 +491,8 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         findings.append(Finding("unknown_registry_value", f"{block}.{member}={val!r} is not a seeded {reg_name} value; informational, not rejected (§12)", severity="info", check=8))
         if reg_name == "effect_attestation":
             findings.append(Finding("effect_attestation_graded_floor", "unknown effect_attestation graded no stronger than 'runtime_claimed' (§5.2)", severity="info", check=8))
+
+    findings.extend(reference_checks.get(8, []))
 
     # ---- Check 9: domain / provenance unknown-value (§-02) -----------------
     # Type mismatches are already reported above (check 1); here we only check

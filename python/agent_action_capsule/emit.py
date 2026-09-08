@@ -36,6 +36,7 @@ from .contracts import (
     EffectRecord,
     InvariantError,
     ModelAttestation,
+    ReferenceEntry,
     SelfReportedReasoning,
     derive_effect_mode,
 )
@@ -78,6 +79,7 @@ def emit(
     chain_relation: str | None = None,
     disposition: Disposition | None = None,
     constraints: tuple[ConstraintRecord, ...] = (),
+    references: tuple[ReferenceEntry, ...] | None = None,
     domain: str | None = None,
     provenance: str | None = None,
     self_reported_reasoning_digest: str | None = None,
@@ -116,6 +118,12 @@ def emit(
         disposition: Optional disposition block (§5.4). When omitted on an
             ``"fyi"`` action a sensible default is applied automatically.
         constraints: Constraint records (§8.1); defaults to empty tuple.
+        references: Cross-record citations to a record outside this Capsule's
+            own ``chain`` scope (§5.5.5, {{xref}}). ``None`` (default) omits
+            the ``references`` key; ``()`` emits ``"references": []`` — the two
+            are semantically equivalent ("no such citation") but committed as
+            distinct bytes, so pass ``()`` explicitly only when the distinction
+            matters to a caller.
         domain: Capsule epistemic role — ``"action"`` (default when absent),
             ``"memory"``, or ``"reasoning"``. ``"reasoning"`` marks a STANDALONE
             reasoning/thinking step, not an action-with-reasoning (which stays
@@ -216,5 +224,6 @@ def emit(
         disposition=disposition,
         chain=chain,
         constraints=constraints,
+        references=references,
     )
     return capsule.seal()
