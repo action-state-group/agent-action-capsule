@@ -10,6 +10,14 @@ on:
   release:
     types: [published]
   workflow_dispatch: {}
+  # Path-scoped so every PR touching the package exercises the same build +
+  # twine check the release will run — catches packaging regressions before
+  # a tag exists. `publish` below stays gated to `release: published` only,
+  # so this never uploads.
+  push:
+    paths: ["python/**"]
+  pull_request:
+    paths: ["python/**"]
 
 permissions:
   contents: read
