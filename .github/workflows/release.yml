@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# PyPI release for the `python/` package via OIDC Trusted Publishing.
+# No API token lives in this repo — pypa/gh-action-pypi-publish exchanges a
+# short-lived GitHub Actions OIDC token for a PyPI upload token at publish time.
+# See RELEASING.md for the one-time PyPI Trusted-Publisher configuration this
+# depends on (Steven's side, not this workflow's).
+name: release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+  # Path-scoped so every PR touching the package exercises the same build +
+  # twine check the release will run — catches packaging regressions before
+  # a tag exists. `publish` below stays gated to `release: published` only,
+  # so this never uploads.
+  push:
+    paths: ["python/**"]
+  pull_request:
+    paths: ["python/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install build + twine
+        run: python -m pip install build twine
+      - name: build sdist + wheel
+        working-directory: python
+        run: python -m build
+      - name: twine check
+        working-directory: python
+        run: python -m twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: python/dist/
+
+  # Only a `release` (tag) event publishes. `workflow_dispatch` runs `build`
+  # above as a dry run and stops — it never uploads, even run manually.
+  publish:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # OIDC — no token stored
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

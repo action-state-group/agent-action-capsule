@@ -3,6 +3,8 @@
 The reference implementation of the Agent Action Capsule profile: **parse** and
 **seal** a Capsule, and run the **Class 1 verifier** defined in the
 Internet-Draft (`../spec/`). Published to PyPI as **`agent-action-capsule`**.
+See [RELEASING.md](RELEASING.md) for the release workflow and PyPI Trusted
+Publisher setup.
 
 The spec (`../spec/`) is the source of truth. Where the draft says MUST / MUST
 NOT, the code and tests enforce it, section by section.
