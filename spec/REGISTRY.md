@@ -241,6 +241,7 @@ digest contexts.
 |---|---|
 | `acted_on` | The citing Capsule's action targeted, consumed, or was performed against the cited record's declared content. Not a custody claim. |
 | `responds_to` | The citing Capsule addresses or answers the cited record without a same-stream chain relationship to it. |
+| `ran_under` | The citing Capsule's action executed under the runtime environment and authority the cited record states — what ran, and under whose attestation. The cited record MAY be a different producer's (e.g. a hardware-attestation record from an attestation service). A grade the cited record carries for what it attests does not propagate to claims stated inside it. |
 
 **Boundary rule.** A citation to the producer's own same-stream `chain`
 parent is never expressed via `references`/`citation_purpose`; a

@@ -98,14 +98,14 @@ Table of Contents
        5.5.4.  Chained Capsules and human-in-the-loop resolution . .  21
        5.5.5.  Cross-record references . . . . . . . . . . . . . . .  22
    6.  Class 1 verification  . . . . . . . . . . . . . . . . . . . .  25
-   7.  Conformance: two verifier classes . . . . . . . . . . . . . .  27
-   8.  Manifest-dependent material . . . . . . . . . . . . . . . . .  27
-     8.1.  Constraint Records  . . . . . . . . . . . . . . . . . . .  28
-     8.2.  Class 2 verification  . . . . . . . . . . . . . . . . . .  28
-   9.  Extensibility . . . . . . . . . . . . . . . . . . . . . . . .  28
-     9.1.  Namespacing convention  . . . . . . . . . . . . . . . . .  29
-     9.2.  Selective Disclosure  . . . . . . . . . . . . . . . . . .  29
-   10. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  30
+   7.  Conformance: two verifier classes . . . . . . . . . . . . . .  28
+   8.  Manifest-dependent material . . . . . . . . . . . . . . . . .  28
+     8.1.  Constraint Records  . . . . . . . . . . . . . . . . . . .  29
+     8.2.  Class 2 verification  . . . . . . . . . . . . . . . . . .  29
+   9.  Extensibility . . . . . . . . . . . . . . . . . . . . . . . .  29
+     9.1.  Namespacing convention  . . . . . . . . . . . . . . . . .  30
+     9.2.  Selective Disclosure  . . . . . . . . . . . . . . . . . .  30
+   10. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  31
 
 
 
@@ -114,20 +114,20 @@ Mih                       Expires 16 March 2027                 [Page 2]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
-   11. Future Work . . . . . . . . . . . . . . . . . . . . . . . . .  31
-   12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  32
-     12.1.  New registries . . . . . . . . . . . . . . . . . . . . .  32
-     12.2.  No new registry  . . . . . . . . . . . . . . . . . . . .  34
-     12.3.  Media Type Registrations . . . . . . . . . . . . . . . .  34
-   13. Security Considerations . . . . . . . . . . . . . . . . . . .  36
-   14. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  38
-     14.1.  Data-Admission Tiers . . . . . . . . . . . . . . . . . .  38
-     14.2.  Adapter Allow-List Pattern . . . . . . . . . . . . . . .  39
-   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  39
-     15.1.  Normative References . . . . . . . . . . . . . . . . . .  39
-     15.2.  Informative References . . . . . . . . . . . . . . . . .  41
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  44
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  44
+   11. Future Work . . . . . . . . . . . . . . . . . . . . . . . . .  32
+   12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  33
+     12.1.  New registries . . . . . . . . . . . . . . . . . . . . .  33
+     12.2.  No new registry  . . . . . . . . . . . . . . . . . . . .  35
+     12.3.  Media Type Registrations . . . . . . . . . . . . . . . .  35
+   13. Security Considerations . . . . . . . . . . . . . . . . . . .  37
+   14. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  39
+     14.1.  Data-Admission Tiers . . . . . . . . . . . . . . . . . .  39
+     14.2.  Adapter Allow-List Pattern . . . . . . . . . . . . . . .  40
+   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  40
+     15.1.  Normative References . . . . . . . . . . . . . . . . . .  40
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  42
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  45
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  45
 
 1.  Introduction
 
@@ -1290,38 +1290,89 @@ Mih                       Expires 16 March 2027                [Page 23]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
-    +==================+==============================================+
-    | citation_purpose | Meaning                                      |
-    +==================+==============================================+
-    | acted_on         | This Capsule's action targeted, consumed, or |
-    |                  | was performed against the cited record's     |
-    |                  | declared content — a stream boundary, not a  |
-    |                  | custody claim: the cited record may belong   |
-    |                  | to a different producer or stream entirely,  |
-    |                  | and citing it asserts only that this action  |
-    |                  | is about that content, never that the citing |
-    |                  | producer holds or continues its custody.     |
-    +------------------+----------------------------------------------+
-    | responds_to      | This Capsule addresses or answers the cited  |
-    |                  | record without a same-stream chain           |
-    |                  | relationship to it — the cited record is not |
-    |                  | this Capsule's chain.parent_capsule_id and   |
-    |                  | MAY be a different producer's record or      |
-    |                  | otherwise outside this producer's own        |
-    |                  | stream.                                      |
-    +------------------+----------------------------------------------+
+   +==================+================================================+
+   | citation_purpose | Meaning                                        |
+   +==================+================================================+
+   | acted_on         | This Capsule's action targeted, consumed,      |
+   |                  | or was performed against the cited record's    |
+   |                  | declared content — a stream boundary, not a    |
+   |                  | custody claim: the cited record may belong     |
+   |                  | to a different producer or stream entirely,    |
+   |                  | and citing it asserts only that this action    |
+   |                  | is about that content, never that the          |
+   |                  | citing producer holds or continues its         |
+   |                  | custody.                                       |
+   +------------------+------------------------------------------------+
+   | responds_to      | This Capsule addresses or answers the cited    |
+   |                  | record without a same-stream chain             |
+   |                  | relationship to it — the cited record is       |
+   |                  | not this Capsule's chain.parent_capsule_id     |
+   |                  | and MAY be a different producer's record or    |
+   |                  | otherwise outside this producer's own          |
+   |                  | stream.                                        |
+   +------------------+------------------------------------------------+
+   | ran_under        | This Capsule cites a record stating the        |
+   |                  | runtime environment and the authority under    |
+   |                  | which its action executed — what ran, and      |
+   |                  | under whose attestation.  The cited record     |
+   |                  | MAY belong to a different producer (for        |
+   |                  | example, a hardware-attestation record         |
+   |                  | emitted by an attestation service); citing     |
+   |                  | it with this purpose asserts that this         |
+   |                  | Capsule's action ran under the conditions      |
+   |                  | that record attests, not that the citing       |
+   |                  | producer re-derived them.                      |
+   +------------------+------------------------------------------------+
 
                                   Table 9
 
-   Designated-expert guidance: both seeded values name a cross-stream
-   citation intent that chain.relation cannot express because
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                       Expires 16 March 2027                [Page 24]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
+   Designated-expert guidance: the seeded values each name a cross-
+   stream citation intent that chain.relation cannot express because
    chain.relation is scoped to same-stream transitions (Section 5.5.4).
-   A producer whose citation is a same-stream state transition over its
-   own parent uses chain instead and never mints a references entry for
-   it (the boundary rule above).  Additional citation_purpose values are
-   expected future registrations, each admitted once its semantics are
-   pinned in a publicly available specification, per this document's
-   Specification Required policy (Section 12).
+   acted_on and responds_to name what the action was _about_; ran_under
+   names the environment and authority the action executed _under_ — a
+   relationship, not a category of evidence, so one value covers a cited
+   account whether it carries the runtime side, the authority side, or
+   both.  A producer whose citation is a same-stream state transition
+   over its own parent uses chain instead and never mints a references
+   entry for it (the boundary rule above).  Additional citation_purpose
+   values are expected future registrations, each admitted once its
+   semantics are pinned in a publicly available specification, per this
+   document's Specification Required policy (Section 12).
+
+   *Grade non-propagation for a cited attestation.* A record cited with
+   ran_under may carry its own assurance grade for the conditions it
+   attests — for instance, a trust record graded by whether a hardware
+   root of trust signed the measurement it reports.  That grade attaches
+   to the specific fact the cited record attests and does not extend to
+   any other claim, including a claim stated inside the cited record's
+   own content: a platform-attested measurement does not make a self-
+   reported workload identity attested.  A verifier reading a ran_under
+   citation therefore carries the cited record's grade only for what
+   that record measured, never for everything the measured thing asserts
+   — the citation cannot launder an unattested claim through an attested
+   envelope.  This restates the cited format's own grading rule rather
+   than adding one.
 
    *Relation to chain.relation's confirms value in deployed
    implementations.* A cross-stream citation — for example, a denial
@@ -1336,22 +1387,20 @@ Internet-Draft            Agent Action Capsules           September 2026
    migration is a references entry with the appropriate
    citation_purpose, not a fourth chain.relation value.
 
-
-
-
-
-
-Mih                       Expires 16 March 2027                [Page 24]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
 6.  Class 1 verification
 
    Capsule verification and Producer Envelope verification are
    independent.  A verifier can validate a Capsule with no envelope, and
    can validate any number of envelopes against a Capsule ID without
    changing the Capsule result.
+
+
+
+
+Mih                       Expires 16 March 2027                [Page 25]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
 
    For each Producer Envelope, a verifier MUST:
 
@@ -1395,17 +1444,19 @@ Internet-Draft            Agent Action Capsules           September 2026
    3.  Confirmed-effect binding: effect.status: "confirmed" without a
        well-formed response_digest is a failure (Section 5.3).
 
-
-
-Mih                       Expires 16 March 2027                [Page 25]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    4.  Verdict/effect orthogonality: a never-dispatching verdict_class
        with a derived effect_mode other than "not_applicable" is a
        failure (Section 5.5.2); resolved is in the never-dispatch set
        per the pairing rule.
+
+
+
+
+
+Mih                       Expires 16 March 2027                [Page 26]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
 
    5.  Effect-attestation matrix: effect_attestation missing where the
        matrix REQUIRES it, or present where it MUST be absent —
@@ -1450,19 +1501,19 @@ Internet-Draft            Agent Action Capsules           September 2026
    NOTE (Class 1 test vector, effect-attestation matrix, check 5): a
    Capsule carrying effect.status: "failed" derives effect_mode:
    "dispatched_unconfirmed" (Section 5.3); the matrix therefore REQUIRES
-
-
-
-Mih                       Expires 16 March 2027                [Page 26]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    effect_attestation.  A conforming verifier MUST report a check-5
    failure for such a Capsule when effect_attestation is absent, and
    MUST NOT treat the failed status as exempt (only planned is carved,
    and only not_applicable is the no-effect case).  The same expectation
    holds for effect.status: "reverted", which likewise derives
+
+
+
+Mih                       Expires 16 March 2027                [Page 27]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    dispatched_unconfirmed.  This vector exists to demonstrate the matrix
    is total over effect.status: the runtime reporting a failure is still
    a dispatch, and a dispatch that escapes attestation is the precise
@@ -1509,7 +1560,12 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 27]
+
+
+
+
+
+Mih                       Expires 16 March 2027                [Page 28]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1565,7 +1621,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 28]
+Mih                       Expires 16 March 2027                [Page 29]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1621,7 +1677,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 29]
+Mih                       Expires 16 March 2027                [Page 30]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1677,7 +1733,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 30]
+Mih                       Expires 16 March 2027                [Page 31]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1733,7 +1789,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 31]
+Mih                       Expires 16 March 2027                [Page 32]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1789,7 +1845,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 32]
+Mih                       Expires 16 March 2027                [Page 33]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1840,12 +1896,12 @@ Internet-Draft            Agent Action Capsules           September 2026
        consequence are pinned in a publicly available specification.
 
    7.  "citation_purpose" registry (Section 5.5.5): acted_on,
-       responds_to.  This registry is distinct from, and never a
-       repurposing of, CPB's own purpose field on a typed digest
+       responds_to, ran_under.  This registry is distinct from, and
+       never a repurposing of, CPB's own purpose field on a typed digest
 
 
 
-Mih                       Expires 16 March 2027                [Page 33]
+Mih                       Expires 16 March 2027                [Page 34]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1901,7 +1957,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 34]
+Mih                       Expires 16 March 2027                [Page 35]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1957,7 +2013,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 35]
+Mih                       Expires 16 March 2027                [Page 36]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2013,7 +2069,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 36]
+Mih                       Expires 16 March 2027                [Page 37]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2069,7 +2125,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 37]
+Mih                       Expires 16 March 2027                [Page 38]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2125,7 +2181,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 38]
+Mih                       Expires 16 March 2027                [Page 39]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2181,7 +2237,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 39]
+Mih                       Expires 16 March 2027                [Page 40]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2237,7 +2293,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 40]
+Mih                       Expires 16 March 2027                [Page 41]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2293,7 +2349,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 41]
+Mih                       Expires 16 March 2027                [Page 42]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2349,7 +2405,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 42]
+Mih                       Expires 16 March 2027                [Page 43]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2405,7 +2461,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 16 March 2027                [Page 43]
+Mih                       Expires 16 March 2027                [Page 44]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2461,4 +2517,4 @@ Author's Address
 
 
 
-Mih                       Expires 16 March 2027                [Page 44]
+Mih                       Expires 16 March 2027                [Page 45]
