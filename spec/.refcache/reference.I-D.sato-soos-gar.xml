@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<reference anchor="I-D.sato-soos-gar" target="https://datatracker.ietf.org/doc/html/draft-sato-soos-gar-06">
+<reference anchor="I-D.sato-soos-gar" target="https://datatracker.ietf.org/doc/html/draft-sato-soos-gar-08">
    <front>
       <title>The Governance Audit Record (GAR) for Agentic AI Systems</title>
       <author initials="" surname="Sato" fullname="Tom Sato">
          <organization>MyAuberge K.K.</organization>
       </author>
-      <date month="August" day="25" year="2026" />
+      <date month="September" day="7" year="2026" />
       <abstract>
 	 <t>   This document specifies the Governance Audit Record (GAR), the audit
    architecture for agentic AI systems.  GAR defines five audit types,
@@ -65,9 +65,18 @@
    revision also carries an idnits repair pass covering reference
    classification, citation hygiene, and formatting.
 
+   Version -08 is an editorial revision with no normative content
+   changes: nine sibling-draft citations had gone stale against
+   those drafts&#x27; current live versions and are updated to
+   draft-sato-soos-idp-06, draft-sato-soos-hem-07,
+   draft-sato-soos-cap-06, draft-sato-soos-sov-03,
+   draft-sato-soos-mjwt-06, draft-sato-soos-mad-05,
+   draft-sato-soos-kia-06, draft-sato-soos-cap-rrs-04, and
+   draft-sato-soos-acd-02 respectively.
+
 	 </t>
       </abstract>
    </front>
-   <seriesInfo name="Internet-Draft" value="draft-sato-soos-gar-06" />
+   <seriesInfo name="Internet-Draft" value="draft-sato-soos-gar-08" />
    
 </reference>

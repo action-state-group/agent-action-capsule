@@ -774,6 +774,29 @@ external-authorization references of the Effect Record ({{effect}}).
 document defines the `references` entry shape, not an exhaustive list
 of what may be cited.
 
+**Why the digest is the identity.** A reference whose identity is a
+name — a URI, a record identifier, a position in some other party's
+system — can be resolved tomorrow to bytes that differ from the bytes
+the citing producer saw. The name survives; the content moves beneath
+it. A citation that can drift is worse than no citation, because it
+presents as evidence while guaranteeing nothing about what it points
+to. Resolvability and unchangedness are two different promises, and
+only a digest can make the second one. This profile therefore makes
+the digest the identity and treats every locator as a route to it
+rather than as the reference itself.
+
+This rule is this profile's own and predates its generalization.
+{{I-D.mih-sokolov-scitt-payload-binding}} supplies the typed reference
+mechanism that CPB profiles share; the requirement that a cited
+artifact be identified by content rather than by name originates here.
+
+This profile states no availability or retention obligation for a
+cited artifact. Content-derived addressing establishes that bytes,
+once obtained, are the bytes cited; it cannot establish that any party
+will serve them. An availability undertaking is a separate claim with
+a named obligated party and an expiry, and belongs to whatever profile
+carries the locator.
+
 A reference MAY additionally carry `log_coordinates`, an object
 `{log_id, leaf_index, inclusion_proof}`, present as a unit when the
 cited record has been registered to an append-only log a verifier can
