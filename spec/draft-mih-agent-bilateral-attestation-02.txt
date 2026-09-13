@@ -4,8 +4,8 @@
 
 Network Working Group                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Informational                            25 August 2026
-Expires: 26 February 2027
+Intended status: Informational                         13 September 2026
+Expires: 17 March 2027
 
 
        Bilateral Attestation of Cross-Organization Agent Actions
@@ -48,14 +48,14 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 26 February 2027.
+   This Internet-Draft will expire on 17 March 2027.
 
 
 
 
-Mih                     Expires 26 February 2027                [Page 1]
+Mih                       Expires 17 March 2027                 [Page 1]
 
-Internet-Draft         Bilateral Agent Attestation           August 2026
+Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 Copyright Notice
@@ -89,17 +89,19 @@ Table of Contents
      11.2.  Half-Completed Exchanges . . . . . . . . . . . . . . . .  11
      11.3.  Downgrade Attacks  . . . . . . . . . . . . . . . . . . .  12
      11.4.  Replay and Cross-Binding . . . . . . . . . . . . . . . .  12
-     11.5.  Key Establishment  . . . . . . . . . . . . . . . . . . .  12
-     11.6.  Key Compromise and Revocation  . . . . . . . . . . . . .  12
-     11.7.  Canonicalization and Hash Agility  . . . . . . . . . . .  13
-     11.8.  Verification-Cost DoS  . . . . . . . . . . . . . . . . .  13
-   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  13
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  13
-   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  13
-     14.1.  Normative References . . . . . . . . . . . . . . . . . .  13
-     14.2.  Informative References . . . . . . . . . . . . . . . . .  14
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  16
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  16
+     11.5.  Pre-Registration of Candidate Attestations . . . . . . .  12
+     11.6.  Commitments and Predictable Values . . . . . . . . . . .  13
+     11.7.  Key Establishment  . . . . . . . . . . . . . . . . . . .  13
+     11.8.  Key Compromise and Revocation  . . . . . . . . . . . . .  13
+     11.9.  Canonicalization and Hash Agility  . . . . . . . . . . .  14
+     11.10. Verification-Cost DoS  . . . . . . . . . . . . . . . . .  14
+   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  14
+   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  15
+   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  15
+     14.1.  Normative References . . . . . . . . . . . . . . . . . .  15
+     14.2.  Informative References . . . . . . . . . . . . . . . . .  15
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  17
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  18
 
 
 
@@ -107,11 +109,9 @@ Table of Contents
 
 
 
-
-
-Mih                     Expires 26 February 2027                [Page 2]
+Mih                       Expires 17 March 2027                 [Page 2]
 
-Internet-Draft         Bilateral Agent Attestation           August 2026
+Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 1.  Introduction
@@ -146,9 +146,11 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
    individual submission.  It composes with the existing agent action
    record layer [I-D.mih-scitt-agent-action-capsule] rather than
    defining a new one, and its records are designed to be consumable by
-   the layers above the record — accountability composition
-   [I-D.mih-sato-agent-accountability-composition] and reputation-
-   predicate consumers.
+   the layers above the record, such as accountability composition
+   [I-D.mih-sato-agent-accountability-composition].  What any consumer
+   derives from these records is that consumer's concern; this document
+   defines the record, not what may be concluded from a collection of
+   them.
 
 2.  Motivating Scenarios
 
@@ -159,17 +161,18 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
    either party can be checked against a record both parties signed,
    rather than argued over two private ones.
 
+
+
+
+
+Mih                       Expires 17 March 2027                 [Page 3]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
    *Agent-to-agent service delegation.* An orchestrating agent
    subcontracts a task across a trust boundary.  Each hop produces its
    own bilateral record, so a failure in a multi-hop chain is
-
-
-
-Mih                     Expires 26 February 2027                [Page 3]
-
-Internet-Draft         Bilateral Agent Attestation           August 2026
-
-
    attributable to the hop where it occurred rather than to the chain as
    a whole.  Chain-linking semantics that make the full responsibility
    path independently reconstructable are left to a future revision.
@@ -182,11 +185,11 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
    that its gate worked; for A, that the request was made and declined
    (see Section 6).
 
-   *Feeding reputation.* Every completed handshake yields a
-   counterparty-attested record — the highest-assurance evidence class a
-   reputation-predicate consumer can consume.  Two organizations that
-   transact build verifiable shared history as a side effect of
-   transacting.
+   *Shared history as a side effect.* Every completed handshake yields a
+   counterparty-attested record — evidence neither party can revise
+   alone.  Two organizations that transact accumulate a verifiable
+   shared history without doing anything beyond transacting, and either
+   can produce it later without asking the other's permission.
 
 3.  Conventions and Definitions
 
@@ -213,19 +216,21 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
       applies).
 
    Action attestation:  A signed statement by the performing party,
+
+
+
+
+
+Mih                       Expires 17 March 2027                 [Page 4]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
       referencing a request attestation by digest, recording the
       deterministic constraint results evaluated at the effect boundary
       — each constraint identified by reference so a third party can
       tell which check produced which result, pinned to a digest of the
       constraint-set snapshot in effect and carrying a result for every
-
-
-
-Mih                     Expires 26 February 2027                [Page 4]
-
-Internet-Draft         Bilateral Agent Attestation           August 2026
-
-
       constraint in that set (Section 5) — and the disposition of the
       request, bound to the performing party's verifiable organizational
       identity.
@@ -269,18 +274,17 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
        requester's organizational identity and evaluates the request
        against deterministic constraints _at the boundary where the
        action would take effect_ — not at the transport edge.
+
+
+
+Mih                       Expires 17 March 2027                 [Page 5]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
        Verification gates execution: no verified request attestation, no
        consequential action (policy MAY permit degraded operation; see
        Section 7).
-
-
-
-
-
-Mih                     Expires 26 February 2027                [Page 5]
-
-Internet-Draft         Bilateral Agent Attestation           August 2026
-
 
    3.  *Action attestation.* The performing party produces an action
        attestation referencing the request attestation by digest and
@@ -310,9 +314,15 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
    Wire encodings for the four objects are TBD for a future revision;
    this document fixes the exchange, the binding obligations, and the
    disposition semantics.  A future revision fixing wire encodings MUST
-   specify JCS ([RFC8785]) as the deterministic canonicalization for
-   attested objects and carry an explicit hash-algorithm identifier for
-   hash agility (see Section 11.7).
+   require each attested object to declare the canonicalization under
+   which its digest was computed, by identifier, within the bytes the
+   signature covers — and MUST require a verifier to apply the declared
+   construction and never to infer one from the object's shape.  The
+   expected identifier names RFC 8785 JCS [RFC8785]; what this document
+   fixes is that the construction is named rather than assumed (see
+   Section 11.9).  The hash function is part of the named construction,
+   so agility is obtained by naming a different one, never by
+   reinterpreting an existing name.
 
 5.  Constraint Records
 
@@ -323,19 +333,9 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
 
-
-
-
-
-
-
-
-
-
-
-Mih                     Expires 26 February 2027                [Page 6]
+Mih                       Expires 17 March 2027                 [Page 6]
 
-Internet-Draft         Bilateral Agent Attestation           August 2026
+Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
    *Constraint-set pinning.* The action attestation MUST bind a content
@@ -345,7 +345,7 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
    the request was disposed, so that a verifier can establish the
    applicable constraint set as of the attestation's anchored time, not
    merely at verification time — the same establishable-as-of-anchored-
-   time property that Section 11.6 requires of key validity.  A
+   time property that Section 11.8 requires of key validity.  A
    constraint set that can be silently re-parameterized after the fact
    would let a performing party restate what it was obligated to check;
    pinning its digest removes that degree of freedom.
@@ -378,9 +378,9 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
 
    For the performing party, a bilaterally-acknowledged decline is
    evidence, verifiable by an auditor who trusts neither party, that its
-   boundary enforcement works — the strongest form of refusal-as-
-   positive-signal reputation input, because here even the _counterparty
-   that was refused_ has signed the record.
+   boundary enforcement works.  A refusal is the strongest form of this
+   evidence, because here even the _counterparty that was refused_ has
+   signed the record.
 
 
 
@@ -389,16 +389,16 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
 
-Mih                     Expires 26 February 2027                [Page 7]
+Mih                       Expires 17 March 2027                 [Page 7]
 
-Internet-Draft         Bilateral Agent Attestation           August 2026
+Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
    For the requesting party, a history of acknowledged declines is
    legible too: a pattern of out-of-policy requests is now provable by
    its counterparties.  Bilateral records cut both ways by construction;
    parties should expect their requesting behavior, not only their
-   performing behavior, to become reputation-bearing.
+   performing behavior, to be establishable by someone else.
 
 7.  Graceful Degradation
 
@@ -409,10 +409,9 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
    the missing attestations.  The record format is the same; the
    assurance marking differs.  This keeps one protocol across mixed
    peers while preserving the distinction relying parties need: a fully-
-   bilateral record and a degraded record are never confusable, and
-   consumers such as reputation predicates can require a minimum
-   assurance level before treating a record as input.  Degradation MUST
-   be recorded, never silent.
+   bilateral record and a degraded record are never confusable, and a
+   consumer can require a minimum assurance level before treating a
+   record as input.  Degradation MUST be recorded, never silent.
 
 8.  Dispositions Across the Asymmetry
 
@@ -445,9 +444,10 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
 
-Mih                     Expires 26 February 2027                [Page 8]
+
+Mih                       Expires 17 March 2027                 [Page 8]
 
-Internet-Draft         Bilateral Agent Attestation           August 2026
+Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
    These are weaker than, and MUST NOT be conflated with, a declined
@@ -501,9 +501,9 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
 
-Mih                     Expires 26 February 2027                [Page 9]
+Mih                       Expires 17 March 2027                 [Page 9]
 
-Internet-Draft         Bilateral Agent Attestation           August 2026
+Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 10.  Relationship to Existing Work
@@ -557,9 +557,9 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
 
-Mih                     Expires 26 February 2027               [Page 10]
+Mih                       Expires 17 March 2027                [Page 10]
 
-Internet-Draft         Bilateral Agent Attestation           August 2026
+Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
    *Audit and approval records.* The audit architecture
@@ -607,16 +607,18 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
    an asymmetric record.  Timeout dispositions and anchoring deadlines
    bound the asymmetry: an unacknowledged attestation anchored with a
    timeout marking is itself evidence of the counterparty's non-
-   completion.  Policies SHOULD treat chronic non-completion as
-   reputation-bearing.
+   completion.  Repeated non-completion is a property a relying party
+   can establish from the records it holds; what it does about it is
+   that party's decision, and this document neither scores
 
 
 
-
-Mih                     Expires 26 February 2027               [Page 11]
+Mih                       Expires 17 March 2027                [Page 11]
 
-Internet-Draft         Bilateral Agent Attestation           August 2026
+Internet-Draft         Bilateral Agent Attestation        September 2026
 
+
+   counterparties nor defines a vocabulary for doing so.
 
 11.3.  Downgrade Attacks
 
@@ -643,7 +645,64 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
    violation.  Two independent verifiers deriving disposition from the
    same canonical bytes MUST reach the same verdict.
 
-11.5.  Key Establishment
+11.5.  Pre-Registration of Candidate Attestations
+
+   A party that can write records freely can write several in advance —
+   one for each outcome it might later prefer to claim — and disclose
+   only the convenient one.  Every disclosed record is then genuine,
+   correctly signed, and correctly anchored; nothing has been forged,
+   and no integrity check detects anything.  Anchoring does not prevent
+   this.  An append-only log establishes that a record existed at a time
+   and has not changed since; it does not establish that the record was
+   the only one written, or that its author believed it.
+
+   The bilateral exchange resists this structurally rather than by
+   detection.  The at-most-one rule of Section 4 means a performing
+   party cannot hold a set of alternative action attestations for one
+   request and reveal whichever suits: each alternative would have to
+   reference a distinct request attestation, and each request
+   attestation is signed and held by the _other_ party.  Producing a set
+   of candidates therefore requires the counterparty's participation in
+   producing the set.
+
+
+
+
+
+Mih                       Expires 17 March 2027                [Page 12]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
+   The same property is what a unilateral record lacks, and the limit
+   should be stated plainly: a party acting alone, keeping its own
+   records, with no counterparty entitled to ask what else it wrote, can
+   pre-write candidates and disclose one.  Bilateral attestation narrows
+   that for exchanges it covers.  It does not close it for records made
+   outside an exchange.
+
+11.6.  Commitments and Predictable Values
+
+   A digest establishes that its author held the digested bytes only to
+   the extent that those bytes could not have been predicted.  Where an
+   attested object commits to a value drawn from a small enumeration or
+   an otherwise constrained space — a fixed success indicator, a bounded
+   status, a short identifier — a party MAY compute that commitment
+   before observing the value, and a verifier cannot distinguish a
+   commitment made before observation from one made after.  "Bound to an
+   observed value" is therefore a claim about entropy as much as about
+   ordering.
+
+   The bilateral construction resists this because an action attestation
+   references the counterparty's request attestation by digest, and a
+   signature over terms chosen by the other party is not predictable in
+   advance.  Profiles that derive a record from one party's observation
+   alone do not inherit that property, and SHOULD ensure that the values
+   they digest include a component the recording party does not choose.
+   See also the low-entropy digest considerations of
+   [I-D.mih-sokolov-scitt-payload-binding].
+
+11.7.  Key Establishment
 
    This document does not specify how parties establish mutual trust in
    each other's organizational keys.  First-use acceptance (TOFU) is a
@@ -654,7 +713,7 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
    chaining to a root the relying party accepts, independent of the
    communicating parties' infrastructure.
 
-11.6.  Key Compromise and Revocation
+11.8.  Key Compromise and Revocation
 
    A signature valid at attestation time may be produced under a key
    compromised by verification time.  A verifier SHOULD be able to
@@ -666,27 +725,36 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
 
 
 
-
-
-
-Mih                     Expires 26 February 2027               [Page 12]
+Mih                       Expires 17 March 2027                [Page 13]
 
-Internet-Draft         Bilateral Agent Attestation           August 2026
+Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
-11.7.  Canonicalization and Hash Agility
+11.9.  Canonicalization and Hash Agility
 
    Because every binding is by digest, the canonicalization of the
    attested objects is security-relevant: divergent serializations of
    the "same" terms produce different digests, and ambiguous
-   canonicalization enables terms-substitution disputes.  A future
-   revision fixing wire encodings MUST specify JCS ([RFC8785]) as the
-   deterministic canonicalization and carry an explicit hash-algorithm
-   identifier for agility.  Until wire encodings are fixed,
-   implementations SHOULD document the canonicalization they apply and
-   treat any divergence from a counterparty as a protocol error.
+   canonicalization enables terms-substitution disputes.  The failure is
+   not that implementations choose badly; it is that two implementations
+   can agree by convention and then silently diverge when the convention
+   is never written into the bytes either of them signs.  A future
+   revision fixing wire encodings MUST therefore require the
+   canonicalization to be _declared by identifier inside the signed
+   object_, and MUST require a verifier to apply the declared
+   construction rather than inferring one from the object's shape.  RFC
+   8785 JCS [RFC8785] is the expected construction; naming it is what
+   makes divergence detectable instead of silent.  The hash function is
+   part of the named construction, so agility comes from naming a new
+   construction, never from reinterpreting an existing name.
 
-11.8.  Verification-Cost DoS
+   Until wire encodings are fixed, implementations SHOULD document the
+   canonicalization they apply and treat any divergence from a
+   counterparty as a protocol error.  An implementation that hard-codes
+   a canonicalization without declaring it interoperates only with
+   implementations that made the same unstated choice.
+
+11.10.  Verification-Cost DoS
 
    Verifying a request attestation (identity-chain plus anchor
    inclusion) is more expensive than producing one.  A performing party
@@ -705,8 +773,18 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
    identity itself as a selectively-disclosable field where the use case
    allows.  Correlation of anchored records across a party's exchanges
    (client-list reconstruction) is the residual risk; mitigations are
-   TBD alongside the reputation layer's, which faces the same problem
-   from the consumption side.
+   TBD, and any layer that aggregates these records faces the same
+   problem from the consumption side.
+
+
+
+
+
+
+Mih                       Expires 17 March 2027                [Page 14]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
 
 13.  IANA Considerations
 
@@ -718,17 +796,6 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
 14.  References
 
 14.1.  Normative References
-
-
-
-
-
-
-
-Mih                     Expires 26 February 2027               [Page 13]
-
-Internet-Draft         Bilateral Agent Attestation           August 2026
-
 
    [RFC9942]  Steele, O., Birkholz, H., Delignat-Lavaud, A., and C.
               Fournet, "CBOR Object Signing and Encryption (COSE)
@@ -749,9 +816,9 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
-              capsule-02, 6 July 2026,
+              capsule-04, 28 August 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
-              agent-action-capsule-02>.
+              agent-action-capsule-04>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -764,6 +831,17 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
 
 14.2.  Informative References
 
+
+
+
+
+
+
+Mih                       Expires 17 March 2027                [Page 15]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
    [RFC3461]  Moore, K., "Simple Mail Transfer Protocol (SMTP) Service
               Extension for Delivery Status Notifications (DSNs)",
               RFC 3461, DOI 10.17487/RFC3461, January 2003,
@@ -773,19 +851,6 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
               Notification", STD 85, RFC 8098, DOI 10.17487/RFC8098,
               February 2017, <https://www.rfc-editor.org/rfc/rfc8098>.
 
-
-
-
-
-
-
-
-
-Mih                     Expires 26 February 2027               [Page 14]
-
-Internet-Draft         Bilateral Agent Attestation           August 2026
-
-
    [I-D.mih-sato-agent-accountability-composition]
               Mih, S., Sato, Schrock, I., Bu, S., and A. Sokolov, "Agent
               Accountability: Composition and Conformance", Work in
@@ -793,6 +858,13 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
               accountability-composition-01, 16 August 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-sato-
               agent-accountability-composition-01>.
+
+   [I-D.mih-sokolov-scitt-payload-binding]
+              Mih, S. and A. Sokolov, "Canonicalization Declaration for
+              SCITT Signed Statements", Work in Progress, Internet-
+              Draft, draft-mih-sokolov-scitt-payload-binding-05, 12
+              September 2026, <https://datatracker.ietf.org/doc/html/
+              draft-mih-sokolov-scitt-payload-binding-05>.
 
    [I-D.mih-scitt-agent-action-capsule-sel-disc]
               Mih, S., "Selective Disclosure Profile for Agent Action
@@ -810,18 +882,28 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
 
    [I-D.kuehlewind-audit-architecture]
               Kühlewind, M. and H. Birkholz, "An Architecture for
-              Auditing AI Agent Delegation and Interactions", Work in
+              Auditing Agent Delegation and Interactions", Work in
               Progress, Internet-Draft, draft-kuehlewind-audit-
-              architecture-00, 18 May 2026,
+              architecture-01, 7 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-kuehlewind-
-              audit-architecture-00>.
+              audit-architecture-01>.
+
+
+
+
+
+
+Mih                       Expires 17 March 2027                [Page 16]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
 
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
               Actions", Work in Progress, Internet-Draft, draft-schrock-
-              ep-authorization-receipts-12, 16 August 2026,
+              ep-authorization-receipts-13, 12 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
-              authorization-receipts-12>.
+              authorization-receipts-13>.
 
    [RFC9334]  Birkholz, H., Thaler, D., Richardson, M., Smith, N., and
               W. Pan, "Remote ATtestation procedureS (RATS)
@@ -833,14 +915,6 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
               Progress, Internet-Draft, draft-hood-independent-agtp-09,
               28 June 2026, <https://datatracker.ietf.org/doc/html/
               draft-hood-independent-agtp-09>.
-
-
-
-
-Mih                     Expires 26 February 2027               [Page 15]
-
-Internet-Draft         Bilateral Agent Attestation           August 2026
-
 
    [I-D.rampalli-scitt-capsule-provenance-binding]
               Karthik, R., "Binding Per-Action Authorization and Memory
@@ -854,9 +928,9 @@ Internet-Draft         Bilateral Agent Attestation           August 2026
               Morrison, B., "Registration of Owner-Less Agents as
               Economic Principals: A Payment-Gated Admission Profile for
               Transparency Services", Work in Progress, Internet-Draft,
-              draft-morrison-solo-agent-earn-registration-00, 6 July
+              draft-morrison-solo-agent-earn-registration-01, 26 August
               2026, <https://datatracker.ietf.org/doc/html/draft-
-              morrison-solo-agent-earn-registration-00>.
+              morrison-solo-agent-earn-registration-01>.
 
    [PeerReview2007]
               Haeberlen, A., Kouznetsov, P., and P. Druschel,
@@ -871,6 +945,14 @@ Acknowledgments
    This exchange pattern owes its framing to discussions in the SCITT
    and agent-accountability communities, and composes with the work of
    the authors cited above.
+
+
+
+
+Mih                       Expires 17 March 2027                [Page 17]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
 
    Iman Schrock (EMILIA Protocol) contributed the constraint-record
    obligations in this revision: constraint-set pinning (MUST), input-
@@ -893,4 +975,34 @@ Author's Address
 
 
 
-Mih                     Expires 26 February 2027               [Page 16]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                       Expires 17 March 2027                [Page 18]

@@ -2,6 +2,7 @@
 title: "Bilateral Attestation of Cross-Organization Agent Actions"
 abbrev: "Bilateral Agent Attestation"
 docname: draft-mih-agent-bilateral-attestation-02
+date: 2026-09-13
 category: info
 submissiontype: IETF
 ipr: trust200902
@@ -22,6 +23,7 @@ informative:
   RFC3461:
   RFC8098:
   I-D.mih-sato-agent-accountability-composition:
+  I-D.mih-sokolov-scitt-payload-binding:
   I-D.mih-scitt-agent-action-capsule-sel-disc:
   I-D.nelson-agent-delegation-receipts:
   I-D.kuehlewind-audit-architecture:
@@ -97,10 +99,11 @@ holds proof of the other's, and the combined record can be anchored so third
 parties can verify it. It is an individual submission. It
 composes with the existing agent action record layer
 {{I-D.mih-scitt-agent-action-capsule}} rather than defining a new one, and
-its records are designed to be consumable by the layers above the record —
-accountability composition
-{{I-D.mih-sato-agent-accountability-composition}} and reputation-predicate
-consumers.
+its records are designed to be consumable by the layers above the record,
+such as accountability composition
+{{I-D.mih-sato-agent-accountability-composition}}. What any consumer derives
+from these records is that consumer's concern; this document defines the
+record, not what may be concluded from a collection of them.
 
 # Motivating Scenarios
 
@@ -125,10 +128,11 @@ The refusal becomes durable, third-party-verifiable evidence — for B, that
 its gate worked; for A, that the request was made and declined
 (see {{refusal-across-the-boundary}}).
 
-**Feeding reputation.** Every completed handshake yields a
-counterparty-attested record — the highest-assurance evidence class a
-reputation-predicate consumer can consume. Two organizations that transact
-build verifiable shared history as a side effect of transacting.
+**Shared history as a side effect.** Every completed handshake yields a
+counterparty-attested record — evidence neither party can revise alone. Two
+organizations that transact accumulate a verifiable shared history without
+doing anything beyond transacting, and either can produce it later without
+asking the other's permission.
 
 # Conventions and Definitions
 
@@ -187,7 +191,7 @@ Reduced-assurance indicator:
 : A marker recording that a given exchange completed with fewer than the full
   set of attestations (see {{graceful-degradation}}).
 
-# The Bilateral Exchange
+# The Bilateral Exchange {#bilateral-exchange}
 
 The exchange has four moves:
 
@@ -228,10 +232,15 @@ anchoring is what makes it evidence for everyone else.
 
 Wire encodings for the four objects are TBD for a future revision; this
 document fixes the exchange, the binding obligations, and the disposition
-semantics. A future revision fixing wire encodings MUST specify JCS
-({{RFC8785}}) as the deterministic canonicalization for attested objects and
-carry an explicit hash-algorithm identifier for hash agility (see
-{{canonicalization}}).
+semantics. A future revision fixing wire encodings MUST require each attested
+object to declare the canonicalization under which its digest was computed,
+by identifier, within the bytes the signature covers — and MUST require a
+verifier to apply the declared construction and never to infer one from the
+object's shape. The expected identifier names RFC 8785 JCS {{RFC8785}}; what
+this document fixes is that the construction is named rather than assumed
+(see {{canonicalization}}). The hash function is part of the named
+construction, so agility is obtained by naming a different one, never by
+reinterpreting an existing name.
 
 # Constraint Records {#constraint-records}
 
@@ -275,15 +284,14 @@ completes the record. This has two consequences.
 
 For the performing party, a bilaterally-acknowledged decline is evidence,
 verifiable by an auditor who trusts neither party, that its boundary
-enforcement works — the strongest form of refusal-as-positive-signal
-reputation input, because here even the *counterparty that was refused*
-has signed the record.
+enforcement works. A refusal is the strongest form of this evidence, because
+here even the *counterparty that was refused* has signed the record.
 
 For the requesting party, a history of acknowledged declines is legible too:
 a pattern of out-of-policy requests is now provable by its counterparties.
 Bilateral records cut both ways by construction; parties should expect their
-requesting behavior, not only their performing behavior, to become
-reputation-bearing.
+requesting behavior, not only their performing behavior, to be establishable
+by someone else.
 
 # Graceful Degradation {#graceful-degradation}
 
@@ -293,9 +301,9 @@ policy, producing its own action attestation unilaterally and recording a
 reduced-assurance indicator in place of the missing attestations. The record
 format is the same; the assurance marking differs. This keeps one protocol
 across mixed peers while preserving the distinction relying parties need:
-a fully-bilateral record and a degraded record are never confusable, and
-consumers such as reputation predicates can require a minimum assurance
-level before treating a record as input.
+a fully-bilateral record and a degraded record are never confusable, and a
+consumer can require a minimum assurance level before treating a record as
+input.
 Degradation MUST be recorded, never silent.
 
 # Dispositions Across the Asymmetry {#asymmetry-dispositions}
@@ -446,8 +454,10 @@ then never acknowledges the decline; performs, then withholds the action
 attestation) creates an asymmetric record. Timeout dispositions and
 anchoring deadlines bound the asymmetry: an unacknowledged attestation
 anchored with a timeout marking is itself evidence of the counterparty's
-non-completion. Policies SHOULD treat chronic non-completion as
-reputation-bearing.
+non-completion. Repeated non-completion is a property a relying party can
+establish from the records it holds; what it does about it is that party's
+decision, and this document neither scores counterparties nor defines a
+vocabulary for doing so.
 
 ## Downgrade Attacks
 
@@ -472,6 +482,50 @@ assurance indicator. The distinction matters: reduced assurance records a
 capability gap; denial records a protocol violation. Two independent verifiers
 deriving disposition from the same canonical bytes MUST reach the same
 verdict.
+
+## Pre-Registration of Candidate Attestations {#pre-registration}
+
+A party that can write records freely can write several in advance — one for
+each outcome it might later prefer to claim — and disclose only the
+convenient one. Every disclosed record is then genuine, correctly signed, and
+correctly anchored; nothing has been forged, and no integrity check detects
+anything. Anchoring does not prevent this. An append-only log establishes
+that a record existed at a time and has not changed since; it does not
+establish that the record was the only one written, or that its author
+believed it.
+
+The bilateral exchange resists this structurally rather than by detection.
+The at-most-one rule of {{bilateral-exchange}} means a performing party
+cannot hold a set of alternative action attestations for one request and
+reveal whichever suits: each alternative would have to reference a distinct
+request attestation, and each request attestation is signed and held by the
+*other* party. Producing a set of candidates therefore requires the
+counterparty's participation in producing the set.
+
+The same property is what a unilateral record lacks, and the limit should be
+stated plainly: a party acting alone, keeping its own records, with no
+counterparty entitled to ask what else it wrote, can pre-write candidates and
+disclose one. Bilateral attestation narrows that for exchanges it covers. It
+does not close it for records made outside an exchange.
+
+## Commitments and Predictable Values {#predictable-values}
+
+A digest establishes that its author held the digested bytes only to the
+extent that those bytes could not have been predicted. Where an attested
+object commits to a value drawn from a small enumeration or an otherwise
+constrained space — a fixed success indicator, a bounded status, a short
+identifier — a party MAY compute that commitment before observing the value,
+and a verifier cannot distinguish a commitment made before observation from
+one made after. "Bound to an observed value" is therefore a claim about
+entropy as much as about ordering.
+
+The bilateral construction resists this because an action attestation
+references the counterparty's request attestation by digest, and a signature
+over terms chosen by the other party is not predictable in advance. Profiles
+that derive a record from one party's observation alone do not inherit that
+property, and SHOULD ensure that the values they digest include a component
+the recording party does not choose. See also the low-entropy digest
+considerations of {{I-D.mih-sokolov-scitt-payload-binding}}.
 
 ## Key Establishment
 
@@ -498,12 +552,23 @@ record without an anchored time cannot support this distinction.
 Because every binding is by digest, the
 canonicalization of the attested objects is security-relevant: divergent
 serializations of the "same" terms produce different digests, and ambiguous
-canonicalization enables terms-substitution disputes. A future revision fixing
-wire encodings MUST specify JCS ({{RFC8785}}) as the deterministic
-canonicalization and carry an explicit hash-algorithm identifier for agility.
+canonicalization enables terms-substitution disputes. The failure is not that
+implementations choose badly; it is that two implementations can agree by
+convention and then silently diverge when the convention is never written
+into the bytes either of them signs. A future revision fixing wire encodings
+MUST therefore require the canonicalization to be *declared by identifier
+inside the signed object*, and MUST require a verifier to apply the declared
+construction rather than inferring one from the object's shape. RFC 8785 JCS
+{{RFC8785}} is the expected construction; naming it is what makes divergence
+detectable instead of silent. The hash function is part of the named
+construction, so agility comes from naming a new construction, never from
+reinterpreting an existing name.
+
 Until wire encodings are fixed, implementations SHOULD document the
 canonicalization they apply and treat any divergence from a counterparty as a
-protocol error.
+protocol error. An implementation that hard-codes a canonicalization without
+declaring it interoperates only with implementations that made the same
+unstated choice.
 
 ## Verification-Cost DoS
 
@@ -523,8 +588,8 @@ anyone. Deployments SHOULD anchor commitments rather than cleartext
 only to the counterparty and auditors, and treat counterparty identity
 itself as a selectively-disclosable field where the use case allows.
 Correlation of anchored records across a party's exchanges (client-list
-reconstruction) is the residual risk; mitigations are TBD alongside the
-reputation layer's, which faces the same problem from the consumption side.
+reconstruction) is the residual risk; mitigations are TBD, and any layer that
+aggregates these records faces the same problem from the consumption side.
 
 # IANA Considerations
 
