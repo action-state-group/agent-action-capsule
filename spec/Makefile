@@ -9,13 +9,15 @@
 #   python3 -m venv ~/.venvs/x2r && ~/.venvs/x2r/bin/pip install xml2rfc
 
 DRAFT    = draft-mih-scitt-agent-action-capsule-04
-# NOTE: this draft is NOT covered by the spec staleness gate, which follows
-# DRAFT above.  It cannot be, yet: a rebuild of -02 today renders
-# I-D.mih-agent-reputation-predicates as "*** BROKEN REFERENCE ***" because
-# that draft no longer resolves (datatracker doc page and bibxml3 endpoint both
-# return 404), while the committed .txt still carries the fully rendered
-# citation.  All three revisions -00/-01/-02 cite it.  Gating this draft before
-# that is resolved would simply land a red gate.
+# NOTE (updated 2026-09-11): the blocker described here is resolved for -02.
+# The never-filed I-D citation that rendered as "*** BROKEN REFERENCE ***" is
+# gone from the -02 source, so a rebuild no longer breaks on it.  -00 and -01
+# still carry it and are historical; they are not rebuilt.
+#
+# The committed -02 .txt/.xml are STALE against the -02 .md as of this commit
+# and must be regenerated before the revision is posted.  Once regenerated,
+# this draft can be brought under the spec staleness gate that follows DRAFT
+# above.
 BILATERAL = draft-mih-agent-bilateral-attestation-02
 CPB      = draft-mih-sokolov-scitt-payload-binding-00
 XML2RFC  ?= ~/.venvs/x2r/bin/xml2rfc

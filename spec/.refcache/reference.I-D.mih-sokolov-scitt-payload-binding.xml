@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<reference anchor="I-D.mih-sokolov-scitt-payload-binding" target="https://datatracker.ietf.org/doc/html/draft-mih-sokolov-scitt-payload-binding-05">
+   <front>
+      <title>Canonicalization Declaration for SCITT Signed Statements</title>
+      <author initials="S." surname="Mih" fullname="Steven Mih">
+         <organization>Action State Group, Inc.</organization>
+      </author>
+      <author initials="A." surname="Sokolov" fullname="Anton Sokolov">
+         <organization>Tyche Institute</organization>
+      </author>
+      <date month="September" day="12" year="2026" />
+      <abstract>
+	 <t>   Independently written systems that anchor records to a SCITT
+   Transparency Service repeatedly need the same construction: a
+   canonical form of structured content, a content-addressed identifier
+   derived from that form, binding to a SCITT Signed Statement and
+   Receipt, and references that cite external artifacts by digest.  This
+   document, referred to as CPB, specifies that construction as
+   declarations rather than as a payload format.  A payload profile
+   declares its canonicalization algorithm and exclusion set and thereby
+   obtains a reproducible derived identifier.  A CPB Signed Statement
+   carries either the complete statement content as specified by RFC
+   9943 or a digest of content held elsewhere using the COSE Hash
+   Envelope of RFC 9995.  CPB also defines an abstract typed digest
+   reference information model and one optional protected-header
+   encoding, cpb-refs; a payload profile may instead define its own
+   reference serialization.  An IANA registry assigns the
+   canonicalization algorithm identifiers that these declarations name.
+   CPB does not define payload content formats, establish or require a
+   universal artifact-type registry, or require either typed-reference
+   carrier.
+
+	 </t>
+      </abstract>
+   </front>
+   <seriesInfo name="Internet-Draft" value="draft-mih-sokolov-scitt-payload-binding-05" />
+   
+</reference>
