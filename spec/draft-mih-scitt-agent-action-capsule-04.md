@@ -850,7 +850,12 @@ identity attested. A verifier reading a `ran_under` citation therefore
 carries the cited record's grade only for what that record measured,
 never for everything the measured thing asserts — the citation cannot
 launder an unattested claim through an attested envelope. This restates
-the cited format's own grading rule rather than adding one.
+the cited format's own grading rule rather than adding one. A conformance
+vector set demonstrates this behaviour as runnable cases rather than
+prose — a passing grade on the cited record still refusing to lift the
+citation in both the untrusted-signer and the inner-self-reported-claim
+directions — and is maintained at `interop-vectors/ran_under` in this
+document's source repository.
 
 **Relation to `chain.relation`'s `confirms` value in deployed
 implementations.** A cross-stream citation — for example, a denial
