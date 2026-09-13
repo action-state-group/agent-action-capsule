@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Go second-runtime conformance vector runner.
 //
-// Loads test-vectors/vectors.json and asserts every case (positive, negative,
+// Loads vectors/capsule/vectors.json and asserts every case (positive, negative,
 // store-level) against the same frozen expected.json manifest the Python runner
 // uses. No shared code paths with the Python implementation: this is an
 // independent clean-room verification.
@@ -24,7 +24,7 @@ import (
 )
 
 func main() {
-	vectorsDir := flag.String("vectors-dir", "", "path to test-vectors/ directory (default: auto-locate)")
+	vectorsDir := flag.String("vectors-dir", "", "path to vectors/capsule/ directory (default: auto-locate)")
 	registryPath := flag.String("registry", "", "path to spec/REGISTRY.md (default: AAC_REGISTRY_PATH or auto-locate)")
 	flag.Parse()
 
@@ -338,8 +338,8 @@ func decodeWithNumbers(data []byte) (interface{}, error) {
 	return v, nil
 }
 
-// resolveVectorsDir finds the test-vectors/ directory.
-// Prefers the flag value, then walks up from CWD looking for test-vectors/vectors.json.
+// resolveVectorsDir finds the vectors/capsule/ directory.
+// Prefers the flag value, then walks up from CWD looking for vectors/capsule/vectors.json.
 func resolveVectorsDir(flagVal string) (string, error) {
 	if flagVal != "" {
 		return flagVal, nil
@@ -355,9 +355,9 @@ func resolveVectorsDir(flagVal string) (string, error) {
 	}
 	dir := cwd
 	for {
-		candidate := filepath.Join(dir, "test-vectors", "vectors.json")
+		candidate := filepath.Join(dir, "vectors/capsule", "vectors.json")
 		if _, err := os.Stat(candidate); err == nil {
-			return filepath.Join(dir, "test-vectors"), nil
+			return filepath.Join(dir, "vectors/capsule"), nil
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -365,5 +365,5 @@ func resolveVectorsDir(flagVal string) (string, error) {
 		}
 		dir = parent
 	}
-	return "", fmt.Errorf("test-vectors/vectors.json not found walking up from %s; set AAC_VECTORS_DIR", cwd)
+	return "", fmt.Errorf("vectors/capsule/vectors.json not found walking up from %s; set AAC_VECTORS_DIR", cwd)
 }

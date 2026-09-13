@@ -18,7 +18,7 @@ func loadCapsule(t *testing.T, vector string) map[string]interface{} {
 	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)
-	path := filepath.Join(filepath.Dir(filename), "..", "..", "test-vectors", vector, "input.json")
+	path := filepath.Join(filepath.Dir(filename), "..", "..", "vectors/capsule", vector, "input.json")
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 

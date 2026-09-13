@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate the frozen conformance vectors in ../../test-vectors/ and
-../../disclosure-envelope-vectors/.
+"""Generate the frozen conformance vectors in ../../vectors/capsule/ and
+../../vectors/disclosure-envelope/.
 
 Vectors are DERIVED from the spec-faithful reference verifier and then FROZEN
 (the same discipline as golden digests): each case's expected.json is produced
@@ -8,12 +8,12 @@ by running verify()/verify_store() over a hand-built input, and committed. A
 third party regenerates the capsule_id and checks ok + the §6 check numbers +
 derived modes against the spec text, without running this package.
 
-test-vectors/ is the Class-1 corpus and is cross-language-shared (the go/
-reference implementation's vector_runner reads test-vectors/vectors.json
+vectors/capsule/ is the Class-1 corpus and is cross-language-shared (the go/
+reference implementation's vector_runner reads vectors/capsule/vectors.json
 directly), so every case there is a bare Capsule or {"ledger": [...]}.
-disclosure-envelope-vectors/ is a separate corpus, in the same frozen-vector
+vectors/disclosure-envelope/ is a separate corpus, in the same frozen-vector
 style, for the Disclosure Envelope companion profile's {"envelope": {...}}
-input shape — kept out of test-vectors/ so it never needs Go-side support to
+input shape — kept out of vectors/capsule/ so it never needs Go-side support to
 keep that corpus's cross-language conformance run passing.
 
 Run:  cd python && python -m scripts.generate_vectors
@@ -32,8 +32,8 @@ from agent_action_capsule import (
     verify_store,
 )
 
-OUT = Path(__file__).resolve().parents[2] / "test-vectors"
-DE_OUT = Path(__file__).resolve().parents[2] / "disclosure-envelope-vectors"
+OUT = Path(__file__).resolve().parents[2] / "vectors/capsule"
+DE_OUT = Path(__file__).resolve().parents[2] / "vectors/disclosure-envelope"
 VINTAGE_SPEC = "draft-mih-scitt-agent-action-capsule-00"
 CURRENT_SPEC = "draft-mih-scitt-agent-action-capsule-04"
 HEX_R = "1" * 64  # a stand-in response/request digest (64-hex); content is opaque here
@@ -386,9 +386,9 @@ def build_cases() -> list[dict]:
 
 
 # ---- Disclosure Envelope vectors (draft-mih-scitt-agent-action-capsule-disclosure-envelope-00) ---
-# Written to a SEPARATE directory (DE_OUT), not test-vectors/: the envelope input shape
-# ({"envelope": {...}}) is not a bare Capsule or {"ledger": [...]}, and test-vectors/ is
-# cross-language-shared (go/cmd/vector_runner reads test-vectors/vectors.json and expects
+# Written to a SEPARATE directory (DE_OUT), not vectors/capsule/: the envelope input shape
+# ({"envelope": {...}}) is not a bare Capsule or {"ledger": [...]}, and vectors/capsule/ is
+# cross-language-shared (go/cmd/vector_runner reads vectors/capsule/vectors.json and expects
 # every listed case to be Class-1-shape). Mixing shapes there would break that Go conformance
 # run rather than extend it.
 def build_disclosure_envelope_cases() -> list[dict]:

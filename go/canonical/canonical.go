@@ -251,6 +251,12 @@ func JSONDigest(v interface{}) (string, error) {
 	return digestJCS(v)
 }
 
+// VintageJSONDigest computes the format-2 JSON-DIGEST after absent-field
+// normalization. New format-4 records always use JSONDigest.
+func VintageJSONDigest(v interface{}) (string, error) {
+	return digestJCS(Normalize(v))
+}
+
 func digestJCS(v interface{}) (string, error) {
 	b, err := JCS(v)
 	if err != nil {

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Run every frozen vector in ../../test-vectors/ through the verifier and assert
+"""Run every frozen vector in ../../vectors/capsule/ through the verifier and assert
 its expected.json. This is what makes the vectors CI-checked, not just static."""
 import json
 from pathlib import Path
@@ -8,7 +8,7 @@ import pytest
 
 from agent_action_capsule import canonical, verify, verify_store
 
-VECTORS = Path(__file__).resolve().parents[2] / "test-vectors"
+VECTORS = Path(__file__).resolve().parents[2] / "vectors/capsule"
 MANIFEST = json.loads((VECTORS / "vectors.json").read_text())
 CASES = [c["name"] for c in MANIFEST["cases"]]
 

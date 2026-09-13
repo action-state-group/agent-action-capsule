@@ -25,6 +25,13 @@ var RegistryNames = []string{
 	"citation_purpose",
 }
 
+// DisclosureEligibleFields is the companion Disclosure Envelope registry
+// table. Values are dotted paths below the Capsule root.
+var DisclosureEligibleFields = map[string]string{
+	"agent_input":  "model_attestation.compute_attestation.agent_input_digest",
+	"agent_output": "model_attestation.compute_attestation.agent_output_digest",
+}
+
 var (
 	// ## N. `name`
 	headerRE = regexp.MustCompile("^##\\s+\\d+\\.\\s+`([^`]+)`\\s*$")

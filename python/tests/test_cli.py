@@ -16,7 +16,7 @@ import pytest
 
 from agent_action_capsule.cli import main
 
-VEC = Path(__file__).resolve().parents[2] / "test-vectors"
+VEC = Path(__file__).resolve().parents[2] / "vectors/capsule"
 EXAMPLE = Path(__file__).resolve().parents[2] / "examples" / "build_and_verify.py"
 _SCITT = importlib.util.find_spec("scitt_cose") is not None
 

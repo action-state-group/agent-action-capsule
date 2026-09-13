@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "reference": "python",
+  "corpora": {
+    "capsule": "capsule/vectors.json",
+    "producer_envelope": "producer-envelope/vectors.json",
+    "disclosure_envelope": "disclosure-envelope/vectors.json",
+    "cross_language": "cross-language/seal-input.json",
+    "interop": "interop/README.md"
+  }
+}

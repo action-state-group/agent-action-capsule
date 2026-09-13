@@ -15,7 +15,7 @@ acknowledge reports within 72 hours.
 ## Scope
 
 - The reference implementation under `python/` (capsule parse + verification).
-- The conformance vectors under `test-vectors/` (a vector that should fail
+- The conformance vectors under `vectors/capsule/` (a vector that should fail
   verification but passes, or vice versa, is in scope).
 
 A *cryptographic or verification bypass* — a capsule that verifies but should

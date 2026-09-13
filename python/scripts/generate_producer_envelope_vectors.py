@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from scitt_cose.cose_sign1 import sign_sign1
 
 CONTENT_TYPE = "application/agent-action-capsule-id"
-OUT = Path(__file__).resolve().parents[2] / "producer-envelope-vectors"
+OUT = Path(__file__).resolve().parents[2] / "vectors/producer-envelope"
 PRIVATE_KEY = Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
 PUBLIC_KEY = PRIVATE_KEY.public_key().public_bytes(
     encoding=serialization.Encoding.Raw,

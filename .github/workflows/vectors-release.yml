@@ -1,0 +1,81 @@
+name: release conformance vectors
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Vectors version (X.Y.Z)"
+        required: true
+        type: string
+      ref:
+        description: "Commit or ref to snapshot"
+        required: true
+        default: "main"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Validate version and selected commit
+        id: selected
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          test "$(printf '%s' "$VERSION" | sed -nE 's/^[0-9]+\.[0-9]+\.[0-9]+$/valid/p')" = valid
+          sha=$(git rev-parse HEAD)
+          epoch=$(git show -s --format=%ct "$sha")
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "epoch=$epoch" >> "$GITHUB_OUTPUT"
+          echo "tag=vectors/v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Verify committed vector checksums
+        working-directory: vectors
+        run: sha256sum --check SHA256SUMS
+
+      - name: Build deterministic explicit tarball
+        id: archive
+        env:
+          VERSION: ${{ inputs.version }}
+          SOURCE_DATE_EPOCH: ${{ steps.selected.outputs.epoch }}
+        run: |
+          asset="$RUNNER_TEMP/agent-action-capsule-vectors-v$VERSION.tar.gz"
+          tar --sort=name \
+            --mtime="@$SOURCE_DATE_EPOCH" \
+            --owner=0 --group=0 --numeric-owner \
+            --format=ustar \
+            -C "$GITHUB_WORKSPACE" -cf - vectors | gzip -n > "$asset"
+          digest=$(sha256sum "$asset" | cut -d' ' -f1)
+          echo "asset=$asset" >> "$GITHUB_OUTPUT"
+          echo "sha256=$digest" >> "$GITHUB_OUTPUT"
+          echo "asset_name=$(basename "$asset")" >> "$GITHUB_OUTPUT"
+          echo "Vector tarball sha256: $digest"
+
+      - name: Create vectors release with explicit asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.selected.outputs.tag }}
+          TARGET: ${{ steps.selected.outputs.sha }}
+          ASSET: ${{ steps.archive.outputs.asset }}
+          ASSET_NAME: ${{ steps.archive.outputs.asset_name }}
+          SHA256: ${{ steps.archive.outputs.sha256 }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag already exists: $TAG" >&2
+            exit 1
+          fi
+          notes=$(printf 'Explicit deterministic vector snapshot at `%s`.\n\n`%s` SHA-256: `%s`\n' "$TARGET" "$ASSET_NAME" "$SHA256")
+          gh release create "$TAG" "$ASSET" \
+            --target "$TARGET" \
+            --title "$TAG" \
+            --notes "$notes"
+          echo "Published $TAG with explicit asset $ASSET_NAME"
+          echo "SHA-256: $SHA256"

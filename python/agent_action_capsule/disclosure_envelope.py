@@ -16,14 +16,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .canonical import FloatInDigestError, UnsafeIntegerError, json_digest, vintage_json_digest
+from .registries import DISCLOSURE_ELIGIBLE_FIELDS
 from .verify import VerificationResult, verify
-
-# disclosures member name -> dotted path of the committed-digest field within
-# capsule["model_attestation"]["compute_attestation"]
-DISCLOSURE_ELIGIBLE_FIELDS: Mapping[str, str] = {
-    "agent_input": "agent_input_digest",
-    "agent_output": "agent_output_digest",
-}
 
 MATCH = "disclosure_match"
 MISMATCH = "disclosure_mismatch"
@@ -82,12 +76,12 @@ def verify_disclosure_envelope(envelope: Any) -> DisclosureEnvelopeResult:
                 if isinstance(ca, Mapping):
                     compute_attestation = ca
 
-        for member, value in disclosures.items():
+        for member, value in sorted(disclosures.items()):
             if member not in DISCLOSURE_ELIGIBLE_FIELDS:
                 findings.append(DisclosureFinding(member, INELIGIBLE))
                 continue
 
-            digest_field = DISCLOSURE_ELIGIBLE_FIELDS[member]
+            digest_field = DISCLOSURE_ELIGIBLE_FIELDS[member].rsplit(".", 1)[-1]
             stored = compute_attestation.get(digest_field)
             if not isinstance(stored, str) or len(stored) != 64:
                 findings.append(DisclosureFinding(member, NO_COMMITTED_DIGEST))

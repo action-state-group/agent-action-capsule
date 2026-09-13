@@ -55,7 +55,7 @@ CHAIN_LINKAGE_FIELDS = ("capsule_id", "chain")
 # STRINGS for monetary/quantity values; this bound additionally catches ANY
 # other integer outside the safe range in a digest-bearing position. (The -00
 # text forbids floats but does not yet state this integer bound; see the -01
-# flag in test-vectors/README.md.)
+# flag in vectors/capsule/README.md.)
 MAX_SAFE_INTEGER = 2**53 - 1  # 9007199254740991
 
 

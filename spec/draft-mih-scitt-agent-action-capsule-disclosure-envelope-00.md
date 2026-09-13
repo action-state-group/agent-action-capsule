@@ -367,11 +367,11 @@ defined by this document.
 # Test Vectors {#test-vectors}
 
 The following non-normative examples illustrate the mechanism. See the
-source repository's `disclosure-envelope-vectors/pos-disclosure-envelope-match/`
-and `disclosure-envelope-vectors/neg-disclosure-envelope-mismatch/` for
+source repository's `vectors/disclosure-envelope/pos-disclosure-envelope-match/`
+and `vectors/disclosure-envelope/neg-disclosure-envelope-mismatch/` for
 frozen, machine-checked vectors covering these two cases (kept in a
 directory of their own, separate from the base profile's cross-language
-`test-vectors/` corpus — see that directory's README).
+`vectors/capsule/` corpus — see that directory's README).
 
 ## Example: Matching Disclosure
 

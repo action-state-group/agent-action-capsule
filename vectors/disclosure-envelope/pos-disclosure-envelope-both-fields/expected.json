@@ -1,0 +1,27 @@
+{
+  "description": "both disclosure-eligible fields match, reported in deterministic member order",
+  "kind": "positive",
+  "ok": true,
+  "capsule": {
+    "ok": true,
+    "derived": {
+      "effect_mode": "confirmed",
+      "attestation_mode": "self_attested",
+      "ledger_mode": "standalone"
+    },
+    "capsule_id_recomputed": "3b4000afa76e6c20bfa008573aea0e9aad365dc345ca29dcd818f04c382018b1",
+    "findings": []
+  },
+  "disclosures_checked": 2,
+  "disclosures_matched": 2,
+  "disclosure_findings": [
+    {
+      "member": "agent_input",
+      "code": "disclosure_match"
+    },
+    {
+      "member": "agent_output",
+      "code": "disclosure_match"
+    }
+  ]
+}

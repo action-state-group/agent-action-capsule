@@ -388,11 +388,11 @@ defined by this document.</t>
     <section anchor="test-vectors">
       <name>Test Vectors</name>
       <t>The following non-normative examples illustrate the mechanism. See the
-source repository's <tt>disclosure-envelope-vectors/pos-disclosure-envelope-match/</tt>
-and <tt>disclosure-envelope-vectors/neg-disclosure-envelope-mismatch/</tt> for
+source repository's <tt>vectors/disclosure-envelope/pos-disclosure-envelope-match/</tt>
+and <tt>vectors/disclosure-envelope/neg-disclosure-envelope-mismatch/</tt> for
 frozen, machine-checked vectors covering these two cases (kept in a
 directory of their own, separate from the base profile's cross-language
-<tt>test-vectors/</tt> corpus — see that directory's README).</t>
+<tt>vectors/capsule/</tt> corpus — see that directory's README).</t>
       <section anchor="example-matching-disclosure">
         <name>Example: Matching Disclosure</name>
         <t>Given a Capsule whose <tt>model_attestation.compute_attestation</tt> carries

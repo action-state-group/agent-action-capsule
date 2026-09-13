@@ -92,7 +92,7 @@
   supports.
 - `python/agent_action_capsule/parse.py`: `Capsule.cross_party` /
   `parse_capsule` round-trip the new block and `assurance.cross_party_rung`.
-- `test-vectors/`: four new conformance vectors — one per cross-party rung
+- `vectors/capsule/`: four new conformance vectors — one per cross-party rung
   (`pos-cross-party-full-bilateral`, `pos-cross-party-acknowledged-receipt`,
   `pos-cross-party-unilateral-fallback`), and the named overclaim case
   (`neg-cross-party-overclaim`: `full_bilateral` claimed with only the

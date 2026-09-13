@@ -1,0 +1,23 @@
+{
+  "description": "DE-2 requires the matching committed digest field",
+  "kind": "negative",
+  "ok": false,
+  "capsule": {
+    "ok": true,
+    "derived": {
+      "effect_mode": "confirmed",
+      "attestation_mode": "self_attested",
+      "ledger_mode": "standalone"
+    },
+    "capsule_id_recomputed": "3e3a019af1efb6f2b1b527bf474031a06a366bf01ebfc1c325bcc0249a0fe602",
+    "findings": []
+  },
+  "disclosures_checked": 1,
+  "disclosures_matched": 0,
+  "disclosure_findings": [
+    {
+      "member": "agent_output",
+      "code": "disclosure_no_committed_digest"
+    }
+  ]
+}

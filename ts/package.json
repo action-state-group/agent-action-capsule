@@ -1,0 +1,38 @@
+{
+  "name": "@action-state-group/agent-action-capsule",
+  "version": "0.1.0",
+  "description": "TypeScript reference for Agent Action Capsule format 4",
+  "license": "BSD-3-Clause",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "npm run format:check && npm run typecheck && npm test && npm run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cborg": "6.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.2",
+    "prettier": "3.6.2",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11"
+  }
+}
