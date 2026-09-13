@@ -1,0 +1,7 @@
+{
+  "failed_stage": "claim_value_binds",
+  "lift": false,
+  "note": "grade present, but the attested measurement disagrees with what the citing Capsule's ran_under claim declares \u2014 rejected at the binding stage.",
+  "verdict": "invalid",
+  "verified": false
+}

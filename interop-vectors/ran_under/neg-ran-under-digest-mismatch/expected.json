@@ -1,0 +1,7 @@
+{
+  "failed_stage": "digest_binds",
+  "lift": false,
+  "note": "the cited bytes supplied alongside the bundle do not match the digest the citing Capsule's reference declares \u2014 rejected at content binding, before any grade is even consulted.",
+  "verdict": "invalid",
+  "verified": false
+}
