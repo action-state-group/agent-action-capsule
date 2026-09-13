@@ -1,0 +1,7 @@
+{
+  "failed_stage": "signer_trusted",
+  "lift": false,
+  "note": "good grade, matching measurement, but the signer is not in the verifier's configured roots. Rejects the LIFT, not the record \u2014 never reported as invalid.",
+  "verdict": "untrusted_signer",
+  "verified": false
+}

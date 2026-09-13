@@ -1,0 +1,7 @@
+{
+  "failed_stage": "claim_is_attested",
+  "lift": false,
+  "note": "good grade \u2014 but the fact this Capsule's citing claim relies on (workload_identity) is self-reported INSIDE the cited record, not covered by its attestation grade. The grade over the measurement does not launder the self-reported claim (SS6.1 non-propagation). No lift.",
+  "verdict": "unattested_claim",
+  "verified": false
+}
