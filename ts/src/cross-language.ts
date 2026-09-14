@@ -11,10 +11,10 @@ if (command !== "seal" && command !== "verify") {
 const value = decodeCapsuleJson(readFileSync(0));
 if (command === "seal") {
   process.stdout.write(
-    `${JSON.stringify(sealCapsule(value as unknown as CapsuleBody))}\n`,
+    `${JSON.stringify(await sealCapsule(value as unknown as CapsuleBody))}\n`,
   );
 } else {
-  const result = verifyClass1(value);
+  const result = await verifyClass1(value);
   if (!result.ok) {
     console.error(result.findings.map((finding) => finding.code).join(", "));
     process.exit(1);

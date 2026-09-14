@@ -15,7 +15,7 @@ const manifest = JSON.parse(
 ) as { cases: Array<{ name: string; kind: string }> };
 describe("complete upstream AAC corpus", () => {
   for (const item of manifest.cases)
-    it(item.name, () => {
+    it(item.name, async () => {
       const input = decodeStrictJson(
         readFileSync(resolve(root, item.name, "input.json")),
       );
@@ -35,18 +35,18 @@ describe("complete upstream AAC corpus", () => {
       };
       if (item.kind === "canonical") {
         if (expected.exception !== null)
-          expect(() =>
+          await expect(
             computeCapsuleId(input as Record<string, ParsedJson>),
-          ).toThrow();
+          ).rejects.toThrow();
         else
-          expect(computeCapsuleId(input as Record<string, ParsedJson>)).toBe(
-            expected.capsule_id_recomputed,
-          );
+          expect(
+            await computeCapsuleId(input as Record<string, ParsedJson>),
+          ).toBe(expected.capsule_id_recomputed);
         return;
       }
       if (item.kind === "store") {
         const ledger = (input as { ledger: ParsedJson[] }).ledger;
-        const actual = verifyStore(ledger);
+        const actual = await verifyStore(ledger);
         expect(actual.map((result) => result.ok)).toEqual(
           expected.results!.map((result) => result.ok),
         );
@@ -64,7 +64,7 @@ describe("complete upstream AAC corpus", () => {
         );
         return;
       }
-      const actual = verifyClass1(input);
+      const actual = await verifyClass1(input);
       expect(actual.ok).toBe(expected.ok);
       expect(actual.capsuleId ?? null).toBe(
         expected.capsule_id_recomputed ?? null,
@@ -82,43 +82,43 @@ describe("reference parity edge cases", () => {
       readFileSync(resolve(root, "pos-executed-confirmed", "input.json")),
     ) as Record<string, ParsedJson>;
 
-  it("checks effect_attestation presence independently of its type", () => {
+  it("checks effect_attestation presence independently of its type", async () => {
     const capsule = fixture();
     const effect = capsule.effect as Record<string, ParsedJson>;
     effect.effect_attestation = decodeStrictJson("1");
     expect(
-      verifyClass1(capsule).findings.some(
+      (await verifyClass1(capsule)).findings.some(
         (finding) => finding.code === "effect_attestation_missing",
       ),
     ).toBe(false);
 
     effect.status = "planned";
     expect(
-      verifyClass1(capsule).findings.some(
+      (await verifyClass1(capsule)).findings.some(
         (finding) => finding.code === "effect_attestation_present",
       ),
     ).toBe(true);
   });
 
-  it("treats a null effect_attestation as absent like the references", () => {
+  it("treats a null effect_attestation as absent like the references", async () => {
     const capsule = fixture();
     const effect = capsule.effect as Record<string, ParsedJson>;
     effect.effect_attestation = null;
     expect(
-      verifyClass1(capsule).findings.some(
+      (await verifyClass1(capsule)).findings.some(
         (finding) => finding.code === "effect_attestation_missing",
       ),
     ).toBe(true);
 
     effect.status = "planned";
     expect(
-      verifyClass1(capsule).findings.some(
+      (await verifyClass1(capsule)).findings.some(
         (finding) => finding.code === "effect_attestation_present",
       ),
     ).toBe(false);
   });
 
-  it("reports other ID computation errors alongside numeric findings", () => {
+  it("reports other ID computation errors alongside numeric findings", async () => {
     for (const name of [
       "neg-float-in-digest-field",
       "neg-unsafe-integer-in-digest-field",
@@ -127,14 +127,14 @@ describe("reference parity edge cases", () => {
         readFileSync(resolve(root, name, "input.json")),
       ) as Record<string, ParsedJson>;
       capsule.canonicalization_id = decodeStrictJson("4");
-      const codes = verifyClass1(capsule).findings.map(
+      const codes = (await verifyClass1(capsule)).findings.map(
         (finding) => finding.code,
       );
       expect(codes).toContain("capsule_id_uncomputable");
     }
   });
 
-  it("reports assurance overclaims when optional evidence is absent", () => {
+  it("reports assurance overclaims when optional evidence is absent", async () => {
     const capsule = fixture();
     delete capsule.chain;
     delete capsule.cross_party;
@@ -144,23 +144,25 @@ describe("reference parity edge cases", () => {
       cross_party_rung: "full_bilateral",
     };
     expect(
-      verifyClass1(capsule).findings.filter(
+      (await verifyClass1(capsule)).findings.filter(
         (finding) => finding.code === "assurance_overclaim",
       ),
     ).toHaveLength(3);
   });
 
-  it("matches reference disposition presence and type findings", () => {
+  it("matches reference disposition presence and type findings", async () => {
     const capsule = fixture();
     const disposition = capsule.disposition as Record<string, ParsedJson>;
     disposition.decision = decodeStrictJson("5");
     disposition.human_disposed = "not-a-boolean";
-    const codes = verifyClass1(capsule).findings.map((finding) => finding.code);
+    const codes = (await verifyClass1(capsule)).findings.map(
+      (finding) => finding.code,
+    );
     expect(codes).not.toContain("missing_required_field");
     expect(codes).toContain("field_not_bool");
 
     delete disposition.human_disposed;
-    const missingCodes = verifyClass1(capsule).findings.map(
+    const missingCodes = (await verifyClass1(capsule)).findings.map(
       (finding) => finding.code,
     );
     expect(missingCodes).toContain("field_not_bool");

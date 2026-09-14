@@ -52,7 +52,7 @@ export function decodeCapsuleJson(data: Uint8Array | string): RecordValue {
 }
 
 /** Recompute the signer-independent Capsule ID from the declared profile. */
-export function computeCapsuleId(capsule: RecordValue): string {
+export async function computeCapsuleId(capsule: RecordValue): Promise<string> {
   const copy: RecordValue = {};
   const declared = capsule.canonicalization_id;
   if (declared !== undefined && typeof declared !== "string")
@@ -98,11 +98,11 @@ export function isV4IrreversibilityClass(value: string): boolean {
 }
 
 /** AAC Class 1 verification. It always returns a structured result. */
-export function verifyClass1(
+export async function verifyClass1(
   capsule: ParsedJson,
   store?: readonly (ParsedJson | string)[] | Set<string>,
   extensions: Readonly<Record<string, ReadonlySet<string>>> = {},
-): VerificationResult {
+): Promise<VerificationResult> {
   const findings: Finding[] = [];
   const add = (
     code: string,
@@ -270,7 +270,7 @@ export function verifyClass1(
   let recomputed: string | undefined;
   if (carriedId !== undefined) {
     try {
-      recomputed = computeCapsuleId(top);
+      recomputed = await computeCapsuleId(top);
       if (recomputed !== carriedId)
         add(
           "capsule_id_mismatch",
@@ -533,17 +533,17 @@ export function verifyClass1(
   };
 }
 
-export function verifyStore(
+export async function verifyStore(
   capsules: readonly ParsedJson[],
   extensions: Readonly<Record<string, ReadonlySet<string>>> = {},
-): VerificationResult[] {
+): Promise<VerificationResult[]> {
   const ids = new Set(
     capsules
       .map((capsule) => object(capsule)?.capsule_id)
       .filter((id): id is string => typeof id === "string"),
   );
-  const results = capsules.map((capsule) =>
-    verifyClass1(capsule, ids, extensions),
+  const results = await Promise.all(
+    capsules.map((capsule) => verifyClass1(capsule, ids, extensions)),
   );
   const seen = new Set<string>();
   capsules.forEach((capsule, index) => {

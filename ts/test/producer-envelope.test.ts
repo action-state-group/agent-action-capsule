@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { verifyProducerEnvelope } from "../src/index.js";
+import {
+  createEd25519Identity,
+  signCapsuleId,
+  verifyProducerEnvelope,
+} from "../src/index.js";
 
 const root = resolve(
   import.meta.dirname,
@@ -15,12 +19,12 @@ const manifest = JSON.parse(
 ) as { cases: Array<{ name: string }> };
 describe("upstream Producer Envelope corpus", () => {
   for (const item of manifest.cases)
-    it(item.name, () => {
+    it(item.name, async () => {
       const directory = resolve(root, item.name);
       const expected = JSON.parse(
         readFileSync(resolve(directory, "expected.json"), "utf8"),
       ) as { ok: boolean; findings?: Array<{ code: string }> };
-      const result = verifyProducerEnvelope(
+      const result = await verifyProducerEnvelope(
         readFileSync(resolve(directory, "capsule_id.txt"), "utf8").trim(),
         readFileSync(resolve(directory, "envelope.cose")),
       );
@@ -30,4 +34,11 @@ describe("upstream Producer Envelope corpus", () => {
           expected.findings.map((finding) => finding.code),
         );
     });
+});
+
+it("verifies an envelope produced by the Node signing path", async () => {
+  const capsuleId = "00".repeat(32);
+  const identity = createEd25519Identity(new Uint8Array(32).fill(7));
+  const envelope = signCapsuleId(capsuleId, identity);
+  expect((await verifyProducerEnvelope(capsuleId, envelope)).ok).toBe(true);
 });

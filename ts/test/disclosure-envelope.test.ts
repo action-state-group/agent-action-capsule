@@ -1,7 +1,16 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { decodeStrictJson, verifyDisclosureEnvelope } from "../src/index.js";
+import { resolveDisclosurePath } from "../src/disclosure-path.js";
+import {
+  asJsonObject,
+  computeCapsuleId,
+  decodeStrictJson,
+  disclosureEligibleFields,
+  verifyDisclosureEnvelope,
+  vintageJsonDigest,
+  type ParsedJson,
+} from "../src/index.js";
 
 const root = resolve(
   import.meta.dirname,
@@ -18,7 +27,7 @@ const manifest = JSON.parse(
 
 describe("authoritative Disclosure Envelope corpus", () => {
   for (const item of manifest.cases) {
-    it(item.name, () => {
+    it(item.name, async () => {
       const input = decodeStrictJson(
         readFileSync(resolve(root, item.name, "input.json")),
       );
@@ -39,7 +48,7 @@ describe("authoritative Disclosure Envelope corpus", () => {
         disclosures_matched: number;
         disclosure_findings: Array<{ member: string; code: string }>;
       };
-      const actual = verifyDisclosureEnvelope(wrapper);
+      const actual = await verifyDisclosureEnvelope(wrapper);
       expect(actual.ok).toBe(expected.ok);
       expect(actual.capsuleResult.ok).toBe(expected.capsule.ok);
       expect(actual.capsuleResult.assurance).toEqual(expected.capsule.derived);
@@ -54,4 +63,54 @@ describe("authoritative Disclosure Envelope corpus", () => {
       expect(actual.disclosureFindings).toEqual(expected.disclosure_findings);
     });
   }
+});
+
+it("follows the complete registered path instead of matching its final name", async () => {
+  const input = decodeStrictJson(
+    readFileSync(resolve(root, "pos-disclosure-envelope-match", "input.json")),
+  );
+  const wrapper = asJsonObject(asJsonObject(input)?.envelope)!;
+  const capsule = asJsonObject(wrapper.capsule)!;
+  const committed = resolveDisclosurePath(
+    capsule,
+    disclosureEligibleFields.agent_input,
+  );
+  capsule.agent_input_digest = "0".repeat(64);
+
+  expect(
+    resolveDisclosurePath(capsule, disclosureEligibleFields.agent_input),
+  ).toBe(committed);
+  expect((await verifyDisclosureEnvelope(wrapper)).disclosureFindings).toEqual([
+    { member: "agent_input", code: "disclosure_match" },
+  ]);
+});
+
+it("verifies a vector-based commitment for a deeply nested disclosure", async () => {
+  const input = decodeStrictJson(
+    readFileSync(resolve(root, "pos-disclosure-envelope-match", "input.json")),
+  );
+  const wrapper = asJsonObject(asJsonObject(input)?.envelope)!;
+  const capsule = asJsonObject(wrapper.capsule)!;
+  const disclosures = asJsonObject(wrapper.disclosures)!;
+  const nested = decodeStrictJson(
+    '{"request":{"items":[{"attributes":{"fragile":true},"sku":"A"},{"attributes":{"fragile":false},"sku":"B"}]}}',
+  );
+  const committedDigest =
+    "8842ab7f1b59276804c967ba4a0a3286d359ff624ca2a913e9f0b29b7d4c0f9a";
+  disclosures.agent_input = nested;
+  const compute = asJsonObject(
+    asJsonObject(capsule.model_attestation)?.compute_attestation,
+  )!;
+  expect(await vintageJsonDigest(nested)).toBe(committedDigest);
+  compute.agent_input_digest = committedDigest;
+  capsule.capsule_id = await computeCapsuleId(
+    capsule as Record<string, ParsedJson>,
+  );
+
+  const actual = await verifyDisclosureEnvelope(wrapper);
+  expect(actual.ok).toBe(true);
+  expect(actual.capsuleResult.ok).toBe(true);
+  expect(actual.disclosureFindings).toEqual([
+    { member: "agent_input", code: "disclosure_match" },
+  ]);
 });

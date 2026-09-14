@@ -4,6 +4,7 @@ import {
   vintageJsonDigest,
   type ParsedJson,
 } from "./json.js";
+import { resolveDisclosurePath } from "./disclosure-path.js";
 import { disclosureEligibleFields } from "./registries.js";
 import { verifyClass1, type VerificationResult } from "./verify.js";
 
@@ -26,17 +27,15 @@ export interface DisclosureEnvelopeResult {
 }
 
 /** Verify an AAC Disclosure Envelope through DE-3 without conflating Class 1. */
-export function verifyDisclosureEnvelope(
+export async function verifyDisclosureEnvelope(
   envelope: ParsedJson,
-): DisclosureEnvelopeResult {
+): Promise<DisclosureEnvelopeResult> {
   const wrapper = asJsonObject(envelope);
   const capsule = wrapper?.capsule ?? envelope;
-  const capsuleResult = verifyClass1(capsule);
+  const capsuleResult = await verifyClass1(capsule);
   const disclosures = asJsonObject(wrapper?.disclosures);
   const findings: DisclosureFinding[] = [];
   const capsuleObject = asJsonObject(capsule);
-  const model = asJsonObject(capsuleObject?.model_attestation);
-  const compute = asJsonObject(model?.compute_attestation);
 
   if (disclosures !== undefined) {
     for (const [member, value] of Object.entries(disclosures).sort(
@@ -50,18 +49,19 @@ export function verifyDisclosureEnvelope(
         findings.push({ member, code: DISCLOSURE_INELIGIBLE_FIELD });
         continue;
       }
-      const digestMember = path.slice(path.lastIndexOf(".") + 1);
-      const committed = compute?.[digestMember];
+      const committed =
+        capsuleObject === undefined
+          ? undefined
+          : resolveDisclosurePath(capsuleObject, path);
       if (typeof committed !== "string" || !/^[0-9a-f]{64}$/u.test(committed)) {
         findings.push({ member, code: DISCLOSURE_NO_COMMITTED_DIGEST });
         continue;
       }
       let matches = false;
       try {
-        const computed =
-          capsuleObject?.format_version === "2"
-            ? vintageJsonDigest(value)
-            : jsonDigest(value);
+        const computed = await (capsuleObject?.format_version === "2"
+          ? vintageJsonDigest(value)
+          : jsonDigest(value));
         matches = computed === committed;
       } catch {
         matches = false;

@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 export type JsonPrimitive = null | boolean | string | number;
 export type JsonValue =
   | JsonPrimitive
@@ -255,11 +253,18 @@ export function jcs(value: unknown): Uint8Array {
   return encoder.encode(render(value, "$", new Set<object>(), 0));
 }
 
-export function sha256Hex(value: Uint8Array): string {
-  return createHash("sha256").update(value).digest("hex");
+/** SHA-256 using the platform WebCrypto implementation. */
+export async function sha256Hex(value: Uint8Array): Promise<string> {
+  const digest = await globalThis.crypto.subtle.digest(
+    "SHA-256",
+    value as BufferSource,
+  );
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
 }
 
-export function jsonDigest(value: unknown): string {
+export async function jsonDigest(value: unknown): Promise<string> {
   return sha256Hex(jcs(value));
 }
 
@@ -285,6 +290,6 @@ export function normalizeAbsent(value: ParsedJson): ParsedJson {
 }
 
 /** Verification-only format-2 JSON-DIGEST. */
-export function vintageJsonDigest(value: ParsedJson): string {
+export async function vintageJsonDigest(value: ParsedJson): Promise<string> {
   return jsonDigest(normalizeAbsent(value));
 }

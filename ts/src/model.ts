@@ -37,7 +37,7 @@ export interface CapsuleBody {
 export type Capsule = CapsuleBody & { readonly capsule_id: string };
 
 /** Seal a format-4 body. Only capsule_id and local Producer Envelope fields are excluded. */
-export function sealCapsule(body: CapsuleBody): Capsule {
+export async function sealCapsule(body: CapsuleBody): Promise<Capsule> {
   if (body.format_version !== "4" || body.canonicalization_id !== "jcs")
     throw new TypeError(
       "format_version '4' requires canonicalization_id='jcs'",
@@ -56,14 +56,16 @@ export function sealCapsule(body: CapsuleBody): Capsule {
   }
   const value = { ...body } as unknown as Record<string, ParsedJson>;
   delete value.capsule_id;
-  const capsule_id = computeCapsuleId(value);
+  const capsule_id = await computeCapsuleId(value);
   return Object.freeze({ ...body, capsule_id }) as Capsule;
 }
 
 /** Strictly parse and validate a Capsule before returning the typed record. */
-export function parseCapsule(input: Uint8Array | string): Capsule {
+export async function parseCapsule(
+  input: Uint8Array | string,
+): Promise<Capsule> {
   const value = decodeCapsuleJson(input);
-  const result = verifyClass1(value);
+  const result = await verifyClass1(value);
   if (!result.ok)
     throw new TypeError(
       `non-conforming Capsule: ${result.findings.map((item) => item.code).join(", ")}`,

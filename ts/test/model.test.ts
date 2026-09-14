@@ -6,8 +6,8 @@ import {
   sealCapsule,
 } from "../src/index.js";
 
-it("seals and parses a typed format-4 record", () => {
-  const capsule = sealCapsule({
+it("seals and parses a typed format-4 record", async () => {
+  const capsule = await sealCapsule({
     spec_version: "draft-mih-scitt-agent-action-capsule-04",
     format_version: "4",
     canonicalization_id: "jcs",
@@ -18,7 +18,7 @@ it("seals and parses a typed format-4 record", () => {
     timestamp: "2026-09-13T00:00:00Z",
     references: [],
   });
-  expect(parseCapsule(JSON.stringify(capsule))).toEqual(capsule);
+  await expect(parseCapsule(JSON.stringify(capsule))).resolves.toEqual(capsule);
 });
 
 it("exports all seven registries and the disclosure eligibility table", () => {

@@ -7,7 +7,15 @@ Producer Envelopes, and Disclosure Envelopes through DE-3. It intentionally
 does not contain producer verbs, CLL storage, policy, adapters, or permalink
 transport.
 
-Requires Node.js 22 or newer.
+The Node entry requires Node.js 20 or newer. Bundlers using the `browser`
+condition resolve a WebCrypto-only verification entry; it excludes the
+Node-only Producer Envelope signing and key-creation APIs while retaining
+`verifyProducerEnvelope`.
+
+Digest-dependent APIs are async: await `sha256Hex`, `jsonDigest`,
+`vintageJsonDigest`, `computeCapsuleId`, `verifyClass1`, `verifyStore`,
+`verifyDisclosureEnvelope`, `sealCapsule`, and `parseCapsule`.
+`verifyProducerEnvelope` is also async on both entry points.
 
 ```bash
 npm ci
