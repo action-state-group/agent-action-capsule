@@ -76,7 +76,14 @@ const failures = [];
 window.__aacBrowserConformance = { failures };
 window.addEventListener("error", (e) => failures.push("window error: " + String(e.message || e.error)));
 window.addEventListener("unhandledrejection", (e) => failures.push("unhandled rejection: " + String(e.reason)));
-const equal = (actual, expected) => JSON.stringify(actual) === JSON.stringify(expected);
+// Order-insensitive deep compare: object key order is not semantically
+// meaningful, so canonicalize (sort keys recursively) before stringifying.
+const canon = (v) => Array.isArray(v)
+  ? v.map(canon)
+  : (v && typeof v === "object")
+    ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])]))
+    : v;
+const equal = (actual, expected) => JSON.stringify(canon(actual)) === JSON.stringify(canon(expected));
 const check = (name, actual, expected) => {
   if (!equal(actual, expected)) failures.push(name + ": got " + JSON.stringify(actual) + ", expected " + JSON.stringify(expected));
 };
