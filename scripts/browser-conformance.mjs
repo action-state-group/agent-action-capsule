@@ -150,8 +150,15 @@ test("built browser bundle accepts and rejects the frozen corpus", async ({ page
   page.on("pageerror", (e) => pageErrors.push(String(e && e.stack || e)));
   page.on("console", (m) => { if (m.type() === "error") pageErrors.push("console: " + m.text()); });
   await page.goto(${JSON.stringify(pathToFileURL(html).href)});
-  await expect.poll(() => page.evaluate(() => window.__aacBrowserConformance?.done === true), { message: () => "module errors:\\n" + pageErrors.join("\\n") }).toBeTruthy();
-  await expect.poll(() => page.evaluate(() => window.__aacBrowserConformance.failures)).toEqual([]);
+  let result = null;
+  try {
+    await expect.poll(() => page.evaluate(() => (window.__aacBrowserConformance && window.__aacBrowserConformance.done) ? "done" : false), { timeout: 30000 }).toBe("done");
+    result = await page.evaluate(() => window.__aacBrowserConformance);
+  } catch (e) {
+    const body = await page.evaluate(() => document.body ? document.body.textContent : "(no body)").catch(() => "(eval failed)");
+    throw new Error("module never finished. pageErrors:\\n" + pageErrors.join("\\n") + "\\nbody:\\n" + body);
+  }
+  if (result.failures.length) throw new Error("conformance failures:\\n" + result.failures.join("\\n"));
 });
 `,
   );
