@@ -70,6 +70,12 @@ import {
 const capsuleVectors = ${JSON.stringify(capsuleVectors)};
 const disclosureVectors = ${JSON.stringify(disclosureVectors)};
 const failures = [];
+// Publish the result object BEFORE any work so a later throw cannot leave the
+// global undefined (which the harness would only see as an opaque poll timeout).
+// failures is mutated in place, so the reference stays live as cases run.
+window.__aacBrowserConformance = { failures };
+window.addEventListener("error", (e) => failures.push("window error: " + String(e.message || e.error)));
+window.addEventListener("unhandledrejection", (e) => failures.push("unhandled rejection: " + String(e.reason)));
 const equal = (actual, expected) => JSON.stringify(actual) === JSON.stringify(expected);
 const check = (name, actual, expected) => {
   if (!equal(actual, expected)) failures.push(name + ": got " + JSON.stringify(actual) + ", expected " + JSON.stringify(expected));
@@ -112,8 +118,8 @@ for (const item of disclosureVectors) {
   }
 }
 
-document.body.textContent = failures.length ? failures.join("\\n") : "AAC browser conformance passed";
-window.__aacBrowserConformance = { failures };
+if (document.body) document.body.textContent = failures.length ? failures.join("\\n") : "AAC browser conformance passed";
+window.__aacBrowserConformance.done = true;
 `;
   writeFileSync(join(work, "entry.mjs"), entry);
   const bundle = join(work, "aac-browser.bundle.js");
@@ -134,14 +140,14 @@ window.__aacBrowserConformance = { failures };
     throw new Error("browser bundle contains a node: import");
 
   const html = join(work, "index.html");
-  writeFileSync(html, '<!doctype html><script type="module" src="./aac-browser.bundle.js"></script>');
+  writeFileSync(html, '<!doctype html><html><body></body><script type="module" src="./aac-browser.bundle.js"></script></html>');
   const test = join(work, "browser-conformance.spec.mjs");
   writeFileSync(
     test,
     `import { expect, test } from "@playwright/test";
 test("built browser bundle accepts and rejects the frozen corpus", async ({ page }) => {
   await page.goto(${JSON.stringify(pathToFileURL(html).href)});
-  await expect.poll(() => page.evaluate(() => window.__aacBrowserConformance)).toBeTruthy();
+  await expect.poll(() => page.evaluate(() => window.__aacBrowserConformance?.done === true)).toBeTruthy();
   await expect.poll(() => page.evaluate(() => window.__aacBrowserConformance.failures)).toEqual([]);
 });
 `,
