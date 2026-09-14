@@ -130,7 +130,8 @@ JSON-DIGEST:
   embedded Capsule's identity profile. The whole JSON value is canonicalized
   recursively; no object-member allow-list, replacer array, or other
   key-filtering operation is applied at any depth. Format 4 uses plain JCS.
-  Vintage format 2 applies absent-field normalization.
+  Vintage format 2 applies absent-field normalization and is selected, as the
+  base profile requires, only when `canonicalization_id` is absent or null.
 
 JCS:
 : JSON Canonicalization Scheme per {{RFC8785}}.
@@ -286,8 +287,9 @@ Compute `computed = JSON-DIGEST(value)` using the embedded Capsule's identity
 profile. Format 4 computes the lowercase-hex SHA-256 of `UTF8(JCS(value))`
 over the whole recursively canonicalized value, with no member filtering or
 replacer array, and without normalization. Vintage format 2 applies the same
-absent-field normalization used for its `capsule_id`. This document introduces
-no second profile-selection or hashing path.
+absent-field normalization used for its `capsule_id`; the base profile's absent-
+or-null format-2 selection rule applies. This document introduces no second
+profile-selection or hashing path.
 
 Compare `computed` to the committed digest located in DE-2:
 

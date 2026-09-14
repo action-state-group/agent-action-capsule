@@ -218,12 +218,21 @@ replacer array, or other key-filtering operation at any depth before JCS; all
 members of every nested object participate in the digest.
 
 Format 2 and the withdrawn `jcs-n` construction of
-{{I-D.mih-sokolov-scitt-payload-binding}} are legacy and VERIFY-ONLY. The
-vintage Capsule-ID recomputation is selected by a format-2 Capsule in which
-`canonicalization_id` is absent. A verifier MUST retain that clearly labeled
-read-only recomputation for such Capsules; a producer MUST NOT emit format 2
-or `jcs-n`, and a verifier MUST reject any explicit
-`canonicalization_id: "jcs-n"` declaration.
+{{I-D.mih-sokolov-scitt-payload-binding}} are legacy and VERIFY-ONLY. For
+verification of a format-2 Capsule, an absent `canonicalization_id` or an
+explicit `canonicalization_id: null` selects the vintage Capsule-ID
+recomputation. The two forms have the same digest meaning because vintage
+absent-field normalization removes the null-valued member, producing an
+identical normalized JCS preimage. A verifier MUST retain that clearly labeled
+read-only recomputation for such Capsules. A producer MUST NOT emit format 2,
+`jcs-n`, or a null canonicalization declaration. Any other present format-2
+`canonicalization_id`, including the string `"jcs-n"`, MUST fail closed.
+
+Algorithm selection MUST first inspect `format_version`. Format 4 accepts only
+a present string `canonicalization_id` whose value is exactly `"jcs"`; absent,
+null, non-string, empty-string, `"jcs-n"`, and unknown declarations fail
+closed. Format 2 accepts only the absent and explicit-null verification cases
+above. An unknown `format_version` fails closed.
 
 # Producer Envelopes and SCITT registration {#projection}
 
@@ -331,7 +340,7 @@ detail is specified in {{constraints}}.
 |---|---|---|---|
 | spec_version | string | REQUIRED | The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-04". |
 | format_version | string | REQUIRED | The serialization-suite version. Producers MUST use "4". Format 2 is legacy and VERIFY-ONLY under the compatibility rule below. |
-| canonicalization_id | string | REQUIRED for format 4; MUST be absent for format 2 | New Capsules MUST carry exactly "jcs". Explicit "jcs-n", empty, null, non-string, and unknown declarations are invalid. |
+| canonicalization_id | string or null | REQUIRED string for format 4; absent or null for format-2 verification | Format 4 MUST carry exactly the string "jcs". For verification of vintage format 2 only, absent and explicit null both select the `jcs-n` recomputation. Producers MUST NOT emit null. Every other declaration is invalid. |
 | capsule_id | string (64 lowercase hex) | REQUIRED | The derived identifier. For format 4, remove local-only `signature` and `key_id` envelope fields, if present in a local composite representation, then compute SHA-256 over plain JCS of the Capsule after removing only `capsule_id`. The `canonicalization_id` declaration, `chain` block, and `references` array participate. Verifiers MUST recompute; carried values MUST NOT be trusted. |
 | action_id | string | REQUIRED | Stable identifier of the action; unique within one producer ledger. |
 | action_type | string | REQUIRED | "fyi" (informational) or "decide" (a disposition was required). |
@@ -340,12 +349,13 @@ detail is specified in {{constraints}}.
 | timestamp | string | REQUIRED | {{RFC3339}} UTC with "Z" suffix. |
 | epoch_id | string | OPTIONAL | An operator-assigned epoch identifier, stable within one operational configuration of the agent system. Producers SHOULD populate this field and rotate its value — together with an epoch-boundary Capsule ({{epochs}}) — when a configuration change that materially alters agent behavior occurs (for example, a model-version swap, a policy-manifest revision, or a significant constraint-schema change). A verifier or ledger consumer scopes a history window to a specific operational configuration by filtering on operator and epoch_id. Absent epoch_id implies a single, unnamed epoch; a producer MUST NOT back-fill epoch_id on Capsules already sealed. |
 
-For a vintage format-2 Capsule, `canonicalization_id` MUST be absent. Its
-Capsule ID is verified by removing `capsule_id` and `chain`, applying the
-legacy absent-field normalization, then applying JCS and SHA-256. This
-read-only vintage recomputation exists solely to verify already-sealed,
-distributed evidence; it MUST NOT be used to produce, reseal, or otherwise
-create a format-2 Capsule.
+For a vintage format-2 Capsule, `canonicalization_id` MUST be absent or null.
+Its Capsule ID is verified by removing `capsule_id` and `chain`, applying the
+legacy absent-field normalization, then applying JCS and SHA-256. An explicit
+null is removed by that normalization and therefore produces the same
+normalized JCS preimage as an omitted member. This read-only vintage
+recomputation exists solely to verify already-sealed, distributed evidence; it
+MUST NOT be used to produce, reseal, or otherwise create a format-2 Capsule.
 
 Monetary and quantity values are subject to the exact-decimal-string
 requirement in {{conventions}}.
@@ -895,9 +905,10 @@ result, never throw; a single `ok` boolean gates trust in every other
 reported field; findings are reported in a fixed order.
 
 1. Structural: REQUIRED fields present and typed; no floating-point
-   values in digest-bearing fields; format 4 requires exactly
-   `canonicalization_id: "jcs"`; format 2 requires the field to be absent;
-   unknown formats and all other declarations fail closed.
+   values in digest-bearing fields; format 4 requires exactly the string
+   `canonicalization_id: "jcs"`; vintage format 2 accepts an absent or null
+   `canonicalization_id` for verification only; unknown formats and all other
+   declarations fail closed.
 2. Identity: for format 4, remove only `capsule_id` and compute SHA-256 over
    plain JCS. For vintage format 2, remove `capsule_id` and `chain`, apply
    absent-field normalization, then JCS and SHA-256. Compare the result with
