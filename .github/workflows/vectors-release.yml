@@ -47,17 +47,26 @@ jobs:
           VERSION: ${{ inputs.version }}
           SOURCE_DATE_EPOCH: ${{ steps.selected.outputs.epoch }}
         run: |
+          build_archive() {
+            tar --sort=name \
+              --mtime="@$SOURCE_DATE_EPOCH" \
+              --owner=0 --group=0 --numeric-owner \
+              --mode='u+rw,go+r-w,a+X' \
+              --format=ustar \
+              --no-xattrs \
+              -C "$GITHUB_WORKSPACE" -cf - vectors | gzip -n > "$1"
+          }
           asset="$RUNNER_TEMP/agent-action-capsule-vectors-v$VERSION.tar.gz"
-          tar --sort=name \
-            --mtime="@$SOURCE_DATE_EPOCH" \
-            --owner=0 --group=0 --numeric-owner \
-            --format=ustar \
-            -C "$GITHUB_WORKSPACE" -cf - vectors | gzip -n > "$asset"
+          repeat="$RUNNER_TEMP/agent-action-capsule-vectors-v$VERSION.repeat.tar.gz"
+          build_archive "$asset"
+          build_archive "$repeat"
           digest=$(sha256sum "$asset" | cut -d' ' -f1)
+          repeat_digest=$(sha256sum "$repeat" | cut -d' ' -f1)
+          test "$digest" = "$repeat_digest"
           echo "asset=$asset" >> "$GITHUB_OUTPUT"
           echo "sha256=$digest" >> "$GITHUB_OUTPUT"
           echo "asset_name=$(basename "$asset")" >> "$GITHUB_OUTPUT"
-          echo "Vector tarball sha256: $digest"
+          echo "Vector tarball sha256 (two identical builds): $digest"
 
       - name: Create vectors release with explicit asset
         env:

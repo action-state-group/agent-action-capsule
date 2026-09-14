@@ -8,6 +8,7 @@ on:
       - "ts/**"
       - "vectors/**"
       - "scripts/cross-language-interlock.sh"
+      - "scripts/browser-conformance.mjs"
       - "spec/draft-mih-scitt-agent-action-capsule-04.md"
       - "spec/draft-mih-scitt-agent-action-capsule-disclosure-envelope-00.md"
       - "spec/REGISTRY.md"
@@ -19,6 +20,7 @@ on:
       - "ts/**"
       - "vectors/**"
       - "scripts/cross-language-interlock.sh"
+      - "scripts/browser-conformance.mjs"
       - "spec/draft-mih-scitt-agent-action-capsule-04.md"
       - "spec/draft-mih-scitt-agent-action-capsule-disclosure-envelope-00.md"
       - "spec/REGISTRY.md"
@@ -78,7 +80,69 @@ jobs:
       - name: Verify every producer in every consumer
         run: scripts/cross-language-interlock.sh
 
-      - name: Assert zero divergence
+      - name: Prove the interlock rejects a canonicalization divergence
+        run: |
+          if AAC_INTERLOCK_INJECT_CANONICALIZATION_DIVERGENCE=1 scripts/cross-language-interlock.sh; then
+            echo "interlock accepted an injected canonicalization divergence" >&2
+            exit 1
+          fi
+          echo "interlock rejected the injected canonicalization divergence"
+
+      - name: Assert zero unintentional divergence
         run: |
           echo "Python, Go, and TypeScript passed the same committed vector tree."
-          echo "Python-, Go-, and TypeScript-sealed format-4 Capsules verified in all three runtimes."
+          echo "Python- and Go-built Disclosure Envelopes passed DE-3 verification in all three runtimes."
+
+  browser-conformance:
+    name: Built browser artifact conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ts/package-lock.json
+      - name: Build TypeScript package
+        working-directory: ts
+        run: |
+          npm ci
+          npm run build
+
+      - name: Run vectors in a bundled headless browser
+        run: scripts/browser-conformance.mjs
+
+  pinned-legacy-format-2-verification:
+    name: Pinned legacy verifier verifies July format-2 interop record
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout frozen format-2 verifier release
+        uses: actions/checkout@v4
+        with:
+          ref: legacy-verifier/v0.3.0-format2
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify the cited July interop record
+        env:
+          PYTHONPATH: ${{ github.workspace }}/python
+        run: |
+          result="$RUNNER_TEMP/legacy-format-2-result.json"
+          python -c 'from agent_action_capsule.cli import main; raise SystemExit(main(["verify", __import__("sys").argv[1], "--json"]))' \
+            docs/interop/purchase-example/capsule.json > "$result"
+          python - "$result" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          result = json.loads(Path(sys.argv[1]).read_text())
+          capsule = json.loads(Path("docs/interop/purchase-example/capsule.json").read_text())
+          vector = json.loads(Path("docs/interop/aac-aep-scitt-digest-binding-vector.json").read_text())
+          expected_id = vector["positive"]["capsule_id"]["hex"]
+          assert result["ok"] is True
+          assert result["capsule_id_recomputed"] == capsule["capsule_id"] == expected_id
+          PY
