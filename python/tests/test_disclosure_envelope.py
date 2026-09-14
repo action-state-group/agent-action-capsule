@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Disclosure Envelope reference verifier (draft-mih-...-disclosure-envelope-00)."""
-from conftest import reseal
-
 import pytest
+from conftest import reseal
 
 from agent_action_capsule import (
     ModelAttestation,

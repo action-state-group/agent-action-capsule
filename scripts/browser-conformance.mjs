@@ -125,7 +125,7 @@ window.__aacBrowserConformance = { failures };
       "--minify",
       "--platform=browser",
       "--conditions=browser",
-      "--format=iife",
+      "--format=esm",
       `--outfile=${bundle}`,
     ],
     { cwd: work },
@@ -134,7 +134,7 @@ window.__aacBrowserConformance = { failures };
     throw new Error("browser bundle contains a node: import");
 
   const html = join(work, "index.html");
-  writeFileSync(html, '<!doctype html><script src="./aac-browser.bundle.js"></script>');
+  writeFileSync(html, '<!doctype html><script type="module" src="./aac-browser.bundle.js"></script>');
   const test = join(work, "browser-conformance.spec.mjs");
   writeFileSync(
     test,
