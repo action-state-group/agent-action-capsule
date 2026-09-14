@@ -126,12 +126,11 @@ Disclosure:
 
 JSON-DIGEST:
 : As defined in {{I-D.mih-scitt-agent-action-capsule}}: the lowercase-hex
-  SHA-256 digest of `UTF8({{RFC8785}} JCS(value))`, after selecting the
-  embedded Capsule's identity profile. The whole JSON value is canonicalized
-  recursively; no object-member allow-list, replacer array, or other
-  key-filtering operation is applied at any depth. Format 4 uses plain JCS.
-  Vintage format 2 applies absent-field normalization and is selected, as the
-  base profile requires, only when `canonicalization_id` is absent or null.
+  SHA-256 digest of `UTF8({{RFC8785}} JCS(value))`. The whole JSON value is
+  canonicalized recursively; no object-member allow-list, replacer array, or
+  other key-filtering operation is applied at any depth. This document only
+  applies to embedded Capsules that conform to the base profile's format-4
+  requirements.
 
 JCS:
 : JSON Canonicalization Scheme per {{RFC8785}}.
@@ -283,13 +282,10 @@ against.
 
 ### DE-3: Digest Recomputation and Comparison
 
-Compute `computed = JSON-DIGEST(value)` using the embedded Capsule's identity
-profile. Format 4 computes the lowercase-hex SHA-256 of `UTF8(JCS(value))`
-over the whole recursively canonicalized value, with no member filtering or
-replacer array, and without normalization. Vintage format 2 applies the same
-absent-field normalization used for its `capsule_id`; the base profile's absent-
-or-null format-2 selection rule applies. This document introduces no second
-profile-selection or hashing path.
+Compute `computed = JSON-DIGEST(value)`: the lowercase-hex SHA-256 of
+`UTF8(JCS(value))` over the whole recursively canonicalized value, with no
+member filtering or replacer array. This document defines no second hashing
+path.
 
 Compare `computed` to the committed digest located in DE-2:
 

@@ -40,7 +40,7 @@ Description:
   per {{RFC9943}}.
 
   The implementation covers: the complete §5 envelope schema (all REQUIRED
-  and OPTIONAL fields, absent-field normalization); the `capsule_id`
+  and OPTIONAL fields); the `capsule_id`
   content-address computation (JCS canonical form per {{RFC8785}} followed by
   SHA-256); the confirmed-effect binding (check 3); verdict/effect
   orthogonality (check 4); the effect-attestation matrix (check 5); and

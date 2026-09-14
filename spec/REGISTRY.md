@@ -19,6 +19,10 @@ vocabulary defined normatively in the Internet-Draft; it never generates new
 semantics. A registration records a value and its specification — it does not
 amend the format.
 
+This record applies only to Capsules conforming to the base profile's format-4
+requirements. A registry entry cannot make a pre-format-4 Capsule or any other
+unsupported canonicalization declaration conforming or verifiable.
+
 [RFC 8126 §4.6]: https://www.rfc-editor.org/rfc/rfc8126#section-4.6
 
 ## Designated-expert guidance (all registries)
