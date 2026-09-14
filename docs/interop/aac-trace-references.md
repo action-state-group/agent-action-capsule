@@ -35,9 +35,9 @@ Steven's answer on 5 September changed the conclusion of point 2.
 
 The digest as identity was deliberate in AAC and predates CPB: a mutable reference is not evidence, and a citation that can drift is worse than none. That reasoning is now stated in -04's Cross-record references section (#94), which also says AAC states no availability obligation and that one belongs to whichever profile carries the locator.
 
-So `retention` does not retire. Kept beside the digest as an optional route obligation rather than as identity, it finally says something testable: party X undertakes to serve the bytes with digest D until T. A breach is detectable, because a request for D from X gets an absence, and attributable, because X made the promise. That replaces point 2.
+So retention does not retire. Kept beside the digest as an optional route obligation rather than as identity, it says what party X undertakes to serve: the bytes with digest D until T. A request for D supplies evidence for assessing that promise. Whether a response establishes a breach depends on the promise's terms and the verified response. That replaces point 2.
 
-The two shapes meet at the request: ask X for D and get the artifact, a signed refusal, or a recorded absence. A retention promise is what makes a recorded absence chargeable.
+A verified signed no_such_record response establishes that its signer reported absence. Attributing it to X requires checking the expected responder key and matching the response to the request. A requester-side timeout records that no answer arrived; it does not establish that X received the request or breached the promise.
 
 ## For a third format
 
