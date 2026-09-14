@@ -136,11 +136,21 @@ window.__aacBrowserConformance.done = true;
     ],
     { cwd: work },
   );
-  if (readFileSync(bundle, "utf8").includes("node:"))
+  const bundleCode = readFileSync(bundle, "utf8");
+  if (bundleCode.includes("node:"))
     throw new Error("browser bundle contains a node: import");
 
+  // Inline the ESM bundle as a module script rather than referencing it by src.
+  // A module <script src> is fetched with CORS, which a file:// page (origin
+  // "null") rejects; an INLINE module needs no fetch and still supports the
+  // top-level await the WebCrypto path uses. Escape any </script> in the code.
   const html = join(work, "index.html");
-  writeFileSync(html, '<!doctype html><html><body></body><script type="module" src="./aac-browser.bundle.js"></script></html>');
+  writeFileSync(
+    html,
+    '<!doctype html><html><body></body><script type="module">' +
+      bundleCode.replace(/<\/script/gi, "<\\/script") +
+      "</script></html>",
+  );
   const test = join(work, "browser-conformance.spec.mjs");
   writeFileSync(
     test,
