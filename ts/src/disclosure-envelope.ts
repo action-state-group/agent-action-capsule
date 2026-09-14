@@ -1,9 +1,4 @@
-import {
-  asJsonObject,
-  jsonDigest,
-  vintageJsonDigest,
-  type ParsedJson,
-} from "./json.js";
+import { asJsonObject, jsonDigest, type ParsedJson } from "./json.js";
 import { resolveDisclosurePath } from "./disclosure-path.js";
 import { disclosureEligibleFields } from "./registries.js";
 import { verifyClass1, type VerificationResult } from "./verify.js";
@@ -59,9 +54,7 @@ export async function verifyDisclosureEnvelope(
       }
       let matches = false;
       try {
-        const computed = await (capsuleObject?.format_version === "2"
-          ? vintageJsonDigest(value)
-          : jsonDigest(value));
+        const computed = await jsonDigest(value);
         matches = computed === committed;
       } catch {
         matches = false;

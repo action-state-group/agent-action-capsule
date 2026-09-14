@@ -15,7 +15,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from .canonical import FloatInDigestError, UnsafeIntegerError, json_digest, vintage_json_digest
+from .canonical import FloatInDigestError, UnsafeIntegerError, json_digest
 from .registries import DISCLOSURE_ELIGIBLE_FIELDS
 from .verify import VerificationResult, verify
 
@@ -79,10 +79,7 @@ def verify_disclosure_envelope(envelope: Any) -> DisclosureEnvelopeResult:
                 continue
 
             try:
-                if capsule.get("format_version") == "2":
-                    computed = vintage_json_digest(value)
-                else:
-                    computed = json_digest(value)
+                computed = json_digest(value)
                 matches = computed == stored
             except (FloatInDigestError, UnsafeIntegerError, TypeError, ValueError):
                 matches = False
@@ -107,11 +104,7 @@ def build_disclosure_envelope(capsule: Mapping[str, Any], disclosures: Mapping[s
         if not isinstance(stored, str) or len(stored) != 64:
             raise ValueError(f"{NO_COMMITTED_DIGEST}: {member}")
         try:
-            computed = (
-                vintage_json_digest(value)
-                if capsule.get("format_version") == "2"
-                else json_digest(value)
-            )
+            computed = json_digest(value)
         except (FloatInDigestError, UnsafeIntegerError, TypeError, ValueError) as err:
             raise ValueError(f"{MISMATCH}: {member}") from err
         if computed != stored:

@@ -3,7 +3,7 @@
 import re
 
 import pytest
-from conftest import base_executed, reseal
+from conftest import base_executed
 
 from agent_action_capsule import verify
 from agent_action_capsule.emit import DEFAULT_FORMAT_VERSION, emit
@@ -25,16 +25,17 @@ def test_emit_produces_v4_declared_jcs():
 
 
 # ---------------------------------------------------------------------------
-# 2. v2 capsule verifies cleanly (no format_version finding)
+# 2. Format 2 fails closed
 # ---------------------------------------------------------------------------
 
-def test_v2_capsule_accepted():
-    """A well-formed v2 capsule verifies without any format_version finding."""
+def test_v2_capsule_rejected():
+    """Format 2 is abandoned and must fail closed."""
     capsule = base_executed()
+    capsule["format_version"] = "2"
     res = verify(capsule)
-    assert res.ok
+    assert not res.ok
     codes = {f.code for f in res.findings}
-    assert "unsupported_format_version" not in codes
+    assert "unsupported_format_version" in codes
 
 
 # ---------------------------------------------------------------------------
@@ -46,7 +47,6 @@ def test_unknown_format_version_rejected(fv):
     """Any format_version other than '2' or '4' is explicitly rejected."""
     cap = base_executed()
     cap["format_version"] = fv
-    cap = reseal(cap)
     res = verify(cap)
     # Must NOT silently accept an unknown format version
     assert not res.ok, f"format_version {fv!r} should be rejected, not silently accepted"
@@ -81,7 +81,6 @@ def test_format_version_check_is_check_1():
     """The unsupported_format_version finding MUST be check=1 and severity='error'."""
     cap = base_executed()
     cap["format_version"] = "1"
-    cap = reseal(cap)
     res = verify(cap)
     fv_findings = [f for f in res.findings if f.code == "unsupported_format_version"]
     assert len(fv_findings) == 1
@@ -99,7 +98,6 @@ def test_v1_format_explicitly_rejected():
     requirement independently of any specific producer."""
     cap = base_executed()
     cap["format_version"] = "1"
-    cap = reseal(cap)
     res = verify(cap)
     assert not res.ok
     assert any(f.code == "unsupported_format_version" for f in res.findings)
@@ -122,11 +120,7 @@ def _cleanroom_check(capsule: dict) -> bool:
     if not isinstance(capsule, dict):
         return False
     format_version = capsule.get("format_version")
-    if format_version == "2" and "canonicalization_id" in capsule:
-        return False
-    if format_version == "4" and capsule.get("canonicalization_id") != "jcs":
-        return False
-    if format_version not in {"2", "4"}:
+    if format_version != "4" or capsule.get("canonicalization_id") != "jcs":
         return False
     for fld in required:
         if not isinstance(capsule.get(fld), str):
@@ -149,7 +143,6 @@ def test_cleanroom_rejects_v1():
     """Clean-room verifier independently rejects format_version='1'."""
     cap = base_executed()
     cap["format_version"] = "1"
-    cap = reseal(cap)
     assert _cleanroom_check(cap) is False
 
 

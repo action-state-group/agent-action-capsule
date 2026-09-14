@@ -18,6 +18,9 @@ func TestLoadAuthoritative(t *testing.T) {
 
 func TestEmbeddedAuthoritativeRegistryMatchesSpec(t *testing.T) {
 	expected, err := os.ReadFile("../../spec/REGISTRY.md")
+	if os.IsNotExist(err) {
+		t.Skip("spec/REGISTRY.md is unavailable outside the source checkout")
+	}
 	require.NoError(t, err)
 	assert.Equal(t, expected, authoritativeRegistry, "run go generate ./registries after changing spec/REGISTRY.md")
 }

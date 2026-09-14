@@ -8,7 +8,7 @@ import {
   decodeStrictJson,
   disclosureEligibleFields,
   verifyDisclosureEnvelope,
-  vintageJsonDigest,
+  jsonDigest,
   type ParsedJson,
 } from "../src/index.js";
 
@@ -67,7 +67,9 @@ describe("authoritative Disclosure Envelope corpus", () => {
 
 it("follows the complete registered path instead of matching its final name", async () => {
   const input = decodeStrictJson(
-    readFileSync(resolve(root, "pos-disclosure-envelope-match", "input.json")),
+    readFileSync(
+      resolve(root, "pos-disclosure-envelope-nested-input", "input.json"),
+    ),
   );
   const wrapper = asJsonObject(asJsonObject(input)?.envelope)!;
   const capsule = asJsonObject(wrapper.capsule)!;
@@ -87,7 +89,9 @@ it("follows the complete registered path instead of matching its final name", as
 
 it("verifies a vector-based commitment for a deeply nested disclosure", async () => {
   const input = decodeStrictJson(
-    readFileSync(resolve(root, "pos-disclosure-envelope-match", "input.json")),
+    readFileSync(
+      resolve(root, "pos-disclosure-envelope-nested-input", "input.json"),
+    ),
   );
   const wrapper = asJsonObject(asJsonObject(input)?.envelope)!;
   const capsule = asJsonObject(wrapper.capsule)!;
@@ -101,7 +105,7 @@ it("verifies a vector-based commitment for a deeply nested disclosure", async ()
   const compute = asJsonObject(
     asJsonObject(capsule.model_attestation)?.compute_attestation,
   )!;
-  expect(await vintageJsonDigest(nested)).toBe(committedDigest);
+  expect(await jsonDigest(nested)).toBe(committedDigest);
   compute.agent_input_digest = committedDigest;
   capsule.capsule_id = await computeCapsuleId(
     capsule as Record<string, ParsedJson>,

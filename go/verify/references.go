@@ -10,7 +10,7 @@ import "fmt"
 // recorded claims only; Class 1 never authenticates their inclusion proofs.
 func referenceFindings(capsule map[string]interface{}, known map[string]map[string]bool) []Finding {
 	if capsule["format_version"] != "4" {
-		return nil // references is a draft-04 addition; preserve vintage extension handling.
+		return nil
 	}
 	raw, present := capsule["references"]
 	if !present {

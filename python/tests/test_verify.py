@@ -251,8 +251,10 @@ def test_parse_rejects_dishonest_capsule(executed):
         ("4", "jcs-n", "canonicalization_profile_mismatch"),
         ("4", "future-algorithm", "canonicalization_profile_mismatch"),
         ("4", 7, "canonicalization_id_not_string"),
-        ("2", "jcs", "canonicalization_profile_mismatch"),
-        ("2", None, "canonicalization_profile_mismatch"),
+        ("1", "jcs", "unsupported_format_version"),
+        ("2", "jcs", "unsupported_format_version"),
+        ("2", None, "unsupported_format_version"),
+        ("3", "jcs", "unsupported_format_version"),
     ],
 )
 def test_identity_profile_findings(executed, format_version, declaration, expected_code):
@@ -267,4 +269,18 @@ def test_identity_profile_findings(executed, format_version, declaration, expect
 
     result = verify(capsule)
     assert not result.ok
-    assert expected_code in codes(result)
+    result_codes = codes(result)
+    assert expected_code in result_codes
+    assert "capsule_id_uncomputable" not in result_codes
+    assert result.capsule_id is None
+
+
+@pytest.mark.parametrize("capsule_id", ["not-hex", 7])
+def test_malformed_capsule_id_does_not_trigger_derived_identity_findings(executed, capsule_id):
+    capsule = dict(executed, capsule_id=capsule_id)
+    result = verify(capsule)
+    result_codes = codes(result)
+    assert "capsule_id_malformed" in result_codes
+    assert "capsule_id_mismatch" not in result_codes
+    assert "capsule_id_uncomputable" not in result_codes
+    assert result.capsule_id is None

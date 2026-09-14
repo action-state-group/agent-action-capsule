@@ -267,29 +267,3 @@ export async function sha256Hex(value: Uint8Array): Promise<string> {
 export async function jsonDigest(value: unknown): Promise<string> {
   return sha256Hex(jcs(value));
 }
-
-/** Vintage format-2 absent-field normalization. */
-export function normalizeAbsent(value: ParsedJson): ParsedJson {
-  if (Array.isArray(value)) return value.map(normalizeAbsent);
-  const record = asJsonObject(value);
-  if (record === undefined) return value;
-  const result: Record<string, ParsedJson> = {};
-  for (const [key, child] of Object.entries(record)) {
-    const normalized = normalizeAbsent(child);
-    if (normalized === null) continue;
-    if (Array.isArray(normalized) && normalized.length === 0) continue;
-    const normalizedObject = asJsonObject(normalized);
-    if (
-      normalizedObject !== undefined &&
-      Object.keys(normalizedObject).length === 0
-    )
-      continue;
-    result[key] = normalized;
-  }
-  return result;
-}
-
-/** Verification-only format-2 JSON-DIGEST. */
-export async function vintageJsonDigest(value: ParsedJson): Promise<string> {
-  return jsonDigest(normalizeAbsent(value));
-}

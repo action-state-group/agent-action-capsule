@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_action_capsule import compute_capsule_id, jcs
+from agent_action_capsule import compute_capsule_id, jcs, verify
 
 ROOT = Path(__file__).resolve().parents[2]
 INTEROP = ROOT / "docs" / "interop"
@@ -51,14 +51,21 @@ def _verify_quote_binding(bound_digest_raw_b64: str, digest_hex: str, profile_la
     raise BindingError("digest_binding_mismatch")
 
 
-def test_positive_vector_recomputes_capsule_and_preimage_digests():
+def test_published_vector_fails_closed_but_preimage_digests_remain_bound():
+    """Current code rejects this pre-v4 record; legacy-verifier/v0.3.0-format2 verifies it."""
     capsule = _load_json(VECTOR["inputs"]["capsule"])
     agent_input = _load_json(VECTOR["inputs"]["agent_input"])
     agent_output = _load_json(VECTOR["inputs"]["agent_output"])
     receipt = _load_json(VECTOR["inputs"]["receipt"])
     positive = VECTOR["positive"]
 
-    assert compute_capsule_id(capsule) == positive["capsule_id"]["hex"]
+    assert capsule["format_version"] == "2"
+    assert "canonicalization_id" not in capsule
+    with pytest.raises(ValueError, match="format_version must be '4'"):
+        compute_capsule_id(capsule)
+    result = verify(capsule)
+    assert result.capsule_id is None
+    assert [finding.code for finding in result.findings] == ["unsupported_format_version"]
     assert capsule["capsule_id"] == positive["capsule_id"]["hex"]
 
     response_digest = hashlib.sha256(jcs(agent_output)).hexdigest()

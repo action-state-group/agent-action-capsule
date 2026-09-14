@@ -75,10 +75,6 @@ func Verify(envelope interface{}, regs map[string]map[string]bool) Result {
 		return result
 	}
 
-	format := ""
-	if cap, ok := capsule.(map[string]interface{}); ok {
-		format, _ = cap["format_version"].(string)
-	}
 	members := make([]string, 0, len(disclosures))
 	for member := range disclosures {
 		members = append(members, member)
@@ -98,11 +94,7 @@ func Verify(envelope interface{}, regs map[string]map[string]bool) Result {
 		}
 		var computed string
 		var err error
-		if format == "2" {
-			computed, err = canonical.VintageJSONDigest(value)
-		} else {
-			computed, err = canonical.JSONDigest(value)
-		}
+		computed, err = canonical.JSONDigest(value)
 		code := Mismatch
 		if err == nil && computed == stored {
 			code = Match
@@ -117,7 +109,6 @@ func Verify(envelope interface{}, regs map[string]map[string]bool) Result {
 // DE-3 digest mismatches using the verifier's finding codes. It does not read
 // stores, ledgers, or producer packages.
 func Build(capsule map[string]interface{}, disclosures map[string]interface{}) (map[string]interface{}, error) {
-	format, _ := capsule["format_version"].(string)
 	for member, value := range disclosures {
 		path, eligible := registries.DisclosureEligibleFields[member]
 		if !eligible {
@@ -127,19 +118,12 @@ func Build(capsule map[string]interface{}, disclosures map[string]interface{}) (
 		if !ok || !hex64.MatchString(stored) {
 			return nil, fmt.Errorf("%s: %s", NoCommittedDigest, member)
 		}
-		computed, err := digest(value, format)
+		computed, err := canonical.JSONDigest(value)
 		if err != nil || computed != stored {
 			return nil, fmt.Errorf("%s: %s", Mismatch, member)
 		}
 	}
 	return map[string]interface{}{"capsule": capsule, "disclosures": disclosures}, nil
-}
-
-func digest(value interface{}, format string) (string, error) {
-	if format == "2" {
-		return canonical.VintageJSONDigest(value)
-	}
-	return canonical.JSONDigest(value)
 }
 
 func committedDigest(value interface{}, path string) (string, bool) {

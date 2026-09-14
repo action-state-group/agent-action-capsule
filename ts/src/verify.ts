@@ -9,7 +9,6 @@ import {
   JcsUnsafeIntegerError,
   jcs,
   JsonNumber,
-  normalizeAbsent,
   sha256Hex,
   type ParsedJson,
 } from "./json.js";
@@ -51,8 +50,12 @@ export function decodeCapsuleJson(data: Uint8Array | string): RecordValue {
   return result;
 }
 
-/** Recompute the signer-independent Capsule ID from the declared profile. */
+/** Recompute a format-4 signer-independent Capsule ID. */
 export async function computeCapsuleId(capsule: RecordValue): Promise<string> {
+  if (capsule.format_version !== "4")
+    throw new TypeError('format_version must be "4"');
+  if (!("canonicalization_id" in capsule))
+    throw new TypeError("canonicalization_id is required");
   const copy: RecordValue = {};
   const declared = capsule.canonicalization_id;
   if (declared !== undefined && typeof declared !== "string")
@@ -64,10 +67,9 @@ export async function computeCapsuleId(capsule: RecordValue): Promise<string> {
   for (const [key, value] of Object.entries(capsule)) {
     if (key === "capsule_id" || key === "signature" || key === "key_id")
       continue;
-    if (declared === undefined && key === "chain") continue;
     copy[key] = value;
   }
-  return sha256Hex(jcs(declared === undefined ? normalizeAbsent(copy) : copy));
+  return sha256Hex(jcs(copy));
 }
 
 function pathFind(
@@ -174,13 +176,7 @@ export async function verifyClass1(
       1,
     );
   if (typeof top.format_version === "string") {
-    if (top.format_version === "2" && "canonicalization_id" in top)
-      add(
-        "canonicalization_profile_mismatch",
-        'format_version "2" MUST NOT declare canonicalization_id (§5.1)',
-        1,
-      );
-    else if (top.format_version === "4" && top.canonicalization_id !== "jcs")
+    if (top.format_version === "4" && top.canonicalization_id !== "jcs")
       add(
         !("canonicalization_id" in top)
           ? "canonicalization_id_missing"
@@ -190,10 +186,10 @@ export async function verifyClass1(
         'format_version "4" REQUIRES canonicalization_id="jcs" (§5.1)',
         1,
       );
-    else if (top.format_version !== "2" && top.format_version !== "4")
+    else if (top.format_version !== "4")
       add(
         "unsupported_format_version",
-        `format_version ${JSON.stringify(top.format_version)} is not supported; expected "2" or "4" (§5.1)`,
+        `format_version ${JSON.stringify(top.format_version)} is not supported; expected "4" (§5.1)`,
         1,
       );
   }
@@ -268,7 +264,12 @@ export async function verifyClass1(
   findings.push(...references.filter((finding) => finding.check === 1));
 
   let recomputed: string | undefined;
-  if (carriedId !== undefined) {
+  const identityProfileValid =
+    top.format_version === "4" && top.canonicalization_id === "jcs";
+  // Profile validation precedes digest computation. An absent capsuleId in the
+  // result already records that no computation was attempted, so do not add a
+  // derived capsule_id_uncomputable finding for the same primary cause.
+  if (carriedId !== undefined && identityProfileValid) {
     try {
       recomputed = await computeCapsuleId(top);
       if (recomputed !== carriedId)

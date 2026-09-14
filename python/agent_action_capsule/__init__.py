@@ -17,7 +17,6 @@ from .canonical import (
     compute_capsule_id,
     jcs,
     json_digest,
-    normalize,
 )
 from .contracts import (
     AssuranceBlock,
@@ -111,7 +110,6 @@ __all__ = [
     "compute_capsule_id",
     "json_digest",
     "jcs",
-    "normalize",
     "FloatInDigestError",
     "UnsafeIntegerError",
     # registries

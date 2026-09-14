@@ -25,6 +25,9 @@ func builderCapsule(t *testing.T) map[string]interface{} {
 	decoder.UseNumber()
 	var capsule map[string]interface{}
 	require.NoError(t, decoder.Decode(&capsule))
+	capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-04"
+	capsule["format_version"] = "4"
+	capsule["canonicalization_id"] = canonical.CanonicalizationJCS
 	return capsule
 }
 

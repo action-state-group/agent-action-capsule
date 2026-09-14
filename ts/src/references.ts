@@ -6,7 +6,7 @@ export function referenceFindings(
   capsule: Record<string, ParsedJson>,
   purposes: ReadonlySet<string>,
 ): Finding[] {
-  if (capsule.format_version !== "4") return []; // Preserve vintage extension handling.
+  if (capsule.format_version !== "4") return [];
   if (!("references" in capsule)) return [];
   const findings: Finding[] = [];
   const add = (

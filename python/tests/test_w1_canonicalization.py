@@ -11,10 +11,9 @@ from agent_action_capsule import (
     compute_capsule_id,
     jcs,
     json_digest,
-    normalize,
     verify,
 )
-from agent_action_capsule.canonical import CHAIN_LINKAGE_FIELDS, MAX_SAFE_INTEGER
+from agent_action_capsule.canonical import MAX_SAFE_INTEGER
 
 # ---------------------------------------------------------------------------
 # 1. Key-order invariance
@@ -106,43 +105,6 @@ def test_non_bmp_in_dict_key_order():
 
 
 # ---------------------------------------------------------------------------
-# 5. Normalize removes null / empty bottom-up
-# ---------------------------------------------------------------------------
-
-
-def test_normalize_top_level_null_value():
-    assert normalize({"a": None}) == {}
-
-
-def test_normalize_top_level_empty_list():
-    assert normalize({"a": []}) == {}
-
-
-def test_normalize_top_level_empty_dict():
-    assert normalize({"a": {}}) == {}
-
-
-def test_normalize_nested_becomes_empty_after_nulls_removed():
-    # {"outer": {"inner": None}} → outer becomes {} → outer removed
-    assert normalize({"keep": 1, "outer": {"inner": None}}) == {"keep": 1}
-
-
-def test_normalize_deeply_nested():
-    v = {"a": {"b": {"c": None}}}
-    assert normalize(v) == {}
-
-
-def test_normalize_list_of_nulls_kept_as_is():
-    # Lists: nulls inside are NOT stripped (only object member removal is bottom-up)
-    assert normalize([None, 1, None]) == [None, 1, None]
-
-
-def test_normalize_preserves_non_empty():
-    v = {"a": 1, "b": [1, 2], "c": {"d": 3}}
-    assert normalize(v) == v
-
-
-# ---------------------------------------------------------------------------
 # 6. json_digest is deterministic
 # ---------------------------------------------------------------------------
 
@@ -155,7 +117,7 @@ def test_json_digest_same_input_same_output():
 
 def test_json_digest_matches_manual_sha256():
     v = {"z": 1, "a": "x"}
-    # normalize({z:1, a:"x"}) = same; JCS sorts → {"a":"x","z":1}
+    # JCS sorts → {"a":"x","z":1}
     expected = hashlib.sha256(b'{"a":"x","z":1}').hexdigest()
     assert json_digest(v) == expected
 
@@ -165,35 +127,13 @@ def test_json_digest_commits_present_null():
 
 
 # ---------------------------------------------------------------------------
-# 7. Vintage format-2 capsule_id stability under chain linking
 # ---------------------------------------------------------------------------
-
-
-def test_vintage_capsule_id_stable_when_chain_added():
-    body = {"spec_version": "x", "format_version": "2", "action_id": "a1"}
-    cid = compute_capsule_id(body)
-    with_chain = dict(body)
-    with_chain["chain"] = {"parent_capsule_id": "b" * 64, "relation": "follows"}
-    assert compute_capsule_id(with_chain) == cid
-
-
-def test_vintage_capsule_id_excludes_chain_linkage_fields():
-    # All CHAIN_LINKAGE_FIELDS are excluded from the vintage digest.
-    body = {"spec_version": "x", "format_version": "2", "action_id": "a2"}
-    cid = compute_capsule_id(body)
-    with_extras = dict(body)
-    for f in CHAIN_LINKAGE_FIELDS:
-        with_extras[f] = "arbitrary_value"
-    assert compute_capsule_id(with_extras) == cid
-
-
-# ---------------------------------------------------------------------------
-# 8. capsule_id stability with extra fields / self-exclusion
+# 5. capsule_id stability with extra fields / self-exclusion
 # ---------------------------------------------------------------------------
 
 
 def test_capsule_id_excludes_itself():
-    body = {"spec_version": "x", "format_version": "2", "action_id": "a3"}
+    body = {"spec_version": "x", "format_version": "4", "canonicalization_id": "jcs", "action_id": "a3"}
     cid1 = compute_capsule_id(body)
     body_with_cid = dict(body)
     body_with_cid["capsule_id"] = cid1
@@ -201,13 +141,13 @@ def test_capsule_id_excludes_itself():
 
 
 def test_capsule_id_changes_when_content_changes():
-    body1 = {"spec_version": "x", "format_version": "2", "action_id": "a4"}
-    body2 = {"spec_version": "x", "format_version": "2", "action_id": "a5"}
+    body1 = {"spec_version": "x", "format_version": "4", "canonicalization_id": "jcs", "action_id": "a4"}
+    body2 = {"spec_version": "x", "format_version": "4", "canonicalization_id": "jcs", "action_id": "a5"}
     assert compute_capsule_id(body1) != compute_capsule_id(body2)
 
 
 def test_capsule_id_is_64_lowercase_hex():
-    cid = compute_capsule_id({"action_id": "x"})
+    cid = compute_capsule_id({"format_version": "4", "canonicalization_id": "jcs", "action_id": "x"})
     assert len(cid) == 64
     assert cid == cid.lower()
     assert all(c in "0123456789abcdef" for c in cid)
@@ -219,13 +159,20 @@ def test_capsule_id_is_64_lowercase_hex():
 
 _KEY_FIELDS = [
     "spec_version",
-    "format_version",
     "action_id",
     "action_type",
     "operator",
     "developer",
     "timestamp",
 ]
+
+
+def test_flip_format_version_fails_closed():
+    cap = base_executed()
+    cap["format_version"] = "3"
+    result = verify(cap)
+    assert not result.ok
+    assert "unsupported_format_version" in {f.code for f in result.findings}
 
 
 @pytest.mark.parametrize("field", _KEY_FIELDS)
@@ -332,27 +279,3 @@ def test_unsafe_int_deeply_nested_rejected():
 
 
 # ---------------------------------------------------------------------------
-# 13. Empty dict / list / null normalization semantics
-# ---------------------------------------------------------------------------
-
-
-def test_normalize_empty_dict_alone():
-    assert normalize({}) == {}
-
-
-def test_normalize_empty_list_alone():
-    assert normalize([]) == []
-
-
-def test_normalize_none_alone():
-    assert normalize(None) is None
-
-
-def test_dict_containing_empty_values_strips_them():
-    v = {"a": 1, "b": {}, "c": [], "d": None}
-    assert normalize(v) == {"a": 1}
-
-
-def test_dict_containing_non_empty_values_kept():
-    v = {"a": 1, "b": {"x": 2}, "c": [0], "d": False}
-    assert normalize(v) == v

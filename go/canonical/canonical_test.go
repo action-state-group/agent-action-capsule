@@ -16,27 +16,15 @@ func digest(value string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func TestComputeCapsuleIDVintageRecord(t *testing.T) {
-	chain := map[string]interface{}{
-		"parent_capsule_id": "parent-a",
-		"relation":          "confirms",
+func TestComputeCapsuleIDRejectsNonFormat4Profiles(t *testing.T) {
+	for _, capsule := range []map[string]interface{}{
+		{},
+		{"format_version": "2"},
+		{"format_version": "4"},
+	} {
+		_, err := canonical.ComputeCapsuleID(capsule)
+		require.Error(t, err)
 	}
-	capsule := map[string]interface{}{
-		"capsule_id": "ignored",
-		"chain":      chain,
-		"empty":      []interface{}{},
-		"kept":       "value",
-		"null":       nil,
-	}
-
-	got, err := canonical.ComputeCapsuleID(capsule)
-	require.NoError(t, err)
-	require.Equal(t, digest(`{"kept":"value"}`), got)
-
-	chain["parent_capsule_id"] = "parent-b"
-	changed, err := canonical.ComputeCapsuleID(capsule)
-	require.NoError(t, err)
-	require.Equal(t, got, changed, "vintage identity excludes chain")
 }
 
 func TestJSONDigestCommitsPresentNull(t *testing.T) {
@@ -53,6 +41,7 @@ func TestComputeCapsuleIDDeclaredJCS(t *testing.T) {
 		"relation":          "confirms",
 	}
 	capsule := map[string]interface{}{
+		"format_version":      "4",
 		"canonicalization_id": canonical.CanonicalizationJCS,
 		"capsule_id":          "ignored",
 		"chain":               chain,
@@ -63,7 +52,7 @@ func TestComputeCapsuleIDDeclaredJCS(t *testing.T) {
 
 	got, err := canonical.ComputeCapsuleID(capsule)
 	require.NoError(t, err)
-	require.Equal(t, digest(`{"canonicalization_id":"jcs","chain":{"parent_capsule_id":"parent-a","relation":"confirms"},"empty":[],"kept":"value","null":null}`), got)
+	require.Equal(t, digest(`{"canonicalization_id":"jcs","chain":{"parent_capsule_id":"parent-a","relation":"confirms"},"empty":[],"format_version":"4","kept":"value","null":null}`), got)
 
 	chain["parent_capsule_id"] = "parent-b"
 	changed, err := canonical.ComputeCapsuleID(capsule)
@@ -87,6 +76,7 @@ func TestComputeCapsuleIDRejectsInvalidDeclaration(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			_, err := canonical.ComputeCapsuleID(map[string]interface{}{
+				"format_version":      "4",
 				"canonicalization_id": test.value,
 			})
 			require.EqualError(t, err, test.want)

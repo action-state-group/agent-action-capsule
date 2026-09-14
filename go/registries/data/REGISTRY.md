@@ -19,6 +19,10 @@ vocabulary defined normatively in the Internet-Draft; it never generates new
 semantics. A registration records a value and its specification — it does not
 amend the format.
 
+This record applies only to Capsules conforming to the base profile's format-4
+requirements. A registry entry cannot make a pre-format-4 Capsule or any other
+unsupported canonicalization declaration conforming or verifiable.
+
 [RFC 8126 §4.6]: https://www.rfc-editor.org/rfc/rfc8126#section-4.6
 
 ## Designated-expert guidance (all registries)
@@ -214,7 +218,8 @@ behind a digest-only field without altering `capsule_id`.
 | `capsule` | object | Top-level Disclosure Envelope object | Disclosure Envelope profile, "Envelope Object" section (the unmodified Capsule payload) |
 | `disclosures` | object | Top-level Disclosure Envelope object | Disclosure Envelope profile, "Envelope Object" section (OPTIONAL; absent members are WITHHELD) |
 
-The disclosure-eligible fields this initial revision defines:
+The disclosure-eligible fields this initial revision defines. This table is a
+**Specification Required** registry:
 
 | `disclosures` member | Committed-digest field (in `capsule.model_attestation.compute_attestation`) |
 |---|---|
@@ -223,9 +228,17 @@ The disclosure-eligible fields this initial revision defines:
 
 A `disclosures` member outside this table is non-conforming; a verifier
 treats it as an unrecognized member rather than attempting to verify it.
-`capsule_id` is computed over `capsule` alone and is unaffected by the
-presence or absence of any `disclosures` member. See the companion draft
-for the full verifier checks (digest recomputation and comparison).
+An extension MUST add a digest-only Capsule field, register the member-to-
+committed-digest-field pair, add format-4 vectors and increment their vector
+version, and require producers to retain the original value for revelation.
+This registry is currently limited to fields directly under
+`capsule.model_attestation.compute_attestation`; widening it requires generic
+path resolution in every implementation. The disclosure unit is the whole
+registered member. CPB's salted-commitment mechanism, not this envelope,
+governs selective disclosure of a sub-field. `capsule_id` is computed over
+`capsule` alone and is unaffected by the presence or absence of any
+`disclosures` member. See the companion draft for the full verifier checks
+(digest recomputation and comparison).
 
 ## 11. `citation_purpose`
 

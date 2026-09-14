@@ -43,7 +43,7 @@ for directory in sorted(_VECTORS_DIR.glob("reference-*")):
             "codes": [finding["code"] for finding in expected["findings"]],
         }
     )
-assert len(CASES) == 27, f"expected the 27 shared reference vectors, found {len(CASES)}"
+assert len(CASES) == 26, f"expected the 26 shared reference vectors, found {len(CASES)}"
 
 
 def _codes(res):

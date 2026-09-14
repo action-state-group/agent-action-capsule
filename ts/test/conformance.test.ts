@@ -118,7 +118,7 @@ describe("reference parity edge cases", () => {
     ).toBe(false);
   });
 
-  it("reports other ID computation errors alongside numeric findings", async () => {
+  it("does not attempt ID computation when the identity profile is invalid", async () => {
     for (const name of [
       "neg-float-in-digest-field",
       "neg-unsafe-integer-in-digest-field",
@@ -126,13 +126,40 @@ describe("reference parity edge cases", () => {
       const capsule = decodeStrictJson(
         readFileSync(resolve(root, name, "input.json")),
       ) as Record<string, ParsedJson>;
+      capsule.format_version = "4";
       capsule.canonicalization_id = decodeStrictJson("4");
       const codes = (await verifyClass1(capsule)).findings.map(
         (finding) => finding.code,
       );
-      expect(codes).toContain("capsule_id_uncomputable");
+      expect(codes).toContain("canonicalization_id_not_string");
+      expect(codes).not.toContain("capsule_id_uncomputable");
     }
   });
+
+  it.each([
+    ["1", "jcs", "unsupported_format_version"],
+    ["2", undefined, "unsupported_format_version"],
+    ["2", null, "unsupported_format_version"],
+    ["3", "jcs", "unsupported_format_version"],
+    ["4", undefined, "canonicalization_id_missing"],
+    ["4", null, "canonicalization_id_not_string"],
+    ["4", "", "canonicalization_profile_mismatch"],
+    ["4", "jcs-n", "canonicalization_profile_mismatch"],
+  ] as const)(
+    "does not derive an ID finding for format %s and canonicalization %s",
+    async (formatVersion, canonicalizationId, expectedCode) => {
+      const capsule = fixture();
+      capsule.format_version = formatVersion;
+      if (canonicalizationId === undefined) delete capsule.canonicalization_id;
+      else capsule.canonicalization_id = canonicalizationId;
+
+      const result = await verifyClass1(capsule);
+      const codes = result.findings.map((finding) => finding.code);
+      expect(codes).toContain(expectedCode);
+      expect(codes).not.toContain("capsule_id_uncomputable");
+      expect(result.capsuleId).toBeUndefined();
+    },
+  );
 
   it("reports assurance overclaims when optional evidence is absent", async () => {
     const capsule = fixture();
