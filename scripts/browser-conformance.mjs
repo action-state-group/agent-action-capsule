@@ -146,8 +146,11 @@ window.__aacBrowserConformance.done = true;
     test,
     `import { expect, test } from "@playwright/test";
 test("built browser bundle accepts and rejects the frozen corpus", async ({ page }) => {
+  const pageErrors = [];
+  page.on("pageerror", (e) => pageErrors.push(String(e && e.stack || e)));
+  page.on("console", (m) => { if (m.type() === "error") pageErrors.push("console: " + m.text()); });
   await page.goto(${JSON.stringify(pathToFileURL(html).href)});
-  await expect.poll(() => page.evaluate(() => window.__aacBrowserConformance?.done === true)).toBeTruthy();
+  await expect.poll(() => page.evaluate(() => window.__aacBrowserConformance?.done === true), { message: () => "module errors:\\n" + pageErrors.join("\\n") }).toBeTruthy();
   await expect.poll(() => page.evaluate(() => window.__aacBrowserConformance.failures)).toEqual([]);
 });
 `,
