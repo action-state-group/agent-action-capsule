@@ -1,4 +1,4 @@
-import { asJsonObject, jsonDigest, type ParsedJson } from "./json.js";
+import { asJsonObject, isHex64, jsonDigest, type ParsedJson } from "./json.js";
 import { resolveDisclosurePath } from "./disclosure-path.js";
 import { disclosureEligibleFields } from "./registries.js";
 import { verifyClass1, type VerificationResult } from "./verify.js";
@@ -11,6 +11,37 @@ export const DISCLOSURE_NO_COMMITTED_DIGEST = "disclosure_no_committed_digest";
 export interface DisclosureFinding {
   readonly member: string;
   readonly code: string;
+}
+
+/** Build a Disclosure Envelope after enforcing DE-1 through DE-3. */
+export async function buildDisclosureEnvelope(
+  capsule: Record<string, ParsedJson>,
+  disclosures: Record<string, ParsedJson>,
+): Promise<{
+  capsule: Record<string, ParsedJson>;
+  disclosures: Record<string, ParsedJson>;
+}> {
+  for (const [member, value] of Object.entries(disclosures)) {
+    const path =
+      disclosureEligibleFields[member as keyof typeof disclosureEligibleFields];
+    if (path === undefined) {
+      throw new Error(`${DISCLOSURE_INELIGIBLE_FIELD}: ${member}`);
+    }
+    const committed = resolveDisclosurePath(capsule, path);
+    if (!isHex64(committed)) {
+      throw new Error(`${DISCLOSURE_NO_COMMITTED_DIGEST}: ${member}`);
+    }
+    let computed: string;
+    try {
+      computed = await jsonDigest(value);
+    } catch {
+      throw new Error(`${DISCLOSURE_MISMATCH}: ${member}`);
+    }
+    if (computed !== committed) {
+      throw new Error(`${DISCLOSURE_MISMATCH}: ${member}`);
+    }
+  }
+  return { capsule, disclosures: { ...disclosures } };
 }
 
 export interface DisclosureEnvelopeResult {

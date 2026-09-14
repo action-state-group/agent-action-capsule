@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { resolveDisclosurePath } from "../src/disclosure-path.js";
 import {
   asJsonObject,
+  buildDisclosureEnvelope,
   computeCapsuleId,
   decodeStrictJson,
   disclosureEligibleFields,
@@ -117,4 +118,59 @@ it("verifies a vector-based commitment for a deeply nested disclosure", async ()
   expect(actual.disclosureFindings).toEqual([
     { member: "agent_input", code: "disclosure_match" },
   ]);
+});
+
+it("builds and verifies a deeply nested disclosure", async () => {
+  const input = decodeStrictJson(
+    readFileSync(
+      resolve(root, "pos-disclosure-envelope-nested-input", "input.json"),
+    ),
+  );
+  const wrapper = asJsonObject(asJsonObject(input)?.envelope)!;
+  const capsule = asJsonObject(wrapper.capsule)!;
+  const value = decodeStrictJson(
+    '{"outer":{"items":[{"nested":{"value":"one"}},{"nested":{"value":"two"}}]}}',
+  );
+  const compute = asJsonObject(
+    asJsonObject(capsule.model_attestation)?.compute_attestation,
+  )!;
+  compute.agent_input_digest = await jsonDigest(value);
+  capsule.capsule_id = await computeCapsuleId(capsule);
+
+  const envelope = await buildDisclosureEnvelope(capsule, {
+    agent_input: value,
+  });
+
+  expect(await verifyDisclosureEnvelope(envelope)).toMatchObject({
+    ok: true,
+    disclosureFindings: [{ member: "agent_input", code: "disclosure_match" }],
+  });
+});
+
+it("rejects ineligible, uncommitted, malformed, and mismatched disclosures", async () => {
+  const input = decodeStrictJson(
+    readFileSync(
+      resolve(root, "pos-disclosure-envelope-nested-input", "input.json"),
+    ),
+  );
+  const wrapper = asJsonObject(asJsonObject(input)?.envelope)!;
+  const capsule = asJsonObject(wrapper.capsule)!;
+
+  await expect(
+    buildDisclosureEnvelope(capsule, { not_eligible: "value" }),
+  ).rejects.toThrow("disclosure_ineligible_field: not_eligible");
+  await expect(
+    buildDisclosureEnvelope(capsule, { agent_output: "value" }),
+  ).rejects.toThrow("disclosure_no_committed_digest: agent_output");
+  await expect(
+    buildDisclosureEnvelope(capsule, { agent_input: "different" }),
+  ).rejects.toThrow("disclosure_mismatch: agent_input");
+
+  const compute = asJsonObject(
+    asJsonObject(capsule.model_attestation)?.compute_attestation,
+  )!;
+  compute.agent_input_digest = "malformed";
+  await expect(
+    buildDisclosureEnvelope(capsule, { agent_input: "value" }),
+  ).rejects.toThrow("disclosure_no_committed_digest: agent_input");
 });
