@@ -20,8 +20,9 @@
     "status": "confirmed",
     "type": "write_order"
   },
-  "format_version": "2",
+  "format_version": "4",
   "operator": "TAMPERED-CO",
-  "spec_version": "draft-mih-scitt-agent-action-capsule-00",
-  "timestamp": "2026-06-13T00:00:00Z"
+  "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+  "timestamp": "2026-06-13T00:00:00Z",
+  "canonicalization_id": "jcs"
 }

@@ -6,7 +6,7 @@
     "effect_mode": "dispatched_unconfirmed",
     "ledger_mode": "standalone"
   },
-  "capsule_id": "633f3635fedb0175563b51a081e95db4b7cd6294cc16886fc94777904c64e7b3",
+  "capsule_id": "c3e2078db4bd873c2d523b21d101bc440d1cf9f7ebf88ded7a020af5977d4bb9",
   "developer": "agent@v1",
   "disposition": {
     "approver": "human",
@@ -20,8 +20,9 @@
     "status": "dispatched",
     "type": "send_payment"
   },
-  "format_version": "2",
+  "format_version": "4",
   "operator": "ACME-CO",
-  "spec_version": "draft-mih-scitt-agent-action-capsule-00",
-  "timestamp": "2026-06-13T00:00:00Z"
+  "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+  "timestamp": "2026-06-13T00:00:00Z",
+  "canonicalization_id": "jcs"
 }

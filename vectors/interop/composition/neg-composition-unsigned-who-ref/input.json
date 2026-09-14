@@ -29,7 +29,7 @@
       "effect_mode": "dispatched_unconfirmed",
       "ledger_mode": "standalone"
     },
-    "capsule_id": "785e62b0243fd5b8e1eb2cf820516b58ea3dfd3f2dfb144da5c6c46f09e6adaa",
+    "capsule_id": "6e61fa84886b5b8be2ef4e5e6daeb1946a218270a5c487839b93e35293f2fe7f",
     "developer": "cosa-agent@v1",
     "disposition": {
       "approver": "policy",
@@ -43,7 +43,7 @@
       "status": "dispatched",
       "type": "grid_curtailment"
     },
-    "format_version": "2",
+    "format_version": "4",
     "model_attestation": {
       "compute_attestation": {
         "human_authorization_ref": {
@@ -55,8 +55,9 @@
       }
     },
     "operator": "cosa-agent",
-    "spec_version": "draft-mih-scitt-agent-action-capsule-02",
-    "timestamp": "2026-07-09T04:35:00Z"
+    "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+    "timestamp": "2026-07-09T04:35:00Z",
+    "canonicalization_id": "jcs"
   },
   "who": {
     "action": {

@@ -5,15 +5,16 @@
     "effect_mode": "confirmed",
     "ledger_mode": "standalone"
   },
-  "description": "a JSON floating-point value in a digest-bearing field -> structural failure (check 1, \u00a75.1).",
+  "description": "a JSON floating-point value in a digest-bearing field -> structural failure (check 1, §5.1).",
   "findings": [
     {
       "check": 1,
       "code": "float_in_digest_field",
-      "detail": "floating-point value at effect.amount; \u00a75.1 forbids it",
+      "detail": "floating-point value at effect.amount; §5.1 forbids it",
       "severity": "error"
     }
   ],
   "kind": "negative",
-  "ok": false
+  "ok": false,
+  "provenance": "spec-derived"
 }

@@ -8,7 +8,7 @@
         "effect_mode": "not_applicable",
         "ledger_mode": "standalone"
       },
-      "capsule_id": "2e0a7892fe326fb2303ddce1852360f9da7ece3dff72e227a68b0f57effff6cb",
+      "capsule_id": "e0a1ac498236518f6e6869c95410dba84900f7c6c085205f2685b9f7d90c7da9",
       "developer": "agent@v1",
       "disposition": {
         "approver": "human",
@@ -16,10 +16,11 @@
         "human_disposed": false,
         "verdict_class": "hitl_dispatched"
       },
-      "format_version": "2",
+      "format_version": "4",
       "operator": "ACME-CO",
-      "spec_version": "draft-mih-scitt-agent-action-capsule-00",
-      "timestamp": "2026-06-13T00:00:00Z"
+      "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+      "timestamp": "2026-06-13T00:00:00Z",
+      "canonicalization_id": "jcs"
     },
     {
       "action_id": "po-res-a",
@@ -29,9 +30,9 @@
         "effect_mode": "not_applicable",
         "ledger_mode": "chained"
       },
-      "capsule_id": "14ab84795b87e072d90013e4ef0c2c6bfeffdfca609519674f4c3b3974c341fc",
+      "capsule_id": "00bfc98bd03ed911deac0d0c8a301c1c53367365215ae9daeaa8321a90f7e8e5",
       "chain": {
-        "parent_capsule_id": "2e0a7892fe326fb2303ddce1852360f9da7ece3dff72e227a68b0f57effff6cb",
+        "parent_capsule_id": "e0a1ac498236518f6e6869c95410dba84900f7c6c085205f2685b9f7d90c7da9",
         "relation": "supersedes"
       },
       "developer": "agent@v1",
@@ -41,10 +42,11 @@
         "human_disposed": true,
         "verdict_class": "resolved"
       },
-      "format_version": "2",
+      "format_version": "4",
       "operator": "ACME-CO",
-      "spec_version": "draft-mih-scitt-agent-action-capsule-00",
-      "timestamp": "2026-06-13T00:00:00Z"
+      "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+      "timestamp": "2026-06-13T00:00:00Z",
+      "canonicalization_id": "jcs"
     },
     {
       "action_id": "po-res-b",
@@ -54,9 +56,9 @@
         "effect_mode": "not_applicable",
         "ledger_mode": "chained"
       },
-      "capsule_id": "577573c19ffb50d4c5e21ff23f9ed2cae2e49736ed30b9f949a98a520223a481",
+      "capsule_id": "4c84c8f60e18ee748a52508dd53a5c4771da58b271d0d81065fa2cf5a0b05111",
       "chain": {
-        "parent_capsule_id": "2e0a7892fe326fb2303ddce1852360f9da7ece3dff72e227a68b0f57effff6cb",
+        "parent_capsule_id": "e0a1ac498236518f6e6869c95410dba84900f7c6c085205f2685b9f7d90c7da9",
         "relation": "supersedes"
       },
       "developer": "agent@v1",
@@ -66,10 +68,11 @@
         "human_disposed": true,
         "verdict_class": "resolved"
       },
-      "format_version": "2",
+      "format_version": "4",
       "operator": "ACME-CO",
-      "spec_version": "draft-mih-scitt-agent-action-capsule-00",
-      "timestamp": "2026-06-13T00:00:00Z"
+      "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+      "timestamp": "2026-06-13T00:00:00Z",
+      "canonicalization_id": "jcs"
     }
   ]
 }

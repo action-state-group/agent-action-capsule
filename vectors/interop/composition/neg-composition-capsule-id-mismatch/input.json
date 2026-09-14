@@ -43,7 +43,7 @@
       "status": "dispatched",
       "type": "grid_curtailment"
     },
-    "format_version": "2",
+    "format_version": "4",
     "model_attestation": {
       "compute_attestation": {
         "human_authorization_ref": {
@@ -55,8 +55,9 @@
       }
     },
     "operator": "someone-else",
-    "spec_version": "draft-mih-scitt-agent-action-capsule-02",
-    "timestamp": "2026-07-09T04:35:00Z"
+    "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+    "timestamp": "2026-07-09T04:35:00Z",
+    "canonicalization_id": "jcs"
   },
   "who": {
     "action": {

@@ -1,6 +1,5 @@
 {
   "schema_version": "1",
-  "reference": "python",
   "corpora": {
     "capsule": "capsule/vectors.json",
     "producer_envelope": "producer-envelope/vectors.json",
