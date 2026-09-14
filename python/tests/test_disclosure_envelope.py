@@ -2,7 +2,14 @@
 """Disclosure Envelope reference verifier (draft-mih-...-disclosure-envelope-00)."""
 from conftest import reseal
 
-from agent_action_capsule import ModelAttestation, json_digest, verify_disclosure_envelope
+import pytest
+
+from agent_action_capsule import (
+    ModelAttestation,
+    build_disclosure_envelope,
+    json_digest,
+    verify_disclosure_envelope,
+)
 from agent_action_capsule.canonical import vintage_json_digest
 from agent_action_capsule.disclosure_envelope import MATCH, MISMATCH
 
@@ -25,6 +32,40 @@ def test_matching_disclosure(executed):
     assert res.disclosures_checked == 1
     assert res.disclosures_matched == 1
     assert res.disclosure_findings[0].code == MATCH
+
+
+def test_build_disclosure_envelope_nested_round_trip_and_tampering(executed):
+    value = {
+        "outer": {
+            "items": [
+                {"nested": {"value": "one"}},
+                {"nested": {"value": "two"}},
+            ]
+        }
+    }
+    capsule = with_compute_attestation(executed, agent_input_digest=json_digest(value))
+
+    envelope = build_disclosure_envelope(capsule, {"agent_input": value})
+    assert verify_disclosure_envelope(envelope).ok
+
+    envelope["disclosures"]["agent_input"] = {
+        "outer": {"items": [{"nested": {"value": "tampered"}}]}
+    }
+    result = verify_disclosure_envelope(envelope)
+    assert not result.ok
+    assert result.disclosure_findings[0].code == MISMATCH
+
+
+def test_build_disclosure_envelope_rejects_invalid_members(executed):
+    with pytest.raises(ValueError, match="disclosure_ineligible_field"):
+        build_disclosure_envelope(executed, {"not_eligible": "value"})
+    with pytest.raises(ValueError, match="disclosure_no_committed_digest"):
+        build_disclosure_envelope(executed, {"agent_input": "value"})
+    capsule = with_compute_attestation(
+        executed, agent_input_digest=json_digest({"nested": {"value": "committed"}})
+    )
+    with pytest.raises(ValueError, match="disclosure_mismatch"):
+        build_disclosure_envelope(capsule, {"agent_input": {"nested": {"value": "different"}}})
 
 
 def test_vintage_disclosure_uses_absent_field_normalization(executed):

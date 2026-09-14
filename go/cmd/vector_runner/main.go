@@ -25,7 +25,7 @@ import (
 
 func main() {
 	vectorsDir := flag.String("vectors-dir", "", "path to vectors/capsule/ directory (default: auto-locate)")
-	registryPath := flag.String("registry", "", "path to spec/REGISTRY.md (default: AAC_REGISTRY_PATH or auto-locate)")
+	registryPath := flag.String("registry", "", "path to a pinned REGISTRY.md (default: embedded authoritative table)")
 	flag.Parse()
 
 	vdir, err := resolveVectorsDir(*vectorsDir)
@@ -34,11 +34,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *registryPath != "" {
-		os.Setenv("AAC_REGISTRY_PATH", *registryPath)
-	}
-
-	regs, err := registries.Load("")
+	regs, err := registries.Load(*registryPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error loading registries: %v\n", err)
 		os.Exit(1)

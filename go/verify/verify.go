@@ -705,7 +705,7 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 func Verify(capsule interface{}, store []interface{}, regs map[string]map[string]bool) (result VerificationResult) {
 	if regs == nil {
 		var err error
-		regs, err = registries.Load("")
+		regs, err = registries.LoadAuthoritative()
 		if err != nil {
 			return VerificationResult{
 				OK: false,
@@ -735,7 +735,7 @@ func Verify(capsule interface{}, store []interface{}, regs map[string]map[string
 func VerifyStore(capsules []interface{}, regs map[string]map[string]bool) []VerificationResult {
 	if regs == nil {
 		var err error
-		regs, err = registries.Load("")
+		regs, err = registries.LoadAuthoritative()
 		if err != nil {
 			out := make([]VerificationResult, len(capsules))
 			for i := range out {

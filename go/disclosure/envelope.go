@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Package disclosure verifies Agent Action Capsule Disclosure Envelopes.
+// Package disclosure builds and verifies Agent Action Capsule Disclosure Envelopes.
 package disclosure
 
 import (
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -74,7 +75,6 @@ func Verify(envelope interface{}, regs map[string]map[string]bool) Result {
 		return result
 	}
 
-	compute := nestedObject(capsule, "model_attestation", "compute_attestation")
 	format := ""
 	if cap, ok := capsule.(map[string]interface{}); ok {
 		format, _ = cap["format_version"].(string)
@@ -91,9 +91,7 @@ func Verify(envelope interface{}, regs map[string]map[string]bool) Result {
 			result.DisclosureFindings = append(result.DisclosureFindings, Finding{member, Ineligible})
 			continue
 		}
-		parts := strings.Split(path, ".")
-		digestName := parts[len(parts)-1]
-		stored, _ := compute[digestName].(string)
+		stored, _ := committedDigest(capsule, path)
 		if !hex64.MatchString(stored) {
 			result.DisclosureFindings = append(result.DisclosureFindings, Finding{member, NoCommittedDigest})
 			continue
@@ -114,17 +112,49 @@ func Verify(envelope interface{}, regs map[string]map[string]bool) Result {
 	return result
 }
 
-func nestedObject(value interface{}, path ...string) map[string]interface{} {
+// Build constructs a Disclosure Envelope from a Capsule and disclosed member
+// preimages. It rejects DE-1-ineligible members, DE-2 missing commitments, and
+// DE-3 digest mismatches using the verifier's finding codes. It does not read
+// stores, ledgers, or producer packages.
+func Build(capsule map[string]interface{}, disclosures map[string]interface{}) (map[string]interface{}, error) {
+	format, _ := capsule["format_version"].(string)
+	for member, value := range disclosures {
+		path, eligible := registries.DisclosureEligibleFields[member]
+		if !eligible {
+			return nil, fmt.Errorf("%s: %s", Ineligible, member)
+		}
+		stored, ok := committedDigest(capsule, path)
+		if !ok || !hex64.MatchString(stored) {
+			return nil, fmt.Errorf("%s: %s", NoCommittedDigest, member)
+		}
+		computed, err := digest(value, format)
+		if err != nil || computed != stored {
+			return nil, fmt.Errorf("%s: %s", Mismatch, member)
+		}
+	}
+	return map[string]interface{}{"capsule": capsule, "disclosures": disclosures}, nil
+}
+
+func digest(value interface{}, format string) (string, error) {
+	if format == "2" {
+		return canonical.VintageJSONDigest(value)
+	}
+	return canonical.JSONDigest(value)
+}
+
+func committedDigest(value interface{}, path string) (string, bool) {
 	current, ok := value.(map[string]interface{})
 	if !ok {
-		return nil
+		return "", false
 	}
-	for _, member := range path {
+	parts := strings.Split(path, ".")
+	for _, member := range parts[:len(parts)-1] {
 		next, ok := current[member].(map[string]interface{})
 		if !ok {
-			return nil
+			return "", false
 		}
 		current = next
 	}
-	return current
+	stored, ok := current[parts[len(parts)-1]].(string)
+	return stored, ok
 }

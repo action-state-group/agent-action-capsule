@@ -36,6 +36,7 @@ from .disclosure_envelope import (
     DISCLOSURE_ELIGIBLE_FIELDS,
     DisclosureEnvelopeResult,
     DisclosureFinding,
+    build_disclosure_envelope,
     verify_disclosure_envelope,
 )
 from .emit import DEFAULT_FORMAT_VERSION, DEFAULT_SPEC_VERSION, FORMAT_VERSION, SPEC_VERSION, emit
@@ -87,6 +88,7 @@ __all__ = [
     "VerificationResult",
     "Finding",
     # disclosure envelope
+    "build_disclosure_envelope",
     "verify_disclosure_envelope",
     "DisclosureEnvelopeResult",
     "DisclosureFinding",
