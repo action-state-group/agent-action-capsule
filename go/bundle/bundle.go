@@ -348,7 +348,7 @@ func certificateData(certificate, checkpoint map[string]interface{}) ([]byte, st
 	rootHex, rootOK := certificate["range_root"].(string)
 	first, firstOK := integer(certificate["first_seq"])
 	last, lastOK := integer(certificate["last_seq"])
-	if !logOK || !rootOK || !firstOK || !lastOK || first < 1 || last < first || checkpoint["root"] != rootHex {
+	if !logOK || !rootOK || !firstOK || !lastOK || first < 1 || last < first || !hex64RE.MatchString(rootHex) || checkpoint["root"] != rootHex {
 		return nil, "", 0, 0, rangeProof{}, false
 	}
 	root, err := hex.DecodeString(rootHex)

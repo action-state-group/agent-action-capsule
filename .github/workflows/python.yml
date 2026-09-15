@@ -24,6 +24,11 @@ jobs:
         # to the merged range-proof API (#13) so the 12 bundle vectors, incl. both
         # interior-tamper negatives, actually run instead of importorskip-skipping.
         run: pip install "checkpointed-local-log @ git+https://github.com/action-state-group/checkpointed-local-log@deb7617497820f03d876e3a776f7a25e135fd423"
+      - name: require cll importable (the bundle vectors use importorskip; fail loud in CI)
+        # test_bundle_vectors.py importorskips cll so local dev without it still runs the
+        # rest of the suite; here cll MUST be present, so a broken/empty install fails the
+        # job instead of silently skipping every real-CLL bundle-vector assertion.
+        run: python -c "import cll.checkpoint, cll.checkpoint.index"
       - name: ruff
         working-directory: python
         run: python -m ruff check .
