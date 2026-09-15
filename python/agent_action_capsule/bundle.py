@@ -332,6 +332,7 @@ def _certificate(certificate: Mapping[str, Any], checkpoint: Mapping[str, Any]) 
         or not isinstance(last_seq, int)
         or first_seq < 1
         or last_seq < first_seq
+        or not _HEX64.fullmatch(root_hex)
         or checkpoint.get("root") != root_hex
     ):
         return None
@@ -454,6 +455,12 @@ def _inclusion_proof(raw: Any) -> Any:
         or leaf_index < 0
     ):
         raise ValueError("invalid inclusion proof")
+    # Canonical lowercase hex for every node hash, so Go/Python/TS agree (the
+    # drafts define digest fields as lowercase-hex; bytes.fromhex is otherwise lax).
+    for hash_field in ("witness", "peaks_left", "peaks_right"):
+        values = raw[hash_field]
+        if not isinstance(values, list) or not all(isinstance(h, str) and _HEX64.fullmatch(h) for h in values):
+            raise ValueError("invalid inclusion proof")
     return InclusionProof(
         v=v,
         kind=raw["kind"],
