@@ -1,4 +1,5 @@
 import {
+  leafCount,
   rootFromPeaks,
   verifyHexInclusion,
   verifyRange,
@@ -462,8 +463,15 @@ async function rangeValid(
   // CLL #13 per-record range membership: every leaf in [first, last] takes part
   // via the ordered body_digests + witness, so an altered/deleted/replaced
   // interior leaf is caught, not just the two endpoints.
+  // The interval must end at the checkpointed tip: leafCount(size) === last.
+  // CLL's index-level verify_range enforces this (the Python verifier uses it);
+  // the core verifyRange does not, so bind it here or a sub-tip range would let
+  // records after `last` be silently omitted.
+  const leaves = leafCount(BigInt(proof.size));
   const raw = certificate.body_digests;
   if (
+    leaves === undefined ||
+    leaves !== BigInt(last) ||
     proof.fromSeq !== first ||
     proof.toSeq !== last ||
     proof.fromIndex !== first - 1 ||
