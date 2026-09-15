@@ -19,6 +19,10 @@ vocabulary defined normatively in the Internet-Draft; it never generates new
 semantics. A registration records a value and its specification — it does not
 amend the format.
 
+This record applies only to Capsules conforming to the base profile's format-4
+requirements. A registry entry cannot make a pre-format-4 Capsule or any other
+unsupported canonicalization declaration conforming or verifiable.
+
 [RFC 8126 §4.6]: https://www.rfc-editor.org/rfc/rfc8126#section-4.6
 
 ## Designated-expert guidance (all registries)
@@ -124,7 +128,7 @@ registration MUST state where its grade sits relative to the seeded values.
 
 ## 6. `chain.relation`
 
-Defined in §5.4.4 of the Internet-Draft (Chained Capsules; the chain block).
+Defined in §5.5.4 of the Internet-Draft (Chained Capsules; the chain block).
 Initial contents:
 
 | Value | Semantics |
@@ -214,7 +218,8 @@ behind a digest-only field without altering `capsule_id`.
 | `capsule` | object | Top-level Disclosure Envelope object | Disclosure Envelope profile, "Envelope Object" section (the unmodified Capsule payload) |
 | `disclosures` | object | Top-level Disclosure Envelope object | Disclosure Envelope profile, "Envelope Object" section (OPTIONAL; absent members are WITHHELD) |
 
-The disclosure-eligible fields this initial revision defines:
+The disclosure-eligible fields this initial revision defines. This table is a
+**Specification Required** registry:
 
 | `disclosures` member | Committed-digest field (in `capsule.model_attestation.compute_attestation`) |
 |---|---|
@@ -223,9 +228,17 @@ The disclosure-eligible fields this initial revision defines:
 
 A `disclosures` member outside this table is non-conforming; a verifier
 treats it as an unrecognized member rather than attempting to verify it.
-`capsule_id` is computed over `capsule` alone and is unaffected by the
-presence or absence of any `disclosures` member. See the companion draft
-for the full verifier checks (digest recomputation and comparison).
+An extension MUST add a digest-only Capsule field, register the member-to-
+committed-digest-field pair, add format-4 vectors and increment their vector
+version, and require producers to retain the original value for revelation.
+This registry is currently limited to fields directly under
+`capsule.model_attestation.compute_attestation`; widening it requires generic
+path resolution in every implementation. The disclosure unit is the whole
+registered member. CPB's salted-commitment mechanism, not this envelope,
+governs selective disclosure of a sub-field. `capsule_id` is computed over
+`capsule` alone and is unaffected by the presence or absence of any
+`disclosures` member. See the companion draft for the full verifier checks
+(digest recomputation and comparison).
 
 ## 11. `citation_purpose`
 
@@ -245,6 +258,41 @@ digest contexts.
 **Boundary rule.** A citation to the producer's own same-stream `chain`
 parent is never expressed via `references`/`citation_purpose`; a
 `references` entry MUST NOT duplicate `chain.parent_capsule_id`.
+
+## 12. Evidence Bundle kind
+
+Defined in `draft-mih-zhang-agent-action-capsule-evidence-bundle`,
+"Evidence Bundle Object". This is a **Specification Required** registry.
+It identifies a neutral presentation and verification container, not a Capsule
+payload type.
+
+| Value | Semantics |
+|---|---|
+| `evidence-bundle/v2` | Version 2 AAC Evidence Bundle, with `bundle_version: "2"`. |
+
+## 13. Evidence Bundle extension kind
+
+Defined in `draft-mih-zhang-agent-action-capsule-evidence-bundle`,
+"Typed Extensions". This is a **Specification Required** registry. The
+`extensions` object's member name is the registered kind. Its registered
+specification defines that extension's block shape and semantic checks; the
+neutral bundle core does not interpret it. A private `x-`-prefixed kind is not
+registered.
+
+No initial extension kind is defined. A company-specific row model such as
+`report/v1` is an extension only when its independently available
+specification is registered; this registry does not define that row model.
+
+## 14. Evidence Bundle countersignature type
+
+Defined in `draft-mih-zhang-agent-action-capsule-evidence-bundle`,
+"Countersignatures". This is a **Specification Required** registry. It names
+the encoding and verification rules for a signature by a party other than the
+bundle producer over the bundle digest.
+
+| Value | Semantics |
+|---|---|
+| `cose-sign1` | A tagged COSE_Sign1 whose attached payload is the raw 32-byte bundle digest, as defined by the Evidence Bundle draft. |
 
 ## No registry
 

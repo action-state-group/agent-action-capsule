@@ -20,12 +20,13 @@ DRAFT    = draft-mih-scitt-agent-action-capsule-04
 # above.
 BILATERAL = draft-mih-agent-bilateral-attestation-02
 CPB      = draft-mih-sokolov-scitt-payload-binding-00
-XML2RFC  ?= ~/.venvs/x2r/bin/xml2rfc
-KDRFC    ?= kramdown-rfc
+BUNDLE   = draft-mih-zhang-agent-action-capsule-evidence-bundle-00
+XML2RFC  ?= $(shell command -v xml2rfc)
+KDRFC    ?= $(shell command -v kramdown-rfc || ruby -e 'puts Gem.bindir + "/kramdown-rfc"')
 
-.PHONY: all bilateral cpb clean idnits rebuild refresh-refs check
+.PHONY: all bilateral cpb bundle clean idnits rebuild refresh-refs check
 
-all: $(DRAFT).xml $(DRAFT).txt
+all: $(DRAFT).xml $(DRAFT).txt $(BUNDLE).xml $(BUNDLE).txt
 
 # Force a rebuild from the Markdown source.
 #
@@ -63,6 +64,8 @@ bilateral: $(BILATERAL).xml $(BILATERAL).txt
 
 cpb: $(CPB).xml $(CPB).txt
 
+bundle: $(BUNDLE).xml $(BUNDLE).txt
+
 # md -> v2 xml -> v3 xml (committed artifact is v3)
 $(DRAFT).xml: $(DRAFT).md
 	$(KDRFC) $(DRAFT).md > .$(DRAFT).v2.xml
@@ -79,6 +82,11 @@ $(CPB).xml: $(CPB).md
 	$(XML2RFC) --v2v3 .$(CPB).v2.xml -o $(CPB).xml
 	@rm -f .$(CPB).v2.xml
 
+$(BUNDLE).xml: $(BUNDLE).md
+	$(KDRFC) $(BUNDLE).md > .$(BUNDLE).v2.xml
+	$(XML2RFC) --v2v3 .$(BUNDLE).v2.xml -o $(BUNDLE).xml
+	@rm -f .$(BUNDLE).v2.xml
+
 # v3 xml -> text
 $(DRAFT).txt: $(DRAFT).xml
 	$(XML2RFC) --text --v3 $(DRAFT).xml -o $(DRAFT).txt
@@ -89,6 +97,9 @@ $(BILATERAL).txt: $(BILATERAL).xml
 $(CPB).txt: $(CPB).xml
 	$(XML2RFC) --text --v3 $(CPB).xml -o $(CPB).txt
 
+$(BUNDLE).txt: $(BUNDLE).xml
+	$(XML2RFC) --text --v3 $(BUNDLE).xml -o $(BUNDLE).txt
+
 idnits: $(DRAFT).txt
 	npx --yes @ietf-tools/idnits $(DRAFT).txt
 
@@ -96,4 +107,4 @@ check:
 	python3 check_verdict_class_refs.py
 
 clean:
-	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml
+	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml .$(BUNDLE).v2.xml
