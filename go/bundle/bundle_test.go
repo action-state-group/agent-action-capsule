@@ -247,6 +247,13 @@ func testBundle(t *testing.T, records []map[string]interface{}, root map[string]
 	for index, record := range records {
 		members[record["capsule_id"].(string)] = map[string]interface{}{"log_coordinates": map[string]interface{}{"log_id": "bundle-log", "seq": index + 1, "leaf_index": index}, "inclusion_proof": proofObject(proofs[index])}
 	}
+	// CLL #13 range proof over the whole interval + the ordered body digests.
+	rangeP, err := tree.RangeProof(0, uint64(len(records)-1), size)
+	require.NoError(t, err)
+	bodyDigests := make([]interface{}, len(records))
+	for i, record := range records {
+		bodyDigests[i] = record["capsule_id"]
+	}
 	if overlay == nil {
 		overlay = map[string]interface{}{}
 	}
@@ -263,7 +270,7 @@ func testBundle(t *testing.T, records []map[string]interface{}, root map[string]
 		"records":                  recordsAsValues(records),
 		"completeness":             map[string]interface{}{"closure_depth": 2, "records_mode": mode, "payloads_mode": "selected", "suppressed_fields": []interface{}{"agent_input"}, "missing": missingValues},
 		"disclosures":              overlay,
-		"completeness_certificate": map[string]interface{}{"log_id": "bundle-log", "range_root": hex.EncodeToString(rootHash), "first_seq": 1, "last_seq": len(records), "first_digest": records[0]["capsule_id"], "last_digest": records[len(records)-1]["capsule_id"], "range_proof": map[string]interface{}{"from_seq": 1, "to_seq": len(records), "size": int(size), "inclusion_from": proofObject(proofs[0]), "inclusion_to": proofObject(proofs[len(proofs)-1])}, "memberships": members},
+		"completeness_certificate": map[string]interface{}{"log_id": "bundle-log", "range_root": hex.EncodeToString(rootHash), "first_seq": 1, "last_seq": len(records), "body_digests": bodyDigests, "range_proof": map[string]interface{}{"from_seq": 1, "to_seq": len(records), "size": int(size), "from_index": int(rangeP.FromIndex), "to_index": int(rangeP.ToIndex), "witness": hashesObject(rangeP.Witness)}, "memberships": members},
 		"checkpoint":               map[string]interface{}{"root": hex.EncodeToString(rootHash), "mmr_size": int(size)},
 		"extensions":               map[string]interface{}{"example/unimplemented": map[string]interface{}{"note": "digest-covered only"}},
 	}

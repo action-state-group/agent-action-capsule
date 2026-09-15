@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { MmrTree, inclusionProof } from "@action-state-group/cll";
+import { MmrTree, inclusionProof, rangeProof } from "@action-state-group/cll";
 import { describe, expect, it } from "vitest";
 import {
   bundleDigest,
@@ -92,6 +92,7 @@ async function testBundle(
     proofs = await Promise.all(
       records.map((_, index) => inclusionProof(tree, BigInt(index), size)),
     );
+  const rangeP = await rangeProof(tree, 0n, BigInt(records.length - 1), size);
   const members: Record<string, unknown> = {};
   for (const [index, record] of records.entries())
     members[record.capsule_id as string] = {
@@ -125,14 +126,14 @@ async function testBundle(
       ).join(""),
       first_seq: 1,
       last_seq: records.length,
-      first_digest: records[0]!.capsule_id,
-      last_digest: records.at(-1)!.capsule_id,
+      body_digests: records.map((record) => record.capsule_id),
       range_proof: {
         from_seq: 1,
         to_seq: records.length,
         size: Number(size),
-        inclusion_from: proof(proofs[0]!),
-        inclusion_to: proof(proofs.at(-1)!),
+        from_index: rangeP.from_index,
+        to_index: rangeP.to_index,
+        witness: rangeP.witness,
       },
       memberships: members,
     },

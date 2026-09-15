@@ -1,7 +1,9 @@
 import {
   rootFromPeaks,
   verifyHexInclusion,
+  verifyRange,
   type MmrInclusionProof,
+  type MmrRangeProof,
 } from "@action-state-group/cll";
 import {
   isHex64,
@@ -374,8 +376,9 @@ function parseCertificate(
         fromSeq: number;
         toSeq: number;
         size: number;
-        from: Proof;
-        to: Proof;
+        fromIndex: number;
+        toIndex: number;
+        proof: MmrRangeProof;
       };
     }
   | undefined {
@@ -399,14 +402,22 @@ function parseCertificate(
     fromSeq = range?.from_seq,
     toSeq = range?.to_seq,
     size = range?.size,
-    from = parseProof(range?.inclusion_from),
-    to = parseProof(range?.inclusion_to);
+    fromIndex = range?.from_index,
+    toIndex = range?.to_index,
+    witness = range?.witness;
   if (
     !integer(fromSeq) ||
     !integer(toSeq) ||
     !integer(size) ||
-    !from ||
-    !to ||
+    !integer(fromIndex) ||
+    !integer(toIndex) ||
+    fromSeq < 1 ||
+    toSeq < fromSeq ||
+    size < 0 ||
+    fromIndex < 0 ||
+    toIndex < fromIndex ||
+    !Array.isArray(witness) ||
+    !witness.every(isHex64) ||
     checkpoint.mmr_size !== size
   )
     return undefined;
@@ -415,7 +426,23 @@ function parseCertificate(
     logId,
     firstSeq,
     lastSeq,
-    rangeProof: { fromSeq, toSeq, size, from, to },
+    // The cert carries the index-shaped range proof (no v/kind); build the core
+    // MmrRangeProof (v=1, kind="range") the verifier consumes.
+    rangeProof: {
+      fromSeq,
+      toSeq,
+      size,
+      fromIndex,
+      toIndex,
+      proof: {
+        v: 1,
+        kind: "range",
+        size,
+        from_index: fromIndex,
+        to_index: toIndex,
+        witness,
+      },
+    },
   };
 }
 async function rangeValid(
@@ -427,19 +454,32 @@ async function rangeValid(
     fromSeq: number;
     toSeq: number;
     size: number;
-    from: Proof;
-    to: Proof;
+    fromIndex: number;
+    toIndex: number;
+    proof: MmrRangeProof;
   },
 ): Promise<boolean> {
-  return (
-    typeof certificate.first_digest === "string" &&
-    typeof certificate.last_digest === "string" &&
-    proof.fromSeq === first &&
-    proof.toSeq === last &&
-    proof.from.leaf_index === first - 1 &&
-    proof.to.leaf_index === last - 1 &&
-    (await verifyProof(root, certificate.first_digest, proof.from)) &&
-    (await verifyProof(root, certificate.last_digest, proof.to))
+  // CLL #13 per-record range membership: every leaf in [first, last] takes part
+  // via the ordered body_digests + witness, so an altered/deleted/replaced
+  // interior leaf is caught, not just the two endpoints.
+  const raw = certificate.body_digests;
+  if (
+    proof.fromSeq !== first ||
+    proof.toSeq !== last ||
+    proof.fromIndex !== first - 1 ||
+    proof.toIndex !== last - 1 ||
+    !Array.isArray(raw) ||
+    raw.length !== last - first + 1 ||
+    !raw.every(isHex64)
+  )
+    return false;
+  return verifyRange(
+    root,
+    BigInt(proof.size),
+    BigInt(proof.fromIndex),
+    BigInt(proof.toIndex),
+    raw.map(hex),
+    proof.proof,
   );
 }
 async function memberships(

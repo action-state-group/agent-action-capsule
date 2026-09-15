@@ -362,18 +362,28 @@ func certificateData(certificate, checkpoint map[string]interface{}) ([]byte, st
 
 type rangeProof struct {
 	FromSeq, ToSeq int64
-	From, To       mmr.InclusionProof
 	Size           uint64
+	Proof          mmr.RangeProof
 }
 
+// verifyRange checks CLL #13 per-record range membership: every leaf in
+// [first, last] participates (via the ordered body_digests plus the flat
+// witness), so an altered/deleted/replaced interior leaf is caught here, not
+// only at the two endpoints.
 func verifyRange(root []byte, first, last int64, certificate map[string]interface{}, proof rangeProof) bool {
-	firstDigest, firstOK := certificate["first_digest"].(string)
-	lastDigest, lastOK := certificate["last_digest"].(string)
-	if !firstOK || !lastOK || proof.FromSeq != first || proof.ToSeq != last || proof.From.LeafIndex != uint64(first-1) || proof.To.LeafIndex != uint64(last-1) {
+	if proof.FromSeq != first || proof.ToSeq != last ||
+		proof.Proof.FromIndex != uint64(first-1) || proof.Proof.ToIndex != uint64(last-1) {
 		return false
 	}
-	return mmr.VerifyHexInclusion(root, proof.Size, proof.From.LeafIndex, firstDigest, proof.From) &&
-		mmr.VerifyHexInclusion(root, proof.Size, proof.To.LeafIndex, lastDigest, proof.To)
+	raw, ok := certificate["body_digests"].([]interface{})
+	if !ok || int64(len(raw)) != last-first+1 {
+		return false
+	}
+	bodyDigests, err := hashes(certificate["body_digests"])
+	if err != nil {
+		return false
+	}
+	return mmr.VerifyRange(root, proof.Size, proof.Proof.FromIndex, proof.Proof.ToIndex, bodyDigests, proof.Proof)
 }
 
 func verifyMemberships(root []byte, logID string, first, last int64, raw interface{}, records map[string]map[string]interface{}, completeness interface{}) []string {
@@ -444,12 +454,19 @@ func parseRangeProof(raw interface{}) (rangeProof, error) {
 	fromSeq, fromOK := integer(m["from_seq"])
 	toSeq, toOK := integer(m["to_seq"])
 	size, sizeOK := integer(m["size"])
-	from, fromErr := parseInclusionProof(m["inclusion_from"])
-	to, toErr := parseInclusionProof(m["inclusion_to"])
-	if !fromOK || !toOK || !sizeOK || fromSeq < 1 || toSeq < fromSeq || size < 0 || fromErr != nil || toErr != nil || uint64(size) != from.Size || uint64(size) != to.Size {
+	fromIndex, fiOK := integer(m["from_index"])
+	toIndex, tiOK := integer(m["to_index"])
+	witness, werr := hashes(m["witness"])
+	if !fromOK || !toOK || !sizeOK || !fiOK || !tiOK || fromSeq < 1 || toSeq < fromSeq ||
+		size < 0 || fromIndex < 0 || toIndex < fromIndex || werr != nil {
 		return rangeProof{}, fmt.Errorf("invalid range proof")
 	}
-	return rangeProof{FromSeq: fromSeq, ToSeq: toSeq, From: from, To: to, Size: uint64(size)}, nil
+	// The cert carries the index-shaped range proof (no v/kind); construct the
+	// core mmr.RangeProof (v=1, kind="range") the verifier consumes.
+	return rangeProof{
+		FromSeq: fromSeq, ToSeq: toSeq, Size: uint64(size),
+		Proof: mmr.RangeProof{V: 1, Kind: "range", Size: uint64(size), FromIndex: uint64(fromIndex), ToIndex: uint64(toIndex), Witness: witness},
+	}, nil
 }
 
 func parseInclusionProof(raw interface{}) (mmr.InclusionProof, error) {
