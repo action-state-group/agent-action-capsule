@@ -375,6 +375,13 @@ func verifyRange(root []byte, first, last int64, certificate map[string]interfac
 		proof.Proof.FromIndex != uint64(first-1) || proof.Proof.ToIndex != uint64(last-1) {
 		return false
 	}
+	// The interval must end at the checkpointed tip: leaf_count(size) == last.
+	// CLL's index-level verify_range enforces this (the Python bundle verifier
+	// uses it); the core verify_range does not, so bind it here — otherwise a
+	// sub-tip range would let records after `last` be silently omitted.
+	if leaves, okLeaves := mmr.LeafCount(proof.Size); !okLeaves || leaves != uint64(last) {
+		return false
+	}
 	raw, ok := certificate["body_digests"].([]interface{})
 	if !ok || int64(len(raw)) != last-first+1 {
 		return false

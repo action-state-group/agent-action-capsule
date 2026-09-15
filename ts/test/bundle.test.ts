@@ -287,4 +287,13 @@ describe("shared Evidence Bundle vectors", () => {
       status: "producer_self_report",
     });
   });
+
+  it("rejects an altered interior body digest (range binding)", async () => {
+    const bundle = await fixture("pos-valid-bundle");
+    const cert = bundle.completeness_certificate as Record<string, unknown>;
+    (cert.body_digests as string[])[1] = "aa".repeat(32);
+    const result = await verifyBundle(bundle);
+    expect(result.intervalCoverage.status).toBe("fail");
+    expect(result.intervalCoverage.findings).toContain("range_proof_invalid");
+  });
 });

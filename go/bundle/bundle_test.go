@@ -298,3 +298,16 @@ func hashesObject(values [][]byte) []interface{} {
 	}
 	return result
 }
+
+// TestRangeRejectsAlteredInteriorBodyDigest is the bundle-level negative for the
+// CLL #13 every-leaf binding: a well-formed but wrong interior body digest must
+// fail interval coverage (a two-endpoint check would miss it).
+func TestRangeRejectsAlteredInteriorBodyDigest(t *testing.T) {
+	bundle := testCase(t, "pos-valid-bundle")
+	cert := bundle["completeness_certificate"].(map[string]interface{})
+	body := cert["body_digests"].([]interface{})
+	body[1] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	result := VerifyBundle(bundle)
+	require.Equal(t, "fail", result.IntervalCoverage.Status)
+	require.Contains(t, result.IntervalCoverage.Findings, "range_proof_invalid")
+}
