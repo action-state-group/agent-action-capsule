@@ -47,10 +47,12 @@ def _bundle(records, root, disclosures=None, missing=None):
     size = nodes.size()
     root_hash = core.root_from_peaks([nodes.node(pos) for pos in core.peaks(size)])
     proofs = [core.inclusion_proof(nodes, index, size) for index in range(len(records))]
+    # CLL #13 flat range proof over the whole interval — every leaf participates.
+    range_p = core.range_proof(nodes, 0, len(records) - 1, size)
     certificate = {
         "log_id": "bundle-log", "range_root": root_hash.hex(), "first_seq": 1, "last_seq": len(records),
-        "first_digest": records[0]["capsule_id"], "last_digest": records[-1]["capsule_id"],
-        "range_proof": {"from_seq": 1, "to_seq": len(records), "size": size, "inclusion_from": _proof(proofs[0]), "inclusion_to": _proof(proofs[-1])},
+        "body_digests": [record["capsule_id"] for record in records],
+        "range_proof": {"from_seq": 1, "to_seq": len(records), "size": size, "from_index": range_p.from_index, "to_index": range_p.to_index, "witness": list(range_p.witness)},
         "memberships": {record["capsule_id"]: {"log_coordinates": {"log_id": "bundle-log", "seq": index + 1, "leaf_index": index}, "inclusion_proof": _proof(proofs[index])} for index, record in enumerate(records)},
     }
     return {"bundle_version": "2", "bundle_kind": "evidence-bundle/v2", "root": root["capsule_id"], "records": records,
@@ -91,6 +93,11 @@ def _case(name):
         proof["kind"] = "not-inclusion"
     elif name == "neg-boolean-proof-integer":
         bundle["completeness_certificate"]["memberships"][middle["capsule_id"]]["inclusion_proof"]["v"] = True
+    elif name == "neg-interval-body-digest-altered":
+        # A well-formed (32-byte) but wrong interior body digest: it passes the
+        # length/hex guards yet cannot rebuild the range root, so the every-leaf
+        # binding (not just the two endpoints) must reject it.
+        bundle["completeness_certificate"]["body_digests"][1] = "aa" * 32
     return bundle
 
 

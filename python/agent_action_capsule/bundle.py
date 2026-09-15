@@ -133,11 +133,12 @@ def verify_bundle(bundle: Any) -> BundleVerificationResult:
     """Verify an AAC Evidence Bundle using only its supplied evidence.
 
     ``completeness_certificate`` uses the portable CLL-shaped form below.  The
-    endpoint ``range_proof`` is checked with CLL's ``verify_range``.  Its
-    detached ``memberships`` map is keyed by Capsule ID and each value carries
+    ``range_proof`` is checked with CLL #13's ``verify_range``, which binds
+    every leaf in ``[first_seq, last_seq]`` (all ``body_digests`` participate in
+    rebuilding the root, not just the two boundaries).  Its detached
+    ``memberships`` map is keyed by Capsule ID and each value carries
     ``log_coordinates`` (``log_id``, ``seq``, ``leaf_index``) and an
-    ``inclusion_proof``.  This permits a verifier to distinguish a valid range
-    endpoint proof from proof of every position in that range.
+    ``inclusion_proof`` — an independent per-record membership check.
     """
     invalid = ClaimResult("fail", ("bundle_malformed",))
     if not isinstance(bundle, Mapping):
@@ -343,7 +344,10 @@ def _certificate(certificate: Mapping[str, Any], checkpoint: Mapping[str, Any]) 
         if isinstance(checkpoint_size, bool) or not isinstance(checkpoint_size, int) or checkpoint_size != range_proof.size:
             return None
         return root, log_id, first_seq, last_seq, range_proof
-    except (TypeError, ValueError, KeyError):
+    except (ImportError, TypeError, ValueError, KeyError):
+        # ImportError: `cll` absent — fail the completeness claim closed rather
+        # than letting the exception escape verify_bundle and drop the other
+        # claims (graph closure, disclosures) with it.
         return None
 
 
@@ -351,9 +355,17 @@ def _verify_range(root: bytes, first_seq: int, last_seq: int, certificate: Mappi
     try:
         from cll.checkpoint.index import verify_range
 
-        first = bytes.fromhex(certificate["first_digest"])
-        last = bytes.fromhex(certificate["last_digest"])
-        return len(first) == len(last) == 32 and verify_range(root, first_seq, last_seq, first, last, range_proof)
+        # CLL #13 range membership binds EVERY leaf in [first_seq, last_seq], not
+        # just the two boundaries: verify_range rebuilds the root from all body
+        # digests plus the proof witness. body_digests[i] is the digest for seq
+        # first_seq + i.
+        raw = certificate.get("body_digests")
+        if not isinstance(raw, list) or len(raw) != last_seq - first_seq + 1:
+            return False
+        body_digests = [bytes.fromhex(digest) for digest in raw]
+        if any(len(digest) != 32 for digest in body_digests):
+            return False
+        return verify_range(root, first_seq, last_seq, body_digests, range_proof)
     except (ImportError, KeyError, TypeError, ValueError):
         return False
 
@@ -458,24 +470,38 @@ def _range_proof(raw: Any) -> Any:
     from_seq = raw["from_seq"]
     to_seq = raw["to_seq"]
     size = raw["size"]
+    from_index = raw["from_index"]
+    to_index = raw["to_index"]
+    witness = raw["witness"]
     if (
         isinstance(from_seq, bool)
         or isinstance(to_seq, bool)
         or isinstance(size, bool)
+        or isinstance(from_index, bool)
+        or isinstance(to_index, bool)
         or not isinstance(from_seq, int)
         or not isinstance(to_seq, int)
         or not isinstance(size, int)
+        or not isinstance(from_index, int)
+        or not isinstance(to_index, int)
         or from_seq < 1
         or to_seq < from_seq
         or size < 0
+        or from_index < 0
+        or to_index < from_index
+        or not isinstance(witness, list)
+        or not all(isinstance(sibling, str) for sibling in witness)
     ):
         raise ValueError("invalid range proof")
+    # CLL #13 flat witness shape: (from_seq, to_seq, size, from_index, to_index,
+    # witness). The retired (inclusion_from, inclusion_to) boundary pair is gone.
     return RangeProof(
         from_seq=from_seq,
         to_seq=to_seq,
         size=size,
-        inclusion_from=_inclusion_proof(raw["inclusion_from"]),
-        inclusion_to=_inclusion_proof(raw["inclusion_to"]),
+        from_index=from_index,
+        to_index=to_index,
+        witness=tuple(witness),
     )
 
 

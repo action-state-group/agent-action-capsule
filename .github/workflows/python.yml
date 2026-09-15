@@ -1,9 +1,9 @@
 name: python
 on:
   push:
-    paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**"]
+    paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**"]
   pull_request:
-    paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**"]
+    paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**"]
 
 jobs:
   test:
@@ -18,6 +18,12 @@ jobs:
       - name: install
         working-directory: python
         run: pip install -e ".[dev,transparent,anchor]"
+      - name: install cll reference (bundle completeness proofs)
+        # The evidence-bundle vectors verify against real CLL MMR proofs. Install
+        # the public checkpointed-local-log reference (import package `cll`) pinned
+        # to the merged range-proof API (#13) so the 12 bundle vectors, incl. both
+        # interior-tamper negatives, actually run instead of importorskip-skipping.
+        run: pip install "checkpointed-local-log @ git+https://github.com/action-state-group/checkpointed-local-log@deb7617497820f03d876e3a776f7a25e135fd423"
       - name: ruff
         working-directory: python
         run: python -m ruff check .
