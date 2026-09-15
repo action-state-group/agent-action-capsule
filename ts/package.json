@@ -32,7 +32,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@action-state-group/cll": "github:action-state-group/cll-ts#43382d5",
+    "@action-state-group/cll": "github:action-state-group/cll-ts#29f5b9f",
     "cborg": "6.1.2"
   },
   "devDependencies": {
