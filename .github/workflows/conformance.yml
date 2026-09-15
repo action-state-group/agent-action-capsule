@@ -117,10 +117,10 @@ jobs:
     name: Pinned legacy verifier verifies July format-2 interop record
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout frozen format-2 verifier release
+      - name: Checkout frozen legacy verifier release
         uses: actions/checkout@v4
         with:
-          ref: legacy-verifier/v0.3.0-format2
+          ref: legacy-verify/v0.1.0
           persist-credentials: false
 
       - uses: actions/setup-python@v5

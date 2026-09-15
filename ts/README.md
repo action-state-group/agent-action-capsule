@@ -13,7 +13,7 @@ Node-only Producer Envelope signing and key-creation APIs while retaining
 `verifyProducerEnvelope`.
 
 Digest-dependent APIs are async: await `sha256Hex`, `jsonDigest`,
-`vintageJsonDigest`, `computeCapsuleId`, `verifyClass1`, `verifyStore`,
+`computeCapsuleId`, `verifyClass1`, `verifyStore`,
 `verifyDisclosureEnvelope`, `sealCapsule`, and `parseCapsule`.
 `verifyProducerEnvelope` is also async on both entry points.
 

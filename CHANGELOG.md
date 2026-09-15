@@ -16,6 +16,17 @@
 
 ## Unreleased
 
+### Reference (breaking)
+- **Format-4-only canonical reference.** The Python and Go reference verifiers and
+  `capsule_id` computation now accept `format_version: "4"` only; any other value is
+  rejected with `unsupported_format_version`, and the legacy absent-field ("vintage")
+  construction has been removed rather than left unreachable. Records in the retired
+  format-1–3 constructions remain verifiable with the frozen reference release
+  **`legacy-verify/v0.1.0`** (commit `43b349dd6e8ee5f30dac3add9261b8f84e13ba7e`, the
+  pre-format-4-only `main` tip), which the `pinned-legacy-format-2-verification`
+  conformance job checks out to re-verify the cited July interop record. That tag is
+  the single pinned legacy artifact; do not re-tag.
+
 ### Spec
 - `spec/draft-mih-scitt-agent-action-capsule-03.md` §5.3 Assurance — added the
   cross-party assurance rung, a FOURTH, orthogonal `assurance` claim

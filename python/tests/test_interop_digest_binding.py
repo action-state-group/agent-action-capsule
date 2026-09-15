@@ -52,7 +52,7 @@ def _verify_quote_binding(bound_digest_raw_b64: str, digest_hex: str, profile_la
 
 
 def test_published_vector_fails_closed_but_preimage_digests_remain_bound():
-    """Current code rejects this pre-v4 record; legacy-verifier/v0.3.0-format2 verifies it."""
+    """Current code rejects this pre-v4 record; legacy-verify/v0.1.0 verifies it."""
     capsule = _load_json(VECTOR["inputs"]["capsule"])
     agent_input = _load_json(VECTOR["inputs"]["agent_input"])
     agent_output = _load_json(VECTOR["inputs"]["agent_output"])
