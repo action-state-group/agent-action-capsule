@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-VECTORS_DIR = Path(__file__).resolve().parents[2] / "interop-vectors" / "ran_under"
+VECTORS_DIR = Path(__file__).resolve().parents[2] / "vectors/interop" / "ran_under"
 VERIFIER_PATH = VECTORS_DIR / "verify_ran_under.py"
 
 CASES = [

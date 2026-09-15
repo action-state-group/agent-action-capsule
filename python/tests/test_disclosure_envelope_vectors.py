@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Run every frozen vector in ../../disclosure-envelope-vectors/ through
+"""Run every frozen vector in ../../vectors/disclosure-envelope/ through
 verify_disclosure_envelope() and assert its expected.json."""
 import json
 from pathlib import Path
@@ -8,7 +8,7 @@ import pytest
 
 from agent_action_capsule import verify_disclosure_envelope
 
-VECTORS = Path(__file__).resolve().parents[2] / "disclosure-envelope-vectors"
+VECTORS = Path(__file__).resolve().parents[2] / "vectors/disclosure-envelope"
 MANIFEST = json.loads((VECTORS / "vectors.json").read_text())
 CASES = [c["name"] for c in MANIFEST["cases"]]
 

@@ -26,7 +26,7 @@ denied Capsule is affirmative evidence that a gate worked.
 - **Editor's source (this repo):** [`spec/draft-mih-scitt-agent-action-capsule-04.md`](spec/draft-mih-scitt-agent-action-capsule-04.md)
   (kramdown-rfc source).
 - **Registry of record:** [`spec/REGISTRY.md`](spec/REGISTRY.md) — the interim
-  registry for the six profile vocabularies until IANA registries are
+  registry for the seven profile vocabularies until IANA registries are
   established on RFC publication.
 - **Reader's guide:** [`spec/section-map.md`](spec/section-map.md).
 
@@ -45,15 +45,15 @@ cd agent-action-capsule
 pip install -e python            # or, once published: pip install agent-action-capsule
 
 # a known-good conformance vector  ->  ok: True, findings: none
-agent-action-capsule verify test-vectors/pos-v4-jcs-chain-committed/input.json
+agent-action-capsule verify vectors/capsule/pos-v4-jcs-chain-committed/input.json
 
 # a tampered capsule               ->  ok: False, capsule_id_mismatch
-agent-action-capsule verify test-vectors/neg-v4-chain-tampered/input.json
+agent-action-capsule verify vectors/capsule/neg-v4-chain-tampered/input.json
 ```
 
 The good capsule recomputes its content-address and passes; the tampered one is
 rejected because the recomputed `capsule_id` no longer matches the carried value.
-Every directory under `test-vectors/` is one case — `input.json` is the capsule,
+Every directory under `vectors/capsule/` is one case — `input.json` is the capsule,
 `expected.json` is the verifier's expected result — so you can check the reference
 implementation against the frozen bytes the spec is conformance-tested on.
 
@@ -71,10 +71,10 @@ every option — is in [`python/README.md`](python/README.md).
 ```
 spec/            the Internet-Draft (.md source + built .xml/.txt), REGISTRY.md,
                  section-map.md, Makefile
-python/          reference library (capsule parse + verify) -> PyPI agent-action-capsule
-go/              independent Go canonicalization and verification runtime
-test-vectors/    conformance vectors (frozen bytes; the scitt-cose pattern)
-producer-envelope-vectors/  shared binary COSE Producer Envelope vectors
+python/          normative reference library -> PyPI agent-action-capsule
+go/              conforming Go record-format and verification reference
+ts/              conforming TypeScript record-format and verification reference
+vectors/         authoritative language-agnostic conformance and interop vectors
 LICENSE          BCP 78/79 for the specification; Revised BSD for code components
 NOTICE           attribution + neutrality intent
 CONTRIBUTING.md  IETF process (BCP 78/79), DCO, scope gates
@@ -101,9 +101,8 @@ producer layer — the one-call `seal()` on-ramp that mints Capsules from a live
 agent, plus its framework adapters — lives in
 [`action-state-group/capsule-emit`](https://github.com/action-state-group/capsule-emit).
 The producer consumes this repository's contract; this repository does not depend
-on the producer. (This repo also ships a `go/` directory — an independent Go
-canonicalization and verification runtime — used to cross-check the contract, not
-a producer.)
+on the producer. The `go/` and `ts/` implementations here independently conform
+to the Python reference through the shared `vectors/` tree and cross-language CI.
 
 ## Canonical Payload Binding (CPB)
 
@@ -195,10 +194,9 @@ each row links a public artifact (PR, release tag, or datatracker entry) as its
 evidence. "Ran and verified" means the result is on the public record; a link to
 a digest or PR is the evidence, not a name.
 
-**Same-team ports** (ASG's own dual runtime — Python reference library plus Go
-clean-room verifier): both track the same frozen conformance vectors and are
-cross-checked in CI; they are listed separately in `scitt-cose` rather than
-claimed as third-party implementations.
+**Same-team ports** (the Python reference plus conforming Go and TypeScript
+implementations): all three track the same frozen conformance vectors and are
+cross-checked in CI; they are not claimed as third-party implementations.
 
 The INTEROP.md table includes additional rows marked `agreed — scheduled` (runs
 coordinated, artifact exchange pending) and one row marked `HOLD` (PermitReceipt

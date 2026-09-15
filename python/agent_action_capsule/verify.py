@@ -139,7 +139,7 @@ def _reference_findings(
     including which §6 check each finding is attributed to (checks 1, 6, 8) so
     callers can splice these findings into the same fixed check order."""
     if capsule.get("format_version") != "4":
-        return []  # a draft-04 addition; preserve vintage (format 2) handling
+        return []
     if "references" not in capsule:
         return []
     raw = capsule["references"]
@@ -297,27 +297,19 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         elif not isinstance(capsule[fld], str):
             findings.append(Finding("field_not_string", f"{fld} MUST be a string (§5.1)", check=1))
     cid = capsule.get("capsule_id")
-    if cid is not None and not is_hex64(cid):
+    carried_id = cid if is_hex64(cid) else None
+    if cid is not None and carried_id is None:
         findings.append(Finding("capsule_id_malformed", "capsule_id MUST be 64 lowercase hex (§5.1)", check=1))
     at = capsule.get("action_type")
     if at is not None and at not in ("fyi", "decide"):
         findings.append(Finding("action_type_invalid", "action_type MUST be 'fyi' or 'decide' (§5.1)", check=1))
-    # format_version selects the identity profile. Format 2 is the vintage
-    # absent-field construction; format 4 requires declared plain JCS.
     fv = capsule.get("format_version")
-    if isinstance(fv, str) and fv not in ("2", "4"):
+    if isinstance(fv, str) and fv != "4":
         findings.append(Finding(
             "unsupported_format_version",
-            f"format_version {fv!r} is not supported; expected \"2\" or \"4\" (§5.1)",
+            f"format_version {fv!r} is not supported; expected \"4\" (§5.1)",
             check=1,
         ))
-    elif fv == "2":
-        if "canonicalization_id" in capsule:
-            findings.append(Finding(
-                "canonicalization_profile_mismatch",
-                "format_version '2' is the vintage absent-field profile and MUST NOT declare canonicalization_id (§5.1)",
-                check=1,
-            ))
     elif fv == "4":
         if "canonicalization_id" not in capsule:
             findings.append(Finding(
@@ -386,15 +378,21 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
 
     # ---- Check 2: Identity --------------------------------------------------
     recomputed = None
-    if cid is not None:
+    identity_profile_valid = (
+        fv == "4" and capsule.get("canonicalization_id") == CANONICALIZATION_JCS
+    )
+    # Profile validation precedes digest computation. A missing recomputed ID
+    # already records that no computation was attempted, so do not add a
+    # derived capsule_id_uncomputable finding for the same primary cause.
+    if carried_id is not None and identity_profile_valid:
         try:
             recomputed = compute_capsule_id(dict(capsule))
         except (FloatInDigestError, UnsafeIntegerError):
             pass  # already reported structurally in check 1
         except Exception as exc:
             findings.append(Finding("capsule_id_uncomputable", repr(exc), check=2))
-        if recomputed is not None and recomputed != cid:
-            findings.append(Finding("capsule_id_mismatch", f"recomputed {recomputed} != carried {cid}", check=2))
+        if recomputed is not None and recomputed != carried_id:
+            findings.append(Finding("capsule_id_mismatch", f"recomputed {recomputed} != carried {carried_id}", check=2))
 
     # ---- Check 3: Confirmed-effect binding ----------------------------------
     if effect is not None and effect.get("status") == "confirmed" and not is_hex64(effect.get("response_digest")):

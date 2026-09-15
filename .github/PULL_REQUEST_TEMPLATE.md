@@ -6,7 +6,7 @@
 
 - [ ] Spec fix / clarification (draft text only)
 - [ ] Reference implementation (Python verifier / emitter)
-- [ ] Conformance vectors (test-vectors/)
+- [ ] Conformance vectors (`vectors/`)
 - [ ] Documentation
 - [ ] Tooling / CI
 

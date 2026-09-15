@@ -18,7 +18,7 @@ func loadCapsule(t *testing.T, vector string) map[string]interface{} {
 	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)
-	path := filepath.Join(filepath.Dir(filename), "..", "..", "test-vectors", vector, "input.json")
+	path := filepath.Join(filepath.Dir(filename), "..", "..", "vectors/capsule", vector, "input.json")
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 
@@ -67,7 +67,8 @@ func TestVerifyRejectsUnsupportedCanonicalizationID(t *testing.T) {
 
 			result := verify.Verify(capsule, nil, nil)
 			require.False(t, result.OK)
-			require.Contains(t, findingCodes(result), "capsule_id_uncomputable")
+			require.NotContains(t, findingCodes(result), "capsule_id_uncomputable")
+			require.Nil(t, result.CapsuleID)
 		})
 	}
 }
@@ -85,8 +86,8 @@ func TestVerifyCanonicalizationProfileMatrix(t *testing.T) {
 		{name: "format 4 unknown", formatVersion: "4", declaration: "future-algorithm", declared: true, wantCode: "canonicalization_profile_mismatch"},
 		{name: "format 4 non-string", formatVersion: "4", declaration: json.Number("7"), declared: true, wantCode: "canonicalization_id_not_string"},
 		{name: "format 3 unsupported", formatVersion: "3", declaration: "jcs", declared: true, wantCode: "unsupported_format_version"},
-		{name: "format 2 declared", formatVersion: "2", declaration: "jcs", declared: true, wantCode: "canonicalization_profile_mismatch"},
-		{name: "format 2 null declaration", formatVersion: "2", declaration: nil, declared: true, wantCode: "canonicalization_profile_mismatch"},
+		{name: "format 2 declared", formatVersion: "2", declaration: "jcs", declared: true, wantCode: "unsupported_format_version"},
+		{name: "format 2 null declaration", formatVersion: "2", declaration: nil, declared: true, wantCode: "unsupported_format_version"},
 	}
 
 	for _, test := range tests {
@@ -105,6 +106,8 @@ func TestVerifyCanonicalizationProfileMatrix(t *testing.T) {
 			result := verify.Verify(capsule, nil, nil)
 			require.False(t, result.OK)
 			require.Contains(t, findingCodes(result), test.wantCode)
+			require.NotContains(t, findingCodes(result), "capsule_id_uncomputable")
+			require.Nil(t, result.CapsuleID)
 		})
 	}
 }

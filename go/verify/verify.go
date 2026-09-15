@@ -327,46 +327,24 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		}
 	}
 
-	// format_version selects the identity profile. Format 2 is the vintage
-	// absent-field construction; format 4 requires declared plain JCS.
+	// Format 4 requires declared plain JCS.
+	identityProfileValid := false
 	if fv, ok := capsuleMap["format_version"].(string); ok {
-		switch fv {
-		case "2":
-			if _, present := capsuleMap["canonicalization_id"]; present {
-				findings = append(findings, Finding{
-					Code:     "canonicalization_profile_mismatch",
-					Detail:   "format_version \"2\" is the vintage absent-field profile and MUST NOT declare canonicalization_id (§5.1)",
-					Severity: "error", Check: mkCheck(1),
-				})
-			}
-		case "4":
+		if fv != "4" {
+			findings = append(findings, Finding{Code: "unsupported_format_version", Detail: fmt.Sprintf("format_version %q is not supported; expected \"4\" (§5.1)", fv), Severity: "error", Check: mkCheck(1)})
+		} else {
 			declared, present := capsuleMap["canonicalization_id"]
 			if !present {
-				findings = append(findings, Finding{
-					Code:     "canonicalization_id_missing",
-					Detail:   "format_version \"4\" REQUIRES canonicalization_id=\"jcs\" (§5.1)",
-					Severity: "error", Check: mkCheck(1),
-				})
-			} else if algorithm, isString := declared.(string); !isString {
-				findings = append(findings, Finding{
-					Code:     "canonicalization_id_not_string",
-					Detail:   "canonicalization_id MUST be a string (§5.1)",
-					Severity: "error", Check: mkCheck(1),
-				})
+				findings = append(findings, Finding{Code: "canonicalization_id_missing", Detail: "format_version \"4\" REQUIRES canonicalization_id=\"jcs\" (§5.1)", Severity: "error", Check: mkCheck(1)})
+			} else if algorithm, ok := declared.(string); !ok {
+				findings = append(findings, Finding{Code: "canonicalization_id_not_string", Detail: "canonicalization_id MUST be a string (§5.1)", Severity: "error", Check: mkCheck(1)})
 			} else if algorithm != canonical.CanonicalizationJCS {
-				findings = append(findings, Finding{
-					Code:     "canonicalization_profile_mismatch",
-					Detail:   "format_version \"4\" REQUIRES canonicalization_id=\"jcs\" (§5.1)",
-					Severity: "error", Check: mkCheck(1),
-				})
+				findings = append(findings, Finding{Code: "canonicalization_profile_mismatch", Detail: "format_version \"4\" REQUIRES canonicalization_id=\"jcs\" (§5.1)", Severity: "error", Check: mkCheck(1)})
+			} else {
+				identityProfileValid = true
 			}
-		default:
-			findings = append(findings, Finding{
-				Code:     "unsupported_format_version",
-				Detail:   fmt.Sprintf("format_version %q is not supported; expected \"2\" or \"4\" (§5.1)", fv),
-				Severity: "error", Check: mkCheck(1),
-			})
 		}
+
 	}
 
 	// Sub-block type checks (effect, assurance, disposition, chain, cross_party).
@@ -463,7 +441,10 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 
 	// ---- Check 2: Identity --------------------------------------------------
 	var recomputedID *string
-	if cidPresent {
+	// Profile validation precedes digest computation. A nil recomputed ID
+	// already records that no computation was attempted, so do not add a
+	// derived capsule_id_uncomputable finding for the same primary cause.
+	if cidPresent && identityProfileValid {
 		computed, err := canonical.ComputeCapsuleID(capsuleMap)
 		if err != nil {
 			// Float/unsafe-int errors are already reported structurally (check 1).
@@ -705,7 +686,7 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 func Verify(capsule interface{}, store []interface{}, regs map[string]map[string]bool) (result VerificationResult) {
 	if regs == nil {
 		var err error
-		regs, err = registries.Load("")
+		regs, err = registries.LoadAuthoritative()
 		if err != nil {
 			return VerificationResult{
 				OK: false,
@@ -735,7 +716,7 @@ func Verify(capsule interface{}, store []interface{}, regs map[string]map[string
 func VerifyStore(capsules []interface{}, regs map[string]map[string]bool) []VerificationResult {
 	if regs == nil {
 		var err error
-		regs, err = registries.Load("")
+		regs, err = registries.LoadAuthoritative()
 		if err != nil {
 			out := make([]VerificationResult, len(capsules))
 			for i := range out {

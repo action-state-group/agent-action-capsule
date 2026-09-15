@@ -1,0 +1,49 @@
+{
+  "format_version": "1",
+  "spec": "draft-mih-scitt-agent-action-capsule-disclosure-envelope-00",
+  "count": 7,
+  "cases": [
+    {
+      "name": "neg-disclosure-envelope-ineligible",
+      "kind": "negative",
+      "description": "DE-1 rejects a member outside the disclosure-eligibility table",
+      "provenance": "spec-derived"
+    },
+    {
+      "name": "neg-disclosure-envelope-no-commitment",
+      "kind": "negative",
+      "description": "DE-2 requires the matching committed digest field",
+      "provenance": "spec-derived"
+    },
+    {
+      "name": "neg-disclosure-envelope-nested-leaf-mismatch",
+      "kind": "negative",
+      "description": "DE-3 reports a mismatch when one nested agent_input leaf changes.",
+      "provenance": "spec-derived"
+    },
+    {
+      "name": "neg-disclosure-envelope-uncanonicalizable",
+      "kind": "negative",
+      "description": "DE-3 reports an uncanonicalizable disclosure as mismatch",
+      "provenance": "spec-derived"
+    },
+    {
+      "name": "pos-disclosure-envelope-both-fields",
+      "kind": "positive",
+      "description": "both disclosure-eligible fields match, reported in deterministic member order",
+      "provenance": "spec-derived"
+    },
+    {
+      "name": "pos-disclosure-envelope-nested-input",
+      "kind": "positive",
+      "description": "DE-3 matches a nested agent_input disclosure containing objects inside an array.",
+      "provenance": "spec-derived"
+    },
+    {
+      "name": "pos-disclosure-envelope-nested-output",
+      "kind": "positive",
+      "description": "DE-3 matches a nested agent_output disclosure containing objects inside an array.",
+      "provenance": "spec-derived"
+    }
+  ]
+}

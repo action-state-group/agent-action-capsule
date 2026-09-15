@@ -368,10 +368,10 @@ the producer performs the following steps:
 
 An SD-Capsule's `capsule_id` is computed over the SD-encoded payload
 (the payload with concealed members absent and `_sd` arrays and `_sd_alg`
-present), not over the fully-revealed payload.  This follows the same
-construction as the base profile: `JSON-DIGEST` of the canonical capsule
-form (the full payload minus `capsule_id` and chain-linkage fields) after
-absent-field normalization, applied to the SD-encoded form.
+present), not over the fully-revealed payload. This follows the base
+profile's format-4 construction: SHA-256 over plain JCS of the SD-encoded
+Capsule after removing only `capsule_id` and local-only `signature` and
+`key_id` envelope fields, if present in a local composite representation.
 
 This design means the `capsule_id` is stable regardless of which fields
 are later revealed to which verifiers.  The commitment set (the `_sd`

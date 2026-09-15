@@ -15,12 +15,20 @@ import re
 from pathlib import Path
 
 __all__ = [
+    "DISCLOSURE_ELIGIBLE_FIELDS",
     "REGISTRY_NAMES",
     "load_registries",
     "find_registry_md",
     "load_cpb_provisional_values",
     "find_cpb_provisional",
 ]
+
+# Companion Disclosure Envelope registry table. Values are dotted paths below
+# the Capsule root so other language references can expose the same table.
+DISCLOSURE_ELIGIBLE_FIELDS = {
+    "agent_input": "model_attestation.compute_attestation.agent_input_digest",
+    "agent_output": "model_attestation.compute_attestation.agent_output_digest",
+}
 
 # The seven registry-governed vocabularies (§4). approver is deliberately NOT
 # here: it is a closed enum fixed by the spec (§5.4), not registry-governed.

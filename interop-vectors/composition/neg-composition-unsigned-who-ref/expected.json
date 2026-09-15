@@ -1,5 +1,0 @@
-{
-  "failed_stage": "who_authorization_present",
-  "note": "the referenced WHO carries no signoff/signature; the human_authorization_ref does not resolve to an authorization",
-  "verified": false
-}

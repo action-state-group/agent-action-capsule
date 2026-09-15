@@ -25,7 +25,7 @@ the IETF Datatracker.
 ## Code and conformance contributions (Revised BSD)
 
 Contributions to code (`python/`), build tooling (`spec/Makefile`, scripts), and
-test vectors (`test-vectors/`) are licensed under the **Revised BSD License**
+test vectors (`vectors/capsule/`) are licensed under the **Revised BSD License**
 (BSD-3-Clause; see LICENSE).
 
 ### Developer Certificate of Origin (DCO)
@@ -51,7 +51,7 @@ No CLA is required — the DCO is the whole agreement.
    WG document — don't claim WG adoption it does not have.
 3. **Conformance is external.** Correctness claims rest on agreement with
    independent references and on the frozen conformance vectors under
-   `test-vectors/`. A wire-facing change comes with cross-checked evidence and
+   `vectors/capsule/`. A wire-facing change comes with cross-checked evidence and
    negative (MUST-reject) tests, not just round-trip tests.
 4. **The draft is the source of truth.** When the reference implementation and
    the draft disagree, fix the implementation or open an erratum against the

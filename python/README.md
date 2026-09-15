@@ -20,8 +20,8 @@ pip install agent-action-capsule        # from a checkout: cd python && pip inst
 **Verify a conformant capsule** — point at a shipped positive vector:
 
 ```bash
-$ agent-action-capsule verify ../test-vectors/pos-executed-confirmed/input.json
-Agent Action Capsule — Class-1 payload verification: ../test-vectors/pos-executed-confirmed/input.json
+$ agent-action-capsule verify ../vectors/capsule/pos-executed-confirmed/input.json
+Agent Action Capsule — Class-1 payload verification: ../vectors/capsule/pos-executed-confirmed/input.json
   ok: True
   capsule_id (recomputed): 5b7c4ff1bcf4364e0dd8c8b65eddddbb1d6102f27bed3ad1a3595cba51d3502a
   derived: effect_mode=confirmed attestation_mode=self_attested ledger_mode=standalone
@@ -32,7 +32,7 @@ Agent Action Capsule — Class-1 payload verification: ../test-vectors/pos-execu
 **Verify a failing capsule** — the finding is self-explaining, with its §6 check number:
 
 ```bash
-$ agent-action-capsule verify ../test-vectors/neg-confirmed-without-response/input.json
+$ agent-action-capsule verify ../vectors/capsule/neg-confirmed-without-response/input.json
   ok: False
   ...
   findings:
@@ -101,7 +101,7 @@ one, in ~40 lines.
 
 ### Conformance vectors
 
-[`../test-vectors/`](../test-vectors/) is the frozen conformance suite a second
+[`../vectors/capsule/`](../vectors/capsule/) is the frozen conformance suite a second
 implementer runs against their **own** verifier: each `input.json` plus its
 spec-anchored `expected.json` (`ok`, the §6 check numbers + severities, the
 derived modes, the recomputed `capsule_id`). See
@@ -111,9 +111,10 @@ derived modes, the recomputed `capsule_id`). See
 
 | Module | Spec | Implements |
 |---|---|---|
-| `canonical.py` | §2, §5.1 | Current JSON-DIGEST uses plain RFC 8785 JCS. Format-4 `capsule_id` excludes itself **and** the local-only producer-envelope fields (`signature`, `key_id`) — those are attached to the ledger line after the id is computed, so they can never be part of its preimage — while committing the declaration and chain. The absent-field normalized construction remains only for vintage format-2 verification. |
+| `canonical.py` | §2, §5.1 | Current JSON-DIGEST uses plain RFC 8785 JCS. Format-4 `capsule_id` excludes itself **and** the local-only producer-envelope fields (`signature`, `key_id`) — those are attached to the ledger line after the id is computed, so they can never be part of its preimage — while committing the declaration and chain. This reference is format-4-only: any other `format_version` is rejected with `unsupported_format_version`, and the legacy absent-field construction has been removed. Vintage format-2 records are verified with the frozen `legacy-verify/v0.1.0` release, not this reference. |
 | `producer_envelope.py` | §3, §6 | Optional exact-profile COSE_Sign1 verification over the raw 32-byte Capsule ID. Returns the authenticated Ed25519 key; caller authorization remains separate. |
-| `registries.py` | §12 | Loads the seven registries (incl. `citation_purpose`, draft-04) from `../spec/REGISTRY.md` (single-sourced — the code hard-codes no seeded values, so it cannot drift from the spec). |
+| `registries.py` | §12 + Disclosure Envelope §4 | Loads the seven registries (incl. `citation_purpose`, draft-04) from `../spec/REGISTRY.md` and exports the companion disclosure-eligibility table. |
+| `disclosure_envelope.py` | Disclosure Envelope DE-1–DE-3 | Runs Class 1 over the embedded Capsule independently, then validates eligibility, committed-digest presence, and disclosure JSON-DIGEST equality. |
 | `contracts.py` | §5.2–§5.4, §5.5.5 | Typed **producer** carriers whose constructors enforce the invariants a producer MUST NOT violate: the disposition honesty invariant and the closed `approver` enum (§5.4), the confirmed-effect binding and the status/digest table (§5.2), and `references[]` entry structure / AAC self-identity digest format (§5.5.5). A non-conforming Capsule cannot be built. Also the `effect_mode` derivation (§5.2) and the never-dispatch set (§5.4.2). |
 | `verify.py` | §6, §5.5.5 | The **Class 1 verifier**: the eight checks in fixed order plus `references[]` findings (§5.5.5, spliced into checks 1/6/8), a structured result that never throws, a single `ok` boolean, store-level chain checks (`verify_store`), and the SHOULD-level defensive disposition-honesty assert over arbitrary bytes. Unknown registry values are informational, never a rejection. |
 | `parse.py` | §5, §5.5.5 | `Capsule` builder + `seal()` (computes `capsule_id`); strict `parse_capsule` (raises on a non-conforming Capsule). `references[]` is tri-state: absent, present-and-empty, and present-and-populated are three distinct wire forms (and therefore three distinct `capsule_id` digests). |
@@ -207,6 +208,6 @@ python -m ruff check .
 
 The test suite is the conformance contract: every MUST / MUST NOT in the
 implemented sections has a positive and a negative case, and the frozen
-byte-level vectors under `../test-vectors/` are replayed through `verify()` /
+byte-level vectors under `../vectors/capsule/` are replayed through `verify()` /
 `verify_store()`. The two-layer (`--transparent`) tests run only when the
 optional `[transparent]` extra is installed, and skip cleanly otherwise.

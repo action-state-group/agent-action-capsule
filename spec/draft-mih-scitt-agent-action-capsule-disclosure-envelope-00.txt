@@ -4,8 +4,8 @@
 
 SCITT                                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Standards Track                           6 August 2026
-Expires: 7 February 2027
+Intended status: Standards Track                       13 September 2026
+Expires: 17 March 2027
 
 
          Disclosure Envelope Profile for Agent Action Capsules
@@ -49,13 +49,13 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 7 February 2027.
+   This Internet-Draft will expire on 17 March 2027.
 
 
 
-Mih                      Expires 7 February 2027                [Page 1]
+Mih                       Expires 17 March 2027                 [Page 1]
 
-Internet-Draft           AAC Disclosure Envelope             August 2026
+Internet-Draft           AAC Disclosure Envelope          September 2026
 
 
 Copyright Notice
@@ -82,19 +82,19 @@ Table of Contents
      4.2.  Disclosure-Eligible Fields  . . . . . . . . . . . . . . .   5
      4.3.  Reserved Wrapper Member Names . . . . . . . . . . . . . .   6
    5.  Verifier Checks . . . . . . . . . . . . . . . . . . . . . . .   6
-     5.1.  Phase DE: Disclosure Verification . . . . . . . . . . . .   6
+     5.1.  Phase DE: Disclosure Verification . . . . . . . . . . . .   7
        5.1.1.  DE-1: Eligibility Check . . . . . . . . . . . . . . .   7
        5.1.2.  DE-2: Committed-Digest Presence Check . . . . . . . .   7
        5.1.3.  DE-3: Digest Recomputation and Comparison . . . . . .   7
-     5.2.  Verification Result Fields  . . . . . . . . . . . . . . .   7
+     5.2.  Verification Result Fields  . . . . . . . . . . . . . . .   8
    6.  Security Considerations . . . . . . . . . . . . . . . . . . .   8
      6.1.  The Envelope Is Not Signed  . . . . . . . . . . . . . . .   8
-     6.2.  No Confidentiality Beyond WITHHELD  . . . . . . . . . . .   8
+     6.2.  No Confidentiality Beyond WITHHELD  . . . . . . . . . . .   9
      6.3.  capsule_id Stability  . . . . . . . . . . . . . . . . . .   9
      6.4.  Digest-Only Fields Remain Digest-Only Under
            Non-Disclosure  . . . . . . . . . . . . . . . . . . . . .   9
    7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   9
-   8.  Test Vectors  . . . . . . . . . . . . . . . . . . . . . . . .   9
+   8.  Test Vectors  . . . . . . . . . . . . . . . . . . . . . . . .  10
      8.1.  Example: Matching Disclosure  . . . . . . . . . . . . . .  10
      8.2.  Example: Mismatching Disclosure . . . . . . . . . . . . .  10
    9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  10
@@ -102,16 +102,16 @@ Table of Contents
      9.2.  Informative References  . . . . . . . . . . . . . . . . .  11
    Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  11
    Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  11
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  11
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  12
 
 
 
 
 
 
-Mih                      Expires 7 February 2027                [Page 2]
+Mih                       Expires 17 March 2027                 [Page 2]
 
-Internet-Draft           AAC Disclosure Envelope             August 2026
+Internet-Draft           AAC Disclosure Envelope          September 2026
 
 
 1.  Introduction
@@ -165,18 +165,19 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
 
 
 
-Mih                      Expires 7 February 2027                [Page 3]
+Mih                       Expires 17 March 2027                 [Page 3]
 
-Internet-Draft           AAC Disclosure Envelope             August 2026
+Internet-Draft           AAC Disclosure Envelope          September 2026
 
 
       the corresponding member of the disclosures object.
 
    JSON-DIGEST:  As defined in [I-D.mih-scitt-agent-action-capsule]: the
-      lowercase-hex SHA-256 digest of the [RFC8785] JCS serialization of
-      a value under the embedded Capsule's identity profile.  Format 4
-      uses plain JCS.  Vintage format 2 applies absent-field
-      normalization.
+      lowercase-hex SHA-256 digest of UTF8({{RFC8785}} JCS(value)).  The
+      whole JSON value is canonicalized recursively; no object-member
+      allow-list, replacer array, or other key-filtering operation is
+      applied at any depth.  This document only applies to embedded
+      Capsules that conform to the base profile's format-4 requirements.
 
    JCS:  JSON Canonicalization Scheme per [RFC8785].
 
@@ -220,12 +221,9 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
 
 
 
-
-
-
-Mih                      Expires 7 February 2027                [Page 4]
+Mih                       Expires 17 March 2027                 [Page 4]
 
-Internet-Draft           AAC Disclosure Envelope             August 2026
+Internet-Draft           AAC Disclosure Envelope          September 2026
 
 
    {
@@ -279,9 +277,9 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
 
 
 
-Mih                      Expires 7 February 2027                [Page 5]
+Mih                       Expires 17 March 2027                 [Page 5]
 
-Internet-Draft           AAC Disclosure Envelope             August 2026
+Internet-Draft           AAC Disclosure Envelope          September 2026
 
 
      +==============+================================================+
@@ -296,11 +294,20 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
                                   Table 1
 
    Both fields are defined in [I-D.mih-scitt-agent-action-capsule]
-   (Observation mode).  A future revision of this profile MAY extend the
-   table with additional digest-only fields (for example, a disclosable
-   form of a Constraint Record's evidence_digest), following the same
-   Specification Required registration policy as the base profile's
-   registries.
+   (Observation mode).  This table is a Specification Required registry.
+   An extension MUST (1) add a digest-only Capsule field, (2) register
+   the disclosures member and its committed-digest field as a pair, (3)
+   add format-4 vectors and increment their vector version, and (4)
+   require producers to retain the original value so it can be revealed.
+
+   This revision scopes registrations to committed-digest fields
+   directly under capsule.model_attestation.compute_attestation.  It
+   does not define generic Capsule-path resolution.  Widening the
+   registry beyond that object requires generic path resolution in every
+   implementation before such a registration can be made.  A disclosure
+   reveals the whole registered member; selective disclosure of a sub-
+   field is instead the salted-commitment mechanism defined by
+   [I-D.mih-scitt-agent-action-capsule-selective-disclosure].
 
 4.3.  Reserved Wrapper Member Names
 
@@ -323,6 +330,14 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
    1 failure does not suppress disclosure verification.  A verifier
    surface MUST report both results and MUST NOT conflate them — in
    particular, MUST NOT let a matching disclosure upgrade the Capsule's
+
+
+
+Mih                       Expires 17 March 2027                 [Page 6]
+
+Internet-Draft           AAC Disclosure Envelope          September 2026
+
+
    own verification status, and MUST NOT let the Capsule's own valid,
    anchored status be read as implying anything about a disclosure it
    has not itself recomputed and checked.
@@ -330,15 +345,6 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
 5.1.  Phase DE: Disclosure Verification
 
    For each member disclosures carries:
-
-
-
-
-
-Mih                      Expires 7 February 2027                [Page 6]
-
-Internet-Draft           AAC Disclosure Envelope             August 2026
-
 
 5.1.1.  DE-1: Eligibility Check
 
@@ -356,11 +362,10 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
 
 5.1.3.  DE-3: Digest Recomputation and Comparison
 
-   Compute computed = JSON-DIGEST(value) using the embedded Capsule's
-   identity profile.  Format 4 computes the lowercase-hex SHA-256 of
-   UTF8(JCS(value)) without normalization.  Vintage format 2 applies the
-   same absent-field normalization used for its capsule_id.  This
-   document introduces no second profile-selection or hashing path.
+   Compute computed = JSON-DIGEST(value): the lowercase-hex SHA-256 of
+   UTF8(JCS(value)) over the whole recursively canonicalized value, with
+   no member filtering or replacer array.  This document defines no
+   second hashing path.
 
    Compare computed to the committed digest located in DE-2:
 
@@ -380,21 +385,19 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
    than raising an error, consistent with the base profile's structured-
    result, never-throw contract.
 
+
+
+
+
+Mih                       Expires 17 March 2027                 [Page 7]
+
+Internet-Draft           AAC Disclosure Envelope          September 2026
+
+
 5.2.  Verification Result Fields
 
    A verifier implementing this profile SHOULD include, alongside the
    base Class 1 result, a structured per-member disclosure result:
-
-
-
-
-
-
-
-Mih                      Expires 7 February 2027                [Page 7]
-
-Internet-Draft           AAC Disclosure Envelope             August 2026
-
 
    +=====================+=========+==================================+
    | Field               | Type    | Meaning                          |
@@ -432,6 +435,21 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
    verifier that renders "REVEALED" without performing DE-3 is asserting
    a check it did not perform.
 
+
+
+
+
+
+
+
+
+
+
+Mih                       Expires 17 March 2027                 [Page 8]
+
+Internet-Draft           AAC Disclosure Envelope          September 2026
+
+
 6.2.  No Confidentiality Beyond WITHHELD
 
    Once a disclosures member is populated, its value is in clear to
@@ -443,14 +461,6 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
    verifiers with different disclosure needs from the same Capsule
    construct a distinct envelope per recipient, omitting members that
    recipient is not entitled to.
-
-
-
-
-Mih                      Expires 7 February 2027                [Page 8]
-
-Internet-Draft           AAC Disclosure Envelope             August 2026
-
 
 6.3.  capsule_id Stability
 
@@ -486,27 +496,25 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
    member names and the disclosure-eligible field table defined by this
    document.
 
+
+
+
+
+
+Mih                       Expires 17 March 2027                 [Page 9]
+
+Internet-Draft           AAC Disclosure Envelope          September 2026
+
+
 8.  Test Vectors
 
    The following non-normative examples illustrate the mechanism.  See
-   the source repository's disclosure-envelope-vectors/pos-disclosure-
-   envelope-match/ and disclosure-envelope-vectors/neg-disclosure-
+   the source repository's vectors/disclosure-envelope/pos-disclosure-
+   envelope-match/ and vectors/disclosure-envelope/neg-disclosure-
    envelope-mismatch/ for frozen, machine-checked vectors covering these
    two cases (kept in a directory of their own, separate from the base
-   profile's cross-language test-vectors/ corpus — see that directory's
-   README).
-
-
-
-
-
-
-
-
-Mih                      Expires 7 February 2027                [Page 9]
-
-Internet-Draft           AAC Disclosure Envelope             August 2026
-
+   profile's cross-language vectors/capsule/ corpus — see that
+   directory's README).
 
 8.1.  Example: Matching Disclosure
 
@@ -538,13 +546,21 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
-              capsule-03, n.d., <https://datatracker.ietf.org/doc/html/
+              capsule-04, n.d., <https://datatracker.ietf.org/doc/html/
               draft-mih-scitt-agent-action-capsule-04>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/rfc/rfc2119>.
+
+
+
+
+Mih                       Expires 17 March 2027                [Page 10]
+
+Internet-Draft           AAC Disclosure Envelope          September 2026
+
 
    [RFC6234]  Eastlake 3rd, D. and T. Hansen, "US Secure Hash Algorithms
               (SHA and SHA-based HMAC and HKDF)", RFC 6234,
@@ -554,15 +570,6 @@ Internet-Draft           AAC Disclosure Envelope             August 2026
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
-
-
-
-
-
-Mih                      Expires 7 February 2027               [Page 10]
-
-Internet-Draft           AAC Disclosure Envelope             August 2026
-
 
    [RFC8259]  Bray, T., Ed., "The JavaScript Object Notation (JSON) Data
               Interchange Format", STD 90, RFC 8259,
@@ -604,6 +611,13 @@ Acknowledgments
    and Transparency Service model this document's disclosure boundary is
    drawn against.
 
+
+
+Mih                       Expires 17 March 2027                [Page 11]
+
+Internet-Draft           AAC Disclosure Envelope          September 2026
+
+
 Author's Address
 
    Steven Mih
@@ -615,4 +629,44 @@ Author's Address
 
 
 
-Mih                      Expires 7 February 2027               [Page 11]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                       Expires 17 March 2027                [Page 12]

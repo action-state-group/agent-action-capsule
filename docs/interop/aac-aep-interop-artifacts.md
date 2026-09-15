@@ -11,7 +11,8 @@ natural permit-before case for Lee's PermitReceipt layer. The capsule binds both
 the invoice amount, vendor, and payment ID stay private (`prompt.json` / `output.json` are the
 preimages, kept locally / shared only as needed).
 
-> **Status:** capsule minted, **verifies locally** (ok, findings: none; all digests reproduce from preimages),
+> **Status:** capsule minted, **verifies locally** with the frozen `legacy-verify/v0.1.0` release (this is a
+> format-2 record; the format-4-only reference rejects it as `unsupported_format_version`) — ok, findings: none; all digests reproduce from preimages —
 > and **anchored** 2026-06-29 at `anchor.agentactioncapsule.org` (leaf_index=3, tree_size=4).
 > `receipt_b64` is live below — Direction B is ready for Anton.
 

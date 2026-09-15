@@ -63,5 +63,5 @@ func envelopeVectorRoot(t *testing.T) string {
 	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)
-	return filepath.Join(filepath.Dir(filename), "..", "..", "producer-envelope-vectors")
+	return filepath.Join(filepath.Dir(filename), "..", "..", "vectors/producer-envelope")
 }

@@ -15,15 +15,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from .canonical import FloatInDigestError, UnsafeIntegerError, json_digest, vintage_json_digest
+from .canonical import FloatInDigestError, UnsafeIntegerError, json_digest
+from .registries import DISCLOSURE_ELIGIBLE_FIELDS
 from .verify import VerificationResult, verify
-
-# disclosures member name -> dotted path of the committed-digest field within
-# capsule["model_attestation"]["compute_attestation"]
-DISCLOSURE_ELIGIBLE_FIELDS: Mapping[str, str] = {
-    "agent_input": "agent_input_digest",
-    "agent_output": "agent_output_digest",
-}
 
 MATCH = "disclosure_match"
 MISMATCH = "disclosure_mismatch"
@@ -74,30 +68,18 @@ def verify_disclosure_envelope(envelope: Any) -> DisclosureEnvelopeResult:
     disclosures = envelope.get("disclosures")
     findings: list[DisclosureFinding] = []
     if isinstance(disclosures, Mapping):
-        compute_attestation = {}
-        if isinstance(capsule, Mapping):
-            model_attestation = capsule.get("model_attestation")
-            if isinstance(model_attestation, Mapping):
-                ca = model_attestation.get("compute_attestation")
-                if isinstance(ca, Mapping):
-                    compute_attestation = ca
-
-        for member, value in disclosures.items():
+        for member, value in sorted(disclosures.items()):
             if member not in DISCLOSURE_ELIGIBLE_FIELDS:
                 findings.append(DisclosureFinding(member, INELIGIBLE))
                 continue
 
-            digest_field = DISCLOSURE_ELIGIBLE_FIELDS[member]
-            stored = compute_attestation.get(digest_field)
+            stored = _committed_digest(capsule, DISCLOSURE_ELIGIBLE_FIELDS[member])
             if not isinstance(stored, str) or len(stored) != 64:
                 findings.append(DisclosureFinding(member, NO_COMMITTED_DIGEST))
                 continue
 
             try:
-                if capsule.get("format_version") == "2":
-                    computed = vintage_json_digest(value)
-                else:
-                    computed = json_digest(value)
+                computed = json_digest(value)
                 matches = computed == stored
             except (FloatInDigestError, UnsafeIntegerError, TypeError, ValueError):
                 matches = False
@@ -105,3 +87,36 @@ def verify_disclosure_envelope(envelope: Any) -> DisclosureEnvelopeResult:
             findings.append(DisclosureFinding(member, MATCH if matches else MISMATCH))
 
     return DisclosureEnvelopeResult(capsule_result=capsule_result, disclosure_findings=findings)
+
+
+def build_disclosure_envelope(capsule: Mapping[str, Any], disclosures: Mapping[str, Any]) -> dict[str, Any]:
+    """Build a disclosure envelope after enforcing DE-1 through DE-3.
+
+    Raises :class:`ValueError` whose message starts with the verifier finding
+    code for an ineligible member, missing commitment, or digest mismatch. This
+    pure function neither reads a store or ledger nor depends on emit.
+    """
+    for member, value in disclosures.items():
+        path = DISCLOSURE_ELIGIBLE_FIELDS.get(member)
+        if path is None:
+            raise ValueError(f"{INELIGIBLE}: {member}")
+        stored = _committed_digest(capsule, path)
+        if not isinstance(stored, str) or len(stored) != 64:
+            raise ValueError(f"{NO_COMMITTED_DIGEST}: {member}")
+        try:
+            computed = json_digest(value)
+        except (FloatInDigestError, UnsafeIntegerError, TypeError, ValueError) as err:
+            raise ValueError(f"{MISMATCH}: {member}") from err
+        if computed != stored:
+            raise ValueError(f"{MISMATCH}: {member}")
+    return {"capsule": capsule, "disclosures": dict(disclosures)}
+
+
+def _committed_digest(capsule: Any, path: str) -> Any:
+    current = capsule
+    parts = path.split(".")
+    for member in parts[:-1]:
+        if not isinstance(current, Mapping):
+            return None
+        current = current.get(member)
+    return current.get(parts[-1]) if isinstance(current, Mapping) else None

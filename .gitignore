@@ -3,6 +3,7 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+node_modules/
 .pytest_cache/
 .ruff_cache/
 .DS_Store
@@ -16,6 +17,5 @@ spec/.draft-*.v2.xml
 *.cose
 
 # test vectors are FROZEN committed bytes — exempt from the key/artifact ignore
-!test-vectors/**/*.cose
-!test-vectors/**/*.pem
-!producer-envelope-vectors/**/*.cose
+!vectors/**/*.cose
+!vectors/**/*.pem

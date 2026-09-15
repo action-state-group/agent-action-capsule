@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Canonicalization and JSON-DIGEST (draft-mih-scitt-agent-action-capsule, §2, §5.1).
 
-Current JSON-DIGEST is ``HEX(SHA-256(JCS(v)))`` using plain RFC 8785 JCS.
-Absent-field normalization remains only in the vintage format-2 Capsule-ID
-verification path.
+JSON-DIGEST is ``HEX(SHA-256(JCS(v)))`` using plain RFC 8785 JCS.
 
 This module implements JCS for the value domain the profile permits: strings,
 booleans, null, integers, arrays, and objects. The profile forbids JSON
@@ -21,11 +19,9 @@ __all__ = [
     "FloatInDigestError",
     "UnsafeIntegerError",
     "MAX_SAFE_INTEGER",
-    "normalize",
     "jcs",
     "json_digest",
     "compute_capsule_id",
-    "CHAIN_LINKAGE_FIELDS",
     "LOCAL_ONLY_FIELDS",
     "CANONICALIZATION_JCS",
 ]
@@ -43,11 +39,6 @@ CANONICALIZATION_JCS = "jcs"
 # capsule_id_mismatch.
 LOCAL_ONLY_FIELDS = ("signature", "key_id")
 
-# Fields excluded by the vintage absent-field identity construction, in addition
-# to the local-only envelope fields above. Format-4 Capsules declare jcs and
-# exclude only capsule_id (plus the local-only fields), so chain is committed.
-CHAIN_LINKAGE_FIELDS = ("capsule_id", "chain")
-
 # IEEE-754 double "safe integer" bound (ECMAScript Number.MAX_SAFE_INTEGER). A
 # JSON integer whose magnitude exceeds this cannot be round-tripped through an
 # ECMAScript-Number-based reader, so two conforming verifiers could derive
@@ -55,7 +46,7 @@ CHAIN_LINKAGE_FIELDS = ("capsule_id", "chain")
 # STRINGS for monetary/quantity values; this bound additionally catches ANY
 # other integer outside the safe range in a digest-bearing position. (The -00
 # text forbids floats but does not yet state this integer bound; see the -01
-# flag in test-vectors/README.md.)
+# flag in vectors/capsule/README.md.)
 MAX_SAFE_INTEGER = 2**53 - 1  # 9007199254740991
 
 
@@ -67,28 +58,6 @@ class UnsafeIntegerError(ValueError):
     """An integer outside the ±(2^53 - 1) JS-safe range reached a digest-bearing
     field. Not reproducible across ECMAScript-Number-based readers; represent
     large integers as exact decimal strings instead (§5.1)."""
-
-
-def normalize(v: Any) -> Any:
-    """Absent-field normalization (§2): remove members whose value is null, an
-    empty array, or an empty object, bottom-up. Returns a normalized copy.
-
-    Applied bottom-up so that, e.g., an object that becomes empty only after its
-    own null/empty members are removed is itself removed by its parent.
-    """
-    if isinstance(v, dict):
-        out: dict[str, Any] = {}
-        for key, val in v.items():
-            nv = normalize(val)
-            if nv is None:
-                continue
-            if isinstance(nv, (dict, list)) and len(nv) == 0:
-                continue
-            out[key] = nv
-        return out
-    if isinstance(v, list):
-        return [normalize(x) for x in v]
-    return v
 
 
 def _jcs_string(s: str) -> str:
@@ -164,40 +133,23 @@ def jcs(v: Any) -> bytes:
 
 
 def json_digest(v: Any) -> str:
-    """Current JSON-DIGEST (§2): lowercase-hex SHA-256 of plain JCS.
-
-    Absent-field normalization is reserved for vintage Capsule-ID verification
-    and is not used for newly produced digests.
-    """
+    """JSON-DIGEST (§2): lowercase-hex SHA-256 of plain JCS."""
     return hashlib.sha256(jcs(v)).hexdigest()
 
 
-def vintage_json_digest(v: Any) -> str:
-    """Verification-only format-2 JSON-DIGEST using absent-field normalization."""
-    return hashlib.sha256(jcs(normalize(v))).hexdigest()
-
-
 def compute_capsule_id(capsule: dict) -> str:
-    """Recompute ``capsule_id`` using the Capsule's declared profile.
+    """Recompute a format-4 Capsule ID with plain RFC 8785 JCS.
 
-    Missing ``canonicalization_id`` selects the vintage format-2 construction:
-    remove ``capsule_id`` and ``chain``, normalize absent fields, then apply JCS.
-    A present declaration must be exactly ``"jcs"``; it removes only
-    ``capsule_id`` and applies plain RFC 8785 JCS, committing both the declaration
-    and ``chain``. Explicit ``jcs-n`` and unknown declarations fail closed.
-
-    Under BOTH constructions the local-only producer-envelope fields
-    (``signature``, ``key_id``) are removed first: they are attached to a ledger
-    line after the id is computed and are never part of any preimage. The vintage
-    ``CHAIN_LINKAGE_FIELDS`` set therefore additionally drops ``chain``.
+    ``capsule_id`` and the local-only producer-envelope fields are removed. All
+    other members, including ``chain``, ``references``, and
+    ``canonicalization_id``, participate in the preimage.
     """
     if not isinstance(capsule, dict):
         raise TypeError("capsule must be a JSON object")
+    if capsule.get("format_version") != "4":
+        raise ValueError("format_version must be '4'")
     if "canonicalization_id" not in capsule:
-        excluded = set(CHAIN_LINKAGE_FIELDS) | set(LOCAL_ONLY_FIELDS)
-        canonical = {k: val for k, val in capsule.items() if k not in excluded}
-        return vintage_json_digest(canonical)
-
+        raise ValueError("canonicalization_id is required")
     algorithm = capsule["canonicalization_id"]
     if not isinstance(algorithm, str):
         raise TypeError("canonicalization_id must be a string")

@@ -11,7 +11,7 @@ from scitt_cose.cose_sign1 import sign_sign1
 
 from agent_action_capsule.producer_envelope import CONTENT_TYPE, verify_producer_envelope
 
-VECTORS = Path(__file__).resolve().parents[2] / "producer-envelope-vectors"
+VECTORS = Path(__file__).resolve().parents[2] / "vectors/producer-envelope"
 
 
 def _key() -> Ed25519PrivateKey:

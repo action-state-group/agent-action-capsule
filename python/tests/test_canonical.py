@@ -4,18 +4,12 @@ import hashlib
 
 import pytest
 
-from agent_action_capsule import compute_capsule_id, jcs, json_digest, normalize
+from agent_action_capsule import compute_capsule_id, jcs, json_digest
 from agent_action_capsule.canonical import (
     MAX_SAFE_INTEGER,
     FloatInDigestError,
     UnsafeIntegerError,
 )
-
-
-def test_normalize_removes_null_empty_bottom_up():
-    v = {"a": 1, "b": None, "c": [], "d": {}, "e": {"x": None}, "f": {"y": 2}}
-    # b(null), c([]), d({}) removed; e becomes {} after x removed -> e removed.
-    assert normalize(v) == {"a": 1, "f": {"y": 2}}
 
 
 def test_jcs_sorts_keys_and_has_no_whitespace():
@@ -64,16 +58,6 @@ def test_unsafe_integer_nested_is_rejected():
         json_digest({"a": {"b": [1, 2, MAX_SAFE_INTEGER + 1]}})
 
 
-def test_vintage_capsule_id_excludes_capsule_id_and_chain():
-    body = {"spec_version": "x", "format_version": "2", "action_id": "a"}
-    cid = compute_capsule_id(body)
-    # Adding capsule_id and a chain block must NOT change the content-address.
-    with_extras = dict(body)
-    with_extras["capsule_id"] = cid
-    with_extras["chain"] = {"parent_capsule_id": "b" * 64, "relation": "supersedes"}
-    assert compute_capsule_id(with_extras) == cid
-
-
 def test_declared_jcs_capsule_id_commits_chain_and_absent_fields():
     body = {
         "spec_version": "draft-mih-scitt-agent-action-capsule-04",
@@ -97,9 +81,19 @@ def test_declared_jcs_capsule_id_commits_chain_and_absent_fields():
 @pytest.mark.parametrize("declaration", ["jcs-n", "future-algorithm", "", None, 7])
 def test_capsule_id_rejects_invalid_declaration(declaration):
     with pytest.raises((TypeError, ValueError)):
-        compute_capsule_id({"canonicalization_id": declaration})
+        compute_capsule_id({"format_version": "4", "canonicalization_id": declaration})
+
+
+@pytest.mark.parametrize("capsule", [
+    {},
+    {"format_version": "2"},
+    {"format_version": "4"},
+])
+def test_capsule_id_rejects_non_format_4_profiles(capsule):
+    with pytest.raises(ValueError):
+        compute_capsule_id(capsule)
 
 
 def test_capsule_id_is_64_lowercase_hex():
-    cid = compute_capsule_id({"action_id": "a"})
+    cid = compute_capsule_id({"format_version": "4", "canonicalization_id": "jcs", "action_id": "a"})
     assert len(cid) == 64 and cid == cid.lower() and all(c in "0123456789abcdef" for c in cid)

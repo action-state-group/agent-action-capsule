@@ -14,7 +14,7 @@ _REQUIRE_GO = os.environ.get("AAC_REQUIRE_GO") == "1"
 # python/tests → python → repo_root
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _GO_DIR = _REPO_ROOT / "go"
-_VECTORS_DIR = _REPO_ROOT / "test-vectors"
+_VECTORS_DIR = _REPO_ROOT / "vectors/capsule"
 
 
 def _skip_or_fail(reason: str) -> None:
@@ -47,7 +47,7 @@ def go_binary(tmp_path_factory):
 
 def test_go_vectors_all_pass(go_binary):
     if not _VECTORS_DIR.is_dir():
-        pytest.skip(f"test-vectors/ not found at {_VECTORS_DIR}")
+        pytest.skip(f"vectors/capsule/ not found at {_VECTORS_DIR}")
 
     result = subprocess.run(
         [go_binary, "--vectors-dir", str(_VECTORS_DIR)],

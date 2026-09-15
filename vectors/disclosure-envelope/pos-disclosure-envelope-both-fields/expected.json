@@ -1,0 +1,31 @@
+{
+  "description": "both disclosure-eligible fields match, reported in deterministic member order",
+  "kind": "positive",
+  "ok": true,
+  "capsule": {
+    "ok": true,
+    "derived": {
+      "effect_mode": "confirmed",
+      "attestation_mode": "self_attested",
+      "ledger_mode": "standalone"
+    },
+    "capsule_id_recomputed": "f426b6b2b32eabc33dc25018a574d766012a142bbeb7f45242f8ad970785a2ab",
+    "findings": []
+  },
+  "disclosures_checked": 2,
+  "disclosures_matched": 2,
+  "disclosure_findings": [
+    {
+      "member": "agent_input",
+      "code": "disclosure_match"
+    },
+    {
+      "member": "agent_output",
+      "code": "disclosure_match"
+    }
+  ],
+  "provenance": "spec-derived",
+  "canonical_preimages": {
+    "capsule_id": "{\"action_id\":\"po-001\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"confirmed\",\"ledger_mode\":\"standalone\"},\"canonicalization_id\":\"jcs\",\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"accept\",\"human_disposed\":true},\"effect\":{\"effect_attestation\":\"gate_executed\",\"irreversibility_class\":\"two_way\",\"response_digest\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"status\":\"confirmed\",\"type\":\"write_order\"},\"format_version\":\"4\",\"model_attestation\":{\"compute_attestation\":{\"agent_input_digest\":\"63120454d3e4a8d26fa52aaee6fb33e7aa8e507a8651e41d8f49bb33d668cce0\",\"agent_output_digest\":\"f5291b9d34719f6be8430b0e9f23538d96a46d1b716c9d33b8912233f42e0e72\"}},\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-06-13T00:00:00Z\"}"
+  }
+}

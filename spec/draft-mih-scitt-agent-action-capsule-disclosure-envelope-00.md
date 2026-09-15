@@ -126,9 +126,11 @@ Disclosure:
 
 JSON-DIGEST:
 : As defined in {{I-D.mih-scitt-agent-action-capsule}}: the lowercase-hex
-  SHA-256 digest of the {{RFC8785}} JCS serialization of a value, after
-  selecting the embedded Capsule's identity profile. Format 4 uses plain JCS.
-  Vintage format 2 applies absent-field normalization.
+  SHA-256 digest of `UTF8({{RFC8785}} JCS(value))`. The whole JSON value is
+  canonicalized recursively; no object-member allow-list, replacer array, or
+  other key-filtering operation is applied at any depth. This document only
+  applies to embedded Capsules that conform to the base profile's format-4
+  requirements.
 
 JCS:
 : JSON Canonicalization Scheme per {{RFC8785}}.
@@ -223,11 +225,19 @@ check DE-1) rather than attempting to verify it.
 | `agent_output` | `agent_output_digest` |
 
 Both fields are defined in
-{{I-D.mih-scitt-agent-action-capsule}} (Observation mode). A future
-revision of this profile MAY extend the table with additional digest-only
-fields (for example, a disclosable form of a Constraint Record's
-`evidence_digest`), following the same Specification Required registration
-policy as the base profile's registries.
+{{I-D.mih-scitt-agent-action-capsule}} (Observation mode). This table is a
+Specification Required registry. An extension MUST (1) add a digest-only
+Capsule field, (2) register the `disclosures` member and its committed-digest
+field as a pair, (3) add format-4 vectors and increment their vector version,
+and (4) require producers to retain the original value so it can be revealed.
+
+This revision scopes registrations to committed-digest fields directly under
+`capsule.model_attestation.compute_attestation`. It does not define generic
+Capsule-path resolution. Widening the registry beyond that object requires
+generic path resolution in every implementation before such a registration can
+be made. A disclosure reveals the whole registered member; selective disclosure
+of a sub-field is instead the salted-commitment mechanism defined by
+{{I-D.mih-scitt-agent-action-capsule-selective-disclosure}}.
 
 ## Reserved Wrapper Member Names {#reserved-names}
 
@@ -272,11 +282,10 @@ against.
 
 ### DE-3: Digest Recomputation and Comparison
 
-Compute `computed = JSON-DIGEST(value)` using the embedded Capsule's identity
-profile. Format 4 computes the lowercase-hex SHA-256 of `UTF8(JCS(value))`
-without normalization. Vintage format 2 applies the same absent-field
-normalization used for its `capsule_id`. This document introduces no second
-profile-selection or hashing path.
+Compute `computed = JSON-DIGEST(value)`: the lowercase-hex SHA-256 of
+`UTF8(JCS(value))` over the whole recursively canonicalized value, with no
+member filtering or replacer array. This document defines no second hashing
+path.
 
 Compare `computed` to the committed digest located in DE-2:
 
@@ -367,11 +376,11 @@ defined by this document.
 # Test Vectors {#test-vectors}
 
 The following non-normative examples illustrate the mechanism. See the
-source repository's `disclosure-envelope-vectors/pos-disclosure-envelope-match/`
-and `disclosure-envelope-vectors/neg-disclosure-envelope-mismatch/` for
+source repository's `vectors/disclosure-envelope/pos-disclosure-envelope-match/`
+and `vectors/disclosure-envelope/neg-disclosure-envelope-mismatch/` for
 frozen, machine-checked vectors covering these two cases (kept in a
 directory of their own, separate from the base profile's cross-language
-`test-vectors/` corpus — see that directory's README).
+`vectors/capsule/` corpus — see that directory's README).
 
 ## Example: Matching Disclosure
 

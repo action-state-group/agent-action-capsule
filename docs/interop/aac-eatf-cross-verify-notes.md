@@ -1,7 +1,7 @@
 # AAC ↔ EATF Cross-Verify Notes
 
 **Date:** 2026-06-29  
-**Corpus:** `tyche-institute/eatf` (MIT License), `test-vectors/valid/` — 4 vectors
+**Corpus:** `tyche-institute/eatf` (MIT License), `vectors/capsule/valid/` — 4 vectors
 
 These notes record what was independently verified against the public EATF corpus
 BEFORE the live hackathon cross-verify (scheduled IETF 126, Vienna, 18–19 Jul 2026).
@@ -46,7 +46,7 @@ pubkey.verify(sig, canonical_bin, padding.PKCS1v15(), hashes.SHA256())
 ```
 
 The bundle's `signature.sig` (Base64-encoded PKCS#1 v1.5 RSA-SHA256) over `canonical.bin`
-verifies against `public_key.pem` (RSA-4096 dev key from `test-vectors/keys/`). This
+verifies against `public_key.pem` (RSA-4096 dev key from `vectors/capsule/keys/`). This
 confirms the AEP bundle format is cryptographically consistent and independently verifiable.
 
 ### 3. OVERT receipt binding (valid-overt-profile)

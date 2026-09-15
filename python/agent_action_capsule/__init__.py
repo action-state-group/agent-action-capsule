@@ -17,7 +17,6 @@ from .canonical import (
     compute_capsule_id,
     jcs,
     json_digest,
-    normalize,
 )
 from .contracts import (
     AssuranceBlock,
@@ -36,6 +35,7 @@ from .disclosure_envelope import (
     DISCLOSURE_ELIGIBLE_FIELDS,
     DisclosureEnvelopeResult,
     DisclosureFinding,
+    build_disclosure_envelope,
     verify_disclosure_envelope,
 )
 from .emit import DEFAULT_FORMAT_VERSION, DEFAULT_SPEC_VERSION, FORMAT_VERSION, SPEC_VERSION, emit
@@ -43,7 +43,7 @@ from .parse import Capsule, parse_capsule
 from .registries import REGISTRY_NAMES, load_registries
 from .verify import Finding, VerificationResult, verify, verify_store
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 
 def anchor(*args, **kwargs):
@@ -87,6 +87,7 @@ __all__ = [
     "VerificationResult",
     "Finding",
     # disclosure envelope
+    "build_disclosure_envelope",
     "verify_disclosure_envelope",
     "DisclosureEnvelopeResult",
     "DisclosureFinding",
@@ -109,7 +110,6 @@ __all__ = [
     "compute_capsule_id",
     "json_digest",
     "jcs",
-    "normalize",
     "FloatInDigestError",
     "UnsafeIntegerError",
     # registries

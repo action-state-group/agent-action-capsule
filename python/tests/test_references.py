@@ -2,11 +2,8 @@
 """draft-04 §5.5.5 ``references[]`` — cross-record references.
 
 Two surfaces:
-  - the CONSUMER path (verify.py): the 25 shared vectors in
-    ``go/verify/testdata/references.json`` are the cross-language oracle for
-    ``ok``/finding-codes, replayed here exactly as the Go suite replays them
-    (same store, same check-order assertion) so Python and Go agree
-    byte-for-byte on every case.
+  - the CONSUMER path (verify.py): the shared `reference-*` cases in the root
+    Capsule corpus are replayed by Python, Go, and TypeScript.
   - the PRODUCER path (contracts.py/parse.py/emit.py): the typed builder,
     Capsule.to_dict()/seal(), and the strict parse_capsule round-trip, with
     absent vs. empty vs. populated ``references`` kept as three DISTINCT wire
@@ -26,7 +23,6 @@ from agent_action_capsule import (
     LogCoordinates,
     ReferenceEntry,
     emit,
-    jcs,
     load_registries,
     parse_capsule,
     verify,
@@ -34,28 +30,34 @@ from agent_action_capsule import (
 
 # python/tests -> python -> repo root
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_VECTORS_PATH = _REPO_ROOT / "go" / "verify" / "testdata" / "references.json"
-
-with _VECTORS_PATH.open(encoding="utf-8") as f:
-    _VECTORS = json.load(f)
-
-CASES = _VECTORS["cases"]
-assert len(CASES) == 25, f"expected the 25 shared reference vectors, found {len(CASES)}"
+_VECTORS_DIR = _REPO_ROOT / "vectors" / "capsule"
+CASES = []
+for directory in sorted(_VECTORS_DIR.glob("reference-*")):
+    capsule = json.loads((directory / "input.json").read_text(encoding="utf-8"))
+    expected = json.loads((directory / "expected.json").read_text(encoding="utf-8"))
+    CASES.append(
+        {
+            "name": directory.name.removeprefix("reference-"),
+            "capsule": capsule,
+            "ok": expected["ok"],
+            "codes": [finding["code"] for finding in expected["findings"]],
+        }
+    )
+assert len(CASES) == 26, f"expected the 26 shared reference vectors, found {len(CASES)}"
 
 
 def _codes(res):
     return [f.code for f in res.findings]
 
 
-# ---- The 25 shared cross-language vectors -----------------------------------
+# ---- Shared cross-language vectors ------------------------------------------
 @pytest.mark.parametrize("case", CASES, ids=[c["name"] for c in CASES])
 def test_reference_vectors(case):
-    # The chain parent (HEX_A) exists in the store; external references
-    # deliberately do not — mirrors go/verify/references_test.go exactly.
-    result = verify(case["capsule"], store=[HEX_A])
+    # The root corpus exercises single-record Class 1. Parent resolution is a
+    # separate store-level check, so no store is supplied here.
+    result = verify(case["capsule"])
     assert result.ok == case["ok"], result.findings
     assert _codes(result) == case["codes"]
-    assert jcs(case["capsule"]).decode() == case["canonical"]
 
 
 def test_future_purpose_resolves_with_a_caller_supplied_registry():

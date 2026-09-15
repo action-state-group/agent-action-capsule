@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate the 24 canonical differential vectors in ../../test-vectors/.
+"""Generate the 24 canonical differential vectors in ../../vectors/capsule/.
 
 These exercise canonicalization paths that the 32 frozen capsule vectors do not
 reach. Source: Joel Hillier (Certisyn), DISCRIMINATING list from
@@ -18,7 +18,7 @@ from pathlib import Path
 
 from agent_action_capsule import canonical
 
-OUT = Path(__file__).resolve().parents[2] / "test-vectors"
+OUT = Path(__file__).resolve().parents[2] / "vectors/capsule"
 
 # Build tricky inputs with chr() to avoid encoding ambiguity in this source.
 # Notation used in comments: U+XXXX.
