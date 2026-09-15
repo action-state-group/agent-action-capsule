@@ -118,6 +118,19 @@ def test_bundle_vector(case):
         assert sorted(item.status for item in result.disclosures) == sorted(expected["disclosures"])
 
 
+def test_interval_coverage_rejects_altered_interior_body_digest():
+    # CLL #13 every-leaf binding, Python-only for now: a well-formed but wrong
+    # interior body digest must fail interval coverage. This stays out of the
+    # shared cross-language manifest because Go/TS still verify the endpoint-
+    # boundary shape and would report interval_coverage: pass here — so it would
+    # break their conformance rather than guard anything. Pinned here so a
+    # _verify_range that ignored body_digests could not pass silently.
+    bundle = _case("neg-interval-body-digest-altered")
+    result = verify_bundle(bundle)
+    assert result.interval_coverage.status == "fail"
+    assert "range_proof_invalid" in result.interval_coverage.findings
+
+
 def test_malformed_missing_does_not_crash():
     # Non-string completeness.missing entries (e.g. an object) must not raise
     # while binding memberships; they simply do not count as declared-missing ids.
