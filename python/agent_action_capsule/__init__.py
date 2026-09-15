@@ -11,6 +11,16 @@ import warnings
 
 from .anchor import DEFAULT_ANCHOR_ENDPOINT
 from .anchor import anchor as anchor_capsule
+from .bundle import (
+    BundleVerificationResult,
+    ClaimResult,
+    DisclosureResult,
+    ExtensionResult,
+    bundle_digest,
+    decode_fragment,
+    encode_fragment,
+    verify_bundle,
+)
 from .canonical import (
     FloatInDigestError,
     UnsafeIntegerError,
@@ -81,6 +91,15 @@ __all__ = [
     "anchor_capsule",
     "anchor",  # deprecated alias for anchor_capsule; see its docstring
     "DEFAULT_ANCHOR_ENDPOINT",
+    # evidence bundle
+    "encode_fragment",
+    "decode_fragment",
+    "bundle_digest",
+    "verify_bundle",
+    "BundleVerificationResult",
+    "ClaimResult",
+    "DisclosureResult",
+    "ExtensionResult",
     # verification
     "verify",
     "verify_store",
