@@ -505,6 +505,13 @@ func hashes(raw interface{}) ([][]byte, error) {
 		if !ok {
 			return nil, fmt.Errorf("hash must be a string")
 		}
+		// Require canonical lowercase hex (the drafts define every digest field
+		// as lowercase-hex): hex.DecodeString is case-insensitive, so without
+		// this an uppercase digest would decode here and verify, while the TS
+		// verifier's lowercase gate rejects it — a cross-language verdict split.
+		if !hex64RE.MatchString(encoded) {
+			return nil, fmt.Errorf("invalid hash")
+		}
 		decoded, err := hex.DecodeString(encoded)
 		if err != nil || len(decoded) != sha256.Size {
 			return nil, fmt.Errorf("invalid hash")

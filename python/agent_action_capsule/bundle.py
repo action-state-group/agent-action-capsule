@@ -362,9 +362,12 @@ def _verify_range(root: bytes, first_seq: int, last_seq: int, certificate: Mappi
         raw = certificate.get("body_digests")
         if not isinstance(raw, list) or len(raw) != last_seq - first_seq + 1:
             return False
-        body_digests = [bytes.fromhex(digest) for digest in raw]
-        if any(len(digest) != 32 for digest in body_digests):
+        # Canonical lowercase hex only (the drafts define digest fields as
+        # lowercase-hex); bytes.fromhex would accept uppercase, diverging from
+        # the TS verifier's lowercase gate.
+        if any(not isinstance(digest, str) or not _HEX64.fullmatch(digest) for digest in raw):
             return False
+        body_digests = [bytes.fromhex(digest) for digest in raw]
         return verify_range(root, first_seq, last_seq, body_digests, range_proof)
     except (ImportError, KeyError, TypeError, ValueError):
         return False
@@ -490,7 +493,7 @@ def _range_proof(raw: Any) -> Any:
         or from_index < 0
         or to_index < from_index
         or not isinstance(witness, list)
-        or not all(isinstance(sibling, str) for sibling in witness)
+        or not all(isinstance(sibling, str) and _HEX64.fullmatch(sibling) for sibling in witness)
     ):
         raise ValueError("invalid range proof")
     # CLL #13 flat witness shape: (from_seq, to_seq, size, from_index, to_index,
