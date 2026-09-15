@@ -311,3 +311,49 @@ func TestRangeRejectsAlteredInteriorBodyDigest(t *testing.T) {
 	require.Equal(t, "fail", result.IntervalCoverage.Status)
 	require.Contains(t, result.IntervalCoverage.Findings, "range_proof_invalid")
 }
+
+// TestIntervalRejectsSubTipRange pins the F1 tip bind: a range [1,3] proved
+// against a 4-leaf tree (a valid core range proof + root) must be rejected
+// because leaf_count(size) != last, or records after last could be omitted.
+func TestIntervalRejectsSubTipRange(t *testing.T) {
+	caps := []map[string]interface{}{
+		testCapsule(t, 1, nil, nil, nil), testCapsule(t, 2, nil, nil, nil),
+		testCapsule(t, 3, nil, nil, nil), testCapsule(t, 4, nil, nil, nil),
+	}
+	tree, err := mmr.New(nil)
+	require.NoError(t, err)
+	for _, c := range caps {
+		_, err := tree.AppendHexIdentity(c["capsule_id"].(string))
+		require.NoError(t, err)
+	}
+	size := tree.Size()
+	rootHash, err := tree.Root()
+	require.NoError(t, err)
+	rangeP, err := tree.RangeProof(0, 2, size)
+	require.NoError(t, err)
+	records := caps[:3]
+	members := make(map[string]interface{}, len(records))
+	for i, c := range records {
+		proof, e := tree.InclusionProof(uint64(i), size)
+		require.NoError(t, e)
+		members[c["capsule_id"].(string)] = map[string]interface{}{
+			"log_coordinates": map[string]interface{}{"log_id": "bundle-log", "seq": i + 1, "leaf_index": i},
+			"inclusion_proof": proofObject(proof),
+		}
+	}
+	bundle := map[string]interface{}{
+		"bundle_version": "2", "bundle_kind": "evidence-bundle/v2", "root": records[len(records)-1]["capsule_id"],
+		"records":      recordsAsValues(records),
+		"completeness": map[string]interface{}{"records_mode": "complete", "missing": []interface{}{}},
+		"completeness_certificate": map[string]interface{}{
+			"log_id": "bundle-log", "range_root": hex.EncodeToString(rootHash), "first_seq": 1, "last_seq": 3,
+			"body_digests": []interface{}{records[0]["capsule_id"], records[1]["capsule_id"], records[2]["capsule_id"]},
+			"range_proof":  map[string]interface{}{"from_seq": 1, "to_seq": 3, "size": int(size), "from_index": int(rangeP.FromIndex), "to_index": int(rangeP.ToIndex), "witness": hashesObject(rangeP.Witness)},
+			"memberships":  members,
+		},
+		"checkpoint": map[string]interface{}{"root": hex.EncodeToString(rootHash), "mmr_size": int(size)},
+	}
+	result := VerifyBundle(bundle)
+	require.Equal(t, "fail", result.IntervalCoverage.Status)
+	require.Contains(t, result.IntervalCoverage.Findings, "range_proof_invalid")
+}

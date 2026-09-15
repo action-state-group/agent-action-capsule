@@ -296,4 +296,54 @@ describe("shared Evidence Bundle vectors", () => {
     expect(result.intervalCoverage.status).toBe("fail");
     expect(result.intervalCoverage.findings).toContain("range_proof_invalid");
   });
+
+  it("rejects a sub-tip range (F1 tip bind)", async () => {
+    const caps = [
+      await capsule(1),
+      await capsule(2),
+      await capsule(3),
+      await capsule(4),
+    ];
+    const tree = new MmrTree();
+    for (const c of caps) await tree.appendHexIdentity(c.capsule_id as string);
+    const size = tree.size;
+    const rootHex = Array.from(await tree.root(), (b) =>
+      b.toString(16).padStart(2, "0"),
+    ).join("");
+    const rangeP = await rangeProof(tree, 0n, 2n, size);
+    const records = caps.slice(0, 3);
+    const members: Record<string, unknown> = {};
+    for (const [i, c] of records.entries())
+      members[c.capsule_id as string] = {
+        log_coordinates: { log_id: "bundle-log", seq: i + 1, leaf_index: i },
+        inclusion_proof: proof(await inclusionProof(tree, BigInt(i), size)),
+      };
+    const bundle: Bundle = {
+      bundle_version: "2",
+      bundle_kind: "evidence-bundle/v2",
+      root: records.at(-1)!.capsule_id,
+      records,
+      completeness: { records_mode: "complete", missing: [] },
+      completeness_certificate: {
+        log_id: "bundle-log",
+        range_root: rootHex,
+        first_seq: 1,
+        last_seq: 3,
+        body_digests: records.map((r) => r.capsule_id),
+        range_proof: {
+          from_seq: 1,
+          to_seq: 3,
+          size: Number(size),
+          from_index: rangeP.from_index,
+          to_index: rangeP.to_index,
+          witness: rangeP.witness,
+        },
+        memberships: members,
+      },
+      checkpoint: { root: rootHex, mmr_size: Number(size) },
+    };
+    const result = await verifyBundle(bundle);
+    expect(result.intervalCoverage.status).toBe("fail");
+    expect(result.intervalCoverage.findings).toContain("range_proof_invalid");
+  });
 });

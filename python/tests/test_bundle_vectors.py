@@ -141,6 +141,37 @@ def test_malformed_missing_does_not_crash():
         assert result.per_record_membership.status in {"pass", "fail"}
 
 
+def test_interval_rejects_sub_tip_range():
+    # F1 regression: the interval must end at the checkpoint tip
+    # (leaf_count(size) == last_seq). A sub-tip range — here [1,3] proved against
+    # a 4-leaf tree (size 7) — has a valid core range proof and root, so without
+    # the tip bind it verifies; records after last_seq could then be silently
+    # omitted. All languages must reject it with range_proof_invalid.
+    caps = [_capsule(i) for i in range(1, 5)]
+    nodes = MemoryNodeStore()
+    for capsule in caps:
+        core.add_leaf(nodes, core.leaf_hash(bytes.fromhex(capsule["capsule_id"])))
+    size = nodes.size()
+    root_hash = core.root_from_peaks([nodes.node(pos) for pos in core.peaks(size)])
+    proofs = [core.inclusion_proof(nodes, index, size) for index in range(3)]
+    rp = core.range_proof(nodes, 0, 2, size)
+    records = caps[:3]
+    bundle = {
+        "bundle_version": "2", "bundle_kind": "evidence-bundle/v2", "root": records[-1]["capsule_id"],
+        "records": records, "completeness": {"records_mode": "complete", "missing": []},
+        "completeness_certificate": {
+            "log_id": "bundle-log", "range_root": root_hash.hex(), "first_seq": 1, "last_seq": 3,
+            "body_digests": [r["capsule_id"] for r in records],
+            "range_proof": {"from_seq": 1, "to_seq": 3, "size": size, "from_index": rp.from_index, "to_index": rp.to_index, "witness": list(rp.witness)},
+            "memberships": {r["capsule_id"]: {"log_coordinates": {"log_id": "bundle-log", "seq": i + 1, "leaf_index": i}, "inclusion_proof": _proof(proofs[i])} for i, r in enumerate(records)},
+        },
+        "checkpoint": {"root": root_hash.hex(), "mmr_size": size},
+    }
+    result = verify_bundle(bundle)
+    assert result.interval_coverage.status == "fail", result.interval_coverage
+    assert "range_proof_invalid" in result.interval_coverage.findings
+
+
 def test_transport_only_decode_and_reserved_reporting():
     assert decode_fragment(encode_fragment(None)) is None
     result = verify_bundle({"countersignatures": ["reserved"], "verification": {"producer": "claimed"}})
