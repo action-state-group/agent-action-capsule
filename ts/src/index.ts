@@ -1,5 +1,6 @@
 export * from "./disclosure-envelope.js";
 export * from "./bundle.js";
+export * from "./evidence-graph.js";
 export * from "./json.js";
 export * from "./model.js";
 export * from "./producer-envelope.js";
