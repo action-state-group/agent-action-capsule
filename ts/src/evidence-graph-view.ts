@@ -1,4 +1,9 @@
-import { verifyBundle } from "./bundle.js";
+import { verifyBundle, type BundleVerificationResult } from "./bundle.js";
+import {
+  classifyCountersignatures,
+  type CountersignatureStamp,
+  type CountersignerDirectoryEntry,
+} from "./countersignature-stamp.js";
 import {
   buildEvidenceGraph,
   type ActNode,
@@ -8,6 +13,13 @@ import {
   type EvidenceGraph,
   type ReportNode,
 } from "./evidence-graph.js";
+import { readPresentationBlock } from "./presentation.js";
+import {
+  buildVerificationPageModel,
+  type CheckSummary,
+  type CompletenessStatement,
+  type ReceiptEntry,
+} from "./verification-page.js";
 
 function element(tag: string, text?: string): HTMLElement {
   const value = document.createElement(tag);
@@ -28,7 +40,10 @@ function appendValue(parent: HTMLElement, label: string, value: unknown): void {
   parent.append(element("dd", display(value)));
 }
 
-function renderVerification(root: HTMLElement, bundle: unknown): Promise<void> {
+function renderVerification(
+  root: HTMLElement,
+  bundle: unknown,
+): Promise<BundleVerificationResult> {
   return verifyBundle(bundle).then((result) => {
     const verified =
       result.graphClosure.status === "pass" &&
@@ -46,7 +61,173 @@ function renderVerification(root: HTMLElement, bundle: unknown): Promise<void> {
     );
     banner.dataset.verify = verified ? "verified" : "failed";
     root.append(banner);
+    return result;
   });
+}
+
+// presentation/v1 is rendered here, in the header only, and nowhere else in
+// this module. Only readPresentationBlock's three known fields ever reach
+// the DOM -- the chrome rule holds structurally, not by a rendering-site
+// convention that a future edit could bypass.
+function renderPresentationHeader(root: HTMLElement, bundle: unknown): void {
+  const presentation = readPresentationBlock(bundle);
+  if (presentation === undefined) return;
+  const header = element("header");
+  header.dataset.presentation = "header";
+  if (presentation.logoDataUrl !== undefined) {
+    const logo = document.createElement("img");
+    logo.src = presentation.logoDataUrl;
+    logo.alt = presentation.producerDisplayName ?? "producer logo";
+    header.append(logo);
+  }
+  if (presentation.producerDisplayName !== undefined) {
+    const name = element("span", presentation.producerDisplayName);
+    name.dataset.presentationField = "producer-display-name";
+    header.append(name);
+  }
+  if (presentation.title !== undefined) {
+    const title = element("strong", presentation.title);
+    title.dataset.presentationField = "title";
+    header.append(title);
+  }
+  root.append(header);
+}
+
+function producerPublicKeyHex(bundle: unknown): string | undefined {
+  const extensions = object(object(bundle).extensions);
+  const block = object(extensions["producer-key/v1"]);
+  const publicKey = block.public_key;
+  return typeof publicKey === "string" && /^[0-9a-f]{64}$/u.test(publicKey)
+    ? publicKey
+    : undefined;
+}
+
+function stampText(stamp: CountersignatureStamp): string {
+  switch (stamp.kind) {
+    case "hollow":
+      return "Countersigned: none";
+    case "producer":
+      return "countersigned by the producer — not independent";
+    case "directory":
+      return `Countersigned by ${stamp.name} · ${stamp.checksRecomputed} of 10 checks recomputed${stamp.date === undefined ? "" : ` · ${stamp.date}`}`;
+    case "unresolved":
+      return "countersigned by an unlisted signer, not in the countersigner directory";
+    case "invalid":
+      return "a countersignature is present but failed to verify";
+  }
+}
+
+function renderStamps(
+  host: HTMLElement,
+  stamps: readonly CountersignatureStamp[],
+): void {
+  host.append(element("h4", "Countersignatures"));
+  const list = element("ul");
+  stamps.forEach((stamp) => {
+    const item = element("li", stampText(stamp));
+    item.dataset.stampKind = stamp.kind;
+    if (stamp.kind === "directory") {
+      const logo = document.createElement("img");
+      logo.src = stamp.logoDataUrl;
+      logo.alt = `${stamp.name} logo`;
+      item.append(logo);
+    }
+    list.append(item);
+  });
+  host.append(list);
+}
+
+function renderReceipts(
+  host: HTMLElement,
+  receipts: readonly ReceiptEntry[],
+): void {
+  host.append(element("h4", "Receipts"));
+  if (receipts.length === 0) {
+    host.append(element("p", "no receipts disclosed"));
+    return;
+  }
+  const list = element("ul");
+  receipts.forEach((receipt) => {
+    list.append(
+      element("li", `${receipt.witness} · ${receipt.grade} · ${receipt.time}`),
+    );
+  });
+  host.append(list);
+}
+
+function renderCompletenessStatement(
+  host: HTMLElement,
+  completeness?: CompletenessStatement,
+): void {
+  host.append(element("h4", "Completeness statement"));
+  const details = element("dl");
+  appendValue(
+    details,
+    "closure depth",
+    completeness?.closureDepth ?? "unstated",
+  );
+  appendValue(details, "records mode", completeness?.recordsMode ?? "unstated");
+  appendValue(
+    details,
+    "payloads mode",
+    completeness?.payloadsMode ?? "unstated",
+  );
+  appendValue(
+    details,
+    "suppressed fields",
+    completeness?.suppressedFields ?? [],
+  );
+  host.append(details);
+}
+
+function renderChecks(
+  host: HTMLElement,
+  checks: readonly CheckSummary[],
+): void {
+  host.append(element("h4", "The ten checks"));
+  const list = element("ol");
+  checks.forEach((check) => {
+    const item = element("li");
+    item.dataset.checkStatus = check.status;
+    item.append(element("strong", check.name));
+    item.append(element("span", `: ${check.result}`));
+    list.append(item);
+  });
+  host.append(list);
+}
+
+// The viewer-owned verification page: the last page of the rendering, drawn
+// entirely from VERIFIED data (the already-computed BundleVerificationResult
+// and the countersignature stamp classification), never from bundle-supplied
+// markup. It is never labeled a certificate.
+async function renderVerificationPage(
+  root: HTMLElement,
+  bundle: unknown,
+  verified: BundleVerificationResult,
+  countersignerDirectory: readonly CountersignerDirectoryEntry[],
+): Promise<void> {
+  const page = element("section");
+  page.dataset.page = "verification";
+  page.append(element("h2", "Verification"));
+  const model = buildVerificationPageModel(bundle, verified);
+  const summary = element("dl");
+  appendValue(summary, "bundle digest", model.bundleDigest ?? "uncomputable");
+  appendValue(summary, "checkpoint root", model.checkpointRoot ?? "absent");
+  appendValue(summary, "checkpoint size", model.checkpointSize ?? "absent");
+  page.append(summary);
+  renderReceipts(page, model.receipts);
+  const countersignatures = object(bundle).countersignatures;
+  const stamps = await classifyCountersignatures(
+    Array.isArray(countersignatures) ? countersignatures : [],
+    verified.bundleDigest,
+    producerPublicKeyHex(bundle),
+    countersignerDirectory,
+  );
+  renderStamps(page, stamps);
+  renderCompletenessStatement(page, model.completeness);
+  renderChecks(page, model.checks);
+  page.append(element("p", model.verifyIndependentlyLine));
+  root.append(page);
 }
 
 function metRate(report: ReportNode): string {
@@ -223,10 +404,13 @@ function renderGraph(
 export async function renderEvidenceGraph(
   bundle: unknown,
   root: HTMLElement,
+  countersignerDirectory: readonly CountersignerDirectoryEntry[] = [],
 ): Promise<void> {
   const graph = buildEvidenceGraph(bundle);
   root.replaceChildren();
+  renderPresentationHeader(root, bundle);
   const records = object(bundle).records;
   renderGraph(graph, root, Array.isArray(records) ? records : []);
-  await renderVerification(root, bundle);
+  const verified = await renderVerification(root, bundle);
+  await renderVerificationPage(root, bundle, verified, countersignerDirectory);
 }
