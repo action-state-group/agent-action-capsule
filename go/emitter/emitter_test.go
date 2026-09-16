@@ -48,3 +48,14 @@ func TestEmitEvidenceGraphHTMLMatchesTypeScript(t *testing.T) {
 		t.Fatal("Go HTML differs from TypeScript HTML")
 	}
 }
+
+func TestEmitEvidenceGraphHTMLEscapesScriptBreakingBundleContent(t *testing.T) {
+	payload := "</script><script>window.pwned=1</script>"
+	html, err := EmitEvidenceGraphHTML(map[string]interface{}{"payload": payload}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(html, payload) || !strings.Contains(html, `\u003c/script\u003e`) {
+		t.Fatal("bundle content can break out of its script element")
+	}
+}
