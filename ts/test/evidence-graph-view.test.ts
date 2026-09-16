@@ -236,6 +236,54 @@ it("chrome rule: a presentation/v1 VERIFIED badge renders in the header only, ne
   expect(checksList.querySelector("img")).toBeNull();
 });
 
+it("renders a report/v1 bundle as generic rows, never the evaluation-graph view", async () => {
+  const bundle = await fixture("report-rows-bundle.json");
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+
+  const page = root.querySelector<HTMLElement>('[data-page="report-rows"]');
+  expect(page).not.toBeNull();
+  expect(root.querySelector("[data-report-date]")).toBeNull();
+
+  const rowButtons = page!.querySelectorAll<HTMLElement>("[data-row-id]");
+  expect(rowButtons).toHaveLength(3);
+  const statusCells = page!.querySelectorAll<HTMLElement>("[data-row-status]");
+  expect(Array.from(statusCells).map((cell) => cell.dataset.rowStatus)).toEqual(
+    ["established", "not_checked", "not_present"],
+  );
+
+  // click through the established row to its cited, disclosed evidence
+  const establishedButton = Array.from(rowButtons).find(
+    (button) => button.dataset.rowId === "art-50",
+  )!;
+  establishedButton.click();
+  expect(page!.textContent).toContain("act-established");
+  expect(page!.textContent).toContain("disclosed evidence for art-50");
+
+  // click through the not_checked row: its citation is undisclosed, so the
+  // capsule ID appears but never a fabricated payload -- only "withheld"
+  const notCheckedButton = Array.from(rowButtons).find(
+    (button) => button.dataset.rowId === "art-14",
+  )!;
+  notCheckedButton.click();
+  expect(page!.textContent).toContain(
+    "pack runtime did not evaluate this clause in the demo window",
+  );
+  expect(page!.textContent).toContain("act-not-checked");
+  expect(page!.textContent).toContain("withheld");
+
+  // the not_present row cites nothing -- the honest shape, not hidden
+  const notPresentButton = Array.from(rowButtons).find(
+    (button) => button.dataset.rowId === "art-26-6",
+  )!;
+  notPresentButton.click();
+  expect(page!.textContent).toContain("no citation");
+
+  const verificationPage = root.querySelector('[data-page="verification"]');
+  expect(verificationPage).not.toBeNull();
+  expect(root.lastElementChild).toBe(verificationPage);
+});
+
 it("renders referenced non-tau2 withheld acts by their committed digests", async () => {
   const bundle = (await fixture("week-bundle.json")) as {
     disclosures: Record<string, unknown>;
