@@ -22,8 +22,9 @@ author:
    organization: Action State Group, Inc.
    email: spec@actionstate.ai
  - ins: Y. Zhang
-   name: Yiqun (Ethan) Zhang
-   organization: Action State Group, Inc.
+   name: Yiqun Zhang
+   organization: Independent
+   email: zhangyiqun-spec@gmail.com
 
 normative:
   RFC2119:

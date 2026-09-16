@@ -3,9 +3,10 @@
 
 
 SCITT                                                             S. Mih
-Internet-Draft                                                  Y. Zhang
-Intended status: Standards Track                Action State Group, Inc.
-Expires: 20 March 2027                                 16 September 2026
+Internet-Draft                                  Action State Group, Inc.
+Intended status: Standards Track                                Y. Zhang
+Expires: 20 March 2027                                       Independent
+                                                       16 September 2026
 
 
                           AAC Evidence Bundle
@@ -47,9 +48,8 @@ Copyright Notice
    Copyright (c) 2026 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
 
-   This document is subject to BCP 78 and the IETF Trust's Legal
-   Provisions Relating to IETF Documents (https://trustee.ietf.org/
-   license-info) in effect on the date of publication of this document.
+
+
 
 
 
@@ -58,6 +58,9 @@ Mih & Zhang               Expires 20 March 2027                 [Page 1]
 Internet-Draft             AAC Evidence Bundle            September 2026
 
 
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
    Please review these documents carefully, as they describe your rights
    and restrictions with respect to this document.  Code Components
    extracted from this document must include Revised BSD License text as
@@ -67,18 +70,18 @@ Internet-Draft             AAC Evidence Bundle            September 2026
 Table of Contents
 
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
-   2.  Conventions and Definitions . . . . . . . . . . . . . . . . .   2
+   2.  Conventions and Definitions . . . . . . . . . . . . . . . . .   3
    3.  Evidence Bundle Object  . . . . . . . . . . . . . . . . . . .   3
    4.  Citation Closure  . . . . . . . . . . . . . . . . . . . . . .   4
-   5.  Bundle-Level Disclosures  . . . . . . . . . . . . . . . . . .   4
-   6.  Completeness Claims and Log Membership  . . . . . . . . . . .   5
-   7.  Typed Extensions  . . . . . . . . . . . . . . . . . . . . . .   6
+   5.  Bundle-Level Disclosures  . . . . . . . . . . . . . . . . . .   5
+   6.  Completeness Claims and Log Membership  . . . . . . . . . . .   6
+   7.  Typed Extensions  . . . . . . . . . . . . . . . . . . . . . .   7
    8.  Bundle Digest and Countersignatures . . . . . . . . . . . . .   7
    9.  Fragment Codec  . . . . . . . . . . . . . . . . . . . . . . .   7
-   10. Verification  . . . . . . . . . . . . . . . . . . . . . . . .   7
+   10. Verification  . . . . . . . . . . . . . . . . . . . . . . . .   8
    11. Security Considerations . . . . . . . . . . . . . . . . . . .   8
    12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
-   13. Normative References  . . . . . . . . . . . . . . . . . . . .   8
+   13. Normative References  . . . . . . . . . . . . . . . . . . . .   9
    Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  10
    Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  10
    Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  10
@@ -99,13 +102,10 @@ Table of Contents
    shell, or obtained from a hosted report URL.  These are transports
    for one object, not distinct evidence formats.
 
-2.  Conventions and Definitions
 
-   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
-   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
-   "OPTIONAL" in this document are to be interpreted as described in BCP
-   14 [RFC2119] [RFC8174] when, and only when, they appear in all
-   capitals, as shown here.
+
+
+
 
 
 
@@ -113,6 +113,14 @@ Mih & Zhang               Expires 20 March 2027                 [Page 2]
 
 Internet-Draft             AAC Evidence Bundle            September 2026
 
+
+2.  Conventions and Definitions
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
 
    Bundle:  An AAC Evidence Bundle as defined in Section 3.
 
@@ -139,6 +147,29 @@ Internet-Draft             AAC Evidence Bundle            September 2026
    values defined by this document or a registered extension; they do
    not authorize untyped replacement formats.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih & Zhang               Expires 20 March 2027                 [Page 3]
+
+Internet-Draft             AAC Evidence Bundle            September 2026
+
+
 {
   "bundle_version": "2",
   "bundle_kind": "evidence-bundle/v2",
@@ -159,16 +190,6 @@ Internet-Draft             AAC Evidence Bundle            September 2026
   "extensions": { "<registered kind>": { ... } },
   "countersignatures": [ ... ]
 }
-
-
-
-
-
-
-Mih & Zhang               Expires 20 March 2027                 [Page 3]
-
-Internet-Draft             AAC Evidence Bundle            September 2026
-
 
    bundle_version and bundle_kind are REQUIRED and MUST be respectively
    "2" and "evidence-bundle/v2". root, records, and completeness are
@@ -196,6 +217,15 @@ Internet-Draft             AAC Evidence Bundle            September 2026
    judgments or adjudications, then to turns.  A producer using a
    different depth MUST state that non-negative JSON integer explicitly.
 
+
+
+
+
+Mih & Zhang               Expires 20 March 2027                 [Page 4]
+
+Internet-Draft             AAC Evidence Bundle            September 2026
+
+
    For each target reached within that depth, the Bundle MUST either
    supply the cited Capsule in records with a matching identity or list
    its digest once in completeness.missing.  A target MUST NOT be
@@ -215,16 +245,6 @@ Internet-Draft             AAC Evidence Bundle            September 2026
 
    disclosures is a Bundle-level overlay keyed first by the enclosed
    Capsule's capsule_id, then by the disclosure member name:
-
-
-
-
-
-
-Mih & Zhang               Expires 20 March 2027                 [Page 4]
-
-Internet-Draft             AAC Evidence Bundle            September 2026
-
 
    "disclosures": {
      "<capsule_id>": {
@@ -254,6 +274,14 @@ Internet-Draft             AAC Evidence Bundle            September 2026
    disclosures; it is evidence about that act and does not replace the
    DE-3 check.
 
+
+
+
+Mih & Zhang               Expires 20 March 2027                 [Page 5]
+
+Internet-Draft             AAC Evidence Bundle            September 2026
+
+
 6.  Completeness Claims and Log Membership
 
    completeness_certificate and checkpoint, when supplied, support three
@@ -274,14 +302,6 @@ Internet-Draft             AAC Evidence Bundle            September 2026
    The certificate MUST state its log_id, range root, first and last
    seq, and the proof material that binds that range root to checkpoint.
    A signed range proof that binds only the first and last record proves
-
-
-
-Mih & Zhang               Expires 20 March 2027                 [Page 5]
-
-Internet-Draft             AAC Evidence Bundle            September 2026
-
-
    endpoint inclusion only: an interior record can be deleted or
    replaced while such a proof still passes.  A verifier MUST NOT report
    whole-range completeness from endpoint inclusion alone.  A verifier
@@ -310,6 +330,14 @@ Internet-Draft             AAC Evidence Bundle            September 2026
    per-record proof.  A record without a valid proof may remain usable
    for graph closure but does not satisfy per-record membership.
 
+
+
+
+Mih & Zhang               Expires 20 March 2027                 [Page 6]
+
+Internet-Draft             AAC Evidence Bundle            September 2026
+
+
 7.  Typed Extensions
 
    extensions, when present, is an object keyed by a registered Evidence
@@ -326,17 +354,6 @@ Internet-Draft             AAC Evidence Bundle            September 2026
    uninterpreted, and MUST NOT apply that block's semantics.  An unknown
    kind MUST NOT alter the core Capsule, closure, disclosure, or
    membership checks.
-
-
-
-
-
-
-
-Mih & Zhang               Expires 20 March 2027                 [Page 6]
-
-Internet-Draft             AAC Evidence Bundle            September 2026
-
 
 8.  Bundle Digest and Countersignatures
 
@@ -369,6 +386,14 @@ Internet-Draft             AAC Evidence Bundle            September 2026
    base64url [RFC4648] Section 5 without padding.  The resulting
    unescaped ASCII string is the fragment value after #. A decoder MUST
    base64url-decode the unpadded fragment, UTF-8 decode it, parse it as
+
+
+
+Mih & Zhang               Expires 20 March 2027                 [Page 7]
+
+Internet-Draft             AAC Evidence Bundle            September 2026
+
+
    JSON, and then apply the Bundle checks in this document.
 
    The /v/<id> route carries a Bundle of one using this same codec;
@@ -384,15 +409,6 @@ Internet-Draft             AAC Evidence Bundle            September 2026
    MUST NOT replace independent verification of Capsules, disclosures,
    closure, certificates, checkpoints, or countersignatures.  A verifier
    MUST label it as producer self-report.
-
-
-
-
-
-Mih & Zhang               Expires 20 March 2027                 [Page 7]
-
-Internet-Draft             AAC Evidence Bundle            September 2026
-
 
    A conforming verifier MUST at minimum compute the Bundle digest,
    verify each enclosed Capsule under the base profile, apply Section 4
@@ -427,6 +443,13 @@ Internet-Draft             AAC Evidence Bundle            September 2026
        registered specification defines each block; private x- prefixed
        kinds are not registered.
 
+
+
+Mih & Zhang               Expires 20 March 2027                 [Page 8]
+
+Internet-Draft             AAC Evidence Bundle            September 2026
+
+
    3.  "Evidence Bundle countersignature type", initial value cose-
        sign1.
 
@@ -442,13 +465,6 @@ Internet-Draft             AAC Evidence Bundle            September 2026
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
               capsule-04, n.d., <https://datatracker.ietf.org/doc/html/
               draft-mih-scitt-agent-action-capsule-04>.
-
-
-
-Mih & Zhang               Expires 20 March 2027                 [Page 8]
-
-Internet-Draft             AAC Evidence Bundle            September 2026
-
 
    [I-D.mih-scitt-agent-action-capsule-disclosure-envelope]
               Mih, S., "Disclosure Envelope Profile for Agent Action
@@ -480,6 +496,16 @@ Internet-Draft             AAC Evidence Bundle            September 2026
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
 
+
+
+
+
+
+Mih & Zhang               Expires 20 March 2027                 [Page 9]
+
+Internet-Draft             AAC Evidence Bundle            September 2026
+
+
    [RFC8259]  Bray, T., Ed., "The JavaScript Object Notation (JSON) Data
               Interchange Format", STD 90, RFC 8259,
               DOI 10.17487/RFC8259, December 2017,
@@ -494,17 +520,6 @@ Internet-Draft             AAC Evidence Bundle            September 2026
               Representation (CBOR)", STD 94, RFC 8949,
               DOI 10.17487/RFC8949, December 2020,
               <https://www.rfc-editor.org/rfc/rfc8949>.
-
-
-
-
-
-
-
-Mih & Zhang               Expires 20 March 2027                 [Page 9]
-
-Internet-Draft             AAC Evidence Bundle            September 2026
-
 
    [RFC9052]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
               Structures and Process", STD 96, RFC 9052,
@@ -527,24 +542,9 @@ Authors' Addresses
    Email: spec@actionstate.ai
 
 
-   Yiqun (Ethan) Zhang
-   Action State Group, Inc.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   Yiqun Zhang
+   Independent
+   Email: zhangyiqun-spec@gmail.com
 
 
 
