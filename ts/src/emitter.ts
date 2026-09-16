@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { jcs } from "./json.js";
 
 const bundlePlaceholder = "__BUNDLE_JSON__";
 const browserPlaceholder = "__BROWSER_IIFE__";
@@ -25,10 +26,7 @@ export function emitEvidenceGraphHtml(
   bundle: unknown,
   browserIIFE: string,
 ): string {
-  const bundleJson = JSON.stringify(bundle);
-  if (bundleJson === undefined) {
-    throw new TypeError("bundle must be JSON-serializable");
-  }
+  const bundleJson = new TextDecoder().decode(jcs(bundle));
   if (
     bundleJson.includes(bundlePlaceholder) ||
     bundleJson.includes(browserPlaceholder)
