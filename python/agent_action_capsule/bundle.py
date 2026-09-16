@@ -3,10 +3,11 @@
 
 The verifier deliberately reports graph closure, interval coverage, and
 per-record membership separately.  The CLL range proof used for interval
-coverage authenticates only the interval endpoints; ``memberships`` therefore
-contains one detached proof per record.  Keeping those proofs outside the
-enclosed Capsule is necessary: embedding a proof in a Capsule would change
-the Capsule ID which is itself the MMR leaf.
+coverage binds every leaf in the interval (all ``body_digests`` participate in
+rebuilding the root, not just the two endpoints); ``memberships`` separately
+carries one detached proof per record for the per-record membership property.
+Keeping those proofs outside the enclosed Capsule is necessary: embedding a
+proof in a Capsule would change the Capsule ID which is itself the MMR leaf.
 """
 from __future__ import annotations
 
