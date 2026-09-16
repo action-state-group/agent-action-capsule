@@ -15,6 +15,12 @@ import {
 } from "./evidence-graph.js";
 import { readPresentationBlock } from "./presentation.js";
 import {
+  buildReportRows,
+  type ReportRow,
+  type ReportRowCitation,
+  type ReportRows,
+} from "./report-rows.js";
+import {
   buildVerificationPageModel,
   type CheckSummary,
   type CompletenessStatement,
@@ -371,6 +377,66 @@ function renderReport(
   );
 }
 
+// report/v1: the generic row path. Every row is rendered from its own data
+// -- label, status, reason, citations -- never from report-specific markup,
+// so a pack this module has never heard of (obligations, Consumer Duty,
+// anything else) renders the same way an outcomes report does.
+function renderCitation(citation: ReportRowCitation): HTMLElement {
+  const section = element("section");
+  section.append(renderProvenance(citation.capsuleId, citation.logCoordinates));
+  section.append(
+    citation.disclosedPayload === undefined
+      ? element("p", "withheld")
+      : element("pre", display(citation.disclosedPayload)),
+  );
+  return section;
+}
+
+function renderReportRow(row: ReportRow, host: HTMLElement): void {
+  host.replaceChildren();
+  host.append(element("h3", row.label));
+  const status = element("p", row.status.replaceAll("_", " "));
+  status.dataset.rowStatus = row.status;
+  host.append(status);
+  if (row.reason !== undefined) host.append(element("p", row.reason));
+  host.append(element("h4", "Evidence"));
+  if (row.citations.length === 0) {
+    host.append(element("p", "no citation"));
+  } else {
+    row.citations.forEach((citation) => host.append(renderCitation(citation)));
+  }
+}
+
+function renderReportRowsTable(
+  reportRows: ReportRows,
+  root: HTMLElement,
+): void {
+  const section = element("section");
+  section.dataset.page = "report-rows";
+  section.append(element("h1", reportRows.title ?? "Report"));
+  const table = document.createElement("table");
+  const detail = element("section");
+  reportRows.rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    const labelCell = document.createElement("td");
+    const button = element("button", row.label);
+    button.setAttribute("type", "button");
+    button.dataset.rowId = row.rowId;
+    button.addEventListener("click", () => renderReportRow(row, detail));
+    labelCell.append(button);
+    const statusCell = element("td", row.status.replaceAll("_", " "));
+    statusCell.dataset.rowStatus = row.status;
+    tr.append(labelCell, statusCell);
+    table.append(tr);
+  });
+  section.append(
+    table,
+    detail,
+    renderProvenance(reportRows.capsuleId, reportRows.logCoordinates),
+  );
+  root.append(section);
+}
+
 function renderGraph(
   graph: EvidenceGraph,
   root: HTMLElement,
@@ -406,11 +472,20 @@ export async function renderEvidenceGraph(
   root: HTMLElement,
   countersignerDirectory: readonly CountersignerDirectoryEntry[] = [],
 ): Promise<void> {
-  const graph = buildEvidenceGraph(bundle);
+  // report/v1 is the generic root model; only fall back to the
+  // evaluation-summary/v1 graph (which throws on anything else) when this
+  // bundle isn't one.
+  const reportRows = buildReportRows(bundle);
+  const graph =
+    reportRows === undefined ? buildEvidenceGraph(bundle) : undefined;
   root.replaceChildren();
   renderPresentationHeader(root, bundle);
-  const records = object(bundle).records;
-  renderGraph(graph, root, Array.isArray(records) ? records : []);
+  if (reportRows !== undefined) {
+    renderReportRowsTable(reportRows, root);
+  } else if (graph !== undefined) {
+    const records = object(bundle).records;
+    renderGraph(graph, root, Array.isArray(records) ? records : []);
+  }
   const verified = await renderVerification(root, bundle);
   await renderVerificationPage(root, bundle, verified, countersignerDirectory);
 }

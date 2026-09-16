@@ -1,0 +1,53 @@
+{
+  "root": "root",
+  "records": [
+    { "capsule_id": "root" },
+    { "capsule_id": "act-established" },
+    { "capsule_id": "act-not-checked" }
+  ],
+  "disclosures": {
+    "root": {
+      "agent_input": {
+        "spec_version": "report/v1",
+        "title": "EU AI Act obligations — tau2 airline CLL",
+        "rows": [
+          {
+            "row_id": "art-50",
+            "label": "Art. 50 — disclosure ordering",
+            "status": "established",
+            "references": [
+              {
+                "type": "agent-action-capsule",
+                "citation_purpose": "acted_on",
+                "digest": "act-established"
+              }
+            ]
+          },
+          {
+            "row_id": "art-14",
+            "label": "Art. 14 — oversight coverage",
+            "status": "not_checked",
+            "reason": "pack runtime did not evaluate this clause in the demo window",
+            "references": [
+              {
+                "type": "agent-action-capsule",
+                "citation_purpose": "acted_on",
+                "digest": "act-not-checked"
+              }
+            ]
+          },
+          {
+            "row_id": "art-26-6",
+            "label": "Art. 26(6) — retention continuity",
+            "status": "not_present",
+            "reason": "no retention-window signal present in the airline CLL",
+            "references": []
+          }
+        ]
+      }
+    },
+    "act-established": {
+      "agent_input": { "example": "disclosed evidence for art-50" }
+    }
+  }
+}
