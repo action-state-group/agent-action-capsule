@@ -105,7 +105,63 @@ function renderAct(act: ActNode): HTMLElement {
   return section;
 }
 
-function renderCase(caseNode: CaseNode, host: HTMLElement): void {
+function object(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function renderWithheldActs(
+  caseNode: CaseNode,
+  host: HTMLElement,
+  records: unknown[],
+): void {
+  for (const value of records) {
+    const record = object(value);
+    if (typeof record.capsule_id !== "string") continue;
+    const disclosed = caseNode.acts.find(
+      (act) => act.capsuleId === record.capsule_id,
+    );
+    // Withheld inputs cannot supply case metadata. The tau2 action identity
+    // commits the task and trial independently of the disclosure overlay.
+    const identity =
+      typeof record.action_id === "string"
+        ? /^urn:tau2:[^:]+:task-(.+):trial-(\d+):turn-\d+$/.exec(
+            record.action_id,
+          )
+        : null;
+    if (
+      !disclosed &&
+      (identity?.[1] !== caseNode.taskId ||
+        Number(identity?.[2]) !== caseNode.trial)
+    )
+      continue;
+    if (
+      disclosed?.agentInput !== undefined &&
+      disclosed.agentOutput !== undefined
+    )
+      continue;
+    const committed = object(
+      object(record.model_attestation).compute_attestation,
+    );
+    const evidence = element("section");
+    evidence.append(element("h4", "Undisclosed payload evidence"));
+    const details = element("dl");
+    appendValue(details, "capsule ID", record.capsule_id);
+    for (const field of ["agent_input_digest", "agent_output_digest"]) {
+      if (typeof committed[field] === "string")
+        appendValue(details, field, committed[field]);
+    }
+    evidence.append(details);
+    host.append(evidence);
+  }
+}
+
+function renderCase(
+  caseNode: CaseNode,
+  host: HTMLElement,
+  records: unknown[],
+): void {
   host.replaceChildren();
   host.append(element("h3", `Case ${caseNode.caseId}`));
   const judgments = element("ul");
@@ -115,9 +171,14 @@ function renderCase(caseNode: CaseNode, host: HTMLElement): void {
   host.append(element("h4", "Axis judgments"), judgments);
   host.append(element("h4", "Disclosed transcript"));
   caseNode.acts.forEach((act) => host.append(renderAct(act)));
+  renderWithheldActs(caseNode, host, records);
 }
 
-function renderReport(report: ReportNode, host: HTMLElement): void {
+function renderReport(
+  report: ReportNode,
+  host: HTMLElement,
+  records: unknown[],
+): void {
   host.replaceChildren();
   host.append(element("h2", `Cases for ${report.date}`));
   const outcomes = element("ul");
@@ -140,7 +201,7 @@ function renderReport(report: ReportNode, host: HTMLElement): void {
     );
     item.setAttribute("type", "button");
     item.dataset.caseId = caseNode.caseId;
-    item.addEventListener("click", () => renderCase(caseNode, detail));
+    item.addEventListener("click", () => renderCase(caseNode, detail, records));
     cases.append(item);
   });
   host.append(
@@ -150,7 +211,11 @@ function renderReport(report: ReportNode, host: HTMLElement): void {
   );
 }
 
-function renderGraph(graph: EvidenceGraph, root: HTMLElement): void {
+function renderGraph(
+  graph: EvidenceGraph,
+  root: HTMLElement,
+  records: unknown[],
+): void {
   const aggregate = element("section");
   aggregate.append(element("h1", "Evidence graph"));
   const metrics = element("dl");
@@ -168,7 +233,9 @@ function renderGraph(graph: EvidenceGraph, root: HTMLElement): void {
       const tile = element("button", `${report.date}: ${metRate(report)}`);
       tile.setAttribute("type", "button");
       tile.dataset.reportDate = report.date;
-      tile.addEventListener("click", () => renderReport(report, detail));
+      tile.addEventListener("click", () =>
+        renderReport(report, detail, records),
+      );
       calendar.append(tile);
     });
   root.append(calendar, detail);
@@ -180,6 +247,7 @@ export async function renderEvidenceGraph(
 ): Promise<void> {
   const graph = buildEvidenceGraph(bundle);
   root.replaceChildren();
-  renderGraph(graph, root);
+  const records = object(bundle).records;
+  renderGraph(graph, root, Array.isArray(records) ? records : []);
   await renderVerification(root, bundle);
 }
