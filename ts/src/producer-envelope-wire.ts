@@ -51,9 +51,17 @@ function array(parts: readonly Uint8Array[]): Uint8Array {
 }
 
 export function producerProtectedHeaders(publicKey: Uint8Array): Uint8Array {
+  return protectedHeadersFor(CONTENT_TYPE, publicKey);
+}
+
+/** Protected header bytes for a COSE_Sign1 over an arbitrary content type. */
+export function protectedHeadersFor(
+  contentType: string,
+  publicKey: Uint8Array,
+): Uint8Array {
   return concat(
     Uint8Array.of(0xa3, 0x03),
-    tstr(CONTENT_TYPE),
+    tstr(contentType),
     Uint8Array.of(0x04),
     bstr(publicKey),
     Uint8Array.of(0x01, 0x27),
