@@ -34,7 +34,12 @@ function renderVerification(root: HTMLElement, bundle: unknown): Promise<void> {
       result.graphClosure.status === "pass" &&
       result.intervalCoverage.status === "pass" &&
       result.perRecordMembership.status === "pass" &&
-      Object.values(result.capsuleResults).every((capsule) => capsule.ok);
+      Object.values(result.capsuleResults).every((capsule) => capsule.ok) &&
+      result.disclosures.every(
+        (disclosure) =>
+          disclosure.status === "disclosure_match" ||
+          disclosure.status === "withheld",
+      );
     const banner = element(
       "p",
       verified ? "Bundle verification passed" : "Bundle verification failed",
@@ -64,7 +69,10 @@ function renderCalibration(calibration?: CalibrationNode): HTMLElement {
   }
   const details = element("dl");
   appendValue(details, "confusion matrix", calibration.confusion);
-  appendValue(details, "agreement", calibration.periodWindow);
+  appendValue(details, "agreement", calibration.agreement);
+  appendValue(details, "corrected rate", calibration.correctedRate);
+  appendValue(details, "corrected rate CI", calibration.correctedRateCi);
+  appendValue(details, "period window", calibration.periodWindow);
   section.append(details);
   return section;
 }
@@ -111,43 +119,17 @@ function object(value: unknown): Record<string, unknown> {
     : {};
 }
 
-function renderWithheldActs(
-  caseNode: CaseNode,
-  host: HTMLElement,
-  records: unknown[],
-): void {
-  for (const value of records) {
-    const record = object(value);
-    if (typeof record.capsule_id !== "string") continue;
-    const disclosed = caseNode.acts.find(
-      (act) => act.capsuleId === record.capsule_id,
-    );
-    // Withheld inputs cannot supply case metadata. The tau2 action identity
-    // commits the task and trial independently of the disclosure overlay.
-    const identity =
-      typeof record.action_id === "string"
-        ? /^urn:tau2:[^:]+:task-(.+):trial-(\d+):turn-\d+$/.exec(
-            record.action_id,
-          )
-        : null;
-    if (
-      !disclosed &&
-      (identity?.[1] !== caseNode.taskId ||
-        Number(identity?.[2]) !== caseNode.trial)
-    )
-      continue;
-    if (
-      disclosed?.agentInput !== undefined &&
-      disclosed.agentOutput !== undefined
-    )
-      continue;
-    const committed = object(
-      object(record.model_attestation).compute_attestation,
-    );
+function renderWithheldActs(acts: ActNode[], host: HTMLElement): void {
+  for (const act of acts) {
+    if (act.agentInput !== undefined && act.agentOutput !== undefined) continue;
+    const committed = object({
+      agent_input_digest: act.agentInputDigest,
+      agent_output_digest: act.agentOutputDigest,
+    });
     const evidence = element("section");
     evidence.append(element("h4", "Undisclosed payload evidence"));
     const details = element("dl");
-    appendValue(details, "capsule ID", record.capsule_id);
+    appendValue(details, "capsule ID", act.capsuleId);
     for (const field of ["agent_input_digest", "agent_output_digest"]) {
       if (typeof committed[field] === "string")
         appendValue(details, field, committed[field]);
@@ -157,11 +139,7 @@ function renderWithheldActs(
   }
 }
 
-function renderCase(
-  caseNode: CaseNode,
-  host: HTMLElement,
-  records: unknown[],
-): void {
+function renderCase(caseNode: CaseNode, host: HTMLElement): void {
   host.replaceChildren();
   host.append(element("h3", `Case ${caseNode.caseId}`));
   const judgments = element("ul");
@@ -171,13 +149,13 @@ function renderCase(
   host.append(element("h4", "Axis judgments"), judgments);
   host.append(element("h4", "Disclosed transcript"));
   caseNode.acts.forEach((act) => host.append(renderAct(act)));
-  renderWithheldActs(caseNode, host, records);
+  renderWithheldActs(caseNode.acts, host);
 }
 
 function renderReport(
   report: ReportNode,
   host: HTMLElement,
-  records: unknown[],
+  _records: unknown[],
 ): void {
   host.replaceChildren();
   host.append(element("h2", `Cases for ${report.date}`));
@@ -191,6 +169,7 @@ function renderReport(
     );
   });
   host.append(element("h3", "Outcome rollup"), outcomes);
+  renderWithheldActs(report.withheldActs, host);
 
   const cases = element("section");
   const detail = element("section");
@@ -201,7 +180,7 @@ function renderReport(
     );
     item.setAttribute("type", "button");
     item.dataset.caseId = caseNode.caseId;
-    item.addEventListener("click", () => renderCase(caseNode, detail, records));
+    item.addEventListener("click", () => renderCase(caseNode, detail));
     cases.append(item);
   });
   host.append(

@@ -4,6 +4,8 @@ export interface ActNode {
   turnIdx: number;
   agentInput?: unknown;
   agentOutput?: unknown;
+  agentInputDigest?: string;
+  agentOutputDigest?: string;
   logCoordinates?: { logId: string; seq: number; leafIndex: number };
 }
 export interface AxisJudgment {
@@ -38,6 +40,7 @@ export interface ReportNode {
   outcomes: Outcome[];
   cases: CaseNode[];
   ratings: RatingNode[];
+  withheldActs: ActNode[];
   logCoordinates?: { logId: string; seq: number; leafIndex: number };
 }
 export interface SummaryNode {
@@ -51,6 +54,9 @@ export interface CalibrationNode {
   capsuleId: string;
   periodWindow?: unknown;
   confusion?: unknown;
+  agreement?: unknown;
+  correctedRate?: unknown;
+  correctedRateCi?: unknown;
 }
 export interface EvidenceGraph {
   aggregate: SummaryNode;
@@ -120,6 +126,38 @@ const verdict = (value: unknown): RatingNode["verdict"] | undefined =>
     ? value
     : undefined;
 
+const actedOnReferences = (record: RecordWithId): string[] =>
+  Array.isArray(record.references)
+    ? record.references.flatMap((reference) =>
+        isObject(reference) &&
+        reference.type === "agent-action-capsule" &&
+        reference.citation_purpose === "acted_on"
+          ? asString(reference.digest) === undefined
+            ? []
+            : [asString(reference.digest)!]
+          : [],
+      )
+    : [];
+
+const committedDigests = (
+  record: RecordWithId,
+): Pick<ActNode, "agentInputDigest" | "agentOutputDigest"> => {
+  const committed = isObject(record.model_attestation)
+    ? objectOrEmpty(record.model_attestation.compute_attestation)
+    : {};
+  return {
+    ...(asString(committed.agent_input_digest) === undefined
+      ? {}
+      : { agentInputDigest: asString(committed.agent_input_digest)! }),
+    ...(asString(committed.agent_output_digest) === undefined
+      ? {}
+      : { agentOutputDigest: asString(committed.agent_output_digest)! }),
+  };
+};
+
+const objectOrEmpty = (value: unknown): ObjectValue =>
+  isObject(value) ? value : {};
+
 export function buildEvidenceGraph(bundle: unknown): EvidenceGraph {
   if (
     !isObject(bundle) ||
@@ -176,8 +214,29 @@ export function buildEvidenceGraph(bundle: unknown): EvidenceGraph {
       : {}),
   };
 
-  const reports = records
-    .flatMap((record): ReportNode[] => {
+  const recordsById = new Map(
+    records.map((record) => [record.capsule_id, record]),
+  );
+  const reportIds = new Set<string>();
+  const visitedSummaries = new Set<string>();
+  const collectReports = (record: RecordWithId): void => {
+    if (visitedSummaries.has(record.capsule_id)) return;
+    visitedSummaries.add(record.capsule_id);
+    for (const id of actedOnReferences(record)) {
+      const referenced = recordsById.get(id);
+      if (referenced === undefined) continue;
+      const payload = disclosurePayload(referenced, disclosures, "agent_input");
+      if (!isObject(payload)) continue;
+      if (payload.spec_version === "evaluation-report/v1") reportIds.add(id);
+      else if (payload.spec_version === "evaluation-summary/v1")
+        collectReports(referenced);
+    }
+  };
+  collectReports(rootRecord);
+
+  const reports = [...reportIds]
+    .flatMap((reportId): ReportNode[] => {
+      const record = recordsById.get(reportId)!;
       const payload = disclosurePayload(record, disclosures, "agent_input");
       if (!isObject(payload) || payload.spec_version !== "evaluation-report/v1")
         return [];
@@ -185,11 +244,14 @@ export function buildEvidenceGraph(bundle: unknown): EvidenceGraph {
       const day = asNumber(payload.day);
       if (date === undefined || day === undefined) return [];
       const reportCases = Array.isArray(payload.cases) ? payload.cases : [];
-      const acts = records.flatMap((actRecord): ActNode[] => {
+      const acts = actedOnReferences(record).flatMap((actId): ActNode[] => {
+        const actRecord = recordsById.get(actId);
+        if (actRecord === undefined) return [];
         const input = disclosurePayload(actRecord, disclosures, "agent_input");
-        if (!isObject(input) || !isObject(input.case)) return [];
-        const caseId = asString(input.case.conversation_id);
-        const turnIdx = asNumber(input.case.turn_idx);
+        const inputCase =
+          isObject(input) && isObject(input.case) ? input.case : {};
+        const caseId = asString(inputCase.conversation_id);
+        const turnIdx = asNumber(inputCase.turn_idx);
         const agentOutput = disclosurePayload(
           actRecord,
           disclosures,
@@ -199,26 +261,25 @@ export function buildEvidenceGraph(bundle: unknown): EvidenceGraph {
           memberships,
           actRecord.capsule_id,
         );
-        return caseId === undefined || turnIdx === undefined
-          ? []
-          : [
-              {
-                capsuleId: actRecord.capsule_id,
-                caseId,
-                turnIdx,
-                agentInput: input,
-                ...(agentOutput === undefined
-                  ? {}
-                  : {
-                      agentOutput,
-                    }),
-                ...(actLogCoordinates === undefined
-                  ? {}
-                  : {
-                      logCoordinates: actLogCoordinates,
-                    }),
-              },
-            ];
+        return [
+          {
+            capsuleId: actRecord.capsule_id,
+            caseId: caseId ?? actRecord.capsule_id,
+            turnIdx: turnIdx ?? Number.MAX_SAFE_INTEGER,
+            ...(isObject(input) ? { agentInput: input } : {}),
+            ...(agentOutput === undefined
+              ? {}
+              : {
+                  agentOutput,
+                }),
+            ...committedDigests(actRecord),
+            ...(actLogCoordinates === undefined
+              ? {}
+              : {
+                  logCoordinates: actLogCoordinates,
+                }),
+          },
+        ];
       });
       const cases = reportCases.flatMap((casePayload): CaseNode[] => {
         if (!isObject(casePayload)) return [];
@@ -307,6 +368,10 @@ export function buildEvidenceGraph(bundle: unknown): EvidenceGraph {
           outcomes,
           cases,
           ratings: [],
+          withheldActs: acts.filter(
+            (act) =>
+              act.agentInput === undefined || act.agentOutput === undefined,
+          ),
           ...(reportLogCoordinates === undefined
             ? {}
             : {
@@ -339,5 +404,34 @@ export function buildEvidenceGraph(bundle: unknown): EvidenceGraph {
         verdict: ratingVerdict,
       });
   }
-  return { aggregate, reports };
+  const calibration = records.flatMap((record): CalibrationNode[] => {
+    const payload = disclosurePayload(record, disclosures, "agent_input");
+    if (!isObject(payload) || payload.spec_version !== "calibration-summary/v1")
+      return [];
+    return [
+      {
+        capsuleId: record.capsule_id,
+        ...(Object.hasOwn(payload, "period_window")
+          ? { periodWindow: payload.period_window }
+          : {}),
+        ...(Object.hasOwn(payload, "confusion")
+          ? { confusion: payload.confusion }
+          : {}),
+        ...(Object.hasOwn(payload, "agreement")
+          ? { agreement: payload.agreement }
+          : {}),
+        ...(Object.hasOwn(payload, "corrected_rate")
+          ? { correctedRate: payload.corrected_rate }
+          : {}),
+        ...(Object.hasOwn(payload, "corrected_rate_ci")
+          ? { correctedRateCi: payload.corrected_rate_ci }
+          : {}),
+      },
+    ];
+  })[0];
+  return {
+    aggregate,
+    reports,
+    ...(calibration === undefined ? {} : { calibration }),
+  };
 }

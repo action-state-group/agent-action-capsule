@@ -42,4 +42,15 @@ describe("emitEvidenceGraphHtml", () => {
     expect(html).toContain("window.__BUNDLE__ = {");
     expect(html).not.toMatch(/window\.__BUNDLE__ = https?:/);
   });
+
+  it("escapes script-breaking bundle content", () => {
+    const payload = "</script><script>window.pwned=1</script>";
+    const html = emitEvidenceGraphHtml({ payload }, iife);
+
+    expect(html).not.toContain(payload);
+    expect(html).toContain("\\u003c/script\\u003e");
+    expect(
+      JSON.parse(/window\.__BUNDLE__ = ([\s\S]*?);<\/script>/.exec(html)![1]!),
+    ).toEqual({ payload });
+  });
 });

@@ -53,6 +53,18 @@ it("renders the dated drill-down view and verifies the bundle", async () => {
   expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
 });
 
+it("renders disclosed calibration agreement and confusion data", async () => {
+  const root = document.createElement("main");
+  await renderEvidenceGraph(
+    await fixture("week-bundle-calibration.json"),
+    root,
+  );
+  expect(root.textContent).toContain("confusion matrix");
+  expect(root.textContent).toContain('"pass_pass":2');
+  expect(root.textContent).toContain("agreement");
+  expect(root.textContent).toContain("0.75");
+});
+
 it("renders only digests for undisclosed case acts without leaking transcripts", async () => {
   const bundle = (await fixture("week-bundle.json")) as {
     disclosures: Record<string, unknown>;
@@ -103,12 +115,74 @@ it("renders only digests for undisclosed case acts without leaking transcripts",
     expect(root.textContent).not.toContain(JSON.stringify(act.agentOutput));
   }
   for (const act of selectedCase.acts) {
-    expect(drawer!.textContent).toContain(act.capsuleId);
+    expect(root.textContent).toContain(act.capsuleId);
     const record = bundle.records.find(
       (record) => record.capsule_id === act.capsuleId,
     )!;
     const digests = record.model_attestation.compute_attestation;
-    expect(drawer!.textContent).toContain(digests.agent_input_digest);
-    expect(drawer!.textContent).toContain(digests.agent_output_digest);
+    expect(root.textContent).toContain(digests.agent_input_digest);
+    expect(root.textContent).toContain(digests.agent_output_digest);
   }
+});
+
+it("fails the banner on a disclosure mismatch and accepts a withheld disclosure", async () => {
+  const bundle = (await fixture("week-bundle.json")) as {
+    disclosures: Record<string, unknown>;
+    records: Array<{
+      model_attestation: {
+        compute_attestation: { agent_output_digest: string };
+      };
+    }>;
+  };
+  const digest =
+    bundle.records[0]!.model_attestation.compute_attestation
+      .agent_output_digest;
+  const tampered = {
+    ...bundle,
+    disclosures: {
+      ...bundle.disclosures,
+      [digest]: { agent_output: "tampered" },
+    },
+  };
+  const root = document.createElement("main");
+  await renderEvidenceGraph(tampered, root);
+  expect(root.querySelector('[data-verify="failed"]')).not.toBeNull();
+
+  const withheld = { ...bundle, disclosures: { ...bundle.disclosures } };
+  delete withheld.disclosures[digest];
+  const withheldRoot = document.createElement("main");
+  await renderEvidenceGraph(withheld, withheldRoot);
+  expect(withheldRoot.querySelector('[data-verify="verified"]')).not.toBeNull();
+});
+
+it("renders referenced non-tau2 withheld acts by their committed digests", async () => {
+  const bundle = (await fixture("week-bundle.json")) as {
+    disclosures: Record<string, unknown>;
+    records: Array<{
+      capsule_id: string;
+      action_id?: string;
+      model_attestation: {
+        compute_attestation: {
+          agent_input_digest: string;
+          agent_output_digest: string;
+        };
+      };
+    }>;
+  };
+  const selected = buildEvidenceGraph(bundle).reports[0]!.cases[0]!.acts[0]!;
+  const record = bundle.records.find(
+    (candidate) => candidate.capsule_id === selected.capsuleId,
+  )!;
+  record.action_id = "producer:action:42";
+  const digests = record.model_attestation.compute_attestation;
+  const closed = { ...bundle, disclosures: { ...bundle.disclosures } };
+  delete closed.disclosures[record.capsule_id];
+  delete closed.disclosures[digests.agent_input_digest];
+  delete closed.disclosures[digests.agent_output_digest];
+  const root = document.createElement("main");
+  await renderEvidenceGraph(closed, root);
+  root.querySelector<HTMLElement>("[data-report-date]")!.click();
+  root.querySelector<HTMLElement>("[data-case-id]")!.click();
+  expect(root.textContent).toContain(digests.agent_input_digest);
+  expect(root.textContent).toContain(digests.agent_output_digest);
 });
