@@ -70,4 +70,65 @@ describe("buildEvidenceGraph", () => {
 
     expect(() => buildEvidenceGraph(bundle)).toThrow(EvidenceGraphError);
   });
+
+  it("uses only reports and acts reached through acted_on references", async () => {
+    const bundle = (await fixture("week-bundle.json")) as {
+      root: string;
+      records: Array<Record<string, unknown>>;
+    };
+    const root = bundle.records.find(
+      (record) => record.capsule_id === bundle.root,
+    )!;
+    const referenced = (root.references as Array<{ digest: string }>)[0]!
+      .digest;
+    const firstReport = bundle.records.find(
+      (record) => record.capsule_id === referenced,
+    )!;
+    const unrelated = { ...firstReport, capsule_id: "unrelated-report" };
+    const restrictedRoot = {
+      ...root,
+      references: (root.references as unknown[]).slice(0, 1),
+    };
+    const graph = buildEvidenceGraph({
+      ...bundle,
+      records: [
+        ...bundle.records.filter((record) => record !== root),
+        restrictedRoot,
+        unrelated,
+      ],
+    });
+
+    expect(graph.reports.map((report) => report.capsuleId)).toEqual([
+      referenced,
+    ]);
+    expect(
+      graph.reports[0]!.cases.flatMap((caseNode) => caseNode.acts).every(
+        (act) =>
+          (firstReport.references as Array<{ digest: string }>).some(
+            (reference) => reference.digest === act.capsuleId,
+          ),
+      ),
+    ).toBe(true);
+    expect(
+      buildEvidenceGraph({
+        ...bundle,
+        records: bundle.records.map((record) =>
+          record === root ? { ...root, references: [] } : record,
+        ),
+      }).reports,
+    ).toEqual([]);
+  });
+
+  it("maps disclosed calibration fields without confusing agreement and period window", async () => {
+    const graph = buildEvidenceGraph(
+      await fixture("week-bundle-calibration.json"),
+    );
+    expect(graph.calibration).toMatchObject({
+      confusion: { pass_pass: 2, fail_fail: 1 },
+      agreement: 0.75,
+      correctedRate: 0.8,
+      correctedRateCi: [0.7, 0.9],
+      periodWindow: { start: "2026-09-14", end: "2026-09-20" },
+    });
+  });
 });
