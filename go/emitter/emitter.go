@@ -26,7 +26,7 @@ func replaceSingle(template, placeholder, value string) (string, error) {
 }
 
 // EmitEvidenceGraphHTML embeds an evidence bundle and browser runtime in the
-// self-contained evidence graph HTML shell.
+// self-contained evidence graph HTML shell. The browserIIFE is built in PR3.
 func EmitEvidenceGraphHTML(bundle map[string]interface{}, browserIIFE []byte) (string, error) {
 	bundleJSON, err := canonical.JCS(bundle)
 	if err != nil {
