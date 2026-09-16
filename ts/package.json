@@ -23,8 +23,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && cp src/emitter-shell.html dist/emitter-shell.html && npm run emitter:iife",
     "prepare": "npm run build",
+    "emitter:iife": "esbuild src/browser.ts --bundle --format=iife --global-name=EvidenceGraph --footer:js='globalThis.renderEvidenceGraph = EvidenceGraph.renderEvidenceGraph;' --outfile=dist/evidence-graph.iife.js",
     "check": "npm run format:check && npm run typecheck && npm test && npm run build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -37,6 +38,8 @@
   },
   "devDependencies": {
     "@types/node": "22.20.2",
+    "esbuild": "^0.28.2",
+    "jsdom": "^26.1.0",
     "prettier": "3.6.2",
     "typescript": "7.0.2",
     "vitest": "4.1.11"
