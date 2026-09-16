@@ -66,19 +66,24 @@ export interface EvidenceGraph {
 
 export class EvidenceGraphError extends Error {}
 
-type ObjectValue = Record<string, unknown>;
-type RecordWithId = ObjectValue & { capsule_id: string };
+export type ObjectValue = Record<string, unknown>;
+export type RecordWithId = ObjectValue & { capsule_id: string };
+export type ResolvedLogCoordinates = {
+  logId: string;
+  seq: number;
+  leafIndex: number;
+};
 
-const isObject = (value: unknown): value is ObjectValue =>
+export const isObject = (value: unknown): value is ObjectValue =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const asString = (value: unknown): string | undefined =>
+export const asString = (value: unknown): string | undefined =>
   typeof value === "string" ? value : undefined;
 
 const asNumber = (value: unknown): number | undefined =>
   typeof value === "number" && Number.isFinite(value) ? value : undefined;
 
-const disclosurePayload = (
+export const disclosurePayload = (
   record: RecordWithId,
   disclosures: ObjectValue,
   field: "agent_input" | "agent_output",
@@ -97,10 +102,10 @@ const disclosurePayload = (
   return isObject(resolved) ? resolved[field] : undefined;
 };
 
-const logCoordinates = (
+export const logCoordinates = (
   memberships: ObjectValue,
   capsuleId: string,
-): ActNode["logCoordinates"] => {
+): ResolvedLogCoordinates | undefined => {
   const membership = memberships[capsuleId];
   if (!isObject(membership) || !isObject(membership.log_coordinates))
     return undefined;
@@ -257,7 +262,7 @@ export function buildEvidenceGraph(bundle: unknown): EvidenceGraph {
           disclosures,
           "agent_output",
         );
-        const actLogCoordinates = logCoordinates(
+        const actResolvedLogCoordinates = logCoordinates(
           memberships,
           actRecord.capsule_id,
         );
@@ -273,10 +278,10 @@ export function buildEvidenceGraph(bundle: unknown): EvidenceGraph {
                   agentOutput,
                 }),
             ...committedDigests(actRecord),
-            ...(actLogCoordinates === undefined
+            ...(actResolvedLogCoordinates === undefined
               ? {}
               : {
-                  logCoordinates: actLogCoordinates,
+                  logCoordinates: actResolvedLogCoordinates,
                 }),
           },
         ];
@@ -356,7 +361,7 @@ export function buildEvidenceGraph(bundle: unknown): EvidenceGraph {
             ]
           : [],
       );
-      const reportLogCoordinates = logCoordinates(
+      const reportResolvedLogCoordinates = logCoordinates(
         memberships,
         record.capsule_id,
       );
@@ -372,10 +377,10 @@ export function buildEvidenceGraph(bundle: unknown): EvidenceGraph {
             (act) =>
               act.agentInput === undefined || act.agentOutput === undefined,
           ),
-          ...(reportLogCoordinates === undefined
+          ...(reportResolvedLogCoordinates === undefined
             ? {}
             : {
-                logCoordinates: reportLogCoordinates,
+                logCoordinates: reportResolvedLogCoordinates,
               }),
         },
       ];
