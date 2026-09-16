@@ -37,6 +37,7 @@
     "cborg": "6.1.2"
   },
   "devDependencies": {
+    "@types/jsdom": "^30.0.0",
     "@types/node": "22.20.2",
     "esbuild": "^0.28.2",
     "jsdom": "^26.1.0",

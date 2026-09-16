@@ -155,6 +155,87 @@ it("fails the banner on a disclosure mismatch and accepts a withheld disclosure"
   expect(withheldRoot.querySelector('[data-verify="verified"]')).not.toBeNull();
 });
 
+it("renders the verification page as the last page with the ten checks and the verify-independently line", async () => {
+  const bundle = await fixture("week-bundle.json");
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+
+  const page = root.querySelector<HTMLElement>('[data-page="verification"]');
+  expect(page).not.toBeNull();
+  expect(root.lastElementChild).toBe(page);
+  expect(page!.textContent?.toLowerCase()).not.toContain("certificate");
+  expect(page!.textContent?.toLowerCase()).not.toContain("proves");
+  expect(page!.textContent).toContain(
+    "verify independently at verify.agentactioncapsule.org or with the CLI",
+  );
+  const checks = page!.querySelectorAll("[data-check-status]");
+  expect(checks).toHaveLength(10);
+  expect(page!.querySelector('[data-stamp-kind="hollow"]')?.textContent).toBe(
+    "Countersigned: none",
+  );
+});
+
+it("renders the hollow countersignature stamp when countersignatures[] is an empty array", async () => {
+  const bundle = await fixture("week-bundle-empty-countersignatures.json");
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  const stamp = root.querySelector("[data-stamp-kind]");
+  expect(stamp?.getAttribute("data-stamp-kind")).toBe("hollow");
+  expect(stamp?.textContent).toBe("Countersigned: none");
+});
+
+it("renders the producer-key stamp as not independent", async () => {
+  const bundle = await fixture("week-bundle-producer-countersigned.json");
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  const stamp = root.querySelector('[data-stamp-kind="producer"]');
+  expect(stamp?.textContent).toBe(
+    "countersigned by the producer — not independent",
+  );
+});
+
+it("renders the directory-resolved stamp with the directory's name, logo, and recompute count", async () => {
+  const bundle = await fixture("week-bundle-directory-countersigned.json");
+  const directory = (await fixture("countersigner-directory.json")) as Array<{
+    publicKey: string;
+    name: string;
+    logoDataUrl: string;
+    checksRecomputed: number;
+  }>;
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root, directory);
+  const stamp = root.querySelector<HTMLElement>(
+    '[data-stamp-kind="directory"]',
+  );
+  expect(stamp?.textContent).toContain(
+    "Countersigned by Example Countersigners Ltd",
+  );
+  expect(stamp?.textContent).toContain("7 of 10 checks recomputed");
+  expect(stamp?.querySelector("img")?.src).toBe(directory[0]!.logoDataUrl);
+});
+
+it("chrome rule: a presentation/v1 VERIFIED badge renders in the header only, never near the checks", async () => {
+  const bundle = await fixture("week-bundle-presentation.json");
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+
+  const header = root.querySelector<HTMLElement>(
+    '[data-presentation="header"]',
+  );
+  expect(header).not.toBeNull();
+  expect(root.firstElementChild).toBe(header);
+  expect(header!.textContent).toContain("VERIFIED");
+  const badgeSrc = header!.querySelector("img")!.src;
+  expect(badgeSrc).toContain("data:image/png;base64,");
+
+  const page = root.querySelector<HTMLElement>('[data-page="verification"]')!;
+  expect(page.textContent).not.toContain("VERIFIED");
+  expect(page.innerHTML).not.toContain(badgeSrc);
+  const checksList = page.querySelector("ol")!;
+  expect(checksList.textContent).not.toContain("VERIFIED");
+  expect(checksList.querySelector("img")).toBeNull();
+});
+
 it("renders referenced non-tau2 withheld acts by their committed digests", async () => {
   const bundle = (await fixture("week-bundle.json")) as {
     disclosures: Record<string, unknown>;
