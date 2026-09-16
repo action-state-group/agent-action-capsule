@@ -259,6 +259,41 @@ digest contexts.
 parent is never expressed via `references`/`citation_purpose`; a
 `references` entry MUST NOT duplicate `chain.parent_capsule_id`.
 
+## 12. Evidence Bundle kind
+
+Defined in `draft-mih-zhang-agent-action-capsule-evidence-bundle`,
+"Evidence Bundle Object". This is a **Specification Required** registry.
+It identifies a neutral presentation and verification container, not a Capsule
+payload type.
+
+| Value | Semantics |
+|---|---|
+| `evidence-bundle/v2` | Version 2 AAC Evidence Bundle, with `bundle_version: "2"`. |
+
+## 13. Evidence Bundle extension kind
+
+Defined in `draft-mih-zhang-agent-action-capsule-evidence-bundle`,
+"Typed Extensions". This is a **Specification Required** registry. The
+`extensions` object's member name is the registered kind. Its registered
+specification defines that extension's block shape and semantic checks; the
+neutral bundle core does not interpret it. A private `x-`-prefixed kind is not
+registered.
+
+No initial extension kind is defined. A company-specific row model such as
+`report/v1` is an extension only when its independently available
+specification is registered; this registry does not define that row model.
+
+## 14. Evidence Bundle countersignature type
+
+Defined in `draft-mih-zhang-agent-action-capsule-evidence-bundle`,
+"Countersignatures". This is a **Specification Required** registry. It names
+the encoding and verification rules for a signature by a party other than the
+bundle producer over the bundle digest.
+
+| Value | Semantics |
+|---|---|
+| `cose-sign1` | A tagged COSE_Sign1 whose attached payload is the raw 32-byte bundle digest, as defined by the Evidence Bundle draft. |
+
 ## No registry
 
 The following vocabularies are deliberately **not** registries of this document:
