@@ -27,6 +27,17 @@
   conformance job checks out to re-verify the cited July interop record. That tag is
   the single pinned legacy artifact; do not re-tag.
 
+### Python (deprecated)
+- **`agent_action_capsule.bundle` is deprecated** ([evidence-bundle-codec-to-capsule-emit]):
+  agent-action-capsule is now spec + registry only, and the Evidence Bundle
+  codec (`bundle_digest`, `verify_bundle`, the fragment codec) has moved to
+  `capsule_emit.evidence_bundle`, byte-for-byte the same logic this module
+  held — only the import paths changed. `agent_action_capsule.bundle` is now
+  a thin shim over the new home: existing importers keep working, and each
+  callable emits a `DeprecationWarning` the first time it is actually
+  invoked (not merely imported). Requires the `capsule-emit` package to be
+  installed; this package's own dependencies remain stdlib-only.
+
 ### Spec
 - `spec/draft-mih-scitt-agent-action-capsule-03.md` §5.3 Assurance — added the
   cross-party assurance rung, a FOURTH, orthogonal `assurance` claim

@@ -1,5 +1,14 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Exercise the shared Evidence Bundle outcome matrix with real CLL proofs."""
+"""Exercise the shared Evidence Bundle outcome matrix with real CLL proofs.
+
+``agent_action_capsule.bundle`` is now a deprecated shim over
+``capsule_emit.evidence_bundle`` ([evidence-bundle-codec-to-capsule-emit]);
+this file exercises that shim end-to-end (real CLL proof data, not the
+codec's own unit tests, which now live in capsule-emit's
+``tests/test_evidence_bundle.py``). ``capsule-emit`` is intentionally not in
+this package's own dependencies (kept stdlib-only), so this file is skipped
+rather than failing in a plain aac dev environment that doesn't have it.
+"""
 from __future__ import annotations
 
 import json
@@ -7,8 +16,10 @@ from pathlib import Path
 
 import pytest
 
-from agent_action_capsule.bundle import decode_fragment, encode_fragment, verify_bundle
-from agent_action_capsule.canonical import compute_capsule_id, json_digest
+pytest.importorskip("capsule_emit.evidence_bundle")
+
+from agent_action_capsule.bundle import decode_fragment, encode_fragment, verify_bundle  # noqa: E402
+from agent_action_capsule.canonical import compute_capsule_id, json_digest  # noqa: E402
 
 cll = pytest.importorskip("cll.checkpoint")
 from cll.checkpoint import core  # noqa: E402  (imported after importorskip guard)
