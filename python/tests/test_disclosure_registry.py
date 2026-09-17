@@ -10,4 +10,8 @@ def test_disclosure_eligibility_table_is_complete():
 
 
 def test_runtime_version_matches_package_metadata():
-    assert __version__ == "0.3.0"
+    from importlib.metadata import version
+
+    # Derive from installed package metadata rather than a hardcoded string so a
+    # version bump never silently breaks this (the check the name actually promises).
+    assert __version__ == version("agent-action-capsule")
