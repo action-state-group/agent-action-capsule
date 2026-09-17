@@ -20,6 +20,7 @@ __all__ = [
     "UnsafeIntegerError",
     "MAX_SAFE_INTEGER",
     "jcs",
+    "normalize",
     "json_digest",
     "compute_capsule_id",
     "LOCAL_ONLY_FIELDS",
@@ -130,6 +131,33 @@ def _jcs_value(v: Any) -> str:
 def jcs(v: Any) -> bytes:
     """RFC 8785 JCS serialization of ``v`` as UTF-8 bytes (no normalization)."""
     return _jcs_value(v).encode("utf-8")
+
+
+def normalize(v: Any) -> Any:
+    """Absent-field normalization (§2): remove members whose value is null, an
+    empty array, or an empty object, bottom-up. Returns a normalized copy.
+
+    Applied bottom-up so that, e.g., an object that becomes empty only after its
+    own null/empty members are removed is itself removed by its parent.
+
+    Retained as a compat export for the vintage ``jcs-n`` canonicalization
+    (older records that normalize absent fields before JCS). Format-4 ``jcs``
+    above deliberately does NOT normalize; this function is for callers that
+    still read the pre-format-4 ``jcs-n`` shape.
+    """
+    if isinstance(v, dict):
+        out: dict[str, Any] = {}
+        for key, val in v.items():
+            nv = normalize(val)
+            if nv is None:
+                continue
+            if isinstance(nv, (dict, list)) and len(nv) == 0:
+                continue
+            out[key] = nv
+        return out
+    if isinstance(v, list):
+        return [normalize(x) for x in v]
+    return v
 
 
 def json_digest(v: Any) -> str:
