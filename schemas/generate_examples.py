@@ -59,13 +59,23 @@ def input_by_node(node_id: str) -> InputByNodeDoc:
 
 
 def build_result(
-    status: str, output_value: object, attestation_record: AttestationRecordDoc
+    family: str,
+    status: str,
+    output_value: object,
+    attestation_record: AttestationRecordDoc,
+    verdict: Optional[str] = None,
 ) -> ResultEnvelopeDoc:
-    return {
+    envelope: ResultEnvelopeDoc = {
+        "family": family,
         "status": status,
         "outputs": [digest_ref(output_value)],
         "attestation_ref": digest_ref(attestation_record),
     }
+    # verdict is REQUIRED exactly when family == decision (schema §6.1a).
+    if family == "decision":
+        assert verdict is not None, "a decision-family envelope must carry a verdict"
+        envelope["verdict"] = verdict
+    return envelope
 
 
 def build_plan_result(plan: IRDocument, results: Dict[str, ResultEnvelopeDoc]) -> PlanResultDoc:
@@ -78,7 +88,7 @@ def build_attestation(
     operator: str,
     inputs: List[object],
     policy: object,
-    contract_version: str,
+    contract_ref: str,
     model: Optional[str] = None,
     model_version: Optional[str] = None,
 ) -> AttestationRecordDoc:
@@ -91,7 +101,7 @@ def build_attestation(
         "operator": operator,
         "inputs": [digest_ref(v) for v in inputs],
         "policy_digest": digest_ref(policy),
-        "contract_version": contract_version,
+        "contract_ref": contract_ref,
     }
 
 
@@ -115,7 +125,7 @@ outcome_node1_attestation = build_attestation(
     operator="evidence.request_answer",
     inputs=[outcome_evidence_content],
     policy=outcome_policy,
-    contract_version=OUTCOME_CONTRACT,
+    contract_ref=OUTCOME_CONTRACT,
 )
 
 outcome_node2_result_output = {"note": "OO outcome verified binding+inclusion, v0 placeholder"}
@@ -124,7 +134,7 @@ outcome_node2_attestation = build_attestation(
     operator="assurance.verify",
     inputs=[outcome_node1_result_output],
     policy=outcome_policy,
-    contract_version=OUTCOME_CONTRACT,
+    contract_ref=OUTCOME_CONTRACT,
 )
 
 outcome_node3_result_output = {"verdict": "met"}
@@ -133,12 +143,12 @@ outcome_node3_attestation = build_attestation(
     operator="decision.resolve_verdict",
     inputs=[outcome_node2_result_output],
     policy=outcome_policy,
-    contract_version=OUTCOME_CONTRACT,
+    contract_ref=OUTCOME_CONTRACT,
 )
 
 plan_outcome = {
     "header": {
-        "contract_version": OUTCOME_CONTRACT,
+        "contract_ref": OUTCOME_CONTRACT,
         "ir_version": "evidence-plan-ir-v0",
         "planner_id": "remote:oo-cloud-planner-v1",
         "created_at": "2026-09-22T00:00:00Z",
@@ -181,9 +191,9 @@ plan_outcome = {
 plan_outcome_result = build_plan_result(
     plan_outcome,
     {
-        "node-1": build_result("SATISFIED", outcome_node1_result_output, outcome_node1_attestation),
-        "node-2": build_result("SATISFIED", outcome_node2_result_output, outcome_node2_attestation),
-        "node-3": build_result("SATISFIED", outcome_node3_result_output, outcome_node3_attestation),
+        "node-1": build_result("evidence", "SATISFIED", outcome_node1_result_output, outcome_node1_attestation),
+        "node-2": build_result("assurance", "SATISFIED", outcome_node2_result_output, outcome_node2_attestation),
+        "node-3": build_result("decision", "SATISFIED", outcome_node3_result_output, outcome_node3_attestation, verdict="met"),
     },
 )
 
@@ -202,7 +212,7 @@ obligation_node1_attestation = build_attestation(
     operator="traditional.fold_replay",
     inputs=[obligation_ledger_content],
     policy=obligation_policy,
-    contract_version=OBLIGATION_CONTRACT,
+    contract_ref=OBLIGATION_CONTRACT,
 )
 
 obligation_node2_result_output = {"note": "OO exception qualitative review, judged", "requirement": "req-obligation-1"}
@@ -211,7 +221,7 @@ obligation_node2_attestation = build_attestation(
     operator="semantic.judge_adjudicate",
     inputs=[obligation_node1_result_output],
     policy=obligation_policy,
-    contract_version=OBLIGATION_CONTRACT,
+    contract_ref=OBLIGATION_CONTRACT,
     model="oo-synthetic-judge-model",
     model_version="2026-09-22",
 )
@@ -222,12 +232,12 @@ obligation_node3_attestation = build_attestation(
     operator="decision.resolve_verdict",
     inputs=[obligation_node2_result_output],
     policy=obligation_policy,
-    contract_version=OBLIGATION_CONTRACT,
+    contract_ref=OBLIGATION_CONTRACT,
 )
 
 plan_obligation = {
     "header": {
-        "contract_version": OBLIGATION_CONTRACT,
+        "contract_ref": OBLIGATION_CONTRACT,
         "ir_version": "evidence-plan-ir-v0",
         "planner_id": "local:oo-onprem-planner-v1",
         "created_at": "2026-09-22T00:00:00Z",
@@ -270,9 +280,9 @@ plan_obligation = {
 plan_obligation_result = build_plan_result(
     plan_obligation,
     {
-        "node-1": build_result("SATISFIED", obligation_node1_result_output, obligation_node1_attestation),
-        "node-2": build_result("SATISFIED", obligation_node2_result_output, obligation_node2_attestation),
-        "node-3": build_result("SATISFIED", obligation_node3_result_output, obligation_node3_attestation),
+        "node-1": build_result("traditional", "SATISFIED", obligation_node1_result_output, obligation_node1_attestation),
+        "node-2": build_result("semantic", "SATISFIED", obligation_node2_result_output, obligation_node2_attestation),
+        "node-3": build_result("decision", "SATISFIED", obligation_node3_result_output, obligation_node3_attestation, verdict="met"),
     },
 )
 
@@ -291,7 +301,7 @@ process_node1_attestation = build_attestation(
     operator="traditional.fold_replay",
     inputs=[process_vcs_content],
     policy=process_policy,
-    contract_version=PROCESS_CONTRACT,
+    contract_ref=PROCESS_CONTRACT,
 )
 
 process_node2_result_output = {"note": "OO process proof bundle, v0 placeholder"}
@@ -300,7 +310,7 @@ process_node2_attestation = build_attestation(
     operator="assurance.bundle",
     inputs=[process_node1_result_output],
     policy=process_policy,
-    contract_version=PROCESS_CONTRACT,
+    contract_ref=PROCESS_CONTRACT,
 )
 
 process_node3_result_output = {"verdict": "met"}
@@ -309,12 +319,12 @@ process_node3_attestation = build_attestation(
     operator="decision.resolve_verdict",
     inputs=[process_node2_result_output],
     policy=process_policy,
-    contract_version=PROCESS_CONTRACT,
+    contract_ref=PROCESS_CONTRACT,
 )
 
 plan_process = {
     "header": {
-        "contract_version": PROCESS_CONTRACT,
+        "contract_ref": PROCESS_CONTRACT,
         "ir_version": "evidence-plan-ir-v0",
         "planner_id": "remote:oo-cloud-planner-v1",
         "created_at": "2026-09-22T00:00:00Z",
@@ -357,9 +367,9 @@ plan_process = {
 plan_process_result = build_plan_result(
     plan_process,
     {
-        "node-1": build_result("SATISFIED", process_node1_result_output, process_node1_attestation),
-        "node-2": build_result("SATISFIED", process_node2_result_output, process_node2_attestation),
-        "node-3": build_result("SATISFIED", process_node3_result_output, process_node3_attestation),
+        "node-1": build_result("traditional", "SATISFIED", process_node1_result_output, process_node1_attestation),
+        "node-2": build_result("assurance", "SATISFIED", process_node2_result_output, process_node2_attestation),
+        "node-3": build_result("decision", "SATISFIED", process_node3_result_output, process_node3_attestation, verdict="met"),
     },
 )
 
@@ -373,6 +383,20 @@ plan_process_result = build_plan_result(
 plan_invalid_local_only_under_remote_planner = json.loads(json.dumps(plan_process))
 plan_invalid_local_only_under_remote_planner["nodes"][0]["classification"] = "LOCAL_ONLY"
 
+# ---------------------------------------------------------------------------
+# Negative fixture (v0.1) — the header carries the OLD field name
+# `contract_version` instead of the renamed `contract_ref`. Mutated from
+# plan_outcome: the header's `contract_ref` key is replaced verbatim by
+# `contract_version` carrying the same value; nothing else changes. Because
+# PlanHeader is additionalProperties:false and now requires `contract_ref`,
+# this MUST fail schema validation — proving the schema rejects the retired
+# name and accepts only `contract_ref`.
+# ---------------------------------------------------------------------------
+
+plan_invalid_legacy_contract_version = json.loads(json.dumps(plan_outcome))
+_legacy_header = plan_invalid_legacy_contract_version["header"]
+_legacy_header["contract_version"] = _legacy_header.pop("contract_ref")
+
 
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -384,6 +408,7 @@ def main() -> int:
     write("plan-process-result", plan_process_result)
     write("attestation-record-example", obligation_node2_attestation)
     write("invalid-local-only-under-remote-planner", plan_invalid_local_only_under_remote_planner)
+    write("invalid-legacy-contract-version-field", plan_invalid_legacy_contract_version)
     return 0
 
 
