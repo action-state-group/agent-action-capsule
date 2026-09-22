@@ -32,6 +32,20 @@ Usage:
 
 Exit 0: every check above passed. Exit 1: a finding was printed. Exit 2: a
 harness error (missing dependency, missing fixture).
+
+NOT covered here (named per QUEUE_PROTOCOL section 7b's "name what you did
+NOT test"):
+  - `header.created_at`'s "format": "date-time" keyword is annotation-only
+    under python-jsonschema's default Draft202012Validator (no FormatChecker
+    is attached) -- a garbage created_at value currently validates clean.
+    This is standard JSON Schema behavior (format is non-normative unless a
+    consumer opts in), not a defect introduced here, but it means this
+    script does not prove created_at is actually checked.
+  - Node `id` uniqueness and the DAG-order rule (spec sections 1 and 3.1) and
+    the node/header `contract_ref` cross-check (spec section 2) are, by the
+    spec's own text, cross-element/cross-object constraints plain JSON
+    Schema cannot express. Nothing in this repository enforces them yet;
+    they are a verifier's obligation, not this schema's.
 """
 import copy
 import json
