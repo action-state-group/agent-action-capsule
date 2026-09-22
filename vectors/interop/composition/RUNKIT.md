@@ -8,8 +8,17 @@
 ## Install
 
 ```
-pip install agent-action-capsule>=0.1.0
+pip install agent-action-capsule>=0.3.0
 ```
+
+`>=0.1.0` was an unbounded floor on a library whose `json_digest` function
+changed under it: `0.1.0` (`canonical.py:151`) computed
+`sha256(jcs(normalize(v)))`; `0.3.0` (`canonical.py:166`) moved to plain
+`sha256(jcs(v))`, with normalization retained only for vintage format-2
+`capsule_id` verification (`vintage_json_digest`). This kit's vectors are
+frozen under the `0.3.0`+ plain-JCS digest (see `SHA256SUMS` and `FREEZE-LOG.md`)
+— `0.1.0`-`0.2.x` will not reproduce `pos-composition-grid-curtailment` against
+these fixtures.
 
 ## Clone
 
@@ -102,7 +111,9 @@ On macOS:
 shasum -a 256 -c SHA256SUMS
 ```
 
-All files should report `OK`.
+All files should report `OK`. `SHA256SUMS` is superseded, not silently
+replaced, when a frozen vector's bytes must change — see `FREEZE-LOG.md` for
+the history and the reason for each re-freeze.
 
 ## The shared subject_digest
 
