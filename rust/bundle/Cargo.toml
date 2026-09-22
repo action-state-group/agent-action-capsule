@@ -1,0 +1,25 @@
+[package]
+name = "aac-bundle"
+version = "0.1.0"
+edition = "2021"
+license = "BSD-3-Clause"
+description = "AAC Evidence Bundle v2 codec and verifier -- Rust sibling of go/bundle and ts/bundle, sharing their conformance vectors."
+repository = "https://github.com/action-state-group/agent-action-capsule"
+keywords = ["scitt", "agent-action-capsule", "evidence-bundle", "mmr", "jcs"]
+categories = ["cryptography"]
+publish = false
+
+[lib]
+name = "aac_bundle"
+path = "src/lib.rs"
+
+[dependencies]
+cll = { git = "https://github.com/action-state-group/checkpointed-local-log", tag = "rust-cll-v0.2.0" }
+serde = "1"
+serde_json = { version = "1", features = ["arbitrary_precision"] }
+sha2 = "0.10"
+hex = "0.4"
+base64 = "0.22"
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
