@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Run every frozen vector in ../../provenance-mode-vectors/ through the
-verifier and assert its expected.json. Python-only corpus (../../test-vectors/
-is cross-language-shared and Go does not implement provenance_mode, mirroring
-how it has never implemented the -02 domain/provenance addendum either)."""
+verifier and assert its expected.json. Cross-language corpus: go/verify's
+TestProvenanceModeVectors asserts the same expected.json (check 9, ported).
+Kept separate from ../../vectors/capsule/ (the historical checks-1-8 corpus)
+rather than merged into it; the domain/provenance (-02) addendum remains a
+separate, still Python-only surface Go does not implement."""
 import json
 from pathlib import Path
 

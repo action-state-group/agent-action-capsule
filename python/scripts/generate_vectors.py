@@ -436,12 +436,14 @@ def build_disclosure_envelope_cases() -> list[dict]:
 
 # ---- Provenance mode vectors (§5.3(bis), draft -05) ------------------------
 # Written to a SEPARATE directory (PM_OUT), not vectors/capsule/: vectors/capsule/ is
-# cross-language-shared (go/cmd/vector_runner reads vectors/capsule/vectors.json
-# and expects every listed case to verify identically under the Go reference
-# implementation). The Go implementation has never carried the -02 domain/
-# provenance addendum either (Class 1 check 9's domain/provenance handling is
-# Python-only), so provenance_mode joins that same Python-only surface rather
-# than breaking Go conformance on a feature it doesn't implement.
+# the historical checks-1-8 corpus (go/cmd/vector_runner reads vectors/capsule/
+# vectors.json and expects every listed case to verify identically under the Go
+# reference implementation). provenance_mode (check 9) IS ported to Go
+# (go/verify's TestProvenanceModeVectors asserts this same expected.json), so
+# this corpus is cross-language too; it stays in its own directory rather than
+# merging into vectors/capsule/ to avoid disturbing that corpus's own manifest
+# and generation. The domain/provenance (-02) addendum remains a separate,
+# still Python-only surface Go does not implement.
 def build_provenance_mode_cases() -> list[dict]:
     cases: list[dict] = []
 

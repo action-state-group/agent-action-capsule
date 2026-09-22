@@ -90,6 +90,22 @@ var crossPartyRungRank = map[string]int{
 	"full_bilateral":       2,
 }
 
+// provenanceModes is the closed enum for provenance_mode.mode (§5.3(bis) Provenance mode).
+var provenanceModes = map[string]bool{
+	"contemporaneous": true,
+	"backfilled":      true,
+}
+
+// timeRungs is the closed enum for provenance_mode.time_rung (§5.3(bis) Provenance mode).
+var timeRungs = map[string]bool{
+	"self_attested": true,
+	"witnessed":     true,
+}
+
+// provenanceModeBackfilledFields are the REQUIRED companion fields when
+// provenance_mode.mode="backfilled" (§5.3(bis) Provenance mode).
+var provenanceModeBackfilledFields = []string{"source_ref", "source_asserted_at", "import_batch", "imported_at"}
+
 // registryFields maps (registry_name, block_key, member_key) in check-8 emission order.
 var registryFields = []struct{ reg, block, member string }{
 	{"verdict_class", "disposition", "verdict_class"},
@@ -347,8 +363,11 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 
 	}
 
-	// Sub-block type checks (effect, assurance, disposition, chain, cross_party).
-	for _, fld := range []string{"effect", "assurance", "disposition", "chain", "cross_party"} {
+	// Sub-block type checks (effect, assurance, disposition, chain, cross_party,
+	// provenance_mode). self_reported_reasoning and the domain/provenance (§-02)
+	// addendum are a separate, still-unported Python-only surface; only
+	// provenance_mode (check 9) is in scope here.
+	for _, fld := range []string{"effect", "assurance", "disposition", "chain", "cross_party", "provenance_mode"} {
 		if v, ok := capsuleMap[fld]; ok {
 			if _, isMap := v.(map[string]interface{}); !isMap {
 				findings = append(findings, Finding{
@@ -669,6 +688,139 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 
 	findings = append(findings, referenceChecks[8]...)
 
+	// ---- Check 9: Provenance mode -------------------------------------------
+	// A backfilled record's occurrence-time claim is capped at self-attested
+	// unless a witnessed reference is cited (§5.3(bis) Provenance mode). Unlike
+	// the informational overclaim treatment check 7 gives attestation_mode /
+	// ledger_mode / cross_party_rung, a provenance_mode time-assurance overclaim
+	// and the imported_at==source_asserted_at laundering shape both gate ok —
+	// this profile treats them as falsifiable dishonesty claims, not merely
+	// unverifiable ones.
+	if pm := asMap(capsuleMap["provenance_mode"]); pm != nil {
+		mode, modeIsStr := pm["mode"].(string)
+		if !modeIsStr || !provenanceModes[mode] {
+			findings = append(findings, Finding{
+				Code:     "provenance_mode_invalid",
+				Detail:   fmt.Sprintf("provenance_mode.mode MUST be one of backfilled|contemporaneous (§5.3(bis) Provenance mode); got %v", pm["mode"]),
+				Severity: "error", Check: mkCheck(9),
+			})
+		} else {
+			derived["provenance_mode"] = mode
+		}
+
+		if mode == "backfilled" {
+			for _, req := range provenanceModeBackfilledFields {
+				v, present := pm[req]
+				if !present || v == nil || v == "" {
+					findings = append(findings, Finding{
+						Code:     "provenance_mode_missing_required_field",
+						Detail:   fmt.Sprintf("provenance_mode.%s is REQUIRED when mode='backfilled' (§5.3(bis) Provenance mode)", req),
+						Severity: "error", Check: mkCheck(9),
+					})
+				}
+			}
+
+			sourceRefRaw, sourceRefPresent := pm["source_ref"]
+			if sourceRef := asMap(sourceRefRaw); sourceRef != nil {
+				for _, req := range []string{"type", "digest_alg", "digest"} {
+					if v, ok := sourceRef[req].(string); !ok || v == "" {
+						findings = append(findings, Finding{
+							Code:     "provenance_mode_source_ref_malformed",
+							Detail:   fmt.Sprintf("provenance_mode.source_ref.%s MUST be a non-empty string (§5.3(bis) Provenance mode)", req),
+							Severity: "error", Check: mkCheck(9),
+						})
+					}
+				}
+			} else if sourceRefPresent {
+				findings = append(findings, Finding{
+					Code:     "provenance_mode_source_ref_malformed",
+					Detail:   "provenance_mode.source_ref MUST be a JSON object when present (§5.3(bis) Provenance mode)",
+					Severity: "error", Check: mkCheck(9),
+				})
+			}
+
+			// Laundering shape: an equal imported_at/source_asserted_at is exactly
+			// the byte pattern that would make a backfilled import look
+			// contemporaneous. Never treated as corroboration (§5.3(bis)).
+			importedAt, importedAtIsStr := pm["imported_at"].(string)
+			sourceAssertedAt, sourceAssertedAtIsStr := pm["source_asserted_at"].(string)
+			if importedAtIsStr && sourceAssertedAtIsStr && importedAt == sourceAssertedAt {
+				findings = append(findings, Finding{
+					Code: "provenance_time_laundering_shape",
+					Detail: "provenance_mode.imported_at equals source_asserted_at on a " +
+						"backfilled record; this is the shape a laundering producer " +
+						"would construct to make an import look contemporaneous " +
+						"(§5.3(bis) Provenance mode)",
+					Severity: "error", Check: mkCheck(9),
+				})
+			}
+
+			timeRungRaw, timeRungPresent := pm["time_rung"]
+			timeRung, timeRungIsStr := timeRungRaw.(string)
+			if timeRungPresent && timeRungRaw != nil {
+				if !timeRungIsStr || !timeRungs[timeRung] {
+					findings = append(findings, Finding{
+						Code:     "provenance_mode_invalid",
+						Detail:   fmt.Sprintf("provenance_mode.time_rung MUST be one of self_attested|witnessed (§5.3(bis) Provenance mode); got %v", timeRungRaw),
+						Severity: "error", Check: mkCheck(9),
+					})
+					timeRung, timeRungIsStr = "", false // unrecognized; excluded from the derived cap below
+				}
+			}
+
+			// time_rung="witnessed" REQUIRES a well-formed references[] entry
+			// citing corroborates_source_time (§5.3(bis), REGISTRY.md §11); the
+			// derived cap is rederived from that evidence, never from the claim.
+			hasCorroboration := false
+			if rawRefs, ok := capsuleMap["references"].([]interface{}); ok {
+				for _, r := range rawRefs {
+					ref := asMap(r)
+					if ref == nil {
+						continue
+					}
+					purpose, _ := ref["citation_purpose"].(string)
+					refType, _ := ref["type"].(string)
+					digestAlg, _ := ref["digest_alg"].(string)
+					digest, _ := ref["digest"].(string)
+					if purpose == "corroborates_source_time" && refType != "" && digestAlg != "" && digest != "" {
+						hasCorroboration = true
+						break
+					}
+				}
+			}
+
+			if timeRungIsStr && timeRung == "witnessed" && !hasCorroboration {
+				findings = append(findings, Finding{
+					Code: "provenance_time_rung_overclaim",
+					Detail: "provenance_mode.time_rung='witnessed' claimed without a " +
+						"well-formed references[] entry citing citation_purpose=" +
+						"'corroborates_source_time' (§5.3(bis) Provenance mode)",
+					Severity: "error", Check: mkCheck(9),
+				})
+			}
+
+			if hasCorroboration {
+				derived["provenance_time_rung"] = "witnessed"
+			} else {
+				derived["provenance_time_rung"] = "self_attested"
+			}
+		} else if mode == "contemporaneous" {
+			var orphaned []string
+			for _, f := range append(append([]string{}, provenanceModeBackfilledFields...), "time_rung") {
+				if v, present := pm[f]; present && v != nil {
+					orphaned = append(orphaned, f)
+				}
+			}
+			if len(orphaned) > 0 {
+				findings = append(findings, Finding{
+					Code:     "provenance_mode_invalid",
+					Detail:   fmt.Sprintf("provenance_mode fields %v are meaningful only when mode='backfilled' (§5.3(bis) Provenance mode)", orphaned),
+					Severity: "error", Check: mkCheck(9),
+				})
+			}
+		}
+	}
+
 	ok := true
 	for _, f := range findings {
 		if f.Severity == "error" {
@@ -769,6 +921,64 @@ func VerifyStore(capsules []interface{}, regs map[string]map[string]bool) []Veri
 			})
 		} else {
 			seenParent[parent] = true
+		}
+	}
+
+	// Duplicates (§5.3(bis) Provenance mode; REGISTRY.md §6): a duplicates-linked
+	// pair is counted once, the contemporaneous parent governing. Parent
+	// existence is already checked generically by check 6 (chain_parent_missing);
+	// this pass records the collapse and flags — informationally, since intent
+	// cannot be verified structurally — a parent that is itself backfilled,
+	// since "duplicates" is defined to cite the contemporaneous record.
+	capsulesByID := make(map[string]map[string]interface{})
+	for _, c := range capsules {
+		if cm, ok := c.(map[string]interface{}); ok {
+			if cid, ok := cm["capsule_id"].(string); ok {
+				capsulesByID[cid] = cm
+			}
+		}
+	}
+	for i, c := range capsules {
+		cm, ok := c.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		ch := asMap(cm["chain"])
+		if ch == nil {
+			continue
+		}
+		if rel, _ := ch["relation"].(string); rel != "duplicates" {
+			continue
+		}
+		parentID, ok := ch["parent_capsule_id"].(string)
+		if !ok {
+			continue
+		}
+		results[i].Findings = append(results[i].Findings, Finding{
+			Code: "duplicate_collapsed",
+			Detail: fmt.Sprintf(
+				"chain.relation='duplicates' over parent %s; verifiers and "+
+					"downstream evidence evaluators MUST count this pair once, the "+
+					"contemporaneous parent governing (§5.3(bis) Provenance mode)",
+				parentID,
+			),
+			Severity: "info", Check: mkCheck(9),
+		})
+		if parent, ok := capsulesByID[parentID]; ok {
+			if parentPM := asMap(parent["provenance_mode"]); parentPM != nil {
+				if mode, _ := parentPM["mode"].(string); mode == "backfilled" {
+					results[i].Findings = append(results[i].Findings, Finding{
+						Code: "duplicate_parent_not_contemporaneous",
+						Detail: fmt.Sprintf(
+							"chain.relation='duplicates' parent %s is itself "+
+								"provenance_mode.mode='backfilled'; 'duplicates' is defined to "+
+								"cite the contemporaneous record (§5.3(bis) Provenance mode)",
+							parentID,
+						),
+						Severity: "info", Check: mkCheck(9),
+					})
+				}
+			}
 		}
 	}
 	return results
