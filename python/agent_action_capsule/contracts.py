@@ -30,6 +30,9 @@ __all__ = [
     "DOMAIN_VALUES",
     "PROVENANCE_VALUES",
     "PROVENANCE_RANK",
+    "PROVENANCE_MODES",
+    "TIME_RUNGS",
+    "TIME_RUNG_RANK",
     "derive_effect_mode",
     "Disposition",
     "ExpiryPolicy",
@@ -37,6 +40,7 @@ __all__ = [
     "AssuranceBlock",
     "CrossParty",
     "Chain",
+    "ProvenanceMode",
     "ConstraintRecord",
     "LogCoordinates",
     "ReferenceEntry",
@@ -94,6 +98,13 @@ CROSS_PARTY_RUNG_RANK = {"unilateral_fallback": 0, "acknowledged_receipt": 1, "f
 DOMAIN_VALUES = frozenset({"action", "memory", "reasoning"})
 PROVENANCE_VALUES = frozenset({"gate", "runtime", "collector"})
 PROVENANCE_RANK = {"gate": 3, "runtime": 2, "collector": 1}
+
+# §5.3(bis) provenance_mode — a MODE on the ordinary record, not a distinct
+# record type (REGISTRY.md §12). Deliberately a different key from the
+# unrelated `provenance` dedup-rank signal above; the two never collide.
+PROVENANCE_MODES = frozenset({"contemporaneous", "backfilled"})
+TIME_RUNGS = frozenset({"self_attested", "witnessed"})
+TIME_RUNG_RANK = {"self_attested": 0, "witnessed": 1}
 
 # Open-items predicate verdict_class set (§5.4.4).
 OPEN_ITEM_VERDICT_CLASSES = frozenset(
@@ -290,6 +301,65 @@ class Chain:
             raise InvariantError("chain.parent_capsule_id MUST be a 64-hex capsule_id (§5.1, §5.4.4)")
         if not isinstance(self.relation, str) or not self.relation:
             raise InvariantError("chain.relation MUST be a non-empty string")
+
+
+@dataclass(frozen=True)
+class ProvenanceMode:
+    """§5.3(bis) provenance_mode block — a MODE on the ordinary Capsule, not a
+    distinct record type. mode='backfilled' REQUIRES the four companion
+    fields; time_rung is meaningful only when mode='backfilled'. The
+    time_rung overclaim discipline (§9 xref support) needs the sibling
+    references[] block and is enforced in verify.py, not here."""
+
+    mode: str
+    source_ref: ReferenceEntry | None = None
+    source_asserted_at: str | None = None
+    import_batch: str | None = None
+    imported_at: str | None = None
+    time_rung: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.mode not in PROVENANCE_MODES:
+            raise InvariantError(
+                f"provenance_mode.mode MUST be one of {sorted(PROVENANCE_MODES)} "
+                f"(§5.3(bis) Provenance mode); got {self.mode!r}"
+            )
+        companions = {
+            "source_ref": self.source_ref,
+            "source_asserted_at": self.source_asserted_at,
+            "import_batch": self.import_batch,
+            "imported_at": self.imported_at,
+        }
+        if self.mode == "backfilled":
+            missing = [name for name, v in companions.items() if v is None]
+            if missing:
+                raise InvariantError(
+                    "provenance_mode.mode='backfilled' REQUIRES source_ref, "
+                    "source_asserted_at, import_batch, and imported_at "
+                    f"(§5.3(bis) Provenance mode); missing {missing}"
+                )
+        else:
+            present = [name for name, v in companions.items() if v is not None]
+            if present or self.time_rung is not None:
+                raise InvariantError(
+                    "provenance_mode.source_ref/.source_asserted_at/"
+                    ".import_batch/.imported_at/.time_rung are meaningful "
+                    "only when mode='backfilled' (§5.3(bis) Provenance mode); "
+                    f"present with mode={self.mode!r}: "
+                    f"{present + (['time_rung'] if self.time_rung is not None else [])}"
+                )
+        if self.time_rung is not None and self.time_rung not in TIME_RUNGS:
+            raise InvariantError(
+                f"provenance_mode.time_rung MUST be one of {sorted(TIME_RUNGS)} "
+                f"(§5.3(bis) Provenance mode); got {self.time_rung!r}"
+            )
+        for name in ("source_asserted_at", "import_batch", "imported_at"):
+            v = companions[name]
+            if v is not None and (not isinstance(v, str) or not v):
+                raise InvariantError(
+                    f"provenance_mode.{name} MUST be a non-empty string when present "
+                    "(§5.3(bis) Provenance mode)"
+                )
 
 
 @dataclass(frozen=True)

@@ -28,6 +28,36 @@
   the single pinned legacy artifact; do not re-tag.
 
 ### Spec
+- `spec/draft-mih-scitt-agent-action-capsule-05.md` — added `provenance_mode`,
+  a MODE on the ordinary Capsule (never a distinct record type; ruled
+  2026-09-22) disambiguating a contemporaneous action record from a
+  backfilled import of a historical one: `mode` (`contemporaneous` default |
+  `backfilled`), and — REQUIRED when backfilled — `source_ref` (typed digest
+  reference), `source_asserted_at`, `import_batch`, `imported_at`. Normative
+  time semantics: `timestamp`/`source_asserted_at` are always producer
+  self-attestations, never log-witnessed by virtue of being carried in the
+  Capsule; a backfilled record's occurrence-time claim (`time_rung`:
+  `self_attested` | `witnessed`) is capped at self-attested unless a
+  `references[]` entry cites a signed/witnessed source timestamp under the
+  new `corroborates_source_time` citation_purpose — and even then never
+  upgrades `attestation_mode`/`ledger_mode`, which stay independently
+  derived. Class 1 verification gains check 9: the required-field structural
+  check, the `time_rung` overclaim (gating — unlike the informational
+  overclaim treatment check 7 gives `attestation_mode`/`ledger_mode`/
+  `cross_party_rung`), and the `imported_at == source_asserted_at`
+  laundering-shape failure (a backfilled record must not be made to look
+  contemporaneous by construction). Deliberately named `provenance_mode`,
+  not `provenance` — REGISTRY.md §9's pre-existing `provenance` field (the
+  `-02` gate/runtime/collector dedup-rank signal) is an unrelated
+  vocabulary; the two names never collide. New `chain.relation: "duplicates"`
+  (REGISTRY.md §6) lets a backfilled Capsule cite the contemporaneous
+  Capsule of the same logical event in this producer's own stream; a
+  `duplicates`-linked pair is counted once, the contemporaneous record
+  governing — never fold history retroactively (an imported record is
+  appended at import position, never spliced into the chain at the position
+  its `source_asserted_at` implies).
+  Authored by Steven Mih (draft author of record,
+  `draft-mih-scitt-agent-action-capsule`).
 - `spec/draft-mih-scitt-agent-action-capsule-03.md` §5.3 Assurance — added the
   cross-party assurance rung, a FOURTH, orthogonal `assurance` claim
   (`cross_party_rung`: `unilateral_fallback` < `acknowledged_receipt` <
@@ -109,6 +139,53 @@
   (`neg-cross-party-overclaim`: `full_bilateral` claimed with only the
   initiator's half present) plus `pos-disposition-approver-counterparty`
   confirming the honesty invariant holds against the new approver value.
+- **`provenance_mode` (§5.3(bis) Provenance mode, draft -05).**
+  `python/agent_action_capsule/contracts.py`: `ProvenanceMode` producer-side
+  carrier (`mode`, `source_ref`, `source_asserted_at`, `import_batch`,
+  `imported_at`, `time_rung`), enforcing the four-companion-fields-REQUIRED-
+  when-backfilled invariant and the orphaned-fields-forbidden-when-
+  contemporaneous invariant at construction; `PROVENANCE_MODES`,
+  `TIME_RUNGS`, `TIME_RUNG_RANK`. `python/agent_action_capsule/parse.py`:
+  `Capsule.provenance_mode` / `parse_capsule` round-trip the new block.
+  `python/agent_action_capsule/emit.py`: `emit(provenance_mode=...)`.
+  `python/agent_action_capsule/verify.py`: new check 9 — the
+  required-field structural check, `provenance_mode_source_ref_malformed`,
+  the `time_rung` overclaim (`provenance_time_rung_overclaim`, rederived
+  from a well-formed `references[]` entry citing
+  `citation_purpose: "corroborates_source_time"`, never from the claim),
+  and `provenance_time_laundering_shape` (`imported_at == source_asserted_at`
+  on a backfilled record) — all gating, unlike check 7's informational
+  overclaim treatment of `attestation_mode`/`ledger_mode`/`cross_party_rung`.
+  `derived.provenance_mode`/`derived.provenance_time_rung` are always
+  reported in `VerificationResult.assurance` when the block is present.
+  `verify_store()`: `chain.relation: "duplicates"` store-level handling —
+  `duplicate_collapsed` (info) records the collapse, and
+  `duplicate_parent_not_contemporaneous` (info) flags a `duplicates` parent
+  that is itself backfilled. `spec/REGISTRY.md`: `duplicates` added to the
+  `chain.relation` registry (§6), `corroborates_source_time` added to the
+  `citation_purpose` registry (§11), new §12 `provenance_mode` documenting
+  the closed two-value `mode` enum and `time_rung`'s scope
+  (`python/agent_action_capsule/data/REGISTRY.md` resynced to match — it had
+  also drifted on an unrelated section number, §5.4.4 vs §5.5.4, fixed as a
+  side effect of the resync).
+  `provenance-mode-vectors/`: a new frozen-vector corpus (one positive, three
+  negative, one store-level) in the same discipline as
+  `disclosure-envelope-vectors/` — kept OUT of `test-vectors/` because that
+  corpus is cross-language-shared with the Go reference implementation,
+  which has never implemented the `-02` `domain`/`provenance` addendum
+  either; `provenance_mode` joins that same Python-only surface rather than
+  breaking Go conformance on a feature it does not implement.
+  `evaluation-compiler`'s `demo/backfill/backfill.py` (a downstream backfill
+  tool that seals historical tau2-bench transcripts — exactly the
+  `mode: "backfilled"` case) now threads `mode`/`source_asserted_at`/
+  `import_batch`/`imported_at` into its existing opaque, already-digest-
+  committed `payload.provenance` dict, using field names that match this
+  profile's `provenance_mode` block 1:1 — not yet a first-class, wire-level
+  Capsule field, since `capsule-emit-go`'s `emit.Input` has no
+  `ProvenanceMode` member and `capsulectl`'s request decoder rejects unknown
+  fields outright; promoting these to a real `capsule.ProvenanceMode` block
+  (with a genuine `source_ref` digest) is a follow-up once that Go-side
+  support lands.
 
 ### Fixed
 - Packaging: `python/pyproject.toml` now declares `license-files = ["LICENSE"]` (PEP 639) so the

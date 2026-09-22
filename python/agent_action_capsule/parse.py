@@ -24,6 +24,7 @@ from .contracts import (
     InvariantError,
     LogCoordinates,
     ModelAttestation,
+    ProvenanceMode,
     ReferenceEntry,
     SelfReportedReasoning,
 )
@@ -38,7 +39,7 @@ def _block_to_dict(obj: Any) -> dict:
         v = getattr(obj, f.name)
         if v is None:
             continue
-        if isinstance(v, (ExpiryPolicy, LogCoordinates)):
+        if isinstance(v, (ExpiryPolicy, LogCoordinates, ReferenceEntry)):
             v = _block_to_dict(v)
         out[f.name] = v
     return out
@@ -57,6 +58,7 @@ class Capsule:
     timestamp: str
     domain: str | None = None
     provenance: str | None = None
+    provenance_mode: ProvenanceMode | None = None
     effect: EffectRecord | None = None
     assurance: AssuranceBlock | None = None
     disposition: Disposition | None = None
@@ -131,6 +133,8 @@ class Capsule:
             out["domain"] = self.domain
         if self.provenance is not None:
             out["provenance"] = self.provenance
+        if self.provenance_mode is not None:
+            out["provenance_mode"] = _block_to_dict(self.provenance_mode)
         if self.model_attestation is not None:
             out["model_attestation"] = _block_to_dict(self.model_attestation)
         if self.self_reported_reasoning is not None:
@@ -240,6 +244,39 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
         substantive=cpb.get("substantive"),
     ) if cpb else None
 
+    pm = _block(d, "provenance_mode")
+    provenance_mode = None
+    if pm:
+        mode = pm.get("mode")
+        if not isinstance(mode, str) or not mode:
+            raise InvariantError(
+                "provenance_mode.mode is REQUIRED and a non-empty string (§5.3(bis) Provenance mode)"
+            )
+        pm_source_ref = None
+        if "source_ref" in pm:
+            sr_raw = pm["source_ref"]
+            if not isinstance(sr_raw, Mapping):
+                raise InvariantError(
+                    "provenance_mode.source_ref MUST be a JSON object when present (§5.3(bis) Provenance mode)"
+                )
+            for req in ("type", "digest_alg", "digest"):
+                if req not in sr_raw:
+                    raise InvariantError(
+                        f"provenance_mode.source_ref.{req} is REQUIRED when source_ref "
+                        "is present (§5.3(bis) Provenance mode)"
+                    )
+            pm_source_ref = ReferenceEntry(
+                type=sr_raw.get("type"), digest_alg=sr_raw.get("digest_alg"), digest=sr_raw.get("digest"),
+            )
+        provenance_mode = ProvenanceMode(
+            mode=mode,
+            source_ref=pm_source_ref,
+            source_asserted_at=pm.get("source_asserted_at"),
+            import_batch=pm.get("import_batch"),
+            imported_at=pm.get("imported_at"),
+            time_rung=pm.get("time_rung"),
+        )
+
     cons = d.get("constraints")
     constraints: tuple[ConstraintRecord, ...] = ()
     if cons is not None:
@@ -324,7 +361,7 @@ def parse_capsule(d: Mapping[str, Any]) -> Capsule:
         action_id=d["action_id"], action_type=d["action_type"], operator=d["operator"],
         developer=d["developer"], timestamp=d["timestamp"],
         canonicalization_id=canonicalization_id,
-        domain=domain, provenance=provenance,
+        domain=domain, provenance=provenance, provenance_mode=provenance_mode,
         effect=effect, assurance=assurance, disposition=disposition, chain=chain,
         cross_party=cross_party, constraints=constraints, references=references,
         model_attestation=model_attestation,

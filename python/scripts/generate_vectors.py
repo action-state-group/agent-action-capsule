@@ -34,6 +34,7 @@ from agent_action_capsule import (
 
 OUT = Path(__file__).resolve().parents[2] / "vectors/capsule"
 DE_OUT = Path(__file__).resolve().parents[2] / "vectors/disclosure-envelope"
+PM_OUT = Path(__file__).resolve().parents[2] / "provenance-mode-vectors"
 VINTAGE_SPEC = "draft-mih-scitt-agent-action-capsule-00"
 CURRENT_SPEC = "draft-mih-scitt-agent-action-capsule-04"
 HEX_R = "1" * 64  # a stand-in response/request digest (64-hex); content is opaque here
@@ -72,6 +73,23 @@ def assurance(effect_mode: str, ledger_mode: str = "standalone", cross_party_run
     if cross_party_rung is not None:
         a["cross_party_rung"] = cross_party_rung
     return a
+
+
+def provenance_mode_backfilled(source_ref=True, source_asserted_at="2026-01-01T00:00:00Z",
+                                import_batch="import-2026-09", imported_at="2026-09-22T00:00:00Z",
+                                time_rung=None) -> dict:
+    pm: dict = {"mode": "backfilled"}
+    if source_ref:
+        pm["source_ref"] = {"type": "x-external-ledger-entry", "digest_alg": "SHA-256", "digest": "3" * 64}
+    if source_asserted_at is not None:
+        pm["source_asserted_at"] = source_asserted_at
+    if import_batch is not None:
+        pm["import_batch"] = import_batch
+    if imported_at is not None:
+        pm["imported_at"] = imported_at
+    if time_rung is not None:
+        pm["time_rung"] = time_rung
+    return pm
 
 
 def cross_party_block(has_counterparty: bool, substantive: bool = False) -> dict:
@@ -416,6 +434,77 @@ def build_disclosure_envelope_cases() -> list[dict]:
     return cases
 
 
+# ---- Provenance mode vectors (§5.3(bis), draft -05) ------------------------
+# Written to a SEPARATE directory (PM_OUT), not vectors/capsule/: vectors/capsule/ is
+# cross-language-shared (go/cmd/vector_runner reads vectors/capsule/vectors.json
+# and expects every listed case to verify identically under the Go reference
+# implementation). The Go implementation has never carried the -02 domain/
+# provenance addendum either (Class 1 check 9's domain/provenance handling is
+# Python-only), so provenance_mode joins that same Python-only surface rather
+# than breaking Go conformance on a feature it doesn't implement.
+def build_provenance_mode_cases() -> list[dict]:
+    cases: list[dict] = []
+
+    def add(name, kind, description, inp):
+        cases.append({"name": name, "kind": kind, "description": description, "input": inp})
+
+    add("pos-provenance-mode-backfilled", "positive",
+        "a well-formed backfilled record: provenance_mode.mode='backfilled' with all four "
+        "REQUIRED companion fields present and well-formed, time_rung absent (implies "
+        "self_attested) -> verifies clean; derived.provenance_mode='backfilled' and "
+        "derived.provenance_time_rung='self_attested' are always reported (check 9).",
+        seal({**ident_v4("prov-backfilled"), "assurance": assurance("not_applicable"),
+              "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+              "provenance_mode": provenance_mode_backfilled()}))
+
+    add("neg-provenance-mode-time-rung-overclaim", "negative",
+        "provenance_mode.time_rung='witnessed' claimed with no references[] entry citing "
+        "citation_purpose='corroborates_source_time' -> provenance_time_rung_overclaim "
+        "(check 9, gating — unlike the informational overclaim treatment check 7 gives "
+        "attestation_mode/ledger_mode/cross_party_rung, this profile treats an unsupported "
+        "provenance_mode time claim as a falsifiable dishonesty claim); "
+        "derived.provenance_time_rung stays 'self_attested', the rederived value, never the claim.",
+        seal({**ident_v4("prov-witnessed-overclaim"), "assurance": assurance("not_applicable"),
+              "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+              "provenance_mode": provenance_mode_backfilled(time_rung="witnessed")}))
+
+    add("neg-provenance-mode-backfilled-missing-fields", "negative",
+        "provenance_mode.mode='backfilled' with none of the four REQUIRED companion fields "
+        "(source_ref, source_asserted_at, import_batch, imported_at) present -> four "
+        "provenance_mode_missing_required_field failures (check 9).",
+        seal({**ident_v4("prov-missing-fields"), "assurance": assurance("not_applicable"),
+              "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+              "provenance_mode": {"mode": "backfilled"}}))
+
+    add("neg-provenance-mode-time-laundering", "negative",
+        "provenance_mode.imported_at equals source_asserted_at on a backfilled record -- the "
+        "shape a laundering producer would construct to make an import look contemporaneous "
+        "-> provenance_time_laundering_shape (check 9, gating); equality is never treated as "
+        "corroboration, regardless of any other assurance value the record carries.",
+        seal({**ident_v4("prov-laundering"), "assurance": assurance("not_applicable"),
+              "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+              "provenance_mode": provenance_mode_backfilled(
+                  source_asserted_at="2026-09-22T00:00:00Z", imported_at="2026-09-22T00:00:00Z")}))
+
+    prov_contemporaneous = seal({**ident_v4("prov-contemporaneous-parent"),
+                                  "assurance": assurance("not_applicable"),
+                                  "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"}})
+    prov_duplicate = seal({**ident_v4("prov-backfilled-duplicate"),
+                            "assurance": assurance("not_applicable", ledger_mode="chained"),
+                            "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+                            "provenance_mode": provenance_mode_backfilled(),
+                            "chain": {"parent_capsule_id": prov_contemporaneous["capsule_id"], "relation": "duplicates"}})
+    add("pos-chain-duplicates-collapsed-once", "store",
+        "a backfilled import of the same logical event a contemporaneous capsule already "
+        "recorded, chained to it via chain.relation='duplicates': both capsules verify ok; "
+        "the store-level pass reports duplicate_collapsed (info, check 9) on the backfilled "
+        "member -- verifiers and downstream evidence evaluators count the pair once, the "
+        "contemporaneous record governing, never twice.",
+        {"ledger": [prov_contemporaneous, prov_duplicate]})
+
+    return cases
+
+
 def result_to_expected(res) -> dict:
     return {
         "ok": res.ok,
@@ -450,6 +539,61 @@ HAND_AUTHORED_CASES = [
      "description": "blocked verdict_class (NEVER_DISPATCH §5.4.2) combined with effect.status='dispatched' → verdict/effect orthogonality failure (check 4)."},
     {"name": "neg-never-dispatch-confirmed-no-response", "kind": "negative",
      "description": "denied (NEVER_DISPATCH) with effect.status='confirmed' and no response_digest → both check 3 (confirmed-effect binding) and check 4 (verdict/effect conflict)."},
+    # canonical-* (RFC 8785 JCS hardening pass): input.json/expected.json test
+    # compute_capsule_id() directly (kind="canonical"), predate this script's
+    # case builders, and are NOT reproduced by build_cases(). Frozen files this
+    # script must not touch; only their manifest entries are re-declared here
+    # so a full regeneration doesn't drop them from vectors.json (this bucket
+    # was previously undeclared here and WAS silently dropped by a from-scratch
+    # regeneration — fixed alongside the provenance_mode vector addition).
+    {"name": "canonical-null-member-removed", "kind": "canonical",
+     "description": "normalize() removes a null-valued member (S:2 absent-field normalization)"},
+    {"name": "canonical-empty-object-removed", "kind": "canonical",
+     "description": "normalize() removes an empty-object member (S:2 absent-field normalization)"},
+    {"name": "canonical-empty-array-removed", "kind": "canonical",
+     "description": "normalize() removes an empty-array member (S:2 absent-field normalization)"},
+    {"name": "canonical-object-emptied-by-normalization", "kind": "canonical",
+     "description": "normalize() bottom-up: object becomes empty after null member removed; parent removes it"},
+    {"name": "canonical-nested-two-deep-emptied", "kind": "canonical",
+     "description": "normalize() bottom-up two levels: d->c->b all emptied and removed"},
+    {"name": "canonical-array-of-objects-normalized", "kind": "canonical",
+     "description": "normalize() recurses into array elements; null member in nested object removed"},
+    {"name": "canonical-array-preserved-not-sorted", "kind": "canonical",
+     "description": "Array elements preserved in insertion order, not sorted (RFC 8785 S:3.2.2)"},
+    {"name": "canonical-nested-member-named-capsule-id", "kind": "canonical",
+     "description": "Top-level capsule_id/chain exclusion does not apply to nested members with those names"},
+    {"name": "canonical-nested-member-named-chain", "kind": "canonical",
+     "description": "Top-level capsule_id/chain exclusion does not apply to nested members with those names"},
+    {"name": "canonical-key-sort-utf16-vs-codepoint", "kind": "canonical",
+     "description": "UTF-16 key ordering: U+1F600 emoji (first surrogate 0xD83D) sorts after U+FF3A (single unit)"},
+    {"name": "canonical-key-nfc-vs-nfd", "kind": "canonical",
+     "description": "JCS does not normalize Unicode; NFD key A+U+030A (first unit 0x0041) sorts before B (0x0042)"},
+    {"name": "canonical-string-escapes", "kind": "canonical",
+     "description": 'JCS mandatory escapes: \\" \\\\ \\b \\t \\n \\f \\r in a single string value (RFC 8785 S:3.2.2.2)'},
+    {"name": "canonical-control-char-below-0x20", "kind": "canonical",
+     "description": "Control char U+0001 not in named-shortcut set: serialized as \\u0001 (RFC 8785 S:3.2.2.2)"},
+    {"name": "canonical-non-bmp-value", "kind": "canonical",
+     "description": "Non-BMP char U+1F600 in a string value passes through as UTF-8 (no \\uXXXX escaping needed)"},
+    {"name": "canonical-solidus-not-escaped", "kind": "canonical",
+     "description": "Solidus / is NOT escaped in JCS (RFC 8785 S:3.2.2.2 forbids the \\/ escape)"},
+    {"name": "canonical-integer-zero", "kind": "canonical",
+     "description": "Integer 0 serialized as '0' (int branch in _jcs_value, S:5.1)"},
+    {"name": "canonical-integer-negative", "kind": "canonical",
+     "description": "Negative integer -1 serialized as '-1'"},
+    {"name": "canonical-integer-at-safe-max", "kind": "canonical",
+     "description": "Integer at exactly Number.MAX_SAFE_INTEGER = 9007199254740991 accepted (S:5.1 boundary)"},
+    {"name": "canonical-integer-above-safe-max", "kind": "canonical",
+     "description": "Integer one above Number.MAX_SAFE_INTEGER raises UnsafeIntegerError (S:5.1 guard)"},
+    {"name": "canonical-integer-at-safe-min", "kind": "canonical",
+     "description": "Integer at exactly -Number.MAX_SAFE_INTEGER = -9007199254740991 accepted (S:5.1 boundary)"},
+    {"name": "canonical-float-in-value", "kind": "canonical",
+     "description": "Float value raises FloatInDigestError (S:5.1 forbids floats in digest-bearing fields)"},
+    {"name": "canonical-float-integral-valued", "kind": "canonical",
+     "description": "Integral-valued float 2.0 raises FloatInDigestError: the guard is a type check, not a value check"},
+    {"name": "canonical-bool-and-deep-nesting", "kind": "canonical",
+     "description": "Boolean true and deep object nesting: exercises bool branch and recursive dict serialization"},
+    {"name": "canonical-all-members-removed", "kind": "canonical",
+     "description": "After normalization all members removed; capsule_id = SHA-256(JCS({})) = SHA-256('{}')"},
 ]
 
 
@@ -517,6 +661,37 @@ def main() -> None:
         encoding="utf-8",
     )
     print(f"wrote {len(de_manifest)} vectors to {DE_OUT}")
+
+    PM_OUT.mkdir(exist_ok=True)
+    pm_manifest = []
+    for case in build_provenance_mode_cases():
+        name, kind, desc, inp = case["name"], case["kind"], case["description"], case["input"]
+        case_dir = PM_OUT / name
+        case_dir.mkdir(exist_ok=True)
+
+        if isinstance(inp, dict) and "ledger" in inp:
+            results = verify_store(inp["ledger"])
+            expected = {"description": desc, "kind": kind,
+                        "results": [result_to_expected(r) for r in results]}
+        else:
+            res = verify(inp)
+            expected = {"description": desc, "kind": kind, **result_to_expected(res)}
+
+        (case_dir / "input.json").write_text(json.dumps(inp, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        (case_dir / "expected.json").write_text(json.dumps(expected, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        pm_manifest.append({"name": name, "kind": kind, "description": desc})
+
+    (PM_OUT / "vectors.json").write_text(
+        json.dumps({"spec": "draft-mih-scitt-agent-action-capsule-05",
+                    "count": len(pm_manifest), "cases": pm_manifest}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    pm_checksum_lines = []
+    for path in sorted(PM_OUT.glob("*/*.json")):
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        pm_checksum_lines.append(f"{digest}  {path.relative_to(PM_OUT)}")
+    (PM_OUT / "SHA256SUMS").write_text("\n".join(pm_checksum_lines) + "\n", encoding="ascii")
+    print(f"wrote {len(pm_manifest)} vectors to {PM_OUT}")
 
 
 if __name__ == "__main__":
