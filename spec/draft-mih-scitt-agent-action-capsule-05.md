@@ -419,7 +419,11 @@ The confirmed-effect invariant: a producer MUST NOT emit
 observed response. A verifier MUST treat `confirmed` with a missing
 response_digest as a verification failure. This is the byte-level
 mechanism behind the may/did distinction: "confirmed" is an observed
-result, never a promise.
+result, never a promise. Under {{assurance}}'s rederivation from the
+evidence present, such a record's `effect_mode` is
+`dispatched_unconfirmed`, never `confirmed`: the effect was dispatched,
+but the binding this section requires did not hold, and a rederived
+grade cannot exceed what the bytes support.
 
 The Effect Record also carries the logical `type` (registry-governed,
 {{iana}}), an optional `external_ref` join key for later outcomes, and an
@@ -511,6 +515,20 @@ proof against a trusted log key — and the three tiers are ordered
 standalone < chained < anchored for overclaim detection. A producer MUST
 NOT record an assurance mode it did not achieve; a verifier rederives each
 mode from the evidence present and reports any overclaim.
+
+`chained` is derived solely from the presence and integrity of the
+Capsule's own chain-linkage block ({{hitl}}) — the fields committed under
+`chain` at seal time. Parent *resolution* is a separate, store-level
+question (check 6, {{verification}}): whether a store can locate and
+validate the chain parent a Capsule names. A missing or unresolvable
+parent is reported there, but it never downgrades `ledger_mode` — a
+Capsule handed over standalone, without the store that holds its parent,
+still derives `chained` from its own linkage block. If parent existence
+instead fed `ledger_mode`, the same Capsule would derive `chained` inside
+a full ledger and `standalone` handed over alone; an assurance tier that
+depends on what the verifier happens to hold is not a property of the
+record. (`anchored` is not a counterexample: its receipt travels with the
+Capsule, so what the verifier holds does not change.)
 
 ### Cross-party assurance {#crossparty}
 

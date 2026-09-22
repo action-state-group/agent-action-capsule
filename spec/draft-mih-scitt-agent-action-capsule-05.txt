@@ -89,9 +89,9 @@ Table of Contents
        5.2.2.  Epoch-boundary Capsules . . . . . . . . . . . . . . .  11
        5.2.3.  Epoch-scoped verification . . . . . . . . . . . . . .  11
      5.3.  Effect Record and the confirmed-effect binding  . . . . .  12
-     5.4.  Assurance . . . . . . . . . . . . . . . . . . . . . . . .  14
+     5.4.  Assurance . . . . . . . . . . . . . . . . . . . . . . . .  15
        5.4.1.  Cross-party assurance . . . . . . . . . . . . . . . .  15
-       5.4.2.  Provenance mode and backfilled records  . . . . . . .  17
+       5.4.2.  Provenance mode and backfilled records  . . . . . . .  18
      5.5.  Disposition and the verdict reason-class  . . . . . . . .  21
        5.5.1.  The verdict_class vocabulary  . . . . . . . . . . . .  22
        5.5.2.  Orthogonality with effect_mode  . . . . . . . . . . .  24
@@ -656,13 +656,13 @@ Internet-Draft            Agent Action Capsules           September 2026
    response.  A verifier MUST treat confirmed with a missing
    response_digest as a verification failure.  This is the byte-level
    mechanism behind the may/did distinction: "confirmed" is an observed
-   result, never a promise.
+   result, never a promise.  Under Section 5.4's rederivation from the
+   evidence present, such a record's effect_mode is
+   dispatched_unconfirmed, never confirmed: the effect was dispatched,
+   but the binding this section requires did not hold, and a rederived
+   grade cannot exceed what the bytes support.
 
-   The Effect Record also carries the logical type (registry-governed,
-   Section 12), an optional external_ref join key for later outcomes,
-   and an irreversibility_class — an ordered consequence enumeration
-   (two_way, one_way_recoverable, one_way_consequential,
-   one_way_terminal; registry-governed, Section 12).
+
 
 
 
@@ -673,6 +673,12 @@ Mih                       Expires 26 March 2027                [Page 12]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
+
+   The Effect Record also carries the logical type (registry-governed,
+   Section 12), an optional external_ref join key for later outcomes,
+   and an irreversibility_class — an ordered consequence enumeration
+   (two_way, one_way_recoverable, one_way_consequential,
+   one_way_terminal; registry-governed, Section 12).
 
    The Effect Record additionally carries effect_attestation: WHO
    vouches for the effect's execution — the evidence grade of the effect
@@ -714,14 +720,8 @@ Internet-Draft            Agent Action Capsules           September 2026
    phantom grade would poison grade-based queries.  It becomes REQUIRED
    the moment dispatch occurs.
 
-   The matrix is total over the effect.status values of Section 5.3.  An
-   effect.status of failed (the effect was dispatched and the runtime
-   reported a failure; state known) derives effect_mode:
-   "dispatched_unconfirmed" — the effect was dispatched and its result,
-   though a failure, was not gate-confirmed; therefore
-   effect_attestation is REQUIRED. reverted (a previously-committed
-   effect was undone) likewise derives effect_mode:
-   "dispatched_unconfirmed" and REQUIRES effect_attestation; the
+
+
 
 
 
@@ -730,6 +730,14 @@ Mih                       Expires 26 March 2027                [Page 13]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
+   The matrix is total over the effect.status values of Section 5.3.  An
+   effect.status of failed (the effect was dispatched and the runtime
+   reported a failure; state known) derives effect_mode:
+   "dispatched_unconfirmed" — the effect was dispatched and its result,
+   though a failure, was not gate-confirmed; therefore
+   effect_attestation is REQUIRED. reverted (a previously-committed
+   effect was undone) likewise derives effect_mode:
+   "dispatched_unconfirmed" and REQUIRES effect_attestation; the
    underlying committed effect it reverses is correlated separately via
    external_ref / decision_id (the Effect Record fields, Section 5.3),
    not by a distinct effect_mode.  So every effect.status other than
@@ -770,14 +778,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    references described in this paragraph use the CPB typed-reference
    mechanism.
 
-5.4.  Assurance
-
-   Every Capsule carries an assurance object stating, as independently-
-   rederivable claims: attestation_mode ("self_attested" or "anchored"),
-   effect_mode ("not_applicable", "dispatched_unconfirmed", or
-   "confirmed"), and ledger_mode ("standalone", "chained", or
-   "anchored"). ledger_mode records the custody tier of the record:
-   "standalone" is a lone Capsule (no chain linkage); "chained" is a
 
 
 
@@ -786,6 +786,14 @@ Mih                       Expires 26 March 2027                [Page 14]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
+5.4.  Assurance
+
+   Every Capsule carries an assurance object stating, as independently-
+   rederivable claims: attestation_mode ("self_attested" or "anchored"),
+   effect_mode ("not_applicable", "dispatched_unconfirmed", or
+   "confirmed"), and ledger_mode ("standalone", "chained", or
+   "anchored"). ledger_mode records the custody tier of the record:
+   "standalone" is a lone Capsule (no chain linkage); "chained" is a
    Capsule whose hash-chain linkage to a predecessor is present and
    intact; "anchored" is a chained Capsule whose chain root has
    additionally been committed to an independent transparency log.  A
@@ -797,6 +805,21 @@ Internet-Draft            Agent Action Capsules           September 2026
    producer MUST NOT record an assurance mode it did not achieve; a
    verifier rederives each mode from the evidence present and reports
    any overclaim.
+
+   chained is derived solely from the presence and integrity of the
+   Capsule's own chain-linkage block (Section 5.5.4) — the fields
+   committed under chain at seal time.  Parent _resolution_ is a
+   separate, store-level question (check 6, Section 6): whether a store
+   can locate and validate the chain parent a Capsule names.  A missing
+   or unresolvable parent is reported there, but it never downgrades
+   ledger_mode — a Capsule handed over standalone, without the store
+   that holds its parent, still derives chained from its own linkage
+   block.  If parent existence instead fed ledger_mode, the same Capsule
+   would derive chained inside a full ledger and standalone handed over
+   alone; an assurance tier that depends on what the verifier happens to
+   hold is not a property of the record. (anchored is not a
+   counterexample: its receipt travels with the Capsule, so what the
+   verifier holds does not change.)
 
 5.4.1.  Cross-party assurance
 
@@ -811,6 +834,14 @@ Internet-Draft            Agent Action Capsules           September 2026
    "how much of the counterparty's own signed evidence is bound into
    this record" (exchange evidence).  These are independent facts a
    producer can hold in any combination — a self_attested record can
+
+
+
+Mih                       Expires 26 March 2027                [Page 15]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    still be full_bilateral (both parties signed, neither side anchored
    yet), and an anchored record can still stand on unilateral_fallback
    evidence alone (a solo attestation that was independently anchored).
@@ -822,25 +853,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    unilateral_fallback < acknowledged_receipt < full_bilateral for
    overclaim detection — the same never-grades-up discipline Section 5.4
    already applies to attestation_mode, effect_mode, and ledger_mode:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                       Expires 26 March 2027                [Page 15]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
 
     +======================+=========================================+
     | cross_party_rung     | Meaning                                 |
@@ -877,6 +889,15 @@ Internet-Draft            Agent Action Capsules           September 2026
    evidence actually supports — the same treatment Section 6 already
    gives an overclaimed attestation_mode or ledger_mode.
 
+
+
+
+
+Mih                       Expires 26 March 2027                [Page 16]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    A Capsule that participates in a cross-party exchange carries an
    OPTIONAL top-level cross_party block:
 
@@ -888,15 +909,6 @@ Internet-Draft            Agent Action Capsules           September 2026
       signed half.  Its absence means no usable counterparty evidence
       was obtained — the counterparty was unreachable, or its half did
       not verify at the layer that checked it.
-
-
-
-
-
-Mih                       Expires 26 March 2027                [Page 16]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
 
    *  correlator (REQUIRED when counterparty_ref is present): an opaque
       profile-native correlation string joining initiator_ref and
@@ -927,6 +939,21 @@ Internet-Draft            Agent Action Capsules           September 2026
    this profile carries only the rung claim and the minimal correlation
    evidence needed to rederive it honestly.
 
+
+
+
+
+
+
+
+
+
+
+Mih                       Expires 26 March 2027                [Page 17]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
 5.4.2.  Provenance mode and backfilled records
 
    Most Capsules are sealed close to when the action they describe
@@ -946,14 +973,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    | mode               |string     |REQUIRED    | "contemporaneous"   |
    |                    |           |when the    | or "backfilled"     |
    |                    |           |block is    | (closed enum).  A   |
-
-
-
-Mih                       Expires 26 March 2027                [Page 17]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    |                    |           |present     | provenance_mode     |
    |                    |           |            | block is OPTIONAL   |
    |                    |           |            | and its absence     |
@@ -983,6 +1002,14 @@ Internet-Draft            Agent Action Capsules           September 2026
    |                    |           |"backfilled"| occurred.  Self-    |
    |                    |           |            | attested: a         |
    |                    |           |            | producer claim      |
+
+
+
+Mih                       Expires 26 March 2027                [Page 18]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    |                    |           |            | about the past,     |
    |                    |           |            | never               |
    |                    |           |            | independently       |
@@ -1002,14 +1029,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    |                    |           |"backfilled"| appended to the     |
    |                    |           |            | producer's own      |
    |                    |           |            | ledger.             |
-
-
-
-Mih                       Expires 26 March 2027                [Page 18]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    +--------------------+-----------+------------+---------------------+
    | time_rung          |string     |OPTIONAL;   | "self_attested" or  |
    |                    |           |MUST be     | "witnessed",        |
@@ -1039,6 +1058,14 @@ Internet-Draft            Agent Action Capsules           September 2026
    uses a different key deliberately so that adding one never collides
    with, shadows, or reinterprets the other.
 
+
+
+
+Mih                       Expires 26 March 2027                [Page 19]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    A producer MUST NOT claim time_rung: "witnessed" unless a
    references[] entry (Section 5.5.5) cites, by digest, a signed or
    independently witnessed timestamp corroborating the source's claimed
@@ -1058,14 +1085,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    itself also a producer self-attestation, not a Receipt.  A verifier
    and every downstream consumer MUST treat a backfilled record's
    occurrence-time claim as no stronger than self-attested (time_rung:
-
-
-
-Mih                       Expires 26 March 2027                [Page 19]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    "self_attested") unless a witnessed reference under
    corroborates_source_time is present and well-formed — and even then,
    corroboration of the source's claim is a distinct fact from this
@@ -1095,6 +1114,14 @@ Internet-Draft            Agent Action Capsules           September 2026
    *Duplicates.* When the same logical event already has a
    contemporaneous Capsule in this producer's own stream, an importing
    producer SHOULD chain the backfilled Capsule to it with
+
+
+
+Mih                       Expires 26 March 2027                [Page 20]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    chain.relation: "duplicates" (Section 5.5.4, Section 12), citing the
    contemporaneous Capsule as chain.parent_capsule_id. duplicates is
    non-terminal, like confirms: the parent's own state is unaffected.
@@ -1114,14 +1141,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    predecessor spliced in after the fact to make the backfilled record
    appear as though it had always been there.  Retroactively re-linking
    history to insert an imported record at the position its
-
-
-
-Mih                       Expires 26 March 2027                [Page 20]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    source_asserted_at implies would change the identity of every
    already-sealed Capsule whose chain it is spliced into (capsule_id
    commits chain, Section 5.1), which is impossible without invalidating
@@ -1152,6 +1171,13 @@ Internet-Draft            Agent Action Capsules           September 2026
       false. human_disposed: true REQUIRES approver: "human"; a producer
       MUST NOT claim a human disposed what a policy did.
 
+
+
+Mih                       Expires 26 March 2027                [Page 21]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    *  authority (OPTIONAL): an opaque reference to the authority under
       which a non-human disposition acted.  A conforming Capsule carries
       at most the reference, never the authority's internal structure.
@@ -1169,14 +1195,6 @@ Internet-Draft            Agent Action Capsules           September 2026
       refusal produce the same digest.  The member is absent (not a
       digest of an empty object) when a verdict has no reason, such as a
       clean "executed".
-
-
-
-
-Mih                       Expires 26 March 2027                [Page 21]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
 
    *  expiry_policy (OPTIONAL; deferral dispositions only): a digested
       {ttl_seconds, on_expiry} object — ttl_seconds is an integer count
@@ -1203,24 +1221,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    verdict_class records WHY the action terminated as it did.  The
    seeded vocabulary (registry-governed, Section 12; unregistered values
    are informational to a verifier, never a rejection):
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
