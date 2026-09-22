@@ -1,0 +1,112 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# DESIGN DRAFT — NOT ACTIVATED. Not validated by any CI job. This is the
+# proposed AAC-flavored equivalent of scitt-payload-binding's
+# registry/entries/TEMPLATE.yaml, adapted for AAC's own vocabularies
+# (verdict_class, disposition.decision, effect.type, irreversibility_class,
+# effect_attestation, chain.relation, citation_purpose, domain, provenance,
+# provenance_mode, and any future registry added under spec/REGISTRY.md).
+# See ../README.md for the full design writeup and why AAC's questions
+# differ from CPB's seven.
+#
+# Copy this file to registry-design/entries/<name>.yaml (design stage) —
+# once activated, entries/<name>.yaml under a real, CI-wired directory.
+# AAC editors MUST NOT fill in a registrant's answers on their behalf
+# (same rule as CPB's REGISTRY.md).
+
+# ---------------------------------------------------------------------------
+# Identity
+# ---------------------------------------------------------------------------
+
+# The controlled token this entry registers (exact spelling as it will
+# appear on the wire, e.g. in verdict_class or chain.relation).
+name: your-vocabulary-value
+
+# Which of AAC's registries (spec/REGISTRY.md §1-§15, or a future one) this
+# value belongs to. One value per entry — a token used in two registries by
+# coincidence of spelling (see the deferred token-ownership convention,
+# spec/REGISTRY.md:72-74/:81-83) is two entries, one owning and one
+# cross-referencing, never one entry claiming both.
+target_registry: verdict_class  # e.g. verdict_class | disposition.decision | effect.type | irreversibility_class | effect_attestation | chain.relation | citation_purpose | domain | provenance | provenance_mode
+
+# One of: owner_authored | third_party_documented | provisional | reserved
+# Same semantics as CPB's rung field (see scitt-payload-binding's
+# TEMPLATE.yaml) — owner_authored -> owner-confirmed, third_party_documented
+# -> third-party-documented (AAC has no distinct designated-expert-panel
+# organization requirement today; if Phase 1(b)'s CPB precedent is followed,
+# a future revision of this template would add one), provisional -> holding
+# pen until the five questions below are answerable, reserved -> name-hold
+# only, no five_questions/fixtures required.
+rung: provisional
+
+# Must match rung.
+status: provisional
+
+# Publicly available specification defining this value's semantics: an
+# Internet-Draft (never "RFC" pre-publication), a companion profile draft,
+# or equivalent. MUST be a stable, citable revision, not "the latest draft."
+reference: draft-mih-scitt-agent-action-capsule-05  # or the relevant companion draft
+
+owner:
+  name: ""
+  affiliation: ""
+  github: ""
+
+# Required whenever the registrant is also an AAC editor/co-author — makes
+# independence posture computable from the record, same reason CPB requires
+# it (REGISTRY.md's Rung 1 disclosure requirement).
+disclosure: ""
+
+# ---------------------------------------------------------------------------
+# The five questions
+# ---------------------------------------------------------------------------
+five_questions:
+  # (1) Clear semantics: would two independent implementations apply this
+  # value identically? State the rule in one or two sentences, not just
+  # "yes."
+  clear_semantics: "TBD — <why>"
+
+  # (2) No overlap: does this value duplicate the meaning of an existing
+  # value in the SAME registry? If this token intentionally shares spelling
+  # with a value already owned by another registry (the deferred-style
+  # cross-reference convention), say so here and name the owning registry —
+  # this is not an overlap, it is a declared cross-reference.
+  no_overlap: "TBD — <why>"
+
+  # (3) Publicly available spec: cite the exact section of `reference`
+  # above that defines this value. A bare draft name without a section
+  # pointer does not satisfy this question.
+  public_spec_citation: "TBD — <why>"
+
+  # (4) Ordering position — REQUIRED (not "N/A", state it) only if
+  # target_registry is one of AAC's ordered registries (irreversibility_class;
+  # effect_attestation's grade floor; provenance_mode.time_rung). Otherwise
+  # literally "N/A — <registry> is not an ordered vocabulary."
+  ordering_position: "N/A — <registry> is not an ordered vocabulary."
+
+  # (5) Verifier behaviour on the unknown value — the never-reject case.
+  # Point at the committed fixture (see fixtures.never_reject_case below)
+  # proving a verifier that has never seen this value does not reject the
+  # record solely because the value is unrecognized.
+  never_reject_case: "TBD — <path to fixture, once committed>"
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+fixtures:
+  never_reject_case:
+    vectors_dir: ""  # e.g. vectors/registry/verdict_class/your-vocabulary-value/
+    # A record carrying this value, plus the expected verifier outcome
+    # (structurally valid / digest-verifiable) against a verifier build with
+    # no knowledge of this value's semantics. See
+    # ../prototype_never_reject_gate.py for the shape this fixture takes.
+
+# Consuming profile(s) — same Gate B rule as CPB: a spec-revision-pinned
+# consumer, never the entry's own defining document, never a bare project
+# name or URL without a revision/commit pin.
+consuming_profile: "TBD — <name>, pinned at <revision or commit>"
+
+open_questions:
+  - "TBD — <why>"
+
+notes: ""
