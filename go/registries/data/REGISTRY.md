@@ -136,9 +136,11 @@ Initial contents:
 | `confirms` | Non-terminal: this capsule observes or records the outcome of the parent — the parent's open state remains. The most common chain link: *attempted → confirmed*. |
 | `supersedes` | Terminal transition over the parent — resolution, expiry, escalation close/replace the parent's open state. |
 | `epoch_opens` | Non-terminal: this capsule opens a new operational configuration epoch. The chain parent MUST be the last capsule produced under the prior epoch. The opening capsule carries the new `epoch_id`. Defined in §5.1 (Configuration epochs, Epoch-boundary Capsules) of the Internet-Draft. |
+| `duplicates` | Non-terminal: this capsule is a backfilled import of the same logical event already recorded by the parent, a contemporaneous capsule in this producer's own stream. Defined in the Internet-Draft's Provenance mode section (`-05` and later revisions). A `duplicates`-linked pair is counted once by verifiers and downstream evidence evaluators; the contemporaneous parent's assurance and disposition govern. |
 
 **Designated-expert guidance (this registry).** Seeded with the core non-terminal and terminal
-relations, plus `epoch_opens` for configuration-epoch boundaries. Additional
+relations, plus `epoch_opens` for configuration-epoch boundaries and `duplicates`
+for backfilled-record deduplication. Additional
 non-terminal relations — deposit-toward-open and effort-toward-open relations,
 or `amends` / `contradicts` — are expected future registrations, each admitted
 once its semantics and any verifier consequence are pinned in a publicly
@@ -254,12 +256,43 @@ digest contexts.
 |---|---|
 | `acted_on` | The citing Capsule's action targeted, consumed, or was performed against the cited record's declared content. Not a custody claim. |
 | `responds_to` | The citing Capsule addresses or answers the cited record without a same-stream chain relationship to it. |
+| `corroborates_source_time` | The citing Capsule's `references[]` entry cites, by digest, a signed or independently witnessed timestamp supporting a `provenance_mode` block's `source_asserted_at` claim. Defined in the Internet-Draft's Provenance mode section (`-05` and later revisions). The only citation this profile permits to raise `provenance_mode.time_rung` from `self_attested` to `witnessed`. |
 
 **Boundary rule.** A citation to the producer's own same-stream `chain`
 parent is never expressed via `references`/`citation_purpose`; a
 `references` entry MUST NOT duplicate `chain.parent_capsule_id`.
 
-## 12. Evidence Bundle kind
+## 12. `provenance_mode`
+
+Defined in the Internet-Draft's Provenance mode section (`-05` and later
+revisions). A MODE on the ordinary Capsule — never a distinct record type —
+disambiguating a contemporaneous action record from a backfilled import of a
+historical one. Distinct from, and never a repurposing of, the unrelated
+top-level `provenance` member (§9 above, the `-02` dedup-rank signal): the
+two names are deliberately different so that adding one never collides with
+the other. **Optional**; absent implies `mode: "contemporaneous"`.
+
+| `provenance_mode.mode` value | Semantics |
+|---|---|
+| `contemporaneous` | The default. The Capsule was produced close to when the action occurred; no import metadata is carried. |
+| `backfilled` | The Capsule records an action that occurred before this Capsule was produced — a migration, reconciliation, or bulk historical import. REQUIRES `source_ref`, `source_asserted_at`, `import_batch`, and `imported_at` on the same block. |
+
+`provenance_mode.mode` is a closed two-value enum, not itself
+Specification-Required-governed (mirroring `assurance.attestation_mode`'s
+treatment, Internet-Draft §5.3): an unrecognized `mode` value is a
+structural failure, not an informational finding, because downstream
+evidence-sufficiency logic depends on being able to tell the two modes
+apart.
+
+`provenance_mode.time_rung` (OPTIONAL; MUST be absent unless `mode` is
+`"backfilled"`) is `self_attested` or `witnessed`, ordered
+`self_attested` < `witnessed` for overclaim detection — the same
+never-grades-up discipline as `attestation_mode` / `ledger_mode` /
+`cross_party_rung`. Absent implies `self_attested`. A producer MUST NOT
+claim `witnessed` without a `references[]` entry carrying
+`citation_purpose: "corroborates_source_time"` (§11 above).
+
+## 13. Evidence Bundle kind
 
 Defined in `draft-mih-zhang-agent-action-capsule-evidence-bundle`,
 "Evidence Bundle Object". This is a **Specification Required** registry.
@@ -270,7 +303,7 @@ payload type.
 |---|---|
 | `evidence-bundle/v2` | Version 2 AAC Evidence Bundle, with `bundle_version: "2"`. |
 
-## 13. Evidence Bundle extension kind
+## 14. Evidence Bundle extension kind
 
 Defined in `draft-mih-zhang-agent-action-capsule-evidence-bundle`,
 "Typed Extensions". This is a **Specification Required** registry. The
@@ -283,7 +316,7 @@ No initial extension kind is defined. A company-specific row model such as
 `report/v1` is an extension only when its independently available
 specification is registered; this registry does not define that row model.
 
-## 14. Evidence Bundle countersignature type
+## 15. Evidence Bundle countersignature type
 
 Defined in `draft-mih-zhang-agent-action-capsule-evidence-bundle`,
 "Countersignatures". This is a **Specification Required** registry. It names
