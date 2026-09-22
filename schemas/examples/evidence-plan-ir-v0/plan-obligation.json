@@ -1,0 +1,57 @@
+{
+  "header": {
+    "contract_version": "ec:oo-obligation-review:2026-09-22@1",
+    "created_at": "2026-09-22T00:00:00Z",
+    "ir_version": "evidence-plan-ir-v0",
+    "planner_id": "local:oo-onprem-planner-v1",
+    "replay_seed": "oo-obligation-review-seed-1"
+  },
+  "nodes": [
+    {
+      "classification": "LOCAL_ONLY",
+      "contract_ref": "ec:oo-obligation-review:2026-09-22@1",
+      "family": "traditional",
+      "id": "node-1",
+      "inputs": [
+        {
+          "by": "digest",
+          "digest": "5711c8ad6f7501dc3819518d21111d0242151298f458bac4fbc307371e7e2801",
+          "digest_alg": "SHA-256"
+        }
+      ],
+      "operator": "traditional.fold_replay",
+      "requirement_ref": "req-obligation-1",
+      "tier": "recomputed"
+    },
+    {
+      "classification": "ABSTRACTABLE",
+      "contract_ref": "ec:oo-obligation-review:2026-09-22@1",
+      "family": "semantic",
+      "id": "node-2",
+      "inputs": [
+        {
+          "by": "node",
+          "node_id": "node-1"
+        }
+      ],
+      "operator": "semantic.judge_adjudicate",
+      "requirement_ref": "req-obligation-1",
+      "tier": "judged"
+    },
+    {
+      "classification": "PUBLIC",
+      "contract_ref": "ec:oo-obligation-review:2026-09-22@1",
+      "family": "decision",
+      "id": "node-3",
+      "inputs": [
+        {
+          "by": "node",
+          "node_id": "node-2"
+        }
+      ],
+      "operator": "decision.resolve_verdict",
+      "requirement_ref": "req-obligation-1",
+      "tier": "recomputed"
+    }
+  ]
+}

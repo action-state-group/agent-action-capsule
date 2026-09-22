@@ -1,0 +1,57 @@
+{
+  "header": {
+    "contract_version": "ec:oo-process-review:2026-09-22@1",
+    "created_at": "2026-09-22T00:00:00Z",
+    "ir_version": "evidence-plan-ir-v0",
+    "planner_id": "remote:oo-cloud-planner-v1",
+    "replay_seed": "oo-process-review-seed-1"
+  },
+  "nodes": [
+    {
+      "classification": "CLOUD_SAFE",
+      "contract_ref": "ec:oo-process-review:2026-09-22@1",
+      "family": "traditional",
+      "id": "node-1",
+      "inputs": [
+        {
+          "by": "digest",
+          "digest": "97453d0a33b70408c5a9e1486d9ae2b9f31486ffc37f3f8615cac50016ba9142",
+          "digest_alg": "SHA-256"
+        }
+      ],
+      "operator": "traditional.fold_replay",
+      "requirement_ref": "req-process-1",
+      "tier": "recomputed"
+    },
+    {
+      "classification": "CLOUD_SAFE",
+      "contract_ref": "ec:oo-process-review:2026-09-22@1",
+      "family": "assurance",
+      "id": "node-2",
+      "inputs": [
+        {
+          "by": "node",
+          "node_id": "node-1"
+        }
+      ],
+      "operator": "assurance.bundle",
+      "requirement_ref": "req-process-1",
+      "tier": "recomputed"
+    },
+    {
+      "classification": "PUBLIC",
+      "contract_ref": "ec:oo-process-review:2026-09-22@1",
+      "family": "decision",
+      "id": "node-3",
+      "inputs": [
+        {
+          "by": "node",
+          "node_id": "node-2"
+        }
+      ],
+      "operator": "decision.resolve_verdict",
+      "requirement_ref": "req-process-1",
+      "tier": "recomputed"
+    }
+  ]
+}

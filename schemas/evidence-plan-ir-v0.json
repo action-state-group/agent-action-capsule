@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentactioncapsule.org/schemas/evidence-plan-ir-v0.json",
+  "title": "Evidence Plan IR v0",
+  "description": "Companion schema for spec/evidence-plan-ir-v0.md. The root schema validates an Evidence Plan document. $defs/PlanResult and $defs/AttestationRecord validate the two other document shapes this IR defines, each via a direct $ref to that $def.",
+  "$ref": "#/$defs/EvidencePlan",
+  "$defs": {
+    "HexDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "DigestRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest_alg", "digest"],
+      "properties": {
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" }
+      }
+    },
+    "InputRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["by", "digest_alg", "digest"],
+          "properties": {
+            "by": { "const": "digest" },
+            "digest_alg": { "const": "SHA-256" },
+            "digest": { "$ref": "#/$defs/HexDigest" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["by", "node_id"],
+          "properties": {
+            "by": { "const": "node" },
+            "node_id": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "Family": {
+      "enum": ["traditional", "semantic", "evidence", "assurance", "decision"]
+    },
+    "Classification": {
+      "enum": ["LOCAL_ONLY", "ABSTRACTABLE", "CLOUD_SAFE", "PUBLIC"]
+    },
+    "Tier": {
+      "enum": ["recomputed", "judged"]
+    },
+    "Operator": {
+      "description": "The closed v0 operator catalogue (spec §5). family/tier per operator are fixed by PlanNode's if/then blocks below, not re-listed here.",
+      "enum": [
+        "traditional.fold_replay",
+        "semantic.judge_adjudicate",
+        "evidence.request_answer",
+        "assurance.verify",
+        "assurance.bundle",
+        "decision.resolve_verdict"
+      ]
+    },
+    "ContractVersionRef": {
+      "description": "Compact versioned Evidence Contract reference: <contract_id>@<version>.",
+      "type": "string",
+      "pattern": "^[^@\\s]+@[^@\\s]+$"
+    },
+    "PlanHeader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_version", "ir_version", "planner_id", "created_at", "replay_seed"],
+      "properties": {
+        "contract_version": { "$ref": "#/$defs/ContractVersionRef" },
+        "ir_version": { "const": "evidence-plan-ir-v0" },
+        "planner_id": {
+          "type": "string",
+          "pattern": "^(local|remote):[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "created_at": { "type": "string", "format": "date-time" },
+        "replay_seed": { "type": "string", "minLength": 1 }
+      }
+    },
+    "PlanNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "family", "operator", "inputs", "classification", "tier",
+        "contract_ref", "requirement_ref"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "family": { "$ref": "#/$defs/Family" },
+        "operator": { "$ref": "#/$defs/Operator" },
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/InputRef" }
+        },
+        "classification": { "$ref": "#/$defs/Classification" },
+        "tier": { "$ref": "#/$defs/Tier" },
+        "contract_ref": { "$ref": "#/$defs/ContractVersionRef" },
+        "requirement_ref": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "operator": { "const": "traditional.fold_replay" } } },
+          "then": {
+            "properties": {
+              "family": { "const": "traditional" },
+              "tier": { "const": "recomputed" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "operator": { "const": "semantic.judge_adjudicate" } } },
+          "then": {
+            "properties": {
+              "family": { "const": "semantic" },
+              "tier": { "const": "judged" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "operator": { "const": "evidence.request_answer" } } },
+          "then": {
+            "properties": {
+              "family": { "const": "evidence" },
+              "tier": { "const": "recomputed" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operator": { "enum": ["assurance.verify", "assurance.bundle"] }
+            }
+          },
+          "then": {
+            "properties": {
+              "family": { "const": "assurance" },
+              "tier": { "const": "recomputed" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "operator": { "const": "decision.resolve_verdict" } } },
+          "then": {
+            "properties": {
+              "family": { "const": "decision" },
+              "tier": { "const": "recomputed" }
+            }
+          }
+        }
+      ]
+    },
+    "EvidencePlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["header", "nodes"],
+      "properties": {
+        "header": { "$ref": "#/$defs/PlanHeader" },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/PlanNode" }
+        }
+      },
+      "if": {
+        "properties": {
+          "header": {
+            "properties": {
+              "planner_id": { "not": { "pattern": "^local:" } }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "properties": {
+                "classification": { "not": { "const": "LOCAL_ONLY" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ResultEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "outputs", "attestation_ref"],
+      "properties": {
+        "status": {
+          "enum": [
+            "SATISFIED", "INSUFFICIENT", "NOT_FOUND", "NOT_COMMITTED",
+            "WITHHELD", "CONTRADICTED", "NOT_APPLICABLE", "UNKNOWN"
+          ]
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DigestRef" }
+        },
+        "attestation_ref": { "$ref": "#/$defs/DigestRef" }
+      }
+    },
+    "PlanResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plan_ref", "results"],
+      "properties": {
+        "plan_ref": { "$ref": "#/$defs/DigestRef" },
+        "results": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/ResultEnvelope" }
+        }
+      }
+    },
+    "Adjudicator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "model_version": { "type": "string", "minLength": 1 }
+      },
+      "dependentRequired": {
+        "model": ["model_version"],
+        "model_version": ["model"]
+      }
+    },
+    "AttestationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adjudicator", "operator", "inputs", "policy_digest", "contract_version"],
+      "properties": {
+        "adjudicator": { "$ref": "#/$defs/Adjudicator" },
+        "operator": { "$ref": "#/$defs/Operator" },
+        "inputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/DigestRef" }
+        },
+        "policy_digest": { "$ref": "#/$defs/DigestRef" },
+        "contract_version": { "$ref": "#/$defs/ContractVersionRef" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "operator": { "const": "semantic.judge_adjudicate" } } },
+          "then": { "properties": { "adjudicator": { "required": ["model", "model_version"] } } },
+          "else": {
+            "properties": {
+              "adjudicator": {
+                "not": { "anyOf": [{ "required": ["model"] }, { "required": ["model_version"] }] }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
