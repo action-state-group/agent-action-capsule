@@ -29,7 +29,7 @@
       "effect_mode": "dispatched_unconfirmed",
       "ledger_mode": "standalone"
     },
-    "capsule_id": "6e61fa84886b5b8be2ef4e5e6daeb1946a218270a5c487839b93e35293f2fe7f",
+    "capsule_id": "47c938cc979ceb5d1251b540c24cb4cc444f99c651ae4b7b9fc54c618235bb78",
     "developer": "cosa-agent@v1",
     "disposition": {
       "approver": "policy",
@@ -47,7 +47,7 @@
     "model_attestation": {
       "compute_attestation": {
         "human_authorization_ref": {
-          "digest": "a1bee3358bebec5bee352db25fa286a927c2c34992696d6aac06a0e80cad16ee",
+          "digest": "228bacf852f63bdf20dd7d07ecc45d2e0c17b2f3f9ebce20279e210be6345bbb",
           "profile": "EP-RECEIPT-v1",
           "receipt_id": "ep:receipt:jkintzele-curtailment-0001"
         },
