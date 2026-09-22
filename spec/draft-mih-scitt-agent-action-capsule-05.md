@@ -119,7 +119,7 @@ confirmed-effect binding that distinguishes a dispatched attempt from an
 observed result, and an honest human-in-the-loop flag. Capsules are
 identified independently of signing and MAY be authenticated by one or more
 COSE_Sign1 Producer Envelopes. Its Capsule ID can separately be made
-transparent by registration in a SCITT Transparency Service. A Capsule is recorded on
+transparent by registration in a SCITT Transparency Service {{I-D.ietf-scitt-scrapi}}. A Capsule is recorded on
 every verdict, including refusals: a blocked or denied Capsule is the
 auditor-grade evidence that a gate worked.
 
@@ -257,8 +257,8 @@ DID, SPIFFE, or other authorization policy without changing this wire profile.
 
 A bare Producer Envelope is not an {{RFC9943}} Signed Statement. Its protected
 map intentionally contains only the three entries in {{envelope}}, whereas an
-RFC 9943 Signed Statement additionally requires protected CWT `iss` and `sub`
-claims. A conforming Transparency Service therefore MUST NOT treat a bare
+RFC 9943 Signed Statement additionally requires protected CWT {{RFC8392}} `iss`
+and `sub` claims. A conforming Transparency Service therefore MUST NOT treat a bare
 Producer Envelope as an RFC 9943 Signed Statement.
 
 To make a Capsule ID transparent, a registrar creates a distinct RFC 9943
