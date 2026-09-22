@@ -36,6 +36,7 @@ from .contracts import (
     EffectRecord,
     InvariantError,
     ModelAttestation,
+    ProvenanceMode,
     ReferenceEntry,
     SelfReportedReasoning,
     derive_effect_mode,
@@ -82,6 +83,7 @@ def emit(
     references: tuple[ReferenceEntry, ...] | None = None,
     domain: str | None = None,
     provenance: str | None = None,
+    provenance_mode: ProvenanceMode | None = None,
     self_reported_reasoning_digest: str | None = None,
     spec_version: str = DEFAULT_SPEC_VERSION,
     format_version: str = DEFAULT_FORMAT_VERSION,
@@ -131,6 +133,12 @@ def emit(
         provenance: Dedup rank signal — ``"gate"``(3), ``"runtime"``(2), or
             ``"collector"``(1). Absent implies ``"runtime"``. Higher rank wins
             on dedup. Registry-governed; unknown values are informational.
+        provenance_mode: Backfill-vs-contemporaneous mode (§5.3(bis));
+            distinct from ``provenance`` above. ``None`` (default) omits the
+            block, implying ``mode: "contemporaneous"``. Pass a
+            ``ProvenanceMode(mode="backfilled", ...)`` to mark an imported
+            historical record; its constructor enforces the four companion
+            fields the spec REQUIRES for that mode.
         self_reported_reasoning_digest: 64-hex SHA-256 digest of the CoT
             or reasoning content that produced this action. Self-reported and
             unattested — committed to capsule_id so tampering is detectable,
@@ -217,6 +225,7 @@ def emit(
         canonicalization_id=CANONICALIZATION_JCS,
         domain=domain,
         provenance=provenance,
+        provenance_mode=provenance_mode,
         model_attestation=model_att,
         self_reported_reasoning=srr,
         effect=effect,

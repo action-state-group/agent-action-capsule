@@ -31,7 +31,9 @@ from .contracts import (
     DOMAIN_VALUES,
     LEDGER_MODE_RANK,
     NEVER_DISPATCH_VERDICT_CLASSES,
+    PROVENANCE_MODES,
     PROVENANCE_VALUES,
+    TIME_RUNGS,
     VALID_APPROVERS,
     derive_effect_mode,
     is_hex64,
@@ -329,7 +331,7 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
                 "format_version '4' REQUIRES canonicalization_id='jcs' (§5.1)",
                 check=1,
             ))
-    for fld in ("effect", "assurance", "disposition", "chain", "cross_party", "self_reported_reasoning"):
+    for fld in ("effect", "assurance", "disposition", "chain", "cross_party", "self_reported_reasoning", "provenance_mode"):
         if fld in capsule and not isinstance(capsule[fld], Mapping):
             findings.append(Finding("block_not_object", f"{fld} MUST be a JSON object when present", check=1))
     for fld in ("domain", "provenance"):
@@ -492,7 +494,124 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
 
     findings.extend(reference_checks.get(8, []))
 
-    # ---- Check 9: domain / provenance unknown-value (§-02) -----------------
+    # ---- Check 9: Provenance mode -------------------------------------------
+    # A backfilled record's occurrence-time claim is capped at self-attested
+    # unless a witnessed reference is cited (§5.3(bis) Provenance mode). Unlike
+    # the informational overclaim treatment check 7 gives attestation_mode /
+    # ledger_mode / cross_party_rung, a provenance_mode time-assurance overclaim
+    # and the imported_at==source_asserted_at laundering shape both gate `ok` —
+    # this profile treats them as falsifiable dishonesty claims, not merely
+    # unverifiable ones.
+    pm = _obj(capsule, "provenance_mode")
+    if pm is not None:
+        mode = pm.get("mode")
+        if mode not in PROVENANCE_MODES:
+            findings.append(Finding(
+                "provenance_mode_invalid",
+                f"provenance_mode.mode MUST be one of {sorted(PROVENANCE_MODES)} "
+                f"(§5.3(bis) Provenance mode); got {mode!r}",
+                check=9,
+            ))
+        else:
+            derived["provenance_mode"] = mode
+
+        if mode == "backfilled":
+            for req in ("source_ref", "source_asserted_at", "import_batch", "imported_at"):
+                if req not in pm or pm.get(req) in (None, ""):
+                    findings.append(Finding(
+                        "provenance_mode_missing_required_field",
+                        f"provenance_mode.{req} is REQUIRED when mode='backfilled' "
+                        "(§5.3(bis) Provenance mode)",
+                        check=9,
+                    ))
+            source_ref = pm.get("source_ref")
+            if isinstance(source_ref, Mapping):
+                for req in ("type", "digest_alg", "digest"):
+                    v = source_ref.get(req)
+                    if not isinstance(v, str) or not v:
+                        findings.append(Finding(
+                            "provenance_mode_source_ref_malformed",
+                            f"provenance_mode.source_ref.{req} MUST be a non-empty "
+                            "string (§5.3(bis) Provenance mode)",
+                            check=9,
+                        ))
+            elif "source_ref" in pm:
+                findings.append(Finding(
+                    "provenance_mode_source_ref_malformed",
+                    "provenance_mode.source_ref MUST be a JSON object when present "
+                    "(§5.3(bis) Provenance mode)",
+                    check=9,
+                ))
+
+            # Laundering shape: an equal imported_at/source_asserted_at is exactly
+            # the byte pattern that would make a backfilled import look
+            # contemporaneous. Never treated as corroboration (§5.3(bis)).
+            imported_at = pm.get("imported_at")
+            source_asserted_at = pm.get("source_asserted_at")
+            if (
+                isinstance(imported_at, str) and isinstance(source_asserted_at, str)
+                and imported_at == source_asserted_at
+            ):
+                findings.append(Finding(
+                    "provenance_time_laundering_shape",
+                    "provenance_mode.imported_at equals source_asserted_at on a "
+                    "backfilled record; this is the shape a laundering producer "
+                    "would construct to make an import look contemporaneous "
+                    "(§5.3(bis) Provenance mode)",
+                    check=9,
+                ))
+
+            time_rung = pm.get("time_rung")
+            if time_rung is not None and time_rung not in TIME_RUNGS:
+                findings.append(Finding(
+                    "provenance_mode_invalid",
+                    f"provenance_mode.time_rung MUST be one of {sorted(TIME_RUNGS)} "
+                    f"(§5.3(bis) Provenance mode); got {time_rung!r}",
+                    check=9,
+                ))
+                time_rung = None  # unrecognized; excluded from the derived cap below
+
+            # time_rung="witnessed" REQUIRES a well-formed references[] entry
+            # citing corroborates_source_time (§5.3(bis), REGISTRY.md §11); the
+            # derived cap is rederived from that evidence, never from the claim.
+            has_corroboration = False
+            raw_refs = capsule.get("references")
+            if isinstance(raw_refs, list):
+                for r in raw_refs:
+                    if (
+                        isinstance(r, Mapping)
+                        and r.get("citation_purpose") == "corroborates_source_time"
+                        and isinstance(r.get("type"), str) and r.get("type")
+                        and isinstance(r.get("digest_alg"), str) and r.get("digest_alg")
+                        and isinstance(r.get("digest"), str) and r.get("digest")
+                    ):
+                        has_corroboration = True
+                        break
+
+            if time_rung == "witnessed" and not has_corroboration:
+                findings.append(Finding(
+                    "provenance_time_rung_overclaim",
+                    "provenance_mode.time_rung='witnessed' claimed without a "
+                    "well-formed references[] entry citing citation_purpose="
+                    "'corroborates_source_time' (§5.3(bis) Provenance mode)",
+                    check=9,
+                ))
+
+            derived["provenance_time_rung"] = "witnessed" if has_corroboration else "self_attested"
+        elif mode == "contemporaneous":
+            orphaned = [
+                f for f in ("source_ref", "source_asserted_at", "import_batch", "imported_at", "time_rung")
+                if f in pm and pm.get(f) is not None
+            ]
+            if orphaned:
+                findings.append(Finding(
+                    "provenance_mode_invalid",
+                    f"provenance_mode fields {orphaned} are meaningful only when "
+                    "mode='backfilled' (§5.3(bis) Provenance mode)",
+                    check=9,
+                ))
+
+    # ---- domain / provenance unknown-value (§-02; not a §6-enumerated check) --
     # Type mismatches are already reported above (check 1); here we only check
     # string values that aren't in the seeded registry — informational, never a
     # rejection (the never-reject invariant, §4, §12).
@@ -545,4 +664,42 @@ def verify_store(
             res.findings.append(Finding("concurrent_supersedes", f"a later supersedes over parent {parent}; the earliest is authoritative (§5.4.4)", severity="info", check=6))
         else:
             seen_parent.add(parent)
+
+    # Duplicates (§5.3(bis) Provenance mode; REGISTRY.md §6): a duplicates-linked
+    # pair is counted once, the contemporaneous parent governing. Parent
+    # existence is already checked generically by check 6 (chain_parent_missing);
+    # this pass records the collapse and flags — informationally, since intent
+    # cannot be verified structurally — a parent that is itself backfilled,
+    # since "duplicates" is defined to cite the contemporaneous record.
+    capsules_by_id = {
+        c["capsule_id"]: c for c in capsules
+        if isinstance(c, Mapping) and isinstance(c.get("capsule_id"), str)
+    }
+    for c, res in zip(capsules, results):
+        if not isinstance(c, Mapping):
+            continue
+        chain = c.get("chain")
+        if not isinstance(chain, Mapping) or chain.get("relation") != "duplicates":
+            continue
+        parent_id = chain.get("parent_capsule_id")
+        if not isinstance(parent_id, str):
+            continue
+        res.findings.append(Finding(
+            "duplicate_collapsed",
+            f"chain.relation='duplicates' over parent {parent_id}; verifiers and "
+            "downstream evidence evaluators MUST count this pair once, the "
+            "contemporaneous parent governing (§5.3(bis) Provenance mode)",
+            severity="info", check=9,
+        ))
+        parent = capsules_by_id.get(parent_id)
+        if isinstance(parent, Mapping):
+            parent_pm = parent.get("provenance_mode")
+            if isinstance(parent_pm, Mapping) and parent_pm.get("mode") == "backfilled":
+                res.findings.append(Finding(
+                    "duplicate_parent_not_contemporaneous",
+                    f"chain.relation='duplicates' parent {parent_id} is itself "
+                    "provenance_mode.mode='backfilled'; 'duplicates' is defined to "
+                    "cite the contemporaneous record (§5.3(bis) Provenance mode)",
+                    severity="info", check=9,
+                ))
     return results

@@ -591,6 +591,109 @@ produces them — is the companion
 this profile carries only the rung claim and the minimal correlation
 evidence needed to rederive it honestly.
 
+### Provenance mode and backfilled records {#provenancemode}
+
+Most Capsules are sealed close to when the action they describe occurred:
+the producer's `timestamp` ({{identity}}) is a contemporaneous account. An
+operator MAY also import a record of an action that occurred before the
+Capsule describing it was produced — a migration, a reconciliation, a bulk
+historical import. This profile represents that as a MODE on the ordinary
+Capsule, never a distinct record type: a backfilled Capsule carries the
+same fields, registries, and Class 1 checks as any other; only its
+provenance differs.
+
+A Capsule MAY carry a top-level `provenance_mode` object:
+
+| Field | Type | Req | Meaning |
+|---|---|---|---|
+| mode | string | REQUIRED when the block is present | "contemporaneous" or "backfilled" (closed enum). A `provenance_mode` block is OPTIONAL and its absence implies "contemporaneous"; a producer importing a historical record MUST include the block. |
+| source_ref | typed digest reference | REQUIRED when mode is "backfilled" | `{type, digest_alg, digest}`, the same CPB typed-reference mechanism `references[]` uses ({{xref}}), identifying the historical record or artifact this Capsule was imported from. |
+| source_asserted_at | string ({{RFC3339}}) | REQUIRED when mode is "backfilled" | When the source claims the action occurred. Self-attested: a producer claim about the past, never independently witnessed by virtue of being carried here. |
+| import_batch | string | REQUIRED when mode is "backfilled" | An opaque, producer-scoped identifier for the bulk import run that produced this Capsule. |
+| imported_at | string ({{RFC3339}}) | REQUIRED when mode is "backfilled" | When this Capsule was actually appended to the producer's own ledger. |
+| time_rung | string | OPTIONAL; MUST be absent unless mode is "backfilled" | "self_attested" or "witnessed", ordered `self_attested` < `witnessed` for overclaim detection ({{verification}}) — the same never-grades-up discipline {{assurance}} already applies to `attestation_mode`, `ledger_mode`, and `cross_party_rung`. Absent implies "self_attested". |
+
+`provenance_mode` is a distinct field from the pre-existing top-level
+`provenance` member (a scalar dedup-rank signal — "gate" / "runtime" /
+"collector" — defined by the `-02` `domain`/`provenance` addendum,
+REGISTRY.md §9). The two are unrelated vocabularies; this document uses a
+different key deliberately so that adding one never collides with, shadows,
+or reinterprets the other.
+
+A producer MUST NOT claim `time_rung: "witnessed"` unless a `references[]`
+entry ({{xref}}) cites, by digest, a signed or independently witnessed
+timestamp corroborating the source's claimed occurrence time — for
+example a countersignature or transparency-service receipt obtained over
+the source record, never merely a repetition of `source_asserted_at`
+inside the citing Capsule itself. This profile registers a
+`citation_purpose` value for exactly that citation: `corroborates_source_time`
+({{iana}}).
+
+**Time semantics, normative.** `timestamp` and, when present,
+`provenance_mode.source_asserted_at` are both producer self-attestations
+of when an action occurred; carrying either inside a Capsule never makes
+it witnessed. This profile defines no in-payload field for the moment a
+record enters an append-only log — that fact belongs to the registration
+substrate ({{registration}}) and, for a backfilled record, is
+approximated by `provenance_mode.imported_at`, itself also a producer
+self-attestation, not a Receipt. A verifier and every downstream consumer
+MUST treat a backfilled record's occurrence-time claim as no stronger
+than self-attested (`time_rung: "self_attested"`) unless a witnessed
+reference under `corroborates_source_time` is present and well-formed —
+and even then, corroboration of the source's claim is a distinct fact
+from this record's own custody assurance ({{assurance}}) and NEVER
+upgrades `attestation_mode` or `ledger_mode`, which continue to be
+derived exactly as {{assurance}} already specifies. `ledger_mode` and
+`attestation_mode` MAY legitimately reach `anchored` for a backfilled
+record that is properly registered today; that is a claim about custody
+of this record's own bytes, never about when the action it describes
+actually happened. A verifier MUST NOT infer occurrence-time assurance
+from custody assurance, and MUST NOT infer occurrence-time assurance from
+equality between `provenance_mode.imported_at` and
+`provenance_mode.source_asserted_at` — such equality is exactly the shape
+a laundering producer would construct to make a backfilled import look
+contemporaneous, and a Class 1 verifier ({{verification}}) MUST report it
+as a failure, not as corroboration.
+
+**Status cap.** A backfilled record's occurrence-time claim can never
+satisfy a requirement that specifically depends on log-witnessed time,
+regardless of any other assurance value the record carries. A verifier
+MUST always report `provenance_mode.mode` and the derived `time_rung` cap
+in its structured result when the block is present, so a downstream
+evidence-sufficiency evaluation (out of scope of this profile) can apply
+that cap correctly rather than inferring it from `ledger_mode` or
+`attestation_mode` alone.
+
+**Duplicates.** When the same logical event already has a contemporaneous
+Capsule in this producer's own stream, an importing producer SHOULD chain
+the backfilled Capsule to it with `chain.relation: "duplicates"`
+({{hitl}}, {{iana}}), citing the contemporaneous Capsule as
+`chain.parent_capsule_id`. `duplicates` is non-terminal, like `confirms`:
+the parent's own state is unaffected. Verifiers and downstream evidence
+evaluators MUST count a `duplicates`-linked pair once, with the
+contemporaneous record's own assurance and disposition governing; the
+backfilled member exists to preserve the import in the append-only
+history, not to be independently counted. `duplicates` is scoped to the
+producer's own same-stream history, the same scope {{hitl}} already gives
+`chain`; citing a different producer's record as a duplicate is a
+`references` citation ({{xref}}), out of scope for this revision.
+
+**Never fold history retroactively.** An imported record MUST be appended
+at its import position in the producer's ledger — its
+`chain.parent_capsule_id`, when present, is the Capsule that immediately
+preceded it at import time, never a historical predecessor spliced in
+after the fact to make the backfilled record appear as though it had
+always been there. Retroactively re-linking history to insert an imported
+record at the position its `source_asserted_at` implies would change the
+identity of every already-sealed Capsule whose chain it is spliced into
+(`capsule_id` commits `chain`, {{identity}}), which is impossible without
+invalidating existing Producer Envelopes over those Capsule IDs — so this
+is a structural guarantee, not only a policy one. (Informative, non-normative:
+this is the same convention independently documented for out-of-order
+ledger ingestion elsewhere in the ecosystem — TRACE's June-entry
+precedent — an import is placed where it lands, not where its content
+claims it belongs.)
+
 ## Disposition and the verdict reason-class {#disposition}
 
 A Capsule's `disposition` block records how the decision was disposed:
@@ -919,6 +1022,21 @@ reported field; findings are reported in a fixed order.
    `chain.relation`, `citation_purpose`): report as informational
    findings; MUST NOT reject ({{iana}}). An unknown `effect_attestation`
    is additionally graded no stronger than `runtime_claimed` ({{effect}}).
+9. Provenance mode: `provenance_mode.mode: "backfilled"` without a
+   well-formed `provenance_mode` block (`source_ref`, `source_asserted_at`,
+   `import_batch`, and `imported_at` all present and well-formed) is a
+   failure ({{provenancemode}}). A claimed `time_rung: "witnessed"` not
+   supported by a well-formed `references[]` entry citing
+   `citation_purpose: "corroborates_source_time"` is a failure — unlike
+   the informational overclaim treatment of `attestation_mode`,
+   `ledger_mode`, and `cross_party_rung` in check 7, a `provenance_mode`
+   time-assurance overclaim gates `ok`, because it is falsifiable from the
+   record's own bytes and this profile treats it as a dishonesty claim,
+   not merely an unverifiable one ({{provenancemode}}). Byte-equality
+   between `provenance_mode.imported_at` and
+   `provenance_mode.source_asserted_at` on a backfilled record is
+   likewise a failure — the laundering shape {{provenancemode}} already
+   describes.
 
 Disposition honesty is structurally guaranteed, not a live check above.
 The honesty invariant — `human_disposed: true` REQUIRES `approver:
@@ -1237,28 +1355,38 @@ Initial contents are the seeded values of this document, verbatim:
    independent sensor confirmation of a claimed effect, or hardware- or
    TEE-anchored execution; a registration states where its grade sits
    relative to the seeded values.
-6. "chain.relation" registry ({{hitl}}): confirms, supersedes, epoch_opens.
-   Designated-expert guidance: `supersedes` is the single terminal
-   relation; `confirms` and `epoch_opens` are non-terminal relations, with
-   `epoch_opens` reserved for configuration-epoch boundaries
-   ({{epochboundary}}). Additional non-terminal
+6. "chain.relation" registry ({{hitl}}): confirms, supersedes, epoch_opens,
+   duplicates. Designated-expert guidance: `supersedes` is the single
+   terminal relation; `confirms`, `epoch_opens`, and `duplicates` are
+   non-terminal relations, with `epoch_opens` reserved for
+   configuration-epoch boundaries ({{epochboundary}}) and `duplicates`
+   reserved for a backfilled Capsule citing the contemporaneous Capsule
+   of the same logical event in this producer's own stream
+   ({{provenancemode}}) — a `duplicates`-linked pair is counted once, the
+   contemporaneous record governing. Additional non-terminal
    relations (for example, deposit-toward-open and effort-toward-open
    relations, or amends / contradicts) are expected future registrations,
    each admitted once its semantics and any verifier consequence are
    pinned in a publicly available specification.
-7. "citation_purpose" registry ({{xref}}): acted_on, responds_to.
-   This registry is distinct from, and never a repurposing of, CPB's own
+7. "citation_purpose" registry ({{xref}}): acted_on, responds_to,
+   corroborates_source_time. This registry is distinct from, and never a
+   repurposing of, CPB's own
    `purpose` field on a typed digest reference
    ({{I-D.mih-sokolov-scitt-payload-binding}}), which selects among an
    artifact type's registered digest contexts and is orthogonal to any
    role a companion profile assigns a digest within a cross-document
-   citation. Designated-expert guidance: both seeded values name a
-   citation whose target is outside the citing Capsule's own chain — a
+   citation. Designated-expert guidance: `acted_on` and `responds_to` name
+   a citation whose target is outside the citing Capsule's own chain — a
    different producer or a different stream ({{xref}}); a citation to
    the producer's own same-stream `chain` parent is never expressed
-   here. Additional values are expected future registrations, each
-   admitted once its semantics are pinned in a publicly available
-   specification.
+   here. `corroborates_source_time` is the seeded exception to that
+   same-stream/cross-stream framing: it cites, by digest, a signed or
+   independently witnessed timestamp supporting a `provenance_mode`
+   block's `source_asserted_at` claim ({{provenancemode}}), and is the
+   only citation this profile permits to raise `provenance_mode.time_rung`
+   from `self_attested` to `witnessed`. Additional values are expected
+   future registrations, each admitted once its semantics are pinned in
+   a publicly available specification.
 
 Interim registry of record: until this document is published as an RFC,
 the registry of record is the `REGISTRY.md` file of the source
