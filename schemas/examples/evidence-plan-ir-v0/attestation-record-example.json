@@ -1,0 +1,19 @@
+{
+  "adjudicator": {
+    "id": "oo-judge-harness-v0",
+    "model": "oo-synthetic-judge-model",
+    "model_version": "2026-09-22"
+  },
+  "contract_version": "ec:oo-obligation-review:2026-09-22@1",
+  "inputs": [
+    {
+      "digest": "1b765254be534962753b47b6917bb7f9731f1de3fed4f6b44ed0949882fc22f4",
+      "digest_alg": "SHA-256"
+    }
+  ],
+  "operator": "semantic.judge_adjudicate",
+  "policy_digest": {
+    "digest": "47ee5f50c8e1c52adcdc4a94ca28b3f7b52c2ec84eeedfaa9d6e4849764fce04",
+    "digest_alg": "SHA-256"
+  }
+}
