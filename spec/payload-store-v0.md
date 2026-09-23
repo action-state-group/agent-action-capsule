@@ -71,7 +71,7 @@ that a `payload-in-domain` payload be retrievable at or above the domain tier; a
 retaining a redundant cluster-tier copy applies its own consistency discipline for keeping the
 two in sync, which this document does not specify.
 
-There is no root-tier (L2) payload store. Per `capture-policy-v0.md`'s Dependency boundary and
+There is no root-tier (L2) payload store. Per `capture-policy-v0.md` §2 and
 `cll-rollup-topology-v0.md` §1, roll-up entries above L0 are checkpoint digests, never payloads —
 there is structurally nothing for an L2-tier payload store to hold.
 
@@ -130,7 +130,7 @@ commits it, and every consistency/inclusion proof over it are unaffected — com
 payload-store-side deletion of retrievable bytes; it is not, and MUST NOT be represented as, an
 edit, removal, or rewrite of any log. This is the same distinction the CLL base draft's own Log
 Discipline already draws for erasure ("Erasure of the *content* an entry commits to is a separate
-act on separate storage and does not touch the log; the entry — a digest — remains"); retention
+act on separate storage and does not touch the log; the entry (a digest) remains"); retention
 compaction is exactly that separate act, named and scheduled here rather than left implicit.
 
 **Post-compaction retrieval.** §3 step 4's "not retained" refusal is the expected, honest outcome
