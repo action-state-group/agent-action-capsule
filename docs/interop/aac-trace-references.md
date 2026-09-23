@@ -27,7 +27,7 @@ Today `retention` is the only field in the block speaking to findability, which 
 
 **What it costs.** `resolver` is required in TRACE today, so every reference names someone obliged. Optional means some entries name nobody. TRACE buys accountability at the price of addressing, AAC buys addressing at the price of accountability, and neither is strictly better.
 
-`retention` occurs zero times in -04.
+`retention` occurs once in -04: "This profile states no availability or retention obligation for a cited artifact."
 
 ## Where it landed
 
