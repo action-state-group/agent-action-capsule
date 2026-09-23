@@ -23,10 +23,11 @@ idempotent commit) and observations (best-effort, drop-accounted) (§6).
 
 - `draft-mih-sokolov-scitt-payload-binding` (CPB) §"The Derived Identifier" for the digest
   construction the effect-boundary id reuses unmodified (§1) — this document defines no new
-  digest algorithm or canonicalization rule.
-- `draft-mih-scitt-agent-action-capsule` §"Effect Record" for `effect.status`,
-  `irreversibility_class`, and `effect_attestation` — referenced, not redefined; capture policy
-  reads these fields, it does not extend their vocabularies.
+  digest algorithm or canonicalization rule, only a new exclusion-set choice for a new payload
+  class (§1).
+- `draft-mih-scitt-agent-action-capsule` §"Effect Record and the confirmed-effect binding" for
+  `effect.status`, `irreversibility_class`, and `effect_attestation` — referenced, not redefined;
+  capture policy reads these fields, it does not extend their vocabularies.
 - An Evidence Contract (referenced by id, per the convention already established in
   `evidence-plan-ir-v0.md` §"Dependency boundary") for the `evidence_requirements` and
   obligation-profile `retention_check` fields §4 derives capture level from. This document does
@@ -58,21 +59,28 @@ The **effect-boundary capsule id** is that idempotency key:
 effect_boundary_id = CANONICAL-DIGEST(A, effect_subject minus exclusion_set)
 ```
 
-— exactly CPB's Derived Identifier construction (`draft-mih-sokolov-scitt-payload-binding`
-§"The Derived Identifier"), applied to the **effect subject**: the fields that identify *what
-effect this is*, independent of how many times it has been presented for commit. `A` is the
-canonicalization algorithm and `exclusion_set` the self-referential/chain-linkage field set, both
-declared by the Capsule's payload class exactly as CPB already requires for any derived
-identifier — this document adds no new canonicalization or exclusion-set rule.
+— CPB's Derived Identifier digest machinery (`draft-mih-sokolov-scitt-payload-binding`
+§"The Derived Identifier"), unmodified: `A` is the same canonicalization algorithm CPB already
+defines, and the digest is computed the same way over whatever bytes remain after
+`exclusion_set` is removed. What this document adds, and CPB does not itself define, is the
+**effect subject**: an exclusion set for effect-boundary purposes that removes not only the
+usual self-referential/chain-linkage fields CPB's exclusion-set rule already covers, but also
+every field that legitimately varies between two deliveries of the same logical request (for
+example, `timestamp`) — so that a redelivery digests identically to the original. This is a new,
+purpose-specific exclusion-set *choice*, declared by the effect Capsule's payload class exactly
+as CPB requires any exclusion set to be declared; it reuses CPB's digest construction without
+modification but does not claim CPB itself defines this particular exclusion set.
 
 **Effect subject, not capsule_id.** `effect_boundary_id` is deliberately not the Capsule's own
-`capsule_id` (`draft-mih-scitt-agent-action-capsule` §"Identity"): `capsule_id` commits the whole
-Capsule, including fields that vary between two deliveries of the same logical request (a fresh
-`issued_at`, a fresh envelope). The effect subject's exclusion set is chosen so that two
+`capsule_id` (`draft-mih-scitt-agent-action-capsule` §"Identity and parties"): for the current
+format, `capsule_id` excludes only itself from the digest — every other field, including
+`timestamp`, participates. A field like `timestamp`, which legitimately differs between two
+deliveries of the same logical request, therefore still changes `capsule_id` between them. The
+effect subject's exclusion set is deliberately wider than `capsule_id`'s narrow one, so that two
 deliveries of the same logical effect — same actor, same target, same requested action, same
 correlation key — produce the identical `effect_boundary_id` regardless of delivery attempt
-number, timestamp, or envelope. This is the entire idempotency property: the id is a function of
-*what is being requested*, not of *this particular delivery of the request*.
+number or timestamp. This is the entire idempotency property: the id is a function of *what is
+being requested*, not of *this particular delivery of the request*.
 
 **Idempotent commit.** A collector receiving an effect Capsule computes `effect_boundary_id` and
 checks it against what it has already committed for this log identity. A first arrival commits
@@ -104,7 +112,8 @@ Capsule's checkpoint reaches.
 ## 3. Effect payloads: kept by default for the reversal window {#reversal-window}
 
 An effect Capsule's `irreversibility_class` (`draft-mih-scitt-agent-action-capsule` §"Effect
-Record": `two_way`, `one_way_recoverable`, `one_way_consequential`, `one_way_terminal`) already
+Record and the confirmed-effect binding": `two_way`, `one_way_recoverable`,
+`one_way_consequential`, `one_way_terminal`) already
 states how far a committed effect can be walked back. Capture policy's default rule ties directly
 to it: **an effect Capsule's payload defaults to `payload-in-cluster` (or higher, per §4) for the
 duration of its class's reversal window**, regardless of what the evidence-class default would
