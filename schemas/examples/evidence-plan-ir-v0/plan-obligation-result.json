@@ -1,14 +1,15 @@
 {
   "plan_ref": {
-    "digest": "34aa6c372fb9031dca31dccb0c9e71c2f1e106149ad79d1512e2641a7eb12901",
+    "digest": "87cb42b9d30ce638f4e3e52580fdd83c68f6ce8100f4739c13adfbf09f20438f",
     "digest_alg": "SHA-256"
   },
   "results": {
     "node-1": {
       "attestation_ref": {
-        "digest": "e9f69876e2d3562ff52bf5228b69e088a0522b34813ef5055ce480ffc7aa1a96",
+        "digest": "2cb613cf62e092cafbba22b8c55264db7d05404fc5b730f901fa0e773089efac",
         "digest_alg": "SHA-256"
       },
+      "family": "traditional",
       "outputs": [
         {
           "digest": "1b765254be534962753b47b6917bb7f9731f1de3fed4f6b44ed0949882fc22f4",
@@ -19,9 +20,10 @@
     },
     "node-2": {
       "attestation_ref": {
-        "digest": "f47098b1145d8507a5e0e16f4caeab4636bdf8a8055f526cfb0190bc647962e8",
+        "digest": "1c10413e8b8cd5f1ac5c7a3afcc4edac7aad91b361a14bc506a5249e5f421238",
         "digest_alg": "SHA-256"
       },
+      "family": "semantic",
       "outputs": [
         {
           "digest": "1fd3fd337e2fa6f4a09856fdd9a8da3f8e91919f89f45b00a4589ff3e1a0da9e",
@@ -32,16 +34,18 @@
     },
     "node-3": {
       "attestation_ref": {
-        "digest": "0f6739b5e7995611fb353b162fa82624d8ef0a639fa24659e94945bb655daae2",
+        "digest": "c4268a49d86d4e55f5f0e8a94a0ae71b2e7d859905bc2c4eac80192786f450ae",
         "digest_alg": "SHA-256"
       },
+      "family": "decision",
       "outputs": [
         {
           "digest": "45ca29f67ab06a3b9f73d200287b2597809132bd7893cd5bfaaa393b8a0ee3a5",
           "digest_alg": "SHA-256"
         }
       ],
-      "status": "SATISFIED"
+      "status": "SATISFIED",
+      "verdict": "met"
     }
   }
 }

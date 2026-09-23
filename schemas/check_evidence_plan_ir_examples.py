@@ -18,6 +18,10 @@ mechanical half):
   2. NEGATIVE: invalid-local-only-under-remote-planner.json — a LOCAL_ONLY
      node serialized into a plan whose planner_id does not begin with
      "local:" (spec section 4.1) — MUST fail $defs/EvidencePlan validation.
+  2b. NEGATIVE (v0.1 rename): invalid-legacy-contract-version-field.json — a
+     header carrying the retired name `contract_version` instead of
+     `contract_ref` — MUST fail validation, and the rejection is proven
+     name-specific by renaming the key back and confirming it then validates.
   3. MUTANT CHECK (QUEUE_PROTOCOL section 7): the negative fixture's
      rejection is re-tested with the schema's locality if/then block
      (EvidencePlan's top-level "if"/"then") stripped out. With the rule
@@ -68,6 +72,7 @@ POSITIVE_PLANS = ["plan-outcome", "plan-obligation", "plan-process"]
 POSITIVE_RESULTS = ["plan-outcome-result", "plan-obligation-result", "plan-process-result"]
 POSITIVE_ATTESTATIONS = ["attestation-record-example"]
 NEGATIVE_PLAN = "invalid-local-only-under-remote-planner"
+NEGATIVE_LEGACY_FIELD = "invalid-legacy-contract-version-field"
 
 
 def _load(name: str) -> IRDocument:
@@ -138,6 +143,38 @@ def main() -> int:
         print(f"OK  EvidencePlan   {NEGATIVE_PLAN}.json correctly REJECTED "
               f"({len(negative_errors)} error(s), e.g. {negative_errors[0].message!r})")
 
+    # --- 2b. NEGATIVE: the legacy `contract_version` header field must fail ---
+    #         (v0.1 rename: contract_version -> contract_ref). The schema now
+    #         requires contract_ref and forbids unknown header properties, so a
+    #         header carrying the retired name MUST be rejected.
+    legacy_instance = _load(NEGATIVE_LEGACY_FIELD)
+    legacy_errors = list(plan_validator.iter_errors(legacy_instance))
+    if not legacy_errors:
+        findings.append(
+            f"NEGATIVE-DID-NOT-FAIL {NEGATIVE_LEGACY_FIELD}: expected schema validation to "
+            "reject a header using the retired field name 'contract_version', but it "
+            "validated clean"
+        )
+    else:
+        print(f"OK  EvidencePlan   {NEGATIVE_LEGACY_FIELD}.json correctly REJECTED "
+              f"({len(legacy_errors)} error(s), e.g. {legacy_errors[0].message!r})")
+        # Load-bearing proof: rename the header key back to contract_ref in
+        # memory; the SAME fixture must then validate clean, confirming it is
+        # the field NAME that is rejected, not some unrelated defect.
+        repaired = copy.deepcopy(legacy_instance)
+        repaired["header"]["contract_ref"] = repaired["header"].pop("contract_version")
+        repaired_errors = list(plan_validator.iter_errors(repaired))
+        if repaired_errors:
+            findings.append(
+                f"NEGATIVE-NOT-LOAD-BEARING {NEGATIVE_LEGACY_FIELD}: renaming the header "
+                "key back to 'contract_ref' did NOT make the fixture validate (still "
+                f"{len(repaired_errors)} error(s)) — the rejection is not attributable to "
+                "the field name"
+            )
+        else:
+            print("OK  EvidencePlan   renaming 'contract_version' -> 'contract_ref' makes "
+                  f"{NEGATIVE_LEGACY_FIELD}.json VALIDATE CLEAN (rejection is name-specific)")
+
     # --- 3. MUTANT CHECK: strip the locality if/then, confirm the SAME ---
     #        negative fixture now validates, then confirm restoring it makes
     #        it fail again. Proves check 2 is load-bearing.
@@ -187,7 +224,8 @@ def main() -> int:
     print(f"\nOK — {len(POSITIVE_PLANS)} positive plan(s), "
           f"{len(POSITIVE_RESULTS)} plan-result(s), "
           f"{len(POSITIVE_ATTESTATIONS)} attestation-record(s), "
-          "1 negative plan, and the mutant check all passed.")
+          "2 negative plans (locality rule + retired contract_version field), "
+          "and the mutant check all passed.")
     return 0
 
 

@@ -52,15 +52,15 @@ Every plan carries exactly these five header fields:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `contract_version` | string | The single immutable Evidence Contract this plan is evaluated against, as a compact versioned reference `<contract_id>@<version>` (e.g. `ec:oo-outcome-eval:2026-09-22@1`). A plan is over exactly one contract in v0; there is no multi-contract plan. |
+| `contract_ref` | string | The single immutable Evidence Contract this plan is evaluated against, as a compact versioned reference `<contract_id>@<version>` (e.g. `ec:oo-outcome-eval:2026-09-22@1`) — a contract *reference*, not a bare version, which is why the field is named `contract_ref` rather than `contract_version`, matching the name every node already uses (§3). A plan is over exactly one contract in v0; there is no multi-contract plan. |
 | `ir_version` | string | MUST be the literal string `evidence-plan-ir-v0` for a plan conforming to this document. |
 | `planner_id` | string | Identifies the planner that produced this plan, namespaced `local:<name>` or `remote:<name>` (§4.1). The namespace is normative and gates `LOCAL_ONLY` nodes (§4). |
 | `created_at` | string | RFC 3339 timestamp. |
 | `replay_seed` | string | An opaque seed value carried with the plan so that any planning step whose own internals are not fully deterministic (out of scope here) can still be asked to reproduce the same plan shape from the same seed. The IR does not interpret this value; it only carries it for the private planner's own use. |
 
-`contract_version` is repeated, unabbreviated, on every node as `contract_ref` (§3) so that a
+`contract_ref` is repeated, unabbreviated, on every node as `contract_ref` (§3) so that a
 single node is independently checkable without the header. **Normative, not schema-enforced in
-v0:** every node's `contract_ref` MUST equal the plan header's `contract_version`. This is a
+v0:** every node's `contract_ref` MUST equal the plan header's `contract_ref`. This is a
 cross-field constraint outside plain JSON Schema's expressiveness; a conforming verifier MUST
 check it in addition to schema validation.
 
@@ -74,7 +74,7 @@ node:
   inputs: [input-ref, ...]            # §3.1
   classification: LOCAL_ONLY | ABSTRACTABLE | CLOUD_SAFE | PUBLIC   # §4
   tier: recomputed | judged           # §4.2
-  contract_ref: string                # MUST equal header.contract_version — §2
+  contract_ref: string                # MUST equal header.contract_ref — §2
   requirement_ref: string             # a requirement id within that contract
 ```
 
@@ -153,11 +153,12 @@ planner — all three are conforming there by construction; only `LOCAL_ONLY` is
 | `judged` | The result was produced by a semantic adjudicator (model or human) applying judgment to the cited inputs, pinned by the attestation record's `adjudicator`/`policy_digest` fields (§6). |
 
 **Ruled mapping (2026-09-22, Steven) — stated here as a mapping only, never redefined:** on the
-assurance ladder owned by the Witness/Countersign definitions (self-attested → witnessed/
-continuity-witnessed → self-countersigned → countersigned), `recomputed` corresponds to
-*Verifiable* and `judged` corresponds to *Attested*. This document does not own, and does not
-restate the semantics of, that ladder — it states only which of the ladder's two coarse buckets
-each `tier` value falls into.
+assurance ladder owned by the Witness/Countersign definitions — the grade vocabulary being
+reconciled under `[grade-vocabulary-reconcile]` (OPEN at the time of writing), which this document
+does not own and therefore does not enumerate here — `recomputed` corresponds to *Verifiable* and
+`judged` corresponds to *Attested*. This document states only which of the ladder's two coarse
+buckets each `tier` value falls into; the ladder's own rungs, their names, and their count are
+fixed by `[grade-vocabulary-reconcile]`, not here.
 
 ## 5. Operator catalogue v0
 
@@ -201,7 +202,7 @@ attestation-record:
   policy_digest: { digest_alg: "SHA-256", digest: <64-hex> }
                                  # the digest of the policy/prompt/manifest the operator ran
                                  # under; the policy content itself is never inlined here
-  contract_version: string      # MUST equal the owning plan's header.contract_version
+  contract_ref: string          # MUST equal the owning plan's header.contract_ref
 ```
 
 `adjudicator.model`/`model_version` are the "model+version" pair this document's brief names
@@ -220,11 +221,19 @@ plan-result:
                                                             # (UTF8(JCS(plan)))
   results:
     <node-id>:
+      family: traditional | semantic | evidence | assurance | decision   # the family of the
+                                                            # node this envelope reports (§3),
+                                                            # carried so the envelope is
+                                                            # self-describing and the verdict
+                                                            # rule below is checkable from the
+                                                            # envelope alone
       status: SATISFIED | INSUFFICIENT | NOT_FOUND | NOT_COMMITTED | WITHHELD | CONTRADICTED
             | NOT_APPLICABLE | UNKNOWN
       outputs: [ { digest_alg: "SHA-256", digest: <64-hex> }, ... ]   # by digest only
       attestation_ref: { digest_alg: "SHA-256", digest: <64-hex> }    # digest of an
                                                             # attestation-record (§6)
+      verdict: met | not_met | not_evaluable   # OPTIONAL in general; REQUIRED exactly when
+                                                            # family == decision (§6.1a)
 ```
 
 `status` is the eight-value per-requirement bundle assertion status owned by the Evidence
@@ -232,6 +241,20 @@ Contract (mirrored here by reference, per the Dependency boundary above) — nev
 extended in this document. `attestation_ref` is REQUIRED on every result envelope, including
 `recomputed`-tier ones: the executor loop stamps an attestation record on every operator call, not
 only the judged ones (§6).
+
+### 6.1a Verdict on the envelope
+
+The `decision`-family verdict — the closed three-value `met | not_met | not_evaluable` produced
+by `decision.resolve_verdict` (§5) — is surfaced directly on the result envelope as `verdict`.
+
+**Normative rule (schema-enforced — the `if`/`then` on the companion schema's `ResultEnvelope`):**
+`verdict` is OPTIONAL on any envelope, and MUST be present exactly when the reporting node's
+`family` is `decision`. This lets a Result emitter read the verdict from the envelope directly,
+rather than having to dereference the decision node's `outputs` digest to recover it. The `verdict`
+vocabulary is the same closed three-value set §5 fixes for `decision.resolve_verdict`; this
+document does not extend it. `status` (the eight-value sufficiency status) and `verdict` (the
+three-value decision) are distinct axes: `status` says whether the bundle for a requirement was
+sufficient, `verdict` says how the requirement resolved.
 
 This document does not define how a `status` value is derived from `outputs`; that derivation is
 the (private) executor's concern. It defines only the closed vocabulary the field is drawn from

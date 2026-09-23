@@ -26,9 +26,11 @@ Each `plan-*-result.json`'s `plan_ref` is the real digest of its matching `plan-
 document, and each result's `attestation_ref` is the real digest of the (not separately
 committed, except for the one example above) attestation record `generate_examples.py` builds in
 memory for that node — see the generator source for the exact attestation object per node if you
-need to recompute one.
+need to recompute one. Each result envelope carries its node's `family` (spec §6.1), and the
+`decision`-family envelope (`node-3` in every plan) additionally carries `verdict: met`, which the
+schema requires exactly when `family == decision` (spec §6.1a).
 
-## Negative fixture
+## Negative fixtures
 
 `invalid-local-only-under-remote-planner.json` — a byte-for-byte copy of `plan-process.json`
 with exactly one field changed: `nodes[0].classification` from `CLOUD_SAFE` to `LOCAL_ONLY`. The
@@ -37,6 +39,14 @@ fail `$defs/EvidencePlan` validation. `check_evidence_plan_ir_examples.py` asser
 directly, and additionally proves the rejection is load-bearing (not vacuous) by removing the
 schema's locality `if`/`then` block in memory, confirming this SAME fixture then validates clean,
 and restoring the rule.
+
+`invalid-legacy-contract-version-field.json` (v0.1) — a copy of `plan-outcome.json` whose header
+carries the **retired** field name `contract_version` in place of `contract_ref` (v0.1 renamed the
+header field from `contract_version` to `contract_ref`; the value is unchanged). Because
+`PlanHeader` is `additionalProperties: false` and now requires `contract_ref`, this MUST fail
+`$defs/EvidencePlan` validation. `check_evidence_plan_ir_examples.py` asserts the rejection and
+proves it is name-specific by renaming the key back to `contract_ref` in memory and confirming the
+SAME fixture then validates clean.
 
 ## Reproducing the validation run
 

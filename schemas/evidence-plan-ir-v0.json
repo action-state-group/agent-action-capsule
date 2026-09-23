@@ -61,7 +61,7 @@
         "decision.resolve_verdict"
       ]
     },
-    "ContractVersionRef": {
+    "ContractRef": {
       "description": "Compact versioned Evidence Contract reference: <contract_id>@<version>.",
       "type": "string",
       "pattern": "^[^@\\s]+@[^@\\s]+$"
@@ -69,9 +69,9 @@
     "PlanHeader": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["contract_version", "ir_version", "planner_id", "created_at", "replay_seed"],
+      "required": ["contract_ref", "ir_version", "planner_id", "created_at", "replay_seed"],
       "properties": {
-        "contract_version": { "$ref": "#/$defs/ContractVersionRef" },
+        "contract_ref": { "$ref": "#/$defs/ContractRef" },
         "ir_version": { "const": "evidence-plan-ir-v0" },
         "planner_id": {
           "type": "string",
@@ -98,7 +98,7 @@
         },
         "classification": { "$ref": "#/$defs/Classification" },
         "tier": { "$ref": "#/$defs/Tier" },
-        "contract_ref": { "$ref": "#/$defs/ContractVersionRef" },
+        "contract_ref": { "$ref": "#/$defs/ContractRef" },
         "requirement_ref": { "type": "string", "minLength": 1 }
       },
       "allOf": [
@@ -186,11 +186,16 @@
         }
       }
     },
+    "Verdict": {
+      "description": "The closed three-value decision-family verdict from decision.resolve_verdict (spec §5). Surfaced on the envelope so a Result emitter does not have to dereference an output digest to read it.",
+      "enum": ["met", "not_met", "not_evaluable"]
+    },
     "ResultEnvelope": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "outputs", "attestation_ref"],
+      "required": ["family", "status", "outputs", "attestation_ref"],
       "properties": {
+        "family": { "$ref": "#/$defs/Family" },
         "status": {
           "enum": [
             "SATISFIED", "INSUFFICIENT", "NOT_FOUND", "NOT_COMMITTED",
@@ -201,8 +206,11 @@
           "type": "array",
           "items": { "$ref": "#/$defs/DigestRef" }
         },
-        "attestation_ref": { "$ref": "#/$defs/DigestRef" }
-      }
+        "attestation_ref": { "$ref": "#/$defs/DigestRef" },
+        "verdict": { "$ref": "#/$defs/Verdict" }
+      },
+      "if": { "properties": { "family": { "const": "decision" } }, "required": ["family"] },
+      "then": { "required": ["verdict"] }
     },
     "PlanResult": {
       "type": "object",
@@ -234,7 +242,7 @@
     "AttestationRecord": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["adjudicator", "operator", "inputs", "policy_digest", "contract_version"],
+      "required": ["adjudicator", "operator", "inputs", "policy_digest", "contract_ref"],
       "properties": {
         "adjudicator": { "$ref": "#/$defs/Adjudicator" },
         "operator": { "$ref": "#/$defs/Operator" },
@@ -244,7 +252,7 @@
           "items": { "$ref": "#/$defs/DigestRef" }
         },
         "policy_digest": { "$ref": "#/$defs/DigestRef" },
-        "contract_version": { "$ref": "#/$defs/ContractVersionRef" }
+        "contract_ref": { "$ref": "#/$defs/ContractRef" }
       },
       "allOf": [
         {

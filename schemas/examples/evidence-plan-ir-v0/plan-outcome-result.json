@@ -1,14 +1,15 @@
 {
   "plan_ref": {
-    "digest": "db713432a7662f64256eff1b8accb5901d1222f79e9226947b4aa5d9a620c078",
+    "digest": "8beec9975d407c8bd04c4a42c18b060b72eaf558eaf3081d4858bd212cc9f498",
     "digest_alg": "SHA-256"
   },
   "results": {
     "node-1": {
       "attestation_ref": {
-        "digest": "cbb7698527d1f6efad8c3ece42144c13da34a88974500b0d9563d1caab7c0ac0",
+        "digest": "3f6558a708a08a70bbec8242d2264bc6d19996a910cc2cc579c21895288eb1ff",
         "digest_alg": "SHA-256"
       },
+      "family": "evidence",
       "outputs": [
         {
           "digest": "3cbfbacf24f10f9bf80090b099d90eef5690755ef33103cae63334669375b767",
@@ -19,9 +20,10 @@
     },
     "node-2": {
       "attestation_ref": {
-        "digest": "76a38a9077e2293fbdbc34e0082c9737a1338258947f1e7585c74cc4edd34086",
+        "digest": "7d39475f25e7afa1921ebf5809bd56b92243b891862abbc3e5f2787d331cd2e3",
         "digest_alg": "SHA-256"
       },
+      "family": "assurance",
       "outputs": [
         {
           "digest": "74f97969d6925c72c121e6dc924ef563a25aebd980afa73a13c2310ec93a2d78",
@@ -32,16 +34,18 @@
     },
     "node-3": {
       "attestation_ref": {
-        "digest": "e2bff2fb823a51b234b4bb0fd6f3845be6116647c7920d64d9c23290dcadbb6e",
+        "digest": "1939e53e18bc9d5fa894559c42c8bab275808d3b94fa8e96d9bf7e8738f1ec33",
         "digest_alg": "SHA-256"
       },
+      "family": "decision",
       "outputs": [
         {
           "digest": "45ca29f67ab06a3b9f73d200287b2597809132bd7893cd5bfaaa393b8a0ee3a5",
           "digest_alg": "SHA-256"
         }
       ],
-      "status": "SATISFIED"
+      "status": "SATISFIED",
+      "verdict": "met"
     }
   }
 }

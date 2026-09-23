@@ -32,7 +32,7 @@ InputRefDoc = Union[InputByDigestDoc, InputByNodeDoc]
 
 
 class PlanHeaderDoc(TypedDict):
-    contract_version: str
+    contract_ref: str
     ir_version: Literal["evidence-plan-ir-v0"]
     planner_id: str
     created_at: str
@@ -55,10 +55,18 @@ class EvidencePlanDoc(TypedDict):
     nodes: List[PlanNodeDoc]
 
 
-class ResultEnvelopeDoc(TypedDict):
+class _ResultEnvelopeRequired(TypedDict):
+    family: str
     status: str
     outputs: List[DigestRefDoc]
     attestation_ref: DigestRefDoc
+
+
+class ResultEnvelopeDoc(_ResultEnvelopeRequired, total=False):
+    # `verdict` is REQUIRED when `family == decision` and forbidden otherwise
+    # (schema §6.1a); expressed here as optional since the constraint is
+    # conditional on `family`, which a plain TypedDict cannot encode.
+    verdict: str
 
 
 class PlanResultDoc(TypedDict):
@@ -77,7 +85,7 @@ class AttestationRecordDoc(TypedDict):
     operator: str
     inputs: List[DigestRefDoc]
     policy_digest: DigestRefDoc
-    contract_version: str
+    contract_ref: str
 
 
 # The only three document kinds this fixture set ever loads or writes.
