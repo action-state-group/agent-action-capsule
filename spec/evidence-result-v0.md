@@ -3,11 +3,10 @@
 **Status.** Design specification, pre-Internet-Draft, beside `spec/evidence-plan-ir-v0.md` (the
 Evidence Plan IR). This document defines the **Evidence Result**: the artifact that reports, per
 requirement, what was judged and with what assurance, over an Evidence Contract. Sections 1–3
-(result semantics, disclosure policy, aggregate/coverage) are the spec desk's draft of the
-gate item Batch 4 requires Steven to rule on before this schema freezes — **each is marked DRAFT
-below and stays DRAFT until his sign-off line lands in `action-state-ops/spec/outbox.md`.** The
-schema, validator, and fixtures are built to this draft in parallel, per that gate, and are
-themselves DRAFT until that line lands.
+(result semantics, disclosure policy, aggregate/coverage) carry **Steven's ruling, quoted verbatim
+below (2026-09-22)** — the gate Batch 4 required before this schema could freeze. The gate is
+satisfied; the schema, validator, and fixtures below are encoded to the ruled text and are no
+longer DRAFT.
 
 **Companion schema.** `schemas/evidence-result-v0.json` — a JSON Schema (2020-12) encoding of
 every object model defined below. The schema is descriptive of the semantics fixed here; where
@@ -40,7 +39,19 @@ plans. It also never names `Authority`, `Relay`, `score`/`scoring`, or `reputati
 
 ## 1. Result semantics — what a claim is
 
-**Status: DRAFT — spec desk draft, pending Steven's sign-off (gate item (a)).**
+**Status: RULED (Steven, 2026-09-22) — gate item (a). Quoted verbatim, normative:**
+
+> A claim is one requirement of one contract version, evaluated once. Every claim carries two
+> answers that are never merged: whether enough of the required evidence existed to judge it
+> (`SATISFIED / GAP / INSUFFICIENT / UNKNOWN`), and, only when sufficiency is `SATISFIED`, the
+> resulting judgment (`met / not met / not evaluable`). `not evaluable` is a judgment outcome
+> defined by the contract; it is never used to represent missing or insufficient evidence.
+>
+> A result never states a number that cannot be traced to claims, and never states a claim that
+> cannot be traced to evidence by digest.
+
+The remainder of this section encodes the ruling above into this document's vocabulary and cites
+where the companion schema enforces it.
 
 A **claim** is the atomic unit of an Evidence Result: one requirement, of one Evidence Contract
 version, judged exactly once, together with the evidence and proofs that judgment rests on. A
@@ -92,9 +103,22 @@ never self-declares that it satisfies a requirement; the Evidence Contract defin
 (fabric v3 §9.1). A claim's `sufficiency`/`verdict` pair is the Evidence Contract's projection
 over that claim's cited evidence, never a property the evidence asserts about itself.
 
+**Traceability (the ruling's second paragraph, encoded).** "A claim that cannot be traced to
+evidence by digest" is structurally impossible here: `evidence[]` is REQUIRED on every claim
+(§4), by digest only. "A number that cannot be traced to claims" is §3's concern — every count in
+`aggregate.coverage` and every entry in `aggregate.buckets` resolves to real claim objects in this
+same Result, never a number computed and reported without the claims that back it.
+
 ## 2. Disclosure policy — `disclosure` · `analysis` · `story`
 
-**Status: DRAFT — spec desk draft, pending Steven's sign-off (gate item (b)).**
+**Status: RULED (Steven, 2026-09-22) — gate item (b). Quoted verbatim, normative:**
+
+> Disclosure: a result carries evidence digests and the disclosure record's own status, never
+> evidence payload bytes. Withheld, not committed, unavailable, or otherwise missing evidence
+> remains explicit in the result; story and analysis may explain the gap but may not repair it.
+
+The remainder of this section encodes the ruling above into this document's vocabulary and cites
+where the companion schema enforces it.
 
 A Result is sponsor-facing: it is read by a party who is not the counterparty holding the
 underlying evidence, and it MUST NOT become a side channel for evidence the disclosure layer has
@@ -103,16 +127,20 @@ decided not to share. Every claim therefore carries exactly one **presentation c
 `status` field (the eight-value per-requirement bundle assertion status owned by v3 §5.1,
 mirrored here by reference) states why that carrier, and not a stronger one, was used.
 
-**The gate.** A claim's presentation carrier is `disclosure` only if its `status` is anything
-other than `WITHHELD` or `NOT_COMMITTED`. When `status` IS `WITHHELD` or `NOT_COMMITTED`, the
-carrier MUST be `analysis` or `story` — `disclosure` is not a legal choice, structurally (§6,
-`DisclosureCarrier`'s restricted `status` enum). This is the rule gate item (b) exists to make
-checkable: withheld and not-committed evidence never gets the full carrier, no matter how
-confident the adjudicator is. `WITHHELD` and `NOT_COMMITTED` are singled out (rather than every
-non-`SATISFIED` status) because both mean the underlying evidence *exists* — a counterparty holds
-it, or declined to commit it — as distinct from e.g. `NOT_FOUND`, where there is nothing to
-withhold in the first place; §5.2 collapses both into `GAP` sufficiency, but the disclosure policy
-needs exactly the distinction that projection discards.
+**The gate (encodes "withheld... evidence remains explicit... story and analysis may explain the
+gap but may not repair it").** A claim's presentation carrier is `disclosure` only if its `status`
+is anything other than `WITHHELD` or `NOT_COMMITTED`. When `status` IS `WITHHELD` or
+`NOT_COMMITTED`, the carrier MUST be `analysis` or `story` — `disclosure` is not a legal choice,
+structurally (§6, `DisclosureCarrier`'s restricted `status` enum): the ruling's "may explain the
+gap but may not repair it" is exactly the difference between `analysis`/`story` (characterization
+or narrative) and `disclosure` (the evidence itself, by digest) — `analysis`/`story` can never
+substitute for `disclosure` once the gap is closed. `WITHHELD` and `NOT_COMMITTED` are singled out
+(rather than every non-`SATISFIED` status) because both mean the underlying evidence *exists* — a
+counterparty holds it, or declined to commit it — as distinct from e.g. `NOT_FOUND`, where there
+is nothing to withhold in the first place; §5.2 collapses both into `GAP` sufficiency, but the
+disclosure policy needs exactly the distinction that projection discards. Every carrier's required
+`status` field is what makes "remains explicit in the result" checkable — a claim can never omit
+naming why the stronger carrier was not used.
 
 The three carriers, in descending order of what they show:
 
@@ -137,16 +165,27 @@ them show payload); it is about how much can be said about evidence a reader can
 
 ## 3. What the sponsor sees first
 
-**Status: DRAFT — spec desk draft, pending Steven's sign-off (gate item (c)).**
+**Status: RULED (Steven, 2026-09-22) — gate item (c). Quoted verbatim, normative:**
+
+> What the sponsor sees first is coverage: requirements evaluated, excluded as not applicable, and
+> unresolved. Then the claim buckets. Never put a single score, grade, or percentage above the
+> fold. Assurance stays attached to each claim: evaluation tier (`recomputed / judged`) and
+> evidence grade (`self-attested / witnessed / countersigned`), because the sponsor's question is
+> always: who says so, and could I independently check it?
+
+The remainder of this section encodes the ruling above into this document's vocabulary and cites
+where the companion schema enforces it.
 
 A Result's top-level `aggregate` is what a sponsor-facing reader sees before any individual claim:
-a **coverage statement**, then **three buckets** — never a single number.
+a **coverage statement**, then **three buckets** — never a single number, score, grade, or
+percentage above the fold.
 
-**Coverage (mandatory).** `aggregate.coverage` states the evaluated population precisely: how
-many requirements were actually evaluated, how many were excluded as `NOT_APPLICABLE` (§5.2 —
-outside the evaluated population by construction, not a gap), and how many of the evaluated ones
-resolved `UNKNOWN`. An aggregate without a coverage statement is not a summary, it is a claim with
-the denominator hidden, and the companion schema refuses to validate one (§7).
+**Coverage (mandatory) — "requirements evaluated, excluded as not applicable, and unresolved."**
+`aggregate.coverage` states the evaluated population precisely: `evaluated_population` (requirements
+evaluated), `excluded_not_applicable` (excluded as `NOT_APPLICABLE` — §5.2, outside the evaluated
+population by construction, not a gap), and `unknown_count` (the "unresolved" count — evaluated
+requirements that resolved `UNKNOWN`). An aggregate without a coverage statement is not a summary,
+it is a claim with the denominator hidden, and the companion schema refuses to validate one (§7).
 
 **Three buckets, never a single number.** Beneath coverage, `aggregate.buckets` groups every
 evaluated claim by its `verdict` — `met`, `not_met`, `not_evaluable` — never rolled up into one
@@ -156,6 +195,12 @@ the point a sponsor first looks at the Result. `not_evaluable` is not a failure 
 — it is its own bucket, exactly as large as `sufficiency != SATISFIED` makes it (§1), and a Result
 that folds it into either of the other two has silently converted "we could not tell" into an
 answer.
+
+**Assurance stays attached to each claim.** The ruling's closing sentence — "who says so, and could
+I independently check it?" — is why `tier` and `grade` are per-claim fields (§1, §4), never
+aggregate-level. Nothing above the fold summarizes assurance; a sponsor who wants to know how a
+particular `met`/`not_met`/`not_evaluable` bucket entry was produced reads that claim's own `tier`
+and `grade`, not a rollup.
 
 ## 4. Claim
 
