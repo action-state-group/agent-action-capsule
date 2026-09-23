@@ -1,0 +1,32 @@
+{
+  "_status": "DRAFT — spec-desk illustrative vector for [a18-nostr-pubkey-host-principal-and-buzz-profiles]; awaiting Steven's Area 18 field-set ruling. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 2 and this directory's README.md.",
+  "_mutation": "payload_commitments[0].digest set equal to external_event_refs[0].event_id — the Buzz transport event id is reused as the semantic digest instead of being a distinct field. Violates the two-fields-never-one rule (EvidenceBook v3 §14; capsule-registry drafts Entry 2's job_reference note).",
+  "record": {
+    "seq": 1,
+    "record_id": "935f0d68494cbf30391eda19ae62cfcb312514d886653711a513efb2afabc3e7",
+    "record_type": "observation",
+    "epistemic_type": "system_of_record_fact",
+    "principal_ref": "nostr-pubkey:0efd84b56089db33b554bef9e2b37f7580fb39579770d2ba855aea886551b550",
+    "principal_ref_relay_hint": "wss://relay.buzz.example",
+    "subject_ref": "buzz:agent-job:job-2026-09-22-0001",
+    "contract_ref": "ec:buzz.agent-job/v1@1",
+    "requirement_refs": ["req-outcome-1"],
+    "event_time_claim": "2026-09-22T14:03:11Z",
+    "committed_at": "2026-09-22T14:03:12Z",
+    "payload_commitments": [
+      {
+        "digest_alg": "SHA-256",
+        "digest": "935f0d68494cbf30391eda19ae62cfcb312514d886653711a513efb2afabc3e7",
+        "role": "job-outcome-payload"
+      }
+    ],
+    "external_event_refs": [
+      {
+        "transport": "nostr",
+        "event_id": "935f0d68494cbf30391eda19ae62cfcb312514d886653711a513efb2afabc3e7"
+      }
+    ],
+    "assurance_properties": ["self_attested"],
+    "retention_state": "AVAILABLE"
+  }
+}

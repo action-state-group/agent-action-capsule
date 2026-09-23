@@ -1,0 +1,37 @@
+{
+  "_status": "DRAFT — spec-desk illustrative vector for [a18-nostr-pubkey-host-principal-and-buzz-profiles]; awaiting Steven's Area 18 field-set ruling. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 3 and this directory's README.md.",
+  "_note": "One of three records (semantic_judgment, human_report review, obligation_reference) whose combination is required to satisfy a buzz.moderation/v1 requirement — this profile's evidentiary basis is the three together, not any single record.",
+  "record": {
+    "seq": 11,
+    "record_id": "b64ea865579ba7a2c91c92191c533569cb453287d30f3f4073c01293903336e5",
+    "record_type": "human_report",
+    "epistemic_type": "human_report",
+    "principal_ref": "nostr-pubkey:0efd84b56089db33b554bef9e2b37f7580fb39579770d2ba855aea886551b550",
+    "principal_ref_relay_hint": "wss://relay.buzz.example",
+    "actor_role_ref": "buzz:moderator",
+    "subject_ref": "buzz:content-action:mod-2026-09-22-0007",
+    "contract_ref": "ec:buzz.moderation/v1@1",
+    "requirement_refs": ["req-human-role-2"],
+    "event_time_claim": "2026-09-22T15:20:00Z",
+    "committed_at": "2026-09-22T15:20:03Z",
+    "payload_commitments": [
+      {
+        "digest_alg": "SHA-256",
+        "digest": "b64ea865579ba7a2c91c92191c533569cb453287d30f3f4073c01293903336e5",
+        "role": "review-event-digest"
+      }
+    ],
+    "external_event_refs": [
+      {
+        "transport": "nostr",
+        "event_id": "e974a268fdbd0d8b674ff166187ad1a17fde9b266b166441f5b318cf0b2c7a23"
+      }
+    ],
+    "review": {
+      "outcome": "confirmed",
+      "review_event_ref": "buzz:moderator-review:mod-2026-09-22-0007"
+    },
+    "assurance_properties": ["self_attested"],
+    "retention_state": "AVAILABLE"
+  }
+}
