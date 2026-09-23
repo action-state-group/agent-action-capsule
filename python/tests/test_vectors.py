@@ -9,7 +9,7 @@ import pytest
 from agent_action_capsule import canonical, verify, verify_store
 
 VECTORS = Path(__file__).resolve().parents[2] / "vectors/capsule"
-MANIFEST = json.loads((VECTORS / "vectors.json").read_text())
+MANIFEST = json.loads((VECTORS / "vectors.json").read_text(encoding="utf-8"))
 CASES = [c["name"] for c in MANIFEST["cases"]]
 
 
@@ -48,8 +48,8 @@ def _assert_canonical(inp, exp):
 @pytest.mark.parametrize("name", CASES)
 def test_vector(name):
     case = VECTORS / name
-    inp = json.loads((case / "input.json").read_text())
-    exp = json.loads((case / "expected.json").read_text())
+    inp = json.loads((case / "input.json").read_text(encoding="utf-8"))
+    exp = json.loads((case / "expected.json").read_text(encoding="utf-8"))
 
     if exp.get("kind") == "canonical":
         _assert_canonical(inp, exp)
