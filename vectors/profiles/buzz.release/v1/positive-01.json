@@ -1,0 +1,37 @@
+{
+  "_status": "DRAFT — spec-desk illustrative vector for [a18-nostr-pubkey-host-principal-and-buzz-profiles]; awaiting Steven's Area 18 field-set ruling. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 4 and this directory's README.md.",
+  "record": {
+    "seq": 1,
+    "record_id": "93899b08831ccb73f742ffe4b05fe93502beed6279d7bc4517ad476cda3e791d",
+    "record_type": "observation",
+    "epistemic_type": "system_of_record_fact",
+    "principal_ref": "nostr-pubkey:0efd84b56089db33b554bef9e2b37f7580fb39579770d2ba855aea886551b550",
+    "principal_ref_relay_hint": "wss://relay.buzz.example",
+    "subject_ref": "buzz:release:release-2026-09-22-0003",
+    "contract_ref": "ec:buzz.release/v1@1",
+    "requirement_refs": ["req-process-1", "req-obligation-1"],
+    "event_time_claim": "2026-09-22T18:00:00Z",
+    "committed_at": "2026-09-22T18:00:05Z",
+    "payload_commitments": [
+      {
+        "digest_alg": "SHA-256",
+        "digest": "93899b08831ccb73f742ffe4b05fe93502beed6279d7bc4517ad476cda3e791d",
+        "role": "release-gate-payload"
+      },
+      {
+        "digest_alg": "SHA-256",
+        "digest": "52f21048395397598bd9929aee566e9b7617a161d36bc2818381e06efbd259d6",
+        "role": "approval-record-payload"
+      }
+    ],
+    "external_event_refs": [
+      {
+        "transport": "nostr",
+        "event_id": "fc5728b07aa97dfd9047cdee8865ddd73b020f795ef9c360c4863d0dab147598"
+      }
+    ],
+    "obligation_refs": ["buzz-internal-release-policy/section-2/v1"],
+    "assurance_properties": ["self_attested"],
+    "retention_state": "AVAILABLE"
+  }
+}

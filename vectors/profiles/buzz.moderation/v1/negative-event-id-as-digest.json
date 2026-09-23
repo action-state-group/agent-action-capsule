@@ -1,0 +1,37 @@
+{
+  "_status": "DRAFT — spec-desk illustrative vector for [a18-nostr-pubkey-host-principal-and-buzz-profiles]; awaiting Steven's Area 18 field-set ruling. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 3 and this directory's README.md.",
+  "_mutation": "Mutated from positive-semantic-judgment.json: payload_commitments[0].digest set equal to external_event_refs[0].event_id — the Buzz transport event id is reused as the moderated-content semantic digest instead of being a distinct field. Violates the two-fields-never-one rule (EvidenceBook v3 §14; capsule-registry drafts Entry 3's moderation_reference note).",
+  "record": {
+    "seq": 10,
+    "record_id": "e974a268fdbd0d8b674ff166187ad1a17fde9b266b166441f5b318cf0b2c7a23",
+    "record_type": "judgment",
+    "epistemic_type": "semantic_judgment",
+    "principal_ref": "nostr-pubkey:0efd84b56089db33b554bef9e2b37f7580fb39579770d2ba855aea886551b550",
+    "principal_ref_relay_hint": "wss://relay.buzz.example",
+    "subject_ref": "buzz:content-action:mod-2026-09-22-0007",
+    "contract_ref": "ec:buzz.moderation/v1@1",
+    "requirement_refs": ["req-human-role-1"],
+    "event_time_claim": "2026-09-22T15:10:00Z",
+    "committed_at": "2026-09-22T15:10:02Z",
+    "payload_commitments": [
+      {
+        "digest_alg": "SHA-256",
+        "digest": "e974a268fdbd0d8b674ff166187ad1a17fde9b266b166441f5b318cf0b2c7a23",
+        "role": "moderated-content-semantic-digest"
+      }
+    ],
+    "external_event_refs": [
+      {
+        "transport": "nostr",
+        "event_id": "e974a268fdbd0d8b674ff166187ad1a17fde9b266b166441f5b318cf0b2c7a23"
+      }
+    ],
+    "judgment": {
+      "disposition": "removed",
+      "evaluator_model_ref": "buzz-mod-model-v1",
+      "calibration_ref": "buzz-mod-calibration-2026-09"
+    },
+    "assurance_properties": ["self_attested"],
+    "retention_state": "AVAILABLE"
+  }
+}

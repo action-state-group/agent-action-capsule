@@ -1,0 +1,38 @@
+{
+  "_status": "DRAFT — spec-desk illustrative vector for [a18-nostr-pubkey-host-principal-and-buzz-profiles]; awaiting Steven's Area 18 field-set ruling. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 3 and this directory's README.md.",
+  "_mutation": "Mutated from positive-semantic-judgment.json: judgment.moderated_text added, carrying the moderated content's free text inline. Violates the 'no message text in any record — digests only' rule (task boundary; capsule-registry drafts, common rules across Entries 2-4).",
+  "record": {
+    "seq": 10,
+    "record_id": "3dd2d070ee896321c45d6d7e81d0900f3f0ea9284a44b1d53decc0f5e18f40ca",
+    "record_type": "judgment",
+    "epistemic_type": "semantic_judgment",
+    "principal_ref": "nostr-pubkey:0efd84b56089db33b554bef9e2b37f7580fb39579770d2ba855aea886551b550",
+    "principal_ref_relay_hint": "wss://relay.buzz.example",
+    "subject_ref": "buzz:content-action:mod-2026-09-22-0007",
+    "contract_ref": "ec:buzz.moderation/v1@1",
+    "requirement_refs": ["req-human-role-1"],
+    "event_time_claim": "2026-09-22T15:10:00Z",
+    "committed_at": "2026-09-22T15:10:02Z",
+    "payload_commitments": [
+      {
+        "digest_alg": "SHA-256",
+        "digest": "d6788d479be587d2ec4b6dda7e6e65ee0f12a3b673e7b338c5b589b24a82a6e0",
+        "role": "moderated-content-semantic-digest"
+      }
+    ],
+    "external_event_refs": [
+      {
+        "transport": "nostr",
+        "event_id": "e974a268fdbd0d8b674ff166187ad1a17fde9b266b166441f5b318cf0b2c7a23"
+      }
+    ],
+    "judgment": {
+      "disposition": "removed",
+      "evaluator_model_ref": "buzz-mod-model-v1",
+      "calibration_ref": "buzz-mod-calibration-2026-09",
+      "moderated_text": "the original post content, reproduced verbatim here"
+    },
+    "assurance_properties": ["self_attested"],
+    "retention_state": "AVAILABLE"
+  }
+}
