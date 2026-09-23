@@ -436,12 +436,14 @@ def build_disclosure_envelope_cases() -> list[dict]:
 
 # ---- Provenance mode vectors (§5.3(bis), draft -05) ------------------------
 # Written to a SEPARATE directory (PM_OUT), not vectors/capsule/: vectors/capsule/ is
-# cross-language-shared (go/cmd/vector_runner reads vectors/capsule/vectors.json
-# and expects every listed case to verify identically under the Go reference
-# implementation). The Go implementation has never carried the -02 domain/
-# provenance addendum either (Class 1 check 9's domain/provenance handling is
-# Python-only), so provenance_mode joins that same Python-only surface rather
-# than breaking Go conformance on a feature it doesn't implement.
+# the historical checks-1-8 corpus (go/cmd/vector_runner reads vectors/capsule/
+# vectors.json and expects every listed case to verify identically under the Go
+# reference implementation). provenance_mode (check 9) IS ported to Go
+# (go/verify's TestProvenanceModeVectors asserts this same expected.json), so
+# this corpus is cross-language too; it stays in its own directory rather than
+# merging into vectors/capsule/ to avoid disturbing that corpus's own manifest
+# and generation. The domain/provenance (-02) addendum remains a separate,
+# still Python-only surface Go does not implement.
 def build_provenance_mode_cases() -> list[dict]:
     cases: list[dict] = []
 
@@ -501,6 +503,114 @@ def build_provenance_mode_cases() -> list[dict]:
         "member -- verifiers and downstream evidence evaluators count the pair once, the "
         "contemporaneous record governing, never twice.",
         {"ledger": [prov_contemporaneous, prov_duplicate]})
+
+    # ---- ADDED (bounce): 6 branches the check-9 Go port carried by reading only ----
+    # Each case below is generated from the Python reference and asserted by BOTH
+    # languages via the (check, severity, code) + derived + ok parity mechanism.
+
+    # (1) invalid mode: an unknown mode string is neither backfilled nor
+    # contemporaneous, so provenance_mode_invalid fires and derived.provenance_mode
+    # is NEVER set (the else-branch that records it is skipped) — the backfilled and
+    # contemporaneous sub-checks are both skipped, so this is the ONLY check-9
+    # finding and derived carries no provenance_mode / provenance_time_rung key.
+    add("neg-provenance-mode-invalid-mode", "negative",
+        "provenance_mode.mode='fabricated' is outside the closed {backfilled, contemporaneous} "
+        "enum -> provenance_mode_invalid (check 9, gating); derived.provenance_mode is left "
+        "UNSET (only a recognized mode is ever recorded) and no backfilled/contemporaneous "
+        "sub-checks run.",
+        seal({**ident_v4("prov-invalid-mode"), "assurance": assurance("not_applicable"),
+              "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+              "provenance_mode": {"mode": "fabricated"}}))
+
+    # (2) invalid time_rung: an unknown time_rung on an otherwise well-formed
+    # backfilled record -> provenance_mode_invalid, and the reference verifier
+    # RESETS time_rung to None (excluded from the derived cap) so it is NOT then
+    # treated as a witnessed overclaim; derived.provenance_time_rung stays
+    # 'self_attested' (no corroborating reference present).
+    add("neg-provenance-mode-invalid-time-rung", "negative",
+        "provenance_mode.time_rung='notarized' is outside the closed {self_attested, witnessed} "
+        "enum on an otherwise well-formed backfilled record -> a single provenance_mode_invalid "
+        "(check 9, gating); the unrecognized value is reset (time_rung=None) so it is NOT also "
+        "treated as a witnessed overclaim, and derived.provenance_time_rung stays 'self_attested'.",
+        seal({**ident_v4("prov-invalid-time-rung"), "assurance": assurance("not_applicable"),
+              "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+              "provenance_mode": provenance_mode_backfilled(time_rung="notarized")}))
+
+    # (3a) source_ref malformed — non-object when present: source_ref is a string,
+    # so the object-shape check fires (the elif '"source_ref" in pm' branch).
+    add("neg-provenance-mode-source-ref-not-object", "negative",
+        "provenance_mode.source_ref present but a non-object (string) on a backfilled record "
+        "-> provenance_mode_source_ref_malformed (check 9, gating; the source_ref-MUST-be-object "
+        "branch). All other backfilled companion fields are present and well-formed.",
+        seal({**ident_v4("prov-source-ref-not-object"), "assurance": assurance("not_applicable"),
+              "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+              "provenance_mode": {**provenance_mode_backfilled(source_ref=False),
+                                  "source_ref": "x-external-ledger-entry"}}))
+
+    # (3b) source_ref malformed — present object missing a REQUIRED subfield: the
+    # object-shape check passes, but the per-subfield loop reports the missing
+    # 'digest' as provenance_mode_source_ref_malformed.
+    add("neg-provenance-mode-source-ref-missing-subfield", "negative",
+        "provenance_mode.source_ref is a well-formed object but MISSING the REQUIRED 'digest' "
+        "subfield on a backfilled record -> provenance_mode_source_ref_malformed (check 9, "
+        "gating; the per-subfield branch). type and digest_alg are present.",
+        seal({**ident_v4("prov-source-ref-missing-subfield"), "assurance": assurance("not_applicable"),
+              "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+              "provenance_mode": {**provenance_mode_backfilled(source_ref=False),
+                                  "source_ref": {"type": "x-external-ledger-entry", "digest_alg": "SHA-256"}}}))
+
+    # (4) contemporaneous with orphaned fields: mode='contemporaneous' MUST carry
+    # none of the backfilled-only companion fields; a present-and-non-null source_ref
+    # is orphaned -> provenance_mode_invalid. derived.provenance_mode='contemporaneous'
+    # (a recognized mode) is still recorded; derived.provenance_time_rung is NOT set
+    # (that cap is only rederived on the backfilled branch).
+    add("neg-provenance-mode-contemporaneous-orphaned-fields", "negative",
+        "provenance_mode.mode='contemporaneous' carrying a backfilled-only companion field "
+        "(source_ref present and non-null) -> provenance_mode_invalid (check 9, gating; the "
+        "orphaned-fields branch, presence-and-non-null). derived.provenance_mode='contemporaneous' "
+        "is still recorded; no provenance_time_rung cap is derived for a contemporaneous record.",
+        seal({**ident_v4("prov-contemporaneous-orphaned"), "assurance": assurance("not_applicable"),
+              "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+              "provenance_mode": {"mode": "contemporaneous",
+                                  "source_ref": {"type": "x-external-ledger-entry", "digest_alg": "SHA-256", "digest": "3" * 64}}}))
+
+    # (5) witnessed WITH corroboration: the ONLY path that rederives
+    # derived.provenance_time_rung='witnessed'. A backfilled record claims
+    # time_rung='witnessed' AND carries a well-formed references[] entry citing
+    # citation_purpose='corroborates_source_time' (non-empty type/digest_alg/digest)
+    # -> verifies clean (no overclaim), derived.provenance_time_rung='witnessed'.
+    add("pos-provenance-mode-witnessed-corroborated", "positive",
+        "a backfilled record claiming provenance_mode.time_rung='witnessed' WITH a well-formed "
+        "references[] entry citing citation_purpose='corroborates_source_time' (all of "
+        "type/digest_alg/digest non-empty) -> verifies clean; this is the ONLY case where "
+        "derived.provenance_time_rung='witnessed' (the cap rederived from cited evidence, "
+        "not from the claim).",
+        seal({**ident_v4("prov-witnessed-corroborated"), "assurance": assurance("not_applicable"),
+              "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+              "provenance_mode": provenance_mode_backfilled(time_rung="witnessed"),
+              "references": [{"type": "x-witnessed-timestamp", "digest_alg": "SHA-256", "digest": "4" * 64,
+                              "citation_purpose": "corroborates_source_time"}]}))
+
+    # (6) duplicate_parent_not_contemporaneous: the store-level 'duplicates' pass.
+    # When a 'duplicates'-linked child's parent is ITSELF backfilled (not the
+    # contemporaneous record 'duplicates' is defined to cite), the pass reports
+    # duplicate_collapsed AND duplicate_parent_not_contemporaneous (both info, check 9)
+    # on the child; both members remain ok.
+    dup_backfilled_parent = seal({**ident_v4("prov-backfilled-parent"),
+                                   "assurance": assurance("not_applicable"),
+                                   "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+                                   "provenance_mode": provenance_mode_backfilled()})
+    dup_backfilled_child = seal({**ident_v4("prov-backfilled-child"),
+                                  "assurance": assurance("not_applicable", ledger_mode="chained"),
+                                  "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
+                                  "provenance_mode": provenance_mode_backfilled(),
+                                  "chain": {"parent_capsule_id": dup_backfilled_parent["capsule_id"], "relation": "duplicates"}})
+    add("pos-chain-duplicates-parent-backfilled", "store",
+        "a 'duplicates'-linked pair whose parent is ITSELF provenance_mode.mode='backfilled' "
+        "(not the contemporaneous record 'duplicates' is defined to cite): the store-level pass "
+        "reports BOTH duplicate_collapsed AND duplicate_parent_not_contemporaneous (both info, "
+        "check 9) on the child; both members remain ok.",
+        {"ledger": [dup_backfilled_parent, dup_backfilled_child]})
 
     return cases
 
