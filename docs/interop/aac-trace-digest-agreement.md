@@ -1,4 +1,4 @@
-# AAC ↔ TRACE Digest Crosswalk — Machine-Checked Fixture
+# AAC ↔ TRACE Digest Agreement — Machine-Checked Fixture
 
 **Status:** Fixture backing the informative crosswalk drafted for
 `agentrust-io/trace-spec` (`docs/crosswalks/agent-action-capsule.md` in their tree).
@@ -29,26 +29,32 @@ re-implementation of TRACE's algorithm, so the comparison is between two
 independent implementations, not one implementation and its own description
 of itself.
 
-| Divergence case | TRACE §3.2.2 requirement | AAC requirement (spec §2, §5.1) |
+| Divergence case | TRACE §3.2.2 requirement | AAC requirement (spec §2) |
 |---|---|---|
 | Non-ASCII string values | UTF-8, RFC 8259 §7 escaping only | same (plain JCS) |
 | Non-BMP / supplementary-plane object key | UTF-16 code-unit sort, not code-point sort | same (plain JCS, RFC 8785 §3.2.3) |
 | High-BMP object key | UTF-16 code-unit sort | same |
 | Integer at exactly ±(2^53 − 1) | MUST accept (boundary itself is in-range) | MUST accept |
-| Integer outside ±(2^53 − 1) | MUST reject (raised from RFC 8785 Appendix B note 1 SHOULD to a MUST) | MUST reject (§5.1 safe-integer bound) |
+| Integer outside ±(2^53 − 1) | MUST reject (raised from RFC 8785 Appendix B note 1 SHOULD to a MUST) | producer MUST represent as a decimal string (§2) |
 
-The fixture capsule (`aac-trace-digest-crosswalk-positive-capsule.json`)
-combines all five into one `extension` object so the digest computed is over
-one real preimage, not five isolated micro-cases.
+The fixture capsule (`aac-trace-digest-agreement-positive-capsule.json`)
+combines the four in-range divergence cases (non-ASCII strings, the two
+BMP/non-BMP key cases, and the safe-integer boundary itself, exercised at
+both `safe_max` and `safe_min`) into one `extension` object so the digest
+computed is over one real preimage, not four isolated micro-cases. The
+fifth case — an integer outside the safe range — cannot appear in any real
+preimage under the §2 producer rule, so it is exercised separately via the
+`boundary_exceeded` mutation below, which both implementations refuse to
+digest at all.
 
 ## Fixture files
 
-- `aac-trace-digest-crosswalk-vector.json` — the vector: pinned digests, the
+- `aac-trace-digest-agreement-vector.json` — the vector: pinned digests, the
   checked-against commit, and the boundary-exceeded case.
-- `aac-trace-digest-crosswalk-positive-capsule.json` — the positive capsule.
-- `aac-trace-digest-crosswalk-mutant-capsule.json` — the same capsule with one
+- `aac-trace-digest-agreement-positive-capsule.json` — the positive capsule.
+- `aac-trace-digest-agreement-mutant-capsule.json` — the same capsule with one
   nested leaf changed three levels down (`extension.trace_digest_agreement_test.😀`).
-- `../../python/tests/test_interop_trace_digest_crosswalk.py` — the check.
+- `../../python/tests/test_interop_trace_digest_agreement.py` — the check.
 
 ## Verifier contract
 

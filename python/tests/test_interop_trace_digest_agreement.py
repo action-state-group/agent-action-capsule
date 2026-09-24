@@ -28,7 +28,7 @@ from agent_action_capsule.canonical import (
 
 ROOT = Path(__file__).resolve().parents[2]
 INTEROP = ROOT / "docs" / "interop"
-VECTOR = json.loads((INTEROP / "aac-trace-digest-crosswalk-vector.json").read_text())
+VECTOR = json.loads((INTEROP / "aac-trace-digest-agreement-vector.json").read_text())
 
 
 def _load_capsule(name: str) -> dict:

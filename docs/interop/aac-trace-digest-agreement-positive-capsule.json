@@ -1,5 +1,5 @@
 {
-  "action_id": "trace-crosswalk-digest-agreement",
+  "action_id": "trace-digest-agreement",
   "action_type": "decide",
   "assurance": {
     "attestation_mode": "self_attested",
@@ -17,7 +17,7 @@
   "extension": {
     "trace_digest_agreement_test": {
       "non_ascii": "héllo wörld — 日本語 π≈3.14159, Ω≠0",
-      "😀": "MUTATED nested value",
+      "😀": "surrogate-pair key",
       "Ｚ": "full-width BMP key",
       "safe_max": 9007199254740991,
       "safe_min": -9007199254740991
@@ -25,7 +25,7 @@
   },
   "format_version": "4",
   "operator": "AAC-CONFORMANCE",
-  "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+  "spec_version": "draft-mih-scitt-agent-action-capsule-05",
   "timestamp": "2026-09-22T00:00:00Z",
-  "capsule_id": "8c16c7c1e31e8bb6280976187f066bc8ea918ea383b99e9735e9c495c268b7cc"
+  "capsule_id": "1f6f40b682c1769fd01d9ad4c2399037ed355920e98d98581a27d1f09447f073"
 }

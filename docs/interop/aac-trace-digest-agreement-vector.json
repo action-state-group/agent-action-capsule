@@ -1,5 +1,5 @@
 {
-  "profile_label": "urn:action-state:aac-trace:digest-crosswalk:2026-09-22",
+  "profile_label": "urn:action-state:aac-trace:digest-agreement:2026-09-22",
   "purpose": "Digest-agreement fixture between AAC's in-repo JCS (agent_action_capsule.canonical) and an independent RFC 8785 implementation (rfc8785 0.1.4, PyPI — the library TRACE's own spec names, trace-v0.2.md §3.2.2), over the cases where RFC 8785 implementations are known to diverge: non-ASCII string values, a non-BMP/supplementary-plane object key (U+1F600, surrogate pair), a high-BMP object key (U+FF3A), and integers at the exact IEEE-754 safe-integer boundary (±(2^53-1)).",
   "checked_against": {
     "repo": "agentrust-io/trace-spec",
@@ -10,15 +10,15 @@
   },
   "positive": {
     "description": "A format-4 Capsule whose capsule_id preimage exercises every RFC 8785 divergence case. AAC's json_digest() and an independent sha256(rfc8785.dumps(v)) over the identical preimage produce byte-identical output and therefore the same hex digest.",
-    "capsule": "aac-trace-digest-crosswalk-positive-capsule.json",
-    "capsule_id": "afe9b313481300fc4cdf963fc23ff9a8123a91ed47bf5462c96312851c36d5be",
-    "trace_rfc8785_digest_hex": "afe9b313481300fc4cdf963fc23ff9a8123a91ed47bf5462c96312851c36d5be"
+    "capsule": "aac-trace-digest-agreement-positive-capsule.json",
+    "capsule_id": "1f6f40b682c1769fd01d9ad4c2399037ed355920e98d98581a27d1f09447f073",
+    "trace_rfc8785_digest_hex": "1f6f40b682c1769fd01d9ad4c2399037ed355920e98d98581a27d1f09447f073"
   },
   "mutant": {
-    "description": "The positive capsule with exactly one nested value changed (extension.trace_digest_agreement_test.😀, three levels deep, from \"surrogate-pair key\" to \"MUTATED nested value\"). Both implementations must produce a digest that differs from the positive case's pinned capsule_id — if a canonicalizer instead dropped or flattened the nested object (the replacer-array defect documented in the crosswalk prose), this digest would stay afe9b313... and the mutant would go undetected.",
-    "capsule": "aac-trace-digest-crosswalk-mutant-capsule.json",
-    "capsule_id": "8c16c7c1e31e8bb6280976187f066bc8ea918ea383b99e9735e9c495c268b7cc",
-    "trace_rfc8785_digest_hex": "8c16c7c1e31e8bb6280976187f066bc8ea918ea383b99e9735e9c495c268b7cc"
+    "description": "The positive capsule with exactly one nested value changed (extension.trace_digest_agreement_test.😀, three levels deep, from \"surrogate-pair key\" to \"MUTATED nested value\"). Both implementations must produce a digest that differs from the positive case's pinned capsule_id — if a canonicalizer instead dropped or flattened the nested object (the replacer-array defect documented in the crosswalk prose), this digest would stay 1f6f40b6... and the mutant would go undetected.",
+    "capsule": "aac-trace-digest-agreement-mutant-capsule.json",
+    "capsule_id": "9f2e3e36f6307d6993cf5280e8d3d3dfeb080323d455f5a97d6649d013b4c42d",
+    "trace_rfc8785_digest_hex": "9f2e3e36f6307d6993cf5280e8d3d3dfeb080323d455f5a97d6649d013b4c42d"
   },
   "boundary_exceeded": {
     "description": "The positive capsule's extension.trace_digest_agreement_test.safe_max raised by 1, to 9007199254740992 = 2^53, the first value at which npm's canonicalize 4.0.0 and PyPI's rfc8785 0.1.4 are documented (trace-v0.2.md §3.2.2) to disagree — canonicalize serializes it as a double (colliding with 9007199254740993), rfc8785 refuses it. Neither AAC's json_digest() nor rfc8785.dumps() can produce a digest for this object: both raise before any bytes are emitted, so the case where the two libraries silently disagree cannot arise in material either format actually digests.",
