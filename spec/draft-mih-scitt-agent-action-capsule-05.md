@@ -609,6 +609,92 @@ produces them — is the companion
 this profile carries only the rung claim and the minimal correlation
 evidence needed to rederive it honestly.
 
+### Cross-algorithm re-anchoring {#reanchoring}
+
+The `anchored` `ledger_mode` tier (above) rests on one SCITT
+registration receipt, sealed under one signature and digest algorithm.
+Decades later that algorithm may no longer be cryptographically
+load-bearing; an Ed25519 receipt from the year this profile was
+published is not a claim this document can promise will still mean
+anything in twenty years. Extending an anchored root's evidentiary
+life across such a boundary — re-anchoring — is standard practice for
+long-term non-repudiation (compare the archive-timestamp-renewal
+pattern of the Evidence Record Syntax family); this profile defines
+its own minimal, public FORMAT for it, reusing existing mechanism
+rather than inventing new cryptography.
+
+**Re-anchor Statement.** A re-anchoring is itself an ordinary CPB
+typed-digest-referencing artifact, sealed and registered to a
+conforming SCITT Transparency Service exactly as a Capsule is
+({{projection}}) — under whatever algorithm that service currently
+uses, which MAY differ from the algorithm being extended. It carries:
+
+- `subject`: a CPB typed digest reference {{I-D.mih-sokolov-scitt-payload-binding}}
+  identifying the material being re-anchored — an anchored Capsule's
+  `capsule_id` together with its original registration receipt, or a
+  prior Re-anchor Statement, so a subject MAY itself be re-anchored
+  again at the next boundary crossing.
+- `issuer`: a producer-defined identifier naming the party performing
+  this re-anchoring, under the same declared-party discipline
+  {{retentiondecl}} already gives `declarant` — a re-anchoring is a
+  claim by a named party, not a fact this format attests.
+- `issued_at`: {{RFC3339}} UTC timestamp of this re-anchoring.
+
+No new registry, header, or claim type is requested for the
+statement's own transport: it is registered and receipted using the
+same SCITT registration this profile already defines ({{registration}}),
+and its `subject` uses the same typed-digest-reference shape
+{{xref}} already defines. The extension this format adds is entirely
+in what a verifier does with the resulting chain of receipts, below.
+
+**Verifying a chain that crosses the boundary.** A stranger holding
+only the newest Re-anchor Statement and the original evidence checks
+the chain with no algorithm-specific code beyond what {{verification}}
+and ordinary SCITT receipt verification already require:
+
+1. Verify the newest Re-anchor Statement's own SCITT registration
+   receipt under whatever algorithm that receipt declares — the only
+   algorithm this step's present-day trust needs to extend to.
+2. Recompute the digest of the artifact `subject` names and confirm it
+   matches `subject`'s carried `{digest_alg, digest}` — a structural,
+   algorithm-agnostic bytes-in-hand check, the same discipline
+   {{xref}} already gives any typed digest reference.
+3. If `subject` names another Re-anchor Statement, recurse to step 1
+   for that statement, walking backward through however many boundary
+   crossings have occurred.
+4. Terminate at a `subject` naming the original Capsule; verify that
+   Capsule and its original receipt under {{verification}} as usual.
+5. Report the full hop sequence. A break at any hop — an
+   unverifiable receipt, a digest mismatch — truncates trust at that
+   hop; the chain before the break is unaffected, the same
+   partial-trust discipline {{assurance}} already applies to a chain
+   parent this producer's own stream cannot resolve.
+
+**What this format does not do.** A Re-anchor Statement's own
+registration receipt confirms it was sealed and timestamped as
+claimed; it does not confirm `issuer`'s authority to re-anchor on the
+original producer's behalf. That authority — or its absence — is a
+relationship the citing ecosystem establishes out of band (for
+example, a registered role naming who may re-anchor a given
+producer's roots), never a fact this format itself attests. Nor does
+this format extend evidentiary life on its own: a Re-anchor Statement
+created after the algorithm it restates has already been broken proves
+only that its `issuer` could still forge that broken algorithm, not
+that the original evidence is sound. A re-anchoring is only as good as
+its timing relative to the algorithm it extends. Deciding a
+re-anchoring cadence and operating it, across a fleet of roots, for
+decades, is a service — out of this document's scope by design, so
+that the format itself stays verifiable by a party who runs no such
+service and holds no relationship with `issuer`.
+
+Crossing a key boundary is compounded by a related gap: a receipt's
+COSE header carries `alg` but no `kid`, so a verifier checking an
+older-algorithm receipt against multiple keys published under that
+algorithm must try each one to find the signer. This document does
+not resolve that gap; a Re-anchor Statement's own receipt is subject
+to the same key-discovery limitation as any other SCITT receipt until
+it is.
+
 ### Provenance mode and backfilled records {#provenancemode}
 
 Most Capsules are sealed close to when the action they describe occurred:
@@ -923,12 +1009,92 @@ This rule is this profile's own and predates its generalization.
 mechanism that CPB profiles share; the requirement that a cited
 artifact be identified by content rather than by name originates here.
 
+**Identity references, never policy references.** Every `references`
+entry, as defined above, is an IDENTITY reference: its `{digest_alg,
+digest}` pair pins the exact bytes of one target, the same discipline
+`capsule_id` gives this Capsule itself ({{identity}}) — for a cited AAC
+Capsule, checking a `references` entry against that Capsule's own
+`capsule_id` computation is exactly this comparison. This profile
+defines no POLICY reference: a citation of the shape "this issuer,
+this subject, at least this version," which deliberately pins no
+historical bytes and instead names an evolving relationship a runtime
+is willing to accept. A policy reference belongs to whatever layer
+states runtime acceptance criteria — for example, a pack version
+constraint in capsule-registry's Pack Schema & `pack_id` Namespace —
+and MUST NOT be expressed as a `references` entry: relaxing an entry's
+`digest` to match a class of acceptable bytes, or substituting a
+version range for it, breaks the exact-bytes guarantee this section
+exists to give a verifier. An implementation that needs both — a
+record of what was cited exactly, and a statement of what versions a
+policy currently accepts — carries the identity reference here and
+states its acceptance policy in the governing policy document; it
+never conflates the two in one field.
+
 This profile states no availability or retention obligation for a
 cited artifact. Content-derived addressing establishes that bytes,
 once obtained, are the bytes cited; it cannot establish that any party
 will serve them. An availability undertaking is a separate claim with
 a named obligated party and an expiry, and belongs to whatever profile
-carries the locator.
+carries the locator. {{retentiondecl}} defines such an undertaking for
+a `references` entry.
+
+### Retention declarations {#retentiondecl}
+
+A `references` entry MAY additionally carry a `retention` object,
+declaring a retention undertaking about the cited target:
+
+| Field | Type | Req | Meaning |
+|---|---|---|---|
+| declarant | string | REQUIRED | A producer-defined identifier naming the party making this undertaking (an operator identifier, DID, URI, or other string meaningful in the citing ecosystem — this profile mandates no scheme). The declarant need not be this Capsule's own producer; an entry MAY name the operator of wherever the cited artifact resides. |
+| retained_until | string ({{RFC3339}}) | OPTIONAL | Floor: `declarant` undertakes the cited target will remain resolvable at least until this time. |
+| not_retained_after | string ({{RFC3339}}) | OPTIONAL | Ceiling: `declarant` states the cited target will not be retained past this time (an erasure or data-minimization commitment). |
+
+At least one of `retained_until` and `not_retained_after` MUST be
+present when `retention` is present; a `retention` object carrying
+neither is malformed and a Class 1 verifier MUST reject it, the same
+structural treatment given any other malformed optional block. The two
+bounds are independent and MAY both be present, stating an exact
+retention window.
+
+**Declared, not attested.** A `retention` object is a statement by
+`declarant`, never a fact this profile or a Transparency Service
+attests to, and never independently checkable at seal time —
+content-derived addressing (above) establishes what the cited bytes
+are, never who will keep serving them, for how long, or on whose
+promise. A Class 1 verifier MUST report a `retention` object's field
+values as carried, structural data — the same treatment
+`constraints[].result` receives ({{constraints}}) — and MUST NOT
+report it as verified or attested. This is the same discipline this
+profile already applies to graded claims a producer makes about
+itself ({{assurance}}): a declaration is evidence of what was
+promised, not of what will occur.
+
+**Absence is not a finding.** A `references` entry with no `retention`
+object makes no claim about the cited target's retention in either
+direction — not that it is retained, not that it is unretained, not
+that no undertaking exists elsewhere. It is silence, not a negative
+fact. A verifier or downstream consumer MUST NOT treat the absence of
+a `retention` declaration as a finding against the record, the citing
+producer, or the cited target — the same discipline {{assurance}}
+already applies to a Capsule carrying no `cross_party` evidence block
+({{crossparty}}): an unpopulated optional field is missing
+information, never a negative claim.
+
+**Selective disclosure is orthogonal.** A `retention` declaration
+concerns the resolvability of the cited target's committed bytes; it
+says nothing about which of the CITING Capsule's own fields a holder
+later discloses. The selective-disclosure extension point
+({{selectivedisclosure}}) neither affects nor is affected by any
+`retention` declaration: disclosures are retained by the party
+presenting the Capsule, never by a log or Transparency Service
+({{I-D.mih-scitt-cpb-selective-disclosure}}, Disclosure Delivery), and
+`capsule_id` is computed over commitments that do not change under
+redaction. Retention of a cited artifact and disclosure of the citing
+Capsule's own fields are independent axes, and a hosted verification
+service that itself holds no state (for example, one that retains
+nothing beyond the lifetime of a single verification request) makes no
+`retention` declaration of its own by virtue of performing
+verification: verifying a Capsule is not citing one.
 
 A reference MAY additionally carry `log_coordinates`, an object
 `{log_id, leaf_index, inclusion_proof}`, present as a unit when the
