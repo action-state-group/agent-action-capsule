@@ -23,7 +23,7 @@ mechanical half):
        - neg-disclosure-carrier-under-withheld.json: claim-3's presentation
          changed from `analysis` to `disclosure` while `status` stays
          `WITHHELD` (spec section 2's disclosure-policy gate).
-  3. MUTANT CHECK (QUEUE_PROTOCOL section 7): each negative's rejection is
+  3. MUTANT CHECK: each negative's rejection is
      re-tested with the specific schema rule it depends on stripped out. With
      the rule removed, the SAME fixture MUST validate -- proving the check
      above can actually fail, not just report green by construction. The
@@ -37,8 +37,7 @@ Usage:
 Exit 0: every check above passed. Exit 1: a finding was printed. Exit 2: a
 harness error (missing dependency, missing fixture).
 
-NOT covered here (named per QUEUE_PROTOCOL section 7b's "name what you did
-NOT test"):
+NOT covered here (named per the principle of stating what you did NOT test):
   - `generated_at`'s "format": "date-time" keyword is annotation-only under
     python-jsonschema's default Draft202012Validator (no FormatChecker is
     attached) -- a garbage generated_at value currently validates clean.

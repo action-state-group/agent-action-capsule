@@ -28,7 +28,7 @@ Both repos are the same license family (Action State Group). Each vendored file
 records the exact scitt-payload-binding commit it came from.
 
 Usage:
-    python scripts/vendor_cpb_registry.py [path-to-scitt-payload-binding-checkout]
+    python scripts/vendor_cpb_registry.py [checkout_path]
 
 If no path is given, tries ``$SCITT_PAYLOAD_BINDING_PATH``, else
 ``../../scitt-payload-binding`` relative to this repo, else a sibling checkout.

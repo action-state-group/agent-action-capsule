@@ -51,7 +51,7 @@ def test_vector_matches_expected(case):
     assert verdict == expected["verdict"], case
     assert failed_stage == expected["failed_stage"], case
 
-    # R4: exactly one documented stage fails, and it is the last stage evaluated.
+    # Exactly one documented stage fails, and it is the last stage evaluated.
     if failed_stage is None:
         assert all(stages.values()), (case, stages)
     else:

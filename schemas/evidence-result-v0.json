@@ -28,7 +28,7 @@
       "enum": ["recomputed", "judged"]
     },
     "Grade": {
-      "description": "The three-value assurance grade owned by [grade-vocabulary-reconcile]; mirrored here, never redefined.",
+      "description": "The three-value assurance grade owned elsewhere in the spec; mirrored here, never redefined.",
       "enum": ["self-attested", "witnessed", "countersigned"]
     },
     "Sufficiency": {
