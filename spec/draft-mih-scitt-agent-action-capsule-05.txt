@@ -1719,8 +1719,8 @@ Internet-Draft            Agent Action Capsules           September 2026
    (Section 9.2) neither affects nor is affected by any retention
    declaration: disclosures are retained by the party presenting the
    Capsule, never by a log or Transparency Service
-   ([I-D.mih-scitt-cpb-selective-disclosure], Disclosure Delivery), and
-   capsule_id is computed over commitments that do not change under
+   ([I-D.mih-scitt-agent-action-capsule-sel-disc], Disclosure Delivery),
+   and capsule_id is computed over commitments that do not change under
    redaction.  Retention of a cited artifact and disclosure of the
    citing Capsule's own fields are independent axes, and a hosted
    verification service that itself holds no state (for example, one
@@ -2109,19 +2109,19 @@ Internet-Draft            Agent Action Capsules           September 2026
    The complete normative profile of this mechanism — including the
    commitment encoding, disclosure syntax, and verifier checks — is
    defined in the companion Internet-Draft
-   [I-D.mih-scitt-cpb-selective-disclosure].  That companion is a CPB
-   payload-class document; the mechanism is payload-class-generic.  This
-   profile (AAC) retains only the eligibility-policy annex: the
+   [I-D.mih-scitt-agent-action-capsule-sel-disc].  That companion is a
+   CPB payload-class document; the mechanism is payload-class-generic.
+   This profile (AAC) retains only the eligibility-policy annex: the
    declaration of which AAC payload fields are eligible for selective
    disclosure and which are non-eligible because this profile's own
    verifier requires their values in clear.
 
    Implementations of this profile version MUST NOT generate or
    interpret selective-disclosure payload structures unless they
-   additionally implement [I-D.mih-scitt-cpb-selective-disclosure]: the
-   extension point is defined only in that companion, and no conformance
-   claim or verification behavior is defined for it in this document.
-
+   additionally implement [I-D.mih-scitt-agent-action-capsule-sel-disc]:
+   the extension point is defined only in that companion, and no
+   conformance claim or verification behavior is defined for it in this
+   document.
 
 
 
@@ -2242,11 +2242,12 @@ Mih                       Expires 27 March 2027                [Page 40]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
-   The companion Internet-Draft [I-D.mih-scitt-cpb-selective-disclosure]
-   normatively profiles the selective-disclosure extension point
-   reserved in Section 9.2, specifying the per-field commitment
-   structure, disclosure syntax, eligible fields, and verifier checks,
-   aligned with [I-D.ietf-spice-sd-cwt].
+   The companion Internet-Draft
+   [I-D.mih-scitt-agent-action-capsule-sel-disc] normatively profiles
+   the selective-disclosure extension point reserved in Section 9.2,
+   specifying the per-field commitment structure, disclosure syntax,
+   eligible fields, and verifier checks, aligned with
+   [I-D.ietf-spice-sd-cwt].
 
 12.  IANA Considerations
 
@@ -2288,7 +2289,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    acceptance.
 
    Initial contents are the seeded values of this document, verbatim:
-
 
 
 
@@ -2694,8 +2694,8 @@ Internet-Draft            Agent Action Capsules           September 2026
               Mih, S. and A. Sokolov, "Canonical Payload Binding: A
               Signed Statement Construction Profile", Work in Progress,
               Internet-Draft, draft-mih-sokolov-scitt-payload-binding-
-              00, n.d., <https://datatracker.ietf.org/doc/html/draft-
-              mih-sokolov-scitt-payload-binding-00>.
+              05, n.d., <https://datatracker.ietf.org/doc/html/draft-
+              mih-sokolov-scitt-payload-binding-05>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -2842,9 +2842,9 @@ Internet-Draft            Agent Action Capsules           September 2026
    [I-D.mih-sato-agent-accountability-composition]
               Mih, S. and T. Sato, "Agent Accountability: Composition
               and Conformance", Work in Progress, Internet-Draft, draft-
-              mih-sato-agent-accountability-composition-00, n.d.,
+              mih-sato-agent-accountability-composition-01, n.d.,
               <https://datatracker.ietf.org/doc/html/draft-mih-sato-
-              agent-accountability-composition-00>.
+              agent-accountability-composition-01>.
 
 
 
@@ -2858,12 +2858,12 @@ Mih                       Expires 27 March 2027                [Page 51]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
-   [I-D.mih-scitt-cpb-selective-disclosure]
-              Mih, S., "Selective Disclosure Profile for Canonical
-              Payload Binding", Work in Progress, Internet-Draft, draft-
-              mih-scitt-cpb-selective-disclosure-00, n.d.,
+   [I-D.mih-scitt-agent-action-capsule-sel-disc]
+              Mih, S., "Selective Disclosure Profile for Agent Action
+              Capsules", Work in Progress, Internet-Draft, draft-mih-
+              scitt-agent-action-capsule-sel-disc-00, n.d.,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
-              cpb-selective-disclosure-00>.
+              agent-action-capsule-sel-disc-00>.
 
    [I-D.munoz-scitt-permit-profile]
               Munoz, C., "A SCITT Profile for Pre-Execution AI Action
