@@ -2783,9 +2783,9 @@ Internet-Draft            Agent Action Capsules           September 2026
               Birkholz, H., Delignat-Lavaud, A., Fournet, C., and A.
               Chamayou, "CCF Profile for COSE Receipts", Work in
               Progress, Internet-Draft, draft-ietf-scitt-receipts-ccf-
-              profile-04, 24 June 2026,
+              profile-05, 23 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-ietf-scitt-
-              receipts-ccf-profile-04>.
+              receipts-ccf-profile-05>.
 
    [I-D.ietf-scitt-scrapi]
               Birkholz, H., Geater, J., and A. Delignat-Lavaud, "Supply
