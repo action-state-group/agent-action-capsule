@@ -687,9 +687,8 @@ decades, is a service — out of this document's scope by design, so
 that the format itself stays verifiable by a party who runs no such
 service and holds no relationship with `issuer`.
 
-Crossing a key boundary is compounded by a related, separately tracked
-gap: a receipt's COSE header carries `alg` but no `kid`
-(`[operator-guide-receipt-kid-claim]`), so a verifier checking an
+Crossing a key boundary is compounded by a related gap: a receipt's
+COSE header carries `alg` but no `kid`, so a verifier checking an
 older-algorithm receipt against multiple keys published under that
 algorithm must try each one to find the signer. This document does
 not resolve that gap; a Re-anchor Statement's own receipt is subject
