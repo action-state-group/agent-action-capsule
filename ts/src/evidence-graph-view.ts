@@ -8,6 +8,7 @@ import {
   buildEvidenceGraph,
   type ActNode,
   type AxisJudgment,
+  type CalibrationCount,
   type CalibrationNode,
   type CaseNode,
   type EvidenceGraph,
@@ -372,12 +373,35 @@ function renderCalibration(calibration?: CalibrationNode): HTMLElement {
   }
   const details = element("dl");
   appendValue(details, "confusion matrix", calibration.confusion);
-  appendValue(details, "agreement", calibration.agreement);
-  appendValue(details, "corrected rate", calibration.correctedRate);
-  appendValue(details, "corrected rate CI", calibration.correctedRateCi);
+  appendCount(details, "agreement", calibration.agreement);
+  appendCount(details, "corrected rate", calibration.correctedRate);
   appendValue(details, "period window", calibration.periodWindow);
   section.append(details);
   return section;
+}
+
+// A calibration figure is printed as the integers it is made of, "k of n";
+// no rate is computed from them here, and a figure the producer stated only
+// as a rate is said to be that, not converted.
+function appendCount(
+  parent: HTMLElement,
+  label: string,
+  count: CalibrationCount | undefined,
+): void {
+  parent.append(element("dt", label));
+  const cell = element("dd");
+  if (count === undefined) {
+    cell.textContent = "not stated";
+    cell.dataset.count = "not-stated";
+  } else if ("rate" in count) {
+    cell.textContent = "rate given, k and n not stated";
+    cell.dataset.count = "not-stated";
+  } else {
+    cell.textContent = `${count.k} of ${count.n}`;
+    cell.dataset.k = String(count.k);
+    cell.dataset.n = String(count.n);
+  }
+  parent.append(cell);
 }
 
 // Both of a record's times are shown, each labelled and each as written. The
