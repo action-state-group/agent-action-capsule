@@ -11,7 +11,9 @@ import {
   type CalibrationNode,
   type CaseNode,
   type EvidenceGraph,
+  type RecordTimes,
   type ReportNode,
+  zoneStatement,
 } from "./evidence-graph.js";
 import { readPresentationBlock } from "./presentation.js";
 import {
@@ -44,6 +46,38 @@ function display(value: unknown): string {
 function appendValue(parent: HTMLElement, label: string, value: unknown): void {
   parent.append(element("dt", label));
   parent.append(element("dd", display(value)));
+}
+
+// A written time is printed exactly as the source wrote it. When it states no
+// zone, a visible marker follows it; no zone is ever assigned and no `Z` or
+// UTC label is ever printed on a time that did not carry one.
+function renderTime(value: string): HTMLElement {
+  const zone = zoneStatement(value);
+  const time = element("span", value);
+  time.dataset.tz = zone;
+  if (zone === "not-stated") {
+    const marker = element("span", " (timezone not stated)");
+    marker.dataset.tzMarker = "not-stated";
+    time.append(marker);
+  }
+  return time;
+}
+
+function appendTime(
+  parent: HTMLElement,
+  label: string,
+  value: string | undefined,
+  absent: string,
+): void {
+  parent.append(element("dt", label));
+  const cell = element("dd");
+  if (value === undefined) {
+    cell.textContent = absent;
+    cell.dataset.time = "not-stated";
+  } else {
+    cell.append(renderTime(value));
+  }
+  parent.append(cell);
 }
 
 function bundleVerified(result: BundleVerificationResult): boolean {
@@ -163,9 +197,9 @@ function renderReceipts(
   }
   const list = element("ul");
   receipts.forEach((receipt) => {
-    list.append(
-      element("li", `${receipt.witness} · ${receipt.grade} · ${receipt.time}`),
-    );
+    const item = element("li", `${receipt.witness} · ${receipt.grade} · `);
+    item.append(renderTime(receipt.time));
+    list.append(item);
   });
   host.append(list);
 }
@@ -273,14 +307,27 @@ function renderCalibration(calibration?: CalibrationNode): HTMLElement {
   return section;
 }
 
+// Both of a record's times are shown, each labelled and each as written. The
+// action time is the source's own; when the record states none it says so --
+// the seal time (the capsule's registration timestamp) never stands in for it.
 function renderProvenance(
   capsuleId: string,
-  coordinates?: ActNode["logCoordinates"],
+  coordinates: ActNode["logCoordinates"],
+  times: RecordTimes,
 ): HTMLElement {
   const panel = element("section");
   panel.append(element("h4", "Provenance"));
   const details = element("dl");
   appendValue(details, "capsule ID", capsuleId);
+  if (times.provenanceMode !== undefined)
+    appendValue(details, "provenance", times.provenanceMode);
+  appendTime(
+    details,
+    "action time",
+    times.actionTime,
+    "action time not stated",
+  );
+  appendTime(details, "seal time", times.sealTime, "seal time not stated");
   if (coordinates !== undefined) {
     appendValue(details, "log ID", coordinates.logId);
     appendValue(details, "sequence", coordinates.seq);
@@ -305,7 +352,7 @@ function renderAct(act: ActNode): HTMLElement {
     section.append(element("pre", display(act.agentInput)));
   if (act.agentOutput !== undefined)
     section.append(element("pre", display(act.agentOutput)));
-  section.append(renderProvenance(act.capsuleId, act.logCoordinates));
+  section.append(renderProvenance(act.capsuleId, act.logCoordinates, act));
   return section;
 }
 
@@ -368,7 +415,9 @@ function renderReport(
   _records: unknown[],
 ): void {
   host.replaceChildren();
-  host.append(element("h2", `Cases for ${report.date}`));
+  const heading = element("h2", "Cases for ");
+  heading.append(renderTime(report.date));
+  host.append(heading);
   const outcomes = element("ul");
   report.outcomes.forEach((outcome) => {
     outcomes.append(
@@ -396,7 +445,7 @@ function renderReport(
   host.append(
     cases,
     detail,
-    renderProvenance(report.capsuleId, report.logCoordinates),
+    renderProvenance(report.capsuleId, report.logCoordinates, report),
   );
 }
 
@@ -406,7 +455,9 @@ function renderReport(
 // anything else) renders the same way an outcomes report does.
 function renderCitation(citation: ReportRowCitation): HTMLElement {
   const section = element("section");
-  section.append(renderProvenance(citation.capsuleId, citation.logCoordinates));
+  section.append(
+    renderProvenance(citation.capsuleId, citation.logCoordinates, citation),
+  );
   if (citation.disclosure === "disclosed") {
     section.append(element("pre", display(citation.disclosedPayload)));
   } else {
@@ -462,7 +513,11 @@ function renderReportRowsTable(
   section.append(
     table,
     detail,
-    renderProvenance(reportRows.capsuleId, reportRows.logCoordinates),
+    renderProvenance(
+      reportRows.capsuleId,
+      reportRows.logCoordinates,
+      reportRows,
+    ),
   );
   root.append(section);
 }
@@ -486,7 +541,11 @@ function renderGraph(
   [...graph.reports]
     .sort((left, right) => left.date.localeCompare(right.date))
     .forEach((report) => {
-      const tile = element("button", `${report.date}: ${metRate(report)}`);
+      // The label is the report's date as the producer wrote it -- a bare
+      // day stays a day, a timestamp stays a timestamp, and one that states
+      // no zone is marked so rather than tiled under an assigned one.
+      const tile = element("button");
+      tile.append(renderTime(report.date), `: ${metRate(report)}`);
       tile.setAttribute("type", "button");
       tile.dataset.reportDate = report.date;
       tile.addEventListener("click", () =>
