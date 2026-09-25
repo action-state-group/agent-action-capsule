@@ -14,7 +14,8 @@ import { computeCapsuleId } from "../../src/verify.js";
  * source and derives the honest form at test time:
  *
  * - every record gets the format-4 fields Class 1 requires (existing fields
- *   win), a committed digest for each member disclosed for it, and a real
+ *   win; an agent-action-capsule reference gets digest_alg SHA-256), a
+ *   committed digest for each member disclosed for it, and a real
  *   capsule_id;
  * - every string value anywhere in the bundle (references, chain, payload
  *   contents, completeness.missing, root) that equals an alias is rewritten
@@ -125,6 +126,14 @@ export async function sealEvidenceBundle(source: Obj): Promise<SealedBundle> {
         ...(rewrite(record, ids) as Obj),
       };
       delete body.capsule_id;
+      if (Array.isArray(body.references))
+        body.references = body.references.map((reference) =>
+          isObj(reference) &&
+          reference.type === "agent-action-capsule" &&
+          reference.digest_alg === undefined
+            ? { digest_alg: "SHA-256", ...reference }
+            : reference,
+        );
       const payloads =
         entry === undefined ? undefined : (rewrite(entry, ids) as Obj);
       if (payloads !== undefined) {

@@ -86,10 +86,7 @@ it("renders only digests for undisclosed case acts without leaking transcripts",
     const record = bundle.records.find(
       (record) => record.capsule_id === act.capsuleId,
     )!;
-    const digests = record.model_attestation.compute_attestation;
     delete closed.disclosures[act.capsuleId];
-    delete closed.disclosures[digests.agent_input_digest];
-    delete closed.disclosures[digests.agent_output_digest];
   }
   const closedCase = (await buildEvidenceGraph(closed)).reports[0]!.cases.find(
     (candidate) =>
@@ -371,12 +368,111 @@ it("renders referenced non-tau2 withheld acts by their committed digests", async
   const digests = record.model_attestation.compute_attestation;
   const closed = { ...bundle, disclosures: { ...bundle.disclosures } };
   delete closed.disclosures[record.capsule_id];
-  delete closed.disclosures[digests.agent_input_digest];
-  delete closed.disclosures[digests.agent_output_digest];
+  // the edited record must be re-sealed (its report and the root follow) so
+  // the bundle still verifies; its committed digests are carried unchanged
+  const { bundle: resealed } = await sealEvidenceBundle(closed);
   const root = document.createElement("main");
-  await renderEvidenceGraph(closed, root);
+  await renderEvidenceGraph(resealed, root);
   root.querySelector<HTMLElement>("[data-report-date]")!.click();
   root.querySelector<HTMLElement>("[data-case-id]")!.click();
   expect(root.textContent).toContain(digests.agent_input_digest);
   expect(root.textContent).toContain(digests.agent_output_digest);
+});
+
+// --- H2: verify before render -------------------------------------------
+
+function tamperCheckpoint(bundle: unknown): unknown {
+  const value = bundle as { checkpoint: { mmr_size: number } };
+  return {
+    ...value,
+    checkpoint: {
+      ...value.checkpoint,
+      mmr_size: value.checkpoint.mmr_size + 1,
+    },
+  };
+}
+
+it("H2: an unverified evaluation bundle renders the banner, a refusal, and the verification page -- no tiles, cases, or payloads", async () => {
+  const root = document.createElement("main");
+  await renderEvidenceGraph(
+    tamperCheckpoint(await fixture("week-bundle.json")),
+    root,
+  );
+
+  const banner = root.querySelector<HTMLElement>('[data-verify="failed"]');
+  expect(banner).not.toBeNull();
+  const refusal = root.querySelector<HTMLElement>(
+    '[data-refusal="unverified-bundle"]',
+  );
+  expect(refusal).not.toBeNull();
+  expect(root.querySelectorAll("[data-report-date]")).toHaveLength(0);
+  expect(root.querySelectorAll("[data-case-id]")).toHaveLength(0);
+  expect(root.querySelectorAll("[data-row-id]")).toHaveLength(0);
+  expect(root.querySelectorAll("pre")).toHaveLength(0);
+  expect(root.textContent).not.toContain("Daily reports");
+  const page = root.querySelector<HTMLElement>('[data-page="verification"]');
+  expect(page).not.toBeNull();
+  expect(root.lastElementChild).toBe(page);
+  expect(
+    banner!.compareDocumentPosition(page!) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
+it("H2: an unverified report/v1 bundle renders no rows", async () => {
+  const { bundle } = await sealEvidenceBundle(
+    (await fixture("report-rows-bundle.json")) as Record<string, unknown>,
+  );
+  const root = document.createElement("main");
+  await renderEvidenceGraph(tamperCheckpoint(bundle), root);
+  expect(root.querySelector('[data-verify="failed"]')).not.toBeNull();
+  expect(
+    root.querySelector('[data-refusal="unverified-bundle"]'),
+  ).not.toBeNull();
+  expect(root.querySelector('[data-page="report-rows"]')).toBeNull();
+  expect(root.querySelectorAll("[data-row-id]")).toHaveLength(0);
+  expect(root.textContent).not.toContain("disclosed evidence for art-50");
+});
+
+it("H2: a forged disclosure fails verification, so the case rows it would have fed are never built", async () => {
+  const bundle = (await fixture("week-bundle.json")) as {
+    disclosures: Record<string, Record<string, unknown>>;
+    records: Array<{ capsule_id: string }>;
+  };
+  const target = bundle.records[0]!.capsule_id;
+  const tampered = {
+    ...bundle,
+    disclosures: {
+      ...bundle.disclosures,
+      [target]: {
+        ...bundle.disclosures[target],
+        agent_output: "tampered transcript",
+      },
+    },
+  };
+  const root = document.createElement("main");
+  await renderEvidenceGraph(tampered, root);
+  expect(root.querySelector('[data-verify="failed"]')).not.toBeNull();
+  expect(root.querySelectorAll("[data-report-date]")).toHaveLength(0);
+  expect(root.querySelectorAll("[data-case-id]")).toHaveLength(0);
+  expect(root.textContent).not.toContain("tampered transcript");
+});
+
+it("H2: on a verified bundle the banner precedes every tile and the drill-down content", async () => {
+  const root = document.createElement("main");
+  await renderEvidenceGraph(await fixture("week-bundle.json"), root);
+  const banner = root.querySelector<HTMLElement>('[data-verify="verified"]')!;
+  expect(root.querySelector("[data-refusal]")).toBeNull();
+  const tiles = root.querySelectorAll<HTMLElement>("[data-report-date]");
+  expect(tiles.length).toBeGreaterThan(0);
+  for (const tile of tiles)
+    expect(
+      banner.compareDocumentPosition(tile) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  tiles[0]!.click();
+  root.querySelector<HTMLElement>("[data-case-id]")!.click();
+  const transcript = root.querySelector("pre")!;
+  expect(
+    banner.compareDocumentPosition(transcript) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
 });
