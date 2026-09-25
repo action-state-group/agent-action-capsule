@@ -396,3 +396,100 @@ describe("report day (tiles come from date)", () => {
     expect(graph.reports[0]!.day).toBeUndefined();
   });
 });
+
+describe("report day is the UTC calendar day, wherever the graph is built", () => {
+  // The real corpus mixes naive timestamps (no designator) with `Z` ones.
+  // Both reports here fall on 2026-08-26 UTC. A reader in America/Los_Angeles
+  // that let `new Date(string)` read the naive one in local time, or that took
+  // local calendar fields from the `Z` one, would put them on different days.
+  const NAIVE = "2026-08-26T20:15:00.123456";
+  const ZULU = "2026-08-26T03:00:00Z";
+
+  const mixed = async () =>
+    sealEvidenceBundle(
+      (await fixture("report-mixed-tz-bundle.json")) as Record<string, unknown>,
+    );
+
+  const daysByRun = async (bundle: Record<string, unknown>) => {
+    const graph = await buildEvidenceGraph(bundle);
+    return Object.fromEntries(
+      graph.reports.map((report) => [report.date, report.day]),
+    );
+  };
+
+  const withTimezone = async <T>(zone: string, run: () => Promise<T>) => {
+    const previous = process.env.TZ;
+    process.env.TZ = zone;
+    try {
+      return await run();
+    } finally {
+      if (previous === undefined) delete process.env.TZ;
+      else process.env.TZ = previous;
+    }
+  };
+
+  it("the fixture would split across days under a local-time reading", async () => {
+    await withTimezone("America/Los_Angeles", async () => {
+      // Local-time reading of the naive string (the hazard, kept out of src).
+      const naiveLocal = new Date(NAIVE);
+      const zuluLocal = new Date(ZULU);
+      expect(new Date(NAIVE + "Z").getTimezoneOffset()).not.toBe(0);
+      expect(naiveLocal.getUTCDate()).toBe(27);
+      expect(zuluLocal.getDate()).toBe(25);
+    });
+  });
+
+  it("tiles a naive and a Z timestamp from the same UTC day on one day", async () => {
+    const { bundle, ids } = await mixed();
+    const graph = await buildEvidenceGraph(bundle);
+    expect(graph.reports).toHaveLength(2);
+    expect(graph.reports.map((report) => report.date)).toEqual([ZULU, NAIVE]);
+    expect(graph.reports.map((report) => report.day)).toEqual([1, 1]);
+    expect(graph.reports.map((report) => report.capsuleId)).toEqual([
+      ids["report-zulu"],
+      ids["report-naive"],
+    ]);
+  });
+
+  it("derives the same day under TZ=America/Los_Angeles and TZ=UTC", async () => {
+    const { bundle } = await mixed();
+    const losAngeles = await withTimezone("America/Los_Angeles", () =>
+      daysByRun(bundle),
+    );
+    const utc = await withTimezone("UTC", () => daysByRun(bundle));
+    expect(losAngeles).toEqual({ [ZULU]: 1, [NAIVE]: 1 });
+    expect(utc).toEqual(losAngeles);
+  });
+
+  it("folds an offset timestamp to UTC and reads a naive one as UTC", async () => {
+    const source = (await fixture("report-mixed-tz-bundle.json")) as {
+      disclosures: Record<string, { agent_input: Record<string, unknown> }>;
+    };
+    // 2026-08-26T23:30-05:00 is 2026-08-27T04:30Z: the day after the naive one.
+    source.disclosures["report-zulu"]!.agent_input.date =
+      "2026-08-26T23:30:00-05:00";
+    const { bundle } = await sealEvidenceBundle(
+      source as unknown as Record<string, unknown>,
+    );
+    const graph = await buildEvidenceGraph(bundle);
+    expect(graph.reports.map((report) => [report.date, report.day])).toEqual([
+      [NAIVE, 1],
+      ["2026-08-26T23:30:00-05:00", 2],
+    ]);
+  });
+
+  it("keeps a bare calendar date as written and on its own day", async () => {
+    const source = (await fixture("report-mixed-tz-bundle.json")) as {
+      disclosures: Record<string, { agent_input: Record<string, unknown> }>;
+    };
+    source.disclosures["report-zulu"]!.agent_input.date = "2026-08-25";
+    const { bundle } = await sealEvidenceBundle(
+      source as unknown as Record<string, unknown>,
+    );
+    const graph = await buildEvidenceGraph(bundle);
+    expect(graph.reports.map((report) => [report.date, report.day])).toEqual([
+      ["2026-08-25", 1],
+      [NAIVE, 2],
+    ]);
+  });
+});

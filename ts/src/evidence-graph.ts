@@ -52,9 +52,11 @@ export interface ReportNode {
   date: string;
   /**
    * 1-based position of the report in its period. Taken from the payload's
-   * `day` when stated; otherwise derived from `date` as calendar days since
-   * the earliest dated report in the graph, plus one. Absent only when the
-   * payload states no `day` and its `date` is not a YYYY-MM-DD calendar date.
+   * `day` when stated; otherwise derived from `date` as UTC calendar days
+   * since the earliest dated report in the graph, plus one. A `date` may be
+   * a bare YYYY-MM-DD or an RFC 3339 timestamp; a timestamp without a zone
+   * designator is read as UTC. Absent only when the payload states no `day`
+   * and its `date` is neither.
    */
   day?: number;
   outcomes: Outcome[];
@@ -106,20 +108,55 @@ const asNumber = (value: unknown): number | undefined =>
 const objectOrEmpty = (value: unknown): ObjectValue =>
   isObject(value) ? value : {};
 
-/** Days since the Unix epoch for a YYYY-MM-DD calendar date; undefined otherwise. */
+/**
+ * Days since the Unix epoch for the UTC calendar day a report's `date` names;
+ * undefined when it is not a calendar date or timestamp.
+ *
+ * Accepted: a bare `YYYY-MM-DD`, or an RFC 3339 timestamp `YYYY-MM-DDTHH:MM`
+ * with optional seconds, fraction, and a `Z` or `+HH:MM` designator. A
+ * timestamp with a designator is read in that offset and folded to UTC.
+ *
+ * Naive timestamps are read as UTC; the producer should stamp Z -- see
+ * provenance. The real corpus mixes naive timestamps
+ * (`2026-08-26T05:34:57.860343`) with `Z` ones, and `new Date(string)` would
+ * read a naive one in the reader's local zone, so the same report could land
+ * on a different day depending on where the graph is built. Nothing here
+ * goes through the local-time parser: the fields are taken from the string
+ * and the day is fixed arithmetic on UTC.
+ */
 const calendarDay = (date: string): number | undefined => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(date);
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/u.exec(
+      date,
+    );
   if (match === null) return undefined;
   const year = Number(match[1]),
     month = Number(match[2]),
-    day = Number(match[3]);
-  const utc = Date.UTC(year, month - 1, day);
-  const parsed = new Date(utc);
-  return parsed.getUTCFullYear() === year &&
-    parsed.getUTCMonth() === month - 1 &&
-    parsed.getUTCDate() === day
-    ? utc / 86_400_000
-    : undefined;
+    day = Number(match[3]),
+    hour = Number(match[4] ?? "0"),
+    minute = Number(match[5] ?? "0"),
+    second = Number(match[6] ?? "0");
+  const designator = match[7];
+  if (hour > 23 || minute > 59 || second > 60) return undefined;
+  const midnight = Date.UTC(year, month - 1, day);
+  const parsed = new Date(midnight);
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  )
+    return undefined;
+  const offsetMinutes =
+    designator === undefined || designator === "Z"
+      ? 0
+      : (designator.startsWith("-") ? -1 : 1) *
+        (Number(designator.slice(1, 3)) * 60 + Number(designator.slice(4, 6)));
+  if (Math.abs(offsetMinutes) > 23 * 60 + 59) return undefined;
+  const instant =
+    midnight +
+    ((hour * 60 + minute) * 60 + second) * 1_000 -
+    offsetMinutes * 60_000;
+  return Math.floor(instant / 86_400_000);
 };
 
 /** The digest a record committed to for a disclosable member, if any. */
@@ -468,7 +505,9 @@ export async function buildEvidenceGraph(
   reports.sort((a, b) => a.date.localeCompare(b.date));
   // The real producer (evaluation-compiler's assemble_week) emits `date` and
   // no `day`; a report is a tile by its date, so `day` is derived rather
-  // than required. A stated `day` is kept as stated.
+  // than required. A stated `day` is kept as stated. The day is the UTC
+  // calendar day (see calendarDay), so the same bundle derives the same days
+  // wherever it is read; `date` itself is kept exactly as the producer wrote it.
   const origin = Math.min(
     ...reports.flatMap((report) => {
       const position = calendarDay(report.date);
