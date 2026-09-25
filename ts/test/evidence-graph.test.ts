@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildEvidenceGraph,
   EvidenceGraphError,
+  recordTimes,
   resolveDisclosure,
+  zoneStatement,
 } from "../src/evidence-graph.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
@@ -491,5 +493,51 @@ describe("report day is the UTC calendar day, wherever the graph is built", () =
       ["2026-08-25", 1],
       [NAIVE, 2],
     ]);
+  });
+});
+
+describe("times as given (backfill rule: nothing gets a zone assigned)", () => {
+  it("states whether a written time carries a zone, without parsing it into one", () => {
+    expect(zoneStatement("2026-08-26T03:00:00Z")).toBe("stated");
+    expect(zoneStatement("2026-08-26T23:30:00-05:00")).toBe("stated");
+    expect(zoneStatement("2026-08-26T20:15:00.123456")).toBe("not-stated");
+    expect(zoneStatement("2026-08-26T20:15")).toBe("not-stated");
+    expect(zoneStatement("2026-08-26")).toBe("date-only");
+    expect(zoneStatement("week-1")).toBe("not-stated");
+  });
+
+  it("carries a record's seal time, action time and provenance mode verbatim", async () => {
+    const { bundle, ids } = await sealEvidenceBundle(
+      (await fixture("report-mixed-tz-bundle.json")) as Record<string, unknown>,
+    );
+    const graph = await buildEvidenceGraph(bundle);
+    const acts = Object.fromEntries(
+      graph.reports.flatMap((report) =>
+        report.cases.flatMap((caseNode) =>
+          caseNode.acts.map((act) => [act.capsuleId, act]),
+        ),
+      ),
+    );
+    // the backfilled act keeps its source's own (naive) time as the action
+    // time; its seal time is the capsule timestamp, a different instant
+    expect(acts[ids["act-naive"]!]).toMatchObject({
+      provenanceMode: "backfilled",
+      actionTime: "2026-08-26T20:14:58.000001",
+      sealTime: "2026-09-14T00:00:00Z",
+    });
+    // the live act states no action time; the seal time is not copied into it
+    expect(acts[ids["act-zulu"]!]).toMatchObject({
+      sealTime: "2026-09-14T00:00:00Z",
+    });
+    expect(acts[ids["act-zulu"]!]).not.toHaveProperty("actionTime");
+    expect(acts[ids["act-zulu"]!]).not.toHaveProperty("provenanceMode");
+    // the report's date is kept exactly as the producer wrote it
+    expect(graph.reports.map((report) => report.date)).toEqual([
+      "2026-08-26T03:00:00Z",
+      "2026-08-26T20:15:00.123456",
+    ]);
+    expect(
+      recordTimes({ capsule_id: "x", timestamp: 5, occurred_at: "as-written" }),
+    ).toEqual({ actionTime: "as-written" });
   });
 });
