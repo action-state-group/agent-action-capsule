@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   buildEvidenceGraph,
+  calibrationCount,
   EvidenceGraphError,
   recordTimes,
   resolveDisclosure,
@@ -162,13 +163,39 @@ describe("buildEvidenceGraph", () => {
       >,
     );
     const graph = await buildEvidenceGraph(bundle);
-    expect(graph.calibration).toMatchObject({
-      confusion: { pass_pass: 2, fail_fail: 1 },
-      agreement: "0.75",
-      correctedRate: "0.8",
-      correctedRateCi: ["0.7", "0.9"],
+    expect(graph.calibration).toEqual({
+      capsuleId: expect.any(String),
+      confusion: { pass_pass: 2, fail_fail: 1, pass_fail: 1 },
+      agreement: { k: 3, n: 4 },
+      correctedRate: { k: 4, n: 5 },
       periodWindow: { start: "2026-09-14", end: "2026-09-20" },
     });
+    // no rate, no float, no decimal string anywhere in the calibration node
+    expect(JSON.stringify(graph.calibration)).not.toMatch(/0\.\d/u);
+  });
+
+  it("keeps a calibration figure stated only as a rate, as given, without k and n", async () => {
+    const source = (await fixture("week-bundle-calibration.json")) as {
+      disclosures: Record<string, { agent_input: Record<string, unknown> }>;
+    };
+    // a producer that states a rate (as a string -- the JCS profile could
+    // not have sealed a float) and a k/n object with a non-integer member
+    source.disclosures.calibration!.agent_input.agreement = "0.75";
+    source.disclosures.calibration!.agent_input.corrected_rate = {
+      k: "4",
+      n: 5,
+    };
+    const { bundle } = await sealEvidenceBundle(
+      source as unknown as Record<string, unknown>,
+    );
+    const graph = await buildEvidenceGraph(bundle);
+    expect(graph.calibration?.agreement).toEqual({ rate: "0.75" });
+    expect(graph.calibration?.correctedRate).toEqual({
+      rate: { k: "4", n: 5 },
+    });
+    expect(calibrationCount({ k: 5, n: 4 })).toEqual({ rate: { k: 5, n: 4 } });
+    expect(calibrationCount({ k: 0, n: 0 })).toEqual({ k: 0, n: 0 });
+    expect(calibrationCount(undefined)).toBeUndefined();
   });
 });
 
