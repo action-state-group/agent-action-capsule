@@ -521,3 +521,94 @@ it("renders every tile of the week when the report payloads carry only date", as
     ),
   ).toEqual(["2026-09-14", "2026-09-15", "2026-09-16"]);
 });
+
+// --- times as given: verbatim, marked when no zone is stated ----------------
+
+it("prints a naive report timestamp verbatim with a timezone-not-stated marker, and a Z one without", async () => {
+  const { bundle, ids } = await sealEvidenceBundle(
+    (await fixture("report-mixed-tz-bundle.json")) as Record<string, unknown>,
+  );
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+
+  const tiles = root.querySelectorAll<HTMLElement>("[data-report-date]");
+  expect(tiles).toHaveLength(2);
+  const [zulu, naive] = Array.from(tiles);
+  expect(zulu!.dataset.reportDate).toBe("2026-08-26T03:00:00Z");
+  expect(zulu!.textContent).toBe("2026-08-26T03:00:00Z: met rate 0/1");
+  expect(zulu!.querySelector('[data-tz="stated"]')).not.toBeNull();
+  expect(zulu!.querySelector("[data-tz-marker]")).toBeNull();
+
+  expect(naive!.dataset.reportDate).toBe("2026-08-26T20:15:00.123456");
+  expect(naive!.textContent).toBe(
+    "2026-08-26T20:15:00.123456 (timezone not stated): met rate 1/1",
+  );
+  expect(naive!.querySelector('[data-tz="not-stated"]')).not.toBeNull();
+  expect(naive!.querySelector("[data-tz-marker]")?.textContent).toBe(
+    " (timezone not stated)",
+  );
+  // no assigned zone is ever printed on the naive time
+  expect(naive!.textContent).not.toContain("Z");
+  expect(naive!.textContent).not.toContain("UTC");
+
+  naive!.click();
+  const heading = Array.from(root.querySelectorAll("h2")).find((candidate) =>
+    candidate.textContent?.startsWith("Cases for "),
+  )!;
+  expect(heading.textContent).toBe(
+    "Cases for 2026-08-26T20:15:00.123456 (timezone not stated)",
+  );
+  expect(heading.querySelector('[data-tz="not-stated"]')).not.toBeNull();
+
+  // the backfilled act: both times shown, labelled, each as written
+  root.querySelector<HTMLElement>("[data-case-id]")!.click();
+  const panel = Array.from(root.querySelectorAll("dl")).find((list) =>
+    list.textContent?.includes(ids["act-naive"]!),
+  )!;
+  const rows = Object.fromEntries(
+    Array.from(panel.querySelectorAll("dt"), (term) => [
+      term.textContent,
+      term.nextElementSibling as HTMLElement,
+    ]),
+  );
+  expect(rows["provenance"]!.textContent).toBe(JSON.stringify("backfilled"));
+  expect(rows["action time"]!.textContent).toBe(
+    "2026-08-26T20:14:58.000001 (timezone not stated)",
+  );
+  expect(
+    rows["action time"]!.querySelector('[data-tz="not-stated"]'),
+  ).not.toBeNull();
+  expect(rows["seal time"]!.textContent).toBe("2026-09-14T00:00:00Z");
+  expect(rows["seal time"]!.querySelector('[data-tz="stated"]')).not.toBeNull();
+});
+
+it("says 'action time not stated' for a record with a seal time and no action time, never the seal time", async () => {
+  const { bundle, ids } = await sealEvidenceBundle(
+    (await fixture("report-mixed-tz-bundle.json")) as Record<string, unknown>,
+  );
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  root.querySelector<HTMLElement>("[data-report-date]")!.click(); // the Z tile
+  root.querySelector<HTMLElement>("[data-case-id]")!.click();
+  const panel = Array.from(root.querySelectorAll("dl")).find((list) =>
+    list.textContent?.includes(ids["act-zulu"]!),
+  )!;
+  const rows = Object.fromEntries(
+    Array.from(panel.querySelectorAll("dt"), (term) => [
+      term.textContent,
+      term.nextElementSibling as HTMLElement,
+    ]),
+  );
+  expect(rows["provenance"]).toBeUndefined();
+  expect(rows["action time"]!.textContent).toBe("action time not stated");
+  expect(rows["action time"]!.dataset.time).toBe("not-stated");
+  expect(rows["seal time"]!.textContent).toBe("2026-09-14T00:00:00Z");
+  // the report tile, case header and every provenance panel: the seal time
+  // appears exactly where it is labelled as such, nowhere as an action time
+  const sealCells = Array.from(root.querySelectorAll("dd")).filter(
+    (cell) => cell.textContent === "2026-09-14T00:00:00Z",
+  );
+  for (const cell of sealCells)
+    expect(cell.previousElementSibling?.textContent).toBe("seal time");
+});

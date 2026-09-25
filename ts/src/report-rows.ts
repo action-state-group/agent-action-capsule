@@ -3,8 +3,10 @@ import {
   disclosurePayload,
   isObject,
   logCoordinates,
+  recordTimes,
   resolveDisclosure,
   type DisclosureState,
+  type RecordTimes,
   type ResolvedLogCoordinates,
   type ObjectValue,
   type RecordWithId,
@@ -18,7 +20,7 @@ import {
  * without this module knowing what the rows are about.
  */
 
-export interface ReportRowCitation {
+export interface ReportRowCitation extends RecordTimes {
   readonly capsuleId: string;
   /** Present only when `disclosure` is `disclosed`. */
   readonly disclosedPayload?: unknown;
@@ -34,7 +36,7 @@ export interface ReportRow {
   readonly citations: readonly ReportRowCitation[];
 }
 
-export interface ReportRows {
+export interface ReportRows extends RecordTimes {
   readonly capsuleId: string;
   readonly title?: string;
   readonly rows: readonly ReportRow[];
@@ -120,6 +122,7 @@ export async function buildReportRows(
           : {}),
         disclosure: resolved.state,
         ...(coordinates === undefined ? {} : { logCoordinates: coordinates }),
+        ...recordTimes(record),
       });
     }
     rows.push({
@@ -143,5 +146,6 @@ export async function buildReportRows(
     ...(rootResolvedLogCoordinates === undefined
       ? {}
       : { logCoordinates: rootResolvedLogCoordinates }),
+    ...recordTimes(rootRecord),
   };
 }

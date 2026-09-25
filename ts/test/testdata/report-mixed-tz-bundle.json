@@ -36,8 +36,13 @@
         }
       ]
     },
-    { "capsule_id": "act-naive" },
-    { "capsule_id": "act-zulu" }
+    {
+      "capsule_id": "act-naive",
+      "provenance_mode": "backfilled",
+      "occurred_at": "2026-08-26T20:14:58.000001",
+      "timestamp": "2026-09-14T00:00:00Z"
+    },
+    { "capsule_id": "act-zulu", "timestamp": "2026-09-14T00:00:00Z" }
   ],
   "disclosures": {
     "root": {

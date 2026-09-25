@@ -10,7 +10,42 @@ import { isHex64, jsonDigest } from "./json.js";
 export type DisclosureState = "disclosed" | "withheld" | "disclosure_mismatch";
 export type DisclosureField = "agent_input" | "agent_output";
 
-export interface ActNode {
+/**
+ * The times a record states, each kept exactly as written -- never parsed,
+ * normalised, or assigned a zone. `sealTime` is the capsule's `timestamp`
+ * (the registration time inside the digest commitment, base profile
+ * "Identity and parties"). `actionTime` is when the agent acted, read from
+ * the record's `occurred_at` when the producer states one: a backfilled
+ * record keeps its source's own time there, and the seal time never stands
+ * in for it. `provenanceMode` is the record's `provenance_mode` as written
+ * (for example `backfilled`).
+ */
+export interface RecordTimes {
+  sealTime?: string;
+  actionTime?: string;
+  provenanceMode?: string;
+}
+
+/**
+ * Whether a written time states its zone. A timestamp with a `Z` or
+ * `+HH:MM` designator is `stated`; a bare `YYYY-MM-DD` names a day, not an
+ * instant, and is `date-only`; anything else -- a naive timestamp such as
+ * `2026-08-26T05:34:57.860343`, or a string that is not a timestamp at all --
+ * is `not-stated`. The view prints every time verbatim and marks
+ * `not-stated` ones; nothing here assigns a zone.
+ */
+export type ZoneStatement = "stated" | "not-stated" | "date-only";
+
+export const zoneStatement = (value: string): ZoneStatement =>
+  /^\d{4}-\d{2}-\d{2}$/u.test(value)
+    ? "date-only"
+    : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/u.test(
+          value,
+        )
+      ? "stated"
+      : "not-stated";
+
+export interface ActNode extends RecordTimes {
   capsuleId: string;
   caseId: string;
   turnIdx: number;
@@ -47,8 +82,9 @@ export interface RatingNode {
   reportId: string;
   verdict: "pass" | "fail" | "unsure";
 }
-export interface ReportNode {
+export interface ReportNode extends RecordTimes {
   capsuleId: string;
+  /** The report's `date`, exactly as the producer wrote it. */
   date: string;
   /**
    * 1-based position of the report in its period. Taken from the payload's
@@ -157,6 +193,18 @@ const calendarDay = (date: string): number | undefined => {
     ((hour * 60 + minute) * 60 + second) * 1_000 -
     offsetMinutes * 60_000;
   return Math.floor(instant / 86_400_000);
+};
+
+/** The times a record states, verbatim; a member is absent when not stated. */
+export const recordTimes = (record: RecordWithId): RecordTimes => {
+  const sealTime = asString(record.timestamp);
+  const actionTime = asString(record.occurred_at);
+  const provenanceMode = asString(record.provenance_mode);
+  return {
+    ...(sealTime === undefined ? {} : { sealTime }),
+    ...(actionTime === undefined ? {} : { actionTime }),
+    ...(provenanceMode === undefined ? {} : { provenanceMode }),
+  };
 };
 
 /** The digest a record committed to for a disclosable member, if any. */
@@ -399,6 +447,7 @@ export async function buildEvidenceGraph(
         agentInputDisclosure: input.state,
         agentOutputDisclosure: output.state,
         ...committedDigests(actRecord),
+        ...recordTimes(actRecord),
         ...(actResolvedLogCoordinates === undefined
           ? {}
           : {
@@ -495,6 +544,7 @@ export async function buildEvidenceGraph(
       withheldActs: acts.filter(
         (act) => act.agentInput === undefined || act.agentOutput === undefined,
       ),
+      ...recordTimes(record),
       ...(reportResolvedLogCoordinates === undefined
         ? {}
         : {
