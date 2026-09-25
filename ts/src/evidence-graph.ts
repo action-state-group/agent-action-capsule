@@ -108,14 +108,41 @@ export interface SummaryNode {
   counts?: { reports: number; uniqueCases: number };
   cohort?: unknown;
 }
+/**
+ * A calibration figure carried as the integer count it is made of -- `k`
+ * of `n` -- never as a rate. The integer-only JCS profile cannot digest a
+ * float, so a rate could never be a verified disclosure; and a count is the
+ * evidence, a rate is arithmetic on it. A payload that states only a rate
+ * (as a string or however written) is kept as `{ rate }` and rendered as
+ * "rate given, k and n not stated"; it is never converted.
+ */
+export type CalibrationCount =
+  | { readonly k: number; readonly n: number }
+  | { readonly rate: unknown };
+
 export interface CalibrationNode {
   capsuleId: string;
   periodWindow?: unknown;
   confusion?: unknown;
-  agreement?: unknown;
-  correctedRate?: unknown;
-  correctedRateCi?: unknown;
+  agreement?: CalibrationCount;
+  correctedRate?: CalibrationCount;
 }
+
+const isCount = (value: unknown): value is { k: number; n: number } =>
+  isObject(value) &&
+  Number.isSafeInteger(value.k) &&
+  Number.isSafeInteger(value.n) &&
+  (value.k as number) >= 0 &&
+  (value.n as number) >= (value.k as number);
+
+export const calibrationCount = (
+  value: unknown,
+): CalibrationCount | undefined =>
+  value === undefined
+    ? undefined
+    : isCount(value)
+      ? { k: value.k, n: value.n }
+      : { rate: value };
 export interface EvidenceGraph {
   aggregate: SummaryNode;
   reports: ReportNode[];
@@ -606,13 +633,10 @@ export async function buildEvidenceGraph(
         ? { confusion: payload.confusion }
         : {}),
       ...(Object.hasOwn(payload, "agreement")
-        ? { agreement: payload.agreement }
+        ? { agreement: calibrationCount(payload.agreement)! }
         : {}),
       ...(Object.hasOwn(payload, "corrected_rate")
-        ? { correctedRate: payload.corrected_rate }
-        : {}),
-      ...(Object.hasOwn(payload, "corrected_rate_ci")
-        ? { correctedRateCi: payload.corrected_rate_ci }
+        ? { correctedRate: calibrationCount(payload.corrected_rate)! }
         : {}),
     };
     break;

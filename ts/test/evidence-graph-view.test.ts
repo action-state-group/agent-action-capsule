@@ -62,8 +62,37 @@ it("renders disclosed calibration agreement and confusion data", async () => {
   await renderEvidenceGraph(bundle, root);
   expect(root.textContent).toContain("confusion matrix");
   expect(root.textContent).toContain('"pass_pass":2');
-  expect(root.textContent).toContain("agreement");
-  expect(root.textContent).toContain("0.75");
+  const cells = Object.fromEntries(
+    Array.from(root.querySelectorAll("dt"), (term) => [
+      term.textContent,
+      term.nextElementSibling as HTMLElement,
+    ]),
+  );
+  // integer k of n, never a rate
+  expect(cells["agreement"]!.textContent).toBe("3 of 4");
+  expect(cells["agreement"]!.dataset.k).toBe("3");
+  expect(cells["agreement"]!.dataset.n).toBe("4");
+  expect(cells["corrected rate"]!.textContent).toBe("4 of 5");
+  expect(root.textContent).not.toContain("0.75");
+  expect(root.textContent).not.toContain("corrected rate CI");
+});
+
+it("renders a calibration figure stated only as a rate as 'rate given, k and n not stated'", async () => {
+  const source = (await fixture("week-bundle-calibration.json")) as {
+    disclosures: Record<string, { agent_input: Record<string, unknown> }>;
+  };
+  source.disclosures.calibration!.agent_input.agreement = "0.75";
+  const { bundle } = await sealEvidenceBundle(
+    source as unknown as Record<string, unknown>,
+  );
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  const agreement = Array.from(root.querySelectorAll("dt")).find(
+    (term) => term.textContent === "agreement",
+  )!.nextElementSibling as HTMLElement;
+  expect(agreement.textContent).toBe("rate given, k and n not stated");
+  expect(agreement.dataset.count).toBe("not-stated");
+  expect(root.textContent).not.toContain("0.75");
 });
 
 it("renders only digests for undisclosed case acts without leaking transcripts", async () => {
