@@ -1,0 +1,76 @@
+{
+  "root": "root",
+  "records": [
+    {
+      "capsule_id": "root",
+      "references": [
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "report"
+        }
+      ]
+    },
+    {
+      "capsule_id": "report",
+      "references": [
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "act"
+        }
+      ]
+    },
+    { "capsule_id": "act" }
+  ],
+  "disclosures": {
+    "root": {
+      "agent_input": {
+        "spec_version": "evaluation-summary/v1",
+        "cross_case_aggregation": "rate",
+        "counts": { "reports": 1, "unique_cases": 1 }
+      }
+    },
+    "report": {
+      "agent_input": {
+        "spec_version": "evaluation-report/v1",
+        "evaluation_identity": { "run": "day-1" },
+        "date": "2026-09-14",
+        "outcomes": [
+          {
+            "outcome_id": "policy_compliance",
+            "role": "required",
+            "aggregate": "pass"
+          }
+        ],
+        "cases": [
+          {
+            "task_id": "task",
+            "trial": 0,
+            "case_aggregate": "pass",
+            "axis_judgments": [
+              {
+                "axis_id": "policy_compliance",
+                "outcome_id": "policy_compliance",
+                "status": "pass",
+                "rationale": "the agent followed the cancellation policy",
+                "evidence_ids": ["act"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "act": {
+      "agent_input": {
+        "case": {
+          "conversation_id": "case",
+          "turn_idx": 0,
+          "task_id": "task",
+          "trial": 0
+        }
+      },
+      "agent_output": { "role": "assistant", "content": "date-only report act" }
+    }
+  }
+}

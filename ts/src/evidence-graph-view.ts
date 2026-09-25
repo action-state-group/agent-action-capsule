@@ -46,29 +46,38 @@ function appendValue(parent: HTMLElement, label: string, value: unknown): void {
   parent.append(element("dd", display(value)));
 }
 
-function renderVerification(
-  root: HTMLElement,
-  bundle: unknown,
-): Promise<BundleVerificationResult> {
-  return verifyBundle(bundle).then((result) => {
-    const verified =
-      result.graphClosure.status === "pass" &&
-      result.intervalCoverage.status === "pass" &&
-      result.perRecordMembership.status === "pass" &&
-      Object.values(result.capsuleResults).every((capsule) => capsule.ok) &&
-      result.disclosures.every(
-        (disclosure) =>
-          disclosure.status === "disclosure_match" ||
-          disclosure.status === "withheld",
-      );
-    const banner = element(
-      "p",
-      verified ? "Bundle verification passed" : "Bundle verification failed",
-    );
-    banner.dataset.verify = verified ? "verified" : "failed";
-    root.append(banner);
-    return result;
-  });
+function bundleVerified(result: BundleVerificationResult): boolean {
+  return (
+    result.graphClosure.status === "pass" &&
+    result.intervalCoverage.status === "pass" &&
+    result.perRecordMembership.status === "pass" &&
+    Object.values(result.capsuleResults).every((capsule) => capsule.ok) &&
+    result.disclosures.every(
+      (disclosure) =>
+        disclosure.status === "disclosure_match" ||
+        disclosure.status === "withheld",
+    )
+  );
+}
+
+// The banner is drawn from the verification result alone and precedes every
+// row in the DOM; an unverified bundle gets the refusal line here and no
+// rows at all, so a reader never meets a payload before the verdict on the
+// bundle that carries it.
+function renderVerificationBanner(root: HTMLElement, verified: boolean): void {
+  const banner = element(
+    "p",
+    verified ? "Bundle verification passed" : "Bundle verification failed",
+  );
+  banner.dataset.verify = verified ? "verified" : "failed";
+  root.append(banner);
+  if (verified) return;
+  const refusal = element(
+    "p",
+    "This bundle did not verify. Its records, rows and payloads are not shown; the verification page below lists which checks failed.",
+  );
+  refusal.dataset.refusal = "unverified-bundle";
+  root.append(refusal);
 }
 
 // presentation/v1 is rendered here, in the header only, and nowhere else in
@@ -322,6 +331,20 @@ function renderWithheldActs(acts: ActNode[], host: HTMLElement): void {
         appendValue(details, field, committed[field]);
     }
     evidence.append(details);
+    // A supplied value that does not hash to the committed digest is never
+    // shown; the reader sees the digest above and this note, nothing else.
+    for (const [field, state] of [
+      ["agent_input", act.agentInputDisclosure],
+      ["agent_output", act.agentOutputDisclosure],
+    ] as const) {
+      if (state !== "disclosure_mismatch") continue;
+      const note = element(
+        "p",
+        `${field}: the disclosed value does not match the committed digest and is withheld`,
+      );
+      note.dataset.disclosure = state;
+      evidence.append(note);
+    }
     host.append(evidence);
   }
 }
@@ -384,11 +407,18 @@ function renderReport(
 function renderCitation(citation: ReportRowCitation): HTMLElement {
   const section = element("section");
   section.append(renderProvenance(citation.capsuleId, citation.logCoordinates));
-  section.append(
-    citation.disclosedPayload === undefined
-      ? element("p", "withheld")
-      : element("pre", display(citation.disclosedPayload)),
-  );
+  if (citation.disclosure === "disclosed") {
+    section.append(element("pre", display(citation.disclosedPayload)));
+  } else {
+    const note = element(
+      "p",
+      citation.disclosure === "disclosure_mismatch"
+        ? "withheld: the disclosed value does not match the committed digest"
+        : "withheld",
+    );
+    note.dataset.disclosure = citation.disclosure;
+    section.append(note);
+  }
   return section;
 }
 
@@ -472,20 +502,31 @@ export async function renderEvidenceGraph(
   root: HTMLElement,
   countersignerDirectory: readonly CountersignerDirectoryEntry[] = [],
 ): Promise<void> {
+  // Verify first. Row models are built only from a bundle that verified,
+  // and nothing reaches the DOM until the verification result is in hand.
+  const verification = await verifyBundle(bundle);
+  const verified = bundleVerified(verification);
   // report/v1 is the generic root model; only fall back to the
   // evaluation-summary/v1 graph (which throws on anything else) when this
   // bundle isn't one.
-  const reportRows = buildReportRows(bundle);
+  const reportRows = verified ? await buildReportRows(bundle) : undefined;
   const graph =
-    reportRows === undefined ? buildEvidenceGraph(bundle) : undefined;
+    verified && reportRows === undefined
+      ? await buildEvidenceGraph(bundle)
+      : undefined;
   root.replaceChildren();
   renderPresentationHeader(root, bundle);
+  renderVerificationBanner(root, verified);
   if (reportRows !== undefined) {
     renderReportRowsTable(reportRows, root);
   } else if (graph !== undefined) {
     const records = object(bundle).records;
     renderGraph(graph, root, Array.isArray(records) ? records : []);
   }
-  const verified = await renderVerification(root, bundle);
-  await renderVerificationPage(root, bundle, verified, countersignerDirectory);
+  await renderVerificationPage(
+    root,
+    bundle,
+    verification,
+    countersignerDirectory,
+  );
 }
