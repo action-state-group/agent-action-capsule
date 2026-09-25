@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { expect, it } from "vitest";
 import { buildEvidenceGraph } from "../src/evidence-graph.js";
 import { renderEvidenceGraph } from "../src/browser.js";
+import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 async function fixture(name: string): Promise<unknown> {
   return JSON.parse(
@@ -14,7 +15,7 @@ async function fixture(name: string): Promise<unknown> {
 
 it("renders the dated drill-down view and verifies the bundle", async () => {
   const bundle = await fixture("week-bundle.json");
-  const graph = buildEvidenceGraph(bundle);
+  const graph = await buildEvidenceGraph(bundle);
   const root = document.createElement("main");
 
   await renderEvidenceGraph(bundle, root);
@@ -55,10 +56,10 @@ it("renders the dated drill-down view and verifies the bundle", async () => {
 
 it("renders disclosed calibration agreement and confusion data", async () => {
   const root = document.createElement("main");
-  await renderEvidenceGraph(
-    await fixture("week-bundle-calibration.json"),
-    root,
+  const { bundle } = await sealEvidenceBundle(
+    (await fixture("week-bundle-calibration.json")) as Record<string, unknown>,
   );
+  await renderEvidenceGraph(bundle, root);
   expect(root.textContent).toContain("confusion matrix");
   expect(root.textContent).toContain('"pass_pass":2');
   expect(root.textContent).toContain("agreement");
@@ -78,7 +79,7 @@ it("renders only digests for undisclosed case acts without leaking transcripts",
       };
     }>;
   };
-  const selectedCase = buildEvidenceGraph(bundle).reports[0]!.cases[0]!;
+  const selectedCase = (await buildEvidenceGraph(bundle)).reports[0]!.cases[0]!;
   expect(selectedCase.acts.length).toBeGreaterThan(0);
   const closed = { ...bundle, disclosures: { ...bundle.disclosures } };
   for (const act of selectedCase.acts) {
@@ -90,7 +91,7 @@ it("renders only digests for undisclosed case acts without leaking transcripts",
     delete closed.disclosures[digests.agent_input_digest];
     delete closed.disclosures[digests.agent_output_digest];
   }
-  const closedCase = buildEvidenceGraph(closed).reports[0]!.cases.find(
+  const closedCase = (await buildEvidenceGraph(closed)).reports[0]!.cases.find(
     (candidate) =>
       candidate.taskId === selectedCase.taskId &&
       candidate.trial === selectedCase.trial,
@@ -125,31 +126,92 @@ it("renders only digests for undisclosed case acts without leaking transcripts",
   }
 });
 
-it("fails the banner on a disclosure mismatch and accepts a withheld disclosure", async () => {
+/** Click every report tile and every case button so any transcript the view
+ * is willing to show has been drawn into the DOM. */
+function drillEverywhere(root: HTMLElement): void {
+  for (const tile of root.querySelectorAll<HTMLElement>("[data-report-date]")) {
+    tile.click();
+    for (const button of root.querySelectorAll<HTMLElement>("[data-case-id]"))
+      button.click();
+  }
+}
+
+it("H1: a forged disclosure keyed by the payload digest is never rendered as the transcript", async () => {
   const bundle = (await fixture("week-bundle.json")) as {
     disclosures: Record<string, unknown>;
     records: Array<{
+      capsule_id: string;
       model_attestation: {
         compute_attestation: { agent_output_digest: string };
       };
     }>;
   };
+  const act = (await buildEvidenceGraph(bundle)).reports[0]!.cases[0]!.acts[0]!;
+  const record = bundle.records.find(
+    (candidate) => candidate.capsule_id === act.capsuleId,
+  )!;
   const digest =
-    bundle.records[0]!.model_attestation.compute_attestation
-      .agent_output_digest;
+    record.model_attestation.compute_attestation.agent_output_digest;
   const tampered = {
     ...bundle,
     disclosures: {
       ...bundle.disclosures,
-      [digest]: { agent_output: "tampered" },
+      [digest]: { agent_output: "tampered transcript" },
     },
   };
   const root = document.createElement("main");
   await renderEvidenceGraph(tampered, root);
   expect(root.querySelector('[data-verify="failed"]')).not.toBeNull();
+  drillEverywhere(root);
+  expect(root.textContent).not.toContain("tampered transcript");
+});
 
+it("H1: a capsule_id-keyed value that does not hash to the committed digest renders as withheld with the digest, never the text", async () => {
+  const bundle = (await fixture("week-bundle.json")) as {
+    disclosures: Record<string, Record<string, unknown>>;
+    records: Array<{
+      capsule_id: string;
+      model_attestation: {
+        compute_attestation: { agent_output_digest: string };
+      };
+    }>;
+  };
+  const act = (await buildEvidenceGraph(bundle)).reports[0]!.cases[0]!.acts[0]!;
+  const record = bundle.records.find(
+    (candidate) => candidate.capsule_id === act.capsuleId,
+  )!;
+  const digest =
+    record.model_attestation.compute_attestation.agent_output_digest;
+  const tampered = {
+    ...bundle,
+    disclosures: {
+      ...bundle.disclosures,
+      [record.capsule_id]: {
+        ...bundle.disclosures[record.capsule_id],
+        agent_output: "tampered transcript",
+      },
+    },
+  };
+  const root = document.createElement("main");
+  await renderEvidenceGraph(tampered, root);
+  expect(root.querySelector('[data-verify="failed"]')).not.toBeNull();
+  drillEverywhere(root);
+  expect(root.textContent).not.toContain("tampered transcript");
+  // whatever the view drew for this act, it is the digest, not a payload
+  const shownDigest = Array.from(root.querySelectorAll("dd")).some(
+    (cell) => cell.textContent === JSON.stringify(digest),
+  );
+  const shownAct = root.textContent?.includes(record.capsule_id) ?? false;
+  expect(shownDigest).toBe(shownAct);
+});
+
+it("accepts a withheld disclosure as verified", async () => {
+  const bundle = (await fixture("week-bundle.json")) as {
+    disclosures: Record<string, unknown>;
+    records: Array<{ capsule_id: string }>;
+  };
   const withheld = { ...bundle, disclosures: { ...bundle.disclosures } };
-  delete withheld.disclosures[digest];
+  delete withheld.disclosures[bundle.records[0]!.capsule_id];
   const withheldRoot = document.createElement("main");
   await renderEvidenceGraph(withheld, withheldRoot);
   expect(withheldRoot.querySelector('[data-verify="verified"]')).not.toBeNull();
@@ -237,7 +299,9 @@ it("chrome rule: a presentation/v1 VERIFIED badge renders in the header only, ne
 });
 
 it("renders a report/v1 bundle as generic rows, never the evaluation-graph view", async () => {
-  const bundle = await fixture("report-rows-bundle.json");
+  const { bundle, ids } = await sealEvidenceBundle(
+    (await fixture("report-rows-bundle.json")) as Record<string, unknown>,
+  );
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
 
@@ -257,7 +321,7 @@ it("renders a report/v1 bundle as generic rows, never the evaluation-graph view"
     (button) => button.dataset.rowId === "art-50",
   )!;
   establishedButton.click();
-  expect(page!.textContent).toContain("act-established");
+  expect(page!.textContent).toContain(ids["act-established"]);
   expect(page!.textContent).toContain("disclosed evidence for art-50");
 
   // click through the not_checked row: its citation is undisclosed, so the
@@ -269,7 +333,7 @@ it("renders a report/v1 bundle as generic rows, never the evaluation-graph view"
   expect(page!.textContent).toContain(
     "pack runtime did not evaluate this clause in the demo window",
   );
-  expect(page!.textContent).toContain("act-not-checked");
+  expect(page!.textContent).toContain(ids["act-not-checked"]);
   expect(page!.textContent).toContain("withheld");
 
   // the not_present row cites nothing -- the honest shape, not hidden
@@ -298,7 +362,8 @@ it("renders referenced non-tau2 withheld acts by their committed digests", async
       };
     }>;
   };
-  const selected = buildEvidenceGraph(bundle).reports[0]!.cases[0]!.acts[0]!;
+  const selected = (await buildEvidenceGraph(bundle)).reports[0]!.cases[0]!
+    .acts[0]!;
   const record = bundle.records.find(
     (candidate) => candidate.capsule_id === selected.capsuleId,
   )!;

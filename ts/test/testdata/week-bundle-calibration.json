@@ -49,9 +49,9 @@
       "agent_input": {
         "spec_version": "calibration-summary/v1",
         "confusion": { "pass_pass": 2, "fail_fail": 1 },
-        "agreement": 0.75,
-        "corrected_rate": 0.8,
-        "corrected_rate_ci": [0.7, 0.9],
+        "agreement": "0.75",
+        "corrected_rate": "0.8",
+        "corrected_rate_ci": ["0.7", "0.9"],
         "period_window": { "start": "2026-09-14", "end": "2026-09-20" }
       }
     }

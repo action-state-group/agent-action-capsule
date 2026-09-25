@@ -322,6 +322,20 @@ function renderWithheldActs(acts: ActNode[], host: HTMLElement): void {
         appendValue(details, field, committed[field]);
     }
     evidence.append(details);
+    // A supplied value that does not hash to the committed digest is never
+    // shown; the reader sees the digest above and this note, nothing else.
+    for (const [field, state] of [
+      ["agent_input", act.agentInputDisclosure],
+      ["agent_output", act.agentOutputDisclosure],
+    ] as const) {
+      if (state !== "disclosure_mismatch") continue;
+      const note = element(
+        "p",
+        `${field}: the disclosed value does not match the committed digest and is withheld`,
+      );
+      note.dataset.disclosure = state;
+      evidence.append(note);
+    }
     host.append(evidence);
   }
 }
@@ -384,11 +398,18 @@ function renderReport(
 function renderCitation(citation: ReportRowCitation): HTMLElement {
   const section = element("section");
   section.append(renderProvenance(citation.capsuleId, citation.logCoordinates));
-  section.append(
-    citation.disclosedPayload === undefined
-      ? element("p", "withheld")
-      : element("pre", display(citation.disclosedPayload)),
-  );
+  if (citation.disclosure === "disclosed") {
+    section.append(element("pre", display(citation.disclosedPayload)));
+  } else {
+    const note = element(
+      "p",
+      citation.disclosure === "disclosure_mismatch"
+        ? "withheld: the disclosed value does not match the committed digest"
+        : "withheld",
+    );
+    note.dataset.disclosure = citation.disclosure;
+    section.append(note);
+  }
   return section;
 }
 
@@ -475,9 +496,9 @@ export async function renderEvidenceGraph(
   // report/v1 is the generic root model; only fall back to the
   // evaluation-summary/v1 graph (which throws on anything else) when this
   // bundle isn't one.
-  const reportRows = buildReportRows(bundle);
+  const reportRows = await buildReportRows(bundle);
   const graph =
-    reportRows === undefined ? buildEvidenceGraph(bundle) : undefined;
+    reportRows === undefined ? await buildEvidenceGraph(bundle) : undefined;
   root.replaceChildren();
   renderPresentationHeader(root, bundle);
   if (reportRows !== undefined) {
