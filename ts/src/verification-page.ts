@@ -26,14 +26,90 @@ export interface CompletenessStatement {
   readonly suppressedFields: readonly string[];
 }
 
+/**
+ * One supplied record's own standing under the checkpoint, read from the
+ * verifier's per-record membership findings and nothing else. `checkpointed`
+ * -- bound to the range root by its own inclusion proof; `uncheckpointed` --
+ * supplied with no membership entry at all (the verifier's
+ * `membership_record_unbound`); `membership_invalid` -- a membership entry
+ * was supplied but did not verify. A record's status is its own: it is never
+ * inherited from a neighbour and never summarised away.
+ */
+export type RecordCoverageStatus =
+  | "checkpointed"
+  | "uncheckpointed"
+  | "membership_invalid";
+
+export interface RecordCoverage {
+  readonly capsuleId: string;
+  readonly status: RecordCoverageStatus;
+}
+
 export interface VerificationPageModel {
   readonly bundleDigest?: string;
   readonly checkpointRoot?: string;
   readonly checkpointSize?: number;
   readonly receipts: readonly ReceiptEntry[];
+  /**
+   * True when a checkpoint is supplied but no transparency-service receipt
+   * is: the checkpoint is at most producer-signed, so the log witnesses
+   * only itself.
+   */
+  readonly selfWitnessed: boolean;
+  /** Every supplied record, in bundle order, with its own coverage status. */
+  readonly records: readonly RecordCoverage[];
+  readonly uncheckpointedCount: number;
   readonly completeness?: CompletenessStatement;
   readonly checks: readonly CheckSummary[];
   readonly verifyIndependentlyLine: string;
+}
+
+const UNBOUND = "membership_record_unbound:";
+
+/**
+ * The capsule_ids of supplied records the verifier found bound to no log
+ * position -- present in `records`, absent from `memberships`. These are the
+ * only per-record membership findings that describe a record's coverage
+ * rather than a broken proof.
+ */
+export function unboundRecordIds(
+  verified: BundleVerificationResult,
+): readonly string[] {
+  return verified.perRecordMembership.findings.flatMap((finding) =>
+    finding.startsWith(UNBOUND) ? [finding.slice(UNBOUND.length)] : [],
+  );
+}
+
+function recordCoverage(
+  bundle: Record<string, unknown>,
+  verified: BundleVerificationResult,
+): RecordCoverage[] {
+  const unbound = new Set(unboundRecordIds(verified));
+  const invalid = new Set(
+    verified.perRecordMembership.findings.flatMap((finding) => {
+      const match =
+        /^membership_(?:proof_invalid|coordinates_missing|coordinates_invalid):(.+)$/u.exec(
+          finding,
+        );
+      return match === null ? [] : [match[1]!];
+    }),
+  );
+  return (Array.isArray(bundle.records) ? bundle.records : []).flatMap(
+    (record): RecordCoverage[] => {
+      const capsuleId = object(record)?.capsule_id;
+      if (typeof capsuleId !== "string") return [];
+      return [
+        {
+          capsuleId,
+          status: unbound.has(capsuleId)
+            ? "uncheckpointed"
+            : invalid.has(capsuleId)
+              ? "membership_invalid"
+              : "checkpointed",
+        },
+      ];
+    },
+  );
 }
 
 export const VERIFY_INDEPENDENTLY_LINE =
@@ -174,6 +250,10 @@ export function buildVerificationPageModel(
       ? { checkpointSize: checkpoint.mmr_size }
       : {}),
     receipts: receipts(top.receipts),
+    selfWitnessed:
+      checkpoint !== undefined && receipts(top.receipts).length === 0,
+    records: recordCoverage(top, verified),
+    uncheckpointedCount: unboundRecordIds(verified).length,
     ...(completenessStatement(top.completeness) === undefined
       ? {}
       : { completeness: completenessStatement(top.completeness)! }),

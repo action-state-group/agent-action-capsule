@@ -27,6 +27,8 @@ import {
   type CheckSummary,
   type CompletenessStatement,
   type ReceiptEntry,
+  type RecordCoverage,
+  unboundRecordIds,
 } from "./verification-page.js";
 
 function element(tag: string, text?: string): HTMLElement {
@@ -80,11 +82,29 @@ function appendTime(
   parent.append(cell);
 }
 
+// Per-record membership may fail solely because some supplied records are
+// bound to no log position (the verifier's `membership_record_unbound`): real
+// records that sit outside any checkpoint. That is coverage, not a broken
+// proof -- every other record's inclusion proof still verified -- so the
+// bundle renders, each such record carries its own `uncheckpointed` status,
+// and the banner and verification page state how many there are. Any other
+// membership finding (an invalid proof, bad coordinates, a missing sequence)
+// still fails the bundle as a whole.
+function membershipProvenOrUnbound(result: BundleVerificationResult): boolean {
+  return (
+    result.perRecordMembership.status === "pass" ||
+    (result.perRecordMembership.status === "fail" &&
+      result.perRecordMembership.findings.length > 0 &&
+      result.perRecordMembership.findings.length ===
+        unboundRecordIds(result).length)
+  );
+}
+
 function bundleVerified(result: BundleVerificationResult): boolean {
   return (
     result.graphClosure.status === "pass" &&
     result.intervalCoverage.status === "pass" &&
-    result.perRecordMembership.status === "pass" &&
+    membershipProvenOrUnbound(result) &&
     Object.values(result.capsuleResults).every((capsule) => capsule.ok) &&
     result.disclosures.every(
       (disclosure) =>
@@ -94,16 +114,29 @@ function bundleVerified(result: BundleVerificationResult): boolean {
   );
 }
 
+const recordsWord = (count: number): string =>
+  `${count} ${count === 1 ? "record" : "records"}`;
+
 // The banner is drawn from the verification result alone and precedes every
 // row in the DOM; an unverified bundle gets the refusal line here and no
 // rows at all, so a reader never meets a payload before the verdict on the
-// bundle that carries it.
-function renderVerificationBanner(root: HTMLElement, verified: boolean): void {
+// bundle that carries it. It says what IS proven: a verified bundle with
+// records outside the checkpoint names their count up front.
+function renderVerificationBanner(
+  root: HTMLElement,
+  verified: boolean,
+  coverage: { uncheckpointed: number; total: number },
+): void {
   const banner = element(
     "p",
-    verified ? "Bundle verification passed" : "Bundle verification failed",
+    verified
+      ? coverage.uncheckpointed === 0
+        ? "Bundle verification passed"
+        : `Bundle verification passed; ${coverage.uncheckpointed} of ${recordsWord(coverage.total)} uncheckpointed`
+      : "Bundle verification failed",
   );
   banner.dataset.verify = verified ? "verified" : "failed";
+  banner.dataset.uncheckpointed = String(coverage.uncheckpointed);
   root.append(banner);
   if (verified) return;
   const refusal = element(
@@ -204,6 +237,35 @@ function renderReceipts(
   host.append(list);
 }
 
+// One row per supplied record, in bundle order, each with its own standing
+// under the checkpoint. The count is stated in words above the list.
+function renderCheckpointCoverage(
+  host: HTMLElement,
+  records: readonly RecordCoverage[],
+  uncheckpointed: number,
+): void {
+  host.append(element("h4", "Checkpoint coverage"));
+  const count = element(
+    "p",
+    `${recordsWord(uncheckpointed)} uncheckpointed of ${recordsWord(records.length)} supplied`,
+  );
+  count.dataset.coverage = "uncheckpointed";
+  count.dataset.count = String(uncheckpointed);
+  host.append(count);
+  const list = element("ul");
+  list.dataset.records = "coverage";
+  for (const record of records) {
+    const item = element("li", `${record.capsuleId} · `);
+    const status = element("span", record.status.replaceAll("_", " "));
+    status.dataset.recordStatus = record.status;
+    status.className = `seal-${record.status}`;
+    item.dataset.capsuleId = record.capsuleId;
+    item.append(status);
+    list.append(item);
+  }
+  host.append(list);
+}
+
 function renderCompletenessStatement(
   host: HTMLElement,
   completeness?: CompletenessStatement,
@@ -265,6 +327,17 @@ async function renderVerificationPage(
   appendValue(summary, "checkpoint size", model.checkpointSize ?? "absent");
   page.append(summary);
   renderReceipts(page, model.receipts);
+  if (model.selfWitnessed) {
+    // A checkpoint with no transparency-service receipt was witnessed by
+    // nobody but the log that produced it -- stated here in those words.
+    const witness = element(
+      "p",
+      "self-witnessed: no transparency-service receipt",
+    );
+    witness.dataset.witness = "self";
+    page.append(witness);
+  }
+  renderCheckpointCoverage(page, model.records, model.uncheckpointedCount);
   const countersignatures = object(bundle).countersignatures;
   const stamps = await classifyCountersignatures(
     Array.isArray(countersignatures) ? countersignatures : [],
@@ -328,6 +401,18 @@ function renderProvenance(
     "action time not stated",
   );
   appendTime(details, "seal time", times.sealTime, "seal time not stated");
+  // The seal status is this record's own: coordinates exist only for a
+  // record whose inclusion proof verified (the bundle renders only then), so
+  // a record without them sits outside the checkpoint and says so.
+  details.append(element("dt", "seal status"));
+  const seal = element(
+    "dd",
+    coordinates === undefined ? "uncheckpointed" : "checkpointed",
+  );
+  seal.dataset.seal =
+    coordinates === undefined ? "uncheckpointed" : "checkpointed";
+  seal.className = `seal-${seal.dataset.seal}`;
+  details.append(seal);
   if (coordinates !== undefined) {
     appendValue(details, "log ID", coordinates.logId);
     appendValue(details, "sequence", coordinates.seq);
@@ -573,13 +658,16 @@ export async function renderEvidenceGraph(
     verified && reportRows === undefined
       ? await buildEvidenceGraph(bundle)
       : undefined;
+  const records = object(bundle).records;
   root.replaceChildren();
   renderPresentationHeader(root, bundle);
-  renderVerificationBanner(root, verified);
+  renderVerificationBanner(root, verified, {
+    uncheckpointed: unboundRecordIds(verification).length,
+    total: Array.isArray(records) ? records.length : 0,
+  });
   if (reportRows !== undefined) {
     renderReportRowsTable(reportRows, root);
   } else if (graph !== undefined) {
-    const records = object(bundle).records;
     renderGraph(graph, root, Array.isArray(records) ? records : []);
   }
   await renderVerificationPage(

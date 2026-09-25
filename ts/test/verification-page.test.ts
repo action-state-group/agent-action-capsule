@@ -4,8 +4,10 @@ import { describe, expect, it } from "vitest";
 import { verifyBundle } from "../src/bundle.js";
 import {
   buildVerificationPageModel,
+  unboundRecordIds,
   VERIFY_INDEPENDENTLY_LINE,
 } from "../src/verification-page.js";
+import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 function fixture(name: string): unknown {
   return JSON.parse(
@@ -126,5 +128,67 @@ describe("buildVerificationPageModel", () => {
       (check) => check.name === "Graph closure",
     );
     expect(closure?.status).toBe("fail");
+  });
+});
+
+describe("checkpoint coverage (records outside any checkpoint)", () => {
+  it("names the unbound records from the verifier's own findings and gives every record its own status", async () => {
+    const { bundle, ids } = await sealEvidenceBundle(
+      fixture("report-rows-uncheckpointed-bundle.json") as Record<
+        string,
+        unknown
+      >,
+      { uncheckpointed: ["act-backfilled", "act-late"] },
+    );
+    const verified = await verifyBundle(bundle);
+    // the verifier reports the claim as the draft states it: two supplied
+    // records are bound to no position, and nothing else is wrong
+    expect(verified.perRecordMembership.status).toBe("fail");
+    expect([...verified.perRecordMembership.findings].sort()).toEqual(
+      [
+        `membership_record_unbound:${ids["act-backfilled"]}`,
+        `membership_record_unbound:${ids["act-late"]}`,
+      ].sort(),
+    );
+    expect(verified.intervalCoverage.status).toBe("pass");
+    expect(verified.graphClosure.status).toBe("pass");
+    expect([...unboundRecordIds(verified)].sort()).toEqual(
+      [ids["act-backfilled"], ids["act-late"]].sort(),
+    );
+
+    const model = buildVerificationPageModel(bundle, verified);
+    expect(model.uncheckpointedCount).toBe(2);
+    expect(model.records).toHaveLength(4);
+    expect(model.records.map((record) => record.capsuleId)).toEqual(
+      (bundle.records as Array<{ capsule_id: string }>).map(
+        (record) => record.capsule_id,
+      ),
+    );
+    expect(
+      Object.fromEntries(
+        model.records.map((record) => [record.capsuleId, record.status]),
+      ),
+    ).toEqual({
+      [ids.root!]: "checkpointed",
+      [ids["act-live"]!]: "checkpointed",
+      [ids["act-backfilled"]!]: "uncheckpointed",
+      [ids["act-late"]!]: "uncheckpointed",
+    });
+    // a checkpoint with no receipt is witnessed by nobody but its producer
+    expect(model.receipts).toEqual([]);
+    expect(model.selfWitnessed).toBe(true);
+  });
+
+  it("counts zero and marks every record checkpointed on a fully covered bundle", async () => {
+    const bundle = fixture("week-bundle.json") as { records: unknown[] };
+    const model = buildVerificationPageModel(
+      bundle,
+      await verifyBundle(bundle),
+    );
+    expect(model.uncheckpointedCount).toBe(0);
+    expect(model.records).toHaveLength(bundle.records.length);
+    expect(
+      model.records.every((record) => record.status === "checkpointed"),
+    ).toBe(true);
   });
 });

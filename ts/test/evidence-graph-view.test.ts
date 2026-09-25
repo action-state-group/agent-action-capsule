@@ -194,11 +194,17 @@ it("H1: a capsule_id-keyed value that does not hash to the committed digest rend
   expect(root.querySelector('[data-verify="failed"]')).not.toBeNull();
   drillEverywhere(root);
   expect(root.textContent).not.toContain("tampered transcript");
-  // whatever the view drew for this act, it is the digest, not a payload
+  // whatever the view drew for this act, it is the digest, not a payload.
+  // (The verification page lists every supplied record's identity in its
+  // coverage rows; that is not the act being drawn, so it is left out.)
+  const content = Array.from(root.children)
+    .filter((child) => (child as HTMLElement).dataset.page !== "verification")
+    .map((child) => child.textContent ?? "")
+    .join("");
   const shownDigest = Array.from(root.querySelectorAll("dd")).some(
     (cell) => cell.textContent === JSON.stringify(digest),
   );
-  const shownAct = root.textContent?.includes(record.capsule_id) ?? false;
+  const shownAct = content.includes(record.capsule_id);
   expect(shownDigest).toBe(shownAct);
 });
 
@@ -611,4 +617,183 @@ it("says 'action time not stated' for a record with a seal time and no action ti
   );
   for (const cell of sealCells)
     expect(cell.previousElementSibling?.textContent).toBe("seal time");
+});
+
+// --- uncheckpointed records render with their own status ------------------
+
+it("renders records that sit outside the checkpoint as uncheckpointed, one status per record, and counts them on the verification page", async () => {
+  // 2 of 4 supplied records have no membership entry: the backfilled turn
+  // and a turn appended after the last checkpoint. Root and the live turn
+  // are bound to the range root.
+  const { bundle, ids } = await sealEvidenceBundle(
+    (await fixture("report-rows-uncheckpointed-bundle.json")) as Record<
+      string,
+      unknown
+    >,
+    { uncheckpointed: ["act-backfilled", "act-late"] },
+  );
+  const memberships = (
+    bundle.completeness_certificate as { memberships: Record<string, unknown> }
+  ).memberships;
+  expect(Object.keys(memberships).sort()).toEqual(
+    [ids.root, ids["act-live"]].sort(),
+  );
+  expect((bundle.records as unknown[]).length).toBe(4);
+
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+
+  // the bundle is not failed as a whole: what is proven, is proven
+  const banner = root.querySelector<HTMLElement>("[data-verify]")!;
+  expect(banner.dataset.verify).toBe("verified");
+  expect(banner.dataset.uncheckpointed).toBe("2");
+  expect(banner.textContent).toBe(
+    "Bundle verification passed; 2 of 4 records uncheckpointed",
+  );
+  expect(root.querySelector("[data-refusal]")).toBeNull();
+
+  // every row rendered; none dropped
+  const page = root.querySelector<HTMLElement>('[data-page="report-rows"]')!;
+  expect(page.querySelectorAll("[data-row-id]")).toHaveLength(3);
+
+  // each cited record carries ITS OWN seal status in its provenance panel;
+  // the root's own panel (always present on the rows page) is checkpointed
+  const panelFor = (capsuleId: string): HTMLElement =>
+    Array.from(page.querySelectorAll("dl")).find((list) =>
+      list.textContent?.includes(capsuleId),
+    )!;
+  const sealOf = (rowId: string, capsuleId: string): string => {
+    Array.from(page.querySelectorAll<HTMLElement>("[data-row-id]"))
+      .find((button) => button.dataset.rowId === rowId)!
+      .click();
+    // exactly two panels: the root's and the clicked row's one citation
+    expect(page.querySelectorAll("[data-seal]")).toHaveLength(2);
+    return panelFor(capsuleId).querySelector<HTMLElement>("[data-seal]")!
+      .dataset.seal!;
+  };
+  expect(
+    panelFor(ids.root!).querySelector<HTMLElement>("[data-seal]")!.dataset.seal,
+  ).toBe("checkpointed");
+  expect(sealOf("grounded-live", ids["act-live"]!)).toBe("checkpointed");
+  expect(page.textContent).toContain("evidence from a checkpointed turn");
+  expect(page.textContent).toContain("action time not stated");
+  expect(sealOf("grounded-backfilled", ids["act-backfilled"]!)).toBe(
+    "uncheckpointed",
+  );
+  expect(page.textContent).toContain("evidence from a backfilled turn");
+  expect(page.textContent).toContain(
+    "2026-08-26T05:34:57.860343 (timezone not stated)",
+  );
+  expect(sealOf("grounded-late", ids["act-late"]!)).toBe("uncheckpointed");
+  expect(page.textContent).toContain("evidence from a late turn");
+
+  // the verification page: the count in words, and one row per record
+  const verification = root.querySelector<HTMLElement>(
+    '[data-page="verification"]',
+  )!;
+  const count = verification.querySelector<HTMLElement>(
+    '[data-coverage="uncheckpointed"]',
+  )!;
+  expect(count.dataset.count).toBe("2");
+  expect(count.textContent).toBe(
+    "2 records uncheckpointed of 4 records supplied",
+  );
+  const rows = verification.querySelectorAll<HTMLElement>(
+    '[data-records="coverage"] > li',
+  );
+  expect(rows).toHaveLength((bundle.records as unknown[]).length);
+  const statuses = Object.fromEntries(
+    Array.from(rows, (row) => [
+      row.dataset.capsuleId,
+      row.querySelector<HTMLElement>("[data-record-status]")!.dataset
+        .recordStatus,
+    ]),
+  );
+  expect(statuses).toEqual({
+    [ids.root!]: "checkpointed",
+    [ids["act-live"]!]: "checkpointed",
+    [ids["act-backfilled"]!]: "uncheckpointed",
+    [ids["act-late"]!]: "uncheckpointed",
+  });
+  expect(
+    Array.from(rows).filter((row) =>
+      row.querySelector('[data-record-status="uncheckpointed"]'),
+    ),
+  ).toHaveLength(2);
+  expect(verification.textContent).toContain("2 records uncheckpointed");
+
+  // no receipt: the checkpoint witnesses only itself, said in those words
+  expect(
+    verification.querySelector<HTMLElement>('[data-witness="self"]')
+      ?.textContent,
+  ).toBe("self-witnessed: no transparency-service receipt");
+});
+
+it("still fails the bundle for any membership finding other than an unbound record", async () => {
+  const { bundle } = await sealEvidenceBundle(
+    (await fixture("report-rows-uncheckpointed-bundle.json")) as Record<
+      string,
+      unknown
+    >,
+    { uncheckpointed: ["act-backfilled"] },
+  );
+  // corrupt the live turn's inclusion proof: now one record is unbound AND
+  // one is bound by a proof that does not verify
+  const certificate = bundle.completeness_certificate as {
+    memberships: Record<
+      string,
+      { inclusion_proof: { witness: string[]; leaf_index: number } }
+    >;
+  };
+  const [id, member] = Object.entries(certificate.memberships)[1]!;
+  certificate.memberships[id] = {
+    ...member,
+    inclusion_proof: {
+      ...member.inclusion_proof,
+      witness: member.inclusion_proof.witness.map(() => "00".repeat(32)),
+    },
+  };
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  expect(root.querySelector('[data-verify="failed"]')).not.toBeNull();
+  expect(
+    root.querySelector('[data-refusal="unverified-bundle"]'),
+  ).not.toBeNull();
+  expect(root.querySelectorAll("[data-row-id]")).toHaveLength(0);
+});
+
+it("evaluation graph: an uncheckpointed act shows its own status and its checkpointed neighbour keeps its coordinates", async () => {
+  const { bundle, ids } = await sealEvidenceBundle(
+    (await fixture("report-mixed-tz-bundle.json")) as Record<string, unknown>,
+    { uncheckpointed: ["act-naive"] },
+  );
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  expect(root.querySelector<HTMLElement>("[data-verify]")!.textContent).toBe(
+    "Bundle verification passed; 1 of 5 records uncheckpointed",
+  );
+  expect(root.querySelectorAll("[data-report-date]")).toHaveLength(2);
+  const panelFor = (capsuleId: string): HTMLElement =>
+    Array.from(root.querySelectorAll("dl")).find((list) =>
+      list.textContent?.includes(capsuleId),
+    )!;
+  const [zulu, naive] = Array.from(
+    root.querySelectorAll<HTMLElement>("[data-report-date]"),
+  );
+  zulu!.click();
+  root.querySelector<HTMLElement>("[data-case-id]")!.click();
+  const live = panelFor(ids["act-zulu"]!);
+  expect(live.querySelector<HTMLElement>("[data-seal]")!.dataset.seal).toBe(
+    "checkpointed",
+  );
+  expect(live.textContent).toContain("sequence");
+  naive!.click();
+  root.querySelector<HTMLElement>("[data-case-id]")!.click();
+  const backfilled = panelFor(ids["act-naive"]!);
+  expect(
+    backfilled.querySelector<HTMLElement>("[data-seal]")!.dataset.seal,
+  ).toBe("uncheckpointed");
+  expect(backfilled.textContent).not.toContain("sequence");
+  // the neighbour's coordinates never leak into the uncheckpointed panel
+  expect(backfilled.textContent).not.toContain(ids["act-zulu"]!);
 });
