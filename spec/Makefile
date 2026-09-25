@@ -20,13 +20,13 @@ BILATERAL = draft-mih-agent-bilateral-attestation-02
 CPB      = draft-mih-sokolov-scitt-payload-binding-00
 BUNDLE   = draft-mih-zhang-agent-action-capsule-evidence-bundle-00
 EVREQ    = draft-mih-agent-evidence-request-00
-EVIDENCEBOOK = draft-mih-agent-evidence-book-00
+EVIDENCELAYER = draft-mih-agent-evidence-layer-00
 XML2RFC  ?= $(shell command -v xml2rfc)
 KDRFC    ?= $(shell command -v kramdown-rfc || ruby -e 'puts Gem.bindir + "/kramdown-rfc"')
 
-.PHONY: all bilateral cpb bundle evreq evidencebook clean idnits idnits-evreq rebuild refresh-refs check
+.PHONY: all bilateral cpb bundle evreq evidencelayer clean idnits idnits-evreq rebuild refresh-refs check
 
-all: $(DRAFT).xml $(DRAFT).txt $(BUNDLE).xml $(BUNDLE).txt $(EVREQ).xml $(EVREQ).txt $(EVIDENCEBOOK).xml $(EVIDENCEBOOK).txt
+all: $(DRAFT).xml $(DRAFT).txt $(BUNDLE).xml $(BUNDLE).txt $(EVREQ).xml $(EVREQ).txt $(EVIDENCELAYER).xml $(EVIDENCELAYER).txt
 
 # Force a rebuild from the Markdown source.
 #
@@ -68,7 +68,7 @@ bundle: $(BUNDLE).xml $(BUNDLE).txt
 
 evreq: $(EVREQ).xml $(EVREQ).txt
 
-evidencebook: $(EVIDENCEBOOK).xml $(EVIDENCEBOOK).txt
+evidencelayer: $(EVIDENCELAYER).xml $(EVIDENCELAYER).txt
 
 # md -> v2 xml -> v3 xml (committed artifact is v3)
 $(DRAFT).xml: $(DRAFT).md
@@ -99,11 +99,11 @@ $(EVREQ).xml: $(EVREQ).md
 	sed '/<!-- ##markdown-source:/,/-->/d' .$(EVREQ).v3.xml > $(EVREQ).xml
 	@rm -f .$(EVREQ).v2.xml .$(EVREQ).v3.xml
 
-$(EVIDENCEBOOK).xml: $(EVIDENCEBOOK).md
-	$(KDRFC) $(EVIDENCEBOOK).md > .$(EVIDENCEBOOK).v2.xml
-	$(XML2RFC) --v2v3 .$(EVIDENCEBOOK).v2.xml -o .$(EVIDENCEBOOK).v3.xml
-	sed '/<!-- ##markdown-source:/,/-->/d' .$(EVIDENCEBOOK).v3.xml > $(EVIDENCEBOOK).xml
-	@rm -f .$(EVIDENCEBOOK).v2.xml .$(EVIDENCEBOOK).v3.xml
+$(EVIDENCELAYER).xml: $(EVIDENCELAYER).md
+	$(KDRFC) $(EVIDENCELAYER).md > .$(EVIDENCELAYER).v2.xml
+	$(XML2RFC) --v2v3 .$(EVIDENCELAYER).v2.xml -o .$(EVIDENCELAYER).v3.xml
+	sed '/<!-- ##markdown-source:/,/-->/d' .$(EVIDENCELAYER).v3.xml > $(EVIDENCELAYER).xml
+	@rm -f .$(EVIDENCELAYER).v2.xml .$(EVIDENCELAYER).v3.xml
 
 # v3 xml -> text
 $(DRAFT).txt: $(DRAFT).xml
@@ -121,8 +121,8 @@ $(BUNDLE).txt: $(BUNDLE).xml
 $(EVREQ).txt: $(EVREQ).xml
 	$(XML2RFC) --text --v3 $(EVREQ).xml -o $(EVREQ).txt
 
-$(EVIDENCEBOOK).txt: $(EVIDENCEBOOK).xml
-	$(XML2RFC) --text --v3 $(EVIDENCEBOOK).xml -o $(EVIDENCEBOOK).txt
+$(EVIDENCELAYER).txt: $(EVIDENCELAYER).xml
+	$(XML2RFC) --text --v3 $(EVIDENCELAYER).xml -o $(EVIDENCELAYER).txt
 
 idnits: $(DRAFT).txt
 	npx --yes @ietf-tools/idnits $(DRAFT).txt
@@ -134,4 +134,4 @@ check:
 	python3 check_verdict_class_refs.py
 
 clean:
-	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml .$(BUNDLE).v2.xml .$(EVREQ).v2.xml .$(EVREQ).v3.xml .$(EVIDENCEBOOK).v2.xml .$(EVIDENCEBOOK).v3.xml
+	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml .$(BUNDLE).v2.xml .$(EVREQ).v2.xml .$(EVREQ).v3.xml .$(EVIDENCELAYER).v2.xml .$(EVIDENCELAYER).v3.xml

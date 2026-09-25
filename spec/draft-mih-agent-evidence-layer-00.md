@@ -1,7 +1,7 @@
 ---
-title: "Evidence Book"
-abbrev: "Evidence Book"
-docname: draft-mih-agent-evidence-book-00
+title: "Evidence Layer"
+abbrev: "Evidence Layer"
+docname: draft-mih-agent-evidence-layer-00
 category: info
 submissiontype: IETF
 ipr: trust200902
@@ -56,22 +56,24 @@ informative:
 
 --- abstract
 
-An evidence book is a local store that records evidence and the relationships
-between records, keeps digests committed while payloads are separately
-referenced, and preserves how each record came to be known well enough that
-a later reader can tell an observation from a claim. This document defines
-the record model, typed links between records, disclosure and retention
-semantics, the three classes of index a book may maintain, and the minimum
-interface any commitment substrate must supply for a store to be called a
-conforming evidence book. It exists so that a request for evidence can be
-answered honestly from what a book actually holds, and so that an evidence
-bundle assembled in response is assembled from committed material rather
-than assembled and then made to look committed. The commitment substrate
-is deliberately not fixed: a
+This document defines the evidence layer: the conformance requirements for
+a local evidence store that records evidence and the relationships between
+records, keeps digests committed while payloads are separately referenced,
+and preserves how each record came to be known well enough that a later
+reader can tell an observation from a claim. This document defines the
+record model, typed links between records, disclosure and retention
+semantics, the three classes of index a store may maintain, and the minimum
+interface any commitment substrate must supply for a store to conform to
+this layer. It exists so that a request for evidence can be answered
+honestly from what a store actually holds, and so that an evidence bundle
+assembled in response is assembled from committed material rather than
+assembled and then made to look committed. Conformance to this layer MUST
+NOT require any particular implementation or commitment substrate: a
 Checkpointed Local Log is one conforming profile; a receipt from a SCITT
-transparency service is another. This document defines neither evidence
-sufficiency policy, request routing, settlement, nor any specific
-host-identity, signing, payload-storage, or replication mechanism.
+transparency service is another; a Rekor-style transparency log or an
+implementer's own authenticated log also qualify. This document defines
+neither evidence sufficiency policy, request routing, settlement, nor any
+specific host-identity, signing, payload-storage, or replication mechanism.
 
 --- middle
 
@@ -89,13 +91,14 @@ record relates to another without editing either, and a way to distinguish
 "I have never had this" from "I once had this and no longer do" from "I have
 this and will not show you."
 
-This document names that substrate an **evidence book**, states what a
-conforming book must hold and preserve, and states nothing about how a book
-is implemented beyond that. It is deliberately substrate-agnostic: a
+This document names that substrate an **evidence store**, defines the
+**evidence layer** a store must conform to, and states nothing about how a
+store is implemented beyond that. Conformance to the evidence layer MUST
+NOT require any particular implementation or commitment substrate: a
 Checkpointed Local Log ({{I-D.mih-scitt-checkpointed-local-log}}) is one
 mechanism satisfying the interface in {{substrate}}; a transparency-service
-receipt {{RFC9943}} is another. Neither this document nor a conforming book
-requires the former specifically.
+receipt {{RFC9943}} is another; a Rekor-style transparency log or an
+implementer's own authenticated log also qualify.
 
 # Non-Goals {#nongoals}
 
@@ -103,13 +106,13 @@ This document deliberately does not define:
 
 - **Evidence sufficiency, requirements, or verdicts.** Whether a set of
   records satisfies a requirement, and what a contract requires in the
-  first place, is a policy layer that consumes what a book can produce. It
+  first place, is a policy layer that consumes what a store can produce. It
   is out of scope here.
-- **Request routing or transport policy.** How a request reaches a book,
-  and what a book's operator decides to answer, are deployment and policy
+- **Request routing or transport policy.** How a request reaches a store,
+  and what a store's operator decides to answer, are deployment and policy
   questions this document does not reach.
 - **Settlement.** Any obligation, payment, or remedy that follows from a
-  recorded fact is outside this document; a book records that something is
+  recorded fact is outside this document; a store records that something is
   true of its own history, never what should happen as a result.
 - **A host-identity scheme.** What a `principal_ref` ({{record}}) names,
   and how a party's key relates to any role or standing, is host- or
@@ -117,9 +120,9 @@ This document deliberately does not define:
   cannot be taken to mean ({{security}}).
 - **A signing, payload-storage, or replication mechanism.** How a record or
   a checkpoint is signed, how payload bytes are stored and retrieved by
-  digest, and how records travel between books, relays, or fleets are
-  implementation seams a host plugs in beneath a conforming book. This
-  document does not define any of the three, and a book's conformance to
+  digest, and how records travel between stores, relays, or fleets are
+  implementation seams a host plugs in beneath a conforming store. This
+  document does not define any of the three, and a store's conformance to
   this document does not depend on which implementation of any of them it
   uses.
 
@@ -127,12 +130,18 @@ This document deliberately does not define:
 
 {::boilerplate bcp14-tagged}
 
-**Evidence book (a "book"):** a local store that records evidence and typed
-links between records ({{links}}), keeps a durable, append-ordered
-commitment to what it has recorded, and can answer a request against that
-commitment. The subject of this document.
+**Evidence layer:** the conformance requirements this document defines for a
+local evidence store — the record model, typed links, disclosure and
+retention semantics, the index classes, and the commitment-substrate
+interface. Conformance to the evidence layer MUST NOT require any
+particular implementation or commitment substrate.
 
-**Record:** one committed entry in a book: a header ({{record}}) and,
+**Evidence store (a "store"):** a local store that conforms to the evidence
+layer: it records evidence and typed links between records ({{links}}),
+keeps a durable, append-ordered commitment to what it has recorded, and can
+answer a request against that commitment. The subject of this document.
+
+**Record:** one committed entry in a store: a header ({{record}}) and,
 optionally, digests referencing payload bytes held or resolved separately
 ({{retention}}).
 
@@ -144,12 +153,12 @@ JSON {{RFC8259}} value, `UTF8(JCS(value))` per {{RFC8785}}.
 part of a committed record and never a mutation of either record it
 relates ({{links}}).
 
-**Commitment substrate:** the mechanism a book uses to assign append order
+**Commitment substrate:** the mechanism a store uses to assign append order
 to records and to produce checkpoints against which inclusion and
-consistency are checkable by a party other than the book ({{substrate}}).
+consistency are checkable by a party other than the store ({{substrate}}).
 
 **Checkpoint:** a value, produced by the commitment substrate, naming one
-committed state of a book's history at one point in time.
+committed state of a store's history at one point in time.
 
 **Epistemic type:** a closed value naming how a record's content came to be
 known or asserted, preserved end to end regardless of what is later signed
@@ -168,7 +177,7 @@ record:
   record_id: <content-derived or profile-assigned identifier>
   record_type: <open token, e.g. "observation", "claim", "close">
   epistemic_type: <one of the eight values below>
-  committed_at: <time this book committed the record>
+  committed_at: <time this store committed the record>
   event_time_claim: <claimed time of the underlying event, if any>
   payload_commitments: [ <digest>, ... ]
   retention_state: <AVAILABLE|PARTIAL|WITHHELD|DELETED|LEGAL_HOLD>
@@ -193,7 +202,7 @@ known, independent of what the record is about.
 
 `principal_ref` is an opaque reference; the scheme that gives it meaning is
 host-defined and out of scope here ({{nongoals}}, {{security}}).
-`committed_at` is this book's own local time of commitment and is never a
+`committed_at` is this store's own local time of commitment and is never a
 substitute for `event_time_claim`, which is itself only a claim: nothing in
 this document verifies that an `event_time_claim` is accurate.
 
@@ -203,7 +212,7 @@ this document verifies that an `event_time_claim` is accurate.
 |---|---|
 | `observed_event` | directly observed by the recording system or actor |
 | `system_of_record_fact` | asserted by an external system of record |
-| `producer_claim` | asserted by the record's own producer, unverified by the book |
+| `producer_claim` | asserted by the record's own producer, unverified by the store |
 | `human_report` | asserted by a human, not machine-observed |
 | `semantic_judgment` | a judgment or classification reached by interpretation, not direct observation |
 | `derived_metric` | a value computed or aggregated from other records |
@@ -258,7 +267,7 @@ adjudication is not an adjudication of what is cited two hops away.
 
 **`supersedes`:** the carrying record replaces the target's content for
 current use, without mutating the target. The target's original commitment
-stands as part of the book's history; `supersedes` is how a book represents
+stands as part of the store's history; `supersedes` is how a store represents
 a correction as a new fact rather than an edit ({{retention}}).
 
 **`acknowledges`:** the carrying record states that its author has seen and
@@ -276,10 +285,10 @@ records.
 
 # Record/Payload Separation, Retention, and Disclosure {#retention}
 
-A record's commitment — its presence in the book's committed history, its
+A record's commitment — its presence in the store's committed history, its
 `record_id`, its digest — is permanent once committed and is never mutated.
 Payload bytes are a separate, possibly-absent resource that
-`payload_commitments` point at by digest; a book's durable header commits
+`payload_commitments` point at by digest; a store's durable header commits
 to digests, never to storage locations, and losing or withholding payload
 bytes never un-commits the record that referenced them.
 
@@ -306,11 +315,11 @@ bytes; only one of them is permanent. A party that needs to distinguish
 ## Disclosure Records
 
 A **disclosure record** documents an act of disclosing payload material —
-for example, when a book assembles the artifact response to a request
+for example, when a store assembles the artifact response to a request
 ({{I-D.mih-agent-evidence-request}}) or the disclosures overlay of an
 evidence bundle
 ({{I-D.mih-zhang-agent-action-capsule-evidence-bundle}}). Its
-`epistemic_type` is `producer_claim`: it is the book's own statement of what
+`epistemic_type` is `producer_claim`: it is the store's own statement of what
 it chose to reveal. It carries:
 
 ~~~
@@ -320,9 +329,9 @@ disclosure:
 ~~~
 
 `payloads` states whether the disclosure carried all payload material the
-book chose to consider, or only a selected subset. `suppressed_fields`
+store chose to consider, or only a selected subset. `suppressed_fields`
 names fields intentionally not carried by this disclosure. For any
-suppressed field the book chooses to acknowledge exists at all, the
+suppressed field the store chooses to acknowledge exists at all, the
 disclosure record MAY carry that field's committed digest rather than
 nothing: a withheld field disclosed with its digest is never reported as
 blank and never as if it did not exist, mirroring the target record's own
@@ -336,20 +345,20 @@ underlying record is more, or less, available than its own
 
 # Index Classes {#indexes}
 
-A book MAY maintain any or all of three classes of index over its committed
+A store MAY maintain any or all of three classes of index over its committed
 records. Each makes a different claim, and none MAY be substituted for
 another:
 
 1. **Operational index.** Fast local query support — by `record_id`,
    `subject_ref`, or any other field. Rebuildable from committed history at
    any time. Carries no independent trust value: a result from an
-   operational index is only as trustworthy as the book producing it, and
-   is not itself checkable by a party that does not trust the book.
+   operational index is only as trustworthy as the store producing it, and
+   is not itself checkable by a party that does not trust the store.
 2. **Authenticated index.** A deterministic structure whose root is
-   committed into the book's commitment substrate ({{substrate}}).
+   committed into the store's commitment substrate ({{substrate}}).
    Supports membership, range, non-membership, and completeness properties
-   that a party other than the book can check against a checkpoint,
-   independent of trusting the book's own operational query results.
+   that a party other than the store can check against a checkpoint,
+   independent of trusting the store's own operational query results.
 3. **Semantic or vector index.** Approximate discovery only, always
    rebuildable, and never proof of anything. A result from a semantic
    index MUST NOT be cited as proof of completeness, and MUST NOT be cited
@@ -358,21 +367,21 @@ another:
 
 # The Commitment-Substrate Interface {#substrate}
 
-A conforming book's commitment substrate MUST supply four properties,
+A conforming store's commitment substrate MUST supply four properties,
 regardless of mechanism:
 
 1. **Append order.** Each record receives a position in a monotonic order
-   the substrate itself assigns and fixes; the book does not renumber
+   the substrate itself assigns and fixes; the store does not renumber
    positions after the fact.
 2. **Inclusion.** For any committed record, the substrate can produce a
    proof that it occupies its stated position — checkable by a party that
-   does not trust the book.
+   does not trust the store.
 3. **Consistency / continuity.** The substrate can produce a proof that one
    checkpoint's committed state is a well-defined extension of an earlier
    checkpoint's, never a silent rewrite of history already committed.
 4. **Checkpoint identity.** A checkpoint names one committed state by a
-   value independent of the book that produced it, so a checkpoint obtained
-   from any source — the book, a peer, a witness — identifies the same
+   value independent of the store that produced it, so a checkpoint obtained
+   from any source — the store, a peer, a witness — identifies the same
    state.
 
 This document requires these four properties and no specific mechanism. A
@@ -383,53 +392,55 @@ issued by a SCITT transparency service {{RFC9943}}, carried as a COSE
 Receipt {{RFC9942}}, is an alternate profile: the transparency service's
 registration and receipt stand in for the local append/checkpoint pair, and
 inclusion and consistency are established by the receipt rather than by a
-log the book itself maintains. **An evidence book MUST NOT require a
-Checkpointed Local Log specifically.** A book conforms by satisfying the
-four properties above under whichever substrate it uses, and states which
-substrate that is.
+log the store itself maintains. **Conformance to this document MUST NOT
+require any particular implementation or commitment substrate.** A
+Checkpointed Local Log, a SCITT transparency-service receipt, a Rekor-style
+transparency log, or an implementer's own authenticated log all qualify: a
+store conforms by satisfying the four properties above under whichever
+substrate it uses, and states which substrate that is.
 
 # Answering a Request {#answers}
 
 {{I-D.mih-agent-evidence-request}} defines six subject forms and three
 mutually exclusive interaction outcomes. This section states, for each
-subject form, the book-level capability that answers it — it does not
+subject form, the store-level capability that answers it — it does not
 restate that document's own rules about coverage anchors or refusal
 reasons.
 
-| Subject | Book capability |
+| Subject | Store capability |
 |---|---|
 | `record` | resolve one record by `record_id`/digest — operational or authenticated index |
 | `range` | resolve records at stated positions under the substrate's append order, with an inclusion or range proof from the authenticated index |
 | `correlation` | resolve every record whose `subject_ref` (or an equivalent correlation field) matches — operational index |
 | `exchange` | resolve every record carrying a `cites` link ({{links}}) whose target is the named exchange half's digest |
-| `full_history` | the book's entire evidence body, subject to whatever disclosure policy governs the interaction ({{retention}}) |
+| `full_history` | the store's entire evidence body, subject to whatever disclosure policy governs the interaction ({{retention}}) |
 | `checkpoints` | the commitment substrate's checkpoint identity and receipts ({{substrate}}), requiring no record-level resolution |
 
 ## Three Kinds of "No" {#answers-absence}
 
-A book capable of producing these answers distinguishes three different
+A store capable of producing these answers distinguishes three different
 things that could be reported as "no evidence for this subject":
 
 1. **Non-membership:** a proof, from an authenticated index
    ({{indexes}}), that no record occupies the stated position or carries
    the stated identity. This is the only one of the three that is itself
-   checkable by a party other than the book.
+   checkable by a party other than the store.
 2. **Withheld:** a record or its payload exists but is not disclosed under
    current policy ({{retention}}). This is a policy refusal, not an
    absence, and MUST NOT be reported as if the record did not exist.
-3. **Asserted absence:** the book's own unproven claim that it holds no
+3. **Asserted absence:** the store's own unproven claim that it holds no
    such record, offered when no authenticated index covers the subject.
-   This is a `producer_claim` about the book's local state; it is not
+   This is a `producer_claim` about the store's local state; it is not
    proof, and it is not a claim about anything on the requester's side.
 
 A `no_such_subject` refusal ({{I-D.mih-agent-evidence-request}}) MAY be
-backed by a non-membership proof where the book's authenticated index
-supports one. Where it does not, the refusal is honest only if the book
+backed by a non-membership proof where the store's authenticated index
+supports one. Where it does not, the refusal is honest only if the store
 does not present its own asserted absence as if it carried the same weight.
 
 # Reconcile and Close {#reconcile}
 
-Two independently held books are compared under a declared contract or
+Two independently held stores are compared under a declared contract or
 profile external to this document. Comparing corresponding candidates
 assigns each pairing one of six states: `MATCHED`, `A_ONLY`, `B_ONLY`,
 `CONFLICTING`, `INSUFFICIENT`, `UNRESOLVED`.
@@ -461,14 +472,14 @@ stands unchanged, exactly as {{retention}}'s rule for any other correction.
 # Security Considerations {#security}
 
 **A self-consistent fabricated history is possible until an external party
-pins a checkpoint.** A book that both produces and consumes its own
+pins a checkpoint.** A store that both produces and consumes its own
 checkpoints can present a byte-for-byte consistent, provably append-only
 history that never happened as its author intends a reader to believe.
-Internal consistency proves that the book has not silently rewritten what
+Internal consistency proves that the store has not silently rewritten what
 it already committed to a witness; it does not prove that what it
 committed the first time was true, and it does nothing for a checkpoint no
 external party has ever seen. The commitment-substrate properties of
-{{substrate}} close the rewrite path once a checkpoint has left the book's
+{{substrate}} close the rewrite path once a checkpoint has left the store's
 control; they do nothing for one that has not.
 
 **Key control is not authority.** That a signature over a record verifies
@@ -481,7 +492,7 @@ about; any such binding is host policy this document does not define
 **Non-membership is checkable; asserted absence is not.** A relying party
 that cannot tell the two apart ({{answers-absence}}) can be handed a
 fabricated "no evidence" with no way to check it. Recording which of the
-three kinds of "no" a book actually returned matters as much as recording
+three kinds of "no" a store actually returned matters as much as recording
 the digest of whatever it did return.
 
 **`epistemic_type` is assigned once and is load-bearing.** A record
@@ -493,7 +504,7 @@ the miscategorized original stands and remains readable as what it was.
 
 **Signing, payload storage, and replication are out of scope, and that is
 itself a boundary.** This document takes no position on how a record is
-signed, how payload bytes are stored, or how records travel between books
+signed, how payload bytes are stored, or how records travel between stores
 ({{nongoals}}). A relying party's trust in a record obtained through any of
 these mechanisms is exactly its trust in the signature and the commitment
 substrate checkpoint it verifies against — never in the fact that a
@@ -502,7 +513,7 @@ particular mechanism was used to produce or move it.
 # Privacy Considerations {#privacy}
 
 The durable record header ({{record}}) MUST be privacy-minimized: it
-carries what the book's own operation requires — identifiers, digests, and
+carries what the store's own operation requires — identifiers, digests, and
 typed references — and no low-entropy sensitive value beyond that. A
 low-entropy value MUST NOT be treated as safe to carry merely because it
 has been hashed; a small input space makes a digest invertible by
@@ -511,7 +522,7 @@ exhaustive search, so hashing alone is not minimization.
 # IANA Considerations {#iana}
 
 This document requests that IANA establish a registry titled "Evidence
-Book Epistemic Types". The registration policy is Specification Required
+Layer Epistemic Types". The registration policy is Specification Required
 {{RFC8126}}.
 Each entry consists of a token (lowercase ASCII, underscore-separated), a
 one-line description, and a reference. The initial contents are those of
@@ -521,14 +532,14 @@ one-line description, and a reference. The initial contents are those of
 |---|---|---|
 | `observed_event` | directly observed by the recording system or actor | This document |
 | `system_of_record_fact` | asserted by an external system of record | This document |
-| `producer_claim` | asserted by the record's own producer, unverified by the book | This document |
+| `producer_claim` | asserted by the record's own producer, unverified by the store | This document |
 | `human_report` | asserted by a human, not machine-observed | This document |
 | `semantic_judgment` | a judgment or classification reached by interpretation | This document |
 | `derived_metric` | a value computed or aggregated from other records | This document |
 | `adjudication` | a ruling on a matter that was disputed or required judgment | This document |
 | `obligation_reference` | a reference to an obligation the record does not itself discharge | This document |
 
-This document further requests a registry titled "Evidence Book Link
+This document further requests a registry titled "Evidence Layer Link
 Types", registration policy Specification Required. Each entry consists of
 a token, a one-line description, and a reference. The initial contents are
 those of {{links}}:
