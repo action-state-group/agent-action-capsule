@@ -28,6 +28,21 @@
   the single pinned legacy artifact; do not re-tag.
 
 ### Spec
+- `spec/judge-record-family-v1.md` — added the Judge Record Family: eight companion JSON
+  Schemas (`schemas/judge/*.json`) unifying two previously-divergent record families for the
+  same two capsules (`evaluation-compiler` fixtures vs. `capsule-judge`'s
+  `judge_judgment`/`judge_adjudication`) into one — `contract-compile/v1` (`producer_claim`),
+  `evaluation-report/v1` (`semantic_judgment`; per-case `met`/`not_met`/`not_evaluable`),
+  `close/v1` (`producer_claim`; period + counts + head + optional reconcile), `sample-manifest/v1`
+  (`producer_claim`), `human-rating/v1` (`human_report`; `blind: true` fixed, rater as
+  `principal_ref`, never a name), `calibration-summary/v1` (`derived_metric`; k-of-n per clause,
+  never a rate), plus the mesh family (`adjudication/v1`, `adjudication-response/v1`) schema-ing
+  capsule-emit-mesh's twin `adjudication`/`adjudication_delivery_receipt`/`ack`/`rebuttal` so
+  `evaluation-report/v1` is the single-party case of the same adjudication shape rather than a
+  parallel one. `epistemic_type` is fixed per schema and vendored from the Evidence Layer's closed
+  set (`schemas/vendor/epistemic-types.json`), extending capsule-engine's Batch 1 parity pattern
+  (commit `ba7b7a0`) with its own three-way check. §9 maps every old capsule-judge/capsule-emit-mesh
+  field onto this family so the pin/drift port is mechanical.
 - `spec/draft-mih-scitt-agent-action-capsule-05.md` — added `provenance_mode`,
   a MODE on the ordinary Capsule (never a distinct record type; ruled
   2026-09-22) disambiguating a contemporaneous action record from a
