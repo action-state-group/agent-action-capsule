@@ -527,6 +527,9 @@ describe("times as given (backfill rule: nothing gets a zone assigned)", () => {
   it("states whether a written time carries a zone, without parsing it into one", () => {
     expect(zoneStatement("2026-08-26T03:00:00Z")).toBe("stated");
     expect(zoneStatement("2026-08-26T23:30:00-05:00")).toBe("stated");
+    // RFC 3339 §5.6: `t` and `z` may be lowercase; the zone is still stated
+    expect(zoneStatement("2026-08-26t03:00:00z")).toBe("stated");
+    expect(zoneStatement("2026-08-26t23:30:00-05:00")).toBe("stated");
     expect(zoneStatement("2026-08-26T20:15:00.123456")).toBe("not-stated");
     expect(zoneStatement("2026-08-26T20:15")).toBe("not-stated");
     expect(zoneStatement("2026-08-26")).toBe("date-only");

@@ -27,8 +27,10 @@ import {
   buildVerificationPageModel,
   type CheckSummary,
   type CompletenessStatement,
+  type CoverageStatement,
   type ReceiptEntry,
   type RecordCoverage,
+  type RecordCoverageStatus,
   unboundRecordIds,
 } from "./verification-page.js";
 
@@ -90,7 +92,9 @@ function appendTime(
 // bundle renders, each such record carries its own `uncheckpointed` status,
 // and the banner and verification page state how many there are. Any other
 // membership finding (an invalid proof, bad coordinates, a missing sequence)
-// still fails the bundle as a whole.
+// still fails the bundle as a whole: `unboundRecordIds` leaves out a record
+// whose supplied entry was rejected, so the counts below can only agree when
+// every finding is a clean unbound record.
 function membershipProvenOrUnbound(result: BundleVerificationResult): boolean {
   return (
     result.perRecordMembership.status === "pass" ||
@@ -238,26 +242,47 @@ function renderReceipts(
   host.append(list);
 }
 
+const COVERAGE_LABEL: Readonly<Record<RecordCoverageStatus, string>> =
+  Object.freeze({
+    checkpointed: "checkpointed",
+    uncheckpointed: "uncheckpointed",
+    membership_invalid: "membership invalid",
+    unverified: "membership unverified",
+  });
+
 // One row per supplied record, in bundle order, each with its own standing
-// under the checkpoint. The count is stated in words above the list.
+// under the checkpoint. When the claim established coverage the count is
+// stated in words above the list. When it did not, the line says so and
+// names the verifier's reason -- never "0 records uncheckpointed" on a
+// bundle whose memberships were never verified -- and when the claim was
+// withheld (no checkpoint to stand under) there is no list at all.
 function renderCheckpointCoverage(
   host: HTMLElement,
   records: readonly RecordCoverage[],
   uncheckpointed: number,
+  coverage: CoverageStatement,
 ): void {
   host.append(element("h4", "Checkpoint coverage"));
-  const count = element(
-    "p",
-    `${recordsWord(uncheckpointed)} uncheckpointed of ${recordsWord(records.length)} supplied`,
-  );
-  count.dataset.coverage = "uncheckpointed";
-  count.dataset.count = String(uncheckpointed);
-  host.append(count);
+  if (coverage.status === "established") {
+    const count = element(
+      "p",
+      `${recordsWord(uncheckpointed)} uncheckpointed of ${recordsWord(records.length)} supplied`,
+    );
+    count.dataset.coverage = "uncheckpointed";
+    count.dataset.count = String(uncheckpointed);
+    host.append(count);
+  } else {
+    const line = element("p", `coverage not established: ${coverage.reason}`);
+    line.dataset.coverage = "not-established";
+    line.dataset.claim = coverage.status;
+    host.append(line);
+    if (coverage.status === "withheld") return;
+  }
   const list = element("ul");
   list.dataset.records = "coverage";
   for (const record of records) {
     const item = element("li", `${record.capsuleId} · `);
-    const status = element("span", record.status.replaceAll("_", " "));
+    const status = element("span", COVERAGE_LABEL[record.status]);
     status.dataset.recordStatus = record.status;
     status.className = `seal-${record.status}`;
     item.dataset.capsuleId = record.capsuleId;
@@ -338,7 +363,12 @@ async function renderVerificationPage(
     witness.dataset.witness = "self";
     page.append(witness);
   }
-  renderCheckpointCoverage(page, model.records, model.uncheckpointedCount);
+  renderCheckpointCoverage(
+    page,
+    model.records,
+    model.uncheckpointedCount,
+    model.coverage,
+  );
   const countersignatures = object(bundle).countersignatures;
   const stamps = await classifyCountersignatures(
     Array.isArray(countersignatures) ? countersignatures : [],

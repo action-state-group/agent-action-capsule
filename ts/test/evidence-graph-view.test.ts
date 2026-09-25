@@ -791,6 +791,147 @@ it("still fails the bundle for any membership finding other than an unbound reco
   expect(root.querySelectorAll("[data-row-id]")).toHaveLength(0);
 });
 
+// --- coverage on the failure path: a rejected entry is never "uncheckpointed",
+// --- and nothing is "checkpointed" until the verifier established coverage --
+
+type MembershipEntry = { log_coordinates: { log_id: string } };
+type Sealed = Record<string, unknown> & {
+  completeness_certificate: { memberships: Record<string, MembershipEntry> };
+};
+
+async function uncheckpointedFixture(
+  uncheckpointed: readonly string[],
+): Promise<{ bundle: Sealed; ids: Readonly<Record<string, string>> }> {
+  const { bundle, ids } = await sealEvidenceBundle(
+    (await fixture("report-rows-uncheckpointed-bundle.json")) as Record<
+      string,
+      unknown
+    >,
+    { uncheckpointed },
+  );
+  return { bundle: bundle as Sealed, ids };
+}
+
+const coverageStatuses = (
+  root: HTMLElement,
+): Record<string, string | undefined> =>
+  Object.fromEntries(
+    Array.from(
+      root.querySelectorAll<HTMLElement>('[data-records="coverage"] > li'),
+      (row) => [
+        row.dataset.capsuleId,
+        row.querySelector<HTMLElement>("[data-record-status]")!.dataset
+          .recordStatus,
+      ],
+    ),
+  );
+
+it("lists a record whose supplied membership entry was rejected as membership invalid, never uncheckpointed, and keeps it out of the uncheckpointed count", async () => {
+  const { bundle, ids } = await uncheckpointedFixture(["act-late"]);
+  // the live turn's entry is supplied but names another log: the verifier
+  // rejects the coordinates before it binds the record, so it also emits
+  // the unbound finding for the same id
+  bundle.completeness_certificate.memberships[
+    ids["act-live"]!
+  ]!.log_coordinates.log_id = "some-other-log";
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+
+  const banner = root.querySelector<HTMLElement>("[data-verify]")!;
+  expect(banner.dataset.verify).toBe("failed");
+  expect(banner.dataset.uncheckpointed).toBe("1");
+  expect(root.querySelectorAll("[data-row-id]")).toHaveLength(0);
+
+  const verification = root.querySelector<HTMLElement>(
+    '[data-page="verification"]',
+  )!;
+  const live = verification.querySelector<HTMLElement>(
+    `[data-records="coverage"] > li[data-capsule-id="${ids["act-live"]}"] > [data-record-status]`,
+  )!;
+  expect(live.dataset.recordStatus).toBe("membership_invalid");
+  expect(live.textContent).toBe("membership invalid");
+  expect(live.className).toBe("seal-membership_invalid");
+  expect(coverageStatuses(verification)).toEqual({
+    [ids.root!]: "unverified",
+    [ids["act-live"]!]: "membership_invalid",
+    [ids["act-backfilled"]!]: "unverified",
+    [ids["act-late"]!]: "uncheckpointed",
+  });
+  expect(
+    verification.querySelectorAll('[data-record-status="uncheckpointed"]'),
+  ).toHaveLength(1);
+  // the count line is not "N records uncheckpointed of M supplied": the
+  // claim failed on more than clean unbound records (the rejected entry,
+  // and the log position it left unaccounted for)
+  expect(
+    verification.querySelector('[data-coverage="uncheckpointed"]'),
+  ).toBeNull();
+  const line = verification.querySelector<HTMLElement>(
+    '[data-coverage="not-established"]',
+  )!;
+  expect(line.textContent).toBe(
+    "coverage not established: membership_coordinates_invalid, membership_record_missing",
+  );
+  expect(line.dataset.claim).toBe("not_established");
+});
+
+it("marks no record checkpointed when the certificate carries no memberships object at all", async () => {
+  const { bundle } = await uncheckpointedFixture([]);
+  delete (bundle.completeness_certificate as Record<string, unknown>)
+    .memberships;
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+
+  expect(root.querySelector('[data-verify="failed"]')).not.toBeNull();
+  const verification = root.querySelector<HTMLElement>(
+    '[data-page="verification"]',
+  )!;
+  const line = verification.querySelector<HTMLElement>(
+    '[data-coverage="not-established"]',
+  )!;
+  expect(line.textContent).toBe("coverage not established: memberships_absent");
+  expect(verification.textContent).not.toContain("uncheckpointed of");
+  const statuses = coverageStatuses(verification);
+  expect(Object.keys(statuses)).toHaveLength(4);
+  expect(Object.values(statuses)).toEqual(Array(4).fill("unverified"));
+  expect(
+    verification.querySelector('[data-record-status="checkpointed"]'),
+  ).toBeNull();
+  expect(
+    verification.querySelector<HTMLElement>(
+      '[data-record-status="unverified"]',
+    )!.textContent,
+  ).toBe("membership unverified");
+});
+
+it("omits the coverage list when there is no checkpoint to stand under, and still says coverage was not established", async () => {
+  const { bundle } = await uncheckpointedFixture([]);
+  delete bundle.checkpoint;
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+
+  const banner = root.querySelector<HTMLElement>("[data-verify]")!;
+  expect(banner.dataset.verify).toBe("failed");
+  expect(banner.dataset.verify).not.toBe("verified");
+  const verification = root.querySelector<HTMLElement>(
+    '[data-page="verification"]',
+  )!;
+  expect(verification.textContent).toContain("Checkpoint coverage");
+  const line = verification.querySelector<HTMLElement>(
+    '[data-coverage="not-established"]',
+  )!;
+  expect(line.textContent).toBe(
+    "coverage not established: completeness_evidence_absent",
+  );
+  expect(line.dataset.claim).toBe("withheld");
+  expect(verification.querySelector('[data-records="coverage"]')).toBeNull();
+  expect(verification.querySelector("[data-record-status]")).toBeNull();
+  expect(
+    verification.querySelector('[data-coverage="uncheckpointed"]'),
+  ).toBeNull();
+  expect(verification.textContent).not.toContain("uncheckpointed of");
+});
+
 it("evaluation graph: an uncheckpointed act shows its own status and its checkpointed neighbour keeps its coordinates", async () => {
   const { bundle, ids } = await sealEvidenceBundle(
     (await fixture("report-mixed-tz-bundle.json")) as Record<string, unknown>,

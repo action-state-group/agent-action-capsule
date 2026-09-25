@@ -28,7 +28,8 @@ export interface RecordTimes {
 
 /**
  * Whether a written time states its zone. A timestamp with a `Z` or
- * `+HH:MM` designator is `stated`; a bare `YYYY-MM-DD` names a day, not an
+ * `+HH:MM` designator is `stated` (RFC 3339 §5.6: `t` and `z` may be
+ * lowercase); a bare `YYYY-MM-DD` names a day, not an
  * instant, and is `date-only`; anything else -- a naive timestamp such as
  * `2026-08-26T05:34:57.860343`, or a string that is not a timestamp at all --
  * is `not-stated`. The view prints every time verbatim and marks
@@ -39,7 +40,7 @@ export type ZoneStatement = "stated" | "not-stated" | "date-only";
 export const zoneStatement = (value: string): ZoneStatement =>
   /^\d{4}-\d{2}-\d{2}$/u.test(value)
     ? "date-only"
-    : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/u.test(
+    : /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[Zz]|[+-]\d{2}:\d{2})$/u.test(
           value,
         )
       ? "stated"
@@ -189,7 +190,7 @@ const objectOrEmpty = (value: unknown): ObjectValue =>
  */
 const calendarDay = (date: string): number | undefined => {
   const match =
-    /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/u.exec(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[Tt](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?([Zz]|[+-]\d{2}:\d{2})?)?$/u.exec(
       date,
     );
   if (match === null) return undefined;
@@ -210,7 +211,7 @@ const calendarDay = (date: string): number | undefined => {
   )
     return undefined;
   const offsetMinutes =
-    designator === undefined || designator === "Z"
+    designator === undefined || designator === "Z" || designator === "z"
       ? 0
       : (designator.startsWith("-") ? -1 : 1) *
         (Number(designator.slice(1, 3)) * 60 + Number(designator.slice(4, 6)));
