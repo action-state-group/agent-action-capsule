@@ -179,6 +179,93 @@ describe("checkpoint coverage (records outside any checkpoint)", () => {
     expect(model.selfWitnessed).toBe(true);
   });
 
+  it("classifies a rejected membership entry as membership_invalid ahead of its unbound twin, and states why coverage is not established", async () => {
+    const { bundle, ids } = await sealEvidenceBundle(
+      fixture("report-rows-uncheckpointed-bundle.json") as Record<
+        string,
+        unknown
+      >,
+      { uncheckpointed: ["act-late"] },
+    );
+    const certificate = bundle.completeness_certificate as {
+      memberships: Record<string, { log_coordinates: { log_id: string } }>;
+    };
+    certificate.memberships[ids["act-live"]!]!.log_coordinates.log_id =
+      "some-other-log";
+    const verified = await verifyBundle(bundle);
+    // the verifier emits both findings for the rejected entry, and reports
+    // the log position its rejection left unaccounted for
+    expect([...verified.perRecordMembership.findings].sort()).toEqual(
+      [
+        `membership_coordinates_invalid:${ids["act-live"]}`,
+        "membership_record_missing:2",
+        `membership_record_unbound:${ids["act-live"]}`,
+        `membership_record_unbound:${ids["act-late"]}`,
+      ].sort(),
+    );
+    // a supplied-but-rejected entry is not an unbound record
+    expect(unboundRecordIds(verified)).toEqual([ids["act-late"]]);
+
+    const model = buildVerificationPageModel(bundle, verified);
+    expect(model.uncheckpointedCount).toBe(1);
+    expect(model.coverage).toEqual({
+      status: "not_established",
+      reason: "membership_coordinates_invalid, membership_record_missing",
+    });
+    expect(
+      Object.fromEntries(
+        model.records.map((record) => [record.capsuleId, record.status]),
+      ),
+    ).toEqual({
+      [ids.root!]: "unverified",
+      [ids["act-live"]!]: "membership_invalid",
+      [ids["act-backfilled"]!]: "unverified",
+      [ids["act-late"]!]: "uncheckpointed",
+    });
+  });
+
+  it("never defaults a record to checkpointed when the claim failed on a global finding, or was withheld", async () => {
+    const { bundle: absent } = await sealEvidenceBundle(
+      fixture("report-rows-uncheckpointed-bundle.json") as Record<
+        string,
+        unknown
+      >,
+    );
+    delete (absent.completeness_certificate as Record<string, unknown>)
+      .memberships;
+    const absentModel = buildVerificationPageModel(
+      absent,
+      await verifyBundle(absent),
+    );
+    expect(absentModel.coverage).toEqual({
+      status: "not_established",
+      reason: "memberships_absent",
+    });
+    expect(absentModel.uncheckpointedCount).toBe(0);
+    expect(absentModel.records).toHaveLength(4);
+    expect(
+      absentModel.records.every((record) => record.status === "unverified"),
+    ).toBe(true);
+
+    const { bundle: unchecked } = await sealEvidenceBundle(
+      fixture("report-rows-uncheckpointed-bundle.json") as Record<
+        string,
+        unknown
+      >,
+    );
+    delete unchecked.checkpoint;
+    const verified = await verifyBundle(unchecked);
+    expect(verified.perRecordMembership.status).toBe("withheld");
+    const withheldModel = buildVerificationPageModel(unchecked, verified);
+    expect(withheldModel.coverage).toEqual({
+      status: "withheld",
+      reason: "completeness_evidence_absent",
+    });
+    expect(
+      withheldModel.records.some((record) => record.status === "checkpointed"),
+    ).toBe(false);
+  });
+
   it("counts zero and marks every record checkpointed on a fully covered bundle", async () => {
     const bundle = fixture("week-bundle.json") as { records: unknown[] };
     const model = buildVerificationPageModel(
@@ -186,6 +273,7 @@ describe("checkpoint coverage (records outside any checkpoint)", () => {
       await verifyBundle(bundle),
     );
     expect(model.uncheckpointedCount).toBe(0);
+    expect(model.coverage).toEqual({ status: "established" });
     expect(model.records).toHaveLength(bundle.records.length);
     expect(
       model.records.every((record) => record.status === "checkpointed"),
