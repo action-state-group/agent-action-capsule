@@ -476,3 +476,48 @@ it("H2: on a verified bundle the banner precedes every tile and the drill-down c
       Node.DOCUMENT_POSITION_FOLLOWING,
   ).toBeTruthy();
 });
+
+// --- day: tiles come from date -------------------------------------------
+
+it("renders a tile for a report that carries date and no day", async () => {
+  const { bundle } = await sealEvidenceBundle(
+    (await fixture("report-date-only-bundle.json")) as Record<string, unknown>,
+  );
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  const tiles = root.querySelectorAll<HTMLElement>("[data-report-date]");
+  expect(tiles).toHaveLength(1);
+  expect(tiles[0]!.dataset.reportDate).toBe("2026-09-14");
+  expect(tiles[0]!.textContent).toBe("2026-09-14: met rate 1/1");
+  tiles[0]!.click();
+  root.querySelector<HTMLElement>("[data-case-id]")!.click();
+  expect(root.textContent).toContain("date-only report act");
+});
+
+it("renders every tile of the week when the report payloads carry only date", async () => {
+  const week = (await fixture("week-bundle.json")) as {
+    disclosures: Record<string, Record<string, unknown>>;
+  };
+  const dateOnly = {
+    ...week,
+    disclosures: Object.fromEntries(
+      Object.entries(week.disclosures).map(([id, entry]) => {
+        const input = entry.agent_input as Record<string, unknown> | undefined;
+        if (input?.spec_version !== "evaluation-report/v1") return [id, entry];
+        const { day: _day, ...rest } = input;
+        return [id, { ...entry, agent_input: rest }];
+      }),
+    ),
+  };
+  const { bundle } = await sealEvidenceBundle(dateOnly);
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(
+    Array.from(
+      root.querySelectorAll<HTMLElement>("[data-report-date]"),
+      (tile) => tile.dataset.reportDate,
+    ),
+  ).toEqual(["2026-09-14", "2026-09-15", "2026-09-16"]);
+});

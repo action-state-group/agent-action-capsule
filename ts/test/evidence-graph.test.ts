@@ -296,3 +296,103 @@ describe("disclosure resolution (H1: a forged disclosure never becomes a payload
     );
   });
 });
+
+describe("report day (tiles come from date)", () => {
+  const withoutDay = (bundle: WeekBundle): WeekBundle => ({
+    ...bundle,
+    disclosures: Object.fromEntries(
+      Object.entries(bundle.disclosures).map(([id, entry]) => {
+        const input = entry.agent_input;
+        if (
+          typeof input !== "object" ||
+          input === null ||
+          (input as { spec_version?: unknown }).spec_version !==
+            "evaluation-report/v1"
+        )
+          return [id, entry];
+        const { day: _day, ...dateOnly } = input as { day?: unknown };
+        return [id, { ...entry, agent_input: dateOnly }];
+      }),
+    ),
+  });
+
+  it("keeps a stated day", async () => {
+    const graph = await buildEvidenceGraph(await fixture("week-bundle.json"));
+    expect(graph.reports.map((report) => report.day)).toEqual([1, 2, 3]);
+  });
+
+  it("derives day from date when the producer emits only date (the assemble_week shape)", async () => {
+    const week = (await fixture("week-bundle.json")) as WeekBundle;
+    const stated = await buildEvidenceGraph(week);
+    const dateOnly = withoutDay(week);
+    for (const entry of Object.values(dateOnly.disclosures))
+      expect(entry.agent_input).not.toHaveProperty("day");
+    const { bundle } = await sealEvidenceBundle(dateOnly);
+    const graph = await buildEvidenceGraph(bundle);
+
+    expect(graph.reports).toHaveLength(3);
+    expect(graph.reports.map((report) => report.date)).toEqual(
+      stated.reports.map((report) => report.date),
+    );
+    expect(graph.reports.map((report) => report.day)).toEqual([1, 2, 3]);
+    expect(graph.reports.map((report) => report.cases.length)).toEqual(
+      stated.reports.map((report) => report.cases.length),
+    );
+  });
+
+  it("counts calendar days, not report positions, when dates have gaps", async () => {
+    const week = (await fixture("week-bundle.json")) as WeekBundle;
+    const shifted: WeekBundle = {
+      ...week,
+      disclosures: Object.fromEntries(
+        Object.entries(withoutDay(week).disclosures).map(([id, entry]) => {
+          const input = entry.agent_input as { date?: string };
+          return input.date === "2026-09-16"
+            ? [id, { ...entry, agent_input: { ...input, date: "2026-09-20" } }]
+            : [id, entry];
+        }),
+      ),
+    };
+    const { bundle } = await sealEvidenceBundle(shifted);
+    const graph = await buildEvidenceGraph(bundle);
+    expect(graph.reports.map((report) => [report.date, report.day])).toEqual([
+      ["2026-09-14", 1],
+      ["2026-09-15", 2],
+      ["2026-09-20", 7],
+    ]);
+  });
+
+  it("builds a report tile from the date-only fixture", async () => {
+    const { bundle, ids } = await sealEvidenceBundle(
+      (await fixture("report-date-only-bundle.json")) as Record<
+        string,
+        unknown
+      >,
+    );
+    const graph = await buildEvidenceGraph(bundle);
+    expect(graph.reports).toHaveLength(1);
+    expect(graph.reports[0]).toMatchObject({
+      capsuleId: ids.report,
+      date: "2026-09-14",
+      day: 1,
+    });
+    expect(graph.reports[0]!.cases[0]!.acts[0]!.agentOutput).toEqual({
+      role: "assistant",
+      content: "date-only report act",
+    });
+  });
+
+  it("keeps a dated report whose date is not a calendar date, without a day", async () => {
+    const source = (await fixture("report-date-only-bundle.json")) as {
+      disclosures: Record<string, { agent_input: Record<string, unknown> }>;
+    };
+    source.disclosures.report!.agent_input.date = "week-1";
+    const { bundle } = await sealEvidenceBundle(
+      source as unknown as Record<string, unknown>,
+    );
+    const graph = await buildEvidenceGraph(bundle);
+    expect(graph.reports).toHaveLength(1);
+    expect(graph.reports[0]!.date).toBe("week-1");
+    expect(graph.reports[0]!.day).toBeUndefined();
+  });
+});

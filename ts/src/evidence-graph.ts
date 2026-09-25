@@ -50,7 +50,13 @@ export interface RatingNode {
 export interface ReportNode {
   capsuleId: string;
   date: string;
-  day: number;
+  /**
+   * 1-based position of the report in its period. Taken from the payload's
+   * `day` when stated; otherwise derived from `date` as calendar days since
+   * the earliest dated report in the graph, plus one. Absent only when the
+   * payload states no `day` and its `date` is not a YYYY-MM-DD calendar date.
+   */
+  day?: number;
   outcomes: Outcome[];
   cases: CaseNode[];
   ratings: RatingNode[];
@@ -99,6 +105,22 @@ const asNumber = (value: unknown): number | undefined =>
 
 const objectOrEmpty = (value: unknown): ObjectValue =>
   isObject(value) ? value : {};
+
+/** Days since the Unix epoch for a YYYY-MM-DD calendar date; undefined otherwise. */
+const calendarDay = (date: string): number | undefined => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(date);
+  if (match === null) return undefined;
+  const year = Number(match[1]),
+    month = Number(match[2]),
+    day = Number(match[3]);
+  const utc = Date.UTC(year, month - 1, day);
+  const parsed = new Date(utc);
+  return parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+    ? utc / 86_400_000
+    : undefined;
+};
 
 /** The digest a record committed to for a disclosable member, if any. */
 export const committedDigest = (
@@ -302,8 +324,8 @@ export async function buildEvidenceGraph(
     if (!isObject(payload) || payload.spec_version !== "evaluation-report/v1")
       continue;
     const date = asString(payload.date);
+    if (date === undefined) continue;
     const day = asNumber(payload.day);
-    if (date === undefined || day === undefined) continue;
     const reportCases = Array.isArray(payload.cases) ? payload.cases : [];
     const acts: ActNode[] = [];
     for (const actId of actedOnReferences(record)) {
@@ -429,7 +451,7 @@ export async function buildEvidenceGraph(
     reports.push({
       capsuleId: record.capsule_id,
       date,
-      day,
+      ...(day === undefined ? {} : { day }),
       outcomes,
       cases,
       ratings: [],
@@ -444,6 +466,20 @@ export async function buildEvidenceGraph(
     });
   }
   reports.sort((a, b) => a.date.localeCompare(b.date));
+  // The real producer (evaluation-compiler's assemble_week) emits `date` and
+  // no `day`; a report is a tile by its date, so `day` is derived rather
+  // than required. A stated `day` is kept as stated.
+  const origin = Math.min(
+    ...reports.flatMap((report) => {
+      const position = calendarDay(report.date);
+      return position === undefined ? [] : [position];
+    }),
+  );
+  for (const report of reports) {
+    if (report.day !== undefined) continue;
+    const position = calendarDay(report.date);
+    if (position !== undefined) report.day = position - origin + 1;
+  }
 
   for (const record of records) {
     if (
