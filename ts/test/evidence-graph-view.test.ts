@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { expect, it } from "vitest";
 import { buildEvidenceGraph } from "../src/evidence-graph.js";
 import { renderEvidenceGraph } from "../src/browser.js";
+import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 async function fixture(name: string): Promise<unknown> {
   return JSON.parse(
@@ -14,7 +15,7 @@ async function fixture(name: string): Promise<unknown> {
 
 it("renders the dated drill-down view and verifies the bundle", async () => {
   const bundle = await fixture("week-bundle.json");
-  const graph = buildEvidenceGraph(bundle);
+  const graph = await buildEvidenceGraph(bundle);
   const root = document.createElement("main");
 
   await renderEvidenceGraph(bundle, root);
@@ -55,10 +56,10 @@ it("renders the dated drill-down view and verifies the bundle", async () => {
 
 it("renders disclosed calibration agreement and confusion data", async () => {
   const root = document.createElement("main");
-  await renderEvidenceGraph(
-    await fixture("week-bundle-calibration.json"),
-    root,
+  const { bundle } = await sealEvidenceBundle(
+    (await fixture("week-bundle-calibration.json")) as Record<string, unknown>,
   );
+  await renderEvidenceGraph(bundle, root);
   expect(root.textContent).toContain("confusion matrix");
   expect(root.textContent).toContain('"pass_pass":2');
   expect(root.textContent).toContain("agreement");
@@ -78,19 +79,16 @@ it("renders only digests for undisclosed case acts without leaking transcripts",
       };
     }>;
   };
-  const selectedCase = buildEvidenceGraph(bundle).reports[0]!.cases[0]!;
+  const selectedCase = (await buildEvidenceGraph(bundle)).reports[0]!.cases[0]!;
   expect(selectedCase.acts.length).toBeGreaterThan(0);
   const closed = { ...bundle, disclosures: { ...bundle.disclosures } };
   for (const act of selectedCase.acts) {
     const record = bundle.records.find(
       (record) => record.capsule_id === act.capsuleId,
     )!;
-    const digests = record.model_attestation.compute_attestation;
     delete closed.disclosures[act.capsuleId];
-    delete closed.disclosures[digests.agent_input_digest];
-    delete closed.disclosures[digests.agent_output_digest];
   }
-  const closedCase = buildEvidenceGraph(closed).reports[0]!.cases.find(
+  const closedCase = (await buildEvidenceGraph(closed)).reports[0]!.cases.find(
     (candidate) =>
       candidate.taskId === selectedCase.taskId &&
       candidate.trial === selectedCase.trial,
@@ -125,31 +123,92 @@ it("renders only digests for undisclosed case acts without leaking transcripts",
   }
 });
 
-it("fails the banner on a disclosure mismatch and accepts a withheld disclosure", async () => {
+/** Click every report tile and every case button so any transcript the view
+ * is willing to show has been drawn into the DOM. */
+function drillEverywhere(root: HTMLElement): void {
+  for (const tile of root.querySelectorAll<HTMLElement>("[data-report-date]")) {
+    tile.click();
+    for (const button of root.querySelectorAll<HTMLElement>("[data-case-id]"))
+      button.click();
+  }
+}
+
+it("H1: a forged disclosure keyed by the payload digest is never rendered as the transcript", async () => {
   const bundle = (await fixture("week-bundle.json")) as {
     disclosures: Record<string, unknown>;
     records: Array<{
+      capsule_id: string;
       model_attestation: {
         compute_attestation: { agent_output_digest: string };
       };
     }>;
   };
+  const act = (await buildEvidenceGraph(bundle)).reports[0]!.cases[0]!.acts[0]!;
+  const record = bundle.records.find(
+    (candidate) => candidate.capsule_id === act.capsuleId,
+  )!;
   const digest =
-    bundle.records[0]!.model_attestation.compute_attestation
-      .agent_output_digest;
+    record.model_attestation.compute_attestation.agent_output_digest;
   const tampered = {
     ...bundle,
     disclosures: {
       ...bundle.disclosures,
-      [digest]: { agent_output: "tampered" },
+      [digest]: { agent_output: "tampered transcript" },
     },
   };
   const root = document.createElement("main");
   await renderEvidenceGraph(tampered, root);
   expect(root.querySelector('[data-verify="failed"]')).not.toBeNull();
+  drillEverywhere(root);
+  expect(root.textContent).not.toContain("tampered transcript");
+});
 
+it("H1: a capsule_id-keyed value that does not hash to the committed digest renders as withheld with the digest, never the text", async () => {
+  const bundle = (await fixture("week-bundle.json")) as {
+    disclosures: Record<string, Record<string, unknown>>;
+    records: Array<{
+      capsule_id: string;
+      model_attestation: {
+        compute_attestation: { agent_output_digest: string };
+      };
+    }>;
+  };
+  const act = (await buildEvidenceGraph(bundle)).reports[0]!.cases[0]!.acts[0]!;
+  const record = bundle.records.find(
+    (candidate) => candidate.capsule_id === act.capsuleId,
+  )!;
+  const digest =
+    record.model_attestation.compute_attestation.agent_output_digest;
+  const tampered = {
+    ...bundle,
+    disclosures: {
+      ...bundle.disclosures,
+      [record.capsule_id]: {
+        ...bundle.disclosures[record.capsule_id],
+        agent_output: "tampered transcript",
+      },
+    },
+  };
+  const root = document.createElement("main");
+  await renderEvidenceGraph(tampered, root);
+  expect(root.querySelector('[data-verify="failed"]')).not.toBeNull();
+  drillEverywhere(root);
+  expect(root.textContent).not.toContain("tampered transcript");
+  // whatever the view drew for this act, it is the digest, not a payload
+  const shownDigest = Array.from(root.querySelectorAll("dd")).some(
+    (cell) => cell.textContent === JSON.stringify(digest),
+  );
+  const shownAct = root.textContent?.includes(record.capsule_id) ?? false;
+  expect(shownDigest).toBe(shownAct);
+});
+
+it("accepts a withheld disclosure as verified", async () => {
+  const bundle = (await fixture("week-bundle.json")) as {
+    disclosures: Record<string, unknown>;
+    records: Array<{ capsule_id: string }>;
+  };
   const withheld = { ...bundle, disclosures: { ...bundle.disclosures } };
-  delete withheld.disclosures[digest];
+  delete withheld.disclosures[bundle.records[0]!.capsule_id];
   const withheldRoot = document.createElement("main");
   await renderEvidenceGraph(withheld, withheldRoot);
   expect(withheldRoot.querySelector('[data-verify="verified"]')).not.toBeNull();
@@ -237,7 +296,9 @@ it("chrome rule: a presentation/v1 VERIFIED badge renders in the header only, ne
 });
 
 it("renders a report/v1 bundle as generic rows, never the evaluation-graph view", async () => {
-  const bundle = await fixture("report-rows-bundle.json");
+  const { bundle, ids } = await sealEvidenceBundle(
+    (await fixture("report-rows-bundle.json")) as Record<string, unknown>,
+  );
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
 
@@ -257,7 +318,7 @@ it("renders a report/v1 bundle as generic rows, never the evaluation-graph view"
     (button) => button.dataset.rowId === "art-50",
   )!;
   establishedButton.click();
-  expect(page!.textContent).toContain("act-established");
+  expect(page!.textContent).toContain(ids["act-established"]);
   expect(page!.textContent).toContain("disclosed evidence for art-50");
 
   // click through the not_checked row: its citation is undisclosed, so the
@@ -269,7 +330,7 @@ it("renders a report/v1 bundle as generic rows, never the evaluation-graph view"
   expect(page!.textContent).toContain(
     "pack runtime did not evaluate this clause in the demo window",
   );
-  expect(page!.textContent).toContain("act-not-checked");
+  expect(page!.textContent).toContain(ids["act-not-checked"]);
   expect(page!.textContent).toContain("withheld");
 
   // the not_present row cites nothing -- the honest shape, not hidden
@@ -298,7 +359,8 @@ it("renders referenced non-tau2 withheld acts by their committed digests", async
       };
     }>;
   };
-  const selected = buildEvidenceGraph(bundle).reports[0]!.cases[0]!.acts[0]!;
+  const selected = (await buildEvidenceGraph(bundle)).reports[0]!.cases[0]!
+    .acts[0]!;
   const record = bundle.records.find(
     (candidate) => candidate.capsule_id === selected.capsuleId,
   )!;
@@ -306,12 +368,156 @@ it("renders referenced non-tau2 withheld acts by their committed digests", async
   const digests = record.model_attestation.compute_attestation;
   const closed = { ...bundle, disclosures: { ...bundle.disclosures } };
   delete closed.disclosures[record.capsule_id];
-  delete closed.disclosures[digests.agent_input_digest];
-  delete closed.disclosures[digests.agent_output_digest];
+  // the edited record must be re-sealed (its report and the root follow) so
+  // the bundle still verifies; its committed digests are carried unchanged
+  const { bundle: resealed } = await sealEvidenceBundle(closed);
   const root = document.createElement("main");
-  await renderEvidenceGraph(closed, root);
+  await renderEvidenceGraph(resealed, root);
   root.querySelector<HTMLElement>("[data-report-date]")!.click();
   root.querySelector<HTMLElement>("[data-case-id]")!.click();
   expect(root.textContent).toContain(digests.agent_input_digest);
   expect(root.textContent).toContain(digests.agent_output_digest);
+});
+
+// --- H2: verify before render -------------------------------------------
+
+function tamperCheckpoint(bundle: unknown): unknown {
+  const value = bundle as { checkpoint: { mmr_size: number } };
+  return {
+    ...value,
+    checkpoint: {
+      ...value.checkpoint,
+      mmr_size: value.checkpoint.mmr_size + 1,
+    },
+  };
+}
+
+it("H2: an unverified evaluation bundle renders the banner, a refusal, and the verification page -- no tiles, cases, or payloads", async () => {
+  const root = document.createElement("main");
+  await renderEvidenceGraph(
+    tamperCheckpoint(await fixture("week-bundle.json")),
+    root,
+  );
+
+  const banner = root.querySelector<HTMLElement>('[data-verify="failed"]');
+  expect(banner).not.toBeNull();
+  const refusal = root.querySelector<HTMLElement>(
+    '[data-refusal="unverified-bundle"]',
+  );
+  expect(refusal).not.toBeNull();
+  expect(root.querySelectorAll("[data-report-date]")).toHaveLength(0);
+  expect(root.querySelectorAll("[data-case-id]")).toHaveLength(0);
+  expect(root.querySelectorAll("[data-row-id]")).toHaveLength(0);
+  expect(root.querySelectorAll("pre")).toHaveLength(0);
+  expect(root.textContent).not.toContain("Daily reports");
+  const page = root.querySelector<HTMLElement>('[data-page="verification"]');
+  expect(page).not.toBeNull();
+  expect(root.lastElementChild).toBe(page);
+  expect(
+    banner!.compareDocumentPosition(page!) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
+it("H2: an unverified report/v1 bundle renders no rows", async () => {
+  const { bundle } = await sealEvidenceBundle(
+    (await fixture("report-rows-bundle.json")) as Record<string, unknown>,
+  );
+  const root = document.createElement("main");
+  await renderEvidenceGraph(tamperCheckpoint(bundle), root);
+  expect(root.querySelector('[data-verify="failed"]')).not.toBeNull();
+  expect(
+    root.querySelector('[data-refusal="unverified-bundle"]'),
+  ).not.toBeNull();
+  expect(root.querySelector('[data-page="report-rows"]')).toBeNull();
+  expect(root.querySelectorAll("[data-row-id]")).toHaveLength(0);
+  expect(root.textContent).not.toContain("disclosed evidence for art-50");
+});
+
+it("H2: a forged disclosure fails verification, so the case rows it would have fed are never built", async () => {
+  const bundle = (await fixture("week-bundle.json")) as {
+    disclosures: Record<string, Record<string, unknown>>;
+    records: Array<{ capsule_id: string }>;
+  };
+  const target = bundle.records[0]!.capsule_id;
+  const tampered = {
+    ...bundle,
+    disclosures: {
+      ...bundle.disclosures,
+      [target]: {
+        ...bundle.disclosures[target],
+        agent_output: "tampered transcript",
+      },
+    },
+  };
+  const root = document.createElement("main");
+  await renderEvidenceGraph(tampered, root);
+  expect(root.querySelector('[data-verify="failed"]')).not.toBeNull();
+  expect(root.querySelectorAll("[data-report-date]")).toHaveLength(0);
+  expect(root.querySelectorAll("[data-case-id]")).toHaveLength(0);
+  expect(root.textContent).not.toContain("tampered transcript");
+});
+
+it("H2: on a verified bundle the banner precedes every tile and the drill-down content", async () => {
+  const root = document.createElement("main");
+  await renderEvidenceGraph(await fixture("week-bundle.json"), root);
+  const banner = root.querySelector<HTMLElement>('[data-verify="verified"]')!;
+  expect(root.querySelector("[data-refusal]")).toBeNull();
+  const tiles = root.querySelectorAll<HTMLElement>("[data-report-date]");
+  expect(tiles.length).toBeGreaterThan(0);
+  for (const tile of tiles)
+    expect(
+      banner.compareDocumentPosition(tile) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  tiles[0]!.click();
+  root.querySelector<HTMLElement>("[data-case-id]")!.click();
+  const transcript = root.querySelector("pre")!;
+  expect(
+    banner.compareDocumentPosition(transcript) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
+// --- day: tiles come from date -------------------------------------------
+
+it("renders a tile for a report that carries date and no day", async () => {
+  const { bundle } = await sealEvidenceBundle(
+    (await fixture("report-date-only-bundle.json")) as Record<string, unknown>,
+  );
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  const tiles = root.querySelectorAll<HTMLElement>("[data-report-date]");
+  expect(tiles).toHaveLength(1);
+  expect(tiles[0]!.dataset.reportDate).toBe("2026-09-14");
+  expect(tiles[0]!.textContent).toBe("2026-09-14: met rate 1/1");
+  tiles[0]!.click();
+  root.querySelector<HTMLElement>("[data-case-id]")!.click();
+  expect(root.textContent).toContain("date-only report act");
+});
+
+it("renders every tile of the week when the report payloads carry only date", async () => {
+  const week = (await fixture("week-bundle.json")) as {
+    disclosures: Record<string, Record<string, unknown>>;
+  };
+  const dateOnly = {
+    ...week,
+    disclosures: Object.fromEntries(
+      Object.entries(week.disclosures).map(([id, entry]) => {
+        const input = entry.agent_input as Record<string, unknown> | undefined;
+        if (input?.spec_version !== "evaluation-report/v1") return [id, entry];
+        const { day: _day, ...rest } = input;
+        return [id, { ...entry, agent_input: rest }];
+      }),
+    ),
+  };
+  const { bundle } = await sealEvidenceBundle(dateOnly);
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(
+    Array.from(
+      root.querySelectorAll<HTMLElement>("[data-report-date]"),
+      (tile) => tile.dataset.reportDate,
+    ),
+  ).toEqual(["2026-09-14", "2026-09-15", "2026-09-16"]);
 });
