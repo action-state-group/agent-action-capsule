@@ -3,6 +3,8 @@ import {
   disclosurePayload,
   isObject,
   logCoordinates,
+  resolveDisclosure,
+  type DisclosureState,
   type ResolvedLogCoordinates,
   type ObjectValue,
   type RecordWithId,
@@ -18,7 +20,9 @@ import {
 
 export interface ReportRowCitation {
   readonly capsuleId: string;
+  /** Present only when `disclosure` is `disclosed`. */
   readonly disclosedPayload?: unknown;
+  readonly disclosure: DisclosureState;
   readonly logCoordinates?: ResolvedLogCoordinates;
 }
 
@@ -55,7 +59,9 @@ const rowCitationDigests = (row: ObjectValue): string[] =>
  * `report/v1` payload, so callers can fall back to another root model.
  * A malformed row is dropped, never patched with invented data.
  */
-export function buildReportRows(bundle: unknown): ReportRows | undefined {
+export async function buildReportRows(
+  bundle: unknown,
+): Promise<ReportRows | undefined> {
   if (
     !isObject(bundle) ||
     !Array.isArray(bundle.records) ||
@@ -71,7 +77,11 @@ export function buildReportRows(bundle: unknown): ReportRows | undefined {
   const root = asString(bundle.root);
   const rootRecord = records.find((record) => record.capsule_id === root);
   if (rootRecord === undefined) return undefined;
-  const rootPayload = disclosurePayload(rootRecord, disclosures, "agent_input");
+  const rootPayload = await disclosurePayload(
+    rootRecord,
+    disclosures,
+    "agent_input",
+  );
   if (!isObject(rootPayload) || rootPayload.spec_version !== "report/v1")
     return undefined;
 
@@ -84,43 +94,42 @@ export function buildReportRows(bundle: unknown): ReportRows | undefined {
     records.map((record) => [record.capsule_id, record]),
   );
 
-  const rows = (
-    Array.isArray(rootPayload.rows) ? rootPayload.rows : []
-  ).flatMap((raw): ReportRow[] => {
-    if (!isObject(raw)) return [];
+  const rows: ReportRow[] = [];
+  for (const raw of Array.isArray(rootPayload.rows) ? rootPayload.rows : []) {
+    if (!isObject(raw)) continue;
     const rowId = asString(raw.row_id);
     const label = asString(raw.label);
     const rowStatus = asString(raw.status);
     if (rowId === undefined || label === undefined || rowStatus === undefined)
-      return [];
+      continue;
     const reason = asString(raw.reason);
-    const citations = rowCitationDigests(raw).flatMap(
-      (digest): ReportRowCitation[] => {
-        const record = recordsById.get(digest);
-        if (record === undefined) return [];
-        const payload = disclosurePayload(record, disclosures, "agent_input");
-        const coordinates = logCoordinates(memberships, record.capsule_id);
-        return [
-          {
-            capsuleId: record.capsule_id,
-            ...(payload === undefined ? {} : { disclosedPayload: payload }),
-            ...(coordinates === undefined
-              ? {}
-              : { logCoordinates: coordinates }),
-          },
-        ];
-      },
-    );
-    return [
-      {
-        rowId,
-        label,
-        status: rowStatus,
-        ...(reason === undefined ? {} : { reason }),
-        citations,
-      },
-    ];
-  });
+    const citations: ReportRowCitation[] = [];
+    for (const digest of rowCitationDigests(raw)) {
+      const record = recordsById.get(digest);
+      if (record === undefined) continue;
+      const resolved = await resolveDisclosure(
+        record,
+        disclosures,
+        "agent_input",
+      );
+      const coordinates = logCoordinates(memberships, record.capsule_id);
+      citations.push({
+        capsuleId: record.capsule_id,
+        ...(resolved.state === "disclosed"
+          ? { disclosedPayload: resolved.payload }
+          : {}),
+        disclosure: resolved.state,
+        ...(coordinates === undefined ? {} : { logCoordinates: coordinates }),
+      });
+    }
+    rows.push({
+      rowId,
+      label,
+      status: rowStatus,
+      ...(reason === undefined ? {} : { reason }),
+      citations,
+    });
+  }
 
   const title = asString(rootPayload.title);
   const rootResolvedLogCoordinates = logCoordinates(
