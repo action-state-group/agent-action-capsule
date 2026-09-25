@@ -224,6 +224,54 @@ are cross-element constraints over the `claims` array plain JSON Schema cannot e
 class of gap `evidence-plan-ir-v0.md` §3.1 documents for node `id` uniqueness and DAG order. A
 conforming verifier MUST check both in addition to schema validation.
 
+### 4.1 Claim types — `reconcile` and `close` (PROPOSED)
+
+**Status: PROPOSED against Steven's ruling (2026-09-25), quoted verbatim:**
+
+> close + reconcile as claim types in result v0, so they feed the same result. the constraint i
+> care about more than the vocabulary: A_ONLY / B_ONLY must never render like CONFLICTING, and
+> UNILATERAL never like AGREED. one side missing isn't a finding; both sides disagreeing is. …
+> i want negative fixtures pinning it rather than leaving it to styling. and anything that meets a
+> claim type it doesn't recognize should show 'unrecognized', never drop the row.
+
+Every claim MAY carry `type` (`requirement | reconcile | close`); **absent means `requirement`**,
+the shape above, so a Result that validated before this field existed validates unchanged. A typed
+claim keeps every base field with its §1–§3 semantics — sufficiency, verdict, tier, grade, and its
+place in coverage and buckets — and adds exactly one type-specific body bound to `type`:
+
+```
+claim (type: reconcile) adds:
+  reconcile:
+    join_key: string                  # the field both books are joined on (reservation_id, exchange_id)
+    peer: string                      # the peer book / book-profile id (side B; side A is this book)
+    period: { start, end }            # the concrete half-open window, RFC 3339
+    counts:                           # all six REQUIRED, integers >= 0, counts never ratios
+      MATCHED · A_ONLY · B_ONLY · CONFLICTING · INSUFFICIENT · UNRESOLVED
+    state_of_record: A | B | none     # declared by the contract, never inferred; never moves a count
+
+claim (type: close) adds:
+  close:
+    period: { start, end }
+    close_state: UNILATERAL | AGREED
+    peer: string                      # REQUIRED iff AGREED, absent iff UNILATERAL
+    peer_close_ref: digest-ref        # the peer's citing Close record, by digest; same rule
+```
+
+**Sufficiency on a reconcile claim is derived from the two non-finding counts only** (documented,
+not schema-enforced in v0): `INSUFFICIENT > 0` ⇒ `GAP`; else `UNRESOLVED > 0` ⇒ `UNKNOWN`; else
+`SATISFIED`. `MATCHED / A_ONLY / B_ONLY / CONFLICTING` never move sufficiency; they are what the
+contract clause's verdict is judged over, and that verdict is never a ratio of them.
+
+**The rendering constraints the ruling names are a renderer's obligation, pinned by negative
+fixtures in `capsule-viewer`, never by styling:** `A_ONLY` / `B_ONLY` are "one side missing" and
+MUST NOT render in the class or wording of `CONFLICTING` ("both sides disagree"); a `UNILATERAL`
+close MUST NOT render any affordance of `AGREED`; a claim whose `type` a renderer does not
+recognize renders as an `unrecognized` row carrying the raw type and `contract_ref`, never
+dropped. `ClaimType` is a closed enum here, so an unknown type fails *validation*; the
+"unrecognized" behaviour is for a renderer that meets a document produced under a later schema.
+
+Fixtures: §11.
+
 ## 5. Evidence and proofs
 
 `evidence[]` and `proofs[]` are both by-digest-only arrays; neither ever inlines bytes.
@@ -344,3 +392,10 @@ three buckets populated, exercising both the sufficiency/verdict rule (§1) and 
 field, each failing at exactly one documented rule. See that directory's `README.md` for the exact
 cases and `schemas/check_evidence_result_examples.py` for the validation run, including the
 mutant/load-bearing proof for each negative.
+
+§4.1's PROPOSED claim types add three positives (`pos-oo-reconcile-result.json`,
+`pos-oo-close-agreed-result.json`, `pos-oo-close-unilateral-result.json` — each the untouched
+requirement `claim-1` beside one typed claim) and three negatives (`neg-close-agreed-without-peer`,
+`neg-reconcile-counts-missing-state`, `neg-unrecognized-claim-type`), same one-field discipline,
+same mutant proof. The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against
+these same fixtures, not here.
