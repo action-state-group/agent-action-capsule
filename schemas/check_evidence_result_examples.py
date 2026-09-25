@@ -29,6 +29,21 @@ mechanical half):
      above can actually fail, not just report green by construction. The
      rule is then restored in memory (the committed schema file is never
      modified) and re-verified red.
+  4. PROPOSED CLAIM TYPES (Steven's ruling, 2026-09-25 -- "close +
+     reconcile as claim types in result v0"): three more positives
+     (pos-oo-reconcile-result, pos-oo-close-agreed-result,
+     pos-oo-close-unilateral-result) MUST validate, and three more
+     negatives MUST fail, each with its own mutant check:
+       - neg-close-agreed-without-peer.json: close-1 is AGREED but `peer`
+         is removed (CloseClaim's AGREED rule).
+       - neg-reconcile-counts-missing-state.json: reconcile-1's
+         counts.UNRESOLVED removed (all six states required; absent is
+         never zero).
+       - neg-unrecognized-claim-type.json: claim-1 given `type:
+         "adjudication"`, outside ClaimType's closed enum. The schema is
+         closed-world so it fails HERE; rendering the same document as an
+         "unrecognized" row (never dropped) is capsule-viewer's job and is
+         pinned by that repo's tests, not this checker.
 
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
@@ -73,6 +88,15 @@ SCHEMA_PATH = SCHEMAS_DIR / "evidence-result-v0.json"
 
 POSITIVE_RESULT = "pos-oo-claims-result"
 
+# PROPOSED claim types (2026-09-25 ruling): one positive per type, each
+# pairing the untouched requirement claim-1 with one typed claim.
+POSITIVES = [
+    POSITIVE_RESULT,
+    "pos-oo-reconcile-result",
+    "pos-oo-close-agreed-result",
+    "pos-oo-close-unilateral-result",
+]
+
 # name -> (mutant description, path to the $defs entry whose rule is
 # stripped to prove the rejection is load-bearing)
 NEGATIVES = [
@@ -81,6 +105,9 @@ NEGATIVES = [
     "neg-aggregate-without-coverage",
     "neg-contract-ref-missing",
     "neg-disclosure-carrier-under-withheld",
+    "neg-close-agreed-without-peer",
+    "neg-reconcile-counts-missing-state",
+    "neg-unrecognized-claim-type",
 ]
 
 
@@ -121,15 +148,16 @@ def main() -> int:
 
     findings = []
 
-    # --- 1. POSITIVE ---
-    instance = _load(POSITIVE_RESULT)
-    errors = sorted(validator.iter_errors(instance), key=lambda e: e.path)
-    if errors:
-        findings.append(f"POSITIVE-REJECTED {POSITIVE_RESULT}: {errors[0].message}")
-    else:
-        print(f"OK  EvidenceResult {POSITIVE_RESULT}.json")
+    # --- 1. POSITIVE: each MUST validate clean ---
+    for name in POSITIVES:
+        instance = _load(name)
+        errors = sorted(validator.iter_errors(instance), key=lambda e: e.path)
+        if errors:
+            findings.append(f"POSITIVE-REJECTED {name}: {errors[0].message}")
+        else:
+            print(f"OK  EvidenceResult {name}.json")
 
-    # --- 2. NEGATIVE: each of the five MUST fail ---
+    # --- 2. NEGATIVE: each MUST fail ---
     negative_errors_by_name = {}
     for name in NEGATIVES:
         neg_instance = _load(name)
@@ -221,13 +249,48 @@ def main() -> int:
             "DisclosureCarrier.status's restriction to DisclosedStatus",
         )
 
+    # --- PROPOSED claim types (2026-09-25 ruling) ---------------------------
+
+    if negative_errors_by_name["neg-close-agreed-without-peer"]:
+        mutant = copy.deepcopy(schema)
+        # Strip CloseClaim's AGREED <-> peer/peer_close_ref binding.
+        mutant["$defs"]["CloseClaim"]["allOf"] = []
+        _mutant_check(
+            "neg-close-agreed-without-peer",
+            mutant,
+            "CloseClaim's AGREED-requires-peer if/then rule",
+        )
+
+    if negative_errors_by_name["neg-reconcile-counts-missing-state"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["ReconcileCounts"]["required"] = [
+            r for r in mutant["$defs"]["ReconcileCounts"]["required"] if r != "UNRESOLVED"
+        ]
+        _mutant_check(
+            "neg-reconcile-counts-missing-state",
+            mutant,
+            "ReconcileCounts.required's 'UNRESOLVED' entry",
+        )
+
+    if negative_errors_by_name["neg-unrecognized-claim-type"]:
+        mutant = copy.deepcopy(schema)
+        # Open the closed-world ClaimType enum to any string. The fixture's
+        # claim carries no reconcile/close body, so the type<->body binding's
+        # else-branch still passes -- the enum is the ONLY rule rejecting it.
+        mutant["$defs"]["ClaimType"] = {"type": "string"}
+        _mutant_check(
+            "neg-unrecognized-claim-type",
+            mutant,
+            "ClaimType's closed enum",
+        )
+
     if findings:
         print("\nFAIL — findings:")
         for f in findings:
             print(f"  {f}")
         return 1
 
-    print(f"\nOK — 1 positive result, {len(NEGATIVES)} negative fixture(s), "
+    print(f"\nOK — {len(POSITIVES)} positive result(s), {len(NEGATIVES)} negative fixture(s), "
           "and all mutant checks passed.")
     return 0
 

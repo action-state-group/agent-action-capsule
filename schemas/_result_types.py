@@ -44,7 +44,44 @@ class StoryCarrierDoc(TypedDict):
 PresentationDoc = Union[DisclosureCarrierDoc, AnalysisCarrierDoc, StoryCarrierDoc]
 
 
-class ClaimDoc(TypedDict):
+class PeriodDoc(TypedDict):
+    start: str
+    end: str
+
+
+class ReconcileCountsDoc(TypedDict):
+    MATCHED: int
+    A_ONLY: int
+    B_ONLY: int
+    CONFLICTING: int
+    INSUFFICIENT: int
+    UNRESOLVED: int
+
+
+class ReconcileClaimDoc(TypedDict):
+    join_key: str
+    peer: str
+    period: PeriodDoc
+    counts: ReconcileCountsDoc
+    state_of_record: Literal["A", "B", "none"]
+
+
+class CloseClaimDoc(TypedDict, total=False):
+    period: PeriodDoc
+    close_state: Literal["UNILATERAL", "AGREED"]
+    peer: str
+    peer_close_ref: DigestRefDoc
+
+
+class _ClaimTypedBodyDoc(TypedDict, total=False):
+    # PROPOSED (2026-09-25 ruling): absent `type` means `requirement`; the
+    # body key present must match `type` (schema's type<->body binding).
+    type: Literal["requirement", "reconcile", "close"]
+    reconcile: ReconcileClaimDoc
+    close: CloseClaimDoc
+
+
+class ClaimDoc(_ClaimTypedBodyDoc):
     id: str
     contract_ref: str
     requirement_ref: str

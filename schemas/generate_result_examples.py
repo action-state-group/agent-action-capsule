@@ -17,6 +17,13 @@ negative fixtures, each a byte-for-byte copy of the positive with exactly one
 field changed, each spec/evidence-result-v0.md rule this document requires
 MUST reject.
 
+PROPOSED claim types (Steven's ruling, 2026-09-25): three more positives --
+one reconcile Result, one AGREED close, one UNILATERAL close, each pairing
+the untouched requirement claim-1 with one typed claim -- and three more
+negatives (AGREED close without `peer`; reconcile counts missing a state;
+a claim `type` outside the closed enum), each again one field away from its
+positive.
+
 Regenerate with:
     python3 schemas/generate_result_examples.py
 Then check with:
@@ -36,6 +43,7 @@ from _result_types import (  # noqa: E402
     ClaimDoc,
     DigestRefDoc,
     EvidenceResultDoc,
+    PeriodDoc,
     ProofRefDoc,
 )
 
@@ -190,6 +198,220 @@ neg_disclosure_carrier_under_withheld["claims"][2]["presentation"] = {
     "evidence": [digest_ref(claim3_evidence_content)],
 }
 
+# ===========================================================================
+# PROPOSED claim types (Steven's ruling, 2026-09-25: "close + reconcile as
+# claim types in result v0, so they feed the same result"). Each positive
+# below pairs the untouched requirement claim-1 with ONE typed claim, so a
+# fixture pins one type in isolation and the pre-existing shape is proven
+# to coexist with it in the same claims[] array.
+# ===========================================================================
+
+RECONCILE_CONTRACT_REF = "ec:oo-outcomes-reconcile:2026-09-25@1"
+MONTH: PeriodDoc = {"start": "2026-09-01T00:00:00Z", "end": "2026-10-01T00:00:00Z"}
+DAY_1: PeriodDoc = {"start": "2026-09-01T00:00:00Z", "end": "2026-09-02T00:00:00Z"}
+
+# --- reconcile-1 -- refund-lands, all six states populated, no gap: ------
+#     sufficiency SATISFIED (INSUFFICIENT = UNRESOLVED = 0); the contract
+#     clause's verdict is not_met because rows exist outside MATCHED.
+#     A_ONLY / B_ONLY are "one side missing", CONFLICTING is "both sides
+#     disagree" -- the fixture carries all three so a renderer can be
+#     tested for never conflating them (ruling 2026-09-25).
+reconcile1_evidence_content = {"note": "OO reconcile refund-lands September fold output, v0 placeholder"}
+reconcile1_proof_content = {"note": "OO reconcile refund-lands inclusion proof, v0 placeholder"}
+
+reconcile_1: ClaimDoc = {
+    "id": "reconcile-1",
+    "type": "reconcile",
+    "contract_ref": RECONCILE_CONTRACT_REF,
+    "requirement_ref": "refund-lands",
+    "tier": "recomputed",
+    "grade": "self-attested",
+    "sufficiency": "SATISFIED",
+    "verdict": "not_met",
+    "evidence": [digest_ref(reconcile1_evidence_content)],
+    "proofs": [proof_ref("inclusion_proof", reconcile1_proof_content)],
+    "presentation": {
+        "kind": "disclosure",
+        "status": "SATISFIED",
+        "evidence": [digest_ref(reconcile1_evidence_content)],
+    },
+    "reconcile": {
+        "join_key": "reservation_id",
+        "peer": "oo-sor",
+        "period": MONTH,
+        "counts": {
+            "MATCHED": 408,
+            "A_ONLY": 2,
+            "B_ONLY": 1,
+            "CONFLICTING": 1,
+            "INSUFFICIENT": 0,
+            "UNRESOLVED": 0,
+        },
+        "state_of_record": "B",
+    },
+}
+
+# --- reconcile-2 -- change-lands, connector gap: INSUFFICIENT = 3 => -----
+#     sufficiency GAP => verdict not_evaluable (the design's own monthly
+#     example). presentation is analysis/INSUFFICIENT: characterizes the
+#     gap without repairing it.
+reconcile2_evidence_content = {"note": "OO reconcile change-lands September fold output, v0 placeholder"}
+reconcile2_proof_content = {"note": "OO reconcile change-lands inclusion proof, v0 placeholder"}
+
+reconcile_2: ClaimDoc = {
+    "id": "reconcile-2",
+    "type": "reconcile",
+    "contract_ref": RECONCILE_CONTRACT_REF,
+    "requirement_ref": "change-lands",
+    "tier": "recomputed",
+    "grade": "self-attested",
+    "sufficiency": "GAP",
+    "verdict": "not_evaluable",
+    "evidence": [digest_ref(reconcile2_evidence_content)],
+    "proofs": [proof_ref("inclusion_proof", reconcile2_proof_content)],
+    "presentation": {
+        "kind": "analysis",
+        "status": "INSUFFICIENT",
+        "summary": "OO peer connector produced no system_of_record_fact rows on three days of "
+        "the period; the join could not be evaluated for those days.",
+    },
+    "reconcile": {
+        "join_key": "reservation_id",
+        "peer": "oo-sor",
+        "period": MONTH,
+        "counts": {
+            "MATCHED": 380,
+            "A_ONLY": 0,
+            "B_ONLY": 0,
+            "CONFLICTING": 0,
+            "INSUFFICIENT": 3,
+            "UNRESOLVED": 0,
+        },
+        "state_of_record": "B",
+    },
+}
+
+pos_oo_reconcile_result: EvidenceResultDoc = {
+    "result_version": "evidence-result-v0",
+    "generated_at": GENERATED_AT,
+    "claims": [claim_1, reconcile_1, reconcile_2],
+    "aggregate": {
+        "coverage": {
+            "evaluated_population": 3,
+            "excluded_not_applicable": 0,
+            "unknown_count": 0,
+        },
+        "buckets": {
+            "met": ["claim-1"],
+            "not_met": ["reconcile-1"],
+            "not_evaluable": ["reconcile-2"],
+        },
+    },
+    "view": {
+        "spec_version": "presentation/v1",
+        "producer_name": "OO",
+        "title": "OO Outcomes Reconcile -- September",
+    },
+}
+
+# --- close-1 (AGREED) -- the peer's Close cites ours back ----------------
+own_close_content = {"note": "OO own Close record for 2026-09-01, v0 placeholder"}
+peer_close_content = {"note": "OO peer (oo-sor) Close record for 2026-09-01 citing OO's, v0 placeholder"}
+close_proof_content = {"note": "OO Close inclusion proof, v0 placeholder"}
+
+close_agreed: ClaimDoc = {
+    "id": "close-1",
+    "type": "close",
+    "contract_ref": RECONCILE_CONTRACT_REF,
+    "requirement_ref": "close",
+    "tier": "recomputed",
+    "grade": "self-attested",
+    "sufficiency": "SATISFIED",
+    "verdict": "met",
+    "evidence": [digest_ref(own_close_content), digest_ref(peer_close_content)],
+    "proofs": [proof_ref("inclusion_proof", close_proof_content)],
+    "presentation": {
+        "kind": "disclosure",
+        "status": "SATISFIED",
+        "evidence": [digest_ref(own_close_content), digest_ref(peer_close_content)],
+    },
+    "close": {
+        "period": DAY_1,
+        "close_state": "AGREED",
+        "peer": "oo-sor",
+        "peer_close_ref": digest_ref(peer_close_content),
+    },
+}
+
+# --- close-1 (UNILATERAL) -- no peer Close cites ours; no peer named -----
+close_unilateral: ClaimDoc = {
+    "id": "close-1",
+    "type": "close",
+    "contract_ref": RECONCILE_CONTRACT_REF,
+    "requirement_ref": "close",
+    "tier": "recomputed",
+    "grade": "self-attested",
+    "sufficiency": "SATISFIED",
+    "verdict": "met",
+    "evidence": [digest_ref(own_close_content)],
+    "proofs": [proof_ref("inclusion_proof", close_proof_content)],
+    "presentation": {
+        "kind": "disclosure",
+        "status": "SATISFIED",
+        "evidence": [digest_ref(own_close_content)],
+    },
+    "close": {
+        "period": DAY_1,
+        "close_state": "UNILATERAL",
+    },
+}
+
+
+def _close_result(close_claim: ClaimDoc, title: str) -> EvidenceResultDoc:
+    return {
+        "result_version": "evidence-result-v0",
+        "generated_at": GENERATED_AT,
+        "claims": [claim_1, close_claim],
+        "aggregate": {
+            "coverage": {
+                "evaluated_population": 2,
+                "excluded_not_applicable": 0,
+                "unknown_count": 0,
+            },
+            "buckets": {
+                "met": ["claim-1", "close-1"],
+                "not_met": [],
+                "not_evaluable": [],
+            },
+        },
+        "view": {
+            "spec_version": "presentation/v1",
+            "producer_name": "OO",
+            "title": title,
+        },
+    }
+
+
+pos_oo_close_agreed_result = _close_result(close_agreed, "OO Close -- 2026-09-01 (agreed)")
+pos_oo_close_unilateral_result = _close_result(close_unilateral, "OO Close -- 2026-09-01 (unilateral)")
+
+# --- neg-close-agreed-without-peer -- close-1 AGREED, `peer` removed -----
+#     (CloseClaim's AGREED rule: peer + peer_close_ref required)
+neg_close_agreed_without_peer = _mutated(pos_oo_close_agreed_result)
+del neg_close_agreed_without_peer["claims"][1]["close"]["peer"]
+
+# --- neg-reconcile-counts-missing-state -- reconcile-1 counts.UNRESOLVED --
+#     removed (ReconcileCounts requires all six; absent is never zero)
+neg_reconcile_counts_missing_state = _mutated(pos_oo_reconcile_result)
+del neg_reconcile_counts_missing_state["claims"][1]["reconcile"]["counts"]["UNRESOLVED"]
+
+# --- neg-unrecognized-claim-type -- claim-1 given a type outside ----------
+#     ClaimType's closed enum. Fails HERE (schema is closed-world); the
+#     viewer renders this same fixture as an "unrecognized" row, never
+#     dropped (ruling 2026-09-25) -- that half lives in capsule-viewer.
+neg_unrecognized_claim_type = _mutated(pos_oo_claims_result)
+neg_unrecognized_claim_type["claims"][0]["type"] = "adjudication"
+
 
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -199,6 +421,12 @@ def main() -> int:
     write("neg-aggregate-without-coverage", neg_aggregate_without_coverage)
     write("neg-contract-ref-missing", neg_contract_ref_missing)
     write("neg-disclosure-carrier-under-withheld", neg_disclosure_carrier_under_withheld)
+    write("pos-oo-reconcile-result", pos_oo_reconcile_result)
+    write("pos-oo-close-agreed-result", pos_oo_close_agreed_result)
+    write("pos-oo-close-unilateral-result", pos_oo_close_unilateral_result)
+    write("neg-close-agreed-without-peer", neg_close_agreed_without_peer)
+    write("neg-reconcile-counts-missing-state", neg_reconcile_counts_missing_state)
+    write("neg-unrecognized-claim-type", neg_unrecognized_claim_type)
     return 0
 
 

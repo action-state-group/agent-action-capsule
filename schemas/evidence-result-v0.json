@@ -107,6 +107,93 @@
         { "$ref": "#/$defs/StoryCarrier" }
       ]
     },
+    "ClaimType": {
+      "description": "PROPOSED discriminator, encoding Steven's ruling (2026-09-25): 'close + reconcile as claim types in result v0, so they feed the same result.' Absent means `requirement` -- the pre-existing one-requirement-evaluated-once claim (spec section 1) -- so every Result that validated before this field existed validates unchanged. Closed-world: a value outside this enum fails validation here. A viewer that meets a type it does not recognize MUST render the row labelled 'unrecognized' with the raw type and the claim's contract_ref, never drop it (ruled 2026-09-25); that behaviour and its fixture are owned by capsule-viewer, not by this schema.",
+      "enum": ["requirement", "reconcile", "close"]
+    },
+    "Period": {
+      "description": "The concrete half-open window [start, end), RFC 3339, that a reconcile or close claim covers. The contract's `close.period` token (day / week / month) names a cadence; a Result names the actual window, so a monthly Result can carry each day's Close as its own claim without ambiguity.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ReconcileState": {
+      "description": "The six reconcile states over one join key between two books (evidencebook-skills-design 2026-09-25, section 4). A = this Result's own book; B = the peer named by ReconcileClaim.peer. MATCHED: present on both sides, equal. A_ONLY: this book has the row, the peer does not. B_ONLY: the peer has the row, this book does not. CONFLICTING: present on both sides, values differ. INSUFFICIENT: the evidence needed to compare was missing (e.g. a connector gap). UNRESOLVED: compared but not resolvable to any other state within the period. Ruled 2026-09-25: 'one side missing isn't a finding; both sides disagreeing is' -- A_ONLY and B_ONLY MUST never render like CONFLICTING.",
+      "enum": ["MATCHED", "A_ONLY", "B_ONLY", "CONFLICTING", "INSUFFICIENT", "UNRESOLVED"]
+    },
+    "ReconcileCounts": {
+      "description": "Counts over exactly the six ReconcileState values. Every key is REQUIRED even when zero -- an absent key is never an implied zero, and a producer cannot hide a state by omitting it. Each value is a non-negative integer: a count, never a ratio or a percentage (spec section 3's 'never a single number' rule applies per row).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["MATCHED", "A_ONLY", "B_ONLY", "CONFLICTING", "INSUFFICIENT", "UNRESOLVED"],
+      "properties": {
+        "MATCHED": { "type": "integer", "minimum": 0 },
+        "A_ONLY": { "type": "integer", "minimum": 0 },
+        "B_ONLY": { "type": "integer", "minimum": 0 },
+        "CONFLICTING": { "type": "integer", "minimum": 0 },
+        "INSUFFICIENT": { "type": "integer", "minimum": 0 },
+        "UNRESOLVED": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "StateOfRecord": {
+      "description": "Which side the contract names as the state of record for the joined rows: A (this book), B (the peer), or none (peer-to-peer, neither authoritative). Rules: (1) it is declared by the contract's counterparty stanza and copied here, never inferred from the counts; (2) it never changes a count -- a CONFLICTING row stays CONFLICTING whichever side is of record, it only says whose value a reader should treat as standing while the conflict is open; (3) A_ONLY and B_ONLY are 'one side missing' regardless of which side is of record, and are never promoted to a finding by it.",
+      "enum": ["A", "B", "none"]
+    },
+    "ReconcileClaim": {
+      "description": "The type-specific body of a `type: reconcile` claim: the six-state count of one join between this book and one peer over one period, against one contract clause (requirement_ref). The claim's base fields keep their section 1 semantics unchanged. Sufficiency derivation rule (documented here, NOT schema-enforced in v0): sufficiency is derived from the two non-finding counts only -- counts.INSUFFICIENT > 0 => GAP (the design's own example: `change-lands` GAP on 3 INSUFFICIENT days); otherwise counts.UNRESOLVED > 0 => UNKNOWN; otherwise SATISFIED. MATCHED / A_ONLY / B_ONLY / CONFLICTING never move sufficiency; they are what the verdict is judged over, and the verdict stays the contract clause's projection (section 1) -- never derived from a ratio of these counts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["join_key", "peer", "period", "counts", "state_of_record"],
+      "properties": {
+        "join_key": {
+          "description": "The field both books are joined on (e.g. reservation_id, exchange_id).",
+          "type": "string",
+          "minLength": 1
+        },
+        "peer": {
+          "description": "The peer book / book-profile id (side B).",
+          "type": "string",
+          "minLength": 1
+        },
+        "period": { "$ref": "#/$defs/Period" },
+        "counts": { "$ref": "#/$defs/ReconcileCounts" },
+        "state_of_record": { "$ref": "#/$defs/StateOfRecord" }
+      }
+    },
+    "CloseState": {
+      "description": "UNILATERAL: this book sealed its Close for the period and no peer Close cites it. AGREED: the peer's own Close record cites this one back. Ruled 2026-09-25: UNILATERAL MUST never render like AGREED.",
+      "enum": ["UNILATERAL", "AGREED"]
+    },
+    "CloseClaim": {
+      "description": "The type-specific body of a `type: close` claim: one sealed Close for one period. `peer` and `peer_close_ref` (the peer's citing Close record, by digest) are REQUIRED when close_state is AGREED and MUST be absent when UNILATERAL -- a unilateral close that names a peer or cites a peer record would read as a half-agreement, which is exactly what the ruling forbids. The claim's base fields keep their section 1 semantics unchanged.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["period", "close_state"],
+      "properties": {
+        "period": { "$ref": "#/$defs/Period" },
+        "close_state": { "$ref": "#/$defs/CloseState" },
+        "peer": {
+          "description": "The peer book / book-profile id whose Close cites this one. Present iff close_state is AGREED.",
+          "type": "string",
+          "minLength": 1
+        },
+        "peer_close_ref": {
+          "description": "The peer's citing Close record, by digest only (its capsule_id) -- never inline. Present iff close_state is AGREED.",
+          "$ref": "#/$defs/DigestRef"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "close_state": { "const": "AGREED" } }, "required": ["close_state"] },
+          "then": { "required": ["peer", "peer_close_ref"] },
+          "else": { "not": { "anyOf": [ { "required": ["peer"] }, { "required": ["peer_close_ref"] } ] } }
+        }
+      ]
+    },
     "Claim": {
       "type": "object",
       "additionalProperties": false,
@@ -116,6 +203,7 @@
       ],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
+        "type": { "$ref": "#/$defs/ClaimType" },
         "contract_ref": { "$ref": "#/$defs/ContractRef" },
         "requirement_ref": { "type": "string", "minLength": 1 },
         "tier": { "$ref": "#/$defs/Tier" },
@@ -130,13 +218,25 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ProofRef" }
         },
-        "presentation": { "$ref": "#/$defs/Presentation" }
+        "presentation": { "$ref": "#/$defs/Presentation" },
+        "reconcile": { "$ref": "#/$defs/ReconcileClaim" },
+        "close": { "$ref": "#/$defs/CloseClaim" }
       },
       "allOf": [
         {
           "if": { "properties": { "sufficiency": { "const": "SATISFIED" } } },
           "then": { "properties": { "verdict": { "enum": ["met", "not_met"] } } },
           "else": { "properties": { "verdict": { "const": "not_evaluable" } } }
+        },
+        {
+          "description": "Type <-> body binding: a reconcile claim carries exactly `reconcile`, a close claim exactly `close`, and a requirement claim (type absent or `requirement`) carries neither.",
+          "if": { "properties": { "type": { "const": "reconcile" } }, "required": ["type"] },
+          "then": { "required": ["reconcile"], "not": { "required": ["close"] } },
+          "else": {
+            "if": { "properties": { "type": { "const": "close" } }, "required": ["type"] },
+            "then": { "required": ["close"], "not": { "required": ["reconcile"] } },
+            "else": { "not": { "anyOf": [ { "required": ["reconcile"] }, { "required": ["close"] } ] } }
+          }
         }
       ]
     },

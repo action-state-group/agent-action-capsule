@@ -51,6 +51,33 @@ each MUST fail `$defs/EvidenceResult` validation for exactly one documented reas
 rejection is load-bearing (not vacuous) by removing the specific schema rule it depends on in
 memory, confirming that SAME fixture then validates clean, and restoring the rule.
 
+## PROPOSED claim types — `reconcile` and `close` (Steven's ruling, 2026-09-25)
+
+> close + reconcile as claim types in result v0, so they feed the same result. … A_ONLY / B_ONLY
+> must never render like CONFLICTING, and UNILATERAL never like AGREED. one side missing isn't a
+> finding; both sides disagreeing is. … anything that meets a claim type it doesn't recognize
+> should show 'unrecognized', never drop the row.
+
+The schema adds an optional `type` on every claim (`requirement` | `reconcile` | `close`; absent
+means `requirement`, so every fixture above validates byte-unchanged) and a type-specific body
+(`reconcile` / `close`) bound to it. Base fields (`sufficiency`, `verdict`, `tier`, `grade`,
+coverage) keep their section 1–3 semantics on every type. Each positive pairs the untouched
+`claim-1` with ONE typed claim so a fixture pins one type in isolation:
+
+| File | Typed claim | What it pins |
+|---|---|---|
+| `pos-oo-reconcile-result.json` | `reconcile-1` (`refund-lands`): all six counts populated (`MATCHED 408 · A_ONLY 2 · B_ONLY 1 · CONFLICTING 1 · INSUFFICIENT 0 · UNRESOLVED 0`), `SATISFIED` / `not_met`; `reconcile-2` (`change-lands`): `INSUFFICIENT 3` → `GAP` / `not_evaluable`, `analysis` carrier | the six-state counts as counts; the sufficiency-derivation rule (INSUFFICIENT > 0 ⇒ GAP; else UNRESOLVED > 0 ⇒ UNKNOWN; else SATISFIED — documented in the schema, not enforced); `state_of_record: B` |
+| `pos-oo-close-agreed-result.json` | `close-1` `AGREED`, `peer: oo-sor`, `peer_close_ref` = digest of the peer's citing Close | AGREED carries the peer and its citing record by digest |
+| `pos-oo-close-unilateral-result.json` | `close-1` `UNILATERAL`, no `peer`, no `peer_close_ref` | UNILATERAL names no peer and cites nothing — nothing on the row can read as agreement |
+
+Negatives, each one field away from its positive, each with a mutant/load-bearing check:
+
+| File | Mutation | Rule violated |
+|---|---|---|
+| `neg-close-agreed-without-peer.json` | `claims[1].close.peer` removed (state stays `AGREED`) | `CloseClaim`'s AGREED rule: `peer` + `peer_close_ref` required iff `AGREED` |
+| `neg-reconcile-counts-missing-state.json` | `claims[1].reconcile.counts.UNRESOLVED` removed | `ReconcileCounts` requires all six states — an absent key is never an implied zero |
+| `neg-unrecognized-claim-type.json` | `claims[0].type` set to `adjudication` (no typed body) | `ClaimType` is a closed enum. The schema is closed-world, so this fails validation here; **rendering** the same document as an `unrecognized` row with the raw type and `contract_ref`, never dropped, is `capsule-viewer`'s job and is pinned by that repo's tests against this same fixture |
+
 ## Reproducing the validation run
 
 ```
