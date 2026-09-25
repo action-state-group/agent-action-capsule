@@ -75,8 +75,22 @@ function mentions(value: unknown, out: Set<string>): void {
 const hex = (bytes: Uint8Array): string =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 
-export async function sealEvidenceBundle(source: Obj): Promise<SealedBundle> {
+export interface SealOptions {
+  /**
+   * Aliases of records to seal and supply in `records` but leave OUT of the
+   * log: no MMR leaf, no membership entry, no inclusion proof. Models the
+   * real corpus, where records sit outside any checkpoint (self-witnessed
+   * ledgers whose later records were never checkpointed).
+   */
+  readonly uncheckpointed?: readonly string[];
+}
+
+export async function sealEvidenceBundle(
+  source: Obj,
+  options: SealOptions = {},
+): Promise<SealedBundle> {
   const sourceRecords = (source.records as Obj[]).filter(isObj);
+  const uncheckpointed = new Set(options.uncheckpointed ?? []);
   const sourceDisclosures = isObj(source.disclosures) ? source.disclosures : {};
   const certificate = isObj(source.completeness_certificate)
     ? source.completeness_certificate
@@ -163,20 +177,23 @@ export async function sealEvidenceBundle(source: Obj): Promise<SealedBundle> {
   }
 
   const records = ordered.map((alias) => sealed.get(alias)!);
+  const logged = ordered
+    .filter((alias) => !uncheckpointed.has(alias))
+    .map((alias) => sealed.get(alias)!);
   const tree = new MmrTree();
-  for (const record of records)
+  for (const record of logged)
     await tree.appendHexIdentity(record.capsule_id as string);
   const size = tree.size;
   const proofs = await Promise.all(
-    records.map((_, index) => inclusionProof(tree, BigInt(index), size)),
+    logged.map((_, index) => inclusionProof(tree, BigInt(index), size)),
   );
-  const range = await rangeProof(tree, 0n, BigInt(records.length - 1), size);
+  const range = await rangeProof(tree, 0n, BigInt(logged.length - 1), size);
   const logId =
     typeof certificate.log_id === "string"
       ? certificate.log_id
       : "sealed-fixture-log";
   const members: Obj = {};
-  records.forEach((record, index) => {
+  logged.forEach((record, index) => {
     const proof = proofs[index]!;
     members[record.capsule_id as string] = {
       log_coordinates: { log_id: logId, seq: index + 1, leaf_index: index },
@@ -217,11 +234,11 @@ export async function sealEvidenceBundle(source: Obj): Promise<SealedBundle> {
         log_id: logId,
         range_root: root,
         first_seq: 1,
-        last_seq: records.length,
-        body_digests: records.map((record) => record.capsule_id),
+        last_seq: logged.length,
+        body_digests: logged.map((record) => record.capsule_id),
         range_proof: {
           from_seq: 1,
-          to_seq: records.length,
+          to_seq: logged.length,
           size: Number(size),
           from_index: range.from_index,
           to_index: range.to_index,
