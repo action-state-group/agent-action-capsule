@@ -26,14 +26,160 @@ export interface CompletenessStatement {
   readonly suppressedFields: readonly string[];
 }
 
+/**
+ * One supplied record's own standing under the checkpoint, read from the
+ * verifier's per-record membership claim and nothing else. `checkpointed`
+ * -- bound to the range root by its own inclusion proof, stated only when
+ * the claim established coverage (see `CoverageStatement`); `uncheckpointed`
+ * -- supplied with no membership entry at all (the verifier's
+ * `membership_record_unbound`); `membership_invalid` -- a membership entry
+ * was supplied but did not verify (`membership_proof_invalid`,
+ * `membership_coordinates_missing`, `membership_coordinates_invalid`,
+ * `membership_record_unknown`); `unverified` -- the verifier never reached
+ * this record's proof, or stopped on a finding that is not this record's
+ * own (no memberships object, a certificate, range-proof or checkpoint
+ * failure, a missing or duplicated sequence), so nothing about its standing
+ * is established. A record's status is its own: it is never inherited from
+ * a neighbour and never summarised away -- and never defaulted to
+ * `checkpointed` by the absence of a finding.
+ */
+export type RecordCoverageStatus =
+  | "checkpointed"
+  | "uncheckpointed"
+  | "membership_invalid"
+  | "unverified";
+
+export interface RecordCoverage {
+  readonly capsuleId: string;
+  readonly status: RecordCoverageStatus;
+}
+
+/**
+ * Whether the per-record membership claim established each supplied
+ * record's standing. `established` -- the claim passed, or failed only
+ * because some records are bound to no log position (the accepted
+ * relaxation); `not_established` -- the claim failed on at least one
+ * finding that is not a clean unbound record, named in `reason`;
+ * `withheld` -- the claim was never evaluated (no checkpoint or no
+ * certificate), so there is no standing to list at all.
+ */
+export type CoverageStatement =
+  | { readonly status: "established" }
+  | { readonly status: "not_established"; readonly reason: string }
+  | { readonly status: "withheld"; readonly reason: string };
+
 export interface VerificationPageModel {
   readonly bundleDigest?: string;
   readonly checkpointRoot?: string;
   readonly checkpointSize?: number;
   readonly receipts: readonly ReceiptEntry[];
+  /**
+   * True when a checkpoint is supplied but no transparency-service receipt
+   * is: the checkpoint is at most producer-signed, so the log witnesses
+   * only itself.
+   */
+  readonly selfWitnessed: boolean;
+  /** Every supplied record, in bundle order, with its own coverage status. */
+  readonly records: readonly RecordCoverage[];
+  /** Records with status `uncheckpointed`: unbound and nothing else wrong. */
+  readonly uncheckpointedCount: number;
+  readonly coverage: CoverageStatement;
   readonly completeness?: CompletenessStatement;
   readonly checks: readonly CheckSummary[];
   readonly verifyIndependentlyLine: string;
+}
+
+const UNBOUND = "membership_record_unbound:";
+// A membership entry that was supplied but rejected. The verifier emits
+// coordinates_* and record_unknown BEFORE it binds the record, so each of
+// those also gets a `membership_record_unbound` twin; the rejected entry wins
+// over the twin. (`membership_seq_duplicate` is keyed by seq, not capsule_id,
+// and cannot be attributed to a record from here.)
+const INVALID =
+  /^membership_(?:proof_invalid|coordinates_missing|coordinates_invalid|record_unknown):(.+)$/u;
+
+function invalidRecordIds(verified: BundleVerificationResult): Set<string> {
+  return new Set(
+    verified.perRecordMembership.findings.flatMap((finding) => {
+      const match = INVALID.exec(finding);
+      return match === null ? [] : [match[1]!];
+    }),
+  );
+}
+
+/**
+ * The capsule_ids of supplied records the verifier found bound to no log
+ * position -- present in `records`, absent from `memberships`. These are the
+ * only per-record membership findings that describe a record's coverage
+ * rather than a broken proof: a record whose supplied entry was rejected is
+ * not unbound, even though the verifier also emits the unbound finding for
+ * it, and is left out here.
+ */
+export function unboundRecordIds(
+  verified: BundleVerificationResult,
+): readonly string[] {
+  const invalid = invalidRecordIds(verified);
+  return verified.perRecordMembership.findings.flatMap((finding) => {
+    if (!finding.startsWith(UNBOUND)) return [];
+    const id = finding.slice(UNBOUND.length);
+    return invalid.has(id) ? [] : [id];
+  });
+}
+
+/**
+ * The claim's findings that are not unbound records, one name each with
+ * any `:id` / `:seq` suffix removed, in first-seen order. An unbound twin
+ * of a rejected entry is left out: that record is already named by the
+ * finding that rejected it.
+ */
+function nonUnboundFindings(verified: BundleVerificationResult): string[] {
+  const names: string[] = [];
+  for (const finding of verified.perRecordMembership.findings) {
+    if (finding.startsWith(UNBOUND)) continue;
+    const name = finding.split(":", 1)[0]!;
+    if (!names.includes(name)) names.push(name);
+  }
+  return names;
+}
+
+export function coverageStatement(
+  verified: BundleVerificationResult,
+): CoverageStatement {
+  const claim = verified.perRecordMembership;
+  if (claim.status === "withheld")
+    return { status: "withheld", reason: claim.findings.join(", ") };
+  if (claim.status === "pass") return { status: "established" };
+  const reasons = nonUnboundFindings(verified);
+  return reasons.length === 0
+    ? { status: "established" }
+    : { status: "not_established", reason: reasons.join(", ") };
+}
+
+function recordCoverage(
+  bundle: Record<string, unknown>,
+  verified: BundleVerificationResult,
+  coverage: CoverageStatement,
+): RecordCoverage[] {
+  const unbound = new Set(unboundRecordIds(verified));
+  const invalid = invalidRecordIds(verified);
+  return (Array.isArray(bundle.records) ? bundle.records : []).flatMap(
+    (record): RecordCoverage[] => {
+      const capsuleId = object(record)?.capsule_id;
+      if (typeof capsuleId !== "string") return [];
+      return [
+        {
+          capsuleId,
+          status: invalid.has(capsuleId)
+            ? "membership_invalid"
+            : unbound.has(capsuleId)
+              ? "uncheckpointed"
+              : coverage.status === "established"
+                ? "checkpointed"
+                : "unverified",
+        },
+      ];
+    },
+  );
 }
 
 export const VERIFY_INDEPENDENTLY_LINE =
@@ -163,6 +309,7 @@ export function buildVerificationPageModel(
     summarize("Interval coverage", verified.intervalCoverage.status),
     summarize("Per-record membership", verified.perRecordMembership.status),
   ];
+  const coverage = coverageStatement(verified);
   return {
     ...(verified.bundleDigest === undefined
       ? {}
@@ -174,6 +321,11 @@ export function buildVerificationPageModel(
       ? { checkpointSize: checkpoint.mmr_size }
       : {}),
     receipts: receipts(top.receipts),
+    selfWitnessed:
+      checkpoint !== undefined && receipts(top.receipts).length === 0,
+    records: recordCoverage(top, verified, coverage),
+    uncheckpointedCount: unboundRecordIds(verified).length,
+    coverage,
     ...(completenessStatement(top.completeness) === undefined
       ? {}
       : { completeness: completenessStatement(top.completeness)! }),

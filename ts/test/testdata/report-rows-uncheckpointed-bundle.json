@@ -1,0 +1,67 @@
+{
+  "root": "root",
+  "records": [
+    { "capsule_id": "root", "timestamp": "2026-09-14T00:00:00Z" },
+    { "capsule_id": "act-live", "timestamp": "2026-09-14T00:00:00Z" },
+    {
+      "capsule_id": "act-backfilled",
+      "provenance_mode": "backfilled",
+      "occurred_at": "2026-08-26T05:34:57.860343",
+      "timestamp": "2026-09-14T00:00:00Z"
+    },
+    { "capsule_id": "act-late", "timestamp": "2026-09-14T00:00:00Z" }
+  ],
+  "disclosures": {
+    "root": {
+      "agent_input": {
+        "spec_version": "report/v1",
+        "title": "record-grounding-bench — partial checkpoint coverage",
+        "rows": [
+          {
+            "row_id": "grounded-live",
+            "label": "grounded turn, checkpointed",
+            "status": "established",
+            "references": [
+              {
+                "type": "agent-action-capsule",
+                "citation_purpose": "acted_on",
+                "digest": "act-live"
+              }
+            ]
+          },
+          {
+            "row_id": "grounded-backfilled",
+            "label": "grounded turn, backfilled and uncheckpointed",
+            "status": "established",
+            "references": [
+              {
+                "type": "agent-action-capsule",
+                "citation_purpose": "acted_on",
+                "digest": "act-backfilled"
+              }
+            ]
+          },
+          {
+            "row_id": "grounded-late",
+            "label": "grounded turn after the last checkpoint",
+            "status": "established",
+            "references": [
+              {
+                "type": "agent-action-capsule",
+                "citation_purpose": "acted_on",
+                "digest": "act-late"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "act-live": {
+      "agent_input": { "example": "evidence from a checkpointed turn" }
+    },
+    "act-backfilled": {
+      "agent_input": { "example": "evidence from a backfilled turn" }
+    },
+    "act-late": { "agent_input": { "example": "evidence from a late turn" } }
+  }
+}

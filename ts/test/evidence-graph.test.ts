@@ -3,8 +3,11 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   buildEvidenceGraph,
+  calibrationCount,
   EvidenceGraphError,
+  recordTimes,
   resolveDisclosure,
+  zoneStatement,
 } from "../src/evidence-graph.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
@@ -160,13 +163,39 @@ describe("buildEvidenceGraph", () => {
       >,
     );
     const graph = await buildEvidenceGraph(bundle);
-    expect(graph.calibration).toMatchObject({
-      confusion: { pass_pass: 2, fail_fail: 1 },
-      agreement: "0.75",
-      correctedRate: "0.8",
-      correctedRateCi: ["0.7", "0.9"],
+    expect(graph.calibration).toEqual({
+      capsuleId: expect.any(String),
+      confusion: { pass_pass: 2, fail_fail: 1, pass_fail: 1 },
+      agreement: { k: 3, n: 4 },
+      correctedRate: { k: 4, n: 5 },
       periodWindow: { start: "2026-09-14", end: "2026-09-20" },
     });
+    // no rate, no float, no decimal string anywhere in the calibration node
+    expect(JSON.stringify(graph.calibration)).not.toMatch(/0\.\d/u);
+  });
+
+  it("keeps a calibration figure stated only as a rate, as given, without k and n", async () => {
+    const source = (await fixture("week-bundle-calibration.json")) as {
+      disclosures: Record<string, { agent_input: Record<string, unknown> }>;
+    };
+    // a producer that states a rate (as a string -- the JCS profile could
+    // not have sealed a float) and a k/n object with a non-integer member
+    source.disclosures.calibration!.agent_input.agreement = "0.75";
+    source.disclosures.calibration!.agent_input.corrected_rate = {
+      k: "4",
+      n: 5,
+    };
+    const { bundle } = await sealEvidenceBundle(
+      source as unknown as Record<string, unknown>,
+    );
+    const graph = await buildEvidenceGraph(bundle);
+    expect(graph.calibration?.agreement).toEqual({ rate: "0.75" });
+    expect(graph.calibration?.correctedRate).toEqual({
+      rate: { k: "4", n: 5 },
+    });
+    expect(calibrationCount({ k: 5, n: 4 })).toEqual({ rate: { k: 5, n: 4 } });
+    expect(calibrationCount({ k: 0, n: 0 })).toEqual({ k: 0, n: 0 });
+    expect(calibrationCount(undefined)).toBeUndefined();
   });
 });
 
@@ -491,5 +520,54 @@ describe("report day is the UTC calendar day, wherever the graph is built", () =
       ["2026-08-25", 1],
       [NAIVE, 2],
     ]);
+  });
+});
+
+describe("times as given (backfill rule: nothing gets a zone assigned)", () => {
+  it("states whether a written time carries a zone, without parsing it into one", () => {
+    expect(zoneStatement("2026-08-26T03:00:00Z")).toBe("stated");
+    expect(zoneStatement("2026-08-26T23:30:00-05:00")).toBe("stated");
+    // RFC 3339 §5.6: `t` and `z` may be lowercase; the zone is still stated
+    expect(zoneStatement("2026-08-26t03:00:00z")).toBe("stated");
+    expect(zoneStatement("2026-08-26t23:30:00-05:00")).toBe("stated");
+    expect(zoneStatement("2026-08-26T20:15:00.123456")).toBe("not-stated");
+    expect(zoneStatement("2026-08-26T20:15")).toBe("not-stated");
+    expect(zoneStatement("2026-08-26")).toBe("date-only");
+    expect(zoneStatement("week-1")).toBe("not-stated");
+  });
+
+  it("carries a record's seal time, action time and provenance mode verbatim", async () => {
+    const { bundle, ids } = await sealEvidenceBundle(
+      (await fixture("report-mixed-tz-bundle.json")) as Record<string, unknown>,
+    );
+    const graph = await buildEvidenceGraph(bundle);
+    const acts = Object.fromEntries(
+      graph.reports.flatMap((report) =>
+        report.cases.flatMap((caseNode) =>
+          caseNode.acts.map((act) => [act.capsuleId, act]),
+        ),
+      ),
+    );
+    // the backfilled act keeps its source's own (naive) time as the action
+    // time; its seal time is the capsule timestamp, a different instant
+    expect(acts[ids["act-naive"]!]).toMatchObject({
+      provenanceMode: "backfilled",
+      actionTime: "2026-08-26T20:14:58.000001",
+      sealTime: "2026-09-14T00:00:00Z",
+    });
+    // the live act states no action time; the seal time is not copied into it
+    expect(acts[ids["act-zulu"]!]).toMatchObject({
+      sealTime: "2026-09-14T00:00:00Z",
+    });
+    expect(acts[ids["act-zulu"]!]).not.toHaveProperty("actionTime");
+    expect(acts[ids["act-zulu"]!]).not.toHaveProperty("provenanceMode");
+    // the report's date is kept exactly as the producer wrote it
+    expect(graph.reports.map((report) => report.date)).toEqual([
+      "2026-08-26T03:00:00Z",
+      "2026-08-26T20:15:00.123456",
+    ]);
+    expect(
+      recordTimes({ capsule_id: "x", timestamp: 5, occurred_at: "as-written" }),
+    ).toEqual({ actionTime: "as-written" });
   });
 });

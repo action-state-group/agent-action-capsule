@@ -10,7 +10,43 @@ import { isHex64, jsonDigest } from "./json.js";
 export type DisclosureState = "disclosed" | "withheld" | "disclosure_mismatch";
 export type DisclosureField = "agent_input" | "agent_output";
 
-export interface ActNode {
+/**
+ * The times a record states, each kept exactly as written -- never parsed,
+ * normalised, or assigned a zone. `sealTime` is the capsule's `timestamp`
+ * (the registration time inside the digest commitment, base profile
+ * "Identity and parties"). `actionTime` is when the agent acted, read from
+ * the record's `occurred_at` when the producer states one: a backfilled
+ * record keeps its source's own time there, and the seal time never stands
+ * in for it. `provenanceMode` is the record's `provenance_mode` as written
+ * (for example `backfilled`).
+ */
+export interface RecordTimes {
+  sealTime?: string;
+  actionTime?: string;
+  provenanceMode?: string;
+}
+
+/**
+ * Whether a written time states its zone. A timestamp with a `Z` or
+ * `+HH:MM` designator is `stated` (RFC 3339 §5.6: `t` and `z` may be
+ * lowercase); a bare `YYYY-MM-DD` names a day, not an
+ * instant, and is `date-only`; anything else -- a naive timestamp such as
+ * `2026-08-26T05:34:57.860343`, or a string that is not a timestamp at all --
+ * is `not-stated`. The view prints every time verbatim and marks
+ * `not-stated` ones; nothing here assigns a zone.
+ */
+export type ZoneStatement = "stated" | "not-stated" | "date-only";
+
+export const zoneStatement = (value: string): ZoneStatement =>
+  /^\d{4}-\d{2}-\d{2}$/u.test(value)
+    ? "date-only"
+    : /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[Zz]|[+-]\d{2}:\d{2})$/u.test(
+          value,
+        )
+      ? "stated"
+      : "not-stated";
+
+export interface ActNode extends RecordTimes {
   capsuleId: string;
   caseId: string;
   turnIdx: number;
@@ -47,8 +83,9 @@ export interface RatingNode {
   reportId: string;
   verdict: "pass" | "fail" | "unsure";
 }
-export interface ReportNode {
+export interface ReportNode extends RecordTimes {
   capsuleId: string;
+  /** The report's `date`, exactly as the producer wrote it. */
   date: string;
   /**
    * 1-based position of the report in its period. Taken from the payload's
@@ -72,14 +109,41 @@ export interface SummaryNode {
   counts?: { reports: number; uniqueCases: number };
   cohort?: unknown;
 }
+/**
+ * A calibration figure carried as the integer count it is made of -- `k`
+ * of `n` -- never as a rate. The integer-only JCS profile cannot digest a
+ * float, so a rate could never be a verified disclosure; and a count is the
+ * evidence, a rate is arithmetic on it. A payload that states only a rate
+ * (as a string or however written) is kept as `{ rate }` and rendered as
+ * "rate given, k and n not stated"; it is never converted.
+ */
+export type CalibrationCount =
+  | { readonly k: number; readonly n: number }
+  | { readonly rate: unknown };
+
 export interface CalibrationNode {
   capsuleId: string;
   periodWindow?: unknown;
   confusion?: unknown;
-  agreement?: unknown;
-  correctedRate?: unknown;
-  correctedRateCi?: unknown;
+  agreement?: CalibrationCount;
+  correctedRate?: CalibrationCount;
 }
+
+const isCount = (value: unknown): value is { k: number; n: number } =>
+  isObject(value) &&
+  Number.isSafeInteger(value.k) &&
+  Number.isSafeInteger(value.n) &&
+  (value.k as number) >= 0 &&
+  (value.n as number) >= (value.k as number);
+
+export const calibrationCount = (
+  value: unknown,
+): CalibrationCount | undefined =>
+  value === undefined
+    ? undefined
+    : isCount(value)
+      ? { k: value.k, n: value.n }
+      : { rate: value };
 export interface EvidenceGraph {
   aggregate: SummaryNode;
   reports: ReportNode[];
@@ -126,7 +190,7 @@ const objectOrEmpty = (value: unknown): ObjectValue =>
  */
 const calendarDay = (date: string): number | undefined => {
   const match =
-    /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/u.exec(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[Tt](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?([Zz]|[+-]\d{2}:\d{2})?)?$/u.exec(
       date,
     );
   if (match === null) return undefined;
@@ -147,7 +211,7 @@ const calendarDay = (date: string): number | undefined => {
   )
     return undefined;
   const offsetMinutes =
-    designator === undefined || designator === "Z"
+    designator === undefined || designator === "Z" || designator === "z"
       ? 0
       : (designator.startsWith("-") ? -1 : 1) *
         (Number(designator.slice(1, 3)) * 60 + Number(designator.slice(4, 6)));
@@ -157,6 +221,18 @@ const calendarDay = (date: string): number | undefined => {
     ((hour * 60 + minute) * 60 + second) * 1_000 -
     offsetMinutes * 60_000;
   return Math.floor(instant / 86_400_000);
+};
+
+/** The times a record states, verbatim; a member is absent when not stated. */
+export const recordTimes = (record: RecordWithId): RecordTimes => {
+  const sealTime = asString(record.timestamp);
+  const actionTime = asString(record.occurred_at);
+  const provenanceMode = asString(record.provenance_mode);
+  return {
+    ...(sealTime === undefined ? {} : { sealTime }),
+    ...(actionTime === undefined ? {} : { actionTime }),
+    ...(provenanceMode === undefined ? {} : { provenanceMode }),
+  };
 };
 
 /** The digest a record committed to for a disclosable member, if any. */
@@ -399,6 +475,7 @@ export async function buildEvidenceGraph(
         agentInputDisclosure: input.state,
         agentOutputDisclosure: output.state,
         ...committedDigests(actRecord),
+        ...recordTimes(actRecord),
         ...(actResolvedLogCoordinates === undefined
           ? {}
           : {
@@ -495,6 +572,7 @@ export async function buildEvidenceGraph(
       withheldActs: acts.filter(
         (act) => act.agentInput === undefined || act.agentOutput === undefined,
       ),
+      ...recordTimes(record),
       ...(reportResolvedLogCoordinates === undefined
         ? {}
         : {
@@ -556,13 +634,10 @@ export async function buildEvidenceGraph(
         ? { confusion: payload.confusion }
         : {}),
       ...(Object.hasOwn(payload, "agreement")
-        ? { agreement: payload.agreement }
+        ? { agreement: calibrationCount(payload.agreement)! }
         : {}),
       ...(Object.hasOwn(payload, "corrected_rate")
-        ? { correctedRate: payload.corrected_rate }
-        : {}),
-      ...(Object.hasOwn(payload, "corrected_rate_ci")
-        ? { correctedRateCi: payload.corrected_rate_ci }
+        ? { correctedRate: calibrationCount(payload.corrected_rate)! }
         : {}),
     };
     break;

@@ -8,10 +8,13 @@ import {
   buildEvidenceGraph,
   type ActNode,
   type AxisJudgment,
+  type CalibrationCount,
   type CalibrationNode,
   type CaseNode,
   type EvidenceGraph,
+  type RecordTimes,
   type ReportNode,
+  zoneStatement,
 } from "./evidence-graph.js";
 import { readPresentationBlock } from "./presentation.js";
 import {
@@ -24,7 +27,11 @@ import {
   buildVerificationPageModel,
   type CheckSummary,
   type CompletenessStatement,
+  type CoverageStatement,
   type ReceiptEntry,
+  type RecordCoverage,
+  type RecordCoverageStatus,
+  unboundRecordIds,
 } from "./verification-page.js";
 
 function element(tag: string, text?: string): HTMLElement {
@@ -46,11 +53,63 @@ function appendValue(parent: HTMLElement, label: string, value: unknown): void {
   parent.append(element("dd", display(value)));
 }
 
+// A written time is printed exactly as the source wrote it. When it states no
+// zone, a visible marker follows it; no zone is ever assigned and no `Z` or
+// UTC label is ever printed on a time that did not carry one.
+function renderTime(value: string): HTMLElement {
+  const zone = zoneStatement(value);
+  const time = element("span", value);
+  time.dataset.tz = zone;
+  if (zone === "not-stated") {
+    const marker = element("span", " (timezone not stated)");
+    marker.dataset.tzMarker = "not-stated";
+    time.append(marker);
+  }
+  return time;
+}
+
+function appendTime(
+  parent: HTMLElement,
+  label: string,
+  value: string | undefined,
+  absent: string,
+): void {
+  parent.append(element("dt", label));
+  const cell = element("dd");
+  if (value === undefined) {
+    cell.textContent = absent;
+    cell.dataset.time = "not-stated";
+  } else {
+    cell.append(renderTime(value));
+  }
+  parent.append(cell);
+}
+
+// Per-record membership may fail solely because some supplied records are
+// bound to no log position (the verifier's `membership_record_unbound`): real
+// records that sit outside any checkpoint. That is coverage, not a broken
+// proof -- every other record's inclusion proof still verified -- so the
+// bundle renders, each such record carries its own `uncheckpointed` status,
+// and the banner and verification page state how many there are. Any other
+// membership finding (an invalid proof, bad coordinates, a missing sequence)
+// still fails the bundle as a whole: `unboundRecordIds` leaves out a record
+// whose supplied entry was rejected, so the counts below can only agree when
+// every finding is a clean unbound record.
+function membershipProvenOrUnbound(result: BundleVerificationResult): boolean {
+  return (
+    result.perRecordMembership.status === "pass" ||
+    (result.perRecordMembership.status === "fail" &&
+      result.perRecordMembership.findings.length > 0 &&
+      result.perRecordMembership.findings.length ===
+        unboundRecordIds(result).length)
+  );
+}
+
 function bundleVerified(result: BundleVerificationResult): boolean {
   return (
     result.graphClosure.status === "pass" &&
     result.intervalCoverage.status === "pass" &&
-    result.perRecordMembership.status === "pass" &&
+    membershipProvenOrUnbound(result) &&
     Object.values(result.capsuleResults).every((capsule) => capsule.ok) &&
     result.disclosures.every(
       (disclosure) =>
@@ -60,16 +119,29 @@ function bundleVerified(result: BundleVerificationResult): boolean {
   );
 }
 
+const recordsWord = (count: number): string =>
+  `${count} ${count === 1 ? "record" : "records"}`;
+
 // The banner is drawn from the verification result alone and precedes every
 // row in the DOM; an unverified bundle gets the refusal line here and no
 // rows at all, so a reader never meets a payload before the verdict on the
-// bundle that carries it.
-function renderVerificationBanner(root: HTMLElement, verified: boolean): void {
+// bundle that carries it. It says what IS proven: a verified bundle with
+// records outside the checkpoint names their count up front.
+function renderVerificationBanner(
+  root: HTMLElement,
+  verified: boolean,
+  coverage: { uncheckpointed: number; total: number },
+): void {
   const banner = element(
     "p",
-    verified ? "Bundle verification passed" : "Bundle verification failed",
+    verified
+      ? coverage.uncheckpointed === 0
+        ? "Bundle verification passed"
+        : `Bundle verification passed; ${coverage.uncheckpointed} of ${recordsWord(coverage.total)} uncheckpointed`
+      : "Bundle verification failed",
   );
   banner.dataset.verify = verified ? "verified" : "failed";
+  banner.dataset.uncheckpointed = String(coverage.uncheckpointed);
   root.append(banner);
   if (verified) return;
   const refusal = element(
@@ -163,10 +235,60 @@ function renderReceipts(
   }
   const list = element("ul");
   receipts.forEach((receipt) => {
-    list.append(
-      element("li", `${receipt.witness} · ${receipt.grade} · ${receipt.time}`),
-    );
+    const item = element("li", `${receipt.witness} · ${receipt.grade} · `);
+    item.append(renderTime(receipt.time));
+    list.append(item);
   });
+  host.append(list);
+}
+
+const COVERAGE_LABEL: Readonly<Record<RecordCoverageStatus, string>> =
+  Object.freeze({
+    checkpointed: "checkpointed",
+    uncheckpointed: "uncheckpointed",
+    membership_invalid: "membership invalid",
+    unverified: "membership unverified",
+  });
+
+// One row per supplied record, in bundle order, each with its own standing
+// under the checkpoint. When the claim established coverage the count is
+// stated in words above the list. When it did not, the line says so and
+// names the verifier's reason -- never "0 records uncheckpointed" on a
+// bundle whose memberships were never verified -- and when the claim was
+// withheld (no checkpoint to stand under) there is no list at all.
+function renderCheckpointCoverage(
+  host: HTMLElement,
+  records: readonly RecordCoverage[],
+  uncheckpointed: number,
+  coverage: CoverageStatement,
+): void {
+  host.append(element("h4", "Checkpoint coverage"));
+  if (coverage.status === "established") {
+    const count = element(
+      "p",
+      `${recordsWord(uncheckpointed)} uncheckpointed of ${recordsWord(records.length)} supplied`,
+    );
+    count.dataset.coverage = "uncheckpointed";
+    count.dataset.count = String(uncheckpointed);
+    host.append(count);
+  } else {
+    const line = element("p", `coverage not established: ${coverage.reason}`);
+    line.dataset.coverage = "not-established";
+    line.dataset.claim = coverage.status;
+    host.append(line);
+    if (coverage.status === "withheld") return;
+  }
+  const list = element("ul");
+  list.dataset.records = "coverage";
+  for (const record of records) {
+    const item = element("li", `${record.capsuleId} · `);
+    const status = element("span", COVERAGE_LABEL[record.status]);
+    status.dataset.recordStatus = record.status;
+    status.className = `seal-${record.status}`;
+    item.dataset.capsuleId = record.capsuleId;
+    item.append(status);
+    list.append(item);
+  }
   host.append(list);
 }
 
@@ -231,6 +353,22 @@ async function renderVerificationPage(
   appendValue(summary, "checkpoint size", model.checkpointSize ?? "absent");
   page.append(summary);
   renderReceipts(page, model.receipts);
+  if (model.selfWitnessed) {
+    // A checkpoint with no transparency-service receipt was witnessed by
+    // nobody but the log that produced it -- stated here in those words.
+    const witness = element(
+      "p",
+      "self-witnessed: no transparency-service receipt",
+    );
+    witness.dataset.witness = "self";
+    page.append(witness);
+  }
+  renderCheckpointCoverage(
+    page,
+    model.records,
+    model.uncheckpointedCount,
+    model.coverage,
+  );
   const countersignatures = object(bundle).countersignatures;
   const stamps = await classifyCountersignatures(
     Array.isArray(countersignatures) ? countersignatures : [],
@@ -265,22 +403,70 @@ function renderCalibration(calibration?: CalibrationNode): HTMLElement {
   }
   const details = element("dl");
   appendValue(details, "confusion matrix", calibration.confusion);
-  appendValue(details, "agreement", calibration.agreement);
-  appendValue(details, "corrected rate", calibration.correctedRate);
-  appendValue(details, "corrected rate CI", calibration.correctedRateCi);
+  appendCount(details, "agreement", calibration.agreement);
+  appendCount(details, "corrected rate", calibration.correctedRate);
   appendValue(details, "period window", calibration.periodWindow);
   section.append(details);
   return section;
 }
 
+// A calibration figure is printed as the integers it is made of, "k of n";
+// no rate is computed from them here, and a figure the producer stated only
+// as a rate is said to be that, not converted.
+function appendCount(
+  parent: HTMLElement,
+  label: string,
+  count: CalibrationCount | undefined,
+): void {
+  parent.append(element("dt", label));
+  const cell = element("dd");
+  if (count === undefined) {
+    cell.textContent = "not stated";
+    cell.dataset.count = "not-stated";
+  } else if ("rate" in count) {
+    cell.textContent = "rate given, k and n not stated";
+    cell.dataset.count = "not-stated";
+  } else {
+    cell.textContent = `${count.k} of ${count.n}`;
+    cell.dataset.k = String(count.k);
+    cell.dataset.n = String(count.n);
+  }
+  parent.append(cell);
+}
+
+// Both of a record's times are shown, each labelled and each as written. The
+// action time is the source's own; when the record states none it says so --
+// the seal time (the capsule's registration timestamp) never stands in for it.
 function renderProvenance(
   capsuleId: string,
-  coordinates?: ActNode["logCoordinates"],
+  coordinates: ActNode["logCoordinates"],
+  times: RecordTimes,
 ): HTMLElement {
   const panel = element("section");
   panel.append(element("h4", "Provenance"));
   const details = element("dl");
   appendValue(details, "capsule ID", capsuleId);
+  if (times.provenanceMode !== undefined)
+    appendValue(details, "provenance", times.provenanceMode);
+  appendTime(
+    details,
+    "action time",
+    times.actionTime,
+    "action time not stated",
+  );
+  appendTime(details, "seal time", times.sealTime, "seal time not stated");
+  // The seal status is this record's own: coordinates exist only for a
+  // record whose inclusion proof verified (the bundle renders only then), so
+  // a record without them sits outside the checkpoint and says so.
+  details.append(element("dt", "seal status"));
+  const seal = element(
+    "dd",
+    coordinates === undefined ? "uncheckpointed" : "checkpointed",
+  );
+  seal.dataset.seal =
+    coordinates === undefined ? "uncheckpointed" : "checkpointed";
+  seal.className = `seal-${seal.dataset.seal}`;
+  details.append(seal);
   if (coordinates !== undefined) {
     appendValue(details, "log ID", coordinates.logId);
     appendValue(details, "sequence", coordinates.seq);
@@ -305,7 +491,7 @@ function renderAct(act: ActNode): HTMLElement {
     section.append(element("pre", display(act.agentInput)));
   if (act.agentOutput !== undefined)
     section.append(element("pre", display(act.agentOutput)));
-  section.append(renderProvenance(act.capsuleId, act.logCoordinates));
+  section.append(renderProvenance(act.capsuleId, act.logCoordinates, act));
   return section;
 }
 
@@ -368,7 +554,9 @@ function renderReport(
   _records: unknown[],
 ): void {
   host.replaceChildren();
-  host.append(element("h2", `Cases for ${report.date}`));
+  const heading = element("h2", "Cases for ");
+  heading.append(renderTime(report.date));
+  host.append(heading);
   const outcomes = element("ul");
   report.outcomes.forEach((outcome) => {
     outcomes.append(
@@ -396,7 +584,7 @@ function renderReport(
   host.append(
     cases,
     detail,
-    renderProvenance(report.capsuleId, report.logCoordinates),
+    renderProvenance(report.capsuleId, report.logCoordinates, report),
   );
 }
 
@@ -406,7 +594,9 @@ function renderReport(
 // anything else) renders the same way an outcomes report does.
 function renderCitation(citation: ReportRowCitation): HTMLElement {
   const section = element("section");
-  section.append(renderProvenance(citation.capsuleId, citation.logCoordinates));
+  section.append(
+    renderProvenance(citation.capsuleId, citation.logCoordinates, citation),
+  );
   if (citation.disclosure === "disclosed") {
     section.append(element("pre", display(citation.disclosedPayload)));
   } else {
@@ -462,7 +652,11 @@ function renderReportRowsTable(
   section.append(
     table,
     detail,
-    renderProvenance(reportRows.capsuleId, reportRows.logCoordinates),
+    renderProvenance(
+      reportRows.capsuleId,
+      reportRows.logCoordinates,
+      reportRows,
+    ),
   );
   root.append(section);
 }
@@ -486,7 +680,11 @@ function renderGraph(
   [...graph.reports]
     .sort((left, right) => left.date.localeCompare(right.date))
     .forEach((report) => {
-      const tile = element("button", `${report.date}: ${metRate(report)}`);
+      // The label is the report's date as the producer wrote it -- a bare
+      // day stays a day, a timestamp stays a timestamp, and one that states
+      // no zone is marked so rather than tiled under an assigned one.
+      const tile = element("button");
+      tile.append(renderTime(report.date), `: ${metRate(report)}`);
       tile.setAttribute("type", "button");
       tile.dataset.reportDate = report.date;
       tile.addEventListener("click", () =>
@@ -514,13 +712,16 @@ export async function renderEvidenceGraph(
     verified && reportRows === undefined
       ? await buildEvidenceGraph(bundle)
       : undefined;
+  const records = object(bundle).records;
   root.replaceChildren();
   renderPresentationHeader(root, bundle);
-  renderVerificationBanner(root, verified);
+  renderVerificationBanner(root, verified, {
+    uncheckpointed: unboundRecordIds(verification).length,
+    total: Array.isArray(records) ? records.length : 0,
+  });
   if (reportRows !== undefined) {
     renderReportRowsTable(reportRows, root);
   } else if (graph !== undefined) {
-    const records = object(bundle).records;
     renderGraph(graph, root, Array.isArray(records) ? records : []);
   }
   await renderVerificationPage(
