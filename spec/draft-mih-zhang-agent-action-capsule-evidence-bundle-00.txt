@@ -5,8 +5,8 @@
 SCITT                                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
 Intended status: Standards Track                                Y. Zhang
-Expires: 20 March 2027                                       Independent
-                                                       16 September 2026
+Expires: 30 March 2027                                       Independent
+                                                       26 September 2026
 
 
                           AAC Evidence Bundle
@@ -41,7 +41,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 20 March 2027.
+   This Internet-Draft will expire on 30 March 2027.
 
 Copyright Notice
 
@@ -53,7 +53,7 @@ Copyright Notice
 
 
 
-Mih & Zhang               Expires 20 March 2027                 [Page 1]
+Mih & Zhang               Expires 30 March 2027                 [Page 1]
 
 Internet-Draft             AAC Evidence Bundle            September 2026
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Mih & Zhang               Expires 20 March 2027                 [Page 2]
+Mih & Zhang               Expires 30 March 2027                 [Page 2]
 
 Internet-Draft             AAC Evidence Bundle            September 2026
 
@@ -165,31 +165,33 @@ Internet-Draft             AAC Evidence Bundle            September 2026
 
 
 
-Mih & Zhang               Expires 20 March 2027                 [Page 3]
+Mih & Zhang               Expires 30 March 2027                 [Page 3]
 
 Internet-Draft             AAC Evidence Bundle            September 2026
 
 
-{
-  "bundle_version": "2",
-  "bundle_kind": "evidence-bundle/v2",
-  "root": "<capsule_id>",
-  "records": [ ... ],
-  "completeness": {
-    "closure_depth": 2,
-    "records_mode": "complete|declared_incomplete",
-    "payloads_mode": "all|selected",
-    "suppressed_fields": [ ... ],
-    "missing": [ "<cited capsule digest>", ... ]
-  },
-  "disclosures": { "<capsule_id>": { "<member>": "<revealed preimage>" } },
-  "disclosure_record": "<capsule_id>",
-  "completeness_certificate": { ... },
-  "checkpoint": { ... },
-  "verification": { ... },
-  "extensions": { "<registered kind>": { ... } },
-  "countersignatures": [ ... ]
-}
+   {
+     "bundle_version": "2",
+     "bundle_kind": "evidence-bundle/v2",
+     "root": "<capsule_id>",
+     "records": [ ... ],
+     "completeness": {
+       "closure_depth": 2,
+       "records_mode": "complete|declared_incomplete",
+       "payloads_mode": "all|selected",
+       "suppressed_fields": [ ... ],
+       "missing": [ "<cited capsule digest>", ... ]
+     },
+     "disclosures": {
+       "<capsule_id>": { "<member>": "<revealed preimage>" }
+     },
+     "disclosure_record": "<capsule_id>",
+     "completeness_certificate": { ... },
+     "checkpoint": { ... },
+     "verification": { ... },
+     "extensions": { "<registered kind>": { ... } },
+     "countersignatures": [ ... ]
+   }
 
    bundle_version and bundle_kind are REQUIRED and MUST be respectively
    "2" and "evidence-bundle/v2". root, records, and completeness are
@@ -219,9 +221,7 @@ Internet-Draft             AAC Evidence Bundle            September 2026
 
 
 
-
-
-Mih & Zhang               Expires 20 March 2027                 [Page 4]
+Mih & Zhang               Expires 30 March 2027                 [Page 4]
 
 Internet-Draft             AAC Evidence Bundle            September 2026
 
@@ -277,7 +277,7 @@ Internet-Draft             AAC Evidence Bundle            September 2026
 
 
 
-Mih & Zhang               Expires 20 March 2027                 [Page 5]
+Mih & Zhang               Expires 30 March 2027                 [Page 5]
 
 Internet-Draft             AAC Evidence Bundle            September 2026
 
@@ -333,7 +333,7 @@ Internet-Draft             AAC Evidence Bundle            September 2026
 
 
 
-Mih & Zhang               Expires 20 March 2027                 [Page 6]
+Mih & Zhang               Expires 30 March 2027                 [Page 6]
 
 Internet-Draft             AAC Evidence Bundle            September 2026
 
@@ -389,7 +389,7 @@ Internet-Draft             AAC Evidence Bundle            September 2026
 
 
 
-Mih & Zhang               Expires 20 March 2027                 [Page 7]
+Mih & Zhang               Expires 30 March 2027                 [Page 7]
 
 Internet-Draft             AAC Evidence Bundle            September 2026
 
@@ -445,7 +445,7 @@ Internet-Draft             AAC Evidence Bundle            September 2026
 
 
 
-Mih & Zhang               Expires 20 March 2027                 [Page 8]
+Mih & Zhang               Expires 30 March 2027                 [Page 8]
 
 Internet-Draft             AAC Evidence Bundle            September 2026
 
@@ -463,8 +463,8 @@ Internet-Draft             AAC Evidence Bundle            September 2026
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
-              capsule-04, n.d., <https://datatracker.ietf.org/doc/html/
-              draft-mih-scitt-agent-action-capsule-04>.
+              capsule-05, n.d., <https://datatracker.ietf.org/doc/html/
+              draft-mih-scitt-agent-action-capsule-05>.
 
    [I-D.mih-scitt-agent-action-capsule-disclosure-envelope]
               Mih, S., "Disclosure Envelope Profile for Agent Action
@@ -482,11 +482,6 @@ Internet-Draft             AAC Evidence Bundle            September 2026
               Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
               <https://www.rfc-editor.org/rfc/rfc4648>.
 
-   [RFC6234]  Eastlake 3rd, D. and T. Hansen, "US Secure Hash Algorithms
-              (SHA and SHA-based HMAC and HKDF)", RFC 6234,
-              DOI 10.17487/RFC6234, May 2011,
-              <https://www.rfc-editor.org/rfc/rfc6234>.
-
    [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
               Writing an IANA Considerations Section in RFCs", BCP 26,
               RFC 8126, DOI 10.17487/RFC8126, June 2017,
@@ -496,35 +491,25 @@ Internet-Draft             AAC Evidence Bundle            September 2026
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
 
-
-
-
-
-
-Mih & Zhang               Expires 20 March 2027                 [Page 9]
-
-Internet-Draft             AAC Evidence Bundle            September 2026
-
-
    [RFC8259]  Bray, T., Ed., "The JavaScript Object Notation (JSON) Data
               Interchange Format", STD 90, RFC 8259,
               DOI 10.17487/RFC8259, December 2017,
               <https://www.rfc-editor.org/rfc/rfc8259>.
 
+
+
+
+
+
+Mih & Zhang               Expires 30 March 2027                 [Page 9]
+
+Internet-Draft             AAC Evidence Bundle            September 2026
+
+
    [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
               Canonicalization Scheme (JCS)", RFC 8785,
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/rfc/rfc8785>.
-
-   [RFC8949]  Bormann, C. and P. Hoffman, "Concise Binary Object
-              Representation (CBOR)", STD 94, RFC 8949,
-              DOI 10.17487/RFC8949, December 2020,
-              <https://www.rfc-editor.org/rfc/rfc8949>.
-
-   [RFC9052]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
-              Structures and Process", STD 96, RFC 9052,
-              DOI 10.17487/RFC9052, August 2022,
-              <https://www.rfc-editor.org/rfc/rfc9052>.
 
 Change Log
 
@@ -557,4 +542,19 @@ Authors' Addresses
 
 
 
-Mih & Zhang               Expires 20 March 2027                [Page 10]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih & Zhang               Expires 30 March 2027                [Page 10]

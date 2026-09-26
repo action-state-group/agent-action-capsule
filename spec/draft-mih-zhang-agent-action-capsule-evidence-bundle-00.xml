@@ -24,7 +24,7 @@
         <email>zhangyiqun-spec@gmail.com</email>
       </address>
     </author>
-    <date year="2026" month="September" day="16"/>
+    <date year="2026" month="September" day="26"/>
     <area>Security</area>
     <workgroup>SCITT</workgroup>
     <keyword>SCITT</keyword>
@@ -33,7 +33,7 @@
     <keyword>transparency</keyword>
     <keyword>audit</keyword>
     <abstract>
-      <?line 56?>
+      <?line 53?>
 
 <t>This document defines the AAC Evidence Bundle, a portable presentation and
 verification container for an Agent Action Capsule and the records that make
@@ -47,7 +47,7 @@ extension blocks and neutral third-party countersignatures.</t>
     </abstract>
   </front>
   <middle>
-    <?line 68?>
+    <?line 65?>
 
 <section anchor="introduction">
       <name>Introduction</name>
@@ -115,7 +115,9 @@ untyped replacement formats.</t>
     "suppressed_fields": [ ... ],
     "missing": [ "<cited capsule digest>", ... ]
   },
-  "disclosures": { "<capsule_id>": { "<member>": "<revealed preimage>" } },
+  "disclosures": {
+    "<capsule_id>": { "<member>": "<revealed preimage>" }
+  },
   "disclosure_record": "<capsule_id>",
   "completeness_certificate": { ... },
   "checkpoint": { ... },
@@ -416,48 +418,6 @@ the same values and policy.</t>
         <seriesInfo name="RFC" value="4648"/>
         <seriesInfo name="DOI" value="10.17487/RFC4648"/>
       </reference>
-      <reference anchor="RFC6234">
-        <front>
-          <title>US Secure Hash Algorithms (SHA and SHA-based HMAC and HKDF)</title>
-          <author fullname="D. Eastlake 3rd" initials="D." surname="Eastlake 3rd"/>
-          <author fullname="T. Hansen" initials="T." surname="Hansen"/>
-          <date month="May" year="2011"/>
-          <abstract>
-            <t>Federal Information Processing Standard, FIPS</t>
-          </abstract>
-        </front>
-        <seriesInfo name="RFC" value="6234"/>
-        <seriesInfo name="DOI" value="10.17487/RFC6234"/>
-      </reference>
-      <reference anchor="RFC8949">
-        <front>
-          <title>Concise Binary Object Representation (CBOR)</title>
-          <author fullname="C. Bormann" initials="C." surname="Bormann"/>
-          <author fullname="P. Hoffman" initials="P." surname="Hoffman"/>
-          <date month="December" year="2020"/>
-          <abstract>
-            <t>The Concise Binary Object Representation (CBOR) is a data format whose design goals include the possibility of extremely small code size, fairly small message size, and extensibility without the need for version negotiation. These design goals make it different from earlier binary serializations such as ASN.1 and MessagePack.</t>
-            <t>This document obsoletes RFC 7049, providing editorial improvements, new details, and errata fixes while keeping full compatibility with the interchange format of RFC 7049. It does not create a new version of the format.</t>
-          </abstract>
-        </front>
-        <seriesInfo name="STD" value="94"/>
-        <seriesInfo name="RFC" value="8949"/>
-        <seriesInfo name="DOI" value="10.17487/RFC8949"/>
-      </reference>
-      <reference anchor="RFC9052">
-        <front>
-          <title>CBOR Object Signing and Encryption (COSE): Structures and Process</title>
-          <author fullname="J. Schaad" initials="J." surname="Schaad"/>
-          <date month="August" year="2022"/>
-          <abstract>
-            <t>Concise Binary Object Representation (CBOR) is a data format designed for small code size and small message size. There is a need to be able to define basic security services for this data format. This document defines the CBOR Object Signing and Encryption (COSE) protocol. This specification describes how to create and process signatures, message authentication codes, and encryption using CBOR for serialization. This specification additionally describes how to represent cryptographic keys using CBOR.</t>
-            <t>This document, along with RFC 9053, obsoletes RFC 8152.</t>
-          </abstract>
-        </front>
-        <seriesInfo name="STD" value="96"/>
-        <seriesInfo name="RFC" value="9052"/>
-        <seriesInfo name="DOI" value="10.17487/RFC9052"/>
-      </reference>
       <reference anchor="I-D.mih-scitt-agent-action-capsule">
         <front>
           <title>An Agent Action Capsule Profile for SCITT</title>
@@ -466,7 +426,7 @@ the same values and policy.</t>
           </author>
           <date>n.d.</date>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-04"/>
+        <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-05"/>
       </reference>
       <reference anchor="I-D.mih-scitt-agent-action-capsule-disclosure-envelope">
         <front>
@@ -479,7 +439,7 @@ the same values and policy.</t>
         <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-disclosure-envelope-00"/>
       </reference>
     </references>
-    <?line 349?>
+    <?line 348?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>
@@ -491,145 +451,5 @@ the same values and policy.</t>
 architecture review for the evidence-bundle starting shape.</t>
     </section>
   </back>
-  <!-- ##markdown-source:
-H4sIAAAAAAAAA71ba3Mbx7H9Pr9iCvpgyYWFJVpSbCpRXYaiLKYoSyGppHxd
-LmKwOwA2XOzC+yAFMfRvz+numdlZAEycqltXH2wQu/Pq6T59+oEkSVSbt4U9
-1KOjo2N9cpNntkyt/nNXZoUdKTOb1fbmoadZlZZmhcFZbeZtssqXyZelKReJ
-WdiyTUza5lWZpGbddIVNrBuezHh48vSpSk1rF1W9OdRNm6mmm63ypsGYdrPG
-rKcnl29Vvq4PdVt3TXvw9On3Tw+Uqa3Bhi5s2tV5uxmp26q+XtRVt6Zvj08v
-L0fq2m7wbXaodKL5K/rg16fPR6ea90if29qUzRrTlumG/jZdlreqaU2ZXZmi
-KrGTjW3UOj/UP7dVOtZNVbe1nTf4tFnRh1+UMl27rGpeMC+bQ30x0e/zpdJa
-i4QuWntjS/9dVS9MmX8xJJ9DfcRywiuQhv6BTjLWp2U6oTftyuQFxLO26f+I
-PBt6bWLysNRPE/2/JPV+sZ/yX7uy/3K42mmZ2bXFf+j0YQG+tw2NS3itBX09
-SauVUmVVrzD2xuJ0+vzt8cGzZ9+7j989+8Pz8PHgpf948CK88IfvXriPz18+
-/859fHnwbRj2/XP/7vdPXxzQx9PkzYRUqUnztt2rSvSW1kFxS31EL3k5HstL
-+mNdzXP8f17V2ukFDWtsndsmL+eVTIMFy9bWpW2TN6TGsTY/vIXk6XMeHe6d
-/+1cPv/bpwH873erwX8WSZLlTVpUTVfD0MobW1TrLTG9CS/oE/fCQET7ZNj8
-n4pszxYJBP6/xKiSBMY9a2DvaavU5TJvNBCsW9G5MzvPS9vodmn1Hqwba6PX
-MHszg7TWtW0whtfTQAl1A/nM81S+SAFfBnPVLFXzgHJiGK9V2xRAReuaVq/M
-tVV52zioanNTb3RamHwFgbS2KPJFjg1M9JFeWxhlkZfXOjU13Q42KLiKVzXN
-8en8TM1rs6DjjWkf1XyOAVa/u3x/hnXpOA8ObpZYbcy7NHpZNa3NlBsCZbiJ
-R2DfbrmJvsSJ3NdZhZfKqtWmgKpgpo2GPHH9mMkJYaJPSfA4IATKk0B3nBCd
-pvIGMJT9QrmgF2zmhTZWfvtyAXjSqxjdUr6CHmKr/W6TAtpT6AoDCrMBgFsA
-PxSlUe2ytth1Pp/bmu4L0LcubGuhFI3cQSPyIMnTXvMeR4sNAzRvQdnPGERO
-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
-AA==
-
--->
 
 </rfc>

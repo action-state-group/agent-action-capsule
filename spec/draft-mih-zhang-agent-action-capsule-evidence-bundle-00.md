@@ -33,13 +33,10 @@ normative:
   RFC8259:
   RFC8785:
   RFC4648:
-  RFC6234:
-  RFC8949:
-  RFC9052:
   I-D.mih-scitt-agent-action-capsule:
     title: "An Agent Action Capsule Profile for SCITT"
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-agent-action-capsule-04
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-05
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -130,7 +127,9 @@ untyped replacement formats.
     "suppressed_fields": [ ... ],
     "missing": [ "<cited capsule digest>", ... ]
   },
-  "disclosures": { "<capsule_id>": { "<member>": "<revealed preimage>" } },
+  "disclosures": {
+    "<capsule_id>": { "<member>": "<revealed preimage>" }
+  },
   "disclosure_record": "<capsule_id>",
   "completeness_certificate": { ... },
   "checkpoint": { ... },
