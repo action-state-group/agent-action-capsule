@@ -122,13 +122,15 @@ _CAPSULE_FIELD_VALUES: dict[str, dict] = {
             # uses effect_attestation='gate_executed' and chain.relation=
             # 'confirms' (both already seeded), so only the wire-producer values
             # need provisional resolution here.
+            # 'inference_completion' (REGISTRY.md §3), 'host_served_observed'
+            # (§5) and 'follows' (§6) are all registered as of the -05
+            # revision, so check 8 resolves each as seeded and never consults
+            # these entries. All three are kept until the next snapshot refresh
+            # so the committed cpb_provisional.json (pinned by snapshot_sha256
+            # and mirrored into go/registries/data/) stays byte-identical; drop
+            # them when re-vendoring.
             "effect.type": ["inference_completion"],
             "effect_attestation": ["host_served_observed"],
-            # 'follows' was registered in spec/REGISTRY.md §6 (the -05 revision),
-            # so check 8 now resolves it as seeded and never consults this entry.
-            # Kept until the next snapshot refresh so the committed
-            # cpb_provisional.json (pinned by snapshot_sha256 and mirrored into
-            # go/registries/data/) stays byte-identical; drop it when re-vendoring.
             "chain.relation": ["follows"],
         },
     },

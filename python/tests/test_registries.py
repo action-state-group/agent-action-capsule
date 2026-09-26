@@ -21,7 +21,7 @@ EXPECTED = {
     "disposition.decision": {"accept", "reject", "needs_input", "deferred"},
     "effect.type": {"write_order", "send_payment", "inference_completion"},
     "irreversibility_class": {"two_way", "one_way_recoverable", "one_way_consequential", "one_way_terminal"},
-    "effect_attestation": {"gate_executed", "runtime_claimed"},
+    "effect_attestation": {"gate_executed", "runtime_claimed", "host_served_observed"},
     "chain.relation": {"follows", "confirms", "supersedes", "epoch_opens", "duplicates"},
     "citation_purpose": {"acted_on", "responds_to", "corroborates_source_time", "counterparty_half"},
 }
@@ -31,7 +31,7 @@ EXPECTED_COUNTS = {
     "disposition.decision": 4,
     "effect.type": 3,
     "irreversibility_class": 4,
-    "effect_attestation": 2,
+    "effect_attestation": 3,
     "chain.relation": 5,
     "citation_purpose": 4,
 }

@@ -478,7 +478,7 @@ invariant above applies unchanged, so <tt>status: "confirmed"</tt> requires the
         <t>The Effect Record additionally carries <tt>effect_attestation</tt>: WHO vouches
 for the effect's execution — the evidence grade of the effect claim. The
 vocabulary is registry-governed (<xref target="iana"/>; Specification Required), seeded
-with two values:</t>
+with three values:</t>
         <table>
           <thead>
             <tr>
@@ -495,8 +495,16 @@ with two values:</t>
               <td align="left">runtime_claimed</td>
               <td align="left">The gate issued a verdict only; the executing runtime asserted completion; the capsule records that claim, not an observation.</td>
             </tr>
+            <tr>
+              <td align="left">host_served_observed</td>
+              <td align="left">The serving host's runtime reported the completion (its request and response digests) through the host's lifecycle channel; the producer observed that report, not the effect boundary itself.</td>
+            </tr>
           </tbody>
         </table>
+        <t><tt>gate_executed</tt> is the stronger grade. <tt>runtime_claimed</tt> and
+<tt>host_served_observed</tt> are equal in grade: each records a runtime's report
+of completion rather than a gate observation of the effect boundary, so
+neither grades above the other and both sit below <tt>gate_executed</tt>.</t>
         <t>Validity is checked against the assurance <tt>effect_mode</tt> (<xref target="assurance"/>):</t>
         <table>
           <thead>
@@ -1809,7 +1817,10 @@ one_way_recoverable, one_way_consequential, one_way_terminal.</t>
           </li>
           <li>
             <t>"effect_attestation" registry (<xref target="effect"/>): gate_executed,
-runtime_claimed. The registry definition carries the grade-floor
+runtime_claimed, host_served_observed. <tt>host_served_observed</tt> is equal
+in grade to runtime_claimed and below gate_executed: the serving host's
+runtime reported the completion through its lifecycle channel, and the
+producer observed that report, not the effect boundary. The registry definition carries the grade-floor
 invariant of <xref target="effect"/> — an unregistered or unrecognized value is
 graded no stronger than runtime_claimed; unknown never grades up —
 and the planned carve of <xref target="effect"/>: with <tt>effect.status: "planned"</tt>
@@ -2919,7 +2930,7 @@ About This Document
         </reference>
       </references>
     </references>
-    <?line 1838?>
+    <?line 1847?>
 
 <section numbered="false" anchor="acknowledgments">
       <name>Acknowledgments</name>

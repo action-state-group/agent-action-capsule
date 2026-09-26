@@ -224,15 +224,17 @@ def test_provisional_only_value_resolves_known_provisional(executed, monkeypatch
     assert not any("example_provisional_effect" in det for det in unknown_details)
 
 
-def test_mesh_effect_attestation_resolves_known_provisional_no_floor(executed):
+def test_mesh_effect_attestation_resolves_seeded_no_floor(executed):
+    # effect_attestation='host_served_observed' is registered (REGISTRY.md §5,
+    # equal in grade to runtime_claimed): seeded, so neither known-provisional
+    # nor unknown, and never graded to the floor (the floor only fires on an
+    # *unknown* effect_attestation).
     d = dict(executed)
     d["effect"] = dict(d["effect"], effect_attestation="host_served_observed")
     res = verify(reseal(d))
     assert res.ok
     c = codes(res)
-    assert "known_provisional_registry_value" in c
-    # A known-provisional effect_attestation is neither unknown nor graded to the
-    # floor (the floor only fires on an *unknown* effect_attestation).
+    assert "known_provisional_registry_value" not in c
     assert "unknown_registry_value" not in c
     assert "effect_attestation_graded_floor" not in c
 

@@ -443,12 +443,18 @@ invariant above applies unchanged, so `status: "confirmed"` requires the
 The Effect Record additionally carries `effect_attestation`: WHO vouches
 for the effect's execution — the evidence grade of the effect claim. The
 vocabulary is registry-governed ({{iana}}; Specification Required), seeded
-with two values:
+with three values:
 
 | effect_attestation | Meaning |
 |---|---|
 | gate_executed | The commit transited the gate; the engine observed the effect boundary directly. |
 | runtime_claimed | The gate issued a verdict only; the executing runtime asserted completion; the capsule records that claim, not an observation. |
+| host_served_observed | The serving host's runtime reported the completion (its request and response digests) through the host's lifecycle channel; the producer observed that report, not the effect boundary itself. |
+
+`gate_executed` is the stronger grade. `runtime_claimed` and
+`host_served_observed` are equal in grade: each records a runtime's report
+of completion rather than a gate observation of the effect boundary, so
+neither grades above the other and both sit below `gate_executed`.
 
 Validity is checked against the assurance `effect_mode` ({{assurance}}):
 
@@ -1557,7 +1563,10 @@ Initial contents are the seeded values of this document, verbatim:
    consequence — a registration states its position): two_way,
    one_way_recoverable, one_way_consequential, one_way_terminal.
 5. "effect_attestation" registry ({{effect}}): gate_executed,
-   runtime_claimed. The registry definition carries the grade-floor
+   runtime_claimed, host_served_observed. `host_served_observed` is equal
+   in grade to runtime_claimed and below gate_executed: the serving host's
+   runtime reported the completion through its lifecycle channel, and the
+   producer observed that report, not the effect boundary. The registry definition carries the grade-floor
    invariant of {{effect}} — an unregistered or unrecognized value is
    graded no stronger than runtime_claimed; unknown never grades up —
    and the planned carve of {{effect}}: with `effect.status: "planned"`

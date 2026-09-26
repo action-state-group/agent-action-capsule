@@ -125,6 +125,13 @@ Initial contents:
 |---|---|
 | `gate_executed` | The commit transited the gate; the engine observed the effect boundary directly. |
 | `runtime_claimed` | The gate issued a verdict only; the executing runtime asserted completion; the capsule records that claim, not an observation. |
+| `host_served_observed` | The serving host's runtime reported the completion (its request and response digests) through the host's lifecycle channel; the producer observed that report, not the effect boundary itself. **Grade: equal to `runtime_claimed`** — it records a runtime's report of completion, never a gate observation, so it never grades above `runtime_claimed`. |
+
+**Grade order.** `gate_executed` is the stronger grade; `runtime_claimed` and
+`host_served_observed` are equal in grade to each other and below
+`gate_executed`. Registering `host_served_observed` changes no grading: the
+grade-floor rule above already treated it, while unregistered, as no stronger
+than `runtime_claimed`.
 
 **Designated-expert guidance (this registry).** Plausible future registrations
 exist and are deliberately NOT seeded here — e.g. independent sensor

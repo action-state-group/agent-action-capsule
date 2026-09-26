@@ -124,7 +124,7 @@ Internet-Draft            Agent Action Capsules           September 2026
      12.3.  Media Type Registrations . . . . . . . . . . . . . . . .  47
    13. Security Considerations . . . . . . . . . . . . . . . . . . .  49
    14. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  51
-     14.1.  Data-Admission Tiers . . . . . . . . . . . . . . . . . .  51
+     14.1.  Data-Admission Tiers . . . . . . . . . . . . . . . . . .  52
      14.2.  Adapter Allow-List Pattern . . . . . . . . . . . . . . .  52
    15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  52
      15.1.  Normative References . . . . . . . . . . . . . . . . . .  52
@@ -693,34 +693,34 @@ Internet-Draft            Agent Action Capsules           September 2026
    The Effect Record additionally carries effect_attestation: WHO
    vouches for the effect's execution — the evidence grade of the effect
    claim.  The vocabulary is registry-governed (Section 12;
-   Specification Required), seeded with two values:
+   Specification Required), seeded with three values:
 
-         +====================+=================================+
-         | effect_attestation | Meaning                         |
-         +====================+=================================+
-         | gate_executed      | The commit transited the gate;  |
-         |                    | the engine observed the effect  |
-         |                    | boundary directly.              |
-         +--------------------+---------------------------------+
-         | runtime_claimed    | The gate issued a verdict only; |
-         |                    | the executing runtime asserted  |
-         |                    | completion; the capsule records |
-         |                    | that claim, not an observation. |
-         +--------------------+---------------------------------+
+    +======================+=========================================+
+    | effect_attestation   | Meaning                                 |
+    +======================+=========================================+
+    | gate_executed        | The commit transited the gate; the      |
+    |                      | engine observed the effect boundary     |
+    |                      | directly.                               |
+    +----------------------+-----------------------------------------+
+    | runtime_claimed      | The gate issued a verdict only; the     |
+    |                      | executing runtime asserted completion;  |
+    |                      | the capsule records that claim, not an  |
+    |                      | observation.                            |
+    +----------------------+-----------------------------------------+
+    | host_served_observed | The serving host's runtime reported the |
+    |                      | completion (its request and response    |
+    |                      | digests) through the host's lifecycle   |
+    |                      | channel; the producer observed that     |
+    |                      | report, not the effect boundary itself. |
+    +----------------------+-----------------------------------------+
 
                                  Table 4
 
-   Validity is checked against the assurance effect_mode (Section 5.4):
-
-
-
-
-
-
-
-
-
-
+   gate_executed is the stronger grade. runtime_claimed and
+   host_served_observed are equal in grade: each records a runtime's
+   report of completion rather than a gate observation of the effect
+   boundary, so neither grades above the other and both sit below
+   gate_executed.
 
 
 
@@ -729,6 +729,8 @@ Mih                       Expires 30 March 2027                [Page 13]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
+
+   Validity is checked against the assurance effect_mode (Section 5.4):
 
       +========================+====================================+
       | effect_mode            | effect_attestation                 |
@@ -770,14 +772,12 @@ Internet-Draft            Agent Action Capsules           September 2026
    distinguishing gate-observed execution from runtime-claimed
    execution.  It is not copied into a Producer Envelope header.
 
-
-
-
-
-
-
-
-
+   References to external authorization records carried in the Effect
+   Record (for example, permit receipts per
+   [I-D.munoz-scitt-permit-profile], or machine mandates) are typed
+   digest references per [I-D.mih-sokolov-scitt-payload-binding]'s Typed
+   Digest References section, with artifact types drawn from the CPB
+   Artifact Type registry.  Cross-profile comparability of digest values
 
 
 
@@ -786,12 +786,6 @@ Mih                       Expires 30 March 2027                [Page 14]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
-   References to external authorization records carried in the Effect
-   Record (for example, permit receipts per
-   [I-D.munoz-scitt-permit-profile], or machine mandates) are typed
-   digest references per [I-D.mih-sokolov-scitt-payload-binding]'s Typed
-   Digest References section, with artifact types drawn from the CPB
-   Artifact Type registry.  Cross-profile comparability of digest values
    (comparable only under compatible declared digest contexts; otherwise
    indeterminate/deny, never equal-looking-hex) follows that document's
    Cross-Profile Comparability subsection.
@@ -832,16 +826,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    verifier rederives each mode from the evidence present and reports
    any overclaim.
 
-
-
-
-
-
-Mih                       Expires 30 March 2027                [Page 15]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    chained is derived solely from the presence and integrity of the
    Capsule's own chain-linkage block (Section 5.5.4) — the fields
    committed under chain at seal time.  Parent _resolution_ is a
@@ -850,6 +834,14 @@ Internet-Draft            Agent Action Capsules           September 2026
    or unresolvable parent is reported there, but it never downgrades
    ledger_mode — a Capsule handed over standalone, without the store
    that holds its parent, still derives chained from its own linkage
+
+
+
+Mih                       Expires 30 March 2027                [Page 15]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    block.  If parent existence instead fed ledger_mode, the same Capsule
    would derive chained inside a full ledger and standalone handed over
    alone; an assurance tier that depends on what the verifier happens to
@@ -881,6 +873,14 @@ Internet-Draft            Agent Action Capsules           September 2026
    unilateral_fallback < acknowledged_receipt < full_bilateral for
    overclaim detection — the same never-grades-up discipline Section 5.4
    already applies to attestation_mode, effect_mode, and ledger_mode:
+
+
+
+
+
+
+
+
 
 
 
@@ -2509,11 +2509,11 @@ Internet-Draft            Agent Action Capsules           September 2026
        one_way_terminal.
 
    5.  "effect_attestation" registry (Section 5.3): gate_executed,
-       runtime_claimed.  The registry definition carries the grade-floor
-       invariant of Section 5.3 — an unregistered or unrecognized value
-       is graded no stronger than runtime_claimed; unknown never grades
-       up — and the planned carve of Section 5.3: with effect.status:
-       "planned" the member MUST be absent, and it becomes REQUIRED the
+       runtime_claimed, host_served_observed. host_served_observed is
+       equal in grade to runtime_claimed and below gate_executed: the
+       serving host's runtime reported the completion through its
+       lifecycle channel, and the producer observed that report, not the
+       effect boundary.  The registry definition carries the grade-floor
 
 
 
@@ -2522,6 +2522,10 @@ Mih                       Expires 30 March 2027                [Page 45]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
+       invariant of Section 5.3 — an unregistered or unrecognized value
+       is graded no stronger than runtime_claimed; unknown never grades
+       up — and the planned carve of Section 5.3: with effect.status:
+       "planned" the member MUST be absent, and it becomes REQUIRED the
        moment dispatch occurs.  Designated-expert guidance: plausible
        future registrations exist and are deliberately not seeded — for
        example, independent sensor confirmation of a claimed effect, or
@@ -2566,10 +2570,6 @@ Internet-Draft            Agent Action Capsules           September 2026
        responds_to name a citation whose target is outside the citing
        Capsule's own chain — a different producer or a different stream
        (Section 5.5.5); a citation to the producer's own same-stream
-       chain parent is never expressed here. corroborates_source_time is
-       the seeded exception to that same-stream/cross-stream framing: it
-       cites, by digest, a signed or independently witnessed timestamp
-       supporting a provenance_mode block's source_asserted_at claim
 
 
 
@@ -2578,6 +2578,10 @@ Mih                       Expires 30 March 2027                [Page 46]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
+       chain parent is never expressed here. corroborates_source_time is
+       the seeded exception to that same-stream/cross-stream framing: it
+       cites, by digest, a signed or independently witnessed timestamp
+       supporting a provenance_mode block's source_asserted_at claim
        (Section 5.4.3), and is the only citation this profile permits to
        raise provenance_mode.time_rung from self_attested to witnessed.
        counterparty_half cites the counterparty's already-sealed half of
@@ -2622,10 +2626,6 @@ Internet-Draft            Agent Action Capsules           September 2026
 
    Agent Action Capsule media type:
 
-   *  Type name: application
-
-   *  Subtype name: agent-action-capsule+json
-
 
 
 
@@ -2633,6 +2633,10 @@ Mih                       Expires 30 March 2027                [Page 47]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
+
+   *  Type name: application
+
+   *  Subtype name: agent-action-capsule+json
 
    *  Required parameters: N/A
 
@@ -2679,16 +2683,16 @@ Internet-Draft            Agent Action Capsules           September 2026
 
    *  Subtype name: agent-action-capsule-id
 
-   *  Required parameters: N/A
-
-   *  Optional parameters: N/A
-
 
 
 Mih                       Expires 30 March 2027                [Page 48]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
+
+   *  Required parameters: N/A
+
+   *  Optional parameters: N/A
 
    *  Encoding considerations: binary; exactly 32 octets containing the
       raw SHA-256 Capsule ID represented in Capsule JSON as 64 lowercase
@@ -2734,10 +2738,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    profile inherits that boundary; the following extends it to the
    confirmed-effect binding.
 
-   Confirmed means observed-and-bound, not world-state.  A confirmed
-   effect proves the producer bound the bytes of an observed response,
-   not that the external world reached the claimed state.  The same
-   boundary extends one hop upstream: binding an observed response
 
 
 
@@ -2746,6 +2746,10 @@ Mih                       Expires 30 March 2027                [Page 49]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
+   Confirmed means observed-and-bound, not world-state.  A confirmed
+   effect proves the producer bound the bytes of an observed response,
+   not that the external world reached the claimed state.  The same
+   boundary extends one hop upstream: binding an observed response
    proves the producer observed those bytes, not that the responding
    system was authentic or that the channel was on-path-intact.  An
    attacker who substitutes or forges the response — a false success
@@ -2790,10 +2794,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    confirmed Capsule for an effect that did not land.  Input integrity —
    binding the authenticity of request bytes and upstream grounding
    sources to the authorization before the seal — is a separate
-   guarantee that composes with this profile at the digest layer: a
-   producer that holds input-integrity evidence (a signed tool response,
-   an attested transport record, a C2PA-style content credential, or an
-   action-body HMAC with memory provenance attestation) MAY reference it
 
 
 
@@ -2802,6 +2802,10 @@ Mih                       Expires 30 March 2027                [Page 50]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
+   guarantee that composes with this profile at the digest layer: a
+   producer that holds input-integrity evidence (a signed tool response,
+   an attested transport record, a C2PA-style content credential, or an
+   action-body HMAC with memory provenance attestation) MAY reference it
    by digest in the Capsule payload, preserving the verifier's
    disinterest — the verifier checks the binding without trusting the
    producer's claim about upstream systems it cannot observe.  This
@@ -2844,10 +2848,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    record are unfixable by design.  Producers MUST apply a default-deny
    posture to runtime context before it reaches a Capsule.
 
-14.1.  Data-Admission Tiers
-
-   Producer and adapter authors MUST classify every candidate field into
-   exactly one of the following tiers before admission:
 
 
 
@@ -2857,6 +2857,11 @@ Mih                       Expires 30 March 2027                [Page 51]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
+
+14.1.  Data-Admission Tiers
+
+   Producer and adapter authors MUST classify every candidate field into
+   exactly one of the following tiers before admission:
 
    1.  *Clear-safe* — Opaque correlation handles that are joinable but
        non-identifying: for example, agent_name, function_call_id,
@@ -2900,11 +2905,6 @@ Internet-Draft            Agent Action Capsules           September 2026
 15.  References
 
 15.1.  Normative References
-
-
-
-
-
 
 
 
