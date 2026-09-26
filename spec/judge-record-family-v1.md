@@ -6,7 +6,7 @@ semantic evaluation, a period close, a sampling manifest, a human rating, a twin
 its responses, and a calibration summary all use to report what was judged and on what basis. It
 exists because two families currently encode the same two capsules for the same purpose —
 `evaluation-compiler` fixtures and `capsule-judge`'s `judge_judgment`/`judge_adjudication` — and
-the skills path this family unblocks (`[capsulectl-book-verbs-v0]`, `[evidencebook-skills-v0]`)
+the planned book-verb and skills tooling that consumes these records
 needs exactly one.
 
 **Companion schemas.** `schemas/judge/*.json` — eight JSON Schemas (2020-12), one per record shape

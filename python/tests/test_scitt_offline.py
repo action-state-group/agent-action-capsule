@@ -2,7 +2,7 @@
 """Offline anchor → verify pipeline test with an in-process SCITT TS stub.
 
 No network calls — the TS stub runs on localhost:0 in a daemon thread.
-Acceptance criteria (from [land-anchor-client]):
+Acceptance criteria:
   1. anchor → verify: attestation_tier == 'anchored' (VALID).
   2. Tamper the Transparent Statement → signature_verified is not True (INVALID).
   3. anchor CLI subcommand parses and executes correctly against the stub.

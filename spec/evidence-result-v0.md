@@ -26,8 +26,8 @@ the aggregate coverage statement and bucket grouping.
 - The Evidence Plan IR's (`evidence-plan-ir-v0.md`) two-value `tier` vocabulary (§4.2) and its
   `<contract_id>@<version>` compact contract-reference convention (§2, carried on every IR node
   as `contract_ref`; this document uses the identical field name and shape on every claim).
-- The Witness/Countersign definitions' three-value assurance `grade` vocabulary, owned by
-  `[grade-vocabulary-reconcile]`.
+- The Witness/Countersign definitions' three-value assurance `grade` vocabulary, owned
+  elsewhere and never redefined here.
 
 A drift between any of the above and this document's mirrored copy is a defect in this document,
 never a second legitimate spelling.
@@ -90,7 +90,7 @@ Every claim also carries:
   projected, mirroring `evidence-plan-ir-v0.md` §4.2's vocabulary and its ruled mapping
   (`recomputed` ⇔ *Verifiable*, `judged` ⇔ *Attested* on the assurance ladder, 2026-09-22 ruling).
 - `grade` (`self-attested | witnessed | countersigned`) — the assurance grade the claim's own
-  bundle carries on the Witness/Countersign ladder, owned by `[grade-vocabulary-reconcile]`,
+  bundle carries on the Witness/Countersign ladder, owned elsewhere,
   mirrored here, never redefined.
 - `evidence[]` — the evidence this claim rests on, by digest only (§5). A claim never inlines
   evidence bytes; a reader who wants the bytes resolves the digest against the evidence's own
@@ -210,7 +210,7 @@ claim:
   contract_ref: string                # <contract_id>@<version> — §1
   requirement_ref: string             # a requirement id within that contract
   tier: recomputed | judged           # §1, mirrors evidence-plan-ir-v0.md §4.2
-  grade: self-attested | witnessed | countersigned   # §1, owned by [grade-vocabulary-reconcile]
+  grade: self-attested | witnessed | countersigned   # §1, owned elsewhere
   sufficiency: SATISFIED | GAP | INSUFFICIENT | UNKNOWN   # §1, owned by contract v3 §5.2
   verdict: met | not_met | not_evaluable                  # §1, owned by contract v3 §8
   evidence: [digest-ref, ...]         # §5 — by digest only
@@ -290,9 +290,9 @@ and never collapsed into a single figure (§3).
 
 ## 8. View
 
-Presentation hints only — **never data**. The `presentation/v1` header fields from
-`[report-three-carriers-and-verification-page]`: producer name, logo data URL, title. `view` MUST
-NOT carry any claim, verdict, sufficiency, digest, or other data field — a renderer that reads
+Presentation hints only — **never data**. The `presentation/v1` header fields: producer
+name, logo data URL, title. `view` MUST NOT carry any claim, verdict, sufficiency, digest,
+or other data field — a renderer that reads
 `view` for anything beyond how to label its own header chrome has misused it.
 
 ```
@@ -330,7 +330,7 @@ counterpart field at all in Result v0 and is not tabulated below.
 | *(no #102 counterpart)* | `claim.tier` | New in Result v0 — #102 has no recomputed/judged distinction; every judgment there is implicitly the semantic-adjudication kind. |
 | *(no #102 counterpart)* | `claim.grade` | New in Result v0 — #102 has no assurance-ladder concept at all. |
 | *(no #102 counterpart)* | `claim.proofs[]` | New in Result v0 — #102 has no inclusion-proof/receipt concept; its evidence is cited by bare id with no checkability claim. |
-| *(no #102 counterpart)* | `view` | New in Result v0 — #102 has no presentation-hints concept; `presentation/v1` header fields are defined separately by `[report-three-carriers-and-verification-page]` for the viewer, not by the evidence-graph model. |
+| *(no #102 counterpart)* | `view` | New in Result v0 — #102 has no presentation-hints concept; `presentation/v1` header fields are defined separately for the viewer, not by the evidence-graph model. |
 
 ## 10. Vocabulary discipline
 

@@ -153,12 +153,12 @@ planner — all three are conforming there by construction; only `LOCAL_ONLY` is
 | `judged` | The result was produced by a semantic adjudicator (model or human) applying judgment to the cited inputs, pinned by the attestation record's `adjudicator`/`policy_digest` fields (§6). |
 
 **Ruled mapping (2026-09-22, Steven) — stated here as a mapping only, never redefined:** on the
-assurance ladder owned by the Witness/Countersign definitions — the grade vocabulary being
-reconciled under `[grade-vocabulary-reconcile]` (OPEN at the time of writing), which this document
-does not own and therefore does not enumerate here — `recomputed` corresponds to *Verifiable* and
+assurance ladder owned by the Witness/Countersign definitions — the grade vocabulary is
+still being reconciled elsewhere (open at the time of writing), and this document
+does not own and therefore does not enumerate it here — `recomputed` corresponds to *Verifiable* and
 `judged` corresponds to *Attested*. This document states only which of the ladder's two coarse
 buckets each `tier` value falls into; the ladder's own rungs, their names, and their count are
-fixed by `[grade-vocabulary-reconcile]`, not here.
+fixed elsewhere, not here.
 
 ## 5. Operator catalogue v0
 
