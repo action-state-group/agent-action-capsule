@@ -1,10 +1,10 @@
 {
-  "source": "Python agent-action-capsule 0.5.0 (regenerated after registering effect_attestation 'host_served_observed', REGISTRY.md \u00a75)",
+  "source": "Python agent-action-capsule 0.5.0 (regenerated at spec_version -05, REGISTRY.md \u00a75 incl. host_served_observed)",
   "cases": [
     {
       "name": "mesh-seeded",
       "capsule": {
-        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
         "format_version": "4",
         "canonicalization_id": "jcs",
         "action_id": "vocabulary/example",
@@ -23,7 +23,7 @@
           "response_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "effect_attestation": "host_served_observed"
         },
-        "capsule_id": "b84f87d8e744960f03f989e24e70869b60d29a7b690f5b24514a9b45be3350ec"
+        "capsule_id": "4a939b441ce47ef32ec772b11f646621e8dc7780d3b81bb4b08934484a1d442b"
       },
       "ok": true,
       "assurance": {
@@ -41,7 +41,7 @@
     {
       "name": "future-unknown",
       "capsule": {
-        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
         "format_version": "4",
         "canonicalization_id": "jcs",
         "action_id": "vocabulary/example",
@@ -60,7 +60,7 @@
           "response_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "effect_attestation": "future-attestation"
         },
-        "capsule_id": "ba1fe2157d28611328bbc34e0e7fadf967679c1aab228e0702257f1e69f99c48"
+        "capsule_id": "ce88cde460316cd1433a576e86e74f13f4baad8bc2cd151ac177c76cd858093d"
       },
       "ok": true,
       "assurance": {
@@ -94,7 +94,7 @@
     {
       "name": "seeded",
       "capsule": {
-        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
         "format_version": "4",
         "canonicalization_id": "jcs",
         "action_id": "vocabulary/example",
@@ -113,7 +113,7 @@
           "response_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "effect_attestation": "gate_executed"
         },
-        "capsule_id": "8ce7f44c10e1b910b9de346358f4eed51a910ce58251da4a9a5cf381ef75f1ba"
+        "capsule_id": "146e8c82e6c9536243e6df1c77569742fb54f5645e8633a9595a6748814f3796"
       },
       "ok": true,
       "assurance": {
@@ -131,7 +131,7 @@
     {
       "name": "adjudication-shape",
       "capsule": {
-        "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
         "format_version": "4",
         "canonicalization_id": "jcs",
         "action_id": "vocabulary/example",
@@ -162,7 +162,7 @@
             }
           }
         },
-        "capsule_id": "0f72267ed333df7ddda6b225822abb6f0d05969a4452d60e4446b60208af4fd2"
+        "capsule_id": "18f359c01169ee2e45a41fbfcbac5578890a6765ccad82695a87e5b58f4096c7"
       },
       "ok": true,
       "assurance": {

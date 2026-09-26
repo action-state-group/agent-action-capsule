@@ -16,7 +16,7 @@ def generate():
         ("adjudication-shape", None, None, "adjudicates", True),
     ]:
         capsule = {
-            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
             "format_version": "4", "canonicalization_id": "jcs",
             "action_id": "vocabulary/example", "action_type": "fyi",
             "operator": "example-org", "developer": "example-agent@v1",
@@ -31,7 +31,7 @@ def generate():
         capsule["capsule_id"] = compute_capsule_id(capsule)
         result = verify(capsule)
         cases.append({"name": name, "capsule": capsule, "ok": result.ok, "assurance": result.assurance, "findings": [{"code": f.code, "severity": f.severity} for f in result.findings]})
-    Path(__file__).with_name("vocabulary.json").write_text(json.dumps({"source": "Python agent-action-capsule 0.5.0 (regenerated after registering effect_attestation 'host_served_observed', REGISTRY.md §5)", "cases": cases}, indent=2) + "\n")
+    Path(__file__).with_name("vocabulary.json").write_text(json.dumps({"source": "Python agent-action-capsule 0.5.0 (regenerated at spec_version -05, REGISTRY.md §5 incl. host_served_observed)", "cases": cases}, indent=2) + "\n")
 
 
 if __name__ == "__main__":
