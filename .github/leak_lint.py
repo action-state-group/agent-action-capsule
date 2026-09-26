@@ -151,8 +151,14 @@ def _has_bracket_id_leak(line: str) -> bool:
         (an earlier version of this check) missed exactly this shape.
       - uppercase citation tags (`[RFC2119]`, `[I-D.foo]`): excluded structurally by
         BRACKET_ID's lowercase-only character class, not handled here.
+      - HTML attribute selectors `[data-report-date]` / `[aria-label]`: exempt whenever the
+        bracket content starts with `data-` or `aria-` -- the HTML `data-*`/`aria-*` attribute
+        namespaces, which DOM code addresses with exactly this bracket shape
+        (`querySelectorAll("[data-case-id]")`). An internal id never starts with either.
     """
     for m in BRACKET_ID.finditer(line):
+        if m.group(0).startswith(("[data-", "[aria-")):
+            continue
         before = line[m.start() - 1 : m.start()]
         if before and (before.isalnum() or before in "_-"):
             continue

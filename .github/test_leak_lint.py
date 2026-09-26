@@ -141,6 +141,32 @@ def test_bracketed_id_does_not_fire_on_hyphenated_pip_extra(tmp_path):
     assert result.returncode == 0, result.stdout
 
 
+def test_bracketed_id_does_not_fire_on_html_attribute_selectors(tmp_path):
+    """`[data-*]` / `[aria-*]` are HTML attribute selectors (DOM tests address elements with
+    exactly this bracket shape), never internal ids. A real id in the same file still fires."""
+    repo = _init_repo(tmp_path)
+    _write(
+        repo,
+        "ts/test/view.test.ts",
+        "\n".join(
+            [
+                'const tiles = root.querySelectorAll<HTMLElement>("[data-report-date]");',
+                'root.querySelector("[data-case-id]")!.click();',
+                'expect(root.querySelector("[aria-live-region]")).toBeNull();',
+                "",
+            ]
+        ),
+    )
+    _commit_all(repo)
+    result = _run(repo)
+    assert result.returncode == 0, result.stdout
+    _write(repo, "ts/test/view.test.ts", "const note = \"see [totally-fake-internal-task-id]\";\n")
+    _commit_all(repo)
+    red = _run(repo)
+    assert red.returncode == 1
+    assert "bracketed-id" in red.stdout
+
+
 def test_bracketed_id_does_not_fire_on_hex_regex_character_class(tmp_path):
     repo = _init_repo(tmp_path)
     _write(
