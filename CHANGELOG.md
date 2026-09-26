@@ -28,6 +28,17 @@
   the single pinned legacy artifact; do not re-tag.
 
 ### Spec
+- `spec/draft-mih-agent-evidence-request-00.md` — new Internet-Draft, "An
+  Interaction Model for Requesting Verifiable Evidence" (sole author Steven
+  Mih), defining a transport-agnostic request/response interaction for
+  verifiable evidence: a request naming a subject and a coverage anchor,
+  resolving to exactly one of three outcomes — the evidence artifact, a
+  signed refusal carrying a machine-readable reason (registry includes
+  `derivation_unsupported`), or a recorded absence — with a distinct
+  pending state for a request still inside its waiting window. Defines no
+  evidence format, identity scheme, trust policy, or availability
+  guarantee; requester identity, purpose, authorization, and disclosure
+  policy are explicit non-goals.
 - `spec/judge-record-family-v1.md` — added the Judge Record Family: eight companion JSON
   Schemas (`schemas/judge/*.json`) unifying two previously-divergent record families for the
   same two capsules (`evaluation-compiler` fixtures vs. `capsule-judge`'s
