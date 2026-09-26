@@ -284,7 +284,7 @@ detail is specified in <xref target="constraints"/>.</t>
               <td align="left">spec_version</td>
               <td align="left">string</td>
               <td align="left">REQUIRED</td>
-              <td align="left">The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-05". Producers emit the newest published value; verifiers accept every published value (below).</td>
+              <td align="left">The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-05". Verifiers also accept "draft-mih-scitt-agent-action-capsule-04" (below).</td>
             </tr>
             <tr>
               <td align="left">format_version</td>
@@ -343,16 +343,14 @@ detail is specified in <xref target="constraints"/>.</t>
             </tr>
           </tbody>
         </table>
-        <t>A producer MUST emit the newest published <tt>spec_version</tt> value; a
-producer implementing this revision emits
-"draft-mih-scitt-agent-action-capsule-05". A verifier MUST accept every
-<tt>spec_version</tt> value defined by a published revision of this profile and
-MUST NOT reject a Capsule solely because it carries an earlier revision's
-value. <tt>spec_version</tt> names the prose revision; it selects no digest,
-canonicalization, or verification algorithm (<tt>format_version</tt> and
-<tt>canonicalization_id</tt> do), so a Capsule sealed under
-"draft-mih-scitt-agent-action-capsule-04" is verified by the checks of
-<xref target="verification"/> unchanged.</t>
+        <t>A producer conforming to this revision MUST emit
+"draft-mih-scitt-agent-action-capsule-05". A verifier MUST accept the
+values "draft-mih-scitt-agent-action-capsule-04" and
+"draft-mih-scitt-agent-action-capsule-05" (the revisions that define
+format 4) and MUST NOT reject a Capsule solely because it carries either.
+<tt>spec_version</tt> never selects a digest, canonicalization, or verification
+algorithm. An unrecognized <tt>spec_version</tt> value is informational and is
+never by itself a reason to reject (consistent with check 8).</t>
         <t>Monetary and quantity values are subject to the exact-decimal-string
 requirement in <xref target="conventions"/>.</t>
       </section>
@@ -1391,11 +1389,11 @@ The seeded vocabulary:</t>
               </tr>
               <tr>
                 <td align="left">counterparty_half</td>
-                <td align="left">The cited record is the counterparty's half of a two-party exchange, received and held by the citing node. The citing node records <tt>received_from</tt>, <tt>via</tt>, <tt>received_at</tt>, and <tt>signature_ok</tt>, together with the received half's digests, in this Capsule's <tt>compute_attestation.received_half</tt>, and cites the counterparty's already-sealed Capsule by digest through this entry. The citing node does NOT re-assert the cited half as its own observation, action, or outcome — the entry records CUSTODY of an external half, so a held foreign half becomes a committed, checkpointed fact of this stream rather than a render-time observation. The cited half is a foreign record, never this Capsule's <tt>chain.parent_capsule_id</tt>, so the boundary rule above holds.</td>
+                <td align="left">The cited record is the counterparty's half of a two-party exchange, received and held by the citing node. The citing node cites the counterparty's already-sealed Capsule by digest through this entry. How the citing node obtained and checked the cited half is outside this profile; the citation asserts custody of the cited record, not an observation of it. The citing node does NOT re-assert the cited half as its own observation, action, or outcome — the entry records CUSTODY of an external half, so a held foreign half becomes a committed, checkpointed fact of this stream rather than a render-time observation. The cited half is a foreign record, never this Capsule's <tt>chain.parent_capsule_id</tt>, so the boundary rule above holds.</td>
               </tr>
               <tr>
                 <td align="left">counterparty_inclusion</td>
-                <td align="left">This Capsule cites, by digest, a counterparty's inclusion proof and the checkpoint covering it — and that checkpoint's receipt when it is witnessed — for a counterparty half the citing node already holds under an earlier <tt>counterparty_half</tt> citation, with one <tt>references</tt> entry per cited artifact. The cited artifacts are held artifacts, never entries in the citing node's chain. The citing Capsule chains to its own same-stream head via <tt>follows</tt> (<xref target="hitl"/>) and never mutates the earlier <tt>counterparty_half</tt> citation: inclusion evidence is added by a new record, never by amending the custody record.</td>
+                <td align="left">This Capsule cites, by digest, a counterparty's inclusion proof and the checkpoint covering it — and that checkpoint's receipt when it is witnessed — for a counterparty half the citing node already holds under an earlier <tt>counterparty_half</tt> citation, with one <tt>references</tt> entry per cited artifact. The value exists because <tt>log_coordinates</tt> cannot be added to a Capsule after sealing: inclusion evidence that arrives later is cited by a later record. The cited artifacts are held artifacts, never entries in the citing node's chain. The citing Capsule chains to its own same-stream head via <tt>follows</tt> (<xref target="hitl"/>) and never mutates the earlier <tt>counterparty_half</tt> citation: inclusion evidence is added by a new record, never by amending the custody record.</td>
               </tr>
             </tbody>
           </table>
@@ -1898,14 +1896,7 @@ configuration-epoch boundaries (<xref target="epochboundary"/>) and <tt>duplicat
 reserved for a backfilled Capsule citing the contemporaneous Capsule
 of the same logical event in this producer's own stream
 (<xref target="provenancemode"/>) — a <tt>duplicates</tt>-linked pair is counted once, the
-contemporaneous record governing. Deployed adapter-tier producers of
-the reference implementation have emitted <tt>sequence</tt> as their default
-next-link relation with the same bare-ordering intent; this document
-distinguishes no relation vocabulary by producer tier, so <tt>sequence</tt>
-is not registered — <tt>follows</tt> is the registered form and <tt>sequence</tt>
-is a deployed legacy alias slated for migration, handled by verifiers
-under the binding invariant above (informational, never a rejection).
-Additional non-terminal
+contemporaneous record governing. Additional non-terminal
 relations (for example, deposit-toward-open and effort-toward-open
 relations, or amends / contradicts) are expected future registrations,
 each admitted once its semantics and any verifier consequence are
@@ -2989,7 +2980,7 @@ About This Document
         </reference>
       </references>
     </references>
-    <?line 1902?>
+    <?line 1893?>
 
 <section anchor="changes-from-04">
       <name>Changes from draft-mih-scitt-agent-action-capsule-04</name>
@@ -2998,10 +2989,28 @@ before publication.</t>
       <ul spacing="normal">
         <li>
           <t>Wire version: the <tt>spec_version</tt> value defined by this revision is
-"draft-mih-scitt-agent-action-capsule-05". Producers emit the newest
-published value; verifiers accept every published value, so
-"draft-mih-scitt-agent-action-capsule-04" Capsules continue to verify
-unchanged (<xref target="identity"/>).</t>
+"draft-mih-scitt-agent-action-capsule-05". A producer conforming to this
+revision emits it; a verifier accepts both
+"draft-mih-scitt-agent-action-capsule-04" and
+"draft-mih-scitt-agent-action-capsule-05", so a format-4 Capsule carrying
+"draft-mih-scitt-agent-action-capsule-04" verifies unchanged. An
+unrecognized value is informational, never by itself a rejection
+(<xref target="identity"/>).</t>
+        </li>
+        <li>
+          <t>Format 4 only (contributed by Yiqun Zhang): format 4 with
+<tt>canonicalization_id: "jcs"</tt> is the sole supported format for producers
+and verifiers; the vintage format-2 and withdrawn <tt>jcs-n</tt> verification
+path of -04 is removed, so a format-2 Capsule now fails closed. A
+committed payload digest is SHA-256 over <tt>UTF8(JCS(value))</tt> for the whole
+value, with JCS sorting applied recursively and no member allow-list,
+replacer, or key filtering at any depth (<xref target="conventions"/>). <tt>capsule_id</tt>
+is computed after removing local-only <tt>signature</tt> and <tt>key_id</tt> envelope
+fields and <tt>capsule_id</tt>, with <tt>references</tt> participating (<xref target="identity"/>).
+<tt>log_coordinates.leaf_index</tt> is a JSON integer holding the zero-based
+MMR leaf index (a one-based sequence number <tt>seq</tt> is encoded as
+<tt>seq - 1</tt>) (<xref target="xref"/>). Class 1 checks 1 and 2 are restated accordingly
+(<xref target="verification"/>).</t>
         </li>
         <li>
           <t>Provenance mode: an optional <tt>provenance_mode</tt> block distinguishes
@@ -3010,8 +3019,7 @@ contemporaneous from backfilled records, with the <tt>duplicates</tt>
 Class 1 check 9 (<xref target="provenancemode"/>, <xref target="verification"/>).</t>
         </li>
         <li>
-          <t>New registrations: <tt>chain.relation</tt> <tt>follows</tt>, the bare next-link, with
-<tt>sequence</tt> noted as a deployed legacy alias that is not registered
+          <t>New registrations: <tt>chain.relation</tt> <tt>follows</tt>, the bare next-link
 (<xref target="hitl"/>); <tt>citation_purpose</tt> <tt>ran_under</tt>, with its grade
 non-propagation rule, and <tt>counterparty_half</tt> and
 <tt>counterparty_inclusion</tt> (<xref target="xref"/>); <tt>effect.type</tt> <tt>inference_completion</tt>
@@ -3020,7 +3028,8 @@ grade to <tt>runtime_claimed</tt> (<xref target="effect"/>).</t>
         </li>
         <li>
           <t>Cross-record references: <tt>{digest_alg, digest}</tt> is stated normatively as
-a reference's sole identity; policy references are excluded; an optional,
+a reference's sole identity, with a non-normative rationale ("Why the
+digest is the identity"); policy references are excluded; an optional,
 declared-not-attested <tt>retention</tt> object is defined (<xref target="xref"/>,
 <xref target="retentiondecl"/>).</t>
         </li>
@@ -3042,9 +3051,10 @@ set (<xref target="disposition"/>), which the check had restated without
         <li>
           <t>References: the selective-disclosure companion is cited as
 <xref target="I-D.mih-scitt-agent-action-capsule-sel-disc"/>, correcting a citation of
-a document that does not exist; companion-draft revision pins are
-updated; <xref target="I-D.ietf-scitt-scrapi"/> and <xref target="RFC8392"/> are cited where
-already relied on.</t>
+a document that does not exist, and the sentence describing that
+companion as a CPB payload-class document is removed; companion-draft
+revision pins are updated; <xref target="I-D.ietf-scitt-scrapi"/> and <xref target="RFC8392"/> are
+cited where already relied on.</t>
         </li>
       </ul>
     </section>
@@ -3055,7 +3065,9 @@ recorded here, and the SCITT and COSE working groups whose substrate this
 profile builds on. The author additionally thanks Jody Edmondson for
 identifying the producer-context data-admission problem and the allow-list
 adapter pattern in capsule-emit issue #22, which shaped the Privacy
-Considerations of this document.</t>
+Considerations of this document, and Imran Siddique for finding that
+the Class 1 verification section restated the <tt>approver</tt> set without
+<tt>counterparty</tt> (#108).</t>
     </section>
   </back>
 

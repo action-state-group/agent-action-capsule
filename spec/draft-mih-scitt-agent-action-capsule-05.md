@@ -327,7 +327,7 @@ detail is specified in {{constraints}}.
 
 | Field | Type | Req | Meaning |
 |---|---|---|---|
-| spec_version | string | REQUIRED | The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-05". Producers emit the newest published value; verifiers accept every published value (below). |
+| spec_version | string | REQUIRED | The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-05". Verifiers also accept "draft-mih-scitt-agent-action-capsule-04" (below). |
 | format_version | string | REQUIRED | The serialization-suite version. The value MUST be exactly "4". |
 | canonicalization_id | string | REQUIRED | The value MUST be exactly "jcs". Absent, null, non-string, empty, unknown, and `"jcs-n"` declarations are invalid. |
 | capsule_id | string (64 lowercase hex) | REQUIRED | The derived identifier. Remove local-only `signature` and `key_id` envelope fields, if present in a local composite representation, then compute SHA-256 over plain JCS of the Capsule after removing only `capsule_id`. The `canonicalization_id` declaration, `chain` block, and `references` array participate. Verifiers MUST recompute; carried values MUST NOT be trusted. |
@@ -338,16 +338,14 @@ detail is specified in {{constraints}}.
 | timestamp | string | REQUIRED | {{RFC3339}} UTC with "Z" suffix. |
 | epoch_id | string | OPTIONAL | An operator-assigned epoch identifier, stable within one operational configuration of the agent system. Producers SHOULD populate this field and rotate its value — together with an epoch-boundary Capsule ({{epochs}}) — when a configuration change that materially alters agent behavior occurs (for example, a model-version swap, a policy-manifest revision, or a significant constraint-schema change). A verifier or ledger consumer scopes a history window to a specific operational configuration by filtering on operator and epoch_id. Absent epoch_id implies a single, unnamed epoch; a producer MUST NOT back-fill epoch_id on Capsules already sealed. |
 
-A producer MUST emit the newest published `spec_version` value; a
-producer implementing this revision emits
-"draft-mih-scitt-agent-action-capsule-05". A verifier MUST accept every
-`spec_version` value defined by a published revision of this profile and
-MUST NOT reject a Capsule solely because it carries an earlier revision's
-value. `spec_version` names the prose revision; it selects no digest,
-canonicalization, or verification algorithm (`format_version` and
-`canonicalization_id` do), so a Capsule sealed under
-"draft-mih-scitt-agent-action-capsule-04" is verified by the checks of
-{{verification}} unchanged.
+A producer conforming to this revision MUST emit
+"draft-mih-scitt-agent-action-capsule-05". A verifier MUST accept the
+values "draft-mih-scitt-agent-action-capsule-04" and
+"draft-mih-scitt-agent-action-capsule-05" (the revisions that define
+format 4) and MUST NOT reject a Capsule solely because it carries either.
+`spec_version` never selects a digest, canonicalization, or verification
+algorithm. An unrecognized `spec_version` value is informational and is
+never by itself a reason to reject (consistent with check 8).
 
 Monetary and quantity values are subject to the exact-decimal-string
 requirement in {{conventions}}.
@@ -1159,8 +1157,8 @@ The seeded vocabulary:
 | acted_on | This Capsule's action targeted, consumed, or was performed against the cited record's declared content — a stream boundary, not a custody claim: the cited record may belong to a different producer or stream entirely, and citing it asserts only that this action is about that content, never that the citing producer holds or continues its custody. |
 | responds_to | This Capsule addresses or answers the cited record without a same-stream chain relationship to it — the cited record is not this Capsule's `chain.parent_capsule_id` and MAY be a different producer's record or otherwise outside this producer's own stream. |
 | ran_under | This Capsule cites a record stating the runtime environment and the authority under which its action executed — what ran, and under whose attestation. The cited record MAY belong to a different producer (for example, a hardware-attestation record emitted by an attestation service); citing it with this purpose asserts that this Capsule's action ran under the conditions that record attests, not that the citing producer re-derived them. |
-| counterparty_half | The cited record is the counterparty's half of a two-party exchange, received and held by the citing node. The citing node records `received_from`, `via`, `received_at`, and `signature_ok`, together with the received half's digests, in this Capsule's `compute_attestation.received_half`, and cites the counterparty's already-sealed Capsule by digest through this entry. The citing node does NOT re-assert the cited half as its own observation, action, or outcome — the entry records CUSTODY of an external half, so a held foreign half becomes a committed, checkpointed fact of this stream rather than a render-time observation. The cited half is a foreign record, never this Capsule's `chain.parent_capsule_id`, so the boundary rule above holds. |
-| counterparty_inclusion | This Capsule cites, by digest, a counterparty's inclusion proof and the checkpoint covering it — and that checkpoint's receipt when it is witnessed — for a counterparty half the citing node already holds under an earlier `counterparty_half` citation, with one `references` entry per cited artifact. The cited artifacts are held artifacts, never entries in the citing node's chain. The citing Capsule chains to its own same-stream head via `follows` ({{hitl}}) and never mutates the earlier `counterparty_half` citation: inclusion evidence is added by a new record, never by amending the custody record. |
+| counterparty_half | The cited record is the counterparty's half of a two-party exchange, received and held by the citing node. The citing node cites the counterparty's already-sealed Capsule by digest through this entry. How the citing node obtained and checked the cited half is outside this profile; the citation asserts custody of the cited record, not an observation of it. The citing node does NOT re-assert the cited half as its own observation, action, or outcome — the entry records CUSTODY of an external half, so a held foreign half becomes a committed, checkpointed fact of this stream rather than a render-time observation. The cited half is a foreign record, never this Capsule's `chain.parent_capsule_id`, so the boundary rule above holds. |
+| counterparty_inclusion | This Capsule cites, by digest, a counterparty's inclusion proof and the checkpoint covering it — and that checkpoint's receipt when it is witnessed — for a counterparty half the citing node already holds under an earlier `counterparty_half` citation, with one `references` entry per cited artifact. The value exists because `log_coordinates` cannot be added to a Capsule after sealing: inclusion evidence that arrives later is cited by a later record. The cited artifacts are held artifacts, never entries in the citing node's chain. The citing Capsule chains to its own same-stream head via `follows` ({{hitl}}) and never mutates the earlier `counterparty_half` citation: inclusion evidence is added by a new record, never by amending the custody record. |
 
 Designated-expert guidance: `acted_on`, `responds_to`, and `ran_under`
 name a cross-stream citation intent that `chain.relation` cannot express
@@ -1638,14 +1636,7 @@ Initial contents are the seeded values of this document, verbatim:
    reserved for a backfilled Capsule citing the contemporaneous Capsule
    of the same logical event in this producer's own stream
    ({{provenancemode}}) — a `duplicates`-linked pair is counted once, the
-   contemporaneous record governing. Deployed adapter-tier producers of
-   the reference implementation have emitted `sequence` as their default
-   next-link relation with the same bare-ordering intent; this document
-   distinguishes no relation vocabulary by producer tier, so `sequence`
-   is not registered — `follows` is the registered form and `sequence`
-   is a deployed legacy alias slated for migration, handled by verifiers
-   under the binding invariant above (informational, never a rejection).
-   Additional non-terminal
+   contemporaneous record governing. Additional non-terminal
    relations (for example, deposit-toward-open and effort-toward-open
    relations, or amends / contradicts) are expected future registrations,
    each admitted once its semantics and any verifier consequence are
@@ -1907,23 +1898,39 @@ This appendix is non-normative. RFC Editor: please remove this appendix
 before publication.
 
 * Wire version: the `spec_version` value defined by this revision is
-  "draft-mih-scitt-agent-action-capsule-05". Producers emit the newest
-  published value; verifiers accept every published value, so
-  "draft-mih-scitt-agent-action-capsule-04" Capsules continue to verify
-  unchanged ({{identity}}).
+  "draft-mih-scitt-agent-action-capsule-05". A producer conforming to this
+  revision emits it; a verifier accepts both
+  "draft-mih-scitt-agent-action-capsule-04" and
+  "draft-mih-scitt-agent-action-capsule-05", so a format-4 Capsule carrying
+  "draft-mih-scitt-agent-action-capsule-04" verifies unchanged. An
+  unrecognized value is informational, never by itself a rejection
+  ({{identity}}).
+* Format 4 only (contributed by Yiqun Zhang): format 4 with
+  `canonicalization_id: "jcs"` is the sole supported format for producers
+  and verifiers; the vintage format-2 and withdrawn `jcs-n` verification
+  path of -04 is removed, so a format-2 Capsule now fails closed. A
+  committed payload digest is SHA-256 over `UTF8(JCS(value))` for the whole
+  value, with JCS sorting applied recursively and no member allow-list,
+  replacer, or key filtering at any depth ({{conventions}}). `capsule_id`
+  is computed after removing local-only `signature` and `key_id` envelope
+  fields and `capsule_id`, with `references` participating ({{identity}}).
+  `log_coordinates.leaf_index` is a JSON integer holding the zero-based
+  MMR leaf index (a one-based sequence number `seq` is encoded as
+  `seq - 1`) ({{xref}}). Class 1 checks 1 and 2 are restated accordingly
+  ({{verification}}).
 * Provenance mode: an optional `provenance_mode` block distinguishes
   contemporaneous from backfilled records, with the `duplicates`
   `chain.relation`, the `corroborates_source_time` `citation_purpose`, and
   Class 1 check 9 ({{provenancemode}}, {{verification}}).
-* New registrations: `chain.relation` `follows`, the bare next-link, with
-  `sequence` noted as a deployed legacy alias that is not registered
+* New registrations: `chain.relation` `follows`, the bare next-link
   ({{hitl}}); `citation_purpose` `ran_under`, with its grade
   non-propagation rule, and `counterparty_half` and
   `counterparty_inclusion` ({{xref}}); `effect.type` `inference_completion`
   ({{effect}}); and `effect_attestation` `host_served_observed`, equal in
   grade to `runtime_claimed` ({{effect}}).
 * Cross-record references: `{digest_alg, digest}` is stated normatively as
-  a reference's sole identity; policy references are excluded; an optional,
+  a reference's sole identity, with a non-normative rationale ("Why the
+  digest is the identity"); policy references are excluded; an optional,
   declared-not-attested `retention` object is defined ({{xref}},
   {{retentiondecl}}).
 * Cross-algorithm re-anchoring of an anchored root is specified
@@ -1937,9 +1944,10 @@ before publication.
   `counterparty` (reported by Imran Siddique, #108).
 * References: the selective-disclosure companion is cited as
   {{I-D.mih-scitt-agent-action-capsule-sel-disc}}, correcting a citation of
-  a document that does not exist; companion-draft revision pins are
-  updated; {{I-D.ietf-scitt-scrapi}} and {{RFC8392}} are cited where
-  already relied on.
+  a document that does not exist, and the sentence describing that
+  companion as a CPB payload-class document is removed; companion-draft
+  revision pins are updated; {{I-D.ietf-scitt-scrapi}} and {{RFC8392}} are
+  cited where already relied on.
 
 # Acknowledgments
 {:numbered="false"}
@@ -1949,4 +1957,6 @@ recorded here, and the SCITT and COSE working groups whose substrate this
 profile builds on. The author additionally thanks Jody Edmondson for
 identifying the producer-context data-admission problem and the allow-list
 adapter pattern in capsule-emit issue #22, which shaped the Privacy
-Considerations of this document.
+Considerations of this document, and Imran Siddique for finding that
+the Class 1 verification section restated the `approver` set without
+`counterparty` (#108).
