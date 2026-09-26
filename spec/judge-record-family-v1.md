@@ -311,7 +311,25 @@ from content shaped like that conversation family, with `hand_label: true` rewri
 follow-up work for whichever task ports capsule-judge/capsule-compiler onto this family; it is not
 schema-blocking.
 
-## 10. Open follow-ups (not this task's DONE)
+## 10. Capsule record kinds this family reads
+
+Some records this family's shapes read are ordinary Agent Action Capsules rather than judge record
+shapes. They are defined by the Agent Action Capsule profile (`draft-mih-scitt-agent-action-capsule`,
+`spec/REGISTRY.md`), not here: this section names them so a reader of a two-party Close (§3) or an
+evidence bundle knows which Capsule to look for. Each kind is identified by its `references[]`
+entry's `citation_purpose`, **never** by the `chain.relation` string, and none is a ninth record
+shape of this family (no schema, no `record_version`).
+
+| Kind | Identified by | Record | Read by |
+|---|---|---|---|
+| Counterparty-half custody record | a `references[]` entry with `citation_purpose: counterparty_half` (AAC `citation_purpose` registry, `REGISTRY.md` §11) | The producer's own Capsule, chained to its own head via `chain.relation: follows`, whose `references[]` entry cites the counterparty's already-sealed half by digest; the received half's bytes stay a held artifact, never an entry in this producer's chain | a two-sided (closed) exchange state, which reads this record as the committed fact that the counterparty's half is held; an evidence bundle carries it alongside the producer's own half |
+
+A counterparty-half custody record produced by migrating previously received halves (rather than at
+receipt time) is a backfilled Capsule: it carries `provenance_mode.mode = "backfilled"` as the AAC
+profile already defines it (Provenance mode section; `REGISTRY.md` §12). This family does not
+redefine that mode.
+
+## 11. Open follow-ups (not this task's DONE)
 
 - **`capsule-registry` Home-2 registration.** The item header notes profile ids for this family are
   registered in `capsule-registry` Home-2. No registry PR is part of this task's DONE line (schemas
