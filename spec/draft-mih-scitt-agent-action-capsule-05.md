@@ -36,7 +36,7 @@ normative:
   I-D.mih-sokolov-scitt-payload-binding:
     title: "Canonical Payload Binding: A Signed Statement Construction Profile"
     seriesinfo:
-      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-00
+      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-05
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -62,10 +62,10 @@ informative:
   I-D.sato-soos-gar:
   I-D.nivalto-agentroa-route-authorization:
   RFC6839:
-  I-D.mih-scitt-cpb-selective-disclosure:
-    title: "Selective Disclosure Profile for Canonical Payload Binding"
+  I-D.mih-scitt-agent-action-capsule-sel-disc:
+    title: "Selective Disclosure Profile for Agent Action Capsules"
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-cpb-selective-disclosure-00
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-sel-disc-00
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -73,7 +73,7 @@ informative:
   I-D.mih-sato-agent-accountability-composition:
     title: "Agent Accountability: Composition and Conformance"
     seriesinfo:
-      Internet-Draft: draft-mih-sato-agent-accountability-composition-00
+      Internet-Draft: draft-mih-sato-agent-accountability-composition-01
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -83,7 +83,7 @@ informative:
   I-D.mih-agent-bilateral-attestation:
     title: "Bilateral Agent Action Attestation"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-bilateral-attestation-00
+      Internet-Draft: draft-mih-agent-bilateral-attestation-02
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -1087,7 +1087,7 @@ later discloses. The selective-disclosure extension point
 ({{selectivedisclosure}}) neither affects nor is affected by any
 `retention` declaration: disclosures are retained by the party
 presenting the Capsule, never by a log or Transparency Service
-({{I-D.mih-scitt-cpb-selective-disclosure}}, Disclosure Delivery), and
+({{I-D.mih-scitt-agent-action-capsule-sel-disc}}, Disclosure Delivery), and
 `capsule_id` is computed over commitments that do not change under
 redaction. Retention of a cited artifact and disclosure of the citing
 Capsule's own fields are independent axes, and a hosted verification
@@ -1365,16 +1365,15 @@ written to stay aligned with SPICE's SD-CWT {{I-D.ietf-spice-sd-cwt}}
 
 The complete normative profile of this mechanism — including the
 commitment encoding, disclosure syntax, and verifier checks — is defined
-in the companion Internet-Draft {{I-D.mih-scitt-cpb-selective-disclosure}}.
-That companion is a CPB payload-class document; the mechanism is
-payload-class-generic. This profile (AAC) retains only the
+in the companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-sel-disc}}.
+This profile (AAC) retains only the
 eligibility-policy annex: the declaration of which AAC payload fields are
 eligible for selective disclosure and which are non-eligible because this
 profile's own verifier requires their values in clear.
 
 Implementations of this profile version MUST NOT generate or interpret
 selective-disclosure payload structures unless they additionally implement
-{{I-D.mih-scitt-cpb-selective-disclosure}}: the extension point is
+{{I-D.mih-scitt-agent-action-capsule-sel-disc}}: the extension point is
 defined only in that companion, and no conformance claim or verification
 behavior is defined for it in this document.
 
@@ -1468,7 +1467,7 @@ can verify the record end-to-end. Statement-type and verdict-class
 values reserved in this document for that extension are governed by
 the registries in {{iana}}.
 
-The companion Internet-Draft {{I-D.mih-scitt-cpb-selective-disclosure}}
+The companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-sel-disc}}
 normatively profiles the selective-disclosure extension point reserved in
 {{selectivedisclosure}}, specifying the per-field commitment structure,
 disclosure syntax, eligible fields, and verifier checks, aligned with

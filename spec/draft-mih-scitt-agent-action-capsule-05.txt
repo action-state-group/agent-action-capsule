@@ -4,8 +4,8 @@
 
 SCITT                                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Standards Track                       23 September 2026
-Expires: 27 March 2027
+Intended status: Standards Track                       26 September 2026
+Expires: 30 March 2027
 
 
                An Agent Action Capsule Profile for SCITT
@@ -47,13 +47,13 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 27 March 2027.
+   This Internet-Draft will expire on 30 March 2027.
 
 
 
 
 
-Mih                       Expires 27 March 2027                 [Page 1]
+Mih                       Expires 30 March 2027                 [Page 1]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Mih                       Expires 27 March 2027                 [Page 2]
+Mih                       Expires 30 March 2027                 [Page 2]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -165,7 +165,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                 [Page 3]
+Mih                       Expires 30 March 2027                 [Page 3]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -221,7 +221,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                 [Page 4]
+Mih                       Expires 30 March 2027                 [Page 4]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -277,7 +277,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                 [Page 5]
+Mih                       Expires 30 March 2027                 [Page 5]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -333,7 +333,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                 [Page 6]
+Mih                       Expires 30 March 2027                 [Page 6]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -389,7 +389,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                 [Page 7]
+Mih                       Expires 30 March 2027                 [Page 7]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -445,7 +445,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                 [Page 8]
+Mih                       Expires 30 March 2027                 [Page 8]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -501,7 +501,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                 [Page 9]
+Mih                       Expires 30 March 2027                 [Page 9]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -557,7 +557,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 10]
+Mih                       Expires 30 March 2027                [Page 10]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -613,7 +613,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 11]
+Mih                       Expires 30 March 2027                [Page 11]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -669,7 +669,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 12]
+Mih                       Expires 30 March 2027                [Page 12]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -725,7 +725,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 13]
+Mih                       Expires 30 March 2027                [Page 13]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -781,7 +781,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 14]
+Mih                       Expires 30 March 2027                [Page 14]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -837,7 +837,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 15]
+Mih                       Expires 30 March 2027                [Page 15]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -893,7 +893,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 16]
+Mih                       Expires 30 March 2027                [Page 16]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -949,7 +949,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 17]
+Mih                       Expires 30 March 2027                [Page 17]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1005,7 +1005,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 18]
+Mih                       Expires 30 March 2027                [Page 18]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1061,7 +1061,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 19]
+Mih                       Expires 30 March 2027                [Page 19]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1117,7 +1117,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 20]
+Mih                       Expires 30 March 2027                [Page 20]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1173,7 +1173,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 21]
+Mih                       Expires 30 March 2027                [Page 21]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1229,7 +1229,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 22]
+Mih                       Expires 30 March 2027                [Page 22]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1285,7 +1285,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 23]
+Mih                       Expires 30 March 2027                [Page 23]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1341,7 +1341,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 24]
+Mih                       Expires 30 March 2027                [Page 24]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1397,7 +1397,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 25]
+Mih                       Expires 30 March 2027                [Page 25]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1453,7 +1453,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 26]
+Mih                       Expires 30 March 2027                [Page 26]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1509,7 +1509,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 27]
+Mih                       Expires 30 March 2027                [Page 27]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1565,7 +1565,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 28]
+Mih                       Expires 30 March 2027                [Page 28]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1621,7 +1621,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 29]
+Mih                       Expires 30 March 2027                [Page 29]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1677,7 +1677,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 30]
+Mih                       Expires 30 March 2027                [Page 30]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1719,8 +1719,8 @@ Internet-Draft            Agent Action Capsules           September 2026
    (Section 9.2) neither affects nor is affected by any retention
    declaration: disclosures are retained by the party presenting the
    Capsule, never by a log or Transparency Service
-   ([I-D.mih-scitt-cpb-selective-disclosure], Disclosure Delivery), and
-   capsule_id is computed over commitments that do not change under
+   ([I-D.mih-scitt-agent-action-capsule-sel-disc], Disclosure Delivery),
+   and capsule_id is computed over commitments that do not change under
    redaction.  Retention of a cited artifact and disclosure of the
    citing Capsule's own fields are independent axes, and a hosted
    verification service that itself holds no state (for example, one
@@ -1733,7 +1733,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 31]
+Mih                       Expires 30 March 2027                [Page 31]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1789,7 +1789,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 32]
+Mih                       Expires 30 March 2027                [Page 32]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1845,7 +1845,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 33]
+Mih                       Expires 30 March 2027                [Page 33]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1901,7 +1901,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 34]
+Mih                       Expires 30 March 2027                [Page 34]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -1957,7 +1957,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 35]
+Mih                       Expires 30 March 2027                [Page 35]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2013,7 +2013,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 36]
+Mih                       Expires 30 March 2027                [Page 36]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2069,7 +2069,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 37]
+Mih                       Expires 30 March 2027                [Page 37]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2109,23 +2109,23 @@ Internet-Draft            Agent Action Capsules           September 2026
    The complete normative profile of this mechanism — including the
    commitment encoding, disclosure syntax, and verifier checks — is
    defined in the companion Internet-Draft
-   [I-D.mih-scitt-cpb-selective-disclosure].  That companion is a CPB
-   payload-class document; the mechanism is payload-class-generic.  This
-   profile (AAC) retains only the eligibility-policy annex: the
-   declaration of which AAC payload fields are eligible for selective
-   disclosure and which are non-eligible because this profile's own
-   verifier requires their values in clear.
+   [I-D.mih-scitt-agent-action-capsule-sel-disc].  This profile (AAC)
+   retains only the eligibility-policy annex: the declaration of which
+   AAC payload fields are eligible for selective disclosure and which
+   are non-eligible because this profile's own verifier requires their
+   values in clear.
 
    Implementations of this profile version MUST NOT generate or
    interpret selective-disclosure payload structures unless they
-   additionally implement [I-D.mih-scitt-cpb-selective-disclosure]: the
-   extension point is defined only in that companion, and no conformance
-   claim or verification behavior is defined for it in this document.
+   additionally implement [I-D.mih-scitt-agent-action-capsule-sel-disc]:
+   the extension point is defined only in that companion, and no
+   conformance claim or verification behavior is defined for it in this
+   document.
 
 
 
 
-Mih                       Expires 27 March 2027                [Page 38]
+Mih                       Expires 30 March 2027                [Page 38]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2181,7 +2181,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 39]
+Mih                       Expires 30 March 2027                [Page 39]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2237,16 +2237,17 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 40]
+Mih                       Expires 30 March 2027                [Page 40]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
 
-   The companion Internet-Draft [I-D.mih-scitt-cpb-selective-disclosure]
-   normatively profiles the selective-disclosure extension point
-   reserved in Section 9.2, specifying the per-field commitment
-   structure, disclosure syntax, eligible fields, and verifier checks,
-   aligned with [I-D.ietf-spice-sd-cwt].
+   The companion Internet-Draft
+   [I-D.mih-scitt-agent-action-capsule-sel-disc] normatively profiles
+   the selective-disclosure extension point reserved in Section 9.2,
+   specifying the per-field commitment structure, disclosure syntax,
+   eligible fields, and verifier checks, aligned with
+   [I-D.ietf-spice-sd-cwt].
 
 12.  IANA Considerations
 
@@ -2292,8 +2293,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-
-Mih                       Expires 27 March 2027                [Page 41]
+Mih                       Expires 30 March 2027                [Page 41]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2349,7 +2349,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 42]
+Mih                       Expires 30 March 2027                [Page 42]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2405,7 +2405,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 43]
+Mih                       Expires 30 March 2027                [Page 43]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2461,7 +2461,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 44]
+Mih                       Expires 30 March 2027                [Page 44]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2517,7 +2517,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 45]
+Mih                       Expires 30 March 2027                [Page 45]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2573,7 +2573,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 46]
+Mih                       Expires 30 March 2027                [Page 46]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2629,7 +2629,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 47]
+Mih                       Expires 30 March 2027                [Page 47]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2685,7 +2685,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 48]
+Mih                       Expires 30 March 2027                [Page 48]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2694,8 +2694,8 @@ Internet-Draft            Agent Action Capsules           September 2026
               Mih, S. and A. Sokolov, "Canonical Payload Binding: A
               Signed Statement Construction Profile", Work in Progress,
               Internet-Draft, draft-mih-sokolov-scitt-payload-binding-
-              00, n.d., <https://datatracker.ietf.org/doc/html/draft-
-              mih-sokolov-scitt-payload-binding-00>.
+              05, n.d., <https://datatracker.ietf.org/doc/html/draft-
+              mih-sokolov-scitt-payload-binding-05>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -2741,7 +2741,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 49]
+Mih                       Expires 30 March 2027                [Page 49]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2783,9 +2783,9 @@ Internet-Draft            Agent Action Capsules           September 2026
               Birkholz, H., Delignat-Lavaud, A., Fournet, C., and A.
               Chamayou, "CCF Profile for COSE Receipts", Work in
               Progress, Internet-Draft, draft-ietf-scitt-receipts-ccf-
-              profile-04, 24 June 2026,
+              profile-05, 23 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-ietf-scitt-
-              receipts-ccf-profile-04>.
+              receipts-ccf-profile-05>.
 
    [I-D.ietf-scitt-scrapi]
               Birkholz, H., Geater, J., and A. Delignat-Lavaud, "Supply
@@ -2797,7 +2797,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 50]
+Mih                       Expires 30 March 2027                [Page 50]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2835,16 +2835,16 @@ Internet-Draft            Agent Action Capsules           September 2026
    [I-D.mih-agent-bilateral-attestation]
               Mih, S., "Bilateral Agent Action Attestation", Work in
               Progress, Internet-Draft, draft-mih-agent-bilateral-
-              attestation-00, n.d.,
+              attestation-02, n.d.,
               <https://datatracker.ietf.org/doc/html/draft-mih-agent-
-              bilateral-attestation-00>.
+              bilateral-attestation-02>.
 
    [I-D.mih-sato-agent-accountability-composition]
               Mih, S. and T. Sato, "Agent Accountability: Composition
               and Conformance", Work in Progress, Internet-Draft, draft-
-              mih-sato-agent-accountability-composition-00, n.d.,
+              mih-sato-agent-accountability-composition-01, n.d.,
               <https://datatracker.ietf.org/doc/html/draft-mih-sato-
-              agent-accountability-composition-00>.
+              agent-accountability-composition-01>.
 
 
 
@@ -2853,17 +2853,17 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 51]
+Mih                       Expires 30 March 2027                [Page 51]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
 
-   [I-D.mih-scitt-cpb-selective-disclosure]
-              Mih, S., "Selective Disclosure Profile for Canonical
-              Payload Binding", Work in Progress, Internet-Draft, draft-
-              mih-scitt-cpb-selective-disclosure-00, n.d.,
+   [I-D.mih-scitt-agent-action-capsule-sel-disc]
+              Mih, S., "Selective Disclosure Profile for Agent Action
+              Capsules", Work in Progress, Internet-Draft, draft-mih-
+              scitt-agent-action-capsule-sel-disc-00, n.d.,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
-              cpb-selective-disclosure-00>.
+              agent-action-capsule-sel-disc-00>.
 
    [I-D.munoz-scitt-permit-profile]
               Munoz, C., "A SCITT Profile for Pre-Execution AI Action
@@ -2909,7 +2909,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 27 March 2027                [Page 52]
+Mih                       Expires 30 March 2027                [Page 52]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2965,4 +2965,4 @@ Author's Address
 
 
 
-Mih                       Expires 27 March 2027                [Page 53]
+Mih                       Expires 30 March 2027                [Page 53]
