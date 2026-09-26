@@ -924,11 +924,13 @@ survivorship-biased and the refusal path unverifiable.
 
 Every Capsule that references a prior Capsule carries a digested `chain`
 block: `{parent_capsule_id, relation}`. The `relation` vocabulary is
-registry-governed ({{iana}}; Specification Required), seeded with one
-value:
+registry-governed ({{iana}}; Specification Required), seeded with the
+values below; the additional `duplicates` relation is defined in
+{{provenancemode}}:
 
 | relation | Meaning |
 |---|---|
+| follows | Non-terminal: a bare next-link — this Capsule appends to the producer's stream after the parent and asserts no outcome, observation, or transition over it; the parent's open state is unaffected. The default relation for an ordinary sequential record, including one whose substance lies in its own fields or its `references` citations ({{xref}}) rather than in any claim about the parent. Verifiers and downstream evidence evaluators MUST NOT read a `follows` link as confirming, superseding, or otherwise grading the parent — it is ordering only. |
 | confirms | Non-terminal: this Capsule observes or records the outcome of the parent; the parent's open state remains. |
 | supersedes | Terminal transition over the parent — resolution, expiry, escalation close or replace the parent's open state. |
 | epoch_opens | Non-terminal: this Capsule opens a new operational epoch. The chain parent is the last Capsule produced under the prior epoch. The opening Capsule carries the new epoch_id ({{epochboundary}}); the prior epoch's last Capsule is the parent. |
@@ -1131,13 +1133,15 @@ parent uses `chain` instead and never mints a `references` entry for it
 (the boundary rule above). `counterparty_half` likewise names a citation,
 not a parent-link: the citing Capsule still chains to its own same-stream
 head with an ordinary `chain.relation` that asserts no outcome over the
-parent, and the fact that it holds a counterparty's foreign half is carried
+parent — `follows` ({{hitl}}) when the record makes no other claim over
+that head — and the fact that it holds a counterparty's foreign half is
+carried
 solely by this `references` entry — never by a new `chain.relation` value.
 Registering the held-half meaning on `chain.relation` (for example a
 proposed `cites`) would conflate the parent-link axis with the
 citation-target axis, the same conflation this section forbids below when it
 requires a cross-stream citation to be "a `references` entry with the
-appropriate `citation_purpose`, not a fourth `chain.relation` value."
+appropriate `citation_purpose`, not a new `chain.relation` value."
 Additional `citation_purpose` values are
 expected future registrations, each admitted once its semantics are
 pinned in a publicly available specification, per this document's
@@ -1154,7 +1158,7 @@ the affirmative case). An implementation using `chain` with a
 `confirms`-shaped relation for a citation that is not the same-stream
 parent is not using `chain` as this document defines it; the compatible
 migration is a `references` entry with the appropriate
-`citation_purpose`, not a fourth `chain.relation` value.
+`citation_purpose`, not a new `chain.relation` value.
 
 # Class 1 verification {#verification}
 
@@ -1549,15 +1553,27 @@ Initial contents are the seeded values of this document, verbatim:
    independent sensor confirmation of a claimed effect, or hardware- or
    TEE-anchored execution; a registration states where its grade sits
    relative to the seeded values.
-6. "chain.relation" registry ({{hitl}}): confirms, supersedes, epoch_opens,
-   duplicates. Designated-expert guidance: `supersedes` is the single
-   terminal relation; `confirms`, `epoch_opens`, and `duplicates` are
-   non-terminal relations, with `epoch_opens` reserved for
-   configuration-epoch boundaries ({{epochboundary}}) and `duplicates`
+6. "chain.relation" registry ({{hitl}}): follows, confirms, supersedes,
+   epoch_opens, duplicates. Designated-expert guidance: `supersedes` is
+   the single terminal relation; `follows`, `confirms`, `epoch_opens`,
+   and `duplicates` are non-terminal relations. `follows` is the bare
+   next-link and the default relation for an ordinary sequential record:
+   it asserts no outcome, observation, or transition over the parent,
+   and verifiers and downstream evidence evaluators MUST NOT read it as
+   confirming, superseding, or otherwise grading the parent — it is
+   ordering only ({{hitl}}). `epoch_opens` is reserved for
+   configuration-epoch boundaries ({{epochboundary}}) and `duplicates` is
    reserved for a backfilled Capsule citing the contemporaneous Capsule
    of the same logical event in this producer's own stream
    ({{provenancemode}}) — a `duplicates`-linked pair is counted once, the
-   contemporaneous record governing. Additional non-terminal
+   contemporaneous record governing. Deployed adapter-tier producers of
+   the reference implementation have emitted `sequence` as their default
+   next-link relation with the same bare-ordering intent; this document
+   distinguishes no relation vocabulary by producer tier, so `sequence`
+   is not registered — `follows` is the registered form and `sequence`
+   is a deployed legacy alias slated for migration, handled by verifiers
+   under the binding invariant above (informational, never a rejection).
+   Additional non-terminal
    relations (for example, deposit-toward-open and effort-toward-open
    relations, or amends / contradicts) are expected future registrations,
    each admitted once its semantics and any verifier consequence are
@@ -1583,8 +1599,10 @@ Initial contents are the seeded values of this document, verbatim:
    counterparty's already-sealed half of a two-party exchange, received and
    held by the citing node ({{xref}}); it is a citation, never a
    `chain.relation` value — the citing Capsule chains to its own same-stream
-   head with an ordinary relation that asserts no outcome over the parent,
-   and holding a foreign half is carried solely by the `references` entry.
+   head with an ordinary relation that asserts no outcome over the parent
+   (`follows`, the bare next-link, when it makes no other claim over that
+   head), and holding a foreign half is carried solely by the `references`
+   entry.
    Additional values are expected
    future registrations, each admitted once its semantics are pinned in
    a publicly available specification.

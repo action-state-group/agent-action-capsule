@@ -1,5 +1,5 @@
 {
-  "source": "Python agent-action-capsule 0.2.0 at bb648e1",
+  "source": "Python agent-action-capsule 0.5.0 (regenerated after registering chain.relation 'follows', REGISTRY.md \u00a76)",
   "cases": [
     {
       "name": "mesh-provisional",
@@ -34,10 +34,6 @@
       "findings": [
         {
           "code": "chain_check_store_level",
-          "severity": "info"
-        },
-        {
-          "code": "known_provisional_registry_value",
           "severity": "info"
         },
         {

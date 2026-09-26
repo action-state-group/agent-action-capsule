@@ -182,6 +182,10 @@ def emit(
     chain: Chain | None = None
     if prior_capsule_id is not None:
         # Adapter tier (tool_name set) defaults to "sequence"; full API defaults to "follows".
+        # "follows" is the registered §6 bare next-link relation; "sequence" is a
+        # deployed legacy alias slated for migration to "follows" (spec/REGISTRY.md §6,
+        # "Deployed legacy alias"). Kept as-is here so deployed adapter streams stay
+        # byte-stable until the migration is cut.
         if chain_relation is None:
             rel = "sequence" if tool_name is not None else "follows"
         else:

@@ -133,13 +133,15 @@ Initial contents:
 
 | Value | Semantics |
 |---|---|
+| `follows` | Non-terminal: a bare next-link — this capsule appends to the producer's stream after the parent and asserts no outcome, observation, or transition over it; the parent's open state is unaffected. The default relation for an ordinary sequential record, including a record whose substance lies in its own fields or its `references[]` citations rather than in any claim about the parent (e.g. a counterparty-half custody record citing a foreign half via `citation_purpose: counterparty_half`, §11). **Verifier consequence:** verifiers and downstream evidence evaluators MUST NOT read a `follows` link as confirming, superseding, or otherwise grading the parent — it is ordering only. |
 | `confirms` | Non-terminal: this capsule observes or records the outcome of the parent — the parent's open state remains. The most common chain link: *attempted → confirmed*. |
 | `supersedes` | Terminal transition over the parent — resolution, expiry, escalation close/replace the parent's open state. |
 | `epoch_opens` | Non-terminal: this capsule opens a new operational configuration epoch. The chain parent MUST be the last capsule produced under the prior epoch. The opening capsule carries the new `epoch_id`. Defined in §5.1 (Configuration epochs, Epoch-boundary Capsules) of the Internet-Draft. |
 | `duplicates` | Non-terminal: this capsule is a backfilled import of the same logical event already recorded by the parent, a contemporaneous capsule in this producer's own stream. Defined in the Internet-Draft's Provenance mode section (`-05` and later revisions). A `duplicates`-linked pair is counted once by verifiers and downstream evidence evaluators; the contemporaneous parent's assurance and disposition govern. |
 
-**Designated-expert guidance (this registry).** Seeded with the core non-terminal and terminal
-relations, plus `epoch_opens` for configuration-epoch boundaries and `duplicates`
+**Designated-expert guidance (this registry).** Seeded with the bare ordering
+link (`follows`), the core non-terminal and terminal relations, plus
+`epoch_opens` for configuration-epoch boundaries and `duplicates`
 for backfilled-record deduplication. Additional
 non-terminal relations — deposit-toward-open and effort-toward-open relations,
 or `amends` / `contradicts` — are expected future registrations, each admitted
@@ -147,6 +149,16 @@ once its semantics and any verifier consequence are pinned in a publicly
 available specification. Such relations are anticipated in a future revision of
 the Internet-Draft and are registered into this same registry rather than
 establishing a new one.
+
+**Deployed legacy alias — `sequence`.** The reference implementation's adapter
+tier (tool-wrapping integrations) has emitted `sequence` as its default
+next-link relation with the same bare-ordering intent as `follows`. The
+Internet-Draft distinguishes no relation vocabulary by producer tier, so
+`sequence` is NOT registered as a separate value: `follows` is the registered
+form, and `sequence` is a deployed legacy alias slated for migration to
+`follows`. A verifier encountering `sequence` handles it under the never-reject
+invariant like any unregistered value — an informational finding, never a
+rejection — and producers SHOULD emit the registered `follows`.
 
 ## 7. Reserved payload members — selective disclosure
 
@@ -266,7 +278,8 @@ parent is never expressed via `references`/`citation_purpose`; a
 it cites a FOREIGN half while the citing Capsule chains to its own LOCAL
 head in `chain`: the two targets are different records, so nothing is
 duplicated. The `chain.relation` to that local head remains the ordinary
-same-stream link (§6, Internet-Draft `#hitl`); holding a foreign half is
+same-stream link — `follows` when the record asserts nothing over that head
+(§6, Internet-Draft `#hitl`); holding a foreign half is
 carried entirely by the `references[]` entry and this `citation_purpose`,
 never by minting a new `chain.relation` value (see the designated-expert
 note below and §6).
@@ -281,9 +294,10 @@ citation, not a parent-link, so registering it as a `chain.relation` value
 (for example a proposed `cites`) would conflate the two axes — the very
 conflation the Internet-Draft's Cross-record references section forbids when
 it states that a cross-stream citation "is a `references` entry with the
-appropriate `citation_purpose`, not a fourth `chain.relation` value." The
+appropriate `citation_purpose`, not a new `chain.relation` value." The
 record still carries an ordinary same-stream `chain.relation` to its own
-head; that relation asserts no outcome over the parent (§6), and the
+head — `follows` when it makes no other claim over that head; the relation
+asserts no outcome over the parent (§6), and the
 custody-of-a-foreign-half meaning lives solely in this `citation_purpose`.
 
 ## 12. `provenance_mode`

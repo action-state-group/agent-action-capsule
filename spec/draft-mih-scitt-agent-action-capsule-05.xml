@@ -1114,8 +1114,9 @@ survivorship-biased and the refusal path unverifiable.</t>
           <name>Chained Capsules and human-in-the-loop resolution</name>
           <t>Every Capsule that references a prior Capsule carries a digested <tt>chain</tt>
 block: <tt>{parent_capsule_id, relation}</tt>. The <tt>relation</tt> vocabulary is
-registry-governed (<xref target="iana"/>; Specification Required), seeded with one
-value:</t>
+registry-governed (<xref target="iana"/>; Specification Required), seeded with the
+values below; the additional <tt>duplicates</tt> relation is defined in
+<xref target="provenancemode"/>:</t>
           <table>
             <thead>
               <tr>
@@ -1124,6 +1125,10 @@ value:</t>
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td align="left">follows</td>
+                <td align="left">Non-terminal: a bare next-link — this Capsule appends to the producer's stream after the parent and asserts no outcome, observation, or transition over it; the parent's open state is unaffected. The default relation for an ordinary sequential record, including one whose substance lies in its own fields or its <tt>references</tt> citations (<xref target="xref"/>) rather than in any claim about the parent. Verifiers and downstream evidence evaluators MUST NOT read a <tt>follows</tt> link as confirming, superseding, or otherwise grading the parent — it is ordering only.</td>
+              </tr>
               <tr>
                 <td align="left">confirms</td>
                 <td align="left">Non-terminal: this Capsule observes or records the outcome of the parent; the parent's open state remains.</td>
@@ -1359,13 +1364,15 @@ parent uses <tt>chain</tt> instead and never mints a <tt>references</tt> entry f
 (the boundary rule above). <tt>counterparty_half</tt> likewise names a citation,
 not a parent-link: the citing Capsule still chains to its own same-stream
 head with an ordinary <tt>chain.relation</tt> that asserts no outcome over the
-parent, and the fact that it holds a counterparty's foreign half is carried
+parent — <tt>follows</tt> (<xref target="hitl"/>) when the record makes no other claim over
+that head — and the fact that it holds a counterparty's foreign half is
+carried
 solely by this <tt>references</tt> entry — never by a new <tt>chain.relation</tt> value.
 Registering the held-half meaning on <tt>chain.relation</tt> (for example a
 proposed <tt>cites</tt>) would conflate the parent-link axis with the
 citation-target axis, the same conflation this section forbids below when it
 requires a cross-stream citation to be "a <tt>references</tt> entry with the
-appropriate <tt>citation_purpose</tt>, not a fourth <tt>chain.relation</tt> value."
+appropriate <tt>citation_purpose</tt>, not a new <tt>chain.relation</tt> value."
 Additional <tt>citation_purpose</tt> values are
 expected future registrations, each admitted once its semantics are
 pinned in a publicly available specification, per this document's
@@ -1381,7 +1388,7 @@ the affirmative case). An implementation using <tt>chain</tt> with a
 <tt>confirms</tt>-shaped relation for a citation that is not the same-stream
 parent is not using <tt>chain</tt> as this document defines it; the compatible
 migration is a <tt>references</tt> entry with the appropriate
-<tt>citation_purpose</tt>, not a fourth <tt>chain.relation</tt> value.</t>
+<tt>citation_purpose</tt>, not a new <tt>chain.relation</tt> value.</t>
         </section>
       </section>
     </section>
@@ -1801,15 +1808,27 @@ TEE-anchored execution; a registration states where its grade sits
 relative to the seeded values.</t>
           </li>
           <li>
-            <t>"chain.relation" registry (<xref target="hitl"/>): confirms, supersedes, epoch_opens,
-duplicates. Designated-expert guidance: <tt>supersedes</tt> is the single
-terminal relation; <tt>confirms</tt>, <tt>epoch_opens</tt>, and <tt>duplicates</tt> are
-non-terminal relations, with <tt>epoch_opens</tt> reserved for
-configuration-epoch boundaries (<xref target="epochboundary"/>) and <tt>duplicates</tt>
+            <t>"chain.relation" registry (<xref target="hitl"/>): follows, confirms, supersedes,
+epoch_opens, duplicates. Designated-expert guidance: <tt>supersedes</tt> is
+the single terminal relation; <tt>follows</tt>, <tt>confirms</tt>, <tt>epoch_opens</tt>,
+and <tt>duplicates</tt> are non-terminal relations. <tt>follows</tt> is the bare
+next-link and the default relation for an ordinary sequential record:
+it asserts no outcome, observation, or transition over the parent,
+and verifiers and downstream evidence evaluators MUST NOT read it as
+confirming, superseding, or otherwise grading the parent — it is
+ordering only (<xref target="hitl"/>). <tt>epoch_opens</tt> is reserved for
+configuration-epoch boundaries (<xref target="epochboundary"/>) and <tt>duplicates</tt> is
 reserved for a backfilled Capsule citing the contemporaneous Capsule
 of the same logical event in this producer's own stream
 (<xref target="provenancemode"/>) — a <tt>duplicates</tt>-linked pair is counted once, the
-contemporaneous record governing. Additional non-terminal
+contemporaneous record governing. Deployed adapter-tier producers of
+the reference implementation have emitted <tt>sequence</tt> as their default
+next-link relation with the same bare-ordering intent; this document
+distinguishes no relation vocabulary by producer tier, so <tt>sequence</tt>
+is not registered — <tt>follows</tt> is the registered form and <tt>sequence</tt>
+is a deployed legacy alias slated for migration, handled by verifiers
+under the binding invariant above (informational, never a rejection).
+Additional non-terminal
 relations (for example, deposit-toward-open and effort-toward-open
 relations, or amends / contradicts) are expected future registrations,
 each admitted once its semantics and any verifier consequence are
@@ -1837,8 +1856,10 @@ from <tt>self_attested</tt> to <tt>witnessed</tt>. <tt>counterparty_half</tt> ci
 counterparty's already-sealed half of a two-party exchange, received and
 held by the citing node (<xref target="xref"/>); it is a citation, never a
 <tt>chain.relation</tt> value — the citing Capsule chains to its own same-stream
-head with an ordinary relation that asserts no outcome over the parent,
-and holding a foreign half is carried solely by the <tt>references</tt> entry.
+head with an ordinary relation that asserts no outcome over the parent
+(<tt>follows</tt>, the bare next-link, when it makes no other claim over that
+head), and holding a foreign half is carried solely by the <tt>references</tt>
+entry.
 Additional values are expected
 future registrations, each admitted once its semantics are pinned in
 a publicly available specification.</t>
@@ -2885,7 +2906,7 @@ About This Document
         </reference>
       </references>
     </references>
-    <?line 1806?>
+    <?line 1824?>
 
 <section numbered="false" anchor="acknowledgments">
       <name>Acknowledgments</name>

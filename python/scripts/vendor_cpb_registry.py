@@ -124,6 +124,11 @@ _CAPSULE_FIELD_VALUES: dict[str, dict] = {
             # need provisional resolution here.
             "effect.type": ["inference_completion"],
             "effect_attestation": ["host_served_observed"],
+            # 'follows' was registered in spec/REGISTRY.md §6 (the -05 revision),
+            # so check 8 now resolves it as seeded and never consults this entry.
+            # Kept until the next snapshot refresh so the committed
+            # cpb_provisional.json (pinned by snapshot_sha256 and mirrored into
+            # go/registries/data/) stays byte-identical; drop it when re-vendoring.
             "chain.relation": ["follows"],
         },
     },
