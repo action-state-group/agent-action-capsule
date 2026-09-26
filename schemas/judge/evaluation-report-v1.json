@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentactioncapsule.org/schemas/judge/evaluation-report-v1.json",
+  "title": "Evaluation Report v1",
+  "description": "Companion schema for spec/judge-record-family-v1.md section 2. The root schema validates an Evaluation Report record: per-case met/not_met/not_evaluable judgments over cited acts, reached under one judge pin. This is the single-party case of adjudication-v1.json's shape -- each Case's basis reuses that schema's Basis $def field-for-field (model_id, prompt_digest, axes_digest, sampling), so 'judgment-basis fields identical across both' is a literal, not just a stated, property of this family. Unifies capsule-judge's judge_judgment/judge_adjudication and capsule-compiler's judge_judgment_adapter row convention into one schema. epistemic_type is fixed to semantic_judgment -- a judgment reached by interpretation, not direct observation.",
+  "$ref": "#/$defs/EvaluationReport",
+  "$defs": {
+    "HexDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "DigestRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest_alg", "digest"],
+      "properties": {
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" }
+      }
+    },
+    "Citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "digest_alg", "digest", "citation_purpose"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" },
+        "citation_purpose": { "type": "string", "minLength": 1 }
+      }
+    },
+    "ActCitation": {
+      "allOf": [
+        { "$ref": "#/$defs/Citation" },
+        { "properties": { "citation_purpose": { "const": "grounds" } } }
+      ]
+    },
+    "MethodCitation": {
+      "description": "The rubric or method this case was judged against -- cited by digest, never inlined, so a reader can independently resolve exactly what standard produced the verdict.",
+      "allOf": [
+        { "$ref": "#/$defs/Citation" },
+        { "properties": { "citation_purpose": { "const": "method" } } }
+      ]
+    },
+    "ContractRef": {
+      "description": "Compact versioned Evidence Contract reference: <contract_id>@<version>. Same convention as evidence-result-v0.json's Claim.contract_ref.",
+      "type": "string",
+      "pattern": "^[^@\\s]+@[^@\\s]+$"
+    },
+    "SamplingParams": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["integer", "string", "boolean"]
+      }
+    },
+    "Basis": {
+      "description": "Identical in name and meaning to adjudication-v1.json's Basis $def -- the shared judgment-basis shape this family reuses rather than redefines.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "prompt_digest", "sampling"],
+      "properties": {
+        "model_id": { "type": "string", "minLength": 1 },
+        "prompt_digest": { "$ref": "#/$defs/DigestRef" },
+        "axes_digest": { "$ref": "#/$defs/DigestRef" },
+        "weights_digest": { "$ref": "#/$defs/DigestRef" },
+        "sampling": { "$ref": "#/$defs/SamplingParams" }
+      }
+    },
+    "Case": {
+      "description": "The single-party adjudication: one case, judged under this report's judge_pin, against cited acts and a cited method, resolving to the Evidence Contract's three-value Verdict (v3 section 8, mirrored here, never redefined -- same vocabulary evidence-result-v0.json's Claim.verdict uses).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "verdict", "acts", "method"],
+      "properties": {
+        "case_id": { "type": "string", "minLength": 1 },
+        "verdict": { "enum": ["met", "not_met", "not_evaluable"] },
+        "acts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/ActCitation" }
+        },
+        "method": { "$ref": "#/$defs/MethodCitation" }
+      }
+    },
+    "EvaluationReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_version", "record_id", "epistemic_type", "generated_at",
+        "contract_ref", "judge_pin", "cases"
+      ],
+      "properties": {
+        "record_version": { "const": "evaluation-report/v1" },
+        "record_id": { "type": "string", "minLength": 1 },
+        "epistemic_type": { "const": "semantic_judgment" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "contract_ref": { "$ref": "#/$defs/ContractRef" },
+        "judge_pin": { "$ref": "#/$defs/Basis" },
+        "cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/Case" }
+        }
+      }
+    }
+  }
+}

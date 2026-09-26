@@ -345,4 +345,4 @@ three buckets populated, exercising both the sufficiency/verdict rule (§1) and 
 (§2) in one fixture) and five negative fixtures, each mutated from the positive by exactly one
 field, each failing at exactly one documented rule. See that directory's `README.md` for the exact
 cases and `schemas/check_evidence_result_examples.py` for the validation run, including the
-mutant/load-bearing proof for each negative (mutation-test discipline).
+mutant/load-bearing proof for each negative.

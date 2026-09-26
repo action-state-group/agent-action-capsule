@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentactioncapsule.org/schemas/judge/adjudication-v1.json",
+  "title": "Adjudication v1",
+  "description": "Companion schema for spec/judge-record-family-v1.md section 6. The root schema validates an Adjudication record: a ruling, reached by a named basis, over one or two cited parties -- the two-party case is capsule-emit-mesh's twin adjudication (cites two halves, chain.relation: adjudicates); the one-party case is what evaluation-report/v1's per-case entries structurally match (same basis field names: model_id, prompt_digest, sampling). epistemic_type is fixed to adjudication -- a ruling on a matter that was disputed or required judgment.",
+  "$ref": "#/$defs/Adjudication",
+  "$defs": {
+    "HexDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "DigestRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest_alg", "digest"],
+      "properties": {
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" }
+      }
+    },
+    "Citation": {
+      "description": "spec/judge-record-family-v1.md section 0 -- every record in this family cites what it read by digest, with a citation_purpose stating why.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "digest_alg", "digest", "citation_purpose"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" },
+        "citation_purpose": { "type": "string", "minLength": 1 }
+      }
+    },
+    "PartyCitation": {
+      "allOf": [
+        { "$ref": "#/$defs/Citation" },
+        { "properties": { "citation_purpose": { "const": "adjudicated_party" } } }
+      ]
+    },
+    "RefereeCitation": {
+      "allOf": [
+        { "$ref": "#/$defs/Citation" },
+        { "properties": { "citation_purpose": { "const": "referee" } } }
+      ]
+    },
+    "SamplingParams": {
+      "description": "Scalar call parameters only -- int, string, or bool, never float. Mirrors capsule-judge's JudgePin.sampling_params convention: a judge pin digest must be reproducible, and a float in the reproducible call shape invites drift from serialization alone.",
+      "type": "object",
+      "additionalProperties": {
+        "type": ["integer", "string", "boolean"]
+      }
+    },
+    "Basis": {
+      "description": "The judgment-basis fields, identical in name and meaning wherever this family reuses them (spec/judge-record-family-v1.md section 6) -- evaluation-report/v1's Case.basis is this same $def.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "prompt_digest", "sampling"],
+      "properties": {
+        "model_id": { "type": "string", "minLength": 1 },
+        "prompt_digest": { "$ref": "#/$defs/DigestRef" },
+        "axes_digest": { "$ref": "#/$defs/DigestRef" },
+        "weights_digest": { "$ref": "#/$defs/DigestRef" },
+        "sampling": { "$ref": "#/$defs/SamplingParams" }
+      }
+    },
+    "Adjudication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_version", "record_id", "epistemic_type", "adjudicated_at",
+        "verdict", "basis", "parties"
+      ],
+      "properties": {
+        "record_version": { "const": "adjudication/v1" },
+        "record_id": { "type": "string", "minLength": 1 },
+        "epistemic_type": { "const": "adjudication" },
+        "adjudicated_at": { "type": "string", "format": "date-time" },
+        "verdict": { "enum": ["corroborated", "inconclusive", "contradicted"] },
+        "contradicted_party": {
+          "description": "Which party the verdict contradicts. REQUIRED when verdict is contradicted, absent otherwise -- see allOf below. Mirrors mesh's 'contradicted:<owner_id>' verdict string, split into a fixed verdict token plus this field rather than colon-encoding a dynamic value inside an enum.",
+          "type": "string",
+          "minLength": 1
+        },
+        "margin": { "type": "string", "minLength": 1 },
+        "margin_tau": { "type": "string", "minLength": 1 },
+        "divergence_index": {
+          "description": "Exact decimal string, never a JSON float -- this repository's own canonicalization (agent_action_capsule.canonical.json_digest) rejects floats in digest-bearing content, and this family holds every quantity field to that discipline whether or not the specific field is itself digested (mirrors margin/margin_tau above).",
+          "type": "string",
+          "minLength": 1
+        },
+        "basis": { "$ref": "#/$defs/Basis" },
+        "parties": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/PartyCitation" }
+        },
+        "referee": { "$ref": "#/$defs/RefereeCitation" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "verdict": { "const": "contradicted" } } },
+          "then": { "required": ["contradicted_party"] },
+          "else": { "not": { "required": ["contradicted_party"] } }
+        }
+      ]
+    }
+  }
+}

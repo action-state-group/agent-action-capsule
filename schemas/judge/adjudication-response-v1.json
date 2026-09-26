@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentactioncapsule.org/schemas/judge/adjudication-response-v1.json",
+  "title": "Adjudication Response v1",
+  "description": "Companion schema for spec/judge-record-family-v1.md section 7. The root schema validates an Adjudication Response record: a delivery receipt, an acknowledgement, or a rebuttal against a cited Adjudication record -- capsule-emit-mesh's adjudication_delivery_receipt, ack, and rebuttal (twin_adjudicator.py, adjudication_delivery.py), unified as one schema with a kind discriminator rather than three parallel shapes. epistemic_type is fixed to producer_claim -- each is the responder's own claim about an adjudication it read, never itself a ruling.",
+  "$ref": "#/$defs/AdjudicationResponse",
+  "$defs": {
+    "HexDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "DigestRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest_alg", "digest"],
+      "properties": {
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" }
+      }
+    },
+    "Citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "digest_alg", "digest", "citation_purpose"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" },
+        "citation_purpose": { "type": "string", "minLength": 1 }
+      }
+    },
+    "AdjudicationCitation": {
+      "allOf": [
+        { "$ref": "#/$defs/Citation" },
+        { "properties": { "citation_purpose": { "const": "responds_to" } } }
+      ]
+    },
+    "AdjudicationResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_version", "record_id", "epistemic_type", "responded_at",
+        "kind", "adjudication"
+      ],
+      "properties": {
+        "record_version": { "const": "adjudication-response/v1" },
+        "record_id": { "type": "string", "minLength": 1 },
+        "epistemic_type": { "const": "producer_claim" },
+        "responded_at": { "type": "string", "format": "date-time" },
+        "kind": { "enum": ["delivery_receipt", "ack", "rebuttal"] },
+        "adjudication": { "$ref": "#/$defs/AdjudicationCitation" },
+        "verdict": {
+          "description": "REQUIRED for ack and rebuttal (the responder's own read of the adjudication's verdict); PROHIBITED for delivery_receipt, which is sealed unconditionally at delivery time, before any decision -- mesh's own distinction between 'delivered' and 'authored' provenance.",
+          "enum": ["corroborated", "inconclusive", "contradicted"]
+        },
+        "basis": {
+          "description": "Free-text rationale. REQUIRED and non-empty for rebuttal (mesh's own rule: basis must never be empty); PROHIBITED for ack and delivery_receipt. Never a numeric or ordinal field -- a rebuttal disputes in prose, not a score.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "delivery_receipt" } } },
+          "then": {
+            "allOf": [
+              { "not": { "required": ["verdict"] } },
+              { "not": { "required": ["basis"] } }
+            ]
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "ack" } } },
+          "then": {
+            "required": ["verdict"],
+            "not": { "required": ["basis"] }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "rebuttal" } } },
+          "then": { "required": ["verdict", "basis"] }
+        }
+      ]
+    }
+  }
+}

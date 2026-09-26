@@ -37,7 +37,7 @@ Usage:
 Exit 0: every check above passed. Exit 1: a finding was printed. Exit 2: a
 harness error (missing dependency, missing fixture).
 
-NOT covered here (named per the principle of stating what you did NOT test):
+NOT covered here (explicitly named, not silently skipped):
   - `generated_at`'s "format": "date-time" keyword is annotation-only under
     python-jsonschema's default Draft202012Validator (no FormatChecker is
     attached) -- a garbage generated_at value currently validates clean.

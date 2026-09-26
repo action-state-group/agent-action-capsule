@@ -1,0 +1,39 @@
+{
+  "adjudicated_at": "2026-09-25T00:00:00Z",
+  "basis": {
+    "model_id": "oo-referee-v1",
+    "prompt_digest": {
+      "digest": "f554c9b4c0a08cf8b6a76950b684f140a02bef49d2835dd3fb1697de67c832d6",
+      "digest_alg": "SHA-256"
+    },
+    "sampling": {
+      "seed": 7,
+      "temperature_micros": 0
+    },
+    "weights_digest": {
+      "digest": "63a7e7914888d601baa82021290bd9d645b04d8c40d4ad1e380bbe6b3dec4e95",
+      "digest_alg": "SHA-256"
+    }
+  },
+  "divergence_index": "0.37",
+  "epistemic_type": "adjudication",
+  "margin": "0.42",
+  "margin_tau": "0.05",
+  "parties": [
+    {
+      "citation_purpose": "adjudicated_party",
+      "digest": "162773e5fdc630c591c7f9149649b2d3075f4dbb86d4168a703d67c863bec2a7",
+      "digest_alg": "SHA-256",
+      "type": "twin-half"
+    },
+    {
+      "citation_purpose": "adjudicated_party",
+      "digest": "e3e316536943bbf832971e4a4212c04dcfcfafad44d6ec2fe9a491e16acae420",
+      "digest_alg": "SHA-256",
+      "type": "twin-half"
+    }
+  ],
+  "record_id": "adj-oo-1",
+  "record_version": "adjudication/v1",
+  "verdict": "contradicted"
+}

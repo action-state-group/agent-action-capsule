@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentactioncapsule.org/schemas/judge/contract-compile-v1.json",
+  "title": "Contract Compile v1",
+  "description": "Companion schema for spec/judge-record-family-v1.md section 1. The root schema validates a Contract Compile record: the producer's own claim that it compiled a given Evidence Contract into a given compiled skill, with a human approval record on file. epistemic_type is fixed to producer_claim -- this record is unverified by any store until something else cites it.",
+  "$ref": "#/$defs/ContractCompile",
+  "$defs": {
+    "HexDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "DigestRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest_alg", "digest"],
+      "properties": {
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" }
+      }
+    },
+    "Citation": {
+      "description": "spec/judge-record-family-v1.md section 0 -- every record in this family cites what it read by digest, with a citation_purpose stating why. Never a bare digest and never inline bytes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "digest_alg", "digest", "citation_purpose"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" },
+        "citation_purpose": { "type": "string", "minLength": 1 }
+      }
+    },
+    "ContractRef": {
+      "description": "Compact versioned Evidence Contract reference: <contract_id>@<version>. Same convention as evidence-plan-ir-v0.json's and evidence-result-v0.json's ContractRef.",
+      "type": "string",
+      "pattern": "^[^@\\s]+@[^@\\s]+$"
+    },
+    "ContractCitation": {
+      "allOf": [
+        { "$ref": "#/$defs/Citation" },
+        { "properties": { "citation_purpose": { "const": "compiles_contract" } } }
+      ]
+    },
+    "CompiledSkillCitation": {
+      "allOf": [
+        { "$ref": "#/$defs/Citation" },
+        { "properties": { "citation_purpose": { "const": "compiled_skill" } } }
+      ]
+    },
+    "HumanApprovalCitation": {
+      "description": "The human approval record this compile depends on. Never optional -- a Contract Compile with no human approval citation is not a legal record in this family.",
+      "allOf": [
+        { "$ref": "#/$defs/Citation" },
+        { "properties": { "citation_purpose": { "const": "approves" } } }
+      ]
+    },
+    "ContractCompile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_version", "record_id", "epistemic_type", "compiled_at",
+        "contract_ref", "contract", "compiled_skill", "human_approval"
+      ],
+      "properties": {
+        "record_version": { "const": "contract-compile/v1" },
+        "record_id": { "type": "string", "minLength": 1 },
+        "epistemic_type": { "const": "producer_claim" },
+        "compiled_at": { "type": "string", "format": "date-time" },
+        "contract_ref": { "$ref": "#/$defs/ContractRef" },
+        "contract": { "$ref": "#/$defs/ContractCitation" },
+        "compiled_skill": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/CompiledSkillCitation" }
+        },
+        "human_approval": { "$ref": "#/$defs/HumanApprovalCitation" }
+      }
+    }
+  }
+}
