@@ -2169,15 +2169,15 @@ Internet-Draft            Agent Action Capsules           September 2026
    mode.  A verifier consuming arbitrary bytes not produced by a
    conforming constructor SHOULD nonetheless assert the invariant
    defensively against hand-crafted input.  The closed approver enum
-   (Section 5.5) is likewise structural: an approver value outside
-   {human, policy} is non-conforming by construction and so is absent
-   from the unknown-registry-value reporting of check 8.
+   (Section 5.5) is likewise structural: an approver value outside the
+   closed set defined in Section 5.5 is non-conforming by construction
+   and so is absent from the unknown-registry-value reporting of check
+   8.
 
    NOTE (Class 1 test vector, effect-attestation matrix, check 5): a
    Capsule carrying effect.status: "failed" derives effect_mode:
    "dispatched_unconfirmed" (Section 5.3); the matrix therefore REQUIRES
    effect_attestation.  A conforming verifier MUST report a check-5
-   failure for such a Capsule when effect_attestation is absent, and
 
 
 
@@ -2186,6 +2186,7 @@ Mih                       Expires 30 March 2027                [Page 39]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
+   failure for such a Capsule when effect_attestation is absent, and
    MUST NOT treat the failed status as exempt (only planned is carved,
    and only not_applicable is the no-effect case).  The same expectation
    holds for effect.status: "reverted", which likewise derives
@@ -2230,7 +2231,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    discovery and authentication are out of scope for this profile; they
    are expected to be handled via out-of-band tenant configuration or a
    future discovery mechanism.
-
 
 
 

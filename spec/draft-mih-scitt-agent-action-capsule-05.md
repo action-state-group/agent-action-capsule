@@ -1279,7 +1279,7 @@ than a runtime failure mode. A verifier consuming arbitrary bytes not
 produced by a conforming constructor SHOULD nonetheless assert the
 invariant defensively against hand-crafted input. The
 closed `approver` enum ({{disposition}}) is likewise structural: an
-approver value outside `{human, policy}` is non-conforming by
+approver value outside the closed set defined in {{disposition}} is non-conforming by
 construction and so is absent from the unknown-registry-value reporting
 of check 8.
 

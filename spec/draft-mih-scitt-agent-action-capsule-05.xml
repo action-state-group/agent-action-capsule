@@ -1537,7 +1537,7 @@ than a runtime failure mode. A verifier consuming arbitrary bytes not
 produced by a conforming constructor SHOULD nonetheless assert the
 invariant defensively against hand-crafted input. The
 closed <tt>approver</tt> enum (<xref target="disposition"/>) is likewise structural: an
-approver value outside <tt>{human, policy}</tt> is non-conforming by
+approver value outside the closed set defined in <xref target="disposition"/> is non-conforming by
 construction and so is absent from the unknown-registry-value reporting
 of check 8.</t>
       <t>NOTE (Class 1 test vector, effect-attestation matrix, check 5): a Capsule
