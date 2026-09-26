@@ -467,6 +467,14 @@ grade cannot exceed what the bytes support.</t>
 <tt>irreversibility_class</tt> — an ordered consequence enumeration (<tt>two_way</tt>,
 <tt>one_way_recoverable</tt>, <tt>one_way_consequential</tt>, <tt>one_way_terminal</tt>;
 registry-governed, <xref target="iana"/>).</t>
+        <t>Beyond the seeded examples <tt>write_order</tt> and <tt>send_payment</tt>, the <tt>type</tt>
+registry defines <tt>inference_completion</tt>: an inference request to a
+model-serving runtime whose committed effect is producing a completion. For
+this type, <tt>request_digest</tt> is the JSON digest (<xref target="conventions"/>) of the
+request body as received at the serving boundary, and <tt>response_digest</tt> is
+the JSON digest of the completion body as returned; the confirmed-effect
+invariant above applies unchanged, so <tt>status: "confirmed"</tt> requires the
+<tt>response_digest</tt> over the completion body actually returned.</t>
         <t>The Effect Record additionally carries <tt>effect_attestation</tt>: WHO vouches
 for the effect's execution — the evidence grade of the effect claim. The
 vocabulary is registry-governed (<xref target="iana"/>; Specification Required), seeded
@@ -1787,7 +1795,12 @@ needs_input, deferred. The <tt>deferred</tt> entry is a cross-reference to
 the "verdict_class" registry, which owns the token's semantics.</t>
           </li>
           <li>
-            <t>"effect.type" registry (<xref target="effect"/>): write_order, send_payment.</t>
+            <t>"effect.type" registry (<xref target="effect"/>): write_order, send_payment,
+inference_completion. <tt>inference_completion</tt> is an inference request to
+a model-serving runtime whose committed effect is producing a
+completion; its <tt>request_digest</tt> is the JSON digest of the request body
+as received at the serving boundary and its <tt>response_digest</tt> the JSON
+digest of the completion body as returned (<xref target="effect"/>).</t>
           </li>
           <li>
             <t>"irreversibility_class" registry (<xref target="effect"/>; ordered by ascending
@@ -2906,7 +2919,7 @@ About This Document
         </reference>
       </references>
     </references>
-    <?line 1824?>
+    <?line 1838?>
 
 <section numbered="false" anchor="acknowledgments">
       <name>Acknowledgments</name>

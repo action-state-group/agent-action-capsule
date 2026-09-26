@@ -31,7 +31,7 @@ def generate():
         capsule["capsule_id"] = compute_capsule_id(capsule)
         result = verify(capsule)
         cases.append({"name": name, "capsule": capsule, "ok": result.ok, "assurance": result.assurance, "findings": [{"code": f.code, "severity": f.severity} for f in result.findings]})
-    Path(__file__).with_name("vocabulary.json").write_text(json.dumps({"source": "Python agent-action-capsule 0.5.0 (regenerated after registering chain.relation 'follows', REGISTRY.md §6)", "cases": cases}, indent=2) + "\n")
+    Path(__file__).with_name("vocabulary.json").write_text(json.dumps({"source": "Python agent-action-capsule 0.5.0 (regenerated after registering effect.type 'inference_completion', REGISTRY.md §3)", "cases": cases}, indent=2) + "\n")
 
 
 if __name__ == "__main__":

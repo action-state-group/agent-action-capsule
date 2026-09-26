@@ -19,7 +19,7 @@ EXPECTED = {
         "epoch_boundary",
     },
     "disposition.decision": {"accept", "reject", "needs_input", "deferred"},
-    "effect.type": {"write_order", "send_payment"},
+    "effect.type": {"write_order", "send_payment", "inference_completion"},
     "irreversibility_class": {"two_way", "one_way_recoverable", "one_way_consequential", "one_way_terminal"},
     "effect_attestation": {"gate_executed", "runtime_claimed"},
     "chain.relation": {"follows", "confirms", "supersedes", "epoch_opens", "duplicates"},
@@ -29,7 +29,7 @@ EXPECTED = {
 EXPECTED_COUNTS = {
     "verdict_class": 13,
     "disposition.decision": 4,
-    "effect.type": 2,
+    "effect.type": 3,
     "irreversibility_class": 4,
     "effect_attestation": 2,
     "chain.relation": 5,

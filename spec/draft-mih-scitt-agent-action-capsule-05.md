@@ -431,6 +431,15 @@ The Effect Record also carries the logical `type` (registry-governed,
 `one_way_recoverable`, `one_way_consequential`, `one_way_terminal`;
 registry-governed, {{iana}}).
 
+Beyond the seeded examples `write_order` and `send_payment`, the `type`
+registry defines `inference_completion`: an inference request to a
+model-serving runtime whose committed effect is producing a completion. For
+this type, `request_digest` is the JSON digest ({{conventions}}) of the
+request body as received at the serving boundary, and `response_digest` is
+the JSON digest of the completion body as returned; the confirmed-effect
+invariant above applies unchanged, so `status: "confirmed"` requires the
+`response_digest` over the completion body actually returned.
+
 The Effect Record additionally carries `effect_attestation`: WHO vouches
 for the effect's execution — the evidence grade of the effect claim. The
 vocabulary is registry-governed ({{iana}}; Specification Required), seeded
@@ -1538,7 +1547,12 @@ Initial contents are the seeded values of this document, verbatim:
 2. "disposition.decision" registry ({{disposition}}): accept, reject,
    needs_input, deferred. The `deferred` entry is a cross-reference to
    the "verdict_class" registry, which owns the token's semantics.
-3. "effect.type" registry ({{effect}}): write_order, send_payment.
+3. "effect.type" registry ({{effect}}): write_order, send_payment,
+   inference_completion. `inference_completion` is an inference request to
+   a model-serving runtime whose committed effect is producing a
+   completion; its `request_digest` is the JSON digest of the request body
+   as received at the serving boundary and its `response_digest` the JSON
+   digest of the completion body as returned ({{effect}}).
 4. "irreversibility_class" registry ({{effect}}; ordered by ascending
    consequence — a registration states its position): two_way,
    one_way_recoverable, one_way_consequential, one_way_terminal.

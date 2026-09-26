@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """§6 Class 1 verifier — positive, negative (MUST-reject), store-level, never-throw."""
+import json
+
 import pytest
 from conftest import HEX_A, HEX_B, base_blocked, base_executed, reseal
 
@@ -184,21 +186,42 @@ def test_unknown_chain_relation_is_informational(executed):
 
 
 # ---- Check 8: vendored CPB provisional resolution --------------------------
-def test_mesh_effect_type_resolves_known_provisional(executed):
-    # effect.type='inference_completion' is set by the mesh-inference-exchange
-    # provisional payload class (vendored CPB registry): known-provisional, not
-    # unknown, and still never a rejection.
+def test_mesh_effect_type_resolves_seeded(executed):
+    # effect.type='inference_completion' is registered (REGISTRY.md §3), so
+    # check 8 resolves it as seeded and never consults the vendored CPB
+    # provisional snapshot that still lists it: neither known-provisional nor
+    # unknown for this field.
     d = dict(executed)
     d["effect"] = dict(d["effect"], type="inference_completion")
     res = verify(reseal(d))
     assert res.ok
+    flagged = [
+        f.detail for f in res.findings
+        if f.code in ("known_provisional_registry_value", "unknown_registry_value")
+    ]
+    assert not any("inference_completion" in det for det in flagged)
+
+
+def test_provisional_only_value_resolves_known_provisional(executed, monkeypatch, tmp_path):
+    # The provisional-resolution path itself, exercised with a synthetic
+    # snapshot carrying a value no AAC registry seeds: known-provisional, not
+    # unknown, and still never a rejection.
+    snap = tmp_path / "cpb_provisional.json"
+    snap.write_text(json.dumps({"provisional_artifact_types": {"example-class": {
+        "status": "provisional",
+        "capsule_field_values": {"effect.type": ["example_provisional_effect"]},
+    }}}), encoding="utf-8")
+    monkeypatch.setenv("AAC_CPB_PROVISIONAL_PATH", str(snap))
+    d = dict(executed)
+    d["effect"] = dict(d["effect"], type="example_provisional_effect")
+    res = verify(reseal(d))
+    assert res.ok
     c = codes(res)
     assert "known_provisional_registry_value" in c
-    # The unknown finding for this specific field must be gone.
     unknown_details = [
         f.detail for f in res.findings if f.code == "unknown_registry_value"
     ]
-    assert not any("inference_completion" in det for det in unknown_details)
+    assert not any("example_provisional_effect" in det for det in unknown_details)
 
 
 def test_mesh_effect_attestation_resolves_known_provisional_no_floor(executed):

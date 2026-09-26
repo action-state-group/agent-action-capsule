@@ -85,8 +85,13 @@ cross-reference to it.
 ## 3. `effect.type`
 
 Defined in §5.2 of the Internet-Draft (Effect Record and the confirmed-effect
-binding). Initial contents (the profile's seeded examples): `write_order`,
-`send_payment`.
+binding). Initial contents:
+
+| Value | Semantics |
+|---|---|
+| `write_order` | Seeded example value of the profile (Internet-Draft §5.2). |
+| `send_payment` | Seeded example value of the profile (Internet-Draft §5.2). |
+| `inference_completion` | An inference request to a model-serving runtime whose committed effect is producing a completion. `request_digest` is the JSON digest of the request body as received at the serving boundary; `response_digest` is the JSON digest of the completion body as returned. |
 
 ## 4. `irreversibility_class`
 
