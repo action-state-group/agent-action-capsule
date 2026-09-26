@@ -12,7 +12,7 @@ The first case is the -04 case pos-v4-jcs-chain-committed with only
 spec_version changed, so the pair shows spec_version participates in
 capsule_id while selecting no verification algorithm. The rest exercise the
 registrations -05 adds (chain.relation follows; citation_purpose
-counterparty_half and counterparty_inclusion; effect.type
+ran_under, counterparty_half and counterparty_inclusion; effect.type
 inference_completion; effect_attestation host_served_observed), so every
 implementation that reads this corpus must carry the -05 registry values to
 match the expected findings.
@@ -39,6 +39,7 @@ HEX_1 = "1" * 64
 HEX_2 = "2" * 64
 HEX_3 = "3" * 64
 HEX_4 = "4" * 64
+HEX_5 = "5" * 64
 PARENT = "a" * 64
 
 assert DEFAULT_SPEC_VERSION == SPEC_V05, "the reference producer must emit -05"
@@ -142,6 +143,19 @@ def build_cases() -> list[dict]:
                 "assurance": assurance("not_applicable", "chained"),
                 "chain": {"parent_capsule_id": PARENT, "relation": "follows"},
                 "references": [reference("counterparty_inclusion", HEX_4)],
+            }),
+        },
+        {
+            "name": "pos-v05-reference-ran-under",
+            "description": (
+                "-05 citation_purpose 'ran_under': the Capsule cites, by digest, a record stating "
+                "the runtime environment and authority its action executed under."
+            ),
+            "input": seal({
+                **ident("v05-ran-under"),
+                "assurance": assurance("not_applicable", "standalone"),
+                "disposition": policy_executed(),
+                "references": [reference("ran_under", HEX_5)],
             }),
         },
     ]

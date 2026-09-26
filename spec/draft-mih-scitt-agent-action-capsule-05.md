@@ -1158,12 +1158,18 @@ The seeded vocabulary:
 |---|---|
 | acted_on | This Capsule's action targeted, consumed, or was performed against the cited record's declared content — a stream boundary, not a custody claim: the cited record may belong to a different producer or stream entirely, and citing it asserts only that this action is about that content, never that the citing producer holds or continues its custody. |
 | responds_to | This Capsule addresses or answers the cited record without a same-stream chain relationship to it — the cited record is not this Capsule's `chain.parent_capsule_id` and MAY be a different producer's record or otherwise outside this producer's own stream. |
+| ran_under | This Capsule cites a record stating the runtime environment and the authority under which its action executed — what ran, and under whose attestation. The cited record MAY belong to a different producer (for example, a hardware-attestation record emitted by an attestation service); citing it with this purpose asserts that this Capsule's action ran under the conditions that record attests, not that the citing producer re-derived them. |
 | counterparty_half | The cited record is the counterparty's half of a two-party exchange, received and held by the citing node. The citing node records `received_from`, `via`, `received_at`, and `signature_ok`, together with the received half's digests, in this Capsule's `compute_attestation.received_half`, and cites the counterparty's already-sealed Capsule by digest through this entry. The citing node does NOT re-assert the cited half as its own observation, action, or outcome — the entry records CUSTODY of an external half, so a held foreign half becomes a committed, checkpointed fact of this stream rather than a render-time observation. The cited half is a foreign record, never this Capsule's `chain.parent_capsule_id`, so the boundary rule above holds. |
 | counterparty_inclusion | This Capsule cites, by digest, a counterparty's inclusion proof and the checkpoint covering it — and that checkpoint's receipt when it is witnessed — for a counterparty half the citing node already holds under an earlier `counterparty_half` citation, with one `references` entry per cited artifact. The cited artifacts are held artifacts, never entries in the citing node's chain. The citing Capsule chains to its own same-stream head via `follows` ({{hitl}}) and never mutates the earlier `counterparty_half` citation: inclusion evidence is added by a new record, never by amending the custody record. |
 
-Designated-expert guidance: `acted_on` and `responds_to` name a cross-stream
-citation intent that `chain.relation` cannot express because
-`chain.relation` is scoped to same-stream transitions ({{hitl}}). A
+Designated-expert guidance: `acted_on`, `responds_to`, and `ran_under`
+name a cross-stream citation intent that `chain.relation` cannot express
+because `chain.relation` is scoped to same-stream transitions ({{hitl}}).
+`acted_on` and `responds_to` name what the action was *about*;
+`ran_under` names the environment and authority the action executed
+*under* — a relationship, not a category of evidence, so one value
+covers a cited account whether it carries the runtime side, the
+authority side, or both. A
 producer whose citation is a same-stream state transition over its own
 parent uses `chain` instead and never mints a `references` entry for it
 (the boundary rule above). `counterparty_half` likewise names a citation,
@@ -1186,6 +1192,24 @@ Additional `citation_purpose` values are
 expected future registrations, each admitted once its semantics are
 pinned in a publicly available specification, per this document's
 Specification Required policy ({{iana}}).
+
+**Grade non-propagation for a cited attestation.** A record cited with
+`ran_under` may carry its own assurance grade for the conditions it
+attests — for instance, a trust record graded by whether a hardware root
+of trust signed the measurement it reports. That grade attaches to the
+specific fact the cited record attests and does not extend to any other
+claim, including a claim stated inside the cited record's own content: a
+platform-attested measurement does not make a self-reported workload
+identity attested. A verifier reading a `ran_under` citation therefore
+carries the cited record's grade only for what that record measured,
+never for everything the measured thing asserts — the citation cannot
+launder an unattested claim through an attested envelope. This restates
+the cited format's own grading rule rather than adding one. A conformance
+vector set demonstrates this behaviour as runnable cases rather than
+prose — a passing grade on the cited record still refusing to lift the
+citation in both the untrusted-signer and the inner-self-reported-claim
+directions — and is maintained at `vectors/interop/ran_under` in this
+document's source repository.
 
 **Relation to `chain.relation`'s `confirms` value in deployed
 implementations.** A cross-stream citation — for example, a denial
@@ -1627,7 +1651,8 @@ Initial contents are the seeded values of this document, verbatim:
    each admitted once its semantics and any verifier consequence are
    pinned in a publicly available specification.
 7. "citation_purpose" registry ({{xref}}): acted_on, responds_to,
-   corroborates_source_time, counterparty_half, counterparty_inclusion.
+   ran_under, corroborates_source_time, counterparty_half,
+   counterparty_inclusion.
    This registry is distinct
    from, and never a
    repurposing of, CPB's own
@@ -1635,8 +1660,8 @@ Initial contents are the seeded values of this document, verbatim:
    ({{I-D.mih-sokolov-scitt-payload-binding}}), which selects among an
    artifact type's registered digest contexts and is orthogonal to any
    role a companion profile assigns a digest within a cross-document
-   citation. Designated-expert guidance: `acted_on` and `responds_to` name
-   a citation whose target is outside the citing Capsule's own chain — a
+   citation. Designated-expert guidance: `acted_on`, `responds_to`, and
+   `ran_under` name a citation whose target is outside the citing Capsule's own chain — a
    different producer or a different stream ({{xref}}); a citation to
    the producer's own same-stream `chain` parent is never expressed
    here. `corroborates_source_time` is the seeded exception to that
@@ -1892,7 +1917,8 @@ before publication.
   Class 1 check 9 ({{provenancemode}}, {{verification}}).
 * New registrations: `chain.relation` `follows`, the bare next-link, with
   `sequence` noted as a deployed legacy alias that is not registered
-  ({{hitl}}); `citation_purpose` `counterparty_half` and
+  ({{hitl}}); `citation_purpose` `ran_under`, with its grade
+  non-propagation rule, and `counterparty_half` and
   `counterparty_inclusion` ({{xref}}); `effect.type` `inference_completion`
   ({{effect}}); and `effect_attestation` `host_served_observed`, equal in
   grade to `runtime_claimed` ({{effect}}).

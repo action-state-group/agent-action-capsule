@@ -24,7 +24,9 @@
   `CURRENT_SPEC_VERSION` / `PUBLISHED_SPEC_VERSIONS`). No verifier branches on
   `spec_version`, so -04 Capsules verify unchanged; each implementation has a test
   verifying a committed -04 vector and its -05 twin.
-- Vectors: the capsule corpus keeps its -04 cases frozen and adds five `pos-v05-*` cases
+- `citation_purpose` `ran_under` (#95) is registered in -05 alongside the other -05
+  registrations.
+- Vectors: the capsule corpus keeps its -04 cases frozen and adds six `pos-v05-*` cases
   (`python/scripts/generate_v05_vectors.py`); the provenance-mode corpus, the Go
   vocabulary fixture and the cross-language interlock fixture are re-pinned to -05.
 - TypeScript `registries.ts` now matches `spec/REGISTRY.md` (it was on the draft-04 seed

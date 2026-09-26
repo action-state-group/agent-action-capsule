@@ -42,6 +42,7 @@ it("exports all seven registries and the disclosure eligibility table", () => {
     new Set([
       "acted_on",
       "responds_to",
+      "ran_under",
       "corroborates_source_time",
       "counterparty_half",
       "counterparty_inclusion",

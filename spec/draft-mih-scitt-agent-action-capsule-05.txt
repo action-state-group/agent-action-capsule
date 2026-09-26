@@ -100,12 +100,12 @@ Table of Contents
        5.5.4.  Chained Capsules and human-in-the-loop resolution . .  29
        5.5.5.  Cross-record references . . . . . . . . . . . . . . .  30
        5.5.6.  Retention declarations  . . . . . . . . . . . . . . .  32
-   6.  Class 1 verification  . . . . . . . . . . . . . . . . . . . .  37
-   7.  Conformance: two verifier classes . . . . . . . . . . . . . .  40
-   8.  Manifest-dependent material . . . . . . . . . . . . . . . . .  40
+   6.  Class 1 verification  . . . . . . . . . . . . . . . . . . . .  38
+   7.  Conformance: two verifier classes . . . . . . . . . . . . . .  41
+   8.  Manifest-dependent material . . . . . . . . . . . . . . . . .  41
      8.1.  Constraint Records  . . . . . . . . . . . . . . . . . . .  41
-     8.2.  Class 2 verification  . . . . . . . . . . . . . . . . . .  41
-   9.  Extensibility . . . . . . . . . . . . . . . . . . . . . . . .  41
+     8.2.  Class 2 verification  . . . . . . . . . . . . . . . . . .  42
+   9.  Extensibility . . . . . . . . . . . . . . . . . . . . . . . .  42
 
 
 
@@ -115,24 +115,24 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
      9.1.  Namespacing convention  . . . . . . . . . . . . . . . . .  42
-     9.2.  Selective Disclosure  . . . . . . . . . . . . . . . . . .  42
+     9.2.  Selective Disclosure  . . . . . . . . . . . . . . . . . .  43
    10. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  43
-   11. Future Work . . . . . . . . . . . . . . . . . . . . . . . . .  44
+   11. Future Work . . . . . . . . . . . . . . . . . . . . . . . . .  45
    12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  45
-     12.1.  New registries . . . . . . . . . . . . . . . . . . . . .  45
-     12.2.  No new registry  . . . . . . . . . . . . . . . . . . . .  48
-     12.3.  Media Type Registrations . . . . . . . . . . . . . . . .  48
-   13. Security Considerations . . . . . . . . . . . . . . . . . . .  50
-   14. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  52
-     14.1.  Data-Admission Tiers . . . . . . . . . . . . . . . . . .  52
-     14.2.  Adapter Allow-List Pattern . . . . . . . . . . . . . . .  53
-   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  53
-     15.1.  Normative References . . . . . . . . . . . . . . . . . .  53
-     15.2.  Informative References . . . . . . . . . . . . . . . . .  54
+     12.1.  New registries . . . . . . . . . . . . . . . . . . . . .  46
+     12.2.  No new registry  . . . . . . . . . . . . . . . . . . . .  49
+     12.3.  Media Type Registrations . . . . . . . . . . . . . . . .  49
+   13. Security Considerations . . . . . . . . . . . . . . . . . . .  51
+   14. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  53
+     14.1.  Data-Admission Tiers . . . . . . . . . . . . . . . . . .  53
+     14.2.  Adapter Allow-List Pattern . . . . . . . . . . . . . . .  54
+   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  54
+     15.1.  Normative References . . . . . . . . . . . . . . . . . .  54
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  56
    Appendix A.  Changes from
-           draft-mih-scitt-agent-action-capsule-04 . . . . . . . . .  58
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  59
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  59
+           draft-mih-scitt-agent-action-capsule-04 . . . . . . . . .  59
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  60
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  60
 
 1.  Introduction
 
@@ -1947,13 +1947,13 @@ Internet-Draft            Agent Action Capsules           September 2026
    |                        | otherwise outside this producer's own   |
    |                        | stream.                                 |
    +------------------------+-----------------------------------------+
-   | counterparty_half      | The cited record is the counterparty's  |
-   |                        | half of a two-party exchange, received  |
-   |                        | and held by the citing node.  The       |
-   |                        | citing node records received_from, via, |
-   |                        | received_at, and signature_ok, together |
-   |                        | with the received half's digests, in    |
-   |                        | this Capsule's                          |
+   | ran_under              | This Capsule cites a record stating the |
+   |                        | runtime environment and the authority   |
+   |                        | under which its action executed — what  |
+   |                        | ran, and under whose attestation.  The  |
+   |                        | cited record MAY belong to a different  |
+   |                        | producer (for example, a hardware-      |
+   |                        | attestation record emitted by an        |
 
 
 
@@ -1962,6 +1962,20 @@ Mih                       Expires 30 March 2027                [Page 35]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
+   |                        | attestation service); citing it with    |
+   |                        | this purpose asserts that this          |
+   |                        | Capsule's action ran under the          |
+   |                        | conditions that record attests, not     |
+   |                        | that the citing producer re-derived     |
+   |                        | them.                                   |
+   +------------------------+-----------------------------------------+
+   | counterparty_half      | The cited record is the counterparty's  |
+   |                        | half of a two-party exchange, received  |
+   |                        | and held by the citing node.  The       |
+   |                        | citing node records received_from, via, |
+   |                        | received_at, and signature_ok, together |
+   |                        | with the received half's digests, in    |
+   |                        | this Capsule's                          |
    |                        | compute_attestation.received_half, and  |
    |                        | cites the counterparty's already-sealed |
    |                        | Capsule by digest through this entry.   |
@@ -1997,20 +2011,6 @@ Internet-Draft            Agent Action Capsules           September 2026
 
                                  Table 11
 
-   Designated-expert guidance: acted_on and responds_to name a cross-
-   stream citation intent that chain.relation cannot express because
-   chain.relation is scoped to same-stream transitions (Section 5.5.4).
-   A producer whose citation is a same-stream state transition over its
-   own parent uses chain instead and never mints a references entry for
-   it (the boundary rule above). counterparty_half likewise names a
-   citation, not a parent-link: the citing Capsule still chains to its
-   own same-stream head with an ordinary chain.relation that asserts no
-   outcome over the parent — follows (Section 5.5.4) when the record
-   makes no other claim over that head — and the fact that it holds a
-   counterparty's foreign half is carried solely by this references
-   entry — never by a new chain.relation value. counterparty_inclusion
-   follows the same discipline: it is a further citation by a later
-
 
 
 Mih                       Expires 30 March 2027                [Page 36]
@@ -2018,17 +2018,61 @@ Mih                       Expires 30 March 2027                [Page 36]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
-   record, so later evidence about a held half (its inclusion in the
-   counterparty's log) never rewrites the record that first took custody
-   of it.  Registering the held-half meaning on chain.relation (for
-   example a proposed cites) would conflate the parent-link axis with
-   the citation-target axis, the same conflation this section forbids
-   below when it requires a cross-stream citation to be "a references
-   entry with the appropriate citation_purpose, not a new chain.relation
-   value."  Additional citation_purpose values are expected future
-   registrations, each admitted once its semantics are pinned in a
-   publicly available specification, per this document's Specification
-   Required policy (Section 12).
+   Designated-expert guidance: acted_on, responds_to, and ran_under name
+   a cross-stream citation intent that chain.relation cannot express
+   because chain.relation is scoped to same-stream transitions
+   (Section 5.5.4). acted_on and responds_to name what the action was
+   _about_; ran_under names the environment and authority the action
+   executed _under_ — a relationship, not a category of evidence, so one
+   value covers a cited account whether it carries the runtime side, the
+   authority side, or both.  A producer whose citation is a same-stream
+   state transition over its own parent uses chain instead and never
+   mints a references entry for it (the boundary rule above).
+   counterparty_half likewise names a citation, not a parent-link: the
+   citing Capsule still chains to its own same-stream head with an
+   ordinary chain.relation that asserts no outcome over the parent —
+   follows (Section 5.5.4) when the record makes no other claim over
+   that head — and the fact that it holds a counterparty's foreign half
+   is carried solely by this references entry — never by a new
+   chain.relation value. counterparty_inclusion follows the same
+   discipline: it is a further citation by a later record, so later
+   evidence about a held half (its inclusion in the counterparty's log)
+   never rewrites the record that first took custody of it.  Registering
+   the held-half meaning on chain.relation (for example a proposed
+   cites) would conflate the parent-link axis with the citation-target
+   axis, the same conflation this section forbids below when it requires
+   a cross-stream citation to be "a references entry with the
+   appropriate citation_purpose, not a new chain.relation value."
+   Additional citation_purpose values are expected future registrations,
+   each admitted once its semantics are pinned in a publicly available
+   specification, per this document's Specification Required policy
+   (Section 12).
+
+   *Grade non-propagation for a cited attestation.* A record cited with
+   ran_under may carry its own assurance grade for the conditions it
+   attests — for instance, a trust record graded by whether a hardware
+   root of trust signed the measurement it reports.  That grade attaches
+   to the specific fact the cited record attests and does not extend to
+   any other claim, including a claim stated inside the cited record's
+   own content: a platform-attested measurement does not make a self-
+   reported workload identity attested.  A verifier reading a ran_under
+   citation therefore carries the cited record's grade only for what
+   that record measured, never for everything the measured thing asserts
+   — the citation cannot launder an unattested claim through an attested
+   envelope.  This restates the cited format's own grading rule rather
+   than adding one.  A conformance vector set demonstrates this
+   behaviour as runnable cases rather than prose — a passing grade on
+   the cited record still refusing to lift the citation in both the
+   untrusted-signer and the inner-self-reported-claim directions — and
+   is maintained at vectors/interop/ran_under in this document's source
+   repository.
+
+
+
+Mih                       Expires 30 March 2027                [Page 37]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
 
    *Relation to chain.relation's confirms value in deployed
    implementations.* A cross-stream citation — for example, a denial
@@ -2064,16 +2108,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    4.  return that authenticated public key separately from any caller-
        defined authorization decision.
 
-
-
-
-
-
-Mih                       Expires 30 March 2027                [Page 37]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    Malformed or unverifiable envelopes MUST produce structured failures
    and MUST NOT cause the verifier to throw or panic.  One invalid
    envelope does not erase the validity of another independent envelope
@@ -2088,6 +2122,13 @@ Internet-Draft            Agent Action Capsules           September 2026
    A verifier MUST return a structured result, never throw; a single ok
    boolean gates trust in every other reported field; findings are
    reported in a fixed order.
+
+
+
+Mih                       Expires 30 March 2027                [Page 38]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
 
    1.  Structural: REQUIRED fields present and typed; format_version is
        exactly the string "4"; canonicalization_id is exactly the string
@@ -2122,14 +2163,6 @@ Internet-Draft            Agent Action Capsules           September 2026
        chain.parent_capsule_id is a failure, per the boundary rule of
        Section 5.5.5.
 
-
-
-
-Mih                       Expires 30 March 2027                [Page 38]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    7.  Assurance reconciliation: rederive the assurance modes from
        evidence actually verified; report overclaims.
 
@@ -2145,6 +2178,14 @@ Internet-Draft            Agent Action Capsules           September 2026
        source_asserted_at, import_batch, and imported_at all present and
        well-formed) is a failure (Section 5.4.3).  A claimed time_rung:
        "witnessed" not supported by a well-formed references[] entry
+
+
+
+Mih                       Expires 30 March 2027                [Page 39]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
        citing citation_purpose: "corroborates_source_time" is a failure
        — unlike the informational overclaim treatment of
        attestation_mode, ledger_mode, and cross_party_rung in check 7, a
@@ -2178,14 +2219,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    Capsule carrying effect.status: "failed" derives effect_mode:
    "dispatched_unconfirmed" (Section 5.3); the matrix therefore REQUIRES
    effect_attestation.  A conforming verifier MUST report a check-5
-
-
-
-Mih                       Expires 30 March 2027                [Page 39]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    failure for such a Capsule when effect_attestation is absent, and
    MUST NOT treat the failed status as exempt (only planned is carved,
    and only not_applicable is the no-effect case).  The same expectation
@@ -2198,6 +2231,16 @@ Internet-Draft            Agent Action Capsules           September 2026
    A verifier MUST NOT consult a model, a clock-dependent heuristic, or
    network state to decide ok for the checks above.  Manifest-dependent
    verification is Class 2 (Section 8.2).
+
+
+
+
+
+
+Mih                       Expires 30 March 2027                [Page 40]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
 
 7.  Conformance: two verifier classes
 
@@ -2232,16 +2275,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    are expected to be handled via out-of-band tenant configuration or a
    future discovery mechanism.
 
-
-
-
-
-
-Mih                       Expires 30 March 2027                [Page 40]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
 8.1.  Constraint Records
 
    A Constraint Record is the public verdict of one deterministic check
@@ -2254,6 +2287,16 @@ Internet-Draft            Agent Action Capsules           September 2026
    the public record; it is bound by digest only.  The check's
    predicate, evidence schema, and thresholds live in the producer's
    manifest.
+
+
+
+
+
+
+Mih                       Expires 30 March 2027                [Page 41]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
 
    Every recorded result MUST be the output of a deterministic predicate
    over disclosed or digest-committed evidence.  The live decision path
@@ -2290,14 +2333,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    New envelope metadata requires a future format version or a separate
    carrying structure.
 
-
-
-
-Mih                       Expires 30 March 2027                [Page 41]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
 9.1.  Namespacing convention
 
    Three vocabularies are deliberately not registry-governed —
@@ -2309,6 +2344,15 @@ Internet-Draft            Agent Action Capsules           September 2026
    example, com.example.margin_floor).  A bare, unseeded name is non-
    conforming for a producer; a verifier still treats it as
    informational.
+
+
+
+
+
+Mih                       Expires 30 March 2027                [Page 42]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
 
 9.2.  Selective Disclosure
 
@@ -2346,14 +2390,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    conformance claim or verification behavior is defined for it in this
    document.
 
-
-
-
-Mih                       Expires 30 March 2027                [Page 42]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
 10.  Related Work
 
    Several active individual drafts address adjacent evidence problems
@@ -2366,6 +2402,14 @@ Internet-Draft            Agent Action Capsules           September 2026
    framework that authorizes agent capability invocations before
    dispatch through signed policy envelopes and per-hop attestations;
    like Permits it governs whether an action may proceed (may),
+
+
+
+Mih                       Expires 30 March 2027                [Page 43]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    complementary to this profile's record of what occurred (did).
    [I-D.emirdag-scitt-ai-agent-execution] defines
    AgentInteractionRecords signed by an agent operator and registered
@@ -2402,14 +2446,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    each party holds proof of the other's commitment — over a SCITT-
    neutral anchor, with an explicit disposition vocabulary (executed,
    blocked, denied, timeout, errored, deferred, expired, escalated) that
-
-
-
-Mih                       Expires 30 March 2027                [Page 43]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    distinguishes outcome categories rather than receiver attestation
    alone.  The companion Internet-Draft
    [I-D.mih-agent-bilateral-attestation] profiles the two-party
@@ -2422,6 +2458,14 @@ Internet-Draft            Agent Action Capsules           September 2026
    [ERC8004] defines on-chain identity, reputation, and validation
    registries for AI agents on a public blockchain.  This profile
    differs in that payload content is content-private — only digests and
+
+
+
+Mih                       Expires 30 March 2027                [Page 44]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    timestamps are anchored, never payloads or PII — and the transparency
    log is off-chain-anchorable to any conforming SCITT service,
    separating conduct evidence from the on-chain content-public
@@ -2456,16 +2500,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    verdict-class values reserved in this document for that extension are
    governed by the registries in Section 12.
 
-
-
-
-
-
-Mih                       Expires 30 March 2027                [Page 44]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    The companion Internet-Draft
    [I-D.mih-scitt-agent-action-capsule-sel-disc] normatively profiles
    the selective-disclosure extension point reserved in Section 9.2,
@@ -2474,6 +2508,19 @@ Internet-Draft            Agent Action Capsules           September 2026
    [I-D.ietf-spice-sd-cwt].
 
 12.  IANA Considerations
+
+
+
+
+
+
+
+
+
+Mih                       Expires 30 March 2027                [Page 45]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
 
 12.1.  New registries
 
@@ -2517,7 +2564,16 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 30 March 2027                [Page 45]
+
+
+
+
+
+
+
+
+
+Mih                       Expires 30 March 2027                [Page 46]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2573,7 +2629,7 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 30 March 2027                [Page 46]
+Mih                       Expires 30 March 2027                [Page 47]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
@@ -2603,16 +2659,17 @@ Internet-Draft            Agent Action Capsules           September 2026
        consequence are pinned in a publicly available specification.
 
    7.  "citation_purpose" registry (Section 5.5.5): acted_on,
-       responds_to, corroborates_source_time, counterparty_half,
-       counterparty_inclusion.  This registry is distinct from, and
-       never a repurposing of, CPB's own purpose field on a typed digest
-       reference ([I-D.mih-sokolov-scitt-payload-binding]), which
-       selects among an artifact type's registered digest contexts and
-       is orthogonal to any role a companion profile assigns a digest
-       within a cross-document citation.  Designated-expert guidance:
-       acted_on and responds_to name a citation whose target is outside
-       the citing Capsule's own chain — a different producer or a
-       different stream (Section 5.5.5); a citation to the producer's
+       responds_to, ran_under, corroborates_source_time,
+       counterparty_half, counterparty_inclusion.  This registry is
+       distinct from, and never a repurposing of, CPB's own purpose
+       field on a typed digest reference
+       ([I-D.mih-sokolov-scitt-payload-binding]), which selects among an
+       artifact type's registered digest contexts and is orthogonal to
+       any role a companion profile assigns a digest within a cross-
+       document citation.  Designated-expert guidance: acted_on,
+       responds_to, and ran_under name a citation whose target is
+       outside the citing Capsule's own chain — a different producer or
+       a different stream (Section 5.5.5); a citation to the producer's
        own same-stream chain parent is never expressed here.
        corroborates_source_time is the seeded exception to that same-
        stream/cross-stream framing: it cites, by digest, a signed or
@@ -2625,15 +2682,15 @@ Internet-Draft            Agent Action Capsules           September 2026
        citation, never a chain.relation value — the citing Capsule
        chains to its own same-stream head with an ordinary relation that
        asserts no outcome over the parent (follows, the bare next-link,
-       when it makes no other claim over that head), and holding a
 
 
 
-Mih                       Expires 30 March 2027                [Page 47]
+Mih                       Expires 30 March 2027                [Page 48]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
 
+       when it makes no other claim over that head), and holding a
        foreign half is carried solely by the references entry.
        counterparty_inclusion cites, by digest, a counterparty's
        inclusion proof and covering checkpoint (and the checkpoint's
@@ -2681,14 +2738,15 @@ Internet-Draft            Agent Action Capsules           September 2026
 
    *  Required parameters: N/A
 
-   *  Optional parameters: N/A
 
 
 
-Mih                       Expires 30 March 2027                [Page 48]
+Mih                       Expires 30 March 2027                [Page 49]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
+
+   *  Optional parameters: N/A
 
    *  Encoding considerations: binary; the representation is JSON
       ([RFC8259]) as defined in this document.
@@ -2735,16 +2793,18 @@ Internet-Draft            Agent Action Capsules           September 2026
 
    *  Optional parameters: N/A
 
-   *  Encoding considerations: binary; exactly 32 octets containing the
-      raw SHA-256 Capsule ID represented in Capsule JSON as 64 lowercase
-      hexadecimal characters.
 
 
 
-Mih                       Expires 30 March 2027                [Page 49]
+
+Mih                       Expires 30 March 2027                [Page 50]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
+
+   *  Encoding considerations: binary; exactly 32 octets containing the
+      raw SHA-256 Capsule ID represented in Capsule JSON as 64 lowercase
+      hexadecimal characters.
 
    *  Security considerations: see Section 13 of this document.
 
@@ -2790,18 +2850,18 @@ Internet-Draft            Agent Action Capsules           September 2026
    effect proves the producer bound the bytes of an observed response,
    not that the external world reached the claimed state.  The same
    boundary extends one hop upstream: binding an observed response
-   proves the producer observed those bytes, not that the responding
-   system was authentic or that the channel was on-path-intact.  An
-   attacker who substitutes or forges the response — a false success
-   delivered on-path — induces an honest confirmed Capsule for an effect
 
 
 
-Mih                       Expires 30 March 2027                [Page 50]
+Mih                       Expires 30 March 2027                [Page 51]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
 
+   proves the producer observed those bytes, not that the responding
+   system was authentic or that the channel was on-path-intact.  An
+   attacker who substitutes or forges the response — a false success
+   delivered on-path — induces an honest confirmed Capsule for an effect
    that did not land; this profile does not mitigate upstream spoofing
    of the response itself, which is bounded by the same trust assumption
    as runtime honesty above.  Later, independently sourced outcome
@@ -2846,18 +2906,18 @@ Internet-Draft            Agent Action Capsules           September 2026
    producer that holds input-integrity evidence (a signed tool response,
    an attested transport record, a C2PA-style content credential, or an
    action-body HMAC with memory provenance attestation) MAY reference it
-   by digest in the Capsule payload, preserving the verifier's
-   disinterest — the verifier checks the binding without trusting the
-   producer's claim about upstream systems it cannot observe.  This
-   profile partially addresses the grounding dimension via the
 
 
 
-Mih                       Expires 30 March 2027                [Page 51]
+Mih                       Expires 30 March 2027                [Page 52]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
 
+   by digest in the Capsule payload, preserving the verifier's
+   disinterest — the verifier checks the binding without trusting the
+   producer's claim about upstream systems it cannot observe.  This
+   profile partially addresses the grounding dimension via the
    value_grounded constraint (Section 8.1), which checks that a quoted
    value matches its cited source, and via model_attestation
    (Section 5.1), which constrains the emitter identity.  The remaining
@@ -2901,18 +2961,20 @@ Internet-Draft            Agent Action Capsules           September 2026
    Producer and adapter authors MUST classify every candidate field into
    exactly one of the following tiers before admission:
 
+
+
+
+
+Mih                       Expires 30 March 2027                [Page 53]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    1.  *Clear-safe* — Opaque correlation handles that are joinable but
        non-identifying: for example, agent_name, function_call_id,
        invocation_id.  A field is clear-safe when its value neither
        identifies a natural person nor carries content material.  These
        MAY be committed in clear.
-
-
-
-Mih                       Expires 30 March 2027                [Page 52]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
 
    2.  *Digest-only* — when a value must be _provable later_ without
        being _disclosed now_, it MUST be committed as a digest, never in
@@ -2951,6 +3013,19 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 15.1.  Normative References
 
+
+
+
+
+
+
+
+
+Mih                       Expires 30 March 2027                [Page 54]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    [I-D.mih-sokolov-scitt-payload-binding]
               Mih, S. and A. Sokolov, "Canonical Payload Binding: A
               Signed Statement Construction Profile", Work in Progress,
@@ -2962,13 +3037,6 @@ Internet-Draft            Agent Action Capsules           September 2026
               Requirement Levels", BCP 14, RFC 2119,
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/rfc/rfc2119>.
-
-
-
-Mih                       Expires 30 March 2027                [Page 53]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
 
    [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
               Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
@@ -3007,6 +3075,13 @@ Internet-Draft            Agent Action Capsules           September 2026
               DOI 10.17487/RFC9052, August 2022,
               <https://www.rfc-editor.org/rfc/rfc9052>.
 
+
+
+Mih                       Expires 30 March 2027                [Page 55]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
               Y., and S. Lasker, "An Architecture for Trustworthy and
               Transparent Digital Supply Chains", RFC 9943,
@@ -3017,14 +3092,6 @@ Internet-Draft            Agent Action Capsules           September 2026
 
    [ERC8004]  "ERC-8004: Agent Identity Registry", n.d.,
               <https://eips.ethereum.org/EIPS/eip-8004>.
-
-
-
-
-Mih                       Expires 30 March 2027                [Page 54]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
 
    [I-D.dawkins-scitt-ai-article50]
               Dawkins, V. S., "A SCITT Profile for EU AI Act Article 50
@@ -3064,6 +3131,13 @@ Internet-Draft            Agent Action Capsules           September 2026
               <https://datatracker.ietf.org/doc/html/draft-ietf-scitt-
               scrapi-11>.
 
+
+
+Mih                       Expires 30 March 2027                [Page 56]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    [I-D.ietf-spice-sd-cwt]
               Prorock, M., Steele, O., Birkholz, H., and R. Mahy,
               "Selective Disclosure CBOR Web Tokens (SD-CWT)", Work in
@@ -3074,14 +3148,6 @@ Internet-Draft            Agent Action Capsules           September 2026
    [I-D.kamimura-scitt-refusal-events]
               Tokachi, K., "Verifiable AI Refusal Events using SCITT",
               Work in Progress, Internet-Draft, draft-kamimura-scitt-
-
-
-
-Mih                       Expires 30 March 2027                [Page 55]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
               refusal-events-03, 2 August 2026,
               <https://datatracker.ietf.org/doc/html/draft-kamimura-
               scitt-refusal-events-03>.
@@ -3116,6 +3182,18 @@ Internet-Draft            Agent Action Capsules           September 2026
               <https://datatracker.ietf.org/doc/html/draft-mih-sato-
               agent-accountability-composition-01>.
 
+
+
+
+
+
+
+
+Mih                       Expires 30 March 2027                [Page 57]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    [I-D.mih-scitt-agent-action-capsule-sel-disc]
               Mih, S., "Selective Disclosure Profile for Agent Action
               Capsules", Work in Progress, Internet-Draft, draft-mih-
@@ -3129,14 +3207,6 @@ Internet-Draft            Agent Action Capsules           September 2026
               draft-munoz-scitt-permit-profile-01, 19 July 2026,
               <https://datatracker.ietf.org/doc/html/draft-munoz-scitt-
               permit-profile-01>.
-
-
-
-
-Mih                       Expires 30 March 2027                [Page 56]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
 
    [I-D.nivalto-agentroa-route-authorization]
               Michalak, J., "Agent Route Origin Authorization
@@ -3169,6 +3239,17 @@ Internet-Draft            Agent Action Capsules           September 2026
               DOI 10.17487/RFC6839, January 2013,
               <https://www.rfc-editor.org/rfc/rfc6839>.
 
+
+
+
+
+
+
+Mih                       Expires 30 March 2027                [Page 58]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
+
    [RFC8949]  Bormann, C. and P. Hoffman, "Concise Binary Object
               Representation (CBOR)", STD 94, RFC 8949,
               DOI 10.17487/RFC8949, December 2020,
@@ -3185,14 +3266,6 @@ Internet-Draft            Agent Action Capsules           September 2026
 
    [VerifiableIntent]
               Mastercard, "Verifiable Intent", n.d..
-
-
-
-
-Mih                       Expires 30 March 2027                [Page 57]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
 
 Appendix A.  Changes from draft-mih-scitt-agent-action-capsule-04
 
@@ -3212,7 +3285,8 @@ Appendix A.  Changes from draft-mih-scitt-agent-action-capsule-04
 
    *  New registrations: chain.relation follows, the bare next-link,
       with sequence noted as a deployed legacy alias that is not
-      registered (Section 5.5.4); citation_purpose counterparty_half and
+      registered (Section 5.5.4); citation_purpose ran_under, with its
+      grade non-propagation rule, and counterparty_half and
       counterparty_inclusion (Section 5.5.5); effect.type
       inference_completion (Section 5.3); and effect_attestation
       host_served_observed, equal in grade to runtime_claimed
@@ -3222,6 +3296,15 @@ Appendix A.  Changes from draft-mih-scitt-agent-action-capsule-04
       normatively as a reference's sole identity; policy references are
       excluded; an optional, declared-not-attested retention object is
       defined (Section 5.5.5, Section 5.5.6).
+
+
+
+
+
+Mih                       Expires 30 March 2027                [Page 59]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
 
    *  Cross-algorithm re-anchoring of an anchored root is specified
       (Section 5.4.2).
@@ -3240,15 +3323,6 @@ Appendix A.  Changes from draft-mih-scitt-agent-action-capsule-04
       citation of a document that does not exist; companion-draft
       revision pins are updated; [I-D.ietf-scitt-scrapi] and [RFC8392]
       are cited where already relied on.
-
-
-
-
-
-Mih                       Expires 30 March 2027                [Page 58]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
 
 Acknowledgments
 
@@ -3283,22 +3357,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                       Expires 30 March 2027                [Page 59]
+Mih                       Expires 30 March 2027                [Page 60]

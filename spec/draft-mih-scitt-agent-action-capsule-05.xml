@@ -1386,6 +1386,10 @@ The seeded vocabulary:</t>
                 <td align="left">This Capsule addresses or answers the cited record without a same-stream chain relationship to it — the cited record is not this Capsule's <tt>chain.parent_capsule_id</tt> and MAY be a different producer's record or otherwise outside this producer's own stream.</td>
               </tr>
               <tr>
+                <td align="left">ran_under</td>
+                <td align="left">This Capsule cites a record stating the runtime environment and the authority under which its action executed — what ran, and under whose attestation. The cited record MAY belong to a different producer (for example, a hardware-attestation record emitted by an attestation service); citing it with this purpose asserts that this Capsule's action ran under the conditions that record attests, not that the citing producer re-derived them.</td>
+              </tr>
+              <tr>
                 <td align="left">counterparty_half</td>
                 <td align="left">The cited record is the counterparty's half of a two-party exchange, received and held by the citing node. The citing node records <tt>received_from</tt>, <tt>via</tt>, <tt>received_at</tt>, and <tt>signature_ok</tt>, together with the received half's digests, in this Capsule's <tt>compute_attestation.received_half</tt>, and cites the counterparty's already-sealed Capsule by digest through this entry. The citing node does NOT re-assert the cited half as its own observation, action, or outcome — the entry records CUSTODY of an external half, so a held foreign half becomes a committed, checkpointed fact of this stream rather than a render-time observation. The cited half is a foreign record, never this Capsule's <tt>chain.parent_capsule_id</tt>, so the boundary rule above holds.</td>
               </tr>
@@ -1395,9 +1399,14 @@ The seeded vocabulary:</t>
               </tr>
             </tbody>
           </table>
-          <t>Designated-expert guidance: <tt>acted_on</tt> and <tt>responds_to</tt> name a cross-stream
-citation intent that <tt>chain.relation</tt> cannot express because
-<tt>chain.relation</tt> is scoped to same-stream transitions (<xref target="hitl"/>). A
+          <t>Designated-expert guidance: <tt>acted_on</tt>, <tt>responds_to</tt>, and <tt>ran_under</tt>
+name a cross-stream citation intent that <tt>chain.relation</tt> cannot express
+because <tt>chain.relation</tt> is scoped to same-stream transitions (<xref target="hitl"/>).
+<tt>acted_on</tt> and <tt>responds_to</tt> name what the action was <em>about</em>;
+<tt>ran_under</tt> names the environment and authority the action executed
+<em>under</em> — a relationship, not a category of evidence, so one value
+covers a cited account whether it carries the runtime side, the
+authority side, or both. A
 producer whose citation is a same-stream state transition over its own
 parent uses <tt>chain</tt> instead and never mints a <tt>references</tt> entry for it
 (the boundary rule above). <tt>counterparty_half</tt> likewise names a citation,
@@ -1420,6 +1429,23 @@ Additional <tt>citation_purpose</tt> values are
 expected future registrations, each admitted once its semantics are
 pinned in a publicly available specification, per this document's
 Specification Required policy (<xref target="iana"/>).</t>
+          <t><strong>Grade non-propagation for a cited attestation.</strong> A record cited with
+<tt>ran_under</tt> may carry its own assurance grade for the conditions it
+attests — for instance, a trust record graded by whether a hardware root
+of trust signed the measurement it reports. That grade attaches to the
+specific fact the cited record attests and does not extend to any other
+claim, including a claim stated inside the cited record's own content: a
+platform-attested measurement does not make a self-reported workload
+identity attested. A verifier reading a <tt>ran_under</tt> citation therefore
+carries the cited record's grade only for what that record measured,
+never for everything the measured thing asserts — the citation cannot
+launder an unattested claim through an attested envelope. This restates
+the cited format's own grading rule rather than adding one. A conformance
+vector set demonstrates this behaviour as runnable cases rather than
+prose — a passing grade on the cited record still refusing to lift the
+citation in both the untrusted-signer and the inner-self-reported-claim
+directions — and is maintained at <tt>vectors/interop/ran_under</tt> in this
+document's source repository.</t>
           <t><strong>Relation to <tt>chain.relation</tt>'s <tt>confirms</tt> value in deployed
 implementations.</strong> A cross-stream citation — for example, a denial
 Capsule addressing a prior record that is not its own chain parent — is
@@ -1887,7 +1913,8 @@ pinned in a publicly available specification.</t>
           </li>
           <li>
             <t>"citation_purpose" registry (<xref target="xref"/>): acted_on, responds_to,
-corroborates_source_time, counterparty_half, counterparty_inclusion.
+ran_under, corroborates_source_time, counterparty_half,
+counterparty_inclusion.
 This registry is distinct
 from, and never a
 repurposing of, CPB's own
@@ -1895,8 +1922,8 @@ repurposing of, CPB's own
 (<xref target="I-D.mih-sokolov-scitt-payload-binding"/>), which selects among an
 artifact type's registered digest contexts and is orthogonal to any
 role a companion profile assigns a digest within a cross-document
-citation. Designated-expert guidance: <tt>acted_on</tt> and <tt>responds_to</tt> name
-a citation whose target is outside the citing Capsule's own chain — a
+citation. Designated-expert guidance: <tt>acted_on</tt>, <tt>responds_to</tt>, and
+<tt>ran_under</tt> name a citation whose target is outside the citing Capsule's own chain — a
 different producer or a different stream (<xref target="xref"/>); a citation to
 the producer's own same-stream <tt>chain</tt> parent is never expressed
 here. <tt>corroborates_source_time</tt> is the seeded exception to that
@@ -2962,7 +2989,7 @@ About This Document
         </reference>
       </references>
     </references>
-    <?line 1877?>
+    <?line 1902?>
 
 <section anchor="changes-from-04">
       <name>Changes from draft-mih-scitt-agent-action-capsule-04</name>
@@ -2985,7 +3012,8 @@ Class 1 check 9 (<xref target="provenancemode"/>, <xref target="verification"/>)
         <li>
           <t>New registrations: <tt>chain.relation</tt> <tt>follows</tt>, the bare next-link, with
 <tt>sequence</tt> noted as a deployed legacy alias that is not registered
-(<xref target="hitl"/>); <tt>citation_purpose</tt> <tt>counterparty_half</tt> and
+(<xref target="hitl"/>); <tt>citation_purpose</tt> <tt>ran_under</tt>, with its grade
+non-propagation rule, and <tt>counterparty_half</tt> and
 <tt>counterparty_inclusion</tt> (<xref target="xref"/>); <tt>effect.type</tt> <tt>inference_completion</tt>
 (<xref target="effect"/>); and <tt>effect_attestation</tt> <tt>host_served_observed</tt>, equal in
 grade to <tt>runtime_claimed</tt> (<xref target="effect"/>).</t>

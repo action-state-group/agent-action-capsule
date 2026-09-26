@@ -3,7 +3,7 @@
     "4"
   ],
   "spec": "draft-mih-scitt-agent-action-capsule-04",
-  "count": 94,
+  "count": 95,
   "cases": [
     {
       "name": "pos-v4-jcs-chain-committed",
@@ -539,6 +539,12 @@
       "name": "pos-v05-reference-counterparty-inclusion",
       "kind": "positive",
       "description": "-05 citation_purpose 'counterparty_inclusion': a later record cites the counterparty's inclusion proof for a half already held, chaining via 'follows'.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-v05-reference-ran-under",
+      "kind": "positive",
+      "description": "-05 citation_purpose 'ran_under': the Capsule cites, by digest, a record stating the runtime environment and authority its action executed under.",
       "provenance": "reference-derived"
     }
   ],
