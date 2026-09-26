@@ -49,10 +49,10 @@ from .disclosure_envelope import (
     verify_disclosure_envelope,
 )
 from .emit import (
+    ACCEPTED_SPEC_VERSIONS,
     DEFAULT_FORMAT_VERSION,
     DEFAULT_SPEC_VERSION,
     FORMAT_VERSION,
-    PUBLISHED_SPEC_VERSIONS,
     SPEC_VERSION,
     emit,
 )
@@ -91,7 +91,7 @@ __all__ = [
     "emit",
     "DEFAULT_SPEC_VERSION",
     "DEFAULT_FORMAT_VERSION",
-    "PUBLISHED_SPEC_VERSIONS",
+    "ACCEPTED_SPEC_VERSIONS",
     # Aliases used by the emit-tier adapter surface.
     "SPEC_VERSION",
     "FORMAT_VERSION",

@@ -2,19 +2,15 @@
 
 package verify
 
-// CurrentSpecVersion is the spec_version a producer emits: the newest
-// published value (draft -05, "Identity and parties").
+// CurrentSpecVersion is the spec_version a producer conforming to draft -05
+// emits ("Identity and parties").
 const CurrentSpecVersion = "draft-mih-scitt-agent-action-capsule-05"
 
-// PublishedSpecVersions lists every published spec_version value. A verifier
-// accepts all of them: spec_version selects no digest or verification
-// algorithm, so Verify never branches on it and a Capsule carrying an earlier
-// revision's value verifies unchanged.
-var PublishedSpecVersions = []string{
-	"draft-mih-scitt-agent-action-capsule-00",
-	"draft-mih-scitt-agent-action-capsule-01",
-	"draft-mih-scitt-agent-action-capsule-02",
-	"draft-mih-scitt-agent-action-capsule-03",
+// AcceptedSpecVersions are the spec_version values a verifier MUST accept: the
+// revisions that define format 4. spec_version never selects a digest or
+// verification algorithm, and an unrecognized value is never by itself a
+// reason to reject, so Verify never branches on it.
+var AcceptedSpecVersions = []string{
 	"draft-mih-scitt-agent-action-capsule-04",
 	CurrentSpecVersion,
 }

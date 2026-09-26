@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Generate the spec_version -05 cases of the cross-language capsule corpus.
 
-The -05 wire bump ("Identity and parties": producers emit the newest
-published spec_version; verifiers accept every published value) leaves the
-existing -04 cases in ../../vectors/capsule/ frozen: they are the evidence
-that -04 Capsules still verify. This script adds the -05 cases next to them.
+The -05 wire bump ("Identity and parties": a producer conforming to -05
+emits -05; a verifier accepts -04 and -05) leaves the existing -04 cases in
+../../vectors/capsule/ frozen: they are the evidence that format-4 Capsules
+carrying -04 still verify. This script adds the -05 cases next to them.
 Each is sealed with the reference compute_capsule_id and its expected.json is
 derived from the reference verify(), then frozen ("reference-derived").
 

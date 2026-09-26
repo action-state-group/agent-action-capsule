@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 import {
   CURRENT_SPEC_VERSION,
-  PUBLISHED_SPEC_VERSIONS,
+  computeCapsuleId,
+  ACCEPTED_SPEC_VERSIONS,
   decodeCapsuleJson,
   disclosureEligibleFields,
   parseCapsule,
@@ -54,20 +55,32 @@ it("exports all seven registries and the disclosure eligibility table", () => {
   });
 });
 
-it("producers emit -05 and verifiers accept both -04 and -05", async () => {
+it("CURRENT_SPEC_VERSION is -05", () => {
   expect(CURRENT_SPEC_VERSION).toBe("draft-mih-scitt-agent-action-capsule-05");
-  const load = (name: string) =>
-    decodeCapsuleJson(readFileSync(join(capsuleVectors, name, "input.json")));
+});
+
+const loadVector = (name: string) =>
+  decodeCapsuleJson(readFileSync(join(capsuleVectors, name, "input.json")));
+
+it("spec_version selects no algorithm: -04 and -05 twins both verify", async () => {
   // A committed -04 vector and its -05 twin (same body, only spec_version differs).
-  const v04 = load("pos-v4-jcs-chain-committed");
-  const v05 = load("pos-v05-spec-version-chain-committed");
-  expect(v04.spec_version).toBe("draft-mih-scitt-agent-action-capsule-04");
-  expect(v05.spec_version).toBe(CURRENT_SPEC_VERSION);
+  const v04 = loadVector("pos-v4-jcs-chain-committed");
+  const v05 = loadVector("pos-v05-spec-version-chain-committed");
+  expect([v04.spec_version, v05.spec_version]).toEqual(ACCEPTED_SPEC_VERSIONS);
   for (const capsule of [v04, v05]) {
-    expect(PUBLISHED_SPEC_VERSIONS).toContain(capsule.spec_version);
     const result = await verifyClass1(capsule);
     expect(result.ok).toBe(true);
     expect(result.capsuleId).toBe(capsule.capsule_id);
   }
   expect(v05.capsule_id).not.toBe(v04.capsule_id);
+});
+
+it("an unrecognized spec_version is not a rejection", async () => {
+  const body = loadVector("pos-v05-spec-version-chain-committed");
+  body.spec_version = "not-a-published-revision";
+  delete body.capsule_id;
+  const capsule = { ...body, capsule_id: await computeCapsuleId(body) };
+  const result = await verifyClass1(capsule);
+  expect(result.ok).toBe(true);
+  expect(result.findings.filter((f) => f.severity === "error")).toEqual([]);
 });

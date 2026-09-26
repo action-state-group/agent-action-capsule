@@ -47,18 +47,21 @@ __all__ = [
     "emit",
     "DEFAULT_SPEC_VERSION",
     "DEFAULT_FORMAT_VERSION",
-    "PUBLISHED_SPEC_VERSIONS",
+    "ACCEPTED_SPEC_VERSIONS",
     # Aliases for backward-compat with the emit-tier adapter surface.
     "SPEC_VERSION",
     "FORMAT_VERSION",
 ]
 
-# Producers emit the newest published spec_version; verifiers accept every
-# published value (draft -05, "Identity and parties"). spec_version selects no
-# digest or verification algorithm, so verify() never branches on it.
+# A producer conforming to draft -05 emits -05; a verifier accepts -04 and -05,
+# the revisions that define format 4 (draft -05, "Identity and parties").
+# spec_version never selects a digest or verification algorithm, and an
+# unrecognized value is never by itself a rejection, so verify() never
+# branches on it.
 DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-05"
-PUBLISHED_SPEC_VERSIONS = tuple(
-    f"draft-mih-scitt-agent-action-capsule-{n:02d}" for n in range(6)
+ACCEPTED_SPEC_VERSIONS = (
+    "draft-mih-scitt-agent-action-capsule-04",
+    DEFAULT_SPEC_VERSION,
 )
 DEFAULT_FORMAT_VERSION = "4"
 
