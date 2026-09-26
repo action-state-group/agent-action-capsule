@@ -83,7 +83,7 @@ informative:
   I-D.mih-agent-bilateral-attestation:
     title: "Bilateral Agent Action Attestation"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-bilateral-attestation-00
+      Internet-Draft: draft-mih-agent-bilateral-attestation-02
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -1366,8 +1366,7 @@ written to stay aligned with SPICE's SD-CWT {{I-D.ietf-spice-sd-cwt}}
 The complete normative profile of this mechanism — including the
 commitment encoding, disclosure syntax, and verifier checks — is defined
 in the companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-sel-disc}}.
-That companion is a CPB payload-class document; the mechanism is
-payload-class-generic. This profile (AAC) retains only the
+This profile (AAC) retains only the
 eligibility-policy annex: the declaration of which AAC payload fields are
 eligible for selective disclosure and which are non-eligible because this
 profile's own verifier requires their values in clear.
