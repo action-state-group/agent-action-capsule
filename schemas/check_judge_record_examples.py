@@ -5,7 +5,7 @@ check_judge_record_examples.py
 
 Validates every committed judge-record-family-v1 example fixture
 (vectors/judge/) against its schema (schemas/judge/*.json), proves each
-negative fixture's rejection is load-bearing (QUEUE_PROTOCOL section 7's
+negative fixture's rejection is load-bearing (the
 mutant check -- strip the rule, confirm the SAME fixture now validates,
 restore, confirm it rejects again), and extends capsule-engine's Batch 1
 epistemic_type parity pattern (commit ba7b7a0,
@@ -41,8 +41,7 @@ Usage:
 Exit 0: every check above passed. Exit 1: a finding was printed. Exit 2: a
 harness error (missing dependency, missing fixture).
 
-NOT covered here (named per QUEUE_PROTOCOL section 7b's "name what you did
-NOT test"):
+NOT covered here (explicitly named, not silently skipped):
   - `*_at` fields' "format": "date-time" keyword is annotation-only under
     python-jsonschema's default Draft202012Validator (no FormatChecker is
     attached) -- a garbage timestamp currently validates clean. Same caveat
@@ -57,7 +56,7 @@ NOT test"):
     the kind-conditional rule has no dedicated negative fixture here (only
     delivery_receipt's "forbids verdict/basis" half is exercised); the
     schema's own allOf is symmetric across all three kinds and the harness
-    exercises one representative case per QUEUE_PROTOCOL's "S"-sized scope
+    exercises one representative case per the "S"-sized scope
     for this task, not a fixture per allOf branch.
 """
 import copy

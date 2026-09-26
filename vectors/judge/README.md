@@ -48,7 +48,7 @@ write access to a repo this task does not own.
 
 For each schema: the positive validates, the negative is rejected, and the rejection is proven
 load-bearing (the specific schema rule is stripped in memory, the same fixture then validates
-clean, and the rule is restored and re-verified red — QUEUE_PROTOCOL section 7). The same script
+clean, and the rule is restored and re-verified red). The same script
 also runs the three-way `epistemic_type` parity check (schema const × `SCHEMA_EPISTEMIC_TYPES` ×
 `schemas/vendor/epistemic-types.json`) with its own mutant check.
 
