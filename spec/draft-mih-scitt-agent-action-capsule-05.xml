@@ -3035,9 +3035,9 @@ Capsule's own chain block, and parent resolution never downgrades
 <tt>ledger_mode</tt> (<xref target="effect"/>, <xref target="assurance"/>).</t>
         </li>
         <li>
-          <t>Class 1 verification refers to the closed <tt>approver</tt> set defined in
-<xref target="disposition"/> rather than restating it, which had omitted
-<tt>counterparty</tt>.</t>
+          <t>Class-1 approver check now defers to the Disposition section's closed
+set (<xref target="disposition"/>), which the check had restated without
+<tt>counterparty</tt> (reported by Imran Siddique, #108).</t>
         </li>
         <li>
           <t>References: the selective-disclosure companion is cited as

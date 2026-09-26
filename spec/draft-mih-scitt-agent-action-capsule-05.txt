@@ -3314,9 +3314,9 @@ Internet-Draft            Agent Action Capsules           September 2026
       Capsule's own chain block, and parent resolution never downgrades
       ledger_mode (Section 5.3, Section 5.4).
 
-   *  Class 1 verification refers to the closed approver set defined in
-      Section 5.5 rather than restating it, which had omitted
-      counterparty.
+   *  Class-1 approver check now defers to the Disposition section's
+      closed set (Section 5.5), which the check had restated without
+      counterparty (reported by Imran Siddique, #108).
 
    *  References: the selective-disclosure companion is cited as
       [I-D.mih-scitt-agent-action-capsule-sel-disc], correcting a

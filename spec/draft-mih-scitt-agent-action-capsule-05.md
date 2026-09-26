@@ -1932,9 +1932,9 @@ before publication.
   `effect_mode` `dispatched_unconfirmed`; `chained` derives from the
   Capsule's own chain block, and parent resolution never downgrades
   `ledger_mode` ({{effect}}, {{assurance}}).
-* Class 1 verification refers to the closed `approver` set defined in
-  {{disposition}} rather than restating it, which had omitted
-  `counterparty`.
+* Class-1 approver check now defers to the Disposition section's closed
+  set ({{disposition}}), which the check had restated without
+  `counterparty` (reported by Imran Siddique, #108).
 * References: the selective-disclosure companion is cited as
   {{I-D.mih-scitt-agent-action-capsule-sel-disc}}, correcting a citation of
   a document that does not exist; companion-draft revision pins are
