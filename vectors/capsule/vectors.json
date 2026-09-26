@@ -2,8 +2,8 @@
   "format_versions": [
     "4"
   ],
-  "spec": "draft-mih-scitt-agent-action-capsule-04",
-  "count": 95,
+  "spec": "draft-mih-scitt-agent-action-capsule-05",
+  "count": 94,
   "cases": [
     {
       "name": "pos-v4-jcs-chain-committed",
@@ -533,12 +533,6 @@
       "name": "pos-v05-reference-counterparty-half",
       "kind": "positive",
       "description": "-05 citation_purpose 'counterparty_half': a record holding a counterparty's half chains to its own head with 'follows' and cites the half by digest.",
-      "provenance": "reference-derived"
-    },
-    {
-      "name": "pos-v05-reference-counterparty-inclusion",
-      "kind": "positive",
-      "description": "-05 citation_purpose 'counterparty_inclusion': a later record cites the counterparty's inclusion proof for a half already held, chaining via 'follows'.",
       "provenance": "reference-derived"
     },
     {

@@ -12,13 +12,15 @@ The first case is the -04 case pos-v4-jcs-chain-committed with only
 spec_version changed, so the pair shows spec_version participates in
 capsule_id while selecting no verification algorithm. The rest exercise the
 registrations -05 adds (chain.relation follows; citation_purpose
-ran_under, counterparty_half and counterparty_inclusion; effect.type
-inference_completion; effect_attestation host_served_observed), so every
+ran_under and counterparty_half; effect.type inference_completion;
+effect_attestation host_served_observed), so every
 implementation that reads this corpus must carry the -05 registry values to
-match the expected findings.
+match the expected findings. citation_purpose counterparty_inclusion has no
+vector: it cites an inclusion proof and checkpoint, for which no reference
+`type` is defined yet, so any vector would have to mis-type the target.
 
-The manifest (vectors.json; its "spec_versions" lists every spec_version the
-corpus carries) and the SHA256SUMS in vectors/capsule/ and vectors/ are
+The manifest (vectors.json; "spec" is the newest revision every case verifies
+under, "spec_versions" lists every spec_version the corpus carries) and the SHA256SUMS in vectors/capsule/ and vectors/ are
 updated in place; existing entries are kept.
 
 Run:  cd python && PYTHONPATH=. python3 scripts/generate_v05_vectors.py
@@ -38,7 +40,6 @@ PROVENANCE = "reference-derived"
 HEX_1 = "1" * 64
 HEX_2 = "2" * 64
 HEX_3 = "3" * 64
-HEX_4 = "4" * 64
 HEX_5 = "5" * 64
 PARENT = "a" * 64
 
@@ -132,20 +133,6 @@ def build_cases() -> list[dict]:
             }),
         },
         {
-            "name": "pos-v05-reference-counterparty-inclusion",
-            "description": (
-                "-05 citation_purpose 'counterparty_inclusion': a later record cites the "
-                "counterparty's inclusion proof for a half already held, chaining via 'follows'."
-            ),
-            "input": seal({
-                **ident("v05-counterparty-inclusion"),
-                "action_type": "fyi",
-                "assurance": assurance("not_applicable", "chained"),
-                "chain": {"parent_capsule_id": PARENT, "relation": "follows"},
-                "references": [reference("counterparty_inclusion", HEX_4)],
-            }),
-        },
-        {
             "name": "pos-v05-reference-ran-under",
             "description": (
                 "-05 citation_purpose 'ran_under': the Capsule cites, by digest, a record stating "
@@ -221,6 +208,8 @@ def main() -> None:
     manifest["count"] = len(manifest["cases"])
     spec_versions = manifest.get("spec_versions", [manifest.get("spec")])
     manifest["spec_versions"] = sorted({*filter(None, spec_versions), SPEC_V05})
+    # "spec" names the newest revision every case in the corpus verifies under.
+    manifest["spec"] = SPEC_V05
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     touched.append(manifest_path)
 
