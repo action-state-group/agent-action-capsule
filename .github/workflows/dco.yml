@@ -53,3 +53,27 @@ jobs:
             exit 1
           fi
           echo "All commits signed off. ✓"
+
+      - name: Reject AI co-author trailers
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Authorship here is human and DCO-signed. A Co-authored-by trailer naming an AI
+          # assistant misstates who is accountable for the commit, so any PR commit carrying
+          # one fails. Merge commits are skipped for the same reason as the sign-off check.
+          pattern='^Co-authored-by: .*(claude|anthropic|copilot|chatgpt|openai|codex|gemini|cursor)'
+          bad=()
+          while IFS= read -r sha; do
+            if git log --format=%B -n 1 "$sha" | grep -qiE "$pattern"; then
+              bad+=("$(git log --format='%h %s' -n 1 "$sha")")
+            fi
+          done < <(git rev-list --no-merges "$BASE_SHA..$HEAD_SHA")
+          if [ ${#bad[@]} -gt 0 ]; then
+            echo "ERROR: AI co-author trailer on the following commits:"
+            printf '  %s\n' "${bad[@]}"
+            echo
+            echo "Fix: remove the Co-authored-by line (git commit --amend / git rebase -i) and force-push."
+            exit 1
+          fi
+          echo "No AI co-author trailers. ✓"
