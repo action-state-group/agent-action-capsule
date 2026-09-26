@@ -1,9 +1,20 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """§6 Class 1 verifier — positive, negative (MUST-reject), store-level, never-throw."""
+import json
+from pathlib import Path
+
 import pytest
 from conftest import HEX_A, HEX_B, base_blocked, base_executed, reseal
 
-from agent_action_capsule import InvariantError, parse_capsule, verify, verify_store
+from agent_action_capsule import (
+    ACCEPTED_SPEC_VERSIONS,
+    DEFAULT_SPEC_VERSION,
+    InvariantError,
+    emit,
+    parse_capsule,
+    verify,
+    verify_store,
+)
 
 
 def codes(res):
@@ -184,32 +195,55 @@ def test_unknown_chain_relation_is_informational(executed):
 
 
 # ---- Check 8: vendored CPB provisional resolution --------------------------
-def test_mesh_effect_type_resolves_known_provisional(executed):
-    # effect.type='inference_completion' is set by the mesh-inference-exchange
-    # provisional payload class (vendored CPB registry): known-provisional, not
-    # unknown, and still never a rejection.
+def test_mesh_effect_type_resolves_seeded(executed):
+    # effect.type='inference_completion' is registered (REGISTRY.md §3), so
+    # check 8 resolves it as seeded and never consults the vendored CPB
+    # provisional snapshot that still lists it: neither known-provisional nor
+    # unknown for this field.
     d = dict(executed)
     d["effect"] = dict(d["effect"], type="inference_completion")
     res = verify(reseal(d))
     assert res.ok
+    flagged = [
+        f.detail for f in res.findings
+        if f.code in ("known_provisional_registry_value", "unknown_registry_value")
+    ]
+    assert not any("inference_completion" in det for det in flagged)
+
+
+def test_provisional_only_value_resolves_known_provisional(executed, monkeypatch, tmp_path):
+    # The provisional-resolution path itself, exercised with a synthetic
+    # snapshot carrying a value no AAC registry seeds: known-provisional, not
+    # unknown, and still never a rejection.
+    snap = tmp_path / "cpb_provisional.json"
+    snap.write_text(json.dumps({"provisional_artifact_types": {"example-class": {
+        "status": "provisional",
+        "capsule_field_values": {"effect.type": ["example_provisional_effect"]},
+    }}}), encoding="utf-8")
+    monkeypatch.setenv("AAC_CPB_PROVISIONAL_PATH", str(snap))
+    d = dict(executed)
+    d["effect"] = dict(d["effect"], type="example_provisional_effect")
+    res = verify(reseal(d))
+    assert res.ok
     c = codes(res)
     assert "known_provisional_registry_value" in c
-    # The unknown finding for this specific field must be gone.
     unknown_details = [
         f.detail for f in res.findings if f.code == "unknown_registry_value"
     ]
-    assert not any("inference_completion" in det for det in unknown_details)
+    assert not any("example_provisional_effect" in det for det in unknown_details)
 
 
-def test_mesh_effect_attestation_resolves_known_provisional_no_floor(executed):
+def test_mesh_effect_attestation_resolves_seeded_no_floor(executed):
+    # effect_attestation='host_served_observed' is registered (REGISTRY.md §5,
+    # equal in grade to runtime_claimed): seeded, so neither known-provisional
+    # nor unknown, and never graded to the floor (the floor only fires on an
+    # *unknown* effect_attestation).
     d = dict(executed)
     d["effect"] = dict(d["effect"], effect_attestation="host_served_observed")
     res = verify(reseal(d))
     assert res.ok
     c = codes(res)
-    assert "known_provisional_registry_value" in c
-    # A known-provisional effect_attestation is neither unknown nor graded to the
-    # floor (the floor only fires on an *unknown* effect_attestation).
+    assert "known_provisional_registry_value" not in c
     assert "unknown_registry_value" not in c
     assert "effect_attestation_graded_floor" not in c
 
@@ -284,3 +318,39 @@ def test_malformed_capsule_id_does_not_trigger_derived_identity_findings(execute
     assert "capsule_id_mismatch" not in result_codes
     assert "capsule_id_uncomputable" not in result_codes
     assert result.capsule_id is None
+
+
+# --- spec_version (-05 "Identity and parties") ---
+_CAPSULE_VECTORS = Path(__file__).resolve().parents[2] / "vectors" / "capsule"
+
+
+def _load_vector(name):
+    return json.loads((_CAPSULE_VECTORS / name / "input.json").read_text())
+
+
+def test_emit_defaults_to_spec_version_05():
+    assert DEFAULT_SPEC_VERSION == "draft-mih-scitt-agent-action-capsule-05"
+    assert emit(operator="ACME-CO", developer="agent@v1")["spec_version"] == DEFAULT_SPEC_VERSION
+
+
+def test_spec_version_selects_no_algorithm_04_and_05_twins_verify():
+    """The committed -04 vector and its -05 twin differ only in spec_version; both verify."""
+    v04 = _load_vector("pos-v4-jcs-chain-committed")
+    v05 = _load_vector("pos-v05-spec-version-chain-committed")
+    assert (v04["spec_version"], v05["spec_version"]) == ACCEPTED_SPEC_VERSIONS
+    assert {k: v for k, v in v04.items() if k not in ("spec_version", "capsule_id")} == {
+        k: v for k, v in v05.items() if k not in ("spec_version", "capsule_id")
+    }
+    for capsule in (v04, v05):
+        result = verify(capsule)
+        assert result.ok, result.findings
+        assert result.capsule_id == capsule["capsule_id"]
+    assert v04["capsule_id"] != v05["capsule_id"]
+
+
+def test_unrecognized_spec_version_is_not_a_rejection():
+    """An unrecognized spec_version is informational, never by itself a reason to reject."""
+    capsule = reseal({**_load_vector("pos-v05-spec-version-chain-committed"), "spec_version": "not-a-published-revision"})
+    result = verify(capsule)
+    assert result.ok, result.findings
+    assert not [f for f in result.findings if f.severity == "error"]

@@ -19,21 +19,21 @@ EXPECTED = {
         "epoch_boundary",
     },
     "disposition.decision": {"accept", "reject", "needs_input", "deferred"},
-    "effect.type": {"write_order", "send_payment"},
+    "effect.type": {"write_order", "send_payment", "inference_completion"},
     "irreversibility_class": {"two_way", "one_way_recoverable", "one_way_consequential", "one_way_terminal"},
-    "effect_attestation": {"gate_executed", "runtime_claimed"},
-    "chain.relation": {"confirms", "supersedes", "epoch_opens", "duplicates"},
-    "citation_purpose": {"acted_on", "responds_to", "corroborates_source_time"},
+    "effect_attestation": {"gate_executed", "runtime_claimed", "host_served_observed"},
+    "chain.relation": {"follows", "confirms", "supersedes", "epoch_opens", "duplicates"},
+    "citation_purpose": {"acted_on", "responds_to", "ran_under", "corroborates_source_time", "counterparty_half", "counterparty_inclusion"},
 }
 # Pinned counts (the freeze surface — a dropped value changes the count).
 EXPECTED_COUNTS = {
     "verdict_class": 13,
     "disposition.decision": 4,
-    "effect.type": 2,
+    "effect.type": 3,
     "irreversibility_class": 4,
-    "effect_attestation": 2,
-    "chain.relation": 4,
-    "citation_purpose": 3,
+    "effect_attestation": 3,
+    "chain.relation": 5,
+    "citation_purpose": 6,
 }
 
 
@@ -51,7 +51,7 @@ def test_seeded_values_exact_membership_and_count():
 
 
 def test_chain_relation_includes_confirms_and_supersedes():
-    assert set(load_registries()["chain.relation"]) == {"confirms", "supersedes", "epoch_opens", "duplicates"}
+    assert set(load_registries()["chain.relation"]) == {"follows", "confirms", "supersedes", "epoch_opens", "duplicates"}
 
 
 # --- Parser robustness: multi-line continuation for every locus shape -------

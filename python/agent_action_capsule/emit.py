@@ -47,12 +47,22 @@ __all__ = [
     "emit",
     "DEFAULT_SPEC_VERSION",
     "DEFAULT_FORMAT_VERSION",
+    "ACCEPTED_SPEC_VERSIONS",
     # Aliases for backward-compat with the emit-tier adapter surface.
     "SPEC_VERSION",
     "FORMAT_VERSION",
 ]
 
-DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-04"
+# A producer conforming to draft -05 emits -05; a verifier accepts -04 and -05,
+# the revisions that define format 4 (draft -05, "Identity and parties").
+# spec_version never selects a digest or verification algorithm, and an
+# unrecognized value is never by itself a rejection, so verify() never
+# branches on it.
+DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-05"
+ACCEPTED_SPEC_VERSIONS = (
+    "draft-mih-scitt-agent-action-capsule-04",
+    DEFAULT_SPEC_VERSION,
+)
 DEFAULT_FORMAT_VERSION = "4"
 
 # Aliases used by the adapter tier (framework adapters import these names).
@@ -143,7 +153,7 @@ def emit(
             or reasoning content that produced this action. Self-reported and
             unattested — committed to capsule_id so tampering is detectable,
             but faithfulness is not verified (§-02).
-        spec_version: Spec revision string (defaults to ``-04``).
+        spec_version: Spec revision string (defaults to ``-05``).
         format_version: Serialization suite version (defaults to ``"4"``).
         tool_name: Name of the tool that was called. Used to build a readable
             ``action_id`` when one is not provided.
@@ -182,6 +192,10 @@ def emit(
     chain: Chain | None = None
     if prior_capsule_id is not None:
         # Adapter tier (tool_name set) defaults to "sequence"; full API defaults to "follows".
+        # "follows" is the registered §6 bare next-link relation; "sequence" is a
+        # deployed legacy alias slated for migration to "follows" (spec/REGISTRY.md §6,
+        # "Deployed legacy alias"). Kept as-is here so deployed adapter streams stay
+        # byte-stable until the migration is cut.
         if chain_relation is None:
             rel = "sequence" if tool_name is not None else "follows"
         else:

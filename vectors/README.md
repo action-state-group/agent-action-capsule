@@ -5,11 +5,16 @@ the Agent Action Capsule repository. Python, Go, and TypeScript consume these
 same-commit files in CI.
 
 - `capsule/`: format-4 JCS, Capsule ID, Class-1, store, `references[]`, and
-  deliberate unsupported-format rejection cases.
+  deliberate unsupported-format rejection cases. Most cases carry
+  `spec_version` `-04` and stay frozen: they show format-4 Capsules carrying
+  `-04` still verify.
+  The `pos-v05-*` cases carry `-05` and exercise the `-05` registrations;
+  `python/scripts/generate_v05_vectors.py` regenerates them.
 - `producer-envelope/`: binary COSE Producer Envelope cases.
 - `disclosure-envelope/`: Disclosure Envelope DE-1 through DE-3 cases.
-- `cross-language/`: format-4 input used by the all-producer/all-consumer
-  interlock.
+- `cross-language/`: format-4 inputs used by the all-producer/all-consumer
+  interlock: the released `-04` `seal-input.json` and its `-05` twin
+  `seal-input-v05.json`.
 - `interop/`: established composition and run-under interoperability suites.
 
 Reference-derived corpora and checksum manifests can be regenerated with:

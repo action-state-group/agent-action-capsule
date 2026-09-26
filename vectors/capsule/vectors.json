@@ -2,8 +2,8 @@
   "format_versions": [
     "4"
   ],
-  "spec": "draft-mih-scitt-agent-action-capsule-04",
-  "count": 89,
+  "spec": "draft-mih-scitt-agent-action-capsule-05",
+  "count": 94,
   "cases": [
     {
       "name": "pos-v4-jcs-chain-committed",
@@ -510,6 +510,40 @@
       "kind": "negative",
       "description": "Format 4 with an empty canonicalization_id fails closed.",
       "provenance": "spec-derived"
+    },
+    {
+      "name": "pos-v05-spec-version-chain-committed",
+      "kind": "positive",
+      "description": "pos-v4-jcs-chain-committed with only spec_version changed to -05: spec_version participates in capsule_id but selects no verification algorithm, so both verify.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-v05-chain-follows",
+      "kind": "positive",
+      "description": "-05 chain.relation 'follows' (the bare next-link) is a registered value.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-v05-effect-inference-completion-host-served",
+      "kind": "positive",
+      "description": "-05 effect.type 'inference_completion' with effect_attestation 'host_served_observed' (registered, runtime_claimed grade) and a response_digest.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-v05-reference-counterparty-half",
+      "kind": "positive",
+      "description": "-05 citation_purpose 'counterparty_half': a record holding a counterparty's half chains to its own head with 'follows' and cites the half by digest.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-v05-reference-ran-under",
+      "kind": "positive",
+      "description": "-05 citation_purpose 'ran_under': the Capsule cites, by digest, a record stating the runtime environment and authority its action executed under.",
+      "provenance": "reference-derived"
     }
+  ],
+  "spec_versions": [
+    "draft-mih-scitt-agent-action-capsule-04",
+    "draft-mih-scitt-agent-action-capsule-05"
   ]
 }

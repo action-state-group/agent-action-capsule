@@ -1,4 +1,4 @@
-"""Freeze verification outcomes from the unmodified Python 0.2.0 reference."""
+"""Freeze verification outcomes from the unmodified Python reference package."""
 
 import json
 from pathlib import Path
@@ -10,7 +10,7 @@ from agent_action_capsule.verify import verify
 def generate():
     cases = []
     for name, effect_type, attestation, relation, adjudication in [
-        ("mesh-provisional", "inference_completion", "host_served_observed", "follows", False),
+        ("mesh-seeded", "inference_completion", "host_served_observed", "follows", False),
         ("future-unknown", "future-effect", "future-attestation", "future-relation", False),
         ("seeded", "write_order", "gate_executed", "confirms", False),
         ("adjudication-shape", None, None, "adjudicates", True),
@@ -31,7 +31,7 @@ def generate():
         capsule["capsule_id"] = compute_capsule_id(capsule)
         result = verify(capsule)
         cases.append({"name": name, "capsule": capsule, "ok": result.ok, "assurance": result.assurance, "findings": [{"code": f.code, "severity": f.severity} for f in result.findings]})
-    Path(__file__).with_name("vocabulary.json").write_text(json.dumps({"source": "Python agent-action-capsule 0.2.0 at bb648e1", "cases": cases}, indent=2) + "\n")
+    Path(__file__).with_name("vocabulary.json").write_text(json.dumps({"source": "Python agent-action-capsule 0.5.0 (regenerated after registering effect_attestation 'host_served_observed', REGISTRY.md §5)", "cases": cases}, indent=2) + "\n")
 
 
 if __name__ == "__main__":

@@ -20,6 +20,23 @@ export interface Chain {
   readonly relation: string;
 }
 
+/**
+ * The spec_version a producer conforming to draft -05 emits ("Identity and
+ * parties").
+ */
+export const CURRENT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-05";
+
+/**
+ * The spec_version values a verifier MUST accept: the revisions that define
+ * format 4. spec_version never selects a digest or verification algorithm,
+ * and an unrecognized value is never by itself a reason to reject, so
+ * verifyClass1 never branches on it.
+ */
+export const ACCEPTED_SPEC_VERSIONS: readonly string[] = Object.freeze([
+  "draft-mih-scitt-agent-action-capsule-04",
+  CURRENT_SPEC_VERSION,
+]);
+
 /** Format-4 record model. Extension members remain permitted and committed. */
 export interface CapsuleBody {
   readonly spec_version: string;

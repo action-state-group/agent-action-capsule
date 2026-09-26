@@ -2,7 +2,8 @@
 set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
-fixture="$repo/vectors/cross-language/seal-input.json"
+# seal-input.json is the released -04 fixture; seal-input-v05.json is its -05 twin.
+fixtures=("$repo/vectors/cross-language/seal-input.json" "$repo/vectors/cross-language/seal-input-v05.json")
 disclosure_fixture="$repo/vectors/disclosure-envelope/pos-disclosure-envelope-nested-input/input.json"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -47,16 +48,19 @@ verify_go() { (cd "$repo/go" && GOWORK=off go run ./cmd/cross_language verify); 
 seal_ts() { node "$repo/ts/dist/cross-language.js" seal; }
 verify_ts() { node "$repo/ts/dist/cross-language.js" verify; }
 
-for producer in python go ts; do
-  "seal_$producer" < "$fixture" > "$work/$producer.json"
-done
+for fixture in "${fixtures[@]}"; do
+  printf '%s\n' "$(basename "$fixture"):"
+  for producer in python go ts; do
+    "seal_$producer" < "$fixture" > "$work/$producer.json"
+  done
 
-python_id=$(verify_python < "$work/python.json")
-for producer in python go ts; do
-  for consumer in python go ts; do
-    actual=$("verify_$consumer" < "$work/$producer.json")
-    test "$actual" = "$python_id"
-    printf '%s-sealed -> %s-verified: %s\n' "$producer" "$consumer" "$actual"
+  python_id=$(verify_python < "$work/python.json")
+  for producer in python go ts; do
+    for consumer in python go ts; do
+      actual=$("verify_$consumer" < "$work/$producer.json")
+      test "$actual" = "$python_id"
+      printf '%s-sealed -> %s-verified: %s\n' "$producer" "$consumer" "$actual"
+    done
   done
 done
 

@@ -29,9 +29,44 @@ func loadCapsule(t *testing.T, vector string) map[string]interface{} {
 	return capsule
 }
 
+func TestCurrentSpecVersionIs05(t *testing.T) {
+	require.Equal(t, "draft-mih-scitt-agent-action-capsule-05", verify.CurrentSpecVersion)
+}
+
+// TestSpecVersionSelectsNoAlgorithm: the committed -04 vector and its -05 twin
+// differ only in spec_version, and both verify (draft -05, "Identity and parties").
+func TestSpecVersionSelectsNoAlgorithm(t *testing.T) {
+	v04 := loadCapsule(t, "pos-v4-jcs-chain-committed")
+	v05 := loadCapsule(t, "pos-v05-spec-version-chain-committed")
+	require.Equal(t, verify.AcceptedSpecVersions, []string{v04["spec_version"].(string), v05["spec_version"].(string)})
+	for _, capsule := range []map[string]interface{}{v04, v05} {
+		result := verify.Verify(capsule, nil, nil)
+		require.True(t, result.OK, result.Findings)
+		require.NotNil(t, result.CapsuleID)
+		require.Equal(t, capsule["capsule_id"], *result.CapsuleID)
+	}
+	require.NotEqual(t, v04["capsule_id"], v05["capsule_id"])
+}
+
+// TestUnrecognizedSpecVersionIsNotARejection: an unrecognized spec_version is
+// informational, never by itself a reason to reject.
+func TestUnrecognizedSpecVersionIsNotARejection(t *testing.T) {
+	capsule := loadCapsule(t, "pos-v05-spec-version-chain-committed")
+	capsule["spec_version"] = "not-a-published-revision"
+	delete(capsule, "capsule_id")
+	capsuleID, err := canonical.ComputeCapsuleID(capsule)
+	require.NoError(t, err)
+	capsule["capsule_id"] = capsuleID
+	result := verify.Verify(capsule, nil, nil)
+	require.True(t, result.OK, result.Findings)
+	for _, finding := range result.Findings {
+		require.NotEqual(t, "error", finding.Severity, finding)
+	}
+}
+
 func TestVerifyDeclaredJCSCommitsChain(t *testing.T) {
 	capsule := loadCapsule(t, "pos-executed-confirmed")
-	capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-04"
+	capsule["spec_version"] = verify.CurrentSpecVersion
 	capsule["format_version"] = "4"
 	capsule["canonicalization_id"] = canonical.CanonicalizationJCS
 	chain := map[string]interface{}{

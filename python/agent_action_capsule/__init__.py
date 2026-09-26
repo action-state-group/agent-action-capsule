@@ -48,7 +48,14 @@ from .disclosure_envelope import (
     build_disclosure_envelope,
     verify_disclosure_envelope,
 )
-from .emit import DEFAULT_FORMAT_VERSION, DEFAULT_SPEC_VERSION, FORMAT_VERSION, SPEC_VERSION, emit
+from .emit import (
+    ACCEPTED_SPEC_VERSIONS,
+    DEFAULT_FORMAT_VERSION,
+    DEFAULT_SPEC_VERSION,
+    FORMAT_VERSION,
+    SPEC_VERSION,
+    emit,
+)
 from .parse import Capsule, parse_capsule
 from .registries import REGISTRY_NAMES, load_registries
 from .verify import Finding, VerificationResult, verify, verify_store
@@ -84,6 +91,7 @@ __all__ = [
     "emit",
     "DEFAULT_SPEC_VERSION",
     "DEFAULT_FORMAT_VERSION",
+    "ACCEPTED_SPEC_VERSIONS",
     # Aliases used by the emit-tier adapter surface.
     "SPEC_VERSION",
     "FORMAT_VERSION",

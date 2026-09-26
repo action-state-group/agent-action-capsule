@@ -1,8 +1,8 @@
 {
-  "source": "Python agent-action-capsule 0.2.0 at bb648e1",
+  "source": "Python agent-action-capsule 0.5.0 (regenerated after registering effect_attestation 'host_served_observed', REGISTRY.md \u00a75)",
   "cases": [
     {
-      "name": "mesh-provisional",
+      "name": "mesh-seeded",
       "capsule": {
         "spec_version": "draft-mih-scitt-agent-action-capsule-04",
         "format_version": "4",
@@ -34,18 +34,6 @@
       "findings": [
         {
           "code": "chain_check_store_level",
-          "severity": "info"
-        },
-        {
-          "code": "known_provisional_registry_value",
-          "severity": "info"
-        },
-        {
-          "code": "known_provisional_registry_value",
-          "severity": "info"
-        },
-        {
-          "code": "known_provisional_registry_value",
           "severity": "info"
         }
       ]

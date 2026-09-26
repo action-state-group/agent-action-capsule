@@ -1,0 +1,22 @@
+{
+  "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+  "format_version": "4",
+  "canonicalization_id": "jcs",
+  "action_id": "cross-language-interlock",
+  "action_type": "fyi",
+  "operator": "operator.example",
+  "developer": "developer.example",
+  "timestamp": "2026-09-13T00:00:00Z",
+  "chain": {
+    "parent_capsule_id": "1111111111111111111111111111111111111111111111111111111111111111",
+    "relation": "confirms"
+  },
+  "references": [
+    {
+      "type": "agent-action-capsule",
+      "digest_alg": "SHA-256",
+      "digest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "citation_purpose": "acted_on"
+    }
+  ]
+}
