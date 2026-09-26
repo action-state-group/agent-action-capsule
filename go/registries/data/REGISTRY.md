@@ -257,10 +257,34 @@ digest contexts.
 | `acted_on` | The citing Capsule's action targeted, consumed, or was performed against the cited record's declared content. Not a custody claim. |
 | `responds_to` | The citing Capsule addresses or answers the cited record without a same-stream chain relationship to it. |
 | `corroborates_source_time` | The citing Capsule's `references[]` entry cites, by digest, a signed or independently witnessed timestamp supporting a `provenance_mode` block's `source_asserted_at` claim. Defined in the Internet-Draft's Provenance mode section (`-05` and later revisions). The only citation this profile permits to raise `provenance_mode.time_rung` from `self_attested` to `witnessed`. |
+| `counterparty_half` | The cited record is the counterparty's half of a two-party exchange, received and held by the citing node, which records `received_from`/`via`/`received_at`/`signature_ok` plus the received half's digests in this Capsule's `compute_attestation.received_half` and cites the counterparty's already-sealed Capsule by digest. The citing node does NOT re-assert the cited half as its own observation — it records custody of an external half, never an action or outcome of its own. |
 
 **Boundary rule.** A citation to the producer's own same-stream `chain`
 parent is never expressed via `references`/`citation_purpose`; a
-`references` entry MUST NOT duplicate `chain.parent_capsule_id`.
+`references` entry MUST NOT duplicate `chain.parent_capsule_id`. A
+`counterparty_half` citation is compatible with this rule precisely because
+it cites a FOREIGN half while the citing Capsule chains to its own LOCAL
+head in `chain`: the two targets are different records, so nothing is
+duplicated. The `chain.relation` to that local head remains the ordinary
+same-stream link (§6, Internet-Draft `#hitl`); holding a foreign half is
+carried entirely by the `references[]` entry and this `citation_purpose`,
+never by minting a new `chain.relation` value (see the designated-expert
+note below and §6).
+
+**Designated-expert guidance (this registry).** `counterparty_half` is
+registered here, on the citation axis, and deliberately NOT as a
+`chain.relation` value (§6). The two axes answer different questions:
+`chain.relation` describes the link to the citing Capsule's own same-stream
+parent (§6), while a `citation_purpose` describes why the Capsule cites a
+record outside that chain. Holding a counterparty's foreign half is a
+citation, not a parent-link, so registering it as a `chain.relation` value
+(for example a proposed `cites`) would conflate the two axes — the very
+conflation the Internet-Draft's Cross-record references section forbids when
+it states that a cross-stream citation "is a `references` entry with the
+appropriate `citation_purpose`, not a fourth `chain.relation` value." The
+record still carries an ordinary same-stream `chain.relation` to its own
+head; that relation asserts no outcome over the parent (§6), and the
+custody-of-a-foreign-half meaning lives solely in this `citation_purpose`.
 
 ## 12. `provenance_mode`
 

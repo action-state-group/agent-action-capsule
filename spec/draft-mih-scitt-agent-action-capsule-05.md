@@ -1121,13 +1121,24 @@ The seeded vocabulary:
 |---|---|
 | acted_on | This Capsule's action targeted, consumed, or was performed against the cited record's declared content — a stream boundary, not a custody claim: the cited record may belong to a different producer or stream entirely, and citing it asserts only that this action is about that content, never that the citing producer holds or continues its custody. |
 | responds_to | This Capsule addresses or answers the cited record without a same-stream chain relationship to it — the cited record is not this Capsule's `chain.parent_capsule_id` and MAY be a different producer's record or otherwise outside this producer's own stream. |
+| counterparty_half | The cited record is the counterparty's half of a two-party exchange, received and held by the citing node. The citing node records `received_from`, `via`, `received_at`, and `signature_ok`, together with the received half's digests, in this Capsule's `compute_attestation.received_half`, and cites the counterparty's already-sealed Capsule by digest through this entry. The citing node does NOT re-assert the cited half as its own observation, action, or outcome — the entry records CUSTODY of an external half, so a held foreign half becomes a committed, checkpointed fact of this stream rather than a render-time observation. The cited half is a foreign record, never this Capsule's `chain.parent_capsule_id`, so the boundary rule above holds. |
 
-Designated-expert guidance: both seeded values name a cross-stream
+Designated-expert guidance: `acted_on` and `responds_to` name a cross-stream
 citation intent that `chain.relation` cannot express because
 `chain.relation` is scoped to same-stream transitions ({{hitl}}). A
 producer whose citation is a same-stream state transition over its own
 parent uses `chain` instead and never mints a `references` entry for it
-(the boundary rule above). Additional `citation_purpose` values are
+(the boundary rule above). `counterparty_half` likewise names a citation,
+not a parent-link: the citing Capsule still chains to its own same-stream
+head with an ordinary `chain.relation` that asserts no outcome over the
+parent, and the fact that it holds a counterparty's foreign half is carried
+solely by this `references` entry — never by a new `chain.relation` value.
+Registering the held-half meaning on `chain.relation` (for example a
+proposed `cites`) would conflate the parent-link axis with the
+citation-target axis, the same conflation this section forbids below when it
+requires a cross-stream citation to be "a `references` entry with the
+appropriate `citation_purpose`, not a fourth `chain.relation` value."
+Additional `citation_purpose` values are
 expected future registrations, each admitted once its semantics are
 pinned in a publicly available specification, per this document's
 Specification Required policy ({{iana}}).
@@ -1552,7 +1563,8 @@ Initial contents are the seeded values of this document, verbatim:
    each admitted once its semantics and any verifier consequence are
    pinned in a publicly available specification.
 7. "citation_purpose" registry ({{xref}}): acted_on, responds_to,
-   corroborates_source_time. This registry is distinct from, and never a
+   corroborates_source_time, counterparty_half. This registry is distinct
+   from, and never a
    repurposing of, CPB's own
    `purpose` field on a typed digest reference
    ({{I-D.mih-sokolov-scitt-payload-binding}}), which selects among an
@@ -1567,7 +1579,13 @@ Initial contents are the seeded values of this document, verbatim:
    independently witnessed timestamp supporting a `provenance_mode`
    block's `source_asserted_at` claim ({{provenancemode}}), and is the
    only citation this profile permits to raise `provenance_mode.time_rung`
-   from `self_attested` to `witnessed`. Additional values are expected
+   from `self_attested` to `witnessed`. `counterparty_half` cites the
+   counterparty's already-sealed half of a two-party exchange, received and
+   held by the citing node ({{xref}}); it is a citation, never a
+   `chain.relation` value — the citing Capsule chains to its own same-stream
+   head with an ordinary relation that asserts no outcome over the parent,
+   and holding a foreign half is carried solely by the `references` entry.
+   Additional values are expected
    future registrations, each admitted once its semantics are pinned in
    a publicly available specification.
 

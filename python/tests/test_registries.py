@@ -23,7 +23,7 @@ EXPECTED = {
     "irreversibility_class": {"two_way", "one_way_recoverable", "one_way_consequential", "one_way_terminal"},
     "effect_attestation": {"gate_executed", "runtime_claimed"},
     "chain.relation": {"confirms", "supersedes", "epoch_opens", "duplicates"},
-    "citation_purpose": {"acted_on", "responds_to", "corroborates_source_time"},
+    "citation_purpose": {"acted_on", "responds_to", "corroborates_source_time", "counterparty_half"},
 }
 # Pinned counts (the freeze surface — a dropped value changes the count).
 EXPECTED_COUNTS = {
@@ -33,7 +33,7 @@ EXPECTED_COUNTS = {
     "irreversibility_class": 4,
     "effect_attestation": 2,
     "chain.relation": 4,
-    "citation_purpose": 3,
+    "citation_purpose": 4,
 }
 
 
