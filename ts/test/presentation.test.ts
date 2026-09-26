@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readPresentationBlock } from "../src/presentation.js";
+import { derivedFixture } from "./helpers/derived-fixtures.js";
 
 function fixture(name: string): unknown {
   return JSON.parse(
@@ -10,8 +11,8 @@ function fixture(name: string): unknown {
 }
 
 describe("readPresentationBlock", () => {
-  it("reads the producer display name, logo, and title", () => {
-    const bundle = fixture("week-bundle-presentation.json") as {
+  it("reads the producer display name, logo, and title", async () => {
+    const bundle = (await derivedFixture("week-bundle-presentation.json")) as {
       extensions: {
         "presentation/v1": {
           producer_display_name: string;

@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { expect, it } from "vitest";
 import { buildEvidenceGraph } from "../src/evidence-graph.js";
 import { renderEvidenceGraph } from "../src/browser.js";
+import { derivedFixture } from "./helpers/derived-fixtures.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 async function fixture(name: string): Promise<unknown> {
@@ -235,7 +236,9 @@ it("renders the verification page as the last page with the ten checks and the v
 });
 
 it("renders the hollow countersignature stamp when countersignatures[] is an empty array", async () => {
-  const bundle = await fixture("week-bundle-empty-countersignatures.json");
+  const bundle = await derivedFixture(
+    "week-bundle-empty-countersignatures.json",
+  );
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
   const stamp = root.querySelector("[data-stamp-kind]");
@@ -244,7 +247,9 @@ it("renders the hollow countersignature stamp when countersignatures[] is an emp
 });
 
 it("renders the producer-key stamp as not independent", async () => {
-  const bundle = await fixture("week-bundle-producer-countersigned.json");
+  const bundle = await derivedFixture(
+    "week-bundle-producer-countersigned.json",
+  );
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
   const stamp = root.querySelector('[data-stamp-kind="producer"]');
@@ -254,7 +259,9 @@ it("renders the producer-key stamp as not independent", async () => {
 });
 
 it("renders the directory-resolved stamp with the directory's name, logo, and recompute count", async () => {
-  const bundle = await fixture("week-bundle-directory-countersigned.json");
+  const bundle = await derivedFixture(
+    "week-bundle-directory-countersigned.json",
+  );
   const directory = (await fixture("countersigner-directory.json")) as Array<{
     publicKey: string;
     name: string;
@@ -274,7 +281,7 @@ it("renders the directory-resolved stamp with the directory's name, logo, and re
 });
 
 it("chrome rule: a presentation/v1 VERIFIED badge renders in the header only, never near the checks", async () => {
-  const bundle = await fixture("week-bundle-presentation.json");
+  const bundle = await derivedFixture("week-bundle-presentation.json");
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
 
