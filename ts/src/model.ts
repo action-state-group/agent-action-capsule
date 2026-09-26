@@ -20,6 +20,26 @@ export interface Chain {
   readonly relation: string;
 }
 
+/**
+ * The spec_version a producer emits: the newest published value (draft -05,
+ * "Identity and parties").
+ */
+export const CURRENT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-05";
+
+/**
+ * Every published spec_version value. A verifier accepts all of them;
+ * spec_version selects no digest or verification algorithm, so verifyClass1
+ * never branches on it.
+ */
+export const PUBLISHED_SPEC_VERSIONS: readonly string[] = Object.freeze([
+  "draft-mih-scitt-agent-action-capsule-00",
+  "draft-mih-scitt-agent-action-capsule-01",
+  "draft-mih-scitt-agent-action-capsule-02",
+  "draft-mih-scitt-agent-action-capsule-03",
+  "draft-mih-scitt-agent-action-capsule-04",
+  CURRENT_SPEC_VERSION,
+]);
+
 /** Format-4 record model. Extension members remain permitted and committed. */
 export interface CapsuleBody {
   readonly spec_version: string;

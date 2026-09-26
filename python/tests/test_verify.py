@@ -1,11 +1,20 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """§6 Class 1 verifier — positive, negative (MUST-reject), store-level, never-throw."""
 import json
+from pathlib import Path
 
 import pytest
 from conftest import HEX_A, HEX_B, base_blocked, base_executed, reseal
 
-from agent_action_capsule import InvariantError, parse_capsule, verify, verify_store
+from agent_action_capsule import (
+    DEFAULT_SPEC_VERSION,
+    PUBLISHED_SPEC_VERSIONS,
+    InvariantError,
+    emit,
+    parse_capsule,
+    verify,
+    verify_store,
+)
 
 
 def codes(res):
@@ -309,3 +318,27 @@ def test_malformed_capsule_id_does_not_trigger_derived_identity_findings(execute
     assert "capsule_id_mismatch" not in result_codes
     assert "capsule_id_uncomputable" not in result_codes
     assert result.capsule_id is None
+
+
+# --- spec_version: producers emit the newest, verifiers accept every published (-05) ---
+_CAPSULE_VECTORS = Path(__file__).resolve().parents[2] / "vectors" / "capsule"
+
+
+def test_verifier_accepts_every_published_spec_version():
+    """A committed -04 vector and its -05 twin (only spec_version differs) both verify."""
+    assert DEFAULT_SPEC_VERSION == "draft-mih-scitt-agent-action-capsule-05"
+    assert emit(operator="ACME-CO", developer="agent@v1")["spec_version"] == DEFAULT_SPEC_VERSION
+
+    v04 = json.loads((_CAPSULE_VECTORS / "pos-v4-jcs-chain-committed" / "input.json").read_text())
+    v05 = json.loads((_CAPSULE_VECTORS / "pos-v05-spec-version-chain-committed" / "input.json").read_text())
+    assert v04["spec_version"] == "draft-mih-scitt-agent-action-capsule-04"
+    assert v05["spec_version"] == DEFAULT_SPEC_VERSION
+    assert {k: v for k, v in v04.items() if k not in ("spec_version", "capsule_id")} == {
+        k: v for k, v in v05.items() if k not in ("spec_version", "capsule_id")
+    }
+    for capsule in (v04, v05):
+        assert capsule["spec_version"] in PUBLISHED_SPEC_VERSIONS
+        result = verify(capsule)
+        assert result.ok, result.findings
+        assert result.capsule_id == capsule["capsule_id"]
+    assert v04["capsule_id"] != v05["capsule_id"]

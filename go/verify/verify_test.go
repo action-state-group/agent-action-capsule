@@ -29,9 +29,29 @@ func loadCapsule(t *testing.T, vector string) map[string]interface{} {
 	return capsule
 }
 
+// TestVerifyAcceptsEveryPublishedSpecVersion pins the -05 rule: producers emit
+// the newest spec_version, verifiers accept every published one. The -04 input
+// is a committed vector; the -05 input is its twin differing only in
+// spec_version.
+func TestVerifyAcceptsEveryPublishedSpecVersion(t *testing.T) {
+	require.Equal(t, "draft-mih-scitt-agent-action-capsule-05", verify.CurrentSpecVersion)
+	v04 := loadCapsule(t, "pos-v4-jcs-chain-committed")
+	v05 := loadCapsule(t, "pos-v05-spec-version-chain-committed")
+	require.Equal(t, "draft-mih-scitt-agent-action-capsule-04", v04["spec_version"])
+	require.Equal(t, verify.CurrentSpecVersion, v05["spec_version"])
+	for _, capsule := range []map[string]interface{}{v04, v05} {
+		require.Contains(t, verify.PublishedSpecVersions, capsule["spec_version"])
+		result := verify.Verify(capsule, nil, nil)
+		require.True(t, result.OK, result.Findings)
+		require.NotNil(t, result.CapsuleID)
+		require.Equal(t, capsule["capsule_id"], *result.CapsuleID)
+	}
+	require.NotEqual(t, v04["capsule_id"], v05["capsule_id"])
+}
+
 func TestVerifyDeclaredJCSCommitsChain(t *testing.T) {
 	capsule := loadCapsule(t, "pos-executed-confirmed")
-	capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-04"
+	capsule["spec_version"] = verify.CurrentSpecVersion
 	capsule["format_version"] = "4"
 	capsule["canonicalization_id"] = canonical.CanonicalizationJCS
 	chain := map[string]interface{}{
