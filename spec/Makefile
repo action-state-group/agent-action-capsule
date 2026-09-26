@@ -19,12 +19,13 @@ DRAFT    = draft-mih-scitt-agent-action-capsule-05
 BILATERAL = draft-mih-agent-bilateral-attestation-02
 CPB      = draft-mih-sokolov-scitt-payload-binding-00
 BUNDLE   = draft-mih-zhang-agent-action-capsule-evidence-bundle-00
+EVREQ    = draft-mih-agent-evidence-request-00
 XML2RFC  ?= $(shell command -v xml2rfc)
 KDRFC    ?= $(shell command -v kramdown-rfc || ruby -e 'puts Gem.bindir + "/kramdown-rfc"')
 
-.PHONY: all bilateral cpb bundle clean idnits rebuild refresh-refs check
+.PHONY: all bilateral cpb bundle evreq clean idnits idnits-evreq rebuild refresh-refs check
 
-all: $(DRAFT).xml $(DRAFT).txt $(BUNDLE).xml $(BUNDLE).txt
+all: $(DRAFT).xml $(DRAFT).txt $(BUNDLE).xml $(BUNDLE).txt $(EVREQ).xml $(EVREQ).txt
 
 # Force a rebuild from the Markdown source.
 #
@@ -64,6 +65,8 @@ cpb: $(CPB).xml $(CPB).txt
 
 bundle: $(BUNDLE).xml $(BUNDLE).txt
 
+evreq: $(EVREQ).xml $(EVREQ).txt
+
 # md -> v2 xml -> v3 xml (committed artifact is v3)
 $(DRAFT).xml: $(DRAFT).md
 	$(KDRFC) $(DRAFT).md > .$(DRAFT).v2.xml
@@ -85,6 +88,14 @@ $(BUNDLE).xml: $(BUNDLE).md
 	$(XML2RFC) --v2v3 .$(BUNDLE).v2.xml -o $(BUNDLE).xml
 	@rm -f .$(BUNDLE).v2.xml
 
+# The committed evidence-request .xml omits kramdown-rfc's embedded gzipped
+# source copy (build metadata, not draft content).
+$(EVREQ).xml: $(EVREQ).md
+	$(KDRFC) $(EVREQ).md > .$(EVREQ).v2.xml
+	$(XML2RFC) --v2v3 .$(EVREQ).v2.xml -o .$(EVREQ).v3.xml
+	sed '/<!-- ##markdown-source:/,/-->/d' .$(EVREQ).v3.xml > $(EVREQ).xml
+	@rm -f .$(EVREQ).v2.xml .$(EVREQ).v3.xml
+
 # v3 xml -> text
 $(DRAFT).txt: $(DRAFT).xml
 	$(XML2RFC) --text --v3 $(DRAFT).xml -o $(DRAFT).txt
@@ -98,11 +109,17 @@ $(CPB).txt: $(CPB).xml
 $(BUNDLE).txt: $(BUNDLE).xml
 	$(XML2RFC) --text --v3 $(BUNDLE).xml -o $(BUNDLE).txt
 
+$(EVREQ).txt: $(EVREQ).xml
+	$(XML2RFC) --text --v3 $(EVREQ).xml -o $(EVREQ).txt
+
 idnits: $(DRAFT).txt
 	npx --yes @ietf-tools/idnits $(DRAFT).txt
+
+idnits-evreq: $(EVREQ).txt
+	npx --yes @ietf-tools/idnits $(EVREQ).txt
 
 check:
 	python3 check_verdict_class_refs.py
 
 clean:
-	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml .$(BUNDLE).v2.xml
+	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml .$(BUNDLE).v2.xml .$(EVREQ).v2.xml .$(EVREQ).v3.xml
