@@ -1,4 +1,7 @@
-/** Seed registries from draft-04. Unknown values remain informational. */
+/**
+ * Registries of record, mirroring spec/REGISTRY.md (draft -05); test/registries.test.ts
+ * keeps the two in step. Unknown values remain informational.
+ */
 export const registries = Object.freeze({
   verdict_class: new Set([
     "executed",
@@ -21,16 +24,36 @@ export const registries = Object.freeze({
     "needs_input",
     "deferred",
   ]),
-  "effect.type": new Set(["write_order", "send_payment"]),
+  "effect.type": new Set([
+    "write_order",
+    "send_payment",
+    "inference_completion",
+  ]),
   irreversibility_class: new Set([
     "two_way",
     "one_way_recoverable",
     "one_way_consequential",
     "one_way_terminal",
   ]),
-  effect_attestation: new Set(["gate_executed", "runtime_claimed"]),
-  "chain.relation": new Set(["confirms", "supersedes", "epoch_opens"]),
-  citation_purpose: new Set(["acted_on", "responds_to"]),
+  effect_attestation: new Set([
+    "gate_executed",
+    "runtime_claimed",
+    "host_served_observed",
+  ]),
+  "chain.relation": new Set([
+    "follows",
+    "confirms",
+    "supersedes",
+    "epoch_opens",
+    "duplicates",
+  ]),
+  citation_purpose: new Set([
+    "acted_on",
+    "responds_to",
+    "corroborates_source_time",
+    "counterparty_half",
+    "counterparty_inclusion",
+  ]),
 });
 
 /** Disclosure Envelope member to committed Capsule field path. */

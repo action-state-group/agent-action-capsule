@@ -24,7 +24,13 @@ it("seals and parses a typed format-4 record", async () => {
 it("exports all seven registries and the disclosure eligibility table", () => {
   expect(Object.keys(registries)).toHaveLength(7);
   expect(registries.citation_purpose).toEqual(
-    new Set(["acted_on", "responds_to"]),
+    new Set([
+      "acted_on",
+      "responds_to",
+      "corroborates_source_time",
+      "counterparty_half",
+      "counterparty_inclusion",
+    ]),
   );
   expect(disclosureEligibleFields).toEqual({
     agent_input: "model_attestation.compute_attestation.agent_input_digest",
