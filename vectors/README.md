@@ -11,8 +11,9 @@ same-commit files in CI.
   `python/scripts/generate_v05_vectors.py` regenerates them.
 - `producer-envelope/`: binary COSE Producer Envelope cases.
 - `disclosure-envelope/`: Disclosure Envelope DE-1 through DE-3 cases.
-- `cross-language/`: format-4 input used by the all-producer/all-consumer
-  interlock.
+- `cross-language/`: format-4 inputs used by the all-producer/all-consumer
+  interlock: the released `-04` `seal-input.json` and its `-05` twin
+  `seal-input-v05.json`.
 - `interop/`: established composition and run-under interoperability suites.
 
 Reference-derived corpora and checksum manifests can be regenerated with:
