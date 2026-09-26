@@ -16,6 +16,20 @@
 
 ## Unreleased
 
+### Wire: `spec_version` -05
+- **Producers emit `draft-mih-scitt-agent-action-capsule-05`; verifiers accept every
+  published value.** Python `DEFAULT_SPEC_VERSION` (and `SPEC_VERSION`) moves to -05;
+  Python, Go and TypeScript export the current and published values
+  (`PUBLISHED_SPEC_VERSIONS`, `verify.CurrentSpecVersion` / `verify.PublishedSpecVersions`,
+  `CURRENT_SPEC_VERSION` / `PUBLISHED_SPEC_VERSIONS`). No verifier branches on
+  `spec_version`, so -04 Capsules verify unchanged; each implementation has a test
+  verifying a committed -04 vector and its -05 twin.
+- Vectors: the capsule corpus keeps its -04 cases frozen and adds five `pos-v05-*` cases
+  (`python/scripts/generate_v05_vectors.py`); the provenance-mode corpus, the Go
+  vocabulary fixture and the cross-language interlock fixture are re-pinned to -05.
+- TypeScript `registries.ts` now matches `spec/REGISTRY.md` (it was on the draft-04 seed
+  sets) and is checked against it by a test.
+
 ### Reference (breaking)
 - **Format-4-only canonical reference.** The Python and Go reference verifiers and
   `capsule_id` computation now accept `format_version: "4"` only; any other value is
