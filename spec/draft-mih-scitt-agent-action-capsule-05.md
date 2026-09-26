@@ -46,7 +46,7 @@ normative:
         organization: Tyche Institute
 
 informative:
-  I-D.ietf-cose-merkle-tree-proofs:
+  RFC9942:
   I-D.ietf-scitt-scrapi:
   I-D.ietf-scitt-receipts-ccf-profile:
   I-D.ietf-spice-sd-cwt:
@@ -281,7 +281,7 @@ Envelope and does not by itself authorize a Producer Envelope key.
 
 Receipt format, Merkle-tree proof construction, and proof verification are
 SCITT substrate concerns defined by reference to
-{{I-D.ietf-cose-merkle-tree-proofs}} and an applicable receipt profile such as
+{{RFC9942}} and an applicable receipt profile such as
 {{I-D.ietf-scitt-receipts-ccf-profile}}. Verification is compositional: verify
 the Capsule ID, verify each Producer Envelope independently, require the SCITT
 registration statement payload to equal that raw Capsule ID, then verify its
@@ -1241,7 +1241,7 @@ Malformed or unverifiable envelopes MUST produce structured failures and MUST
 NOT cause the verifier to throw or panic. One invalid envelope does not erase
 the validity of another independent envelope over the same Capsule ID.
 Receipt verification is a separate substrate step performed by reference to
-{{RFC9943}} and {{I-D.ietf-cose-merkle-tree-proofs}}.
+{{RFC9943}} and {{RFC9942}}.
 
 The agent-profile checks below are normative here and constitute Class 1
 verification ({{conformance}}): every check is performable from the

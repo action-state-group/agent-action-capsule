@@ -132,7 +132,7 @@ Internet-Draft            Agent Action Capsules           September 2026
    Appendix A.  Changes from
            draft-mih-scitt-agent-action-capsule-04 . . . . . . . . .  59
    Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  60
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  61
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  60
 
 1.  Introduction
 
@@ -358,8 +358,8 @@ Internet-Draft            Agent Action Capsules           September 2026
 
    Receipt format, Merkle-tree proof construction, and proof
    verification are SCITT substrate concerns defined by reference to
-   [I-D.ietf-cose-merkle-tree-proofs] and an applicable receipt profile
-   such as [I-D.ietf-scitt-receipts-ccf-profile].  Verification is
+   [RFC9942] and an applicable receipt profile such as
+   [I-D.ietf-scitt-receipts-ccf-profile].  Verification is
    compositional: verify the Capsule ID, verify each Producer Envelope
    independently, require the SCITT registration statement payload to
    equal that raw Capsule ID, then verify its Receipt under a trusted
@@ -2118,8 +2118,8 @@ Internet-Draft            Agent Action Capsules           September 2026
    and MUST NOT cause the verifier to throw or panic.  One invalid
    envelope does not erase the validity of another independent envelope
    over the same Capsule ID.  Receipt verification is a separate
-   substrate step performed by reference to [RFC9943] and
-   [I-D.ietf-cose-merkle-tree-proofs].
+   substrate step performed by reference to [RFC9943] and [RFC9942].
+
 
 
 
@@ -3107,14 +3107,6 @@ Internet-Draft            Agent Action Capsules           September 2026
               <https://datatracker.ietf.org/doc/html/draft-emirdag-
               scitt-ai-agent-execution-00>.
 
-   [I-D.ietf-cose-merkle-tree-proofs]
-              Steele, O., Birkholz, H., Delignat-Lavaud, A., and C.
-              Fournet, "COSE (CBOR Object Signing and Encryption)
-              Receipts", Work in Progress, Internet-Draft, draft-ietf-
-              cose-merkle-tree-proofs-18, 2 December 2025,
-              <https://datatracker.ietf.org/doc/html/draft-ietf-cose-
-              merkle-tree-proofs-18>.
-
    [I-D.ietf-scitt-receipts-ccf-profile]
               Birkholz, H., Delignat-Lavaud, A., Fournet, C., and A.
               Chamayou, "CCF Profile for COSE Receipts", Work in
@@ -3131,19 +3123,20 @@ Internet-Draft            Agent Action Capsules           September 2026
               <https://datatracker.ietf.org/doc/html/draft-ietf-scitt-
               scrapi-11>.
 
-
-
-Mih                       Expires 30 March 2027                [Page 56]
-
-Internet-Draft            Agent Action Capsules           September 2026
-
-
    [I-D.ietf-spice-sd-cwt]
               Prorock, M., Steele, O., Birkholz, H., and R. Mahy,
               "Selective Disclosure CBOR Web Tokens (SD-CWT)", Work in
               Progress, Internet-Draft, draft-ietf-spice-sd-cwt-08, 1
               June 2026, <https://datatracker.ietf.org/doc/html/draft-
               ietf-spice-sd-cwt-08>.
+
+
+
+
+Mih                       Expires 30 March 2027                [Page 56]
+
+Internet-Draft            Agent Action Capsules           September 2026
+
 
    [I-D.kamimura-scitt-refusal-events]
               Tokachi, K., "Verifiable AI Refusal Events using SCITT",
@@ -3182,6 +3175,13 @@ Internet-Draft            Agent Action Capsules           September 2026
               <https://datatracker.ietf.org/doc/html/draft-mih-sato-
               agent-accountability-composition-01>.
 
+   [I-D.mih-scitt-agent-action-capsule-sel-disc]
+              Mih, S., "Selective Disclosure Profile for Agent Action
+              Capsules", Work in Progress, Internet-Draft, draft-mih-
+              scitt-agent-action-capsule-sel-disc-00, n.d.,
+              <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
+              agent-action-capsule-sel-disc-00>.
+
 
 
 
@@ -3193,13 +3193,6 @@ Mih                       Expires 30 March 2027                [Page 57]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
-
-   [I-D.mih-scitt-agent-action-capsule-sel-disc]
-              Mih, S., "Selective Disclosure Profile for Agent Action
-              Capsules", Work in Progress, Internet-Draft, draft-mih-
-              scitt-agent-action-capsule-sel-disc-00, n.d.,
-              <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
-              agent-action-capsule-sel-disc-00>.
 
    [I-D.munoz-scitt-permit-profile]
               Munoz, C., "A SCITT Profile for Pre-Execution AI Action
@@ -3239,7 +3232,14 @@ Internet-Draft            Agent Action Capsules           September 2026
               DOI 10.17487/RFC6839, January 2013,
               <https://www.rfc-editor.org/rfc/rfc6839>.
 
+   [RFC8949]  Bormann, C. and P. Hoffman, "Concise Binary Object
+              Representation (CBOR)", STD 94, RFC 8949,
+              DOI 10.17487/RFC8949, December 2020,
+              <https://www.rfc-editor.org/rfc/rfc8949>.
 
+   [RFC9053]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
+              Initial Algorithms", RFC 9053, DOI 10.17487/RFC9053,
+              August 2022, <https://www.rfc-editor.org/rfc/rfc9053>.
 
 
 
@@ -3250,19 +3250,15 @@ Mih                       Expires 30 March 2027                [Page 58]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
-   [RFC8949]  Bormann, C. and P. Hoffman, "Concise Binary Object
-              Representation (CBOR)", STD 94, RFC 8949,
-              DOI 10.17487/RFC8949, December 2020,
-              <https://www.rfc-editor.org/rfc/rfc8949>.
-
-   [RFC9053]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
-              Initial Algorithms", RFC 9053, DOI 10.17487/RFC9053,
-              August 2022, <https://www.rfc-editor.org/rfc/rfc9053>.
-
    [RFC9901]  Fett, D., Yasuda, K., and B. Campbell, "Selective
               Disclosure for JSON Web Tokens", RFC 9901,
               DOI 10.17487/RFC9901, November 2025,
               <https://www.rfc-editor.org/rfc/rfc9901>.
+
+   [RFC9942]  Steele, O., Birkholz, H., Delignat-Lavaud, A., and C.
+              Fournet, "CBOR Object Signing and Encryption (COSE)
+              Receipts", RFC 9942, DOI 10.17487/RFC9942, June 2026,
+              <https://www.rfc-editor.org/rfc/rfc9942>.
 
    [VerifiableIntent]
               Mastercard, "Verifiable Intent", n.d..
@@ -3295,6 +3291,10 @@ Appendix A.  Changes from draft-mih-scitt-agent-action-capsule-04
       as seq - 1) (Section 5.5.5).  Class 1 checks 1 and 2 are restated
       accordingly (Section 6).
 
+   *  Provenance mode: an optional provenance_mode block distinguishes
+      contemporaneous from backfilled records, with the duplicates
+      chain.relation, the corroborates_source_time citation_purpose, and
+      Class 1 check 9 (Section 5.4.3, Section 6).
 
 
 
@@ -3305,11 +3305,6 @@ Mih                       Expires 30 March 2027                [Page 59]
 
 Internet-Draft            Agent Action Capsules           September 2026
 
-
-   *  Provenance mode: an optional provenance_mode block distinguishes
-      contemporaneous from backfilled records, with the duplicates
-      chain.relation, the corroborates_source_time citation_purpose, and
-      Class 1 check 9 (Section 5.4.3, Section 6).
 
    *  New registrations: chain.relation follows, the bare next-link
       (Section 5.5.4); citation_purpose ran_under, with its grade non-
@@ -3355,6 +3350,11 @@ Acknowledgments
    Siddique for finding that the Class 1 verification section restated
    the approver set without counterparty (#108).
 
+Author's Address
+
+   Steven Mih
+   Action State Group, Inc.
+
 
 
 Mih                       Expires 30 March 2027                [Page 60]
@@ -3362,11 +3362,11 @@ Mih                       Expires 30 March 2027                [Page 60]
 Internet-Draft            Agent Action Capsules           September 2026
 
 
-Author's Address
-
-   Steven Mih
-   Action State Group, Inc.
    Email: spec@actionstate.ai
+
+
+
+
 
 
 
