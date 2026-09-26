@@ -1,0 +1,59 @@
+{
+  "root": "root",
+  "records": [
+    {
+      "capsule_id": "root",
+      "references": [
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "report"
+        }
+      ]
+    },
+    {
+      "capsule_id": "report",
+      "references": [
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "act"
+        }
+      ]
+    },
+    { "capsule_id": "act" },
+    { "capsule_id": "calibration" }
+  ],
+  "disclosures": {
+    "root": { "agent_input": { "spec_version": "evaluation-summary/v1" } },
+    "report": {
+      "agent_input": {
+        "spec_version": "evaluation-report/v1",
+        "date": "2026-09-14",
+        "day": 1,
+        "cases": [{ "task_id": "task", "trial": 0 }],
+        "outcomes": []
+      }
+    },
+    "act": {
+      "agent_input": {
+        "case": {
+          "conversation_id": "case",
+          "turn_idx": 0,
+          "task_id": "task",
+          "trial": 0
+        }
+      }
+    },
+    "calibration": {
+      "agent_input": {
+        "spec_version": "calibration-summary/v1",
+        "confusion": { "pass_pass": 2, "fail_fail": 1 },
+        "agreement": "0.75",
+        "corrected_rate": "0.8",
+        "corrected_rate_ci": ["0.7", "0.9"],
+        "period_window": { "start": "2026-09-14", "end": "2026-09-20" }
+      }
+    }
+  }
+}

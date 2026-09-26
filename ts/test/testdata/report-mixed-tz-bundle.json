@@ -1,0 +1,133 @@
+{
+  "root": "root",
+  "records": [
+    {
+      "capsule_id": "root",
+      "references": [
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "report-naive"
+        },
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "report-zulu"
+        }
+      ]
+    },
+    {
+      "capsule_id": "report-naive",
+      "references": [
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "act-naive"
+        }
+      ]
+    },
+    {
+      "capsule_id": "report-zulu",
+      "references": [
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "act-zulu"
+        }
+      ]
+    },
+    { "capsule_id": "act-naive" },
+    { "capsule_id": "act-zulu" }
+  ],
+  "disclosures": {
+    "root": {
+      "agent_input": {
+        "spec_version": "evaluation-summary/v1",
+        "cross_case_aggregation": "rate",
+        "counts": { "reports": 2, "unique_cases": 2 }
+      }
+    },
+    "report-naive": {
+      "agent_input": {
+        "spec_version": "evaluation-report/v1",
+        "evaluation_identity": { "run": "naive-timestamp" },
+        "date": "2026-08-26T20:15:00.123456",
+        "outcomes": [
+          {
+            "outcome_id": "policy_compliance",
+            "role": "required",
+            "aggregate": "pass"
+          }
+        ],
+        "cases": [
+          {
+            "task_id": "task-naive",
+            "trial": 0,
+            "case_aggregate": "pass",
+            "axis_judgments": [
+              {
+                "axis_id": "policy_compliance",
+                "outcome_id": "policy_compliance",
+                "status": "pass",
+                "rationale": "the agent followed the cancellation policy",
+                "evidence_ids": ["act-naive"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "report-zulu": {
+      "agent_input": {
+        "spec_version": "evaluation-report/v1",
+        "evaluation_identity": { "run": "zulu-timestamp" },
+        "date": "2026-08-26T03:00:00Z",
+        "outcomes": [
+          {
+            "outcome_id": "policy_compliance",
+            "role": "required",
+            "aggregate": "fail"
+          }
+        ],
+        "cases": [
+          {
+            "task_id": "task-zulu",
+            "trial": 0,
+            "case_aggregate": "fail",
+            "axis_judgments": [
+              {
+                "axis_id": "policy_compliance",
+                "outcome_id": "policy_compliance",
+                "status": "fail",
+                "rationale": "the agent skipped the cancellation policy",
+                "evidence_ids": ["act-zulu"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "act-naive": {
+      "agent_input": {
+        "case": {
+          "conversation_id": "case-naive",
+          "turn_idx": 0,
+          "task_id": "task-naive",
+          "trial": 0
+        }
+      },
+      "agent_output": { "role": "assistant", "content": "naive-timestamp act" }
+    },
+    "act-zulu": {
+      "agent_input": {
+        "case": {
+          "conversation_id": "case-zulu",
+          "turn_idx": 0,
+          "task_id": "task-zulu",
+          "trial": 0
+        }
+      },
+      "agent_output": { "role": "assistant", "content": "zulu-timestamp act" }
+    }
+  }
+}
