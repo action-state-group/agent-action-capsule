@@ -34,7 +34,11 @@ cd python && PYTHONPATH=. python3 scripts/generate_vectors.py provenance-mode
 
 (the corpus name limits the run to this directory; the generator's other
 corpora cannot currently be regenerated — see `main()` in the script).
-Every case carries `spec_version` `draft-mih-scitt-agent-action-capsule-05`.
+
+The twelve cases released in v0.5.0 / go/v0.5.x carry `spec_version`
+`draft-mih-scitt-agent-action-capsule-04` and are frozen byte-for-byte. Each
+has a `<name>-v05` twin that differs only in `spec_version`
+(`draft-mih-scitt-agent-action-capsule-05`) and therefore in `capsule_id`.
 
 The expected values are **spec-anchored** — see
 `draft-mih-scitt-agent-action-capsule-05.md`, "Provenance mode and

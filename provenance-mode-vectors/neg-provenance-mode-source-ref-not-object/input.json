@@ -7,7 +7,7 @@
     "ledger_mode": "standalone"
   },
   "canonicalization_id": "jcs",
-  "capsule_id": "3d236cd94374bf731443978e494598cd3ff0bc4dbeaa569a29a32311b42722dc",
+  "capsule_id": "eb3575bea3fd7e635147d2fe3b8789c849de0d7df3d53847175eb346d2cb370c",
   "developer": "agent@v1",
   "disposition": {
     "approver": "policy",
@@ -24,6 +24,6 @@
     "source_asserted_at": "2026-01-01T00:00:00Z",
     "source_ref": "x-external-ledger-entry"
   },
-  "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+  "spec_version": "draft-mih-scitt-agent-action-capsule-04",
   "timestamp": "2026-08-24T00:00:00Z"
 }

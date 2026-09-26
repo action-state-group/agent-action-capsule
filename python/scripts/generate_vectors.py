@@ -38,6 +38,9 @@ DE_OUT = Path(__file__).resolve().parents[2] / "vectors/disclosure-envelope"
 PM_OUT = Path(__file__).resolve().parents[2] / "provenance-mode-vectors"
 VINTAGE_SPEC = "draft-mih-scitt-agent-action-capsule-00"
 CURRENT_SPEC = "draft-mih-scitt-agent-action-capsule-05"
+# The provenance-mode corpus shipped in v0.5.0 / go/v0.5.x sealed as -04; those
+# files are frozen. Each case also gets a "-v05" twin sealed as -05.
+RELEASED_PM_SPEC = "draft-mih-scitt-agent-action-capsule-04"
 HEX_R = "1" * 64  # a stand-in response/request digest (64-hex); content is opaque here
 HEX_R2 = "2" * 64
 MISSING_PARENT = "9" * 64
@@ -55,10 +58,10 @@ def ident(action_id: str, action_type: str = "decide") -> dict:
     }
 
 
-def ident_v4(action_id: str, action_type: str = "decide") -> dict:
+def ident_v4(action_id: str, action_type: str = "decide", spec_version: str = CURRENT_SPEC) -> dict:
     """Identity fields for the current declared-JCS serialization suite."""
     return {
-        "spec_version": CURRENT_SPEC,
+        "spec_version": spec_version,
         "format_version": "4",
         "canonicalization_id": "jcs",
         "action_id": action_id,
@@ -445,8 +448,11 @@ def build_disclosure_envelope_cases() -> list[dict]:
 # merging into vectors/capsule/ to avoid disturbing that corpus's own manifest
 # and generation. The domain/provenance (-02) addendum remains a separate,
 # still Python-only surface Go does not implement.
-def build_provenance_mode_cases() -> list[dict]:
+def build_provenance_mode_cases(spec_version: str = RELEASED_PM_SPEC) -> list[dict]:
     cases: list[dict] = []
+
+    def ident(action_id: str, action_type: str = "decide") -> dict:
+        return ident_v4(action_id, action_type, spec_version)
 
     def add(name, kind, description, inp):
         cases.append({"name": name, "kind": kind, "description": description, "input": inp})
@@ -456,7 +462,7 @@ def build_provenance_mode_cases() -> list[dict]:
         "REQUIRED companion fields present and well-formed, time_rung absent (implies "
         "self_attested) -> verifies clean; derived.provenance_mode='backfilled' and "
         "derived.provenance_time_rung='self_attested' are always reported (check 9).",
-        seal({**ident_v4("prov-backfilled"), "assurance": assurance("not_applicable"),
+        seal({**ident("prov-backfilled"), "assurance": assurance("not_applicable"),
               "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
               "provenance_mode": provenance_mode_backfilled()}))
 
@@ -467,7 +473,7 @@ def build_provenance_mode_cases() -> list[dict]:
         "attestation_mode/ledger_mode/cross_party_rung, this profile treats an unsupported "
         "provenance_mode time claim as a falsifiable dishonesty claim); "
         "derived.provenance_time_rung stays 'self_attested', the rederived value, never the claim.",
-        seal({**ident_v4("prov-witnessed-overclaim"), "assurance": assurance("not_applicable"),
+        seal({**ident("prov-witnessed-overclaim"), "assurance": assurance("not_applicable"),
               "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
               "provenance_mode": provenance_mode_backfilled(time_rung="witnessed")}))
 
@@ -475,7 +481,7 @@ def build_provenance_mode_cases() -> list[dict]:
         "provenance_mode.mode='backfilled' with none of the four REQUIRED companion fields "
         "(source_ref, source_asserted_at, import_batch, imported_at) present -> four "
         "provenance_mode_missing_required_field failures (check 9).",
-        seal({**ident_v4("prov-missing-fields"), "assurance": assurance("not_applicable"),
+        seal({**ident("prov-missing-fields"), "assurance": assurance("not_applicable"),
               "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
               "provenance_mode": {"mode": "backfilled"}}))
 
@@ -484,15 +490,15 @@ def build_provenance_mode_cases() -> list[dict]:
         "shape a laundering producer would construct to make an import look contemporaneous "
         "-> provenance_time_laundering_shape (check 9, gating); equality is never treated as "
         "corroboration, regardless of any other assurance value the record carries.",
-        seal({**ident_v4("prov-laundering"), "assurance": assurance("not_applicable"),
+        seal({**ident("prov-laundering"), "assurance": assurance("not_applicable"),
               "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
               "provenance_mode": provenance_mode_backfilled(
                   source_asserted_at="2026-09-22T00:00:00Z", imported_at="2026-09-22T00:00:00Z")}))
 
-    prov_contemporaneous = seal({**ident_v4("prov-contemporaneous-parent"),
+    prov_contemporaneous = seal({**ident("prov-contemporaneous-parent"),
                                   "assurance": assurance("not_applicable"),
                                   "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"}})
-    prov_duplicate = seal({**ident_v4("prov-backfilled-duplicate"),
+    prov_duplicate = seal({**ident("prov-backfilled-duplicate"),
                             "assurance": assurance("not_applicable", ledger_mode="chained"),
                             "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
                             "provenance_mode": provenance_mode_backfilled(),
@@ -519,7 +525,7 @@ def build_provenance_mode_cases() -> list[dict]:
         "enum -> provenance_mode_invalid (check 9, gating); derived.provenance_mode is left "
         "UNSET (only a recognized mode is ever recorded) and no backfilled/contemporaneous "
         "sub-checks run.",
-        seal({**ident_v4("prov-invalid-mode"), "assurance": assurance("not_applicable"),
+        seal({**ident("prov-invalid-mode"), "assurance": assurance("not_applicable"),
               "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
               "provenance_mode": {"mode": "fabricated"}}))
 
@@ -533,7 +539,7 @@ def build_provenance_mode_cases() -> list[dict]:
         "enum on an otherwise well-formed backfilled record -> a single provenance_mode_invalid "
         "(check 9, gating); the unrecognized value is reset (time_rung=None) so it is NOT also "
         "treated as a witnessed overclaim, and derived.provenance_time_rung stays 'self_attested'.",
-        seal({**ident_v4("prov-invalid-time-rung"), "assurance": assurance("not_applicable"),
+        seal({**ident("prov-invalid-time-rung"), "assurance": assurance("not_applicable"),
               "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
               "provenance_mode": provenance_mode_backfilled(time_rung="notarized")}))
 
@@ -543,7 +549,7 @@ def build_provenance_mode_cases() -> list[dict]:
         "provenance_mode.source_ref present but a non-object (string) on a backfilled record "
         "-> provenance_mode_source_ref_malformed (check 9, gating; the source_ref-MUST-be-object "
         "branch). All other backfilled companion fields are present and well-formed.",
-        seal({**ident_v4("prov-source-ref-not-object"), "assurance": assurance("not_applicable"),
+        seal({**ident("prov-source-ref-not-object"), "assurance": assurance("not_applicable"),
               "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
               "provenance_mode": {**provenance_mode_backfilled(source_ref=False),
                                   "source_ref": "x-external-ledger-entry"}}))
@@ -555,7 +561,7 @@ def build_provenance_mode_cases() -> list[dict]:
         "provenance_mode.source_ref is a well-formed object but MISSING the REQUIRED 'digest' "
         "subfield on a backfilled record -> provenance_mode_source_ref_malformed (check 9, "
         "gating; the per-subfield branch). type and digest_alg are present.",
-        seal({**ident_v4("prov-source-ref-missing-subfield"), "assurance": assurance("not_applicable"),
+        seal({**ident("prov-source-ref-missing-subfield"), "assurance": assurance("not_applicable"),
               "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
               "provenance_mode": {**provenance_mode_backfilled(source_ref=False),
                                   "source_ref": {"type": "x-external-ledger-entry", "digest_alg": "SHA-256"}}}))
@@ -570,7 +576,7 @@ def build_provenance_mode_cases() -> list[dict]:
         "(source_ref present and non-null) -> provenance_mode_invalid (check 9, gating; the "
         "orphaned-fields branch, presence-and-non-null). derived.provenance_mode='contemporaneous' "
         "is still recorded; no provenance_time_rung cap is derived for a contemporaneous record.",
-        seal({**ident_v4("prov-contemporaneous-orphaned"), "assurance": assurance("not_applicable"),
+        seal({**ident("prov-contemporaneous-orphaned"), "assurance": assurance("not_applicable"),
               "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
               "provenance_mode": {"mode": "contemporaneous",
                                   "source_ref": {"type": "x-external-ledger-entry", "digest_alg": "SHA-256", "digest": "3" * 64}}}))
@@ -586,7 +592,7 @@ def build_provenance_mode_cases() -> list[dict]:
         "type/digest_alg/digest non-empty) -> verifies clean; this is the ONLY case where "
         "derived.provenance_time_rung='witnessed' (the cap rederived from cited evidence, "
         "not from the claim).",
-        seal({**ident_v4("prov-witnessed-corroborated"), "assurance": assurance("not_applicable"),
+        seal({**ident("prov-witnessed-corroborated"), "assurance": assurance("not_applicable"),
               "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
               "provenance_mode": provenance_mode_backfilled(time_rung="witnessed"),
               "references": [{"type": "x-witnessed-timestamp", "digest_alg": "SHA-256", "digest": "4" * 64,
@@ -597,11 +603,11 @@ def build_provenance_mode_cases() -> list[dict]:
     # contemporaneous record 'duplicates' is defined to cite), the pass reports
     # duplicate_collapsed AND duplicate_parent_not_contemporaneous (both info, check 9)
     # on the child; both members remain ok.
-    dup_backfilled_parent = seal({**ident_v4("prov-backfilled-parent"),
+    dup_backfilled_parent = seal({**ident("prov-backfilled-parent"),
                                    "assurance": assurance("not_applicable"),
                                    "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
                                    "provenance_mode": provenance_mode_backfilled()})
-    dup_backfilled_child = seal({**ident_v4("prov-backfilled-child"),
+    dup_backfilled_child = seal({**ident("prov-backfilled-child"),
                                   "assurance": assurance("not_applicable", ledger_mode="chained"),
                                   "disposition": {"decision": "accept", "approver": "policy", "human_disposed": False, "verdict_class": "executed"},
                                   "provenance_mode": provenance_mode_backfilled(),
@@ -779,7 +785,12 @@ def write_disclosure_envelope_corpus() -> None:
 def write_provenance_mode_corpus() -> None:
     PM_OUT.mkdir(exist_ok=True)
     pm_manifest = []
-    for case in build_provenance_mode_cases():
+    twins = [
+        {**case, "name": f"{case['name']}-v05",
+         "description": f"-05 twin of {case['name']} (only spec_version differs): {case['description']}"}
+        for case in build_provenance_mode_cases(CURRENT_SPEC)
+    ]
+    for case in [*build_provenance_mode_cases(), *twins]:
         name, kind, desc, inp = case["name"], case["kind"], case["description"], case["input"]
         case_dir = PM_OUT / name
         case_dir.mkdir(exist_ok=True)
