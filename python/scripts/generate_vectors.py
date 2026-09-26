@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 from agent_action_capsule import (
@@ -36,7 +37,7 @@ OUT = Path(__file__).resolve().parents[2] / "vectors/capsule"
 DE_OUT = Path(__file__).resolve().parents[2] / "vectors/disclosure-envelope"
 PM_OUT = Path(__file__).resolve().parents[2] / "provenance-mode-vectors"
 VINTAGE_SPEC = "draft-mih-scitt-agent-action-capsule-00"
-CURRENT_SPEC = "draft-mih-scitt-agent-action-capsule-04"
+CURRENT_SPEC = "draft-mih-scitt-agent-action-capsule-05"
 HEX_R = "1" * 64  # a stand-in response/request digest (64-hex); content is opaque here
 HEX_R2 = "2" * 64
 MISSING_PARENT = "9" * 64
@@ -707,7 +708,7 @@ HAND_AUTHORED_CASES = [
 ]
 
 
-def main() -> None:
+def write_capsule_corpus() -> None:
     OUT.mkdir(exist_ok=True)
     manifest = []
     for case in build_cases():
@@ -752,6 +753,8 @@ def main() -> None:
     )
     print(f"wrote {len(manifest)} vectors to {OUT}")
 
+
+def write_disclosure_envelope_corpus() -> None:
     de_manifest = []
     for case in build_disclosure_envelope_cases():
         name, kind, desc, inp = case["name"], case["kind"], case["description"], case["input"]
@@ -772,6 +775,8 @@ def main() -> None:
     )
     print(f"wrote {len(de_manifest)} vectors to {DE_OUT}")
 
+
+def write_provenance_mode_corpus() -> None:
     PM_OUT.mkdir(exist_ok=True)
     pm_manifest = []
     for case in build_provenance_mode_cases():
@@ -802,6 +807,31 @@ def main() -> None:
         pm_checksum_lines.append(f"{digest}  {path.relative_to(PM_OUT)}")
     (PM_OUT / "SHA256SUMS").write_text("\n".join(pm_checksum_lines) + "\n", encoding="ascii")
     print(f"wrote {len(pm_manifest)} vectors to {PM_OUT}")
+
+
+CORPORA = {
+    "capsule": write_capsule_corpus,
+    "disclosure-envelope": write_disclosure_envelope_corpus,
+    "provenance-mode": write_provenance_mode_corpus,
+}
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Write the named corpora (default: all).
+
+    The corpora are selectable because the ``capsule`` and
+    ``disclosure-envelope`` builders still seal vintage format-2/3 inputs,
+    which the format-4-only reference (#99) refuses to seal; those two
+    corpora are maintained as frozen files until their builders are ported.
+    ``provenance-mode`` builds only format-4 inputs and regenerates cleanly:
+    ``python scripts/generate_vectors.py provenance-mode``.
+    """
+    names = list(argv if argv is not None else sys.argv[1:]) or list(CORPORA)
+    unknown = [name for name in names if name not in CORPORA]
+    if unknown:
+        raise SystemExit(f"unknown corpus {unknown!r}; choose from {sorted(CORPORA)}")
+    for name in names:
+        CORPORA[name]()
 
 
 if __name__ == "__main__":

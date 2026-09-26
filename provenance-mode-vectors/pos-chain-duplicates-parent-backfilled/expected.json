@@ -3,7 +3,7 @@
   "kind": "store",
   "results": [
     {
-      "capsule_id_recomputed": "9e71f9139b7a1e45ffec6b9e665b2bfffca7d42076b361e175030a1c3aa0e86c",
+      "capsule_id_recomputed": "e08ac71ad0fe01360df5459adf8011ece0c6009ba11bc631fbdfe711cdd98457",
       "derived": {
         "attestation_mode": "self_attested",
         "effect_mode": "not_applicable",
@@ -15,7 +15,7 @@
       "ok": true
     },
     {
-      "capsule_id_recomputed": "98bbcf46fad51ef5f8afb098d4b13bca4d5d69b56bbc2598e4ce389e150cb07a",
+      "capsule_id_recomputed": "e94134aa8070f305745dac90d5b4a16939384319c39c8c64948263cb7da69202",
       "derived": {
         "attestation_mode": "self_attested",
         "effect_mode": "not_applicable",
@@ -27,13 +27,13 @@
         {
           "check": 9,
           "code": "duplicate_collapsed",
-          "detail": "chain.relation='duplicates' over parent 9e71f9139b7a1e45ffec6b9e665b2bfffca7d42076b361e175030a1c3aa0e86c; verifiers and downstream evidence evaluators MUST count this pair once, the contemporaneous parent governing (\u00a75.3(bis) Provenance mode)",
+          "detail": "chain.relation='duplicates' over parent e08ac71ad0fe01360df5459adf8011ece0c6009ba11bc631fbdfe711cdd98457; verifiers and downstream evidence evaluators MUST count this pair once, the contemporaneous parent governing (\u00a75.3(bis) Provenance mode)",
           "severity": "info"
         },
         {
           "check": 9,
           "code": "duplicate_parent_not_contemporaneous",
-          "detail": "chain.relation='duplicates' parent 9e71f9139b7a1e45ffec6b9e665b2bfffca7d42076b361e175030a1c3aa0e86c is itself provenance_mode.mode='backfilled'; 'duplicates' is defined to cite the contemporaneous record (\u00a75.3(bis) Provenance mode)",
+          "detail": "chain.relation='duplicates' parent e08ac71ad0fe01360df5459adf8011ece0c6009ba11bc631fbdfe711cdd98457 is itself provenance_mode.mode='backfilled'; 'duplicates' is defined to cite the contemporaneous record (\u00a75.3(bis) Provenance mode)",
           "severity": "info"
         }
       ],

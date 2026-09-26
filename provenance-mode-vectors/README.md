@@ -29,12 +29,12 @@ a spec/format revision (regenerate and review the diff) or a regression.
 They regenerate via:
 
 ```bash
-cd python && PYTHONPATH=. python3 scripts/generate_vectors.py
+cd python && PYTHONPATH=. python3 scripts/generate_vectors.py provenance-mode
 ```
 
-(this also regenerates `../test-vectors/` and `../disclosure-envelope-vectors/`;
-see those directories' own regeneration caveats before running it against a
-checkout with local vector edits).
+(the corpus name limits the run to this directory; the generator's other
+corpora cannot currently be regenerated — see `main()` in the script).
+Every case carries `spec_version` `draft-mih-scitt-agent-action-capsule-05`.
 
 The expected values are **spec-anchored** — see
 `draft-mih-scitt-agent-action-capsule-05.md`, "Provenance mode and
