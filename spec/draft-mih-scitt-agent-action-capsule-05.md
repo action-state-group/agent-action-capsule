@@ -327,7 +327,7 @@ detail is specified in {{constraints}}.
 
 | Field | Type | Req | Meaning |
 |---|---|---|---|
-| spec_version | string | REQUIRED | The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-04". |
+| spec_version | string | REQUIRED | The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-05". Producers emit the newest published value; verifiers accept every published value (below). |
 | format_version | string | REQUIRED | The serialization-suite version. The value MUST be exactly "4". |
 | canonicalization_id | string | REQUIRED | The value MUST be exactly "jcs". Absent, null, non-string, empty, unknown, and `"jcs-n"` declarations are invalid. |
 | capsule_id | string (64 lowercase hex) | REQUIRED | The derived identifier. Remove local-only `signature` and `key_id` envelope fields, if present in a local composite representation, then compute SHA-256 over plain JCS of the Capsule after removing only `capsule_id`. The `canonicalization_id` declaration, `chain` block, and `references` array participate. Verifiers MUST recompute; carried values MUST NOT be trusted. |
@@ -337,6 +337,17 @@ detail is specified in {{constraints}}.
 | developer | string | REQUIRED | The agent identity and version that performed the action. |
 | timestamp | string | REQUIRED | {{RFC3339}} UTC with "Z" suffix. |
 | epoch_id | string | OPTIONAL | An operator-assigned epoch identifier, stable within one operational configuration of the agent system. Producers SHOULD populate this field and rotate its value — together with an epoch-boundary Capsule ({{epochs}}) — when a configuration change that materially alters agent behavior occurs (for example, a model-version swap, a policy-manifest revision, or a significant constraint-schema change). A verifier or ledger consumer scopes a history window to a specific operational configuration by filtering on operator and epoch_id. Absent epoch_id implies a single, unnamed epoch; a producer MUST NOT back-fill epoch_id on Capsules already sealed. |
+
+A producer MUST emit the newest published `spec_version` value; a
+producer implementing this revision emits
+"draft-mih-scitt-agent-action-capsule-05". A verifier MUST accept every
+`spec_version` value defined by a published revision of this profile and
+MUST NOT reject a Capsule solely because it carries an earlier revision's
+value. `spec_version` names the prose revision; it selects no digest,
+canonicalization, or verification algorithm (`format_version` and
+`canonicalization_id` do), so a Capsule sealed under
+"draft-mih-scitt-agent-action-capsule-04" is verified by the checks of
+{{verification}} unchanged.
 
 Monetary and quantity values are subject to the exact-decimal-string
 requirement in {{conventions}}.
@@ -1864,6 +1875,45 @@ documentation so deployers can audit admission without reading implementation co
 
 
 --- back
+
+# Changes from draft-mih-scitt-agent-action-capsule-04 {#changes-from-04}
+
+This appendix is non-normative. RFC Editor: please remove this appendix
+before publication.
+
+* Wire version: the `spec_version` value defined by this revision is
+  "draft-mih-scitt-agent-action-capsule-05". Producers emit the newest
+  published value; verifiers accept every published value, so
+  "draft-mih-scitt-agent-action-capsule-04" Capsules continue to verify
+  unchanged ({{identity}}).
+* Provenance mode: an optional `provenance_mode` block distinguishes
+  contemporaneous from backfilled records, with the `duplicates`
+  `chain.relation`, the `corroborates_source_time` `citation_purpose`, and
+  Class 1 check 9 ({{provenancemode}}, {{verification}}).
+* New registrations: `chain.relation` `follows`, the bare next-link, with
+  `sequence` noted as a deployed legacy alias that is not registered
+  ({{hitl}}); `citation_purpose` `counterparty_half` and
+  `counterparty_inclusion` ({{xref}}); `effect.type` `inference_completion`
+  ({{effect}}); and `effect_attestation` `host_served_observed`, equal in
+  grade to `runtime_claimed` ({{effect}}).
+* Cross-record references: `{digest_alg, digest}` is stated normatively as
+  a reference's sole identity; policy references are excluded; an optional,
+  declared-not-attested `retention` object is defined ({{xref}},
+  {{retentiondecl}}).
+* Cross-algorithm re-anchoring of an anchored root is specified
+  ({{reanchoring}}).
+* Assurance: a `confirmed` effect whose binding does not hold derives
+  `effect_mode` `dispatched_unconfirmed`; `chained` derives from the
+  Capsule's own chain block, and parent resolution never downgrades
+  `ledger_mode` ({{effect}}, {{assurance}}).
+* Class 1 verification refers to the closed `approver` set defined in
+  {{disposition}} rather than restating it, which had omitted
+  `counterparty`.
+* References: the selective-disclosure companion is cited as
+  {{I-D.mih-scitt-agent-action-capsule-sel-disc}}, correcting a citation of
+  a document that does not exist; companion-draft revision pins are
+  updated; {{I-D.ietf-scitt-scrapi}} and {{RFC8392}} are cited where
+  already relied on.
 
 # Acknowledgments
 {:numbered="false"}

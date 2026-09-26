@@ -284,7 +284,7 @@ detail is specified in <xref target="constraints"/>.</t>
               <td align="left">spec_version</td>
               <td align="left">string</td>
               <td align="left">REQUIRED</td>
-              <td align="left">The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-04".</td>
+              <td align="left">The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-05". Producers emit the newest published value; verifiers accept every published value (below).</td>
             </tr>
             <tr>
               <td align="left">format_version</td>
@@ -343,6 +343,16 @@ detail is specified in <xref target="constraints"/>.</t>
             </tr>
           </tbody>
         </table>
+        <t>A producer MUST emit the newest published <tt>spec_version</tt> value; a
+producer implementing this revision emits
+"draft-mih-scitt-agent-action-capsule-05". A verifier MUST accept every
+<tt>spec_version</tt> value defined by a published revision of this profile and
+MUST NOT reject a Capsule solely because it carries an earlier revision's
+value. <tt>spec_version</tt> names the prose revision; it selects no digest,
+canonicalization, or verification algorithm (<tt>format_version</tt> and
+<tt>canonicalization_id</tt> do), so a Capsule sealed under
+"draft-mih-scitt-agent-action-capsule-04" is verified by the checks of
+<xref target="verification"/> unchanged.</t>
         <t>Monetary and quantity values are subject to the exact-decimal-string
 requirement in <xref target="conventions"/>.</t>
       </section>
@@ -2952,9 +2962,65 @@ About This Document
         </reference>
       </references>
     </references>
-    <?line 1866?>
+    <?line 1877?>
 
-<section numbered="false" anchor="acknowledgments">
+<section anchor="changes-from-04">
+      <name>Changes from draft-mih-scitt-agent-action-capsule-04</name>
+      <t>This appendix is non-normative. RFC Editor: please remove this appendix
+before publication.</t>
+      <ul spacing="normal">
+        <li>
+          <t>Wire version: the <tt>spec_version</tt> value defined by this revision is
+"draft-mih-scitt-agent-action-capsule-05". Producers emit the newest
+published value; verifiers accept every published value, so
+"draft-mih-scitt-agent-action-capsule-04" Capsules continue to verify
+unchanged (<xref target="identity"/>).</t>
+        </li>
+        <li>
+          <t>Provenance mode: an optional <tt>provenance_mode</tt> block distinguishes
+contemporaneous from backfilled records, with the <tt>duplicates</tt>
+            <tt>chain.relation</tt>, the <tt>corroborates_source_time</tt> <tt>citation_purpose</tt>, and
+Class 1 check 9 (<xref target="provenancemode"/>, <xref target="verification"/>).</t>
+        </li>
+        <li>
+          <t>New registrations: <tt>chain.relation</tt> <tt>follows</tt>, the bare next-link, with
+<tt>sequence</tt> noted as a deployed legacy alias that is not registered
+(<xref target="hitl"/>); <tt>citation_purpose</tt> <tt>counterparty_half</tt> and
+<tt>counterparty_inclusion</tt> (<xref target="xref"/>); <tt>effect.type</tt> <tt>inference_completion</tt>
+(<xref target="effect"/>); and <tt>effect_attestation</tt> <tt>host_served_observed</tt>, equal in
+grade to <tt>runtime_claimed</tt> (<xref target="effect"/>).</t>
+        </li>
+        <li>
+          <t>Cross-record references: <tt>{digest_alg, digest}</tt> is stated normatively as
+a reference's sole identity; policy references are excluded; an optional,
+declared-not-attested <tt>retention</tt> object is defined (<xref target="xref"/>,
+<xref target="retentiondecl"/>).</t>
+        </li>
+        <li>
+          <t>Cross-algorithm re-anchoring of an anchored root is specified
+(<xref target="reanchoring"/>).</t>
+        </li>
+        <li>
+          <t>Assurance: a <tt>confirmed</tt> effect whose binding does not hold derives
+<tt>effect_mode</tt> <tt>dispatched_unconfirmed</tt>; <tt>chained</tt> derives from the
+Capsule's own chain block, and parent resolution never downgrades
+<tt>ledger_mode</tt> (<xref target="effect"/>, <xref target="assurance"/>).</t>
+        </li>
+        <li>
+          <t>Class 1 verification refers to the closed <tt>approver</tt> set defined in
+<xref target="disposition"/> rather than restating it, which had omitted
+<tt>counterparty</tt>.</t>
+        </li>
+        <li>
+          <t>References: the selective-disclosure companion is cited as
+<xref target="I-D.mih-scitt-agent-action-capsule-sel-disc"/>, correcting a citation of
+a document that does not exist; companion-draft revision pins are
+updated; <xref target="I-D.ietf-scitt-scrapi"/> and <xref target="RFC8392"/> are cited where
+already relied on.</t>
+        </li>
+      </ul>
+    </section>
+    <section numbered="false" anchor="acknowledgments">
       <name>Acknowledgments</name>
       <t>The author thanks the reviewers and contributors who shaped the design
 recorded here, and the SCITT and COSE working groups whose substrate this
