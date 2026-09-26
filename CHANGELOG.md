@@ -17,18 +17,25 @@
 ## Unreleased
 
 ### Wire: `spec_version` -05
-- **Producers emit `draft-mih-scitt-agent-action-capsule-05`; verifiers accept every
-  published value.** Python `DEFAULT_SPEC_VERSION` (and `SPEC_VERSION`) moves to -05;
-  Python, Go and TypeScript export the current and published values
-  (`PUBLISHED_SPEC_VERSIONS`, `verify.CurrentSpecVersion` / `verify.PublishedSpecVersions`,
-  `CURRENT_SPEC_VERSION` / `PUBLISHED_SPEC_VERSIONS`). No verifier branches on
-  `spec_version`, so -04 Capsules verify unchanged; each implementation has a test
-  verifying a committed -04 vector and its -05 twin.
-- `citation_purpose` `ran_under` (#95) is registered in -05 alongside the other -05
-  registrations.
-- Vectors: the capsule corpus keeps its -04 cases frozen and adds six `pos-v05-*` cases
-  (`python/scripts/generate_v05_vectors.py`); the provenance-mode corpus, the Go
-  vocabulary fixture and the cross-language interlock fixture are re-pinned to -05.
+- **A producer conforming to -05 emits `draft-mih-scitt-agent-action-capsule-05`; a
+  verifier accepts `-04` and `-05`** (the revisions that define format 4).
+  `spec_version` never selects an algorithm, and an unrecognized value is informational,
+  never by itself a rejection. Python `DEFAULT_SPEC_VERSION` (and `SPEC_VERSION`) moves to
+  -05; Python, Go and TypeScript export the current and accepted values
+  (`ACCEPTED_SPEC_VERSIONS`, `verify.CurrentSpecVersion` / `verify.AcceptedSpecVersions`,
+  `CURRENT_SPEC_VERSION` / `ACCEPTED_SPEC_VERSIONS`). No verifier branches on
+  `spec_version`, so a format-4 Capsule carrying -04 verifies unchanged; each
+  implementation tests a committed -04 vector and its -05 twin, and an unrecognized value.
+- Registrations in -05: `chain.relation` `follows` (and `duplicates`, with
+  `provenance_mode`); `citation_purpose` `ran_under` (#95), `corroborates_source_time`,
+  `counterparty_half` and `counterparty_inclusion`; `effect.type` `inference_completion`;
+  `effect_attestation` `host_served_observed`. Python check 8 (and Go, which reads the same
+  `REGISTRY.md`) now reports `inference_completion` and `host_served_observed` as seeded
+  values rather than unknown ones.
+- Vectors: released vectors are unchanged. The capsule corpus keeps its -04 cases and adds
+  five `pos-v05-*` cases (`python/scripts/generate_v05_vectors.py`); the provenance-mode
+  corpus and the cross-language interlock fixture each gain `-v05` twins beside the
+  released -04 files.
 - TypeScript `registries.ts` now matches `spec/REGISTRY.md` (it was on the draft-04 seed
   sets) and is checked against it by a test.
 
