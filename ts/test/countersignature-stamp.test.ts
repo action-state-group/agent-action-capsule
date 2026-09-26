@@ -3,6 +3,10 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { classifyCountersignatures } from "../src/countersignature-stamp.js";
 import { bundleDigest } from "../src/bundle.js";
+import {
+  countersignerDirectory,
+  derivedFixture,
+} from "./helpers/derived-fixtures.js";
 
 function fixture(name: string): Record<string, unknown> {
   return JSON.parse(
@@ -18,6 +22,10 @@ const directory = fixture("countersigner-directory.json") as unknown as Array<{
 }>;
 
 describe("classifyCountersignatures", () => {
+  it("keeps the committed directory in step with the derived fixtures' signer", () => {
+    expect(directory).toEqual(countersignerDirectory());
+  });
+
   it("renders the hollow default when countersignatures[] is absent", async () => {
     const bundle = fixture("week-bundle.json");
     expect(bundle.countersignatures).toBeUndefined();
@@ -28,7 +36,9 @@ describe("classifyCountersignatures", () => {
   });
 
   it("renders the hollow default when countersignatures[] is an empty array", async () => {
-    const bundle = fixture("week-bundle-empty-countersignatures.json");
+    const bundle = await derivedFixture(
+      "week-bundle-empty-countersignatures.json",
+    );
     expect(bundle.countersignatures).toEqual([]);
     const digest = await bundleDigest(bundle);
     expect(
@@ -42,7 +52,9 @@ describe("classifyCountersignatures", () => {
   });
 
   it("classifies the producer's own key as not independent", async () => {
-    const bundle = fixture("week-bundle-producer-countersigned.json");
+    const bundle = await derivedFixture(
+      "week-bundle-producer-countersigned.json",
+    );
     const digest = await bundleDigest(bundle);
     const producerKey = (
       bundle.extensions as { "producer-key/v1": { public_key: string } }
@@ -57,7 +69,9 @@ describe("classifyCountersignatures", () => {
   });
 
   it("resolves a directory signer with name, logo, and checks recomputed", async () => {
-    const bundle = fixture("week-bundle-directory-countersigned.json");
+    const bundle = await derivedFixture(
+      "week-bundle-directory-countersigned.json",
+    );
     const digest = await bundleDigest(bundle);
     const result = await classifyCountersignatures(
       bundle.countersignatures as unknown[],
@@ -77,7 +91,9 @@ describe("classifyCountersignatures", () => {
   });
 
   it("never takes the directory logo from the bundle itself", async () => {
-    const bundle = fixture("week-bundle-directory-countersigned.json");
+    const bundle = await derivedFixture(
+      "week-bundle-directory-countersigned.json",
+    );
     const digest = await bundleDigest(bundle);
     const spoofedLogo = "data:image/png;base64,spoofed-by-bundle";
     const spoofedDirectory = [{ ...directory[0]!, logoDataUrl: spoofedLogo }];
@@ -94,7 +110,9 @@ describe("classifyCountersignatures", () => {
   });
 
   it("classifies a verified signer that is neither producer nor directory as unresolved", async () => {
-    const bundle = fixture("week-bundle-unresolved-countersigned.json");
+    const bundle = await derivedFixture(
+      "week-bundle-unresolved-countersigned.json",
+    );
     const digest = await bundleDigest(bundle);
     const result = await classifyCountersignatures(
       bundle.countersignatures as unknown[],
@@ -127,7 +145,9 @@ describe("classifyCountersignatures", () => {
   });
 
   it("catches a countersignature over a tampered (wholesale-edited) bundle", async () => {
-    const bundle = fixture("week-bundle-directory-countersigned.json");
+    const bundle = await derivedFixture(
+      "week-bundle-directory-countersigned.json",
+    );
     const originalDigest = await bundleDigest(bundle);
     const tampered: Record<string, unknown> = {
       ...bundle,
