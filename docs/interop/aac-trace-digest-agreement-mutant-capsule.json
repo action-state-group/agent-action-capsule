@@ -1,0 +1,31 @@
+{
+  "action_id": "trace-digest-agreement",
+  "action_type": "decide",
+  "assurance": {
+    "attestation_mode": "self_attested",
+    "effect_mode": "not_applicable",
+    "ledger_mode": "standalone"
+  },
+  "canonicalization_id": "jcs",
+  "developer": "conformance-vector@v1",
+  "disposition": {
+    "approver": "policy",
+    "decision": "accept",
+    "human_disposed": false,
+    "verdict_class": "executed"
+  },
+  "extension": {
+    "trace_digest_agreement_test": {
+      "non_ascii": "héllo wörld — 日本語 π≈3.14159, Ω≠0",
+      "😀": "MUTATED nested value",
+      "Ｚ": "full-width BMP key",
+      "safe_max": 9007199254740991,
+      "safe_min": -9007199254740991
+    }
+  },
+  "format_version": "4",
+  "operator": "AAC-CONFORMANCE",
+  "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+  "timestamp": "2026-09-22T00:00:00Z",
+  "capsule_id": "9f2e3e36f6307d6993cf5280e8d3d3dfeb080323d455f5a97d6649d013b4c42d"
+}
