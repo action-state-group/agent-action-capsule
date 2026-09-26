@@ -282,6 +282,7 @@ digest contexts.
 | `responds_to` | The citing Capsule addresses or answers the cited record without a same-stream chain relationship to it. |
 | `corroborates_source_time` | The citing Capsule's `references[]` entry cites, by digest, a signed or independently witnessed timestamp supporting a `provenance_mode` block's `source_asserted_at` claim. Defined in the Internet-Draft's Provenance mode section (`-05` and later revisions). The only citation this profile permits to raise `provenance_mode.time_rung` from `self_attested` to `witnessed`. |
 | `counterparty_half` | The cited record is the counterparty's half of a two-party exchange, received and held by the citing node, which records `received_from`/`via`/`received_at`/`signature_ok` plus the received half's digests in this Capsule's `compute_attestation.received_half` and cites the counterparty's already-sealed Capsule by digest. The citing node does NOT re-assert the cited half as its own observation — it records custody of an external half, never an action or outcome of its own. |
+| `counterparty_inclusion` | The citing Capsule cites, by digest, a counterparty's inclusion proof and the checkpoint covering it — and that checkpoint's receipt when it is witnessed — for a counterparty half this node already holds under an earlier `counterparty_half` citation, one `references[]` entry per cited artifact; the cited artifacts are stored as held artifacts, never entered into this node's chain. The citing Capsule chains to its own head via `follows` and never mutates the earlier `counterparty_half` citation: inclusion evidence is added by a new record, never by amending the custody record. |
 
 **Boundary rule.** A citation to the producer's own same-stream `chain`
 parent is never expressed via `references`/`citation_purpose`; a
@@ -311,6 +312,9 @@ record still carries an ordinary same-stream `chain.relation` to its own
 head — `follows` when it makes no other claim over that head; the relation
 asserts no outcome over the parent (§6), and the
 custody-of-a-foreign-half meaning lives solely in this `citation_purpose`.
+`counterparty_inclusion` follows the same discipline: later evidence about a
+held half (its inclusion in the counterparty's log) is a further citation by
+a later record, never an amendment of the record that first took custody.
 
 ## 12. `provenance_mode`
 

@@ -1370,6 +1370,10 @@ The seeded vocabulary:</t>
                 <td align="left">counterparty_half</td>
                 <td align="left">The cited record is the counterparty's half of a two-party exchange, received and held by the citing node. The citing node records <tt>received_from</tt>, <tt>via</tt>, <tt>received_at</tt>, and <tt>signature_ok</tt>, together with the received half's digests, in this Capsule's <tt>compute_attestation.received_half</tt>, and cites the counterparty's already-sealed Capsule by digest through this entry. The citing node does NOT re-assert the cited half as its own observation, action, or outcome — the entry records CUSTODY of an external half, so a held foreign half becomes a committed, checkpointed fact of this stream rather than a render-time observation. The cited half is a foreign record, never this Capsule's <tt>chain.parent_capsule_id</tt>, so the boundary rule above holds.</td>
               </tr>
+              <tr>
+                <td align="left">counterparty_inclusion</td>
+                <td align="left">This Capsule cites, by digest, a counterparty's inclusion proof and the checkpoint covering it — and that checkpoint's receipt when it is witnessed — for a counterparty half the citing node already holds under an earlier <tt>counterparty_half</tt> citation, with one <tt>references</tt> entry per cited artifact. The cited artifacts are held artifacts, never entries in the citing node's chain. The citing Capsule chains to its own same-stream head via <tt>follows</tt> (<xref target="hitl"/>) and never mutates the earlier <tt>counterparty_half</tt> citation: inclusion evidence is added by a new record, never by amending the custody record.</td>
+              </tr>
             </tbody>
           </table>
           <t>Designated-expert guidance: <tt>acted_on</tt> and <tt>responds_to</tt> name a cross-stream
@@ -1384,6 +1388,10 @@ parent — <tt>follows</tt> (<xref target="hitl"/>) when the record makes no oth
 that head — and the fact that it holds a counterparty's foreign half is
 carried
 solely by this <tt>references</tt> entry — never by a new <tt>chain.relation</tt> value.
+<tt>counterparty_inclusion</tt> follows the same discipline: it is a further
+citation by a later record, so later evidence about a held half (its
+inclusion in the counterparty's log) never rewrites the record that first
+took custody of it.
 Registering the held-half meaning on <tt>chain.relation</tt> (for example a
 proposed <tt>cites</tt>) would conflate the parent-link axis with the
 citation-target axis, the same conflation this section forbids below when it
@@ -1860,7 +1868,8 @@ pinned in a publicly available specification.</t>
           </li>
           <li>
             <t>"citation_purpose" registry (<xref target="xref"/>): acted_on, responds_to,
-corroborates_source_time, counterparty_half. This registry is distinct
+corroborates_source_time, counterparty_half, counterparty_inclusion.
+This registry is distinct
 from, and never a
 repurposing of, CPB's own
 <tt>purpose</tt> field on a typed digest reference
@@ -1883,7 +1892,11 @@ held by the citing node (<xref target="xref"/>); it is a citation, never a
 head with an ordinary relation that asserts no outcome over the parent
 (<tt>follows</tt>, the bare next-link, when it makes no other claim over that
 head), and holding a foreign half is carried solely by the <tt>references</tt>
-entry.
+entry. <tt>counterparty_inclusion</tt> cites, by digest, a counterparty's
+inclusion proof and covering checkpoint (and the checkpoint's receipt
+when witnessed) for a half the citing node already holds, stored as held
+artifacts; the citing Capsule chains to its own head via <tt>follows</tt> and
+never mutates the earlier <tt>counterparty_half</tt> citation (<xref target="xref"/>).
 Additional values are expected
 future registrations, each admitted once its semantics are pinned in
 a publicly available specification.</t>
@@ -2930,7 +2943,7 @@ About This Document
         </reference>
       </references>
     </references>
-    <?line 1847?>
+    <?line 1857?>
 
 <section numbered="false" anchor="acknowledgments">
       <name>Acknowledgments</name>

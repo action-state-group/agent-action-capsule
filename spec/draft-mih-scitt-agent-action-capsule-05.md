@@ -1139,6 +1139,7 @@ The seeded vocabulary:
 | acted_on | This Capsule's action targeted, consumed, or was performed against the cited record's declared content — a stream boundary, not a custody claim: the cited record may belong to a different producer or stream entirely, and citing it asserts only that this action is about that content, never that the citing producer holds or continues its custody. |
 | responds_to | This Capsule addresses or answers the cited record without a same-stream chain relationship to it — the cited record is not this Capsule's `chain.parent_capsule_id` and MAY be a different producer's record or otherwise outside this producer's own stream. |
 | counterparty_half | The cited record is the counterparty's half of a two-party exchange, received and held by the citing node. The citing node records `received_from`, `via`, `received_at`, and `signature_ok`, together with the received half's digests, in this Capsule's `compute_attestation.received_half`, and cites the counterparty's already-sealed Capsule by digest through this entry. The citing node does NOT re-assert the cited half as its own observation, action, or outcome — the entry records CUSTODY of an external half, so a held foreign half becomes a committed, checkpointed fact of this stream rather than a render-time observation. The cited half is a foreign record, never this Capsule's `chain.parent_capsule_id`, so the boundary rule above holds. |
+| counterparty_inclusion | This Capsule cites, by digest, a counterparty's inclusion proof and the checkpoint covering it — and that checkpoint's receipt when it is witnessed — for a counterparty half the citing node already holds under an earlier `counterparty_half` citation, with one `references` entry per cited artifact. The cited artifacts are held artifacts, never entries in the citing node's chain. The citing Capsule chains to its own same-stream head via `follows` ({{hitl}}) and never mutates the earlier `counterparty_half` citation: inclusion evidence is added by a new record, never by amending the custody record. |
 
 Designated-expert guidance: `acted_on` and `responds_to` name a cross-stream
 citation intent that `chain.relation` cannot express because
@@ -1152,6 +1153,10 @@ parent — `follows` ({{hitl}}) when the record makes no other claim over
 that head — and the fact that it holds a counterparty's foreign half is
 carried
 solely by this `references` entry — never by a new `chain.relation` value.
+`counterparty_inclusion` follows the same discipline: it is a further
+citation by a later record, so later evidence about a held half (its
+inclusion in the counterparty's log) never rewrites the record that first
+took custody of it.
 Registering the held-half meaning on `chain.relation` (for example a
 proposed `cites`) would conflate the parent-link axis with the
 citation-target axis, the same conflation this section forbids below when it
@@ -1602,7 +1607,8 @@ Initial contents are the seeded values of this document, verbatim:
    each admitted once its semantics and any verifier consequence are
    pinned in a publicly available specification.
 7. "citation_purpose" registry ({{xref}}): acted_on, responds_to,
-   corroborates_source_time, counterparty_half. This registry is distinct
+   corroborates_source_time, counterparty_half, counterparty_inclusion.
+   This registry is distinct
    from, and never a
    repurposing of, CPB's own
    `purpose` field on a typed digest reference
@@ -1625,7 +1631,11 @@ Initial contents are the seeded values of this document, verbatim:
    head with an ordinary relation that asserts no outcome over the parent
    (`follows`, the bare next-link, when it makes no other claim over that
    head), and holding a foreign half is carried solely by the `references`
-   entry.
+   entry. `counterparty_inclusion` cites, by digest, a counterparty's
+   inclusion proof and covering checkpoint (and the checkpoint's receipt
+   when witnessed) for a half the citing node already holds, stored as held
+   artifacts; the citing Capsule chains to its own head via `follows` and
+   never mutates the earlier `counterparty_half` citation ({{xref}}).
    Additional values are expected
    future registrations, each admitted once its semantics are pinned in
    a publicly available specification.
