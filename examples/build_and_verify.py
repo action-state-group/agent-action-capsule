@@ -19,7 +19,7 @@ from agent_action_capsule import (
 
 # Shared envelope identity fields (spec §5.1, all REQUIRED strings).
 IDENT = dict(
-    spec_version="draft-mih-scitt-agent-action-capsule-04",
+    spec_version="draft-mih-scitt-agent-action-capsule-05",
     format_version="4",
     canonicalization_id="jcs",
     operator="ACME-CO",

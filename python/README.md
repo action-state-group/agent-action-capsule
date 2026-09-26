@@ -123,7 +123,7 @@ derived modes, the recomputed `capsule_id`). See
 from agent_action_capsule import verify, Capsule, EffectRecord, Disposition, AssuranceBlock
 
 capsule = Capsule(
-    spec_version="draft-mih-scitt-agent-action-capsule-04", format_version="4",
+    spec_version="draft-mih-scitt-agent-action-capsule-05", format_version="4",
     canonicalization_id="jcs",
     action_id="po-12345", action_type="decide", operator="ACME-CO", developer="agent@v1",
     timestamp="2026-06-13T00:00:00Z",
@@ -152,7 +152,7 @@ distinction matters to a caller:
 from agent_action_capsule import Capsule, ReferenceEntry, LogCoordinates
 
 capsule = Capsule(
-    spec_version="draft-mih-scitt-agent-action-capsule-04", format_version="4",
+    spec_version="draft-mih-scitt-agent-action-capsule-05", format_version="4",
     canonicalization_id="jcs",
     action_id="deny-42", action_type="decide", operator="ACME-CO", developer="agent@v1",
     timestamp="2026-09-08T00:00:00Z",

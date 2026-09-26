@@ -47,12 +47,19 @@ __all__ = [
     "emit",
     "DEFAULT_SPEC_VERSION",
     "DEFAULT_FORMAT_VERSION",
+    "PUBLISHED_SPEC_VERSIONS",
     # Aliases for backward-compat with the emit-tier adapter surface.
     "SPEC_VERSION",
     "FORMAT_VERSION",
 ]
 
-DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-04"
+# Producers emit the newest published spec_version; verifiers accept every
+# published value (draft -05, "Identity and parties"). spec_version selects no
+# digest or verification algorithm, so verify() never branches on it.
+DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-05"
+PUBLISHED_SPEC_VERSIONS = tuple(
+    f"draft-mih-scitt-agent-action-capsule-{n:02d}" for n in range(6)
+)
 DEFAULT_FORMAT_VERSION = "4"
 
 # Aliases used by the adapter tier (framework adapters import these names).
@@ -143,7 +150,7 @@ def emit(
             or reasoning content that produced this action. Self-reported and
             unattested — committed to capsule_id so tampering is detectable,
             but faithfulness is not verified (§-02).
-        spec_version: Spec revision string (defaults to ``-04``).
+        spec_version: Spec revision string (defaults to ``-05``).
         format_version: Serialization suite version (defaults to ``"4"``).
         tool_name: Name of the tool that was called. Used to build a readable
             ``action_id`` when one is not provided.
