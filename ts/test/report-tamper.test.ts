@@ -4,6 +4,7 @@ import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 import { emitEvidenceGraphHtml } from "../src/emitter.js";
 import { renderEvidenceGraph } from "../src/browser.js";
+import { derivedFixture } from "./helpers/derived-fixtures.js";
 
 // A real report.html is opened in a browser, not the Node test process, so
 // the render/verify step below needs a DOM -- constructed directly with
@@ -130,17 +131,9 @@ describe("report.html tamper test (rows are data, never prose)", () => {
 
   it("catches editing the bundle wholesale: the countersignature fails", async () => {
     const base = bundle();
-    const countersignaturesFixture = JSON.parse(
-      readFileSync(
-        resolve(
-          process.cwd(),
-          "test",
-          "testdata",
-          "week-bundle-directory-countersigned.json",
-        ),
-        "utf8",
-      ),
-    ) as { countersignatures: unknown[] };
+    const countersignaturesFixture = (await derivedFixture(
+      "week-bundle-directory-countersigned.json",
+    )) as { countersignatures: unknown[] };
     const signed = {
       ...base,
       countersignatures: countersignaturesFixture.countersignatures,
