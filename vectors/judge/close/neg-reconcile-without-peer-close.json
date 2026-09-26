@@ -1,0 +1,29 @@
+{
+  "closed_at": "2026-09-25T00:00:00Z",
+  "counts_by_kind": {
+    "evaluation-report": 1,
+    "observation": 12
+  },
+  "epistemic_type": "producer_claim",
+  "head": {
+    "digest": "4c308edf2db81c484d6698beaa2bbe76efb9d07df05acbec958001f99e14cd44",
+    "digest_alg": "SHA-256"
+  },
+  "period": {
+    "end": "2026-09-25T00:00:00Z",
+    "start": "2026-09-01T00:00:00Z"
+  },
+  "reconcile": {
+    "status": "AGREED",
+    "tallies": {
+      "a_only": 1,
+      "b_only": 0,
+      "conflicting": 0,
+      "insufficient": 1,
+      "matched": 10,
+      "unresolved": 0
+    }
+  },
+  "record_id": "close-oo-1",
+  "record_version": "close/v1"
+}

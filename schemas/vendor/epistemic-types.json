@@ -1,0 +1,19 @@
+{
+  "$comment": "Vendored, not owned here. The epistemic_type value set is defined ONCE, on the Evidence Layer's record header (spec/draft-mih-agent-evidence-layer-00.md section 'Epistemic Type'). This file is a literal, lowercase transcription of that section's closed set, created here so the judge-record-family-v1 parity check (schemas/check_judge_record_examples.py) has a machine-readable copy to read rather than a second hand-typed enum -- the same discipline capsule-engine's schemas/vendor/epistemic-types.json applies for its own EPISTEMIC_TYPE_VALUES parity test (commit ba7b7a0, batch1-evidence-contract-jsonschema-v0). A change to the owning document's set is a drift that must be re-vendored here, not silently re-derived. Tokens are lowercase ASCII, underscore-separated, per that document's own IANA registration policy -- this copy does NOT case-fold to uppercase the way capsule-engine's vendored copy does; that is capsule-engine's own convention, not the owning document's.",
+  "source": {
+    "document": "draft-mih-agent-evidence-layer-00.md",
+    "section": "Epistemic Type",
+    "date": "2026-09-25",
+    "owning_field": "record.epistemic_type"
+  },
+  "values": [
+    "observed_event",
+    "system_of_record_fact",
+    "producer_claim",
+    "human_report",
+    "semantic_judgment",
+    "derived_metric",
+    "adjudication",
+    "obligation_reference"
+  ]
+}

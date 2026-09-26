@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentactioncapsule.org/schemas/judge/close-v1.json",
+  "title": "Close v1",
+  "description": "Companion schema for spec/judge-record-family-v1.md section 3. The root schema validates a Close record per the Evidence Layer's reconcile model (draft-mih-agent-evidence-layer-00.md section 'Reconcile and Close'): period, counts by kind, and the head digest at close time, with an optional reconcile block. The same schema serves both a single-store period Close (reconcile absent) and capsule-emit-mesh's two-party Close (reconcile.peer_close cites the other side's Close record) -- one shape, not a parallel family. epistemic_type is fixed to producer_claim: a Close is the store's own statement about its own history, never self-certifying its own AGREED/UNILATERAL/CONTESTED status (that status is read from acknowledges/rebuts links pointing AT this record, per the owning document; reconcile.status below is a reporting convenience, not the authoritative source).",
+  "$ref": "#/$defs/Close",
+  "$defs": {
+    "HexDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "DigestRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest_alg", "digest"],
+      "properties": {
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" }
+      }
+    },
+    "Citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "digest_alg", "digest", "citation_purpose"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" },
+        "citation_purpose": { "type": "string", "minLength": 1 }
+      }
+    },
+    "PeerCloseCitation": {
+      "allOf": [
+        { "$ref": "#/$defs/Citation" },
+        { "properties": { "citation_purpose": { "const": "reconciles_with" } } }
+      ]
+    },
+    "Period": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ReconcileTallies": {
+      "description": "The Evidence Layer's six-state reconcile vocabulary (section 'Reconcile and Close'), mirrored here, never redefined. One_only/other_only are not disagreement; only CONFLICTING is.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["matched", "a_only", "b_only", "conflicting", "insufficient", "unresolved"],
+      "properties": {
+        "matched": { "type": "integer", "minimum": 0 },
+        "a_only": { "type": "integer", "minimum": 0 },
+        "b_only": { "type": "integer", "minimum": 0 },
+        "conflicting": { "type": "integer", "minimum": 0 },
+        "insufficient": { "type": "integer", "minimum": 0 },
+        "unresolved": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "Reconcile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tallies", "peer_close", "status"],
+      "properties": {
+        "tallies": { "$ref": "#/$defs/ReconcileTallies" },
+        "peer_close": { "$ref": "#/$defs/PeerCloseCitation" },
+        "status": { "enum": ["AGREED", "UNILATERAL", "CONTESTED"] }
+      }
+    },
+    "Close": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_version", "record_id", "epistemic_type", "closed_at",
+        "period", "counts_by_kind", "head"
+      ],
+      "properties": {
+        "record_version": { "const": "close/v1" },
+        "record_id": { "type": "string", "minLength": 1 },
+        "epistemic_type": { "const": "producer_claim" },
+        "closed_at": { "type": "string", "format": "date-time" },
+        "period": { "$ref": "#/$defs/Period" },
+        "counts_by_kind": {
+          "description": "Record count by record_type over the period, e.g. {\"observation\": 12, \"evaluation-report\": 3}. Open keys -- record_type is itself an open token (Evidence Layer, section 'The Record Model').",
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "head": { "$ref": "#/$defs/DigestRef" },
+        "reconcile": { "$ref": "#/$defs/Reconcile" }
+      }
+    }
+  }
+}

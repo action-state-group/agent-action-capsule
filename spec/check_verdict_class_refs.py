@@ -18,7 +18,7 @@ Usage:
 
 Exit 0: clean. Exit 1: findings with diagnostics.
 
-Mutant-failure guarantee (QUEUE_PROTOCOL §7): before the
+Mutant-failure guarantee: before the
 bilateral-disposition-vocabulary-drift fix this script reports the four
 missing values (hitl_dispatched, engine_failure, needs_decision, resolved)
 and exits 1. After the fix it exits 0. Run against both states to confirm

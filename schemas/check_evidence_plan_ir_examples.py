@@ -22,7 +22,7 @@ mechanical half):
      header carrying the retired name `contract_version` instead of
      `contract_ref` — MUST fail validation, and the rejection is proven
      name-specific by renaming the key back and confirming it then validates.
-  3. MUTANT CHECK (QUEUE_PROTOCOL section 7): the negative fixture's
+  3. MUTANT CHECK: the negative fixture's
      rejection is re-tested with the schema's locality if/then block
      (EvidencePlan's top-level "if"/"then") stripped out. With the rule
      removed, the SAME fixture MUST validate — proving check 2 above can
@@ -37,8 +37,7 @@ Usage:
 Exit 0: every check above passed. Exit 1: a finding was printed. Exit 2: a
 harness error (missing dependency, missing fixture).
 
-NOT covered here (named per QUEUE_PROTOCOL section 7b's "name what you did
-NOT test"):
+NOT covered here (explicitly named, not silently skipped):
   - `header.created_at`'s "format": "date-time" keyword is annotation-only
     under python-jsonschema's default Draft202012Validator (no FormatChecker
     is attached) -- a garbage created_at value currently validates clean.
