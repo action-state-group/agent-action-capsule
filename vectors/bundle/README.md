@@ -1,6 +1,6 @@
 # Evidence Bundle conformance vectors
 
-These vectors cover `draft-mih-scitt-agent-action-capsule-evidence-bundle-00`.
+These vectors cover `draft-mih-zhang-agent-disclosure-bundle-00`.
 Each case states the three independent completeness outcomes. `withheld` means
 the producer explicitly declared a reachable citation missing; it is not a
 successful complete graph and not an unexplained verification failure.

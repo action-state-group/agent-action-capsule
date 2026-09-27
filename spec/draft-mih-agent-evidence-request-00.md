@@ -36,7 +36,7 @@ informative:
         name: Steven Mih
     date: 2026-08
     refcontent: Work in Progress
-  I-D.mih-zhang-agent-action-capsule-evidence-bundle:
+  I-D.mih-zhang-agent-disclosure-bundle:
     title: "AAC Evidence Bundle"
     author:
       - ins: S. Mih
@@ -96,7 +96,7 @@ later cite. The evidence artifact remains opaque to this specification; it
 is identified by digest and verified against the anchor by format-specific
 means outside this document. A deployment that already has a format for the
 artifact — for example an Evidence Bundle
-({{I-D.mih-zhang-agent-action-capsule-evidence-bundle}}) — carries it inside
+({{I-D.mih-zhang-agent-disclosure-bundle}}) — carries it inside
 the artifact response envelope this document defines ({{artifact}});
 nothing here restates that format.
 
@@ -448,7 +448,7 @@ outcome is ever converted into another ({{discipline}}).
 
 The artifact response is the signed response envelope for the granting
 outcome. The object it carries is opaque to this specification and MAY be
-an Evidence Bundle ({{I-D.mih-zhang-agent-action-capsule-evidence-bundle}})
+an Evidence Bundle ({{I-D.mih-zhang-agent-disclosure-bundle}})
 or any other evidence artifact the deployment's evidence format defines;
 this document specifies the envelope and its binding to the request and
 the coverage anchor, never the carried object's internal shape.

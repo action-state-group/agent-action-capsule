@@ -9,7 +9,7 @@ Expires: 30 March 2027
 
 
          Disclosure Envelope Profile for Agent Action Capsules
-      draft-mih-scitt-agent-action-capsule-disclosure-envelope-00
+                 draft-mih-agent-disclosure-envelope-00
 
 Abstract
 

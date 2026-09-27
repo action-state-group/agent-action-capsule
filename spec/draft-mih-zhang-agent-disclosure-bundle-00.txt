@@ -10,7 +10,7 @@ Expires: 30 March 2027                                       Independent
 
 
                           AAC Evidence Bundle
-        draft-mih-zhang-agent-action-capsule-evidence-bundle-00
+               draft-mih-zhang-agent-disclosure-bundle-00
 
 Abstract
 
@@ -254,10 +254,9 @@ Internet-Draft             AAC Evidence Bundle            September 2026
    }
 
    It has the same eligibility and DE-3 digest rule as the per-Capsule
-   Disclosure Envelope in
-   [I-D.mih-scitt-agent-action-capsule-disclosure-envelope].  The member
-   name selects that draft's registered committed-digest path in the
-   specified Capsule.  For every disclosed member, a verifier MUST
+   Disclosure Envelope in [I-D.mih-agent-disclosure-envelope].  The
+   member name selects that draft's registered committed-digest path in
+   the specified Capsule.  For every disclosed member, a verifier MUST
    compute JSON-DIGEST(revealed preimage) and compare it to the
    committed digest at that registered path in that records element.  A
    match is REVEALED; a mismatch is a failed verification of that
@@ -273,6 +272,7 @@ Internet-Draft             AAC Evidence Bundle            September 2026
    the Capsule that records the act of sealing or issuing these
    disclosures; it is evidence about that act and does not replace the
    DE-3 check.
+
 
 
 
@@ -460,18 +460,18 @@ Internet-Draft             AAC Evidence Bundle            September 2026
 
 13.  Normative References
 
+   [I-D.mih-agent-disclosure-envelope]
+              Mih, S., "Disclosure Envelope Profile for Agent Action
+              Capsules", Work in Progress, Internet-Draft, draft-mih-
+              agent-disclosure-envelope-00, n.d.,
+              <https://datatracker.ietf.org/doc/html/draft-mih-agent-
+              disclosure-envelope-00>.
+
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
               capsule-05, n.d., <https://datatracker.ietf.org/doc/html/
               draft-mih-scitt-agent-action-capsule-05>.
-
-   [I-D.mih-scitt-agent-action-capsule-disclosure-envelope]
-              Mih, S., "Disclosure Envelope Profile for Agent Action
-              Capsules", Work in Progress, Internet-Draft, draft-mih-
-              scitt-agent-action-capsule-disclosure-envelope-00, n.d.,
-              <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
-              agent-action-capsule-disclosure-envelope-00>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,

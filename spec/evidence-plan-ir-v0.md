@@ -97,7 +97,7 @@ input-ref:
 A `by-digest` reference cites evidence content or a prior artifact directly by its content
 address — the digest of `UTF8(JCS(value))` over the cited value, the same digest convention used
 throughout this repository (RFC 8785 canonicalization, lowercase-hex SHA-256; see
-`draft-mih-zhang-agent-action-capsule-evidence-bundle-00.md` §"Digest"). A `by-node` reference
+`draft-mih-zhang-agent-disclosure-bundle-00.md` §"Digest"). A `by-node` reference
 cites the (not-yet-known-at-authoring-time) result of a prior node in the same plan by that node's
 `id`; a verifier resolves it against that node's result envelope (§6) once the plan has been
 executed. `by-node` MUST NOT reference a node at or after its own position in the `nodes` array

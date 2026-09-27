@@ -1,7 +1,7 @@
 # Disclosure Envelope conformance vectors
 
 These frozen vectors cover the Disclosure Envelope companion profile in
-`../../spec/draft-mih-scitt-agent-action-capsule-disclosure-envelope-00.md`.
+`../../spec/draft-mih-agent-disclosure-envelope-00.md`.
 Each input wraps one format-4 Capsule and a `disclosures` object.
 
 This corpus is separate from `../capsule/` because the envelope is a distinct

@@ -407,7 +407,7 @@ def build_cases() -> list[dict]:
     return cases
 
 
-# ---- Disclosure Envelope vectors (draft-mih-scitt-agent-action-capsule-disclosure-envelope-00) ---
+# ---- Disclosure Envelope vectors (draft-mih-agent-disclosure-envelope-00) ---
 # Written to a SEPARATE directory (DE_OUT), not vectors/capsule/: the envelope input shape
 # ({"envelope": {...}}) is not a bare Capsule or {"ledger": [...]}, and vectors/capsule/ is
 # cross-language-shared (go/cmd/vector_runner reads vectors/capsule/vectors.json and expects
