@@ -1,5 +1,5 @@
 {
-  "_status": "DRAFT — spec-desk illustrative vector for [a18-nostr-pubkey-host-principal-and-buzz-profiles]; awaiting Steven's Area 18 field-set ruling. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 3 and this directory's README.md.",
+  "_status": "Field set ruled 2026-09-23 (Steven, uniform `semantic_digest`); illustrative vector, not yet a conformance vector — registry placement still open. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 3 and this directory's README.md.",
   "_mutation": "Mutated from positive-semantic-judgment.json: judgment.principal_trust_score added, carrying a numeric score for the principal. Violates the 'no per-user history or scores' rule (task boundary; capsule-registry drafts, common rules across Entries 2-4).",
   "record": {
     "seq": 10,
@@ -17,7 +17,7 @@
       {
         "digest_alg": "SHA-256",
         "digest": "d6788d479be587d2ec4b6dda7e6e65ee0f12a3b673e7b338c5b589b24a82a6e0",
-        "role": "moderated-content-semantic-digest"
+        "role": "semantic_digest"
       }
     ],
     "external_event_refs": [

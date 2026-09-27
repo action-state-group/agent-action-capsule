@@ -1,6 +1,7 @@
 {
-  "_status": "DRAFT — spec-desk illustrative vector for [a18-nostr-pubkey-host-principal-and-buzz-profiles]; awaiting Steven's Area 18 field-set ruling. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 3 and this directory's README.md.",
+  "_status": "Field set ruled 2026-09-23 (Steven, uniform `semantic_digest`); illustrative vector, not yet a conformance vector — registry placement still open. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 3 and this directory's README.md.",
   "_note": "One of three records (semantic_judgment, human_report review, obligation_reference) whose combination is required to satisfy a buzz.moderation/v1 requirement — this profile's evidentiary basis is the three together, not any single record.",
+  "_body_digest_note": "The worked content-vs-decision vector named in capsule-registry drafts Entry 3: payload_commitments[0] (role semantic_digest) is the record's subject digest for the MODERATED CONTENT; judgment.decision_digest is a separate, NAMED digest over the disposition-and-provenance payload below (the DECISION) — two digests, never one field standing in for both, per Steven's 2026-09-23 ruling that extra digested facts go in the record body, never by renaming the subject digest.",
   "record": {
     "seq": 10,
     "record_id": "3dd2d070ee896321c45d6d7e81d0900f3f0ea9284a44b1d53decc0f5e18f40ca",
@@ -17,7 +18,7 @@
       {
         "digest_alg": "SHA-256",
         "digest": "d6788d479be587d2ec4b6dda7e6e65ee0f12a3b673e7b338c5b589b24a82a6e0",
-        "role": "moderated-content-semantic-digest"
+        "role": "semantic_digest"
       }
     ],
     "external_event_refs": [
@@ -29,7 +30,8 @@
     "judgment": {
       "disposition": "removed",
       "evaluator_model_ref": "buzz-mod-model-v1",
-      "calibration_ref": "buzz-mod-calibration-2026-09"
+      "calibration_ref": "buzz-mod-calibration-2026-09",
+      "decision_digest": "3aa20fa62cee15051a49a91380bfa6bf4f8b2f25565603c5579812970df84d60"
     },
     "assurance_properties": ["self_attested"],
     "retention_state": "AVAILABLE"

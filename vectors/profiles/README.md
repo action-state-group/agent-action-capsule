@@ -1,10 +1,13 @@
 # Profile vectors — `nostr-pubkey` host-principal profile + first Buzz Evidence Contract profiles
 
-**Status: DRAFT.** Task `[a18-nostr-pubkey-host-principal-and-buzz-profiles]`, Area 18 phase 0.
-Gate: **HUMANS-WRITE-FIRST** — the field sets these fixtures illustrate carry no Steven ruling
-yet (see `capsule-registry`'s `drafts/a18-host-principal-and-buzz-profiles.md` on the sibling
-branch). These fixtures MUST NOT be read as conformance vectors until that ruling lands and the
-normative entries move out of DRAFT.
+**Status: field set ruled; still illustrative, not conformance vectors.** Task
+`[a18-nostr-pubkey-host-principal-and-buzz-profiles]`, Area 18 phase 0, finalized by
+`[a18-buzz-profiles-finalize-uniform-digest]`. Gate: **HUMANS-WRITE-FIRST** — Steven ruled the
+digest-naming shape of these field sets 2026-09-23 (uniform `semantic_digest`; see
+`capsule-registry`'s `drafts/a18-host-principal-and-buzz-profiles.md` on the sibling branch, which
+quotes the ruling in full). These fixtures still MUST NOT be read as conformance vectors: no
+validator exists for these record shapes yet (see "What is and is not proven here" below), and
+registry placement is a separate, still-open decision tracked in the `spec` lane outbox.
 
 ## What these are, and are not
 
@@ -27,6 +30,16 @@ UTF8(JCS(value))`) over a small labeled placeholder object (`{"label": "<descrip
 ad hoc from a Python shell rather than a committed generator script — consistent with the "no code"
 boundary, since nothing new was added to the package. The label for each digest is named in the
 table below so the value is reproducible: `json_digest({"label": "<label>"})`.
+
+**Two-language parity, checked ad hoc, same "no code" boundary.** Every value in the Digest labels
+table below (Python reference) was independently re-derived from the same `{"label": ...}` object
+using this repository's Go (`go/canonical`, `JSONDigest`) and TypeScript (`ts/src/json.ts`,
+`jsonDigest`) canonicalization implementations, run ad hoc (a throwaway Go test and a `tsx`-run
+script, neither committed) rather than via a committed generator/parity harness — all three
+languages agree on every value. This is a parity *check*, not a parity *harness*: there is still no
+committed generator that emits these fixtures from any reference implementation (see above); the
+follow-on neutral-lane task that builds the schema/validator pair is also where that generator
+belongs.
 
 ## Layout
 
@@ -60,6 +73,26 @@ requirement.
 | `positive-semantic-judgment.json` | `semantic_judgment` | The moderation determination (`disposition`) with evaluator/model/calibration provenance — never the moderated content itself. |
 | `positive-human-report-review.json` | `human_report` | A human moderator's own review outcome over that determination. |
 | `positive-obligation-reference.json` | `obligation_reference` | References to `dsa:article-17` (statement of reasons) and `dsa:article-24-5` (transparency database) — a citation, never a compliance conclusion (Evidence Contract v3 §9). |
+
+## Uniform `semantic_digest` (Steven's 2026-09-23 ruling)
+
+Every fixture's `payload_commitments[0].role` is now the literal string `"semantic_digest"` —
+the per-profile role names this directory used before this task (`job-outcome-payload`,
+`moderated-content-semantic-digest`, `review-event-digest`, `obligation-evidence-digest`,
+`release-gate-payload`) are withdrawn, per the ruling quoted in full in the capsule-registry draft.
+"What kind" of digest this is comes from `contract_ref` + `epistemic_type` on the same record,
+never from the role string. The digest *values* are unchanged — only the naming.
+
+`buzz.release/v1`'s second `payload_commitments` entry (`role: "approval-record-payload"`) is
+**not** renamed: it is a second, genuinely separate digested fact (the approval record, not the
+release-gate record this entry's subject identifies), carried exactly as the ruling directs —
+a NAMED digest in the record body, distinct from the one `semantic_digest` subject field.
+
+`positive-semantic-judgment.json` additionally carries `judgment.decision_digest` — a second,
+NAMED body digest for the moderation *decision* (disposition + evaluator/calibration provenance),
+alongside `payload_commitments[0]`'s `semantic_digest` for the moderated *content*. This is the one
+worked vector capsule-registry drafts Entry 3 points to for "content vs. decision — two distinct
+digested facts, one `subject`."
 
 ## Negative fixtures
 
@@ -98,6 +131,7 @@ Every 64-hex value below is `agent_action_capsule.canonical.json_digest({"label"
 | `3dd2d070ee896321c45d6d7e81d0900f3f0ea9284a44b1d53decc0f5e18f40ca` (semantic-judgment record id) | `a18-draft:buzz.moderation/v1:semantic-judgment-payload:mod-2026-09-22-0007` |
 | `b64ea865579ba7a2c91c92191c533569cb453287d30f3f4073c01293903336e5` (human-report review record id) | `a18-draft:buzz.moderation/v1:human-report-review-payload:mod-2026-09-22-0007` |
 | `d577dd2c31aa9bfbe78e4790289e790faf5e81366336a2815360630328a00086` (obligation-reference record id) | `a18-draft:buzz.moderation/v1:obligation-reference-payload:mod-2026-09-22-0007` |
+| `3aa20fa62cee15051a49a91380bfa6bf4f8b2f25565603c5579812970df84d60` (moderation decision digest — `judgment.decision_digest`, distinct from the content `semantic_digest` above) | `a18-draft:buzz.moderation/v1:decision-digest:mod-2026-09-22-0007` |
 | `93899b08831ccb73f742ffe4b05fe93502beed6279d7bc4517ad476cda3e791d` (release-gate payload digest) | `a18-draft:buzz.release/v1:payload:release-2026-09-22-0003` |
 | `fc5728b07aa97dfd9047cdee8865ddd73b020f795ef9c360c4863d0dab147598` (release Nostr event id) | `a18-draft:buzz.release/v1:nostr-event-id:release-2026-09-22-0003` |
 | `52f21048395397598bd9929aee566e9b7617a161d36bc2818381e06efbd259d6` (release approval-record digest) | `a18-draft:buzz.release/v1:approval-record-payload:release-2026-09-22-0003` |

@@ -1,5 +1,5 @@
 {
-  "_status": "DRAFT — spec-desk illustrative vector for [a18-nostr-pubkey-host-principal-and-buzz-profiles]; awaiting Steven's Area 18 field-set ruling. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 4 and this directory's README.md.",
+  "_status": "Field set ruled 2026-09-23 (Steven, uniform `semantic_digest`); illustrative vector, not yet a conformance vector — registry placement still open. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 4 and this directory's README.md.",
   "record": {
     "seq": 1,
     "record_id": "93899b08831ccb73f742ffe4b05fe93502beed6279d7bc4517ad476cda3e791d",
@@ -16,7 +16,7 @@
       {
         "digest_alg": "SHA-256",
         "digest": "93899b08831ccb73f742ffe4b05fe93502beed6279d7bc4517ad476cda3e791d",
-        "role": "release-gate-payload"
+        "role": "semantic_digest"
       },
       {
         "digest_alg": "SHA-256",

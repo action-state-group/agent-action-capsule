@@ -1,5 +1,5 @@
 {
-  "_status": "DRAFT — spec-desk illustrative vector for [a18-nostr-pubkey-host-principal-and-buzz-profiles]; awaiting Steven's Area 18 field-set ruling. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 3 and this directory's README.md.",
+  "_status": "Field set ruled 2026-09-23 (Steven, uniform `semantic_digest`); illustrative vector, not yet a conformance vector — registry placement still open. See capsule-registry drafts/a18-host-principal-and-buzz-profiles.md Entry 3 and this directory's README.md.",
   "_note": "One of three records (semantic_judgment, human_report review, obligation_reference) whose combination is required to satisfy a buzz.moderation/v1 requirement — this profile's evidentiary basis is the three together, not any single record.",
   "record": {
     "seq": 11,
@@ -18,7 +18,7 @@
       {
         "digest_alg": "SHA-256",
         "digest": "b64ea865579ba7a2c91c92191c533569cb453287d30f3f4073c01293903336e5",
-        "role": "review-event-digest"
+        "role": "semantic_digest"
       }
     ],
     "external_event_refs": [
