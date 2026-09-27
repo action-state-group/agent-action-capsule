@@ -169,7 +169,7 @@
       "enum": ["UNILATERAL", "AGREED", "CONTESTED"]
     },
     "CloseClaim": {
-      "description": "The type-specific body of a `type: close` claim: one sealed Close for one period, with close_state as read from the Close's inbound links at Result build time (see CloseState). `peer` and `peer_close_ref` (the peer's record that acknowledges or rebuts this Close, by digest) are REQUIRED when close_state is AGREED or CONTESTED -- both states exist only because a peer record links to this Close, and the claim must cite that record -- and MUST be absent when UNILATERAL: a unilateral close that names a peer or cites a peer record would read as a half-agreement (or a half-dispute), which is exactly what the ruling forbids. The claim's base fields keep their section 1 semantics unchanged.",
+      "description": "The type-specific body of a `type: close` claim: one sealed Close for one period, with close_state as read from the Close's inbound links at Result build time (see CloseState). `peer` and `peer_close_ref` (the peer's record that acknowledges or rebuts this Close, by digest) are REQUIRED when close_state is AGREED or CONTESTED -- both states exist only because a peer record links to this Close, and the claim must cite that record. When UNILATERAL both are OPTIONAL, never forbidden: a party may name the peer it closed unilaterally against, and may cite the peer's Close it reconciled with, which does not (yet) link back. This follows schemas/judge/close-v1.json, whose Reconcile carries `peer_close` unconditionally (a `reconciles_with` citation, present whether status is AGREED, UNILATERAL, or CONTESTED), and draft-mih-agent-evidence-layer-00, which defines UNILATERAL only as 'no corresponding `acknowledges` link exists yet' -- naming the peer is not agreeing with it. That a UNILATERAL close never READS as agreement is a renderer's obligation (it shows no agreed affordance whatever the row names), pinned by capsule-viewer's tests, not a schema rule. The claim's base fields keep their section 1 semantics unchanged.",
       "type": "object",
       "additionalProperties": false,
       "required": ["period", "close_state"],
@@ -177,20 +177,19 @@
         "period": { "$ref": "#/$defs/Period" },
         "close_state": { "$ref": "#/$defs/CloseState" },
         "peer": {
-          "description": "The peer book / book-profile id whose record acknowledges (AGREED) or rebuts (CONTESTED) this Close. Present iff close_state is AGREED or CONTESTED.",
+          "description": "The peer book / book-profile id: the one whose record acknowledges (AGREED) or rebuts (CONTESTED) this Close, or the one this Close was reconciled against and which has not (yet) linked back (UNILATERAL). REQUIRED when close_state is AGREED or CONTESTED; OPTIONAL when UNILATERAL (close-v1's peer_close is unconditional).",
           "type": "string",
           "minLength": 1
         },
         "peer_close_ref": {
-          "description": "The peer's linking record, by digest only (its capsule_id) -- never inline: the acknowledging Close when AGREED, the rebutting record when CONTESTED. Present iff close_state is AGREED or CONTESTED.",
+          "description": "The peer's record, by digest only (its capsule_id) -- never inline: the acknowledging Close when AGREED, the rebutting record when CONTESTED, or, when UNILATERAL, the peer's Close this one reconciled with (close-v1's `reconciles_with` citation), which carries no link back. REQUIRED when close_state is AGREED or CONTESTED; OPTIONAL when UNILATERAL.",
           "$ref": "#/$defs/DigestRef"
         }
       },
       "allOf": [
         {
           "if": { "properties": { "close_state": { "enum": ["AGREED", "CONTESTED"] } }, "required": ["close_state"] },
-          "then": { "required": ["peer", "peer_close_ref"] },
-          "else": { "not": { "anyOf": [ { "required": ["peer"] }, { "required": ["peer_close_ref"] } ] } }
+          "then": { "required": ["peer", "peer_close_ref"] }
         }
       ]
     },

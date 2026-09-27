@@ -255,9 +255,11 @@ claim (type: close) adds:
   close:
     period: { start, end }
     close_state: UNILATERAL | AGREED | CONTESTED   # as READ from the Close's inbound links, never asserted
-    peer: string                      # REQUIRED iff AGREED or CONTESTED, absent iff UNILATERAL
+    peer: string                      # REQUIRED iff AGREED or CONTESTED; OPTIONAL when UNILATERAL
+                                      #   (the peer this Close was reconciled against, unanswered)
     peer_close_ref: digest-ref        # the peer's acknowledging Close (AGREED) or rebutting record
-                                      #   (CONTESTED), by digest; same rule
+                                      #   (CONTESTED), by digest; OPTIONAL when UNILATERAL (the
+                                      #   peer's Close reconciled with, which does not link back)
 ```
 
 **`close_state` is the Evidence Layer's three-state Close status** (`draft-mih-agent-evidence-layer-00`,
@@ -269,9 +271,18 @@ from a field the Close itself sets." A claim's `close_state` is therefore the st
 *read* from the Close record's inbound links at build time — a reporting convenience, exactly as
 `close-v1.json` labels its own `status` — never a state the Close asserts about itself; a verifier
 re-reads the links and never trusts the field. `AGREED` and `CONTESTED` both exist only because a peer
-record links to the Close, so both MUST cite that record (`peer` + `peer_close_ref`); `UNILATERAL` cites
-nothing. If a build finds both an `acknowledges` and a `rebuts` link at one Close, this document does not
-yet rank them (open; §4.1 will say once ruled).
+record links to the Close, so both MUST cite that record (`peer` + `peer_close_ref`). On `UNILATERAL`
+both are OPTIONAL, never forbidden: a party MAY name the peer it closed unilaterally against, and MAY cite
+the peer's Close it reconciled with, which does not (yet) link back. This follows `close-v1.json`, whose
+`Reconcile` carries `peer_close` unconditionally (a `reconciles_with` citation, present under every
+`status` including `UNILATERAL`), and the Evidence Layer draft, which defines `UNILATERAL` only as "no
+corresponding `acknowledges` link exists yet" — naming the peer is not agreeing with it. So a `close/v1`
+`UNILATERAL` record maps to a claim without dropping its `peer_close`; the earlier staging that forbade
+both on `UNILATERAL` was stricter than the draft, not required by it, and pinned an open question with a
+MUST-reject — it no longer does (whether a report *should* name the peer on a unilateral row stays open
+for the ruling; the schema no longer decides it). What keeps a unilateral row from *reading* as agreement
+is the rendering rule below, not the schema. If a build finds both an `acknowledges` and a `rebuts` link
+at one Close, this document does not yet rank them (open; §4.1 will say once ruled).
 
 **Sufficiency on a reconcile claim is derived from the two non-finding counts only** (documented,
 not schema-enforced in v0): `INSUFFICIENT > 0` ⇒ `GAP`; else `UNRESOLVED > 0` ⇒ `UNKNOWN`; else
@@ -281,7 +292,8 @@ contract clause's verdict is judged over, and that verdict is never a ratio of t
 **The rendering constraints the ruling names are a renderer's obligation, pinned by negative
 fixtures in `capsule-viewer`, never by styling:** `A_ONLY` / `B_ONLY` are "one side missing" and
 MUST NOT render in the class or wording of `CONFLICTING` ("both sides disagree"); a `UNILATERAL`
-close MUST NOT render any affordance of `AGREED`; a `CONTESTED` close renders as its own state
+close MUST NOT render any affordance of `AGREED`, whether or not it names or cites its peer; a
+`CONTESTED` close renders as its own state
 ("contested — peer rebuts"), never with the agreed mark and never in `UNILATERAL`'s wording; a claim
 whose `type` a renderer does not
 recognize renders as an `unrecognized` row carrying the raw type and `contract_ref`, never
@@ -411,10 +423,12 @@ field, each failing at exactly one documented rule. See that directory's `README
 cases and `schemas/check_evidence_result_examples.py` for the validation run, including the
 mutant/load-bearing proof for each negative.
 
-§4.1's PROPOSED claim types add four positives (`pos-oo-reconcile-result.json`,
+§4.1's PROPOSED claim types add five positives (`pos-oo-reconcile-result.json`,
 `pos-oo-close-agreed-result.json`, `pos-oo-close-unilateral-result.json`,
-`pos-oo-close-contested-result.json` — each the untouched requirement `claim-1` beside one typed
-claim) and four negatives (`neg-close-agreed-without-peer`, `neg-close-contested-without-peer-close-ref`,
+`pos-oo-close-unilateral-named-peer-result.json`, `pos-oo-close-contested-result.json` — each the
+untouched requirement `claim-1` beside its typed claims: one on each close positive, two on the
+reconcile positive, `reconcile-1` SATISFIED and `reconcile-2` GAP) and four negatives
+(`neg-close-agreed-without-peer`, `neg-close-contested-without-peer-close-ref`,
 `neg-reconcile-tallies-missing-state`, `neg-unrecognized-claim-type`), same one-field discipline,
 same mutant proof. The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against
 these same fixtures, not here.

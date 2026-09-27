@@ -30,16 +30,22 @@ mechanical half):
      rule is then restored in memory (the committed schema file is never
      modified) and re-verified red.
   4. PROPOSED CLAIM TYPES (Steven's ruling, 2026-09-25 -- "close +
-     reconcile as claim types in result v0"): four more positives
+     reconcile as claim types in result v0"): five more positives
      (pos-oo-reconcile-result, pos-oo-close-agreed-result,
-     pos-oo-close-unilateral-result, pos-oo-close-contested-result -- the
-     Evidence Layer's three Close states, read from links) MUST validate,
-     and four more negatives MUST fail, each with its own mutant check:
+     pos-oo-close-unilateral-result, pos-oo-close-unilateral-named-peer-
+     result, pos-oo-close-contested-result -- the Evidence Layer's three
+     Close states, read from links; UNILATERAL both with and without the
+     peer named, since `peer` / `peer_close_ref` are OPTIONAL there, as
+     close-v1's unconditional `peer_close` has them) MUST validate, and
+     four more negatives MUST fail, each with its own mutant check:
        - neg-close-agreed-without-peer.json: close-1 is AGREED but `peer`
          is removed (CloseClaim's AGREED-or-CONTESTED rule).
        - neg-close-contested-without-peer-close-ref.json: close-1 is
          CONTESTED but `peer_close_ref` (the rebutting record, by digest)
-         is removed (same rule).
+         is removed (same rule). There is deliberately NO negative for a
+         UNILATERAL close that names a peer or cites one: the schema
+         permits both; that such a row never READS as agreement is
+         capsule-viewer's rule, pinned there.
        - neg-reconcile-tallies-missing-state.json: reconcile-1's
          tallies.unresolved removed (all six states required; absent is
          never zero; keys as schemas/judge/close-v1.json spells them).
@@ -92,13 +98,16 @@ SCHEMA_PATH = SCHEMAS_DIR / "evidence-result-v0.json"
 
 POSITIVE_RESULT = "pos-oo-claims-result"
 
-# PROPOSED claim types (2026-09-25 ruling): one positive per type, each
-# pairing the untouched requirement claim-1 with one typed claim.
+# PROPOSED claim types (2026-09-25 ruling): every positive keeps the
+# untouched requirement claim-1 beside its typed claims -- one typed claim
+# on each close positive, two on the reconcile positive (reconcile-1
+# SATISFIED, reconcile-2 GAP).
 POSITIVES = [
     POSITIVE_RESULT,
     "pos-oo-reconcile-result",
     "pos-oo-close-agreed-result",
     "pos-oo-close-unilateral-result",
+    "pos-oo-close-unilateral-named-peer-result",
     "pos-oo-close-contested-result",
 ]
 

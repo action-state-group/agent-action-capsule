@@ -61,21 +61,25 @@ memory, confirming that SAME fixture then validates clean, and restoring the rul
 The schema adds an optional `type` on every claim (`requirement` | `reconcile` | `close`; absent
 means `requirement`, so every fixture above validates byte-unchanged) and a type-specific body
 (`reconcile` / `close`) bound to it. Base fields (`sufficiency`, `verdict`, `tier`, `grade`,
-coverage) keep their section 1–3 semantics on every type. Each positive pairs the untouched
-`claim-1` with ONE typed claim so a fixture pins one type in isolation:
+coverage) keep their section 1–3 semantics on every type. Every positive keeps the untouched
+`claim-1` beside its typed claims, so the pre-existing shape is proven to coexist with each type in
+one `claims[]` array: the four close positives pair `claim-1` with one typed claim; the reconcile
+positive carries two (`reconcile-1` SATISFIED, `reconcile-2` GAP), because the sufficiency
+derivation needs both branches on one document:
 
 | File | Typed claim | What it pins |
 |---|---|---|
 | `pos-oo-reconcile-result.json` | `reconcile-1` (`refund-lands`): all six tallies populated (`matched 408 · a_only 2 · b_only 1 · conflicting 1 · insufficient 0 · unresolved 0`), `SATISFIED` / `not_met`; `reconcile-2` (`change-lands`): `insufficient 3` → `GAP` / `not_evaluable`, `analysis` carrier | the six-state tallies as counts, keyed as `schemas/judge/close-v1.json`'s `ReconcileTallies` keys them; the sufficiency-derivation rule (insufficient > 0 ⇒ GAP; else unresolved > 0 ⇒ UNKNOWN; else SATISFIED — documented in the schema, not enforced); `state_of_record: B` |
 | `pos-oo-close-agreed-result.json` | `close-1` `AGREED`, `peer: oo-sor`, `peer_close_ref` = digest of the peer's acknowledging Close | AGREED carries the peer and its acknowledging record by digest |
-| `pos-oo-close-unilateral-result.json` | `close-1` `UNILATERAL`, no `peer`, no `peer_close_ref` | UNILATERAL names no peer and cites nothing — nothing on the row can read as agreement or dispute |
+| `pos-oo-close-unilateral-result.json` | `close-1` `UNILATERAL`, no `peer`, no `peer_close_ref` | UNILATERAL with nothing said about a counterparty — nothing on the row can read as agreement or dispute |
+| `pos-oo-close-unilateral-named-peer-result.json` | `close-1` `UNILATERAL`, `peer: oo-sor`, no `peer_close_ref` | UNILATERAL may name the peer it was closed against (`peer` / `peer_close_ref` are OPTIONAL on UNILATERAL, as `close-v1.json`'s unconditional `peer_close` has them; the Evidence Layer defines UNILATERAL only as "no corresponding `acknowledges` link exists yet"). Naming the peer is not agreeing with it: the row still carries no agreed affordance — `capsule-viewer`'s rule, pinned there |
 | `pos-oo-close-contested-result.json` | `close-1` `CONTESTED`, `peer: oo-sor`, `peer_close_ref` = digest of the peer's rebutting record | CONTESTED (a `rebuts` link at the Close — the Evidence Layer's third Close state) carries the peer and its rebutting record by digest; it is its own state, never the agreed mark, never UNILATERAL's wording. `close_state` on every close fixture is the state *read* from the Close's inbound links at build time, not asserted by the Close |
 
 Negatives, each one field away from its positive, each with a mutant/load-bearing check:
 
 | File | Mutation | Rule violated |
 |---|---|---|
-| `neg-close-agreed-without-peer.json` | `claims[1].close.peer` removed (state stays `AGREED`) | `CloseClaim`'s rule: `peer` + `peer_close_ref` required iff `AGREED` or `CONTESTED`, forbidden when `UNILATERAL` |
+| `neg-close-agreed-without-peer.json` | `claims[1].close.peer` removed (state stays `AGREED`) | `CloseClaim`'s rule: `peer` + `peer_close_ref` required when `AGREED` or `CONTESTED` (optional when `UNILATERAL` — deliberately no negative for a unilateral close that names or cites its peer) |
 | `neg-close-contested-without-peer-close-ref.json` | `claims[1].close.peer_close_ref` removed (state stays `CONTESTED`) | same rule, CONTESTED branch: a contested close must cite the rebutting record |
 | `neg-reconcile-tallies-missing-state.json` | `claims[1].reconcile.tallies.unresolved` removed | `ReconcileTallies` requires all six states — an absent key is never an implied zero |
 | `neg-unrecognized-claim-type.json` | `claims[0].type` set to `adjudication` (no typed body) | `ClaimType` is a closed enum. The schema is closed-world, so this fails validation here; **rendering** the same document as an `unrecognized` row with the raw type and `contract_ref`, never dropped, is `capsule-viewer`'s job and is pinned by that repo's tests against this same fixture |

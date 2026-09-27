@@ -17,15 +17,17 @@ negative fixtures, each a byte-for-byte copy of the positive with exactly one
 field changed, each spec/evidence-result-v0.md rule this document requires
 MUST reject.
 
-PROPOSED claim types (Steven's ruling, 2026-09-25): four more positives --
-one reconcile Result, one AGREED close, one UNILATERAL close, one CONTESTED
-close (the Evidence Layer's third Close state, draft-mih-agent-evidence-
-layer-00 'Reconcile and Close'), each pairing the untouched requirement
-claim-1 with one typed claim -- and four more negatives (AGREED close
-without `peer`; CONTESTED close without `peer_close_ref`; reconcile tallies
-missing a state; a claim `type` outside the closed enum), each again one
-field away from its positive. Reconcile tallies are keyed as
-schemas/judge/close-v1.json keys them (lowercase).
+PROPOSED claim types (Steven's ruling, 2026-09-25): five more positives --
+one reconcile Result, one AGREED close, one UNILATERAL close (no peer
+named), one UNILATERAL close that names the peer it closed against, one
+CONTESTED close (the Evidence Layer's third Close state, draft-mih-agent-
+evidence-layer-00 'Reconcile and Close'). Four of the five pair the
+untouched requirement claim-1 with one typed claim; the reconcile positive
+carries two (reconcile-1 SATISFIED, reconcile-2 GAP). And four more
+negatives (AGREED close without `peer`; CONTESTED close without
+`peer_close_ref`; reconcile tallies missing a state; a claim `type` outside
+the closed enum), each again one field away from its positive. Reconcile
+tallies are keyed as schemas/judge/close-v1.json keys them (lowercase).
 
 Regenerate with:
     python3 schemas/generate_result_examples.py
@@ -204,9 +206,12 @@ neg_disclosure_carrier_under_withheld["claims"][2]["presentation"] = {
 # ===========================================================================
 # PROPOSED claim types (Steven's ruling, 2026-09-25: "close + reconcile as
 # claim types in result v0, so they feed the same result"). Each positive
-# below pairs the untouched requirement claim-1 with ONE typed claim, so a
-# fixture pins one type in isolation and the pre-existing shape is proven
-# to coexist with it in the same claims[] array.
+# below keeps the untouched requirement claim-1 beside its typed claims, so
+# the pre-existing shape is proven to coexist with each type in the same
+# claims[] array: the three close positives pair claim-1 with ONE typed
+# claim; the reconcile positive carries TWO (reconcile-1 SATISFIED,
+# reconcile-2 GAP), because the sufficiency-derivation rule needs both
+# branches on one document.
 # ===========================================================================
 
 RECONCILE_CONTRACT_REF = "ec:oo-outcomes-reconcile:2026-09-25@1"
@@ -381,7 +386,7 @@ close_contested: ClaimDoc = {
 }
 
 # --- close-1 (UNILATERAL) -- no peer record acknowledges or rebuts ours; --
-#     no peer named
+#     no peer named (the claim carries nothing about a counterparty)
 close_unilateral: ClaimDoc = {
     "id": "close-1",
     "type": "close",
@@ -403,6 +408,17 @@ close_unilateral: ClaimDoc = {
         "close_state": "UNILATERAL",
     },
 }
+
+# --- close-1 (UNILATERAL, peer named) -- the same unilateral Close, with ---
+#     the peer it was closed against named and nothing cited: oo-sor has
+#     not (yet) acknowledged or rebutted it. `peer` is OPTIONAL on
+#     UNILATERAL (close-v1's peer_close is unconditional; the Evidence
+#     Layer defines UNILATERAL only as "no corresponding `acknowledges`
+#     link exists yet"). Naming the peer is not agreeing with it: the
+#     row must still carry no agreed affordance -- a renderer's rule,
+#     pinned in capsule-viewer, not a schema rule.
+close_unilateral_named_peer: ClaimDoc = json.loads(json.dumps(close_unilateral))
+close_unilateral_named_peer["close"]["peer"] = "oo-sor"
 
 
 def _close_result(close_claim: ClaimDoc, title: str) -> EvidenceResultDoc:
@@ -432,6 +448,9 @@ def _close_result(close_claim: ClaimDoc, title: str) -> EvidenceResultDoc:
 
 pos_oo_close_agreed_result = _close_result(close_agreed, "OO Close -- 2026-09-01 (agreed)")
 pos_oo_close_unilateral_result = _close_result(close_unilateral, "OO Close -- 2026-09-01 (unilateral)")
+pos_oo_close_unilateral_named_peer_result = _close_result(
+    close_unilateral_named_peer, "OO Close -- 2026-09-01 (unilateral, peer named)"
+)
 pos_oo_close_contested_result = _close_result(close_contested, "OO Close -- 2026-09-01 (contested)")
 
 # --- neg-close-agreed-without-peer -- close-1 AGREED, `peer` removed -----
@@ -469,6 +488,7 @@ def main() -> int:
     write("pos-oo-reconcile-result", pos_oo_reconcile_result)
     write("pos-oo-close-agreed-result", pos_oo_close_agreed_result)
     write("pos-oo-close-unilateral-result", pos_oo_close_unilateral_result)
+    write("pos-oo-close-unilateral-named-peer-result", pos_oo_close_unilateral_named_peer_result)
     write("pos-oo-close-contested-result", pos_oo_close_contested_result)
     write("neg-close-agreed-without-peer", neg_close_agreed_without_peer)
     write("neg-close-contested-without-peer-close-ref", neg_close_contested_without_peer_close_ref)
