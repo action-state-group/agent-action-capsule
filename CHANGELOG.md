@@ -1,20 +1,14 @@
 # Changelog
 
-## 0.3.0 — 2026-09-08 (Python library)
-
-### Python
-- **draft-04 `references[]` — parity with the Go reference implementation.** The
-  builder, `Capsule` model, parser, and serialization now carry `references[]`,
-  preserving the tri-state **absent ≠ empty ≠ populated**. Reference validation
-  mirrors `go/verify/references.go` 1:1 (entry structure; AAC/SHA-256 digest
-  format; no duplicate chain-parent target; optional citation-purpose /
-  log-coordinate checks). Foreign reference types / digest contexts remain open;
-  unknown citation purposes are informational; coordinate checks do not verify
-  inclusion proofs. Adds the `citation_purpose` registry (7th §12 registry) and
-  validates against the 25 shared Go test vectors + producer-path unit tests.
-  This is the version emit/CLL should pin as their AAC floor for `references[]`.
-
 ## Unreleased
+
+## 0.6.0 — 2026-09-26
+
+**Headline: the -05 wire.** Producers now emit `spec_version`
+`draft-mih-scitt-agent-action-capsule-05`; verifiers accept both `-04` and `-05`. The -05
+registrations are seeded (below). Released vectors are unchanged: every vector case file
+shipped in 0.5.0 / `go/v0.5.x` is byte-identical, and the -05 cases are added beside them
+(only the corpus indexes, `SHA256SUMS` manifests and READMEs gained entries).
 
 ### Wire: `spec_version` -05
 - **A producer conforming to -05 emits `draft-mih-scitt-agent-action-capsule-05`; a
@@ -36,19 +30,12 @@
   five `pos-v05-*` cases (`python/scripts/generate_v05_vectors.py`); the provenance-mode
   corpus and the cross-language interlock fixture each gain `-v05` twins beside the
   released -04 files.
+  The top-level `vectors/SHA256SUMS` also now lists the correct digests for three
+  `interop/composition/` files whose bytes did not change; the 0.5.0 manifest had stale
+  entries. Go's registry-vocabulary test fixture (`go/verify/testdata/vocabulary.json`) is
+  regenerated for the new registrations; it is test data, not a conformance vector.
 - TypeScript `registries.ts` now matches `spec/REGISTRY.md` (it was on the draft-04 seed
   sets) and is checked against it by a test.
-
-### Reference (breaking)
-- **Format-4-only canonical reference.** The Python and Go reference verifiers and
-  `capsule_id` computation now accept `format_version: "4"` only; any other value is
-  rejected with `unsupported_format_version`, and the legacy absent-field ("vintage")
-  construction has been removed rather than left unreachable. Records in the retired
-  format-2 (vintage absent-field) construction remain verifiable with the frozen reference release
-  **`legacy-verify/v0.1.0`** (commit `43b349dd6e8ee5f30dac3add9261b8f84e13ba7e`, the
-  pre-format-4-only `main` tip), which the `pinned-legacy-format-2-verification`
-  conformance job checks out to re-verify the cited July interop record. That tag is
-  the single pinned legacy artifact; do not re-tag.
 
 ### Spec
 - `spec/draft-mih-agent-evidence-request-00.md` — new Internet-Draft, "An
@@ -77,6 +64,29 @@
   set (`schemas/vendor/epistemic-types.json`), extending capsule-engine's Batch 1 parity pattern
   (commit `ba7b7a0`) with its own three-way check. §9 maps every old capsule-judge/capsule-emit-mesh
   field onto this family so the pin/drift port is mechanical.
+- `spec/draft-mih-scitt-agent-action-capsule-05.md` — retention-undertaking declaration and
+  cross-algorithm re-anchoring format (#118); corrected the selective-disclosure I-D reference
+  and stale pins (#120); cites RFC 9942 in place of the superseded merkle-tree-proofs draft
+  (#128). The evidence-bundle and disclosure-envelope drafts pin AAC -05 (#127).
+- `spec/evidence-result-v0.md` + `schemas/evidence-result-v0.json` — Evidence Result schema
+  v0, with examples and a checker (#114).
+
+### Added
+- Go: check 9 (`provenance_mode`) in `go/verify`, with seven more provenance-mode vectors
+  (#113; first tagged as `go/v0.5.1`).
+- Interop: TRACE digest-agreement fixture and test (#115; `rfc8785==0.1.4` added to the
+  `dev` extra for the cross-check only), and `docs/interop/aac-trace-references.md` (#97).
+- Emitter (Go `go/emitter`, TypeScript `ts/src/emitter.ts`): renders an Evidence Bundle as a
+  self-contained HTML report — evidence-graph drill-down, verification page,
+  `presentation/v1` header, countersignature stamp — byte-equal between Go and TypeScript.
+- CI: fail-closed internal-leak lint (#121, #129).
+
+### Fixed
+- Python tests read capsule vectors as UTF-8 (#109).
+
+## 0.5.0 — 2026-09-22
+
+### Spec
 - `spec/draft-mih-scitt-agent-action-capsule-05.md` — added `provenance_mode`,
   a MODE on the ordinary Capsule (never a distinct record type; ruled
   2026-09-22) disambiguating a contemporaneous action record from a
@@ -107,87 +117,8 @@
   its `source_asserted_at` implies).
   Authored by Steven Mih (draft author of record,
   `draft-mih-scitt-agent-action-capsule`).
-- `spec/draft-mih-scitt-agent-action-capsule-03.md` §5.3 Assurance — added the
-  cross-party assurance rung, a FOURTH, orthogonal `assurance` claim
-  (`cross_party_rung`: `unilateral_fallback` < `acknowledged_receipt` <
-  `full_bilateral`) plus its supporting `cross_party` evidence block
-  (`initiator_ref`, `counterparty_ref`, `correlator`, `substantive`). Kept
-  orthogonal to `attestation_mode` rather than folded into it (log custody and
-  counterparty exchange evidence are independent facts a producer can hold in
-  any combination); the draft states this reasoning inline. Same
-  never-grades-up overclaim discipline as `attestation_mode` / `ledger_mode`.
-- `spec/draft-mih-scitt-agent-action-capsule-03.md` §5.4 Disposition —
-  extended the CLOSED `disposition.approver` enum from `{human, policy}` to
-  `{human, policy, counterparty}`. Stays closed (not registry-governed); the
-  pre-existing honesty invariant (`human_disposed: true` REQUIRES
-  `approver: "human"`) is unaffected.
-
-### Compat
-- **Migration path (never-grades-up):** an old verifier that does not
-  recognize `cross_party_rung` or the `cross_party` block simply does not see
-  them — it verifies the record on the three axes it already knows and never
-  errors on the unrecognized field/block, matching how it already tolerates
-  any other unrecognized value. A verifier that DOES recognize the field but
-  is handed a `cross_party_rung` value outside what it can independently
-  derive ranks the claim below what it knows: a `full_bilateral` or
-  `acknowledged_receipt` claim it cannot corroborate is treated no stronger
-  than `unilateral_fallback` (the same floor an unrecognized `attestation_mode`
-  value is already held to, §5.3) — nothing breaks, and no record is silently
-  over-trusted.
-- An old verifier encountering `disposition.approver: "counterparty"` before
-  this revision would reject the Capsule outright (closed two-member enum);
-  this revision is additive, not a relaxation — the enum grows from two
-  members to three, still closed, so no third-party value is newly admitted.
-
-### Docs
-- `docs/telemetry-binding-profile.md`: new informational profile (AARM R8,
-  `capsule-ledger`'s `ldg-otel-exporter-aarm-r8`) specifying the
-  reference-never-copy rule for telemetry export, the minimum attribute set,
-  and the mapping to OTLP/`gen_ai` (primary) and OCSF (secondary,
-  best-effort — documents the mismatch rather than presenting a native fit).
-  Not core spec: telemetry is a projection of the capsule, and this profile
-  moves at OTel/OCSF's release speed so core doesn't have to.
 
 ### Added
-- **Python `references[]` parity with Go (draft-04 §5.5.5, {{xref}}).**
-  `python/agent_action_capsule/contracts.py`: `ReferenceEntry` and
-  `LogCoordinates` producer-side carriers. `python/agent_action_capsule/parse.py`:
-  `Capsule.references` — a genuine tri-state (`None` omits the key; `()` emits
-  `"references": []`; a populated tuple emits the entries), since absent and
-  empty are the same claim but distinct bytes and therefore distinct
-  `capsule_id` digests; the "MUST NOT duplicate `chain.parent_capsule_id`"
-  boundary rule is enforced at `Capsule.__post_init__`.
-  `python/agent_action_capsule/verify.py`: `references[]` findings (entry
-  structure, the AAC/SHA-256 self-identity digest-format gate, the duplicate-
-  chain-parent check, `citation_purpose` and `log_coordinates` checks) spliced
-  into checks 1/6/8, mirroring `go/verify/references.go` finding-for-finding —
-  foreign reference types/digest contexts stay open, unknown `citation_purpose`
-  values are informational (never rejected), and `log_coordinates.inclusion_proof`
-  is recorded as structural only, never independently verified.
-  `python/agent_action_capsule/registries.py`: `citation_purpose` added as the
-  seventh registry (§12), with the same missing-section fallback as the Go
-  loader for an older `REGISTRY.md` snapshot. `python/agent_action_capsule/emit.py`:
-  `emit(references=...)`. Validated against the 25 shared vectors in
-  `go/verify/testdata/references.json` (`python/tests/test_references.py`),
-  replaying the same store and check-order assertions as
-  `go/verify/references_test.go`.
-- `python/agent_action_capsule/contracts.py`: `CrossParty` producer-side
-  carrier (§5.3 Cross-party assurance evidence), `CROSS_PARTY_RUNGS`,
-  `CROSS_PARTY_RUNG_RANK`; `AssuranceBlock.cross_party_rung` (OPTIONAL);
-  `VALID_APPROVERS` extended to include `"counterparty"`.
-- `python/agent_action_capsule/verify.py`: check 7 (`assurance_overclaim`)
-  extended to `cross_party_rung` — a claimed rung above what the verifier
-  independently rederives from the `cross_party` block is flagged and the
-  reported `derived.cross_party_rung` is downgraded to the value the evidence
-  supports.
-- `python/agent_action_capsule/parse.py`: `Capsule.cross_party` /
-  `parse_capsule` round-trip the new block and `assurance.cross_party_rung`.
-- `vectors/capsule/`: four new conformance vectors — one per cross-party rung
-  (`pos-cross-party-full-bilateral`, `pos-cross-party-acknowledged-receipt`,
-  `pos-cross-party-unilateral-fallback`), and the named overclaim case
-  (`neg-cross-party-overclaim`: `full_bilateral` claimed with only the
-  initiator's half present) plus `pos-disposition-approver-counterparty`
-  confirming the honesty invariant holds against the new approver value.
 - **`provenance_mode` (§5.3(bis) Provenance mode, draft -05).**
   `python/agent_action_capsule/contracts.py`: `ProvenanceMode` producer-side
   carrier (`mode`, `source_ref`, `source_asserted_at`, `import_batch`,
@@ -235,6 +166,120 @@
   fields outright; promoting these to a real `capsule.ProvenanceMode` block
   (with a genuine `source_ref` digest) is a follow-up once that Go-side
   support lands.
+
+## 0.4.0 — 2026-09-17
+
+### Reference (breaking)
+- **Format-4-only canonical reference.** The Python and Go reference verifiers and
+  `capsule_id` computation now accept `format_version: "4"` only; any other value is
+  rejected with `unsupported_format_version`, and the legacy absent-field ("vintage")
+  construction has been removed rather than left unreachable. Records in the retired
+  format-2 (vintage absent-field) construction remain verifiable with the frozen reference release
+  **`legacy-verify/v0.1.0`** (commit `43b349dd6e8ee5f30dac3add9261b8f84e13ba7e`, the
+  pre-format-4-only `main` tip), which the `pinned-legacy-format-2-verification`
+  conformance job checks out to re-verify the cited July interop record. That tag is
+  the single pinned legacy artifact; do not re-tag.
+
+## 0.3.0 — 2026-09-08 (Python library)
+
+### Python
+- **draft-04 `references[]` — parity with the Go reference implementation.** The
+  builder, `Capsule` model, parser, and serialization now carry `references[]`,
+  preserving the tri-state **absent ≠ empty ≠ populated**. Reference validation
+  mirrors `go/verify/references.go` 1:1 (entry structure; AAC/SHA-256 digest
+  format; no duplicate chain-parent target; optional citation-purpose /
+  log-coordinate checks). Foreign reference types / digest contexts remain open;
+  unknown citation purposes are informational; coordinate checks do not verify
+  inclusion proofs. Adds the `citation_purpose` registry (7th §12 registry) and
+  validates against the 25 shared Go test vectors + producer-path unit tests.
+  This is the version emit/CLL should pin as their AAC floor for `references[]`.
+
+### Added
+- **Python `references[]` parity with Go (draft-04 §5.5.5, {{xref}}).**
+  `python/agent_action_capsule/contracts.py`: `ReferenceEntry` and
+  `LogCoordinates` producer-side carriers. `python/agent_action_capsule/parse.py`:
+  `Capsule.references` — a genuine tri-state (`None` omits the key; `()` emits
+  `"references": []`; a populated tuple emits the entries), since absent and
+  empty are the same claim but distinct bytes and therefore distinct
+  `capsule_id` digests; the "MUST NOT duplicate `chain.parent_capsule_id`"
+  boundary rule is enforced at `Capsule.__post_init__`.
+  `python/agent_action_capsule/verify.py`: `references[]` findings (entry
+  structure, the AAC/SHA-256 self-identity digest-format gate, the duplicate-
+  chain-parent check, `citation_purpose` and `log_coordinates` checks) spliced
+  into checks 1/6/8, mirroring `go/verify/references.go` finding-for-finding —
+  foreign reference types/digest contexts stay open, unknown `citation_purpose`
+  values are informational (never rejected), and `log_coordinates.inclusion_proof`
+  is recorded as structural only, never independently verified.
+  `python/agent_action_capsule/registries.py`: `citation_purpose` added as the
+  seventh registry (§12), with the same missing-section fallback as the Go
+  loader for an older `REGISTRY.md` snapshot. `python/agent_action_capsule/emit.py`:
+  `emit(references=...)`. Validated against the 25 shared vectors in
+  `go/verify/testdata/references.json` (`python/tests/test_references.py`),
+  replaying the same store and check-order assertions as
+  `go/verify/references_test.go`.
+
+## 0.2.0 — 2026-08-28
+
+### Spec
+- `spec/draft-mih-scitt-agent-action-capsule-03.md` §5.3 Assurance — added the
+  cross-party assurance rung, a FOURTH, orthogonal `assurance` claim
+  (`cross_party_rung`: `unilateral_fallback` < `acknowledged_receipt` <
+  `full_bilateral`) plus its supporting `cross_party` evidence block
+  (`initiator_ref`, `counterparty_ref`, `correlator`, `substantive`). Kept
+  orthogonal to `attestation_mode` rather than folded into it (log custody and
+  counterparty exchange evidence are independent facts a producer can hold in
+  any combination); the draft states this reasoning inline. Same
+  never-grades-up overclaim discipline as `attestation_mode` / `ledger_mode`.
+- `spec/draft-mih-scitt-agent-action-capsule-03.md` §5.4 Disposition —
+  extended the CLOSED `disposition.approver` enum from `{human, policy}` to
+  `{human, policy, counterparty}`. Stays closed (not registry-governed); the
+  pre-existing honesty invariant (`human_disposed: true` REQUIRES
+  `approver: "human"`) is unaffected.
+
+### Compat
+- **Migration path (never-grades-up):** an old verifier that does not
+  recognize `cross_party_rung` or the `cross_party` block simply does not see
+  them — it verifies the record on the three axes it already knows and never
+  errors on the unrecognized field/block, matching how it already tolerates
+  any other unrecognized value. A verifier that DOES recognize the field but
+  is handed a `cross_party_rung` value outside what it can independently
+  derive ranks the claim below what it knows: a `full_bilateral` or
+  `acknowledged_receipt` claim it cannot corroborate is treated no stronger
+  than `unilateral_fallback` (the same floor an unrecognized `attestation_mode`
+  value is already held to, §5.3) — nothing breaks, and no record is silently
+  over-trusted.
+- An old verifier encountering `disposition.approver: "counterparty"` before
+  this revision would reject the Capsule outright (closed two-member enum);
+  this revision is additive, not a relaxation — the enum grows from two
+  members to three, still closed, so no third-party value is newly admitted.
+
+### Docs
+- `docs/telemetry-binding-profile.md`: new informational profile (AARM R8,
+  `capsule-ledger`'s `ldg-otel-exporter-aarm-r8`) specifying the
+  reference-never-copy rule for telemetry export, the minimum attribute set,
+  and the mapping to OTLP/`gen_ai` (primary) and OCSF (secondary,
+  best-effort — documents the mismatch rather than presenting a native fit).
+  Not core spec: telemetry is a projection of the capsule, and this profile
+  moves at OTel/OCSF's release speed so core doesn't have to.
+
+### Added
+- `python/agent_action_capsule/contracts.py`: `CrossParty` producer-side
+  carrier (§5.3 Cross-party assurance evidence), `CROSS_PARTY_RUNGS`,
+  `CROSS_PARTY_RUNG_RANK`; `AssuranceBlock.cross_party_rung` (OPTIONAL);
+  `VALID_APPROVERS` extended to include `"counterparty"`.
+- `python/agent_action_capsule/verify.py`: check 7 (`assurance_overclaim`)
+  extended to `cross_party_rung` — a claimed rung above what the verifier
+  independently rederives from the `cross_party` block is flagged and the
+  reported `derived.cross_party_rung` is downgraded to the value the evidence
+  supports.
+- `python/agent_action_capsule/parse.py`: `Capsule.cross_party` /
+  `parse_capsule` round-trip the new block and `assurance.cross_party_rung`.
+- `vectors/capsule/`: four new conformance vectors — one per cross-party rung
+  (`pos-cross-party-full-bilateral`, `pos-cross-party-acknowledged-receipt`,
+  `pos-cross-party-unilateral-fallback`), and the named overclaim case
+  (`neg-cross-party-overclaim`: `full_bilateral` claimed with only the
+  initiator's half present) plus `pos-disposition-approver-counterparty`
+  confirming the honesty invariant holds against the new approver value.
 
 ### Fixed
 - Packaging: `python/pyproject.toml` now declares `license-files = ["LICENSE"]` (PEP 639) so the
