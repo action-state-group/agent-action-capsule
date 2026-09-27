@@ -4,8 +4,8 @@
 
 Network Working Group                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Informational                         25 September 2026
-Expires: 29 March 2027
+Intended status: Informational                         26 September 2026
+Expires: 30 March 2027
 
 
                              Evidence Layer
@@ -49,11 +49,11 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 29 March 2027.
+   This Internet-Draft will expire on 30 March 2027.
 
 
 
-Mih                       Expires 29 March 2027                 [Page 1]
+Mih                       Expires 30 March 2027                 [Page 1]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -90,12 +90,13 @@ Table of Contents
    10. Reconcile and Close . . . . . . . . . . . . . . . . . . . . .  12
    11. Security Considerations . . . . . . . . . . . . . . . . . . .  13
    12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  14
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  14
-   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  16
-     14.1.  Normative References . . . . . . . . . . . . . . . . . .  16
-     14.2.  Informative References . . . . . . . . . . . . . . . . .  17
-   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  17
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  17
+     12.1.  What a Checkpoint Reveals  . . . . . . . . . . . . . . .  14
+   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  15
+   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  17
+     14.1.  Normative References . . . . . . . . . . . . . . . . . .  17
+     14.2.  Informative References . . . . . . . . . . . . . . . . .  18
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  18
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  18
 
 1.  Introduction
 
@@ -105,15 +106,15 @@ Table of Contents
    granting answer looks like.  Neither says what a responder must have
    held, and preserved, beforehand for that answer to be honest rather
    than assembled to order.  A responder that can produce a byte-
-   identical artifact for any requester, refuse with a citable reason,
 
 
 
-Mih                       Expires 29 March 2027                 [Page 2]
+Mih                       Expires 30 March 2027                 [Page 2]
 
 Internet-Draft               Evidence Layer               September 2026
 
 
+   identical artifact for any requester, refuse with a citable reason,
    or truthfully report that it has nothing needs a local substrate with
    specific properties: records that do not change meaning after the
    fact, a place to say how one record relates to another without
@@ -164,8 +165,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-
-Mih                       Expires 29 March 2027                 [Page 3]
+Mih                       Expires 30 March 2027                 [Page 3]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -221,7 +221,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 29 March 2027                 [Page 4]
+Mih                       Expires 30 March 2027                 [Page 4]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -277,7 +277,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 29 March 2027                 [Page 5]
+Mih                       Expires 30 March 2027                 [Page 5]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -333,7 +333,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 29 March 2027                 [Page 6]
+Mih                       Expires 30 March 2027                 [Page 6]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -389,7 +389,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 29 March 2027                 [Page 7]
+Mih                       Expires 30 March 2027                 [Page 7]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -445,7 +445,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 29 March 2027                 [Page 8]
+Mih                       Expires 30 March 2027                 [Page 8]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -501,7 +501,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 29 March 2027                 [Page 9]
+Mih                       Expires 30 March 2027                 [Page 9]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -557,7 +557,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 29 March 2027                [Page 10]
+Mih                       Expires 30 March 2027                [Page 10]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -613,7 +613,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 29 March 2027                [Page 11]
+Mih                       Expires 30 March 2027                [Page 11]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -669,7 +669,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 29 March 2027                [Page 12]
+Mih                       Expires 30 March 2027                [Page 12]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -725,7 +725,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 29 March 2027                [Page 13]
+Mih                       Expires 30 March 2027                [Page 13]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -743,6 +743,79 @@ Internet-Draft               Evidence Layer               September 2026
    carry merely because it has been hashed; a small input space makes a
    digest invertible by exhaustive search, so hashing alone is not
    minimization.
+
+12.1.  What a Checkpoint Reveals
+
+   A store hands checkpoints (Section 8) to parties outside its control:
+   witnesses, and counterparties receiving a record with an inclusion
+   proof.  A checkpoint carries no record content, but it is not free of
+   information.
+
+   *What a checkpoint reveals.* Every checkpoint states the size of the
+   store's committed history: the number of records appended since the
+   store's first record, not since the previous checkpoint (in a
+   Checkpointed Local Log ([I-D.mih-scitt-checkpointed-local-log]), its
+   log_size).  A party holding two checkpoints from one store therefore
+   learns how many records the store committed between them, across
+   every subject and counterparty the store records, not only those it
+   shares with that party.  A checkpoint also carries a time, and the
+   times at which a store issues checkpoints reveal its activity
+   pattern.
+
+   *What a checkpoint does not reveal.* A checkpoint and an inclusion
+   proof reveal no record content.  The sibling values in an inclusion
+   proof are digests over other records; they reveal nothing about those
+   records only if those records cannot be guessed and confirmed by
+   recomputing a digest.  To make that hold, every record MUST include,
+   within the bytes from which its commitment-substrate entry is
+   derived, a value of at least 128 bits drawn from a cryptographically
+   secure random source, generated by the store for that record alone
+   and never reused.  A value supplied by or known to another party
+   (such as a client- or counterparty-supplied nonce), a time, a
+   sequence number, or a digest of content does not satisfy this
+   requirement.
+
+   *Mitigations.* A store SHOULD, before a checkpoint leaves its
+   control, append *padding records* so that the checkpoint's size falls
+   on a bucket boundary: for example, the next multiple of a configured
+
+
+
+Mih                       Expires 30 March 2027                [Page 14]
+
+Internet-Draft               Evidence Layer               September 2026
+
+
+   bucket size.  Two such checkpoints then reveal the count between them
+   only to within the bucket size.  This document reserves the
+   record_type value padding for this purpose.  A padding record has
+   epistemic_type producer_claim; its only content is a freshly
+   generated random value meeting the requirement above; and it carries
+   no payload_commitments, no links, no subject_ref, and no
+   principal_ref.  A padding record MUST NOT be the target of any link.
+   It is appended like any other record and changes none of the
+   properties of Section 8.
+
+   A store SHOULD coarsen every time value that leaves its control
+   inside signed or committed bytes, such as a checkpoint's time or a
+   disclosed record's committed_at, to a granularity no finer than one
+   minute.  Such a value is covered by a signature or a commitment, so
+   it is coarsened when those bytes are produced; coarsening a copy
+   afterwards invalidates the signature or the record's inclusion.  A
+   store MAY keep finer-grained times in local state that is neither
+   committed nor disclosed.
+
+   A store operator MAY keep separate stores, each with its own
+   commitment substrate and checkpoints, for separate scopes (for
+   example, per counterparty), so that a checkpoint shown within one
+   scope reveals nothing about record volume in another.
+
+   A verifier MUST treat a padding record as an ordinary record when it
+   checks inclusion, consistency, or a checkpoint, and MUST NOT reject a
+   checkpoint, proof, or range because it contains padding records.  A
+   reader that counts, lists, or summarizes records MUST NOT count a
+   padding record as a record, and a store MUST NOT return one as
+   responsive to a record, correlation, or exchange subject (Section 9).
 
 13.  IANA Considerations
 
@@ -764,24 +837,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                       Expires 29 March 2027                [Page 14]
+Mih                       Expires 30 March 2027                [Page 15]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -837,7 +893,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 29 March 2027                [Page 15]
+Mih                       Expires 30 March 2027                [Page 16]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -893,7 +949,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 29 March 2027                [Page 16]
+Mih                       Expires 30 March 2027                [Page 17]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -949,4 +1005,4 @@ Author's Address
 
 
 
-Mih                       Expires 29 March 2027                [Page 17]
+Mih                       Expires 30 March 2027                [Page 18]
