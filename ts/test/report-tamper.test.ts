@@ -26,12 +26,7 @@ function bundle(): Record<string, unknown> {
   ) as Record<string, unknown>;
 }
 
-function directory(): Array<{
-  publicKey: string;
-  name: string;
-  logoDataUrl: string;
-  checksRecomputed: number;
-}> {
+function directory(): unknown {
   return JSON.parse(
     readFileSync(
       resolve(
@@ -149,10 +144,10 @@ describe("report.html tamper test (rows are data, never prose)", () => {
     const untamperedStamp = await classifyCountersignatures(
       signed.countersignatures,
       untamperedDigest,
-      undefined,
+      [],
       directory(),
     );
-    expect(untamperedStamp[0]).toMatchObject({ kind: "directory" });
+    expect(untamperedStamp[0]).toMatchObject({ kind: "resolved" });
 
     const tampered = tamperHtml(html, (value) => ({
       ...value,
@@ -166,7 +161,7 @@ describe("report.html tamper test (rows are data, never prose)", () => {
     const tamperedStamp = await classifyCountersignatures(
       tamperedValue.countersignatures,
       tamperedDigest,
-      undefined,
+      [],
       directory(),
     );
     expect(tamperedStamp[0]).toEqual({ kind: "invalid" });

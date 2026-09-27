@@ -1,205 +1,301 @@
-import { decode } from "cborg";
-import {
-  equalBytes,
-  hexToBytes,
-  producerEnvelopeSigningBytes,
-  producerPublicKeySpki,
-} from "./producer-envelope-wire.js";
+import { jcs } from "./json.js";
+import { hexToBytes, producerPublicKeySpki } from "./producer-envelope-wire.js";
 
-/** Content type for a COSE_Sign1 countersignature over a bundle digest. */
-export const BUNDLE_DIGEST_CONTENT_TYPE =
-  "application/agent-action-capsule-bundle-digest";
+/** The countersignatures[] entry type this stamp verifies. */
+export const COUNTERSIGN_V1 = "countersign/v1";
 
-/** A public countersigner directory entry. Display fields never come from the bundle. */
-export interface CountersignerDirectoryEntry {
-  readonly publicKey: string;
+/** The five check results a countersign/v1 statement may carry. */
+export const COUNTERSIGN_RESULTS = [
+  "established",
+  "failed",
+  "not present",
+  "not checked",
+  "inconclusive",
+] as const;
+
+export type CountersignResult = (typeof COUNTERSIGN_RESULTS)[number];
+
+export interface CountersignCheck {
   readonly name: string;
-  readonly logoDataUrl: string;
-  readonly checksRecomputed: number;
+  readonly result: CountersignResult;
 }
 
 /**
- * The stamp's rendered state. It draws only after a countersignature's COSE
- * signature over the bundle digest has independently verified:
+ * One `countersigners[]` row of a `witnesses.json` directory (capsule-emit),
+ * narrowed to the fields the stamp reads. The directory's other fields
+ * (`endpoint`, `statement_types_issued`, `since`, `independent_of`) are
+ * never read: independence is computed per entry, never taken from a row.
+ */
+export interface CountersignerDirectoryRow {
+  readonly name: string;
+  readonly key_ids: readonly string[];
+}
+
+/**
+ * A `witnesses.json` directory. Only `countersigners[]` resolves a
+ * countersignature; a key listed under `witnesses[]` never does.
+ */
+export interface CountersignerDirectory {
+  readonly countersigners: readonly CountersignerDirectoryRow[];
+}
+
+/** What the signer said, as the signer's statement -- never the viewer's finding. */
+export interface CountersignStatementView {
+  readonly checks: readonly CountersignCheck[];
+  readonly recomputedAt: string;
+  /** The viewer cannot verify a Transparency Service receipt; a present one is shown as unverified. */
+  readonly receipt: "absent" | "unverified";
+}
+
+/**
+ * The stamp's rendered state, per the Evidence Bundle -01 countersign/v1
+ * verification rules:
  * - "hollow": no countersignatures[] entries -- the default.
- * - "producer": the verified signer is the producer's own key -- not independent.
- * - "directory": the verified signer resolves in the public countersigner
- *   directory; name/logo/checksRecomputed come from the directory, never the bundle.
- * - "unresolved": the signature verifies but the signer is neither the
- *   producer nor in the directory -- shown plainly rather than hidden.
- * - "invalid": an entry is present but malformed or fails to verify.
+ * - "unverified": an entry of a type this viewer does not implement,
+ *   including the reserved `cose-sign1` slot. It changes no other result.
+ * - "invalid": a countersign/v1 entry that is malformed, signs a different
+ *   bundle digest, or whose signature fails. Its checks are never shown.
+ * - "not-independent": the signer key is the producer's own key.
+ * - "unresolved-signer": independent, but the key is in no directory row.
+ * - "resolved": independent, and the key is in a `countersigners[]` row;
+ *   the name comes from the directory, never the bundle.
  */
 export type CountersignatureStamp =
   | { readonly kind: "hollow" }
-  | { readonly kind: "producer" }
+  | { readonly kind: "unverified"; readonly type: string }
+  | { readonly kind: "invalid" }
   | {
-      readonly kind: "directory";
-      readonly name: string;
-      readonly logoDataUrl: string;
-      readonly checksRecomputed: number;
-      readonly date?: string;
+      readonly kind: "not-independent";
+      readonly keyId: string;
+      readonly statement: CountersignStatementView;
     }
-  | { readonly kind: "unresolved" }
-  | { readonly kind: "invalid" };
+  | {
+      readonly kind: "unresolved-signer";
+      readonly keyId: string;
+      readonly statement: CountersignStatementView;
+    }
+  | {
+      readonly kind: "resolved";
+      readonly keyId: string;
+      readonly name: string;
+      readonly statement: CountersignStatementView;
+    };
 
-class Reader {
-  public offset = 0;
-  public constructor(private readonly data: Uint8Array) {}
-  public byte(): number {
-    const value = this.data[this.offset++];
-    if (value === undefined) throw new SyntaxError("truncated CBOR");
-    return value;
-  }
-  public length(major: number): number {
-    const first = this.byte();
-    if (first >>> 5 !== major) throw new SyntaxError("unexpected CBOR type");
-    const add = first & 31;
-    if (add < 24) return add;
-    if (add === 24) return this.byte();
-    if (add === 25) return (this.byte() << 8) | this.byte();
-    throw new SyntaxError("unsupported or indefinite CBOR length");
-  }
-  public bytes(): Uint8Array {
-    const length = this.length(2);
-    const end = this.offset + length;
-    if (end > this.data.length) throw new SyntaxError("truncated CBOR bytes");
-    const value = this.data.slice(this.offset, end);
-    this.offset = end;
-    return value;
-  }
+const KEY_ID = /^[0-9a-f]{64}$/u;
+const SIGNATURE = /^[0-9a-f]{128}$/u;
+const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u;
+const RESULTS: ReadonlySet<string> = new Set(COUNTERSIGN_RESULTS);
+
+type Obj = Record<string, unknown>;
+
+function object(value: unknown): Obj | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Obj)
+    : undefined;
 }
 
-function decodeBase64Url(value: string): Uint8Array | undefined {
-  if (!/^[A-Za-z0-9_-]*$/u.test(value)) return undefined;
-  try {
-    const padded = `${value}${"=".repeat((4 - (value.length % 4)) % 4)}`;
-    const binary = atob(padded.replaceAll("-", "+").replaceAll("_", "/"));
-    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
-  } catch {
-    return undefined;
-  }
+function nonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
 }
 
-/** Verify a tagged COSE_Sign1 countersignature over a 32-byte digest. */
-async function verifyCoseSign1OverDigest(
-  digestHex: string,
-  cose: Uint8Array,
-): Promise<Uint8Array | undefined> {
+/**
+ * Index a `witnesses.json` document's `countersigners[]` by key id. Rows
+ * without a usable name, and key ids that are not a full 64-hex Ed25519 key
+ * (such as a directory placeholder), are skipped. A key listed in more than
+ * one row resolves to no row rather than to an arbitrary one.
+ */
+export function readCountersignerDirectory(
+  directory: unknown,
+): ReadonlyMap<string, string> {
+  const rows = object(directory)?.countersigners;
+  const names = new Map<string, string>();
+  const ambiguous = new Set<string>();
+  if (!Array.isArray(rows)) return names;
+  for (const raw of rows) {
+    const row = object(raw);
+    if (row === undefined || !nonEmptyString(row.name)) continue;
+    if (!Array.isArray(row.key_ids)) continue;
+    for (const key of row.key_ids) {
+      if (typeof key !== "string" || !KEY_ID.test(key)) continue;
+      const existing = names.get(key);
+      if (existing !== undefined && existing !== row.name) ambiguous.add(key);
+      names.set(key, row.name);
+    }
+  }
+  ambiguous.forEach((key) => names.delete(key));
+  return names;
+}
+
+function readChecks(value: unknown): CountersignCheck[] | undefined {
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+  const checks: CountersignCheck[] = [];
+  const seen = new Set<string>();
+  for (const raw of value) {
+    const check = object(raw);
+    if (check === undefined || !nonEmptyString(check.name)) return undefined;
+    if (typeof check.result !== "string" || !RESULTS.has(check.result))
+      return undefined;
+    if (seen.has(check.name)) return undefined;
+    seen.add(check.name);
+    checks.push({
+      name: check.name,
+      result: check.result as CountersignResult,
+    });
+  }
+  return checks;
+}
+
+function scopeIsWellFormed(value: unknown): boolean {
+  const scope = object(value);
+  if (scope === undefined || !nonEmptyString(scope.ledger_id)) return false;
+  if (
+    typeof scope.closure_depth !== "number" ||
+    !Number.isInteger(scope.closure_depth) ||
+    scope.closure_depth < 0
+  )
+    return false;
+  if (scope.period === undefined) return true;
+  const period = object(scope.period);
+  return (
+    period !== undefined &&
+    typeof period.from === "string" &&
+    typeof period.to === "string"
+  );
+}
+
+/**
+ * The countersign/v1 signing input:
+ * `UTF8(JCS({"over": over, "statement": statement, "type": type}))`.
+ * The statement is signed as it appears on the wire, unknown members included.
+ */
+export function countersignV1SigningInput(entry: {
+  readonly over: string;
+  readonly statement: unknown;
+  readonly type: string;
+}): Uint8Array {
+  return jcs({
+    over: entry.over,
+    statement: entry.statement,
+    type: entry.type,
+  });
+}
+
+/** Verify a countersign/v1 Ed25519 signature (128 hex) under `keyId` (64 hex). */
+export async function verifyCountersignV1Signature(
+  entry: {
+    readonly over: string;
+    readonly statement: unknown;
+    readonly type: string;
+  },
+  keyId: string,
+  signatureHex: string,
+): Promise<boolean> {
+  if (!KEY_ID.test(keyId) || !SIGNATURE.test(signatureHex)) return false;
   try {
-    const reader = new Reader(cose);
-    if (reader.byte() !== 0xd2 || reader.length(4) !== 4) return undefined;
-    const protectedBytes = reader.bytes();
-    if (reader.byte() !== 0xa0) return undefined;
-    const payload = reader.bytes();
-    const signature = reader.bytes();
-    if (reader.offset !== cose.length) return undefined;
-    const protectedHeaders = decode(protectedBytes, {
-      allowIndefinite: false,
-      coerceUndefinedToNull: false,
-      useMaps: true,
-    }) as unknown;
-    if (!(protectedHeaders instanceof Map) || protectedHeaders.size !== 3)
-      return undefined;
-    if (protectedHeaders.get(3) !== BUNDLE_DIGEST_CONTENT_TYPE)
-      return undefined;
-    const publicKey = protectedHeaders.get(4);
-    if (!(publicKey instanceof Uint8Array) || publicKey.length !== 32)
-      return undefined;
-    if (protectedHeaders.get(1) !== -8) return undefined;
-    if (!equalBytes(payload, hexToBytes(digestHex))) return undefined;
-    if (signature.length !== 64) return undefined;
     const key = await globalThis.crypto.subtle.importKey(
       "spki",
-      producerPublicKeySpki(publicKey) as BufferSource,
+      producerPublicKeySpki(hexToBytes(keyId)) as BufferSource,
       { name: "Ed25519" },
       false,
       ["verify"],
     );
-    const valid = await globalThis.crypto.subtle.verify(
+    return await globalThis.crypto.subtle.verify(
       { name: "Ed25519" },
       key,
-      signature as BufferSource,
-      producerEnvelopeSigningBytes(protectedBytes, payload) as BufferSource,
+      hexToBytes(signatureHex) as BufferSource,
+      countersignV1SigningInput(entry) as BufferSource,
     );
-    return valid ? Uint8Array.from(publicKey) : undefined;
   } catch {
-    return undefined;
+    return false;
   }
 }
 
-function toHex(bytes: Uint8Array): string {
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
-    "",
+async function classifyCountersignV1(
+  entry: Obj,
+  bundleDigest: string,
+  producerKeys: ReadonlySet<string>,
+  directoryNames: ReadonlyMap<string, string>,
+): Promise<CountersignatureStamp> {
+  const signer = object(entry.signer);
+  const statement = object(entry.statement);
+  const keyId = signer?.key_id;
+  if (
+    signer === undefined ||
+    !nonEmptyString(signer.id) ||
+    typeof keyId !== "string" ||
+    !KEY_ID.test(keyId) ||
+    typeof entry.over !== "string" ||
+    typeof entry.signature !== "string" ||
+    statement === undefined ||
+    typeof statement.recomputed_at !== "string" ||
+    !UTC_TIMESTAMP.test(statement.recomputed_at) ||
+    !scopeIsWellFormed(statement.scope)
+  )
+    return { kind: "invalid" };
+  const checks = readChecks(statement.checks);
+  if (checks === undefined) return { kind: "invalid" };
+  // Step 1: an entry over a different digest is not a countersignature of
+  // this bundle. Step 2: the signature covers the statement, so a result
+  // edited after signing fails here and its checks are never shown.
+  if (entry.over !== bundleDigest) return { kind: "invalid" };
+  const signed = await verifyCountersignV1Signature(
+    { over: entry.over, statement: entry.statement, type: COUNTERSIGN_V1 },
+    keyId,
+    entry.signature,
   );
-}
-
-interface RawCountersignature {
-  readonly type?: unknown;
-  readonly signature?: unknown;
-  readonly signed_at?: unknown;
-}
-
-function object(value: unknown): RawCountersignature | undefined {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as RawCountersignature)
-    : undefined;
+  if (!signed) return { kind: "invalid" };
+  const view: CountersignStatementView = {
+    checks,
+    recomputedAt: statement.recomputed_at,
+    receipt: entry.receipt === undefined ? "absent" : "unverified",
+  };
+  // Step 3: independence is computed here from the signer key; no entry
+  // member (e.g. a self-reported `independent`) and no directory row can
+  // change it.
+  if (producerKeys.has(keyId))
+    return { kind: "not-independent", keyId, statement: view };
+  const name = directoryNames.get(keyId);
+  if (name === undefined)
+    return { kind: "unresolved-signer", keyId, statement: view };
+  return { kind: "resolved", keyId, name, statement: view };
 }
 
 /**
  * Classify countersignatures[] into stamp states. A bundle with no entries
  * (absent or empty) always classifies as a single hollow stamp.
+ *
+ * `producerKeys` are the producer's Ed25519 public keys (64 hex) the viewer
+ * holds; `directory` is a parsed `witnesses.json` (or undefined when none
+ * was consulted).
  */
 export async function classifyCountersignatures(
   entries: readonly unknown[],
   bundleDigest: string | undefined,
-  producerPublicKeyHex: string | undefined,
-  directory: readonly CountersignerDirectoryEntry[],
+  producerKeys: readonly string[],
+  directory: unknown,
 ): Promise<readonly CountersignatureStamp[]> {
   if (entries.length === 0) return [{ kind: "hollow" }];
-  if (bundleDigest === undefined)
-    return entries.map(() => ({ kind: "invalid" }) as CountersignatureStamp);
-  const byPublicKey = new Map(
-    directory.map((entry) => [entry.publicKey, entry] as const),
-  );
+  const producers = new Set(producerKeys.filter((key) => KEY_ID.test(key)));
+  const directoryNames = readCountersignerDirectory(directory);
   const results: CountersignatureStamp[] = [];
   for (const raw of entries) {
     const entry = object(raw);
-    if (
-      entry === undefined ||
-      entry.type !== "cose-sign1" ||
-      typeof entry.signature !== "string"
-    ) {
+    if (entry === undefined || !nonEmptyString(entry.type)) {
       results.push({ kind: "invalid" });
-      continue;
-    }
-    const cose = decodeBase64Url(entry.signature);
-    const publicKey =
-      cose === undefined
-        ? undefined
-        : await verifyCoseSign1OverDigest(bundleDigest, cose);
-    if (publicKey === undefined) {
+    } else if (entry.type !== COUNTERSIGN_V1) {
+      results.push({ kind: "unverified", type: entry.type });
+    } else if (bundleDigest === undefined) {
       results.push({ kind: "invalid" });
-      continue;
+    } else {
+      results.push(
+        await classifyCountersignV1(
+          entry,
+          bundleDigest,
+          producers,
+          directoryNames,
+        ),
+      );
     }
-    const keyHex = toHex(publicKey);
-    if (producerPublicKeyHex !== undefined && keyHex === producerPublicKeyHex) {
-      results.push({ kind: "producer" });
-      continue;
-    }
-    const directoryEntry = byPublicKey.get(keyHex);
-    if (directoryEntry !== undefined) {
-      results.push({
-        kind: "directory",
-        name: directoryEntry.name,
-        logoDataUrl: directoryEntry.logoDataUrl,
-        checksRecomputed: directoryEntry.checksRecomputed,
-        ...(typeof entry.signed_at === "string"
-          ? { date: entry.signed_at }
-          : {}),
-      });
-      continue;
-    }
-    results.push({ kind: "unresolved" });
   }
   return results;
 }

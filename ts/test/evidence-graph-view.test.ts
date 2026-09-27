@@ -287,32 +287,54 @@ it("renders the producer-key stamp as not independent", async () => {
   );
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
-  const stamp = root.querySelector('[data-stamp-kind="producer"]');
-  expect(stamp?.textContent).toBe(
-    "countersigned by the producer — not independent",
+  const stamp = root.querySelector('[data-stamp-kind="not-independent"]');
+  expect(stamp?.querySelector("span")?.textContent).toBe(
+    "countersigned by the producer — not independent · recomputed 2026-09-10T00:00:00Z",
+  );
+  expect(stamp?.textContent).toContain(
+    "The producer's statement of what it recomputed:",
   );
 });
 
-it("renders the directory-resolved stamp with the directory's name, logo, and recompute count", async () => {
+it("renders the directory-resolved stamp with the directory's name and each check as the signer's statement", async () => {
   const bundle = await derivedFixture(
     "week-bundle-directory-countersigned.json",
   );
-  const directory = (await fixture("countersigner-directory.json")) as Array<{
-    publicKey: string;
-    name: string;
-    logoDataUrl: string;
-    checksRecomputed: number;
-  }>;
+  const directory = await fixture("countersigner-directory.json");
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root, directory);
-  const stamp = root.querySelector<HTMLElement>(
-    '[data-stamp-kind="directory"]',
+  const stamp = root.querySelector<HTMLElement>('[data-stamp-kind="resolved"]');
+  expect(stamp?.querySelector("span")?.textContent).toBe(
+    "Countersigned by Example Countersigners Ltd · recomputed 2026-09-12T00:00:00Z",
   );
   expect(stamp?.textContent).toContain(
-    "Countersigned by Example Countersigners Ltd",
+    "Example Countersigners Ltd's statement of what it recomputed:",
   );
-  expect(stamp?.textContent).toContain("7 of 10 checks recomputed");
-  expect(stamp?.querySelector("img")?.src).toBe(directory[0]!.logoDataUrl);
+  const rows = Array.from(
+    stamp!.querySelectorAll("[data-check-result]"),
+    (row) => row.textContent,
+  );
+  expect(rows).toEqual([
+    "chain consistency: established",
+    "range membership: failed",
+    "key hygiene: not present",
+  ]);
+  // No logo, no total: results are listed per check and never combined.
+  expect(stamp?.querySelector("img")).toBeNull();
+  expect(stamp?.textContent).not.toMatch(/\d+ of \d+/u);
+  expect(stamp?.querySelector("[data-countersign-receipt]")).toBeNull();
+});
+
+it("renders an unlisted signer's stamp when no directory is passed", async () => {
+  const bundle = await derivedFixture(
+    "week-bundle-directory-countersigned.json",
+  );
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  const stamp = root.querySelector('[data-stamp-kind="unresolved-signer"]');
+  expect(stamp?.textContent).toContain(
+    "countersigned by an unlisted signer, not in the countersigner directory",
+  );
 });
 
 it("chrome rule: a presentation/v1 VERIFIED badge renders in the header only, never near the checks", async () => {

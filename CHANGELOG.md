@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+### Changed
+- TypeScript countersignature stamp (`ts/src/countersignature-stamp.ts`) now verifies
+  `countersign/v1` entries as the Evidence Bundle -01 text defines them: `over` must equal the
+  recomputed bundle digest, and the Ed25519 signature (128 hex, under the 64-hex `signer.key_id`)
+  must cover `UTF8(JCS({over, statement, type}))`, so a result edited after signing makes the
+  entry `invalid` and its checks are not shown. `cose-sign1` and any other type the viewer does
+  not implement render as `unverified`, as both -00 and -01 require. Previously the stamp
+  accepted only `cose-sign1` and classed a `countersign/v1` entry as `invalid`.
+- The stamp reads the countersigner directory as a `witnesses.json` document (capsule-emit's
+  shape) and resolves a signer by `countersigners[].key_ids[]`. It never resolves against
+  `witnesses[]`, and a key listed in two rows resolves to neither. The name comes from the
+  directory. The checks and results come from the signed statement and are listed per check as
+  the signer's statement, never totalled. The old flat directory
+  (`publicKey`/`name`/`logoDataUrl`/`checksRecomputed`) and the stamp logo are removed.
+- Stamp states follow -01: `hollow`, `unverified`, `invalid`, `not-independent`,
+  `unresolved-signer`, `resolved`. **Breaking (TypeScript API):** `classifyCountersignatures`
+  takes `producerKeys: string[]` and a parsed `witnesses.json`, `renderEvidenceGraph`'s third
+  argument is a parsed `witnesses.json`, and `CountersignerDirectoryEntry` and
+  `BUNDLE_DIGEST_CONTENT_TYPE` are removed.
+- Added `ts/test/testdata/countersign-v1-golden.json`: a `countersign/v1` vector generated
+  independently (Python `cryptography` + `rfc8785`), with a flipped-result negative, a
+  digest-only-signature negative, and an `over`-mismatch negative.
+
 ## 0.6.0 — 2026-09-26
 
 **Headline: the -05 wire.** Producers now emit `spec_version`

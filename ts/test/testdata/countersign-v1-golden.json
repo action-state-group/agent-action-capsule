@@ -1,0 +1,136 @@
+{
+  "description": "countersign/v1 golden vector (Evidence Bundle -01, 'The countersign/v1 Entry'). Signing input is UTF8(JCS({over, statement, type})). Test-only key: Ed25519 seed = 32 bytes of 0x16. Generated with Python cryptography + rfc8785, independently of the TypeScript implementation.",
+  "private_key_seed_hex": "1616161616161616161616161616161616161616161616161616161616161616",
+  "signing_input_utf8": "{\"over\":\"3f0c5b8e1d7a2c4f6e9b0a1d2c3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f6\",\"statement\":{\"checks\":[{\"name\":\"chain consistency\",\"result\":\"established\"},{\"name\":\"range membership\",\"result\":\"failed\"},{\"name\":\"key hygiene\",\"result\":\"not present\"}],\"recomputed_at\":\"2026-09-27T00:00:00Z\",\"scope\":{\"closure_depth\":2,\"ledger_id\":\"ledger:test\"}},\"type\":\"countersign/v1\"}",
+  "valid": {
+    "type": "countersign/v1",
+    "signer": {
+      "id": "did:web:countersign.example",
+      "key_id": "511c34a1a2cb521df16bb246b8de8e7997ce235c7e76b22a3d7503a24819dd8a"
+    },
+    "over": "3f0c5b8e1d7a2c4f6e9b0a1d2c3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f6",
+    "statement": {
+      "checks": [
+        {
+          "name": "chain consistency",
+          "result": "established"
+        },
+        {
+          "name": "range membership",
+          "result": "failed"
+        },
+        {
+          "name": "key hygiene",
+          "result": "not present"
+        }
+      ],
+      "recomputed_at": "2026-09-27T00:00:00Z",
+      "scope": {
+        "ledger_id": "ledger:test",
+        "closure_depth": 2
+      }
+    },
+    "signature": "a4a52fa0f9fb205dc880a13b75fdef49fb6a28b0b362c4b48eb5ad1c554c16e29a77fdf25c18253869f90cbdba3abee9cbb4f60befdc15830a29cade386b8603"
+  },
+  "invalid": [
+    {
+      "name": "flipped result: 'failed' rewritten as 'established' after signing",
+      "entry": {
+        "type": "countersign/v1",
+        "signer": {
+          "id": "did:web:countersign.example",
+          "key_id": "511c34a1a2cb521df16bb246b8de8e7997ce235c7e76b22a3d7503a24819dd8a"
+        },
+        "over": "3f0c5b8e1d7a2c4f6e9b0a1d2c3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f6",
+        "statement": {
+          "checks": [
+            {
+              "name": "chain consistency",
+              "result": "established"
+            },
+            {
+              "name": "range membership",
+              "result": "established"
+            },
+            {
+              "name": "key hygiene",
+              "result": "not present"
+            }
+          ],
+          "recomputed_at": "2026-09-27T00:00:00Z",
+          "scope": {
+            "ledger_id": "ledger:test",
+            "closure_depth": 2
+          }
+        },
+        "signature": "a4a52fa0f9fb205dc880a13b75fdef49fb6a28b0b362c4b48eb5ad1c554c16e29a77fdf25c18253869f90cbdba3abee9cbb4f60befdc15830a29cade386b8603"
+      }
+    },
+    {
+      "name": "signature over the bundle digest alone (the pre-01 signing input)",
+      "entry": {
+        "type": "countersign/v1",
+        "signer": {
+          "id": "did:web:countersign.example",
+          "key_id": "511c34a1a2cb521df16bb246b8de8e7997ce235c7e76b22a3d7503a24819dd8a"
+        },
+        "over": "3f0c5b8e1d7a2c4f6e9b0a1d2c3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f6",
+        "statement": {
+          "checks": [
+            {
+              "name": "chain consistency",
+              "result": "established"
+            },
+            {
+              "name": "range membership",
+              "result": "failed"
+            },
+            {
+              "name": "key hygiene",
+              "result": "not present"
+            }
+          ],
+          "recomputed_at": "2026-09-27T00:00:00Z",
+          "scope": {
+            "ledger_id": "ledger:test",
+            "closure_depth": 2
+          }
+        },
+        "signature": "1b465271fb373475c368f5a4772d5f14dcea087b4912dbda3527ae64a8e855024959cf52abdaafef791991d2f34d54b8c929c4a21359f7abe1f99eca4321590b"
+      }
+    },
+    {
+      "name": "over changed after signing",
+      "entry": {
+        "type": "countersign/v1",
+        "signer": {
+          "id": "did:web:countersign.example",
+          "key_id": "511c34a1a2cb521df16bb246b8de8e7997ce235c7e76b22a3d7503a24819dd8a"
+        },
+        "over": "0000000000000000000000000000000000000000000000000000000000000000",
+        "statement": {
+          "checks": [
+            {
+              "name": "chain consistency",
+              "result": "established"
+            },
+            {
+              "name": "range membership",
+              "result": "failed"
+            },
+            {
+              "name": "key hygiene",
+              "result": "not present"
+            }
+          ],
+          "recomputed_at": "2026-09-27T00:00:00Z",
+          "scope": {
+            "ledger_id": "ledger:test",
+            "closure_depth": 2
+          }
+        },
+        "signature": "a4a52fa0f9fb205dc880a13b75fdef49fb6a28b0b362c4b48eb5ad1c554c16e29a77fdf25c18253869f90cbdba3abee9cbb4f60befdc15830a29cade386b8603"
+      }
+    }
+  ]
+}

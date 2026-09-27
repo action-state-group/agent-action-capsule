@@ -4,28 +4,24 @@ import { resolve } from "node:path";
 // Imported by module (not via src/index.js) so this helper also loads under
 // the jsdom test environment, where the emitter's node:fs shell read cannot.
 import { bundleDigest } from "../../src/bundle.js";
+import { countersignV1SigningInput } from "../../src/countersignature-stamp.js";
 import { createEd25519Identity } from "../../src/producer-envelope.js";
-import {
-  encodeProducerEnvelope,
-  hexToBytes,
-  producerEnvelopeSigningBytes,
-  protectedHeadersFor,
-} from "../../src/producer-envelope-wire.js";
 
 /**
  * Derived countersignature-stamp and presentation/v1 fixtures, built at test
  * time from the committed seed `test/testdata/week-bundle.json`.
  *
  * Each derived bundle is the seed plus a small edit (an empty
- * `countersignatures[]`, one COSE_Sign1 countersignature over the seed's
- * bundle digest, or a `presentation/v1` block). Committing them would
- * re-check-in the ~50k-line seed five times over, so they are derived here
- * instead, memoised per test worker, and never written to disk.
+ * `countersignatures[]`, one countersign/v1 entry over the seed's bundle
+ * digest, or a `presentation/v1` block). Committing them would re-check-in
+ * the ~50k-line seed five times over, so they are derived here instead,
+ * memoised per test worker, and never written to disk.
  *
  * Keys are fixed, clearly test-only seeds (never a production key). The
- * committed `test/testdata/countersigner-directory.json` names the
- * directory signer's public key; `countersignerDirectory()` derives the same
- * entry so a test can assert the two never drift.
+ * committed `test/testdata/countersigner-directory.json` is a `witnesses.json`
+ * in capsule-emit's directory shape naming the directory signer's key;
+ * `countersignerDirectory()` derives the same document so a test can assert
+ * the two never drift.
  */
 
 type Obj = Record<string, unknown>;
@@ -37,16 +33,6 @@ export type DerivedFixtureName =
   | "week-bundle-unresolved-countersigned.json"
   | "week-bundle-presentation.json";
 
-export interface CountersignerDirectoryEntry {
-  readonly publicKey: string;
-  readonly name: string;
-  readonly logoDataUrl: string;
-  readonly checksRecomputed: number;
-}
-
-const BUNDLE_DIGEST_CONTENT_TYPE =
-  "application/agent-action-capsule-bundle-digest";
-
 // 1x1 transparent PNG.
 const TEST_PNG_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
@@ -57,37 +43,49 @@ const directorySignerIdentity = createEd25519Identity(
 );
 const strangerIdentity = createEd25519Identity(new Uint8Array(32).fill(33));
 
-function toBase64Url(bytes: Uint8Array): string {
-  return Buffer.from(bytes)
-    .toString("base64")
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replace(/=+$/u, "");
-}
-
-function toHex(bytes: Uint8Array): string {
+export function toHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
     "",
   );
 }
 
-function signDigest(
-  digestHex: string,
+/** The test directory signer's public key, 64 hex. */
+export const DIRECTORY_SIGNER_KEY_ID = toHex(directorySignerIdentity.publicKey);
+
+/** A countersign/v1 statement with one check per result kind the stamp shows. */
+export function testStatement(recomputedAt: string): Obj {
+  return {
+    checks: [
+      { name: "chain consistency", result: "established" },
+      { name: "range membership", result: "failed" },
+      { name: "key hygiene", result: "not present" },
+    ],
+    recomputed_at: recomputedAt,
+    scope: { ledger_id: "ledger:test", closure_depth: 2 },
+  };
+}
+
+/** Sign a countersign/v1 entry over `over` with a test identity. */
+export function countersignV1Entry(
+  over: string,
+  statement: Obj,
   identity: ReturnType<typeof createEd25519Identity>,
-): string {
-  const payload = hexToBytes(digestHex);
-  const protectedBytes = protectedHeadersFor(
-    BUNDLE_DIGEST_CONTENT_TYPE,
-    identity.publicKey,
-  );
+): Obj {
   const signature = edSign(
     null,
-    producerEnvelopeSigningBytes(protectedBytes, payload),
+    countersignV1SigningInput({ over, statement, type: "countersign/v1" }),
     identity.privateKey,
   );
-  return toBase64Url(
-    encodeProducerEnvelope(protectedBytes, payload, signature),
-  );
+  return {
+    type: "countersign/v1",
+    signer: {
+      id: "did:web:countersign.example",
+      key_id: toHex(identity.publicKey),
+    },
+    over,
+    statement,
+    signature: toHex(signature),
+  };
 }
 
 /** A fresh parse of the committed seed bundle. */
@@ -100,32 +98,34 @@ export function seedBundle(): Obj {
   ) as Obj;
 }
 
-/** The directory entry for the test-only directory signer. */
-export function countersignerDirectory(): CountersignerDirectoryEntry[] {
-  return [
-    {
-      publicKey: toHex(directorySignerIdentity.publicKey),
-      name: "Example Countersigners Ltd",
-      logoDataUrl: TEST_PNG_DATA_URL,
-      checksRecomputed: 7,
-    },
-  ];
+/** The `witnesses.json` directory naming the test-only directory signer. */
+export function countersignerDirectory(): Obj {
+  return {
+    directory_version: "1",
+    witnesses: [],
+    countersigners: [
+      {
+        name: "Example Countersigners Ltd",
+        endpoint: "https://countersign.example",
+        key_ids: [DIRECTORY_SIGNER_KEY_ID],
+        statement_types_issued: ["countersign/v1"],
+        since: "2026-09-12",
+        independent_of: [],
+      },
+    ],
+  };
 }
 
 async function countersigned(
   bundle: Obj,
   identity: ReturnType<typeof createEd25519Identity>,
-  signedAt: string,
+  recomputedAt: string,
 ): Promise<Obj> {
   const digest = await bundleDigest(bundle);
   return {
     ...bundle,
     countersignatures: [
-      {
-        type: "cose-sign1",
-        signature: signDigest(digest, identity),
-        signed_at: signedAt,
-      },
+      countersignV1Entry(digest, testStatement(recomputedAt), identity),
     ],
   };
 }
