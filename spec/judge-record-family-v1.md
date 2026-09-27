@@ -34,7 +34,7 @@ old-field → new-field mapping in §9.
 **Explicitly out of scope (never defined here):** a judging engine, a sampler, or a calibration
 computation. This document names what a conforming judge record looks like on the wire — the same
 boundary `evidence-result-v0.md`'s Dependency boundary draws. It also never names `Authority`,
-`Relay`, `score`/`scoring`, or `reputation`; every synthetic fixture's placeholder is `OO`, never a
+`score`/`scoring`, or `reputation`; every synthetic fixture's placeholder is `OO`, never a
 company name.
 
 ## 0. The family-wide citation convention

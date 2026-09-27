@@ -16,7 +16,7 @@ DRAFT    = draft-mih-scitt-agent-action-capsule-05
 # return 404), while the committed .txt still carries the fully rendered
 # citation.  All three revisions -00/-01/-02 cite it.  Gating this draft before
 # that is resolved would simply land a red gate.
-BILATERAL = draft-mih-agent-bilateral-attestation-02
+BILATERAL = draft-mih-agent-bilateral-attestation-03
 CPB      = draft-mih-sokolov-scitt-payload-binding-00
 BUNDLE   = draft-mih-zhang-agent-disclosure-bundle-00
 EVREQ    = draft-mih-agent-evidence-request-00
