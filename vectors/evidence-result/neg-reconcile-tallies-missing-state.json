@@ -78,20 +78,20 @@
         }
       ],
       "reconcile": {
-        "counts": {
-          "A_ONLY": 2,
-          "B_ONLY": 1,
-          "CONFLICTING": 1,
-          "INSUFFICIENT": 0,
-          "MATCHED": 408
-        },
         "join_key": "reservation_id",
         "peer": "oo-sor",
         "period": {
           "end": "2026-10-01T00:00:00Z",
           "start": "2026-09-01T00:00:00Z"
         },
-        "state_of_record": "B"
+        "state_of_record": "B",
+        "tallies": {
+          "a_only": 2,
+          "b_only": 1,
+          "conflicting": 1,
+          "insufficient": 0,
+          "matched": 408
+        }
       },
       "requirement_ref": "refund-lands",
       "sufficiency": "SATISFIED",
@@ -122,21 +122,21 @@
         }
       ],
       "reconcile": {
-        "counts": {
-          "A_ONLY": 0,
-          "B_ONLY": 0,
-          "CONFLICTING": 0,
-          "INSUFFICIENT": 3,
-          "MATCHED": 380,
-          "UNRESOLVED": 0
-        },
         "join_key": "reservation_id",
         "peer": "oo-sor",
         "period": {
           "end": "2026-10-01T00:00:00Z",
           "start": "2026-09-01T00:00:00Z"
         },
-        "state_of_record": "B"
+        "state_of_record": "B",
+        "tallies": {
+          "a_only": 0,
+          "b_only": 0,
+          "conflicting": 0,
+          "insufficient": 3,
+          "matched": 380,
+          "unresolved": 0
+        }
       },
       "requirement_ref": "change-lands",
       "sufficiency": "GAP",

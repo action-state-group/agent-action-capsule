@@ -245,17 +245,33 @@ claim (type: reconcile) adds:
     join_key: string                  # the field both books are joined on (reservation_id, exchange_id)
     peer: string                      # the peer book / book-profile id (side B; side A is this book)
     period: { start, end }            # the concrete half-open window, RFC 3339
-    counts:                           # all six REQUIRED, integers >= 0, counts never ratios
-      MATCHED · A_ONLY · B_ONLY · CONFLICTING · INSUFFICIENT · UNRESOLVED
-    state_of_record: A | B | none     # declared by the contract, never inferred; never moves a count
+    tallies:                          # all six REQUIRED, integers >= 0, counts never ratios;
+      matched · a_only · b_only ·     #   keyed as schemas/judge/close-v1.json's ReconcileTallies
+      conflicting · insufficient ·    #   keys them, so a close/v1 record maps to a claim
+      unresolved                      #   without a table (the state NAMES stay uppercase)
+    state_of_record: A | B | none     # declared by the contract, never inferred; never moves a tally
 
 claim (type: close) adds:
   close:
     period: { start, end }
-    close_state: UNILATERAL | AGREED
-    peer: string                      # REQUIRED iff AGREED, absent iff UNILATERAL
-    peer_close_ref: digest-ref        # the peer's citing Close record, by digest; same rule
+    close_state: UNILATERAL | AGREED | CONTESTED   # as READ from the Close's inbound links, never asserted
+    peer: string                      # REQUIRED iff AGREED or CONTESTED, absent iff UNILATERAL
+    peer_close_ref: digest-ref        # the peer's acknowledging Close (AGREED) or rebutting record
+                                      #   (CONTESTED), by digest; same rule
 ```
+
+**`close_state` is the Evidence Layer's three-state Close status** (`draft-mih-agent-evidence-layer-00`,
+"Reconcile and Close"), the same three values `schemas/judge/close-v1.json`'s `reconcile.status` carries:
+`AGREED` — a record from the counterparty carries an `acknowledges` link to this Close; `CONTESTED` — a
+record carries a `rebuts` link to this Close; `UNILATERAL` — neither, "no corresponding `acknowledges` link
+exists yet." That document rules that Close status "is read from the links other records make to it, not
+from a field the Close itself sets." A claim's `close_state` is therefore the state the Result builder
+*read* from the Close record's inbound links at build time — a reporting convenience, exactly as
+`close-v1.json` labels its own `status` — never a state the Close asserts about itself; a verifier
+re-reads the links and never trusts the field. `AGREED` and `CONTESTED` both exist only because a peer
+record links to the Close, so both MUST cite that record (`peer` + `peer_close_ref`); `UNILATERAL` cites
+nothing. If a build finds both an `acknowledges` and a `rebuts` link at one Close, this document does not
+yet rank them (open; §4.1 will say once ruled).
 
 **Sufficiency on a reconcile claim is derived from the two non-finding counts only** (documented,
 not schema-enforced in v0): `INSUFFICIENT > 0` ⇒ `GAP`; else `UNRESOLVED > 0` ⇒ `UNKNOWN`; else
@@ -265,7 +281,9 @@ contract clause's verdict is judged over, and that verdict is never a ratio of t
 **The rendering constraints the ruling names are a renderer's obligation, pinned by negative
 fixtures in `capsule-viewer`, never by styling:** `A_ONLY` / `B_ONLY` are "one side missing" and
 MUST NOT render in the class or wording of `CONFLICTING` ("both sides disagree"); a `UNILATERAL`
-close MUST NOT render any affordance of `AGREED`; a claim whose `type` a renderer does not
+close MUST NOT render any affordance of `AGREED`; a `CONTESTED` close renders as its own state
+("contested — peer rebuts"), never with the agreed mark and never in `UNILATERAL`'s wording; a claim
+whose `type` a renderer does not
 recognize renders as an `unrecognized` row carrying the raw type and `contract_ref`, never
 dropped. `ClaimType` is a closed enum here, so an unknown type fails *validation*; the
 "unrecognized" behaviour is for a renderer that meets a document produced under a later schema.
@@ -393,9 +411,10 @@ field, each failing at exactly one documented rule. See that directory's `README
 cases and `schemas/check_evidence_result_examples.py` for the validation run, including the
 mutant/load-bearing proof for each negative.
 
-§4.1's PROPOSED claim types add three positives (`pos-oo-reconcile-result.json`,
-`pos-oo-close-agreed-result.json`, `pos-oo-close-unilateral-result.json` — each the untouched
-requirement `claim-1` beside one typed claim) and three negatives (`neg-close-agreed-without-peer`,
-`neg-reconcile-counts-missing-state`, `neg-unrecognized-claim-type`), same one-field discipline,
+§4.1's PROPOSED claim types add four positives (`pos-oo-reconcile-result.json`,
+`pos-oo-close-agreed-result.json`, `pos-oo-close-unilateral-result.json`,
+`pos-oo-close-contested-result.json` — each the untouched requirement `claim-1` beside one typed
+claim) and four negatives (`neg-close-agreed-without-peer`, `neg-close-contested-without-peer-close-ref`,
+`neg-reconcile-tallies-missing-state`, `neg-unrecognized-claim-type`), same one-field discipline,
 same mutant proof. The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against
 these same fixtures, not here.

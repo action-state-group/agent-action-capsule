@@ -30,15 +30,19 @@ mechanical half):
      rule is then restored in memory (the committed schema file is never
      modified) and re-verified red.
   4. PROPOSED CLAIM TYPES (Steven's ruling, 2026-09-25 -- "close +
-     reconcile as claim types in result v0"): three more positives
+     reconcile as claim types in result v0"): four more positives
      (pos-oo-reconcile-result, pos-oo-close-agreed-result,
-     pos-oo-close-unilateral-result) MUST validate, and three more
-     negatives MUST fail, each with its own mutant check:
+     pos-oo-close-unilateral-result, pos-oo-close-contested-result -- the
+     Evidence Layer's three Close states, read from links) MUST validate,
+     and four more negatives MUST fail, each with its own mutant check:
        - neg-close-agreed-without-peer.json: close-1 is AGREED but `peer`
-         is removed (CloseClaim's AGREED rule).
-       - neg-reconcile-counts-missing-state.json: reconcile-1's
-         counts.UNRESOLVED removed (all six states required; absent is
-         never zero).
+         is removed (CloseClaim's AGREED-or-CONTESTED rule).
+       - neg-close-contested-without-peer-close-ref.json: close-1 is
+         CONTESTED but `peer_close_ref` (the rebutting record, by digest)
+         is removed (same rule).
+       - neg-reconcile-tallies-missing-state.json: reconcile-1's
+         tallies.unresolved removed (all six states required; absent is
+         never zero; keys as schemas/judge/close-v1.json spells them).
        - neg-unrecognized-claim-type.json: claim-1 given `type:
          "adjudication"`, outside ClaimType's closed enum. The schema is
          closed-world so it fails HERE; rendering the same document as an
@@ -95,6 +99,7 @@ POSITIVES = [
     "pos-oo-reconcile-result",
     "pos-oo-close-agreed-result",
     "pos-oo-close-unilateral-result",
+    "pos-oo-close-contested-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -106,7 +111,8 @@ NEGATIVES = [
     "neg-contract-ref-missing",
     "neg-disclosure-carrier-under-withheld",
     "neg-close-agreed-without-peer",
-    "neg-reconcile-counts-missing-state",
+    "neg-close-contested-without-peer-close-ref",
+    "neg-reconcile-tallies-missing-state",
     "neg-unrecognized-claim-type",
 ]
 
@@ -253,23 +259,34 @@ def main() -> int:
 
     if negative_errors_by_name["neg-close-agreed-without-peer"]:
         mutant = copy.deepcopy(schema)
-        # Strip CloseClaim's AGREED <-> peer/peer_close_ref binding.
+        # Strip CloseClaim's AGREED/CONTESTED <-> peer/peer_close_ref binding.
         mutant["$defs"]["CloseClaim"]["allOf"] = []
         _mutant_check(
             "neg-close-agreed-without-peer",
             mutant,
-            "CloseClaim's AGREED-requires-peer if/then rule",
+            "CloseClaim's AGREED-or-CONTESTED-requires-peer if/then rule",
         )
 
-    if negative_errors_by_name["neg-reconcile-counts-missing-state"]:
+    if negative_errors_by_name["neg-close-contested-without-peer-close-ref"]:
         mutant = copy.deepcopy(schema)
-        mutant["$defs"]["ReconcileCounts"]["required"] = [
-            r for r in mutant["$defs"]["ReconcileCounts"]["required"] if r != "UNRESOLVED"
+        # Same rule, other branch of the enum: CONTESTED must cite the
+        # rebutting record. Stripping the binding must flip this one too.
+        mutant["$defs"]["CloseClaim"]["allOf"] = []
+        _mutant_check(
+            "neg-close-contested-without-peer-close-ref",
+            mutant,
+            "CloseClaim's AGREED-or-CONTESTED-requires-peer if/then rule",
+        )
+
+    if negative_errors_by_name["neg-reconcile-tallies-missing-state"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["ReconcileTallies"]["required"] = [
+            r for r in mutant["$defs"]["ReconcileTallies"]["required"] if r != "unresolved"
         ]
         _mutant_check(
-            "neg-reconcile-counts-missing-state",
+            "neg-reconcile-tallies-missing-state",
             mutant,
-            "ReconcileCounts.required's 'UNRESOLVED' entry",
+            "ReconcileTallies.required's 'unresolved' entry",
         )
 
     if negative_errors_by_name["neg-unrecognized-claim-type"]:

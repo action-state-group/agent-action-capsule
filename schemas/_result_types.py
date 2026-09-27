@@ -49,26 +49,27 @@ class PeriodDoc(TypedDict):
     end: str
 
 
-class ReconcileCountsDoc(TypedDict):
-    MATCHED: int
-    A_ONLY: int
-    B_ONLY: int
-    CONFLICTING: int
-    INSUFFICIENT: int
-    UNRESOLVED: int
+class ReconcileTalliesDoc(TypedDict):
+    # Keyed as schemas/judge/close-v1.json's ReconcileTallies keys them.
+    matched: int
+    a_only: int
+    b_only: int
+    conflicting: int
+    insufficient: int
+    unresolved: int
 
 
 class ReconcileClaimDoc(TypedDict):
     join_key: str
     peer: str
     period: PeriodDoc
-    counts: ReconcileCountsDoc
+    tallies: ReconcileTalliesDoc
     state_of_record: Literal["A", "B", "none"]
 
 
 class CloseClaimDoc(TypedDict, total=False):
     period: PeriodDoc
-    close_state: Literal["UNILATERAL", "AGREED"]
+    close_state: Literal["UNILATERAL", "AGREED", "CONTESTED"]
     peer: str
     peer_close_ref: DigestRefDoc
 

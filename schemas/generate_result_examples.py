@@ -17,12 +17,15 @@ negative fixtures, each a byte-for-byte copy of the positive with exactly one
 field changed, each spec/evidence-result-v0.md rule this document requires
 MUST reject.
 
-PROPOSED claim types (Steven's ruling, 2026-09-25): three more positives --
-one reconcile Result, one AGREED close, one UNILATERAL close, each pairing
-the untouched requirement claim-1 with one typed claim -- and three more
-negatives (AGREED close without `peer`; reconcile counts missing a state;
-a claim `type` outside the closed enum), each again one field away from its
-positive.
+PROPOSED claim types (Steven's ruling, 2026-09-25): four more positives --
+one reconcile Result, one AGREED close, one UNILATERAL close, one CONTESTED
+close (the Evidence Layer's third Close state, draft-mih-agent-evidence-
+layer-00 'Reconcile and Close'), each pairing the untouched requirement
+claim-1 with one typed claim -- and four more negatives (AGREED close
+without `peer`; CONTESTED close without `peer_close_ref`; reconcile tallies
+missing a state; a claim `type` outside the closed enum), each again one
+field away from its positive. Reconcile tallies are keyed as
+schemas/judge/close-v1.json keys them (lowercase).
 
 Regenerate with:
     python3 schemas/generate_result_examples.py
@@ -239,13 +242,13 @@ reconcile_1: ClaimDoc = {
         "join_key": "reservation_id",
         "peer": "oo-sor",
         "period": MONTH,
-        "counts": {
-            "MATCHED": 408,
-            "A_ONLY": 2,
-            "B_ONLY": 1,
-            "CONFLICTING": 1,
-            "INSUFFICIENT": 0,
-            "UNRESOLVED": 0,
+        "tallies": {
+            "matched": 408,
+            "a_only": 2,
+            "b_only": 1,
+            "conflicting": 1,
+            "insufficient": 0,
+            "unresolved": 0,
         },
         "state_of_record": "B",
     },
@@ -279,13 +282,13 @@ reconcile_2: ClaimDoc = {
         "join_key": "reservation_id",
         "peer": "oo-sor",
         "period": MONTH,
-        "counts": {
-            "MATCHED": 380,
-            "A_ONLY": 0,
-            "B_ONLY": 0,
-            "CONFLICTING": 0,
-            "INSUFFICIENT": 3,
-            "UNRESOLVED": 0,
+        "tallies": {
+            "matched": 380,
+            "a_only": 0,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 3,
+            "unresolved": 0,
         },
         "state_of_record": "B",
     },
@@ -343,7 +346,42 @@ close_agreed: ClaimDoc = {
     },
 }
 
-# --- close-1 (UNILATERAL) -- no peer Close cites ours; no peer named -----
+# --- close-1 (CONTESTED) -- a peer record carries a `rebuts` link to ------
+#     ours (draft-mih-agent-evidence-layer-00, 'Reconcile and Close'). The
+#     state is what the Result builder READ from the Close's inbound links,
+#     never a field the Close set. Base axes stay as on the AGREED /
+#     UNILATERAL fixtures (the Close itself was sealed: `met`); the
+#     agreement axis lives in close_state alone. peer_close_ref cites the
+#     rebutting record by digest, exactly as AGREED cites the acknowledging
+#     Close.
+peer_rebuttal_content = {"note": "OO peer (oo-sor) record for 2026-09-01 rebutting OO's Close, v0 placeholder"}
+
+close_contested: ClaimDoc = {
+    "id": "close-1",
+    "type": "close",
+    "contract_ref": RECONCILE_CONTRACT_REF,
+    "requirement_ref": "close",
+    "tier": "recomputed",
+    "grade": "self-attested",
+    "sufficiency": "SATISFIED",
+    "verdict": "met",
+    "evidence": [digest_ref(own_close_content), digest_ref(peer_rebuttal_content)],
+    "proofs": [proof_ref("inclusion_proof", close_proof_content)],
+    "presentation": {
+        "kind": "disclosure",
+        "status": "SATISFIED",
+        "evidence": [digest_ref(own_close_content), digest_ref(peer_rebuttal_content)],
+    },
+    "close": {
+        "period": DAY_1,
+        "close_state": "CONTESTED",
+        "peer": "oo-sor",
+        "peer_close_ref": digest_ref(peer_rebuttal_content),
+    },
+}
+
+# --- close-1 (UNILATERAL) -- no peer record acknowledges or rebuts ours; --
+#     no peer named
 close_unilateral: ClaimDoc = {
     "id": "close-1",
     "type": "close",
@@ -394,16 +432,23 @@ def _close_result(close_claim: ClaimDoc, title: str) -> EvidenceResultDoc:
 
 pos_oo_close_agreed_result = _close_result(close_agreed, "OO Close -- 2026-09-01 (agreed)")
 pos_oo_close_unilateral_result = _close_result(close_unilateral, "OO Close -- 2026-09-01 (unilateral)")
+pos_oo_close_contested_result = _close_result(close_contested, "OO Close -- 2026-09-01 (contested)")
 
 # --- neg-close-agreed-without-peer -- close-1 AGREED, `peer` removed -----
 #     (CloseClaim's AGREED rule: peer + peer_close_ref required)
 neg_close_agreed_without_peer = _mutated(pos_oo_close_agreed_result)
 del neg_close_agreed_without_peer["claims"][1]["close"]["peer"]
 
-# --- neg-reconcile-counts-missing-state -- reconcile-1 counts.UNRESOLVED --
-#     removed (ReconcileCounts requires all six; absent is never zero)
-neg_reconcile_counts_missing_state = _mutated(pos_oo_reconcile_result)
-del neg_reconcile_counts_missing_state["claims"][1]["reconcile"]["counts"]["UNRESOLVED"]
+# --- neg-close-contested-without-peer-close-ref -- close-1 CONTESTED, ----
+#     `peer_close_ref` removed (CloseClaim's AGREED-or-CONTESTED rule: a
+#     contested close must cite the rebutting record)
+neg_close_contested_without_peer_close_ref = _mutated(pos_oo_close_contested_result)
+del neg_close_contested_without_peer_close_ref["claims"][1]["close"]["peer_close_ref"]
+
+# --- neg-reconcile-tallies-missing-state -- reconcile-1 tallies.unresolved
+#     removed (ReconcileTallies requires all six; absent is never zero)
+neg_reconcile_tallies_missing_state = _mutated(pos_oo_reconcile_result)
+del neg_reconcile_tallies_missing_state["claims"][1]["reconcile"]["tallies"]["unresolved"]
 
 # --- neg-unrecognized-claim-type -- claim-1 given a type outside ----------
 #     ClaimType's closed enum. Fails HERE (schema is closed-world); the
@@ -424,8 +469,10 @@ def main() -> int:
     write("pos-oo-reconcile-result", pos_oo_reconcile_result)
     write("pos-oo-close-agreed-result", pos_oo_close_agreed_result)
     write("pos-oo-close-unilateral-result", pos_oo_close_unilateral_result)
+    write("pos-oo-close-contested-result", pos_oo_close_contested_result)
     write("neg-close-agreed-without-peer", neg_close_agreed_without_peer)
-    write("neg-reconcile-counts-missing-state", neg_reconcile_counts_missing_state)
+    write("neg-close-contested-without-peer-close-ref", neg_close_contested_without_peer_close_ref)
+    write("neg-reconcile-tallies-missing-state", neg_reconcile_tallies_missing_state)
     write("neg-unrecognized-claim-type", neg_unrecognized_claim_type)
     return 0
 

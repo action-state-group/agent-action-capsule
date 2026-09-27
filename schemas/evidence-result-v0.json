@@ -125,18 +125,18 @@
       "description": "The six reconcile states over one join key between two books (evidencebook-skills-design 2026-09-25, section 4). A = this Result's own book; B = the peer named by ReconcileClaim.peer. MATCHED: present on both sides, equal. A_ONLY: this book has the row, the peer does not. B_ONLY: the peer has the row, this book does not. CONFLICTING: present on both sides, values differ. INSUFFICIENT: the evidence needed to compare was missing (e.g. a connector gap). UNRESOLVED: compared but not resolvable to any other state within the period. Ruled 2026-09-25: 'one side missing isn't a finding; both sides disagreeing is' -- A_ONLY and B_ONLY MUST never render like CONFLICTING.",
       "enum": ["MATCHED", "A_ONLY", "B_ONLY", "CONFLICTING", "INSUFFICIENT", "UNRESOLVED"]
     },
-    "ReconcileCounts": {
-      "description": "Counts over exactly the six ReconcileState values. Every key is REQUIRED even when zero -- an absent key is never an implied zero, and a producer cannot hide a state by omitting it. Each value is a non-negative integer: a count, never a ratio or a percentage (spec section 3's 'never a single number' rule applies per row).",
+    "ReconcileTallies": {
+      "description": "Tallies over exactly the six ReconcileState values, keyed exactly as schemas/judge/close-v1.json's ReconcileTallies keys them (lowercase: matched, a_only, b_only, conflicting, insufficient, unresolved) so a claim can be built from a close/v1 record's reconcile.tallies without a mapping table; the state names themselves (ReconcileState) keep the Evidence Layer's uppercase spelling. Every key is REQUIRED even when zero -- an absent key is never an implied zero, and a producer cannot hide a state by omitting it. Each value is a non-negative integer: a count, never a ratio or a percentage (spec section 3's 'never a single number' rule applies per row).",
       "type": "object",
       "additionalProperties": false,
-      "required": ["MATCHED", "A_ONLY", "B_ONLY", "CONFLICTING", "INSUFFICIENT", "UNRESOLVED"],
+      "required": ["matched", "a_only", "b_only", "conflicting", "insufficient", "unresolved"],
       "properties": {
-        "MATCHED": { "type": "integer", "minimum": 0 },
-        "A_ONLY": { "type": "integer", "minimum": 0 },
-        "B_ONLY": { "type": "integer", "minimum": 0 },
-        "CONFLICTING": { "type": "integer", "minimum": 0 },
-        "INSUFFICIENT": { "type": "integer", "minimum": 0 },
-        "UNRESOLVED": { "type": "integer", "minimum": 0 }
+        "matched": { "type": "integer", "minimum": 0 },
+        "a_only": { "type": "integer", "minimum": 0 },
+        "b_only": { "type": "integer", "minimum": 0 },
+        "conflicting": { "type": "integer", "minimum": 0 },
+        "insufficient": { "type": "integer", "minimum": 0 },
+        "unresolved": { "type": "integer", "minimum": 0 }
       }
     },
     "StateOfRecord": {
@@ -144,10 +144,10 @@
       "enum": ["A", "B", "none"]
     },
     "ReconcileClaim": {
-      "description": "The type-specific body of a `type: reconcile` claim: the six-state count of one join between this book and one peer over one period, against one contract clause (requirement_ref). The claim's base fields keep their section 1 semantics unchanged. Sufficiency derivation rule (documented here, NOT schema-enforced in v0): sufficiency is derived from the two non-finding counts only -- counts.INSUFFICIENT > 0 => GAP (the design's own example: `change-lands` GAP on 3 INSUFFICIENT days); otherwise counts.UNRESOLVED > 0 => UNKNOWN; otherwise SATISFIED. MATCHED / A_ONLY / B_ONLY / CONFLICTING never move sufficiency; they are what the verdict is judged over, and the verdict stays the contract clause's projection (section 1) -- never derived from a ratio of these counts.",
+      "description": "The type-specific body of a `type: reconcile` claim: the six-state tally of one join between this book and one peer over one period, against one contract clause (requirement_ref). The claim's base fields keep their section 1 semantics unchanged. Sufficiency derivation rule (documented here, NOT schema-enforced in v0): sufficiency is derived from the two non-finding tallies only -- tallies.insufficient > 0 => GAP (the design's own example: `change-lands` GAP on 3 INSUFFICIENT days); otherwise tallies.unresolved > 0 => UNKNOWN; otherwise SATISFIED. MATCHED / A_ONLY / B_ONLY / CONFLICTING never move sufficiency; they are what the verdict is judged over, and the verdict stays the contract clause's projection (section 1) -- never derived from a ratio of these tallies.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["join_key", "peer", "period", "counts", "state_of_record"],
+      "required": ["join_key", "peer", "period", "tallies", "state_of_record"],
       "properties": {
         "join_key": {
           "description": "The field both books are joined on (e.g. reservation_id, exchange_id).",
@@ -160,16 +160,16 @@
           "minLength": 1
         },
         "period": { "$ref": "#/$defs/Period" },
-        "counts": { "$ref": "#/$defs/ReconcileCounts" },
+        "tallies": { "$ref": "#/$defs/ReconcileTallies" },
         "state_of_record": { "$ref": "#/$defs/StateOfRecord" }
       }
     },
     "CloseState": {
-      "description": "UNILATERAL: this book sealed its Close for the period and no peer Close cites it. AGREED: the peer's own Close record cites this one back. Ruled 2026-09-25: UNILATERAL MUST never render like AGREED.",
-      "enum": ["UNILATERAL", "AGREED"]
+      "description": "The three Close states of the Evidence Layer (draft-mih-agent-evidence-layer-00, section 'Reconcile and Close'), the same three values schemas/judge/close-v1.json's reconcile.status carries. AGREED: a record from the counterparty carries an `acknowledges` link to this Close (the peer's own Close cites ours back). CONTESTED: a record carries a `rebuts` link to this Close. UNILATERAL: neither -- no corresponding `acknowledges` link exists yet, and nothing rebuts it. Per the owning document, Close status 'is read from the links other records make to it, not from a field the Close itself sets': the value here is the state READ from the Close record's inbound links at the time the Result was built, never a state the Close (or this claim) asserts -- the same 'reporting convenience, not the authoritative source' posture close-v1.json takes for reconcile.status. A verifier re-reads the links; it never trusts this field. Ruled 2026-09-25: UNILATERAL MUST never render like AGREED; CONTESTED is its own state and MUST render as neither.",
+      "enum": ["UNILATERAL", "AGREED", "CONTESTED"]
     },
     "CloseClaim": {
-      "description": "The type-specific body of a `type: close` claim: one sealed Close for one period. `peer` and `peer_close_ref` (the peer's citing Close record, by digest) are REQUIRED when close_state is AGREED and MUST be absent when UNILATERAL -- a unilateral close that names a peer or cites a peer record would read as a half-agreement, which is exactly what the ruling forbids. The claim's base fields keep their section 1 semantics unchanged.",
+      "description": "The type-specific body of a `type: close` claim: one sealed Close for one period, with close_state as read from the Close's inbound links at Result build time (see CloseState). `peer` and `peer_close_ref` (the peer's record that acknowledges or rebuts this Close, by digest) are REQUIRED when close_state is AGREED or CONTESTED -- both states exist only because a peer record links to this Close, and the claim must cite that record -- and MUST be absent when UNILATERAL: a unilateral close that names a peer or cites a peer record would read as a half-agreement (or a half-dispute), which is exactly what the ruling forbids. The claim's base fields keep their section 1 semantics unchanged.",
       "type": "object",
       "additionalProperties": false,
       "required": ["period", "close_state"],
@@ -177,18 +177,18 @@
         "period": { "$ref": "#/$defs/Period" },
         "close_state": { "$ref": "#/$defs/CloseState" },
         "peer": {
-          "description": "The peer book / book-profile id whose Close cites this one. Present iff close_state is AGREED.",
+          "description": "The peer book / book-profile id whose record acknowledges (AGREED) or rebuts (CONTESTED) this Close. Present iff close_state is AGREED or CONTESTED.",
           "type": "string",
           "minLength": 1
         },
         "peer_close_ref": {
-          "description": "The peer's citing Close record, by digest only (its capsule_id) -- never inline. Present iff close_state is AGREED.",
+          "description": "The peer's linking record, by digest only (its capsule_id) -- never inline: the acknowledging Close when AGREED, the rebutting record when CONTESTED. Present iff close_state is AGREED or CONTESTED.",
           "$ref": "#/$defs/DigestRef"
         }
       },
       "allOf": [
         {
-          "if": { "properties": { "close_state": { "const": "AGREED" } }, "required": ["close_state"] },
+          "if": { "properties": { "close_state": { "enum": ["AGREED", "CONTESTED"] } }, "required": ["close_state"] },
           "then": { "required": ["peer", "peer_close_ref"] },
           "else": { "not": { "anyOf": [ { "required": ["peer"] }, { "required": ["peer_close_ref"] } ] } }
         }
