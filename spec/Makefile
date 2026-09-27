@@ -20,12 +20,13 @@ BILATERAL = draft-mih-agent-bilateral-attestation-02
 CPB      = draft-mih-sokolov-scitt-payload-binding-00
 BUNDLE   = draft-mih-zhang-agent-action-capsule-evidence-bundle-00
 EVREQ    = draft-mih-agent-evidence-request-00
+EVIDENCELAYER = draft-mih-agent-evidence-layer-00
 XML2RFC  ?= $(shell command -v xml2rfc)
 KDRFC    ?= $(shell command -v kramdown-rfc || ruby -e 'puts Gem.bindir + "/kramdown-rfc"')
 
-.PHONY: all bilateral cpb bundle evreq clean idnits idnits-evreq rebuild refresh-refs check
+.PHONY: all bilateral cpb bundle evreq evidencelayer clean idnits idnits-evreq rebuild refresh-refs check
 
-all: $(DRAFT).xml $(DRAFT).txt $(BUNDLE).xml $(BUNDLE).txt $(EVREQ).xml $(EVREQ).txt
+all: $(DRAFT).xml $(DRAFT).txt $(BUNDLE).xml $(BUNDLE).txt $(EVREQ).xml $(EVREQ).txt $(EVIDENCELAYER).xml $(EVIDENCELAYER).txt
 
 # Force a rebuild from the Markdown source.
 #
@@ -67,6 +68,8 @@ bundle: $(BUNDLE).xml $(BUNDLE).txt
 
 evreq: $(EVREQ).xml $(EVREQ).txt
 
+evidencelayer: $(EVIDENCELAYER).xml $(EVIDENCELAYER).txt
+
 # md -> v2 xml -> v3 xml (committed artifact is v3)
 $(DRAFT).xml: $(DRAFT).md
 	$(KDRFC) $(DRAFT).md > .$(DRAFT).v2.xml
@@ -96,6 +99,12 @@ $(EVREQ).xml: $(EVREQ).md
 	sed '/<!-- ##markdown-source:/,/-->/d' .$(EVREQ).v3.xml > $(EVREQ).xml
 	@rm -f .$(EVREQ).v2.xml .$(EVREQ).v3.xml
 
+$(EVIDENCELAYER).xml: $(EVIDENCELAYER).md
+	$(KDRFC) $(EVIDENCELAYER).md > .$(EVIDENCELAYER).v2.xml
+	$(XML2RFC) --v2v3 .$(EVIDENCELAYER).v2.xml -o .$(EVIDENCELAYER).v3.xml
+	sed '/<!-- ##markdown-source:/,/-->/d' .$(EVIDENCELAYER).v3.xml > $(EVIDENCELAYER).xml
+	@rm -f .$(EVIDENCELAYER).v2.xml .$(EVIDENCELAYER).v3.xml
+
 # v3 xml -> text
 $(DRAFT).txt: $(DRAFT).xml
 	$(XML2RFC) --text --v3 $(DRAFT).xml -o $(DRAFT).txt
@@ -112,6 +121,9 @@ $(BUNDLE).txt: $(BUNDLE).xml
 $(EVREQ).txt: $(EVREQ).xml
 	$(XML2RFC) --text --v3 $(EVREQ).xml -o $(EVREQ).txt
 
+$(EVIDENCELAYER).txt: $(EVIDENCELAYER).xml
+	$(XML2RFC) --text --v3 $(EVIDENCELAYER).xml -o $(EVIDENCELAYER).txt
+
 idnits: $(DRAFT).txt
 	npx --yes @ietf-tools/idnits $(DRAFT).txt
 
@@ -122,4 +134,4 @@ check:
 	python3 check_verdict_class_refs.py
 
 clean:
-	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml .$(BUNDLE).v2.xml .$(EVREQ).v2.xml .$(EVREQ).v3.xml
+	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml .$(BUNDLE).v2.xml .$(EVREQ).v2.xml .$(EVREQ).v3.xml .$(EVIDENCELAYER).v2.xml .$(EVIDENCELAYER).v3.xml
