@@ -42,7 +42,14 @@ __all__ = [
     "encode_fragment",
     "decode_fragment",
     "verify_bundle",
+    "COMPLETENESS_VERIFIER_UNAVAILABLE",
 ]
+
+# Finding for a well-formed completeness certificate that this installation
+# cannot check because the CLL reference (``pip install
+# 'agent-action-capsule[bundle]'``) is absent. Distinct from
+# ``completeness_certificate_invalid``, which means the certificate is wrong.
+COMPLETENESS_VERIFIER_UNAVAILABLE = "completeness_verifier_unavailable"
 
 _B64URL = re.compile(r"^[A-Za-z0-9_-]*$")
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -267,7 +274,17 @@ def _verify_completeness(bundle: Mapping[str, Any], records: Mapping[str, Mappin
     if parsed is None:
         failure = ClaimResult("fail", ("completeness_certificate_invalid",))
         return failure, failure
-    root, log_id, first_seq, last_seq, range_proof = parsed
+    if not _cll_available():
+        # The certificate is well formed, but the MMR proofs cannot be checked
+        # without the CLL reference (the optional `bundle` extra). Fail closed
+        # (never pass) without accusing the producer: "invalid" is reserved for
+        # certificates that are actually wrong.
+        unavailable = ClaimResult("fail", (COMPLETENESS_VERIFIER_UNAVAILABLE,))
+        return unavailable, unavailable
+    root, log_id, first_seq, last_seq, range_fields = parsed
+    from cll.checkpoint import RangeProof
+
+    range_proof = RangeProof(**range_fields)
     if not _verify_range(root, first_seq, last_seq, certificate, range_proof):
         failure = ClaimResult("fail", ("range_proof_invalid",))
         return failure, failure
@@ -315,11 +332,32 @@ def _authenticate_checkpoint(checkpoint: Mapping[str, Any], log_id: str, root: b
             and decoded.root == root.hex()
             else "invalid"
         )
-    except (ImportError, AttributeError, TypeError, ValueError, binascii.Error):
+    except ImportError:
+        # No COSE checkpoint authenticator here: the checkpoint stays producer
+        # asserted (checkpoint_unverified), as in the TS verifier; it is not
+        # evidence that the signature is bad.
+        return "unverified"
+    except (AttributeError, TypeError, ValueError, binascii.Error):
         return "invalid"
 
 
-def _certificate(certificate: Mapping[str, Any], checkpoint: Mapping[str, Any]) -> tuple[bytes, str, int, int, Any] | None:
+def _cll_available() -> bool:
+    """Whether the CLL reference that verifies the MMR proofs is importable."""
+    try:
+        import cll.checkpoint  # noqa: F401
+        import cll.checkpoint.index  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def _certificate(certificate: Mapping[str, Any], checkpoint: Mapping[str, Any]) -> tuple[bytes, str, int, int, dict[str, Any]] | None:
+    """Structurally validate the certificate without importing CLL.
+
+    Returns ``None`` only for a certificate that is wrong on its face, so a
+    verifier missing the CLL substrate still reports a malformed certificate as
+    invalid and a well-formed one as unverifiable, never the other way round.
+    """
     log_id = certificate.get("log_id")
     root_hex = certificate.get("range_root")
     first_seq = certificate.get("first_seq")
@@ -341,15 +379,12 @@ def _certificate(certificate: Mapping[str, Any], checkpoint: Mapping[str, Any]) 
         root = bytes.fromhex(root_hex)
         if len(root) != 32:
             return None
-        range_proof = _range_proof(certificate.get("range_proof"))
+        range_fields = _range_proof_fields(certificate.get("range_proof"))
         checkpoint_size = checkpoint.get("mmr_size")
-        if isinstance(checkpoint_size, bool) or not isinstance(checkpoint_size, int) or checkpoint_size != range_proof.size:
+        if isinstance(checkpoint_size, bool) or not isinstance(checkpoint_size, int) or checkpoint_size != range_fields["size"]:
             return None
-        return root, log_id, first_seq, last_seq, range_proof
-    except (ImportError, TypeError, ValueError, KeyError):
-        # ImportError: `cll` absent — fail the completeness claim closed rather
-        # than letting the exception escape verify_bundle and drop the other
-        # claims (graph closure, disclosures) with it.
+        return root, log_id, first_seq, last_seq, range_fields
+    except (TypeError, ValueError, KeyError):
         return None
 
 
@@ -473,9 +508,7 @@ def _inclusion_proof(raw: Any) -> Any:
     )
 
 
-def _range_proof(raw: Any) -> Any:
-    from cll.checkpoint import RangeProof
-
+def _range_proof_fields(raw: Any) -> dict[str, Any]:
     if not isinstance(raw, Mapping):
         raise TypeError("range proof must be an object")
     from_seq = raw["from_seq"]
@@ -506,14 +539,14 @@ def _range_proof(raw: Any) -> Any:
         raise ValueError("invalid range proof")
     # CLL #13 flat witness shape: (from_seq, to_seq, size, from_index, to_index,
     # witness). The retired (inclusion_from, inclusion_to) boundary pair is gone.
-    return RangeProof(
-        from_seq=from_seq,
-        to_seq=to_seq,
-        size=size,
-        from_index=from_index,
-        to_index=to_index,
-        witness=tuple(witness),
-    )
+    return {
+        "from_seq": from_seq,
+        "to_seq": to_seq,
+        "size": size,
+        "from_index": from_index,
+        "to_index": to_index,
+        "witness": tuple(witness),
+    }
 
 
 def _verify_disclosures(raw: Any, records: Mapping[str, Mapping[str, Any]]) -> list[DisclosureResult]:

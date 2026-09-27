@@ -32,3 +32,19 @@ Bagging that peak with the leaf hash gives range root
 `01ce0ca12b0435132d1a3d73ceb636ac394055be1de51414a68a61e0d859ba2c`.
 This is independently derived from the CLL hash rules, not accepted merely
 because the reference verifier returns it.
+
+## Single-record report bundle (`report-single-record.json`)
+
+Literal bundles, not rebuilt by the test: the shape of the rendered report
+bundles (one root Capsule, `closure_depth` 0, `seq` 1 at `leaf_index` 0 in a
+size-1 MMR, a full `body_digests` range proof, an unsigned checkpoint). The
+positive passes interval coverage and per-record membership, both qualified
+`checkpoint_unverified`. The two negatives separate a certificate that is
+wrong from one a verifier cannot check: `checkpoint.root` differing from
+`range_root` is `completeness_certificate_invalid`, and `leaf_index = seq`
+(the zero-based misreading of `seq`) fails per-record membership only.
+
+`expected_without_cll` pins the Python reference installed without the
+`bundle` extra. A well-formed certificate it cannot check fails closed as
+`completeness_verifier_unavailable`; it is never reported as
+`completeness_certificate_invalid`, and it never passes.

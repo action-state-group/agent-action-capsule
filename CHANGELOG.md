@@ -30,6 +30,26 @@
   `signer.id`, and signature without `signer` are invalid, and a receipt for a different
   statement leaves the entry valid with the receipt unverified.
 
+### Fix: bundle completeness without the CLL reference is not an invalid certificate
+- `verify_bundle` (Python) reported every well-formed `completeness_certificate` as
+  `completeness_certificate_invalid` on interval coverage and per-record membership when
+  the CLL reference (`cll`) was not installed. `pip install agent-action-capsule` never
+  installs it, so the clean report bundles were rejected there while the TS and in-report
+  verifiers passed them. A certificate that is structurally valid but cannot be checked
+  now fails closed as `completeness_verifier_unavailable`: it never passes, and it is never
+  called invalid. A certificate that is wrong on its face is still
+  `completeness_certificate_invalid` with or without CLL. A missing COSE checkpoint
+  authenticator now leaves the checkpoint `checkpoint_unverified` (as in TS), not
+  `checkpoint_authentication_invalid`.
+- New `bundle` extra: `pip install 'agent-action-capsule[bundle]'` adds
+  `checkpointed-local-log>=0.4.0`. It is an extra, not a core dependency, because
+  `checkpointed-local-log` depends on this package.
+- Vectors: `vectors/bundle/report-single-record.json` holds literal single-record report
+  bundles (the rendered-report shape): the positive, `neg-checkpoint-root-mismatch` and
+  `neg-leaf-index-equals-seq`, with `expected_without_cll` for the Python reference
+  without the extra. Python and TS test it. `vectors/bundle/SHA256SUMS` now covers it, and
+  its stale `README.md` line is corrected.
+
 ## 0.6.0 — 2026-09-26
 
 **Headline: the -05 wire.** Producers now emit `spec_version`

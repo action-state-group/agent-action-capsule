@@ -65,6 +65,18 @@ the key is authorized for an operator or developer.
 from agent_action_capsule.producer_envelope import verify_producer_envelope
 ```
 
+To verify an Evidence Bundle's interval coverage and per-record membership
+(`agent_action_capsule.bundle.verify_bundle`), install the `bundle` extra. It
+adds the public CLL reference that checks the MMR proofs:
+
+```bash
+pip install 'agent-action-capsule[bundle]'
+```
+
+Without it those two claims fail closed as `completeness_verifier_unavailable`.
+That finding means this installation could not check the proofs. It does not
+mean the certificate is invalid.
+
 To verify both layers of a SCITT **Signed Statement**, install the optional extra
 and pass `--transparent`:
 
