@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Disclosure Envelope reference verifier (draft-mih-scitt-agent-action-capsule-disclosure-envelope-00).
+"""Disclosure Envelope reference verifier (draft-mih-agent-disclosure-envelope-00).
 
 Verifies a Disclosure Envelope — ``{"capsule": {...}, "disclosures": {...}}`` —
 by running Class 1 verification (:func:`agent_action_capsule.verify.verify`)

@@ -114,7 +114,7 @@ func TestReportHTMLTamperDropRecord(t *testing.T) {
 // changes the bundle digest. Go's neutral verifier does not implement
 // countersignature cryptography (the spec requires every entry surface as
 // "unverified" -- population and COSE verification are documented future
-// scope; see spec/draft-mih-zhang-agent-action-capsule-evidence-bundle-00.md
+// scope; see spec/draft-mih-zhang-agent-disclosure-bundle-00.md
 // section "Bundle Digest and Countersignatures"). The viewer-side stamp that
 // DOES verify a COSE_Sign1 countersignature (ts/src/countersignature-stamp.ts)
 // signs over exactly this digest, so a digest change is the necessary and

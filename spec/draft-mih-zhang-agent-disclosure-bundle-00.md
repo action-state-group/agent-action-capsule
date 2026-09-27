@@ -1,7 +1,7 @@
 ---
 title: "AAC Evidence Bundle"
 abbrev: "AAC Evidence Bundle"
-docname: draft-mih-zhang-agent-action-capsule-evidence-bundle-00
+docname: draft-mih-zhang-agent-disclosure-bundle-00
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -41,10 +41,10 @@ normative:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-  I-D.mih-scitt-agent-action-capsule-disclosure-envelope:
+  I-D.mih-agent-disclosure-envelope:
     title: "Disclosure Envelope Profile for Agent Action Capsules"
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-agent-action-capsule-disclosure-envelope-00
+      Internet-Draft: draft-mih-agent-disclosure-envelope-00
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -192,7 +192,7 @@ ancestry or citation completeness from the presence of a short chain.
 
 It has the same eligibility and DE-3 digest rule as the per-Capsule
 Disclosure Envelope in
-{{I-D.mih-scitt-agent-action-capsule-disclosure-envelope}}. The member name
+{{I-D.mih-agent-disclosure-envelope}}. The member name
 selects that draft's registered committed-digest path in the specified
 Capsule. For every disclosed member, a verifier MUST compute
 `JSON-DIGEST(revealed preimage)` and compare it to the committed digest at

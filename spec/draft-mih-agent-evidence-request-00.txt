@@ -150,9 +150,9 @@ Internet-Draft              Evidence Request              September 2026
    digest and verified against the anchor by format-specific means
    outside this document.  A deployment that already has a format for
    the artifact — for example an Evidence Bundle
-   ([I-D.mih-zhang-agent-action-capsule-evidence-bundle]) — carries it
-   inside the artifact response envelope this document defines
-   (Section 4.1); nothing here restates that format.
+   ([I-D.mih-zhang-agent-disclosure-bundle]) — carries it inside the
+   artifact response envelope this document defines (Section 4.1);
+   nothing here restates that format.
 
    Two further properties follow from deployments of this interaction
    shape, sketched in Appendix A.  First, the interaction is symmetric:
@@ -645,10 +645,10 @@ Internet-Draft              Evidence Request              September 2026
    The artifact response is the signed response envelope for the
    granting outcome.  The object it carries is opaque to this
    specification and MAY be an Evidence Bundle
-   ([I-D.mih-zhang-agent-action-capsule-evidence-bundle]) or any other
-   evidence artifact the deployment's evidence format defines; this
-   document specifies the envelope and its binding to the request and
-   the coverage anchor, never the carried object's internal shape.
+   ([I-D.mih-zhang-agent-disclosure-bundle]) or any other evidence
+   artifact the deployment's evidence format defines; this document
+   specifies the envelope and its binding to the request and the
+   coverage anchor, never the carried object's internal shape.
 
    The envelope carries:
 
@@ -1556,7 +1556,7 @@ Internet-Draft              Evidence Request              September 2026
               Mih, S., "The Checkpointed Local Log", Work in Progress,
               August 2026.
 
-   [I-D.mih-zhang-agent-action-capsule-evidence-bundle]
+   [I-D.mih-zhang-agent-disclosure-bundle]
               Mih, S. and Y. Zhang, "AAC Evidence Bundle", Work in
               Progress, September 2026.
 

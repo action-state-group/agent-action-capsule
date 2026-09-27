@@ -44,7 +44,7 @@ informative:
         name: Steven Mih
     date: 2026-09
     refcontent: Work in Progress
-  I-D.mih-zhang-agent-action-capsule-evidence-bundle:
+  I-D.mih-zhang-agent-disclosure-bundle:
     title: "AAC Evidence Bundle"
     author:
       - ins: S. Mih
@@ -80,7 +80,7 @@ specific host-identity, signing, payload-storage, or replication mechanism.
 # Introduction
 
 A request for evidence ({{I-D.mih-agent-evidence-request}}) says how to ask.
-An evidence bundle ({{I-D.mih-zhang-agent-action-capsule-evidence-bundle}})
+An evidence bundle ({{I-D.mih-zhang-agent-disclosure-bundle}})
 says what a granting answer looks like. Neither says what a responder must
 have held, and preserved, beforehand for that answer to be honest rather
 than assembled to order. A responder that can produce a byte-identical
@@ -318,7 +318,7 @@ A **disclosure record** documents an act of disclosing payload material —
 for example, when a store assembles the artifact response to a request
 ({{I-D.mih-agent-evidence-request}}) or the disclosures overlay of an
 evidence bundle
-({{I-D.mih-zhang-agent-action-capsule-evidence-bundle}}). Its
+({{I-D.mih-zhang-agent-disclosure-bundle}}). Its
 `epistemic_type` is `producer_claim`: it is the store's own statement of what
 it chose to reveal. It carries:
 
@@ -621,5 +621,5 @@ This document makes no other requests of IANA.
 This document distills operational experience running local evidence
 stores against the interaction model of
 {{I-D.mih-agent-evidence-request}} and the presentation format of
-{{I-D.mih-zhang-agent-action-capsule-evidence-bundle}} into the substrate
+{{I-D.mih-zhang-agent-disclosure-bundle}} into the substrate
 layer both depend on.

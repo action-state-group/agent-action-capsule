@@ -1,7 +1,7 @@
 ---
 title: "Disclosure Envelope Profile for Agent Action Capsules"
 abbrev: "AAC Disclosure Envelope"
-docname: draft-mih-scitt-agent-action-capsule-disclosure-envelope-00
+docname: draft-mih-agent-disclosure-envelope-00
 category: std
 submissiontype: IETF
 ipr: trust200902

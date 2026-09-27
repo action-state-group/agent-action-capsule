@@ -232,7 +232,7 @@ capsule for the same event is also present.
 ## 10. Reserved wrapper members and disclosable fields — disclosure envelope
 
 Reserved by the companion Internet-Draft
-`draft-mih-scitt-agent-action-capsule-disclosure-envelope` (Disclosure
+`draft-mih-agent-disclosure-envelope` (Disclosure
 Envelope Profile), §8 (IANA Considerations). `capsule` and `disclosures`
 are wrapper-level member names — never Capsule payload members — used only
 by a Disclosure Envelope, the out-of-band structure a producer builds
@@ -349,7 +349,7 @@ claim `witnessed` without a `references[]` entry carrying
 
 ## 13. Evidence Bundle kind
 
-Defined in `draft-mih-zhang-agent-action-capsule-evidence-bundle`,
+Defined in `draft-mih-zhang-agent-disclosure-bundle`,
 "Evidence Bundle Object". This is a **Specification Required** registry.
 It identifies a neutral presentation and verification container, not a Capsule
 payload type.
@@ -360,7 +360,7 @@ payload type.
 
 ## 14. Evidence Bundle extension kind
 
-Defined in `draft-mih-zhang-agent-action-capsule-evidence-bundle`,
+Defined in `draft-mih-zhang-agent-disclosure-bundle`,
 "Typed Extensions". This is a **Specification Required** registry. The
 `extensions` object's member name is the registered kind. Its registered
 specification defines that extension's block shape and semantic checks; the
@@ -373,7 +373,7 @@ specification is registered; this registry does not define that row model.
 
 ## 15. Evidence Bundle countersignature type
 
-Defined in `draft-mih-zhang-agent-action-capsule-evidence-bundle`,
+Defined in `draft-mih-zhang-agent-disclosure-bundle`,
 "Countersignatures". This is a **Specification Required** registry. It names
 the encoding and verification rules for a signature by a party other than the
 bundle producer over the bundle digest.

@@ -53,7 +53,7 @@ specific host-identity, signing, payload-storage, or replication mechanism.</t>
 <section anchor="introduction">
       <name>Introduction</name>
       <t>A request for evidence (<xref target="I-D.mih-agent-evidence-request"/>) says how to ask.
-An evidence bundle (<xref target="I-D.mih-zhang-agent-action-capsule-evidence-bundle"/>)
+An evidence bundle (<xref target="I-D.mih-zhang-agent-disclosure-bundle"/>)
 says what a granting answer looks like. Neither says what a responder must
 have held, and preserved, beforehand for that answer to be honest rather
 than assembled to order. A responder that can produce a byte-identical
@@ -353,7 +353,7 @@ bytes; only one of them is permanent. A party that needs to distinguish
 for example, when a store assembles the artifact response to a request
 (<xref target="I-D.mih-agent-evidence-request"/>) or the disclosures overlay of an
 evidence bundle
-(<xref target="I-D.mih-zhang-agent-action-capsule-evidence-bundle"/>). Its
+(<xref target="I-D.mih-zhang-agent-disclosure-bundle"/>). Its
 <tt>epistemic_type</tt> is <tt>producer_claim</tt>: it is the store's own statement of what
 it chose to reveal. It carries:</t>
         <artwork><![CDATA[
@@ -906,7 +906,7 @@ those of <xref target="links"/>:</t>
           </front>
           <refcontent>Work in Progress</refcontent>
         </reference>
-        <reference anchor="I-D.mih-zhang-agent-action-capsule-evidence-bundle">
+        <reference anchor="I-D.mih-zhang-agent-disclosure-bundle">
           <front>
             <title>AAC Evidence Bundle</title>
             <author initials="S." surname="Mih" fullname="Steven Mih">
@@ -928,7 +928,7 @@ those of <xref target="links"/>:</t>
       <t>This document distills operational experience running local evidence
 stores against the interaction model of
 <xref target="I-D.mih-agent-evidence-request"/> and the presentation format of
-<xref target="I-D.mih-zhang-agent-action-capsule-evidence-bundle"/> into the substrate
+<xref target="I-D.mih-zhang-agent-disclosure-bundle"/> into the substrate
 layer both depend on.</t>
     </section>
   </back>

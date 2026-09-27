@@ -9,7 +9,7 @@ profiles the selective-disclosure extension point.
 It defines the `_sd_alg`/`_sd` vocabulary, commitment encoding, disclosure
 syntax, and verifier checks (SD-1 through SD-6).
 
-**Companion document:** `draft-mih-scitt-agent-action-capsule-disclosure-envelope-00.md`
+**Companion document:** `draft-mih-agent-disclosure-envelope-00.md`
 profiles the out-of-band disclosure of digest-only fields — currently
 `model_attestation.compute_attestation.agent_input_digest` and
 `.agent_output_digest` (-02 §5.3, Observation mode). It defines the
