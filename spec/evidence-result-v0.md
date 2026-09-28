@@ -254,7 +254,8 @@ claim (type: reconcile) adds:
 claim (type: close) adds:
   close:
     period: { start, end }
-    close_state: UNILATERAL | AGREED | CONTESTED   # as READ from the Close's inbound links, never asserted
+    close_state: UNILATERAL | AGREED | CONTESTED   # DERIVED from close_ref's inbound links; a verifier recomputes it
+    close_ref: digest-ref             # REQUIRED: the Close this claim reports on, by digest
     peer: string                      # REQUIRED iff AGREED or CONTESTED; OPTIONAL when UNILATERAL
                                       #   (the peer this Close was reconciled against, unanswered)
     peer_close_ref: digest-ref        # the peer's acknowledging Close (AGREED) or rebutting record
@@ -281,8 +282,22 @@ corresponding `acknowledges` link exists yet" — naming the peer is not agreein
 both on `UNILATERAL` was stricter than the draft, not required by it, and pinned an open question with a
 MUST-reject — it no longer does (whether a report *should* name the peer on a unilateral row stays open
 for the ruling; the schema no longer decides it). What keeps a unilateral row from *reading* as agreement
-is the rendering rule below, not the schema. If a build finds both an `acknowledges` and a `rebuts` link
-at one Close, this document does not yet rank them (open; §4.1 will say once ruled).
+is the rendering rule below, not the schema.
+
+**`close_state` is derivable, never asserted (normative, 2026-09-28 — after the maintainer's adversarial
+review: "a contested close relabelled 'agreed' validates").** A close claim MUST cite the Close it reports
+on, by digest (`close_ref`). `close_state` MUST equal the state read from that Close's inbound links in the
+bundle the Result is verified against: a record carrying a `rebuts` link to the Close ⇒ `CONTESTED`;
+otherwise a counterparty record carrying an `acknowledges` link ⇒ `AGREED`; neither ⇒ `UNILATERAL`. A
+verifier MUST recompute the state from the bundle's records and MUST fail the claim when the asserted
+`close_state` differs — a producer's `AGREED` over a Close a peer has rebutted is a malformed claim, not a
+reporting choice. When the state is `AGREED` or `CONTESTED`, `peer_close_ref` MUST be the digest of a
+record that carries that link, and the verifier checks that too. The ranking is one-directional in v0: a
+standing `rebuts` keeps a Close out of `AGREED` whatever else links to it; whether a later `acknowledges`
+can retire an earlier rebuttal is open (§4.1 will say once ruled). The schema alone cannot see across
+records — `neg-close-agreed-relabelled-contested.json` (§11) is schema-valid and is rejected by the
+checker's link walk over the fixture's `.records.json`; a renderer that cannot see the cited records
+MUST mark the state it shows as producer-asserted, never bare.
 
 **Sufficiency on a reconcile claim is derived from the two non-finding counts only** (documented,
 not schema-enforced in v0): `INSUFFICIENT > 0` ⇒ `GAP`; else `UNRESOLVED > 0` ⇒ `UNKNOWN`; else
@@ -430,5 +445,9 @@ untouched requirement `claim-1` beside its typed claims: one on each close posit
 reconcile positive, `reconcile-1` SATISFIED and `reconcile-2` GAP) and four negatives
 (`neg-close-agreed-without-peer`, `neg-close-contested-without-peer-close-ref`,
 `neg-reconcile-tallies-missing-state`, `neg-unrecognized-claim-type`), same one-field discipline,
-same mutant proof. The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against
-these same fixtures, not here.
+same mutant proof. Every close fixture ships the record headers its claim cites beside it as
+`<name>.records.json`, and a fifth negative, `neg-close-agreed-relabelled-contested`, is the
+CONTESTED positive with `close_state` relabelled `AGREED` over the same records: it validates against
+the schema and is rejected by the checker's link walk (§4.1's derivation rule), with the walk's own
+mutant proof. The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against these same
+fixtures, not here.

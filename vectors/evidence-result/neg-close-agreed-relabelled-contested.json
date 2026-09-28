@@ -53,8 +53,12 @@
           "digest": "96d4eaee8c5957d488159dac6d5f40a1789aa9ee5190ed7f1131b22fa6c39c48",
           "digest_alg": "SHA-256"
         },
-        "close_state": "CONTESTED",
+        "close_state": "AGREED",
         "peer": "oo-sor",
+        "peer_close_ref": {
+          "digest": "ef25e6d27dd102fd5ec181e70357fa9b6f029e5f58f45fa5bbe41aebd54edde9",
+          "digest_alg": "SHA-256"
+        },
         "period": {
           "end": "2026-09-02T00:00:00Z",
           "start": "2026-09-01T00:00:00Z"
@@ -106,6 +110,6 @@
   "view": {
     "producer_name": "OO",
     "spec_version": "presentation/v1",
-    "title": "OO Close -- 2026-09-01 (contested)"
+    "title": "OO Close -- 2026-09-01 (relabelled agreed)"
   }
 }

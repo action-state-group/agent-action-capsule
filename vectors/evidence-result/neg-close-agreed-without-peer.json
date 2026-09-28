@@ -49,9 +49,13 @@
     },
     {
       "close": {
+        "close_ref": {
+          "digest": "96d4eaee8c5957d488159dac6d5f40a1789aa9ee5190ed7f1131b22fa6c39c48",
+          "digest_alg": "SHA-256"
+        },
         "close_state": "AGREED",
         "peer_close_ref": {
-          "digest": "f1bbf63714310e7378e4d122e5e17b80664524b403e393ce0b923f64dbb1e114",
+          "digest": "16d60a40debc4648f06df3eac5fe124a300fcd7bfa2cd2545bc8426a08e95556",
           "digest_alg": "SHA-256"
         },
         "period": {
@@ -62,11 +66,11 @@
       "contract_ref": "ec:oo-outcomes-reconcile:2026-09-25@1",
       "evidence": [
         {
-          "digest": "840cc06d82cca2d9d4e224e56837e9d714e0b5c0b998d919f4d5b132fe2037d5",
+          "digest": "96d4eaee8c5957d488159dac6d5f40a1789aa9ee5190ed7f1131b22fa6c39c48",
           "digest_alg": "SHA-256"
         },
         {
-          "digest": "f1bbf63714310e7378e4d122e5e17b80664524b403e393ce0b923f64dbb1e114",
+          "digest": "16d60a40debc4648f06df3eac5fe124a300fcd7bfa2cd2545bc8426a08e95556",
           "digest_alg": "SHA-256"
         }
       ],
@@ -75,11 +79,11 @@
       "presentation": {
         "evidence": [
           {
-            "digest": "840cc06d82cca2d9d4e224e56837e9d714e0b5c0b998d919f4d5b132fe2037d5",
+            "digest": "96d4eaee8c5957d488159dac6d5f40a1789aa9ee5190ed7f1131b22fa6c39c48",
             "digest_alg": "SHA-256"
           },
           {
-            "digest": "f1bbf63714310e7378e4d122e5e17b80664524b403e393ce0b923f64dbb1e114",
+            "digest": "16d60a40debc4648f06df3eac5fe124a300fcd7bfa2cd2545bc8426a08e95556",
             "digest_alg": "SHA-256"
           }
         ],

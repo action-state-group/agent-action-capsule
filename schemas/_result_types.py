@@ -70,8 +70,32 @@ class ReconcileClaimDoc(TypedDict):
 class CloseClaimDoc(TypedDict, total=False):
     period: PeriodDoc
     close_state: Literal["UNILATERAL", "AGREED", "CONTESTED"]
+    close_ref: DigestRefDoc  # the Close this claim reports on; its inbound links derive close_state
     peer: str
     peer_close_ref: DigestRefDoc
+
+
+class LinkDoc(TypedDict):
+    # draft-mih-agent-evidence-layer-00 "Typed Links": a typed, directed
+    # reference to a target record by digest.
+    type: Literal["cites", "adjudicates", "supersedes", "acknowledges", "rebuts", "closes"]
+    target: str
+
+
+class RecordDoc(TypedDict, total=False):
+    # The evidence-book record header shape a bundle discloses for a
+    # record (evidencebook HeaderMember). Only the members the close-state
+    # link walk reads are named here; a record may carry more.
+    v: int
+    book_id: str
+    seq: int
+    record_type: str
+    epistemic_type: str
+    committed_at: str
+    event_time_claim: str
+    links: list[LinkDoc]
+    subject_ref: str
+    statement: dict
 
 
 class _ClaimTypedBodyDoc(TypedDict, total=False):

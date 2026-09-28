@@ -70,7 +70,7 @@ derivation needs both branches on one document:
 | File | Typed claim | What it pins |
 |---|---|---|
 | `pos-oo-reconcile-result.json` | `reconcile-1` (`refund-lands`): all six tallies populated (`matched 408 · a_only 2 · b_only 1 · conflicting 1 · insufficient 0 · unresolved 0`), `SATISFIED` / `not_met`; `reconcile-2` (`change-lands`): `insufficient 3` → `GAP` / `not_evaluable`, `analysis` carrier | the six-state tallies as counts, keyed as `schemas/judge/close-v1.json`'s `ReconcileTallies` keys them; the sufficiency-derivation rule (insufficient > 0 ⇒ GAP; else unresolved > 0 ⇒ UNKNOWN; else SATISFIED — documented in the schema, not enforced); `state_of_record: B` |
-| `pos-oo-close-agreed-result.json` | `close-1` `AGREED`, `peer: oo-sor`, `peer_close_ref` = digest of the peer's acknowledging Close | AGREED carries the peer and its acknowledging record by digest |
+| `pos-oo-close-agreed-result.json` | `close-1` `AGREED`, `close_ref` = digest of OO's own Close, `peer: oo-sor`, `peer_close_ref` = digest of the peer's acknowledging Close | AGREED carries the peer and its acknowledging record by digest; the state is recomputed from that record's `acknowledges` link |
 | `pos-oo-close-unilateral-result.json` | `close-1` `UNILATERAL`, no `peer`, no `peer_close_ref` | UNILATERAL with nothing said about a counterparty — nothing on the row can read as agreement or dispute |
 | `pos-oo-close-unilateral-named-peer-result.json` | `close-1` `UNILATERAL`, `peer: oo-sor`, no `peer_close_ref` | UNILATERAL may name the peer it was closed against (`peer` / `peer_close_ref` are OPTIONAL on UNILATERAL, as `close-v1.json`'s unconditional `peer_close` has them; the Evidence Layer defines UNILATERAL only as "no corresponding `acknowledges` link exists yet"). Naming the peer is not agreeing with it: the row still carries no agreed affordance — `capsule-viewer`'s rule, pinned there |
 | `pos-oo-close-contested-result.json` | `close-1` `CONTESTED`, `peer: oo-sor`, `peer_close_ref` = digest of the peer's rebutting record | CONTESTED (a `rebuts` link at the Close — the Evidence Layer's third Close state) carries the peer and its rebutting record by digest; it is its own state, never the agreed mark, never UNILATERAL's wording. `close_state` on every close fixture is the state *read* from the Close's inbound links at build time, not asserted by the Close |
@@ -83,6 +83,36 @@ Negatives, each one field away from its positive, each with a mutant/load-bearin
 | `neg-close-contested-without-peer-close-ref.json` | `claims[1].close.peer_close_ref` removed (state stays `CONTESTED`) | same rule, CONTESTED branch: a contested close must cite the rebutting record |
 | `neg-reconcile-tallies-missing-state.json` | `claims[1].reconcile.tallies.unresolved` removed | `ReconcileTallies` requires all six states — an absent key is never an implied zero |
 | `neg-unrecognized-claim-type.json` | `claims[0].type` set to `adjudication` (no typed body) | `ClaimType` is a closed enum. The schema is closed-world, so this fails validation here; **rendering** the same document as an `unrecognized` row with the raw type and `contract_ref`, never dropped, is `capsule-viewer`'s job and is pinned by that repo's tests against this same fixture |
+
+## `close_state` is derivable — the records sidecars (2026-09-28)
+
+After the maintainer's adversarial review ("a contested close relabelled 'agreed' validates"), every
+close claim cites the Close it reports on (`close_ref`, by digest) and its `close_state` is
+**recomputed, never trusted** (spec §4.1): any record carrying a `rebuts` link to that Close ⇒
+`CONTESTED`; else a counterparty `acknowledges` link ⇒ `AGREED`; else `UNILATERAL`. JSON Schema cannot
+see across records, so each close fixture ships the record headers its claim cites beside it as
+**`<name>.records.json`** — a JSON array in the evidence-book header shape a bundle discloses (`v`,
+`book_id`, `seq`, `record_type`, `epistemic_type`, `committed_at`, `event_time_claim`,
+`links[{type, target}]`, `subject_ref`, `statement`). Every digest the claim cites (`close_ref`,
+`peer_close_ref`, `evidence[]`) is `json_digest` of a record in the sidecar, exactly as written.
+`check_evidence_result_examples.py` walks the links for every close positive and fails on mismatch;
+a close positive with no sidecar is a finding, not a skip.
+
+| File | Records | Inbound links at `close_ref` | Recomputed |
+|---|---|---|---|
+| `pos-oo-close-agreed-result.records.json` | OO's Close (`oo`, seq 41), the peer's Close (`oo-sor`, seq 17) | `acknowledges` from the peer's Close | `AGREED` |
+| `pos-oo-close-contested-result.records.json` | OO's Close, the peer's rebutting record (`oo-sor`, seq 18) | `rebuts` | `CONTESTED` |
+| `pos-oo-close-unilateral-result.records.json` | OO's Close only | none | `UNILATERAL` |
+| `pos-oo-close-unilateral-named-peer-result.records.json` | OO's Close, the peer's own Close for the period (`oo-sor`, seq 19) carrying **no** link back | none — a peer record that does not link to ours changes nothing | `UNILATERAL` |
+
+The two schema negatives above (`neg-close-agreed-without-peer`, `neg-close-contested-without-peer-close-ref`)
+ship their positive's records unchanged; they are rejected by the schema before the walk runs.
+
+**The link-walk negative** — schema-valid by design, rejected only by the walk, with its own mutant proof:
+
+| File | Mutation | What rejects it |
+|---|---|---|
+| `neg-close-agreed-relabelled-contested.json` (+ `.records.json`, identical to the CONTESTED positive's) | `claims[1].close.close_state` relabelled `CONTESTED` → `AGREED`; `peer_close_ref` still cites the record that `rebuts` OO's Close; `view.title` says so | **Validates against the schema** — that is the hole. The checker recomputes `CONTESTED` from the `rebuts` link and fails the claim on the mismatch. Mutant: a walk that trusts the asserted field (the pre-review behaviour) accepts the same fixture; the restored walk re-rejects it |
 
 ## Reproducing the validation run
 

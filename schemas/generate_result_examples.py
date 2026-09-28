@@ -29,6 +29,15 @@ negatives (AGREED close without `peer`; CONTESTED close without
 the closed enum), each again one field away from its positive. Reconcile
 tallies are keyed as schemas/judge/close-v1.json keys them (lowercase).
 
+close_state is DERIVABLE (2026-09-28, after the maintainer's adversarial
+review): every close claim cites its Close (`close_ref`), the cited Close
+and peer records are real record headers shipped beside each close fixture
+as `<name>.records.json`, and one more negative --
+neg-close-agreed-relabelled-contested -- is the CONTESTED positive with
+close_state relabelled AGREED. It validates against the schema (that is the
+hole) and is rejected by the checker's link walk, which recomputes the state
+from the `rebuts` link in the sidecar.
+
 Regenerate with:
     python3 schemas/generate_result_examples.py
 Then check with:
@@ -50,6 +59,7 @@ from _result_types import (  # noqa: E402
     EvidenceResultDoc,
     PeriodDoc,
     ProofRefDoc,
+    RecordDoc,
 )
 
 OUT_DIR = REPO_ROOT / "vectors" / "evidence-result"
@@ -322,11 +332,71 @@ pos_oo_reconcile_result: EvidenceResultDoc = {
     },
 }
 
-# --- close-1 (AGREED) -- the peer's Close cites ours back ----------------
-own_close_content = {"note": "OO own Close record for 2026-09-01, v0 placeholder"}
-peer_close_content = {"note": "OO peer (oo-sor) Close record for 2026-09-01 citing OO's, v0 placeholder"}
+# --- The Close records themselves (2026-09-28: close_state is DERIVABLE) --
+#     A close claim's close_state is never asserted: it MUST equal the state
+#     read from the cited Close's inbound links (spec section 4.1), so the
+#     cited records here are real record headers -- the evidence-book shape a
+#     bundle discloses (v, book_id, seq, record_type, epistemic_type,
+#     committed_at, event_time_claim, links[{type, target}], subject_ref,
+#     statement) -- and each close fixture ships them beside it as
+#     `<name>.records.json`, a JSON array, so the checker can walk the links
+#     and recompute the state. Every digest a claim cites is json_digest of
+#     the record object exactly as written in the sidecar.
+close_bound_set_content = {"note": "OO 2026-09-01 record set bound by the Close, v0 placeholder"}
+
+own_close_content: RecordDoc = {
+    "v": 1,
+    "book_id": "oo",
+    "seq": 41,
+    "record_type": "close",
+    "epistemic_type": "producer_claim",
+    "committed_at": "2026-09-02T00:05:00Z",
+    "event_time_claim": "2026-09-02T00:00:00Z",
+    "links": [{"type": "closes", "target": json_digest(close_bound_set_content)}],
+    "subject_ref": RECONCILE_CONTRACT_REF,
+    "statement": {"period": DAY_1, "note": "OO own Close record for 2026-09-01, v0 placeholder"},
+}
+OWN_CLOSE_DIGEST = json_digest(own_close_content)
+
+
+def _peer_record(seq: int, link_type: str | None, note: str) -> RecordDoc:
+    """The peer's (oo-sor) record for the same period: acknowledging ours
+    (AGREED), rebutting ours (CONTESTED), or carrying no link back at all
+    (the peer's own Close we reconciled with, which leaves ours UNILATERAL)."""
+    links: list = [{"type": "closes", "target": json_digest({"note": "oo-sor 2026-09-01 record set, v0 placeholder"})}]
+    if link_type is not None:
+        links.append({"type": link_type, "target": OWN_CLOSE_DIGEST})
+    return {
+        "v": 1,
+        "book_id": "oo-sor",
+        "seq": seq,
+        "record_type": "close",
+        "epistemic_type": "producer_claim",
+        "committed_at": "2026-09-02T01:00:00Z",
+        "event_time_claim": "2026-09-02T00:00:00Z",
+        "links": links,
+        "subject_ref": RECONCILE_CONTRACT_REF,
+        "statement": {"period": DAY_1, "note": note},
+    }
+
+
+# The peer's Close that `acknowledges` ours -- AGREED is read from this link.
+peer_close_content = _peer_record(
+    17, "acknowledges", "OO peer (oo-sor) Close record for 2026-09-01 acknowledging OO's, v0 placeholder"
+)
+# The peer's record that `rebuts` ours -- CONTESTED is read from this link.
+peer_rebuttal_content = _peer_record(
+    18, "rebuts", "OO peer (oo-sor) record for 2026-09-01 rebutting OO's Close, v0 placeholder"
+)
+# The peer's Close for the period that links to nothing of ours: reconciled
+# with, never answered. Its presence in a bundle changes nothing -- the
+# state is read from links TO our Close, and this record carries none.
+peer_silent_close_content = _peer_record(
+    19, None, "OO peer (oo-sor) Close record for 2026-09-01, no link back to OO's, v0 placeholder"
+)
 close_proof_content = {"note": "OO Close inclusion proof, v0 placeholder"}
 
+# --- close-1 (AGREED) -- the peer's Close cites ours back ----------------
 close_agreed: ClaimDoc = {
     "id": "close-1",
     "type": "close",
@@ -346,6 +416,7 @@ close_agreed: ClaimDoc = {
     "close": {
         "period": DAY_1,
         "close_state": "AGREED",
+        "close_ref": digest_ref(own_close_content),
         "peer": "oo-sor",
         "peer_close_ref": digest_ref(peer_close_content),
     },
@@ -358,8 +429,7 @@ close_agreed: ClaimDoc = {
 #     UNILATERAL fixtures (the Close itself was sealed: `met`); the
 #     agreement axis lives in close_state alone. peer_close_ref cites the
 #     rebutting record by digest, exactly as AGREED cites the acknowledging
-#     Close.
-peer_rebuttal_content = {"note": "OO peer (oo-sor) record for 2026-09-01 rebutting OO's Close, v0 placeholder"}
+#     Close. (peer_rebuttal_content is the record header defined above.)
 
 close_contested: ClaimDoc = {
     "id": "close-1",
@@ -380,6 +450,7 @@ close_contested: ClaimDoc = {
     "close": {
         "period": DAY_1,
         "close_state": "CONTESTED",
+        "close_ref": digest_ref(own_close_content),
         "peer": "oo-sor",
         "peer_close_ref": digest_ref(peer_rebuttal_content),
     },
@@ -406,6 +477,7 @@ close_unilateral: ClaimDoc = {
     "close": {
         "period": DAY_1,
         "close_state": "UNILATERAL",
+        "close_ref": digest_ref(own_close_content),
     },
 }
 
@@ -469,6 +541,33 @@ del neg_close_contested_without_peer_close_ref["claims"][1]["close"]["peer_close
 neg_reconcile_tallies_missing_state = _mutated(pos_oo_reconcile_result)
 del neg_reconcile_tallies_missing_state["claims"][1]["reconcile"]["tallies"]["unresolved"]
 
+# --- neg-close-agreed-relabelled-contested -- the CONTESTED positive with --
+#     close_state relabelled AGREED and NOTHING else changed: peer_close_ref
+#     still cites the record that `rebuts` ours. This is Steven's adversarial
+#     case (2026-09-28): "a contested close relabelled 'agreed' validates".
+#     It DOES validate against the schema -- that is the hole -- and is
+#     rejected by the checker's link walk over its .records.json, which
+#     recomputes CONTESTED from the `rebuts` link and fails the claim on
+#     the mismatch (spec section 4.1's normative rule).
+neg_close_agreed_relabelled_contested = _mutated(pos_oo_close_contested_result)
+neg_close_agreed_relabelled_contested["claims"][1]["close"]["close_state"] = "AGREED"
+neg_close_agreed_relabelled_contested["view"]["title"] = "OO Close -- 2026-09-01 (relabelled agreed)"
+
+# --- the records each close fixture's link walk reads -------------------
+#     One sidecar per fixture: `<name>.records.json`, a JSON array of the
+#     record objects whose json_digest the fixture's close claim cites. The
+#     relabelled negative ships the CONTESTED positive's records unchanged --
+#     the Result lies, the bundle does not.
+CLOSE_RECORDS: dict = {
+    "pos-oo-close-agreed-result": [own_close_content, peer_close_content],
+    "pos-oo-close-contested-result": [own_close_content, peer_rebuttal_content],
+    "pos-oo-close-unilateral-result": [own_close_content],
+    "pos-oo-close-unilateral-named-peer-result": [own_close_content, peer_silent_close_content],
+    "neg-close-agreed-without-peer": [own_close_content, peer_close_content],
+    "neg-close-contested-without-peer-close-ref": [own_close_content, peer_rebuttal_content],
+    "neg-close-agreed-relabelled-contested": [own_close_content, peer_rebuttal_content],
+}
+
 # --- neg-unrecognized-claim-type -- claim-1 given a type outside ----------
 #     ClaimType's closed enum. Fails HERE (schema is closed-world); the
 #     viewer renders this same fixture as an "unrecognized" row, never
@@ -494,6 +593,9 @@ def main() -> int:
     write("neg-close-contested-without-peer-close-ref", neg_close_contested_without_peer_close_ref)
     write("neg-reconcile-tallies-missing-state", neg_reconcile_tallies_missing_state)
     write("neg-unrecognized-claim-type", neg_unrecognized_claim_type)
+    write("neg-close-agreed-relabelled-contested", neg_close_agreed_relabelled_contested)
+    for name, records in CLOSE_RECORDS.items():
+        write(f"{name}.records", records)
     return 0
 
 

@@ -49,6 +49,10 @@
     },
     {
       "close": {
+        "close_ref": {
+          "digest": "96d4eaee8c5957d488159dac6d5f40a1789aa9ee5190ed7f1131b22fa6c39c48",
+          "digest_alg": "SHA-256"
+        },
         "close_state": "UNILATERAL",
         "period": {
           "end": "2026-09-02T00:00:00Z",
@@ -58,7 +62,7 @@
       "contract_ref": "ec:oo-outcomes-reconcile:2026-09-25@1",
       "evidence": [
         {
-          "digest": "840cc06d82cca2d9d4e224e56837e9d714e0b5c0b998d919f4d5b132fe2037d5",
+          "digest": "96d4eaee8c5957d488159dac6d5f40a1789aa9ee5190ed7f1131b22fa6c39c48",
           "digest_alg": "SHA-256"
         }
       ],
@@ -67,7 +71,7 @@
       "presentation": {
         "evidence": [
           {
-            "digest": "840cc06d82cca2d9d4e224e56837e9d714e0b5c0b998d919f4d5b132fe2037d5",
+            "digest": "96d4eaee8c5957d488159dac6d5f40a1789aa9ee5190ed7f1131b22fa6c39c48",
             "digest_alg": "SHA-256"
           }
         ],
