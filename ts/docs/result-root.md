@@ -1,0 +1,97 @@
+# A sealed Result v0 as the bundle root
+
+The report takes one input: a bundle whose root record is a sealed Evidence
+Result v0. Not a bundle plus a Result file. This note says what that root
+looks like, what the viewer reads from it, what it reads from the records it
+cites, and the two rules the root adds. Module: `src/result-root.ts`; view:
+`src/evidence-graph-view.ts`; fixture: `test/testdata/result-root-bundle.json`.
+
+## The record
+
+The bundle draft requires `root` to be the `capsule_id` of an unmodified
+Capsule in `records`. A Result therefore reaches the root only sealed as a
+capsule: one format-4 record whose disclosed member is the Result document
+itself, committed by digest in `model_attestation.compute_attestation`
+exactly as any other disclosed payload. The Result document is the one
+`spec/evidence-result-v0.md` defines and `schemas/evidence-result-v0.json`
+validates -- unchanged, unwrapped. It is recognised by its own discriminator,
+`result_version: "evidence-result-v0"`; the schema closes the document
+(`additionalProperties: false`), so no `spec_version` key is added to it and
+no new family name is introduced here.
+
+The member: the viewer consults `agent_output` first, then `agent_input`,
+and takes the first disclosed value that names itself a Result. The fixture
+carries it in `agent_input`, the member every other root family on main
+uses. Which member a producer should use is an open question for the spec.
+
+The root capsule's `references[]` cite, `acted_on`, the records the claims
+rest on, so the bundle's closure walk (`graphClosure`, `closure_depth`)
+covers them. That walk is the verifier's, and unchanged; the claim-level
+resolution below is a separate, second check.
+
+## Citations
+
+A claim's `evidence[]` is a list of `{digest_alg: "SHA-256", digest}`. A
+`capsule_id` is a SHA-256 digest, so each entry names a record in this
+bundle directly: the digest is looked up in `records` by `capsule_id`.
+Daily reports, cases, and close records are all cited this way; the viewer
+does not care which family a cited record belongs to. A cited record's own
+`acted_on` references are followed in turn (a daily report to its acts), so
+aggregate -> daily -> case -> act is a walk over citations.
+
+`proofs[]` (`inclusion_proof` / `receipt`, by digest) are carried and shown
+by digest. Nothing in the bundle draft says which bytes they digest, so the
+viewer does not resolve them and says so on the row.
+
+## What is read from where
+
+From the root Result, and only from there: the coverage line
+(`evaluated_population`, `excluded_not_applicable`, `unknown_count`), the
+three buckets, and for every claim its `sufficiency`, `verdict`, `tier`,
+`grade`, `type`, presentation carrier and status, and its cited digests.
+
+From the cited records, and only from there: every drill-down -- the
+record's provenance (capsule id, action time and seal time as written,
+seal status, log coordinates), each committed member as disclosed or as
+`withheld · <digest>`, and the records it cites in turn.
+
+## The two rules the root adds
+
+**Unsupported, never met, never dropped.** A claim whose cited ids do not
+all resolve in `records` -- or that cites nothing -- is `unsupported`. Its
+row stays, with its tier, grade and sufficiency; its verdict cell reads
+`unsupported` (`data-verdict="unsupported"`, class `claim-unsupported`), and
+the drill-down names the digests that did not resolve. The Result's stated
+verdict is kept in the model and never drawn for such a claim. The bucket
+the Result put the claim in still lists it, marked.
+
+**Not a Result v0 is an error.** A root whose disclosed member is not a
+Result v0, or names itself one and fails validation, raises
+`EvidenceGraphError` from `buildResultRoot`. Validation is a structural
+mirror of the schema (required members, closed vocabularies, the
+sufficiency/verdict binding) plus the two cross-element rules spec section 4
+assigns to a verifier: unique claim ids, and bucket entries naming claims
+with that verdict. No JSON Schema validator is wired into `ts/`;
+`test/result-root.test.ts` reads the schema file and keeps the mirror in
+step. Unknown members on a claim are tolerated: a claim `type` this module
+does not know renders as `unrecognized (<type>)` with its axes intact,
+never dropped, so a later schema's claim types render rather than fail.
+
+## Render order
+
+Verify first, as today. An unverified bundle draws the banner, the refusal
+and the verification page, and no Result page. On a verified bundle the
+Result page draws its heading, then the coverage line, then the three
+buckets, then one row per claim; no number precedes coverage on the page
+and no percentage or single figure appears above the rows. Root families
+dispatch in order: `report/v1`, then a Result v0, then the
+`evaluation-summary/v1` graph. The verification page is unchanged and last.
+
+## Unchanged
+
+Verify-before-render; the disclosure rules (a supplied value that does not
+hash to its committed digest is never shown; withheld renders with the
+digest); `uncheckpointed` status per record; times printed as given, zone
+marked when not stated; the verification banner and page; the Go emitter,
+which embeds bytes and knows no root family (`go/emitter` parity is pinned
+on the committed sealed fixture from both sides).
