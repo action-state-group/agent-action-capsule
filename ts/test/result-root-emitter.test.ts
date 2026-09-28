@@ -85,6 +85,18 @@ describe("Result-root bundle through the emitter", () => {
     expect(root.querySelectorAll("[data-claim-row]")).toHaveLength(3);
   });
 
+  it("a book-built root (evidence_result record header) emits a report that verifies and renders the same Result page", async () => {
+    const { bundle } = await sealEvidenceBundle(
+      fixture("result-root-book-bundle.json"),
+    );
+    const html = emitEvidenceGraphHtml(bundle, IIFE);
+    expect(html).toContain('"record_type":"evidence_result"');
+    const root = await renderHtml(html);
+    expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+    expect(root.querySelector('[data-page="result"]')).not.toBeNull();
+    expect(root.querySelectorAll("[data-claim-row]")).toHaveLength(3);
+  });
+
   it("(c) editing a claim inside the shipped report.html fails verification and draws no Result", async () => {
     const html = emitEvidenceGraphHtml(
       fixture("result-root-bundle.sealed.json"),

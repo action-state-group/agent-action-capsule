@@ -19,7 +19,10 @@ import {
 /**
  * Evidence Result v0 as the bundle root (spec/evidence-result-v0.md; schema
  * schemas/evidence-result-v0.json). The root record is a sealed capsule whose
- * disclosed member IS the Result document. Headlines -- coverage, buckets,
+ * disclosed member carries the Result document, in one of two forms: the
+ * member IS the document (payload form), or the member is an evidence-book
+ * record header of `record_type: "evidence_result"` whose `statement` is the
+ * document (book form; see `resultDocument`). Headlines -- coverage, buckets,
  * each claim's sufficiency / verdict / tier / grade -- are read from that
  * document and nowhere else; every drill-down is read from the records the
  * claims cite by digest, resolved against this same bundle.
@@ -39,6 +42,23 @@ import {
  */
 
 export const RESULT_VERSION = "evidence-result-v0";
+
+/**
+ * The evidence-book `record_type` under which `capsulectl result build`
+ * seals a Result into a book. A book bundle discloses a record's header
+ * under `agent_input` (evidencebook's `HeaderMember`), so at such a root
+ * `disclosures[root].agent_input` is the header and the Result document is
+ * its `statement` member, verbatim.
+ */
+export const RESULT_RECORD_TYPE = "evidence_result";
+
+/**
+ * How the root member carries the Result: `payload` when the disclosed
+ * member is the document itself (a capsule sealed by `AssembleBundle`);
+ * `book` when it is an evidence-book record header whose `statement` is the
+ * document (a bundle built by `evidencebook.Book.Bundle`).
+ */
+export type ResultRootForm = "payload" | "book";
 
 export const TIERS = Object.freeze(["recomputed", "judged"] as const);
 export const GRADES = Object.freeze([
@@ -188,6 +208,8 @@ export interface ResultRoot extends RecordTimes {
   readonly capsuleId: string;
   /** The disclosed member that carried the Result document. */
   readonly member: DisclosureField;
+  /** Whether that member was the document itself or a book record header. */
+  readonly form: ResultRootForm;
   readonly generatedAt: string;
   readonly coverage: ResultCoverage;
   readonly buckets: ResultBuckets;
@@ -383,27 +405,62 @@ const actedOnReferences = (record: RecordWithId): string[] =>
       )
     : [];
 
+interface CarriedResult {
+  readonly member: DisclosureField;
+  readonly form: ResultRootForm;
+  /**
+   * The Result document as carried. In book form this is the header's
+   * `statement` as written -- possibly absent or malformed; the caller
+   * validates it and names the statement when it fails.
+   */
+  readonly document: unknown;
+}
+
 /**
  * The disclosed member of the root record that carries the Result document,
- * if any. `agent_output` is consulted first: a Result is what its producer
- * emitted. Neither member carrying one means the root is not a Result root.
+ * if any, in either of its two forms. `agent_output` is consulted first: a
+ * Result is what its producer emitted. A member is the Result in payload
+ * form when it names itself one (`result_version`); `agent_input` is the
+ * Result in book form when it is a record header of `record_type
+ * "evidence_result"` -- the document is then its `statement`, taken as
+ * written. Neither member carrying one means the root is not a Result root.
  */
 async function resultDocument(
   root: RecordWithId,
   disclosures: ObjectValue,
-): Promise<{ member: DisclosureField; document: ObjectValue } | undefined> {
+): Promise<CarriedResult | undefined> {
   for (const member of ["agent_output", "agent_input"] as const) {
     const payload = await disclosurePayload(root, disclosures, member);
-    if (isObject(payload) && payload.result_version === RESULT_VERSION)
-      return { member, document: payload };
+    if (!isObject(payload)) continue;
+    if (payload.result_version === RESULT_VERSION)
+      return { member, form: "payload", document: payload };
+    if (member === "agent_input" && payload.record_type === RESULT_RECORD_TYPE)
+      return { member, form: "book", document: payload.statement };
   }
   return undefined;
 }
 
 /**
- * True when the bundle's root record discloses a document that names itself
- * an Evidence Result v0 -- the dispatch test a viewer runs before choosing a
- * root model. It says nothing about whether the document is well-formed;
+ * What the root does carry, for the error that says it is not a Result:
+ * a book record header of some other `record_type`, or nothing named.
+ */
+async function nonResultDescription(
+  root: RecordWithId,
+  disclosures: ObjectValue,
+): Promise<string> {
+  const header = await disclosurePayload(root, disclosures, "agent_input");
+  const recordType = isObject(header) ? header.record_type : undefined;
+  return typeof recordType === "string"
+    ? `agent_input is a book record header of record_type ${JSON.stringify(recordType)}, not ${JSON.stringify(RESULT_RECORD_TYPE)}`
+    : `no disclosed member carries an ${RESULT_VERSION} document or an ${RESULT_RECORD_TYPE} record header`;
+}
+
+/**
+ * True when the bundle's root record discloses a member that names itself
+ * an Evidence Result v0, in payload form (`result_version`) or book form
+ * (a record header of `record_type: "evidence_result"`) -- the dispatch test
+ * a viewer runs before choosing a root model. It says nothing about whether
+ * the document (in book form, the header's `statement`) is well-formed;
  * `buildResultRoot` decides that and throws when it is not.
  */
 export async function isResultRoot(bundle: unknown): Promise<boolean> {
@@ -426,11 +483,13 @@ export async function isResultRoot(bundle: unknown): Promise<boolean> {
 
 /**
  * Build the Result-root model. Throws `EvidenceGraphError` when the bundle
- * has no root record, when the root's disclosed payload is not an Evidence
- * Result v0, or when the document fails `validateEvidenceResult`. Never
- * throws for a claim it does not understand: an unknown claim `type` is
- * carried as `recognized: false`, and a claim whose evidence is not in the
- * bundle is carried as `unsupported`.
+ * has no root record, when no disclosed member of the root carries an
+ * Evidence Result v0 in either form, or when the document fails
+ * `validateEvidenceResult` -- in book form the findings are rooted at
+ * `agent_input.statement`, so the error names the statement. Never throws
+ * for a claim it does not understand: an unknown claim `type` is carried as
+ * `recognized: false`, and a claim whose evidence is not in the bundle is
+ * carried as `unsupported`.
  */
 export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
   if (
@@ -451,14 +510,23 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
   const carried = await resultDocument(rootRecord, disclosures);
   if (carried === undefined)
     throw new EvidenceGraphError(
-      "root is not a Result v0: no disclosed member carries an evidence-result-v0 document",
+      `root is not a Result v0: ${await nonResultDescription(rootRecord, disclosures)}`,
     );
-  const findings = validateEvidenceResult(carried.document);
+  const findings =
+    carried.form === "book"
+      ? isObject(carried.document)
+        ? validateEvidenceResult(carried.document).map(
+            (finding) => `agent_input.statement.${finding}`,
+          )
+        : [
+            `agent_input.statement: ${carried.document === undefined ? "absent" : "not an object"} on the ${RESULT_RECORD_TYPE} record header`,
+          ]
+      : validateEvidenceResult(carried.document);
   if (findings.length > 0)
     throw new EvidenceGraphError(
       `root is not a Result v0: ${findings.join("; ")}`,
     );
-  const document = carried.document;
+  const document = carried.document as ObjectValue;
 
   const memberships = isObject(bundle.completeness_certificate)
     ? isObject(bundle.completeness_certificate.memberships)
@@ -556,6 +624,7 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
   return {
     capsuleId: rootRecord.capsule_id,
     member: carried.member,
+    form: carried.form,
     generatedAt: document.generated_at as string,
     coverage: {
       evaluatedPopulation: coverage.evaluated_population as number,

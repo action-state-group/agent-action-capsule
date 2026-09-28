@@ -33,6 +33,11 @@ function resultOf(source: Obj): Obj {
   return ((source.disclosures as Obj).result as Obj).agent_input as Obj;
 }
 
+/** The book-form root's disclosed record header, by alias or sealed id. */
+function bookHeaderOf(source: Obj, id: string): Obj {
+  return ((source.disclosures as Obj)[id] as Obj).agent_input as Obj;
+}
+
 const ABSENT_ID =
   "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
@@ -251,6 +256,107 @@ describe("buildResultRoot", () => {
     const result = await buildResultRoot(bundle);
     expect(result.member).toBe("agent_output");
     expect(result.claims).toHaveLength(3);
+  });
+
+  describe("book form: the root member is an evidence_result record header", () => {
+    // test/testdata/result-root-book-bundle.json is the same Result sealed
+    // into an evidence book: disclosures[root].agent_input is the record
+    // header evidencebook.Book.Bundle discloses (HeaderMember), record_type
+    // evidence_result, links citing the daily reports, statement = the
+    // document verbatim. The cited records are the payload fixture's own.
+    it("renders as a Result root, headline and coverage equal to the payload form of the same Result", async () => {
+      const { bundle, ids } = await sealEvidenceBundle(
+        fixture("result-root-book-bundle.json"),
+      );
+      expect(await isResultRoot(bundle)).toBe(true);
+      const book = await buildResultRoot(bundle);
+      expect(book.capsuleId).toBe(ids["result"]);
+      expect(book.member).toBe("agent_input");
+      expect(book.form).toBe("book");
+
+      const sealedPayload = await sealEvidenceBundle(
+        fixture("result-root-bundle.json"),
+      );
+      const payload = await buildResultRoot(sealedPayload.bundle);
+      expect(payload.form).toBe("payload");
+      expect(book.generatedAt).toBe(payload.generatedAt);
+      expect(book.coverage).toEqual(payload.coverage);
+      expect(book.buckets).toEqual(payload.buckets);
+      // the same records seal to the same ids in both fixtures, so every
+      // claim -- axes, support, cited digests, carrier -- is equal too
+      expect(book.claims).toEqual(payload.claims);
+      expect([...book.records.keys()].sort()).toEqual(
+        [...payload.records.keys()].sort(),
+      );
+      // and the sealed statement is byte-for-byte the sealed payload-form document
+      expect(bookHeaderOf(bundle, ids["result"]!).statement).toEqual(
+        (sealedPayload.bundle.disclosures as Record<string, Obj>)[
+          sealedPayload.ids["result"]!
+        ]!.agent_input,
+      );
+    });
+
+    it("rejects an evidence_result header whose statement is malformed, naming the statement", async () => {
+      const source = fixture("result-root-book-bundle.json");
+      const statement = bookHeaderOf(source, "result").statement as Obj;
+      (statement.claims as Obj[])[2]!.verdict = "met"; // under GAP sufficiency
+      const { bundle } = await sealEvidenceBundle(source);
+      expect(await isResultRoot(bundle)).toBe(true);
+      await expect(buildResultRoot(bundle)).rejects.toThrow(
+        /root is not a Result v0: agent_input\.statement\.claims\[2\]\.verdict: met is not a verdict under sufficiency GAP/u,
+      );
+
+      const missing = fixture("result-root-book-bundle.json");
+      delete bookHeaderOf(missing, "result").statement;
+      const sealedMissing = (await sealEvidenceBundle(missing)).bundle;
+      expect(await isResultRoot(sealedMissing)).toBe(true);
+      await expect(buildResultRoot(sealedMissing)).rejects.toThrow(
+        /agent_input\.statement: absent on the evidence_result record header/u,
+      );
+
+      const other = fixture("result-root-book-bundle.json");
+      bookHeaderOf(other, "result").statement = {
+        spec_version: "evaluation-summary/v1",
+      };
+      await expect(
+        buildResultRoot((await sealEvidenceBundle(other)).bundle),
+      ).rejects.toThrow(
+        /agent_input\.statement\.spec_version: not a member of an Evidence Result v0; agent_input\.statement\.result_version: not evidence-result-v0/u,
+      );
+    });
+
+    it("rejects a header of another record_type as not a Result root, naming the type", async () => {
+      const source = fixture("result-root-book-bundle.json");
+      bookHeaderOf(source, "result").record_type = "close";
+      const { bundle } = await sealEvidenceBundle(source);
+      expect(await isResultRoot(bundle)).toBe(false);
+      await expect(buildResultRoot(bundle)).rejects.toThrow(EvidenceGraphError);
+      await expect(buildResultRoot(bundle)).rejects.toThrow(
+        /root is not a Result v0: agent_input is a book record header of record_type "close", not "evidence_result"/u,
+      );
+    });
+
+    it("(c) a tampered statement inside the header is no longer a disclosed Result", async () => {
+      const { bundle, ids } = await sealEvidenceBundle(
+        fixture("result-root-book-bundle.json"),
+      );
+      const disclosures = bundle.disclosures as Record<string, Obj>;
+      const header = structuredClone(
+        disclosures[ids["result"]!]!.agent_input as Obj,
+      );
+      ((header.statement as Obj).claims as Obj[])[1]!.verdict = "met";
+      const forged = {
+        ...bundle,
+        disclosures: {
+          ...disclosures,
+          [ids["result"]!]: { agent_input: header },
+        },
+      };
+      expect(await isResultRoot(forged)).toBe(false);
+      await expect(buildResultRoot(forged)).rejects.toThrow(
+        /no disclosed member carries an evidence-result-v0 document or an evidence_result record header/u,
+      );
+    });
   });
 
   it("keeps its vocabularies in step with schemas/evidence-result-v0.json", () => {

@@ -24,6 +24,28 @@ and takes the first disclosed value that names itself a Result. The fixture
 carries it in `agent_input`, the member every other root family on main
 uses. Which member a producer should use is an open question for the spec.
 
+## Two carriers of the root
+
+The disclosed member carries the Result in one of two forms, and the viewer
+accepts both. **Payload form:** the member is the document itself,
+recognised by `result_version` -- what a capsule sealed with the document
+as its payload discloses (`AssembleBundle` on a mysql/sqlite profile;
+`test/testdata/result-root-bundle.json`). **Book form:** the root is an
+evidence-book record and the member is its record header (evidencebook
+discloses headers under `agent_input`): `record_type: "evidence_result"`,
+`links` of type `cites` naming the daily reports it rests on, and the Result
+document verbatim under `statement` (`evidencebook.Book.Bundle` on a jsonl
+profile, which is what `capsulectl result build` followed by
+`bundle --disclose` produces; `test/testdata/result-root-book-bundle.json`).
+A header of any other `record_type` is not a Result root. In book form the
+`statement` is validated by the same structural mirror, and a finding is
+rooted at `agent_input.statement` so the error names the statement. The
+model records which form it read (`form: "payload" | "book"`); headlines,
+buckets and claim rows are identical for the same Result in either form.
+The header's `links` are the book's closure walk, not the bundle draft's
+`references[]`; a book-form root need not carry `references[]` for the
+viewer, whose claim-level resolution reads `records` by digest regardless.
+
 The root capsule's `references[]` cite, `acted_on`, the records the claims
 rest on, so the bundle's closure walk (`graphClosure`, `closure_depth`)
 covers them. That walk is the verifier's, and unchanged; the claim-level
