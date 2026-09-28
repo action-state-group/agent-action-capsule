@@ -11,6 +11,7 @@ import {
   GRADES,
   isResultRoot,
   PROOF_KINDS,
+  RESULT_MEMBERS,
   RESULT_VERSION,
   SUFFICIENCIES,
   TIERS,
@@ -273,6 +274,43 @@ describe("buildResultRoot", () => {
     expect(
       ((defs.EvidenceResult!.properties as Obj).result_version as Obj).const,
     ).toBe(RESULT_VERSION);
+    // the mirror closes the top level exactly as the schema does, and no
+    // further: the members it admits are the schema's own
+    expect(defs.EvidenceResult!.additionalProperties).toBe(false);
+    expect(Object.keys(defs.EvidenceResult!.properties as Obj)).toEqual([
+      ...RESULT_MEMBERS,
+    ]);
+  });
+
+  it("rejects a key the schema does not define at the top level, and tolerates one below it", () => {
+    const source = JSON.parse(
+      readFileSync(
+        new URL(
+          "../../vectors/evidence-result/pos-oo-claims-result.json",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ) as Obj;
+    expect(validateEvidenceResult(source)).toEqual([]);
+    expect(validateEvidenceResult({ ...source, score: 0.97 })).toEqual([
+      "score: not a member of an Evidence Result v0",
+    ]);
+    expect(
+      validateEvidenceResult({ ...source, view: { spec_version: "view/v0" } }),
+    ).toEqual([]);
+    // below the top level the mirror is open-world, by design (Q6)
+    const aggregate = source.aggregate as Obj;
+    expect(
+      validateEvidenceResult({
+        ...source,
+        aggregate: { ...aggregate, score: 0.97 },
+        claims: (source.claims as Obj[]).map((claim) => ({
+          ...claim,
+          note: "tolerated",
+        })),
+      }),
+    ).toEqual([]);
   });
 
   it("validates the committed positive vector and rejects the committed negatives", () => {

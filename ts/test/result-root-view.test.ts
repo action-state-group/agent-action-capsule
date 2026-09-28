@@ -183,6 +183,125 @@ it("drills down from a claim to the records it cites, and from a daily report to
   expect(page.textContent).toContain("no proof cited");
 });
 
+it("renders a disclosure carrier's own evidence list, in the citation row shape, resolved against this bundle", async () => {
+  const source = fixture("result-root-bundle.json");
+  // the carrier discloses a different list from the claim's evidence: one
+  // cited record and one digest this bundle does not carry
+  const claim = (resultOf(source).claims as Obj[])[0]!;
+  (claim.presentation as Obj).evidence = [
+    { digest_alg: "SHA-256", digest: "case-1" },
+    { digest_alg: "SHA-256", digest: ABSENT_ID },
+  ];
+  const { bundle, ids } = await sealEvidenceBundle(source);
+  const root = await render(bundle);
+  const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
+  expect(page.querySelector("[data-carrier-evidence]")).toBeNull();
+
+  page.querySelector<HTMLElement>('[data-claim-id="claim-1"]')!.click();
+  // the verdict still rests on the claim's own evidence, which resolves
+  expect(
+    page.querySelector<HTMLElement>('[data-claim-row="claim-1"]')!.dataset
+      .support,
+  ).toBe("supported");
+  const list = page.querySelector<HTMLElement>("[data-carrier-evidence]")!;
+  expect(list.dataset.carrierEvidence).toBe("2");
+  const rows = Array.from(list.querySelectorAll("li"));
+  expect(rows).toHaveLength(2);
+  expect(
+    rows[0]!.querySelector<HTMLElement>("[data-cited-id]")!.dataset.citedId,
+  ).toBe(ids["case-1"]);
+  expect(rows[1]!.textContent).toBe(`${ABSENT_ID} · not in this bundle`);
+  expect(rows[1]!.dataset.citation).toBe("missing");
+  // the resolved row opens the cited record; the claim's own drill-down
+  // still draws its cited daily reports, not the carrier's case
+  expect(page.textContent).not.toContain("the quoted fee did not match");
+  rows[0]!.querySelector<HTMLElement>("button")!.click();
+  expect(page.textContent).toContain("the quoted fee did not match");
+  expect(
+    Array.from(
+      page.querySelectorAll<HTMLElement>("[data-cited-record]"),
+      (section) => section.dataset.citedRecord,
+    ),
+  ).toEqual([ids["case-1"], ids["day-1"], ids["day-2"]]);
+
+  // a non-disclosure carrier draws no carrier list
+  page.querySelector<HTMLElement>('[data-claim-id="claim-3"]')!.click();
+  expect(page.querySelector("[data-carrier-evidence]")).toBeNull();
+});
+
+it("renders a cited record outside the checkpoint as uncheckpointed under the Result, with the bundle-level count above coverage", async () => {
+  const { bundle, ids } = await sealEvidenceBundle(
+    fixture("result-root-bundle.json"),
+    { uncheckpointed: ["day-2"] },
+  );
+  expect(
+    Object.keys(
+      (bundle.completeness_certificate as { memberships: Obj }).memberships,
+    ),
+  ).not.toContain(ids["day-2"]);
+  const root = await render(bundle);
+
+  // verified, with the count said up front: this is the bundle-level banner,
+  // above every section, and the one number that precedes coverage
+  const banner = root.querySelector<HTMLElement>("[data-verify]")!;
+  expect(banner.dataset.verify).toBe("verified");
+  expect(banner.dataset.uncheckpointed).toBe("1");
+  expect(banner.textContent).toBe(
+    "Bundle verification passed; 1 of 5 records uncheckpointed",
+  );
+  const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
+  expect(page).not.toBeNull();
+  const coverage = page.querySelector<HTMLElement>('[data-coverage="result"]')!;
+  expect(textBefore(page, coverage)).not.toMatch(/\d/u);
+  expect(textBefore(root, coverage)).toMatch(/1 of 5 records uncheckpointed/u);
+  expect(page.querySelectorAll("[data-claim-row]")).toHaveLength(3);
+
+  // the root's own panel is checkpointed; nothing cited is drawn yet
+  expect(page.querySelectorAll("[data-seal]")).toHaveLength(1);
+  expect(page.querySelector<HTMLElement>("[data-seal]")!.dataset.seal).toBe(
+    "checkpointed",
+  );
+
+  // claim-1 cites day-1 (checkpointed) and day-2 (uncheckpointed): each
+  // cited record carries ITS OWN seal status, and the claim stays supported
+  page.querySelector<HTMLElement>('[data-claim-id="claim-1"]')!.click();
+  const sealOf = (capsuleId: string): string =>
+    page
+      .querySelector<HTMLElement>(`[data-cited-record="${capsuleId}"]`)!
+      .querySelector<HTMLElement>("[data-seal]")!.dataset.seal!;
+  expect(sealOf(ids["day-1"]!)).toBe("checkpointed");
+  expect(sealOf(ids["day-2"]!)).toBe("uncheckpointed");
+  const row = page.querySelector<HTMLElement>('[data-claim-row="claim-1"]')!;
+  expect(row.dataset.support).toBe("supported");
+  expect(
+    row.querySelector<HTMLElement>("[data-verdict]")!.dataset.verdict,
+  ).toBe("met");
+  expect(page.querySelectorAll('[data-seal="uncheckpointed"]')).toHaveLength(1);
+
+  // the verification page counts it, in words, and marks the one record
+  const verification = root.querySelector<HTMLElement>(
+    '[data-page="verification"]',
+  )!;
+  const count = verification.querySelector<HTMLElement>(
+    '[data-coverage="uncheckpointed"]',
+  )!;
+  expect(count.dataset.count).toBe("1");
+  expect(count.textContent).toBe(
+    "1 record uncheckpointed of 5 records supplied",
+  );
+  expect(
+    Array.from(
+      verification.querySelectorAll<HTMLElement>(
+        '[data-records="coverage"] > li',
+      ),
+    )
+      .filter((item) =>
+        item.querySelector('[data-record-status="uncheckpointed"]'),
+      )
+      .map((item) => item.dataset.capsuleId),
+  ).toEqual([ids["day-2"]]);
+});
+
 it("(b) renders a claim whose cited id is missing from the bundle as unsupported, never met, and keeps the row", async () => {
   const source = fixture("result-root-bundle.json");
   ((resultOf(source).claims as Obj[])[0]!.evidence as Obj[])[1]!.digest =

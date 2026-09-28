@@ -68,24 +68,48 @@ the Result put the claim in still lists it, marked.
 **Not a Result v0 is an error.** A root whose disclosed member is not a
 Result v0, or names itself one and fails validation, raises
 `EvidenceGraphError` from `buildResultRoot`. Validation is a structural
-mirror of the schema (required members, closed vocabularies, the
-sufficiency/verdict binding) plus the two cross-element rules spec section 4
-assigns to a verifier: unique claim ids, and bucket entries naming claims
-with that verdict. No JSON Schema validator is wired into `ts/`;
+mirror of the schema, not a JSON Schema validation: the document's top
+level is closed to the schema's five members (`result_version`,
+`generated_at`, `claims`, `aggregate`, `view`); required members, closed
+vocabularies and the sufficiency/verdict binding are checked on the objects
+it mirrors (claims, carriers, digest and proof refs, `aggregate`, coverage,
+buckets); plus the two cross-element rules spec section 4 assigns to a
+verifier: unique claim ids, and bucket entries naming claims with that
+verdict. Below the top level the mirror is open-world on additional keys;
+`view` is not checked (nothing reads it; the page's chrome is the
+bundle-level `presentation/v1`); `generated_at` is checked as a string, not
+as a date-time. No JSON Schema validator is wired into `ts/`;
 `test/result-root.test.ts` reads the schema file and keeps the mirror in
 step. Unknown members on a claim are tolerated: a claim `type` this module
 does not know renders as `unrecognized (<type>)` with its axes intact,
 never dropped, so a later schema's claim types render rather than fail.
+
+A `disclosure` carrier's own `evidence[]` is drawn in the claim's
+drill-down under "Carrier evidence", one row per digest in the same shape as
+any other citation (a supplied record opens on click; one not in this bundle
+says so). It is shown, not judged: the verdict rests on the claim's
+`evidence[]` alone.
 
 ## Render order
 
 Verify first, as today. An unverified bundle draws the banner, the refusal
 and the verification page, and no Result page. On a verified bundle the
 Result page draws its heading, then the coverage line, then the three
-buckets, then one row per claim; no number precedes coverage on the page
-and no percentage or single figure appears above the rows. Root families
-dispatch in order: `report/v1`, then a Result v0, then the
-`evaluation-summary/v1` graph. The verification page is unchanged and last.
+buckets, then one row per claim; within the Result section no number
+precedes coverage, and no percentage or single figure appears above the
+rows. A cited record outside the checkpoint renders `uncheckpointed` in its
+own provenance panel under the Result, its claim still supported
+(`test/result-root-view.test.ts` seals `day-2` out of the log and asserts
+this). Root families dispatch in order: `report/v1`, then a Result v0,
+then the `evaluation-summary/v1` graph. The verification page is unchanged
+and last.
+
+One placement is inherited from main and left as is, flagged for the
+maintainer: the verification banner's "N of M records uncheckpointed" is
+bundle-level, drawn before every section, and so sits above the Result
+section's coverage line whenever any record is uncheckpointed. It is the
+one figure that precedes coverage on the rendered document; the Result
+section itself carries none.
 
 ## Unchanged
 

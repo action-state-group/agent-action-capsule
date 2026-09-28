@@ -29,10 +29,13 @@ import {
  * shown as `met`, and it is never dropped.
  *
  * No JSON Schema validator is wired into this package, so `validateEvidenceResult`
- * mirrors the schema's required members and closed vocabularies by hand;
- * test/result-root.test.ts reads the schema file and keeps the two in step.
- * Members the schema does not define are tolerated on a claim (a claim `type`
- * this module does not know renders as `unrecognized`, never dropped).
+ * mirrors the schema's required members, closed vocabularies and the
+ * sufficiency/verdict if-then by hand; test/result-root.test.ts reads the
+ * schema file and keeps the two in step. The mirror closes the document's
+ * top level only. Every nested object is read open-world: members the schema
+ * does not define are tolerated on a claim, a carrier, `aggregate`, its
+ * coverage and buckets, and on digest and proof refs (a claim `type` this
+ * module does not know renders as `unrecognized`, never dropped).
  */
 
 export const RESULT_VERSION = "evidence-result-v0";
@@ -75,6 +78,14 @@ export const DISCLOSED_STATUSES = Object.freeze([
 export const PROOF_KINDS = Object.freeze([
   "inclusion_proof",
   "receipt",
+] as const);
+/** The document's members: the schema closes the top level to these. */
+export const RESULT_MEMBERS = Object.freeze([
+  "result_version",
+  "generated_at",
+  "claims",
+  "aggregate",
+  "view",
 ] as const);
 export const CLAIM_REQUIRED = Object.freeze([
   "id",
@@ -289,14 +300,24 @@ function claimFindings(path: string, value: unknown): string[] {
 }
 
 /**
- * Findings against schemas/evidence-result-v0.json, plus the two
- * cross-element rules spec section 4 makes a verifier's duty: claim ids are
- * unique, and every bucket entry names a claim whose verdict is that bucket.
- * Empty means the document is an Evidence Result v0.
+ * A structural mirror of schemas/evidence-result-v0.json, not a JSON Schema
+ * validation. It checks: the document's top-level members (the schema closes
+ * the document, so a key outside `RESULT_MEMBERS` is a finding); required
+ * members, closed vocabularies (enums, consts) and the sufficiency/verdict
+ * if-then on the closed objects it mirrors -- claims, carriers, digest and
+ * proof refs, `aggregate`, coverage and buckets; and the two cross-element
+ * rules spec section 4 makes a verifier's duty: claim ids are unique, and
+ * every bucket entry names a claim whose verdict is that bucket. Below the
+ * top level it is open-world on additional keys. `view` is not checked, and
+ * `generated_at` is checked as a string, not as a date-time. Empty findings
+ * mean the document passed this mirror -- nothing more.
  */
 export function validateEvidenceResult(value: unknown): string[] {
   if (!isObject(value)) return ["result: not an object"];
   const findings: string[] = [];
+  for (const key of Object.keys(value))
+    if (!RESULT_MEMBERS.includes(key as (typeof RESULT_MEMBERS)[number]))
+      findings.push(`${key}: not a member of an Evidence Result v0`);
   if (value.result_version !== RESULT_VERSION)
     findings.push(`result_version: not ${RESULT_VERSION}`);
   if (typeof value.generated_at !== "string") findings.push("generated_at");

@@ -753,29 +753,40 @@ function renderCitedRecord(
   );
   if (record.cites.length > 0) {
     section.append(element("h5", "Cites"));
-    const list = element("ul");
-    const detail = element("section");
-    for (const id of record.cites) {
-      const item = element("li");
-      const target = records.get(id);
-      if (target === undefined) {
-        item.textContent = `${id} · not in this bundle`;
-        item.dataset.citation = "missing";
-      } else {
-        const button = element("button", id);
-        button.setAttribute("type", "button");
-        button.dataset.citedId = id;
-        button.addEventListener("click", () => {
-          detail.replaceChildren();
-          renderCitedRecord(target, records, detail);
-        });
-        item.append(button);
-      }
-      list.append(item);
-    }
-    section.append(list, detail);
+    renderCitationList(record.cites, records, section);
   }
   host.append(section);
+}
+
+// One row per cited id, in citation order: a record supplied in this bundle
+// opens under the list on click; one that is not says so and stays.
+function renderCitationList(
+  ids: readonly string[],
+  records: ReadonlyMap<string, CitedRecord>,
+  host: HTMLElement,
+): HTMLElement {
+  const list = element("ul");
+  const detail = element("section");
+  for (const id of ids) {
+    const item = element("li");
+    const target = records.get(id);
+    if (target === undefined) {
+      item.textContent = `${id} · not in this bundle`;
+      item.dataset.citation = "missing";
+    } else {
+      const button = element("button", id);
+      button.setAttribute("type", "button");
+      button.dataset.citedId = id;
+      button.addEventListener("click", () => {
+        detail.replaceChildren();
+        renderCitedRecord(target, records, detail);
+      });
+      item.append(button);
+    }
+    list.append(item);
+  }
+  host.append(list, detail);
+  return list;
 }
 
 const CLAIM_TYPE_LABEL = (claim: ResultClaim): string =>
@@ -837,6 +848,18 @@ function renderClaim(
   if (claim.presentation.narrative !== undefined)
     appendValue(carrier, "narrative", claim.presentation.narrative);
   host.append(carrier);
+  // A disclosure carrier names the digests it discloses. They are drawn in
+  // the same row shape as any other citation, resolved against this bundle;
+  // the claim's own `evidence[]` below is the list the verdict rests on.
+  if (claim.presentation.evidence !== undefined) {
+    host.append(element("h5", "Carrier evidence"));
+    const list = renderCitationList(
+      claim.presentation.evidence,
+      result.records,
+      host,
+    );
+    list.dataset.carrierEvidence = String(claim.presentation.evidence.length);
+  }
   host.append(element("h4", "Proofs"));
   if (claim.proofs.length === 0) {
     host.append(element("p", "no proof cited"));
@@ -867,9 +890,12 @@ const BUCKETS: ReadonlyArray<readonly [keyof ResultRoot["buckets"], string]> = [
   ["notEvaluable", "not evaluable"],
 ];
 
-// Coverage is the first thing on the page after its heading, and no number
-// precedes it; then the three buckets, never a single figure; then one row
-// per claim with its own tier and grade.
+// Coverage is the first thing in the Result section after its heading, and
+// no number precedes it within the section; then the three buckets, never a
+// single figure; then one row per claim with its own tier and grade. The
+// bundle-level verification banner, drawn before every section, is the one
+// thing above coverage that can carry digits ("N of M records
+// uncheckpointed").
 function renderResultPage(result: ResultRoot, root: HTMLElement): void {
   const section = element("section");
   section.dataset.page = "result";
