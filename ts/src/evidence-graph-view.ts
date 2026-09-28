@@ -27,6 +27,8 @@ import {
 import {
   buildResultRoot,
   isResultRoot,
+  type CountMismatch,
+  type ResultClose,
   type CitedRecord,
   type ResultClaim,
   type ResultRoot,
@@ -792,6 +794,106 @@ function renderCitationList(
 const CLAIM_TYPE_LABEL = (claim: ResultClaim): string =>
   claim.recognized ? claim.type : `unrecognized (${claim.type})`;
 
+// A recomputed headline number never wears the producer's value. When the
+// two disagree the recomputed value is drawn and a `count mismatch` marker
+// sits beside it; the stated value is kept on the marker's data attribute,
+// never in the text a reader takes as the number.
+function countMismatchMarker(
+  result: ResultRoot,
+  field: CountMismatch["field"],
+): HTMLElement | undefined {
+  const mismatch = result.countMismatches.find(
+    (entry) => entry.field === field,
+  );
+  if (mismatch === undefined) return undefined;
+  const marker = element("span", "count mismatch");
+  marker.dataset.countMismatch = field;
+  marker.dataset.stated = String(mismatch.stated);
+  marker.dataset.recomputed = String(mismatch.recomputed);
+  return marker;
+}
+
+// The close state a reader sees is the one this bundle's links read
+// whenever the cited Close is supplied; the Result's own value is drawn
+// only when it is not, and then under a `producer-asserted` marker. When
+// the two disagree the recomputed state is drawn with a `state mismatch`
+// marker; the asserted value stays on the data attribute, never in the
+// text. AGREED carries no mark of its own -- its label and the
+// acknowledging peer's record are the whole affordance.
+function appendCloseState(
+  parent: HTMLElement,
+  close: ResultClose,
+  tag: "span" | "dd",
+): HTMLElement {
+  const cell = element(tag, close.state);
+  cell.dataset.closeState = close.state;
+  cell.dataset.closeDerivation = close.derivation;
+  cell.dataset.assertedState = close.asserted;
+  if (close.stateMismatch) {
+    const marker = element("span", "state mismatch");
+    marker.dataset.stateMismatch = "close_state";
+    marker.dataset.asserted = close.asserted;
+    marker.dataset.recomputed = close.state;
+    cell.append(" ", marker);
+  } else if (close.derivation === "producer-asserted") {
+    const marker = element("span", "producer-asserted");
+    marker.dataset.producerAsserted = "close_state";
+    cell.append(" ", marker);
+  }
+  if (close.peerRefMismatch) {
+    const marker = element("span", "peer_close_ref carries no such link");
+    marker.dataset.peerRefMismatch = "peer_close_ref";
+    cell.append(" ", marker);
+  }
+  parent.append(cell);
+  return cell;
+}
+
+function renderClose(
+  close: ResultClose,
+  result: ResultRoot,
+  host: HTMLElement,
+): void {
+  host.append(element("h4", "Close"));
+  const details = element("dl");
+  if (close.period !== undefined)
+    appendValue(
+      details,
+      "period",
+      `${close.period.start} → ${close.period.end}`,
+    );
+  details.append(element("dt", "state"));
+  appendCloseState(details, close, "dd");
+  details.append(element("dt", "derivation"));
+  const derivation = element(
+    "dd",
+    close.derivation === "recomputed"
+      ? `recomputed from ${close.links.length} ${close.links.length === 1 ? "link" : "links"} to the cited Close in this bundle`
+      : "producer-asserted: the cited Close is not a record in this bundle, so its links could not be read",
+  );
+  derivation.dataset.closeDerivationNote = close.derivation;
+  details.append(derivation);
+  if (close.peer !== undefined) appendValue(details, "peer", close.peer);
+  host.append(details);
+  host.append(element("h5", "Cited Close"));
+  renderCitationList([close.closeRef], result.records, host);
+  if (close.peerCloseRef !== undefined) {
+    host.append(element("h5", "Peer record"));
+    renderCitationList([close.peerCloseRef], result.records, host);
+  }
+  if (close.links.length > 0) {
+    host.append(element("h5", "Links to the cited Close"));
+    const list = element("ul");
+    for (const link of close.links) {
+      const item = element("li", `${link.type} · ${link.recordId}`);
+      item.dataset.closeLink = link.type;
+      item.dataset.linkRecord = link.recordId;
+      list.append(item);
+    }
+    host.append(list);
+  }
+}
+
 // The verdict a reader sees is the Result's own only when every cited id
 // resolves in this bundle. Otherwise the cell reads `unsupported` -- never
 // `met`, whatever the Result states -- and the row stays.
@@ -829,6 +931,7 @@ function renderClaim(
   details.append(element("dt", "verdict"));
   appendVerdict(details, claim);
   host.append(details);
+  if (claim.close !== undefined) renderClose(claim.close, result, host);
   if (claim.support === "unsupported") {
     const note = element(
       "p",
@@ -895,18 +998,30 @@ const BUCKETS: ReadonlyArray<readonly [keyof ResultRoot["buckets"], string]> = [
 // single figure; then one row per claim with its own tier and grade. The
 // bundle-level verification banner, drawn before every section, is the one
 // thing above coverage that can carry digits ("N of M records
-// uncheckpointed").
+// uncheckpointed"). Every number drawn here is the recomputed one
+// (`result.coverage`, `result.bucketCounts`); a producer figure the claims
+// do not bear out shows as a `count mismatch` marker beside the recomputed
+// value. `excluded as not applicable` is the one figure carried as stated:
+// no claim backs it, by construction.
 function renderResultPage(result: ResultRoot, root: HTMLElement): void {
   const section = element("section");
   section.dataset.page = "result";
   section.append(element("h1", "Evidence result"));
-  const coverage = element(
-    "p",
-    `coverage: ${result.coverage.evaluatedPopulation} requirements evaluated · ${result.coverage.excludedNotApplicable} excluded as not applicable · ${result.coverage.unknownCount} unresolved`,
+  const coverage = element("p");
+  coverage.append(
+    `coverage: ${result.coverage.evaluatedPopulation} requirements evaluated`,
   );
+  const evaluatedMarker = countMismatchMarker(result, "evaluated_population");
+  if (evaluatedMarker !== undefined) coverage.append(" ", evaluatedMarker);
+  coverage.append(
+    ` · ${result.coverage.excludedNotApplicable} excluded as not applicable · ${result.coverage.unknownCount} unresolved`,
+  );
+  const unknownMarker = countMismatchMarker(result, "unknown_count");
+  if (unknownMarker !== undefined) coverage.append(" ", unknownMarker);
   coverage.dataset.coverage = "result";
   coverage.dataset.evaluated = String(result.coverage.evaluatedPopulation);
   coverage.dataset.excluded = String(result.coverage.excludedNotApplicable);
+  coverage.dataset.excludedBasis = "stated";
   coverage.dataset.unknown = String(result.coverage.unknownCount);
   section.append(coverage);
 
@@ -915,7 +1030,16 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
   buckets.dataset.buckets = "verdict";
   buckets.append(element("h2", "Claims by verdict"));
   for (const [key, label] of BUCKETS) {
-    buckets.append(element("h3", label));
+    const count = result.bucketCounts[key];
+    const heading = element("h3", `${label}: ${count === 0 ? "none" : count}`);
+    heading.dataset.bucketCount = String(count);
+    heading.dataset.bucketOf = key;
+    const marker = countMismatchMarker(
+      result,
+      `buckets.${key === "notMet" ? "not_met" : key === "notEvaluable" ? "not_evaluable" : "met"}`,
+    );
+    if (marker !== undefined) heading.append(" ", marker);
+    buckets.append(heading);
     const ids = result.buckets[key];
     if (ids.length === 0) {
       buckets.append(element("p", "none"));
@@ -964,6 +1088,10 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
     const type = element("td", CLAIM_TYPE_LABEL(claim));
     type.dataset.claimType = claim.recognized ? claim.type : "unrecognized";
     if (!claim.recognized) type.className = "claim-unrecognized";
+    if (claim.close !== undefined) {
+      type.append(" · ");
+      appendCloseState(type, claim.close, "span");
+    }
     tr.append(tier, grade, type);
     table.append(tr);
   }

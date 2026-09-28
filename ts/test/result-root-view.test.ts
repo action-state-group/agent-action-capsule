@@ -434,3 +434,200 @@ it("still renders the evaluation-summary and report/v1 root families", async () 
   expect(rows.querySelector('[data-page="report-rows"]')).not.toBeNull();
   expect(rows.querySelector('[data-page="result"]')).toBeNull();
 });
+
+// ---------------------------------------------------------------------------
+// The maintainer's adversarial review (2026-09-28): what the page draws is
+// the recomputed value, with a marker where the producer disagreed -- never
+// the stated number, never silently; a Result that hides a verdict is
+// refused, never rendered; a close state comes from the cited Close's links.
+// ---------------------------------------------------------------------------
+
+it("(i) a Result whose 'not met' bucket is empty over a not_met claim is refused -- no Result page, no rows", async () => {
+  const source = fixture("result-root-bundle.json");
+  ((resultOf(source).aggregate as Obj).buckets as Obj).not_met = [];
+  const { bundle } = await sealEvidenceBundle(source);
+  const root = document.createElement("main");
+  await expect(renderEvidenceGraph(bundle, root)).rejects.toThrow(
+    /claim-2 \(not_met\) appears in no bucket/u,
+  );
+  expect(root.querySelector('[data-page="result"]')).toBeNull();
+  expect(root.querySelectorAll("[data-claim-row]")).toHaveLength(0);
+});
+
+it("(ii) draws recomputed coverage with a count mismatch marker beside it -- the stated number is never the value", async () => {
+  const source = fixture("result-root-bundle.json");
+  const coverage = (resultOf(source).aggregate as Obj).coverage as Obj;
+  coverage.evaluated_population = 4; // three claims
+  const { bundle } = await sealEvidenceBundle(source);
+  const root = await render(bundle);
+  const line = root.querySelector<HTMLElement>('[data-coverage="result"]')!;
+  expect(line.dataset.evaluated).toBe("3");
+  expect(line.textContent).toBe(
+    "coverage: 3 requirements evaluated count mismatch · 1 excluded as not applicable · 0 unresolved",
+  );
+  const marker = line.querySelector<HTMLElement>(
+    '[data-count-mismatch="evaluated_population"]',
+  )!;
+  expect(marker.textContent).toBe("count mismatch");
+  expect(marker.dataset.stated).toBe("4");
+  expect(marker.dataset.recomputed).toBe("3");
+  // the stated figure is on the marker's data attribute only
+  expect(line.textContent).not.toMatch(/4/u);
+  expect(line.dataset.excludedBasis).toBe("stated");
+  // coverage is still the first thing in the section, still no digit before it
+  expect(textBefore(root, line)).not.toMatch(/\d/u);
+
+  // an unresolved claim the producer did not count
+  const unresolved = fixture("result-root-bundle.json");
+  (resultOf(unresolved).claims as Obj[])[2]!.sufficiency = "UNKNOWN";
+  const page = await render((await sealEvidenceBundle(unresolved)).bundle);
+  const unknownLine = page.querySelector<HTMLElement>(
+    '[data-coverage="result"]',
+  )!;
+  expect(unknownLine.dataset.unknown).toBe("1");
+  expect(unknownLine.textContent).toBe(
+    "coverage: 3 requirements evaluated · 1 excluded as not applicable · 1 unresolved count mismatch",
+  );
+  expect(
+    unknownLine.querySelector<HTMLElement>(
+      '[data-count-mismatch="unknown_count"]',
+    )!.dataset.stated,
+  ).toBe("0");
+
+  // the honest fixture draws no marker at all
+  const clean = await render(
+    (await sealEvidenceBundle(fixture("result-root-bundle.json"))).bundle,
+  );
+  expect(clean.querySelectorAll("[data-count-mismatch]")).toHaveLength(0);
+});
+
+it("(ii) bucket headings carry counts recomputed from the claims' verdicts, an empty bucket reading none", async () => {
+  const { bundle } = await sealEvidenceBundle(
+    fixture("result-root-bundle.json"),
+  );
+  const root = await render(bundle);
+  const headings = Array.from(
+    root.querySelectorAll<HTMLElement>("[data-bucket-of]"),
+    (heading) => [
+      heading.dataset.bucketOf,
+      heading.dataset.bucketCount,
+      heading.textContent,
+    ],
+  );
+  expect(headings).toEqual([
+    ["met", "1", "met: 1"],
+    ["notMet", "1", "not met: 1"],
+    ["notEvaluable", "1", "not evaluable: 1"],
+  ]);
+  const close = await render(
+    (await sealEvidenceBundle(fixture("result-root-close-bundle.json"))).bundle,
+  );
+  expect(
+    close.querySelector<HTMLElement>('[data-bucket-of="notMet"]')!.textContent,
+  ).toBe("not met: none");
+  expect(close.querySelectorAll("[data-count-mismatch]")).toHaveLength(0);
+});
+
+it("(iv) a close claim draws the state its cited Close's links read, recomputed, with the acknowledging peer record and no mark of its own", async () => {
+  const { bundle, ids } = await sealEvidenceBundle(
+    fixture("result-root-close-bundle.json"),
+  );
+  const root = await render(bundle);
+  const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
+  const row = page.querySelector<HTMLElement>('[data-claim-row="close-1"]')!;
+  const type = row.querySelector<HTMLElement>("[data-claim-type]")!;
+  expect(type.dataset.claimType).toBe("close");
+  expect(type.className).toBe("");
+  const state = row.querySelector<HTMLElement>("[data-close-state]")!;
+  expect(state.dataset.closeState).toBe("AGREED");
+  expect(state.dataset.closeDerivation).toBe("recomputed");
+  expect(state.textContent).toBe("AGREED");
+  expect(type.textContent).toBe("close · AGREED");
+  expect(row.querySelector("[data-state-mismatch]")).toBeNull();
+  expect(row.querySelector("[data-producer-asserted]")).toBeNull();
+  expect(row.querySelector("[data-peer-ref-mismatch]")).toBeNull();
+  expect(row.textContent).not.toContain("✓");
+
+  page.querySelector<HTMLElement>('[data-claim-id="close-1"]')!.click();
+  expect(
+    page.querySelector<HTMLElement>("dd[data-close-state]")!.dataset.closeState,
+  ).toBe("AGREED");
+  expect(
+    page.querySelector<HTMLElement>("dd[data-close-derivation-note]")!
+      .textContent,
+  ).toBe("recomputed from 1 link to the cited Close in this bundle");
+  const link = page.querySelector<HTMLElement>("[data-close-link]")!;
+  expect(link.dataset.closeLink).toBe("acknowledges");
+  expect(link.dataset.linkRecord).toBe(ids["close-b"]);
+  expect(page.textContent).toContain("airline-sor");
+  // the cited Close and the peer record open as citations
+  expect(
+    Array.from(
+      page.querySelectorAll<HTMLElement>("[data-cited-id]"),
+      (button) => button.dataset.citedId,
+    ),
+  ).toEqual(expect.arrayContaining([ids["close-a"], ids["close-b"]]));
+});
+
+it("(iv) a Close relabelled AGREED over a rebuts link draws CONTESTED with a state mismatch marker -- never the asserted AGREED", async () => {
+  const source = fixture("result-root-close-bundle.json");
+  const header = ((source.disclosures as Obj)["close-b"] as Obj)
+    .agent_input as Obj;
+  (header.links as Obj[])[0]!.type = "rebuts";
+  const { bundle } = await sealEvidenceBundle(source);
+  const root = await render(bundle);
+  const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
+  const row = page.querySelector<HTMLElement>('[data-claim-row="close-1"]')!;
+  const state = row.querySelector<HTMLElement>("[data-close-state]")!;
+  expect(state.dataset.closeState).toBe("CONTESTED");
+  expect(state.dataset.closeDerivation).toBe("recomputed");
+  expect(state.textContent).toBe("CONTESTED state mismatch");
+  expect(state.textContent).not.toMatch(/AGREED/u);
+  const marker = state.querySelector<HTMLElement>("[data-state-mismatch]")!;
+  expect(marker.textContent).toBe("state mismatch");
+  expect(marker.dataset.asserted).toBe("AGREED");
+  expect(marker.dataset.recomputed).toBe("CONTESTED");
+  // the verdict axis is the Close's own: still met, still in the met bucket
+  expect(
+    row.querySelector<HTMLElement>("[data-verdict]")!.dataset.verdict,
+  ).toBe("met");
+  expect(
+    page.querySelector('[data-bucket="met"] [data-claim-ref="close-1"]'),
+  ).not.toBeNull();
+  page.querySelector<HTMLElement>('[data-claim-id="close-1"]')!.click();
+  const open = page.querySelector<HTMLElement>("dd[data-close-state]")!;
+  expect(open.dataset.closeState).toBe("CONTESTED");
+  expect(open.querySelector("[data-state-mismatch]")).not.toBeNull();
+  expect(
+    page.querySelector<HTMLElement>("[data-close-link]")!.dataset.closeLink,
+  ).toBe("rebuts");
+});
+
+it("(iv) a close whose cited Close is not in this bundle draws the asserted state under a producer-asserted marker, never bare", async () => {
+  const source = fixture("result-root-close-bundle.json");
+  (
+    ((resultOf(source).claims as Obj[])[1]!.close as Obj).close_ref as Obj
+  ).digest = ABSENT_ID;
+  const { bundle } = await sealEvidenceBundle(source);
+  const root = await render(bundle);
+  const row = root.querySelector<HTMLElement>('[data-claim-row="close-1"]')!;
+  const state = row.querySelector<HTMLElement>("[data-close-state]")!;
+  expect(state.dataset.closeState).toBe("AGREED");
+  expect(state.dataset.closeDerivation).toBe("producer-asserted");
+  expect(state.textContent).toBe("AGREED producer-asserted");
+  expect(
+    state.querySelector<HTMLElement>("[data-producer-asserted]")!.dataset
+      .producerAsserted,
+  ).toBe("close_state");
+  expect(row.querySelector("[data-state-mismatch]")).toBeNull();
+  root.querySelector<HTMLElement>('[data-claim-id="close-1"]')!.click();
+  expect(
+    root.querySelector<HTMLElement>("dd[data-close-derivation-note]")!
+      .textContent,
+  ).toBe(
+    "producer-asserted: the cited Close is not a record in this bundle, so its links could not be read",
+  );
+  expect(root.querySelector('[data-citation="missing"]')!.textContent).toBe(
+    `${ABSENT_ID} · not in this bundle`,
+  );
+});

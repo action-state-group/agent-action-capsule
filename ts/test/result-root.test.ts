@@ -6,6 +6,8 @@ import { EvidenceGraphError } from "../src/evidence-graph.js";
 import {
   buildResultRoot,
   CLAIM_REQUIRED,
+  deriveCloseState,
+  recomputeCounts,
   DISCLOSED_STATUSES,
   EVIDENCE_STATUSES,
   GRADES,
@@ -434,5 +436,269 @@ describe("buildResultRoot", () => {
       "neg-disclosure-carrier-under-withheld.json",
     ])
       expect(validateEvidenceResult(read(name)), name).not.toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The maintainer's adversarial review (2026-09-28): "headline values,
+// especially the close state, are producer assertions nothing recomputes: a
+// contested close relabelled 'agreed' validates, and 'not met: none' can
+// hide a failure." Four fixes, each pinned here: the exact bucket partition,
+// cross-checked counts, one headline document per root, and a close state
+// derived from the cited Close's links.
+// ---------------------------------------------------------------------------
+
+describe("headline values are recomputed, never taken on the producer's word", () => {
+  function bucketsOf(source: Obj): Obj {
+    return (resultOf(source).aggregate as Obj).buckets as Obj;
+  }
+
+  it("(i) rejects a claim that appears in no bucket -- the producer's 'not met: none' over a not_met claim -- naming the claim and its verdict", async () => {
+    const hidden = fixture("result-root-bundle.json");
+    bucketsOf(hidden).not_met = []; // claim-2 is not_met; the headline says none
+    await expect(
+      buildResultRoot((await sealEvidenceBundle(hidden)).bundle),
+    ).rejects.toThrow(
+      /aggregate\.buckets: claim-2 \(not_met\) appears in no bucket/u,
+    );
+    await expect(
+      buildResultRoot((await sealEvidenceBundle(hidden)).bundle),
+    ).rejects.toThrow(/aggregate\.buckets: 2 entries for 3 claims/u);
+  });
+
+  it("(i) rejects a claim that appears twice across the buckets, and an entry count that is not the claim count", async () => {
+    const twice = fixture("result-root-bundle.json");
+    bucketsOf(twice).met = ["claim-1", "claim-1"];
+    const sealed = (await sealEvidenceBundle(twice)).bundle;
+    await expect(buildResultRoot(sealed)).rejects.toThrow(
+      /aggregate\.buckets: claim-1 appears 2 times across the buckets/u,
+    );
+    await expect(buildResultRoot(sealed)).rejects.toThrow(
+      /aggregate\.buckets: 4 entries for 3 claims/u,
+    );
+    // a claim moved into a second bucket with a matching verdict elsewhere
+    // is caught by the verdict rule AND the partition
+    const moved = fixture("result-root-bundle.json");
+    bucketsOf(moved).not_evaluable = ["claim-3", "claim-2"];
+    await expect(
+      buildResultRoot((await sealEvidenceBundle(moved)).bundle),
+    ).rejects.toThrow(/claim-2 appears 2 times across the buckets/u);
+    // the honest partition is what the committed fixture carries
+    const clean = await buildResultRoot(
+      (await sealEvidenceBundle(fixture("result-root-bundle.json"))).bundle,
+    );
+    expect(clean.countMismatches).toEqual([]);
+    expect(clean.bucketCounts).toEqual({ met: 1, notMet: 1, notEvaluable: 1 });
+  });
+
+  it("(ii) recomputes evaluated and unresolved from the claims and carries every stated number the claims disagree with; excluded is carried as stated", async () => {
+    const inflated = fixture("result-root-bundle.json");
+    const coverage = (resultOf(inflated).aggregate as Obj).coverage as Obj;
+    coverage.evaluated_population = 4; // three claims
+    const result = await buildResultRoot(
+      (await sealEvidenceBundle(inflated)).bundle,
+    );
+    expect(result.coverage).toEqual({
+      evaluatedPopulation: 3,
+      excludedNotApplicable: 1,
+      unknownCount: 0,
+    });
+    expect(result.statedCoverage.evaluatedPopulation).toBe(4);
+    expect(result.countMismatches).toEqual([
+      { field: "evaluated_population", stated: 4, recomputed: 3 },
+    ]);
+
+    const unresolved = fixture("result-root-bundle.json");
+    (resultOf(unresolved).claims as Obj[])[2]!.sufficiency = "UNKNOWN"; // verdict stays not_evaluable
+    const hidden = await buildResultRoot(
+      (await sealEvidenceBundle(unresolved)).bundle,
+    );
+    expect(hidden.coverage.unknownCount).toBe(1);
+    expect(hidden.statedCoverage.unknownCount).toBe(0);
+    expect(hidden.countMismatches).toEqual([
+      { field: "unknown_count", stated: 0, recomputed: 1 },
+    ]);
+  });
+
+  it("(ii) recomputeCounts: a producer 'not met: none' over a not_met claim yields the recomputed 1 and a mismatch -- the count path never returns the stated value", () => {
+    // Through buildResultRoot this document is refused by the partition
+    // gate (i); the count path is proven on its own so that no loosening of
+    // the gate could ever draw the stated number.
+    const source = fixture("result-root-bundle.json");
+    bucketsOf(source).not_met = [];
+    const counts = recomputeCounts(resultOf(source));
+    expect(counts.bucketCounts).toEqual({ met: 1, notMet: 1, notEvaluable: 1 });
+    expect(counts.mismatches).toEqual([
+      { field: "buckets.not_met", stated: 0, recomputed: 1 },
+    ]);
+    expect(counts.coverage.evaluatedPopulation).toBe(3);
+  });
+
+  it("(iii) rejects a bundle carrying two Result v0 documents, naming both, and a root carrying one in both members", async () => {
+    const two = fixture("result-root-bundle.json");
+    const disclosures = two.disclosures as Record<string, Obj>;
+    disclosures["case-1"] = {
+      ...disclosures["case-1"],
+      agent_output: structuredClone(resultOf(two)),
+    };
+    const { bundle, ids } = await sealEvidenceBundle(two);
+    expect(await isResultRoot(bundle)).toBe(true);
+    await expect(buildResultRoot(bundle)).rejects.toThrow(EvidenceGraphError);
+    await expect(buildResultRoot(bundle)).rejects.toThrow(
+      new RegExp(
+        `bundle carries 2 Result v0 documents: root ${ids["result"]} and ${ids["case-1"]}; a bundle has exactly one headline document`,
+        "u",
+      ),
+    );
+
+    const both = fixture("result-root-bundle.json");
+    (both.disclosures as Record<string, Obj>).result = {
+      agent_input: resultOf(both),
+      agent_output: structuredClone(resultOf(both)),
+    };
+    await expect(
+      buildResultRoot((await sealEvidenceBundle(both)).bundle),
+    ).rejects.toThrow(
+      /carries a Result v0 in both agent_output and agent_input; a bundle has exactly one headline document/u,
+    );
+
+    // a book-form Result beside a payload-form root is a second document too
+    const book = fixture("result-root-bundle.json");
+    (book.disclosures as Record<string, Obj>)["day-2"] = {
+      agent_input: {
+        record_type: "evidence_result",
+        statement: structuredClone(resultOf(book)),
+      },
+    };
+    await expect(
+      buildResultRoot((await sealEvidenceBundle(book)).bundle),
+    ).rejects.toThrow(/bundle carries 2 Result v0 documents/u);
+  });
+
+  describe("(iv) a close claim's state is read from the cited Close's inbound links in this bundle", () => {
+    // test/testdata/result-root-close-bundle.json: claim-1 as before, plus
+    // close-1 (type close) citing the airline book's Close `close-a` and the
+    // peer's Close `close-b`, whose header carries `acknowledges -> close-a`.
+    function closeLink(source: Obj): Obj {
+      const header = ((source.disclosures as Obj)["close-b"] as Obj)
+        .agent_input as Obj;
+      return (header.links as Obj[])[0]!;
+    }
+    function closeClaim(source: Obj): Obj {
+      return (resultOf(source).claims as Obj[])[1]!.close as Obj;
+    }
+
+    it("recognizes the close claim and recomputes AGREED from the acknowledges link, matching the assertion", async () => {
+      const { bundle, ids } = await sealEvidenceBundle(
+        fixture("result-root-close-bundle.json"),
+      );
+      const result = await buildResultRoot(bundle);
+      const claim = result.claims[1]!;
+      expect(claim).toMatchObject({
+        id: "close-1",
+        type: "close",
+        recognized: true,
+        support: "supported",
+        verdict: "met",
+      });
+      expect(claim.close).toEqual({
+        closeRef: ids["close-a"],
+        period: {
+          start: "2026-09-14T00:00:00Z",
+          end: "2026-09-15T00:00:00Z",
+        },
+        asserted: "AGREED",
+        derived: "AGREED",
+        state: "AGREED",
+        derivation: "recomputed",
+        stateMismatch: false,
+        peerRefMismatch: false,
+        peer: "airline-sor",
+        peerCloseRef: ids["close-b"],
+        links: [{ type: "acknowledges", recordId: ids["close-b"] }],
+      });
+      expect(result.records.has(ids["close-a"]!)).toBe(true);
+      expect(result.countMismatches).toEqual([]);
+      expect(deriveCloseState([])).toBe("UNILATERAL");
+      expect(
+        deriveCloseState([
+          { type: "acknowledges", recordId: "x" },
+          { type: "rebuts", recordId: "y" },
+        ]),
+      ).toBe("CONTESTED");
+    });
+
+    it("a Close relabelled AGREED over a rebuts link is CONTESTED with a state mismatch -- never AGREED", async () => {
+      const source = fixture("result-root-close-bundle.json");
+      closeLink(source).type = "rebuts"; // the peer disputes; the Result still says AGREED
+      const { bundle, ids } = await sealEvidenceBundle(source);
+      const claim = (await buildResultRoot(bundle)).claims[1]!;
+      expect(claim.close).toMatchObject({
+        asserted: "AGREED",
+        derived: "CONTESTED",
+        state: "CONTESTED",
+        derivation: "recomputed",
+        stateMismatch: true,
+        peerRefMismatch: false,
+        links: [{ type: "rebuts", recordId: ids["close-b"] }],
+      });
+      // the verdict axis is the Close's own and is untouched by the state
+      expect(claim.verdict).toBe("met");
+    });
+
+    it("a Close asserted AGREED whose peer never linked to it is UNILATERAL with a state mismatch", async () => {
+      const source = fixture("result-root-close-bundle.json");
+      closeLink(source).type = "cites"; // not an acknowledgement
+      const claim = (
+        await buildResultRoot((await sealEvidenceBundle(source)).bundle)
+      ).claims[1]!;
+      expect(claim.close).toMatchObject({
+        asserted: "AGREED",
+        derived: "UNILATERAL",
+        state: "UNILATERAL",
+        stateMismatch: true,
+        links: [],
+      });
+    });
+
+    it("a peer_close_ref that is not the record carrying the link is a peer-ref mismatch, with the state still recomputed", async () => {
+      const source = fixture("result-root-close-bundle.json");
+      (closeClaim(source).peer_close_ref as Obj).digest = "day-1"; // cites the wrong record
+      const { bundle, ids } = await sealEvidenceBundle(source);
+      const claim = (await buildResultRoot(bundle)).claims[1]!;
+      expect(claim.close).toMatchObject({
+        state: "AGREED",
+        stateMismatch: false,
+        peerRefMismatch: true,
+        peerCloseRef: ids["day-1"],
+      });
+    });
+
+    it("a close whose cited Close is not a record in this bundle carries the asserted state as producer-asserted, never bare", async () => {
+      const source = fixture("result-root-close-bundle.json");
+      (closeClaim(source).close_ref as Obj).digest = ABSENT_ID;
+      const claim = (
+        await buildResultRoot((await sealEvidenceBundle(source)).bundle)
+      ).claims[1]!;
+      expect(claim.close).toMatchObject({
+        closeRef: ABSENT_ID,
+        asserted: "AGREED",
+        state: "AGREED",
+        derivation: "producer-asserted",
+        stateMismatch: false,
+        links: [],
+      });
+      expect(claim.close!.derived).toBeUndefined();
+    });
+
+    it("a close claim with a body this module cannot read stays an unrecognized row, never a state", async () => {
+      const source = fixture("result-root-close-bundle.json");
+      closeClaim(source).close_state = "SETTLED";
+      const claim = (
+        await buildResultRoot((await sealEvidenceBundle(source)).bundle)
+      ).claims[1]!;
+      expect(claim).toMatchObject({ type: "close", recognized: false });
+      expect(claim.close).toBeUndefined();
+    });
   });
 });

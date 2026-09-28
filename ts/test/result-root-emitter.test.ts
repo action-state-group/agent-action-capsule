@@ -110,3 +110,31 @@ describe("Result-root bundle through the emitter", () => {
     expect(root.querySelectorAll("[data-claim-row]")).toHaveLength(0);
   });
 });
+
+describe("Result-root bundle with a close claim through the emitter", () => {
+  it("emits a report whose close state is recomputed from the embedded bundle's links", async () => {
+    const { bundle, ids } = await sealEvidenceBundle(
+      fixture("result-root-close-bundle.json"),
+    );
+    const html = emitEvidenceGraphHtml(bundle, IIFE);
+    const root = await renderHtml(html);
+    expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+    expect(root.querySelectorAll("[data-claim-row]")).toHaveLength(2);
+    const state = root.querySelector<HTMLElement>(
+      '[data-claim-row="close-1"] [data-close-state]',
+    )!;
+    expect(state.dataset.closeState).toBe("AGREED");
+    expect(state.dataset.closeDerivation).toBe("recomputed");
+    // editing the peer's link inside the shipped report (the embedded bundle
+    // is JCS-sorted, so `target` precedes `type`) breaks its disclosure
+    // digest: the bundle no longer verifies, so no state is drawn at all
+    const edited = html.replace(
+      `"target":"${ids["close-a"]}","type":"acknowledges"`,
+      `"target":"${ids["close-a"]}","type":"rebuts"`,
+    );
+    expect(edited).not.toBe(html);
+    const forged = await renderHtml(edited);
+    expect(forged.querySelector('[data-verify="failed"]')).not.toBeNull();
+    expect(forged.querySelector("[data-close-state]")).toBeNull();
+  });
+});

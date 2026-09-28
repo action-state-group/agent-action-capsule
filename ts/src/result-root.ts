@@ -31,6 +31,19 @@ import {
  * evidence does not all resolve in `records` is `unsupported`. It is never
  * shown as `met`, and it is never dropped.
  *
+ * Headline values are never taken on the producer's word (maintainer's
+ * adversarial review, 2026-09-28). Four consequences, each pinned in
+ * test/result-root.test.ts: the buckets must partition the claims exactly
+ * (every claim in exactly one bucket, entries equal to claims) or the
+ * Result is rejected; the coverage counts and the per-bucket counts are
+ * recomputed from the claims, and a disagreement is carried as a
+ * `countMismatches` entry and drawn as a marker beside the recomputed
+ * value, never the stated one; a bundle carries exactly one Result v0 -- a
+ * second candidate document anywhere in it is an error; and a `close`
+ * claim's state is recomputed from the cited Close's inbound links in this
+ * bundle when the Close is supplied, with the asserted value drawn only
+ * under a `producer-asserted` marker when it is not.
+ *
  * No JSON Schema validator is wired into this package, so `validateEvidenceResult`
  * mirrors the schema's required members, closed vocabularies and the
  * sufficiency/verdict if-then by hand; test/result-root.test.ts reads the
@@ -129,6 +142,61 @@ export type ProofKind = (typeof PROOF_KINDS)[number];
 
 /** The claim type this module renders as a requirement row. */
 export const REQUIREMENT_CLAIM = "requirement";
+/**
+ * The claim type whose `close` body this module reads: one sealed Close,
+ * cited by digest (`close_ref`), with a `close_state` the Result asserts
+ * and this module recomputes (spec/evidence-result-v0.md section 4.1).
+ */
+export const CLOSE_CLAIM = "close";
+export const CLOSE_STATES = Object.freeze([
+  "UNILATERAL",
+  "AGREED",
+  "CONTESTED",
+] as const);
+export type CloseState = (typeof CLOSE_STATES)[number];
+/** The two link types that make a Close's state (evidence-layer draft, "Reconcile and Close"). */
+export const CLOSE_LINK_TYPES = Object.freeze([
+  "acknowledges",
+  "rebuts",
+] as const);
+export type CloseLinkType = (typeof CLOSE_LINK_TYPES)[number];
+
+/**
+ * Where a drawn close state came from: `recomputed` when the cited Close
+ * is a record in this bundle and its inbound links were read;
+ * `producer-asserted` when it is not, so the Result's own value is all
+ * there is -- drawn only under that marker, never bare.
+ */
+export type CloseDerivation = "recomputed" | "producer-asserted";
+
+export interface CloseLink {
+  readonly type: CloseLinkType;
+  /** The capsule id of the record carrying the link. */
+  readonly recordId: string;
+}
+
+export interface ResultClose {
+  readonly closeRef: string;
+  readonly period?: { readonly start: string; readonly end: string };
+  /** The state the Result wrote. Never drawn as the state when `derived` disagrees. */
+  readonly asserted: CloseState;
+  /** The state this bundle's links read at `closeRef`; absent when the Close is not supplied. */
+  readonly derived?: CloseState;
+  /** The state a view draws: `derived` when known, else `asserted`. */
+  readonly state: CloseState;
+  readonly derivation: CloseDerivation;
+  /** `derived` is known and differs from `asserted`. */
+  readonly stateMismatch: boolean;
+  /**
+   * The state is AGREED or CONTESTED by this bundle's links, but
+   * `peer_close_ref` is not a record carrying that link.
+   */
+  readonly peerRefMismatch: boolean;
+  readonly peer?: string;
+  readonly peerCloseRef?: string;
+  /** Every acknowledges/rebuts link this bundle makes to `closeRef`. */
+  readonly links: readonly CloseLink[];
+}
 
 /**
  * `supported`: every cited evidence digest names a record supplied in the
@@ -177,6 +245,8 @@ export interface ResultClaim {
   readonly missing: readonly string[];
   readonly proofs: readonly ClaimProofRef[];
   readonly presentation: ClaimPresentation;
+  /** Present on a recognized `close` claim. */
+  readonly close?: ResultClose;
 }
 
 export interface ResultCoverage {
@@ -189,6 +259,41 @@ export interface ResultBuckets {
   readonly met: readonly string[];
   readonly notMet: readonly string[];
   readonly notEvaluable: readonly string[];
+}
+
+/** Per-bucket headline counts, recomputed from the claims' own verdicts. */
+export interface ResultBucketCounts {
+  readonly met: number;
+  readonly notMet: number;
+  readonly notEvaluable: number;
+}
+
+export type CountField =
+  | "evaluated_population"
+  | "unknown_count"
+  | "buckets.met"
+  | "buckets.not_met"
+  | "buckets.not_evaluable";
+
+/** A headline number the producer stated that the claims do not bear out. */
+export interface CountMismatch {
+  readonly field: CountField;
+  readonly stated: number;
+  readonly recomputed: number;
+}
+
+export interface RecomputedCounts {
+  /**
+   * `evaluatedPopulation` and `unknownCount` are recomputed from the
+   * claims (the claim count; claims whose sufficiency is UNKNOWN).
+   * `excludedNotApplicable` is carried as stated: requirements excluded as
+   * not applicable are outside the evaluated population by construction
+   * and are never claims, so the document holds nothing to recount them
+   * from -- the view says so beside the number.
+   */
+  readonly coverage: ResultCoverage;
+  readonly bucketCounts: ResultBucketCounts;
+  readonly mismatches: readonly CountMismatch[];
 }
 
 /** A record reachable from a claim's evidence, resolved from this bundle. */
@@ -211,8 +316,18 @@ export interface ResultRoot extends RecordTimes {
   /** Whether that member was the document itself or a book record header. */
   readonly form: ResultRootForm;
   readonly generatedAt: string;
+  /**
+   * The coverage a view draws: `evaluatedPopulation` and `unknownCount`
+   * recomputed from the claims, `excludedNotApplicable` as stated (see
+   * `RecomputedCounts`). The producer's own numbers are `statedCoverage`.
+   */
   readonly coverage: ResultCoverage;
+  readonly statedCoverage: ResultCoverage;
   readonly buckets: ResultBuckets;
+  /** Headline counts per bucket, from the claims' verdicts, never from `buckets`' lengths. */
+  readonly bucketCounts: ResultBucketCounts;
+  /** Every stated headline number the claims disagree with; empty on an honest Result. */
+  readonly countMismatches: readonly CountMismatch[];
   readonly claims: readonly ResultClaim[];
   /** Every record reachable from a claim's evidence through `acted_on` citations. */
   readonly records: ReadonlyMap<string, CitedRecord>;
@@ -384,13 +499,153 @@ export function validateEvidenceResult(value: unknown): string[] {
       findings.push(`claims[${index}].id: duplicate ${id}`);
     verdictById.set(id, claim.verdict as string);
   });
+  const appearances = new Map<string, number>();
+  let entries = 0;
   for (const member of VERDICTS)
-    for (const id of buckets![member] as string[])
+    for (const id of buckets![member] as string[]) {
+      entries += 1;
+      appearances.set(id, (appearances.get(id) ?? 0) + 1);
       if (verdictById.get(id) !== member)
         findings.push(
           `aggregate.buckets.${member}: ${id} is not a claim with that verdict`,
         );
+    }
+  // The exact partition (2026-09-28): every claim in exactly one bucket, and
+  // exactly as many entries as claims. A claim in no bucket is a verdict the
+  // headline hides; one in two is a verdict counted twice.
+  for (const [id, verdict] of verdictById) {
+    const count = appearances.get(id) ?? 0;
+    if (count === 0)
+      findings.push(
+        `aggregate.buckets: ${id} (${verdict}) appears in no bucket`,
+      );
+    else if (count > 1)
+      findings.push(
+        `aggregate.buckets: ${id} appears ${count} times across the buckets`,
+      );
+  }
+  if (entries !== verdictById.size)
+    findings.push(
+      `aggregate.buckets: ${entries} entries for ${verdictById.size} claims`,
+    );
   return findings;
+}
+
+const countOf = (value: unknown): number =>
+  nonNegativeInteger(value) ? value : 0;
+
+/**
+ * The headline numbers as the claims bear them out. Takes a document that
+ * passed `validateEvidenceResult` and returns coverage and per-bucket
+ * counts recomputed from `claims[]` -- the claim count, the UNKNOWN
+ * sufficiencies, and the verdicts -- beside a list of every stated number
+ * that disagrees. `excluded_not_applicable` is carried as stated (no claim
+ * backs it, by construction). Pure, so a disagreement the partition gate
+ * makes unreachable through `buildResultRoot` is still provable here.
+ */
+export function recomputeCounts(document: ObjectValue): RecomputedCounts {
+  const claims = document.claims as ObjectValue[];
+  const aggregate = document.aggregate as ObjectValue;
+  const coverage = aggregate.coverage as ObjectValue;
+  const buckets = aggregate.buckets as ObjectValue;
+  const stated = {
+    evaluated_population: countOf(coverage.evaluated_population),
+    unknown_count: countOf(coverage.unknown_count),
+    "buckets.met": (buckets.met as unknown[]).length,
+    "buckets.not_met": (buckets.not_met as unknown[]).length,
+    "buckets.not_evaluable": (buckets.not_evaluable as unknown[]).length,
+  } as const;
+  const recomputed = {
+    evaluated_population: claims.length,
+    unknown_count: claims.filter((claim) => claim.sufficiency === "UNKNOWN")
+      .length,
+    "buckets.met": claims.filter((claim) => claim.verdict === "met").length,
+    "buckets.not_met": claims.filter((claim) => claim.verdict === "not_met")
+      .length,
+    "buckets.not_evaluable": claims.filter(
+      (claim) => claim.verdict === "not_evaluable",
+    ).length,
+  } as const;
+  const mismatches: CountMismatch[] = [];
+  for (const field of Object.keys(stated) as CountField[])
+    if (stated[field] !== recomputed[field])
+      mismatches.push({
+        field,
+        stated: stated[field],
+        recomputed: recomputed[field],
+      });
+  return {
+    coverage: {
+      evaluatedPopulation: recomputed.evaluated_population,
+      excludedNotApplicable: countOf(coverage.excluded_not_applicable),
+      unknownCount: recomputed.unknown_count,
+    },
+    bucketCounts: {
+      met: recomputed["buckets.met"],
+      notMet: recomputed["buckets.not_met"],
+      notEvaluable: recomputed["buckets.not_evaluable"],
+    },
+    mismatches,
+  };
+}
+
+/**
+ * The state a Close's inbound links read: any `rebuts` link makes it
+ * CONTESTED; otherwise any `acknowledges` link makes it AGREED; neither
+ * leaves it UNILATERAL (spec section 4.1 -- a standing rebuttal keeps a
+ * Close out of AGREED whatever else links to it).
+ */
+export function deriveCloseState(links: readonly CloseLink[]): CloseState {
+  if (links.some((link) => link.type === "rebuts")) return "CONTESTED";
+  if (links.some((link) => link.type === "acknowledges")) return "AGREED";
+  return "UNILATERAL";
+}
+
+/** A `close` body this module can read: a state in the vocabulary and a Close cited by digest. */
+function closeBody(
+  raw: ObjectValue,
+):
+  | (ObjectValue & { close_state: CloseState; close_ref: ObjectValue })
+  | undefined {
+  const body = raw.close;
+  if (
+    !isObject(body) ||
+    !oneOf(CLOSE_STATES, body.close_state) ||
+    !isObject(body.close_ref) ||
+    !isHex64(body.close_ref.digest)
+  )
+    return undefined;
+  return body as ObjectValue & {
+    close_state: CloseState;
+    close_ref: ObjectValue;
+  };
+}
+
+/**
+ * Every acknowledges/rebuts link the bundle's records make, keyed by the
+ * target digest. Links are read from each record's disclosed `agent_input`
+ * when it is an evidence-book record header carrying `links[{type,
+ * target}]`; a member that is withheld, or does not hash to its committed
+ * digest, contributes nothing.
+ */
+async function inboundCloseLinks(
+  records: readonly RecordWithId[],
+  disclosures: ObjectValue,
+): Promise<ReadonlyMap<string, readonly CloseLink[]>> {
+  const inbound = new Map<string, CloseLink[]>();
+  for (const record of records) {
+    const header = await disclosurePayload(record, disclosures, "agent_input");
+    if (!isObject(header) || !Array.isArray(header.links)) continue;
+    for (const link of header.links) {
+      if (!isObject(link) || !oneOf(CLOSE_LINK_TYPES, link.type)) continue;
+      const target = asString(link.target);
+      if (target === undefined) continue;
+      const list = inbound.get(target) ?? [];
+      list.push({ type: link.type, recordId: record.capsule_id });
+      inbound.set(target, list);
+    }
+  }
+  return inbound;
 }
 
 const actedOnReferences = (record: RecordWithId): string[] =>
@@ -429,15 +684,27 @@ async function resultDocument(
   root: RecordWithId,
   disclosures: ObjectValue,
 ): Promise<CarriedResult | undefined> {
+  return (await resultCarriers(root, disclosures))[0];
+}
+
+/** Every disclosed member of `record` that carries a Result v0, in `agent_output`, `agent_input` order. */
+async function resultCarriers(
+  record: RecordWithId,
+  disclosures: ObjectValue,
+): Promise<CarriedResult[]> {
+  const carriers: CarriedResult[] = [];
   for (const member of ["agent_output", "agent_input"] as const) {
-    const payload = await disclosurePayload(root, disclosures, member);
+    const payload = await disclosurePayload(record, disclosures, member);
     if (!isObject(payload)) continue;
     if (payload.result_version === RESULT_VERSION)
-      return { member, form: "payload", document: payload };
-    if (member === "agent_input" && payload.record_type === RESULT_RECORD_TYPE)
-      return { member, form: "book", document: payload.statement };
+      carriers.push({ member, form: "payload", document: payload });
+    else if (
+      member === "agent_input" &&
+      payload.record_type === RESULT_RECORD_TYPE
+    )
+      carriers.push({ member, form: "book", document: payload.statement });
   }
-  return undefined;
+  return carriers;
 }
 
 /**
@@ -507,10 +774,29 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
   const rootRecord = records.find((record) => record.capsule_id === root);
   if (rootRecord === undefined)
     throw new EvidenceGraphError("root record not supplied");
-  const carried = await resultDocument(rootRecord, disclosures);
+  const rootCarriers = await resultCarriers(rootRecord, disclosures);
+  const carried = rootCarriers[0];
   if (carried === undefined)
     throw new EvidenceGraphError(
       `root is not a Result v0: ${await nonResultDescription(rootRecord, disclosures)}`,
+    );
+  // One headline document per root (2026-09-28): the root carries exactly
+  // one Result v0, in one member, and no other record in the bundle
+  // carries one. A second candidate anywhere is an error, never a choice.
+  if (rootCarriers.length > 1)
+    throw new EvidenceGraphError(
+      `root ${rootRecord.capsule_id} carries a Result v0 in both agent_output and agent_input; a bundle has exactly one headline document`,
+    );
+  const otherCarriers: string[] = [];
+  for (const record of records)
+    if (
+      record !== rootRecord &&
+      (await resultCarriers(record, disclosures)).length > 0
+    )
+      otherCarriers.push(record.capsule_id);
+  if (otherCarriers.length > 0)
+    throw new EvidenceGraphError(
+      `bundle carries ${otherCarriers.length + 1} Result v0 documents: root ${rootRecord.capsule_id} and ${otherCarriers.join(", ")}; a bundle has exactly one headline document`,
     );
   const findings =
     carried.form === "book"
@@ -559,6 +845,13 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
     for (const target of cites) await resolveRecord(target);
   };
 
+  const hasCloseClaim = (document.claims as ObjectValue[]).some(
+    (raw) => raw.type === CLOSE_CLAIM,
+  );
+  const inbound = hasCloseClaim
+    ? await inboundCloseLinks(records, disclosures)
+    : new Map<string, readonly CloseLink[]>();
+
   const claims: ResultClaim[] = [];
   for (const raw of document.claims as ObjectValue[]) {
     const evidence: ClaimEvidenceRef[] = [];
@@ -577,10 +870,53 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
         : JSON.stringify(raw.type)
       : REQUIREMENT_CLAIM;
     const presentation = raw.presentation as ObjectValue;
+    const body = type === CLOSE_CLAIM ? closeBody(raw) : undefined;
+    let close: ResultClose | undefined;
+    if (body !== undefined) {
+      const closeRef = body.close_ref.digest as string;
+      const asserted = body.close_state;
+      const supplied = recordsById.has(closeRef);
+      const links = inbound.get(closeRef) ?? [];
+      const derived = supplied ? deriveCloseState(links) : undefined;
+      const peer = asString(body.peer);
+      const peerCloseRef = isObject(body.peer_close_ref)
+        ? asString(body.peer_close_ref.digest)
+        : undefined;
+      const period = isObject(body.period)
+        ? {
+            start: asString(body.period.start) ?? "",
+            end: asString(body.period.end) ?? "",
+          }
+        : undefined;
+      const wanted: CloseLinkType | undefined =
+        derived === "AGREED"
+          ? "acknowledges"
+          : derived === "CONTESTED"
+            ? "rebuts"
+            : undefined;
+      close = {
+        closeRef,
+        ...(period === undefined ? {} : { period }),
+        asserted,
+        ...(derived === undefined ? {} : { derived }),
+        state: derived ?? asserted,
+        derivation: derived === undefined ? "producer-asserted" : "recomputed",
+        stateMismatch: derived !== undefined && derived !== asserted,
+        peerRefMismatch:
+          wanted !== undefined &&
+          !links.some(
+            (link) => link.type === wanted && link.recordId === peerCloseRef,
+          ),
+        ...(peer === undefined ? {} : { peer }),
+        ...(peerCloseRef === undefined ? {} : { peerCloseRef }),
+        links,
+      };
+      if (supplied) await resolveRecord(closeRef);
+    }
     claims.push({
       id: raw.id as string,
       type,
-      recognized: type === REQUIREMENT_CLAIM,
+      recognized: type === REQUIREMENT_CLAIM || body !== undefined,
       contractRef: raw.contract_ref as string,
       requirementRef: raw.requirement_ref as string,
       tier: raw.tier as Tier,
@@ -614,23 +950,28 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
             }
           : {}),
       },
+      ...(close === undefined ? {} : { close }),
     });
   }
 
   const aggregate = document.aggregate as ObjectValue;
   const coverage = aggregate.coverage as ObjectValue;
   const buckets = aggregate.buckets as ObjectValue;
+  const counts = recomputeCounts(document);
   const rootCoordinates = logCoordinates(memberships, rootRecord.capsule_id);
   return {
     capsuleId: rootRecord.capsule_id,
     member: carried.member,
     form: carried.form,
     generatedAt: document.generated_at as string,
-    coverage: {
+    coverage: counts.coverage,
+    statedCoverage: {
       evaluatedPopulation: coverage.evaluated_population as number,
       excludedNotApplicable: coverage.excluded_not_applicable as number,
       unknownCount: coverage.unknown_count as number,
     },
+    bucketCounts: counts.bucketCounts,
+    countMismatches: counts.mismatches,
     buckets: {
       met: [...(buckets.met as string[])],
       notMet: [...(buckets.not_met as string[])],

@@ -1,0 +1,200 @@
+{
+  "root": "result",
+  "records": [
+    {
+      "capsule_id": "result",
+      "references": [
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "day-1"
+        },
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "close-a"
+        },
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "close-b"
+        }
+      ]
+    },
+    {
+      "capsule_id": "day-1",
+      "occurred_at": "2026-09-14T23:59:00Z"
+    },
+    {
+      "capsule_id": "close-a",
+      "occurred_at": "2026-09-15T00:05:00Z"
+    },
+    {
+      "capsule_id": "close-b",
+      "occurred_at": "2026-09-15T01:00:00Z"
+    }
+  ],
+  "disclosures": {
+    "result": {
+      "agent_input": {
+        "result_version": "evidence-result-v0",
+        "generated_at": "2026-09-16T00:00:00Z",
+        "claims": [
+          {
+            "id": "claim-1",
+            "contract_ref": "ec:airline-week:2026-09-14@1",
+            "requirement_ref": "req-1",
+            "tier": "recomputed",
+            "grade": "witnessed",
+            "sufficiency": "SATISFIED",
+            "verdict": "met",
+            "evidence": [
+              {
+                "digest_alg": "SHA-256",
+                "digest": "day-1"
+              }
+            ],
+            "proofs": [],
+            "presentation": {
+              "kind": "disclosure",
+              "status": "SATISFIED",
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "day-1"
+                }
+              ]
+            }
+          },
+          {
+            "id": "close-1",
+            "type": "close",
+            "contract_ref": "ec:airline-reconcile:2026-09-14@1",
+            "requirement_ref": "close",
+            "tier": "recomputed",
+            "grade": "self-attested",
+            "sufficiency": "SATISFIED",
+            "verdict": "met",
+            "evidence": [
+              {
+                "digest_alg": "SHA-256",
+                "digest": "close-a"
+              },
+              {
+                "digest_alg": "SHA-256",
+                "digest": "close-b"
+              }
+            ],
+            "proofs": [],
+            "presentation": {
+              "kind": "disclosure",
+              "status": "SATISFIED",
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "close-a"
+                },
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "close-b"
+                }
+              ]
+            },
+            "close": {
+              "period": {
+                "start": "2026-09-14T00:00:00Z",
+                "end": "2026-09-15T00:00:00Z"
+              },
+              "close_state": "AGREED",
+              "close_ref": {
+                "digest_alg": "SHA-256",
+                "digest": "close-a"
+              },
+              "peer": "airline-sor",
+              "peer_close_ref": {
+                "digest_alg": "SHA-256",
+                "digest": "close-b"
+              }
+            }
+          }
+        ],
+        "aggregate": {
+          "coverage": {
+            "evaluated_population": 2,
+            "excluded_not_applicable": 0,
+            "unknown_count": 0
+          },
+          "buckets": {
+            "met": ["claim-1", "close-1"],
+            "not_met": [],
+            "not_evaluable": []
+          }
+        }
+      }
+    },
+    "day-1": {
+      "agent_input": {
+        "spec_version": "evaluation-report/v1",
+        "date": "2026-09-14",
+        "outcomes": [
+          {
+            "outcome_id": "booking-confirmed",
+            "role": "required",
+            "aggregate": "pass"
+          }
+        ],
+        "cases": []
+      }
+    },
+    "close-a": {
+      "agent_input": {
+        "v": 1,
+        "book_id": "airline",
+        "seq": 9,
+        "record_type": "close",
+        "epistemic_type": "producer_claim",
+        "committed_at": "2026-09-15T00:05:00Z",
+        "event_time_claim": "2026-09-15T00:00:00Z",
+        "links": [
+          {
+            "type": "closes",
+            "target": "day-1"
+          }
+        ],
+        "subject_ref": "ec:airline-reconcile:2026-09-14@1",
+        "statement": {
+          "period": {
+            "start": "2026-09-14T00:00:00Z",
+            "end": "2026-09-15T00:00:00Z"
+          },
+          "note": "the airline book's Close for 2026-09-14"
+        }
+      }
+    },
+    "close-b": {
+      "agent_input": {
+        "v": 1,
+        "book_id": "airline-sor",
+        "seq": 4,
+        "record_type": "close",
+        "epistemic_type": "producer_claim",
+        "committed_at": "2026-09-15T01:00:00Z",
+        "event_time_claim": "2026-09-15T00:00:00Z",
+        "links": [
+          {
+            "type": "acknowledges",
+            "target": "close-a"
+          }
+        ],
+        "subject_ref": "ec:airline-reconcile:2026-09-14@1",
+        "statement": {
+          "period": {
+            "start": "2026-09-14T00:00:00Z",
+            "end": "2026-09-15T00:00:00Z"
+          },
+          "note": "the system-of-record peer's Close for 2026-09-14, acknowledging the airline book's"
+        }
+      }
+    }
+  }
+}

@@ -112,6 +112,78 @@ any other citation (a supplied record opens on click; one not in this bundle
 says so). It is shown, not judged: the verdict rests on the claim's
 `evidence[]` alone.
 
+## Recomputed, never asserted (2026-09-28)
+
+The maintainer's adversarial review found that the headline values --
+coverage, the bucket counts, and above all a close claim's state -- were
+producer assertions nothing recomputed: a contested close relabelled
+`AGREED` validated, and a producer's "not met: none" could hide a failure.
+Four rules now stand, each pinned in `test/result-root.test.ts` and
+`test/result-root-view.test.ts`:
+
+**The buckets partition the claims exactly.** Every claim appears in
+exactly one bucket, and the buckets carry exactly as many entries as there
+are claims. A claim in no bucket (`aggregate.buckets: claim-2 (not_met)
+appears in no bucket`), one in two, or an entry count that is not the
+claim count is a finding from `validateEvidenceResult`, so the Result is
+refused with that error and never rendered. This is what stops "not met:
+none" over a `not_met` claim from reaching the page.
+
+**Counts are recomputed from the claims.** `evaluated_population` and
+`unknown_count` are recomputed (the claim count; the claims whose
+sufficiency is `UNKNOWN`), as is each bucket's headline count (from the
+claims' verdicts, never from the bucket lists' lengths). `recomputeCounts`
+is a pure function of the document; `ResultRoot.coverage` and
+`ResultRoot.bucketCounts` carry the recomputed values, `statedCoverage` the
+producer's, and `countMismatches` every stated number the claims do not
+bear out. The page draws the recomputed value; where the producer
+disagreed a `count mismatch` marker (`data-count-mismatch=<field>`) sits
+beside it, with the stated figure on the marker's `data-stated` attribute
+and nowhere in the text a reader takes as the number. The one figure
+carried as stated is `excluded_not_applicable`
+(`data-excluded-basis="stated"`): requirements excluded as not applicable
+are outside the evaluated population by construction and are never
+claims, so the document holds nothing to recount them from. The bucket
+headings read `met: 1` / `not met: none`, from the recomputed counts; a
+bucket-count disagreement is unreachable through `buildResultRoot` (the
+partition gate refuses it first) and is pinned on `recomputeCounts`
+directly, so no loosening of the gate could ever draw the stated number.
+
+**One headline document per root.** The root carries exactly one Result
+v0, in one member. A root carrying one in both `agent_output` and
+`agent_input`, or any other record in the bundle whose disclosed member
+carries a Result v0 in either form, is an error from `buildResultRoot`
+naming every carrier (`bundle carries 2 Result v0 documents: root <id> and
+<id>; a bundle has exactly one headline document`). `isResultRoot` still
+answers true for such a bundle -- the root does carry one -- so the
+dispatch reaches the precise error rather than falling through to another
+root family.
+
+**A close claim's state is read from links, not from the claim.** A claim
+of `type: "close"` with a readable `close` body (`close_state` in
+`UNILATERAL | AGREED | CONTESTED`, `close_ref` a digest) is recognized and
+modelled as `ResultClaim.close`. When the cited Close (`close_ref`) is a
+record in this bundle, its state is recomputed from the `acknowledges` /
+`rebuts` links other records make to it -- read from each record's
+disclosed `agent_input` when that is an evidence-book record header
+carrying `links[{type, target}]`; a withheld or mismatched member
+contributes nothing. Any `rebuts` link makes it `CONTESTED`; otherwise any
+`acknowledges` link makes it `AGREED`; neither leaves it `UNILATERAL`
+(`deriveCloseState`; spec section 4.1). The page draws the recomputed
+state (`data-close-state`, `data-close-derivation="recomputed"`); when it
+differs from the Result's own a `state mismatch` marker sits beside it,
+the asserted value on the marker's `data-asserted` attribute only -- a
+Close relabelled `AGREED` over a `rebuts` link draws `CONTESTED`, never
+`AGREED`. When the cited Close is not a record in this bundle the asserted
+state is drawn under a `producer-asserted` marker, never bare. `AGREED`
+carries no mark of its own: its label and the acknowledging peer's record
+are the whole affordance. `peer_close_ref` is checked to be the record
+carrying the link that makes the state (`peerRefMismatch`). The verdict
+axis is the Close's own and is untouched by the state.
+`test/testdata/result-root-close-bundle.json` carries an AGREED close over
+an `acknowledges` link; the tests flip the link to `rebuts`, to `cites`,
+and remove the Close from the bundle.
+
 ## Render order
 
 Verify first, as today. An unverified bundle draws the banner, the refusal
