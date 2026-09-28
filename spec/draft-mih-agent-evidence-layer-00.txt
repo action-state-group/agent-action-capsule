@@ -4,8 +4,8 @@
 
 Network Working Group                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Informational                         26 September 2026
-Expires: 30 March 2027
+Intended status: Informational                         27 September 2026
+Expires: 31 March 2027
 
 
                              Evidence Layer
@@ -49,11 +49,11 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 30 March 2027.
+   This Internet-Draft will expire on 31 March 2027.
 
 
 
-Mih                       Expires 30 March 2027                 [Page 1]
+Mih                       Expires 31 March 2027                 [Page 1]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Mih                       Expires 30 March 2027                 [Page 2]
+Mih                       Expires 31 March 2027                 [Page 2]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -157,15 +157,15 @@ Internet-Draft               Evidence Layer               September 2026
    *  *A signing, payload-storage, or replication mechanism.* How a
       record or a checkpoint is signed, how payload bytes are stored and
       retrieved by digest, and how records travel between stores,
-      relays, or fleets are implementation seams a host plugs in beneath
-      a conforming store.  This document does not define any of the
-      three, and a store's conformance to this document does not depend
-      on which implementation of any of them it uses.
+      delivery intermediaries, or fleets are implementation seams a host
+      plugs in beneath a conforming store.  This document does not
+      define any of the three, and a store's conformance to this
+      document does not depend on which implementation of any of them it
+      uses.
 
 
 
-
-Mih                       Expires 30 March 2027                 [Page 3]
+Mih                       Expires 31 March 2027                 [Page 3]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -221,7 +221,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                 [Page 4]
+Mih                       Expires 31 March 2027                 [Page 4]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -277,7 +277,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                 [Page 5]
+Mih                       Expires 31 March 2027                 [Page 5]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -333,7 +333,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                 [Page 6]
+Mih                       Expires 31 March 2027                 [Page 6]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -389,7 +389,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                 [Page 7]
+Mih                       Expires 31 March 2027                 [Page 7]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -445,7 +445,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                 [Page 8]
+Mih                       Expires 31 March 2027                 [Page 8]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -501,7 +501,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                 [Page 9]
+Mih                       Expires 31 March 2027                 [Page 9]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -557,7 +557,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                [Page 10]
+Mih                       Expires 31 March 2027                [Page 10]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -613,7 +613,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                [Page 11]
+Mih                       Expires 31 March 2027                [Page 11]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -669,7 +669,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                [Page 12]
+Mih                       Expires 31 March 2027                [Page 12]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -725,7 +725,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                [Page 13]
+Mih                       Expires 31 March 2027                [Page 13]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -781,7 +781,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                [Page 14]
+Mih                       Expires 31 March 2027                [Page 14]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -837,7 +837,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                [Page 15]
+Mih                       Expires 31 March 2027                [Page 15]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -893,7 +893,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                [Page 16]
+Mih                       Expires 31 March 2027                [Page 16]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -949,7 +949,7 @@ Internet-Draft               Evidence Layer               September 2026
 
 
 
-Mih                       Expires 30 March 2027                [Page 17]
+Mih                       Expires 31 March 2027                [Page 17]
 
 Internet-Draft               Evidence Layer               September 2026
 
@@ -1005,4 +1005,4 @@ Author's Address
 
 
 
-Mih                       Expires 30 March 2027                [Page 18]
+Mih                       Expires 31 March 2027                [Page 18]

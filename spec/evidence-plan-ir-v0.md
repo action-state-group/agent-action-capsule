@@ -317,7 +317,7 @@ produced.
 
 ## 8. Vocabulary discipline
 
-This document and its companion schema/examples MUST NOT use, in any form: `Authority`, `Relay`,
+This document and its companion schema/examples MUST NOT use, in any form: `Authority`,
 `score`/`scoring` (as a feature or product term — "semantic adjudication" or "judged assessment"
 is used instead throughout), or `reputation`. Every synthetic fixture's anchor/prospect
 placeholder is `OO`, never a company name and never `NN`.

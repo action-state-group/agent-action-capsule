@@ -120,7 +120,7 @@ This document deliberately does not define:
   cannot be taken to mean ({{security}}).
 - **A signing, payload-storage, or replication mechanism.** How a record or
   a checkpoint is signed, how payload bytes are stored and retrieved by
-  digest, and how records travel between stores, relays, or fleets are
+  digest, and how records travel between stores, delivery intermediaries, or fleets are
   implementation seams a host plugs in beneath a conforming store. This
   document does not define any of the three, and a store's conformance to
   this document does not depend on which implementation of any of them it
