@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.6.0 — 2026-09-27
+
+**Headline: the -05 wire.** Producers now emit `spec_version`
+`draft-mih-scitt-agent-action-capsule-05`; verifiers accept both `-04` and `-05`. The -05
+registrations are seeded (below). Released vectors are unchanged: every vector case file
+shipped in 0.5.0 / `go/v0.5.x` is byte-identical, and the -05 cases are added beside them
+(only the corpus indexes, `SHA256SUMS` manifests and READMEs gained entries).
+
 ### Changed
 - TypeScript countersignature stamp (`ts/src/countersignature-stamp.ts`) now verifies
   `countersign/v1` entries: `over` must equal the recomputed bundle digest, and the Ed25519
@@ -49,14 +57,6 @@
   `neg-leaf-index-equals-seq`, with `expected_without_cll` for the Python reference
   without the extra. Python and TS test it. `vectors/bundle/SHA256SUMS` now covers it, and
   its stale `README.md` line is corrected.
-
-## 0.6.0 — 2026-09-26
-
-**Headline: the -05 wire.** Producers now emit `spec_version`
-`draft-mih-scitt-agent-action-capsule-05`; verifiers accept both `-04` and `-05`. The -05
-registrations are seeded (below). Released vectors are unchanged: every vector case file
-shipped in 0.5.0 / `go/v0.5.x` is byte-identical, and the -05 cases are added beside them
-(only the corpus indexes, `SHA256SUMS` manifests and READMEs gained entries).
 
 ### Wire: `spec_version` -05
 - **A producer conforming to -05 emits `draft-mih-scitt-agent-action-capsule-05`; a
