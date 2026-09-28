@@ -25,6 +25,13 @@ import {
   type ReportRows,
 } from "./report-rows.js";
 import {
+  buildResultRoot,
+  isResultRoot,
+  type CitedRecord,
+  type ResultClaim,
+  type ResultRoot,
+} from "./result-root.js";
+import {
   buildVerificationPageModel,
   type CheckSummary,
   type CompletenessStatement,
@@ -693,6 +700,255 @@ function renderReportRowsTable(
   root.append(section);
 }
 
+// Result v0 root: headlines from the root Result, drill-downs from the
+// records it cites. A cited record is drawn from its own data -- provenance,
+// each committed member as disclosed or as `withheld · <digest>`, and the
+// records it cites in turn -- so aggregate → daily → case → act is a walk
+// over citations, never report-specific markup.
+function renderCitedMember(
+  host: HTMLElement,
+  field: "agent_input" | "agent_output",
+  resolution: CitedRecord["agentInput"],
+  committed: string | undefined,
+): void {
+  if (resolution.state !== "disclosed" && committed === undefined) return;
+  host.append(element("h5", field));
+  if (resolution.state === "disclosed") {
+    host.append(element("pre", display(resolution.payload)));
+    return;
+  }
+  // A withheld member shows the digest the record committed to; a supplied
+  // value that does not hash to it is never shown, only noted.
+  const note = element(
+    "p",
+    resolution.state === "disclosure_mismatch"
+      ? `withheld · ${committed}: the disclosed value does not match the committed digest`
+      : `withheld · ${committed}`,
+  );
+  note.dataset.disclosure = resolution.state;
+  host.append(note);
+}
+
+function renderCitedRecord(
+  record: CitedRecord,
+  records: ReadonlyMap<string, CitedRecord>,
+  host: HTMLElement,
+): void {
+  const section = element("section");
+  section.dataset.citedRecord = record.capsuleId;
+  section.append(
+    renderProvenance(record.capsuleId, record.logCoordinates, record),
+  );
+  renderCitedMember(
+    section,
+    "agent_input",
+    record.agentInput,
+    record.agentInputDigest,
+  );
+  renderCitedMember(
+    section,
+    "agent_output",
+    record.agentOutput,
+    record.agentOutputDigest,
+  );
+  if (record.cites.length > 0) {
+    section.append(element("h5", "Cites"));
+    const list = element("ul");
+    const detail = element("section");
+    for (const id of record.cites) {
+      const item = element("li");
+      const target = records.get(id);
+      if (target === undefined) {
+        item.textContent = `${id} · not in this bundle`;
+        item.dataset.citation = "missing";
+      } else {
+        const button = element("button", id);
+        button.setAttribute("type", "button");
+        button.dataset.citedId = id;
+        button.addEventListener("click", () => {
+          detail.replaceChildren();
+          renderCitedRecord(target, records, detail);
+        });
+        item.append(button);
+      }
+      list.append(item);
+    }
+    section.append(list, detail);
+  }
+  host.append(section);
+}
+
+const CLAIM_TYPE_LABEL = (claim: ResultClaim): string =>
+  claim.recognized ? claim.type : `unrecognized (${claim.type})`;
+
+// The verdict a reader sees is the Result's own only when every cited id
+// resolves in this bundle. Otherwise the cell reads `unsupported` -- never
+// `met`, whatever the Result states -- and the row stays.
+function appendVerdict(parent: HTMLElement, claim: ResultClaim): HTMLElement {
+  const cell = element(
+    parent.tagName === "TR" ? "td" : "dd",
+    claim.support === "supported" ? claim.verdict : "unsupported",
+  );
+  cell.dataset.verdict =
+    claim.support === "supported" ? claim.verdict : "unsupported";
+  cell.dataset.support = claim.support;
+  if (claim.support === "unsupported") cell.className = "claim-unsupported";
+  parent.append(cell);
+  return cell;
+}
+
+function renderClaim(
+  claim: ResultClaim,
+  result: ResultRoot,
+  host: HTMLElement,
+): void {
+  host.replaceChildren();
+  host.append(element("h3", `Claim ${claim.id}`));
+  const details = element("dl");
+  appendValue(details, "contract", claim.contractRef);
+  appendValue(details, "requirement", claim.requirementRef);
+  details.append(element("dt", "type"));
+  const type = element("dd", CLAIM_TYPE_LABEL(claim));
+  type.dataset.claimType = claim.recognized ? claim.type : "unrecognized";
+  if (!claim.recognized) type.className = "claim-unrecognized";
+  details.append(type);
+  appendValue(details, "tier", claim.tier);
+  appendValue(details, "grade", claim.grade);
+  appendValue(details, "sufficiency", claim.sufficiency);
+  details.append(element("dt", "verdict"));
+  appendVerdict(details, claim);
+  host.append(details);
+  if (claim.support === "unsupported") {
+    const note = element(
+      "p",
+      claim.missing.length === 0
+        ? "unsupported: this claim cites no evidence"
+        : `unsupported: cited evidence not in this bundle: ${claim.missing.join(", ")}`,
+    );
+    note.dataset.claimMissing = String(claim.missing.length);
+    host.append(note);
+  }
+  host.append(element("h4", "Presentation"));
+  const carrier = element("dl");
+  appendValue(carrier, "carrier", claim.presentation.kind);
+  appendValue(carrier, "status", claim.presentation.status);
+  if (claim.presentation.summary !== undefined)
+    appendValue(carrier, "summary", claim.presentation.summary);
+  if (claim.presentation.narrative !== undefined)
+    appendValue(carrier, "narrative", claim.presentation.narrative);
+  host.append(carrier);
+  host.append(element("h4", "Proofs"));
+  if (claim.proofs.length === 0) {
+    host.append(element("p", "no proof cited"));
+  } else {
+    const proofs = element("ul");
+    for (const proof of claim.proofs)
+      proofs.append(
+        element("li", `${proof.kind} · ${proof.digest} · not resolved here`),
+      );
+    host.append(proofs);
+  }
+  host.append(element("h4", "Evidence"));
+  for (const ref of claim.evidence) {
+    const record = result.records.get(ref.digest);
+    if (record === undefined) {
+      const missing = element("p", `${ref.digest} · not in this bundle`);
+      missing.dataset.evidence = "missing";
+      host.append(missing);
+    } else {
+      renderCitedRecord(record, result.records, host);
+    }
+  }
+}
+
+const BUCKETS: ReadonlyArray<readonly [keyof ResultRoot["buckets"], string]> = [
+  ["met", "met"],
+  ["notMet", "not met"],
+  ["notEvaluable", "not evaluable"],
+];
+
+// Coverage is the first thing on the page after its heading, and no number
+// precedes it; then the three buckets, never a single figure; then one row
+// per claim with its own tier and grade.
+function renderResultPage(result: ResultRoot, root: HTMLElement): void {
+  const section = element("section");
+  section.dataset.page = "result";
+  section.append(element("h1", "Evidence result"));
+  const coverage = element(
+    "p",
+    `coverage: ${result.coverage.evaluatedPopulation} requirements evaluated · ${result.coverage.excludedNotApplicable} excluded as not applicable · ${result.coverage.unknownCount} unresolved`,
+  );
+  coverage.dataset.coverage = "result";
+  coverage.dataset.evaluated = String(result.coverage.evaluatedPopulation);
+  coverage.dataset.excluded = String(result.coverage.excludedNotApplicable);
+  coverage.dataset.unknown = String(result.coverage.unknownCount);
+  section.append(coverage);
+
+  const byId = new Map(result.claims.map((claim) => [claim.id, claim]));
+  const buckets = element("section");
+  buckets.dataset.buckets = "verdict";
+  buckets.append(element("h2", "Claims by verdict"));
+  for (const [key, label] of BUCKETS) {
+    buckets.append(element("h3", label));
+    const ids = result.buckets[key];
+    if (ids.length === 0) {
+      buckets.append(element("p", "none"));
+      continue;
+    }
+    const list = element("ul");
+    list.dataset.bucket = key;
+    for (const id of ids) {
+      const claim = byId.get(id);
+      const item = element(
+        "li",
+        claim?.support === "unsupported" ? `${id} · unsupported` : id,
+      );
+      item.dataset.claimRef = id;
+      if (claim?.support === "unsupported")
+        item.className = "claim-unsupported";
+      list.append(item);
+    }
+    buckets.append(list);
+  }
+  section.append(buckets);
+
+  const table = document.createElement("table");
+  table.dataset.claims = "rows";
+  const detail = element("section");
+  for (const claim of result.claims) {
+    const tr = document.createElement("tr");
+    tr.dataset.claimRow = claim.id;
+    tr.dataset.support = claim.support;
+    if (claim.support === "unsupported") tr.className = "claim-unsupported";
+    const idCell = document.createElement("td");
+    const button = element("button", claim.id);
+    button.setAttribute("type", "button");
+    button.dataset.claimId = claim.id;
+    button.addEventListener("click", () => renderClaim(claim, result, detail));
+    idCell.append(button);
+    tr.append(idCell, element("td", claim.requirementRef));
+    const sufficiency = element("td", claim.sufficiency);
+    sufficiency.dataset.sufficiency = claim.sufficiency;
+    tr.append(sufficiency);
+    appendVerdict(tr, claim);
+    const tier = element("td", claim.tier);
+    tier.dataset.tier = claim.tier;
+    const grade = element("td", claim.grade);
+    grade.dataset.grade = claim.grade;
+    const type = element("td", CLAIM_TYPE_LABEL(claim));
+    type.dataset.claimType = claim.recognized ? claim.type : "unrecognized";
+    if (!claim.recognized) type.className = "claim-unrecognized";
+    tr.append(tier, grade, type);
+    table.append(tr);
+  }
+  section.append(
+    table,
+    detail,
+    renderProvenance(result.capsuleId, result.logCoordinates, result),
+  );
+  root.append(section);
+}
+
 function renderGraph(
   graph: EvidenceGraph,
   root: HTMLElement,
@@ -744,12 +1000,16 @@ export async function renderEvidenceGraph(
   // and nothing reaches the DOM until the verification result is in hand.
   const verification = await verifyBundle(bundle);
   const verified = bundleVerified(verification);
-  // report/v1 is the generic root model; only fall back to the
-  // evaluation-summary/v1 graph (which throws on anything else) when this
-  // bundle isn't one.
+  // Root families, in order: report/v1 (the generic row model), a Result v0
+  // root (throws when the document it names is not one), and only then the
+  // evaluation-summary/v1 graph (which throws on anything else).
   const reportRows = verified ? await buildReportRows(bundle) : undefined;
+  const result =
+    verified && reportRows === undefined && (await isResultRoot(bundle))
+      ? await buildResultRoot(bundle)
+      : undefined;
   const graph =
-    verified && reportRows === undefined
+    verified && reportRows === undefined && result === undefined
       ? await buildEvidenceGraph(bundle)
       : undefined;
   const records = object(bundle).records;
@@ -761,6 +1021,8 @@ export async function renderEvidenceGraph(
   });
   if (reportRows !== undefined) {
     renderReportRowsTable(reportRows, root);
+  } else if (result !== undefined) {
+    renderResultPage(result, root);
   } else if (graph !== undefined) {
     renderGraph(graph, root, Array.isArray(records) ? records : []);
   }
