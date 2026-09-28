@@ -4,26 +4,31 @@
 
 ### Changed
 - TypeScript countersignature stamp (`ts/src/countersignature-stamp.ts`) now verifies
-  `countersign/v1` entries as the Evidence Bundle -01 text defines them: `over` must equal the
-  recomputed bundle digest, and the Ed25519 signature (128 hex, under the 64-hex `signer.key_id`)
-  must cover `UTF8(JCS({over, statement, type}))`, so a result edited after signing makes the
-  entry `invalid` and its checks are not shown. `cose-sign1` and any other type the viewer does
-  not implement render as `unverified`, as both -00 and -01 require. Previously the stamp
-  accepted only `cose-sign1` and classed a `countersign/v1` entry as `invalid`.
-- The stamp reads the countersigner directory as a `witnesses.json` document (capsule-emit's
-  shape) and resolves a signer by `countersigners[].key_ids[]`. It never resolves against
-  `witnesses[]`, and a key listed in two rows resolves to neither. The name comes from the
-  directory. The checks and results come from the signed statement and are listed per check as
-  the signer's statement, never totalled. The old flat directory
-  (`publicKey`/`name`/`logoDataUrl`/`checksRecomputed`) and the stamp logo are removed.
-- Stamp states follow -01: `hollow`, `unverified`, `invalid`, `not-independent`,
-  `unresolved-signer`, `resolved`. **Breaking (TypeScript API):** `classifyCountersignatures`
-  takes `producerKeys: string[]` and a parsed `witnesses.json`, `renderEvidenceGraph`'s third
-  argument is a parsed `witnesses.json`, and `CountersignerDirectoryEntry` and
-  `BUNDLE_DIGEST_CONTENT_TYPE` are removed.
-- Added `ts/test/testdata/countersign-v1-golden.json`: a `countersign/v1` vector generated
-  independently (Python `cryptography` + `rfc8785`), with a flipped-result negative, a
-  digest-only-signature negative, and an `over`-mismatch negative.
+  `countersign/v1` entries: `over` must equal the recomputed bundle digest, and the Ed25519
+  signature (128 hex, under the 64-hex `signer.key_id`) must cover
+  `UTF8(JCS({over, signer, statement, type}))`, with `signer` and `statement` signed as they
+  appear on the wire. A result or `signer.id` edited after signing makes the entry `invalid`, and
+  its checks are not shown. An absent or empty `type` is verified as `countersign/v1`: the input
+  binds `"countersign/v1"`, so a signature over `""` fails. `cose-sign1` and any other type the
+  viewer does not implement render as `unverified`. Previously the stamp accepted only
+  `cose-sign1` and classed a `countersign/v1` entry as `invalid`.
+- Countersigners are named from a list the caller passes in (`CountersignerSource`: `{name,
+  key_ids[]}` listings), or one loaded by `pinnedCountersignerSource` against a pinned SHA-256.
+  They are never read from the witness directory: a `witnesses.json` document resolves no signer.
+  A key listed under two names resolves to neither. The checks and results come from the signed
+  statement and are listed per check as the signer's statement, never totalled. The old flat
+  directory (`publicKey`/`name`/`logoDataUrl`/`checksRecomputed`) and the stamp logo are removed.
+  A present receipt is shown as unverified; the viewer does not verify receipts.
+- Stamp states: `hollow`, `unverified`, `invalid`, `not-independent`, `unresolved-signer`,
+  `resolved`. **Breaking (TypeScript API):** `classifyCountersignatures(entries, digest,
+  producerKeys[], countersigners)`. `renderEvidenceGraph`'s third argument is a
+  `CountersignerSource`, and the emitted report shell passes none. `CountersignerDirectoryEntry`
+  and `BUNDLE_DIGEST_CONTENT_TYPE` are removed.
+- Tests consume capsule-anchor's shared `countersign/v1` golden vector, vendored byte for byte as
+  `ts/test/testdata/countersign-v1-anchor-golden.json` with its SHA-256 pinned (`d057691c…155fb`).
+  Its negatives fail as the vector says: flipped result, digest-only signature, spoofed
+  `signer.id`, and signature without `signer` are invalid, and a receipt for a different
+  statement leaves the entry valid with the receipt unverified.
 
 ## 0.6.0 — 2026-09-26
 

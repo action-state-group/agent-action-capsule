@@ -2,6 +2,7 @@ import { verifyBundle, type BundleVerificationResult } from "./bundle.js";
 import {
   classifyCountersignatures,
   type CountersignatureStamp,
+  type CountersignerSource,
   type CountersignStatementView,
 } from "./countersignature-stamp.js";
 import {
@@ -200,7 +201,7 @@ function stampText(stamp: CountersignatureStamp): string {
     case "not-independent":
       return `countersigned by the producer — not independent · recomputed ${stamp.statement.recomputedAt}`;
     case "unresolved-signer":
-      return `countersigned by an unlisted signer, not in the countersigner directory · recomputed ${stamp.statement.recomputedAt}`;
+      return `countersigned by an unlisted signer, not in any countersigner list consulted · recomputed ${stamp.statement.recomputedAt}`;
     case "resolved":
       return `Countersigned by ${stamp.name} · recomputed ${stamp.statement.recomputedAt}`;
   }
@@ -372,7 +373,7 @@ async function renderVerificationPage(
   root: HTMLElement,
   bundle: unknown,
   verified: BundleVerificationResult,
-  countersignerDirectory: unknown,
+  countersigners: CountersignerSource | undefined,
 ): Promise<void> {
   const page = element("section");
   page.dataset.page = "verification";
@@ -405,7 +406,7 @@ async function renderVerificationPage(
     Array.isArray(countersignatures) ? countersignatures : [],
     verified.bundleDigest,
     producerPublicKeys(bundle),
-    countersignerDirectory,
+    countersigners,
   );
   renderStamps(page, stamps);
   renderCompletenessStatement(page, model.completeness);
@@ -726,10 +727,18 @@ function renderGraph(
   root.append(calendar, detail);
 }
 
+/**
+ * Render a bundle into `root`. `countersigners` is the stamp's countersigner
+ * source: the only way a verified, independent countersignature gets a name.
+ * Omitted, every independent signer renders as unlisted. The emitted
+ * report.html shell passes none today; a host page that holds a list passes
+ * it here (see `pinnedCountersignerSource` to load one against a pinned
+ * digest).
+ */
 export async function renderEvidenceGraph(
   bundle: unknown,
   root: HTMLElement,
-  countersignerDirectory?: unknown,
+  countersigners?: CountersignerSource,
 ): Promise<void> {
   // Verify first. Row models are built only from a bundle that verified,
   // and nothing reaches the DOM until the verification result is in hand.
@@ -755,10 +764,5 @@ export async function renderEvidenceGraph(
   } else if (graph !== undefined) {
     renderGraph(graph, root, Array.isArray(records) ? records : []);
   }
-  await renderVerificationPage(
-    root,
-    bundle,
-    verification,
-    countersignerDirectory,
-  );
+  await renderVerificationPage(root, bundle, verification, countersigners);
 }

@@ -4,6 +4,7 @@ import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 import { emitEvidenceGraphHtml } from "../src/emitter.js";
 import { renderEvidenceGraph } from "../src/browser.js";
+import type { CountersignerSource } from "../src/countersignature-stamp.js";
 import { derivedFixture } from "./helpers/derived-fixtures.js";
 
 // A real report.html is opened in a browser, not the Node test process, so
@@ -26,15 +27,10 @@ function bundle(): Record<string, unknown> {
   ) as Record<string, unknown>;
 }
 
-function directory(): unknown {
+function directory(): CountersignerSource {
   return JSON.parse(
     readFileSync(
-      resolve(
-        process.cwd(),
-        "test",
-        "testdata",
-        "countersigner-directory.json",
-      ),
+      resolve(process.cwd(), "test", "testdata", "countersigners.json"),
       "utf8",
     ),
   );

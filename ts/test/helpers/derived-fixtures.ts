@@ -18,10 +18,9 @@ import { createEd25519Identity } from "../../src/producer-envelope.js";
  * memoised per test worker, and never written to disk.
  *
  * Keys are fixed, clearly test-only seeds (never a production key). The
- * committed `test/testdata/countersigner-directory.json` is a `witnesses.json`
- * in capsule-emit's directory shape naming the directory signer's key;
- * `countersignerDirectory()` derives the same document so a test can assert
- * the two never drift.
+ * committed `test/testdata/countersigners.json` is a countersigner list
+ * naming the listed signer's key; `countersignerList()` derives the same list
+ * so a test can assert the two never drift.
  */
 
 type Obj = Record<string, unknown>;
@@ -71,17 +70,23 @@ export function countersignV1Entry(
   statement: Obj,
   identity: ReturnType<typeof createEd25519Identity>,
 ): Obj {
+  const signer = {
+    id: "did:web:countersign.example",
+    key_id: toHex(identity.publicKey),
+  };
   const signature = edSign(
     null,
-    countersignV1SigningInput({ over, statement, type: "countersign/v1" }),
+    countersignV1SigningInput({
+      over,
+      signer,
+      statement,
+      type: "countersign/v1",
+    }),
     identity.privateKey,
   );
   return {
     type: "countersign/v1",
-    signer: {
-      id: "did:web:countersign.example",
-      key_id: toHex(identity.publicKey),
-    },
+    signer,
     over,
     statement,
     signature: toHex(signature),
@@ -98,22 +103,14 @@ export function seedBundle(): Obj {
   ) as Obj;
 }
 
-/** The `witnesses.json` directory naming the test-only directory signer. */
-export function countersignerDirectory(): Obj {
-  return {
-    directory_version: "1",
-    witnesses: [],
-    countersigners: [
-      {
-        name: "Example Countersigners Ltd",
-        endpoint: "https://countersign.example",
-        key_ids: [DIRECTORY_SIGNER_KEY_ID],
-        statement_types_issued: ["countersign/v1"],
-        since: "2026-09-12",
-        independent_of: [],
-      },
-    ],
-  };
+/** The countersigner list naming the test-only listed signer. */
+export function countersignerList(): Array<{
+  name: string;
+  key_ids: string[];
+}> {
+  return [
+    { name: "Example Countersigners Ltd", key_ids: [DIRECTORY_SIGNER_KEY_ID] },
+  ];
 }
 
 async function countersigned(
@@ -151,7 +148,7 @@ const builders: Record<DerivedFixtureName, () => Promise<Obj>> = {
       "2026-09-10T00:00:00Z",
     ),
 
-  // A directory-resolved signer (see countersignerDirectory()).
+  // A directory-resolved signer (see countersignerList()).
   "week-bundle-directory-countersigned.json": () =>
     countersigned(
       seedBundle(),

@@ -296,13 +296,13 @@ it("renders the producer-key stamp as not independent", async () => {
   );
 });
 
-it("renders the directory-resolved stamp with the directory's name and each check as the signer's statement", async () => {
+it("renders the resolved stamp with the countersigner list's name and each check as the signer's statement", async () => {
   const bundle = await derivedFixture(
     "week-bundle-directory-countersigned.json",
   );
-  const directory = await fixture("countersigner-directory.json");
+  const countersigners = (await fixture("countersigners.json")) as never;
   const root = document.createElement("main");
-  await renderEvidenceGraph(bundle, root, directory);
+  await renderEvidenceGraph(bundle, root, countersigners);
   const stamp = root.querySelector<HTMLElement>('[data-stamp-kind="resolved"]');
   expect(stamp?.querySelector("span")?.textContent).toBe(
     "Countersigned by Example Countersigners Ltd · recomputed 2026-09-12T00:00:00Z",
@@ -325,7 +325,7 @@ it("renders the directory-resolved stamp with the directory's name and each chec
   expect(stamp?.querySelector("[data-countersign-receipt]")).toBeNull();
 });
 
-it("renders an unlisted signer's stamp when no directory is passed", async () => {
+it("renders an unlisted signer's stamp when no countersigner list is passed", async () => {
   const bundle = await derivedFixture(
     "week-bundle-directory-countersigned.json",
   );
@@ -333,7 +333,7 @@ it("renders an unlisted signer's stamp when no directory is passed", async () =>
   await renderEvidenceGraph(bundle, root);
   const stamp = root.querySelector('[data-stamp-kind="unresolved-signer"]');
   expect(stamp?.textContent).toContain(
-    "countersigned by an unlisted signer, not in the countersigner directory",
+    "countersigned by an unlisted signer, not in any countersigner list consulted",
   );
 });
 
