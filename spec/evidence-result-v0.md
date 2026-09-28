@@ -35,7 +35,7 @@ never a second legitimate spelling.
 **Explicitly out of scope (never defined here):** a planner, a judging engine, or a viewer. This
 document names what a conforming Result looks like on the wire — the same "wire shape, not the
 decision layer that produces it" boundary `evidence-plan-ir-v0.md`'s Dependency boundary draws for
-plans. It also never names `Authority`, `score`/`scoring`, or `reputation` (§9).
+plans. It also never names `score`/`scoring` or `reputation` (§9).
 
 ## 1. Result semantics — what a claim is
 
@@ -334,7 +334,7 @@ counterpart field at all in Result v0 and is not tabulated below.
 
 ## 10. Vocabulary discipline
 
-This document and its companion schema/examples MUST NOT use, in any form: `Authority`,
+This document and its companion schema/examples MUST NOT use, in any form:
 `score`/`scoring` (as a feature or product term), or `reputation`. Every synthetic fixture's
 anchor/prospect placeholder is `OO`, never a company name and never `NN`.
 
