@@ -1,0 +1,23 @@
+{
+  "directory_version": "1",
+  "witnesses": [
+    {
+      "name": "Example Witness",
+      "endpoint": "https://witness.example",
+      "key_ids": [
+        "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+      ],
+      "since": "2026-06-28"
+    }
+  ],
+  "countersigners": [
+    {
+      "name": "Example Countersigner",
+      "endpoint": "https://countersign.example",
+      "key_ids": ["PLACEHOLDER-countersign-instance-key-not-yet-generated"],
+      "statement_types_issued": ["countersign/v1"],
+      "since": "PLACEHOLDER-date-of-first-live-countersignature",
+      "independent_of": []
+    }
+  ]
+}

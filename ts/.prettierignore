@@ -1,3 +1,4 @@
 dist/
 node_modules/
 test/testdata/bundle-vectors.json
+test/testdata/countersign-v1-anchor-golden.json

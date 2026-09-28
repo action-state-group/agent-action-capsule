@@ -112,14 +112,11 @@ func TestReportHTMLTamperDropRecord(t *testing.T) {
 
 // TestReportHTMLTamperWholesaleBreaksDigest: editing the bundle wholesale
 // changes the bundle digest. Go's neutral verifier does not implement
-// countersignature cryptography (the spec requires every entry surface as
-// "unverified" -- population and COSE verification are documented future
-// scope; see spec/draft-mih-zhang-agent-disclosure-bundle-00.md
-// section "Bundle Digest and Countersignatures"). The viewer-side stamp that
-// DOES verify a COSE_Sign1 countersignature (ts/src/countersignature-stamp.ts)
-// signs over exactly this digest, so a digest change is the necessary and
-// sufficient Go-provable precondition for that countersignature to fail --
-// proven end-to-end (the signature itself failing to verify) by the
+// countersignature cryptography. The viewer-side stamp that DOES verify a
+// countersign/v1 entry (ts/src/countersignature-stamp.ts) requires the
+// entry's "over" to equal exactly this digest and verifies a signature that
+// covers it, so a digest change is the necessary and sufficient Go-provable
+// precondition for that countersignature to fail -- proven end-to-end by the
 // TypeScript tamper test's "editing the bundle wholesale" case.
 func TestReportHTMLTamperWholesaleBreaksDigest(t *testing.T) {
 	source := loadWeekBundle(t)

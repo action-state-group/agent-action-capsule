@@ -2,7 +2,8 @@ import { verifyBundle, type BundleVerificationResult } from "./bundle.js";
 import {
   classifyCountersignatures,
   type CountersignatureStamp,
-  type CountersignerDirectoryEntry,
+  type CountersignerSource,
+  type CountersignStatementView,
 } from "./countersignature-stamp.js";
 import {
   buildEvidenceGraph,
@@ -180,27 +181,56 @@ function renderPresentationHeader(root: HTMLElement, bundle: unknown): void {
   root.append(header);
 }
 
-function producerPublicKeyHex(bundle: unknown): string | undefined {
+function producerPublicKeys(bundle: unknown): string[] {
   const extensions = object(object(bundle).extensions);
   const block = object(extensions["producer-key/v1"]);
   const publicKey = block.public_key;
   return typeof publicKey === "string" && /^[0-9a-f]{64}$/u.test(publicKey)
-    ? publicKey
-    : undefined;
+    ? [publicKey]
+    : [];
 }
 
 function stampText(stamp: CountersignatureStamp): string {
   switch (stamp.kind) {
     case "hollow":
       return "Countersigned: none";
-    case "producer":
-      return "countersigned by the producer — not independent";
-    case "directory":
-      return `Countersigned by ${stamp.name} · ${stamp.checksRecomputed} of 10 checks recomputed${stamp.date === undefined ? "" : ` · ${stamp.date}`}`;
-    case "unresolved":
-      return "countersigned by an unlisted signer, not in the countersigner directory";
+    case "unverified":
+      return `a ${stamp.type} countersignature is present; this viewer does not verify that type`;
     case "invalid":
       return "a countersignature is present but failed to verify";
+    case "not-independent":
+      return `countersigned by the producer — not independent · recomputed ${stamp.statement.recomputedAt}`;
+    case "unresolved-signer":
+      return `countersigned by an unlisted signer, not in any countersigner list consulted · recomputed ${stamp.statement.recomputedAt}`;
+    case "resolved":
+      return `Countersigned by ${stamp.name} · recomputed ${stamp.statement.recomputedAt}`;
+  }
+}
+
+// Each check and result is the signer's statement, listed as the signer gave
+// it: never totalled, never presented as this viewer's own finding.
+function renderSignerStatement(
+  item: HTMLElement,
+  signer: string,
+  statement: CountersignStatementView,
+): void {
+  const label = element("p", `${signer}'s statement of what it recomputed:`);
+  item.append(label);
+  const checks = element("ul");
+  checks.dataset.countersignStatement = "checks";
+  statement.checks.forEach((check) => {
+    const row = element("li", `${check.name}: ${check.result}`);
+    row.dataset.checkResult = check.result;
+    checks.append(row);
+  });
+  item.append(checks);
+  if (statement.receipt === "unverified") {
+    const receipt = element(
+      "p",
+      "receipt present, not verified by this viewer",
+    );
+    receipt.dataset.countersignReceipt = "unverified";
+    item.append(receipt);
   }
 }
 
@@ -211,13 +241,15 @@ function renderStamps(
   host.append(element("h4", "Countersignatures"));
   const list = element("ul");
   stamps.forEach((stamp) => {
-    const item = element("li", stampText(stamp));
+    const item = element("li");
     item.dataset.stampKind = stamp.kind;
-    if (stamp.kind === "directory") {
-      const logo = document.createElement("img");
-      logo.src = stamp.logoDataUrl;
-      logo.alt = `${stamp.name} logo`;
-      item.append(logo);
+    item.append(element("span", stampText(stamp)));
+    if (stamp.kind === "resolved") {
+      renderSignerStatement(item, stamp.name, stamp.statement);
+    } else if (stamp.kind === "not-independent") {
+      renderSignerStatement(item, "The producer", stamp.statement);
+    } else if (stamp.kind === "unresolved-signer") {
+      renderSignerStatement(item, "The unlisted signer", stamp.statement);
     }
     list.append(item);
   });
@@ -341,7 +373,7 @@ async function renderVerificationPage(
   root: HTMLElement,
   bundle: unknown,
   verified: BundleVerificationResult,
-  countersignerDirectory: readonly CountersignerDirectoryEntry[],
+  countersigners: CountersignerSource | undefined,
 ): Promise<void> {
   const page = element("section");
   page.dataset.page = "verification";
@@ -373,8 +405,8 @@ async function renderVerificationPage(
   const stamps = await classifyCountersignatures(
     Array.isArray(countersignatures) ? countersignatures : [],
     verified.bundleDigest,
-    producerPublicKeyHex(bundle),
-    countersignerDirectory,
+    producerPublicKeys(bundle),
+    countersigners,
   );
   renderStamps(page, stamps);
   renderCompletenessStatement(page, model.completeness);
@@ -695,10 +727,18 @@ function renderGraph(
   root.append(calendar, detail);
 }
 
+/**
+ * Render a bundle into `root`. `countersigners` is the stamp's countersigner
+ * source: the only way a verified, independent countersignature gets a name.
+ * Omitted, every independent signer renders as unlisted. The emitted
+ * report.html shell passes none today; a host page that holds a list passes
+ * it here (see `pinnedCountersignerSource` to load one against a pinned
+ * digest).
+ */
 export async function renderEvidenceGraph(
   bundle: unknown,
   root: HTMLElement,
-  countersignerDirectory: readonly CountersignerDirectoryEntry[] = [],
+  countersigners?: CountersignerSource,
 ): Promise<void> {
   // Verify first. Row models are built only from a bundle that verified,
   // and nothing reaches the DOM until the verification result is in hand.
@@ -724,10 +764,5 @@ export async function renderEvidenceGraph(
   } else if (graph !== undefined) {
     renderGraph(graph, root, Array.isArray(records) ? records : []);
   }
-  await renderVerificationPage(
-    root,
-    bundle,
-    verification,
-    countersignerDirectory,
-  );
+  await renderVerificationPage(root, bundle, verification, countersigners);
 }

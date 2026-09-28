@@ -4,6 +4,7 @@ import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 import { emitEvidenceGraphHtml } from "../src/emitter.js";
 import { renderEvidenceGraph } from "../src/browser.js";
+import type { CountersignerSource } from "../src/countersignature-stamp.js";
 import { derivedFixture } from "./helpers/derived-fixtures.js";
 
 // A real report.html is opened in a browser, not the Node test process, so
@@ -26,20 +27,10 @@ function bundle(): Record<string, unknown> {
   ) as Record<string, unknown>;
 }
 
-function directory(): Array<{
-  publicKey: string;
-  name: string;
-  logoDataUrl: string;
-  checksRecomputed: number;
-}> {
+function directory(): CountersignerSource {
   return JSON.parse(
     readFileSync(
-      resolve(
-        process.cwd(),
-        "test",
-        "testdata",
-        "countersigner-directory.json",
-      ),
+      resolve(process.cwd(), "test", "testdata", "countersigners.json"),
       "utf8",
     ),
   );
@@ -149,10 +140,10 @@ describe("report.html tamper test (rows are data, never prose)", () => {
     const untamperedStamp = await classifyCountersignatures(
       signed.countersignatures,
       untamperedDigest,
-      undefined,
+      [],
       directory(),
     );
-    expect(untamperedStamp[0]).toMatchObject({ kind: "directory" });
+    expect(untamperedStamp[0]).toMatchObject({ kind: "resolved" });
 
     const tampered = tamperHtml(html, (value) => ({
       ...value,
@@ -166,7 +157,7 @@ describe("report.html tamper test (rows are data, never prose)", () => {
     const tamperedStamp = await classifyCountersignatures(
       tamperedValue.countersignatures,
       tamperedDigest,
-      undefined,
+      [],
       directory(),
     );
     expect(tamperedStamp[0]).toEqual({ kind: "invalid" });
