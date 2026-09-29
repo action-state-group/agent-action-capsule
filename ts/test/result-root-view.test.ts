@@ -563,6 +563,10 @@ it("(iv) a close claim draws the state its cited Close's links read, recomputed,
   const link = page.querySelector<HTMLElement>("[data-close-link]")!;
   expect(link.dataset.closeLink).toBe("acknowledges");
   expect(link.dataset.linkRecord).toBe(ids["close-b"]);
+  expect(link.textContent).toMatch(/· signer [0-9a-f]{64} \(verified\)$/u);
+  const signer = page.querySelector<HTMLElement>("dd[data-key-verified]")!;
+  expect(signer.dataset.keyVerified).toBe("true");
+  expect(signer.textContent).toMatch(/^[0-9a-f]{64} \(verified\)$/u);
   expect(page.textContent).toContain("airline-sor");
   // the cited Close and the peer record open as citations
   expect(
@@ -700,6 +704,46 @@ it("(iv) a self-acknowledged Close never renders as verified AGREED: UNILATERAL,
   ).toBe(
     `failed: close_state mismatch: asserted AGREED, the cited Close's links read UNILATERAL (ignored acknowledges from ${ids["close-b"]}: the linking record is from the Close's own book); sufficiency and verdict withheld`,
   );
+});
+
+// Maintainer's fourth pass (2026-09-29): a key_id whose Producer Envelope
+// does not verify under it is labelled "stated key_id (not verified)" and
+// never makes a state -- here the peer's record carries its key_id with no
+// signature at all.
+it("(iv) a peer record whose key_id is only stated is labelled 'stated key_id (not verified)' and never makes AGREED", async () => {
+  const { bundle, ids } = await sealEvidenceBundle(
+    fixture("result-root-close-bundle.json"),
+    { unsigned: ["close-b"] },
+  );
+  const root = await render(bundle);
+  const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
+  const row = page.querySelector<HTMLElement>('[data-claim-row="close-1"]')!;
+  expect(row.dataset.failed).toBe("close_state");
+  expect(
+    row.querySelector<HTMLElement>("[data-close-state]")!.dataset.closeState,
+  ).toBe("UNILATERAL");
+  page.querySelector<HTMLElement>('[data-claim-id="close-1"]')!.click();
+  expect(page.querySelector("[data-close-link]")).toBeNull();
+  const ignored = page.querySelector<HTMLElement>("[data-ignored-link]")!;
+  expect(ignored.textContent).toBe(
+    `acknowledges · ${ids["close-b"]} · stated key_id (not verified): the linking record's Producer Envelope does not verify under its key_id`,
+  );
+});
+
+it("(iv) a Close whose own key_id is only stated draws its signer with the label, never bare", async () => {
+  const { bundle } = await sealEvidenceBundle(
+    fixture("result-root-close-bundle.json"),
+    { unsigned: ["close-a"] },
+  );
+  const root = await render(bundle);
+  const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
+  page.querySelector<HTMLElement>('[data-claim-id="close-1"]')!.click();
+  const signer = page.querySelector<HTMLElement>("dd[data-key-verified]")!;
+  expect(signer.dataset.keyVerified).toBe("false");
+  expect(signer.textContent).toMatch(
+    /^[0-9a-f]{64} · stated key_id \(not verified\)$/u,
+  );
+  expect(page.querySelector("[data-close-link]")).toBeNull();
 });
 
 it("(iv) a peer_close_ref that is not the counterparty record fails the claim -- the row says which rule", async () => {

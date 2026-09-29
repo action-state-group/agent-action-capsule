@@ -18,10 +18,11 @@ import {
   RESULT_VERSION,
   SUFFICIENCIES,
   TIERS,
+  UNVERIFIED_KEY_LABEL,
   validateEvidenceResult,
   VERDICTS,
 } from "../src/result-root.js";
-import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
+import { sealEvidenceBundle, TEST_KEYS } from "./helpers/sealed-bundle.js";
 
 type Obj = Record<string, unknown>;
 
@@ -43,9 +44,13 @@ function bookHeaderOf(source: Obj, id: string): Obj {
 
 const ABSENT_ID =
   "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-/** The fixture's two signer keys: the airline book's Close and the peer's (local `key_id`). */
-const KEY_A = "a1".repeat(32);
-const KEY_B = "b2".repeat(32);
+/**
+ * The fixture's two signer keys: the airline book's Close and the peer's
+ * (local `key_id`, the raw Ed25519 public key). The seal helper attaches a
+ * real Producer Envelope under each, so both verify.
+ */
+const KEY_A = TEST_KEYS.a;
+const KEY_B = TEST_KEYS.b;
 
 describe("buildResultRoot", () => {
   it("reads coverage, buckets and every claim's axes from the root Result, and resolves cited records", async () => {
@@ -627,6 +632,7 @@ describe("headline values are recomputed, never taken on the producer's word", (
         closeRef: ids["close-a"],
         bookId: "airline",
         keyId: KEY_A,
+        keyVerified: true,
         period: {
           start: "2026-09-14T00:00:00Z",
           end: "2026-09-15T00:00:00Z",
@@ -647,6 +653,7 @@ describe("headline values are recomputed, never taken on the producer's word", (
             recordId: ids["close-b"],
             bookId: "airline-sor",
             keyId: KEY_B,
+            keyVerified: true,
           },
         ],
         ignored: [],
@@ -821,8 +828,9 @@ describe("headline values are recomputed, never taken on the producer's word", (
         source: Obj,
         reason: string,
         ignoredType = "acknowledges",
+        options: Parameters<typeof sealEvidenceBundle>[1] = {},
       ) {
-        const { bundle, ids } = await sealEvidenceBundle(source);
+        const { bundle, ids } = await sealEvidenceBundle(source, options);
         const result = await buildResultRoot(bundle);
         const claim = result.claims[1]!;
         expect(claim.close).toMatchObject({
@@ -928,16 +936,104 @@ describe("headline values are recomputed, never taken on the producer's word", (
         expect(claim.close!.peer).toBeUndefined();
       });
 
+      // Fourth pass (2026-09-29): "verify the signature under key_id, or
+      // label it 'stated key_id (not verified)' and don't let it pass the
+      // check". The key_id is verified when the record's local Producer
+      // Envelope verifies over its recomputed capsule id and its kid is the
+      // key_id; a key_id that does not verify never satisfies part (3).
+      describe("(3) the key is VERIFIED under key_id, never taken as stated (fourth pass)", () => {
+        it("a verified envelope under a different key counts: the link makes AGREED", async () => {
+          const { bundle, ids } = await sealEvidenceBundle(
+            fixture("result-root-close-bundle.json"),
+          );
+          const records = bundle.records as Obj[];
+          const peer = records.find((r) => r.capsule_id === ids["close-b"])!;
+          expect(typeof peer.signature).toBe("string"); // a real COSE_Sign1, hex
+          const claim = (await buildResultRoot(bundle)).claims[1]!;
+          expect(claim.close).toMatchObject({
+            keyId: KEY_A,
+            keyVerified: true,
+            derived: "AGREED",
+            stateMismatch: false,
+            links: [
+              {
+                recordId: ids["close-b"],
+                keyId: KEY_B,
+                keyVerified: true,
+              },
+            ],
+            ignored: [],
+          });
+          expect(claim.failed).toBe(false);
+        });
+
+        it("an acknowledger with a key_id but no signature is a stated key_id (not verified): it does not count", async () => {
+          const source = fixture("result-root-close-bundle.json");
+          const { claim } = await neverAgreed(
+            source,
+            `${UNVERIFIED_KEY_LABEL}: the linking record's Producer Envelope does not verify under its key_id`,
+            "acknowledges",
+            { unsigned: ["close-b"] },
+          );
+          expect(claim.close!.ignored[0]).toMatchObject({
+            keyId: KEY_B,
+            keyVerified: false,
+          });
+        });
+
+        it("an acknowledger whose envelope is signed by another key than the key_id it states does not count", async () => {
+          // the second book states the peer's key_id, but only the Close's
+          // producer (or anyone else) signed it
+          const source = fixture("result-root-close-bundle.json");
+          await neverAgreed(
+            source,
+            `${UNVERIFIED_KEY_LABEL}: the linking record's Producer Envelope does not verify under its key_id`,
+            "acknowledges",
+            { signWith: { "close-b": "c" } },
+          );
+        });
+
+        it("an envelope copied from another record does not verify over this record's capsule id", async () => {
+          const source = fixture("result-root-close-bundle.json");
+          const { bundle: donor, ids } = await sealEvidenceBundle(
+            fixture("result-root-close-bundle.json"),
+          );
+          const closeA = (donor.records as Obj[]).find(
+            (r) => r.capsule_id === ids["close-a"],
+          )!;
+          // close-b carries close-a's (valid, A-signed) envelope: kid A, payload close-a's id
+          record(source, "close-b").signature = closeA.signature;
+          await neverAgreed(
+            source,
+            `${UNVERIFIED_KEY_LABEL}: the linking record's Producer Envelope does not verify under its key_id`,
+          );
+        });
+
+        it("a Close whose own key_id is only stated accepts no linker: its signer cannot be shown to differ", async () => {
+          const source = fixture("result-root-close-bundle.json");
+          const { claim } = await neverAgreed(
+            source,
+            `the cited Close's key_id is a ${UNVERIFIED_KEY_LABEL}: its Producer Envelope does not verify under it, so no signer can be shown to differ from its own`,
+            "acknowledges",
+            { unsigned: ["close-a"] },
+          );
+          expect(claim.close).toMatchObject({
+            keyId: KEY_A,
+            keyVerified: false,
+          });
+        });
+      });
+
       it("counterpartyLinks: the three parts, each alone insufficient", () => {
-        const close = { bookId: "a", keyId: KEY_A };
-        const link = (bookId?: string, keyId?: string) => ({
+        const close = { bookId: "a", keyId: KEY_A, keyVerified: true };
+        const link = (bookId?: string, keyId?: string, keyVerified = true) => ({
           type: "acknowledges" as const,
           recordId: "r",
           ...(bookId === undefined ? {} : { bookId }),
-          ...(keyId === undefined ? {} : { keyId }),
+          ...(keyId === undefined ? {} : { keyId, keyVerified }),
         });
         const counted = (
-          c: { bookId?: string; keyId?: string },
+          c: { bookId?: string; keyId?: string; keyVerified?: boolean },
           peer: string | undefined,
           l: ReturnType<typeof link>,
         ) => counterpartyLinks(c, peer, [l]).links.length;
@@ -950,6 +1046,14 @@ describe("headline values are recomputed, never taken on the producer's word", (
         expect(counted(close, undefined, link("b", KEY_B))).toBe(0); // no named peer
         expect(counted({ keyId: KEY_A }, "b", link("b", KEY_B))).toBe(0); // book-less Close
         expect(counted({ bookId: "a" }, "b", link("b", KEY_B))).toBe(0); // key-less Close
+        expect(counted(close, "b", link("b", KEY_B, false))).toBe(0); // stated, not verified
+        expect(
+          counted(
+            { bookId: "a", keyId: KEY_A, keyVerified: false },
+            "b",
+            link("b", KEY_B),
+          ),
+        ).toBe(0); // the Close's own key only stated
         const { ignored } = counterpartyLinks(close, "b", [link("a", KEY_B)]);
         expect(ignored).toEqual([
           {

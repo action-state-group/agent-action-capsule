@@ -28,12 +28,12 @@
     {
       "capsule_id": "close-a",
       "occurred_at": "2026-09-15T00:05:00Z",
-      "key_id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      "key_id": "af06a3e3291714e4f356c19c9b15cd1951ec6e6662aa77be07547f289383341d"
     },
     {
       "capsule_id": "close-b",
       "occurred_at": "2026-09-15T01:00:00Z",
-      "key_id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+      "key_id": "2df04125f0015afb47ce853aef8772094ff9498c14cb1b9e12973c2927da0fa6"
     }
   ],
   "disclosures": {

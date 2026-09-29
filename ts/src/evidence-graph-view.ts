@@ -27,6 +27,7 @@ import {
 import {
   buildResultRoot,
   isResultRoot,
+  UNVERIFIED_KEY_LABEL,
   type CountMismatch,
   type ResultClose,
   type CitedRecord,
@@ -875,7 +876,20 @@ function renderClose(
   details.append(derivation);
   if (close.peer !== undefined) appendValue(details, "peer", close.peer);
   if (close.bookId !== undefined) appendValue(details, "book", close.bookId);
-  if (close.keyId !== undefined) appendValue(details, "signer", close.keyId);
+  // A signer is drawn as verified only when its Producer Envelope verified
+  // under the key_id (result-root.ts `signerOf`); otherwise it carries the
+  // label, never a bare key.
+  if (close.keyId !== undefined) {
+    details.append(element("dt", "signer"));
+    const signer = element(
+      "dd",
+      close.keyVerified === true
+        ? `${close.keyId} (verified)`
+        : `${close.keyId} · ${UNVERIFIED_KEY_LABEL}`,
+    );
+    signer.dataset.keyVerified = String(close.keyVerified === true);
+    details.append(signer);
+  }
   host.append(details);
   host.append(element("h5", "Cited Close"));
   renderCitationList([close.closeRef], result.records, host);
@@ -887,7 +901,10 @@ function renderClose(
     host.append(element("h5", "Links to the cited Close"));
     const list = element("ul");
     for (const link of close.links) {
-      const item = element("li", `${link.type} · ${link.recordId}`);
+      const item = element(
+        "li",
+        `${link.type} · ${link.recordId} · signer ${link.keyId} (verified)`,
+      );
       item.dataset.closeLink = link.type;
       item.dataset.linkRecord = link.recordId;
       list.append(item);

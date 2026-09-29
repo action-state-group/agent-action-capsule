@@ -255,7 +255,9 @@ from the capsule id (`draft-mih-scitt-agent-action-capsule-04`, "capsule_id";
 `verify.ts` strips it before hashing). It is the only per-record signer the
 bundle model exposes, and the same 64-hex form the countersignature stamp
 keys on. #140's schema checker sees only record headers, so it enforces (1)
-and (2); (3) lives here and in the CLI, where the signer is visible.
+and (2); (3) lives here and in the CLI, where the signer is visible -- and,
+since the fourth pass, only for a `key_id` whose envelope verifies (the
+fourth-pass section below).
 
 `counterpartyLinks(close, peer, inbound)` (`ts/src/result-root.ts`) splits
 the inbound links into `links` (the counterparty ones the state is read
@@ -295,6 +297,47 @@ carry it):
 The honest close bundle (`test/testdata/result-root-close-bundle.json`)
 gives the airline's Close and the peer's Close distinct `key_id`s so that
 it still reads AGREED under all three parts.
+
+## The key is verified under `key_id`, or labelled (2026-09-29, fourth pass)
+
+Maintainer's fourth pass: _"verify the signature under key_id, or label it
+'stated key_id (not verified)' and don't let it pass the check."_ Part (3)
+no longer takes a `key_id` on the record's word. The key material travels
+with the record: the local Producer Envelope (`signature`, hex COSE_Sign1)
+carries the raw Ed25519 public key as its protected `kid`, and `key_id` is
+that key in hex. `signerOf` (`ts/src/result-root.ts`) marks a `key_id`
+**verified** only when
+
+1. `signature` is lowercase hex;
+2. the record's capsule id **recomputes** (`computeCapsuleId`, which strips
+   `signature` and `key_id`) to the carried one;
+3. `verifyProducerEnvelope` -- the repo's own verifier
+   (`ts/src/producer-envelope-verification.ts`, WebCrypto Ed25519) --
+   accepts the envelope over that id; and
+4. the envelope's `kid` equals `key_id`.
+
+Anything else -- no `signature`, an envelope signed by a different key
+than the one stated, an envelope copied from another record, a runtime
+without Ed25519 WebCrypto -- is a **stated key_id (not verified)**
+(`UNVERIFIED_KEY_LABEL`). `CloseLink.keyVerified` and
+`ResultClose.keyVerified` carry the result. A linking record whose key is
+only stated is ignored with the reason `stated key_id (not verified): the
+linking record's Producer Envelope does not verify under its key_id`; a
+Close whose own key is only stated takes no link at all (a producer could
+otherwise state any key for its Close). Either way the Close is UNILATERAL
+at best and an asserted AGREED fails the claim. The drill-down draws the
+Close's signer as `<key> (verified)` or `<key> · stated key_id (not
+verified)` (`dd[data-key-verified]`), and each counted link as `signer
+<key> (verified)`.
+
+Verifying the key proves the record was signed by the holder of that key.
+It does not say whose key it is: until the contract pins the peer's key, a
+second book named as the peer and signed under a second key still passes
+this check.
+
+The test helper (`test/helpers/sealed-bundle.ts`) attaches a real envelope
+to any record whose `key_id` is one of its deterministic `TEST_KEYS`
+(`unsigned` / `signWith` options produce the stated and mis-signed cases).
 
 ## Render order
 

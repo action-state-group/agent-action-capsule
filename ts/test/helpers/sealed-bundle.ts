@@ -3,6 +3,10 @@ import { MmrTree, inclusionProof, rangeProof } from "@action-state-group/cll";
 // the jsdom test environment, where the emitter's node:fs shell read cannot.
 import { jsonDigest } from "../../src/json.js";
 import { computeCapsuleId } from "../../src/verify.js";
+import {
+  createEd25519Identity,
+  signCapsuleId,
+} from "../../src/producer-envelope.js";
 
 /**
  * Seal a hand-written evidence bundle into one the bundle verifier accepts.
@@ -23,6 +27,11 @@ import { computeCapsuleId } from "../../src/verify.js";
  * - the records are appended, in their given order (or by existing
  *   membership seq), to a fresh MMR, and a completeness certificate plus
  *   checkpoint are built over it.
+ *
+ * - a record whose `key_id` is one of TEST_KEYS gets a real local Producer
+ *   Envelope (`signature`, hex COSE_Sign1 over its sealed capsule_id) from
+ *   that key's deterministic test seed -- unless it already carries a
+ *   `signature`, or `options.unsigned` / `options.signWith` say otherwise.
  *
  * Countersignatures are never carried over: they sign the old bundle digest.
  */
@@ -75,6 +84,27 @@ function mentions(value: unknown, out: Set<string>): void {
 const hex = (bytes: Uint8Array): string =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 
+/** Deterministic test signers: seed = 32 bytes of the name's char code. */
+const SIGNERS = Object.fromEntries(
+  (["a", "b", "c"] as const).map((name) => [
+    name,
+    createEd25519Identity(new Uint8Array(32).fill(name.charCodeAt(0))),
+  ]),
+) as Record<"a" | "b" | "c", ReturnType<typeof createEd25519Identity>>;
+
+/** The test signers' key_ids (raw Ed25519 public key, 64 hex). */
+export const TEST_KEYS = Object.freeze({
+  a: hex(SIGNERS.a.publicKey),
+  b: hex(SIGNERS.b.publicKey),
+  c: hex(SIGNERS.c.publicKey),
+});
+const SIGNER_BY_KEY = new Map(
+  (Object.keys(SIGNERS) as ("a" | "b" | "c")[]).map((name) => [
+    TEST_KEYS[name],
+    SIGNERS[name],
+  ]),
+);
+
 export interface SealOptions {
   /**
    * Aliases of records to seal and supply in `records` but leave OUT of the
@@ -83,6 +113,10 @@ export interface SealOptions {
    * ledgers whose later records were never checkpointed).
    */
   readonly uncheckpointed?: readonly string[];
+  /** Aliases whose `key_id` is left as a stated key: no `signature` is attached. */
+  readonly unsigned?: readonly string[];
+  /** Alias -> test signer whose key signs the envelope, whatever `key_id` states. */
+  readonly signWith?: Readonly<Record<string, "a" | "b" | "c">>;
 }
 
 export async function sealEvidenceBundle(
@@ -164,6 +198,18 @@ export async function sealEvidenceBundle(
         body.model_attestation = attestation;
       }
       const id = await computeCapsuleId(body as never);
+      const signer =
+        options.signWith?.[alias] !== undefined
+          ? SIGNERS[options.signWith[alias]]
+          : typeof body.key_id === "string"
+            ? SIGNER_BY_KEY.get(body.key_id)
+            : undefined;
+      if (
+        signer !== undefined &&
+        body.signature === undefined &&
+        !(options.unsigned ?? []).includes(alias)
+      )
+        body.signature = hex(signCapsuleId(id, signer));
       ids.set(alias, id);
       sealed.set(alias, { ...body, capsule_id: id });
       if (payloads !== undefined) disclosures[id] = payloads;
