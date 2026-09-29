@@ -1,16 +1,15 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""A list or an object where the verifier looks a value up in a closed set.
+"""A non-string where the verifier expects a string.
 
-Those lookups use a ``frozenset`` or a ``dict``, and a list or an object is
-unhashable, so the lookup used to raise and ``verify()`` reported only
-``verifier_internal_error``. Now each value is looked up as a string only:
+The closed-set lookups use a ``frozenset`` or a ``dict``, and a list or an
+object is unhashable, so the lookup used to raise and ``verify()`` reported
+only ``verifier_internal_error``. Now:
 
-- a closed enum refuses it with its own finding (``approver_invalid``,
-  ``provenance_mode_invalid``);
-- a registry field treats it as any unseeded value: informational, never a
-  rejection (§4, §12);
-- ``verdict_class`` and the stated assurance modes are simply not members of
-  their sets.
+- a string-typed member of disposition, effect, chain or assurance that holds
+  any other JSON type fails check 1 with ``field_not_string`` ("REQUIRED
+  fields present and typed", §6). The never-reject rule for unregistered
+  values (§4, §12) covers well-typed strings only;
+- the provenance_mode enums refuse it with ``provenance_mode_invalid``.
 
 In no case is the result ``verifier_internal_error``.
 """
@@ -47,27 +46,20 @@ def test_the_base_record_verifies():
     assert verify(_record(("action_id",), "closed-set-base")).ok
 
 
-@pytest.mark.parametrize("value", [[], {}, ["human"], {"human": 1}], ids=["list", "object", "list-of-member", "object-keyed-by-member"])
-@pytest.mark.parametrize(
-    ("path", "refused_with"),
-    [
-        (("disposition", "approver"), "approver_invalid"),
-        (("provenance_mode", "mode"), "provenance_mode_invalid"),
-    ],
+CONTAINERS = pytest.mark.parametrize(
+    "value", [[], {}, ["human"], {"human": 1}, 7, True, None],
+    ids=["list", "object", "list-of-member", "object-keyed-by-member", "number", "boolean", "null"],
 )
-def test_a_closed_enum_refuses_a_container_with_its_own_finding(path, refused_with, value):
-    result = verify(_record(path, value))
-    assert not result.ok
-    assert refused_with in _codes(result, "error")
-    assert "verifier_internal_error" not in _codes(result, "error")
 
 
-@pytest.mark.parametrize("value", [[], {}])
+@CONTAINERS
 @pytest.mark.parametrize(
     "path",
     [
-        ("disposition", "verdict_class"),
+        ("disposition", "approver"),
         ("disposition", "decision"),
+        ("disposition", "verdict_class"),
+        ("effect", "status"),
         ("effect", "type"),
         ("effect", "irreversibility_class"),
         ("effect", "effect_attestation"),
@@ -77,17 +69,42 @@ def test_a_closed_enum_refuses_a_container_with_its_own_finding(path, refused_wi
         ("assurance", "cross_party_rung"),
     ],
 )
-def test_a_container_elsewhere_is_judged_like_any_unseeded_value(path, value):
+def test_a_non_string_in_a_string_field_fails_check_1(path, value):
     result = verify(_record(path, value))
+    assert not result.ok
+    if path == ("disposition", "approver") and value is None:
+        # A null approver is absent, as it always was.
+        assert "missing_required_field" in _codes(result, "error")
+        return
+    typed = [f for f in result.findings if f.code == "field_not_string"]
+    assert [(f.check, f.severity) for f in typed] == [(1, "error")]
+    assert ".".join(path) in typed[0].detail
     assert "verifier_internal_error" not in _codes(result, "error")
-    assert result.ok, result.findings
+    # A type error is not an unknown value: check 8 stays silent on it.
+    assert "unknown_registry_value" not in _codes(result, "info")
 
 
-@pytest.mark.parametrize("value", [[], {}])
-def test_a_container_as_chain_relation_is_unseeded_not_a_crash(value):
+@CONTAINERS
+def test_a_non_string_chain_relation_fails_check_1(value):
     capsule = _record(("chain",), {"parent_capsule_id": "a" * 64, "relation": value})
     result = verify(capsule)
+    assert not result.ok
+    assert "field_not_string" in _codes(result, "error")
     assert "verifier_internal_error" not in _codes(result, "error")
+
+
+@pytest.mark.parametrize("value", [[], {}, ["backfilled"]])
+def test_a_container_as_provenance_mode_is_invalid_not_a_crash(value):
+    result = verify(_record(("provenance_mode", "mode"), value))
+    assert not result.ok
+    assert "provenance_mode_invalid" in _codes(result, "error")
+    assert "verifier_internal_error" not in _codes(result, "error")
+
+
+def test_an_unregistered_string_is_still_informational():
+    """The never-reject rule is unchanged for a well-typed unregistered value."""
+    result = verify(_record(("effect", "type"), "x-unregistered"))
+    assert result.ok
     assert "unknown_registry_value" in _codes(result, "info")
 
 
@@ -107,10 +124,3 @@ def test_a_container_as_time_rung_is_invalid_not_a_crash(value):
     result = verify(capsule)
     assert "verifier_internal_error" not in _codes(result, "error")
     assert "provenance_mode_invalid" in _codes(result, "error")
-
-
-def test_a_registry_value_that_is_a_number_is_still_unseeded():
-    """Unchanged behaviour: a hashable non-string was always unseeded."""
-    result = verify(_record(("effect", "type"), 7))
-    assert result.ok
-    assert "unknown_registry_value" in _codes(result, "info")

@@ -92,6 +92,25 @@ _REGISTRY_FIELDS = (
     ("chain.relation", ("chain", "relation")),
 )
 
+# String-typed members of the blocks, in check-1 emission order. A value of
+# any other JSON type (a number, a boolean, null, a list, an object) fails
+# check 1 ("REQUIRED fields present and typed", §6). The never-reject rule for
+# unregistered values (§4, §12) covers well-typed strings only: a list where a
+# string belongs is a type error, not an unknown value.
+_STRING_MEMBERS = (
+    ("disposition", "decision"),
+    ("disposition", "verdict_class"),
+    ("effect", "status"),
+    ("effect", "type"),
+    ("effect", "irreversibility_class"),
+    ("effect", "effect_attestation"),
+    ("chain", "relation"),
+    ("assurance", "effect_mode"),
+    ("assurance", "attestation_mode"),
+    ("assurance", "ledger_mode"),
+    ("assurance", "cross_party_rung"),
+)
+
 
 @dataclass(frozen=True)
 class Finding:
@@ -366,7 +385,9 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         approver = disposition.get("approver")
         if approver is None:
             findings.append(Finding("missing_required_field", "disposition.approver is REQUIRED (§5.4)", check=1))
-        elif not isinstance(approver, str) or approver not in VALID_APPROVERS:
+        elif not isinstance(approver, str):
+            findings.append(Finding("field_not_string", "disposition.approver MUST be a string (§5.4)", check=1))
+        elif approver not in VALID_APPROVERS:
             # Closed enum, structural — NOT an unknown-registry finding (§6).
             findings.append(Finding("approver_invalid", f"disposition.approver MUST be human|policy|counterparty (§5.4); got {approver!r}", check=1))
         if "decision" not in disposition:
@@ -382,6 +403,11 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
                 "defensive warning, not a §6 gating check.",
                 severity="warning",
             ))
+
+    for block, member in _STRING_MEMBERS:
+        blk = _obj(capsule, block)
+        if blk is not None and member in blk and not isinstance(blk[member], str):
+            findings.append(Finding("field_not_string", f"{block}.{member} MUST be a string when present (§6 check 1)", check=1))
 
     findings.extend(reference_checks.get(1, []))
 
@@ -482,12 +508,14 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         val = blk.get(member)
         if val is None:
             continue
-        # A value that is not a string (a number, a list, an object) is never
-        # a seeded value: it takes the unknown-value path, like any other.
-        seeded = registries.get(reg_name, frozenset())
-        if isinstance(val, str) and val in seeded:
+        # A value that is not a string is a type error, reported by check 1;
+        # only a well-typed value can be an unknown one.
+        if not isinstance(val, str):
             continue
-        prov_class = provisional.get(reg_name, {}).get(val) if isinstance(val, str) else None
+        seeded = registries.get(reg_name, frozenset())
+        if val in seeded:
+            continue
+        prov_class = provisional.get(reg_name, {}).get(val)
         if prov_class is not None:
             findings.append(Finding(
                 "known_provisional_registry_value",

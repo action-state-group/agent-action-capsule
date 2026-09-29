@@ -99,6 +99,21 @@ export function isV4IrreversibilityClass(value: string): boolean {
   return v4IrreversibilityClasses.has(value);
 }
 
+/** String-typed block members, in check-1 emission order. */
+const STRING_MEMBERS = [
+  ["disposition", "decision"],
+  ["disposition", "verdict_class"],
+  ["effect", "status"],
+  ["effect", "type"],
+  ["effect", "irreversibility_class"],
+  ["effect", "effect_attestation"],
+  ["chain", "relation"],
+  ["assurance", "effect_mode"],
+  ["assurance", "attestation_mode"],
+  ["assurance", "ledger_mode"],
+  ["assurance", "cross_party_rung"],
+] as const;
+
 /** AAC Class 1 verification. It always returns a structured result. */
 export async function verifyClass1(
   capsule: ParsedJson,
@@ -227,10 +242,16 @@ export async function verifyClass1(
     );
   const disposition = object(top.disposition);
   if (disposition !== undefined) {
-    if (typeof disposition.approver !== "string")
+    if (disposition.approver === undefined || disposition.approver === null)
       add(
         "missing_required_field",
         "disposition.approver is REQUIRED (§5.4)",
+        1,
+      );
+    else if (typeof disposition.approver !== "string")
+      add(
+        "field_not_string",
+        "disposition.approver MUST be a string (§5.4)",
         1,
       );
     else if (
@@ -259,6 +280,24 @@ export async function verifyClass1(
         "human_disposed=true with non-human approver (§5.4)",
         undefined,
         "warning",
+      );
+  }
+  // A string-typed member holding any other JSON type (a number, a boolean,
+  // null, a list, an object) fails check 1 ("REQUIRED fields present and
+  // typed", §6). The never-reject rule for unregistered values (§4, §12)
+  // covers well-typed strings only: a list where a string belongs is a type
+  // error, not an unknown value.
+  for (const [block, member] of STRING_MEMBERS) {
+    const members = object(top[block]);
+    if (
+      members !== undefined &&
+      Object.hasOwn(members, member) &&
+      typeof members[member] !== "string"
+    )
+      add(
+        "field_not_string",
+        `${block}.${member} MUST be a string when present (§6 check 1)`,
+        1,
       );
   }
   findings.push(...references.filter((finding) => finding.check === 1));
