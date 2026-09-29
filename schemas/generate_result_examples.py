@@ -52,6 +52,20 @@ The maintainer's second pass (2026-09-28) adds four negatives:
     the claim's `evidence[]`. Both refs MUST resolve inside `evidence[]`;
     the checker rejects each. Schema-valid.
 
+The maintainer's third pass (2026-09-29) -- "neither book_id nor signer
+alone is enough, since a producer can mint a second book or a second key
+equally easily" -- makes the counterparty rule three-part: (1) a different
+`book_id`, (2) the linking book equals the claim's named `peer`, (3) a
+different signer key (enforced where the signer is visible: the emitter
+and the CLI; the record header here carries none). Two more negatives:
+  - neg-close-agreed-third-book: the acknowledging record is from a third
+    book (`oo-audit`, seq 7) that is not the named peer `oo-sor`. A
+    different book, but not the peer: the walk reads UNILATERAL.
+  - neg-close-agreed-bookless-close: the cited Close carries no `book_id`;
+    the named peer's record acknowledges it. A Close that names no book
+    has no counterparty: the walk reads UNILATERAL. (The Close record
+    differs, so every digest in this fixture is its own.)
+
 Regenerate with:
     python3 schemas/generate_result_examples.py
 Then check with:
@@ -425,6 +439,39 @@ own_ack_content: RecordDoc = {
     "subject_ref": RECONCILE_CONTRACT_REF,
     "statement": {"period": DAY_1, "note": "OO record from OO's own book acknowledging OO's own Close, v0 placeholder"},
 }
+# A record from a THIRD book -- `oo-audit`, neither OO's own book nor the
+# named peer `oo-sor` -- that `acknowledges` OO's Close (2026-09-29,
+# maintainer's third pass: "a producer can mint a second book ... equally
+# easily"). A different book_id is necessary, not sufficient: the linking
+# book must be the claim's named peer. The walk ignores it and reads
+# UNILATERAL.
+third_book_ack_content: RecordDoc = {
+    "v": 1,
+    "book_id": "oo-audit",
+    "seq": 7,
+    "record_type": "close",
+    "epistemic_type": "producer_claim",
+    "committed_at": "2026-09-02T00:20:00Z",
+    "event_time_claim": "2026-09-02T00:00:00Z",
+    "links": [{"type": "acknowledges", "target": OWN_CLOSE_DIGEST}],
+    "subject_ref": RECONCILE_CONTRACT_REF,
+    "statement": {"period": DAY_1, "note": "record from a third book (oo-audit) acknowledging OO's Close, v0 placeholder"},
+}
+# OO's Close with NO `book_id` at all (third pass): a Close that names no
+# book has no counterparty, so no linker -- not even the named peer's --
+# can make it AGREED. Its digest differs from OWN_CLOSE_DIGEST, so the
+# peer's acknowledging record below targets THIS digest.
+bookless_close_content: RecordDoc = {
+    key: value for key, value in own_close_content.items() if key != "book_id"
+}
+BOOKLESS_CLOSE_DIGEST = json_digest(bookless_close_content)
+peer_ack_of_bookless_close_content: RecordDoc = {
+    **_peer_record(20, None, "OO peer (oo-sor) Close record acknowledging OO's book-less Close, v0 placeholder"),
+    "links": [
+        {"type": "closes", "target": json_digest({"note": "oo-sor 2026-09-01 record set, v0 placeholder"})},
+        {"type": "acknowledges", "target": BOOKLESS_CLOSE_DIGEST},
+    ],
+}
 close_proof_content = {"note": "OO Close inclusion proof, v0 placeholder"}
 
 # --- close-1 (AGREED) -- the peer's Close cites ours back ----------------
@@ -586,6 +633,34 @@ neg_close_agreed_self_acknowledged = _close_result(
     close_self_acknowledged, "OO Close -- 2026-09-01 (agreed by OO's own book)"
 )
 
+# --- neg-close-agreed-third-book -- an AGREED close whose acknowledging ---
+#     record is from a THIRD book (oo-audit): a different book_id, but not
+#     the named peer oo-sor. Schema-valid; the walk ignores a link from a
+#     book that is not the claim's `peer`, reads UNILATERAL, rejects.
+close_third_book: ClaimDoc = json.loads(json.dumps(close_agreed))
+close_third_book["evidence"] = [digest_ref(own_close_content), digest_ref(third_book_ack_content)]
+close_third_book["presentation"]["evidence"] = [digest_ref(own_close_content), digest_ref(third_book_ack_content)]
+close_third_book["close"]["peer_close_ref"] = digest_ref(third_book_ack_content)
+neg_close_agreed_third_book = _close_result(
+    close_third_book, "OO Close -- 2026-09-01 (agreed by a third book, not the named peer)"
+)
+
+# --- neg-close-agreed-bookless-close -- the cited Close carries no --------
+#     `book_id`; the named peer's record acknowledges it. Schema-valid (the
+#     schema never sees the record); the walk lets no linker count against
+#     a Close that names no book, reads UNILATERAL, rejects.
+close_bookless: ClaimDoc = json.loads(json.dumps(close_agreed))
+close_bookless["evidence"] = [digest_ref(bookless_close_content), digest_ref(peer_ack_of_bookless_close_content)]
+close_bookless["presentation"]["evidence"] = [
+    digest_ref(bookless_close_content),
+    digest_ref(peer_ack_of_bookless_close_content),
+]
+close_bookless["close"]["close_ref"] = digest_ref(bookless_close_content)
+close_bookless["close"]["peer_close_ref"] = digest_ref(peer_ack_of_bookless_close_content)
+neg_close_agreed_bookless_close = _close_result(
+    close_bookless, "OO Close -- 2026-09-01 (agreed, but the Close names no book)"
+)
+
 # --- neg-close-ref-not-in-evidence / neg-close-peer-ref-not-in-evidence --
 #     the AGREED positive with `close_ref` (resp. `peer_close_ref`) no
 #     longer among the claim's evidence[] digests. Both refs MUST resolve
@@ -643,6 +718,8 @@ CLOSE_RECORDS: dict = {
     "neg-close-agreed-self-acknowledged": [own_close_content, own_ack_content],
     "neg-close-ref-not-in-evidence": [own_close_content, peer_close_content],
     "neg-close-peer-ref-not-in-evidence": [own_close_content, peer_close_content],
+    "neg-close-agreed-third-book": [own_close_content, third_book_ack_content],
+    "neg-close-agreed-bookless-close": [bookless_close_content, peer_ack_of_bookless_close_content],
 }
 
 # --- neg-unrecognized-claim-type -- claim-1 given a type outside ----------
@@ -675,6 +752,8 @@ def main() -> int:
     write("neg-close-agreed-self-acknowledged", neg_close_agreed_self_acknowledged)
     write("neg-close-ref-not-in-evidence", neg_close_ref_not_in_evidence)
     write("neg-close-peer-ref-not-in-evidence", neg_close_peer_ref_not_in_evidence)
+    write("neg-close-agreed-third-book", neg_close_agreed_third_book)
+    write("neg-close-agreed-bookless-close", neg_close_agreed_bookless_close)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)
     return 0

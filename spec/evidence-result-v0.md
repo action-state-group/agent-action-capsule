@@ -256,7 +256,9 @@ claim (type: close) adds:
     period: { start, end }
     close_state: UNILATERAL | AGREED | CONTESTED   # DERIVED from close_ref's inbound links; a verifier recomputes it
     close_ref: digest-ref             # REQUIRED: the Close this claim reports on, by digest
-    peer: string                      # REQUIRED iff AGREED or CONTESTED; OPTIONAL when UNILATERAL
+    peer: string                      # the NAMED peer: the only book whose acknowledges/rebuts link
+                                      #   counts (book_id == peer, != the Close's, different key);
+                                      #   REQUIRED iff AGREED or CONTESTED; OPTIONAL when UNILATERAL
                                       #   (the peer this Close was reconciled against, unanswered)
     peer_close_ref: digest-ref        # the peer's acknowledging Close (AGREED) or rebutting record
                                       #   (CONTESTED), by digest; OPTIONAL when UNILATERAL (the
@@ -265,9 +267,11 @@ claim (type: close) adds:
 
 **`close_state` is the Evidence Layer's three-state Close status** (`draft-mih-agent-evidence-layer-00`,
 "Reconcile and Close"), the same three values `schemas/judge/close-v1.json`'s `reconcile.status` carries:
-`AGREED` — a record from the counterparty carries an `acknowledges` link to this Close; `CONTESTED` — a
-record carries a `rebuts` link to this Close; `UNILATERAL` — neither, "no corresponding `acknowledges` link
-exists yet." That document rules that Close status "is read from the links other records make to it, not
+`AGREED` — this Close is **acknowledged by the named peer's book under a different key**: a record whose
+`book_id` is the claim's `peer` (and not the Close's own), signed under a key other than the Close's, carries
+an `acknowledges` link to it — not "acknowledged by an independent party", until the contract pins the peer's
+key (2026-09-29, maintainer's third pass); `CONTESTED` — such a counterparty record carries a `rebuts` link to
+this Close; `UNILATERAL` — neither, "no corresponding `acknowledges` link exists yet." That document rules that Close status "is read from the links other records make to it, not
 from a field the Close itself sets." A claim's `close_state` is therefore the state the Result builder
 *read* from the Close record's inbound links at build time — a reporting convenience, exactly as
 `close-v1.json` labels its own `status` — never a state the Close asserts about itself; a verifier
@@ -299,17 +303,28 @@ records — `neg-close-agreed-relabelled-contested.json` (§11) is schema-valid 
 checker's link walk over the fixture's `.records.json`; a renderer that cannot see the cited records
 MUST mark the state it shows as producer-asserted, never bare.
 
-**Three bindings from the maintainer's second pass (normative, 2026-09-28).** *(1) A link counts only
-from the counterparty.* An `acknowledges` or `rebuts` link makes a state only when the linking record
-comes from a different store than the Close: the record's `book_id` — the store identity the evidence-book
-record header carries, the shape a bundle discloses and every `.records.json` here uses — MUST be present
-and MUST differ from the cited Close's `book_id`. (The Evidence Layer draft's own header names no store
+**Three bindings from the maintainer's second and third passes (normative, 2026-09-28 / 2026-09-29).**
+*(1) A link counts only from the counterparty — and the counterparty is the named peer's book under a
+different key.* Neither a different `book_id` nor a different signer alone is enough: a producer can mint
+a second book or a second key equally easily. An `acknowledges` or `rebuts` link makes a state only when
+the linking record satisfies **all three** of: **(a)** its `book_id` — the store identity the evidence-book
+record header carries, the shape a bundle discloses and every `.records.json` here uses — is present and
+differs from the cited Close's `book_id`; **(b)** its `book_id` equals the claim's named `peer`; **(c)** it
+is signed under a different key than the Close. (The Evidence Layer draft's own header names no store
 field; its `principal_ref` is opaque and host-defined, and the draft states the Close rule at store level —
-"a record from the counterparty" — so `book_id` is the field a verifier keys on.) A link from a record in
-the Close's own book, or from a record with no `book_id`, is ignored by the walk: a producer cannot agree
-with itself, and `peer_close_ref` MUST cite a counterparty record. `neg-close-agreed-self-acknowledged`
-(§11) asserts `AGREED` over an acknowledgement from book `oo`, the Close's own; it is schema-valid and the
-walk reads it `UNILATERAL`. *(2) A `CONTESTED` Close never counts as met.* While a counterparty's `rebuts`
+"a record from the counterparty" — so `book_id` is the field a verifier keys on for (a) and (b).) The
+record header carries no signer, so (a) and (b) are enforced by the schema checker's link walk and (c) is
+enforced where the signer is visible — the emitter's Result-root verifier (a record's local Producer
+Envelope `key_id`) and the CLI — never by the schema. **A Close with no `book_id` accepts no linker**
+(`UNILATERAL` at best). A link from a record in the Close's own book, from a record with no `book_id`, or
+from a third book that is not the named peer is ignored by the walk: a producer cannot agree with itself,
+a third book is not the peer, and `peer_close_ref` MUST cite a counterparty record. Until the contract
+pins the peer's key, `AGREED` therefore means "acknowledged by the named peer's book under a different
+key", not "acknowledged by an independent party". `neg-close-agreed-self-acknowledged` (§11) asserts
+`AGREED` over an acknowledgement from book `oo`, the Close's own; `neg-close-agreed-third-book` over one
+from `oo-audit`, a third book that is not the named peer `oo-sor`; `neg-close-agreed-bookless-close` over
+the named peer's acknowledgement of a Close that names no book — each is schema-valid and the walk reads
+it `UNILATERAL`. *(2) A `CONTESTED` Close never counts as met.* While a counterparty's `rebuts`
 link stands, the clause the claim reports on is at best `not_met` (sufficiency `SATISFIED` — the Close and
 the rebuttal are both in evidence, nothing is missing) or `not_evaluable` (a sufficiency gap); `verdict:
 met` under `close_state: CONTESTED` fails validation (schema-enforced, `Claim`'s third `allOf` rule;

@@ -115,17 +115,26 @@ ship their positive's records unchanged; they are rejected by the schema before 
 |---|---|---|
 | `neg-close-agreed-relabelled-contested.json` (+ `.records.json`, identical to the CONTESTED positive's) | `claims[1].close.close_state` relabelled `CONTESTED` → `AGREED`; `peer_close_ref` still cites the record that `rebuts` OO's Close; `view.title` says so | **Validates against the schema** — that is the hole. The checker recomputes `CONTESTED` from the `rebuts` link and fails the claim on the mismatch. Mutant: a walk that trusts the asserted field (the pre-review behaviour) accepts the same fixture; the restored walk re-rejects it |
 
-**The maintainer's second pass (2026-09-28)** — three more link-walk negatives, each schema-valid, each
-with its own walk mutant. The counterparty check keys on **`book_id`**, the store identity the
+**The maintainer's second and third passes (2026-09-28 / 2026-09-29)** — five more link-walk negatives,
+each schema-valid, each with its own walk mutant. The counterparty rule is **three-part** (third pass:
+"neither book_id nor signer alone is enough, since a producer can mint a second book or a second key
+equally easily"): a link counts only from a record whose **(1) `book_id`** — the store identity the
 evidence-book record header carries (the -00 draft's header names no store field; its `principal_ref`
 is opaque and host-defined, and the draft states the Close rule at store level — "a record from the
-counterparty"):
+counterparty") — is present and differs from the Close's, **(2)** equals the claim's named **`peer`**,
+and **(3)** is signed under a **different key** than the Close. The checker enforces (1) and (2); (3)
+needs the signer, which the header does not carry, and is enforced by the emitter's Result-root
+verifier and the CLI. A Close with **no `book_id` accepts no linker**. So `AGREED` means "acknowledged
+by the named peer's book under a different key", not "by an independent party", until the contract
+pins the peer's key:
 
 | File | Records / mutation | What rejects it |
 |---|---|---|
 | `neg-close-agreed-self-acknowledged.json` (+ `.records.json`: OO's Close and **a record from OO's own book** — `oo`, seq 42 — carrying `acknowledges` → OO's Close) | `close-1` asserts `AGREED`, names `peer: oo-sor`, but `peer_close_ref` (and `evidence[]`) cite the own-book record | An `acknowledges` / `rebuts` link counts only from a **counterparty** — a record whose `book_id` is present and differs from the Close's. The walk ignores the own-book link, reads `UNILATERAL`, and fails the claim. Mutant: a walk that counts any link whatever its book (`ignore_counterparty`) accepts the fixture |
 | `neg-close-ref-not-in-evidence.json` (+ `.records.json`, the AGREED positive's) | `claims[1].evidence[]` reduced to the peer's Close only — `close_ref` no longer among the claim's evidence digests | `close_ref.digest` MUST resolve inside `evidence[]`. Mutant: skipping the membership check (`skip_evidence_membership`) accepts the fixture |
 | `neg-close-peer-ref-not-in-evidence.json` (+ `.records.json`, the AGREED positive's) | `claims[1].evidence[]` reduced to OO's own Close only — `peer_close_ref` no longer among the claim's evidence digests | `peer_close_ref.digest` MUST resolve inside `evidence[]` when present. Same mutant |
+| `neg-close-agreed-third-book.json` (+ `.records.json`: OO's Close and **a record from a third book** — `oo-audit`, seq 7 — carrying `acknowledges` → OO's Close) | `close-1` asserts `AGREED`, names `peer: oo-sor`, but `peer_close_ref` (and `evidence[]`) cite the `oo-audit` record | Rule (2): a different `book_id` is necessary, not sufficient — the linking book must be the claim's **named peer**. The walk ignores the third-book link, reads `UNILATERAL`, and fails the claim. Mutant: the second-pass walk that required only a different book (`ignore_named_peer`) accepts the fixture |
+| `neg-close-agreed-bookless-close.json` (+ `.records.json`: **OO's Close with no `book_id`** and the named peer's record — `oo-sor`, seq 20 — carrying `acknowledges` → that Close; every digest is this fixture's own) | `close-1` asserts `AGREED` over a Close that names no book; the acknowledger is the named peer | **A Close with no `book_id` accepts no linker**: nothing can be its counterparty. The walk reads `UNILATERAL` and fails the claim. Mutant: a walk that runs (1) and (2) against a missing book (`accept_bookless_close`) accepts the fixture |
 
 The walk also applies the CONTESTED-is-never-met rule to the **recomputed** state (a Close whose links
 read `CONTESTED` with `verdict: met` fails), so relabelling the asserted state cannot rescue `met`; the

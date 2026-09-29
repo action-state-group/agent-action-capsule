@@ -95,6 +95,36 @@ mechanical half):
          usual strip-the-rule mutant), and the walk applies the same rule
          to the RECOMPUTED state, so relabelling the state away does not
          rescue `met`. The CONTESTED positive now carries `not_met`.
+  7. THE MAINTAINER'S THIRD PASS (2026-09-29): "neither book_id nor signer
+     alone is enough, since a producer can mint a second book or a second
+     key equally easily." The counterparty rule is now three-part, and this
+     checker enforces the two parts a record header can show:
+       (1) the linking record's `book_id` is present and differs from the
+           cited Close's `book_id`;
+       (2) the linking record's `book_id` equals the Close claim's named
+           `peer` (the record header carries no peer field; the claim's
+           `close.peer` is the named peer);
+       (3) the linking record is signed under a different key than the
+           Close -- NOT checked here: the header carries no signer. It is
+           enforced where the signer is visible: the emitter's Result-root
+           verifier (a record's local Producer Envelope `key_id`) and the
+           CLI.
+     A Close with no `book_id` accepts no linker at all (UNILATERAL at
+     best). AGREED therefore means "acknowledged by the named peer's book
+     under a different key", not "by an independent party", until the
+     contract pins the peer's key. Two more link negatives, each with its
+     own mutant:
+       - neg-close-agreed-third-book.json: the acknowledging record is from
+         a third book (`oo-audit`, seq 7) that is not the named peer
+         `oo-sor`. Rule (1) passes, rule (2) fails; the walk reads
+         UNILATERAL. Mutant `ignore_named_peer`: the second-pass walk, which
+         required only a different book.
+       - neg-close-agreed-bookless-close.json: the cited Close carries no
+         `book_id` at all; the named peer's record acknowledges it. Rejected
+         as UNILATERAL: nothing can be a counterparty to a Close that names
+         no book. Mutant `accept_bookless_close`: a walk that lets rules (1)
+         and (2) run against a missing book (`book != None` is true for any
+         book, so the named peer's link counts).
 
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
@@ -171,9 +201,25 @@ LINK_NEGATIVES = [
         "skip_evidence_membership",
         "the close_ref/peer_close_ref-in-evidence[] check",
     ),
+    (
+        "neg-close-agreed-third-book",
+        "ignore_named_peer",
+        "the linking book must be the claim's named peer",
+    ),
+    (
+        "neg-close-agreed-bookless-close",
+        "accept_bookless_close",
+        "a Close with no book_id accepts no linker",
+    ),
 ]
 
-WALK_MUTANTS = ("trust_asserted", "ignore_counterparty", "skip_evidence_membership")
+WALK_MUTANTS = (
+    "trust_asserted",
+    "ignore_counterparty",
+    "skip_evidence_membership",
+    "ignore_named_peer",
+    "accept_bookless_close",
+)
 
 CLOSE_LINK_TYPES = ("acknowledges", "rebuts")
 
@@ -195,23 +241,40 @@ def _records_for(name: str) -> list[RecordDoc] | None:
 
 
 def derive_close_state(
-    records_by_digest: dict[str, RecordDoc], close_digest: str, ignore_counterparty: bool = False
+    records_by_digest: dict[str, RecordDoc],
+    close_digest: str,
+    peer: str | None,
+    mutant: str | None = None,
 ) -> tuple[str, dict[str, set[str]], dict[str, set[str]]]:
     """(state, {counterparty record digest: {link types}}, {ignored record
     digest: {link types}}) read from the inbound `acknowledges` / `rebuts`
     links at `close_digest` -- spec section 4.1's rule: any `rebuts` =>
     CONTESTED; else any `acknowledges` => AGREED; else UNILATERAL. Never
     reads a state field from any record. A link counts only from a
-    COUNTERPARTY: a record whose `book_id` is present and differs from the
-    Close's (2026-09-28); a link from the Close's own book, or from a record
-    with no `book_id`, is returned as ignored and makes no state.
-    `ignore_counterparty=True` is the MUTANT that counts every link."""
+    COUNTERPARTY (2026-09-29, third pass -- all of):
+      (1) the linking record's `book_id` is present and differs from the
+          Close's;
+      (2) it equals `peer`, the Close claim's named peer (`close.peer`);
+      (3) [not visible here] the record is signed under a different key --
+          the emitter's Result-root verifier and the CLI enforce that.
+    A Close with no `book_id` accepts no linker: every link is returned as
+    ignored and the state is UNILATERAL. Mutants (each the walk a rule
+    replaced): `ignore_counterparty` counts every link; `ignore_named_peer`
+    requires only a different book (the second-pass walk);
+    `accept_bookless_close` runs (1) and (2) against a Close with no book."""
     close_book = records_by_digest[close_digest].get(COUNTERPARTY_FIELD)
     linking: dict[str, set[str]] = {}
     ignored: dict[str, set[str]] = {}
     for digest, record in records_by_digest.items():
         book = record.get(COUNTERPARTY_FIELD)
-        counterparty = ignore_counterparty or (book is not None and book != close_book)
+        if mutant == "ignore_counterparty":
+            counterparty = True
+        elif close_book is None and mutant != "accept_bookless_close":
+            counterparty = False
+        else:
+            counterparty = book is not None and book != close_book
+            if mutant != "ignore_named_peer":
+                counterparty = counterparty and book == peer
         for link in record.get("links") or []:
             if link.get("target") == close_digest and link.get("type") in CLOSE_LINK_TYPES:
                 (linking if counterparty else ignored).setdefault(digest, set()).add(link["type"])
@@ -233,7 +296,9 @@ def close_state_findings(
     that rule load-bearing: `trust_asserted` resolves close_ref but never
     walks a link (the pre-review verifier); `ignore_counterparty` counts a
     link from the Close's own book; `skip_evidence_membership` never holds
-    close_ref / peer_close_ref to the claim's evidence[]."""
+    close_ref / peer_close_ref to the claim's evidence[]; `ignore_named_peer`
+    counts a link from any other book, not only the claim's named peer;
+    `accept_bookless_close` lets a Close with no book_id take a linker."""
     if mutant is not None and mutant not in WALK_MUTANTS:
         raise ValueError(f"unknown walk mutant {mutant!r}")
     findings = []
@@ -268,15 +333,17 @@ def close_state_findings(
             # peer_close_ref to -- every check below is the walk.
             continue
         derived, linking, ignored = derive_close_state(
-            by_digest, close_digest, ignore_counterparty=(mutant == "ignore_counterparty")
+            by_digest, close_digest, close.get("peer"), mutant=mutant
         )
         if derived != asserted:
             read = ", ".join(sorted(t for ts in linking.values() for t in ts)) or "no counterparty acknowledges/rebuts link"
             if ignored:
-                read += (
-                    f"; ignored {', '.join(sorted(t for ts in ignored.values() for t in ts))} "
-                    f"from a record in the Close's own {COUNTERPARTY_FIELD} or with none"
+                why = (
+                    f"the Close carries no {COUNTERPARTY_FIELD}, so nothing can be its counterparty"
+                    if by_digest[close_digest].get(COUNTERPARTY_FIELD) is None
+                    else f"a record in the Close's own {COUNTERPARTY_FIELD}, with none, or not the named peer"
                 )
+                read += f"; ignored {', '.join(sorted(t for ts in ignored.values() for t in ts))} from {why}"
             findings.append(
                 f"{name}: claims[{index}].close.close_state is asserted {asserted} but the "
                 f"cited Close's inbound links read {derived} ({read})"
