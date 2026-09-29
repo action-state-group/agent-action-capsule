@@ -28,6 +28,7 @@ Run:  cd python && PYTHONPATH=. python3 scripts/generate_typed_field_vectors.py
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -213,8 +214,25 @@ def build_provenance_cases() -> list[dict]:
     return cases
 
 
-def write_corpus(out: Path, cases: list[dict], sums: list[tuple[Path, Path]]) -> None:
-    """Write ``cases`` into ``out`` and its manifest; update each (SHA256SUMS, root)."""
+def update_listed_case_sums(sums: Path, root: Path, paths: list[Path]) -> None:
+    """provenance-mode-vectors/SHA256SUMS style: case files only (no manifest),
+    ordered by path component, so every existing line keeps its place."""
+    lines = {line.split("  ", 1)[1]: line for line in sums.read_text(encoding="utf-8").splitlines()}
+    for path in paths:
+        if path.parent == root:
+            continue
+        name = path.relative_to(root).as_posix()
+        lines[name] = f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {name}"
+    ordered = sorted(lines, key=lambda name: tuple(name.split("/")))
+    sums.write_text("".join(lines[n] + "\n" for n in ordered), encoding="utf-8")
+
+
+def write_corpus(out: Path, cases: list[dict], sums: list[tuple], ensure_ascii: bool) -> None:
+    """Write ``cases`` into ``out`` and its manifest; apply each (updater, SHA256SUMS, root).
+
+    ``ensure_ascii`` is the manifest's existing style: each manifest is frozen
+    byte for byte except for the entries appended here.
+    """
     manifest_path = out / "vectors.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     by_name = {case["name"]: i for i, case in enumerate(manifest["cases"])}
@@ -236,16 +254,18 @@ def write_corpus(out: Path, cases: list[dict], sums: list[tuple[Path, Path]]) ->
         else:
             manifest["cases"].append(entry)
     manifest["count"] = len(manifest["cases"])
-    manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=ensure_ascii) + "\n", encoding="utf-8")
     touched.append(manifest_path)
-    for sums_file, root in sums:
-        update_sums(sums_file, root, touched)
+    for updater, sums_file, root in sums:
+        updater(sums_file, root, touched)
     print(f"wrote {len(cases)} typed-field vectors to {out}")
 
 
 def main() -> None:
-    write_corpus(OUT, build_cases(), [(OUT / "SHA256SUMS", OUT), (VECTORS / "SHA256SUMS", VECTORS)])
-    write_corpus(PM_OUT, build_provenance_cases(), [(PM_OUT / "SHA256SUMS", PM_OUT)])
+    write_corpus(OUT, build_cases(), [(update_sums, OUT / "SHA256SUMS", OUT),
+                                      (update_sums, VECTORS / "SHA256SUMS", VECTORS)], ensure_ascii=False)
+    write_corpus(PM_OUT, build_provenance_cases(), [(update_listed_case_sums, PM_OUT / "SHA256SUMS", PM_OUT)],
+                 ensure_ascii=True)
 
 
 if __name__ == "__main__":
