@@ -7,9 +7,8 @@ Validates every committed judge-record-family-v1 example fixture
 (vectors/judge/) against its schema (schemas/judge/*.json), proves each
 negative fixture's rejection is load-bearing (the
 mutant check -- strip the rule, confirm the SAME fixture now validates,
-restore, confirm it rejects again), and extends capsule-engine's Batch 1
-epistemic_type parity pattern (commit ba7b7a0,
-schemas/vendor/epistemic-types.json) to this family: every schema's
+restore, confirm it rejects again), and applies an epistemic_type parity
+check to this family: every schema's
 epistemic_type const, a python-side record of the same assignment
 (SCHEMA_EPISTEMIC_TYPES, below), and this repository's own vendored copy of
 the Evidence Layer's closed value set (schemas/vendor/epistemic-types.json)
