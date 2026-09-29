@@ -12,6 +12,31 @@ import "fmt"
 // entry's retention object (§5.5.5), checked in this order within each entry.
 var retentionStringMembers = []string{"declarant", "retained_until", "not_retained_after"}
 
+// retentionFindings adds the check-1 findings for a references[] entry's
+// retention (§5.5.5), in order: the object itself, its REQUIRED declarant
+// (absent or null is missing, as for disposition.approver), the type of each
+// member, and at least one bound.
+func retentionFindings(raw interface{}, path string, add func(code, detail string, check int, severity string)) {
+	retention := asMap(raw)
+	if retention == nil {
+		add("field_not_object", path+" MUST be a JSON object when present (§5.5.5)", 1, "error")
+		return
+	}
+	for _, field := range retentionStringMembers {
+		v, present := retention[field]
+		if field == "declarant" && v == nil {
+			add("missing_required_field", path+".declarant is REQUIRED (§5.5.5)", 1, "error")
+		} else if _, isString := v.(string); present && !isString {
+			add("field_not_string", path+"."+field+" MUST be a string when present (§5.5.5)", 1, "error")
+		}
+	}
+	_, hasFloor := retention["retained_until"]
+	_, hasCeiling := retention["not_retained_after"]
+	if !hasFloor && !hasCeiling {
+		add("retention_empty", path+" MUST carry retained_until or not_retained_after (§5.5.5)", 1, "error")
+	}
+}
+
 func referenceFindings(capsule map[string]interface{}, known map[string]map[string]bool) []Finding {
 	if capsule["format_version"] != "4" {
 		return nil
@@ -62,14 +87,8 @@ func referenceFindings(capsule map[string]interface{}, known map[string]map[stri
 				add("unknown_registry_value", path+".citation_purpose is not seeded; informational, not rejected (§12)", 8, "info")
 			}
 		}
-		if retention := asMap(ref["retention"]); retention != nil {
-			for _, field := range retentionStringMembers {
-				if v, present := retention[field]; present {
-					if _, isString := v.(string); !isString {
-						add("field_not_string", path+".retention."+field+" MUST be a string when present (§5.5.5)", 1, "error")
-					}
-				}
-			}
+		if rawRetention, present := ref["retention"]; present {
+			retentionFindings(rawRetention, path+".retention", add)
 		}
 		if rawCoordinates, present := ref["log_coordinates"]; present {
 			coordinates := asMap(rawCoordinates)

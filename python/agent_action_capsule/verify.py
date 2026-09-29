@@ -121,6 +121,27 @@ _STRING_MEMBERS = (
 # String-typed members of a references[] entry's retention object (§5.5.5),
 # checked the same way, in this order, within each entry's findings.
 _RETENTION_STRING_MEMBERS = ("declarant", "retained_until", "not_retained_after")
+_RETENTION_BOUNDS = ("retained_until", "not_retained_after")
+
+
+def _retention_findings(retention: Any, path: str) -> list:
+    """Check-1 findings for a references[] entry's retention (§5.5.5), in order:
+    the object itself, its REQUIRED declarant (absent or null is missing, as for
+    disposition.approver), the type of each member, and at least one bound."""
+    if not isinstance(retention, Mapping):
+        return [Finding("field_not_object", f"{path} MUST be a JSON object when present (§5.5.5)", check=1)]
+    findings = []
+    for fld in _RETENTION_STRING_MEMBERS:
+        value = retention.get(fld)
+        if fld == "declarant" and value is None:
+            findings.append(Finding("missing_required_field", f"{path}.declarant is REQUIRED (§5.5.5)", check=1))
+        elif fld in retention and not isinstance(value, str):
+            findings.append(Finding("field_not_string", f"{path}.{fld} MUST be a string when present (§5.5.5)", check=1))
+    if not any(bound in retention for bound in _RETENTION_BOUNDS):
+        findings.append(Finding(
+            "retention_empty", f"{path} MUST carry retained_until or not_retained_after (§5.5.5)", check=1
+        ))
+    return findings
 
 
 @dataclass(frozen=True)
@@ -221,13 +242,8 @@ def _reference_findings(
                     f"{path}.citation_purpose is not seeded; informational, not rejected (§12)",
                     severity="info", check=8,
                 ))
-        retention = ref.get("retention")
-        if isinstance(retention, Mapping):
-            for fld in _RETENTION_STRING_MEMBERS:
-                if fld in retention and not isinstance(retention[fld], str):
-                    findings.append(Finding(
-                        "field_not_string", f"{path}.retention.{fld} MUST be a string when present (§5.5.5)", check=1
-                    ))
+        if "retention" in ref:
+            findings.extend(_retention_findings(ref["retention"], f"{path}.retention"))
         if "log_coordinates" in ref:
             coordinates = ref.get("log_coordinates")
             if not isinstance(coordinates, Mapping):

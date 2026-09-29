@@ -177,6 +177,8 @@ def test_a_non_string_provenance_field_fails_check_1(member, value):
 @CONTAINERS
 @pytest.mark.parametrize("member", ["declarant", "retained_until", "not_retained_after"])
 def test_a_non_string_retention_field_fails_check_1(member, value):
+    if member == "declarant" and value is None:
+        pytest.skip("a null declarant is missing: test_an_absent_or_null_declarant_is_missing")
     retention = {"declarant": "ACME-CO", "retained_until": "2027-01-01T00:00:00Z", member: value}
     reference = {"type": "x-artifact", "digest_alg": "SHA-256", "digest": "3" * 64}
     result = verify(_record(("references",), [reference, {**reference, "retention": retention}]))
@@ -185,4 +187,54 @@ def test_a_non_string_retention_field_fails_check_1(member, value):
     assert [(f.check, f.detail) for f in typed] == [
         (1, f"references[1].retention.{member} MUST be a string when present (§5.5.5)")
     ]
+
+
+def _retention(retention):
+    reference = {"type": "x-artifact", "digest_alg": "SHA-256", "digest": "3" * 64}
+    return verify(_record(("references",), [reference, {**reference, "retention": retention}]))
+
+
+def _check_1(result):
+    return [(f.code, f.detail) for f in result.findings if f.check == 1 and f.severity == "error"]
+
+
+@pytest.mark.parametrize("value", [[], "2027", 7, True, None], ids=["list", "string", "number", "boolean", "null"])
+def test_a_non_object_retention_fails_check_1(value):
+    result = _retention(value)
+    assert not result.ok
+    assert _check_1(result) == [("field_not_object", "references[1].retention MUST be a JSON object when present (§5.5.5)")]
+
+
+@pytest.mark.parametrize("retention", [{"retained_until": "2027"}, {"declarant": None, "not_retained_after": "2027"}],
+                         ids=["absent", "null"])
+def test_an_absent_or_null_declarant_is_missing(retention):
+    result = _retention(retention)
+    assert not result.ok
+    assert _check_1(result) == [("missing_required_field", "references[1].retention.declarant is REQUIRED (§5.5.5)")]
+
+
+def test_a_retention_with_no_bound_is_empty():
+    result = _retention({"declarant": "ACME-CO"})
+    assert not result.ok
+    assert _check_1(result) == [
+        ("retention_empty", "references[1].retention MUST carry retained_until or not_retained_after (§5.5.5)")
+    ]
+
+
+def test_retention_findings_come_in_a_fixed_order():
+    result = _retention({"declarant": None})
+    assert [code for code, _ in _check_1(result)] == ["missing_required_field", "retention_empty"]
+
+
+@pytest.mark.parametrize(
+    "retention",
+    [
+        {"declarant": "ACME-CO", "retained_until": "2027-01-01T00:00:00Z"},
+        {"declarant": "ACME-CO", "not_retained_after": "2030-01-01T00:00:00Z"},
+        {"declarant": "ACME-CO", "retained_until": "2027-01-01T00:00:00Z", "not_retained_after": "2030-01-01T00:00:00Z"},
+    ],
+    ids=["floor", "ceiling", "window"],
+)
+def test_a_well_formed_retention_passes(retention):
+    assert _retention(retention).ok
 
