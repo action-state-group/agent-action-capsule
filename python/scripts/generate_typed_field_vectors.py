@@ -182,20 +182,24 @@ def build_cases() -> list[dict]:
             }),
         })
     # §5.5.5 structural rules for a retention declaration, each on references[1].
-    for name, retention, code, what in (
-        ("neg-retention-empty", {"declarant": "ACME-CO"}, "retention_empty",
+    for name, retention, codes, what in (
+        ("neg-retention-empty", {"declarant": "ACME-CO"}, ["retention_empty"],
          "carries neither retained_until nor not_retained_after"),
-        ("neg-retention-not-object", ["ACME-CO", "2027-01-01T00:00:00Z"], "field_not_object",
+        ("neg-retention-not-object", ["ACME-CO", "2027-01-01T00:00:00Z"], ["field_not_object"],
          "is a JSON list, not an object"),
-        ("neg-retention-declarant-missing", {"retained_until": "2027-01-01T00:00:00Z"}, "missing_required_field",
+        ("neg-retention-declarant-missing", {"retained_until": "2027-01-01T00:00:00Z"}, ["missing_required_field"],
          "has no declarant, which is REQUIRED"),
         ("neg-retention-declarant-null", {"declarant": None, "retained_until": "2027-01-01T00:00:00Z"},
-         "missing_required_field", "has a null declarant, which counts as missing (as for disposition.approver)"),
+         ["missing_required_field"], "has a null declarant, which counts as missing (as for disposition.approver)"),
+        ("neg-retention-null", None, ["field_not_object"],
+         "is null: present but not an object, so its members are not checked"),
+        ("neg-retention-declarant-missing-and-empty", {}, ["missing_required_field", "retention_empty"],
+         "is an empty object: no declarant and no bound, reported in that order"),
     ):
         cases.append({
             "name": name,
-            "expect": code,
-            "description": f"references[1].retention {what} -> {code} (check 1, §5.5.5).",
+            "expect": codes,
+            "description": f"references[1].retention {what} -> {', '.join(codes)} (check 1, §5.5.5).",
             "input": seal({
                 **ident(f"typed-{name[4:]}"),
                 "assurance": assurance("not_applicable", "standalone"),
@@ -267,9 +271,9 @@ def write_corpus(out: Path, cases: list[dict], sums: list[tuple], ensure_ascii: 
     for case in cases:
         expected = expected_for(case["description"], case["input"])
         codes = [(f["check"], f["severity"], f["code"]) for f in expected["findings"] if f["severity"] == "error"]
-        code = case.get("expect", "field_not_string")
-        if expected["ok"] or codes != [(1, "error", code)]:
-            raise SystemExit(f"{case['name']}: expected exactly one check-1 {code}, got {expected['findings']}")
+        want = case.get("expect", ["field_not_string"])
+        if expected["ok"] or codes != [(1, "error", code) for code in want]:
+            raise SystemExit(f"{case['name']}: expected check-1 {want}, got {expected['findings']}")
         case_dir = out / case["name"]
         case_dir.mkdir(exist_ok=True)
         write_json(case_dir / "input.json", case["input"])
