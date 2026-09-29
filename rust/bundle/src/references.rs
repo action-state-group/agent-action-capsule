@@ -9,6 +9,10 @@
 use crate::verify::{is_hex64, mkf, Finding};
 use serde_json::{Map, Value};
 
+/// String-typed members of a `references[]` entry's `retention` object
+/// (§5.5.5), checked in this order within each entry.
+const RETENTION_STRING_MEMBERS: [&str; 3] = ["declarant", "retained_until", "not_retained_after"];
+
 pub fn reference_findings(capsule: &Map<String, Value>) -> Vec<Finding> {
     if !matches!(capsule.get("format_version"), Some(Value::String(v)) if v == "4") {
         return Vec::new();
@@ -101,6 +105,18 @@ pub fn reference_findings(capsule: &Map<String, Value>) -> Vec<Finding> {
                     Some(1),
                     "error",
                 ));
+            }
+        }
+        if let Some(retention) = reference.get("retention").and_then(Value::as_object) {
+            for field in RETENTION_STRING_MEMBERS {
+                if matches!(retention.get(field), Some(v) if !v.is_string()) {
+                    findings.push(mkf(
+                        "field_not_string",
+                        &format!("{path}.retention.{field} MUST be a string when present (§5.5.5)"),
+                        Some(1),
+                        "error",
+                    ));
+                }
             }
         }
         if let Some(raw_coordinates) = reference.get("log_coordinates") {

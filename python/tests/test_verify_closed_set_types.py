@@ -153,3 +153,36 @@ def test_a_container_as_time_rung_is_invalid_not_a_crash(value):
     result = verify(capsule)
     assert "verifier_internal_error" not in _codes(result, "error")
     assert "provenance_mode_invalid" in _codes(result, "error")
+
+
+@CONTAINERS
+@pytest.mark.parametrize("member", ["source_asserted_at", "import_batch", "imported_at"])
+def test_a_non_string_provenance_field_fails_check_1(member, value):
+    provenance_mode = {
+        "mode": "backfilled",
+        "source_ref": {"type": "t", "digest_alg": "SHA-256", "digest": "d"},
+        "source_asserted_at": "2026-01-01T00:00:00Z",
+        "import_batch": "b",
+        "imported_at": "2026-01-02T00:00:00Z",
+        member: value,
+    }
+    result = verify(_record(("provenance_mode",), provenance_mode))
+    assert not result.ok
+    typed = [f for f in result.findings if f.code == "field_not_string"]
+    assert [(f.check, f.detail) for f in typed] == [
+        (1, f"provenance_mode.{member} MUST be a string when present (§6 check 1)")
+    ]
+
+
+@CONTAINERS
+@pytest.mark.parametrize("member", ["declarant", "retained_until", "not_retained_after"])
+def test_a_non_string_retention_field_fails_check_1(member, value):
+    retention = {"declarant": "ACME-CO", "retained_until": "2027-01-01T00:00:00Z", member: value}
+    reference = {"type": "x-artifact", "digest_alg": "SHA-256", "digest": "3" * 64}
+    result = verify(_record(("references",), [reference, {**reference, "retention": retention}]))
+    assert not result.ok
+    typed = [f for f in result.findings if f.code == "field_not_string"]
+    assert [(f.check, f.detail) for f in typed] == [
+        (1, f"references[1].retention.{member} MUST be a string when present (§5.5.5)")
+    ]
+

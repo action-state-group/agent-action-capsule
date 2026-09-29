@@ -118,6 +118,9 @@ const STRING_MEMBERS = [
   ["assurance", "attestation_mode"],
   ["assurance", "ledger_mode"],
   ["assurance", "cross_party_rung"],
+  ["provenance_mode", "source_asserted_at"],
+  ["provenance_mode", "import_batch"],
+  ["provenance_mode", "imported_at"],
 ] as const;
 
 /** AAC Class 1 verification. It always returns a structured result. */

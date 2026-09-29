@@ -113,7 +113,7 @@ pub struct Finding {
 /// `epoch_id` is checked the same way, just before these.
 /// `disposition.authority` is not here: §5.4 types it only as "an opaque
 /// reference", not as a string.
-const STRING_MEMBERS: [(&str, &str); 13] = [
+const STRING_MEMBERS: [(&str, &str); 16] = [
     ("disposition", "decision"),
     ("disposition", "verdict_class"),
     ("effect", "status"),
@@ -127,6 +127,9 @@ const STRING_MEMBERS: [(&str, &str); 13] = [
     ("assurance", "attestation_mode"),
     ("assurance", "ledger_mode"),
     ("assurance", "cross_party_rung"),
+    ("provenance_mode", "source_asserted_at"),
+    ("provenance_mode", "import_batch"),
+    ("provenance_mode", "imported_at"),
 ];
 
 pub fn mkf(code: &str, detail: &str, check: Option<i32>, severity: &str) -> Finding {

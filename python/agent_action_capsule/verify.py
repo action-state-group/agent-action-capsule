@@ -113,7 +113,14 @@ _STRING_MEMBERS = (
     ("assurance", "attestation_mode"),
     ("assurance", "ledger_mode"),
     ("assurance", "cross_party_rung"),
+    ("provenance_mode", "source_asserted_at"),
+    ("provenance_mode", "import_batch"),
+    ("provenance_mode", "imported_at"),
 )
+
+# String-typed members of a references[] entry's retention object (§5.5.5),
+# checked the same way, in this order, within each entry's findings.
+_RETENTION_STRING_MEMBERS = ("declarant", "retained_until", "not_retained_after")
 
 
 @dataclass(frozen=True)
@@ -214,6 +221,13 @@ def _reference_findings(
                     f"{path}.citation_purpose is not seeded; informational, not rejected (§12)",
                     severity="info", check=8,
                 ))
+        retention = ref.get("retention")
+        if isinstance(retention, Mapping):
+            for fld in _RETENTION_STRING_MEMBERS:
+                if fld in retention and not isinstance(retention[fld], str):
+                    findings.append(Finding(
+                        "field_not_string", f"{path}.retention.{fld} MUST be a string when present (§5.5.5)", check=1
+                    ))
         if "log_coordinates" in ref:
             coordinates = ref.get("log_coordinates")
             if not isinstance(coordinates, Mapping):

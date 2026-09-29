@@ -8,6 +8,10 @@ import "fmt"
 // CPB owns digest representation and comparison context, so a foreign reference
 // must not be constrained to AAC's SHA-256 hex encoding. Log coordinates are
 // recorded claims only; Class 1 never authenticates their inclusion proofs.
+// retentionStringMembers are the string-typed members of a references[]
+// entry's retention object (§5.5.5), checked in this order within each entry.
+var retentionStringMembers = []string{"declarant", "retained_until", "not_retained_after"}
+
 func referenceFindings(capsule map[string]interface{}, known map[string]map[string]bool) []Finding {
 	if capsule["format_version"] != "4" {
 		return nil
@@ -56,6 +60,15 @@ func referenceFindings(capsule map[string]interface{}, known map[string]map[stri
 				add("reference_malformed", path+".citation_purpose MUST be a non-empty string (§5.5.5)", 1, "error")
 			} else if !known["citation_purpose"][purpose] {
 				add("unknown_registry_value", path+".citation_purpose is not seeded; informational, not rejected (§12)", 8, "info")
+			}
+		}
+		if retention := asMap(ref["retention"]); retention != nil {
+			for _, field := range retentionStringMembers {
+				if v, present := retention[field]; present {
+					if _, isString := v.(string); !isString {
+						add("field_not_string", path+".retention."+field+" MUST be a string when present (§5.5.5)", 1, "error")
+					}
+				}
 			}
 		}
 		if rawCoordinates, present := ref["log_coordinates"]; present {

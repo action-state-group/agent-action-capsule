@@ -76,6 +76,39 @@ describe("complete upstream AAC corpus", () => {
     });
 });
 
+// The provenance-mode corpus is Python and Go: this verifier does not
+// implement check 9 or derive provenance_mode. Its check-1 cases still apply,
+// so they run here on ok, capsule_id and findings.
+describe("provenance_mode check-1 type cases", () => {
+  const pmRoot = resolve(root, "..", "..", "provenance-mode-vectors");
+  const pmManifest = JSON.parse(
+    readFileSync(resolve(pmRoot, "vectors.json"), "utf8"),
+  ) as { cases: Array<{ name: string }> };
+  const typed = pmManifest.cases.filter((item) =>
+    item.name.startsWith("neg-field-not-string-"),
+  );
+  it("has cases", () => expect(typed.length).toBeGreaterThan(0));
+  for (const item of typed)
+    it(item.name, async () => {
+      const input = decodeStrictJson(
+        readFileSync(resolve(pmRoot, item.name, "input.json")),
+      );
+      const expected = JSON.parse(
+        readFileSync(resolve(pmRoot, item.name, "expected.json"), "utf8"),
+      ) as {
+        ok: boolean;
+        capsule_id_recomputed: string;
+        findings: Array<{ code: string }>;
+      };
+      const actual = await verifyClass1(input);
+      expect(actual.ok).toBe(expected.ok);
+      expect(actual.capsuleId).toBe(expected.capsule_id_recomputed);
+      expect(actual.findings.map((finding) => finding.code)).toEqual(
+        expected.findings.map((finding) => finding.code),
+      );
+    });
+});
+
 describe("reference parity edge cases", () => {
   const fixture = (): Record<string, ParsedJson> =>
     decodeStrictJson(
