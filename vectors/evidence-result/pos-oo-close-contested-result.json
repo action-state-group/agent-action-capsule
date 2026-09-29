@@ -2,11 +2,12 @@
   "aggregate": {
     "buckets": {
       "met": [
-        "claim-1",
-        "close-1"
+        "claim-1"
       ],
       "not_evaluable": [],
-      "not_met": []
+      "not_met": [
+        "close-1"
+      ]
     },
     "coverage": {
       "evaluated_population": 2,
@@ -102,7 +103,7 @@
       "sufficiency": "SATISFIED",
       "tier": "recomputed",
       "type": "close",
-      "verdict": "met"
+      "verdict": "not_met"
     }
   ],
   "generated_at": "2026-09-22T00:00:00Z",

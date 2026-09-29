@@ -73,7 +73,7 @@ derivation needs both branches on one document:
 | `pos-oo-close-agreed-result.json` | `close-1` `AGREED`, `close_ref` = digest of OO's own Close, `peer: oo-sor`, `peer_close_ref` = digest of the peer's acknowledging Close | AGREED carries the peer and its acknowledging record by digest; the state is recomputed from that record's `acknowledges` link |
 | `pos-oo-close-unilateral-result.json` | `close-1` `UNILATERAL`, no `peer`, no `peer_close_ref` | UNILATERAL with nothing said about a counterparty — nothing on the row can read as agreement or dispute |
 | `pos-oo-close-unilateral-named-peer-result.json` | `close-1` `UNILATERAL`, `peer: oo-sor`, no `peer_close_ref` | UNILATERAL may name the peer it was closed against (`peer` / `peer_close_ref` are OPTIONAL on UNILATERAL, as `close-v1.json`'s unconditional `peer_close` has them; the Evidence Layer defines UNILATERAL only as "no corresponding `acknowledges` link exists yet"). Naming the peer is not agreeing with it: the row still carries no agreed affordance — `capsule-viewer`'s rule, pinned there |
-| `pos-oo-close-contested-result.json` | `close-1` `CONTESTED`, `peer: oo-sor`, `peer_close_ref` = digest of the peer's rebutting record | CONTESTED (a `rebuts` link at the Close — the Evidence Layer's third Close state) carries the peer and its rebutting record by digest; it is its own state, never the agreed mark, never UNILATERAL's wording. `close_state` on every close fixture is the state *read* from the Close's inbound links at build time, not asserted by the Close |
+| `pos-oo-close-contested-result.json` | `close-1` `CONTESTED`, `peer: oo-sor`, `peer_close_ref` = digest of the peer's rebutting record; **`verdict: not_met`** (sufficiency `SATISFIED`), bucketed under `not_met` | CONTESTED (a `rebuts` link at the Close — the Evidence Layer's third Close state) carries the peer and its rebutting record by digest; it is its own state, never the agreed mark, never UNILATERAL's wording — and **never counts as met** (2026-09-28): while the rebuttal stands the clause is `not_met`. `close_state` on every close fixture is the state *read* from the Close's inbound links at build time, not asserted by the Close |
 
 Negatives, each one field away from its positive, each with a mutant/load-bearing check:
 
@@ -83,6 +83,7 @@ Negatives, each one field away from its positive, each with a mutant/load-bearin
 | `neg-close-contested-without-peer-close-ref.json` | `claims[1].close.peer_close_ref` removed (state stays `CONTESTED`) | same rule, CONTESTED branch: a contested close must cite the rebutting record |
 | `neg-reconcile-tallies-missing-state.json` | `claims[1].reconcile.tallies.unresolved` removed | `ReconcileTallies` requires all six states — an absent key is never an implied zero |
 | `neg-unrecognized-claim-type.json` | `claims[0].type` set to `adjudication` (no typed body) | `ClaimType` is a closed enum. The schema is closed-world, so this fails validation here; **rendering** the same document as an `unrecognized` row with the raw type and `contract_ref`, never dropped, is `capsule-viewer`'s job and is pinned by that repo's tests against this same fixture |
+| `neg-close-contested-verdict-met.json` | `claims[1].verdict` changed `not_met` → `met` on the CONTESTED positive (the bucket still lists `close-1` under `not_met`, which the schema never cross-checks) | `Claim`'s CONTESTED-is-never-met rule (2026-09-28): `verdict: met` is not legal when `close.close_state` is `CONTESTED` — the only rule rejecting this fixture |
 
 ## `close_state` is derivable — the records sidecars (2026-09-28)
 
@@ -113,6 +114,22 @@ ship their positive's records unchanged; they are rejected by the schema before 
 | File | Mutation | What rejects it |
 |---|---|---|
 | `neg-close-agreed-relabelled-contested.json` (+ `.records.json`, identical to the CONTESTED positive's) | `claims[1].close.close_state` relabelled `CONTESTED` → `AGREED`; `peer_close_ref` still cites the record that `rebuts` OO's Close; `view.title` says so | **Validates against the schema** — that is the hole. The checker recomputes `CONTESTED` from the `rebuts` link and fails the claim on the mismatch. Mutant: a walk that trusts the asserted field (the pre-review behaviour) accepts the same fixture; the restored walk re-rejects it |
+
+**The maintainer's second pass (2026-09-28)** — three more link-walk negatives, each schema-valid, each
+with its own walk mutant. The counterparty check keys on **`book_id`**, the store identity the
+evidence-book record header carries (the -00 draft's header names no store field; its `principal_ref`
+is opaque and host-defined, and the draft states the Close rule at store level — "a record from the
+counterparty"):
+
+| File | Records / mutation | What rejects it |
+|---|---|---|
+| `neg-close-agreed-self-acknowledged.json` (+ `.records.json`: OO's Close and **a record from OO's own book** — `oo`, seq 42 — carrying `acknowledges` → OO's Close) | `close-1` asserts `AGREED`, names `peer: oo-sor`, but `peer_close_ref` (and `evidence[]`) cite the own-book record | An `acknowledges` / `rebuts` link counts only from a **counterparty** — a record whose `book_id` is present and differs from the Close's. The walk ignores the own-book link, reads `UNILATERAL`, and fails the claim. Mutant: a walk that counts any link whatever its book (`ignore_counterparty`) accepts the fixture |
+| `neg-close-ref-not-in-evidence.json` (+ `.records.json`, the AGREED positive's) | `claims[1].evidence[]` reduced to the peer's Close only — `close_ref` no longer among the claim's evidence digests | `close_ref.digest` MUST resolve inside `evidence[]`. Mutant: skipping the membership check (`skip_evidence_membership`) accepts the fixture |
+| `neg-close-peer-ref-not-in-evidence.json` (+ `.records.json`, the AGREED positive's) | `claims[1].evidence[]` reduced to OO's own Close only — `peer_close_ref` no longer among the claim's evidence digests | `peer_close_ref.digest` MUST resolve inside `evidence[]` when present. Same mutant |
+
+The walk also applies the CONTESTED-is-never-met rule to the **recomputed** state (a Close whose links
+read `CONTESTED` with `verdict: met` fails), so relabelling the asserted state cannot rescue `met`; the
+schema half of that rule is `neg-close-contested-verdict-met` above.
 
 ## Reproducing the validation run
 

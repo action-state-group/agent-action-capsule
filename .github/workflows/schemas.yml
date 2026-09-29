@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Schema fixture checks: every committed example under vectors/evidence-result/
+# and schemas/examples/ validates (or is rejected) exactly as its checker
+# documents, each rejection proven load-bearing by that checker's mutant
+# pass. Until 2026-09-28 no job ran these checkers, so the Result v0 link
+# walk (close_state recomputed from the cited Close's inbound links) was
+# never exercised in CI. The checkers import agent_action_capsule.canonical
+# for the digests they recompute, so the Python reference is installed
+# alongside the jsonschema validator they need.
+name: schemas
+
+on:
+  push:
+    paths:
+      - "schemas/**"
+      - "vectors/evidence-result/**"
+      - "python/agent_action_capsule/canonical.py"
+      - ".github/workflows/schemas.yml"
+  pull_request:
+    paths:
+      - "schemas/**"
+      - "vectors/evidence-result/**"
+      - "python/agent_action_capsule/canonical.py"
+      - ".github/workflows/schemas.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  fixtures:
+    name: schema fixtures validate as documented
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Python reference and the JSON Schema validator
+        working-directory: python
+        run: |
+          pip install -e .
+          pip install jsonschema
+
+      - name: Verify committed Result v0 vector checksums
+        working-directory: vectors/evidence-result
+        run: sha256sum --check SHA256SUMS
+
+      - name: Result v0 fixtures (schema, negatives, mutants, close-state link walk)
+        run: python3 schemas/check_evidence_result_examples.py
+
+      - name: Evidence Plan IR v0 fixtures
+        run: python3 schemas/check_evidence_plan_ir_examples.py
+
+      - name: Judge record family fixtures
+        run: python3 schemas/check_judge_record_examples.py

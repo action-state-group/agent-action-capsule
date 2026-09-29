@@ -56,6 +56,10 @@
         },
         "close_state": "CONTESTED",
         "peer": "oo-sor",
+        "peer_close_ref": {
+          "digest": "ef25e6d27dd102fd5ec181e70357fa9b6f029e5f58f45fa5bbe41aebd54edde9",
+          "digest_alg": "SHA-256"
+        },
         "period": {
           "end": "2026-09-02T00:00:00Z",
           "start": "2026-09-01T00:00:00Z"
@@ -99,7 +103,7 @@
       "sufficiency": "SATISFIED",
       "tier": "recomputed",
       "type": "close",
-      "verdict": "not_met"
+      "verdict": "met"
     }
   ],
   "generated_at": "2026-09-22T00:00:00Z",

@@ -38,6 +38,20 @@ close_state relabelled AGREED. It validates against the schema (that is the
 hole) and is rejected by the checker's link walk, which recomputes the state
 from the `rebuts` link in the sidecar.
 
+The maintainer's second pass (2026-09-28) adds four negatives:
+  - neg-close-contested-verdict-met: the CONTESTED positive with verdict
+    `met`. A contested Close never counts as met (the positive now carries
+    `not_met`); the schema's Claim rule rejects it.
+  - neg-close-agreed-self-acknowledged: an AGREED close whose acknowledging
+    record is from the producer's OWN book (`book_id` "oo", seq 42). An
+    `acknowledges` / `rebuts` link counts only from a counterparty -- a
+    record whose `book_id` differs from the Close's -- so the walk reads
+    UNILATERAL and rejects the claim. Schema-valid.
+  - neg-close-ref-not-in-evidence / neg-close-peer-ref-not-in-evidence: the
+    AGREED positive with `close_ref` (resp. `peer_close_ref`) dropped from
+    the claim's `evidence[]`. Both refs MUST resolve inside `evidence[]`;
+    the checker rejects each. Schema-valid.
+
 Regenerate with:
     python3 schemas/generate_result_examples.py
 Then check with:
@@ -394,6 +408,23 @@ peer_rebuttal_content = _peer_record(
 peer_silent_close_content = _peer_record(
     19, None, "OO peer (oo-sor) Close record for 2026-09-01, no link back to OO's, v0 placeholder"
 )
+# A record from OO's OWN book that `acknowledges` OO's own Close (2026-09-28,
+# maintainer's second pass: "an `acknowledges` link has to come from the
+# counterparty"). Same `book_id` as the Close, so the link makes no state:
+# a producer cannot agree with itself. The walk ignores it and reads
+# UNILATERAL.
+own_ack_content: RecordDoc = {
+    "v": 1,
+    "book_id": "oo",
+    "seq": 42,
+    "record_type": "close",
+    "epistemic_type": "producer_claim",
+    "committed_at": "2026-09-02T00:10:00Z",
+    "event_time_claim": "2026-09-02T00:00:00Z",
+    "links": [{"type": "acknowledges", "target": OWN_CLOSE_DIGEST}],
+    "subject_ref": RECONCILE_CONTRACT_REF,
+    "statement": {"period": DAY_1, "note": "OO record from OO's own book acknowledging OO's own Close, v0 placeholder"},
+}
 close_proof_content = {"note": "OO Close inclusion proof, v0 placeholder"}
 
 # --- close-1 (AGREED) -- the peer's Close cites ours back ----------------
@@ -425,11 +456,17 @@ close_agreed: ClaimDoc = {
 # --- close-1 (CONTESTED) -- a peer record carries a `rebuts` link to ------
 #     ours (draft-mih-agent-evidence-layer-00, 'Reconcile and Close'). The
 #     state is what the Result builder READ from the Close's inbound links,
-#     never a field the Close set. Base axes stay as on the AGREED /
-#     UNILATERAL fixtures (the Close itself was sealed: `met`); the
-#     agreement axis lives in close_state alone. peer_close_ref cites the
-#     rebutting record by digest, exactly as AGREED cites the acknowledging
-#     Close. (peer_rebuttal_content is the record header defined above.)
+#     never a field the Close set. peer_close_ref cites the rebutting record
+#     by digest, exactly as AGREED cites the acknowledging Close.
+#     (peer_rebuttal_content is the record header defined above.)
+#
+#     A CONTESTED Close does not count as met (2026-09-28, maintainer's
+#     second pass): the peer rebuts it, so the clause the claim reports on
+#     is `not_met` while the rebuttal stands. Sufficiency stays SATISFIED
+#     -- both the Close and the rebuttal are in evidence, nothing is
+#     missing -- and the claim sits in the not_met bucket. The schema's
+#     Claim rule forbids `met` under CONTESTED (neg-close-contested-
+#     verdict-met pins it).
 
 close_contested: ClaimDoc = {
     "id": "close-1",
@@ -439,7 +476,7 @@ close_contested: ClaimDoc = {
     "tier": "recomputed",
     "grade": "self-attested",
     "sufficiency": "SATISFIED",
-    "verdict": "met",
+    "verdict": "not_met",
     "evidence": [digest_ref(own_close_content), digest_ref(peer_rebuttal_content)],
     "proofs": [proof_ref("inclusion_proof", close_proof_content)],
     "presentation": {
@@ -494,6 +531,11 @@ close_unilateral_named_peer["close"]["peer"] = "oo-sor"
 
 
 def _close_result(close_claim: ClaimDoc, title: str) -> EvidenceResultDoc:
+    # The buckets follow the claims' own verdicts (spec section 4: a
+    # verifier checks every bucket entry names a claim with that verdict).
+    buckets: dict = {"met": [], "not_met": [], "not_evaluable": []}
+    for claim in (claim_1, close_claim):
+        buckets[claim["verdict"]].append(claim["id"])
     return {
         "result_version": "evidence-result-v0",
         "generated_at": GENERATED_AT,
@@ -504,11 +546,7 @@ def _close_result(close_claim: ClaimDoc, title: str) -> EvidenceResultDoc:
                 "excluded_not_applicable": 0,
                 "unknown_count": 0,
             },
-            "buckets": {
-                "met": ["claim-1", "close-1"],
-                "not_met": [],
-                "not_evaluable": [],
-            },
+            "buckets": buckets,
         },
         "view": {
             "spec_version": "presentation/v1",
@@ -524,6 +562,41 @@ pos_oo_close_unilateral_named_peer_result = _close_result(
     close_unilateral_named_peer, "OO Close -- 2026-09-01 (unilateral, peer named)"
 )
 pos_oo_close_contested_result = _close_result(close_contested, "OO Close -- 2026-09-01 (contested)")
+
+# --- neg-close-contested-verdict-met -- the CONTESTED positive with -------
+#     verdict `met` and NOTHING else changed (the bucket still lists close-1
+#     under not_met, which the schema does not cross-check -- so the ONLY
+#     rule rejecting this fixture is the Claim rule "a CONTESTED Close is
+#     never met"). Maintainer's second pass, 2026-09-28: "a CONTESTED close
+#     shouldn't count as met".
+neg_close_contested_verdict_met = _mutated(pos_oo_close_contested_result)
+neg_close_contested_verdict_met["claims"][1]["verdict"] = "met"
+
+# --- neg-close-agreed-self-acknowledged -- an AGREED close whose ----------
+#     acknowledging record is from the producer's OWN book: peer_close_ref
+#     cites own_ack_content (book_id "oo", the Close's own book), and the
+#     claim still names oo-sor as the peer. Schema-valid (peer and
+#     peer_close_ref are present); the walk ignores a link whose record
+#     shares the Close's `book_id`, reads UNILATERAL, and rejects the claim.
+close_self_acknowledged: ClaimDoc = json.loads(json.dumps(close_agreed))
+close_self_acknowledged["evidence"] = [digest_ref(own_close_content), digest_ref(own_ack_content)]
+close_self_acknowledged["presentation"]["evidence"] = [digest_ref(own_close_content), digest_ref(own_ack_content)]
+close_self_acknowledged["close"]["peer_close_ref"] = digest_ref(own_ack_content)
+neg_close_agreed_self_acknowledged = _close_result(
+    close_self_acknowledged, "OO Close -- 2026-09-01 (agreed by OO's own book)"
+)
+
+# --- neg-close-ref-not-in-evidence / neg-close-peer-ref-not-in-evidence --
+#     the AGREED positive with `close_ref` (resp. `peer_close_ref`) no
+#     longer among the claim's evidence[] digests. Both refs MUST resolve
+#     inside evidence[] (maintainer's second pass): a claim cannot report
+#     on a Close, or cite the record that makes its state, that it does
+#     not put in evidence. Schema-valid (JSON Schema cannot compare two
+#     digests); the checker rejects each.
+neg_close_ref_not_in_evidence = _mutated(pos_oo_close_agreed_result)
+neg_close_ref_not_in_evidence["claims"][1]["evidence"] = [digest_ref(peer_close_content)]
+neg_close_peer_ref_not_in_evidence = _mutated(pos_oo_close_agreed_result)
+neg_close_peer_ref_not_in_evidence["claims"][1]["evidence"] = [digest_ref(own_close_content)]
 
 # --- neg-close-agreed-without-peer -- close-1 AGREED, `peer` removed -----
 #     (CloseClaim's AGREED rule: peer + peer_close_ref required)
@@ -566,6 +639,10 @@ CLOSE_RECORDS: dict = {
     "neg-close-agreed-without-peer": [own_close_content, peer_close_content],
     "neg-close-contested-without-peer-close-ref": [own_close_content, peer_rebuttal_content],
     "neg-close-agreed-relabelled-contested": [own_close_content, peer_rebuttal_content],
+    "neg-close-contested-verdict-met": [own_close_content, peer_rebuttal_content],
+    "neg-close-agreed-self-acknowledged": [own_close_content, own_ack_content],
+    "neg-close-ref-not-in-evidence": [own_close_content, peer_close_content],
+    "neg-close-peer-ref-not-in-evidence": [own_close_content, peer_close_content],
 }
 
 # --- neg-unrecognized-claim-type -- claim-1 given a type outside ----------
@@ -594,6 +671,10 @@ def main() -> int:
     write("neg-reconcile-tallies-missing-state", neg_reconcile_tallies_missing_state)
     write("neg-unrecognized-claim-type", neg_unrecognized_claim_type)
     write("neg-close-agreed-relabelled-contested", neg_close_agreed_relabelled_contested)
+    write("neg-close-contested-verdict-met", neg_close_contested_verdict_met)
+    write("neg-close-agreed-self-acknowledged", neg_close_agreed_self_acknowledged)
+    write("neg-close-ref-not-in-evidence", neg_close_ref_not_in_evidence)
+    write("neg-close-peer-ref-not-in-evidence", neg_close_peer_ref_not_in_evidence)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)
     return 0

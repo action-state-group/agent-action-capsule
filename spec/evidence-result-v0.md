@@ -299,6 +299,27 @@ records — `neg-close-agreed-relabelled-contested.json` (§11) is schema-valid 
 checker's link walk over the fixture's `.records.json`; a renderer that cannot see the cited records
 MUST mark the state it shows as producer-asserted, never bare.
 
+**Three bindings from the maintainer's second pass (normative, 2026-09-28).** *(1) A link counts only
+from the counterparty.* An `acknowledges` or `rebuts` link makes a state only when the linking record
+comes from a different store than the Close: the record's `book_id` — the store identity the evidence-book
+record header carries, the shape a bundle discloses and every `.records.json` here uses — MUST be present
+and MUST differ from the cited Close's `book_id`. (The Evidence Layer draft's own header names no store
+field; its `principal_ref` is opaque and host-defined, and the draft states the Close rule at store level —
+"a record from the counterparty" — so `book_id` is the field a verifier keys on.) A link from a record in
+the Close's own book, or from a record with no `book_id`, is ignored by the walk: a producer cannot agree
+with itself, and `peer_close_ref` MUST cite a counterparty record. `neg-close-agreed-self-acknowledged`
+(§11) asserts `AGREED` over an acknowledgement from book `oo`, the Close's own; it is schema-valid and the
+walk reads it `UNILATERAL`. *(2) A `CONTESTED` Close never counts as met.* While a counterparty's `rebuts`
+link stands, the clause the claim reports on is at best `not_met` (sufficiency `SATISFIED` — the Close and
+the rebuttal are both in evidence, nothing is missing) or `not_evaluable` (a sufficiency gap); `verdict:
+met` under `close_state: CONTESTED` fails validation (schema-enforced, `Claim`'s third `allOf` rule;
+`neg-close-contested-verdict-met`), and a verifier applies the same rule to the *recomputed* state, so
+relabelling the state away does not rescue `met`. The `CONTESTED` positive carries `not_met` and sits in
+the `not_met` bucket. *(3) `close_ref` and `peer_close_ref` resolve inside `evidence[]`.* Each digest MUST
+also appear among the claim's `evidence[]` digests — a claim reports only on a Close, and cites only a
+state-making record, that it puts in evidence (documented, checker-enforced: JSON Schema cannot compare
+sibling values; `neg-close-ref-not-in-evidence`, `neg-close-peer-ref-not-in-evidence`).
+
 **Sufficiency on a reconcile claim is derived from the two non-finding counts only** (documented,
 not schema-enforced in v0): `INSUFFICIENT > 0` ⇒ `GAP`; else `UNRESOLVED > 0` ⇒ `UNKNOWN`; else
 `SATISFIED`. `MATCHED / A_ONLY / B_ONLY / CONFLICTING` never move sufficiency; they are what the
@@ -449,5 +470,10 @@ same mutant proof. Every close fixture ships the record headers its claim cites 
 `<name>.records.json`, and a fifth negative, `neg-close-agreed-relabelled-contested`, is the
 CONTESTED positive with `close_state` relabelled `AGREED` over the same records: it validates against
 the schema and is rejected by the checker's link walk (§4.1's derivation rule), with the walk's own
-mutant proof. The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against these same
+mutant proof. The maintainer's second pass (2026-09-28) adds one schema negative
+(`neg-close-contested-verdict-met`: the CONTESTED positive, whose verdict is now `not_met`, with
+`verdict: met`) and three link-walk negatives, schema-valid and walk-rejected, each with its own mutant:
+`neg-close-agreed-self-acknowledged` (the acknowledging record from the Close's own `book_id`),
+`neg-close-ref-not-in-evidence` and `neg-close-peer-ref-not-in-evidence` (a cited digest missing from
+`evidence[]`). The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against these same
 fixtures, not here.

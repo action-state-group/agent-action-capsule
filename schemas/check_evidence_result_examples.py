@@ -73,6 +73,28 @@ mechanical half):
          MUST be rejected by the walk; its mutant check flips the walk to
          trust the asserted field (the pre-review behaviour) and confirms
          the same fixture then passes, then restores the walk and re-rejects.
+  6. THE MAINTAINER'S SECOND PASS (2026-09-28). Three more rules, one
+     schema negative and three link negatives, each with its own mutant:
+       - COUNTERPARTY: an `acknowledges` / `rebuts` link makes a state only
+         when the linking record's `book_id` is present and differs from
+         the cited Close's `book_id` (the store identity the evidence-book
+         header carries; the -00 draft's header names no store field and
+         its `principal_ref` is opaque). A link from the Close's own book is
+         ignored. neg-close-agreed-self-acknowledged.json (schema-valid) is
+         rejected as UNILATERAL; its mutant is a walk that counts any link
+         whatever its book (`ignore_counterparty`).
+       - REFS RESOLVE INSIDE evidence[]: `close_ref.digest` and, when
+         present, `peer_close_ref.digest` MUST be among the claim's
+         `evidence[]` digests. neg-close-ref-not-in-evidence.json and
+         neg-close-peer-ref-not-in-evidence.json (schema-valid) are each
+         rejected; their mutant skips the membership check
+         (`skip_evidence_membership`).
+       - CONTESTED IS NEVER met: the schema's Claim rule forbids verdict
+         `met` when close.close_state is CONTESTED
+         (neg-close-contested-verdict-met.json, a schema negative with the
+         usual strip-the-rule mutant), and the walk applies the same rule
+         to the RECOMPUTED state, so relabelling the state away does not
+         rescue `met`. The CONTESTED positive now carries `not_met`.
 
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
@@ -124,14 +146,45 @@ sys.path.insert(0, str(SCHEMAS_DIR.parent / "python"))
 from agent_action_capsule.canonical import json_digest
 
 # Negatives that VALIDATE against the schema and are rejected only by the
-# close-state link walk (check 5). Kept apart from NEGATIVES on purpose: a
-# schema rejection here would mean the fixture no longer demonstrates the
-# hole it exists to pin.
+# close-state link walk (checks 5 and 6). Kept apart from NEGATIVES on
+# purpose: a schema rejection here would mean the fixture no longer
+# demonstrates the hole it exists to pin. Each names the walk MUTANT that
+# must flip it (the verifier behaviour the rule replaced) and a label.
 LINK_NEGATIVES = [
-    "neg-close-agreed-relabelled-contested",
+    (
+        "neg-close-agreed-relabelled-contested",
+        "trust_asserted",
+        "the walk trusting the asserted close_state",
+    ),
+    (
+        "neg-close-agreed-self-acknowledged",
+        "ignore_counterparty",
+        "the walk counting a link from the Close's own book",
+    ),
+    (
+        "neg-close-ref-not-in-evidence",
+        "skip_evidence_membership",
+        "the close_ref/peer_close_ref-in-evidence[] check",
+    ),
+    (
+        "neg-close-peer-ref-not-in-evidence",
+        "skip_evidence_membership",
+        "the close_ref/peer_close_ref-in-evidence[] check",
+    ),
 ]
 
+WALK_MUTANTS = ("trust_asserted", "ignore_counterparty", "skip_evidence_membership")
+
 CLOSE_LINK_TYPES = ("acknowledges", "rebuts")
+
+# The record-header field that identifies the store a record was committed
+# in -- the evidence-book HeaderMember's `book_id`, the shape every sidecar
+# here carries. draft-mih-agent-evidence-layer-00's own header names no
+# store field (its `principal_ref` is opaque and host-defined, and a store
+# needs none for its own records); the Close rule there is stated at store
+# level ("a record from the counterparty"), so this is the field the
+# counterparty check keys on.
+COUNTERPARTY_FIELD = "book_id"
 
 
 def _records_for(name: str) -> list[RecordDoc] | None:
@@ -141,16 +194,27 @@ def _records_for(name: str) -> list[RecordDoc] | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def derive_close_state(records_by_digest: dict[str, RecordDoc], close_digest: str) -> tuple[str, dict[str, set[str]]]:
-    """(state, {linking record digest: {link types}}) read from the inbound
-    `acknowledges` / `rebuts` links at `close_digest` -- spec section 4.1's
-    rule: any `rebuts` => CONTESTED; else any `acknowledges` => AGREED; else
-    UNILATERAL. Never reads a state field from any record."""
+def derive_close_state(
+    records_by_digest: dict[str, RecordDoc], close_digest: str, ignore_counterparty: bool = False
+) -> tuple[str, dict[str, set[str]], dict[str, set[str]]]:
+    """(state, {counterparty record digest: {link types}}, {ignored record
+    digest: {link types}}) read from the inbound `acknowledges` / `rebuts`
+    links at `close_digest` -- spec section 4.1's rule: any `rebuts` =>
+    CONTESTED; else any `acknowledges` => AGREED; else UNILATERAL. Never
+    reads a state field from any record. A link counts only from a
+    COUNTERPARTY: a record whose `book_id` is present and differs from the
+    Close's (2026-09-28); a link from the Close's own book, or from a record
+    with no `book_id`, is returned as ignored and makes no state.
+    `ignore_counterparty=True` is the MUTANT that counts every link."""
+    close_book = records_by_digest[close_digest].get(COUNTERPARTY_FIELD)
     linking: dict[str, set[str]] = {}
+    ignored: dict[str, set[str]] = {}
     for digest, record in records_by_digest.items():
+        book = record.get(COUNTERPARTY_FIELD)
+        counterparty = ignore_counterparty or (book is not None and book != close_book)
         for link in record.get("links") or []:
             if link.get("target") == close_digest and link.get("type") in CLOSE_LINK_TYPES:
-                linking.setdefault(digest, set()).add(link["type"])
+                (linking if counterparty else ignored).setdefault(digest, set()).add(link["type"])
     types = set().union(*linking.values()) if linking else set()
     if "rebuts" in types:
         state = "CONTESTED"
@@ -158,17 +222,20 @@ def derive_close_state(records_by_digest: dict[str, RecordDoc], close_digest: st
         state = "AGREED"
     else:
         state = "UNILATERAL"
-    return state, linking
+    return state, linking, ignored
 
 
 def close_state_findings(
-    name: str, doc: EvidenceResultDoc, records: list[RecordDoc], trust_asserted: bool = False
+    name: str, doc: EvidenceResultDoc, records: list[RecordDoc], mutant: str | None = None
 ) -> list[str]:
     """Findings from recomputing every close claim's state from `records`.
-    `trust_asserted=True` is the MUTANT: a verifier that resolves close_ref
-    but never walks a link, so it neither recomputes the state nor holds
-    peer_close_ref to the link that makes the state -- exactly the
-    pre-review verifier. Used only to prove the walk is load-bearing."""
+    `mutant` names a verifier behaviour a rule replaced, used only to prove
+    that rule load-bearing: `trust_asserted` resolves close_ref but never
+    walks a link (the pre-review verifier); `ignore_counterparty` counts a
+    link from the Close's own book; `skip_evidence_membership` never holds
+    close_ref / peer_close_ref to the claim's evidence[]."""
+    if mutant is not None and mutant not in WALK_MUTANTS:
+        raise ValueError(f"unknown walk mutant {mutant!r}")
     findings = []
     by_digest = {json_digest(record): record for record in records}
     for index, claim in enumerate(doc.get("claims", [])):
@@ -177,32 +244,58 @@ def close_state_findings(
         close = claim.get("close") or {}
         asserted = close.get("close_state")
         close_digest = (close.get("close_ref") or {}).get("digest")
+        peer_digest = (close.get("peer_close_ref") or {}).get("digest")
+        # Both refs resolve inside evidence[] (2026-09-28): a claim reports
+        # only on a Close, and cites only a state-making record, that it
+        # puts in evidence.
+        if mutant != "skip_evidence_membership":
+            in_evidence = {ref.get("digest") for ref in claim.get("evidence") or []}
+            for field, digest in (("close_ref", close_digest), ("peer_close_ref", peer_digest)):
+                if digest is not None and digest not in in_evidence:
+                    findings.append(
+                        f"{name}: claims[{index}].close.{field} ({digest[:12]}...) does not "
+                        f"resolve inside the claim's evidence[]"
+                    )
         if close_digest not in by_digest:
             findings.append(
                 f"{name}: claims[{index}].close.close_ref names no record in "
                 f"{name}.records.json -- the state cannot be recomputed"
             )
             continue
-        if trust_asserted:
+        if mutant == "trust_asserted":
             # The mutant verifier: it never walks a link, so it has nothing
             # to compare the field against and nothing to hold
-            # peer_close_ref to -- both checks below are the walk.
+            # peer_close_ref to -- every check below is the walk.
             continue
-        derived, linking = derive_close_state(by_digest, close_digest)
+        derived, linking, ignored = derive_close_state(
+            by_digest, close_digest, ignore_counterparty=(mutant == "ignore_counterparty")
+        )
         if derived != asserted:
+            read = ", ".join(sorted(t for ts in linking.values() for t in ts)) or "no counterparty acknowledges/rebuts link"
+            if ignored:
+                read += (
+                    f"; ignored {', '.join(sorted(t for ts in ignored.values() for t in ts))} "
+                    f"from a record in the Close's own {COUNTERPARTY_FIELD} or with none"
+                )
             findings.append(
                 f"{name}: claims[{index}].close.close_state is asserted {asserted} but the "
-                f"cited Close's inbound links read {derived} "
-                f"({', '.join(sorted(t for ts in linking.values() for t in ts)) or 'no acknowledges/rebuts link'})"
+                f"cited Close's inbound links read {derived} ({read})"
             )
             continue
+        # A CONTESTED Close is never met (2026-09-28) -- applied to the
+        # RECOMPUTED state, so the schema's rule on the asserted field
+        # cannot be dodged by relabelling.
+        if derived == "CONTESTED" and claim.get("verdict") == "met":
+            findings.append(
+                f"{name}: claims[{index}] is CONTESTED by the cited Close's inbound links "
+                f"but carries verdict `met` -- a contested Close never counts as met"
+            )
         if derived in ("AGREED", "CONTESTED"):
-            peer_digest = (close.get("peer_close_ref") or {}).get("digest")
             wanted = "acknowledges" if derived == "AGREED" else "rebuts"
             if wanted not in linking.get(peer_digest, set()):
                 findings.append(
                     f"{name}: claims[{index}].close.peer_close_ref is not the digest of a "
-                    f"record carrying the `{wanted}` link that makes this Close {derived}"
+                    f"counterparty record carrying the `{wanted}` link that makes this Close {derived}"
                 )
     return findings
 
@@ -233,6 +326,7 @@ NEGATIVES = [
     "neg-close-contested-without-peer-close-ref",
     "neg-reconcile-tallies-missing-state",
     "neg-unrecognized-claim-type",
+    "neg-close-contested-verdict-met",
 ]
 
 
@@ -420,6 +514,24 @@ def main() -> int:
             "ClaimType's closed enum",
         )
 
+    if negative_errors_by_name["neg-close-contested-verdict-met"]:
+        mutant = copy.deepcopy(schema)
+        # Strip only the CONTESTED-is-never-met rule (the third Claim.allOf
+        # entry, the one whose description names CONTESTED); the
+        # sufficiency/verdict binding and the type<->body binding stay. The
+        # fixture's bucket still lists close-1 under not_met, which the
+        # schema never cross-checks, so this rule is the ONLY one rejecting
+        # it.
+        mutant["$defs"]["Claim"]["allOf"] = [
+            rule for rule in mutant["$defs"]["Claim"]["allOf"]
+            if "CONTESTED" not in rule.get("description", "")
+        ]
+        _mutant_check(
+            "neg-close-contested-verdict-met",
+            mutant,
+            "Claim's CONTESTED-is-never-met if/then rule",
+        )
+
     # --- 5. CLOSE STATE IS DERIVABLE: the link walk ----------------------------
     #        Schema validation cannot see across records; this can. Every
     #        positive that carries a close claim must ship its records and
@@ -449,18 +561,18 @@ def main() -> int:
             print(f"OK  LINK-WALK     {name}.json -- close_state {', '.join(states)} recomputed "
                   f"from {len(records)} record(s), matches")
 
-    for name in LINK_NEGATIVES:
+    for name, walk_mutant, mutation_label in LINK_NEGATIVES:
         instance = _load(name)
         schema_errors = list(validator.iter_errors(instance))
         if schema_errors:
             findings.append(
                 f"LINK-NEGATIVE-SCHEMA-REJECTED {name}: this fixture exists to show the "
-                f"schema ALONE accepts a relabelled close; it was rejected by the schema "
+                f"schema ALONE accepts it; it was rejected by the schema "
                 f"instead ({schema_errors[0].message!r})"
             )
             continue
         print(f"OK  EvidenceResult {name}.json validates against the schema "
-              "(the hole: close_state is a producer assertion to JSON Schema)")
+              "(the hole: JSON Schema cannot see across records or compare digests)")
         records = _records_for(name)
         if records is None:
             findings.append(f"CLOSE-RECORDS-MISSING {name}: no {name}.records.json")
@@ -468,22 +580,22 @@ def main() -> int:
         walk = close_state_findings(name, instance, records)
         if not walk:
             findings.append(
-                f"LINK-NEGATIVE-DID-NOT-FAIL {name}: the link walk accepted a close whose "
-                "asserted state disagrees with its inbound links"
+                f"LINK-NEGATIVE-DID-NOT-FAIL {name}: the link walk accepted this fixture"
             )
             continue
         print(f"OK  LINK-WALK     {name}.json correctly REJECTED ({walk[0]!r})")
-        # MUTANT: a verifier that trusts the field instead of walking links.
-        trusting = close_state_findings(name, instance, records, trust_asserted=True)
-        if trusting:
+        # MUTANT: the verifier behaviour the rule replaced must accept the
+        # same fixture -- otherwise the rejection is not this rule's.
+        mutated = close_state_findings(name, instance, records, mutant=walk_mutant)
+        if mutated:
             findings.append(
-                f"MUTANT-DID-NOT-FLIP {name}: with the link walk trusting the asserted "
-                f"close_state, the fixture still failed ({trusting[0]!r}) -- the rejection "
-                "is not the derivation rule this mutation targets"
+                f"MUTANT-DID-NOT-FLIP {name}: with {mutation_label} removed, the fixture "
+                f"still failed ({mutated[0]!r}) -- the rejection is not the rule this "
+                "mutation targets"
             )
         else:
-            print(f"OK  MUTANT        {name} -- with the walk trusting the asserted "
-                  "close_state, the fixture PASSES (confirms the walk is load-bearing)")
+            print(f"OK  MUTANT        {name} -- with {mutation_label} removed, the fixture "
+                  "PASSES (confirms the walk rule is load-bearing)")
         restored = close_state_findings(name, instance, records)
         if not restored:
             findings.append(f"MUTANT-RESTORE-FAILED {name}: the restored walk accepted the fixture")
