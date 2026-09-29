@@ -27,11 +27,13 @@
     },
     {
       "capsule_id": "close-a",
-      "occurred_at": "2026-09-15T00:05:00Z"
+      "occurred_at": "2026-09-15T00:05:00Z",
+      "key_id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
     },
     {
       "capsule_id": "close-b",
-      "occurred_at": "2026-09-15T01:00:00Z"
+      "occurred_at": "2026-09-15T01:00:00Z",
+      "key_id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
     }
   ],
   "disclosures": {

@@ -556,7 +556,10 @@ it("(iv) a close claim draws the state its cited Close's links read, recomputed,
   expect(
     page.querySelector<HTMLElement>("dd[data-close-derivation-note]")!
       .textContent,
-  ).toBe("recomputed from 1 link to the cited Close in this bundle");
+  ).toBe(
+    "recomputed from 1 counterparty link to the cited Close in this bundle",
+  );
+  expect(page.querySelector("[data-ignored-link]")).toBeNull();
   const link = page.querySelector<HTMLElement>("[data-close-link]")!;
   expect(link.dataset.closeLink).toBe("acknowledges");
   expect(link.dataset.linkRecord).toBe(ids["close-b"]);
@@ -649,6 +652,74 @@ it("(iv) a Close relabelled AGREED over a rebuts link draws CONTESTED with a sta
   ).toBe(
     "failed: close_state mismatch: asserted AGREED, the cited Close's links read CONTESTED; sufficiency and verdict withheld",
   );
+});
+
+// Maintainer's third pass (2026-09-29): a self-acknowledged Close (the
+// acknowledger from the Close's own book) used to render as verified AGREED.
+// Now the link is not from the counterparty -- the named peer's book under a
+// different key -- so it makes no state: the row reads UNILATERAL with the
+// state-mismatch marker, the claim fails, and the ignored link is listed
+// with its reason. A third-book or same-key acknowledger fails identically.
+it("(iv) a self-acknowledged Close never renders as verified AGREED: UNILATERAL, state mismatch, the claim failed, the link listed as ignored", async () => {
+  const source = fixture("result-root-close-bundle.json");
+  const header = ((source.disclosures as Obj)["close-b"] as Obj)
+    .agent_input as Obj;
+  header.book_id = "airline"; // the Close's own book
+  const { bundle, ids } = await sealEvidenceBundle(source);
+  const root = await render(bundle);
+  const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
+  const row = page.querySelector<HTMLElement>('[data-claim-row="close-1"]')!;
+  expect(row.dataset.failed).toBe("close_state");
+  const state = row.querySelector<HTMLElement>("[data-close-state]")!;
+  expect(state.dataset.closeState).toBe("UNILATERAL");
+  expect(state.dataset.assertedState).toBe("AGREED");
+  expect(state.querySelector("[data-state-mismatch]")).not.toBeNull();
+  expect(
+    row.querySelector<HTMLElement>("[data-verdict]")!.dataset.verdict,
+  ).toBe("failed");
+  expect(row.textContent).not.toContain("AGREED");
+  page.querySelector<HTMLElement>('[data-claim-id="close-1"]')!.click();
+  expect(page.querySelector("[data-close-link]")).toBeNull(); // no counterparty link
+  const ignored = page.querySelector<HTMLElement>("[data-ignored-link]")!;
+  expect(ignored.dataset.ignoredLink).toBe("acknowledges");
+  expect(ignored.dataset.linkRecord).toBe(ids["close-b"]);
+  expect(ignored.textContent).toBe(
+    `acknowledges · ${ids["close-b"]} · the linking record is from the Close's own book`,
+  );
+  expect(
+    page.querySelector<HTMLElement>("dd[data-close-derivation-note]")!
+      .textContent,
+  ).toBe(
+    "recomputed from 0 counterparty links to the cited Close in this bundle (1 other link ignored)",
+  );
+  expect(
+    page.querySelector<HTMLElement>("[data-claim-failed]")!.dataset.claimFailed,
+  ).toBe("close_state");
+  expect(
+    page.querySelector<HTMLElement>("[data-claim-failed]")!.textContent,
+  ).toBe(
+    `failed: close_state mismatch: asserted AGREED, the cited Close's links read UNILATERAL (ignored acknowledges from ${ids["close-b"]}: the linking record is from the Close's own book); sufficiency and verdict withheld`,
+  );
+});
+
+it("(iv) a peer_close_ref that is not the counterparty record fails the claim -- the row says which rule", async () => {
+  const source = fixture("result-root-close-bundle.json");
+  const claim = (((source.disclosures as Obj).result as Obj).agent_input as Obj)
+    .claims as Obj[];
+  ((claim[1]!.close as Obj).peer_close_ref as Obj).digest = "close-a";
+  const { bundle } = await sealEvidenceBundle(source);
+  const root = await render(bundle);
+  const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
+  const row = page.querySelector<HTMLElement>('[data-claim-row="close-1"]')!;
+  expect(row.dataset.failed).toBe("peer_close_ref");
+  expect(row.querySelector("[data-peer-ref-mismatch]")).not.toBeNull();
+  expect(row.querySelector("[data-state-mismatch]")).toBeNull();
+  expect(
+    row.querySelector<HTMLElement>("[data-verdict]")!.dataset.verdict,
+  ).toBe("failed");
+  expect(
+    page.querySelector<HTMLElement>('[data-bucket-of="failed"]')!.textContent,
+  ).toBe("failed: 1");
 });
 
 it("(iv) a close whose peer never linked to it fails the same way -- UNILATERAL with a state mismatch, never met", async () => {

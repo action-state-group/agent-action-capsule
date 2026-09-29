@@ -232,10 +232,69 @@ grade-as-asserted (a claim's `grade` is still the producer's word;
 bundle); nested-field checks below the top level of a claim (the mirror is
 open-world there); drill-down beyond `acted_on` (a cited record's other
 citation purposes are not followed); `generated_at` as a date-time (checked
-as a string). The counterparty rule and the CONTESTED-is-never-met rule
-that #140's second pass adds to the checker are also not yet mirrored
-here: a link from the Close's own book still counts, and a recomputed
-CONTESTED with `verdict: met` is not itself a failure.
+as a string); the CONTESTED-is-never-met rule from #140's second pass (a
+recomputed CONTESTED with `verdict: met` is not itself a failure here yet);
+M3: engine adapter from judged claims (EM-side). The counterparty rule is
+mirrored as of the third pass -- see the next section.
+
+## The counterparty is the named peer's book under a different key (2026-09-29, third pass)
+
+Maintainer's third pass: _"neither book_id nor signer alone is enough,
+since a producer can mint a second book or a second key equally easily."_
+An `acknowledges` / `rebuts` link now makes a state only when the linking
+record satisfies **all three** of:
+
+1. its disclosed header's `book_id` is present and differs from the cited
+   Close's `book_id`;
+2. that `book_id` equals the claim's named `peer` (`close.peer`);
+3. its signer differs from the Close's signer.
+
+The signer is the record's **local Producer Envelope `key_id`** -- the
+envelope field a composite capsule carries beside `signature`, excluded
+from the capsule id (`draft-mih-scitt-agent-action-capsule-04`, "capsule_id";
+`verify.ts` strips it before hashing). It is the only per-record signer the
+bundle model exposes, and the same 64-hex form the countersignature stamp
+keys on. #140's schema checker sees only record headers, so it enforces (1)
+and (2); (3) lives here and in the CLI, where the signer is visible.
+
+`counterpartyLinks(close, peer, inbound)` (`ts/src/result-root.ts`) splits
+the inbound links into `links` (the counterparty ones the state is read
+from) and `ignored` (each with a `reason`). A Close whose header names no
+`book_id`, or whose record carries no `key_id`, takes no link at all: nothing
+can be shown to be its counterparty, so it is UNILATERAL at best. A claim
+that names no `peer` takes none either. `ResultClose` carries the Close's
+own `bookId` / `keyId`, and every `CloseLink` its linker's.
+
+So a **self-acknowledged** Close (the acknowledger from the Close's own
+book), a **third-book** acknowledger (a different book that is not the
+named peer), a **same-key** acknowledger (the peer's book, the Close's own
+key), or an acknowledger **with no `key_id`** each reads UNILATERAL: the
+state-mismatch marker is drawn, the ignored link is listed under "Links
+ignored (not from the counterparty)" with its reason, and the claim
+**fails** exactly as the relabelled-CONTESTED case does -- never a verified
+AGREED. A `rebuts` from a non-counterparty makes no CONTESTED either. Until
+the contract pins the peer's key, AGREED means "acknowledged by the named
+peer's book under a different key", not "by an independent party".
+
+Two more rules from #140's checker are mirrored in the same pass, each a
+claim failure (`ResultClaim.failedOn` names the first rule that fired;
+the row's `data-failed` and the drill-down note's `data-claim-failed`
+carry it):
+
+- **`evidence`** -- `close_ref` and, when present, `peer_close_ref` MUST be
+  among the claim's own `evidence[]` digests. A claim reports only on a
+  Close, and cites only a state-making record, that it puts in evidence.
+  Judged first.
+- **`close_state`** -- the asserted state differs from what the
+  counterparty links read (as before; the failure text now names each
+  ignored link and why).
+- **`peer_close_ref`** -- the state is AGREED or CONTESTED by the
+  counterparty links, but `peer_close_ref` is not the record carrying that
+  link. Previously a marker only; now a failure, as in #140's checker.
+
+The honest close bundle (`test/testdata/result-root-close-bundle.json`)
+gives the airline's Close and the peer's Close distinct `key_id`s so that
+it still reads AGREED under all three parts.
 
 ## Render order
 

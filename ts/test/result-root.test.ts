@@ -6,6 +6,7 @@ import { EvidenceGraphError } from "../src/evidence-graph.js";
 import {
   buildResultRoot,
   CLAIM_REQUIRED,
+  counterpartyLinks,
   deriveCloseState,
   recomputeCounts,
   DISCLOSED_STATUSES,
@@ -42,6 +43,9 @@ function bookHeaderOf(source: Obj, id: string): Obj {
 
 const ABSENT_ID =
   "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+/** The fixture's two signer keys: the airline book's Close and the peer's (local `key_id`). */
+const KEY_A = "a1".repeat(32);
+const KEY_B = "b2".repeat(32);
 
 describe("buildResultRoot", () => {
   it("reads coverage, buckets and every claim's axes from the root Result, and resolves cited records", async () => {
@@ -621,6 +625,8 @@ describe("headline values are recomputed, never taken on the producer's word", (
       });
       expect(claim.close).toEqual({
         closeRef: ids["close-a"],
+        bookId: "airline",
+        keyId: KEY_A,
         period: {
           start: "2026-09-14T00:00:00Z",
           end: "2026-09-15T00:00:00Z",
@@ -633,7 +639,17 @@ describe("headline values are recomputed, never taken on the producer's word", (
         peerRefMismatch: false,
         peer: "airline-sor",
         peerCloseRef: ids["close-b"],
-        links: [{ type: "acknowledges", recordId: ids["close-b"] }],
+        // the one counterparty link: from the named peer's book, under
+        // the peer's own key -- all three parts of the third-pass rule
+        links: [
+          {
+            type: "acknowledges",
+            recordId: ids["close-b"],
+            bookId: "airline-sor",
+            keyId: KEY_B,
+          },
+        ],
+        ignored: [],
       });
       expect(result.records.has(ids["close-a"]!)).toBe(true);
       expect(result.countMismatches).toEqual([]);
@@ -726,24 +742,43 @@ describe("headline values are recomputed, never taken on the producer's word", (
       expect(claim.failed).toBe(true);
     });
 
-    it("a peer_close_ref that is not the record carrying the link is a peer-ref mismatch, with the state still recomputed", async () => {
+    it("a peer_close_ref that is not the record carrying the link is a peer-ref mismatch, the state still recomputed -- and the claim FAILS (third pass)", async () => {
       const source = fixture("result-root-close-bundle.json");
-      (closeClaim(source).peer_close_ref as Obj).digest = "day-1"; // cites the wrong record
+      // cites the airline's own Close (in evidence[], so the evidence rule
+      // passes) -- a record carrying no acknowledges link
+      (closeClaim(source).peer_close_ref as Obj).digest = "close-a";
       const { bundle, ids } = await sealEvidenceBundle(source);
-      const claim = (await buildResultRoot(bundle)).claims[1]!;
+      const result = await buildResultRoot(bundle);
+      const claim = result.claims[1]!;
       expect(claim.close).toMatchObject({
         state: "AGREED",
         stateMismatch: false,
         peerRefMismatch: true,
-        peerCloseRef: ids["day-1"],
+        peerCloseRef: ids["close-a"],
       });
-      // a peer-ref mismatch is marked, not failed: the state itself agrees
-      expect(claim.failed).toBe(false);
+      // Maintainer's third pass (2026-09-29): a peer_close_ref mismatch
+      // fails the claim as #140's checker does -- the ref does not resolve
+      // to the counterparty record actually found.
+      expect(claim.failed).toBe(true);
+      expect(claim.failedOn).toBe("peer_close_ref");
+      expect(claim.failure).toBe(
+        `peer_close_ref ${ids["close-a"]} is not the counterparty record carrying the acknowledges link that makes this Close AGREED`,
+      );
+      expect(result.bucketCounts).toEqual({
+        met: 1,
+        notMet: 0,
+        notEvaluable: 0,
+        failed: 1,
+      });
     });
 
     it("a close whose cited Close is not a record in this bundle carries the asserted state as producer-asserted, never bare", async () => {
       const source = fixture("result-root-close-bundle.json");
       (closeClaim(source).close_ref as Obj).digest = ABSENT_ID;
+      // the claim still puts the (absent) Close in evidence: the evidence
+      // rule passes; the record is simply not supplied
+      ((resultOf(source).claims as Obj[])[1]!.evidence as Obj[])[0]!.digest =
+        ABSENT_ID;
       const claim = (
         await buildResultRoot((await sealEvidenceBundle(source)).bundle)
       ).claims[1]!;
@@ -758,6 +793,247 @@ describe("headline values are recomputed, never taken on the producer's word", (
       expect(claim.close!.derived).toBeUndefined();
       // nothing to compare against: producer-asserted is not a failure
       expect(claim.failed).toBe(false);
+    });
+
+    // Maintainer's third pass (2026-09-29): "neither book_id nor signer
+    // alone is enough, since a producer can mint a second book or a second
+    // key equally easily." A link makes a state only from the named peer's
+    // book under a different key. Each case below is the honest AGREED
+    // bundle with ONE thing changed on the acknowledger or the Close; each
+    // reads UNILATERAL (the acknowledgement made no state), carries the
+    // state-mismatch marker, lists the ignored link with its reason, and
+    // FAILS the claim -- never a verified AGREED.
+    describe("the counterparty is the named peer's book under a different key (third pass)", () => {
+      function peerHeader(source: Obj): Obj {
+        return ((source.disclosures as Obj)["close-b"] as Obj)
+          .agent_input as Obj;
+      }
+      function closeHeader(source: Obj): Obj {
+        return ((source.disclosures as Obj)["close-a"] as Obj)
+          .agent_input as Obj;
+      }
+      function record(source: Obj, alias: string): Obj {
+        return (source.records as Obj[]).find(
+          (entry) => entry.capsule_id === alias,
+        )!;
+      }
+      async function neverAgreed(
+        source: Obj,
+        reason: string,
+        ignoredType = "acknowledges",
+      ) {
+        const { bundle, ids } = await sealEvidenceBundle(source);
+        const result = await buildResultRoot(bundle);
+        const claim = result.claims[1]!;
+        expect(claim.close).toMatchObject({
+          asserted: "AGREED",
+          derived: "UNILATERAL",
+          state: "UNILATERAL",
+          derivation: "recomputed",
+          stateMismatch: true,
+          links: [],
+        });
+        expect(claim.close!.ignored).toHaveLength(1);
+        expect(claim.close!.ignored[0]).toMatchObject({
+          type: ignoredType,
+          recordId: ids["close-b"],
+          reason,
+        });
+        expect(claim.failed).toBe(true);
+        expect(claim.failedOn).toBe("close_state");
+        expect(claim.failure).toBe(
+          `close_state mismatch: asserted AGREED, the cited Close's links read UNILATERAL (ignored ${ignoredType} from ${ids["close-b"]}: ${reason})`,
+        );
+        expect(claim.verdict).toBe("met"); // the producer's word, carried, never counted
+        expect(result.bucketCounts).toEqual({
+          met: 1,
+          notMet: 0,
+          notEvaluable: 0,
+          failed: 1,
+        });
+        return { claim, ids };
+      }
+
+      it("(1) self-acknowledged: the acknowledger is from the Close's own book -- a producer cannot agree with itself", async () => {
+        const source = fixture("result-root-close-bundle.json");
+        peerHeader(source).book_id = "airline"; // the Close's own book (its own key is a different one; the book rule fails first)
+        await neverAgreed(
+          source,
+          "the linking record is from the Close's own book",
+        );
+      });
+
+      it("(2) third book: the acknowledger is from a book that is not the claim's named peer -- a different book is necessary, not sufficient", async () => {
+        const source = fixture("result-root-close-bundle.json");
+        peerHeader(source).book_id = "airline-audit"; // a third book, its own key
+        await neverAgreed(
+          source,
+          "the linking record's book_id airline-audit is not the claim's named peer airline-sor",
+        );
+      });
+
+      it("(2) a rebuttal from a third book makes no state either: never CONTESTED, the Close stays UNILATERAL", async () => {
+        const source = fixture("result-root-close-bundle.json");
+        peerHeader(source).book_id = "airline-audit";
+        (peerHeader(source).links as Obj[])[0]!.type = "rebuts";
+        await neverAgreed(
+          source,
+          "the linking record's book_id airline-audit is not the claim's named peer airline-sor",
+          "rebuts",
+        );
+      });
+
+      it("(3) same key: the named peer's book acknowledges, but under the Close's own key -- a second book minted by the same signer", async () => {
+        const source = fixture("result-root-close-bundle.json");
+        record(source, "close-b").key_id = KEY_A;
+        await neverAgreed(
+          source,
+          "the linking record is signed under the Close's own key",
+        );
+      });
+
+      it("(3) an acknowledger with no key_id cannot be shown to sign under a different key", async () => {
+        const source = fixture("result-root-close-bundle.json");
+        delete record(source, "close-b").key_id;
+        await neverAgreed(source, "the linking record carries no key_id");
+      });
+
+      it("a Close with no book_id accepts no linker, not even the named peer's -- nothing can be its counterparty", async () => {
+        const source = fixture("result-root-close-bundle.json");
+        delete closeHeader(source).book_id;
+        const { claim } = await neverAgreed(
+          source,
+          "the cited Close names no book_id, so nothing can be its counterparty",
+        );
+        expect(claim.close!.bookId).toBeUndefined();
+      });
+
+      it("a Close with no key_id accepts no linker: no signer can be shown to differ from its own", async () => {
+        const source = fixture("result-root-close-bundle.json");
+        delete record(source, "close-a").key_id;
+        const { claim } = await neverAgreed(
+          source,
+          "the cited Close carries no key_id, so no signer can be shown to differ from its own",
+        );
+        expect(claim.close!.keyId).toBeUndefined();
+      });
+
+      it("a claim that names no peer takes no linker: with no named peer there is no counterparty", async () => {
+        const source = fixture("result-root-close-bundle.json");
+        delete closeClaim(source).peer;
+        const { claim } = await neverAgreed(
+          source,
+          "the claim names no peer, so no book can be the counterparty",
+        );
+        expect(claim.close!.peer).toBeUndefined();
+      });
+
+      it("counterpartyLinks: the three parts, each alone insufficient", () => {
+        const close = { bookId: "a", keyId: KEY_A };
+        const link = (bookId?: string, keyId?: string) => ({
+          type: "acknowledges" as const,
+          recordId: "r",
+          ...(bookId === undefined ? {} : { bookId }),
+          ...(keyId === undefined ? {} : { keyId }),
+        });
+        const counted = (
+          c: { bookId?: string; keyId?: string },
+          peer: string | undefined,
+          l: ReturnType<typeof link>,
+        ) => counterpartyLinks(c, peer, [l]).links.length;
+        expect(counted(close, "b", link("b", KEY_B))).toBe(1); // all three
+        expect(counted(close, "b", link("a", KEY_B))).toBe(0); // own book
+        expect(counted(close, "b", link("c", KEY_B))).toBe(0); // not the peer
+        expect(counted(close, "b", link("b", KEY_A))).toBe(0); // own key
+        expect(counted(close, "b", link(undefined, KEY_B))).toBe(0); // no book
+        expect(counted(close, "b", link("b", undefined))).toBe(0); // no key
+        expect(counted(close, undefined, link("b", KEY_B))).toBe(0); // no named peer
+        expect(counted({ keyId: KEY_A }, "b", link("b", KEY_B))).toBe(0); // book-less Close
+        expect(counted({ bookId: "a" }, "b", link("b", KEY_B))).toBe(0); // key-less Close
+        const { ignored } = counterpartyLinks(close, "b", [link("a", KEY_B)]);
+        expect(ignored).toEqual([
+          {
+            ...link("a", KEY_B),
+            reason: "the linking record is from the Close's own book",
+          },
+        ]);
+      });
+    });
+
+    // Maintainer's third pass, the in-evidence[] rule from #140's checker:
+    // close_ref and peer_close_ref must be among the claim's own evidence
+    // digests -- a claim reports only on a Close, and cites only a
+    // state-making record, that it puts in evidence.
+    describe("close_ref and peer_close_ref resolve inside the claim's evidence[] (third pass)", () => {
+      function evidenceOf(source: Obj): Obj[] {
+        return (resultOf(source).claims as Obj[])[1]!.evidence as Obj[];
+      }
+
+      it("close_ref outside evidence[] fails the claim, the state still recomputed", async () => {
+        const source = fixture("result-root-close-bundle.json");
+        evidenceOf(source).splice(0, 1); // drop the Close itself; the peer's record stays
+        const { bundle, ids } = await sealEvidenceBundle(source);
+        const result = await buildResultRoot(bundle);
+        const claim = result.claims[1]!;
+        expect(claim.close).toMatchObject({
+          state: "AGREED",
+          stateMismatch: false,
+          peerRefMismatch: false,
+        });
+        expect(claim.failed).toBe(true);
+        expect(claim.failedOn).toBe("evidence");
+        expect(claim.failure).toBe(
+          `close_ref ${ids["close-a"]} is not among the claim's evidence[] digests`,
+        );
+        expect(result.bucketCounts).toEqual({
+          met: 1,
+          notMet: 0,
+          notEvaluable: 0,
+          failed: 1,
+        });
+      });
+
+      it("peer_close_ref outside evidence[] fails the claim", async () => {
+        const source = fixture("result-root-close-bundle.json");
+        evidenceOf(source).splice(1, 1); // drop the peer's acknowledging Close
+        const { bundle, ids } = await sealEvidenceBundle(source);
+        const claim = (await buildResultRoot(bundle)).claims[1]!;
+        expect(claim.close).toMatchObject({ state: "AGREED" });
+        expect(claim.failed).toBe(true);
+        expect(claim.failedOn).toBe("evidence");
+        expect(claim.failure).toBe(
+          `peer_close_ref ${ids["close-b"]} is not among the claim's evidence[] digests`,
+        );
+      });
+
+      it("both outside evidence[]: one failure naming both", async () => {
+        const source = fixture("result-root-close-bundle.json");
+        evidenceOf(source).splice(0, 2, {
+          digest_alg: "SHA-256",
+          digest: "day-1",
+        });
+        const { bundle, ids } = await sealEvidenceBundle(source);
+        const claim = (await buildResultRoot(bundle)).claims[1]!;
+        expect(claim.failedOn).toBe("evidence");
+        expect(claim.failure).toBe(
+          `close_ref ${ids["close-a"]} is not among the claim's evidence[] digests; peer_close_ref ${ids["close-b"]} is not among the claim's evidence[] digests`,
+        );
+      });
+
+      it("the evidence rule is judged before the state: a self-acknowledged Close whose acknowledger is also outside evidence[] fails on evidence", async () => {
+        const source = fixture("result-root-close-bundle.json");
+        evidenceOf(source).splice(1, 1);
+        ((source.disclosures as Obj)["close-b"] as Obj).agent_input = {
+          ...(((source.disclosures as Obj)["close-b"] as Obj)
+            .agent_input as Obj),
+          book_id: "airline",
+        };
+        const claim = (
+          await buildResultRoot((await sealEvidenceBundle(source)).bundle)
+        ).claims[1]!;
+        expect(claim.close!.stateMismatch).toBe(true);
+        expect(claim.failedOn).toBe("evidence");
+      });
     });
 
     it("a close claim with a body this module cannot read stays an unrecognized row, never a state", async () => {

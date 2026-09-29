@@ -145,7 +145,10 @@ export const REQUIREMENT_CLAIM = "requirement";
 /**
  * The claim type whose `close` body this module reads: one sealed Close,
  * cited by digest (`close_ref`), with a `close_state` the Result asserts
- * and this module recomputes (spec/evidence-result-v0.md section 4.1).
+ * and this module recomputes (spec/evidence-result-v0.md section 4.1)
+ * from the Close's COUNTERPARTY links only -- a link from the named
+ * peer's book (`book_id` == the claim's `peer`, != the Close's) signed
+ * under a different `key_id` than the Close (see `counterpartyLinks`).
  */
 export const CLOSE_CLAIM = "close";
 export const CLOSE_STATES = Object.freeze([
@@ -173,10 +176,32 @@ export interface CloseLink {
   readonly type: CloseLinkType;
   /** The capsule id of the record carrying the link. */
   readonly recordId: string;
+  /** The linking record header's `book_id`; absent when the header names none. */
+  readonly bookId?: string;
+  /**
+   * The linking record's signer: its local Producer Envelope `key_id`
+   * (draft-mih-scitt-agent-action-capsule-04 section capsule_id -- the
+   * envelope field a local composite carries beside `signature`, excluded
+   * from the capsule id). Absent when the record carries none.
+   */
+  readonly keyId?: string;
+}
+
+/**
+ * An inbound acknowledges/rebuts link that made no state: it is not from
+ * the counterparty (maintainer's third pass, 2026-09-29). `reason` says
+ * which of the three parts failed, for the reader.
+ */
+export interface IgnoredCloseLink extends CloseLink {
+  readonly reason: string;
 }
 
 export interface ResultClose {
   readonly closeRef: string;
+  /** The cited Close's own `book_id` (its header's); absent when it names none, and then no link counts. */
+  readonly bookId?: string;
+  /** The cited Close's signer key (its local `key_id`); absent when it carries none, and then no link counts. */
+  readonly keyId?: string;
   readonly period?: { readonly start: string; readonly end: string };
   /** The state the Result wrote. Never drawn as the state when `derived` disagrees. */
   readonly asserted: CloseState;
@@ -194,9 +219,22 @@ export interface ResultClose {
   readonly peerRefMismatch: boolean;
   readonly peer?: string;
   readonly peerCloseRef?: string;
-  /** Every acknowledges/rebuts link this bundle makes to `closeRef`. */
+  /**
+   * Every COUNTERPARTY acknowledges/rebuts link this bundle makes to
+   * `closeRef` -- the links the state is read from. A link counts only
+   * when the linking record (1) carries a `book_id` that differs from the
+   * Close's, (2) that `book_id` is the claim's named `peer`, and (3) it is
+   * signed under a different `key_id` than the Close (maintainer's third
+   * pass, 2026-09-29: neither book nor key alone is enough). A Close with
+   * no `book_id`, or no `key_id`, takes no link at all.
+   */
   readonly links: readonly CloseLink[];
+  /** Every other inbound acknowledges/rebuts link, with why it made no state. */
+  readonly ignored: readonly IgnoredCloseLink[];
 }
+
+/** Which rule failed a claim, for the row's `data-failed` attribute. */
+export type ClaimFailure = "close_state" | "evidence" | "peer_close_ref";
 
 /**
  * `supported`: every cited evidence digest names a record supplied in the
@@ -248,15 +286,21 @@ export interface ResultClaim {
   /** Present on a recognized `close` claim. */
   readonly close?: ResultClose;
   /**
-   * The claim FAILED verification (maintainer's second pass, 2026-09-28):
-   * its close state, recomputed from this bundle's links, is not the
-   * state the Result asserts. A failed claim's `sufficiency` and `verdict`
-   * are the producer's words and are never drawn as the claim's; it is
-   * counted under `bucketCounts.failed`, never under its stated verdict.
+   * The claim FAILED verification (maintainer's second and third passes,
+   * 2026-09-28 / 2026-09-29): its close state, recomputed from this
+   * bundle's counterparty links, is not the state the Result asserts; or
+   * `close_ref` / `peer_close_ref` is not among the claim's `evidence[]`
+   * digests; or `peer_close_ref` is not the counterparty record carrying
+   * the link that makes the recomputed state. A failed claim's
+   * `sufficiency` and `verdict` are the producer's words and are never
+   * drawn as the claim's; it is counted under `bucketCounts.failed`, never
+   * under its stated verdict.
    */
   readonly failed: boolean;
   /** Why the claim failed, for the reader; absent when it stands. */
   readonly failure?: string;
+  /** The first rule that failed it; absent when it stands. */
+  readonly failedOn?: ClaimFailure;
 }
 
 export interface ResultCoverage {
@@ -664,16 +708,81 @@ async function inboundCloseLinks(
   for (const record of records) {
     const header = await disclosurePayload(record, disclosures, "agent_input");
     if (!isObject(header) || !Array.isArray(header.links)) continue;
+    const bookId = asString(header.book_id);
+    const keyId = signerKey(record);
     for (const link of header.links) {
       if (!isObject(link) || !oneOf(CLOSE_LINK_TYPES, link.type)) continue;
       const target = asString(link.target);
       if (target === undefined) continue;
       const list = inbound.get(target) ?? [];
-      list.push({ type: link.type, recordId: record.capsule_id });
+      list.push({
+        type: link.type,
+        recordId: record.capsule_id,
+        ...(bookId === undefined ? {} : { bookId }),
+        ...(keyId === undefined ? {} : { keyId }),
+      });
       inbound.set(target, list);
     }
   }
   return inbound;
+}
+
+/**
+ * A record's signer as the bundle model exposes it: the local Producer
+ * Envelope `key_id` carried beside `signature` on a composite capsule
+ * (excluded from the capsule id, capsule-04 section capsule_id). The
+ * countersignature stamp's KEY_ID form: Ed25519 public key, 64 hex.
+ */
+function signerKey(record: RecordWithId): string | undefined {
+  const keyId = record.key_id;
+  return typeof keyId === "string" && isHex64(keyId) ? keyId : undefined;
+}
+
+/**
+ * Split a Close's inbound links into the ones that make its state and the
+ * ones that do not (maintainer's third pass, 2026-09-29: "neither book_id
+ * nor signer alone is enough, since a producer can mint a second book or a
+ * second key equally easily"). A link counts only when ALL of:
+ *   (1) the linking record's `book_id` is present and differs from the
+ *       Close's;
+ *   (2) that `book_id` equals the claim's named `peer`;
+ *   (3) the linking record's `key_id` is present and differs from the
+ *       Close's.
+ * A Close with no `book_id`, or no `key_id`, takes no link: nothing can be
+ * shown to be its counterparty. AGREED therefore reads "acknowledged by
+ * the named peer's book under a different key", never "by an independent
+ * party", until the contract pins the peer's key.
+ */
+export function counterpartyLinks(
+  close: { readonly bookId?: string; readonly keyId?: string },
+  peer: string | undefined,
+  inbound: readonly CloseLink[],
+): { readonly links: CloseLink[]; readonly ignored: IgnoredCloseLink[] } {
+  const links: CloseLink[] = [];
+  const ignored: IgnoredCloseLink[] = [];
+  for (const link of inbound) {
+    const reason =
+      close.bookId === undefined
+        ? "the cited Close names no book_id, so nothing can be its counterparty"
+        : close.keyId === undefined
+          ? "the cited Close carries no key_id, so no signer can be shown to differ from its own"
+          : link.bookId === undefined
+            ? "the linking record names no book_id"
+            : link.bookId === close.bookId
+              ? "the linking record is from the Close's own book"
+              : link.bookId !== peer
+                ? peer === undefined
+                  ? "the claim names no peer, so no book can be the counterparty"
+                  : `the linking record's book_id ${link.bookId} is not the claim's named peer ${peer}`
+                : link.keyId === undefined
+                  ? "the linking record carries no key_id"
+                  : link.keyId === close.keyId
+                    ? "the linking record is signed under the Close's own key"
+                    : undefined;
+    if (reason === undefined) links.push(link);
+    else ignored.push({ ...link, reason });
+  }
+  return { links, ignored };
 }
 
 const actedOnReferences = (record: RecordWithId): string[] =>
@@ -903,10 +1012,30 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
     if (body !== undefined) {
       const closeRef = body.close_ref.digest as string;
       const asserted = body.close_state;
-      const supplied = recordsById.has(closeRef);
-      const links = inbound.get(closeRef) ?? [];
-      const derived = supplied ? deriveCloseState(links) : undefined;
+      const closeRecord = recordsById.get(closeRef);
+      const supplied = closeRecord !== undefined;
       const peer = asString(body.peer);
+      // The Close's own book and signer: its disclosed header's `book_id`
+      // and its local `key_id`. Only a link from another book -- the
+      // named peer's -- under another key can make its state.
+      const closeHeader =
+        closeRecord === undefined
+          ? undefined
+          : await disclosurePayload(closeRecord, disclosures, "agent_input");
+      const closeBookId = isObject(closeHeader)
+        ? asString(closeHeader.book_id)
+        : undefined;
+      const closeKeyId =
+        closeRecord === undefined ? undefined : signerKey(closeRecord);
+      const { links, ignored } = counterpartyLinks(
+        {
+          ...(closeBookId === undefined ? {} : { bookId: closeBookId }),
+          ...(closeKeyId === undefined ? {} : { keyId: closeKeyId }),
+        },
+        peer,
+        inbound.get(closeRef) ?? [],
+      );
+      const derived = supplied ? deriveCloseState(links) : undefined;
       const peerCloseRef = isObject(body.peer_close_ref)
         ? asString(body.peer_close_ref.digest)
         : undefined;
@@ -924,6 +1053,8 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
             : undefined;
       close = {
         closeRef,
+        ...(closeBookId === undefined ? {} : { bookId: closeBookId }),
+        ...(closeKeyId === undefined ? {} : { keyId: closeKeyId }),
         ...(period === undefined ? {} : { period }),
         asserted,
         ...(derived === undefined ? {} : { derived }),
@@ -938,18 +1069,54 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
         ...(peer === undefined ? {} : { peer }),
         ...(peerCloseRef === undefined ? {} : { peerCloseRef }),
         links,
+        ignored,
       };
       if (supplied) await resolveRecord(closeRef);
     }
-    // A close-state mismatch FAILS the claim (2026-09-28, second pass):
-    // #140 section 4.1 says a verifier MUST fail the claim when the
-    // asserted state differs from the one the links read. The claim's
+    // Three rules FAIL a close claim (#140 section 4.1; maintainer's
+    // second and third passes, 2026-09-28 / 2026-09-29). The claim's
     // stated sufficiency and verdict are then the producer's words only:
     // never drawn as the claim's, never counted under its verdict.
-    const failure =
-      close !== undefined && close.stateMismatch
-        ? `close_state mismatch: asserted ${close.asserted}, the cited Close's links read ${close.state}`
-        : undefined;
+    //   evidence:       close_ref and peer_close_ref must be among the
+    //                   claim's own evidence[] digests -- a claim reports
+    //                   only on a Close, and cites only a state-making
+    //                   record, that it puts in evidence.
+    //   close_state:    the asserted state differs from the one the
+    //                   counterparty links read (a self-acknowledged, a
+    //                   third-book or a same-key acknowledger makes no
+    //                   state, so an asserted AGREED over it fails here).
+    //   peer_close_ref: the record it names is not the counterparty
+    //                   record carrying the link that makes the state.
+    let failedOn: ClaimFailure | undefined;
+    let failure: string | undefined;
+    if (close !== undefined) {
+      const inEvidence = new Set(evidence.map((ref) => ref.digest));
+      const outside = (
+        [
+          ["close_ref", close.closeRef],
+          ["peer_close_ref", close.peerCloseRef],
+        ] as const
+      ).filter(([, digest]) => digest !== undefined && !inEvidence.has(digest));
+      if (outside.length > 0) {
+        failedOn = "evidence";
+        failure = outside
+          .map(
+            ([field, digest]) =>
+              `${field} ${digest} is not among the claim's evidence[] digests`,
+          )
+          .join("; ");
+      } else if (close.stateMismatch) {
+        failedOn = "close_state";
+        const why =
+          close.ignored.length === 0
+            ? ""
+            : ` (ignored ${close.ignored.map((link) => `${link.type} from ${link.recordId}: ${link.reason}`).join("; ")})`;
+        failure = `close_state mismatch: asserted ${close.asserted}, the cited Close's links read ${close.state}${why}`;
+      } else if (close.peerRefMismatch) {
+        failedOn = "peer_close_ref";
+        failure = `peer_close_ref ${close.peerCloseRef ?? "(absent)"} is not the counterparty record carrying the ${close.state === "AGREED" ? "acknowledges" : "rebuts"} link that makes this Close ${close.state}`;
+      }
+    }
     claims.push({
       id: raw.id as string,
       type,
@@ -990,6 +1157,7 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
       ...(close === undefined ? {} : { close }),
       failed: failure !== undefined,
       ...(failure === undefined ? {} : { failure }),
+      ...(failedOn === undefined ? {} : { failedOn }),
     });
   }
 

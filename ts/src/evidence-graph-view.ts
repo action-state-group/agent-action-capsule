@@ -868,12 +868,14 @@ function renderClose(
   const derivation = element(
     "dd",
     close.derivation === "recomputed"
-      ? `recomputed from ${close.links.length} ${close.links.length === 1 ? "link" : "links"} to the cited Close in this bundle`
+      ? `recomputed from ${close.links.length} counterparty ${close.links.length === 1 ? "link" : "links"} to the cited Close in this bundle${close.ignored.length === 0 ? "" : ` (${close.ignored.length} other ${close.ignored.length === 1 ? "link" : "links"} ignored)`}`
       : "producer-asserted: the cited Close is not a record in this bundle, so its links could not be read",
   );
   derivation.dataset.closeDerivationNote = close.derivation;
   details.append(derivation);
   if (close.peer !== undefined) appendValue(details, "peer", close.peer);
+  if (close.bookId !== undefined) appendValue(details, "book", close.bookId);
+  if (close.keyId !== undefined) appendValue(details, "signer", close.keyId);
   host.append(details);
   host.append(element("h5", "Cited Close"));
   renderCitationList([close.closeRef], result.records, host);
@@ -887,6 +889,23 @@ function renderClose(
     for (const link of close.links) {
       const item = element("li", `${link.type} · ${link.recordId}`);
       item.dataset.closeLink = link.type;
+      item.dataset.linkRecord = link.recordId;
+      list.append(item);
+    }
+    host.append(list);
+  }
+  // Inbound links that made no state -- from the Close's own book, a book
+  // that is not the named peer, or the Close's own key -- are listed with
+  // the reason, never counted: a reader sees why AGREED was not read.
+  if (close.ignored.length > 0) {
+    host.append(element("h5", "Links ignored (not from the counterparty)"));
+    const list = element("ul");
+    for (const link of close.ignored) {
+      const item = element(
+        "li",
+        `${link.type} · ${link.recordId} · ${link.reason}`,
+      );
+      item.dataset.ignoredLink = link.type;
       item.dataset.linkRecord = link.recordId;
       list.append(item);
     }
@@ -962,7 +981,7 @@ function renderClaim(
       "p",
       `failed: ${claim.failure ?? "verification failed"}; sufficiency and verdict withheld`,
     );
-    note.dataset.claimFailed = "close_state";
+    note.dataset.claimFailed = claim.failedOn ?? "close_state";
     host.append(note);
   }
   if (claim.close !== undefined) renderClose(claim.close, result, host);
@@ -1139,7 +1158,7 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
     if (claim.support === "unsupported") tr.className = "claim-unsupported";
     if (claim.failed) {
       tr.classList.add("claim-failed");
-      tr.dataset.failed = "close_state";
+      tr.dataset.failed = claim.failedOn ?? "close_state";
     }
     const idCell = document.createElement("td");
     const button = element("button", claim.id);
