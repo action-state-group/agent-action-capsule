@@ -1,6 +1,6 @@
 {
   "spec": "draft-mih-scitt-agent-action-capsule-05",
-  "count": 24,
+  "count": 27,
   "cases": [
     {
       "name": "pos-provenance-mode-backfilled",
@@ -10,7 +10,7 @@
     {
       "name": "neg-provenance-mode-time-rung-overclaim",
       "kind": "negative",
-      "description": "provenance_mode.time_rung='witnessed' claimed with no references[] entry citing citation_purpose='corroborates_source_time' -> provenance_time_rung_overclaim (check 9, gating \u2014 unlike the informational overclaim treatment check 7 gives attestation_mode/ledger_mode/cross_party_rung, this profile treats an unsupported provenance_mode time claim as a falsifiable dishonesty claim); derived.provenance_time_rung stays 'self_attested', the rederived value, never the claim."
+      "description": "provenance_mode.time_rung='witnessed' claimed with no references[] entry citing citation_purpose='corroborates_source_time' -> provenance_time_rung_overclaim (check 9, gating — unlike the informational overclaim treatment check 7 gives attestation_mode/ledger_mode/cross_party_rung, this profile treats an unsupported provenance_mode time claim as a falsifiable dishonesty claim); derived.provenance_time_rung stays 'self_attested', the rederived value, never the claim."
     },
     {
       "name": "neg-provenance-mode-backfilled-missing-fields",
@@ -70,7 +70,7 @@
     {
       "name": "neg-provenance-mode-time-rung-overclaim-v05",
       "kind": "negative",
-      "description": "-05 twin of neg-provenance-mode-time-rung-overclaim (only spec_version differs): provenance_mode.time_rung='witnessed' claimed with no references[] entry citing citation_purpose='corroborates_source_time' -> provenance_time_rung_overclaim (check 9, gating \u2014 unlike the informational overclaim treatment check 7 gives attestation_mode/ledger_mode/cross_party_rung, this profile treats an unsupported provenance_mode time claim as a falsifiable dishonesty claim); derived.provenance_time_rung stays 'self_attested', the rederived value, never the claim."
+      "description": "-05 twin of neg-provenance-mode-time-rung-overclaim (only spec_version differs): provenance_mode.time_rung='witnessed' claimed with no references[] entry citing citation_purpose='corroborates_source_time' -> provenance_time_rung_overclaim (check 9, gating — unlike the informational overclaim treatment check 7 gives attestation_mode/ledger_mode/cross_party_rung, this profile treats an unsupported provenance_mode time claim as a falsifiable dishonesty claim); derived.provenance_time_rung stays 'self_attested', the rederived value, never the claim."
     },
     {
       "name": "neg-provenance-mode-backfilled-missing-fields-v05",
@@ -121,6 +121,24 @@
       "name": "pos-chain-duplicates-parent-backfilled-v05",
       "kind": "store",
       "description": "-05 twin of pos-chain-duplicates-parent-backfilled (only spec_version differs): a 'duplicates'-linked pair whose parent is ITSELF provenance_mode.mode='backfilled' (not the contemporaneous record 'duplicates' is defined to cite): the store-level pass reports BOTH duplicate_collapsed AND duplicate_parent_not_contemporaneous (both info, check 9) on the child; both members remain ok."
+    },
+    {
+      "name": "neg-field-not-string-provenance-source-asserted-at-object",
+      "kind": "negative",
+      "description": "provenance_mode.source_asserted_at is a JSON object, not a string, on an otherwise well-formed backfilled record -> field_not_string (check 1).",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-field-not-string-provenance-import-batch-list",
+      "kind": "negative",
+      "description": "provenance_mode.import_batch is a JSON list, not a string, on an otherwise well-formed backfilled record -> field_not_string (check 1).",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-field-not-string-provenance-imported-at-list",
+      "kind": "negative",
+      "description": "provenance_mode.imported_at is a JSON list, not a string, on an otherwise well-formed backfilled record -> field_not_string (check 1).",
+      "provenance": "reference-derived"
     }
   ]
 }

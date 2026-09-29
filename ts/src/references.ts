@@ -2,6 +2,13 @@ import { asJsonObject as object, isHex64, type ParsedJson } from "./json.js";
 import type { Finding } from "./verify.js";
 
 /** Draft-04 §5.5.5 structural checks. No target or inclusion proof is resolved. */
+/** String-typed members of a references[] entry's retention object (§5.5.5). */
+const RETENTION_STRING_MEMBERS = [
+  "declarant",
+  "retained_until",
+  "not_retained_after",
+] as const;
+
 export function referenceFindings(
   capsule: Record<string, ParsedJson>,
   purposes: ReadonlySet<string>,
@@ -84,6 +91,18 @@ export function referenceFindings(
         );
       }
     }
+    const retention = object(ref.retention);
+    if (retention !== undefined)
+      for (const field of RETENTION_STRING_MEMBERS)
+        if (
+          Object.hasOwn(retention, field) &&
+          typeof retention[field] !== "string"
+        )
+          add(
+            "field_not_string",
+            `${path}.retention.${field} MUST be a string when present (§5.5.5)`,
+            1,
+          );
     if ("log_coordinates" in ref) {
       const coordinates = object(ref.log_coordinates);
       if (coordinates === undefined) {

@@ -8,6 +8,10 @@
 //! ordered (check, severity, code) of every finding that is not `info`.
 //! Canonicalization cases (no `ok`) and store cases (`{"ledger": [...]}`) are
 //! skipped: they exercise surfaces this crate does not expose.
+//!
+//! The provenance-mode corpus is Python and Go (check 9). This crate does not
+//! implement check 9, but the corpus's check-1 type cases
+//! (`neg-field-not-string-*`) still apply, and run here the same way.
 
 use aac_bundle::verify::verify;
 use serde_json::Value;
@@ -15,6 +19,10 @@ use std::path::PathBuf;
 
 fn corpus() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vectors/capsule")
+}
+
+fn provenance_corpus() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../provenance-mode-vectors")
 }
 
 fn read(path: PathBuf) -> Value {
@@ -31,13 +39,27 @@ fn gating(findings: impl Iterator<Item = (Option<i64>, String, String)>) -> Vec<
 
 #[test]
 fn capsule_corpus_matches_the_siblings() {
-    let manifest = read(corpus().join("vectors.json"));
+    check_corpus(corpus(), |_| true);
+}
+
+#[test]
+fn provenance_mode_type_cases_match_the_siblings() {
+    check_corpus(provenance_corpus(), |name| {
+        name.starts_with("neg-field-not-string-")
+    });
+}
+
+fn check_corpus(root: PathBuf, select: impl Fn(&str) -> bool) {
+    let manifest = read(root.join("vectors.json"));
     let mut run = 0;
     let mut failures = Vec::new();
     for case in manifest["cases"].as_array().expect("cases") {
         let name = case["name"].as_str().expect("name");
-        let input = read(corpus().join(name).join("input.json"));
-        let expected = read(corpus().join(name).join("expected.json"));
+        if !select(name) {
+            continue;
+        }
+        let input = read(root.join(name).join("input.json"));
+        let expected = read(root.join(name).join("expected.json"));
         let Some(ok) = expected.get("ok").and_then(Value::as_bool) else {
             continue;
         };
@@ -75,7 +97,7 @@ fn capsule_corpus_matches_the_siblings() {
             ));
         }
     }
-    assert!(run > 0, "no capsule cases ran");
+    assert!(run > 0, "no cases ran in {}", root.display());
     assert!(
         failures.is_empty(),
         "{} of {run} cases diverge:\n{}",
