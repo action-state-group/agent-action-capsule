@@ -16,6 +16,10 @@ same-commit files in CI.
   interlock: the released `-04` `seal-input.json` and its `-05` twin
   `seal-input-v05.json`.
 - `interop/`: established composition and run-under interoperability suites.
+- `evidence-request/`: draft-mih-agent-evidence-request-00 cases (request map,
+  subject forms, request digest, signed refusal, outcomes, caller invariance,
+  retention), derived from the draft text;
+  `python/scripts/generate_evidence_request_vectors.py` regenerates them.
 
 Reference-derived corpora and checksum manifests can be regenerated with:
 

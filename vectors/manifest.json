@@ -5,6 +5,7 @@
     "producer_envelope": "producer-envelope/vectors.json",
     "disclosure_envelope": "disclosure-envelope/vectors.json",
     "cross_language": "cross-language/seal-input.json",
-    "interop": "interop/README.md"
+    "interop": "interop/README.md",
+    "evidence_request": "evidence-request/manifest.json"
   }
 }
