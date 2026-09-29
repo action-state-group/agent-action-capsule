@@ -78,7 +78,7 @@ def _derive_cross_party_rung(cross_party: Mapping[str, Any] | None) -> str | Non
         return None
     counterparty_ref = cross_party.get("counterparty_ref")
     correlator = cross_party.get("correlator")
-    if not is_hex64(counterparty_ref) or not correlator:
+    if not is_hex64(counterparty_ref) or not isinstance(correlator, str) or not correlator:
         return "unilateral_fallback"
     return "full_bilateral" if cross_party.get("substantive") is True else "acknowledged_receipt"
 
@@ -90,6 +90,29 @@ _REGISTRY_FIELDS = (
     ("irreversibility_class", ("effect", "irreversibility_class")),
     ("effect_attestation", ("effect", "effect_attestation")),
     ("chain.relation", ("chain", "relation")),
+)
+
+# String-typed members of the blocks, in check-1 emission order. A value of
+# any other JSON type (a number, a boolean, null, a list, an object) fails
+# check 1 ("REQUIRED fields present and typed", §6). The never-reject rule for
+# unregistered values (§4, §12) covers well-typed strings only: a list where a
+# string belongs is a type error, not an unknown value. The top-level epoch_id
+# is checked the same way, just before these. disposition.authority is not
+# here: §5.4 types it only as "an opaque reference", not as a string.
+_STRING_MEMBERS = (
+    ("disposition", "decision"),
+    ("disposition", "verdict_class"),
+    ("effect", "status"),
+    ("effect", "type"),
+    ("effect", "irreversibility_class"),
+    ("effect", "effect_attestation"),
+    ("effect", "external_ref"),
+    ("chain", "relation"),
+    ("cross_party", "correlator"),
+    ("assurance", "effect_mode"),
+    ("assurance", "attestation_mode"),
+    ("assurance", "ledger_mode"),
+    ("assurance", "cross_party_rung"),
 )
 
 
@@ -243,6 +266,13 @@ def _unsafe_int_paths(v: Any, path: str = "") -> list[str]:
     return out
 
 
+def _text(v: Any) -> str | None:
+    """``v`` when it is a string, else ``None``. Closed sets are looked up by
+    string only: a list or an object is unhashable, and looking one up in a
+    ``frozenset`` or ``dict`` raises instead of answering "not a member"."""
+    return v if isinstance(v, str) else None
+
+
 def _store_ids(store: Iterable[Any] | None) -> set[str] | None:
     if store is None:
         return None
@@ -359,6 +389,8 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         approver = disposition.get("approver")
         if approver is None:
             findings.append(Finding("missing_required_field", "disposition.approver is REQUIRED (§5.4)", check=1))
+        elif not isinstance(approver, str):
+            findings.append(Finding("field_not_string", "disposition.approver MUST be a string (§5.4)", check=1))
         elif approver not in VALID_APPROVERS:
             # Closed enum, structural — NOT an unknown-registry finding (§6).
             findings.append(Finding("approver_invalid", f"disposition.approver MUST be human|policy|counterparty (§5.4); got {approver!r}", check=1))
@@ -375,6 +407,13 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
                 "defensive warning, not a §6 gating check.",
                 severity="warning",
             ))
+
+    if "epoch_id" in capsule and not isinstance(capsule["epoch_id"], str):
+        findings.append(Finding("field_not_string", "epoch_id MUST be a string when present (§5.1)", check=1))
+    for block, member in _STRING_MEMBERS:
+        blk = _obj(capsule, block)
+        if blk is not None and member in blk and not isinstance(blk[member], str):
+            findings.append(Finding("field_not_string", f"{block}.{member} MUST be a string when present (§6 check 1)", check=1))
 
     findings.extend(reference_checks.get(1, []))
 
@@ -404,7 +443,7 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
 
     # ---- Check 4: Verdict/effect orthogonality ------------------------------
     verdict_class = disposition.get("verdict_class") if disposition else None
-    if verdict_class in NEVER_DISPATCH_VERDICT_CLASSES and effect_mode != "not_applicable":
+    if isinstance(verdict_class, str) and verdict_class in NEVER_DISPATCH_VERDICT_CLASSES and effect_mode != "not_applicable":
         findings.append(Finding(
             "verdict_effect_conflict",
             f"verdict_class {verdict_class!r} never dispatches, but derived effect_mode is {effect_mode!r} (§5.4.2)",
@@ -446,16 +485,16 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
         derived["cross_party_rung"] = derived_cross_party_rung
     stated = capsule.get("assurance")
     if isinstance(stated, Mapping):
-        sm = stated.get("effect_mode")
+        sm = _text(stated.get("effect_mode"))
         if sm in _EFFECT_MODE_RANK and _EFFECT_MODE_RANK[sm] > _EFFECT_MODE_RANK.get(effect_mode, 0):
             findings.append(Finding("assurance_overclaim", f"claimed effect_mode {sm!r} but verifier derived {effect_mode!r} (§5.3)", check=7))
-        sa = stated.get("attestation_mode")
+        sa = _text(stated.get("attestation_mode"))
         if sa in _ATTESTATION_RANK and _ATTESTATION_RANK[sa] > _ATTESTATION_RANK[derived["attestation_mode"]]:
             findings.append(Finding("assurance_overclaim", f"claimed attestation_mode {sa!r} but no Receipt verified at this layer (§5.3)", severity="info", check=7))
-        sl = stated.get("ledger_mode")
+        sl = _text(stated.get("ledger_mode"))
         if sl in LEDGER_MODE_RANK and LEDGER_MODE_RANK[sl] > LEDGER_MODE_RANK[derived["ledger_mode"]]:
             findings.append(Finding("assurance_overclaim", f"claimed ledger_mode {sl!r} but verifier derived {derived['ledger_mode']!r} (§5.3)", severity="info", check=7))
-        sc = stated.get("cross_party_rung")
+        sc = _text(stated.get("cross_party_rung"))
         derived_rank = CROSS_PARTY_RUNG_RANK.get(derived_cross_party_rung, 0)
         if sc in CROSS_PARTY_RUNG_RANK and CROSS_PARTY_RUNG_RANK[sc] > derived_rank:
             findings.append(Finding("assurance_overclaim", f"claimed cross_party_rung {sc!r} but verifier derived {derived_cross_party_rung!r} (§5.3 Cross-party assurance)", severity="info", check=7))
@@ -474,6 +513,10 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
             continue
         val = blk.get(member)
         if val is None:
+            continue
+        # A value that is not a string is a type error, reported by check 1;
+        # only a well-typed value can be an unknown one.
+        if not isinstance(val, str):
             continue
         seeded = registries.get(reg_name, frozenset())
         if val in seeded:
@@ -505,7 +548,7 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
     pm = _obj(capsule, "provenance_mode")
     if pm is not None:
         mode = pm.get("mode")
-        if mode not in PROVENANCE_MODES:
+        if not isinstance(mode, str) or mode not in PROVENANCE_MODES:
             findings.append(Finding(
                 "provenance_mode_invalid",
                 f"provenance_mode.mode MUST be one of {sorted(PROVENANCE_MODES)} "
@@ -562,7 +605,7 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
                 ))
 
             time_rung = pm.get("time_rung")
-            if time_rung is not None and time_rung not in TIME_RUNGS:
+            if time_rung is not None and (not isinstance(time_rung, str) or time_rung not in TIME_RUNGS):
                 findings.append(Finding(
                     "provenance_mode_invalid",
                     f"provenance_mode.time_rung MUST be one of {sorted(TIME_RUNGS)} "

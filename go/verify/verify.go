@@ -116,6 +116,30 @@ var registryFields = []struct{ reg, block, member string }{
 	{"chain.relation", "chain", "relation"},
 }
 
+// stringMembers are the string-typed members of the blocks, in check-1
+// emission order. A value of any other JSON type (a number, a boolean, null, a
+// list, an object) fails check 1 ("REQUIRED fields present and typed", §6).
+// The never-reject rule for unregistered values (§4, §12) covers well-typed
+// strings only: a list where a string belongs is a type error, not an unknown
+// value. The top-level epoch_id is checked the same way, just before these.
+// disposition.authority is not here: §5.4 types it only as "an opaque
+// reference", not as a string.
+var stringMembers = []struct{ block, member string }{
+	{"disposition", "decision"},
+	{"disposition", "verdict_class"},
+	{"effect", "status"},
+	{"effect", "type"},
+	{"effect", "irreversibility_class"},
+	{"effect", "effect_attestation"},
+	{"effect", "external_ref"},
+	{"chain", "relation"},
+	{"cross_party", "correlator"},
+	{"assurance", "effect_mode"},
+	{"assurance", "attestation_mode"},
+	{"assurance", "ledger_mode"},
+	{"assurance", "cross_party_rung"},
+}
+
 // Finding is one structured verification finding.
 // Check is nil for findings not belonging to a numbered §6 check.
 // Severity "error" gates ok; "warning" and "info" are non-gating.
@@ -415,11 +439,17 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 
 	// Disposition structural checks + honesty assert (§6).
 	if disposition != nil {
-		approver, approverPresent := disposition["approver"].(string)
-		if !approverPresent {
+		approver, approverIsString := disposition["approver"].(string)
+		if disposition["approver"] == nil {
 			findings = append(findings, Finding{
 				Code:     "missing_required_field",
 				Detail:   "disposition.approver is REQUIRED (§5.4)",
+				Severity: "error", Check: mkCheck(1),
+			})
+		} else if !approverIsString {
+			findings = append(findings, Finding{
+				Code:     "field_not_string",
+				Detail:   "disposition.approver MUST be a string (§5.4)",
 				Severity: "error", Check: mkCheck(1),
 			})
 		} else if !validApprovers[approver] {
@@ -453,6 +483,31 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 				Severity: "warning",
 				Check:    nil,
 			})
+		}
+	}
+
+	if v, present := capsuleMap["epoch_id"]; present {
+		if _, isString := v.(string); !isString {
+			findings = append(findings, Finding{
+				Code:     "field_not_string",
+				Detail:   "epoch_id MUST be a string when present (§5.1)",
+				Severity: "error", Check: mkCheck(1),
+			})
+		}
+	}
+	for _, sm := range stringMembers {
+		blk := asMap(capsuleMap[sm.block])
+		if blk == nil {
+			continue
+		}
+		if v, present := blk[sm.member]; present {
+			if _, isString := v.(string); !isString {
+				findings = append(findings, Finding{
+					Code:     "field_not_string",
+					Detail:   fmt.Sprintf("%s.%s MUST be a string when present (§6 check 1)", sm.block, sm.member),
+					Severity: "error", Check: mkCheck(1),
+				})
+			}
 		}
 	}
 
@@ -662,7 +717,7 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		}
 		valStr, isStr := val.(string)
 		if !isStr {
-			continue
+			continue // a type error, reported by check 1
 		}
 		seeded := regs[rf.reg]
 		if !seeded[valStr] {

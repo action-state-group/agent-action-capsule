@@ -6,6 +6,7 @@ on:
       - "go/**"
       - "python/**"
       - "ts/**"
+      - "rust/**"
       - "vectors/**"
       - "scripts/cross-language-interlock.sh"
       - "scripts/browser-conformance.mjs"
@@ -18,6 +19,7 @@ on:
       - "go/**"
       - "python/**"
       - "ts/**"
+      - "rust/**"
       - "vectors/**"
       - "scripts/cross-language-interlock.sh"
       - "scripts/browser-conformance.mjs"
@@ -92,6 +94,26 @@ jobs:
         run: |
           echo "Python, Go, and TypeScript passed the same committed vector tree."
           echo "Python- and Go-built Disclosure Envelopes passed DE-3 verification in all three runtimes."
+
+  rust-conformance:
+    name: Rust bundle verifier runs the capsule corpus
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust/bundle
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the stable toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+
+      - name: Check the Rust bundle verifier
+        run: |
+          cargo fmt --check
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked
 
   browser-conformance:
     name: Built browser artifact conformance

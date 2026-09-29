@@ -105,6 +105,30 @@ pub struct Finding {
     pub check: Option<i32>,
 }
 
+/// String-typed block members, in check-1 emission order. A value of any
+/// other JSON type (a number, a boolean, null, a list, an object) fails check 1
+/// ("REQUIRED fields present and typed", §6). The never-reject rule for
+/// unregistered values (§4, §12) covers well-typed strings only: a list where a
+/// string belongs is a type error, not an unknown value. The top-level
+/// `epoch_id` is checked the same way, just before these.
+/// `disposition.authority` is not here: §5.4 types it only as "an opaque
+/// reference", not as a string.
+const STRING_MEMBERS: [(&str, &str); 13] = [
+    ("disposition", "decision"),
+    ("disposition", "verdict_class"),
+    ("effect", "status"),
+    ("effect", "type"),
+    ("effect", "irreversibility_class"),
+    ("effect", "effect_attestation"),
+    ("effect", "external_ref"),
+    ("chain", "relation"),
+    ("cross_party", "correlator"),
+    ("assurance", "effect_mode"),
+    ("assurance", "attestation_mode"),
+    ("assurance", "ledger_mode"),
+    ("assurance", "cross_party_rung"),
+];
+
 pub fn mkf(code: &str, detail: &str, check: Option<i32>, severity: &str) -> Finding {
     Finding {
         code: code.to_string(),
@@ -343,14 +367,14 @@ pub fn verify(capsule: &Value, store: Option<&[Value]>) -> VerificationResult {
 
     if let Some(disposition) = disposition {
         let approver = disposition.get("approver").and_then(Value::as_str);
-        match approver {
-            None => findings.push(mkf(
+        match disposition.get("approver") {
+            None | Some(Value::Null) => findings.push(mkf(
                 "missing_required_field",
                 "disposition.approver is REQUIRED (§5.4)",
                 Some(1),
                 "error",
             )),
-            Some(a) if !valid_approver(a) => findings.push(mkf(
+            Some(Value::String(a)) if !valid_approver(a) => findings.push(mkf(
                 "approver_invalid",
                 &format!(
                     "disposition.approver MUST be human|policy|counterparty (§5.4); got {a:?}"
@@ -358,7 +382,13 @@ pub fn verify(capsule: &Value, store: Option<&[Value]>) -> VerificationResult {
                 Some(1),
                 "error",
             )),
-            _ => {}
+            Some(Value::String(_)) => {}
+            Some(_) => findings.push(mkf(
+                "field_not_string",
+                "disposition.approver MUST be a string (§5.4)",
+                Some(1),
+                "error",
+            )),
         }
         if disposition.get("decision").is_none() {
             findings.push(mkf(
@@ -388,6 +418,27 @@ pub fn verify(capsule: &Value, store: Option<&[Value]>) -> VerificationResult {
                 Some(1),
                 "error",
             )),
+        }
+    }
+
+    if matches!(capsule_map.get("epoch_id"), Some(v) if !v.is_string()) {
+        findings.push(mkf(
+            "field_not_string",
+            "epoch_id MUST be a string when present (§5.1)",
+            Some(1),
+            "error",
+        ));
+    }
+    for (block, member) in STRING_MEMBERS {
+        if let Some(v) = as_map(capsule_map.get(block)).and_then(|b| b.get(member)) {
+            if !v.is_string() {
+                findings.push(mkf(
+                    "field_not_string",
+                    &format!("{block}.{member} MUST be a string when present (§6 check 1)"),
+                    Some(1),
+                    "error",
+                ));
+            }
         }
     }
 

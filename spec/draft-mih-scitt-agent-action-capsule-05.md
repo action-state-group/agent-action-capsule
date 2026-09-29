@@ -1254,7 +1254,10 @@ reported field; findings are reported in a fixed order.
 1. Structural: REQUIRED fields present and typed; `format_version` is exactly
    the string `"4"`; `canonicalization_id` is exactly the string `"jcs"`; and
    no floating-point values occur in digest-bearing fields. Any other format
-   or canonicalization declaration fails closed.
+   or canonicalization declaration fails closed. A member of the wrong
+   JSON type (for example, an array or an object where a string is
+   defined) fails this check; the never-reject rule for unregistered
+   values (check 8, {{iana}}) applies only to well-typed values.
 2. Identity: remove local-only `signature` and `key_id` envelope fields, if
    present in a local composite representation, and remove only `capsule_id`
    from the Capsule. Compute SHA-256 over plain JCS and compare the result with
