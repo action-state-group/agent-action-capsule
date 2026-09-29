@@ -20,9 +20,9 @@ the aggregate coverage statement and bucket grouping.
 
 **Depends on, and mirrors by reference rather than redefines:**
 
-- The Evidence Contract's (`evidence-contract-internal-spec-v3.md`) two closed result
-  vocabularies — the four-value Sufficiency (§5.2) and the three-value Verdict (§8) — and its
-  eight-value per-requirement bundle assertion status (§5.1).
+- The Evidence Contract's two closed result vocabularies — the four-value Sufficiency
+  (`SATISFIED | GAP | INSUFFICIENT | UNKNOWN`) and the three-value Verdict
+  (`met | not_met | not_evaluable`) — and its eight-value per-requirement bundle assertion status.
 - The Evidence Plan IR's (`evidence-plan-ir-v0.md`) two-value `tier` vocabulary (§4.2) and its
   `<contract_id>@<version>` compact contract-reference convention (§2, carried on every IR node
   as `contract_ref`; this document uses the identical field name and shape on every claim).
@@ -71,13 +71,13 @@ Two independent, closed vocabularies compose on every claim, and neither may be 
 other:
 
 - **Sufficiency** (`sufficiency` — `SATISFIED | GAP | INSUFFICIENT | UNKNOWN`) — the Evidence
-  Contract's §5.2 contract result: was enough of the right evidence found, committed, and
-  disclosed to make a determination on this requirement at all. Owned by
-  `evidence-contract-internal-spec-v3.md` §5.2; mirrored here, never redefined.
-- **Verdict** (`verdict` — `met | not_met | not_evaluable`) — the Evidence Contract's §8 judged
-  outcome, once sufficiency allows a determination at all. Owned by the same document, §8.
+  Contract's contract result: was enough of the right evidence found, committed, and
+  disclosed to make a determination on this requirement at all. Owned by the Evidence
+  Contract; mirrored here, never redefined.
+- **Verdict** (`verdict` — `met | not_met | not_evaluable`) — the Evidence Contract's judged
+  outcome, once sufficiency allows a determination at all. Owned by the Evidence Contract.
 
-**The rule that binds them (v3 §8, restated normatively here because a Result is exactly the
+**The rule that binds them (the Evidence Contract's own rule, restated normatively here because a Result is exactly the
 artifact this rule constrains):** `verdict` MUST be `not_evaluable` whenever `sufficiency` is
 anything other than `SATISFIED`; `verdict` MUST be `met` or `not_met` only when `sufficiency` is
 `SATISFIED`. A claim asserting `met` or `not_met` against `GAP`, `INSUFFICIENT`, or `UNKNOWN`
@@ -99,8 +99,8 @@ Every claim also carries:
   checkable, by digest only, never inline bytes (§5).
 
 A claim never re-derives, and never self-declares, its own sufficiency — **"the evidence record
-never self-declares that it satisfies a requirement; the Evidence Contract defines sufficiency"**
-(fabric v3 §9.1). A claim's `sufficiency`/`verdict` pair is the Evidence Contract's projection
+never self-declares that it satisfies a requirement; the Evidence Contract defines sufficiency."**
+A claim's `sufficiency`/`verdict` pair is the Evidence Contract's projection
 over that claim's cited evidence, never a property the evidence asserts about itself.
 
 **Traceability (the ruling's second paragraph, encoded).** "A claim that cannot be traced to
@@ -124,7 +124,7 @@ A Result is sponsor-facing: it is read by a party who is not the counterparty ho
 underlying evidence, and it MUST NOT become a side channel for evidence the disclosure layer has
 decided not to share. Every claim therefore carries exactly one **presentation carrier** —
 `disclosure`, `analysis`, or `story` — naming what the claim shows a reader, and the carrier's own
-`status` field (the eight-value per-requirement bundle assertion status owned by v3 §5.1,
+`status` field (the Evidence Contract's eight-value per-requirement bundle assertion status,
 mirrored here by reference) states why that carrier, and not a stronger one, was used.
 
 **The gate (encodes "withheld... evidence remains explicit... story and analysis may explain the
@@ -137,7 +137,7 @@ or narrative) and `disclosure` (the evidence itself, by digest) — `analysis`/`
 substitute for `disclosure` once the gap is closed. `WITHHELD` and `NOT_COMMITTED` are singled out
 (rather than every non-`SATISFIED` status) because both mean the underlying evidence *exists* — a
 counterparty holds it, or declined to commit it — as distinct from e.g. `NOT_FOUND`, where there
-is nothing to withhold in the first place; §5.2 collapses both into `GAP` sufficiency, but the
+is nothing to withhold in the first place; the Sufficiency projection collapses both into `GAP`, but the
 disclosure policy needs exactly the distinction that projection discards. Every carrier's required
 `status` field is what makes "remains explicit in the result" checkable — a claim can never omit
 naming why the stronger carrier was not used.
@@ -182,7 +182,7 @@ percentage above the fold.
 
 **Coverage (mandatory) — "requirements evaluated, excluded as not applicable, and unresolved."**
 `aggregate.coverage` states the evaluated population precisely: `evaluated_population` (requirements
-evaluated), `excluded_not_applicable` (excluded as `NOT_APPLICABLE` — §5.2, outside the evaluated
+evaluated), `excluded_not_applicable` (excluded as `NOT_APPLICABLE` — outside the evaluated
 population by construction, not a gap), and `unknown_count` (the "unresolved" count — evaluated
 requirements that resolved `UNKNOWN`). An aggregate without a coverage statement is not a summary,
 it is a claim with the denominator hidden, and the companion schema refuses to validate one (§7).
@@ -211,8 +211,8 @@ claim:
   requirement_ref: string             # a requirement id within that contract
   tier: recomputed | judged           # §1, mirrors evidence-plan-ir-v0.md §4.2
   grade: self-attested | witnessed | countersigned   # §1, owned elsewhere
-  sufficiency: SATISFIED | GAP | INSUFFICIENT | UNKNOWN   # §1, owned by contract v3 §5.2
-  verdict: met | not_met | not_evaluable                  # §1, owned by contract v3 §8
+  sufficiency: SATISFIED | GAP | INSUFFICIENT | UNKNOWN   # §1, owned by the Evidence Contract
+  verdict: met | not_met | not_evaluable                  # §1, owned by the Evidence Contract
   evidence: [digest-ref, ...]         # §5 — by digest only
   proofs: [proof-ref, ...]            # §5 — by digest only
   presentation: disclosure-carrier | analysis-carrier | story-carrier   # §2, §6
@@ -305,14 +305,12 @@ view:
 
 ## 9. Field mapping — #102 evidence-graph model → Result v0
 
-Batch 4's EM brief named PR #102's evidence-graph emitter model (`ts/src/evidence-graph.ts`,
-`agent-action-capsule` PR #102) and `capsule-engine/report/model.py`'s dry-run report rows as the
-closest existing artefacts — "close in spirit, not field-compatible." This table is the
-reconciliation: every #102 field, renamed or explicitly noted as having no counterpart on either
-side. `capsule-engine/report/model.py`'s `DryRunReport`/`ReportRow` shape is a **dry-run guard
-report**, not a Result — its `ReportRow.capsule`/`cited_capsule` fields inline full capsule
-objects, which §4–§6 above forbid outright (evidence and proofs are by digest only); it has no
-counterpart field at all in Result v0 and is not tabulated below.
+PR #102's evidence-graph emitter model (`ts/src/evidence-graph.ts`, `agent-action-capsule`
+PR #102) is the closest existing artefact — close in spirit, not field-compatible. This table is
+the reconciliation: every #102 field, renamed or explicitly noted as having no counterpart on
+either side. A dry-run guard report whose rows inline full capsule objects is not a Result:
+§4–§6 above forbid inline evidence outright (evidence and proofs are by digest only), so such a
+shape has no counterpart field at all in Result v0 and is not tabulated below.
 
 | #102 `evidence-graph.ts` field | Result v0 field | Note |
 |---|---|---|

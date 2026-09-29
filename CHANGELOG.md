@@ -109,8 +109,8 @@ shipped in 0.5.0 / `go/v0.5.x` is byte-identical, and the -05 cases are added be
   capsule-emit-mesh's twin `adjudication`/`adjudication_delivery_receipt`/`ack`/`rebuttal` so
   `evaluation-report/v1` is the single-party case of the same adjudication shape rather than a
   parallel one. `epistemic_type` is fixed per schema and vendored from the Evidence Layer's closed
-  set (`schemas/vendor/epistemic-types.json`), extending capsule-engine's Batch 1 parity pattern
-  (commit `ba7b7a0`) with its own three-way check. §9 maps every old capsule-judge/capsule-emit-mesh
+  set (`schemas/vendor/epistemic-types.json`), held in sync by a three-way parity check (schema
+  `const`, python-side table, vendored set) with its own mutant check. §9 maps every old capsule-judge/capsule-emit-mesh
   field onto this family so the pin/drift port is mechanical.
 - `spec/draft-mih-scitt-agent-action-capsule-05.md` — retention-undertaking declaration and
   cross-algorithm re-anchoring format (#118); corrected the selective-disclosure I-D reference

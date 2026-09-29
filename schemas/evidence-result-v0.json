@@ -32,15 +32,15 @@
       "enum": ["self-attested", "witnessed", "countersigned"]
     },
     "Sufficiency": {
-      "description": "The four-value Evidence Contract result (evidence-contract-internal-spec-v3.md section 5.2), owned there, mirrored here.",
+      "description": "The four-value Evidence Contract sufficiency result: whether enough of the right evidence was found, committed, and disclosed to make a determination on the requirement at all. Owned by the Evidence Contract, mirrored here, never redefined.",
       "enum": ["SATISFIED", "GAP", "INSUFFICIENT", "UNKNOWN"]
     },
     "Verdict": {
-      "description": "The three-value judged-outcome vocabulary (evidence-contract-internal-spec-v3.md section 8), owned there, mirrored here.",
+      "description": "The three-value judged-outcome vocabulary of the Evidence Contract: met or not_met only when sufficiency is SATISFIED, otherwise not_evaluable. Owned by the Evidence Contract, mirrored here, never redefined.",
       "enum": ["met", "not_met", "not_evaluable"]
     },
     "EvidenceStatus": {
-      "description": "The eight-value per-requirement bundle assertion status (evidence-contract-internal-spec-v3.md section 5.1), the same closed set evidence-plan-ir-v0.json's ResultEnvelope.status mirrors. Owned there, mirrored here for the same reason: the disclosure policy (spec section 2) needs the WITHHELD/NOT_COMMITTED distinction section 5.2's Sufficiency projection collapses into GAP.",
+      "description": "The eight-value per-requirement bundle assertion status of the Evidence Contract, the same closed set evidence-plan-ir-v0.json's ResultEnvelope.status mirrors. Owned by the Evidence Contract, mirrored here for the same reason: the disclosure policy (spec section 2) needs the WITHHELD/NOT_COMMITTED distinction that the Sufficiency projection collapses into GAP.",
       "enum": [
         "SATISFIED", "INSUFFICIENT", "NOT_FOUND", "NOT_COMMITTED",
         "WITHHELD", "CONTRADICTED", "NOT_APPLICABLE", "UNKNOWN"

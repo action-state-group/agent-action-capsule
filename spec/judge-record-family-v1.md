@@ -25,7 +25,7 @@ old-field → new-field mapping in §9.
   `schemas/vendor/epistemic-types.json` for this family's own parity check (§0).
 - The Evidence Layer's six-state reconcile vocabulary and Close model (section "Reconcile and
   Close") — `close/v1` (§3) is a direct schema encoding of that prose, not a second model.
-- The Evidence Contract's (`evidence-contract-internal-spec-v3.md`) three-value `Verdict` (§8),
+- The Evidence Contract's three-value `Verdict` (`met | not_met | not_evaluable`),
   mirrored by `evaluation-report/v1`'s `cases[].verdict`, identical to `evidence-result-v0.json`'s
   `Claim.verdict`.
 - `evidence-result-v0.json`'s and `evidence-plan-ir-v0.json`'s `<contract_id>@<version>`
@@ -57,8 +57,8 @@ string a producer happened to write.
 
 Every schema also fixes `epistemic_type` to exactly one value (a `const`, never an `enum`) — the
 epistemic type is a property of the *record shape*, not a per-instance choice. §0's own check,
-`schemas/check_judge_record_examples.py`, extends capsule-engine's Batch 1 parity pattern (commit
-`ba7b7a0`) to this family: every schema's `epistemic_type` const, a python-side table
+`schemas/check_judge_record_examples.py`, applies an epistemic-type parity check to this
+family: every schema's `epistemic_type` const, a python-side table
 (`SCHEMA_EPISTEMIC_TYPES`), and `schemas/vendor/epistemic-types.json`'s vendored copy of the
 Evidence Layer's set must agree, with its own mutant check.
 
@@ -102,7 +102,7 @@ evaluation-report:
   judge_pin: basis                  # §6 — model_id, prompt_digest, axes_digest, sampling
   cases:
     - case_id: string
-      verdict: met | not_met | not_evaluable   # owned by evidence-contract-internal-spec-v3.md §8
+      verdict: met | not_met | not_evaluable   # owned by the Evidence Contract
       acts: [citation, ...]         # citation_purpose: grounds, >=1
       method: citation              # citation_purpose: method — REQUIRED
 ```
@@ -281,7 +281,7 @@ table is the schema-level unification that convergence did not itself produce.
 | Old field (source) | New field (this family) | Note |
 |---|---|---|
 | capsule-judge `judge_judgment.detail.prompt_digest`, `.model_id` | `evaluation-report/v1 judge_pin.prompt_digest`, `.model_id` | same names; `prompt_digest` becomes a `digest-ref` object, was a bare digest string |
-| capsule-judge `judge_judgment.detail.label` | `evaluation-report/v1 cases[].verdict` | renamed and revocabularied: `label` was an open string; `verdict` is the closed `met`/`not_met`/`not_evaluable` set owned by `evidence-contract-internal-spec-v3.md` §8 |
+| capsule-judge `judge_judgment.detail.label` | `evaluation-report/v1 cases[].verdict` | renamed and revocabularied: `label` was an open string; `verdict` is the closed `met`/`not_met`/`not_evaluable` set owned by the Evidence Contract |
 | capsule-judge `judge_judgment.detail.confidence_micros` | *(no counterpart)* | a confidence figure has no field in this family — the same "never a score above the fold" discipline `evidence-result-v0.md` §3 rules; `calibration-summary/v1` reports k-of-n counts, never a confidence value |
 | capsule-judge `judge_judgment.detail.evidence.turn_capsule_ids[]` | `evaluation-report/v1 cases[].acts[]` | renamed and typed: bare ids become `citation` objects (`citation_purpose: grounds`), by digest only — the identical `evidenceIds` → digest-ref rename `evidence-result-v0.md` §9 already made for its own family |
 | capsule-judge `judge_judgment.detail.judge_pin.judge_pin_digest` | *(no counterpart — recomputed, not carried)* | this family cites the judge pin's own fields directly; a reader who wants the digest computes it over the same canonicalization, same discipline as every other digest here |
