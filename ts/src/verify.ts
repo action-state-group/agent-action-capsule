@@ -99,7 +99,11 @@ export function isV4IrreversibilityClass(value: string): boolean {
   return v4IrreversibilityClasses.has(value);
 }
 
-/** String-typed block members, in check-1 emission order. */
+/**
+ * String-typed block members, in check-1 emission order. The top-level
+ * epoch_id is checked the same way, just before these. disposition.authority
+ * is not here: §5.4 types it only as "an opaque reference", not as a string.
+ */
 const STRING_MEMBERS = [
   ["disposition", "decision"],
   ["disposition", "verdict_class"],
@@ -107,7 +111,9 @@ const STRING_MEMBERS = [
   ["effect", "type"],
   ["effect", "irreversibility_class"],
   ["effect", "effect_attestation"],
+  ["effect", "external_ref"],
   ["chain", "relation"],
+  ["cross_party", "correlator"],
   ["assurance", "effect_mode"],
   ["assurance", "attestation_mode"],
   ["assurance", "ledger_mode"],
@@ -287,6 +293,8 @@ export async function verifyClass1(
   // typed", §6). The never-reject rule for unregistered values (§4, §12)
   // covers well-typed strings only: a list where a string belongs is a type
   // error, not an unknown value.
+  if (Object.hasOwn(top, "epoch_id") && typeof top.epoch_id !== "string")
+    add("field_not_string", "epoch_id MUST be a string when present (§5.1)", 1);
   for (const [block, member] of STRING_MEMBERS) {
     const members = object(top[block]);
     if (

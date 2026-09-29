@@ -78,7 +78,7 @@ def _derive_cross_party_rung(cross_party: Mapping[str, Any] | None) -> str | Non
         return None
     counterparty_ref = cross_party.get("counterparty_ref")
     correlator = cross_party.get("correlator")
-    if not is_hex64(counterparty_ref) or not correlator:
+    if not is_hex64(counterparty_ref) or not isinstance(correlator, str) or not correlator:
         return "unilateral_fallback"
     return "full_bilateral" if cross_party.get("substantive") is True else "acknowledged_receipt"
 
@@ -96,7 +96,9 @@ _REGISTRY_FIELDS = (
 # any other JSON type (a number, a boolean, null, a list, an object) fails
 # check 1 ("REQUIRED fields present and typed", §6). The never-reject rule for
 # unregistered values (§4, §12) covers well-typed strings only: a list where a
-# string belongs is a type error, not an unknown value.
+# string belongs is a type error, not an unknown value. The top-level epoch_id
+# is checked the same way, just before these. disposition.authority is not
+# here: §5.4 types it only as "an opaque reference", not as a string.
 _STRING_MEMBERS = (
     ("disposition", "decision"),
     ("disposition", "verdict_class"),
@@ -104,7 +106,9 @@ _STRING_MEMBERS = (
     ("effect", "type"),
     ("effect", "irreversibility_class"),
     ("effect", "effect_attestation"),
+    ("effect", "external_ref"),
     ("chain", "relation"),
+    ("cross_party", "correlator"),
     ("assurance", "effect_mode"),
     ("assurance", "attestation_mode"),
     ("assurance", "ledger_mode"),
@@ -404,6 +408,8 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
                 severity="warning",
             ))
 
+    if "epoch_id" in capsule and not isinstance(capsule["epoch_id"], str):
+        findings.append(Finding("field_not_string", "epoch_id MUST be a string when present (§5.1)", check=1))
     for block, member in _STRING_MEMBERS:
         blk = _obj(capsule, block)
         if blk is not None and member in blk and not isinstance(blk[member], str):

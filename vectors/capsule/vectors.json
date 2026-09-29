@@ -3,7 +3,7 @@
     "4"
   ],
   "spec": "draft-mih-scitt-agent-action-capsule-05",
-  "count": 100,
+  "count": 103,
   "cases": [
     {
       "name": "pos-v4-jcs-chain-committed",
@@ -575,6 +575,24 @@
       "name": "neg-field-not-string-chain-relation-object",
       "kind": "negative",
       "description": "chain.relation is a JSON object, not a string: a type error, not an unregistered value -> field_not_string (check 1).",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-field-not-string-epoch-id-list",
+      "kind": "negative",
+      "description": "epoch_id is a JSON list, not a string -> field_not_string (check 1).",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-field-not-string-external-ref-object",
+      "kind": "negative",
+      "description": "effect.external_ref is a JSON object, not a string -> field_not_string (check 1).",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-field-not-string-correlator-list",
+      "kind": "negative",
+      "description": "cross_party.correlator is a JSON list, not a string -> field_not_string (check 1); the derived cross_party_rung is unilateral_fallback.",
       "provenance": "reference-derived"
     }
   ],

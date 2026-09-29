@@ -121,7 +121,9 @@ var registryFields = []struct{ reg, block, member string }{
 // list, an object) fails check 1 ("REQUIRED fields present and typed", §6).
 // The never-reject rule for unregistered values (§4, §12) covers well-typed
 // strings only: a list where a string belongs is a type error, not an unknown
-// value.
+// value. The top-level epoch_id is checked the same way, just before these.
+// disposition.authority is not here: §5.4 types it only as "an opaque
+// reference", not as a string.
 var stringMembers = []struct{ block, member string }{
 	{"disposition", "decision"},
 	{"disposition", "verdict_class"},
@@ -129,7 +131,9 @@ var stringMembers = []struct{ block, member string }{
 	{"effect", "type"},
 	{"effect", "irreversibility_class"},
 	{"effect", "effect_attestation"},
+	{"effect", "external_ref"},
 	{"chain", "relation"},
+	{"cross_party", "correlator"},
 	{"assurance", "effect_mode"},
 	{"assurance", "attestation_mode"},
 	{"assurance", "ledger_mode"},
@@ -482,6 +486,15 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		}
 	}
 
+	if v, present := capsuleMap["epoch_id"]; present {
+		if _, isString := v.(string); !isString {
+			findings = append(findings, Finding{
+				Code:     "field_not_string",
+				Detail:   "epoch_id MUST be a string when present (§5.1)",
+				Severity: "error", Check: mkCheck(1),
+			})
+		}
+	}
 	for _, sm := range stringMembers {
 		blk := asMap(capsuleMap[sm.block])
 		if blk == nil {

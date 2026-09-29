@@ -63,6 +63,7 @@ CONTAINERS = pytest.mark.parametrize(
         ("effect", "type"),
         ("effect", "irreversibility_class"),
         ("effect", "effect_attestation"),
+        ("effect", "external_ref"),
         ("assurance", "effect_mode"),
         ("assurance", "attestation_mode"),
         ("assurance", "ledger_mode"),
@@ -91,6 +92,34 @@ def test_a_non_string_chain_relation_fails_check_1(value):
     assert not result.ok
     assert "field_not_string" in _codes(result, "error")
     assert "verifier_internal_error" not in _codes(result, "error")
+
+
+@CONTAINERS
+def test_a_non_string_epoch_id_fails_check_1(value):
+    result = verify(_record(("epoch_id",), value))
+    assert not result.ok
+    assert [f.detail for f in result.findings if f.code == "field_not_string"] == [
+        "epoch_id MUST be a string when present (§5.1)"
+    ]
+
+
+@CONTAINERS
+def test_a_non_string_correlator_fails_check_1_and_derives_no_bilateral_rung(value):
+    capsule = _record(
+        ("cross_party",),
+        {"initiator_ref": "1" * 64, "counterparty_ref": "2" * 64, "correlator": value, "substantive": True},
+    )
+    result = verify(capsule)
+    assert not result.ok
+    assert "field_not_string" in _codes(result, "error")
+    # Only a non-empty string correlates the two halves, as in Go, TS and Rust.
+    assert result.assurance["cross_party_rung"] == "unilateral_fallback"
+
+
+def test_disposition_authority_is_not_string_typed():
+    """§5.4 types authority only as "an opaque reference", not as a string."""
+    result = verify(_record(("disposition", "authority"), {"ref": "policy-7"}))
+    assert "field_not_string" not in _codes(result, "error")
 
 
 @pytest.mark.parametrize("value", [[], {}, ["backfilled"]])

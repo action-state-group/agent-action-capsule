@@ -6,7 +6,8 @@ rule for unregistered values (§4, §12) covers well-typed strings only: a list
 or an object where a string belongs is a type error, not an unknown value, so
 every verifier rejects it in check 1 with ``field_not_string``. These cases put
 a list and an object in three representative fields (one registry field per
-block: disposition.decision, effect.type, chain.relation). Each is otherwise a
+block: disposition.decision, effect.type, chain.relation), and one shape in
+each of epoch_id, effect.external_ref and cross_party.correlator. Each is otherwise a
 verifying record, sealed with the reference compute_capsule_id; its
 expected.json is derived from the reference verify() and then frozen
 ("reference-derived").
@@ -98,6 +99,50 @@ def build_cases() -> list[dict]:
                 }),
             },
         ]
+    cases += [
+        {
+            "name": "neg-field-not-string-epoch-id-list",
+            "description": (
+                "epoch_id is a JSON list, not a string -> field_not_string (check 1)."
+            ),
+            "input": seal({
+                **ident("typed-epoch-id-list"),
+                "epoch_id": ["epoch-1"],
+                "assurance": assurance("not_applicable", "standalone"),
+                "disposition": policy_executed(),
+            }),
+        },
+        {
+            "name": "neg-field-not-string-external-ref-object",
+            "description": (
+                "effect.external_ref is a JSON object, not a string -> field_not_string (check 1)."
+            ),
+            "input": seal({
+                **ident("typed-external-ref-object"),
+                "effect": confirmed_effect(external_ref={"value": "order-7"}),
+                "assurance": assurance("confirmed", "standalone"),
+                "disposition": policy_executed(),
+            }),
+        },
+        {
+            "name": "neg-field-not-string-correlator-list",
+            "description": (
+                "cross_party.correlator is a JSON list, not a string -> field_not_string "
+                "(check 1); the derived cross_party_rung is unilateral_fallback."
+            ),
+            "input": seal({
+                **ident("typed-correlator-list"),
+                "assurance": assurance("not_applicable", "standalone"),
+                "disposition": policy_executed(),
+                "cross_party": {
+                    "initiator_ref": HEX_1,
+                    "counterparty_ref": "2" * 64,
+                    "correlator": ["exchange-corr-1"],
+                    "substantive": False,
+                },
+            }),
+        },
+    ]
     return cases
 
 
