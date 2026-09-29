@@ -247,6 +247,16 @@ export interface ResultClaim {
   readonly presentation: ClaimPresentation;
   /** Present on a recognized `close` claim. */
   readonly close?: ResultClose;
+  /**
+   * The claim FAILED verification (maintainer's second pass, 2026-09-28):
+   * its close state, recomputed from this bundle's links, is not the
+   * state the Result asserts. A failed claim's `sufficiency` and `verdict`
+   * are the producer's words and are never drawn as the claim's; it is
+   * counted under `bucketCounts.failed`, never under its stated verdict.
+   */
+  readonly failed: boolean;
+  /** Why the claim failed, for the reader; absent when it stands. */
+  readonly failure?: string;
 }
 
 export interface ResultCoverage {
@@ -261,11 +271,16 @@ export interface ResultBuckets {
   readonly notEvaluable: readonly string[];
 }
 
-/** Per-bucket headline counts, recomputed from the claims' own verdicts. */
+/**
+ * Per-bucket headline counts, recomputed from the claims' own verdicts --
+ * over the claims that stand. A claim that FAILED verification (see
+ * `ResultClaim.failed`) is counted under `failed` and under no verdict.
+ */
 export interface ResultBucketCounts {
   readonly met: number;
   readonly notMet: number;
   readonly notEvaluable: number;
+  readonly failed: number;
 }
 
 export type CountField =
@@ -542,12 +557,24 @@ const countOf = (value: unknown): number =>
  * that disagrees. `excluded_not_applicable` is carried as stated (no claim
  * backs it, by construction). Pure, so a disagreement the partition gate
  * makes unreachable through `buildResultRoot` is still provable here.
+ *
+ * `failed` names the claims that failed verification (a close-state
+ * mismatch; `ResultClaim.failed`). They stay in `evaluated_population` --
+ * the producer did evaluate them -- but contribute to no verdict count and
+ * to no unresolved count: their sufficiency and verdict are withheld, and
+ * they are counted under `bucketCounts.failed` instead. A producer's
+ * `buckets.met` that lists a failed claim therefore reads as a count
+ * mismatch beside the recomputed `met`.
  */
-export function recomputeCounts(document: ObjectValue): RecomputedCounts {
+export function recomputeCounts(
+  document: ObjectValue,
+  failed: ReadonlySet<string> = new Set(),
+): RecomputedCounts {
   const claims = document.claims as ObjectValue[];
   const aggregate = document.aggregate as ObjectValue;
   const coverage = aggregate.coverage as ObjectValue;
   const buckets = aggregate.buckets as ObjectValue;
+  const standing = claims.filter((claim) => !failed.has(claim.id as string));
   const stated = {
     evaluated_population: countOf(coverage.evaluated_population),
     unknown_count: countOf(coverage.unknown_count),
@@ -557,12 +584,12 @@ export function recomputeCounts(document: ObjectValue): RecomputedCounts {
   } as const;
   const recomputed = {
     evaluated_population: claims.length,
-    unknown_count: claims.filter((claim) => claim.sufficiency === "UNKNOWN")
+    unknown_count: standing.filter((claim) => claim.sufficiency === "UNKNOWN")
       .length,
-    "buckets.met": claims.filter((claim) => claim.verdict === "met").length,
-    "buckets.not_met": claims.filter((claim) => claim.verdict === "not_met")
+    "buckets.met": standing.filter((claim) => claim.verdict === "met").length,
+    "buckets.not_met": standing.filter((claim) => claim.verdict === "not_met")
       .length,
-    "buckets.not_evaluable": claims.filter(
+    "buckets.not_evaluable": standing.filter(
       (claim) => claim.verdict === "not_evaluable",
     ).length,
   } as const;
@@ -584,6 +611,7 @@ export function recomputeCounts(document: ObjectValue): RecomputedCounts {
       met: recomputed["buckets.met"],
       notMet: recomputed["buckets.not_met"],
       notEvaluable: recomputed["buckets.not_evaluable"],
+      failed: claims.length - standing.length,
     },
     mismatches,
   };
@@ -913,6 +941,15 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
       };
       if (supplied) await resolveRecord(closeRef);
     }
+    // A close-state mismatch FAILS the claim (2026-09-28, second pass):
+    // #140 section 4.1 says a verifier MUST fail the claim when the
+    // asserted state differs from the one the links read. The claim's
+    // stated sufficiency and verdict are then the producer's words only:
+    // never drawn as the claim's, never counted under its verdict.
+    const failure =
+      close !== undefined && close.stateMismatch
+        ? `close_state mismatch: asserted ${close.asserted}, the cited Close's links read ${close.state}`
+        : undefined;
     claims.push({
       id: raw.id as string,
       type,
@@ -951,13 +988,18 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
           : {}),
       },
       ...(close === undefined ? {} : { close }),
+      failed: failure !== undefined,
+      ...(failure === undefined ? {} : { failure }),
     });
   }
 
   const aggregate = document.aggregate as ObjectValue;
   const coverage = aggregate.coverage as ObjectValue;
   const buckets = aggregate.buckets as ObjectValue;
-  const counts = recomputeCounts(document);
+  const counts = recomputeCounts(
+    document,
+    new Set(claims.filter((claim) => claim.failed).map((claim) => claim.id)),
+  );
   const rootCoordinates = logCoordinates(memberships, rootRecord.capsule_id);
   return {
     capsuleId: rootRecord.capsule_id,

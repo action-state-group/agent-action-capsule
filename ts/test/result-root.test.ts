@@ -488,7 +488,12 @@ describe("headline values are recomputed, never taken on the producer's word", (
       (await sealEvidenceBundle(fixture("result-root-bundle.json"))).bundle,
     );
     expect(clean.countMismatches).toEqual([]);
-    expect(clean.bucketCounts).toEqual({ met: 1, notMet: 1, notEvaluable: 1 });
+    expect(clean.bucketCounts).toEqual({
+      met: 1,
+      notMet: 1,
+      notEvaluable: 1,
+      failed: 0,
+    });
   });
 
   it("(ii) recomputes evaluated and unresolved from the claims and carries every stated number the claims disagree with; excluded is carried as stated", async () => {
@@ -527,7 +532,12 @@ describe("headline values are recomputed, never taken on the producer's word", (
     const source = fixture("result-root-bundle.json");
     bucketsOf(source).not_met = [];
     const counts = recomputeCounts(resultOf(source));
-    expect(counts.bucketCounts).toEqual({ met: 1, notMet: 1, notEvaluable: 1 });
+    expect(counts.bucketCounts).toEqual({
+      met: 1,
+      notMet: 1,
+      notEvaluable: 1,
+      failed: 0,
+    });
     expect(counts.mismatches).toEqual([
       { field: "buckets.not_met", stated: 0, recomputed: 1 },
     ]);
@@ -600,6 +610,14 @@ describe("headline values are recomputed, never taken on the producer's word", (
         recognized: true,
         support: "supported",
         verdict: "met",
+        failed: false,
+      });
+      expect(claim.failure).toBeUndefined();
+      expect(result.bucketCounts).toEqual({
+        met: 2,
+        notMet: 0,
+        notEvaluable: 0,
+        failed: 0,
       });
       expect(claim.close).toEqual({
         closeRef: ids["close-a"],
@@ -642,8 +660,54 @@ describe("headline values are recomputed, never taken on the producer's word", (
         peerRefMismatch: false,
         links: [{ type: "rebuts", recordId: ids["close-b"] }],
       });
-      // the verdict axis is the Close's own and is untouched by the state
+      // The mismatch FAILS the claim (#140 section 4.1: a verifier MUST
+      // fail the claim on mismatch). The stated verdict is carried on the
+      // model as the producer's word and is never counted: the claim is
+      // under `failed`, not `met`, and the producer's `buckets.met` of two
+      // reads as a count mismatch beside the recomputed one.
+      expect(claim.failed).toBe(true);
+      expect(claim.failure).toBe(
+        "close_state mismatch: asserted AGREED, the cited Close's links read CONTESTED",
+      );
       expect(claim.verdict).toBe("met");
+      const result = await buildResultRoot(bundle);
+      expect(result.bucketCounts).toEqual({
+        met: 1,
+        notMet: 0,
+        notEvaluable: 0,
+        failed: 1,
+      });
+      expect(result.countMismatches).toEqual([
+        { field: "buckets.met", stated: 2, recomputed: 1 },
+      ]);
+      expect(result.coverage.evaluatedPopulation).toBe(2);
+      expect(result.buckets.met).toEqual(["claim-1", "close-1"]); // the producer's listing, as written
+    });
+
+    it("a failed close claim never contributes to met, wherever the producer listed it -- recomputeCounts with the failed set", () => {
+      const source = fixture("result-root-close-bundle.json");
+      const counts = recomputeCounts(resultOf(source), new Set(["close-1"]));
+      expect(counts.bucketCounts).toEqual({
+        met: 1,
+        notMet: 0,
+        notEvaluable: 0,
+        failed: 1,
+      });
+      expect(counts.mismatches).toEqual([
+        { field: "buckets.met", stated: 2, recomputed: 1 },
+      ]);
+      // still in the evaluated population: the producer did evaluate it
+      expect(counts.coverage.evaluatedPopulation).toBe(2);
+      // and a failed claim's UNKNOWN sufficiency is withheld with the rest
+      const unknown = fixture("result-root-close-bundle.json");
+      const close = (resultOf(unknown).claims as Obj[])[1]!;
+      close.sufficiency = "UNKNOWN";
+      close.verdict = "not_evaluable";
+      expect(
+        recomputeCounts(resultOf(unknown), new Set(["close-1"])).coverage
+          .unknownCount,
+      ).toBe(0);
+      expect(recomputeCounts(resultOf(unknown)).coverage.unknownCount).toBe(1);
     });
 
     it("a Close asserted AGREED whose peer never linked to it is UNILATERAL with a state mismatch", async () => {
@@ -659,6 +723,7 @@ describe("headline values are recomputed, never taken on the producer's word", (
         stateMismatch: true,
         links: [],
       });
+      expect(claim.failed).toBe(true);
     });
 
     it("a peer_close_ref that is not the record carrying the link is a peer-ref mismatch, with the state still recomputed", async () => {
@@ -672,6 +737,8 @@ describe("headline values are recomputed, never taken on the producer's word", (
         peerRefMismatch: true,
         peerCloseRef: ids["day-1"],
       });
+      // a peer-ref mismatch is marked, not failed: the state itself agrees
+      expect(claim.failed).toBe(false);
     });
 
     it("a close whose cited Close is not a record in this bundle carries the asserted state as producer-asserted, never bare", async () => {
@@ -689,6 +756,8 @@ describe("headline values are recomputed, never taken on the producer's word", (
         links: [],
       });
       expect(claim.close!.derived).toBeUndefined();
+      // nothing to compare against: producer-asserted is not a failure
+      expect(claim.failed).toBe(false);
     });
 
     it("a close claim with a body this module cannot read stays an unrecognized row, never a state", async () => {

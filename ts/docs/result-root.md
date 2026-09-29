@@ -184,6 +184,59 @@ axis is the Close's own and is untouched by the state.
 an `acknowledges` link; the tests flip the link to `rebuts`, to `cites`,
 and remove the Close from the bundle.
 
+## A close-state mismatch fails the claim (2026-09-28, second pass)
+
+The maintainer's second pass: "a close-state mismatch should fail the
+claim, per #140's own normative text. Today it adds a marker and still
+counts the claim under its stated verdict." It no longer does. When the
+cited Close is in the bundle and the state its links read is not the state
+the Result asserts, the claim is **failed** (`ResultClaim.failed`, with
+`failure` saying why: `close_state mismatch: asserted AGREED, the cited
+Close's links read CONTESTED`). A failed claim's `sufficiency` and
+`verdict` are the producer's words and are never drawn as the claim's: on
+the row and in the drill-down both cells read `failed`
+(`data-verdict="failed"`, `data-sufficiency="failed"`, class
+`claim-failed`), with the stated values on `data-stated-verdict` /
+`data-stated-sufficiency` only, and the drill-down carries a `failed: …;
+sufficiency and verdict withheld` note (`data-claim-failed`). The row and
+the `state mismatch` marker stay.
+
+The recomputed counts follow. `recomputeCounts(document, failed)` counts
+a failed claim under `bucketCounts.failed` and under no verdict; it stays
+in `evaluated_population` (the producer did evaluate it) and contributes
+nothing to `unknown_count`. The page draws a fourth heading after the
+producer's three, `failed: none` / `failed: 1` (`data-bucket-of="failed"`,
+always drawn, with its own list when non-empty) -- the verifier's state,
+not a verdict bucket. The producer's own listing of the claim stays under
+whatever bucket it wrote, marked `· failed`, and its `buckets.met` of two
+over one standing `met` claim reads as `met: 1 count mismatch` with the
+stated two on the marker. A relabelled-AGREED close therefore never
+contributes to `met`; `test/result-root.test.ts` and
+`test/result-root-view.test.ts` pin the row, the drill-down, the headings
+and the counts. Only a state mismatch fails a claim: a `peer_close_ref`
+that is not the linking record is marked (`peerRefMismatch`), and a Close
+absent from the bundle is `producer-asserted` -- neither is a failure,
+since neither contradicts the state.
+
+**On "not met: none".** A producer's empty `not_met` bucket over a
+`not_met` claim is refused by the partition gate before anything renders
+(`(i)` in both test files: no Result page, no rows). The `not met: 1`
+display that recomputation would draw for such a document is therefore
+covered by the unit test on `recomputeCounts` only
+(`recomputeCounts: a producer 'not met: none' …`), not by a render test:
+no render path reaches it, by design.
+
+**Follow-ups, deliberately not in this PR** (each its own change):
+grade-as-asserted (a claim's `grade` is still the producer's word;
+`countersigned` is not checked against any countersignature in the
+bundle); nested-field checks below the top level of a claim (the mirror is
+open-world there); drill-down beyond `acted_on` (a cited record's other
+citation purposes are not followed); `generated_at` as a date-time (checked
+as a string). The counterparty rule and the CONTESTED-is-never-met rule
+that #140's second pass adds to the checker are also not yet mirrored
+here: a link from the Close's own book still counts, and a recomputed
+CONTESTED with `verdict: met` is not itself a failure.
+
 ## Render order
 
 Verify first, as today. An unverified bundle draws the banner, the refusal

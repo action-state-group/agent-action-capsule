@@ -895,17 +895,42 @@ function renderClose(
 }
 
 // The verdict a reader sees is the Result's own only when every cited id
-// resolves in this bundle. Otherwise the cell reads `unsupported` -- never
-// `met`, whatever the Result states -- and the row stays.
+// resolves in this bundle and the claim stands. A claim that FAILED
+// verification (its close state is not what the links read) reads
+// `failed` -- never `met`, never its stated verdict, which is kept on
+// `data-stated-verdict` only. Otherwise an unresolved citation reads
+// `unsupported`. The row stays in every case.
 function appendVerdict(parent: HTMLElement, claim: ResultClaim): HTMLElement {
-  const cell = element(
-    parent.tagName === "TR" ? "td" : "dd",
-    claim.support === "supported" ? claim.verdict : "unsupported",
-  );
-  cell.dataset.verdict =
-    claim.support === "supported" ? claim.verdict : "unsupported";
+  const shown = claim.failed
+    ? "failed"
+    : claim.support === "supported"
+      ? claim.verdict
+      : "unsupported";
+  const cell = element(parent.tagName === "TR" ? "td" : "dd", shown);
+  cell.dataset.verdict = shown;
   cell.dataset.support = claim.support;
-  if (claim.support === "unsupported") cell.className = "claim-unsupported";
+  if (claim.failed) {
+    cell.dataset.statedVerdict = claim.verdict;
+    cell.className = "claim-failed";
+  } else if (claim.support === "unsupported")
+    cell.className = "claim-unsupported";
+  parent.append(cell);
+  return cell;
+}
+
+// A failed claim's sufficiency is the producer's word too: the cell reads
+// `failed`, the stated value on `data-stated-sufficiency` only.
+function appendSufficiency(
+  parent: HTMLElement,
+  claim: ResultClaim,
+): HTMLElement {
+  const shown = claim.failed ? "failed" : claim.sufficiency;
+  const cell = element(parent.tagName === "TR" ? "td" : "dd", shown);
+  cell.dataset.sufficiency = shown;
+  if (claim.failed) {
+    cell.dataset.statedSufficiency = claim.sufficiency;
+    cell.className = "claim-failed";
+  }
   parent.append(cell);
   return cell;
 }
@@ -927,10 +952,19 @@ function renderClaim(
   details.append(type);
   appendValue(details, "tier", claim.tier);
   appendValue(details, "grade", claim.grade);
-  appendValue(details, "sufficiency", claim.sufficiency);
+  details.append(element("dt", "sufficiency"));
+  appendSufficiency(details, claim);
   details.append(element("dt", "verdict"));
   appendVerdict(details, claim);
   host.append(details);
+  if (claim.failed) {
+    const note = element(
+      "p",
+      `failed: ${claim.failure ?? "verification failed"}; sufficiency and verdict withheld`,
+    );
+    note.dataset.claimFailed = "close_state";
+    host.append(note);
+  }
   if (claim.close !== undefined) renderClose(claim.close, result, host);
   if (claim.support === "unsupported") {
     const note = element(
@@ -1051,11 +1085,44 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
       const claim = byId.get(id);
       const item = element(
         "li",
-        claim?.support === "unsupported" ? `${id} · unsupported` : id,
+        claim?.failed
+          ? `${id} · failed`
+          : claim?.support === "unsupported"
+            ? `${id} · unsupported`
+            : id,
       );
       item.dataset.claimRef = id;
-      if (claim?.support === "unsupported")
+      if (claim?.failed) item.className = "claim-failed";
+      else if (claim?.support === "unsupported")
         item.className = "claim-unsupported";
+      list.append(item);
+    }
+    buckets.append(list);
+  }
+  // The verifier's own state, after the producer's three buckets: claims
+  // that failed verification (a close state the links contradict). Drawn
+  // always, `none` when empty, so a reader never has to infer from an
+  // absent heading that nothing failed. Not a verdict bucket: a failed
+  // claim is counted here and under no verdict, whatever bucket the
+  // producer listed it in (that listing stays above, marked).
+  const failedHeading = element(
+    "h3",
+    `failed: ${result.bucketCounts.failed === 0 ? "none" : result.bucketCounts.failed}`,
+  );
+  failedHeading.dataset.bucketCount = String(result.bucketCounts.failed);
+  failedHeading.dataset.bucketOf = "failed";
+  buckets.append(failedHeading);
+  const failedIds = result.claims
+    .filter((claim) => claim.failed)
+    .map((claim) => claim.id);
+  if (failedIds.length === 0) buckets.append(element("p", "none"));
+  else {
+    const list = element("ul");
+    list.dataset.bucket = "failed";
+    for (const id of failedIds) {
+      const item = element("li", id);
+      item.dataset.claimRef = id;
+      item.className = "claim-failed";
       list.append(item);
     }
     buckets.append(list);
@@ -1070,6 +1137,10 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
     tr.dataset.claimRow = claim.id;
     tr.dataset.support = claim.support;
     if (claim.support === "unsupported") tr.className = "claim-unsupported";
+    if (claim.failed) {
+      tr.classList.add("claim-failed");
+      tr.dataset.failed = "close_state";
+    }
     const idCell = document.createElement("td");
     const button = element("button", claim.id);
     button.setAttribute("type", "button");
@@ -1077,9 +1148,7 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
     button.addEventListener("click", () => renderClaim(claim, result, detail));
     idCell.append(button);
     tr.append(idCell, element("td", claim.requirementRef));
-    const sufficiency = element("td", claim.sufficiency);
-    sufficiency.dataset.sufficiency = claim.sufficiency;
-    tr.append(sufficiency);
+    appendSufficiency(tr, claim);
     appendVerdict(tr, claim);
     const tier = element("td", claim.tier);
     tier.dataset.tier = claim.tier;

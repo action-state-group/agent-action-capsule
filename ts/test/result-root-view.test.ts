@@ -518,6 +518,7 @@ it("(ii) bucket headings carry counts recomputed from the claims' verdicts, an e
     ["met", "1", "met: 1"],
     ["notMet", "1", "not met: 1"],
     ["notEvaluable", "1", "not evaluable: 1"],
+    ["failed", "0", "failed: none"],
   ]);
   const close = await render(
     (await sealEvidenceBundle(fixture("result-root-close-bundle.json"))).bundle,
@@ -587,13 +588,48 @@ it("(iv) a Close relabelled AGREED over a rebuts link draws CONTESTED with a sta
   expect(marker.textContent).toBe("state mismatch");
   expect(marker.dataset.asserted).toBe("AGREED");
   expect(marker.dataset.recomputed).toBe("CONTESTED");
-  // the verdict axis is the Close's own: still met, still in the met bucket
+  // The mismatch FAILS the claim (2026-09-28, second pass): the row reads
+  // `failed` on both axes -- never `met`, never SATISFIED -- with the
+  // stated values on data attributes only; the drill-down says why.
+  expect(row.className).toContain("claim-failed");
+  expect(row.dataset.failed).toBe("close_state");
+  const verdict = row.querySelector<HTMLElement>("[data-verdict]")!;
+  expect(verdict.textContent).toBe("failed");
+  expect(verdict.dataset.verdict).toBe("failed");
+  expect(verdict.dataset.statedVerdict).toBe("met");
+  expect(verdict.className).toBe("claim-failed");
+  const sufficiency = row.querySelector<HTMLElement>("[data-sufficiency]")!;
+  expect(sufficiency.textContent).toBe("failed");
+  expect(sufficiency.dataset.sufficiency).toBe("failed");
+  expect(sufficiency.dataset.statedSufficiency).toBe("SATISFIED");
+  // the producer's listing stays, marked; the recomputed `met` is one, with
+  // a count mismatch beside it (stated two); the verifier's `failed` is one
+  const listed = page.querySelector<HTMLElement>(
+    '[data-bucket="met"] [data-claim-ref="close-1"]',
+  )!;
+  expect(listed.textContent).toBe("close-1 · failed");
+  expect(listed.className).toBe("claim-failed");
+  const met = page.querySelector<HTMLElement>('[data-bucket-of="met"]')!;
+  expect(met.dataset.bucketCount).toBe("1");
+  expect(met.textContent).toBe("met: 1 count mismatch");
+  const countMarker = met.querySelector<HTMLElement>(
+    '[data-count-mismatch="buckets.met"]',
+  )!;
+  expect(countMarker.dataset.stated).toBe("2");
+  expect(countMarker.dataset.recomputed).toBe("1");
+  const failed = page.querySelector<HTMLElement>('[data-bucket-of="failed"]')!;
+  expect(failed.textContent).toBe("failed: 1");
   expect(
-    row.querySelector<HTMLElement>("[data-verdict]")!.dataset.verdict,
+    page.querySelector<HTMLElement>(
+      '[data-bucket="failed"] [data-claim-ref="close-1"]',
+    )!.className,
+  ).toBe("claim-failed");
+  // the standing claim is untouched
+  expect(
+    page.querySelector<HTMLElement>(
+      '[data-claim-row="claim-1"] [data-verdict]',
+    )!.dataset.verdict,
   ).toBe("met");
-  expect(
-    page.querySelector('[data-bucket="met"] [data-claim-ref="close-1"]'),
-  ).not.toBeNull();
   page.querySelector<HTMLElement>('[data-claim-id="close-1"]')!.click();
   const open = page.querySelector<HTMLElement>("dd[data-close-state]")!;
   expect(open.dataset.closeState).toBe("CONTESTED");
@@ -601,6 +637,50 @@ it("(iv) a Close relabelled AGREED over a rebuts link draws CONTESTED with a sta
   expect(
     page.querySelector<HTMLElement>("[data-close-link]")!.dataset.closeLink,
   ).toBe("rebuts");
+  expect(
+    page.querySelector<HTMLElement>("dd[data-verdict]")!.dataset.verdict,
+  ).toBe("failed");
+  expect(
+    page.querySelector<HTMLElement>("dd[data-sufficiency]")!.dataset
+      .sufficiency,
+  ).toBe("failed");
+  expect(
+    page.querySelector<HTMLElement>("[data-claim-failed]")!.textContent,
+  ).toBe(
+    "failed: close_state mismatch: asserted AGREED, the cited Close's links read CONTESTED; sufficiency and verdict withheld",
+  );
+});
+
+it("(iv) a close whose peer never linked to it fails the same way -- UNILATERAL with a state mismatch, never met", async () => {
+  const source = fixture("result-root-close-bundle.json");
+  const header = ((source.disclosures as Obj)["close-b"] as Obj)
+    .agent_input as Obj;
+  (header.links as Obj[])[0]!.type = "cites";
+  const { bundle } = await sealEvidenceBundle(source);
+  const root = await render(bundle);
+  const row = root.querySelector<HTMLElement>('[data-claim-row="close-1"]')!;
+  expect(
+    row.querySelector<HTMLElement>("[data-close-state]")!.dataset.closeState,
+  ).toBe("UNILATERAL");
+  expect(
+    row.querySelector<HTMLElement>("[data-verdict]")!.dataset.verdict,
+  ).toBe("failed");
+  expect(
+    root.querySelector<HTMLElement>('[data-bucket-of="met"]')!.dataset
+      .bucketCount,
+  ).toBe("1");
+  expect(
+    root.querySelector<HTMLElement>('[data-bucket-of="failed"]')!.textContent,
+  ).toBe("failed: 1");
+  // the honest close bundle fails nothing and draws no failed list
+  const clean = await render(
+    (await sealEvidenceBundle(fixture("result-root-close-bundle.json"))).bundle,
+  );
+  expect(clean.querySelector(".claim-failed")).toBeNull();
+  expect(
+    clean.querySelector<HTMLElement>('[data-bucket-of="failed"]')!.textContent,
+  ).toBe("failed: none");
+  expect(clean.querySelector('[data-bucket="failed"]')).toBeNull();
 });
 
 it("(iv) a close whose cited Close is not in this bundle draws the asserted state under a producer-asserted marker, never bare", async () => {
