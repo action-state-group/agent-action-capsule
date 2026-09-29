@@ -14,7 +14,9 @@ Two corpora:
 - vectors/capsule/ (Python, Go, TypeScript and Rust): a list and an object in
   disposition.decision, effect.type and chain.relation; one shape in each of
   epoch_id, effect.external_ref and cross_party.correlator; and one shape in
-  each member of a references[] entry's retention object.
+  each member of a references[] entry's retention object; and the §5.5.5
+  retention rules: no bound (retention_empty), not an object
+  (field_not_object), declarant absent or null (missing_required_field).
 - provenance-mode-vectors/ (Python and Go, the verifiers that implement
   check 9): one shape in each of provenance_mode.source_asserted_at,
   import_batch and imported_at on an otherwise well-formed backfilled record.
@@ -179,6 +181,31 @@ def build_cases() -> list[dict]:
                 ],
             }),
         })
+    # §5.5.5 structural rules for a retention declaration, each on references[1].
+    for name, retention, code, what in (
+        ("neg-retention-empty", {"declarant": "ACME-CO"}, "retention_empty",
+         "carries neither retained_until nor not_retained_after"),
+        ("neg-retention-not-object", ["ACME-CO", "2027-01-01T00:00:00Z"], "field_not_object",
+         "is a JSON list, not an object"),
+        ("neg-retention-declarant-missing", {"retained_until": "2027-01-01T00:00:00Z"}, "missing_required_field",
+         "has no declarant, which is REQUIRED"),
+        ("neg-retention-declarant-null", {"declarant": None, "retained_until": "2027-01-01T00:00:00Z"},
+         "missing_required_field", "has a null declarant, which counts as missing (as for disposition.approver)"),
+    ):
+        cases.append({
+            "name": name,
+            "expect": code,
+            "description": f"references[1].retention {what} -> {code} (check 1, §5.5.5).",
+            "input": seal({
+                **ident(f"typed-{name[4:]}"),
+                "assurance": assurance("not_applicable", "standalone"),
+                "disposition": policy_executed(),
+                "references": [
+                    {**retention_ref, "digest": "4" * 64},
+                    {**retention_ref, "retention": retention},
+                ],
+            }),
+        })
     return cases
 
 
@@ -240,8 +267,9 @@ def write_corpus(out: Path, cases: list[dict], sums: list[tuple], ensure_ascii: 
     for case in cases:
         expected = expected_for(case["description"], case["input"])
         codes = [(f["check"], f["severity"], f["code"]) for f in expected["findings"] if f["severity"] == "error"]
-        if expected["ok"] or codes != [(1, "error", "field_not_string")]:
-            raise SystemExit(f"{case['name']}: expected exactly one check-1 field_not_string, got {expected['findings']}")
+        code = case.get("expect", "field_not_string")
+        if expected["ok"] or codes != [(1, "error", code)]:
+            raise SystemExit(f"{case['name']}: expected exactly one check-1 {code}, got {expected['findings']}")
         case_dir = out / case["name"]
         case_dir.mkdir(exist_ok=True)
         write_json(case_dir / "input.json", case["input"])

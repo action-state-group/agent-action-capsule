@@ -9,6 +9,51 @@ const RETENTION_STRING_MEMBERS = [
   "not_retained_after",
 ] as const;
 
+/**
+ * Check-1 findings for a references[] entry's retention (§5.5.5), in order:
+ * the object itself, its REQUIRED declarant (absent or null is missing, as for
+ * disposition.approver), the type of each member, and at least one bound.
+ */
+function retentionFindings(
+  raw: ParsedJson,
+  path: string,
+  add: (code: string, detail: string, check: number) => void,
+): void {
+  const retention = object(raw);
+  if (retention === undefined) {
+    add(
+      "field_not_object",
+      `${path} MUST be a JSON object when present (§5.5.5)`,
+      1,
+    );
+    return;
+  }
+  for (const field of RETENTION_STRING_MEMBERS) {
+    const present = Object.hasOwn(retention, field);
+    if (field === "declarant" && (!present || retention[field] === null))
+      add(
+        "missing_required_field",
+        `${path}.declarant is REQUIRED (§5.5.5)`,
+        1,
+      );
+    else if (present && typeof retention[field] !== "string")
+      add(
+        "field_not_string",
+        `${path}.${field} MUST be a string when present (§5.5.5)`,
+        1,
+      );
+  }
+  if (
+    !Object.hasOwn(retention, "retained_until") &&
+    !Object.hasOwn(retention, "not_retained_after")
+  )
+    add(
+      "retention_empty",
+      `${path} MUST carry retained_until or not_retained_after (§5.5.5)`,
+      1,
+    );
+}
+
 export function referenceFindings(
   capsule: Record<string, ParsedJson>,
   purposes: ReadonlySet<string>,
@@ -91,18 +136,8 @@ export function referenceFindings(
         );
       }
     }
-    const retention = object(ref.retention);
-    if (retention !== undefined)
-      for (const field of RETENTION_STRING_MEMBERS)
-        if (
-          Object.hasOwn(retention, field) &&
-          typeof retention[field] !== "string"
-        )
-          add(
-            "field_not_string",
-            `${path}.retention.${field} MUST be a string when present (§5.5.5)`,
-            1,
-          );
+    if (ref.retention !== undefined)
+      retentionFindings(ref.retention, `${path}.retention`, add);
     if ("log_coordinates" in ref) {
       const coordinates = object(ref.log_coordinates);
       if (coordinates === undefined) {

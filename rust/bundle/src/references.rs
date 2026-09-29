@@ -13,6 +13,47 @@ use serde_json::{Map, Value};
 /// (§5.5.5), checked in this order within each entry.
 const RETENTION_STRING_MEMBERS: [&str; 3] = ["declarant", "retained_until", "not_retained_after"];
 
+/// Check-1 findings for a `references[]` entry's `retention` (§5.5.5), in
+/// order: the object itself, its REQUIRED `declarant` (absent or null is
+/// missing, as for `disposition.approver`), the type of each member, and at
+/// least one bound.
+fn retention_findings(raw: &Value, path: &str, findings: &mut Vec<Finding>) {
+    let Some(retention) = raw.as_object() else {
+        findings.push(mkf(
+            "field_not_object",
+            &format!("{path} MUST be a JSON object when present (§5.5.5)"),
+            Some(1),
+            "error",
+        ));
+        return;
+    };
+    for field in RETENTION_STRING_MEMBERS {
+        match retention.get(field) {
+            None | Some(Value::Null) if field == "declarant" => findings.push(mkf(
+                "missing_required_field",
+                &format!("{path}.declarant is REQUIRED (§5.5.5)"),
+                Some(1),
+                "error",
+            )),
+            Some(v) if !v.is_string() => findings.push(mkf(
+                "field_not_string",
+                &format!("{path}.{field} MUST be a string when present (§5.5.5)"),
+                Some(1),
+                "error",
+            )),
+            _ => {}
+        }
+    }
+    if !retention.contains_key("retained_until") && !retention.contains_key("not_retained_after") {
+        findings.push(mkf(
+            "retention_empty",
+            &format!("{path} MUST carry retained_until or not_retained_after (§5.5.5)"),
+            Some(1),
+            "error",
+        ));
+    }
+}
+
 pub fn reference_findings(capsule: &Map<String, Value>) -> Vec<Finding> {
     if !matches!(capsule.get("format_version"), Some(Value::String(v)) if v == "4") {
         return Vec::new();
@@ -107,17 +148,8 @@ pub fn reference_findings(capsule: &Map<String, Value>) -> Vec<Finding> {
                 ));
             }
         }
-        if let Some(retention) = reference.get("retention").and_then(Value::as_object) {
-            for field in RETENTION_STRING_MEMBERS {
-                if matches!(retention.get(field), Some(v) if !v.is_string()) {
-                    findings.push(mkf(
-                        "field_not_string",
-                        &format!("{path}.retention.{field} MUST be a string when present (§5.5.5)"),
-                        Some(1),
-                        "error",
-                    ));
-                }
-            }
+        if let Some(retention) = reference.get("retention") {
+            retention_findings(retention, &format!("{path}.retention"), &mut findings);
         }
         if let Some(raw_coordinates) = reference.get("log_coordinates") {
             let coordinates = match raw_coordinates.as_object() {
