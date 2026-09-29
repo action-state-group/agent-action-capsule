@@ -123,8 +123,9 @@ evidence-book record header carries (the -00 draft's header names no store field
 is opaque and host-defined, and the draft states the Close rule at store level — "a record from the
 counterparty") — is present and differs from the Close's, **(2)** equals the claim's named **`peer`**,
 and **(3)** is signed under a **different key** than the Close. The checker enforces (1) and (2); (3)
-needs the signer, which the header does not carry, and is enforced by the emitter's Result-root
-verifier and the CLI. A Close with **no `book_id` accepts no linker**. So `AGREED` means "acknowledged
+needs the signer, which the header does not carry, and is not checked here. A Close with **no
+`book_id` accepts no linker**. Until the contract pins the peer's key, a second book named as the
+peer and signed under a second key still passes this check. So `AGREED` means "acknowledged
 by the named peer's book under a different key", not "by an independent party", until the contract
 pins the peer's key:
 

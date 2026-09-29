@@ -255,7 +255,7 @@ claim (type: close) adds:
   close:
     period: { start, end }
     close_state: UNILATERAL | AGREED | CONTESTED   # DERIVED from close_ref's inbound links; a verifier recomputes it
-    close_ref: digest-ref             # REQUIRED: the Close this claim reports on, by digest
+    close_ref: digest-ref             # REQUIRED: the Close this claim reports on, by digest; MUST be in evidence[]
     peer: string                      # the NAMED peer: the only book whose acknowledges/rebuts link
                                       #   counts (book_id == peer, != the Close's, different key);
                                       #   REQUIRED iff AGREED or CONTESTED; OPTIONAL when UNILATERAL
@@ -291,8 +291,10 @@ is the rendering rule below, not the schema.
 **`close_state` is derivable, never asserted (normative, 2026-09-28 — after the maintainer's adversarial
 review: "a contested close relabelled 'agreed' validates").** A close claim MUST cite the Close it reports
 on, by digest (`close_ref`). `close_state` MUST equal the state read from that Close's inbound links in the
-bundle the Result is verified against: a record carrying a `rebuts` link to the Close ⇒ `CONTESTED`;
-otherwise a counterparty record carrying an `acknowledges` link ⇒ `AGREED`; neither ⇒ `UNILATERAL`. A
+bundle the Result is verified against, and it is read only from records in the **counterparty's book**
+— the book the claim names as `peer` (binding (1) below) — never from any record in the bundle: a
+counterparty record carrying a `rebuts` link to the Close ⇒ `CONTESTED`; otherwise a counterparty record
+carrying an `acknowledges` link ⇒ `AGREED`; neither ⇒ `UNILATERAL`. A
 verifier MUST recompute the state from the bundle's records and MUST fail the claim when the asserted
 `close_state` differs — a producer's `AGREED` over a Close a peer has rebutted is a malformed claim, not a
 reporting choice. When the state is `AGREED` or `CONTESTED`, `peer_close_ref` MUST be the digest of a
@@ -314,13 +316,13 @@ is signed under a different key than the Close. (The Evidence Layer draft's own 
 field; its `principal_ref` is opaque and host-defined, and the draft states the Close rule at store level —
 "a record from the counterparty" — so `book_id` is the field a verifier keys on for (a) and (b).) The
 record header carries no signer, so (a) and (b) are enforced by the schema checker's link walk and (c) is
-enforced where the signer is visible — the emitter's Result-root verifier (a record's local Producer
-Envelope `key_id`) and the CLI — never by the schema. **A Close with no `book_id` accepts no linker**
+not checked by the schema or its checker. **A Close with no `book_id` accepts no linker**
 (`UNILATERAL` at best). A link from a record in the Close's own book, from a record with no `book_id`, or
 from a third book that is not the named peer is ignored by the walk: a producer cannot agree with itself,
 a third book is not the peer, and `peer_close_ref` MUST cite a counterparty record. Until the contract
 pins the peer's key, `AGREED` therefore means "acknowledged by the named peer's book under a different
-key", not "acknowledged by an independent party". `neg-close-agreed-self-acknowledged` (§11) asserts
+key", not "acknowledged by an independent party": **until the contract pins the peer's key, a second book
+named as the peer and signed under a second key still passes this check.** `neg-close-agreed-self-acknowledged` (§11) asserts
 `AGREED` over an acknowledgement from book `oo`, the Close's own; `neg-close-agreed-third-book` over one
 from `oo-audit`, a third book that is not the named peer `oo-sor`; `neg-close-agreed-bookless-close` over
 the named peer's acknowledgement of a Close that names no book — each is schema-valid and the walk reads

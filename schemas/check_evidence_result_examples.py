@@ -105,10 +105,9 @@ mechanical half):
            `peer` (the record header carries no peer field; the claim's
            `close.peer` is the named peer);
        (3) the linking record is signed under a different key than the
-           Close -- NOT checked here: the header carries no signer. It is
-           enforced where the signer is visible: the emitter's Result-root
-           verifier (a record's local Producer Envelope `key_id`) and the
-           CLI.
+           Close -- NOT checked here: the header carries no signer. Until
+           the contract pins the peer's key, a second book named as the
+           peer and signed under a second key still passes this check.
      A Close with no `book_id` accepts no linker at all (UNILATERAL at
      best). AGREED therefore means "acknowledged by the named peer's book
      under a different key", not "by an independent party", until the
@@ -256,7 +255,7 @@ def derive_close_state(
           Close's;
       (2) it equals `peer`, the Close claim's named peer (`close.peer`);
       (3) [not visible here] the record is signed under a different key --
-          the emitter's Result-root verifier and the CLI enforce that.
+          not checked by this walk.
     A Close with no `book_id` accepts no linker: every link is returned as
     ignored and the state is UNILATERAL. Mutants (each the walk a rule
     replaced): `ignore_counterparty` counts every link; `ignore_named_peer`
