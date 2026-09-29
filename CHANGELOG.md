@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+- A null `references[].retention.declarant` is now reported as `missing_required_field` (check 1),
+  as a null `disposition.approver` is: `declarant` is REQUIRED (§5.5.5). #148 had reported it as
+  `field_not_string`; #149 changed the code in every verifier (Python, Go, TypeScript, Rust).
+
 ## 0.6.0 — 2026-09-27
 
 **Headline: the -05 wire.** Producers now emit `spec_version`
