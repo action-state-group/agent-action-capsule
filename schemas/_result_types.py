@@ -44,7 +44,69 @@ class StoryCarrierDoc(TypedDict):
 PresentationDoc = Union[DisclosureCarrierDoc, AnalysisCarrierDoc, StoryCarrierDoc]
 
 
-class ClaimDoc(TypedDict):
+class PeriodDoc(TypedDict):
+    start: str
+    end: str
+
+
+class ReconcileTalliesDoc(TypedDict):
+    # Keyed as schemas/judge/close-v1.json's ReconcileTallies keys them.
+    matched: int
+    a_only: int
+    b_only: int
+    conflicting: int
+    insufficient: int
+    unresolved: int
+
+
+class ReconcileClaimDoc(TypedDict):
+    join_key: str
+    peer: str
+    period: PeriodDoc
+    tallies: ReconcileTalliesDoc
+    state_of_record: Literal["A", "B", "none"]
+
+
+class CloseClaimDoc(TypedDict, total=False):
+    period: PeriodDoc
+    close_state: Literal["UNILATERAL", "AGREED", "CONTESTED"]
+    close_ref: DigestRefDoc  # the Close this claim reports on; its inbound links derive close_state
+    peer: str
+    peer_close_ref: DigestRefDoc
+
+
+class LinkDoc(TypedDict):
+    # draft-mih-agent-evidence-layer-00 "Typed Links": a typed, directed
+    # reference to a target record by digest.
+    type: Literal["cites", "adjudicates", "supersedes", "acknowledges", "rebuts", "closes"]
+    target: str
+
+
+class RecordDoc(TypedDict, total=False):
+    # The evidence-book record header shape a bundle discloses for a
+    # record (evidencebook HeaderMember). Only the members the close-state
+    # link walk reads are named here; a record may carry more.
+    v: int
+    book_id: str
+    seq: int
+    record_type: str
+    epistemic_type: str
+    committed_at: str
+    event_time_claim: str
+    links: list[LinkDoc]
+    subject_ref: str
+    statement: dict
+
+
+class _ClaimTypedBodyDoc(TypedDict, total=False):
+    # PROPOSED (2026-09-25 ruling): absent `type` means `requirement`; the
+    # body key present must match `type` (schema's type<->body binding).
+    type: Literal["requirement", "reconcile", "close"]
+    reconcile: ReconcileClaimDoc
+    close: CloseClaimDoc
+
+
+class ClaimDoc(_ClaimTypedBodyDoc):
     id: str
     contract_ref: str
     requirement_ref: str
