@@ -22,6 +22,7 @@ normative:
 informative:
   RFC3461:
   RFC8098:
+  RFC9338:
   I-D.mih-sato-agent-accountability-composition:
   I-D.mih-sokolov-scitt-payload-binding:
   I-D.mih-scitt-agent-action-capsule-sel-disc:
@@ -327,6 +328,11 @@ vocabulary:
 * **`countersign_refused`:** the performing party was reached and explicitly
   refused to countersign.
 
+In this document, to countersign means that the performing party issues its
+own signed half citing the request. It is not a COSE countersignature
+{{RFC9338}} and not a Transparency Service function; in SCITT terms each half
+is a separate Signed Statement from a separate Issuer.
+
 These are weaker than, and MUST NOT be conflated with, a declined action
 ({{refusal-across-the-boundary}}): a decline is a *performed* boundary
 decision that the requester acknowledges — strong evidence — whereas a
@@ -353,13 +359,15 @@ an optional, substitutable role: anyone can run one, delivery intermediaries
 federate, and the role reads no payloads — attestations traverse it as
 opaque, integrity-protected blobs, so a delivery intermediary
 learns that a record moved, not what it said. A delivery receipt is itself
-an accountability claim, so a conformant delivery intermediary MUST anchor the digests of
-the receipts it issues to a transparency log it advertises in discoverable
-metadata, where witnesses detect equivocation ({{RFC9943}}, {{RFC9942}});
-the log is the delivery intermediary's choice, this document names none,
+an accountability claim, so a conformant delivery intermediary MUST register the digests of
+the receipts it issues with a Transparency Service {{RFC9943}} it advertises
+in discoverable metadata, so that Relying Parties and Auditors can check its
+Receipts {{RFC9942}} for consistency, and may register them with more than
+one Transparency Service so that no single operator is relied on alone;
+the Transparency Service is the delivery intermediary's choice, this document names none,
 and a delivery intermediary that
 will not anchor its own receipts is non-conformant. A receiving gate SHOULD
-countersign the envelope receipt, so that delivery becomes a fact both
+issue its own signed acknowledgment citing the envelope receipt by digest, so that delivery becomes a fact both
 parties assert rather than one the delivery intermediary asserts alone. Signed delivery
 receipts, and the fabrication attacks against them, are long-settled
 ground — the email DSN and MDN mechanisms ({{RFC3461}}, {{RFC8098}})
