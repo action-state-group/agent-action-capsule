@@ -6,6 +6,7 @@ export * from "./model.js";
 export * from "./presentation.js";
 export * from "./producer-envelope-verification.js";
 export * from "./registries.js";
+export * from "./result-root.js";
 export * from "./verify.js";
 export * from "./verification-page.js";
 export * from "./evidence-graph-view.js";

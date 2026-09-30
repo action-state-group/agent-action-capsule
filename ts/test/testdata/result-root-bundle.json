@@ -1,0 +1,178 @@
+{
+  "root": "result",
+  "records": [
+    {
+      "capsule_id": "result",
+      "references": [
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "day-1"
+        },
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "day-2"
+        },
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "case-1"
+        }
+      ]
+    },
+    {
+      "capsule_id": "day-1",
+      "occurred_at": "2026-09-14T23:59:00Z",
+      "references": [
+        {
+          "type": "agent-action-capsule",
+          "citation_purpose": "acted_on",
+          "digest": "act-1"
+        }
+      ]
+    },
+    { "capsule_id": "day-2", "occurred_at": "2026-09-15T23:59:00Z" },
+    { "capsule_id": "case-1" },
+    { "capsule_id": "act-1", "occurred_at": "2026-09-14T10:15:00Z" }
+  ],
+  "disclosures": {
+    "result": {
+      "agent_input": {
+        "result_version": "evidence-result-v0",
+        "generated_at": "2026-09-16T00:00:00Z",
+        "claims": [
+          {
+            "id": "claim-1",
+            "contract_ref": "ec:airline-week:2026-09-14@1",
+            "requirement_ref": "req-1",
+            "tier": "recomputed",
+            "grade": "witnessed",
+            "sufficiency": "SATISFIED",
+            "verdict": "met",
+            "evidence": [
+              { "digest_alg": "SHA-256", "digest": "day-1" },
+              { "digest_alg": "SHA-256", "digest": "day-2" }
+            ],
+            "proofs": [
+              {
+                "kind": "inclusion_proof",
+                "digest_alg": "SHA-256",
+                "digest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+              }
+            ],
+            "presentation": {
+              "kind": "disclosure",
+              "status": "SATISFIED",
+              "evidence": [
+                { "digest_alg": "SHA-256", "digest": "day-1" },
+                { "digest_alg": "SHA-256", "digest": "day-2" }
+              ]
+            }
+          },
+          {
+            "id": "claim-2",
+            "contract_ref": "ec:airline-week:2026-09-14@1",
+            "requirement_ref": "req-2",
+            "tier": "judged",
+            "grade": "self-attested",
+            "sufficiency": "SATISFIED",
+            "verdict": "not_met",
+            "evidence": [{ "digest_alg": "SHA-256", "digest": "case-1" }],
+            "proofs": [],
+            "presentation": {
+              "kind": "disclosure",
+              "status": "SATISFIED",
+              "evidence": [{ "digest_alg": "SHA-256", "digest": "case-1" }]
+            }
+          },
+          {
+            "id": "claim-3",
+            "contract_ref": "ec:airline-week:2026-09-14@1",
+            "requirement_ref": "req-3",
+            "tier": "recomputed",
+            "grade": "countersigned",
+            "sufficiency": "GAP",
+            "verdict": "not_evaluable",
+            "evidence": [{ "digest_alg": "SHA-256", "digest": "day-2" }],
+            "proofs": [],
+            "presentation": {
+              "kind": "analysis",
+              "status": "WITHHELD",
+              "summary": "the counterparty confirmed the record exists and declined disclosure under its own policy"
+            }
+          }
+        ],
+        "aggregate": {
+          "coverage": {
+            "evaluated_population": 3,
+            "excluded_not_applicable": 1,
+            "unknown_count": 0
+          },
+          "buckets": {
+            "met": ["claim-1"],
+            "not_met": ["claim-2"],
+            "not_evaluable": ["claim-3"]
+          }
+        }
+      }
+    },
+    "day-1": {
+      "agent_input": {
+        "spec_version": "evaluation-report/v1",
+        "date": "2026-09-14",
+        "outcomes": [
+          {
+            "outcome_id": "booking-confirmed",
+            "role": "required",
+            "aggregate": "pass"
+          }
+        ],
+        "cases": [
+          { "task_id": "airline-1", "trial": 1, "case_aggregate": "pass" }
+        ]
+      }
+    },
+    "day-2": {
+      "agent_input": {
+        "spec_version": "evaluation-report/v1",
+        "date": "2026-09-15",
+        "outcomes": [
+          {
+            "outcome_id": "booking-confirmed",
+            "role": "required",
+            "aggregate": "pass"
+          }
+        ],
+        "cases": []
+      }
+    },
+    "case-1": {
+      "agent_input": {
+        "task_id": "airline-2",
+        "trial": 1,
+        "case_aggregate": "fail",
+        "axis_judgments": [
+          {
+            "axis_id": "refund-policy",
+            "outcome_id": "refund-quoted",
+            "status": "fail",
+            "rationale": "the quoted fee did not match the fare rules"
+          }
+        ]
+      }
+    },
+    "act-1": {
+      "agent_input": {
+        "case": {
+          "conversation_id": "conv-1",
+          "turn_idx": 0,
+          "task_id": "airline-1",
+          "trial": 1
+        },
+        "prompt": "change my flight to the fourteenth"
+      },
+      "agent_output": { "reply": "your flight is now on the fourteenth" }
+    }
+  }
+}
