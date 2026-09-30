@@ -100,7 +100,7 @@ Table of Contents
    14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  15
      14.1.  Normative References . . . . . . . . . . . . . . . . . .  15
      14.2.  Informative References . . . . . . . . . . . . . . . . .  15
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  17
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  18
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  18
 
 
@@ -435,11 +435,11 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    *  *countersign_refused:* the performing party was reached and
       explicitly refused to countersign.
 
-
-
-
-
-
+   In this document, to countersign means that the performing party
+   issues its own signed half citing the request.  It is not a COSE
+   countersignature [RFC9338] and not a Transparency Service function;
+   in SCITT terms each half is a separate Signed Statement from a
+   separate Issuer.
 
 
 
@@ -479,23 +479,23 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    payloads — attestations traverse it as opaque, integrity-protected
    blobs, so a delivery intermediary learns that a record moved, not
    what it said.  A delivery receipt is itself an accountability claim,
-   so a conformant delivery intermediary MUST anchor the digests of the
-   receipts it issues to a transparency log it advertises in
-   discoverable metadata, where witnesses detect equivocation
-   ([RFC9943], [RFC9942]); the log is the delivery intermediary's
-   choice, this document names none, and a delivery intermediary that
-   will not anchor its own receipts is non-conformant.  A receiving gate
-   SHOULD countersign the envelope receipt, so that delivery becomes a
-   fact both parties assert rather than one the delivery intermediary
-   asserts alone.  Signed delivery receipts, and the fabrication attacks
-   against them, are long-settled ground — the email DSN and MDN
-   mechanisms ([RFC3461], [RFC8098]) addressed both decades ago — and
-   this role inherits that discipline rather than reopening it.
-   Reconciliation, directory, retry, and admission control are
-   deployment concerns outside this document's scope.
-
-
-
+   so a conformant delivery intermediary MUST register the digests of
+   the receipts it issues with a Transparency Service [RFC9943] it
+   advertises in discoverable metadata, so that Relying Parties and
+   Auditors can check its Receipts [RFC9942] for consistency, and may
+   register them with more than one Transparency Service so that no
+   single operator is relied on alone; the Transparency Service is the
+   delivery intermediary's choice, this document names none, and a
+   delivery intermediary that will not anchor its own receipts is non-
+   conformant.  A receiving gate SHOULD issue its own signed
+   acknowledgment citing the envelope receipt by digest, so that
+   delivery becomes a fact both parties assert rather than one the
+   delivery intermediary asserts alone.  Signed delivery receipts, and
+   the fabrication attacks against them, are long-settled ground — the
+   email DSN and MDN mechanisms ([RFC3461], [RFC8098]) addressed both
+   decades ago — and this role inherits that discipline rather than
+   reopening it.  Reconciliation, directory, retry, and admission
+   control are deployment concerns outside this document's scope.
 
 
 
@@ -851,6 +851,11 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
               Notification", STD 85, RFC 8098, DOI 10.17487/RFC8098,
               February 2017, <https://www.rfc-editor.org/rfc/rfc8098>.
 
+   [RFC9338]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
+              Countersignatures", STD 96, RFC 9338,
+              DOI 10.17487/RFC9338, December 2022,
+              <https://www.rfc-editor.org/rfc/rfc9338>.
+
    [I-D.mih-sato-agent-accountability-composition]
               Mih, S., Sato, Schrock, I., Bu, S., and A. Sokolov, "Agent
               Accountability: Composition and Conformance", Work in
@@ -880,13 +885,8 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
               <https://datatracker.ietf.org/doc/html/draft-nelson-agent-
               delegation-receipts-10>.
 
-   [I-D.kuehlewind-audit-architecture]
-              Kühlewind, M. and H. Birkholz, "An Architecture for
-              Auditing Agent Delegation and Interactions", Work in
-              Progress, Internet-Draft, draft-kuehlewind-audit-
-              architecture-01, 7 September 2026,
-              <https://datatracker.ietf.org/doc/html/draft-kuehlewind-
-              audit-architecture-01>.
+
+
 
 
 
@@ -897,6 +897,14 @@ Mih                       Expires 31 March 2027                [Page 16]
 
 Internet-Draft         Bilateral Agent Attestation        September 2026
 
+
+   [I-D.kuehlewind-audit-architecture]
+              Kühlewind, M. and H. Birkholz, "An Architecture for
+              Auditing Agent Delegation and Interactions", Work in
+              Progress, Internet-Draft, draft-kuehlewind-audit-
+              architecture-01, 7 September 2026,
+              <https://datatracker.ietf.org/doc/html/draft-kuehlewind-
+              audit-architecture-01>.
 
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
@@ -932,6 +940,20 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
               2026, <https://datatracker.ietf.org/doc/html/draft-
               morrison-solo-agent-earn-registration-01>.
 
+
+
+
+
+
+
+
+
+
+Mih                       Expires 31 March 2027                [Page 17]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
    [PeerReview2007]
               Haeberlen, A., Kouznetsov, P., and P. Druschel,
               "PeerReview: Practical Accountability for Distributed
@@ -945,14 +967,6 @@ Acknowledgments
    This exchange pattern owes its framing to discussions in the SCITT
    and agent-accountability communities, and composes with the work of
    the authors cited above.
-
-
-
-
-Mih                       Expires 31 March 2027                [Page 17]
-
-Internet-Draft         Bilateral Agent Attestation        September 2026
-
 
    Iman Schrock (EMILIA Protocol) contributed the constraint-record
    obligations in this revision: constraint-set pinning (MUST), input-
@@ -968,20 +982,6 @@ Author's Address
    Steven Mih
    Action State Group, Inc.
    Email: spec@actionstate.ai
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

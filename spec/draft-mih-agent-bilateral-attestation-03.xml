@@ -28,7 +28,7 @@
     <keyword>transparency</keyword>
     <keyword>refusal</keyword>
     <abstract>
-      <?line 52?>
+      <?line 53?>
 
 <t>When an agent operated by one organization requests a consequential action
 from an agent operated by another, today's record of that exchange — if one
@@ -50,7 +50,7 @@ than blocking the transaction.</t>
     </abstract>
   </front>
   <middle>
-    <?line 72?>
+    <?line 73?>
 
 <section anchor="introduction">
       <name>Introduction</name>
@@ -321,6 +321,10 @@ request lapses into this disposition when the window closes.</t>
 refused to countersign.</t>
         </li>
       </ul>
+      <t>In this document, to countersign means that the performing party issues its
+own signed half citing the request. It is not a COSE countersignature
+<xref target="RFC9338"/> and not a Transparency Service function; in SCITT terms each half
+is a separate Signed Statement from a separate Issuer.</t>
       <t>These are weaker than, and <bcp14>MUST NOT</bcp14> be conflated with, a declined action
 (<xref target="refusal-across-the-boundary"/>): a decline is a <em>performed</em> boundary
 decision that the requester acknowledges — strong evidence — whereas a
@@ -346,13 +350,15 @@ an optional, substitutable role: anyone can run one, delivery intermediaries
 federate, and the role reads no payloads — attestations traverse it as
 opaque, integrity-protected blobs, so a delivery intermediary
 learns that a record moved, not what it said. A delivery receipt is itself
-an accountability claim, so a conformant delivery intermediary <bcp14>MUST</bcp14> anchor the digests of
-the receipts it issues to a transparency log it advertises in discoverable
-metadata, where witnesses detect equivocation (<xref target="RFC9943"/>, <xref target="RFC9942"/>);
-the log is the delivery intermediary's choice, this document names none,
+an accountability claim, so a conformant delivery intermediary <bcp14>MUST</bcp14> register the digests of
+the receipts it issues with a Transparency Service <xref target="RFC9943"/> it advertises
+in discoverable metadata, so that Relying Parties and Auditors can check its
+Receipts <xref target="RFC9942"/> for consistency, and may register them with more than
+one Transparency Service so that no single operator is relied on alone;
+the Transparency Service is the delivery intermediary's choice, this document names none,
 and a delivery intermediary that
 will not anchor its own receipts is non-conformant. A receiving gate <bcp14>SHOULD</bcp14>
-countersign the envelope receipt, so that delivery becomes a fact both
+issue its own signed acknowledgment citing the envelope receipt by digest, so that delivery becomes a fact both
 parties assert rather than one the delivery intermediary asserts alone. Signed delivery
 receipts, and the fabrication attacks against them, are long-settled
 ground — the email DSN and MDN mechanisms (<xref target="RFC3461"/>, <xref target="RFC8098"/>)
@@ -718,6 +724,19 @@ objects and a registry for reduced-assurance indicator values. TBD.</t>
           <seriesInfo name="STD" value="85"/>
           <seriesInfo name="RFC" value="8098"/>
           <seriesInfo name="DOI" value="10.17487/RFC8098"/>
+        </reference>
+        <reference anchor="RFC9338">
+          <front>
+            <title>CBOR Object Signing and Encryption (COSE): Countersignatures</title>
+            <author fullname="J. Schaad" initials="J." surname="Schaad"/>
+            <date month="December" year="2022"/>
+            <abstract>
+              <t>Concise Binary Object Representation (CBOR) is a data format designed for small code size and small message size. CBOR Object Signing and Encryption (COSE) defines a set of security services for CBOR. This document defines a countersignature algorithm along with the needed header parameters and CBOR tags for COSE. This document updates RFC 9052.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="96"/>
+          <seriesInfo name="RFC" value="9338"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9338"/>
         </reference>
         <reference anchor="I-D.mih-sato-agent-accountability-composition">
           <front>
@@ -1115,7 +1134,7 @@ objects and a registry for reduced-assurance indicator values. TBD.</t>
         </reference>
       </references>
     </references>
-    <?line 620?>
+    <?line 628?>
 
 <section numbered="false" anchor="acknowledgments">
       <name>Acknowledgments</name>
