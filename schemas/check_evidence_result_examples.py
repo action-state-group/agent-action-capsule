@@ -154,7 +154,7 @@ mechanical half):
   9. PROPOSED coverage_report (spec section 7.1): one more positive,
      pos-example-org-coverage-result (the claims positive plus a per-requirement
      coverage section), MUST validate and pass the cross-element coverage
-     check. Four schema negatives MUST fail, each with a strip-the-rule
+     check. Five schema negatives MUST fail, each with a strip-the-rule
      mutant:
        - neg-coverage-satisfied-with-gap: a SATISFIED row carries a gap.
        - neg-coverage-not-found-source-with-records: a source is NOT_FOUND
@@ -162,8 +162,10 @@ mechanical half):
        - neg-coverage-gap-remedy-absent: a gap's `remedy` key is removed
          ("no remedy" is an explicit null, never an absent key).
        - neg-coverage-unknown-epistemic-type: a source typed outside the
-         closed EvidenceBook set. The checker also pins $defs.EpistemicType
-         against schemas/vendor/epistemic-types.json.
+         closed set.
+       - neg-coverage-uppercase-epistemic-type: a known type written in
+         upper case; the tokens are lower case only. The checker also pins
+         $defs.EpistemicType to schemas/vendor/epistemic-types.json exactly.
      Two negatives validate against the schema and are rejected by the
      cross-element check, each with a check mutant:
        - neg-coverage-correlated-counted-as-met: req-claim-1's records
@@ -451,6 +453,7 @@ NEGATIVES = [
     "neg-coverage-not-found-source-with-records",
     "neg-coverage-gap-remedy-absent",
     "neg-coverage-unknown-epistemic-type",
+    "neg-coverage-uppercase-epistemic-type",
 ]
 
 # Section 8a: the two levels that carry the x- slot, as $defs names.
@@ -895,6 +898,15 @@ def main() -> int:
             "CoverageGap.required's 'remedy' entry",
         )
 
+    if negative_errors_by_name["neg-coverage-uppercase-epistemic-type"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["EpistemicType"] = {"type": "string"}
+        _mutant_check(
+            "neg-coverage-uppercase-epistemic-type",
+            mutant,
+            "EpistemicType's closed (lower-case) enum",
+        )
+
     if negative_errors_by_name["neg-coverage-unknown-epistemic-type"]:
         mutant = copy.deepcopy(schema)
         mutant["$defs"]["EpistemicType"] = {"type": "string"}
@@ -904,10 +916,10 @@ def main() -> int:
             "EpistemicType's closed enum",
         )
 
-    # EpistemicType mirrors the EvidenceBook record header's set; the
-    # vendored copy is the parity source (case-folded).
+    # EpistemicType is the record header's set exactly as the vendored copy
+    # lists it: same tokens, same (lower) case, same order.
     vendored = json.loads((SCHEMAS_DIR / "vendor" / "epistemic-types.json").read_text(encoding="utf-8"))
-    if schema["$defs"]["EpistemicType"]["enum"] != [v.upper() for v in vendored["values"]]:
+    if schema["$defs"]["EpistemicType"]["enum"] != vendored["values"]:
         findings.append("EPISTEMIC-TYPE-DRIFT: $defs.EpistemicType differs from schemas/vendor/epistemic-types.json")
     else:
         print("OK  PARITY        $defs.EpistemicType matches schemas/vendor/epistemic-types.json")
