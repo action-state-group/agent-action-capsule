@@ -114,7 +114,7 @@ says so). It is shown, not judged: the verdict rests on the claim's
 
 ## Recomputed, never asserted (2026-09-28)
 
-The maintainer's adversarial review found that the headline values --
+A review found that the headline values --
 coverage, the bucket counts, and above all a close claim's state -- were
 producer assertions nothing recomputed: a contested close relabelled
 `AGREED` validated, and a producer's "not met: none" could hide a failure.
@@ -184,11 +184,11 @@ axis is the Close's own and is untouched by the state.
 an `acknowledges` link; the tests flip the link to `rebuts`, to `cites`,
 and remove the Close from the bundle.
 
-## A close-state mismatch fails the claim (2026-09-28, second pass)
+## A close-state mismatch fails the claim (2026-09-28)
 
-The maintainer's second pass: "a close-state mismatch should fail the
-claim, per #140's own normative text. Today it adds a marker and still
-counts the claim under its stated verdict." It no longer does. When the
+A close-state mismatch fails the claim, per #140's own normative text; it
+used to add a marker and still count the claim under its stated verdict.
+It no longer does. When the
 cited Close is in the bundle and the state its links read is not the state
 the Result asserts, the claim is **failed** (`ResultClaim.failed`, with
 `failure` saying why: `close_state mismatch: asserted AGREED, the cited
@@ -232,14 +232,14 @@ grade-as-asserted (a claim's `grade` is still the producer's word;
 bundle); nested-field checks below the top level of a claim (the mirror is
 open-world there); drill-down beyond `acted_on` (a cited record's other
 citation purposes are not followed); `generated_at` as a date-time (checked
-as a string); the CONTESTED-is-never-met rule from #140's second pass (a
+as a string); the CONTESTED-is-never-met rule from #140 (a
 recomputed CONTESTED with `verdict: met` is not itself a failure here yet);
 M3: engine adapter from judged claims (EM-side). The counterparty rule is
-mirrored as of the third pass -- see the next section.
+mirrored -- see the next section.
 
-## The counterparty is the named peer's book under a different key (2026-09-29, third pass)
+## The counterparty is the named peer's book under a different key (2026-09-29)
 
-Maintainer's third pass: _"neither book_id nor signer alone is enough,
+The rule: _"neither book_id nor signer alone is enough,
 since a producer can mint a second book or a second key equally easily."_
 An `acknowledges` / `rebuts` link now makes a state only when the linking
 record satisfies **all three** of:
@@ -256,8 +256,8 @@ from the capsule id (`draft-mih-scitt-agent-action-capsule-04`, "capsule_id";
 bundle model exposes, and the same 64-hex form the countersignature stamp
 keys on. #140's schema checker sees only record headers, so it enforces (1)
 and (2); (3) lives here and in the CLI, where the signer is visible -- and,
-since the fourth pass, only for a `key_id` whose envelope verifies (the
-fourth-pass section below).
+only for a `key_id` whose envelope verifies (the
+key-verification section below).
 
 `counterpartyLinks(close, peer, inbound)` (`ts/src/result-root.ts`) splits
 the inbound links into `links` (the counterparty ones the state is read
@@ -298,9 +298,9 @@ The honest close bundle (`test/testdata/result-root-close-bundle.json`)
 gives the airline's Close and the peer's Close distinct `key_id`s so that
 it still reads AGREED under all three parts.
 
-## The key is verified under `key_id`, or labelled (2026-09-29, fourth pass)
+## The key is verified under `key_id`, or labelled (2026-09-29)
 
-Maintainer's fourth pass: _"verify the signature under key_id, or label it
+The rule: _"verify the signature under key_id, or label it
 'stated key_id (not verified)' and don't let it pass the check."_ Part (3)
 no longer takes a `key_id` on the record's word. The key material travels
 with the record: the local Producer Envelope (`signature`, hex COSE_Sign1)
@@ -353,8 +353,8 @@ this). Root families dispatch in order: `report/v1`, then a Result v0,
 then the `evaluation-summary/v1` graph. The verification page is unchanged
 and last.
 
-One placement is inherited from main and left as is, flagged for the
-maintainer: the verification banner's "N of M records uncheckpointed" is
+One placement is inherited from main and left as is, flagged for
+review: the verification banner's "N of M records uncheckpointed" is
 bundle-level, drawn before every section, and so sits above the Result
 section's coverage line whenever any record is uncheckpointed. It is the
 one figure that precedes coverage on the rendered document; the Result
