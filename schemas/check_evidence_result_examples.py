@@ -54,8 +54,8 @@ mechanical half):
          closed-world so it fails HERE; rendering the same document as an
          "unrecognized" row (never dropped) is capsule-viewer's job and is
          pinned by that repo's tests, not this checker.
-  5. CLOSE STATE IS DERIVABLE (2026-09-28, after the maintainer's adversarial
-     review: "a contested close relabelled 'agreed' validates"). The schema
+  5. CLOSE STATE IS DERIVABLE (otherwise a contested close relabelled
+     'agreed' would validate). The schema
      cannot see across records, so this checker walks links: every close
      fixture ships `<name>.records.json`, the record headers its close claim
      cites, and for each `type: close` claim the checker (a) resolves
@@ -73,7 +73,7 @@ mechanical half):
          MUST be rejected by the walk; its mutant check flips the walk to
          trust the asserted field (the pre-review behaviour) and confirms
          the same fixture then passes, then restores the walk and re-rejects.
-  6. THE MAINTAINER'S SECOND PASS (2026-09-28). Three more rules, one
+  6. THREE MORE CLOSE RULES, one
      schema negative and three link negatives, each with its own mutant:
        - COUNTERPARTY: an `acknowledges` / `rebuts` link makes a state only
          when the linking record's `book_id` is present and differs from
@@ -95,9 +95,9 @@ mechanical half):
          usual strip-the-rule mutant), and the walk applies the same rule
          to the RECOMPUTED state, so relabelling the state away does not
          rescue `met`. The CONTESTED positive now carries `not_met`.
-  7. THE MAINTAINER'S THIRD PASS (2026-09-29): "neither book_id nor signer
-     alone is enough, since a producer can mint a second book or a second
-     key equally easily." The counterparty rule is now three-part, and this
+  7. THE COUNTERPARTY RULE: neither book_id nor signer alone is enough,
+     since a producer can mint a second book or a second key equally
+     easily. The counterparty rule is now three-part, and this
      checker enforces the two parts a record header can show:
        (1) the linking record's `book_id` is present and differs from the
            cited Close's `book_id`;
@@ -250,7 +250,7 @@ def derive_close_state(
     links at `close_digest` -- spec section 4.1's rule: any `rebuts` =>
     CONTESTED; else any `acknowledges` => AGREED; else UNILATERAL. Never
     reads a state field from any record. A link counts only from a
-    COUNTERPARTY (2026-09-29, third pass -- all of):
+    COUNTERPARTY (all of):
       (1) the linking record's `book_id` is present and differs from the
           Close's;
       (2) it equals `peer`, the Close claim's named peer (`close.peer`);
