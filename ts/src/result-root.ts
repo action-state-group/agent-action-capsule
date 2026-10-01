@@ -379,6 +379,14 @@ export interface RecomputedCounts {
 export interface CitedRecord extends RecordTimes {
   readonly capsuleId: string;
   readonly agentInput: DisclosureResolution;
+  /**
+   * Present only when the claim cited this capsule by its own id and the
+   * bundle supplies it as an evidence-book record that carries it (a
+   * disclosed `published_capsule` header whose `subject_ref` is that id):
+   * the book record's own id, under which the bundle's records, memberships
+   * and disclosures hold it. `capsuleId` stays the id the claim cited.
+   */
+  readonly bookRecordId?: string;
   readonly agentOutput: DisclosureResolution;
   /** The digests the record committed to, so a withheld member shows its digest. */
   readonly agentInputDigest?: string;
@@ -954,6 +962,9 @@ export async function isResultRoot(bundle: unknown): Promise<boolean> {
   );
 }
 
+/** The evidence-book `record_type` of a record that carries a published capsule as its payloads. */
+export const PUBLISHED_CAPSULE_RECORD_TYPE = "published_capsule";
+
 /**
  * Build the Result-root model. Throws `EvidenceGraphError` when the bundle
  * has no root record, when no disclosed member of the root carries an
@@ -1029,17 +1040,55 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
     records.map((record) => [record.capsule_id, record]),
   );
 
+  // A book bundle (capsulectl disclose on a jsonl profile) supplies a
+  // published capsule as the evidence-book record that carries it, under
+  // the BOOK record's id; a claim cites the capsule by its own id (what
+  // `publish` returned and the producer recorded). The carried capsule's id
+  // is the header's `subject_ref`, read only from a header that is itself
+  // disclosed and matched to the book record's committed digest -- never
+  // from an unverified value. Built on first need: a payload-form bundle,
+  // where every cited id is a record id, never pays for it.
+  let carriersById: Map<string, RecordWithId> | undefined;
+  const bookCarrier = async (id: string): Promise<RecordWithId | undefined> => {
+    if (carriersById === undefined) {
+      carriersById = new Map();
+      for (const record of records) {
+        const entry = disclosures[record.capsule_id];
+        if (
+          !isObject(entry) ||
+          !isObject(entry.agent_input) ||
+          entry.agent_input.record_type !== PUBLISHED_CAPSULE_RECORD_TYPE
+        )
+          continue;
+        const header = await resolveDisclosure(
+          record,
+          disclosures,
+          "agent_input",
+        );
+        if (header.state !== "disclosed" || !isObject(header.payload)) continue;
+        const subject = header.payload.subject_ref;
+        if (isHex64(subject) && !recordsById.has(subject))
+          carriersById.set(subject, record);
+      }
+    }
+    return carriersById.get(id);
+  };
+
   const cited = new Map<string, CitedRecord>();
-  const resolveRecord = async (id: string): Promise<void> => {
+  const resolveRecord = async (
+    id: string,
+    carrier?: RecordWithId,
+  ): Promise<void> => {
     if (cited.has(id)) return;
-    const record = recordsById.get(id);
+    const record = carrier ?? recordsById.get(id);
     if (record === undefined) return;
     const cites = actedOnReferences(record);
-    const coordinates = logCoordinates(memberships, id);
+    const coordinates = logCoordinates(memberships, record.capsule_id);
     const agentInputDigest = committedDigest(record, "agent_input");
     const agentOutputDigest = committedDigest(record, "agent_output");
     cited.set(id, {
       capsuleId: id,
+      ...(record.capsule_id === id ? {} : { bookRecordId: record.capsule_id }),
       agentInput: await resolveDisclosure(record, disclosures, "agent_input"),
       agentOutput: await resolveDisclosure(record, disclosures, "agent_output"),
       ...(agentInputDigest === undefined ? {} : { agentInputDigest }),
@@ -1063,9 +1112,12 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
     const evidence: ClaimEvidenceRef[] = [];
     for (const ref of raw.evidence as ObjectValue[]) {
       const digest = ref.digest as string;
-      const resolved = recordsById.has(digest);
+      const carrier = recordsById.has(digest)
+        ? undefined
+        : await bookCarrier(digest);
+      const resolved = recordsById.has(digest) || carrier !== undefined;
       evidence.push({ digest, resolved });
-      if (resolved) await resolveRecord(digest);
+      if (resolved) await resolveRecord(digest, carrier);
     }
     const missing = evidence
       .filter((ref) => !ref.resolved)
