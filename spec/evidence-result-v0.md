@@ -270,7 +270,7 @@ claim (type: close) adds:
 `AGREED` — this Close is **acknowledged by the named peer's book under a different key**: a record whose
 `book_id` is the claim's `peer` (and not the Close's own), signed under a key other than the Close's, carries
 an `acknowledges` link to it — not "acknowledged by an independent party", until the contract pins the peer's
-key (2026-09-29, maintainer's third pass); `CONTESTED` — such a counterparty record carries a `rebuts` link to
+key; `CONTESTED` — such a counterparty record carries a `rebuts` link to
 this Close; `UNILATERAL` — neither, "no corresponding `acknowledges` link exists yet." That document rules that Close status "is read from the links other records make to it, not
 from a field the Close itself sets." A claim's `close_state` is therefore the state the Result builder
 *read* from the Close record's inbound links at build time — a reporting convenience, exactly as
@@ -288,8 +288,8 @@ MUST-reject — it no longer does (whether a report *should* name the peer on a 
 for the ruling; the schema no longer decides it). What keeps a unilateral row from *reading* as agreement
 is the rendering rule below, not the schema.
 
-**`close_state` is derivable, never asserted (normative, 2026-09-28 — after the maintainer's adversarial
-review: "a contested close relabelled 'agreed' validates").** A close claim MUST cite the Close it reports
+**`close_state` is derivable, never asserted (normative; otherwise a contested close relabelled
+'agreed' would validate).** A close claim MUST cite the Close it reports
 on, by digest (`close_ref`). `close_state` MUST equal the state read from that Close's inbound links in the
 bundle the Result is verified against, and it is read only from records in the **counterparty's book**
 — the book the claim names as `peer` (binding (1) below) — never from any record in the bundle: a
@@ -305,7 +305,7 @@ records — `neg-close-agreed-relabelled-contested.json` (§11) is schema-valid 
 checker's link walk over the fixture's `.records.json`; a renderer that cannot see the cited records
 MUST mark the state it shows as producer-asserted, never bare.
 
-**Three bindings from the maintainer's second and third passes (normative, 2026-09-28 / 2026-09-29).**
+**Three further bindings (normative).**
 *(1) A link counts only from the counterparty — and the counterparty is the named peer's book under a
 different key.* Neither a different `book_id` nor a different signer alone is enough: a producer can mint
 a second book or a second key equally easily. An `acknowledges` or `rebuts` link makes a state only when
@@ -487,7 +487,7 @@ same mutant proof. Every close fixture ships the record headers its claim cites 
 `<name>.records.json`, and a fifth negative, `neg-close-agreed-relabelled-contested`, is the
 CONTESTED positive with `close_state` relabelled `AGREED` over the same records: it validates against
 the schema and is rejected by the checker's link walk (§4.1's derivation rule), with the walk's own
-mutant proof. The maintainer's second pass (2026-09-28) adds one schema negative
+mutant proof. One further schema negative
 (`neg-close-contested-verdict-met`: the CONTESTED positive, whose verdict is now `not_met`, with
 `verdict: met`) and three link-walk negatives, schema-valid and walk-rejected, each with its own mutant:
 `neg-close-agreed-self-acknowledged` (the acknowledging record from the Close's own `book_id`),

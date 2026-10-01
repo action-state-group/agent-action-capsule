@@ -29,8 +29,7 @@ negatives (AGREED close without `peer`; CONTESTED close without
 the closed enum), each again one field away from its positive. Reconcile
 tallies are keyed as schemas/judge/close-v1.json keys them (lowercase).
 
-close_state is DERIVABLE (2026-09-28, after the maintainer's adversarial
-review): every close claim cites its Close (`close_ref`), the cited Close
+close_state is DERIVABLE: every close claim cites its Close (`close_ref`), the cited Close
 and peer records are real record headers shipped beside each close fixture
 as `<name>.records.json`, and one more negative --
 neg-close-agreed-relabelled-contested -- is the CONTESTED positive with
@@ -38,7 +37,7 @@ close_state relabelled AGREED. It validates against the schema (that is the
 hole) and is rejected by the checker's link walk, which recomputes the state
 from the `rebuts` link in the sidecar.
 
-The maintainer's second pass (2026-09-28) adds four negatives:
+Four negatives pin the further Close rules:
   - neg-close-contested-verdict-met: the CONTESTED positive with verdict
     `met`. A contested Close never counts as met (the positive now carries
     `not_met`); the schema's Claim rule rejects it.
@@ -52,9 +51,9 @@ The maintainer's second pass (2026-09-28) adds four negatives:
     the claim's `evidence[]`. Both refs MUST resolve inside `evidence[]`;
     the checker rejects each. Schema-valid.
 
-The maintainer's third pass (2026-09-29) -- "neither book_id nor signer
-alone is enough, since a producer can mint a second book or a second key
-equally easily" -- makes the counterparty rule three-part: (1) a different
+Neither book_id nor signer alone is enough, since a producer can mint a
+second book or a second key equally easily, so the counterparty rule is
+three-part: (1) a different
 `book_id`, (2) the linking book equals the claim's named `peer`, (3) a
 different signer key (enforced where the signer is visible: the emitter
 and the CLI; the record header here carries none). Two more negatives:
@@ -422,9 +421,8 @@ peer_rebuttal_content = _peer_record(
 peer_silent_close_content = _peer_record(
     19, None, "EXAMPLE-ORG peer (example-org-sor) Close record for 2026-09-01, no link back to EXAMPLE-ORG's, v0 placeholder"
 )
-# A record from EXAMPLE-ORG's OWN book that `acknowledges` EXAMPLE-ORG's own Close (2026-09-28,
-# maintainer's second pass: "an `acknowledges` link has to come from the
-# counterparty"). Same `book_id` as the Close, so the link makes no state:
+# A record from EXAMPLE-ORG's OWN book that `acknowledges` EXAMPLE-ORG's own Close
+# (an `acknowledges` link has to come from the counterparty). Same `book_id` as the Close, so the link makes no state:
 # a producer cannot agree with itself. The walk ignores it and reads
 # UNILATERAL.
 own_ack_content: RecordDoc = {
@@ -440,9 +438,8 @@ own_ack_content: RecordDoc = {
     "statement": {"period": DAY_1, "note": "EXAMPLE-ORG record from EXAMPLE-ORG's own book acknowledging EXAMPLE-ORG's own Close, v0 placeholder"},
 }
 # A record from a THIRD book -- `example-org-audit`, neither EXAMPLE-ORG's own book nor the
-# named peer `example-org-sor` -- that `acknowledges` EXAMPLE-ORG's Close (2026-09-29,
-# maintainer's third pass: "a producer can mint a second book ... equally
-# easily"). A different book_id is necessary, not sufficient: the linking
+# named peer `example-org-sor` -- that `acknowledges` EXAMPLE-ORG's Close (a
+# producer can mint a second book equally easily). A different book_id is necessary, not sufficient: the linking
 # book must be the claim's named peer. The walk ignores it and reads
 # UNILATERAL.
 third_book_ack_content: RecordDoc = {
@@ -457,7 +454,7 @@ third_book_ack_content: RecordDoc = {
     "subject_ref": RECONCILE_CONTRACT_REF,
     "statement": {"period": DAY_1, "note": "record from a third book (example-org-audit) acknowledging EXAMPLE-ORG's Close, v0 placeholder"},
 }
-# EXAMPLE-ORG's Close with NO `book_id` at all (third pass): a Close that names no
+# EXAMPLE-ORG's Close with NO `book_id` at all: a Close that names no
 # book has no counterparty, so no linker -- not even the named peer's --
 # can make it AGREED. Its digest differs from OWN_CLOSE_DIGEST, so the
 # peer's acknowledging record below targets THIS digest.
@@ -507,8 +504,7 @@ close_agreed: ClaimDoc = {
 #     by digest, exactly as AGREED cites the acknowledging Close.
 #     (peer_rebuttal_content is the record header defined above.)
 #
-#     A CONTESTED Close does not count as met (2026-09-28, maintainer's
-#     second pass): the peer rebuts it, so the clause the claim reports on
+#     A CONTESTED Close does not count as met: the peer rebuts it, so the clause the claim reports on
 #     is `not_met` while the rebuttal stands. Sufficiency stays SATISFIED
 #     -- both the Close and the rebuttal are in evidence, nothing is
 #     missing -- and the claim sits in the not_met bucket. The schema's
@@ -614,8 +610,7 @@ pos_example_org_close_contested_result = _close_result(close_contested, "EXAMPLE
 #     verdict `met` and NOTHING else changed (the bucket still lists close-1
 #     under not_met, which the schema does not cross-check -- so the ONLY
 #     rule rejecting this fixture is the Claim rule "a CONTESTED Close is
-#     never met"). Maintainer's second pass, 2026-09-28: "a CONTESTED close
-#     shouldn't count as met".
+#     never met").
 neg_close_contested_verdict_met = _mutated(pos_example_org_close_contested_result)
 neg_close_contested_verdict_met["claims"][1]["verdict"] = "met"
 
@@ -664,7 +659,7 @@ neg_close_agreed_bookless_close = _close_result(
 # --- neg-close-ref-not-in-evidence / neg-close-peer-ref-not-in-evidence --
 #     the AGREED positive with `close_ref` (resp. `peer_close_ref`) no
 #     longer among the claim's evidence[] digests. Both refs MUST resolve
-#     inside evidence[] (maintainer's second pass): a claim cannot report
+#     inside evidence[]: a claim cannot report
 #     on a Close, or cite the record that makes its state, that it does
 #     not put in evidence. Schema-valid (JSON Schema cannot compare two
 #     digests); the checker rejects each.

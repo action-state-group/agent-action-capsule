@@ -87,7 +87,7 @@ Negatives, each one field away from its positive, each with a mutant/load-bearin
 
 ## `close_state` is derivable — the records sidecars (2026-09-28)
 
-After the maintainer's adversarial review ("a contested close relabelled 'agreed' validates"), every
+So that a contested close relabelled 'agreed' cannot validate, every
 close claim cites the Close it reports on (`close_ref`, by digest) and its `close_state` is
 **recomputed, never trusted** (spec §4.1): any record carrying a `rebuts` link to that Close ⇒
 `CONTESTED`; else a counterparty `acknowledges` link ⇒ `AGREED`; else `UNILATERAL`. JSON Schema cannot
@@ -115,10 +115,9 @@ ship their positive's records unchanged; they are rejected by the schema before 
 |---|---|---|
 | `neg-close-agreed-relabelled-contested.json` (+ `.records.json`, identical to the CONTESTED positive's) | `claims[1].close.close_state` relabelled `CONTESTED` → `AGREED`; `peer_close_ref` still cites the record that `rebuts` EXAMPLE-ORG's Close; `view.title` says so | **Validates against the schema** — that is the hole. The checker recomputes `CONTESTED` from the `rebuts` link and fails the claim on the mismatch. Mutant: a walk that trusts the asserted field (the pre-review behaviour) accepts the same fixture; the restored walk re-rejects it |
 
-**The maintainer's second and third passes (2026-09-28 / 2026-09-29)** — five more link-walk negatives,
-each schema-valid, each with its own walk mutant. The counterparty rule is **three-part** (third pass:
-"neither book_id nor signer alone is enough, since a producer can mint a second book or a second key
-equally easily"): a link counts only from a record whose **(1) `book_id`** — the store identity the
+**Further Close rules** — five more link-walk negatives,
+each schema-valid, each with its own walk mutant. The counterparty rule is **three-part** (neither book_id nor signer
+alone is enough, since a producer can mint a second book or a second key equally easily): a link counts only from a record whose **(1) `book_id`** — the store identity the
 evidence-book record header carries (the -00 draft's header names no store field; its `principal_ref`
 is opaque and host-defined, and the draft states the Close rule at store level — "a record from the
 counterparty") — is present and differs from the Close's, **(2)** equals the claim's named **`peer`**,
