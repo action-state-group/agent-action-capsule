@@ -122,6 +122,7 @@ export const RESULT_MEMBERS = Object.freeze([
   "claims",
   "aggregate",
   "view",
+  "coverage_report",
 ] as const);
 export const CLAIM_REQUIRED = Object.freeze([
   "id",
@@ -524,7 +525,8 @@ function claimFindings(path: string, value: unknown): string[] {
  * proof refs, `aggregate`, coverage and buckets; and the two cross-element
  * rules spec section 4 makes a verifier's duty: claim ids are unique, and
  * every bucket entry names a claim whose verdict is that bucket. Below the
- * top level it is open-world on additional keys. `view` is not checked, and
+ * top level it is open-world on additional keys. `view` and the PROPOSED
+ * `coverage_report` (spec section 7.1) are not checked, and
  * `generated_at` is checked as a string, not as a date-time. Empty findings
  * mean the document passed this mirror -- nothing more.
  */

@@ -437,6 +437,9 @@ describe("buildResultRoot", () => {
     expect(
       validateEvidenceResult(read("pos-example-org-claims-result.json")),
     ).toEqual([]);
+    expect(
+      validateEvidenceResult(read("pos-example-org-coverage-result.json")),
+    ).toEqual([]);
     for (const name of [
       "neg-aggregate-without-coverage.json",
       "neg-contract-ref-missing.json",

@@ -83,6 +83,7 @@ from agent_action_capsule.canonical import json_digest  # noqa: E402
 from _result_types import (  # noqa: E402
     AggregateDoc,
     ClaimDoc,
+    CoverageReportDoc,
     DigestRefDoc,
     EvidenceResultDoc,
     PeriodDoc,
@@ -730,6 +731,150 @@ neg_unrecognized_claim_type = _mutated(pos_example_org_claims_result)
 neg_unrecognized_claim_type["claims"][0]["type"] = "adjudication"
 
 
+# ---------------------------------------------------------------------------
+# PROPOSED coverage_report (spec section 7.1) -- the claims positive plus a
+# per-requirement coverage section. req-claim-1 and req-claim-2 have every
+# source present from two producers (SATISFIED; claim-2's verdict is not_met,
+# which coverage does not change). req-claim-1's producers are identified by
+# signer key id; req-claim-2's by asserted operator/developer, and one of its
+# records names no producer, so it counts toward none. req-claim-3 is NOT_FOUND: one source has
+# no record, and the remedy names the connector that would capture it.
+# ---------------------------------------------------------------------------
+
+
+def _source(name: str, records: list, producers: int, backfilled: int = 0, epistemic_type: str | None = None) -> dict:
+    row = {
+        "source": name,
+        "status": "SATISFIED" if records else "NOT_FOUND",
+        "record_count": len(records),
+        "contemporaneous_count": len(records) - backfilled,
+        "backfilled_count": backfilled,
+        "duplicates_collapsed": 0,
+        "producer_count": producers,
+        "evidence": [digest_ref(r) for r in records],
+    }
+    if epistemic_type is not None:
+        row["epistemic_type"] = epistemic_type
+    return row
+
+
+def _rec(label: str) -> dict:
+    return {"note": f"EXAMPLE-ORG coverage record {label}, v0 placeholder"}
+
+
+coverage_report: CoverageReportDoc = {
+    "spec_version": "coverage-report/v0",
+    "contract_ref": CONTRACT_REF,
+    "requirements": [
+        {
+            "requirement_ref": "req-claim-1",
+            "obligation_refs": [],
+            "status": "SATISFIED",
+            "sufficiency": "SATISFIED",
+            "claim_ids": ["claim-1"],
+            "sources": [
+                _source("claims-system-record", [_rec("1a")], 1, backfilled=1, epistemic_type="SYSTEM_OF_RECORD_FACT"),
+                _source("payment-events", [_rec("1b"), _rec("1c")], 1, epistemic_type="OBSERVED_EVENT"),
+            ],
+            "independence": {
+                "required_producers": 2,
+                "independent_producers": 2,
+                "correlated_records": 1,
+                "unattributed_records": 0,
+                "producer_basis": "key",
+                "met": True,
+            },
+            "gaps": [],
+        },
+        {
+            "requirement_ref": "req-claim-2",
+            "obligation_refs": [],
+            "status": "SATISFIED",
+            "sufficiency": "SATISFIED",
+            "claim_ids": ["claim-2"],
+            "sources": [_source("review-events", [_rec("2a"), _rec("2b-unattributed")], 1)],
+            "independence": {
+                "required_producers": 1,
+                "independent_producers": 1,
+                "correlated_records": 0,
+                "unattributed_records": 1,
+                "producer_basis": "asserted",
+                "met": True,
+            },
+            "gaps": [],
+        },
+        {
+            "requirement_ref": "req-claim-3",
+            "obligation_refs": [],
+            "status": "NOT_FOUND",
+            "sufficiency": "GAP",
+            "claim_ids": ["claim-3"],
+            "sources": [
+                _source("notice-records", [_rec("3a")], 1),
+                _source("override-events", [], 0, epistemic_type="HUMAN_REPORT"),
+            ],
+            "independence": {
+                "required_producers": 1,
+                "independent_producers": 1,
+                "correlated_records": 0,
+                "unattributed_records": 0,
+                "producer_basis": "asserted",
+                "met": True,
+            },
+            "gaps": [
+                {
+                    "kind": "missing_source",
+                    "source": "override-events",
+                    "detail": "no record from source 'override-events' is in the evaluated records",
+                    "remedy": {"connector": "human_approval", "raises_to": "observed"},
+                }
+            ],
+        },
+    ],
+    "summary": {"requirements": 3, "satisfied": 2, "with_gaps": 1, "gaps": 1, "gaps_without_remedy": 0},
+}
+
+pos_example_org_coverage_result = _mutated(pos_example_org_claims_result)
+pos_example_org_coverage_result["coverage_report"] = coverage_report
+
+# --- neg-coverage-satisfied-with-gap -- req-claim-1 stays SATISFIED but ----
+#     carries a gap (schema: a SATISFIED row has no gaps).
+neg_coverage_satisfied_with_gap = _mutated(pos_example_org_coverage_result)
+neg_coverage_satisfied_with_gap["coverage_report"]["requirements"][0]["gaps"].append(
+    {"kind": "missing_source", "source": "payment-events", "detail": "placeholder gap", "remedy": None}
+)
+
+# --- neg-coverage-not-found-source-with-records -- a source marked ---------
+#     NOT_FOUND that still counts a record (schema: NOT_FOUND exactly when
+#     record_count is 0).
+neg_coverage_not_found_source_with_records = _mutated(pos_example_org_coverage_result)
+neg_coverage_not_found_source_with_records["coverage_report"]["requirements"][1]["sources"][0]["status"] = "NOT_FOUND"
+
+# --- neg-coverage-gap-remedy-absent -- the gap's `remedy` key removed ------
+#     (schema: remedy is required; "no remedy" is an explicit null).
+neg_coverage_gap_remedy_absent = _mutated(pos_example_org_coverage_result)
+del neg_coverage_gap_remedy_absent["coverage_report"]["requirements"][2]["gaps"][0]["remedy"]
+
+# --- neg-coverage-unknown-epistemic-type -- a source typed outside the ----
+#     closed EvidenceBook set (schema: EpistemicType's enum).
+neg_coverage_unknown_epistemic_type = _mutated(pos_example_org_coverage_result)
+neg_coverage_unknown_epistemic_type["coverage_report"]["requirements"][0]["sources"][0]["epistemic_type"] = "TRUSTED_FACT"
+
+# --- neg-coverage-correlated-counted-as-met -- req-claim-1's records are ----
+#     relabelled as one producer's (independent_producers 1, correlated 2),
+#     met left true. Schema-valid; the cross-element check rejects it:
+#     records from one producer correlate, they do not corroborate.
+neg_coverage_correlated_counted_as_met = _mutated(pos_example_org_coverage_result)
+neg_coverage_correlated_counted_as_met["coverage_report"]["requirements"][0]["independence"].update(
+    {"independent_producers": 1, "correlated_records": 2}
+)
+
+# --- neg-coverage-summary-does-not-recompute -- summary.satisfied 3 --------
+#     over rows with two SATISFIED. Schema-valid; cross-element rejected.
+neg_coverage_summary_does_not_recompute = _mutated(pos_example_org_coverage_result)
+neg_coverage_summary_does_not_recompute["coverage_report"]["summary"]["satisfied"] = 3
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("pos-example-org-claims-result", pos_example_org_claims_result)
@@ -754,6 +899,13 @@ def main() -> int:
     write("neg-close-peer-ref-not-in-evidence", neg_close_peer_ref_not_in_evidence)
     write("neg-close-agreed-third-book", neg_close_agreed_third_book)
     write("neg-close-agreed-bookless-close", neg_close_agreed_bookless_close)
+    write("pos-example-org-coverage-result", pos_example_org_coverage_result)
+    write("neg-coverage-satisfied-with-gap", neg_coverage_satisfied_with_gap)
+    write("neg-coverage-not-found-source-with-records", neg_coverage_not_found_source_with_records)
+    write("neg-coverage-gap-remedy-absent", neg_coverage_gap_remedy_absent)
+    write("neg-coverage-unknown-epistemic-type", neg_coverage_unknown_epistemic_type)
+    write("neg-coverage-correlated-counted-as-met", neg_coverage_correlated_counted_as_met)
+    write("neg-coverage-summary-does-not-recompute", neg_coverage_summary_does_not_recompute)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)
     return 0
