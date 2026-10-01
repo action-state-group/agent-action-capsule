@@ -141,6 +141,40 @@ The walk also applies the CONTESTED-is-never-met rule to the **recomputed** stat
 read `CONTESTED` with `verdict: met` fails), so relabelling the asserted state cannot rescue `met`; the
 schema half of that rule is `neg-close-contested-verdict-met` above.
 
+## PROPOSED coverage per requirement — `coverage_report` (spec section 7.1)
+
+`pos-example-org-coverage-result.json` is the claims positive with a `coverage_report` added. It answers,
+per requirement, what evidence exists, what is missing, and which source would close it:
+
+| Requirement | `status` / `sufficiency` | What it shows |
+|---|---|---|
+| `req-claim-1` | `SATISFIED` / `SATISFIED` | Two typed sources (`system_of_record_fact`, `observed_event`), one of them backfilled; three records from two producers identified by signer key (`producer_basis: key`), so `independence` is met (2 of 2) with one correlated record |
+| `req-claim-2` | `SATISFIED` / `SATISFIED` | One source and one producer (`producer_basis: asserted`, not authenticated), with no independence asked. Its second record names no producer, so `unattributed_records: 1` and it counts toward no producer. The claim's verdict is `not_met`, which coverage does not change: coverage is never a verdict |
+| `req-claim-3` | `NOT_FOUND` / `GAP` | `override-events` (typed `human_report`) has no record; `notice-records` has no declared type, so it carries no `epistemic_type` key. The `missing_source` gap names the remedy `human_approval` → `observed` |
+
+Schema negatives, one field each, each with a strip-the-rule mutant:
+
+| File | Mutation | Rule violated |
+|---|---|---|
+| `neg-coverage-satisfied-with-gap.json` | a gap appended to the SATISFIED `req-claim-1` row | A `SATISFIED` row has no gaps and met independence |
+| `neg-coverage-not-found-source-with-records.json` | `req-claim-2`'s only source relabelled `NOT_FOUND`, record kept | A source is `NOT_FOUND` exactly when `record_count` is 0 |
+| `neg-coverage-gap-remedy-absent.json` | the `req-claim-3` gap's `remedy` key removed | `remedy` is required. A missing remedy is an explicit `null` and is counted in `summary.gaps_without_remedy`, never dropped |
+| `neg-coverage-unknown-epistemic-type.json` | `req-claim-1`'s first source typed `trusted_fact` | `epistemic_type` (optional) is one of the record header's closed set |
+| `neg-coverage-uppercase-epistemic-type.json` | `req-claim-1`'s first source typed `SYSTEM_OF_RECORD_FACT` | The values are lower case, exactly as `schemas/vendor/epistemic-types.json` lists them; an upper-case token is not a recognized value |
+
+Cross-element negatives, which validate against the schema and are rejected by the checker's coverage
+check, each with a check mutant:
+
+| File | Mutation | What rejects it |
+|---|---|---|
+| `neg-coverage-correlated-counted-as-met.json` | `req-claim-1`'s three records relabelled as one producer's (`independent_producers: 1`, `correlated_records: 2`), `met` left `true` | Records from one producer correlate; they do not corroborate. `met` must equal `independent_producers >= required_producers`. Mutant `count_records` counts records instead of producers and accepts the fixture |
+| `neg-coverage-summary-does-not-recompute.json` | `summary.satisfied` set to 3 over two SATISFIED rows | `summary` must recompute from the rows. Mutant `trust_summary` skips the recompute and accepts the fixture |
+
+The cross-element check cannot catch a hand edit that moves counts from `correlated_records` to
+`independent_producers`, or that lowers `required_producers`: the document carries no producer
+identities. Spec section 7.1 says so, and a relying party that needs the count recomputes it from the
+records.
+
 ## Reproducing the validation run
 
 ```

@@ -143,9 +143,72 @@ class ViewDoc(TypedDict, total=False):
     title: str
 
 
+class RemedyDoc(TypedDict):
+    connector: str
+    raises_to: str
+
+
+class _SourceCoverageOptionalDoc(TypedDict, total=False):
+    epistemic_type: str
+
+
+class SourceCoverageDoc(_SourceCoverageOptionalDoc):
+    source: str
+    status: str
+    record_count: int
+    contemporaneous_count: int
+    backfilled_count: int
+    duplicates_collapsed: int
+    producer_count: int
+    evidence: List[DigestRefDoc]
+
+
+class IndependenceDoc(TypedDict):
+    required_producers: int
+    independent_producers: int
+    correlated_records: int
+    unattributed_records: int
+    producer_basis: str
+    met: bool
+
+
+class CoverageGapDoc(TypedDict, total=False):
+    kind: str
+    source: str
+    detail: str
+    remedy: Union[RemedyDoc, None]
+
+
+class RequirementCoverageDoc(TypedDict):
+    requirement_ref: str
+    obligation_refs: List[str]
+    status: str
+    sufficiency: str
+    claim_ids: List[str]
+    sources: List[SourceCoverageDoc]
+    independence: IndependenceDoc
+    gaps: List[CoverageGapDoc]
+
+
+class CoverageSummaryDoc(TypedDict):
+    requirements: int
+    satisfied: int
+    with_gaps: int
+    gaps: int
+    gaps_without_remedy: int
+
+
+class CoverageReportDoc(TypedDict):
+    spec_version: Literal["coverage-report/v0"]
+    contract_ref: str
+    requirements: List[RequirementCoverageDoc]
+    summary: CoverageSummaryDoc
+
+
 class EvidenceResultDoc(TypedDict, total=False):
     result_version: Literal["evidence-result-v0"]
     generated_at: str
     claims: List[ClaimDoc]
     aggregate: AggregateDoc
     view: ViewDoc
+    coverage_report: CoverageReportDoc

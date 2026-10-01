@@ -125,6 +125,30 @@ mechanical half):
          and (2) run against a missing book (`book != None` is true for any
          book, so the named peer's link counts).
 
+  8. PROPOSED coverage_report (spec section 7.1): one more positive,
+     pos-example-org-coverage-result (the claims positive plus a per-requirement
+     coverage section), MUST validate and pass the cross-element coverage
+     check. Five schema negatives MUST fail, each with a strip-the-rule
+     mutant:
+       - neg-coverage-satisfied-with-gap: a SATISFIED row carries a gap.
+       - neg-coverage-not-found-source-with-records: a source is NOT_FOUND
+         while still counting a record.
+       - neg-coverage-gap-remedy-absent: a gap's `remedy` key is removed
+         ("no remedy" is an explicit null, never an absent key).
+       - neg-coverage-unknown-epistemic-type: a source typed outside the
+         closed set.
+       - neg-coverage-uppercase-epistemic-type: a known type written in
+         upper case; the tokens are lower case only. The checker also pins
+         $defs.EpistemicType to schemas/vendor/epistemic-types.json exactly.
+     Two negatives validate against the schema and are rejected by the
+     cross-element check, each with a check mutant:
+       - neg-coverage-correlated-counted-as-met: req-claim-1's records
+         relabelled as one producer's, independence.met left true. Records
+         from one producer correlate, they do not corroborate. Mutant
+         `count_records`: independence reached by counting records.
+       - neg-coverage-summary-does-not-recompute: summary.satisfied 3 over
+         two SATISFIED rows. Mutant `trust_summary`: no recompute.
+
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
     python3 check_evidence_result_examples.py                # from schemas/
@@ -378,6 +402,7 @@ POSITIVES = [
     "pos-example-org-close-unilateral-result",
     "pos-example-org-close-unilateral-named-peer-result",
     "pos-example-org-close-contested-result",
+    "pos-example-org-coverage-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -393,7 +418,98 @@ NEGATIVES = [
     "neg-reconcile-tallies-missing-state",
     "neg-unrecognized-claim-type",
     "neg-close-contested-verdict-met",
+    "neg-coverage-satisfied-with-gap",
+    "neg-coverage-not-found-source-with-records",
+    "neg-coverage-gap-remedy-absent",
+    "neg-coverage-unknown-epistemic-type",
+    "neg-coverage-uppercase-epistemic-type",
 ]
+
+# PROPOSED coverage_report (spec section 7.1): negatives that VALIDATE
+# against the schema and are rejected only by the cross-element coverage
+# check. Each names the check MUTANT that must flip it and a label.
+COVERAGE_NEGATIVES = [
+    (
+        "neg-coverage-correlated-counted-as-met",
+        "count_records",
+        "counting records instead of producers toward independence",
+    ),
+    (
+        "neg-coverage-summary-does-not-recompute",
+        "trust_summary",
+        "taking summary as given instead of recomputing it",
+    ),
+]
+
+_STATUS_TO_SUFFICIENCY = {
+    "SATISFIED": "SATISFIED",
+    "NOT_FOUND": "GAP",
+    "INSUFFICIENT": "INSUFFICIENT",
+    "UNKNOWN": "UNKNOWN",
+}
+
+
+def coverage_findings(doc: EvidenceResultDoc, *, mutant: str | None = None) -> list[str]:
+    """Spec section 7.1's cross-element rules, which JSON Schema cannot
+    express. Not checkable here, by design (spec section 7.1, "What a
+    verifier of the document alone cannot catch"): a hand edit that moves
+    counts from correlated_records to independent_producers, or lowers
+    required_producers -- the document carries no producer identities. ``mutant`` switches off one rule to prove a rejection is that
+    rule's: ``count_records`` takes independence as met when the records
+    (not the producers) reach the requirement; ``trust_summary`` skips the
+    summary recompute."""
+    report = doc.get("coverage_report")
+    if report is None:
+        return []
+    out: list[str] = []
+    claims = {c["id"]: c for c in doc.get("claims", [])}
+    rows = report.get("requirements", [])
+    for row in rows:
+        ref = row["requirement_ref"]
+        for claim_id in row.get("claim_ids", []):
+            claim = claims.get(claim_id)
+            if claim is None:
+                out.append(f"{ref}: claim_ids names {claim_id!r}, which has no claim")
+            elif claim["requirement_ref"] != ref or claim["contract_ref"] != report["contract_ref"]:
+                out.append(f"{ref}: claim {claim_id!r} is for another requirement or contract")
+        digests = set()
+        for src in row.get("sources", []):
+            if src["contemporaneous_count"] + src["backfilled_count"] != src["record_count"]:
+                out.append(f"{ref}/{src['source']}: contemporaneous + backfilled != record_count")
+            if len(src["evidence"]) != src["record_count"]:
+                out.append(f"{ref}/{src['source']}: evidence digests != record_count")
+            digests.update(e["digest"] for e in src["evidence"])
+        ind = row["independence"]
+        if mutant == "count_records":
+            reached = len(digests) >= ind["required_producers"]
+        else:
+            reached = ind["independent_producers"] >= ind["required_producers"]
+            counted = ind["independent_producers"] + ind["correlated_records"] + ind["unattributed_records"]
+            if counted != len(digests):
+                out.append(
+                    f"{ref}: independent_producers + correlated_records + unattributed_records "
+                    f"!= {len(digests)} distinct records"
+                )
+            if (ind["producer_basis"] == "none") != (ind["independent_producers"] == 0):
+                out.append(f"{ref}: producer_basis {ind['producer_basis']!r} disagrees with independent_producers")
+        if ind["met"] != reached:
+            out.append(
+                f"{ref}: independence.met is {ind['met']} but {ind['independent_producers']} producer(s) "
+                f"against {ind['required_producers']} required -- records from one producer correlate, "
+                "they do not corroborate"
+            )
+    if mutant != "trust_summary":
+        all_gaps = [g for r in rows for g in r.get("gaps", [])]
+        expected = {
+            "requirements": len(rows),
+            "satisfied": sum(1 for r in rows if r["status"] == "SATISFIED"),
+            "with_gaps": sum(1 for r in rows if r.get("gaps")),
+            "gaps": len(all_gaps),
+            "gaps_without_remedy": sum(1 for g in all_gaps if g.get("remedy") is None),
+        }
+        if report.get("summary") != expected:
+            out.append(f"summary {report.get('summary')!r} does not recompute; expected {expected!r}")
+    return out
 
 
 def _load(name: str) -> EvidenceResultDoc:
@@ -598,6 +714,94 @@ def main() -> int:
             "Claim's CONTESTED-is-never-met if/then rule",
         )
 
+    # --- PROPOSED coverage_report (spec section 7.1) -------------------------
+
+    if negative_errors_by_name["neg-coverage-satisfied-with-gap"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["RequirementCoverage"]["allOf"] = []
+        _mutant_check(
+            "neg-coverage-satisfied-with-gap",
+            mutant,
+            "RequirementCoverage's status if/then rules",
+        )
+
+    if negative_errors_by_name["neg-coverage-not-found-source-with-records"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["SourceCoverage"]["allOf"] = []
+        _mutant_check(
+            "neg-coverage-not-found-source-with-records",
+            mutant,
+            "SourceCoverage's NOT_FOUND-exactly-when-empty rule",
+        )
+
+    if negative_errors_by_name["neg-coverage-gap-remedy-absent"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["CoverageGap"]["required"] = [
+            r for r in mutant["$defs"]["CoverageGap"]["required"] if r != "remedy"
+        ]
+        _mutant_check(
+            "neg-coverage-gap-remedy-absent",
+            mutant,
+            "CoverageGap.required's 'remedy' entry",
+        )
+
+    if negative_errors_by_name["neg-coverage-uppercase-epistemic-type"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["EpistemicType"] = {"type": "string"}
+        _mutant_check(
+            "neg-coverage-uppercase-epistemic-type",
+            mutant,
+            "EpistemicType's closed (lower-case) enum",
+        )
+
+    if negative_errors_by_name["neg-coverage-unknown-epistemic-type"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["EpistemicType"] = {"type": "string"}
+        _mutant_check(
+            "neg-coverage-unknown-epistemic-type",
+            mutant,
+            "EpistemicType's closed enum",
+        )
+
+    # EpistemicType is the record header's set exactly as the vendored copy
+    # lists it: same tokens, same (lower) case, same order.
+    vendored = json.loads((SCHEMAS_DIR / "vendor" / "epistemic-types.json").read_text(encoding="utf-8"))
+    if schema["$defs"]["EpistemicType"]["enum"] != vendored["values"]:
+        findings.append("EPISTEMIC-TYPE-DRIFT: $defs.EpistemicType differs from schemas/vendor/epistemic-types.json")
+    else:
+        print("OK  PARITY        $defs.EpistemicType matches schemas/vendor/epistemic-types.json")
+
+    # Cross-element coverage rules: every positive passes; each coverage
+    # negative passes the schema, fails the check, and its mutant flips it.
+    for name in POSITIVES:
+        cov = coverage_findings(_load(name))
+        if cov:
+            findings.extend(f"COVERAGE-MISMATCH {name}: {line}" for line in cov)
+        elif "coverage_report" in _load(name):
+            print(f"OK  COVERAGE      {name}.json -- cross-element rules hold")
+
+    for name, cov_mutant, mutation_label in COVERAGE_NEGATIVES:
+        instance = _load(name)
+        schema_errors = list(validator.iter_errors(instance))
+        if schema_errors:
+            findings.append(
+                f"COVERAGE-NEGATIVE-SCHEMA-REJECTED {name}: this fixture exists to show the "
+                f"schema ALONE accepts it; it was rejected instead ({schema_errors[0].message!r})"
+            )
+            continue
+        cov = coverage_findings(instance)
+        if not cov:
+            findings.append(f"COVERAGE-NEGATIVE-DID-NOT-FAIL {name}: the coverage check accepted it")
+            continue
+        print(f"OK  COVERAGE      {name}.json correctly REJECTED ({cov[0]!r})")
+        if coverage_findings(instance, mutant=cov_mutant):
+            findings.append(
+                f"MUTANT-DID-NOT-FLIP {name}: under the mutant ({mutation_label}) the fixture still failed"
+            )
+        else:
+            print(f"OK  MUTANT        {name} -- under the mutant ({mutation_label}) the fixture "
+                  "PASSES (confirms the rule is load-bearing)")
+
     # --- 5. CLOSE STATE IS DERIVABLE: the link walk ----------------------------
     #        Schema validation cannot see across records; this can. Every
     #        positive that carries a close claim must ship its records and
@@ -675,7 +879,8 @@ def main() -> int:
         return 1
 
     print(f"\nOK — {len(POSITIVES)} positive result(s), {len(NEGATIVES)} negative fixture(s), "
-          f"{len(LINK_NEGATIVES)} link-walk negative(s), and all mutant checks passed.")
+          f"{len(LINK_NEGATIVES)} link-walk negative(s), {len(COVERAGE_NEGATIVES)} coverage "
+          "negative(s), and all mutant checks passed.")
     return 0
 
 

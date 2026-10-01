@@ -419,6 +419,152 @@ aggregate:
 `buckets` always carries all three keys, each an array (possibly empty) — never an absent key,
 and never collapsed into a single figure (§3).
 
+### 7.1 Coverage per requirement — `coverage_report` (PROPOSED)
+
+**Status: PROPOSED.** Not ruled. `aggregate.coverage` (§3) stays mandatory and renders first;
+this section adds an OPTIONAL top-level member that breaks coverage down per requirement. A
+Result without `coverage_report` is unchanged and still valid.
+
+For each requirement of one contract version, `coverage_report` answers three questions from the
+records in the ledger: **what evidence exists**, **what is missing**, and **which source would
+close the gap**.
+
+```
+coverage_report:
+  spec_version: "coverage-report/v0"
+  contract_ref: "<contract_id>@<version>"   # the same contract every claim cites
+  requirements:
+    - requirement_ref: string
+      obligation_refs: [string, ...]         # copied from the contract requirement
+      status: SATISFIED | INSUFFICIENT | NOT_FOUND | UNKNOWN
+      sufficiency: SATISFIED | INSUFFICIENT | GAP | UNKNOWN   # derived from status, fixed mapping
+      claim_ids: [claim-id, ...]             # this Result's claims for the requirement
+      sources:                               # one per contract `required_sources` entry
+        - source: string
+          epistemic_type: observed_event | system_of_record_fact | ...   # optional
+          status: SATISFIED | INSUFFICIENT | NOT_FOUND
+          record_count: integer              # after duplicate collapse
+          contemporaneous_count: integer
+          backfilled_count: integer
+          duplicates_collapsed: integer
+          producer_count: integer
+          evidence: [DigestRef, ...]         # one per counted record
+      independence:
+        required_producers: integer          # from the requirement's `independence` field
+        independent_producers: integer
+        correlated_records: integer          # records beyond the first from each producer
+        unattributed_records: integer        # records naming no producer; counted toward none
+        producer_basis: key | asserted | none
+        met: boolean
+      gaps:
+        - kind: missing_source | assurance_below_minimum | correlated_only | unattributed_only | no_sources_declared
+          source: string                     # required for missing_source and assurance_below_minimum
+          detail: string
+          remedy: { connector, raises_to } | null
+  summary: { requirements, satisfied, with_gaps, gaps, gaps_without_remedy }
+```
+
+**Status uses the Evidence Contract's assertion vocabulary.** `status` takes the four
+`EvidenceStatus` values a coverage computation over ledger records can produce. `sufficiency` is
+derived from it: `SATISFIED`→`SATISFIED`, `NOT_FOUND`→`GAP`, `INSUFFICIENT`→`INSUFFICIENT`,
+`UNKNOWN`→`UNKNOWN`. Coverage states whether there is enough evidence to evaluate the requirement.
+It is never a verdict, and a renderer MUST NOT show it as one.
+
+**Records from one producer are correlation, not corroboration.** A run of trace spans exported
+by one deployment, or an effect record alongside the span that observed it, shows one party
+seeing the same thing several times. Such records add to `correlated_records` and never to
+`independent_producers`. A requirement whose `independence` field asks for corroboration is met
+only when its evidence comes from at least `required_producers` distinct producers. Otherwise the
+row is `INSUFFICIENT` and carries a `correlated_only` gap. Producer identities never appear in the
+report, only their counts.
+
+**Who the producer is, and how far to trust it.** A record names its producer by a signer key id,
+by its self-asserted `operator` and `developer` tokens, or by both.
+
+- **Absent:** an empty or whitespace-only token, or one that is not a string, is absent. A record
+  with no token at all is unattributed.
+- **Normalized:** names are compared after Unicode NFKC normalization, whitespace strip and
+  casefold. Key ids are compared after strip and casefold. Lowercase hex is the canonical key id
+  form. A base64url id is compared case-insensitively, which can only merge two ids.
+- **Linked one token at a time:** every token that appears together with another on any record in
+  the ledger belongs to one producer. A shared key, a shared `operator` or a shared `developer`
+  links two records. So one key under two names, two keys under one name, or the partial pairs
+  (`a`, –), (`a`, `x`) and (–, `x`) each count once.
+
+Linking only merges, so it never counts more producers than there are groups of unlinked tokens.
+It can under-count independence: two parties that share a developer string count as one. It cannot
+see through one party writing two unrelated names, including homoglyphs that NFKC does not map, or
+minting a second key that it never uses beside its name. Asserted names are not an authenticated
+path.
+
+A record signed with a key that never appears beside a name is ambiguous when the requirement's
+evidence also holds unsigned records, because the key could belong to any of those named parties.
+Such a record counts as unattributed (fail closed). When the evidence holds no unsigned records, the
+key stands as its own producer.
+
+`producer_basis` says how far the identification can be trusted:
+
+- `key`: every attributed record of the requirement is signed. A key id binds records to one key.
+  It does not show that two keys belong to two parties: a Capsule's `kid` is self-attested, and a
+  producer can mint a second key that never appears beside its name.
+- `asserted`: at least one producer is identified only by the self-asserted `operator` and
+  `developer`. Anyone can write those strings, so an asserted producer is not authenticated, and a
+  renderer SHOULD say so.
+- `none`: no producer was counted.
+
+**Unattributed records count toward no producer.** A record that names no producer (no key id,
+`operator` or `developer`), or the ambiguous signed record above, adds to `unattributed_records` and never to `independent_producers`.
+Otherwise a run of records with the attribution stripped would each count as its own producer and
+manufacture corroboration. Evidence that is entirely unattributed is `INSUFFICIENT` with an
+`unattributed_only` gap, even when no independence is asked for.
+
+**`epistemic_type` is optional and declared, never inferred.** When the producer has a source
+catalog that types each source, a source row carries that type. The value comes from the
+record header's closed set, in lower case exactly as `schemas/vendor/epistemic-types.json` lists
+it (decided 2026-10-01: lower case everywhere). An upper-case token is not a recognized value. A
+source with no declared type has no `epistemic_type` key.
+A renderer MAY use the type to label the row. It MUST NOT treat the type as evidence that the
+source is present.
+
+**Backfilled records keep their cap.** If a requirement's `minimum_assurance` includes
+`committed`, a source whose surviving records are all backfilled, with self-attested source time
+and no corroborating reference, is `INSUFFICIENT` and carries an `assurance_below_minimum` gap. A
+backfilled duplicate of a contemporaneous record counts once, and the contemporaneous record
+governs.
+
+**Every gap is reported, with or without a remedy.** A `remedy` names the hook class that would
+capture the source and the assurance mode that hook raises it to:
+
+| `connector` | `raises_to` (typical) |
+|---|---|
+| `otel` | `observed` |
+| `mcp_proxy` | `observed`, or `committed` when it emits a capsule per consequential call |
+| `gateway` | `observed` |
+| `git_ci` | `observed`, or `committed` with a capsule per change |
+| `system_of_record` | `retrospectively_evidenced` |
+| `native_emission` | `committed` |
+| `human_approval` | `observed` |
+
+When no hook is named, `remedy` is `null` and the gap is counted in
+`summary.gaps_without_remedy`. It is never dropped.
+
+**Cross-element rules** (normative; the schema cannot express them, and the producer's verifier
+checks them): every `claim_ids` entry names a claim with the same `requirement_ref` and
+`contract_ref`; for each source, `contemporaneous_count + backfilled_count == record_count ==
+len(evidence)`; `independent_producers + correlated_records + unattributed_records` equals the
+number of distinct evidence digests across the row's sources; `producer_basis` is `none` exactly
+when `independent_producers` is 0; `independence.met == (independent_producers >=
+required_producers)`; and `summary` recomputes from the rows. The schema enforces the
+status→sufficiency mapping, `NOT_FOUND` exactly when `record_count` is 0, and that a `SATISFIED` row
+has no gaps and met independence.
+
+**What a verifier of the document alone cannot catch.** The report carries producer counts, never
+producer identities, and it carries `required_producers` as the producer computed it from the
+contract. A hand edit that raises `independent_producers` and lowers `correlated_records` by the
+same amount, or that lowers `required_producers`, passes every rule above. Detecting it takes a
+recompute from the records and the contract version that `contract_ref` names. A relying party that
+needs the independence count to hold MUST recompute it, not read it.
+
 ## 8. View
 
 Presentation hints only — **never data**. The `presentation/v1` header fields: producer
@@ -494,3 +640,12 @@ mutant proof. The maintainer's second pass (2026-09-28) adds one schema negative
 `neg-close-ref-not-in-evidence` and `neg-close-peer-ref-not-in-evidence` (a cited digest missing from
 `evidence[]`). The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against these same
 fixtures, not here.
+
+§7.1's PROPOSED `coverage_report` adds one positive (`pos-example-org-coverage-result.json`: one `SATISFIED`
+row with a correlated record, one `SATISFIED` row over a `not_met` claim, and one `NOT_FOUND` row
+whose gap names a remedy), five schema negatives (`neg-coverage-satisfied-with-gap`,
+`neg-coverage-not-found-source-with-records`, `neg-coverage-gap-remedy-absent`,
+`neg-coverage-unknown-epistemic-type`, `neg-coverage-uppercase-epistemic-type`), and two
+negatives that validate against the schema and are rejected by the checker's cross-element
+coverage check (`neg-coverage-correlated-counted-as-met`, `neg-coverage-summary-does-not-recompute`).
+Each negative has its own mutant proof.
