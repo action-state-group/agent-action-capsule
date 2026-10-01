@@ -4,8 +4,8 @@
 
 SCITT                                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Standards Track                       29 September 2026
-Expires: 2 April 2027
+Intended status: Standards Track                          1 October 2026
+Expires: 4 April 2027
 
 
                An Agent Action Capsule Profile for SCITT
@@ -47,15 +47,15 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 2 April 2027.
+   This Internet-Draft will expire on 4 April 2027.
 
 
 
 
 
-Mih                       Expires 2 April 2027                  [Page 1]
+Mih                       Expires 4 April 2027                  [Page 1]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
 Copyright Notice
@@ -109,9 +109,9 @@ Table of Contents
 
 
 
-Mih                       Expires 2 April 2027                  [Page 2]
+Mih                       Expires 4 April 2027                  [Page 2]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
      9.1.  Namespacing convention  . . . . . . . . . . . . . . . . .  43
@@ -165,9 +165,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                  [Page 3]
+Mih                       Expires 4 April 2027                  [Page 3]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    3.  Independent verifiability.  The substrate guarantees (envelope
@@ -221,9 +221,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                  [Page 4]
+Mih                       Expires 4 April 2027                  [Page 4]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    digests with plain JSON Canonicalization Scheme (JCS) [RFC8785].
@@ -277,9 +277,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                  [Page 5]
+Mih                       Expires 4 April 2027                  [Page 5]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    +==========+=========================+=============================+
@@ -333,9 +333,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                  [Page 6]
+Mih                       Expires 4 April 2027                  [Page 6]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
 3.3.  Registration and Receipts
@@ -389,9 +389,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                  [Page 7]
+Mih                       Expires 4 April 2027                  [Page 7]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    The binding invariant, stated once here and again in Section 12:
@@ -445,9 +445,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                  [Page 8]
+Mih                       Expires 4 April 2027                  [Page 8]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    | capsule_id          | string    | REQUIRED | The derived          |
@@ -501,9 +501,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                  [Page 9]
+Mih                       Expires 4 April 2027                  [Page 9]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    |                     |           |          | assigned epoch       |
@@ -557,9 +557,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 10]
+Mih                       Expires 4 April 2027                 [Page 10]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    A producer conforming to this revision MUST emit "draft-mih-scitt-
@@ -613,9 +613,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 11]
+Mih                       Expires 4 April 2027                 [Page 11]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    *  chain.relation: "epoch_opens" linking to the last Capsule produced
@@ -669,9 +669,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 12]
+Mih                       Expires 4 April 2027                 [Page 12]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
        +============+==================+==========================+
@@ -725,9 +725,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 13]
+Mih                       Expires 4 April 2027                 [Page 13]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    completion.  For this type, request_digest is the JSON digest
@@ -781,9 +781,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 14]
+Mih                       Expires 4 April 2027                 [Page 14]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
       +========================+====================================+
@@ -837,9 +837,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 15]
+Mih                       Expires 4 April 2027                 [Page 15]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    References to external authorization records carried in the Effect
@@ -893,9 +893,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 16]
+Mih                       Expires 4 April 2027                 [Page 16]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    chained is derived solely from the presence and integrity of the
@@ -949,9 +949,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 17]
+Mih                       Expires 4 April 2027                 [Page 17]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
     +======================+=========================================+
@@ -1005,9 +1005,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 18]
+Mih                       Expires 4 April 2027                 [Page 18]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    *  correlator (REQUIRED when counterparty_ref is present): an opaque
@@ -1061,9 +1061,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 19]
+Mih                       Expires 4 April 2027                 [Page 19]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    *  subject: a CPB typed digest reference
@@ -1117,9 +1117,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 20]
+Mih                       Expires 4 April 2027                 [Page 20]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    *What this format does not do.* A Re-anchor Statement's own
@@ -1173,9 +1173,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 21]
+Mih                       Expires 4 April 2027                 [Page 21]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    |                    |           |            | "contemporaneous";  |
@@ -1229,9 +1229,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 22]
+Mih                       Expires 4 April 2027                 [Page 22]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    |                    |           |unless mode | self_attested <     |
@@ -1285,9 +1285,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 23]
+Mih                       Expires 4 April 2027                 [Page 23]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    attestation_mode or ledger_mode, which continue to be derived exactly
@@ -1341,9 +1341,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 24]
+Mih                       Expires 4 April 2027                 [Page 24]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    structural guarantee, not only a policy one.  (Informative, non-
@@ -1397,9 +1397,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 25]
+Mih                       Expires 4 April 2027                 [Page 25]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
       Capsule's registration time — the timestamp field inside the
@@ -1453,9 +1453,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 26]
+Mih                       Expires 4 April 2027                 [Page 26]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
     +=================+===============================================+
@@ -1509,9 +1509,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 27]
+Mih                       Expires 4 April 2027                 [Page 27]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
 5.5.2.  Orthogonality with effect_mode
@@ -1565,9 +1565,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 28]
+Mih                       Expires 4 April 2027                 [Page 28]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    constraint or policy fired and the action did not proceed.  Recording
@@ -1621,9 +1621,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 29]
+Mih                       Expires 4 April 2027                 [Page 29]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    Human-in-the-loop resolution is the supersedes relation: a
@@ -1677,9 +1677,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 30]
+Mih                       Expires 4 April 2027                 [Page 30]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    *Digest as identity.* A references entry's target is identified
@@ -1733,9 +1733,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 31]
+Mih                       Expires 4 April 2027                 [Page 31]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    *Identity references, never policy references.* Every references
@@ -1789,9 +1789,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 32]
+Mih                       Expires 4 April 2027                 [Page 32]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    +====================+=============+==========+====================+
@@ -1845,9 +1845,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 33]
+Mih                       Expires 4 April 2027                 [Page 33]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    *Declared, not attested.* A retention object is a statement by
@@ -1901,9 +1901,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 34]
+Mih                       Expires 4 April 2027                 [Page 34]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    conforming. log_coordinates is an upgrade, not a second identity: it
@@ -1957,9 +1957,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 35]
+Mih                       Expires 4 April 2027                 [Page 35]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    |                        | attestation service); citing it with    |
@@ -2013,9 +2013,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 36]
+Mih                       Expires 4 April 2027                 [Page 36]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    |                        | never by amending the custody record.   |
@@ -2069,9 +2069,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 37]
+Mih                       Expires 4 April 2027                 [Page 37]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    behaviour as runnable cases rather than prose — a passing grade on
@@ -2125,9 +2125,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 38]
+Mih                       Expires 4 April 2027                 [Page 38]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    The agent-profile checks below are normative here and constitute
@@ -2181,9 +2181,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 39]
+Mih                       Expires 4 April 2027                 [Page 39]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    8.  Unknown registry values (verdict_class, decision, effect.type,
@@ -2237,9 +2237,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 40]
+Mih                       Expires 4 April 2027                 [Page 40]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    holds for effect.status: "reverted", which likewise derives
@@ -2293,9 +2293,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 41]
+Mih                       Expires 4 April 2027                 [Page 41]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
 8.1.  Constraint Records
@@ -2349,9 +2349,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 42]
+Mih                       Expires 4 April 2027                 [Page 42]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
 9.1.  Namespacing convention
@@ -2405,9 +2405,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 43]
+Mih                       Expires 4 April 2027                 [Page 43]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
 10.  Related Work
@@ -2461,9 +2461,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 44]
+Mih                       Expires 4 April 2027                 [Page 44]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    distinguishes outcome categories rather than receiver attestation
@@ -2517,9 +2517,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 45]
+Mih                       Expires 4 April 2027                 [Page 45]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    The companion Internet-Draft
@@ -2573,9 +2573,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 46]
+Mih                       Expires 4 April 2027                 [Page 46]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    1.  "verdict_class" registry (Section 5.5.1): executed, blocked,
@@ -2629,9 +2629,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 47]
+Mih                       Expires 4 April 2027                 [Page 47]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
        epoch_opens, and duplicates are non-terminal relations. follows
@@ -2685,9 +2685,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 48]
+Mih                       Expires 4 April 2027                 [Page 48]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
        citation (Section 5.5.5).  Additional values are expected future
@@ -2741,9 +2741,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 49]
+Mih                       Expires 4 April 2027                 [Page 49]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    *  Interoperability considerations: see this document.
@@ -2797,9 +2797,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 50]
+Mih                       Expires 4 April 2027                 [Page 50]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    *  Published specification: this document (and its successors).
@@ -2853,9 +2853,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 51]
+Mih                       Expires 4 April 2027                 [Page 51]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    Confirmed means observed-and-bound, not world-state.  A confirmed
@@ -2909,9 +2909,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 52]
+Mih                       Expires 4 April 2027                 [Page 52]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    guarantee that composes with this profile at the digest layer: a
@@ -2965,9 +2965,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 53]
+Mih                       Expires 4 April 2027                 [Page 53]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
 14.1.  Data-Admission Tiers
@@ -3021,9 +3021,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 54]
+Mih                       Expires 4 April 2027                 [Page 54]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    [I-D.mih-sokolov-scitt-payload-binding]
@@ -3077,9 +3077,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 55]
+Mih                       Expires 4 April 2027                 [Page 55]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
@@ -3133,9 +3133,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 56]
+Mih                       Expires 4 April 2027                 [Page 56]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    [I-D.kamimura-scitt-refusal-events]
@@ -3189,9 +3189,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 57]
+Mih                       Expires 4 April 2027                 [Page 57]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    [I-D.munoz-scitt-permit-profile]
@@ -3245,9 +3245,9 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 58]
+Mih                       Expires 4 April 2027                 [Page 58]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    [RFC9901]  Fett, D., Yasuda, K., and B. Campbell, "Selective
@@ -3301,9 +3301,9 @@ Appendix A.  Changes from draft-mih-scitt-agent-action-capsule-04
 
 
 
-Mih                       Expires 2 April 2027                 [Page 59]
+Mih                       Expires 4 April 2027                 [Page 59]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    *  New registrations: chain.relation follows, the bare next-link
@@ -3357,9 +3357,9 @@ Author's Address
 
 
 
-Mih                       Expires 2 April 2027                 [Page 60]
+Mih                       Expires 4 April 2027                 [Page 60]
 
-Internet-Draft            Agent Action Capsules           September 2026
+Internet-Draft            Agent Action Capsules             October 2026
 
 
    Email: spec@actionstate.ai
@@ -3413,4 +3413,4 @@ Internet-Draft            Agent Action Capsules           September 2026
 
 
 
-Mih                       Expires 2 April 2027                 [Page 61]
+Mih                       Expires 4 April 2027                 [Page 61]
