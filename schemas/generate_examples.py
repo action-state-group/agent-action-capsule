@@ -115,22 +115,22 @@ def write(name: str, obj: IRDocument) -> None:
 # Plan 1 — outcome profile
 # ---------------------------------------------------------------------------
 
-OUTCOME_CONTRACT = "ec:oo-outcome-eval:2026-09-22@1"
-outcome_evidence_content = {"note": "OO outcome eligibility evidence artifact, v0 placeholder"}
-outcome_policy = {"note": "OO outcome eligibility policy manifest, v0 placeholder"}
+OUTCOME_CONTRACT = "ec:example-org-outcome-eval:2026-09-22@1"
+outcome_evidence_content = {"note": "EXAMPLE-ORG outcome eligibility evidence artifact, v0 placeholder"}
+outcome_policy = {"note": "EXAMPLE-ORG outcome eligibility policy manifest, v0 placeholder"}
 
-outcome_node1_result_output = {"note": "OO outcome answer artifact recomputed", "requirement": "req-outcome-1"}
+outcome_node1_result_output = {"note": "EXAMPLE-ORG outcome answer artifact recomputed", "requirement": "req-outcome-1"}
 outcome_node1_attestation = build_attestation(
-    adjudicator_id="oo-evidence-responder-v0",
+    adjudicator_id="example-org-evidence-responder-v0",
     operator="evidence.request_answer",
     inputs=[outcome_evidence_content],
     policy=outcome_policy,
     contract_ref=OUTCOME_CONTRACT,
 )
 
-outcome_node2_result_output = {"note": "OO outcome verified binding+inclusion, v0 placeholder"}
+outcome_node2_result_output = {"note": "EXAMPLE-ORG outcome verified binding+inclusion, v0 placeholder"}
 outcome_node2_attestation = build_attestation(
-    adjudicator_id="oo-assurance-verifier-v0",
+    adjudicator_id="example-org-assurance-verifier-v0",
     operator="assurance.verify",
     inputs=[outcome_node1_result_output],
     policy=outcome_policy,
@@ -139,7 +139,7 @@ outcome_node2_attestation = build_attestation(
 
 outcome_node3_result_output = {"verdict": "met"}
 outcome_node3_attestation = build_attestation(
-    adjudicator_id="oo-decision-resolver-v0",
+    adjudicator_id="example-org-decision-resolver-v0",
     operator="decision.resolve_verdict",
     inputs=[outcome_node2_result_output],
     policy=outcome_policy,
@@ -150,9 +150,9 @@ plan_outcome = {
     "header": {
         "contract_ref": OUTCOME_CONTRACT,
         "ir_version": "evidence-plan-ir-v0",
-        "planner_id": "remote:oo-cloud-planner-v1",
+        "planner_id": "remote:example-org-cloud-planner-v1",
         "created_at": "2026-09-22T00:00:00Z",
-        "replay_seed": "oo-outcome-eval-seed-1",
+        "replay_seed": "example-org-outcome-eval-seed-1",
     },
     "nodes": [
         {
@@ -202,33 +202,33 @@ plan_outcome_result = build_plan_result(
 # under a local: planner — the positive counterpart to the negative fixture)
 # ---------------------------------------------------------------------------
 
-OBLIGATION_CONTRACT = "ec:oo-obligation-review:2026-09-22@1"
-obligation_ledger_content = {"note": "OO retention-control ledger replay input, v0 placeholder"}
-obligation_policy = {"note": "OO obligation review policy manifest, v0 placeholder"}
+OBLIGATION_CONTRACT = "ec:example-org-obligation-review:2026-09-22@1"
+obligation_ledger_content = {"note": "EXAMPLE-ORG retention-control ledger replay input, v0 placeholder"}
+obligation_policy = {"note": "EXAMPLE-ORG obligation review policy manifest, v0 placeholder"}
 
-obligation_node1_result_output = {"note": "OO retention evidence replay result, v0 placeholder"}
+obligation_node1_result_output = {"note": "EXAMPLE-ORG retention evidence replay result, v0 placeholder"}
 obligation_node1_attestation = build_attestation(
-    adjudicator_id="oo-fold-engine-v0",
+    adjudicator_id="example-org-fold-engine-v0",
     operator="traditional.fold_replay",
     inputs=[obligation_ledger_content],
     policy=obligation_policy,
     contract_ref=OBLIGATION_CONTRACT,
 )
 
-obligation_node2_result_output = {"note": "OO exception qualitative review, judged", "requirement": "req-obligation-1"}
+obligation_node2_result_output = {"note": "EXAMPLE-ORG exception qualitative review, judged", "requirement": "req-obligation-1"}
 obligation_node2_attestation = build_attestation(
-    adjudicator_id="oo-judge-harness-v0",
+    adjudicator_id="example-org-judge-harness-v0",
     operator="semantic.judge_adjudicate",
     inputs=[obligation_node1_result_output],
     policy=obligation_policy,
     contract_ref=OBLIGATION_CONTRACT,
-    model="oo-synthetic-judge-model",
+    model="example-org-synthetic-judge-model",
     model_version="2026-09-22",
 )
 
 obligation_node3_result_output = {"verdict": "met"}
 obligation_node3_attestation = build_attestation(
-    adjudicator_id="oo-decision-resolver-v0",
+    adjudicator_id="example-org-decision-resolver-v0",
     operator="decision.resolve_verdict",
     inputs=[obligation_node2_result_output],
     policy=obligation_policy,
@@ -239,9 +239,9 @@ plan_obligation = {
     "header": {
         "contract_ref": OBLIGATION_CONTRACT,
         "ir_version": "evidence-plan-ir-v0",
-        "planner_id": "local:oo-onprem-planner-v1",
+        "planner_id": "local:example-org-onprem-planner-v1",
         "created_at": "2026-09-22T00:00:00Z",
-        "replay_seed": "oo-obligation-review-seed-1",
+        "replay_seed": "example-org-obligation-review-seed-1",
     },
     "nodes": [
         {
@@ -291,22 +291,22 @@ plan_obligation_result = build_plan_result(
 # no LOCAL_ONLY node — the base this file's negative fixture mutates)
 # ---------------------------------------------------------------------------
 
-PROCESS_CONTRACT = "ec:oo-process-review:2026-09-22@1"
-process_vcs_content = {"note": "OO review-before-merge vcs event replay input, v0 placeholder"}
-process_policy = {"note": "OO process review policy manifest, v0 placeholder"}
+PROCESS_CONTRACT = "ec:example-org-process-review:2026-09-22@1"
+process_vcs_content = {"note": "EXAMPLE-ORG review-before-merge vcs event replay input, v0 placeholder"}
+process_policy = {"note": "EXAMPLE-ORG process review policy manifest, v0 placeholder"}
 
-process_node1_result_output = {"note": "OO process sequence replay result, v0 placeholder"}
+process_node1_result_output = {"note": "EXAMPLE-ORG process sequence replay result, v0 placeholder"}
 process_node1_attestation = build_attestation(
-    adjudicator_id="oo-fold-engine-v0",
+    adjudicator_id="example-org-fold-engine-v0",
     operator="traditional.fold_replay",
     inputs=[process_vcs_content],
     policy=process_policy,
     contract_ref=PROCESS_CONTRACT,
 )
 
-process_node2_result_output = {"note": "OO process proof bundle, v0 placeholder"}
+process_node2_result_output = {"note": "EXAMPLE-ORG process proof bundle, v0 placeholder"}
 process_node2_attestation = build_attestation(
-    adjudicator_id="oo-bundle-assembler-v0",
+    adjudicator_id="example-org-bundle-assembler-v0",
     operator="assurance.bundle",
     inputs=[process_node1_result_output],
     policy=process_policy,
@@ -315,7 +315,7 @@ process_node2_attestation = build_attestation(
 
 process_node3_result_output = {"verdict": "met"}
 process_node3_attestation = build_attestation(
-    adjudicator_id="oo-decision-resolver-v0",
+    adjudicator_id="example-org-decision-resolver-v0",
     operator="decision.resolve_verdict",
     inputs=[process_node2_result_output],
     policy=process_policy,
@@ -326,9 +326,9 @@ plan_process = {
     "header": {
         "contract_ref": PROCESS_CONTRACT,
         "ir_version": "evidence-plan-ir-v0",
-        "planner_id": "remote:oo-cloud-planner-v1",
+        "planner_id": "remote:example-org-cloud-planner-v1",
         "created_at": "2026-09-22T00:00:00Z",
-        "replay_seed": "oo-process-review-seed-1",
+        "replay_seed": "example-org-process-review-seed-1",
     },
     "nodes": [
         {

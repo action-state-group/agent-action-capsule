@@ -323,8 +323,8 @@ a third book is not the peer, and `peer_close_ref` MUST cite a counterparty reco
 pins the peer's key, `AGREED` therefore means "acknowledged by the named peer's book under a different
 key", not "acknowledged by an independent party": **until the contract pins the peer's key, a second book
 named as the peer and signed under a second key still passes this check.** `neg-close-agreed-self-acknowledged` (§11) asserts
-`AGREED` over an acknowledgement from book `oo`, the Close's own; `neg-close-agreed-third-book` over one
-from `oo-audit`, a third book that is not the named peer `oo-sor`; `neg-close-agreed-bookless-close` over
+`AGREED` over an acknowledgement from book `example-org`, the Close's own; `neg-close-agreed-third-book` over one
+from `example-org-audit`, a third book that is not the named peer `example-org-sor`; `neg-close-agreed-bookless-close` over
 the named peer's acknowledgement of a Close that names no book — each is schema-valid and the walk reads
 it `UNILATERAL`. *(2) A `CONTESTED` Close never counts as met.* While a counterparty's `rebuts`
 link stands, the clause the claim reports on is at best `not_met` (sufficiency `SATISFIED` — the Close and
@@ -465,20 +465,20 @@ shape has no counterpart field at all in Result v0 and is not tabulated below.
 
 This document and its companion schema/examples MUST NOT use, in any form:
 `score`/`scoring` (as a feature or product term), or `reputation`. Every synthetic fixture's
-counterparty placeholder is `OO`, never a company name.
+counterparty placeholder is `EXAMPLE-ORG`, never a company name.
 
 ## 11. Examples
 
-`vectors/evidence-result/` — one synthetic OO claims Result (`pos-oo-claims-result.json`, all
+`vectors/evidence-result/` — one synthetic EXAMPLE-ORG claims Result (`pos-example-org-claims-result.json`, all
 three buckets populated, exercising both the sufficiency/verdict rule (§1) and the disclosure gate
 (§2) in one fixture) and five negative fixtures, each mutated from the positive by exactly one
 field, each failing at exactly one documented rule. See that directory's `README.md` for the exact
 cases and `schemas/check_evidence_result_examples.py` for the validation run, including the
 mutant/load-bearing proof for each negative.
 
-§4.1's PROPOSED claim types add five positives (`pos-oo-reconcile-result.json`,
-`pos-oo-close-agreed-result.json`, `pos-oo-close-unilateral-result.json`,
-`pos-oo-close-unilateral-named-peer-result.json`, `pos-oo-close-contested-result.json` — each the
+§4.1's PROPOSED claim types add five positives (`pos-example-org-reconcile-result.json`,
+`pos-example-org-close-agreed-result.json`, `pos-example-org-close-unilateral-result.json`,
+`pos-example-org-close-unilateral-named-peer-result.json`, `pos-example-org-close-contested-result.json` — each the
 untouched requirement `claim-1` beside its typed claims: one on each close positive, two on the
 reconcile positive, `reconcile-1` SATISFIED and `reconcile-2` GAP) and four negatives
 (`neg-close-agreed-without-peer`, `neg-close-contested-without-peer-close-ref`,

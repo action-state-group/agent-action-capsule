@@ -1,18 +1,18 @@
 {
   "plan_ref": {
-    "digest": "87cb42b9d30ce638f4e3e52580fdd83c68f6ce8100f4739c13adfbf09f20438f",
+    "digest": "5948f41ee015c42bff8077f36975d5af04aa5645126c70842601e9ce49465b32",
     "digest_alg": "SHA-256"
   },
   "results": {
     "node-1": {
       "attestation_ref": {
-        "digest": "2cb613cf62e092cafbba22b8c55264db7d05404fc5b730f901fa0e773089efac",
+        "digest": "7c43e7df555f558630e05699e2794c8078721fd9b2dc5e499dc58e2cc87ddc35",
         "digest_alg": "SHA-256"
       },
       "family": "traditional",
       "outputs": [
         {
-          "digest": "1b765254be534962753b47b6917bb7f9731f1de3fed4f6b44ed0949882fc22f4",
+          "digest": "73e3f394c23b84976dcf24993481a04d075eb4568e6461cf466d5466ef5be792",
           "digest_alg": "SHA-256"
         }
       ],
@@ -20,13 +20,13 @@
     },
     "node-2": {
       "attestation_ref": {
-        "digest": "1c10413e8b8cd5f1ac5c7a3afcc4edac7aad91b361a14bc506a5249e5f421238",
+        "digest": "224cebb8544d588e9d6dc7a6ced32a35f3e21d3920b967b0970bb3ee3ba7f1eb",
         "digest_alg": "SHA-256"
       },
       "family": "semantic",
       "outputs": [
         {
-          "digest": "1fd3fd337e2fa6f4a09856fdd9a8da3f8e91919f89f45b00a4589ff3e1a0da9e",
+          "digest": "327505df62665cb7307256dfa606c543296c486241017dfbf5e3a4610fcc65d0",
           "digest_alg": "SHA-256"
         }
       ],
@@ -34,7 +34,7 @@
     },
     "node-3": {
       "attestation_ref": {
-        "digest": "c4268a49d86d4e55f5f0e8a94a0ae71b2e7d859905bc2c4eac80192786f450ae",
+        "digest": "035690a152d6242c6f47dc8d928ef8f11d68b8dc5dbc9f3a1a781241008db805",
         "digest_alg": "SHA-256"
       },
       "family": "decision",

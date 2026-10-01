@@ -2,14 +2,14 @@
   "blind": false,
   "case": {
     "citation_purpose": "rated_case",
-    "digest": "3e13cd6a58503577d2646a9bfbcef8ea4509714ec715398acac63c87e13c9626",
+    "digest": "1102a3393b59991bacf729d6b16b201b190bd254feaf44dd963545528ed5812b",
     "digest_alg": "SHA-256",
     "type": "rated-case"
   },
   "epistemic_type": "human_report",
   "label": "met",
   "rated_at": "2026-09-25T00:00:00Z",
-  "rater_ref": "principal:oo-rater-7f3c",
-  "record_id": "hr-oo-1",
+  "rater_ref": "principal:example-org-rater-7f3c",
+  "record_id": "hr-example-org-1",
   "record_version": "human-rating/v1"
 }

@@ -16,10 +16,10 @@
   "epistemic_type": "derived_metric",
   "judge_pin": {
     "citation_purpose": "calibrates",
-    "digest": "ae1ff42b43c763b758300baf4620ec551615ef3366dddb303853280df20e631f",
+    "digest": "90b5b2951e3aaf6f864f3dd6d8e13ccef113569ff0c14000f47bce9249c6a935",
     "digest_alg": "SHA-256",
     "type": "judge-pin"
   },
-  "record_id": "cal-oo-1",
+  "record_id": "cal-example-org-1",
   "record_version": "calibration-summary/v1"
 }

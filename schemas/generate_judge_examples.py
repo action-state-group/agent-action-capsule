@@ -83,21 +83,21 @@ def write(subdir: str, name: str, obj: object) -> None:
 # contract-compile/v1
 # ---------------------------------------------------------------------------
 
-_contract_content = {"note": "OO evidence contract, v1 placeholder"}
-_compiled_skill_content = {"note": "OO compiled skill artifact, v1 placeholder"}
-_human_approval_content = {"note": "OO human approval record, v1 placeholder"}
+_contract_content = {"note": "EXAMPLE-ORG evidence contract, v1 placeholder"}
+_compiled_skill_content = {"note": "EXAMPLE-ORG compiled skill artifact, v1 placeholder"}
+_human_approval_content = {"note": "EXAMPLE-ORG human approval record, v1 placeholder"}
 
 contract_compile_pos: ContractCompileDoc = {
     "record_version": "contract-compile/v1",
-    "record_id": "cc-oo-1",
+    "record_id": "cc-example-org-1",
     "epistemic_type": "producer_claim",
     "compiled_at": GENERATED_AT,
-    "contract_ref": "ec:oo-claims-eval:2026-09-22@1",
+    "contract_ref": "ec:example-org-claims-eval:2026-09-22@1",
     "contract": citation("evidence-contract", "compiles_contract", _contract_content),
     "compiled_skill": [citation("compiled-skill", "compiled_skill", _compiled_skill_content)],
     "human_approval": citation("human-approval-record", "approves", _human_approval_content),
 }
-write("contract-compile", "pos-oo-contract-compile", contract_compile_pos)
+write("contract-compile", "pos-example-org-contract-compile", contract_compile_pos)
 
 contract_compile_neg = copy.deepcopy(contract_compile_pos)
 del contract_compile_neg["human_approval"]
@@ -108,12 +108,12 @@ write("contract-compile", "neg-missing-human-approval", contract_compile_neg)
 # adjudication/v1
 # ---------------------------------------------------------------------------
 
-_half_a_content = {"note": "OO twin half A output, v1 placeholder"}
-_half_b_content = {"note": "OO twin half B output, v1 placeholder"}
+_half_a_content = {"note": "EXAMPLE-ORG twin half A output, v1 placeholder"}
+_half_b_content = {"note": "EXAMPLE-ORG twin half B output, v1 placeholder"}
 
 adjudication_pos: AdjudicationDoc = {
     "record_version": "adjudication/v1",
-    "record_id": "adj-oo-1",
+    "record_id": "adj-example-org-1",
     "epistemic_type": "adjudication",
     "adjudicated_at": GENERATED_AT,
     "verdict": "contradicted",
@@ -122,9 +122,9 @@ adjudication_pos: AdjudicationDoc = {
     "margin_tau": "0.05",
     "divergence_index": "0.37",
     "basis": {
-        "model_id": "oo-referee-v1",
-        "prompt_digest": digest_ref({"note": "OO referee prompt, v1 placeholder"}),
-        "weights_digest": digest_ref({"note": "OO referee weights, v1 placeholder"}),
+        "model_id": "example-org-referee-v1",
+        "prompt_digest": digest_ref({"note": "EXAMPLE-ORG referee prompt, v1 placeholder"}),
+        "weights_digest": digest_ref({"note": "EXAMPLE-ORG referee weights, v1 placeholder"}),
         "sampling": {"temperature_micros": 0, "seed": 7},
     },
     "parties": [
@@ -132,7 +132,7 @@ adjudication_pos: AdjudicationDoc = {
         citation("twin-half", "adjudicated_party", _half_b_content),
     ],
 }
-write("adjudication", "pos-oo-twin-adjudication", adjudication_pos)
+write("adjudication", "pos-example-org-twin-adjudication", adjudication_pos)
 
 adjudication_neg = copy.deepcopy(adjudication_pos)
 del adjudication_neg["contradicted_party"]
@@ -143,17 +143,17 @@ write("adjudication", "neg-contradicted-missing-party", adjudication_neg)
 # adjudication-response/v1
 # ---------------------------------------------------------------------------
 
-_adjudication_ref_content = {"note": "OO twin adjudication record adj-oo-1, v1 placeholder"}
+_adjudication_ref_content = {"note": "EXAMPLE-ORG twin adjudication record adj-example-org-1, v1 placeholder"}
 
 adjudication_response_pos: AdjudicationResponseDoc = {
     "record_version": "adjudication-response/v1",
-    "record_id": "adjr-oo-1",
+    "record_id": "adjr-example-org-1",
     "epistemic_type": "producer_claim",
     "responded_at": GENERATED_AT,
     "kind": "delivery_receipt",
     "adjudication": citation("adjudication", "responds_to", _adjudication_ref_content),
 }
-write("adjudication-response", "pos-oo-delivery-receipt", adjudication_response_pos)
+write("adjudication-response", "pos-example-org-delivery-receipt", adjudication_response_pos)
 
 adjudication_response_neg = copy.deepcopy(adjudication_response_pos)
 adjudication_response_neg["verdict"] = "contradicted"
@@ -166,43 +166,43 @@ write("adjudication-response", "neg-delivery-receipt-with-verdict", adjudication
 # ---------------------------------------------------------------------------
 
 _tau2_case1_conversation = {
-    "sim_id": "oo-sim-001",
-    "task_id": "oo-task-airline-001",
+    "sim_id": "example-org-sim-001",
+    "task_id": "example-org-task-airline-001",
     "trial": 0,
     "termination_reason": "user_stop",
     "messages": [
-        {"role": "user", "content": "OO placeholder user turn"},
-        {"role": "assistant", "content": "OO placeholder assistant turn", "tool_call_names": ["book_flight"]},
+        {"role": "user", "content": "EXAMPLE-ORG placeholder user turn"},
+        {"role": "assistant", "content": "EXAMPLE-ORG placeholder assistant turn", "tool_call_names": ["book_flight"]},
     ],
 }
-# tau2 hand_labels.json row: {"sim_id": "oo-sim-001", "hand_label": true, "predicted": true}
+# tau2 hand_labels.json row: {"sim_id": "example-org-sim-001", "hand_label": true, "predicted": true}
 # one-line rewrite onto this schema: hand_label True -> verdict "met".
 _tau2_case1_hand_label = True
 
-_method_content = {"note": "OO axis A1 grounding rubric, v1 placeholder"}
+_method_content = {"note": "EXAMPLE-ORG axis A1 grounding rubric, v1 placeholder"}
 
 evaluation_report_pos: EvaluationReportDoc = {
     "record_version": "evaluation-report/v1",
-    "record_id": "er-oo-1",
+    "record_id": "er-example-org-1",
     "epistemic_type": "semantic_judgment",
     "generated_at": GENERATED_AT,
-    "contract_ref": "ec:oo-claims-eval:2026-09-22@1",
+    "contract_ref": "ec:example-org-claims-eval:2026-09-22@1",
     "judge_pin": {
-        "model_id": "oo-judge-v1",
-        "prompt_digest": digest_ref({"note": "OO judge prompt, v1 placeholder"}),
-        "axes_digest": digest_ref({"note": "OO axes A1/A3/A5/A7, v1 placeholder"}),
+        "model_id": "example-org-judge-v1",
+        "prompt_digest": digest_ref({"note": "EXAMPLE-ORG judge prompt, v1 placeholder"}),
+        "axes_digest": digest_ref({"note": "EXAMPLE-ORG axes A1/A3/A5/A7, v1 placeholder"}),
         "sampling": {"temperature_micros": 0, "seed": 1},
     },
     "cases": [
         {
-            "case_id": "oo-sim-001",
+            "case_id": "example-org-sim-001",
             "verdict": "met" if _tau2_case1_hand_label else "not_met",
             "acts": [citation("tau2-conversation", "grounds", _tau2_case1_conversation)],
             "method": citation("rubric", "method", _method_content),
         }
     ],
 }
-write("evaluation-report", "pos-oo-evaluation-report", evaluation_report_pos)
+write("evaluation-report", "pos-example-org-evaluation-report", evaluation_report_pos)
 
 evaluation_report_neg = copy.deepcopy(evaluation_report_pos)
 del evaluation_report_neg["cases"][0]["method"]
@@ -213,16 +213,16 @@ write("evaluation-report", "neg-case-without-method", evaluation_report_neg)
 # close/v1
 # ---------------------------------------------------------------------------
 
-_peer_close_content = {"note": "OO peer store's Close record, v1 placeholder"}
+_peer_close_content = {"note": "EXAMPLE-ORG peer store's Close record, v1 placeholder"}
 
 close_pos: CloseDoc = {
     "record_version": "close/v1",
-    "record_id": "close-oo-1",
+    "record_id": "close-example-org-1",
     "epistemic_type": "producer_claim",
     "closed_at": GENERATED_AT,
     "period": {"start": "2026-09-01T00:00:00Z", "end": "2026-09-25T00:00:00Z"},
     "counts_by_kind": {"observation": 12, "evaluation-report": 1},
-    "head": digest_ref({"note": "OO store head at close, v1 placeholder"}),
+    "head": digest_ref({"note": "EXAMPLE-ORG store head at close, v1 placeholder"}),
     "reconcile": {
         "tallies": {
             "matched": 10,
@@ -236,7 +236,7 @@ close_pos: CloseDoc = {
         "status": "AGREED",
     },
 }
-write("close", "pos-oo-close", close_pos)
+write("close", "pos-example-org-close", close_pos)
 
 close_neg = copy.deepcopy(close_pos)
 del close_neg["reconcile"]["peer_close"]
@@ -247,18 +247,18 @@ write("close", "neg-reconcile-without-peer-close", close_neg)
 # sample-manifest/v1
 # ---------------------------------------------------------------------------
 
-_policy_content = {"note": "OO stratified sampling policy, v1 placeholder"}
+_policy_content = {"note": "EXAMPLE-ORG stratified sampling policy, v1 placeholder"}
 
 sample_manifest_pos: SampleManifestDoc = {
     "record_version": "sample-manifest/v1",
-    "record_id": "sm-oo-1",
+    "record_id": "sm-example-org-1",
     "epistemic_type": "producer_claim",
     "generated_at": GENERATED_AT,
     "policy": citation("sampling-policy", "sampling_policy", _policy_content),
     "stratification": {"held_out": 40, "regression": 10},
-    "cases": ["oo-sim-001", "oo-sim-002"],
+    "cases": ["example-org-sim-001", "example-org-sim-002"],
 }
-write("sample-manifest", "pos-oo-sample-manifest", sample_manifest_pos)
+write("sample-manifest", "pos-example-org-sample-manifest", sample_manifest_pos)
 
 sample_manifest_neg = copy.deepcopy(sample_manifest_pos)
 sample_manifest_neg["cases"] = []
@@ -269,19 +269,19 @@ write("sample-manifest", "neg-cases-empty", sample_manifest_neg)
 # human-rating/v1
 # ---------------------------------------------------------------------------
 
-_rated_case_content = {"note": "OO rated case, v1 placeholder"}
+_rated_case_content = {"note": "EXAMPLE-ORG rated case, v1 placeholder"}
 
 human_rating_pos: HumanRatingDoc = {
     "record_version": "human-rating/v1",
-    "record_id": "hr-oo-1",
+    "record_id": "hr-example-org-1",
     "epistemic_type": "human_report",
     "rated_at": GENERATED_AT,
     "blind": True,
-    "rater_ref": "principal:oo-rater-7f3c",
+    "rater_ref": "principal:example-org-rater-7f3c",
     "case": citation("rated-case", "rated_case", _rated_case_content),
     "label": "met",
 }
-write("human-rating", "pos-oo-human-rating", human_rating_pos)
+write("human-rating", "pos-example-org-human-rating", human_rating_pos)
 
 human_rating_neg = copy.deepcopy(human_rating_pos)
 human_rating_neg["blind"] = False
@@ -292,11 +292,11 @@ write("human-rating", "neg-blind-false", human_rating_neg)
 # calibration-summary/v1
 # ---------------------------------------------------------------------------
 
-_judge_pin_content = {"note": "OO judge pin, v1 placeholder"}
+_judge_pin_content = {"note": "EXAMPLE-ORG judge pin, v1 placeholder"}
 
 calibration_summary_pos: CalibrationSummaryDoc = {
     "record_version": "calibration-summary/v1",
-    "record_id": "cal-oo-1",
+    "record_id": "cal-example-org-1",
     "epistemic_type": "derived_metric",
     "computed_at": GENERATED_AT,
     "judge_pin": citation("judge-pin", "calibrates", _judge_pin_content),
@@ -308,7 +308,7 @@ calibration_summary_pos: CalibrationSummaryDoc = {
         }
     ],
 }
-write("calibration-summary", "pos-oo-calibration-summary", calibration_summary_pos)
+write("calibration-summary", "pos-example-org-calibration-summary", calibration_summary_pos)
 
 calibration_summary_neg = copy.deepcopy(calibration_summary_pos)
 calibration_summary_neg["clauses"][0]["agreement"]["rate"] = 0.85

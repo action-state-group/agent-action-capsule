@@ -6,7 +6,7 @@
   },
   "epistemic_type": "producer_claim",
   "head": {
-    "digest": "4c308edf2db81c484d6698beaa2bbe76efb9d07df05acbec958001f99e14cd44",
+    "digest": "9c48f0550958b2f24703c63d94f66df57a7d1e37411ad592bd0bb40b5a506634",
     "digest_alg": "SHA-256"
   },
   "period": {
@@ -16,7 +16,7 @@
   "reconcile": {
     "peer_close": {
       "citation_purpose": "reconciles_with",
-      "digest": "2a4172c6dbcc86d7a832ef59ed7d2c9bf40d9f0669def00aa1b18ea49b3b8320",
+      "digest": "84994d9344536b0fb43b5be63fa70d813ac7151538d5968d0818287eda2e0a73",
       "digest_alg": "SHA-256",
       "type": "close"
     },
@@ -30,6 +30,6 @@
       "unresolved": 0
     }
   },
-  "record_id": "close-oo-1",
+  "record_id": "close-example-org-1",
   "record_version": "close/v1"
 }

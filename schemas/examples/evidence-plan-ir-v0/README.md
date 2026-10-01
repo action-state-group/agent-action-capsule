@@ -10,7 +10,7 @@ repository's own canonicalization) over the exact placeholder content object nam
 this directory's parent to reproduce byte-identical output (the generator is a pure function of
 the literal content objects in that script — no wall-clock or random input).
 
-`OO` is the synthetic anchor/prospect placeholder throughout, per the 2026-09-22 ruling; no
+`EXAMPLE-ORG` is the synthetic anchor/prospect placeholder throughout, per the 2026-09-22 ruling; no
 fixture here or in the generator names a company.
 
 ## Positive fixtures — one per Evidence Contract profile
@@ -34,7 +34,7 @@ schema requires exactly when `family == decision` (spec §6.1a).
 
 `invalid-local-only-under-remote-planner.json` — a byte-for-byte copy of `plan-process.json`
 with exactly one field changed: `nodes[0].classification` from `CLOUD_SAFE` to `LOCAL_ONLY`. The
-header's `planner_id` (`remote:oo-cloud-planner-v1`) is untouched. Per spec section 4.1 this MUST
+header's `planner_id` (`remote:example-org-cloud-planner-v1`) is untouched. Per spec section 4.1 this MUST
 fail `$defs/EvidencePlan` validation. `check_evidence_plan_ir_examples.py` asserts the rejection
 directly, and additionally proves the rejection is load-bearing (not vacuous) by removing the
 schema's locality `if`/`then` block in memory, confirming this SAME fixture then validates clean,

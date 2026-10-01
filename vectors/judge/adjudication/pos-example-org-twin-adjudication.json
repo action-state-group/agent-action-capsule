@@ -1,9 +1,9 @@
 {
   "adjudicated_at": "2026-09-25T00:00:00Z",
   "basis": {
-    "model_id": "oo-referee-v1",
+    "model_id": "example-org-referee-v1",
     "prompt_digest": {
-      "digest": "f554c9b4c0a08cf8b6a76950b684f140a02bef49d2835dd3fb1697de67c832d6",
+      "digest": "c538cf34c5c670745bd488ba42acb4871697df3f656c6fb1b2445db531fe7aae",
       "digest_alg": "SHA-256"
     },
     "sampling": {
@@ -11,7 +11,7 @@
       "temperature_micros": 0
     },
     "weights_digest": {
-      "digest": "63a7e7914888d601baa82021290bd9d645b04d8c40d4ad1e380bbe6b3dec4e95",
+      "digest": "61c72924d032d0843bb90553251b7aface982a9e007c0dd785c81bd48a8c34e2",
       "digest_alg": "SHA-256"
     }
   },
@@ -23,18 +23,18 @@
   "parties": [
     {
       "citation_purpose": "adjudicated_party",
-      "digest": "162773e5fdc630c591c7f9149649b2d3075f4dbb86d4168a703d67c863bec2a7",
+      "digest": "de48e20b5c547e2830ed017901326c74314076e464bb5ced8c9b22814c2ba305",
       "digest_alg": "SHA-256",
       "type": "twin-half"
     },
     {
       "citation_purpose": "adjudicated_party",
-      "digest": "e3e316536943bbf832971e4a4212c04dcfcfafad44d6ec2fe9a491e16acae420",
+      "digest": "3732a046cd23de446eeec60901cd1247c8d8fb5b4d9c26ff2c6b1f27aa7021fb",
       "digest_alg": "SHA-256",
       "type": "twin-half"
     }
   ],
-  "record_id": "adj-oo-1",
+  "record_id": "adj-example-org-1",
   "record_version": "adjudication/v1",
   "verdict": "contradicted"
 }

@@ -34,7 +34,7 @@ old-field → new-field mapping in §9.
 **Explicitly out of scope (never defined here):** a judging engine, a sampler, or a calibration
 computation. This document names what a conforming judge record looks like on the wire — the same
 boundary `evidence-result-v0.md`'s Dependency boundary draws. It also never names
-`score`/`scoring` or `reputation`; every synthetic fixture's placeholder is `OO`, never a
+`score`/`scoring` or `reputation`; every synthetic fixture's placeholder is `EXAMPLE-ORG`, never a
 company name.
 
 ## 0. The family-wide citation convention
@@ -304,7 +304,7 @@ table is the schema-level unification that convergence did not itself produce.
 to validate against directly — capsule-compiler's `examples/data/tau2_airline/` holds raw
 conversation transcripts and a separate `hand_labels.json` (`{sim_id, hand_label, predicted}`), not
 `judge_judgment`-shaped records, and that repo is outside this lane's scope. `evaluation-report/v1`'s
-positive fixture (`vectors/judge/evaluation-report/pos-oo-evaluation-report.json`) is instead built
+positive fixture (`vectors/judge/evaluation-report/pos-example-org-evaluation-report.json`) is instead built
 from content shaped like that conversation family, with `hand_label: true` rewritten onto
 `verdict: "met"` — the one-line rewrite this family's schema requires — documented in
 `vectors/judge/README.md`. Wiring capsule-compiler's actual tau2 fixtures through this schema is

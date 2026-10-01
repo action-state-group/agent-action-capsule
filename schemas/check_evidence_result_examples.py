@@ -11,7 +11,7 @@ that can never fire.
 What this enforces (spec/evidence-result-v0.md is normative; this is the
 mechanical half):
 
-  1. POSITIVE: pos-oo-claims-result.json (three claims, one per verdict
+  1. POSITIVE: pos-example-org-claims-result.json (three claims, one per verdict
      bucket) validates against $defs/EvidenceResult.
   2. NEGATIVE: five fixtures, each a byte-for-byte copy of the positive with
      exactly one field changed, MUST fail validation:
@@ -31,9 +31,9 @@ mechanical half):
      modified) and re-verified red.
   4. PROPOSED CLAIM TYPES (the 2026-09-25 ruling -- "close +
      reconcile as claim types in result v0"): five more positives
-     (pos-oo-reconcile-result, pos-oo-close-agreed-result,
-     pos-oo-close-unilateral-result, pos-oo-close-unilateral-named-peer-
-     result, pos-oo-close-contested-result -- the Evidence Layer's three
+     (pos-example-org-reconcile-result, pos-example-org-close-agreed-result,
+     pos-example-org-close-unilateral-result, pos-example-org-close-unilateral-named-peer-
+     result, pos-example-org-close-contested-result -- the Evidence Layer's three
      Close states, read from links; UNILATERAL both with and without the
      peer named, since `peer` / `peer_close_ref` are OPTIONAL there, as
      close-v1's unconditional `peer_close` has them) MUST validate, and
@@ -114,8 +114,8 @@ mechanical half):
      contract pins the peer's key. Two more link negatives, each with its
      own mutant:
        - neg-close-agreed-third-book.json: the acknowledging record is from
-         a third book (`oo-audit`, seq 7) that is not the named peer
-         `oo-sor`. Rule (1) passes, rule (2) fails; the walk reads
+         a third book (`example-org-audit`, seq 7) that is not the named peer
+         `example-org-sor`. Rule (1) passes, rule (2) fails; the walk reads
          UNILATERAL. Mutant `ignore_named_peer`: the second-pass walk, which
          required only a different book.
        - neg-close-agreed-bookless-close.json: the cited Close carries no
@@ -365,7 +365,7 @@ def close_state_findings(
                 )
     return findings
 
-POSITIVE_RESULT = "pos-oo-claims-result"
+POSITIVE_RESULT = "pos-example-org-claims-result"
 
 # PROPOSED claim types (2026-09-25 ruling): every positive keeps the
 # untouched requirement claim-1 beside its typed claims -- one typed claim
@@ -373,11 +373,11 @@ POSITIVE_RESULT = "pos-oo-claims-result"
 # SATISFIED, reconcile-2 GAP).
 POSITIVES = [
     POSITIVE_RESULT,
-    "pos-oo-reconcile-result",
-    "pos-oo-close-agreed-result",
-    "pos-oo-close-unilateral-result",
-    "pos-oo-close-unilateral-named-peer-result",
-    "pos-oo-close-contested-result",
+    "pos-example-org-reconcile-result",
+    "pos-example-org-close-agreed-result",
+    "pos-example-org-close-unilateral-result",
+    "pos-example-org-close-unilateral-named-peer-result",
+    "pos-example-org-close-contested-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is

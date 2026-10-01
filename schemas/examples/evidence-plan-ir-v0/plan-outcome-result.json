@@ -1,18 +1,18 @@
 {
   "plan_ref": {
-    "digest": "8beec9975d407c8bd04c4a42c18b060b72eaf558eaf3081d4858bd212cc9f498",
+    "digest": "586bcc42007a1ec101cd48b1ccbecf74fe44cb2b92e5bb3b24dbee734e3a3d22",
     "digest_alg": "SHA-256"
   },
   "results": {
     "node-1": {
       "attestation_ref": {
-        "digest": "3f6558a708a08a70bbec8242d2264bc6d19996a910cc2cc579c21895288eb1ff",
+        "digest": "49723b65bc0436911bf7651f75baac5219d04ae66b0c13ff0c8368549d8eb417",
         "digest_alg": "SHA-256"
       },
       "family": "evidence",
       "outputs": [
         {
-          "digest": "3cbfbacf24f10f9bf80090b099d90eef5690755ef33103cae63334669375b767",
+          "digest": "245780b4907031137a5f278436388c770f958472335788526e689c69277e837c",
           "digest_alg": "SHA-256"
         }
       ],
@@ -20,13 +20,13 @@
     },
     "node-2": {
       "attestation_ref": {
-        "digest": "7d39475f25e7afa1921ebf5809bd56b92243b891862abbc3e5f2787d331cd2e3",
+        "digest": "991e9eae9586db30f8d80ebc05bbec4a50d393e98fa74fe84e62669dc20304f7",
         "digest_alg": "SHA-256"
       },
       "family": "assurance",
       "outputs": [
         {
-          "digest": "74f97969d6925c72c121e6dc924ef563a25aebd980afa73a13c2310ec93a2d78",
+          "digest": "1bc94e2403947249ee2cadefc6417db7fca768da8b025854241144adeb8af742",
           "digest_alg": "SHA-256"
         }
       ],
@@ -34,7 +34,7 @@
     },
     "node-3": {
       "attestation_ref": {
-        "digest": "1939e53e18bc9d5fa894559c42c8bab275808d3b94fa8e96d9bf7e8738f1ec33",
+        "digest": "7561a386ddbf275095dc70ec02f78506ca42283b6fe02dffa60df987d5c4597c",
         "digest_alg": "SHA-256"
       },
       "family": "decision",

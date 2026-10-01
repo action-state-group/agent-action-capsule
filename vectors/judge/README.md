@@ -10,25 +10,25 @@ exact placeholder content object named next to it in `generate_judge_examples.py
 hand-typed. Regenerate with `python3 ../../schemas/generate_judge_examples.py` from this
 directory's parent's parent to reproduce byte-identical output.
 
-`OO` is the synthetic anchor/prospect placeholder throughout; no fixture here or in the generator
+`EXAMPLE-ORG` is the synthetic anchor/prospect placeholder throughout; no fixture here or in the generator
 names a company.
 
 ## Fixtures, one positive + one negative per schema
 
 | Schema | Positive | Negative | Rule violated |
 |---|---|---|---|
-| `contract-compile-v1.json` | `pos-oo-contract-compile` | `neg-missing-human-approval` | `ContractCompile` requires `human_approval` — a compile with no cited human approval record is not legal |
-| `adjudication-v1.json` | `pos-oo-twin-adjudication` | `neg-contradicted-missing-party` | `verdict: contradicted` requires `contradicted_party` (section 6's if/then) |
-| `adjudication-response-v1.json` | `pos-oo-delivery-receipt` | `neg-delivery-receipt-with-verdict` | `kind: delivery_receipt` prohibits `verdict`/`basis` — a delivery receipt is sealed before any decision (section 7) |
-| `evaluation-report-v1.json` | `pos-oo-evaluation-report` | `neg-case-without-method` | `Case` requires `method` — a case with no cited rubric is not legal |
-| `close-v1.json` | `pos-oo-close` | `neg-reconcile-without-peer-close` | `Reconcile` requires `peer_close` when present at all (section 3) |
-| `sample-manifest-v1.json` | `pos-oo-sample-manifest` | `neg-cases-empty` | `cases` requires `minItems: 1` — a manifest naming zero cases is not a sample |
-| `human-rating-v1.json` | `pos-oo-human-rating` | `neg-blind-false` | `blind` is fixed `true` (section 5) — a non-blind rating is not this schema |
-| `calibration-summary-v1.json` | `pos-oo-calibration-summary` | `neg-clause-with-rate-field` | `KOfN.additionalProperties: false` — no field in this family is a stored rate (section 8) |
+| `contract-compile-v1.json` | `pos-example-org-contract-compile` | `neg-missing-human-approval` | `ContractCompile` requires `human_approval` — a compile with no cited human approval record is not legal |
+| `adjudication-v1.json` | `pos-example-org-twin-adjudication` | `neg-contradicted-missing-party` | `verdict: contradicted` requires `contradicted_party` (section 6's if/then) |
+| `adjudication-response-v1.json` | `pos-example-org-delivery-receipt` | `neg-delivery-receipt-with-verdict` | `kind: delivery_receipt` prohibits `verdict`/`basis` — a delivery receipt is sealed before any decision (section 7) |
+| `evaluation-report-v1.json` | `pos-example-org-evaluation-report` | `neg-case-without-method` | `Case` requires `method` — a case with no cited rubric is not legal |
+| `close-v1.json` | `pos-example-org-close` | `neg-reconcile-without-peer-close` | `Reconcile` requires `peer_close` when present at all (section 3) |
+| `sample-manifest-v1.json` | `pos-example-org-sample-manifest` | `neg-cases-empty` | `cases` requires `minItems: 1` — a manifest naming zero cases is not a sample |
+| `human-rating-v1.json` | `pos-example-org-human-rating` | `neg-blind-false` | `blind` is fixed `true` (section 5) — a non-blind rating is not this schema |
+| `calibration-summary-v1.json` | `pos-example-org-calibration-summary` | `neg-clause-with-rate-field` | `KOfN.additionalProperties: false` — no field in this family is a stored rate (section 8) |
 
 ## The `evaluation-report/v1` positive fixture's tau2 lineage
 
-`pos-oo-evaluation-report.json`'s `cases[0]` is built from two real shapes, reconciled:
+`pos-example-org-evaluation-report.json`'s `cases[0]` is built from two real shapes, reconciled:
 
 - `acts[0]`'s cited content (`_tau2_case1_conversation` in the generator) is shaped like a row from
   capsule-compiler's `examples/data/tau2_airline/` conversation family:

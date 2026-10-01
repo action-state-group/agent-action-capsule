@@ -52,7 +52,7 @@ Every plan carries exactly these five header fields:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `contract_ref` | string | The single immutable Evidence Contract this plan is evaluated against, as a compact versioned reference `<contract_id>@<version>` (e.g. `ec:oo-outcome-eval:2026-09-22@1`) — a contract *reference*, not a bare version, which is why the field is named `contract_ref` rather than `contract_version`, matching the name every node already uses (§3). A plan is over exactly one contract in v0; there is no multi-contract plan. |
+| `contract_ref` | string | The single immutable Evidence Contract this plan is evaluated against, as a compact versioned reference `<contract_id>@<version>` (e.g. `ec:example-org-outcome-eval:2026-09-22@1`) — a contract *reference*, not a bare version, which is why the field is named `contract_ref` rather than `contract_version`, matching the name every node already uses (§3). A plan is over exactly one contract in v0; there is no multi-contract plan. |
 | `ir_version` | string | MUST be the literal string `evidence-plan-ir-v0` for a plan conforming to this document. |
 | `planner_id` | string | Identifies the planner that produced this plan, namespaced `local:<name>` or `remote:<name>` (§4.1). The namespace is normative and gates `LOCAL_ONLY` nodes (§4). |
 | `created_at` | string | RFC 3339 timestamp. |
@@ -162,7 +162,7 @@ fixed elsewhere, not here.
 
 ## 5. Operator catalogue v0
 
-The minimal, closed set of operators the OO synthetic fixtures (§9) exercise — nothing more. A
+The minimal, closed set of operators the EXAMPLE-ORG synthetic fixtures (§9) exercise — nothing more. A
 node's `operator` MUST be one of these six values; `family` and `tier` are fixed by the choice of
 `operator` (§3).
 
@@ -320,11 +320,11 @@ produced.
 This document and its companion schema/examples MUST NOT use, in any form:
 `score`/`scoring` (as a feature or product term — "semantic adjudication" or "judged assessment"
 is used instead throughout), or `reputation`. Every synthetic fixture's counterparty
-placeholder is `OO`, never a company name.
+placeholder is `EXAMPLE-ORG`, never a company name.
 
 ## 9. Examples
 
-`schemas/examples/evidence-plan-ir-v0/` — three synthetic OO plans, one per profile the Evidence
+`schemas/examples/evidence-plan-ir-v0/` — three synthetic EXAMPLE-ORG plans, one per profile the Evidence
 Contract defines (`outcome`, `obligation`, `process`), each schema-valid; one deliberately
 nonconforming plan (a `LOCAL_ONLY` node under a `remote:` planner, §4.1) that MUST fail schema
 validation; a matching `plan-result` document for each of the three plans; and one

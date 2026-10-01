@@ -6,7 +6,7 @@
   },
   "epistemic_type": "producer_claim",
   "head": {
-    "digest": "4c308edf2db81c484d6698beaa2bbe76efb9d07df05acbec958001f99e14cd44",
+    "digest": "9c48f0550958b2f24703c63d94f66df57a7d1e37411ad592bd0bb40b5a506634",
     "digest_alg": "SHA-256"
   },
   "period": {
@@ -24,6 +24,6 @@
       "unresolved": 0
     }
   },
-  "record_id": "close-oo-1",
+  "record_id": "close-example-org-1",
   "record_version": "close/v1"
 }
