@@ -315,7 +315,7 @@ it("(a) a verified bundle whose root names itself a Result v0 but is malformed i
 });
 
 // ---------------------------------------------------------------------------
-// The maintainer's adversarial review (2026-09-28): what the page shows is
+// Recomputed, never asserted (2026-09-28): what the page shows is
 // the recomputed value, with a marker where the producer disagreed -- never
 // the stated number, never silently; a Result that hides a verdict is
 // refused, never read; a close state comes from the cited Close's links.
@@ -440,7 +440,7 @@ it("(iv) a Close relabelled AGREED over a rebuts link reads CONTESTED with a sta
     stateMismatch: true,
   });
   expect(claim.close!.links.map((link) => link.type)).toEqual(["rebuts"]);
-  // The mismatch FAILS the claim (2026-09-28, second pass), with the stated
+  // The mismatch FAILS the claim (2026-09-28), with the stated
   // values kept beside it.
   expect(claim.failed).toBe(true);
   expect(claim.failedOn).toBe("close_state");
@@ -464,7 +464,7 @@ it("(iv) a Close relabelled AGREED over a rebuts link reads CONTESTED with a sta
   expect(claimOf(result, "claim-1").failed).toBe(false);
 });
 
-// Maintainer's third pass (2026-09-29): a self-acknowledged Close (the
+// The counterparty rule (2026-09-29): a self-acknowledged Close (the
 // acknowledger from the Close's own book) used to render as verified AGREED.
 // Now the link is not from the counterparty -- the named peer's book under a
 // different key -- so it makes no state: UNILATERAL with a state mismatch,
@@ -499,7 +499,7 @@ it("(iv) a self-acknowledged Close never reads as verified AGREED: UNILATERAL, s
   );
 });
 
-// Maintainer's fourth pass (2026-09-29): a key_id whose Producer Envelope
+// Key verification (2026-09-29): a key_id whose Producer Envelope
 // does not verify under it is a stated key_id (not verified) and never makes
 // a state -- here the peer's record carries its key_id with no signature.
 it("(iv) a peer record whose key_id is only stated is ignored as 'stated key_id (not verified)' and never makes AGREED", async () => {
