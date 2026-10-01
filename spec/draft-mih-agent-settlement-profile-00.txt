@@ -89,23 +89,23 @@ Table of Contents
      4.1.  Carriage in a Capsule . . . . . . . . . . . . . . . . . .   7
      4.2.  The settlement Member . . . . . . . . . . . . . . . . . .   7
      4.3.  Citations Between Legs  . . . . . . . . . . . . . . . . .   9
-   5.  The Legs  . . . . . . . . . . . . . . . . . . . . . . . . . .   9
+   5.  The Legs  . . . . . . . . . . . . . . . . . . . . . . . . . .  10
      5.1.  Terms . . . . . . . . . . . . . . . . . . . . . . . . . .  10
-     5.2.  Payer-Observed  . . . . . . . . . . . . . . . . . . . . .  10
+     5.2.  Payer-Observed  . . . . . . . . . . . . . . . . . . . . .  11
      5.3.  Payee-Observed  . . . . . . . . . . . . . . . . . . . . .  11
-     5.4.  Delivered . . . . . . . . . . . . . . . . . . . . . . . .  11
-   6.  Amounts . . . . . . . . . . . . . . . . . . . . . . . . . . .  13
-   7.  Payment References  . . . . . . . . . . . . . . . . . . . . .  14
-     7.1.  Shape and Join Rule . . . . . . . . . . . . . . . . . . .  14
-     7.2.  Initial Types . . . . . . . . . . . . . . . . . . . . . .  15
-   8.  Wrapping Existing Signed Objects  . . . . . . . . . . . . . .  16
-   9.  Derived Settlement States . . . . . . . . . . . . . . . . . .  18
-     9.1.  Inputs  . . . . . . . . . . . . . . . . . . . . . . . . .  18
-     9.2.  Payment State . . . . . . . . . . . . . . . . . . . . . .  18
-     9.3.  Delivery State  . . . . . . . . . . . . . . . . . . . . .  20
-     9.4.  Failures  . . . . . . . . . . . . . . . . . . . . . . . .  20
-   10. Status Values and ISO 20022 . . . . . . . . . . . . . . . . .  21
-   11. Crosswalk to AEP Fulfillment Fields . . . . . . . . . . . . .  23
+     5.4.  Delivered . . . . . . . . . . . . . . . . . . . . . . . .  12
+   6.  Amounts . . . . . . . . . . . . . . . . . . . . . . . . . . .  14
+     6.1.  Fees  . . . . . . . . . . . . . . . . . . . . . . . . . .  15
+   7.  Payment References  . . . . . . . . . . . . . . . . . . . . .  16
+     7.1.  Shape and Join Rule . . . . . . . . . . . . . . . . . . .  16
+     7.2.  Initial Types . . . . . . . . . . . . . . . . . . . . . .  17
+   8.  Wrapping Existing Signed Objects  . . . . . . . . . . . . . .  18
+   9.  Derived Settlement States . . . . . . . . . . . . . . . . . .  20
+     9.1.  Inputs  . . . . . . . . . . . . . . . . . . . . . . . . .  20
+     9.2.  Payment State . . . . . . . . . . . . . . . . . . . . . .  20
+     9.3.  Delivery State  . . . . . . . . . . . . . . . . . . . . .  22
+     9.4.  Failures  . . . . . . . . . . . . . . . . . . . . . . . .  23
+   10. Status Values and ISO 20022 . . . . . . . . . . . . . . . . .  25
 
 
 
@@ -114,21 +114,22 @@ Mih                       Expires 4 April 2027                  [Page 2]
 Internet-Draft             Settlement Profile               October 2026
 
 
-   12. Registration with a Transparency Service  . . . . . . . . . .  25
-   13. Relationship to Existing Work . . . . . . . . . . . . . . . .  26
-   14. Security Considerations . . . . . . . . . . . . . . . . . . .  27
-   15. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  28
-   16. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  29
-     16.1.  Payment Reference Types  . . . . . . . . . . . . . . . .  29
-     16.2.  Wrapped Object Types . . . . . . . . . . . . . . . . . .  29
-     16.3.  No Other Actions . . . . . . . . . . . . . . . . . . . .  30
-   17. References  . . . . . . . . . . . . . . . . . . . . . . . . .  30
-     17.1.  Normative References . . . . . . . . . . . . . . . . . .  30
-     17.2.  Informative References . . . . . . . . . . . . . . . . .  31
-   Conformance Vectors . . . . . . . . . . . . . . . . . . . . . . .  34
-   Example . . . . . . . . . . . . . . . . . . . . . . . . . . . . .  34
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  35
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  35
+   11. Crosswalk to AEP Fulfillment Fields . . . . . . . . . . . . .  27
+   12. Registration with a Transparency Service  . . . . . . . . . .  29
+   13. Relationship to Existing Work . . . . . . . . . . . . . . . .  30
+   14. Security Considerations . . . . . . . . . . . . . . . . . . .  31
+   15. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  32
+   16. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  33
+     16.1.  Payment Reference Types  . . . . . . . . . . . . . . . .  33
+     16.2.  Wrapped Object Types . . . . . . . . . . . . . . . . . .  33
+     16.3.  No Other Actions . . . . . . . . . . . . . . . . . . . .  35
+   17. References  . . . . . . . . . . . . . . . . . . . . . . . . .  35
+     17.1.  Normative References . . . . . . . . . . . . . . . . . .  35
+     17.2.  Informative References . . . . . . . . . . . . . . . . .  36
+   Conformance Vectors . . . . . . . . . . . . . . . . . . . . . . .  38
+   Example . . . . . . . . . . . . . . . . . . . . . . . . . . . . .  38
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  39
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  39
 
 1.  Introduction
 
@@ -161,7 +162,6 @@ Internet-Draft             Settlement Profile               October 2026
    third party check, offline, that the two sides' observations of one
    payment agree.  When they disagree, or when one side says nothing,
    the evidence is one party's log against the other's.
-
 
 
 
@@ -364,28 +364,28 @@ Internet-Draft             Settlement Profile               October 2026
 
    The settlement member is a JSON object:
 
-    +=============+========+=================+========================+
-    | Member      | Type   | Required in     | Meaning                |
-    +=============+========+=================+========================+
-    | version     | string | all legs        | MUST be "0" for this   |
-    |             |        |                 | document.              |
-    +-------------+--------+-----------------+------------------------+
-    | leg         | string | all legs        | terms, payer_observed, |
-    |             |        |                 | payee_observed, or     |
-    |             |        |                 | delivered.  A closed   |
-    |             |        |                 | set; any other value   |
-    |             |        |                 | is a structural        |
-    |             |        |                 | failure.               |
-    +-------------+--------+-----------------+------------------------+
-    | sealer_role | string | all legs        | payer or payee         |
-    |             |        |                 | (Section 3).           |
-    +-------------+--------+-----------------+------------------------+
-    | terms_ref   | string | all legs except | The capsule_id of the  |
-    |             |        | terms           | terms leg this leg     |
-    |             |        |                 | answers.               |
-    +-------------+--------+-----------------+------------------------+
-    | amount      | object | terms,          | The amount             |
-    |             |        | payer_observed, | (Section 6).  For an   |
+   +=============+========+=================+=========================+
+   | Member      | Type   | Required in     | Meaning                 |
+   +=============+========+=================+=========================+
+   | version     | string | all legs        | MUST be "0" for this    |
+   |             |        |                 | document.               |
+   +-------------+--------+-----------------+-------------------------+
+   | leg         | string | all legs        | terms, payer_observed,  |
+   |             |        |                 | payee_observed, or      |
+   |             |        |                 | delivered.  A closed    |
+   |             |        |                 | set; any other value is |
+   |             |        |                 | a structural failure.   |
+   +-------------+--------+-----------------+-------------------------+
+   | sealer_role | string | all legs        | payer or payee          |
+   |             |        |                 | (Section 3).            |
+   +-------------+--------+-----------------+-------------------------+
+   | terms_ref   | string | all legs except | The capsule_id of the   |
+   |             |        | terms           | terms leg this leg      |
+   |             |        |                 | answers.                |
+   +-------------+--------+-----------------+-------------------------+
+   | amount      | object | terms,          | The amount (Section 6). |
+   |             |        | payer_observed  | In the terms leg, the   |
+   |             |        |                 | price.  In the payer-   |
 
 
 
@@ -394,45 +394,74 @@ Mih                       Expires 4 April 2027                  [Page 7]
 Internet-Draft             Settlement Profile               October 2026
 
 
-    |             |        | payee_observed  | observed leg, the      |
-    |             |        |                 | amount the sealer's    |
-    |             |        |                 | own system reported.   |
-    +-------------+--------+-----------------+------------------------+
-    | payment_ref | object | payer_observed, | The payment reference  |
-    |             |        | payee_observed  | (Section 7).  OPTIONAL |
-    |             |        |                 | in the terms leg when  |
-    |             |        |                 | the reference is fixed |
-    |             |        |                 | before payment (for    |
-    |             |        |                 | example a Lightning    |
-    |             |        |                 | payment hash).         |
-    +-------------+--------+-----------------+------------------------+
-    | status      | string | payer_observed, | pending, settled,      |
-    |             |        | payee_observed  | failed, or reversed,   |
-    |             |        |                 | as the sealer's own    |
-    |             |        |                 | system reported it     |
-    |             |        |                 | (Section 10).          |
-    +-------------+--------+-----------------+------------------------+
-    | observed_at | string | payer_observed, | [RFC3339] UTC time at  |
-    |             |        | payee_observed, | which the sealer's     |
-    |             |        | delivered       | system reported the    |
-    |             |        |                 | observation.           |
-    +-------------+--------+-----------------+------------------------+
-    | deliverable | object | OPTIONAL, terms | What is to be          |
-    |             |        |                 | delivered              |
-    |             |        |                 | (Section 5.1).         |
-    +-------------+--------+-----------------+------------------------+
-    | valid_until | string | OPTIONAL, terms | [RFC3339] UTC time     |
-    |             |        |                 | after which the terms  |
-    |             |        |                 | no longer apply.       |
-    +-------------+--------+-----------------+------------------------+
-    | delivery    | object | delivered       | What was delivered     |
-    |             |        |                 | (Section 5.4).         |
-    +-------------+--------+-----------------+------------------------+
-    | wrapped     | array  | OPTIONAL, all   | Wrapped objects        |
-    |             |        | legs            | (Section 8).           |
-    +-------------+--------+-----------------+------------------------+
+   |             |        |                 | observed leg, the       |
+   |             |        |                 | amount the payer's      |
+   |             |        |                 | system reports it sent  |
+   |             |        |                 | toward the payee,       |
+   |             |        |                 | excluding any routing   |
+   |             |        |                 | fee (Section 6.1).      |
+   +-------------+--------+-----------------+-------------------------+
+   | routing_fee | object | OPTIONAL,       | The fee the payer's     |
+   |             |        | payer_observed  | system reports it paid  |
+   |             |        |                 | to intermediaries on    |
+   |             |        |                 | top of amount           |
+   |             |        |                 | (Section 6.1).          |
+   +-------------+--------+-----------------+-------------------------+
+   | received    | object | payee_observed  | The amount the payee's  |
+   |             |        |                 | system reports credited |
+   |             |        |                 | to the payee, after any |
+   |             |        |                 | receive fee             |
+   |             |        |                 | (Section 6.1).          |
+   +-------------+--------+-----------------+-------------------------+
+   | receive_fee | object | OPTIONAL,       | The fee the payee's     |
+   |             |        | payee_observed  | system reports deducted |
+   |             |        |                 | on the receiving side   |
+   |             |        |                 | between the amount sent |
+   |             |        |                 | and received            |
+   |             |        |                 | (Section 6.1).          |
+   +-------------+--------+-----------------+-------------------------+
+   | payment_ref | object | payer_observed, | The payment reference   |
+   |             |        | payee_observed  | (Section 7).  OPTIONAL  |
+   |             |        |                 | in the terms leg when   |
+   |             |        |                 | the reference is fixed  |
+   |             |        |                 | before payment (for     |
+   |             |        |                 | example a Lightning     |
+   |             |        |                 | payment hash).          |
+   +-------------+--------+-----------------+-------------------------+
+   | status      | string | payer_observed, | pending, settled,       |
+   |             |        | payee_observed  | failed, or reversed, as |
+   |             |        |                 | the sealer's own system |
+   |             |        |                 | reported it             |
+   |             |        |                 | (Section 10).           |
+   +-------------+--------+-----------------+-------------------------+
+   | observed_at | string | payer_observed, | [RFC3339] UTC time at   |
+   |             |        | payee_observed, | which the sealer's      |
+   |             |        | delivered       | system reported the     |
+   |             |        |                 | observation.            |
+   +-------------+--------+-----------------+-------------------------+
+   | deliverable | object | OPTIONAL, terms | What is to be delivered |
+   |             |        |                 | (Section 5.1).          |
+   +-------------+--------+-----------------+-------------------------+
 
-                                  Table 1
+
+
+Mih                       Expires 4 April 2027                  [Page 8]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
+   | valid_until | string | OPTIONAL, terms | [RFC3339] UTC time      |
+   |             |        |                 | after which the terms   |
+   |             |        |                 | no longer apply.        |
+   +-------------+--------+-----------------+-------------------------+
+   | delivery    | object | delivered       | What was delivered      |
+   |             |        |                 | (Section 5.4).          |
+   +-------------+--------+-----------------+-------------------------+
+   | wrapped     | array  | OPTIONAL, all   | Wrapped objects         |
+   |             |        | legs            | (Section 8).            |
+   +-------------+--------+-----------------+-------------------------+
+
+                                 Table 1
 
    A member not listed for a leg MUST NOT be present in that leg.  A
    verifier reports a missing required member or a present forbidden
@@ -442,13 +471,6 @@ Internet-Draft             Settlement Profile               October 2026
    derived (Section 9); a member that asserted it would let one sealer
    state a fact that only the combination of both sides' records can
    establish.
-
-
-
-Mih                       Expires 4 April 2027                  [Page 8]
-
-Internet-Draft             Settlement Profile               October 2026
-
 
 4.3.  Citations Between Legs
 
@@ -474,6 +496,16 @@ Internet-Draft             Settlement Profile               October 2026
    observed leg with relation follows).  The join of a settlement never
    depends on chain; it depends on terms_ref and payment_ref only.
 
+
+
+
+
+
+Mih                       Expires 4 April 2027                  [Page 9]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
    The usual order of a settlement is shown below.  Only the terms leg
    must exist before the others; any subset of the other legs can be
    present.
@@ -482,7 +514,9 @@ Internet-Draft             Settlement Profile               October 2026
      +----------------+     +------------------+    +------------------+
      |  terms leg     |<----| payer_observed   |    | payee_observed   |
      |  amount, wraps |     | payment_ref,     |    | payment_ref,     |
-     |  offer/mandate |<-+  | amount, status   |<...| amount, status   |
+     |  offer/mandate |<-+  | amount,          |<...| received,        |
+     |                |  |  | routing_fee,     |    | receive_fee,     |
+     |                |  |  | status           |    | status           |
      +----------------+  |  +------------------+    +------------------+
              ^           |                                   |
              |           +-----------------------------------+
@@ -495,16 +529,6 @@ Internet-Draft             Settlement Profile               October 2026
       <---- terms_ref        <.... references[] counterparty_half
 
 5.  The Legs
-
-
-
-
-
-
-Mih                       Expires 4 April 2027                  [Page 9]
-
-Internet-Draft             Settlement Profile               October 2026
-
 
 5.1.  Terms
 
@@ -528,6 +552,16 @@ Internet-Draft             Settlement Profile               October 2026
    *  deliverable (OPTIONAL): an object with at least one of these
       members:
 
+
+
+
+
+
+Mih                       Expires 4 April 2027                 [Page 10]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
       -  content_digest: the digest of the content to be delivered, when
          it is known in advance (for example a data set with a published
          digest).
@@ -550,17 +584,10 @@ Internet-Draft             Settlement Profile               October 2026
 5.2.  Payer-Observed
 
    The payer-observed leg records what the payer's own system reported
-   about the payment it made: the payment reference, the amount that
-   left, and the status the payer's system reported.  It is sealed by
-   the payer.
-
-
-
-
-Mih                       Expires 4 April 2027                 [Page 10]
-
-Internet-Draft             Settlement Profile               October 2026
-
+   about the payment it made: the payment reference, the amount it sent
+   toward the payee (amount), the routing fee it paid on top of that
+   (routing_fee), and the status the payer's system reported.  It is
+   sealed by the payer.
 
    It SHOULD wrap the object the payer's system returned, where one
    exists: the x402 PaymentPayload the payer sent and the settlement
@@ -574,14 +601,23 @@ Internet-Draft             Settlement Profile               October 2026
 5.3.  Payee-Observed
 
    The payee-observed leg records what the payee's own system reported
-   about the payment it received: the payment reference, the amount that
-   arrived, and the status the payee's system reported.  It is sealed by
-   the payee.
+   about the payment it received: the payment reference, the amount
+   credited to it (received), the fee deducted on the receiving side
+   (receive_fee), and the status the payee's system reported.  It is
+   sealed by the payee.
 
    It SHOULD wrap the object the payee's system produced or received:
    the x402 settlement response from its facilitator, the x402 signed
    receipt it issued [X402-OFFER-RECEIPT], the AP2 Payment Receipt or
    Checkout Receipt [AP2], the Payment-Receipt it returned
+
+
+
+Mih                       Expires 4 April 2027                 [Page 11]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
    [I-D.ryan-httpauth-payment], or the ISO 20022 credit notification its
    bank sent.  Where a signed payee receipt already exists, the payee-
    observed leg wraps it; it does not restate and re-sign the same
@@ -613,7 +649,27 @@ Internet-Draft             Settlement Profile               October 2026
 
 
 
-Mih                       Expires 4 April 2027                 [Page 11]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                       Expires 4 April 2027                 [Page 12]
 
 Internet-Draft             Settlement Profile               October 2026
 
@@ -669,7 +725,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 
 
-Mih                       Expires 4 April 2027                 [Page 12]
+Mih                       Expires 4 April 2027                 [Page 13]
 
 Internet-Draft             Settlement Profile               October 2026
 
@@ -725,7 +781,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 
 
-Mih                       Expires 4 April 2027                 [Page 13]
+Mih                       Expires 4 April 2027                 [Page 14]
 
 Internet-Draft             Settlement Profile               October 2026
 
@@ -753,6 +809,65 @@ Internet-Draft             Settlement Profile               October 2026
    the asset's decimals.  Lightning amounts in millisatoshi use
    assetScale 11.
 
+6.1.  Fees
+
+   The two sides of one payment do not, in general, report the same
+   number.  A Lightning payee's wallet, for example, can report 995
+   millisatoshi received with a receive-side fee of 5 for a payment of
+   1000 millisatoshi the payer sent with no routing fee.  Both
+   observations are honest.  This profile therefore records each side's
+   gross, fee, and net separately, and never compares the payer's and
+   the payee's amounts directly.
+
+   The members, each an amount in the form above:
+
+   *  Payer-observed: amount is what the payer's system reports it sent
+      toward the payee. routing_fee is what it paid to intermediaries on
+      top.  The payer's total debit is amount + routing_fee.
+
+   *  Payee-observed: received is what the payee's system reports
+      credited. receive_fee is what was deducted on the receiving side,
+      including any charges deducted by intermediaries from the amount
+      in transit, as the payee's system reports them.  The gross amount
+      that arrived for the payee is received + receive_fee;
+      equivalently, net = gross - fee.
+
+   The rules for fees:
+
+
+
+
+Mih                       Expires 4 April 2027                 [Page 15]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
+   1.  A fee is non-negative: its value follows the grammar of rule 1
+       above.
+
+   2.  A fee MUST carry the same assetCode as the amount it accompanies
+       (routing_fee with amount, receive_fee with received).  It MAY use
+       a different assetScale; sums are computed in exact integer
+       arithmetic at the largest scale involved, as in rule 3 above.  A
+       fee in a different asset cannot be combined with its amount; a
+       verifier reports fee_asset_differs and the pair is unjoined
+       (Section 9.2).
+
+   3.  A fee member that is present with value 0 states that the
+       sealer's system reported no fee.  A fee member that is absent
+       states nothing.
+
+   4.  An absent receive_fee is read as zero only when the payment
+       reference type declares that receive fees are not applicable to
+       it (Section 7.2).  For every other type, a payee-observed leg
+       without receive_fee cannot be joined: the verifier reports
+       fee_unstated and the pair is unjoined, never agreed.  A payee
+       that observed no fee records receive_fee with value 0.
+
+   5.  routing_fee does not enter the join (Section 9.2); the payee
+       cannot observe it.  A payer SHOULD record it so that the payer's
+       total debit is reconstructable.
+
 7.  Payment References
 
 7.1.  Shape and Join Rule
@@ -774,18 +889,19 @@ Internet-Draft             Settlement Profile               October 2026
       space in which value is unique (for example the CAIP-2 network of
       a transaction hash).
 
-   Two payment references are the same reference if and only if their
-   type is the same registered type and every member is identical as a
-   string after the type's normal form is applied.  A verifier MUST NOT
-   join legs on a payment reference whose type it does not recognize:
 
 
 
-Mih                       Expires 4 April 2027                 [Page 14]
+
+Mih                       Expires 4 April 2027                 [Page 16]
 
 Internet-Draft             Settlement Profile               October 2026
 
 
+   Two payment references are the same reference if and only if their
+   type is the same registered type and every member is identical as a
+   string after the type's normal form is applied.  A verifier MUST NOT
+   join legs on a payment reference whose type it does not recognize:
    equal-looking strings of an unknown type are not known to name the
    same payment, because the verifier does not know the type's normal
    form or uniqueness scope.  Such a pair is unjoined (Section 9).
@@ -830,17 +946,17 @@ Internet-Draft             Settlement Profile               October 2026
       Receipt.  Qualifier method: the receipt's method member.  Normal
       form: as received.  Source: [I-D.ryan-httpauth-payment].
 
-   iso20022.uetr:  value is the ISO 20022 UETR (Unique End-to-end
-      Transaction Reference).  Normal form: lowercase UUID string
-      [RFC9562].  Source: [ISO20022].
 
 
 
-
-Mih                       Expires 4 April 2027                 [Page 15]
+Mih                       Expires 4 April 2027                 [Page 17]
 
 Internet-Draft             Settlement Profile               October 2026
 
+
+   iso20022.uetr:  value is the ISO 20022 UETR (Unique End-to-end
+      Transaction Reference).  Normal form: lowercase UUID string
+      [RFC9562].  Source: [ISO20022].
 
    iso20022.end_to_end_id:  value is the ISO 20022 EndToEndId.
       Qualifier debtor_agent: the BIC of the debtor agent.  Normal form:
@@ -849,6 +965,11 @@ Internet-Draft             Settlement Profile               October 2026
    open_payments.incoming_payment:  value is the Open Payments incoming
       payment id (a URL).  Normal form: as received.  Source:
       [OPEN-PAYMENTS].
+
+   Receive fees: x402.transaction declares receive fees not applicable,
+   because the x402 exact scheme transfers exactly amount to payTo and
+   any facilitator charge is outside that transfer.  Every other initial
+   type declares that a receive fee may apply (Section 6.1, rule 4).
 
    Notes on the initial types:
 
@@ -884,16 +1005,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 
 
-
-
-
-
-
-
-
-
-
-Mih                       Expires 4 April 2027                 [Page 16]
+Mih                       Expires 4 April 2027                 [Page 18]
 
 Internet-Draft             Settlement Profile               October 2026
 
@@ -949,7 +1061,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 
 
-Mih                       Expires 4 April 2027                 [Page 17]
+Mih                       Expires 4 April 2027                 [Page 19]
 
 Internet-Draft             Settlement Profile               October 2026
 
@@ -1005,38 +1117,76 @@ Internet-Draft             Settlement Profile               October 2026
 
 
 
-Mih                       Expires 4 April 2027                 [Page 18]
+Mih                       Expires 4 April 2027                 [Page 20]
 
 Internet-Draft             Settlement Profile               October 2026
 
 
-    +==============+=================================================+
-    | State        | Condition                                       |
-    +==============+=================================================+
-    | terms_only   | No observed leg cites the terms leg.            |
-    +--------------+-------------------------------------------------+
-    | payer_stated | Only a payer-observed leg is present.  A stated |
-    |              | claim.                                          |
-    +--------------+-------------------------------------------------+
-    | payee_stated | Only a payee-observed leg is present.  A stated |
-    |              | claim.                                          |
-    +--------------+-------------------------------------------------+
-    | agreed       | Both are present, sealed under distinct keys,   |
-    |              | their payment references are the same reference |
-    |              | (Section 7.1), their amounts are equal          |
-    |              | (Section 6), and their status values are equal. |
-    |              | The verifier reports the agreed status.         |
-    +--------------+-------------------------------------------------+
-    | mismatch     | Both are present and joinable, and they differ  |
-    |              | in amount, status, or payment reference.  The   |
-    |              | verifier reports which of these differ.         |
-    +--------------+-------------------------------------------------+
-    | unjoined     | Both are present, but a payment reference type  |
-    |              | is not recognized, or the two legs carry        |
-    |              | payment references of different types.          |
-    +--------------+-------------------------------------------------+
+     +==============+================================================+
+     | State        | Condition                                      |
+     +==============+================================================+
+     | terms_only   | No observed leg cites the terms leg.           |
+     +--------------+------------------------------------------------+
+     | payer_stated | Only a payer-observed leg is present.  A       |
+     |              | stated claim.                                  |
+     +--------------+------------------------------------------------+
+     | payee_stated | Only a payee-observed leg is present.  A       |
+     |              | stated claim.                                  |
+     +--------------+------------------------------------------------+
+     | agreed       | Both are present and joinable, sealed under    |
+     |              | distinct keys, their payment references are    |
+     |              | the same reference (Section 7.1), the amount   |
+     |              | rule below holds, and their status values are  |
+     |              | equal.  The verifier reports the agreed        |
+     |              | status.                                        |
+     +--------------+------------------------------------------------+
+     | mismatch     | Both are present and joinable, and the amount  |
+     |              | rule fails, the status values differ, or the   |
+     |              | payment references differ.  The verifier       |
+     |              | reports which of amount, status, and           |
+     |              | payment_ref differ.                            |
+     +--------------+------------------------------------------------+
+     | unjoined     | Both are present, but they cannot be joined: a |
+     |              | payment reference type is not recognized, the  |
+     |              | two legs carry payment references of different |
+     |              | types, receive_fee is absent where the type    |
+     |              | does not declare receive fees not applicable   |
+     |              | (fee_unstated), or a fee is in a different     |
+     |              | asset from its amount (fee_asset_differs).     |
+     +--------------+------------------------------------------------+
 
-                                 Table 5
+                                  Table 5
+
+   *The amount rule.* The two observed legs are consistent on amount if
+   and only if
+
+      payer.amount = payee.received + payee.receive_fee
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                       Expires 4 April 2027                 [Page 21]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
+   where all three carry the same assetCode and the sum and comparison
+   are computed exactly at the largest assetScale of the three
+   (Section 6, Section 6.1).  If payer.amount has a different assetCode
+   from payee.received, the amount rule fails and the state is mismatch.
+   A verifier MUST NOT compare payer.amount with payee.received
+   directly: a receive-side fee makes them differ in an honest payment,
+   and treating that difference as a mismatch would misreport it.  A
+   verifier MUST NOT relax the amount rule by a tolerance; a difference
+   of one unit at the common scale is a mismatch.
 
    A verifier MUST NOT report agreed for a pair that fails the distinct-
    key rule (Section 3); it reports sealer_conflation instead.
@@ -1052,23 +1202,37 @@ Internet-Draft             Settlement Profile               October 2026
    answer, a signed refusal, and a recorded absence.
 
    agreed is about the payment only.  A verifier also reports,
-   separately, whether the agreed amount equals the terms leg's amount
+   separately, whether the payer's amount equals the terms leg's amount
    (terms_amount: equal or differs).  Two sides can agree on what moved
-   and both differ from the terms.
-
-
-
-
-
-
-Mih                       Expires 4 April 2027                 [Page 19]
-
-Internet-Draft             Settlement Profile               October 2026
-
+   and both differ from the terms.  This document defines no fee bounds
+   in the terms leg; whether a fee was acceptable is a question about
+   the terms, not about whether the two sides agree, and a future
+   revision that adds bounds reports them in the same separate way.
 
 9.3.  Delivery State
 
    For one terms leg, let D be the delivered legs that cite it.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                       Expires 4 April 2027                 [Page 22]
+
+Internet-Draft             Settlement Profile               October 2026
+
 
    +==========+========================================================+
    | State    | Condition                                              |
@@ -1100,83 +1264,92 @@ Internet-Draft             Settlement Profile               October 2026
 
    The failure codes a verifier reports for this profile are:
 
+     +================================+=============================+
+     | Code                           | Meaning                     |
+     +================================+=============================+
+     | settlement_malformed           | The settlement member is    |
+     |                                | missing a required member,  |
+     |                                | carries a forbidden one, or |
+     |                                | has a value outside its     |
+     |                                | closed set.                 |
+     +--------------------------------+-----------------------------+
+     | amount_not_exact               | An amount value is not a    |
+     |                                | string of the required      |
+     |                                | grammar, or assetScale is   |
+     |                                | not an integer from 0 to    |
+     |                                | 255.                        |
+     +--------------------------------+-----------------------------+
+     | terms_ref_unresolved           | A leg's terms_ref does not  |
+     |                                | match the capsule_id of any |
+     |                                | terms leg in the set.       |
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                       Expires 4 April 2027                 [Page 20]
+Mih                       Expires 4 April 2027                 [Page 23]
 
 Internet-Draft             Settlement Profile               October 2026
 
 
-   +================================+=================================+
-   | Code                           | Meaning                         |
-   +================================+=================================+
-   | settlement_malformed           | The settlement member is        |
-   |                                | missing a required member,      |
-   |                                | carries a forbidden one, or has |
-   |                                | a value outside its closed set. |
-   +--------------------------------+---------------------------------+
-   | amount_not_exact               | An amount value is not a string |
-   |                                | of the required grammar, or     |
-   |                                | assetScale is not an integer    |
-   |                                | from 0 to 255.                  |
-   +--------------------------------+---------------------------------+
-   | terms_ref_unresolved           | A leg's terms_ref does not      |
-   |                                | match the capsule_id of any     |
-   |                                | terms leg in the set.           |
-   +--------------------------------+---------------------------------+
-   | leg_role_mismatch              | A leg's sealer_role does not    |
-   |                                | match its leg (Section 3).      |
-   +--------------------------------+---------------------------------+
-   | sealer_not_authorized_for_role | The leg's authenticated key is  |
-   |                                | not accepted by the verifier's  |
-   |                                | policy for the leg's role.      |
-   +--------------------------------+---------------------------------+
-   | sealer_conflation              | A payer-observed and a payee-   |
-   |                                | observed leg for one terms leg  |
-   |                                | are sealed under the same key.  |
-   +--------------------------------+---------------------------------+
-   | wrapped_digest_mismatch        | A wrapped entry's content does  |
-   |                                | not hash to its digest.         |
-   +--------------------------------+---------------------------------+
-   | wrapped_resigned               | A wrapped object carries a      |
-   |                                | signature by the leg's own      |
-   |                                | sealer where its type's issuer  |
-   |                                | is a different party.           |
-   +--------------------------------+---------------------------------+
-   | payment_ref_type_unknown       | A payment reference type is not |
-   |                                | recognized.  Informational: the |
-   |                                | leg is not rejected, and the    |
-   |                                | pair is unjoined.               |
-   +--------------------------------+---------------------------------+
+     +--------------------------------+-----------------------------+
+     | leg_role_mismatch              | A leg's sealer_role does    |
+     |                                | not match its leg           |
+     |                                | (Section 3).                |
+     +--------------------------------+-----------------------------+
+     | sealer_not_authorized_for_role | The leg's authenticated key |
+     |                                | is not accepted by the      |
+     |                                | verifier's policy for the   |
+     |                                | leg's role.                 |
+     +--------------------------------+-----------------------------+
+     | sealer_conflation              | A payer-observed and a      |
+     |                                | payee-observed leg for one  |
+     |                                | terms leg are sealed under  |
+     |                                | the same key.               |
+     +--------------------------------+-----------------------------+
+     | wrapped_digest_mismatch        | A wrapped entry's content   |
+     |                                | does not hash to its        |
+     |                                | digest.                     |
+     +--------------------------------+-----------------------------+
+     | wrapped_resigned               | A wrapped object carries a  |
+     |                                | signature by the leg's own  |
+     |                                | sealer where its type's     |
+     |                                | issuer is a different       |
+     |                                | party.                      |
+     +--------------------------------+-----------------------------+
+     | payment_ref_type_unknown       | A payment reference type is |
+     |                                | not recognized.             |
+     |                                | Informational: the leg is   |
+     |                                | not rejected, and the pair  |
+     |                                | is unjoined.                |
+     +--------------------------------+-----------------------------+
+     | fee_unstated                   | A payee-observed leg has no |
+     |                                | receive_fee and its payment |
+     |                                | reference type does not     |
+     |                                | declare receive fees not    |
+     |                                | applicable.  Informational: |
+     |                                | the leg is not rejected,    |
+     |                                | and the pair is unjoined.   |
+     +--------------------------------+-----------------------------+
+     | fee_asset_differs              | A fee's assetCode differs   |
+     |                                | from the amount it          |
+     |                                | accompanies.                |
+     |                                | Informational: the leg is   |
+     |                                | not rejected, and the pair  |
+     |                                | is unjoined.                |
+     +--------------------------------+-----------------------------+
 
                                  Table 7
+
+
+
+Mih                       Expires 4 April 2027                 [Page 24]
+
+Internet-Draft             Settlement Profile               October 2026
+
 
 10.  Status Values and ISO 20022
 
    An observed leg's status is one of four values.  Each is what the
    sealer's own system reported about the sealer's own side.
-
-
-
-Mih                       Expires 4 April 2027                 [Page 21]
-
-Internet-Draft             Settlement Profile               October 2026
-
 
         +==========+=============================================+
         | status   | Meaning                                     |
@@ -1224,12 +1397,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 
 
-
-
-
-
-
-Mih                       Expires 4 April 2027                 [Page 22]
+Mih                       Expires 4 April 2027                 [Page 25]
 
 Internet-Draft             Settlement Profile               October 2026
 
@@ -1241,8 +1409,54 @@ Internet-Draft             Settlement Profile               October 2026
    the report, and the change appears as an amount difference if the
    amounts differ.
 
+   Fees correspond to ISO 20022 charges as follows.  The correspondence
+   is informative; a sealer records what its own system reported and
+   wraps the message.
+
+      +=============+===============================================+
+      | Member      | ISO 20022                                     |
+      +=============+===============================================+
+      | payer       | pacs.008 InstdAmt, or IntrBkSttlmAmt when no  |
+      | amount      | instructed amount is given                    |
+      +-------------+-----------------------------------------------+
+      | payer       | charges the debtor bears and is billed for    |
+      | routing_fee | separately (charge bearer ChrgBr DEBT)        |
+      +-------------+-----------------------------------------------+
+      | payee       | camt.054 entry Amt of the credit              |
+      | received    |                                               |
+      +-------------+-----------------------------------------------+
+      | payee       | charges deducted from the amount in transit   |
+      | receive_fee | or by the creditor agent: pacs.008 ChrgsInf   |
+      |             | amounts deducted under ChrgBr SHAR or CRED,   |
+      |             | as reported to the creditor in camt.054 Chrgs |
+      +-------------+-----------------------------------------------+
+
+                                  Table 10
+
+   With these, the amount rule (Section 9.2) reads: the instructed
+   amount equals the booked credit plus the charges deducted on the way.
+
    For other rails, the sealer derives status from the object its system
    returned:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                       Expires 4 April 2027                 [Page 26]
+
+Internet-Draft             Settlement Profile               October 2026
+
 
      +=============================+=====================+==========+
      | Rail object                 | settled             | failed   |
@@ -1261,7 +1475,7 @@ Internet-Draft             Settlement Profile               October 2026
      |                             | settled (payee)     |          |
      +-----------------------------+---------------------+----------+
 
-                                 Table 10
+                                 Table 11
 
 11.  Crosswalk to AEP Fulfillment Fields
 
@@ -1282,14 +1496,6 @@ Internet-Draft             Settlement Profile               October 2026
    |                      |observed legs           |                  |
    +----------------------+------------------------+------------------+
    |carrier               |delivery.carrier        |                  |
-
-
-
-Mih                       Expires 4 April 2027                 [Page 23]
-
-Internet-Draft             Settlement Profile               October 2026
-
-
    +----------------------+------------------------+------------------+
    |tracking_number       |delivery.tracking_digest|Digest only; the  |
    |                      |                        |number is not     |
@@ -1300,6 +1506,14 @@ Internet-Draft             Settlement Profile               October 2026
    |                      |                        |evidence.         |
    +----------------------+------------------------+------------------+
    |status                |delivery.status         |Same five values. |
+
+
+
+Mih                       Expires 4 April 2027                 [Page 27]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
    +----------------------+------------------------+------------------+
    |shipped_at            |delivery.shipped_at     |                  |
    +----------------------+------------------------+------------------+
@@ -1327,10 +1541,12 @@ Internet-Draft             Settlement Profile               October 2026
    |idempotency_key       |Capsule action_id       |                  |
    +----------------------+------------------------+------------------+
 
-                                 Table 11
+                                 Table 12
 
    The authorization fields of AEP Section 3.6 that concern settlement
-   map as follows.
+   map as follows.  AEP records no fee fields; routing_fee, received,
+   and receive_fee have no AEP counterpart, and an AEP export carries
+   the payer's amount only.
 
 
 
@@ -1341,33 +1557,43 @@ Internet-Draft             Settlement Profile               October 2026
 
 
 
-Mih                       Expires 4 April 2027                 [Page 24]
+
+
+
+
+
+
+
+
+Mih                       Expires 4 April 2027                 [Page 28]
 
 Internet-Draft             Settlement Profile               October 2026
 
 
-     +=============================+=================================+
-     | AEP Section 3.6 field       | This profile                    |
-     +=============================+=================================+
-     | settlement_rail             | implied by the payment_ref type |
-     +-----------------------------+---------------------------------+
-     | stablecoin.chain            | payment_ref.network             |
-     |                             | (x402.transaction)              |
-     +-----------------------------+---------------------------------+
-     | stablecoin.transaction_hash | payment_ref.value               |
-     |                             | (x402.transaction)              |
-     +-----------------------------+---------------------------------+
-     | stablecoin.asset            | amount.assetCode (as a CAIP-19  |
-     |                             | asset type)                     |
-     +-----------------------------+---------------------------------+
-     | stablecoin.amount_atomic    | amount.value, with assetScale   |
-     |                             | set to the asset's decimals     |
-     +-----------------------------+---------------------------------+
-     | x402_payment_response       | wrapped entry of type           |
-     |                             | x402.settle-response            |
-     +-----------------------------+---------------------------------+
+   +=============================+=====================================+
+   | AEP Section 3.6 field       | This profile                        |
+   +=============================+=====================================+
+   | settlement_rail             | implied by the                      |
+   |                             | payment_ref type                    |
+   +-----------------------------+-------------------------------------+
+   | stablecoin.chain            | payment_ref.network                 |
+   |                             | (x402.transaction)                  |
+   +-----------------------------+-------------------------------------+
+   | stablecoin.transaction_hash | payment_ref.value                   |
+   |                             | (x402.transaction)                  |
+   +-----------------------------+-------------------------------------+
+   | stablecoin.asset            | amount.assetCode (as a              |
+   |                             | CAIP-19 asset type)                 |
+   +-----------------------------+-------------------------------------+
+   | stablecoin.amount_atomic    | payer amount.value,                 |
+   |                             | with assetScale set to              |
+   |                             | the asset's decimals                |
+   +-----------------------------+-------------------------------------+
+   | x402_payment_response       | wrapped entry of type               |
+   |                             | x402.settle-response                |
+   +-----------------------------+-------------------------------------+
 
-                                  Table 12
+                                  Table 13
 
    AEP seals its chain under one server key and names independent
    signatures as one way to raise a bundle above its "Asserted" signal
@@ -1395,9 +1621,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 
 
-
-
-Mih                       Expires 4 April 2027                 [Page 25]
+Mih                       Expires 4 April 2027                 [Page 29]
 
 Internet-Draft             Settlement Profile               October 2026
 
@@ -1453,7 +1677,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 
 
-Mih                       Expires 4 April 2027                 [Page 26]
+Mih                       Expires 4 April 2027                 [Page 30]
 
 Internet-Draft             Settlement Profile               October 2026
 
@@ -1498,21 +1722,37 @@ Internet-Draft             Settlement Profile               October 2026
    integers with a scale (Section 6); comparing assets by identical
    assetCode prevents a rate from being applied silently.
 
+
+
+
+
+
+
+
+
+
+
+
+Mih                       Expires 4 April 2027                 [Page 31]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
+   *Fees.* A naive comparison of the payer's and the payee's amounts
+   would report every payment with a receive-side fee as a mismatch, and
+   a verifier that learned to ignore such mismatches would then also
+   ignore real ones.  The amount rule (Section 9.2) is exact, so a
+   difference it does not explain is always reported.  Because the rule
+   trusts the payee's report of receive_fee, a payee can explain a
+   shortfall by overstating its fee; the two sides then agree on the
+   arithmetic, and whether that fee was acceptable is a question for the
+   terms.  A payee that omits receive_fee on a rail where fees apply
+   gets unjoined, never agreed, so silence cannot pass for a zero fee.
+
    *Payment references.* A payment reference names a payment; it is not
    evidence the payment happened.  The status in an observed leg is the
    sealer's report of its own system's report.  A verifier that needs
    the rail's own confirmation obtains it from the rail.
-
-
-
-
-
-
-
-Mih                       Expires 4 April 2027                 [Page 27]
-
-Internet-Draft             Settlement Profile               October 2026
-
 
    *Canonicalization.* All digests over JSON in this profile use the
    base profile's declared RFC 8785 construction.  Wrapped objects use
@@ -1546,29 +1786,28 @@ Internet-Draft             Settlement Profile               October 2026
    clear text makes the payment discoverable to anyone who can read the
    log.  Deployments SHOULD register only the leg's Capsule ID, as the
    base profile does, and SHOULD use the selective-disclosure profile
+
+
+
+Mih                       Expires 4 April 2027                 [Page 32]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
    [I-D.mih-scitt-agent-action-capsule-sel-disc] to commit to the
    payment reference and amount rather than disclose them where the use
    case allows.  The x402 signed receipt omits the transaction reference
    by default for the same reason [X402-OFFER-RECEIPT].
+
+   *Fees.* Fee amounts can reveal the route, the intermediaries, or the
+   commercial terms between a payee and its provider.  They are subject
+   to the same disclosure considerations as amounts.
 
    *Delivered content.* The delivered leg carries a digest of the
    content, never the content.  A digest of low-entropy content (a short
    answer, a yes/no result) can be guessed; a sealer delivering such
    content SHOULD digest a structure that includes an unpredictable
    component, such as the full response object.
-
-
-
-
-
-
-
-
-
-Mih                       Expires 4 April 2027                 [Page 28]
-
-Internet-Draft             Settlement Profile               October 2026
-
 
 16.  IANA Considerations
 
@@ -1584,8 +1823,9 @@ Internet-Draft             Settlement Profile               October 2026
    Registration policy: Specification Required ([RFC8126], Section 4.6).
 
    Each entry has: the type name; the upstream field value is copied
-   from; the qualifier members and their meaning; the normal form; and a
-   reference to a publicly available specification of the upstream
+   from; the qualifier members and their meaning; the normal form;
+   whether a receive fee may apply or is not applicable (Section 6.1);
+   and a reference to a publicly available specification of the upstream
    field.
 
    Designated-expert guidance: the expert checks that the upstream field
@@ -1603,6 +1843,13 @@ Internet-Draft             Settlement Profile               October 2026
 
    Registration policy: Specification Required ([RFC8126], Section 4.6).
 
+
+
+Mih                       Expires 4 April 2027                 [Page 33]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
    Each entry has: the type name; the issuer of the object under its own
    specification; the exact octets the digest is computed over; and a
    reference.
@@ -1618,14 +1865,6 @@ Internet-Draft             Settlement Profile               October 2026
       [X402-OFFER-RECEIPT].
 
    x402.payment-payload:  Issuer: payer.  Octets: The base64-decoded
-
-
-
-Mih                       Expires 4 April 2027                 [Page 29]
-
-Internet-Draft             Settlement Profile               October 2026
-
-
       value of the PAYMENT-SIGNATURE header as sent.  Reference: [X402].
 
    x402.settle-response:  Issuer: facilitator.  Octets: for the payer,
@@ -1659,6 +1898,14 @@ Internet-Draft             Settlement Profile               October 2026
       message octets as received.  Reference: [ISO20022].
 
    delivery.proof:  Issuer: carrier or payee.  Octets: The proof-of-
+
+
+
+Mih                       Expires 4 April 2027                 [Page 34]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
       delivery document octets.  Reference: this document.
 
 16.3.  No Other Actions
@@ -1673,14 +1920,6 @@ Internet-Draft             Settlement Profile               October 2026
 17.  References
 
 17.1.  Normative References
-
-
-
-
-Mih                       Expires 4 April 2027                 [Page 30]
-
-Internet-Draft             Settlement Profile               October 2026
-
 
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
@@ -1716,6 +1955,13 @@ Internet-Draft             Settlement Profile               October 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/rfc/rfc8785>.
 
+
+
+Mih                       Expires 4 April 2027                 [Page 35]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
    [RFC9052]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
               Structures and Process", STD 96, RFC 9052,
               DOI 10.17487/RFC9052, August 2022,
@@ -1730,13 +1976,6 @@ Internet-Draft             Settlement Profile               October 2026
    [AEP]      A-Comm Technologies, Inc., "A-Comm Evidence Protocol (AEP)
               Specification v1.0.3-rc.2 (Draft)", July 2026,
               <https://github.com/A-Comm-Tech/a-comm-evidence-protocol>.
-
-
-
-Mih                       Expires 4 April 2027                 [Page 31]
-
-Internet-Draft             Settlement Profile               October 2026
-
 
    [AP2]      FIDO Alliance, "Agent Payments Protocol (AP2)
               Specification, v0.2", April 2026,
@@ -1770,6 +2009,15 @@ Internet-Draft             Settlement Profile               October 2026
               <https://datatracker.ietf.org/doc/html/draft-dogru-
               cedulon-core-02>.
 
+
+
+
+
+Mih                       Expires 4 April 2027                 [Page 36]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
    [I-D.mih-agent-bilateral-attestation]
               Mih, S., "Bilateral Attestation of Cross-Organization
               Agent Actions", Work in Progress, Internet-Draft, draft-
@@ -1783,16 +2031,6 @@ Internet-Draft             Settlement Profile               October 2026
               agent-evidence-request-00, September 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-agent-
               evidence-request-00>.
-
-
-
-
-
-
-Mih                       Expires 4 April 2027                 [Page 32]
-
-Internet-Draft             Settlement Profile               October 2026
-
 
    [I-D.mih-scitt-agent-action-capsule-sel-disc]
               Mih, S., "Selective Disclosure Profile for Agent Action
@@ -1829,6 +2067,13 @@ Internet-Draft             Settlement Profile               October 2026
               IDentifiers (UUIDs)", RFC 9562, DOI 10.17487/RFC9562, May
               2024, <https://www.rfc-editor.org/rfc/rfc9562>.
 
+
+
+Mih                       Expires 4 April 2027                 [Page 37]
+
+Internet-Draft             Settlement Profile               October 2026
+
+
    [RFC9942]  Steele, O., Birkholz, H., Delignat-Lavaud, A., and C.
               Fournet, "CBOR Object Signing and Encryption (COSE)
               Receipts", RFC 9942, DOI 10.17487/RFC9942, June 2026,
@@ -1839,16 +2084,6 @@ Internet-Draft             Settlement Profile               October 2026
               Transparent Digital Supply Chains", RFC 9943,
               DOI 10.17487/RFC9943, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9943>.
-
-
-
-
-
-
-Mih                       Expires 4 April 2027                 [Page 33]
-
-Internet-Draft             Settlement Profile               October 2026
-
 
    [UCP]      Universal Commerce Protocol contributors, "Universal
               Commerce Protocol", January 2026,
@@ -1870,14 +2105,18 @@ Conformance Vectors
    vectors/settlement/. They are generated by a deterministic script
    from fixed Ed25519 seeds and RFC 8785 canonical forms, and each case
    states its expected states and failure codes.  The cases are: a two-
-   sided x402 settlement with matching legs and matched delivery; one-
-   sided payer and payee settlements; mismatches in asset and in
-   delivered content; amounts equal at different scales; a two-sided
-   BOLT 12 settlement wrapping a payer proof; an AP2 Payment Receipt
-   wrapped by digest; and negative cases for a re-signed wrapped object,
-   a wrapped object whose content does not match its digest, a floating-
-   point amount, a decimal-fraction amount string, an unknown payment
-   reference type, and a payee-observed leg sealed with the payer's key.
+   sided x402 settlement with matching legs and matched delivery; two
+   Lightning payments of 1000 millisatoshi each where the payee recorded
+   995 received and a receive fee of 5, which agree; a receive fee that
+   does not explain the difference, and an absent receive fee, on
+   Lightning; one-sided payer and payee settlements; mismatches in asset
+   and in delivered content; amounts equal at different scales; a two-
+   sided BOLT 12 settlement wrapping a payer proof; an AP2 Payment
+   Receipt wrapped by digest; and negative cases for a re-signed wrapped
+   object, a wrapped object whose content does not match its digest, a
+   floating-point amount, a decimal-fraction amount string, an unknown
+   payment reference type, and a payee-observed leg sealed with the
+   payer's key.
 
 Example
 
@@ -1886,22 +2125,7 @@ Example
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                       Expires 4 April 2027                 [Page 34]
+Mih                       Expires 4 April 2027                 [Page 38]
 
 Internet-Draft             Settlement Profile               October 2026
 
@@ -1923,6 +2147,11 @@ Internet-Draft             Settlement Profile               October 2026
        },
        "amount": {
          "value": "1500000",
+         "assetCode": "eip155:8453/erc20:0x8335...2913",
+         "assetScale": 6
+       },
+       "routing_fee": {
+         "value": "0",
          "assetCode": "eip155:8453/erc20:0x8335...2913",
          "assetScale": 6
        },
@@ -1952,9 +2181,4 @@ Author's Address
 
 
 
-
-
-
-
-
-Mih                       Expires 4 April 2027                 [Page 35]
+Mih                       Expires 4 April 2027                 [Page 39]

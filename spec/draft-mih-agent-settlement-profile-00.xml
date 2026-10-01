@@ -325,8 +325,31 @@ Capsule. Every check of the base profile still applies to it.</t>
               <td align="left">
                 <tt>amount</tt></td>
               <td align="left">object</td>
-              <td align="left">terms, payer_observed, payee_observed</td>
-              <td align="left">The amount (<xref target="amounts"/>). For an observed leg, the amount the sealer's own system reported.</td>
+              <td align="left">terms, payer_observed</td>
+              <td align="left">The amount (<xref target="amounts"/>). In the terms leg, the price. In the payer-observed leg, the amount the payer's system reports it sent toward the payee, excluding any routing fee (<xref target="fees"/>).</td>
+            </tr>
+            <tr>
+              <td align="left">
+                <tt>routing_fee</tt></td>
+              <td align="left">object</td>
+              <td align="left">
+                <bcp14>OPTIONAL</bcp14>, payer_observed</td>
+              <td align="left">The fee the payer's system reports it paid to intermediaries on top of <tt>amount</tt> (<xref target="fees"/>).</td>
+            </tr>
+            <tr>
+              <td align="left">
+                <tt>received</tt></td>
+              <td align="left">object</td>
+              <td align="left">payee_observed</td>
+              <td align="left">The amount the payee's system reports credited to the payee, after any receive fee (<xref target="fees"/>).</td>
+            </tr>
+            <tr>
+              <td align="left">
+                <tt>receive_fee</tt></td>
+              <td align="left">object</td>
+              <td align="left">
+                <bcp14>OPTIONAL</bcp14>, payee_observed</td>
+              <td align="left">The fee the payee's system reports deducted on the receiving side between the amount sent and <tt>received</tt> (<xref target="fees"/>).</td>
             </tr>
             <tr>
               <td align="left">
@@ -419,7 +442,9 @@ exist before the others; any subset of the other legs can be present.</t>
   +----------------+     +------------------+    +------------------+
   |  terms leg     |<----| payer_observed   |    | payee_observed   |
   |  amount, wraps |     | payment_ref,     |    | payment_ref,     |
-  |  offer/mandate |<-+  | amount, status   |<...| amount, status   |
+  |  offer/mandate |<-+  | amount,          |<...| received,        |
+  |                |  |  | routing_fee,     |    | receive_fee,     |
+  |                |  |  | status           |    | status           |
   +----------------+  |  +------------------+    +------------------+
           ^           |                                   |
           |           +-----------------------------------+
@@ -486,8 +511,9 @@ decimals.</t>
       <section anchor="payer-leg">
         <name>Payer-Observed</name>
         <t>The payer-observed leg records what the payer's own system reported about
-the payment it made: the payment reference, the amount that left, and the
-status the payer's system reported. It is sealed by the payer.</t>
+the payment it made: the payment reference, the amount it sent toward the
+payee (<tt>amount</tt>), the routing fee it paid on top of that (<tt>routing_fee</tt>),
+and the status the payer's system reported. It is sealed by the payer.</t>
         <t>It <bcp14>SHOULD</bcp14> wrap the object the payer's system returned, where one exists:
 the x402 <tt>PaymentPayload</tt> the payer sent and the settlement response it
 received <xref target="X402"/>, the BOLT 12 payer proof <xref target="BOLT12"/>, or the ISO 20022
@@ -499,8 +525,9 @@ the payer's observation (<xref target="wrap"/>).</t>
       <section anchor="payee-leg">
         <name>Payee-Observed</name>
         <t>The payee-observed leg records what the payee's own system reported about
-the payment it received: the payment reference, the amount that arrived,
-and the status the payee's system reported. It is sealed by the payee.</t>
+the payment it received: the payment reference, the amount credited to it
+(<tt>received</tt>), the fee deducted on the receiving side (<tt>receive_fee</tt>), and
+the status the payee's system reported. It is sealed by the payee.</t>
         <t>It <bcp14>SHOULD</bcp14> wrap the object the payee's system produced or received: the x402
 settlement response from its facilitator, the x402 signed receipt it issued
 <xref target="X402-OFFER-RECEIPT"/>, the AP2 Payment Receipt or Checkout Receipt <xref target="AP2"/>,
@@ -674,6 +701,60 @@ different assets is a mismatch (<xref target="states"/>).</t>
       <t>The x402 <tt>amount</tt> and the AEP <tt>amount_atomic</tt> <xref target="AEP"/> are integer strings in
 atomic units; they become <tt>value</tt> unchanged, with <tt>assetScale</tt> set to the
 asset's decimals. Lightning amounts in millisatoshi use <tt>assetScale</tt> 11.</t>
+      <section anchor="fees">
+        <name>Fees</name>
+        <t>The two sides of one payment do not, in general, report the same number.
+A Lightning payee's wallet, for example, can report 995 millisatoshi
+received with a receive-side fee of 5 for a payment of 1000 millisatoshi
+the payer sent with no routing fee. Both observations are honest. This
+profile therefore records each side's gross, fee, and net separately, and
+never compares the payer's and the payee's amounts directly.</t>
+        <t>The members, each an amount in the form above:</t>
+        <ul spacing="normal">
+          <li>
+            <t>Payer-observed: <tt>amount</tt> is what the payer's system reports it sent
+toward the payee. <tt>routing_fee</tt> is what it paid to intermediaries on
+top. The payer's total debit is <tt>amount</tt> + <tt>routing_fee</tt>.</t>
+          </li>
+          <li>
+            <t>Payee-observed: <tt>received</tt> is what the payee's system reports credited.
+<tt>receive_fee</tt> is what was deducted on the receiving side, including any
+charges deducted by intermediaries from the amount in transit, as the
+payee's system reports them. The gross amount that arrived for the payee
+is <tt>received</tt> + <tt>receive_fee</tt>; equivalently, net = gross - fee.</t>
+          </li>
+        </ul>
+        <t>The rules for fees:</t>
+        <ol spacing="normal" type="1"><li>
+            <t>A fee is non-negative: its <tt>value</tt> follows the grammar of rule 1 above.</t>
+          </li>
+          <li>
+            <t>A fee <bcp14>MUST</bcp14> carry the same <tt>assetCode</tt> as the amount it accompanies
+(<tt>routing_fee</tt> with <tt>amount</tt>, <tt>receive_fee</tt> with <tt>received</tt>). It <bcp14>MAY</bcp14>
+use a different <tt>assetScale</tt>; sums are computed in exact integer
+arithmetic at the largest scale involved, as in rule 3 above. A fee in
+a different asset cannot be combined with its amount; a verifier reports
+<tt>fee_asset_differs</tt> and the pair is <tt>unjoined</tt> (<xref target="payment-state"/>).</t>
+          </li>
+          <li>
+            <t>A fee member that is present with value <tt>0</tt> states that the sealer's
+system reported no fee. A fee member that is absent states nothing.</t>
+          </li>
+          <li>
+            <t>An absent <tt>receive_fee</tt> is read as zero only when the payment reference
+type declares that receive fees are not applicable to it
+(<xref target="payment-ref-types"/>). For every other type, a payee-observed leg
+without <tt>receive_fee</tt> cannot be joined: the verifier reports
+<tt>fee_unstated</tt> and the pair is <tt>unjoined</tt>, never <tt>agreed</tt>. A payee that
+observed no fee records <tt>receive_fee</tt> with value <tt>0</tt>.</t>
+          </li>
+          <li>
+            <t><tt>routing_fee</tt> does not enter the join (<xref target="payment-state"/>); the payee
+cannot observe it. A payer <bcp14>SHOULD</bcp14> record it so that the payer's total
+debit is reconstructable.</t>
+          </li>
+        </ol>
+      </section>
     </section>
     <section anchor="payment-ref">
       <name>Payment References</name>
@@ -763,6 +844,10 @@ invariant, the legs themselves remain valid Capsules.</t>
             <t><tt>value</tt> is the Open Payments incoming payment <tt>id</tt> (a URL). Normal form: as received. Source: <xref target="OPEN-PAYMENTS"/>.</t>
           </dd>
         </dl>
+        <t>Receive fees: <tt>x402.transaction</tt> declares receive fees not applicable,
+because the x402 <tt>exact</tt> scheme transfers exactly <tt>amount</tt> to <tt>payTo</tt> and
+any facilitator charge is outside that transfer. Every other initial type
+declares that a receive fee may apply (<xref target="fees"/>, rule 4).</t>
         <t>Notes on the initial types:</t>
         <ul spacing="normal">
           <li>
@@ -944,20 +1029,34 @@ with relation <tt>supersedes</tt>, and the verifier uses the head of that chain.
             <tr>
               <td align="left">
                 <tt>agreed</tt></td>
-              <td align="left">Both are present, sealed under distinct keys, their payment references are the same reference (<xref target="payment-ref-shape"/>), their amounts are equal (<xref target="amounts"/>), and their <tt>status</tt> values are equal. The verifier reports the agreed status.</td>
+              <td align="left">Both are present and joinable, sealed under distinct keys, their payment references are the same reference (<xref target="payment-ref-shape"/>), the amount rule below holds, and their <tt>status</tt> values are equal. The verifier reports the agreed status.</td>
             </tr>
             <tr>
               <td align="left">
                 <tt>mismatch</tt></td>
-              <td align="left">Both are present and joinable, and they differ in amount, status, or payment reference. The verifier reports which of these differ.</td>
+              <td align="left">Both are present and joinable, and the amount rule fails, the <tt>status</tt> values differ, or the payment references differ. The verifier reports which of <tt>amount</tt>, <tt>status</tt>, and <tt>payment_ref</tt> differ.</td>
             </tr>
             <tr>
               <td align="left">
                 <tt>unjoined</tt></td>
-              <td align="left">Both are present, but a payment reference type is not recognized, or the two legs carry payment references of different types.</td>
+              <td align="left">Both are present, but they cannot be joined: a payment reference type is not recognized, the two legs carry payment references of different types, <tt>receive_fee</tt> is absent where the type does not declare receive fees not applicable (<tt>fee_unstated</tt>), or a fee is in a different asset from its amount (<tt>fee_asset_differs</tt>).</td>
             </tr>
           </tbody>
         </table>
+        <t><strong>The amount rule.</strong> The two observed legs are consistent on amount if and
+only if</t>
+        <artwork><![CDATA[
+   payer.amount = payee.received + payee.receive_fee
+]]></artwork>
+        <t>where all three carry the same <tt>assetCode</tt> and the sum and comparison are
+computed exactly at the largest <tt>assetScale</tt> of the three
+(<xref target="amounts"/>, <xref target="fees"/>). If <tt>payer.amount</tt> has a different <tt>assetCode</tt>
+from <tt>payee.received</tt>, the amount rule fails and the state is <tt>mismatch</tt>.
+A verifier <bcp14>MUST NOT</bcp14> compare <tt>payer.amount</tt> with <tt>payee.received</tt> directly:
+a receive-side fee makes them differ in an honest payment, and treating
+that difference as a mismatch would misreport it. A verifier <bcp14>MUST NOT</bcp14> relax
+the amount rule by a tolerance; a difference of one unit at the common
+scale is a mismatch.</t>
         <t>A verifier <bcp14>MUST NOT</bcp14> report <tt>agreed</tt> for a pair that fails the distinct-key
 rule (<xref target="sealers"/>); it reports <tt>sealer_conflation</tt> instead.</t>
         <t>A one-sided state is a stated claim. It says what one sealer reports its
@@ -969,9 +1068,12 @@ to distinguish these can ask the counterparty for its leg using an
 evidence request <xref target="I-D.mih-agent-evidence-request"/>, whose outcomes
 distinguish an answer, a signed refusal, and a recorded absence.</t>
         <t><tt>agreed</tt> is about the payment only. A verifier also reports, separately,
-whether the agreed amount equals the terms leg's amount
+whether the payer's <tt>amount</tt> equals the terms leg's <tt>amount</tt>
 (<tt>terms_amount: equal</tt> or <tt>differs</tt>). Two sides can agree on what moved and
-both differ from the terms.</t>
+both differ from the terms. This document defines no fee bounds in the
+terms leg; whether a fee was acceptable is a question about the terms, not
+about whether the two sides agree, and a future revision that adds bounds
+reports them in the same separate way.</t>
       </section>
       <section anchor="delivery-state">
         <name>Delivery State</name>
@@ -1064,6 +1166,16 @@ both differ from the terms.</t>
               <td align="left">
                 <tt>payment_ref_type_unknown</tt></td>
               <td align="left">A payment reference type is not recognized. Informational: the leg is not rejected, and the pair is <tt>unjoined</tt>.</td>
+            </tr>
+            <tr>
+              <td align="left">
+                <tt>fee_unstated</tt></td>
+              <td align="left">A payee-observed leg has no <tt>receive_fee</tt> and its payment reference type does not declare receive fees not applicable. Informational: the leg is not rejected, and the pair is <tt>unjoined</tt>.</td>
+            </tr>
+            <tr>
+              <td align="left">
+                <tt>fee_asset_differs</tt></td>
+              <td align="left">A fee's <tt>assetCode</tt> differs from the amount it accompanies. Informational: the leg is not rejected, and the pair is <tt>unjoined</tt>.</td>
             </tr>
           </tbody>
         </table>
@@ -1162,6 +1274,37 @@ records the corresponding <tt>status</tt> and <bcp14>SHOULD</bcp14> wrap the sta
 A code not listed (for example <tt>ACWC</tt>, accepted with change) does not map
 to <tt>settled</tt>; a sealer records <tt>pending</tt> and wraps the report, and the
 change appears as an amount difference if the amounts differ.</t>
+      <t>Fees correspond to ISO 20022 charges as follows. The correspondence is
+informative; a sealer records what its own system reported and wraps the
+message.</t>
+      <table>
+        <thead>
+          <tr>
+            <th align="left">Member</th>
+            <th align="left">ISO 20022</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left">payer <tt>amount</tt></td>
+            <td align="left">pacs.008 <tt>InstdAmt</tt>, or <tt>IntrBkSttlmAmt</tt> when no instructed amount is given</td>
+          </tr>
+          <tr>
+            <td align="left">payer <tt>routing_fee</tt></td>
+            <td align="left">charges the debtor bears and is billed for separately (charge bearer <tt>ChrgBr</tt> <tt>DEBT</tt>)</td>
+          </tr>
+          <tr>
+            <td align="left">payee <tt>received</tt></td>
+            <td align="left">camt.054 entry <tt>Amt</tt> of the credit</td>
+          </tr>
+          <tr>
+            <td align="left">payee <tt>receive_fee</tt></td>
+            <td align="left">charges deducted from the amount in transit or by the creditor agent: pacs.008 <tt>ChrgsInf</tt> amounts deducted under <tt>ChrgBr</tt> <tt>SHAR</tt> or <tt>CRED</tt>, as reported to the creditor in camt.054 <tt>Chrgs</tt></td>
+          </tr>
+        </tbody>
+      </table>
+      <t>With these, the amount rule (<xref target="payment-state"/>) reads: the instructed
+amount equals the booked credit plus the charges deducted on the way.</t>
       <t>For other rails, the sealer derives <tt>status</tt> from the object its system
 returned:</t>
       <table>
@@ -1312,7 +1455,9 @@ compared with one.</t>
         </tbody>
       </table>
       <t>The authorization fields of AEP Section 3.6 that concern settlement map as
-follows.</t>
+follows. AEP records no fee fields; <tt>routing_fee</tt>, <tt>received</tt>, and
+<tt>receive_fee</tt> have no AEP counterpart, and an AEP export carries the
+payer's <tt>amount</tt> only.</t>
       <table>
         <thead>
           <tr>
@@ -1347,8 +1492,7 @@ follows.</t>
           <tr>
             <td align="left">
               <tt>stablecoin.amount_atomic</tt></td>
-            <td align="left">
-              <tt>amount.value</tt>, with <tt>assetScale</tt> set to the asset's decimals</td>
+            <td align="left">payer <tt>amount.value</tt>, with <tt>assetScale</tt> set to the asset's decimals</td>
           </tr>
           <tr>
             <td align="left">
@@ -1445,6 +1589,16 @@ with its own. The never-re-sign rule (<xref target="wrap"/>) prevents this; the
 platforms and make digests unstable. Amounts are exact integers with a
 scale (<xref target="amounts"/>); comparing assets by identical <tt>assetCode</tt> prevents a
 rate from being applied silently.</t>
+      <t><strong>Fees.</strong> A naive comparison of the payer's and the payee's amounts would
+report every payment with a receive-side fee as a mismatch, and a verifier
+that learned to ignore such mismatches would then also ignore real ones.
+The amount rule (<xref target="payment-state"/>) is exact, so a difference it does not
+explain is always reported. Because the rule trusts the payee's report of
+<tt>receive_fee</tt>, a payee can explain a shortfall by overstating its fee; the
+two sides then agree on the arithmetic, and whether that fee was
+acceptable is a question for the terms. A payee that omits <tt>receive_fee</tt>
+on a rail where fees apply gets <tt>unjoined</tt>, never <tt>agreed</tt>, so silence
+cannot pass for a zero fee.</t>
       <t><strong>Payment references.</strong> A payment reference names a payment; it is not
 evidence the payment happened. The status in an observed leg is the
 sealer's report of its own system's report. A verifier that needs the
@@ -1481,6 +1635,9 @@ makes the payment discoverable to anyone who can read the log. Deployments
 reference and amount rather than disclose them where the use case allows.
 The x402 signed receipt omits the transaction reference by default for the
 same reason <xref target="X402-OFFER-RECEIPT"/>.</t>
+      <t><strong>Fees.</strong> Fee amounts can reveal the route, the intermediaries, or the
+commercial terms between a payee and its provider. They are subject to the
+same disclosure considerations as amounts.</t>
       <t><strong>Delivered content.</strong> The delivered leg carries a digest of the content,
 never the content. A digest of low-entropy content (a short answer, a
 yes/no result) can be guessed; a sealer delivering such content <bcp14>SHOULD</bcp14>
@@ -1497,7 +1654,8 @@ of this document keeps them as the interim registry of record.</t>
         <t>Registry name: Settlement Payment Reference Types.</t>
         <t>Registration policy: Specification Required (<xref target="RFC8126"/>, Section 4.6).</t>
         <t>Each entry has: the type name; the upstream field <tt>value</tt> is copied from;
-the qualifier members and their meaning; the normal form; and a reference
+the qualifier members and their meaning; the normal form; whether a
+receive fee may apply or is not applicable (<xref target="fees"/>); and a reference
 to a publicly available specification of the upstream field.</t>
         <t>Designated-expert guidance: the expert checks that the upstream field is
 publicly specified, that the normal form makes equality well defined, that
@@ -1990,7 +2148,7 @@ been incorporated into this document. This document obsoletes RFC
         </reference>
       </references>
     </references>
-    <?line 1107?>
+    <?line 1214?>
 
 <section numbered="false" anchor="vectors">
       <name>Conformance Vectors</name>
@@ -1998,7 +2156,10 @@ been incorporated into this document. This document obsoletes RFC
 <tt>vectors/settlement/</tt>. They are generated by a deterministic script from
 fixed Ed25519 seeds and RFC 8785 canonical forms, and each case states its
 expected states and failure codes. The cases are: a two-sided x402
-settlement with matching legs and matched delivery; one-sided payer and
+settlement with matching legs and matched delivery; two Lightning payments
+of 1000 millisatoshi each where the payee recorded 995 received and a
+receive fee of 5, which agree; a receive fee that does not explain the
+difference, and an absent receive fee, on Lightning; one-sided payer and
 payee settlements; mismatches in asset and in delivered content; amounts
 equal at different scales; a two-sided BOLT 12 settlement wrapping a payer
 proof; an AP2 Payment Receipt wrapped by digest; and negative cases for a
@@ -2029,6 +2190,11 @@ other members abbreviated):</t>
     },
     "amount": {
       "value": "1500000",
+      "assetCode": "eip155:8453/erc20:0x8335...2913",
+      "assetScale": 6
+    },
+    "routing_fee": {
+      "value": "0",
       "assetCode": "eip155:8453/erc20:0x8335...2913",
       "assetScale": 6
     },

@@ -47,31 +47,69 @@
     "wrapped_resigned"
   ],
   "informational_codes": [
-    "payment_ref_type_unknown"
+    "payment_ref_type_unknown",
+    "fee_unstated",
+    "fee_asset_differs"
   ],
   "base_profile_codes": [
     "capsule_invalid",
     "envelope_invalid"
   ],
   "payment_ref_types": {
-    "x402.transaction": [
-      "network"
-    ],
-    "ln.payment_hash": [],
-    "bolt12.invoice_payment_hash": [],
-    "ap2.transaction_id": [],
-    "ap2.payment_id": [],
-    "ap2.network_confirmation_id": [],
-    "acp.order_id": [],
-    "ucp.order_id": [],
-    "mpp.reference": [
-      "method"
-    ],
-    "iso20022.uetr": [],
-    "iso20022.end_to_end_id": [
-      "debtor_agent"
-    ],
-    "open_payments.incoming_payment": []
+    "x402.transaction": {
+      "qualifiers": [
+        "network"
+      ],
+      "receive_fee": "not_applicable"
+    },
+    "ln.payment_hash": {
+      "qualifiers": [],
+      "receive_fee": "may_apply"
+    },
+    "bolt12.invoice_payment_hash": {
+      "qualifiers": [],
+      "receive_fee": "may_apply"
+    },
+    "ap2.transaction_id": {
+      "qualifiers": [],
+      "receive_fee": "may_apply"
+    },
+    "ap2.payment_id": {
+      "qualifiers": [],
+      "receive_fee": "may_apply"
+    },
+    "ap2.network_confirmation_id": {
+      "qualifiers": [],
+      "receive_fee": "may_apply"
+    },
+    "acp.order_id": {
+      "qualifiers": [],
+      "receive_fee": "may_apply"
+    },
+    "ucp.order_id": {
+      "qualifiers": [],
+      "receive_fee": "may_apply"
+    },
+    "mpp.reference": {
+      "qualifiers": [
+        "method"
+      ],
+      "receive_fee": "may_apply"
+    },
+    "iso20022.uetr": {
+      "qualifiers": [],
+      "receive_fee": "may_apply"
+    },
+    "iso20022.end_to_end_id": {
+      "qualifiers": [
+        "debtor_agent"
+      ],
+      "receive_fee": "may_apply"
+    },
+    "open_payments.incoming_payment": {
+      "qualifiers": [],
+      "receive_fee": "may_apply"
+    }
   },
   "wrapped_types": {
     "x402.offer": "payee",
@@ -115,6 +153,7 @@
         "observed_at"
       ],
       "optional": [
+        "routing_fee",
         "wrapped"
       ]
     },
@@ -124,12 +163,13 @@
         "leg",
         "sealer_role",
         "terms_ref",
-        "amount",
+        "received",
         "payment_ref",
         "status",
         "observed_at"
       ],
       "optional": [
+        "receive_fee",
         "wrapped"
       ]
     },
@@ -198,6 +238,7 @@
     "§5.1 Terms",
     "§5.4 Delivered",
     "§6 Amounts",
+    "§6.1 Fees",
     "§7.1 Shape and Join Rule",
     "§7.2 Initial Types",
     "§8 Wrapping Existing Signed Objects",

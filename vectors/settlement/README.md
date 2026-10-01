@@ -24,7 +24,7 @@ independent reading of the draft.
 | File | What it pins |
 |---|---|
 | `cases.json` | The cases. Each has the leg records (`capsule`, `capsule_id`, `envelope_hex`, `envelope_kid`), the wrapped objects' octets (`wrapped_objects`), the verifier's key policy (`key_policy`), and `expect`. Also carries the five fixed keys (seed and public key) and the envelope profile. |
-| `registry.json` | The closed sets and registries of -00: legs, sealer roles, statuses, delivery directions, payment and delivery states, failure codes, the payment reference types with their qualifiers, the wrapped object types with their issuer role, the members each leg carries, and the ISO 20022 status map. |
+| `registry.json` | The closed sets and registries of -00: legs, sealer roles, statuses, delivery directions, payment and delivery states, failure codes, the payment reference types with their qualifiers and whether a receive fee may apply, the wrapped object types with their issuer role, the members each leg carries, and the ISO 20022 status map. |
 | `manifest.json` | SHA-256 and case count of every generated file. |
 | `SHA256SUMS` | SHA-256 of every file in this directory except itself. |
 
@@ -46,6 +46,12 @@ independent reading of the draft.
 | `neg-payment-ref-type-unknown` | Both sides use an unregistered `x-` type with identical values. | conforming (never-reject), finding `payment_ref_type_unknown`, state `unjoined` |
 | `neg-payee-leg-sealed-by-payer-key` | The payee-observed leg is signed with the payer's key. | failures `sealer_not_authorized_for_role` (payee leg) and `sealer_conflation` (the pair): `payer_stated` |
 | `state-delivery-mismatch` | The terms pin the content digest; the payer received different content. | `agreed`, delivery `mismatch` |
+| `pos-ln-receive-fee-two-payments` | Two Lightning payments, from the numbers of a real run: the payer sent 1000 msat with `routing_fee` 0; the payee's wallet recorded `received` 995 with `receive_fee` 5. 1000 = 995 + 5. | both settlements `agreed` (naive equality would say `mismatch`) |
+| `state-ln-receive-fee-mismatch` | The payee reports `received` 995 with `receive_fee` 0. | `mismatch`, differs `amount` |
+| `neg-ln-receive-fee-absent` | The payee reports `received` 995 and no `receive_fee`. Lightning receive fees may apply, so absent is not zero. | finding `fee_unstated`, `unjoined` (never a false `agreed`) |
+
+Every observed leg in the other cases carries explicit fee members:
+`routing_fee` 0 on the payer side and `receive_fee` 0 on the payee side.
 
 `neg-payment-ref-type-unknown` is negative for the join, not for the records:
 the legs stay valid Capsules (the base profile's never-reject invariant) and a
@@ -70,10 +76,17 @@ For each case, a verifier:
 4. Reports `sealer_conflation` for a payer-observed and payee-observed pair for
    one terms leg under one key. This is a failure of the pair: it blocks
    `agreed` but does not by itself exclude either leg.
-5. Excludes every leg with a failure of its own, and derives the payment state
-   (§9.2) and the delivery state (§9.3) from the legs that remain.
+5. Excludes every leg with a failure of its own, groups the remaining legs by
+   `terms_ref`, and for each terms leg derives the payment state (§9.2) and the
+   delivery state (§9.3). The payment state uses the amount rule:
+   `payer.amount = payee.received + payee.receive_fee`, exactly, at the largest
+   scale, with one asset. An absent `receive_fee` counts as zero only where
+   `registry.json` marks the payment reference type `"receive_fee":
+   "not_applicable"` (only `x402.transaction`); otherwise the pair is
+   `unjoined` with finding `fee_unstated` (§6.1).
 
-`expect.failures` and `expect.findings` list `{records, code}` in the order a
+`expect.settlements` has one entry per terms leg, in record order, each
+naming the terms leg's label. `expect.failures` and `expect.findings` list `{records, code}` in the order a
 verifier following the steps above, record by record, reports them.
 `expect.conforming` is false when any failure is present.
 

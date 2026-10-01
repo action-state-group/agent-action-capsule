@@ -203,6 +203,18 @@ def amounts_equal(a: dict, b: dict) -> bool:  # §6 rule 3-4, exact integer arit
     return int(a["value"]) * 10 ** (scale - a["assetScale"]) == int(b["value"]) * 10 ** (scale - b["assetScale"])
 
 
+def _scaled(a: dict, scale: int) -> int:
+    return int(a["value"]) * 10 ** (scale - a["assetScale"])
+
+
+def amount_rule_holds(payer: dict, payee: dict, receive_fee: dict) -> bool:
+    """§9.2: payer.amount = payee.received + payee.receive_fee, exactly, same asset. Never naive equality."""
+    if not payer["amount"]["assetCode"] == payee["received"]["assetCode"] == receive_fee["assetCode"]:
+        return False
+    scale = max(payer["amount"]["assetScale"], payee["received"]["assetScale"], receive_fee["assetScale"])
+    return _scaled(payer["amount"], scale) == _scaled(payee["received"], scale) + _scaled(receive_fee, scale)
+
+
 def _normal_ref(ref: dict) -> dict:  # §7.2 normal forms
     out = dict(ref)
     if ref["type"] == "x402.transaction" and ref.get("network", "").startswith("eip155:"):
@@ -221,7 +233,7 @@ def _structure_failures(s: Any) -> list[str]:  # §4.2, §3 item 4, §5.4, §6
     leg, role = s["leg"], s["sealer_role"]
     if (leg == "payer_observed" and role != "payer") or (leg == "payee_observed" and role != "payee"):
         out.append("leg_role_mismatch")
-    if "amount" in s and not _amount_ok(s["amount"]):
+    if any(m in s and not _amount_ok(s[m]) for m in ("amount", "routing_fee", "received", "receive_fee")):
         out.append("amount_not_exact")
     if leg.endswith("_observed") and s.get("status") not in REGISTRY["statuses"]:
         out.append("settlement_malformed")
@@ -234,7 +246,7 @@ def _structure_failures(s: Any) -> list[str]:  # §4.2, §3 item 4, §5.4, §6
         if not isinstance(ref, dict) or not isinstance(ref.get("type"), str) or not isinstance(ref.get("value"), str):
             out.append("settlement_malformed")
         elif ref["type"] in REGISTRY["payment_ref_types"]:
-            if set(ref) != {"type", "value", *REGISTRY["payment_ref_types"][ref["type"]]}:
+            if set(ref) != {"type", "value", *REGISTRY["payment_ref_types"][ref["type"]]["qualifiers"]}:
                 out.append("settlement_malformed")
     return sorted(set(out), key=out.index)
 
@@ -316,17 +328,24 @@ def derive(case: dict) -> dict:
                 failures.append({"records": [p, q], "code": "sealer_conflation"})
                 conflated = True
     live = {lbl: s for lbl, s in legs.items() if lbl not in excluded}
-    terms = [s for lbl, s in live.items() if s["leg"] == "terms" and
-             any(r["label"] == lbl for r in case["records"])]
-    assert len(terms) == 1, "each case carries one terms leg"
-    terms_s = terms[0]
-    terms_id = next(r["capsule_id"] for r in case["records"] if r["capsule"].get("settlement") is terms_s)
+    ids = {r["label"]: r["capsule_id"] for r in case["records"]}
+    terms_ids = {ids[lbl]: lbl for lbl, s in live.items() if s["leg"] == "terms"}
     for lbl, s in live.items():
-        if s["leg"] != "terms" and s["terms_ref"] != terms_id:
+        if s["leg"] != "terms" and s["terms_ref"] not in terms_ids:
             failures.append({"records": [lbl], "code": "terms_ref_unresolved"})
-    payer = [s for s in live.values() if s["leg"] == "payer_observed"]
-    payee = [s for s in live.values() if s["leg"] == "payee_observed"]
-    result: dict[str, Any] = {"conforming": not failures, "failures": failures, "findings": findings}
+    settlements = []
+    for terms_id, terms_label in terms_ids.items():
+        settlements.append(_settlement(terms_label, live[terms_label],
+                                       {lbl: s for lbl, s in live.items() if s.get("terms_ref") == terms_id},
+                                       conflated, findings))
+    return {"conforming": not failures, "failures": failures, "findings": findings, "settlements": settlements}
+
+
+def _settlement(terms_label: str, terms_s: dict, legs: dict[str, dict], conflated: bool,
+                findings: list[dict]) -> dict:
+    payer = [(lbl, s) for lbl, s in legs.items() if s["leg"] == "payer_observed"]
+    payee = [(lbl, s) for lbl, s in legs.items() if s["leg"] == "payee_observed"]
+    result: dict[str, Any] = {"terms": terms_label}
     # §9.2 payment state
     if not payer and not payee:
         result["payment_state"] = "terms_only"
@@ -335,14 +354,25 @@ def derive(case: dict) -> dict:
     elif not payer:
         result["payment_state"] = "payee_stated"
     else:
-        a, b = payer[0], payee[0]
+        (_, a), (b_label, b) = payer[0], payee[0]
         known = REGISTRY["payment_ref_types"]
-        if a["payment_ref"]["type"] not in known or b["payment_ref"]["type"] not in known \
-                or a["payment_ref"]["type"] != b["payment_ref"]["type"]:
+        ref_type = b["payment_ref"]["type"]
+        receive_fee = b.get("receive_fee")
+        if receive_fee is None and ref_type in known and known[ref_type]["receive_fee"] == "not_applicable":
+            receive_fee = {"value": "0", "assetCode": b["received"]["assetCode"],
+                           "assetScale": b["received"]["assetScale"]}  # §6.1 rule 4
+        if a["payment_ref"]["type"] not in known or ref_type not in known or a["payment_ref"]["type"] != ref_type:
+            result["payment_state"] = "unjoined"
+        elif receive_fee is None:
+            findings.append({"records": [b_label], "code": "fee_unstated"})
+            result["payment_state"] = "unjoined"
+        elif receive_fee["assetCode"] != b["received"]["assetCode"] or (
+                "routing_fee" in a and a["routing_fee"]["assetCode"] != a["amount"]["assetCode"]):
+            findings.append({"records": [b_label], "code": "fee_asset_differs"})
             result["payment_state"] = "unjoined"
         else:
             differs = []
-            if not amounts_equal(a["amount"], b["amount"]):
+            if not amount_rule_holds(a, b, receive_fee):
                 differs.append("amount")
             if a["status"] != b["status"]:
                 differs.append("status")
@@ -358,7 +388,7 @@ def derive(case: dict) -> dict:
                 result["terms_amount"] = "equal" if amounts_equal(a["amount"], terms_s["amount"]) else "differs"
     # §9.3 delivery state
     pinned = terms_s.get("deliverable", {}).get("content_digest")
-    delivered = [s["delivery"] for s in live.values() if s["leg"] == "delivered"]
+    delivered = [s["delivery"] for s in legs.values() if s["leg"] == "delivered"]
     digests = {d["direction"]: d["content_digest"] for d in delivered}
     if not delivered:
         result["delivery_state"] = "none"
@@ -403,29 +433,37 @@ def test_flipping_one_fact_moves_the_derived_state():
     base = next(c for c in CASES["cases"] if c["id"] == "pos-x402-two-sided-agreed")
     seeds = {name: k["seed_hex"] for name, k in CASES["keys"].items()}
 
-    def run(label: str, path: list[str], value: Any, signer: str | None = None) -> dict:
-        c = copy.deepcopy(base)
+    def run(label: str, path: list[str], value: Any, signer: str | None = None, case: dict = base) -> dict:
+        c = copy.deepcopy(case)
         r = next(r for r in c["records"] if r["label"] == label)
         target = r["capsule"]["settlement"]
         for key in path[:-1]:
             target = target[key]
-        if path:
+        if path and value is None:
+            del target[path[-1]]
+        elif path:
             target[path[-1]] = value
         _reseal(r, seeds[signer or r["capsule"]["settlement"]["sealer_role"]])
         return derive(c)
 
     assert derive(copy.deepcopy(base)) == base["expect"]
     tx = base["records"][1]["capsule"]["settlement"]["payment_ref"]["value"]
-    assert run("x402-payee-observed", ["status"], "pending")["differs"] == ["status"]
-    assert run("x402-payee-observed", ["payment_ref", "value"], tx[:-1] + "0")["differs"] == ["payment_ref"]
-    assert run("x402-payee-observed", ["payment_ref", "value"], "0x" + tx[2:].upper())["payment_state"] == "agreed"
-    assert run("x402-payee-observed", ["amount", "value"], "1500001")["differs"] == ["amount"]
-    assert run("x402-delivered-received", ["delivery", "content_digest"], "0" * 64)["delivery_state"] == "mismatch"
+    def state(result: dict) -> dict:
+        return result["settlements"][0]
+
+    other = "f" if tx[-1] != "f" else "0"
+    assert state(run("x402-payee-observed", ["status"], "pending"))["differs"] == ["status"]
+    assert state(run("x402-payee-observed", ["payment_ref", "value"], tx[:-1] + other))["differs"] == ["payment_ref"]
+    assert state(run("x402-payee-observed", ["payment_ref", "value"], "0x" + tx[2:].upper()))["payment_state"] == "agreed"
+    assert state(run("x402-payee-observed", ["received", "value"], "1500001"))["differs"] == ["amount"]
+    assert state(run("x402-delivered-received", ["delivery", "content_digest"], "0" * 64))["delivery_state"] == "mismatch"
     assert run("x402-payee-observed", ["sealer_role"], "payer")["failures"][0]["code"] == "leg_role_mismatch"
-    assert run("x402-payee-observed", ["amount", "value"], "1.5")["failures"][0]["code"] == "amount_not_exact"
+    assert run("x402-payee-observed", ["received", "value"], "1.5")["failures"][0]["code"] == "amount_not_exact"
+    # x402 declares receive fees not applicable: an absent receive_fee is zero there.
+    assert state(run("x402-payee-observed", ["receive_fee"], None))["payment_state"] == "agreed"
     conflated = run("x402-payee-observed", [], None, signer="payer")
     assert [f["code"] for f in conflated["failures"]] == ["sealer_not_authorized_for_role", "sealer_conflation"]
-    assert conflated["payment_state"] == "payer_stated"
+    assert state(conflated)["payment_state"] == "payer_stated"
     # Exact amount comparison, independent of scale.
     a = {"value": "1500000", "assetCode": "X", "assetScale": 6}
     assert amounts_equal(a, {"value": "150000000", "assetCode": "X", "assetScale": 8})
@@ -434,3 +472,39 @@ def test_flipping_one_fact_moves_the_derived_state():
     assert not _amount_ok({"value": "01", "assetCode": "X", "assetScale": 0})
     assert not _amount_ok({"value": "1", "assetCode": "X", "assetScale": True})
     assert not _amount_ok({"value": "1", "assetCode": "X", "assetScale": 256})
+
+
+def test_the_fee_rule_not_naive_equality_decides_agreement():
+    """Flip the fee rule and the Lightning cases fail: 1000 sent, 995 received + 5 receive fee."""
+    pytest.importorskip("scitt_cose")
+    pytest.importorskip("cbor2")
+    lexe = next(c for c in CASES["cases"] if c["id"] == "pos-ln-receive-fee-two-payments")
+    payer = next(r for r in lexe["records"] if r["label"] == "ln-payer-observed-1")["capsule"]["settlement"]
+    payee = next(r for r in lexe["records"] if r["label"] == "ln-payee-observed-1")["capsule"]["settlement"]
+    assert payer["amount"]["value"] == "1000" and payer["routing_fee"]["value"] == "0"
+    assert payee["received"]["value"] == "995" and payee["receive_fee"]["value"] == "5"
+    # Naive equality would call this honest payment a mismatch; the rule calls it agreed.
+    assert not amounts_equal(payer["amount"], payee["received"])
+    assert amount_rule_holds(payer, payee, payee["receive_fee"])
+    assert [s["payment_state"] for s in derive(lexe)["settlements"]] == ["agreed", "agreed"]
+    seeds = {name: k["seed_hex"] for name, k in CASES["keys"].items()}
+
+    def run(value: Any, member: str = "receive_fee") -> str:
+        c = copy.deepcopy(lexe)
+        r = next(r for r in c["records"] if r["label"] == "ln-payee-observed-1")
+        if value is None:
+            del r["capsule"]["settlement"][member]
+        else:
+            r["capsule"]["settlement"][member]["value"] = value
+        _reseal(r, seeds["payee"])
+        return derive(c)["settlements"][0]["payment_state"]
+
+    assert run("0") == "mismatch"        # the fee no longer explains the difference
+    assert run("4") == "mismatch"        # off by one unit: no tolerance
+    assert run("6") == "mismatch"
+    assert run("1000", "received") == "mismatch"  # naive equality of amounts, with a fee, is not agreement
+    assert run(None) == "unjoined"       # Lightning fees may apply: absent is not zero
+    # Rescaling the fee to a different scale keeps the exact sum.
+    payee_scaled = dict(payee, receive_fee={"value": "50", "assetCode": "BTC", "assetScale": 12})
+    assert amount_rule_holds(payer, payee_scaled, payee_scaled["receive_fee"])
+    assert not amount_rule_holds(payer, payee, {"value": "5", "assetCode": "XBT", "assetScale": 11})

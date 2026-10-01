@@ -296,12 +296,27 @@ def terms_leg(label: str, role: str, key: Key, amount: dict, wraps: list[dict], 
     return seal(label, capsule(f"{label}", operator, t(0), s), key)
 
 
+def zero(amount: Any) -> dict:
+    """A zero fee in the asset and scale of ``amount``."""
+    return {"value": "0", "assetCode": amount["assetCode"], "assetScale": amount["assetScale"]}
+
+
+ZERO = "zero"  # sentinel: an explicit zero fee in the amount's asset and scale
+
+
 def observed_leg(label: str, role: str, key: Key, terms: dict, payment_ref: dict, amount: Any,
-                 wraps: list[dict], *, status: str = "settled", minute: int = 1,
+                 wraps: list[dict], *, fee: Any = ZERO, status: str = "settled", minute: int = 1,
                  references: list[dict] | None = None) -> dict:
+    """A payer leg carries amount + routing_fee; a payee leg carries received + receive_fee.
+
+    ``fee`` is an amount object, ``ZERO`` for an explicit zero, or None to omit the fee member.
+    """
+    gross, fee_name = ("amount", "routing_fee") if role == "payer" else ("received", "receive_fee")
     s = {"version": "0", "leg": f"{role}_observed", "sealer_role": role,
-         "terms_ref": terms["capsule"]["capsule_id"], "payment_ref": payment_ref, "amount": amount,
+         "terms_ref": terms["capsule"]["capsule_id"], "payment_ref": payment_ref, gross: amount,
          "status": status, "observed_at": t(minute, 5)}
+    if fee is not None:
+        s[fee_name] = zero(amount) if fee == ZERO else fee
     if wraps:
         s["wrapped"] = wraps
     operator = "payee.example" if role == "payee" else "payer.example"
@@ -336,6 +351,7 @@ S_CITE = "§4.3 Citations Between Legs"
 S_TERMS = "§5.1 Terms"
 S_DELIVERED = "§5.4 Delivered"
 S_AMOUNTS = "§6 Amounts"
+S_FEES = "§6.1 Fees"
 S_JOIN = "§7.1 Shape and Join Rule"
 S_TYPES = "§7.2 Initial Types"
 S_WRAP = "§8 Wrapping Existing Signed Objects"
@@ -345,13 +361,20 @@ S_DELIVERY = "§9.3 Delivery State"
 S_FAILURES = "§9.4 Failures"
 
 
-def expect(*, conforming: bool, payment_state: str, delivery_state: str, failures: list[dict] | None = None,
-           findings: list[dict] | None = None, **extra: Any) -> dict:
-    out: dict[str, Any] = {"conforming": conforming, "failures": failures or [], "findings": findings or [],
-                           "payment_state": payment_state}
+def settlement(terms: str, payment_state: str, delivery_state: str, **extra: Any) -> dict:
+    out: dict[str, Any] = {"terms": terms, "payment_state": payment_state}
     out.update(extra)
     out["delivery_state"] = delivery_state
     return out
+
+
+def expect(*, conforming: bool, payment_state: str | None = None, delivery_state: str | None = None,
+           failures: list[dict] | None = None, findings: list[dict] | None = None, terms: str = "x402-terms",
+           settlements: list[dict] | None = None, **extra: Any) -> dict:
+    if settlements is None:
+        settlements = [settlement(terms, payment_state or "", delivery_state or "", **extra)]
+    return {"conforming": conforming, "failures": failures or [], "findings": findings or [],
+            "settlements": settlements}
 
 
 def case(case_id: str, section: list[str], description: str, records: list[dict],
@@ -461,7 +484,7 @@ def cases() -> list[dict]:
         [wobj("bolt12.invoice", invoice, "illustrative octets, not a valid BOLT 12 TLV stream"),
          wobj("bolt12.payer-proof", proof, "illustrative octets, not a valid BOLT 12 TLV stream")],
         expect(conforming=True, payment_state="agreed", agreed_status="settled", terms_amount="equal",
-               delivery_state="none")))
+               delivery_state="none", terms="bolt12-terms")))
 
     # 7. AP2 receipt wrapped by digest only.
     mandate = ap2_payment_mandate()
@@ -479,7 +502,7 @@ def cases() -> list[dict]:
         "AP2: the payer seals the terms, wrapping its Payment Mandate by digest. The payee's leg wraps the "
         "processor-signed Payment Receipt by digest only, without re-signing it, and joins on payment_id.",
         [aterms, apayee], ap2_objects,
-        expect(conforming=True, payment_state="payee_stated", delivery_state="none")))
+        expect(conforming=True, payment_state="payee_stated", delivery_state="none", terms="ap2-terms")))
 
     # 8. Negative: the AP2 receipt re-signed by the payee's own leg key.
     resigned = ap2_payment_receipt(PAYEE)
@@ -491,7 +514,7 @@ def cases() -> list[dict]:
         "receipt's issuer is the payment processor, so the leg fails and does not contribute.",
         [aterms, rpayee],
         [ap2_objects[0], wobj("ap2.payment-receipt", resigned, "the same receipt claims, signed by the payee leg key")],
-        expect(conforming=False, payment_state="terms_only", delivery_state="none",
+        expect(conforming=False, payment_state="terms_only", delivery_state="none", terms="ap2-terms",
                failures=[{"records": ["ap2-payee-observed"], "code": "wrapped_resigned"}])))
 
     # 9. Negative: wrapped content does not hash to its digest.
@@ -572,6 +595,46 @@ def cases() -> list[dict]:
         [pterms, ppayer, ppayee, psent, preceived], objs,
         expect(conforming=True, payment_state="agreed", agreed_status="settled", terms_amount="equal",
                delivery_state="mismatch")))
+
+    # 15-17. Lightning with a receive-side fee, from the numbers of a real two-payment run: the payer
+    # sent 1000 msat with routing fee 0; the payee's wallet recorded 995 msat received, fee 5.
+    msat_1000 = {"value": "1000", "assetCode": "BTC", "assetScale": 11}
+    msat_995 = {"value": "995", "assetCode": "BTC", "assetScale": 11}
+    msat_5 = {"value": "5", "assetCode": "BTC", "assetScale": 11}
+
+    def ln_settlement(n: int, receive_fee: Any) -> list[dict]:
+        ref = {"type": "ln.payment_hash", "value": label_hex(f"lightning payment hash {n}")}
+        lterms = terms_leg(f"ln-terms-{n}", "payee", PAYEE, msat_1000, [], payment_ref=ref)
+        lpayer = observed_leg(f"ln-payer-observed-{n}", "payer", PAYER, lterms, ref, msat_1000, [])
+        lpayee = observed_leg(f"ln-payee-observed-{n}", "payee", PAYEE, lterms, ref, msat_995, [],
+                              fee=receive_fee, minute=2, references=[cite(lpayer)])
+        return [lterms, lpayer, lpayee]
+
+    agreed_ln = {"payment_state": "agreed", "agreed_status": "settled", "terms_amount": "equal"}
+    out.append(case(
+        "pos-ln-receive-fee-two-payments", [S_FEES, S_PAYMENT],
+        "Two Lightning payments of 1000 msat each. The payer's wallet reports 1000 sent with routing_fee 0; "
+        "the payee's wallet reports 995 received with receive_fee 5. The amounts differ honestly: "
+        "1000 = 995 + 5, so each settlement is agreed. Naive equality of the two amounts would misreport "
+        "both as mismatch.",
+        ln_settlement(1, msat_5) + ln_settlement(2, msat_5), [],
+        expect(conforming=True, settlements=[
+            settlement("ln-terms-1", delivery_state="none", **agreed_ln),
+            settlement("ln-terms-2", delivery_state="none", **agreed_ln)])))
+    out.append(case(
+        "state-ln-receive-fee-mismatch", [S_FEES, S_PAYMENT],
+        "The payee reports 995 received with receive_fee 0. 995 + 0 is not 1000: the fee does not explain "
+        "the difference, so the settlement is a mismatch.",
+        ln_settlement(1, ZERO), [],
+        expect(conforming=True, payment_state="mismatch", differs=["amount"], delivery_state="none",
+               terms="ln-terms-1")))
+    out.append(case(
+        "neg-ln-receive-fee-absent", [S_FEES, S_PAYMENT, S_FAILURES],
+        "The payee reports 995 received and no receive_fee. Lightning receive fees may apply, so an absent "
+        "fee is not read as zero: the pair is unjoined (never a false agreed), with finding fee_unstated.",
+        ln_settlement(1, None), [],
+        expect(conforming=True, payment_state="unjoined", delivery_state="none", terms="ln-terms-1",
+               findings=[{"records": ["ln-payee-observed-1"], "code": "fee_unstated"}])))
     return out
 
 
@@ -587,13 +650,17 @@ def registry() -> dict:
         "failure_codes": ["settlement_malformed", "amount_not_exact", "terms_ref_unresolved", "leg_role_mismatch",
                           "sealer_not_authorized_for_role", "sealer_conflation", "wrapped_digest_mismatch",
                           "wrapped_resigned"],
-        "informational_codes": ["payment_ref_type_unknown"],
+        "informational_codes": ["payment_ref_type_unknown", "fee_unstated", "fee_asset_differs"],
         "base_profile_codes": ["capsule_invalid", "envelope_invalid"],
         "payment_ref_types": {
-            "x402.transaction": ["network"], "ln.payment_hash": [], "bolt12.invoice_payment_hash": [],
-            "ap2.transaction_id": [], "ap2.payment_id": [], "ap2.network_confirmation_id": [],
-            "acp.order_id": [], "ucp.order_id": [], "mpp.reference": ["method"], "iso20022.uetr": [],
-            "iso20022.end_to_end_id": ["debtor_agent"], "open_payments.incoming_payment": [],
+            name: {"qualifiers": qualifiers,
+                   "receive_fee": "not_applicable" if name == "x402.transaction" else "may_apply"}
+            for name, qualifiers in (
+                ("x402.transaction", ["network"]), ("ln.payment_hash", []),
+                ("bolt12.invoice_payment_hash", []), ("ap2.transaction_id", []), ("ap2.payment_id", []),
+                ("ap2.network_confirmation_id", []), ("acp.order_id", []), ("ucp.order_id", []),
+                ("mpp.reference", ["method"]), ("iso20022.uetr", []), ("iso20022.end_to_end_id", ["debtor_agent"]),
+                ("open_payments.incoming_payment", []))
         },
         "wrapped_types": {
             "x402.offer": "payee", "x402.receipt": "payee", "x402.payment-payload": "payer",
@@ -606,9 +673,10 @@ def registry() -> dict:
             "terms": {"required": ["version", "leg", "sealer_role", "amount"],
                       "optional": ["payment_ref", "deliverable", "valid_until", "wrapped"]},
             "payer_observed": {"required": ["version", "leg", "sealer_role", "terms_ref", "amount", "payment_ref",
-                                            "status", "observed_at"], "optional": ["wrapped"]},
-            "payee_observed": {"required": ["version", "leg", "sealer_role", "terms_ref", "amount", "payment_ref",
-                                            "status", "observed_at"], "optional": ["wrapped"]},
+                                            "status", "observed_at"], "optional": ["routing_fee", "wrapped"]},
+            "payee_observed": {"required": ["version", "leg", "sealer_role", "terms_ref", "received",
+                                            "payment_ref", "status", "observed_at"],
+                               "optional": ["receive_fee", "wrapped"]},
             "delivered": {"required": ["version", "leg", "sealer_role", "terms_ref", "observed_at", "delivery"],
                           "optional": ["wrapped"]},
         },
@@ -619,7 +687,7 @@ def registry() -> dict:
             "failed": {"payer_pacs002": ["RJCT"], "payee_pacs002": ["RJCT"], "payee_camt054": []},
             "reversed": {"payer_pacs002": [], "payee_pacs002": [], "payee_camt054": ["BOOK+reversal"]},
         },
-        "section": [S_SEALERS, S_MEMBER, S_CITE, S_TERMS, S_DELIVERED, S_AMOUNTS, S_JOIN, S_TYPES, S_WRAP,
+        "section": [S_SEALERS, S_MEMBER, S_CITE, S_TERMS, S_DELIVERED, S_AMOUNTS, S_FEES, S_JOIN, S_TYPES, S_WRAP,
                     S_INPUTS, S_PAYMENT, S_DELIVERY, S_FAILURES],
     }
 
