@@ -773,8 +773,8 @@ coverage_report: CoverageReportDoc = {
             "sufficiency": "SATISFIED",
             "claim_ids": ["claim-1"],
             "sources": [
-                _source("claims-system-record", [_rec("1a")], 1, backfilled=1, epistemic_type="SYSTEM_OF_RECORD_FACT"),
-                _source("payment-events", [_rec("1b"), _rec("1c")], 1, epistemic_type="OBSERVED_EVENT"),
+                _source("claims-system-record", [_rec("1a")], 1, backfilled=1, epistemic_type="system_of_record_fact"),
+                _source("payment-events", [_rec("1b"), _rec("1c")], 1, epistemic_type="observed_event"),
             ],
             "independence": {
                 "required_producers": 2,
@@ -811,7 +811,7 @@ coverage_report: CoverageReportDoc = {
             "claim_ids": ["claim-3"],
             "sources": [
                 _source("notice-records", [_rec("3a")], 1),
-                _source("override-events", [], 0, epistemic_type="HUMAN_REPORT"),
+                _source("override-events", [], 0, epistemic_type="human_report"),
             ],
             "independence": {
                 "required_producers": 1,
@@ -858,7 +858,12 @@ del neg_coverage_gap_remedy_absent["coverage_report"]["requirements"][2]["gaps"]
 # --- neg-coverage-unknown-epistemic-type -- a source typed outside the ----
 #     closed EvidenceBook set (schema: EpistemicType's enum).
 neg_coverage_unknown_epistemic_type = _mutated(pos_example_org_coverage_result)
-neg_coverage_unknown_epistemic_type["coverage_report"]["requirements"][0]["sources"][0]["epistemic_type"] = "TRUSTED_FACT"
+neg_coverage_unknown_epistemic_type["coverage_report"]["requirements"][0]["sources"][0]["epistemic_type"] = "trusted_fact"
+
+# --- neg-coverage-uppercase-epistemic-type -- a known type in upper case ---
+#     (schema: the values are lower case; upper case is not the same token).
+neg_coverage_uppercase_epistemic_type = _mutated(pos_example_org_coverage_result)
+neg_coverage_uppercase_epistemic_type["coverage_report"]["requirements"][0]["sources"][0]["epistemic_type"] = "SYSTEM_OF_RECORD_FACT"
 
 # --- neg-coverage-correlated-counted-as-met -- req-claim-1's records are ----
 #     relabelled as one producer's (independent_producers 1, correlated 2),
@@ -904,6 +909,7 @@ def main() -> int:
     write("neg-coverage-not-found-source-with-records", neg_coverage_not_found_source_with_records)
     write("neg-coverage-gap-remedy-absent", neg_coverage_gap_remedy_absent)
     write("neg-coverage-unknown-epistemic-type", neg_coverage_unknown_epistemic_type)
+    write("neg-coverage-uppercase-epistemic-type", neg_coverage_uppercase_epistemic_type)
     write("neg-coverage-correlated-counted-as-met", neg_coverage_correlated_counted_as_met)
     write("neg-coverage-summary-does-not-recompute", neg_coverage_summary_does_not_recompute)
     for name, records in CLOSE_RECORDS.items():

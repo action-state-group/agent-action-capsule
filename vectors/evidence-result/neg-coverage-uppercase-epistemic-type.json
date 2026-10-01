@@ -117,14 +117,7 @@
         "claim_ids": [
           "claim-1"
         ],
-        "gaps": [
-          {
-            "detail": "placeholder gap",
-            "kind": "missing_source",
-            "remedy": null,
-            "source": "payment-events"
-          }
-        ],
+        "gaps": [],
         "independence": {
           "correlated_records": 1,
           "independent_producers": 2,
@@ -140,7 +133,7 @@
             "backfilled_count": 1,
             "contemporaneous_count": 0,
             "duplicates_collapsed": 0,
-            "epistemic_type": "system_of_record_fact",
+            "epistemic_type": "SYSTEM_OF_RECORD_FACT",
             "evidence": [
               {
                 "digest": "d9baf669a084fd3ac90586f57feee24bb313de4b5d022823dfcfcec7fe8e8f23",

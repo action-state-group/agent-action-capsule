@@ -441,7 +441,7 @@ coverage_report:
       claim_ids: [claim-id, ...]             # this Result's claims for the requirement
       sources:                               # one per contract `required_sources` entry
         - source: string
-          epistemic_type: OBSERVED_EVENT | SYSTEM_OF_RECORD_FACT | ...   # optional
+          epistemic_type: observed_event | system_of_record_fact | ...   # optional
           status: SATISFIED | INSUFFICIENT | NOT_FOUND
           record_count: integer              # after duplicate collapse
           contemporaneous_count: integer
@@ -520,8 +520,9 @@ manufacture corroboration. Evidence that is entirely unattributed is `INSUFFICIE
 
 **`epistemic_type` is optional and declared, never inferred.** When the producer has a source
 catalog that types each source, a source row carries that type. The value comes from the
-EvidenceBook record header's closed set, spelled in uppercase as the Evidence Contract's
-`accepted_epistemic_types` spells it. A source with no declared type has no `epistemic_type` key.
+record header's closed set, in lower case exactly as `schemas/vendor/epistemic-types.json` lists
+it (decided 2026-10-01: lower case everywhere). An upper-case token is not a recognized value. A
+source with no declared type has no `epistemic_type` key.
 A renderer MAY use the type to label the row. It MUST NOT treat the type as evidence that the
 source is present.
 
@@ -642,9 +643,9 @@ fixtures, not here.
 
 §7.1's PROPOSED `coverage_report` adds one positive (`pos-example-org-coverage-result.json`: one `SATISFIED`
 row with a correlated record, one `SATISFIED` row over a `not_met` claim, and one `NOT_FOUND` row
-whose gap names a remedy), four schema negatives (`neg-coverage-satisfied-with-gap`,
+whose gap names a remedy), five schema negatives (`neg-coverage-satisfied-with-gap`,
 `neg-coverage-not-found-source-with-records`, `neg-coverage-gap-remedy-absent`,
-`neg-coverage-unknown-epistemic-type`), and two
+`neg-coverage-unknown-epistemic-type`, `neg-coverage-uppercase-epistemic-type`), and two
 negatives that validate against the schema and are rejected by the checker's cross-element
 coverage check (`neg-coverage-correlated-counted-as-met`, `neg-coverage-summary-does-not-recompute`).
 Each negative has its own mutant proof.

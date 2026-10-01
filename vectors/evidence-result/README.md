@@ -148,9 +148,9 @@ per requirement, what evidence exists, what is missing, and which source would c
 
 | Requirement | `status` / `sufficiency` | What it shows |
 |---|---|---|
-| `req-claim-1` | `SATISFIED` / `SATISFIED` | Two typed sources (`SYSTEM_OF_RECORD_FACT`, `OBSERVED_EVENT`), one of them backfilled; three records from two producers identified by signer key (`producer_basis: key`), so `independence` is met (2 of 2) with one correlated record |
+| `req-claim-1` | `SATISFIED` / `SATISFIED` | Two typed sources (`system_of_record_fact`, `observed_event`), one of them backfilled; three records from two producers identified by signer key (`producer_basis: key`), so `independence` is met (2 of 2) with one correlated record |
 | `req-claim-2` | `SATISFIED` / `SATISFIED` | One source and one producer (`producer_basis: asserted`, not authenticated), with no independence asked. Its second record names no producer, so `unattributed_records: 1` and it counts toward no producer. The claim's verdict is `not_met`, which coverage does not change: coverage is never a verdict |
-| `req-claim-3` | `NOT_FOUND` / `GAP` | `override-events` (typed `HUMAN_REPORT`) has no record; `notice-records` has no declared type, so it carries no `epistemic_type` key. The `missing_source` gap names the remedy `human_approval` → `observed` |
+| `req-claim-3` | `NOT_FOUND` / `GAP` | `override-events` (typed `human_report`) has no record; `notice-records` has no declared type, so it carries no `epistemic_type` key. The `missing_source` gap names the remedy `human_approval` → `observed` |
 
 Schema negatives, one field each, each with a strip-the-rule mutant:
 
@@ -159,7 +159,8 @@ Schema negatives, one field each, each with a strip-the-rule mutant:
 | `neg-coverage-satisfied-with-gap.json` | a gap appended to the SATISFIED `req-claim-1` row | A `SATISFIED` row has no gaps and met independence |
 | `neg-coverage-not-found-source-with-records.json` | `req-claim-2`'s only source relabelled `NOT_FOUND`, record kept | A source is `NOT_FOUND` exactly when `record_count` is 0 |
 | `neg-coverage-gap-remedy-absent.json` | the `req-claim-3` gap's `remedy` key removed | `remedy` is required. A missing remedy is an explicit `null` and is counted in `summary.gaps_without_remedy`, never dropped |
-| `neg-coverage-unknown-epistemic-type.json` | `req-claim-1`'s first source typed `TRUSTED_FACT` | `epistemic_type` (optional) is one of the EvidenceBook record header's closed set, in the Evidence Contract's uppercase spelling |
+| `neg-coverage-unknown-epistemic-type.json` | `req-claim-1`'s first source typed `trusted_fact` | `epistemic_type` (optional) is one of the record header's closed set |
+| `neg-coverage-uppercase-epistemic-type.json` | `req-claim-1`'s first source typed `SYSTEM_OF_RECORD_FACT` | The values are lower case, exactly as `schemas/vendor/epistemic-types.json` lists them; an upper-case token is not a recognized value |
 
 Cross-element negatives, which validate against the schema and are rejected by the checker's coverage
 check, each with a check mutant:

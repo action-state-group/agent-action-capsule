@@ -133,7 +133,7 @@
             "backfilled_count": 1,
             "contemporaneous_count": 0,
             "duplicates_collapsed": 0,
-            "epistemic_type": "SYSTEM_OF_RECORD_FACT",
+            "epistemic_type": "system_of_record_fact",
             "evidence": [
               {
                 "digest": "d9baf669a084fd3ac90586f57feee24bb313de4b5d022823dfcfcec7fe8e8f23",
@@ -149,7 +149,7 @@
             "backfilled_count": 0,
             "contemporaneous_count": 2,
             "duplicates_collapsed": 0,
-            "epistemic_type": "OBSERVED_EVENT",
+            "epistemic_type": "observed_event",
             "evidence": [
               {
                 "digest": "c5f3763b51e8c29b523299dff8d8c207792e044b238616f2832f25ff77523b97",
@@ -253,7 +253,7 @@
             "backfilled_count": 0,
             "contemporaneous_count": 0,
             "duplicates_collapsed": 0,
-            "epistemic_type": "HUMAN_REPORT",
+            "epistemic_type": "human_report",
             "evidence": [],
             "producer_count": 0,
             "record_count": 0,

@@ -292,8 +292,8 @@
       "enum": ["retrospectively_evidenced", "observed", "committed"]
     },
     "EpistemicType": {
-      "description": "PROPOSED (spec section 7.1). The closed epistemic-type set of the EvidenceBook record header, in the Evidence Contract's uppercase spelling (accepted_epistemic_types). The checker pins parity with schemas/vendor/epistemic-types.json.",
-      "enum": ["OBSERVED_EVENT", "SYSTEM_OF_RECORD_FACT", "PRODUCER_CLAIM", "HUMAN_REPORT", "SEMANTIC_JUDGMENT", "DERIVED_METRIC", "ADJUDICATION", "OBLIGATION_REFERENCE"]
+      "description": "PROPOSED (spec section 7.1). The closed epistemic-type set of the record header, lower case, exactly as schemas/vendor/epistemic-types.json lists it (the checker pins parity).",
+      "enum": ["observed_event", "system_of_record_fact", "producer_claim", "human_report", "semantic_judgment", "derived_metric", "adjudication", "obligation_reference"]
     },
     "Remedy": {
       "type": "object",
