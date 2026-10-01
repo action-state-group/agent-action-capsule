@@ -29,7 +29,7 @@ mechanical half):
      above can actually fail, not just report green by construction. The
      rule is then restored in memory (the committed schema file is never
      modified) and re-verified red.
-  4. PROPOSED CLAIM TYPES (Steven's ruling, 2026-09-25 -- "close +
+  4. PROPOSED CLAIM TYPES (the 2026-09-25 ruling -- "close +
      reconcile as claim types in result v0"): five more positives
      (pos-oo-reconcile-result, pos-oo-close-agreed-result,
      pos-oo-close-unilateral-result, pos-oo-close-unilateral-named-peer-
