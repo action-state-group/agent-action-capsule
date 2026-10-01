@@ -434,9 +434,9 @@ describe("buildResultRoot", () => {
     const dir = new URL("../../vectors/evidence-result/", import.meta.url);
     const read = (name: string): unknown =>
       JSON.parse(readFileSync(new URL(name, dir), "utf8"));
-    expect(validateEvidenceResult(read("pos-example-org-claims-result.json"))).toEqual(
-      [],
-    );
+    expect(
+      validateEvidenceResult(read("pos-example-org-claims-result.json")),
+    ).toEqual([]);
     for (const name of [
       "neg-aggregate-without-coverage.json",
       "neg-contract-ref-missing.json",
