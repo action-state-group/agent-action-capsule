@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<reference anchor="I-D.dogru-cedulon-core" target="https://datatracker.ietf.org/doc/html/draft-dogru-cedulon-core-02">
+   <front>
+      <title>Spend Receipts and Payment Rail Reconciliation for AI Agents</title>
+      <author initials="E. C." surname="Doğru" fullname="Emek Can Doğru">
+         <organization>VERAX TEKNOLOJI LIMITED SIRKETI</organization>
+      </author>
+      <date month="September" day="30" year="2026" />
+      <abstract>
+	 <t>   This document addresses auditable payments for AI agents and builds
+   upon state-of-the-art HTTP 402, AP2 and credit card systems.  We
+   specify a cryptographically secured payment reconciliation protocol
+   using a Trade Manifest (a signed offer before payment), a Policy
+   Decision Point with default deny, a Spend Receipt (a COSE/CWT claim
+   set issued after a gated payment), and rail-extract reconciliation.
+
+	 </t>
+      </abstract>
+   </front>
+   <seriesInfo name="Internet-Draft" value="draft-dogru-cedulon-core-02" />
+   
+</reference>

@@ -20,6 +20,11 @@ same-commit files in CI.
   subject forms, request digest, signed refusal, outcomes, caller invariance,
   retention), derived from the draft text;
   `python/scripts/generate_evidence_request_vectors.py` regenerates them.
+- `settlement/`: draft-mih-agent-settlement-profile-00 cases (two-sided
+  payer/payee leg records, the payment reference join, wrapped objects by
+  digest, exact amounts, delivered-content digests, derived states), derived
+  from the draft text; `python/scripts/generate_settlement_vectors.py`
+  regenerates them.
 
 Reference-derived corpora and checksum manifests can be regenerated with:
 

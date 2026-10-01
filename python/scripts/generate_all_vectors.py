@@ -51,6 +51,7 @@ def main() -> None:
         "generate_disclosure_vectors.py",
         "generate_producer_envelope_vectors.py",
         "generate_evidence_request_vectors.py",
+        "generate_settlement_vectors.py",
     ):
         subprocess.run([python, str(Path(__file__).with_name(script))], check=True, cwd=ROOT / "python")
     complete_capsule_manifest()
