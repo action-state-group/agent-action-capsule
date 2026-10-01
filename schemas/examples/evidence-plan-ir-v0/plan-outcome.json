@@ -1,21 +1,21 @@
 {
   "header": {
-    "contract_ref": "ec:oo-outcome-eval:2026-09-22@1",
+    "contract_ref": "ec:example-org-outcome-eval:2026-09-22@1",
     "created_at": "2026-09-22T00:00:00Z",
     "ir_version": "evidence-plan-ir-v0",
-    "planner_id": "remote:oo-cloud-planner-v1",
-    "replay_seed": "oo-outcome-eval-seed-1"
+    "planner_id": "remote:example-org-cloud-planner-v1",
+    "replay_seed": "example-org-outcome-eval-seed-1"
   },
   "nodes": [
     {
       "classification": "CLOUD_SAFE",
-      "contract_ref": "ec:oo-outcome-eval:2026-09-22@1",
+      "contract_ref": "ec:example-org-outcome-eval:2026-09-22@1",
       "family": "evidence",
       "id": "node-1",
       "inputs": [
         {
           "by": "digest",
-          "digest": "d3b4f51b49777d73cb87411a4097ddc5685fd272d296990b76888adfbc68b303",
+          "digest": "1f93a2924124c5e43d23aab3d314d68a5d207f918379574ff5ad33482b4cccda",
           "digest_alg": "SHA-256"
         }
       ],
@@ -25,7 +25,7 @@
     },
     {
       "classification": "CLOUD_SAFE",
-      "contract_ref": "ec:oo-outcome-eval:2026-09-22@1",
+      "contract_ref": "ec:example-org-outcome-eval:2026-09-22@1",
       "family": "assurance",
       "id": "node-2",
       "inputs": [
@@ -40,7 +40,7 @@
     },
     {
       "classification": "PUBLIC",
-      "contract_ref": "ec:oo-outcome-eval:2026-09-22@1",
+      "contract_ref": "ec:example-org-outcome-eval:2026-09-22@1",
       "family": "decision",
       "id": "node-3",
       "inputs": [

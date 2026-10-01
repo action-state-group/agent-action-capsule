@@ -101,17 +101,17 @@ SCHEMA_EPISTEMIC_TYPES = {
 
 # record_version -> (vectors subdir, positive name, negative name)
 FIXTURES = {
-    "contract-compile/v1": ("contract-compile", "pos-oo-contract-compile", "neg-missing-human-approval"),
-    "adjudication/v1": ("adjudication", "pos-oo-twin-adjudication", "neg-contradicted-missing-party"),
+    "contract-compile/v1": ("contract-compile", "pos-example-org-contract-compile", "neg-missing-human-approval"),
+    "adjudication/v1": ("adjudication", "pos-example-org-twin-adjudication", "neg-contradicted-missing-party"),
     "adjudication-response/v1": (
-        "adjudication-response", "pos-oo-delivery-receipt", "neg-delivery-receipt-with-verdict",
+        "adjudication-response", "pos-example-org-delivery-receipt", "neg-delivery-receipt-with-verdict",
     ),
-    "evaluation-report/v1": ("evaluation-report", "pos-oo-evaluation-report", "neg-case-without-method"),
-    "close/v1": ("close", "pos-oo-close", "neg-reconcile-without-peer-close"),
-    "sample-manifest/v1": ("sample-manifest", "pos-oo-sample-manifest", "neg-cases-empty"),
-    "human-rating/v1": ("human-rating", "pos-oo-human-rating", "neg-blind-false"),
+    "evaluation-report/v1": ("evaluation-report", "pos-example-org-evaluation-report", "neg-case-without-method"),
+    "close/v1": ("close", "pos-example-org-close", "neg-reconcile-without-peer-close"),
+    "sample-manifest/v1": ("sample-manifest", "pos-example-org-sample-manifest", "neg-cases-empty"),
+    "human-rating/v1": ("human-rating", "pos-example-org-human-rating", "neg-blind-false"),
     "calibration-summary/v1": (
-        "calibration-summary", "pos-oo-calibration-summary", "neg-clause-with-rate-field",
+        "calibration-summary", "pos-example-org-calibration-summary", "neg-clause-with-rate-field",
     ),
 }
 

@@ -3,19 +3,19 @@
   "compiled_skill": [
     {
       "citation_purpose": "compiled_skill",
-      "digest": "75a7eb405d41a13f0bcde086b98f5009e897c4bcaec3961c83eed2e415d2a376",
+      "digest": "f20c56f80285969dd91d49b160c779d8be533133cebee0af40110b08af66e44d",
       "digest_alg": "SHA-256",
       "type": "compiled-skill"
     }
   ],
   "contract": {
     "citation_purpose": "compiles_contract",
-    "digest": "412e9d606026b488693579f60e5bdb65328e63ce960b3bc15381fd26ad1f682e",
+    "digest": "5f5817639bf63331feed21f580312342277623d43c84adb1886f0e6d2a0d9e0d",
     "digest_alg": "SHA-256",
     "type": "evidence-contract"
   },
-  "contract_ref": "ec:oo-claims-eval:2026-09-22@1",
+  "contract_ref": "ec:example-org-claims-eval:2026-09-22@1",
   "epistemic_type": "producer_claim",
-  "record_id": "cc-oo-1",
+  "record_id": "cc-example-org-1",
   "record_version": "contract-compile/v1"
 }

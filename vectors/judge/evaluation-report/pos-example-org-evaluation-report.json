@@ -4,32 +4,32 @@
       "acts": [
         {
           "citation_purpose": "grounds",
-          "digest": "f0a302dcc73fc53609e96e0029ed3a0e3b0b9da6beaa817cdcc954a18ea9f096",
+          "digest": "f7567d3dcb2517ef163fccac913f161a5697192f21f0fde408eef176a2624912",
           "digest_alg": "SHA-256",
           "type": "tau2-conversation"
         }
       ],
-      "case_id": "oo-sim-001",
+      "case_id": "example-org-sim-001",
       "method": {
         "citation_purpose": "method",
-        "digest": "80713a18c08a4b9f67b9e248da05b5ff6f7e860c49c49cc2f42bfdff459c8f3a",
+        "digest": "381d8ecfcebaee02f0f0e43bcebb83f018a785a822100480737e2f6e8dbbfebd",
         "digest_alg": "SHA-256",
         "type": "rubric"
       },
       "verdict": "met"
     }
   ],
-  "contract_ref": "ec:oo-claims-eval:2026-09-22@1",
+  "contract_ref": "ec:example-org-claims-eval:2026-09-22@1",
   "epistemic_type": "semantic_judgment",
   "generated_at": "2026-09-25T00:00:00Z",
   "judge_pin": {
     "axes_digest": {
-      "digest": "287810b28b2d7721bc0cf9336559a8a1fa6eab65ee357c6efab1a9ed70b2442e",
+      "digest": "bdc75875acf0d351338ea4b9baeeb2a7a5bec65cda6dd02dfd735951bfb9a571",
       "digest_alg": "SHA-256"
     },
-    "model_id": "oo-judge-v1",
+    "model_id": "example-org-judge-v1",
     "prompt_digest": {
-      "digest": "c4ba90afe3c489dd53e02067e9d26920cd4e1adc702fd64f70a9fc03e2385040",
+      "digest": "cd3ab312b2e14dd75bd3859999adba2f66d9082dc8bd6369c406e0426711e749",
       "digest_alg": "SHA-256"
     },
     "sampling": {
@@ -37,6 +37,6 @@
       "temperature_micros": 0
     }
   },
-  "record_id": "er-oo-1",
+  "record_id": "er-example-org-1",
   "record_version": "evaluation-report/v1"
 }

@@ -11,7 +11,7 @@ check that can never fire.
 What this enforces (spec/evidence-plan-ir-v0.md is normative; this is the
 mechanical half):
 
-  1. POSITIVE: the three synthetic OO plans (outcome, obligation, process
+  1. POSITIVE: the three synthetic EXAMPLE-ORG plans (outcome, obligation, process
      profiles) and their plan-result / attestation-record companions all
      validate against $defs/EvidencePlan, $defs/PlanResult, and
      $defs/AttestationRecord respectively.
