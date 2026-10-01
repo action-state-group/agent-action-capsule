@@ -152,7 +152,7 @@ planner — all three are conforming there by construction; only `LOCAL_ONLY` is
 | `recomputed` | The result is mechanically reproducible: a deterministic function of the node's cited inputs, with no model inference or human judgment in the loop. |
 | `judged` | The result was produced by a semantic adjudicator (model or human) applying judgment to the cited inputs, pinned by the attestation record's `adjudicator`/`policy_digest` fields (§6). |
 
-**Ruled mapping (2026-09-22, Steven) — stated here as a mapping only, never redefined:** on the
+**Ruled mapping (2026-09-22) — stated here as a mapping only, never redefined:** on the
 assurance ladder owned by the Witness/Countersign definitions — the grade vocabulary is
 still being reconciled elsewhere (open at the time of writing), and this document
 does not own and therefore does not enumerate it here — `recomputed` corresponds to *Verifiable* and

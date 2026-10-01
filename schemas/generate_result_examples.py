@@ -17,7 +17,7 @@ negative fixtures, each a byte-for-byte copy of the positive with exactly one
 field changed, each spec/evidence-result-v0.md rule this document requires
 MUST reject.
 
-PROPOSED claim types (Steven's ruling, 2026-09-25): five more positives --
+PROPOSED claim types (the 2026-09-25 ruling): five more positives --
 one reconcile Result, one AGREED close, one UNILATERAL close (no peer
 named), one UNILATERAL close that names the peer it closed against, one
 CONTESTED close (the Evidence Layer's third Close state, draft-mih-agent-
@@ -242,7 +242,7 @@ neg_disclosure_carrier_under_withheld["claims"][2]["presentation"] = {
 }
 
 # ===========================================================================
-# PROPOSED claim types (Steven's ruling, 2026-09-25: "close + reconcile as
+# PROPOSED claim types (the 2026-09-25 ruling: "close + reconcile as
 # claim types in result v0, so they feed the same result"). Each positive
 # below keeps the untouched requirement claim-1 beside its typed claims, so
 # the pre-existing shape is proven to coexist with each type in the same
@@ -691,7 +691,7 @@ del neg_reconcile_tallies_missing_state["claims"][1]["reconcile"]["tallies"]["un
 
 # --- neg-close-agreed-relabelled-contested -- the CONTESTED positive with --
 #     close_state relabelled AGREED and NOTHING else changed: peer_close_ref
-#     still cites the record that `rebuts` ours. This is Steven's adversarial
+#     still cites the record that `rebuts` ours. This is the adversarial
 #     case (2026-09-28): "a contested close relabelled 'agreed' validates".
 #     It DOES validate against the schema -- that is the hole -- and is
 #     rejected by the checker's link walk over its .records.json, which

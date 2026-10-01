@@ -3,8 +3,8 @@
 **Status.** Design specification, pre-Internet-Draft, beside `spec/evidence-plan-ir-v0.md` (the
 Evidence Plan IR). This document defines the **Evidence Result**: the artifact that reports, per
 requirement, what was judged and with what assurance, over an Evidence Contract. Sections 1–3
-(result semantics, disclosure policy, aggregate/coverage) carry **Steven's ruling, quoted verbatim
-below (2026-09-22)** — the gate Batch 4 required before this schema could freeze. The gate is
+(result semantics, disclosure policy, aggregate/coverage) carry **the 2026-09-22 ruling, quoted verbatim
+below** — the gate required before this schema could freeze. The gate is
 satisfied; the schema, validator, and fixtures below are encoded to the ruled text and are no
 longer DRAFT.
 
@@ -39,7 +39,7 @@ plans. It also never names `score`/`scoring` or `reputation` (§9).
 
 ## 1. Result semantics — what a claim is
 
-**Status: RULED (Steven, 2026-09-22) — gate item (a). Quoted verbatim, normative:**
+**Status: RULED (2026-09-22) — gate item (a). Quoted verbatim, normative:**
 
 > A claim is one requirement of one contract version, evaluated once. Every claim carries two
 > answers that are never merged: whether enough of the required evidence existed to judge it
@@ -111,7 +111,7 @@ same Result, never a number computed and reported without the claims that back i
 
 ## 2. Disclosure policy — `disclosure` · `analysis` · `story`
 
-**Status: RULED (Steven, 2026-09-22) — gate item (b). Quoted verbatim, normative:**
+**Status: RULED (2026-09-22) — gate item (b). Quoted verbatim, normative:**
 
 > Disclosure: a result carries evidence digests and the disclosure record's own status, never
 > evidence payload bytes. Withheld, not committed, unavailable, or otherwise missing evidence
@@ -165,7 +165,7 @@ them show payload); it is about how much can be said about evidence a reader can
 
 ## 3. What the sponsor sees first
 
-**Status: RULED (Steven, 2026-09-22) — gate item (c). Quoted verbatim, normative:**
+**Status: RULED (2026-09-22) — gate item (c). Quoted verbatim, normative:**
 
 > What the sponsor sees first is coverage: requirements evaluated, excluded as not applicable, and
 > unresolved. Then the claim buckets. Never put a single score, grade, or percentage above the
@@ -226,7 +226,7 @@ conforming verifier MUST check both in addition to schema validation.
 
 ### 4.1 Claim types — `reconcile` and `close` (PROPOSED)
 
-**Status: PROPOSED against Steven's ruling (2026-09-25), quoted verbatim:**
+**Status: PROPOSED against the 2026-09-25 ruling, quoted verbatim:**
 
 > close + reconcile as claim types in result v0, so they feed the same result. the constraint i
 > care about more than the vocabulary: A_ONLY / B_ONLY must never render like CONFLICTING, and
