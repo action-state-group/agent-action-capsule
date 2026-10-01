@@ -465,7 +465,7 @@ shape has no counterpart field at all in Result v0 and is not tabulated below.
 
 This document and its companion schema/examples MUST NOT use, in any form:
 `score`/`scoring` (as a feature or product term), or `reputation`. Every synthetic fixture's
-anchor/prospect placeholder is `OO`, never a company name and never `NN`.
+anchor/prospect placeholder is `OO`, never a company name.
 
 ## 11. Examples
 
