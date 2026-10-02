@@ -31,6 +31,12 @@
   as a null `disposition.approver` is: `declarant` is REQUIRED (§5.5.5). #148 had reported it as
   `field_not_string`; #149 changed the code in every verifier (Python, Go, TypeScript, Rust).
 
+### Fixed
+- TypeScript Result root: a claim citing a capsule that a book record carries resolves only when
+  the carried capsule's id, recomputed from its own bytes, matches the header's `subject_ref`.
+  Previously the lookup keyed on the header's stated `subject_ref`, so a header naming an id with
+  no carried capsule behind it could make the claim read as supported. Unreleased code only.
+
 ## 0.6.0 — 2026-09-27
 
 **Headline: the -05 wire.** Producers now emit `spec_version`

@@ -1333,16 +1333,59 @@ describe("resolveCarriedInput", () => {
 // ---------------------------------------------------------------------------
 
 describe("claims citing a capsule a book record carries", () => {
-  const carried = "ab".repeat(32);
+  const enc = new TextEncoder();
+  const b64url = (bytes: Uint8Array): string =>
+    btoa(String.fromCharCode(...bytes))
+      .replaceAll("+", "-")
+      .replaceAll("/", "_")
+      .replace(/=+$/u, "");
 
-  function bookCited(subjectRef: string): Obj {
+  // A real capsule, so its id is recomputed from its own bytes
+  // (computeCapsuleId) rather than taken from the header's self-asserted
+  // subject_ref -- a dishonest book could set subject_ref to anything,
+  // including a claim's own cited evidence digest, with no real capsule
+  // behind it (the case the second test below exists to close).
+  async function carriedCapsule(): Promise<{ id: string; digest: string }> {
+    const capsule: Obj = {
+      action_id: "urn:test:carried",
+      action_type: "fyi",
+      assurance: {
+        attestation_mode: "self_attested",
+        effect_mode: "not_applicable",
+        ledger_mode: "standalone",
+      },
+      canonicalization_id: "jcs",
+      developer: "test",
+      format_version: "4",
+      model_attestation: {
+        compute_attestation: { agent_input_digest: "ef".repeat(32) },
+      },
+      operator: "test",
+      spec_version: "draft-mih-scitt-agent-action-capsule-05",
+      timestamp: "2026-09-23T23:59:59Z",
+    };
+    const id = await computeCapsuleId(capsule as never);
+    capsule.capsule_id = id;
+    const bytes = enc.encode(JSON.stringify(capsule));
+    const digest = await sha256Hex(bytes);
+    carriedPayloads[digest] = b64url(bytes);
+    return { id, digest };
+  }
+
+  let carriedPayloads: Record<string, string>;
+
+  function bookCited(
+    citedDigest: string,
+    header: { subjectRef: string; commitments: string[] },
+  ): Obj {
     const source = fixture("result-root-book-bundle.json");
     const statement = (
       ((source.disclosures as Obj).result as Obj).agent_input as Obj
     ).statement as Obj;
     const claim = (statement.claims as Obj[])[0]!;
     const cite = (refs: Obj[]): void => {
-      for (const ref of refs) if (ref.digest === "day-1") ref.digest = carried;
+      for (const ref of refs)
+        if (ref.digest === "day-1") ref.digest = citedDigest;
     };
     cite(claim.evidence as Obj[]);
     cite((claim.presentation as Obj).evidence as Obj[]);
@@ -1352,29 +1395,57 @@ describe("claims citing a capsule a book record carries", () => {
         book_id: "sealed-fixture-log",
         record_type: "published_capsule",
         epistemic_type: "producer_claim",
-        subject_ref: subjectRef,
-        payload_commitments: [],
+        subject_ref: header.subjectRef,
+        payload_commitments: header.commitments,
         links: [],
       },
     };
+    source.extensions = { "evidencebook/payloads": carriedPayloads };
     return source;
   }
 
   it("resolves the cited capsule id to the book record carrying it, keeping the cited id", async () => {
-    const { bundle, ids } = await sealEvidenceBundle(bookCited(carried));
+    carriedPayloads = {};
+    const { id, digest } = await carriedCapsule();
+    const { bundle, ids } = await sealEvidenceBundle(
+      bookCited(id, { subjectRef: id, commitments: [digest] }),
+    );
     const result = await buildResultRoot(bundle);
     const claim = result.claims.find((c) => c.id === "claim-1")!;
     expect(claim.evidence.map((e) => e.resolved)).toEqual([true, true]);
     expect(claim.support).toBe("supported");
-    const record = result.records.get(carried)!;
-    expect(record.capsuleId).toBe(carried);
+    const record = result.records.get(id)!;
+    expect(record.capsuleId).toBe(id);
     expect(record.bookRecordId).toBe(ids["day-1"]);
     expect(record.agentInput.state).toBe("disclosed");
   });
 
+  it("never resolves through a header whose subject_ref the carried capsule's own recomputed id does not match", async () => {
+    // The capsule is real and genuinely committed (payload_commitments is
+    // correct and passes resolveDisclosure's own commitment check) -- only
+    // subject_ref lies, naming the claim's cited digest instead of the
+    // capsule's true recomputed id. Before the fix, bookCarrier trusted
+    // subject_ref directly and this claim would resolve as supported with
+    // no real capsule behind the citation.
+    carriedPayloads = {};
+    const forged = "ab".repeat(32);
+    const { digest } = await carriedCapsule();
+    const { bundle } = await sealEvidenceBundle(
+      bookCited(forged, { subjectRef: forged, commitments: [digest] }),
+    );
+    const result = await buildResultRoot(bundle);
+    const claim = result.claims.find((c) => c.id === "claim-1")!;
+    expect(claim.evidence[0]).toEqual({ digest: forged, resolved: false });
+    expect(claim.support).toBe("unsupported");
+    expect(result.records.has(forged)).toBe(false);
+  });
+
   it("never resolves through a header that does not match its record's committed digest", async () => {
+    carriedPayloads = {};
+    const { id, digest } = await carriedCapsule();
+    const carried = "cd".repeat(32);
     const { bundle, ids } = await sealEvidenceBundle(
-      bookCited("cd".repeat(32)),
+      bookCited(carried, { subjectRef: id, commitments: [digest] }),
     );
     const header = ((bundle.disclosures as Obj)[ids["day-1"]!] as Obj)
       .agent_input as Obj;
