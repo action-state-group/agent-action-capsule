@@ -6,6 +6,7 @@
     "disclosure_envelope": "disclosure-envelope/vectors.json",
     "cross_language": "cross-language/seal-input.json",
     "interop": "interop/README.md",
-    "evidence_request": "evidence-request/manifest.json"
+    "evidence_request": "evidence-request/manifest.json",
+    "bundle_producer_key": "bundle/producer-key/vectors.json"
   }
 }

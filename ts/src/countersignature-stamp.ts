@@ -294,6 +294,26 @@ async function classifyCountersignV1(
   return { kind: "resolved", keyId, name, statement: view };
 }
 
+/** The Evidence Bundle extension kind that declares the producer's key. */
+export const PRODUCER_KEY_V1 = "producer-key/v1";
+
+/**
+ * The producer key a bundle declares in its `producer-key/v1` extension
+ * (Evidence Bundle -01, "The producer-key/v1 Extension"):
+ * `extensions["producer-key/v1"].public_key`, 64 lowercase hex. Returns an
+ * empty list when the extension is absent or malformed; a malformed block is
+ * ignored, never an error. The key is only ever passed to
+ * {@link classifyCountersignatures} as a producer key, where it can only
+ * turn a matching signer into "not-independent".
+ */
+export function declaredProducerKeys(bundle: unknown): string[] {
+  const block = object(object(object(bundle)?.extensions)?.[PRODUCER_KEY_V1]);
+  const publicKey = block?.public_key;
+  return typeof publicKey === "string" && KEY_ID.test(publicKey)
+    ? [publicKey]
+    : [];
+}
+
 /**
  * Classify countersignatures[] into stamp states. A bundle with no entries
  * (absent or empty) always classifies as a single hollow stamp.

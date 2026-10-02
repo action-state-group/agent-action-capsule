@@ -301,6 +301,40 @@ integrity status as digest-covered, report the block as uninterpreted, and
 MUST NOT apply that block's semantics. An unknown kind MUST NOT alter the
 core Capsule, closure, disclosure, or membership checks.
 
+## The producer-key/v1 Extension {#producer-key}
+
+The `producer-key/v1` extension kind declares the key of the producer that
+assembled the Bundle:
+
+~~~
+"extensions": {
+  "producer-key/v1": { "public_key": "<64 lowercase hex>" }
+}
+~~~
+
+`public_key` is the producer's 32-byte Ed25519 {{RFC8032}} public key as 64
+lowercase hexadecimal characters. The block carries one key. A producer MUST
+NOT add other members to the block, and a verifier MUST ignore any it finds.
+Like every extension, the block is covered by the bundle digest, so a
+countersignature's `over` binds the declaration, and adding, removing, or
+changing the declaration afterwards makes that entry `invalid`.
+
+A verifier that implements this kind uses `public_key` for one purpose only:
+it adds the key to the producer's keys when determining independence
+({{self-countersignature}}), so that a `countersign/v1` entry whose
+`signer.key_id` equals it is reported as `not independent`. The declaration
+can only cause an entry to be reported as `not independent`. It MUST NOT
+cause any entry to be reported as independent, `resolved`, or valid, and it
+MUST NOT change any other result. It is not a claim of identity or of
+authority, and a verifier MUST NOT present it as one. The absence of this
+extension says nothing about whether any entry is independent.
+
+The block is malformed when it is not an object, or when `public_key` is
+absent, is not a string, or is not exactly 64 lowercase hexadecimal
+characters. A verifier MUST ignore a malformed block when determining
+independence, MUST NOT fail the Bundle or any claim because of it, and still
+treats the block as digest-covered.
+
 # Bundle Digest and Countersignatures {#bundle-digest}
 
 The bundle digest is `SHA-256(UTF8(JCS(canonical bundle form)))`, rendered as
@@ -428,14 +462,16 @@ present them as its own findings.
 
 A countersignature is a self-countersignature when `signer.key_id` equals the
 producer's key: the `kid` of a Producer Envelope over any record in `records`
-({{I-D.mih-scitt-agent-action-capsule}}), or any other key the verifier holds
-for that producer. A self-countersignature is a well-formed entry that does
+({{I-D.mih-scitt-agent-action-capsule}}), the `public_key` of a well-formed
+`producer-key/v1` extension ({{producer-key}}), or any other key the verifier
+holds for that producer. A self-countersignature is a well-formed entry that does
 not meet the definition of a countersignature, because its signer is the
 producer. A verifier MUST NOT reject it for being one, and MUST render it as
 not independent, never as a countersignature by a party other than the
 producer. The verifier computes
 independence itself for each entry; no entry member and no directory entry
-can change that result.
+can change that result, and a producer key declaration can only change it
+to not independent.
 
 # Fragment Codec {#fragment-codec}
 
@@ -487,7 +523,12 @@ the statement, not that the relying party should rely on that party: signer
 trust, and the choice of any directory used to put a name to a key, are
 outside this document. A self-countersignature is not a second party's
 check, and rendering it as one would present the producer's own claim as
-independent corroboration; {{self-countersignature}} forbids that. Results
+independent corroboration; {{self-countersignature}} forbids that. A
+`producer-key/v1` declaration can only cause an entry to be reported as not
+independent: a producer that declares a key it does not hold weakens only
+its own Bundle's countersignatures, and a producer that countersigns with a
+key it does not declare is still reported at most as an `unresolved signer`
+unless a directory the verifier chose lists that key. Results
 are listed per check and never combined, because an aggregate would hide a
 `failed` or `not checked` result behind a total.
 
@@ -498,9 +539,9 @@ group with these Specification Required registries, using {{RFC8174}} and
 {{RFC2119}} terminology and the designated-expert criteria of {{RFC8126}}:
 
 1. "Evidence Bundle kind", initial value `evidence-bundle/v2`.
-2. "Evidence Bundle extension kind", with no initial value. A registered
-   specification defines each block; private `x-` prefixed kinds are not
-   registered.
+2. "Evidence Bundle extension kind", initial value `producer-key/v1`
+   ({{producer-key}}). A registered specification defines each block;
+   private `x-` prefixed kinds are not registered.
 3. "Evidence Bundle countersignature type", initial values `cose-sign1`
    ({{bundle-digest}}) and `countersign/v1` ({{countersign-entry}}).
 
@@ -517,7 +558,9 @@ Since -00: defined the `countersign/v1` countersignature entry, its
 statement, and its five check results; defined countersignature,
 countersigner, and self-countersignature, and required a self-countersignature
 to be rendered as not independent; registered `countersign/v1` as a second
-countersignature type.
+countersignature type; defined and registered the `producer-key/v1`
+extension kind, which declares the producer's key and can only cause a
+countersignature to be reported as not independent.
 
 # Acknowledgments
 {:numbered="false"}
