@@ -1420,10 +1420,16 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
   // published capsule as the evidence-book record that carries it, under
   // the BOOK record's id; a claim cites the capsule by its own id (what
   // `publish` returned and the producer recorded). The carried capsule's id
-  // is the header's `subject_ref`, read only from a header that is itself
-  // disclosed and matched to the book record's committed digest -- never
-  // from an unverified value. Built on first need: a payload-form bundle,
-  // where every cited id is a record id, never pays for it.
+  // is never taken from the header's own `subject_ref` field directly --
+  // that is a producer-asserted value a dishonest bundle could set to any
+  // string, including a cited claim's evidence digest, with no carried
+  // capsule to back it. `carriedCapsuleCommitment` recomputes the id from
+  // the carried capsule's own bytes (via `computeCapsuleId`) and only
+  // returns it once that recomputed id equals both the capsule's own
+  // `capsule_id` and the header's `subject_ref` -- the same check
+  // `resolveRecord` below already applies to every OTHER use of a carried
+  // capsule's id. Built on first need: a payload-form bundle, where every
+  // cited id is a record id, never pays for it.
   let carriersById: Map<string, RecordWithId> | undefined;
   const bookCarrier = async (id: string): Promise<RecordWithId | undefined> => {
     if (carriersById === undefined) {
@@ -1436,9 +1442,12 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
           header.payload.record_type !== PUBLISHED_CAPSULE_RECORD_TYPE
         )
           continue;
-        const subject = header.payload.subject_ref;
-        if (isHex64(subject) && !recordsById.has(subject))
-          carriersById.set(subject, record);
+        const carried = await carriedCapsuleCommitment(
+          header.payload,
+          bookPayloads,
+        );
+        if (carried !== undefined && !recordsById.has(carried.capsuleId))
+          carriersById.set(carried.capsuleId, record);
       }
     }
     return carriersById.get(id);
