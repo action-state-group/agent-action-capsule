@@ -381,6 +381,7 @@ bundle producer over the bundle digest.
 | Value | Semantics |
 |---|---|
 | `cose-sign1` | A tagged COSE_Sign1 whose attached payload is the raw 32-byte bundle digest, as defined by the Evidence Bundle draft. |
+| `countersign/v1` | The JSON entry `{type, signer, over, statement, signature, receipt?}` defined in the Evidence Bundle draft, "The countersign/v1 Entry": an Ed25519 signature over the bundle digest, the signer, and the countersigner's statement of the checks it recomputed, each with one of five results. |
 
 ## No registry
 
