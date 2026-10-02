@@ -211,7 +211,7 @@ use today choose one of them:
 * The Payment HTTP authentication scheme {{I-D.ryan-httpauth-payment}}
   returns a `Payment-Receipt` header that is not signed.
 * BOLT 12 payer proofs {{BOLT12}} combine a payee-signed invoice with a
-  payer signature. They are two-sided for the payment, and specific to
+  payer signature. They are two-party for the payment, and specific to
   Lightning.
 * ISO 20022 status reports {{ISO20022}} are produced by each agent in the
   chain about its own side, under bank keys.
@@ -310,7 +310,7 @@ Conventions and Definitions).
 
 The payer and the payee each produce their own leg records and sign them
 with their own key. The rules in this section are what make a settlement
-two-sided rather than one party's account of both sides.
+two-party rather than one party's account of both sides.
 
 1. **Own side only.** A sealer MUST record in a leg only what its own system
    observed. The payer-observed leg records what the payer's wallet or
@@ -475,6 +475,11 @@ The terms leg carries:
   payment.
 * `valid_until` (OPTIONAL).
 
+Refunds and partial payments are out of scope for this revision. A refund
+can be recorded as a separate settlement, with its own terms leg and the
+roles reversed; this document defines no citation between it and the
+original terms leg ({{open-issues}}).
+
 When the terms come from a protocol object, the terms leg's `amount` MUST
 equal the amount that object states ({{amounts}}). The x402 offer's
 `amount` is already an integer string in the asset's atomic units, so it
@@ -524,7 +529,7 @@ The `delivery` member is an object:
 | Member | Type | Req | Meaning |
 |---|---|---|---|
 | `direction` | string | REQUIRED | `sent` (sealed by the payee) or `received` (sealed by the payer). Any other combination of `direction` and `sealer_role` is `settlement_malformed`. |
-| `content_digest` | string | REQUIRED for digital content | The digest of the delivered content: SHA-256 over the exact octets sent or received, or the JSON digest when the content is a JSON value. |
+| `content_digest` | string | REQUIRED unless `carrier` is present | The digest of the delivered content: SHA-256 over the exact octets sent or received, or the JSON digest when the content is a JSON value. |
 | `carrier` | string | OPTIONAL | For physical goods: the carrier ({{aep}}). |
 | `tracking_digest` | string | OPTIONAL | For physical goods: the digest of the carrier's tracking number. The tracking number itself is not carried ({{privacy}}). |
 | `status` | string | OPTIONAL | For physical goods: `pending`, `in_transit`, `delivered`, `failed`, or `returned`. |
@@ -591,6 +596,10 @@ The rules for amounts:
 The x402 `amount` and the AEP `amount_atomic` {{AEP}} are integer strings in
 atomic units; they become `value` unchanged, with `assetScale` set to the
 asset's decimals. Lightning amounts in millisatoshi use `assetScale` 11.
+The `assetCode` `BTC` denotes bitcoin settled over Lightning; bitcoin
+settled on-chain uses its CAIP-19 asset type (for example
+`bip122:000000000019d6689c085ae165831e93/slip44:0`), and the two are
+different assets for every comparison in this document.
 
 ## Fees {#fees}
 
@@ -703,10 +712,19 @@ Types whose names begin with `x-` are private and MUST NOT be registered.
 `open_payments.incoming_payment`:
 : `value` is the Open Payments incoming payment `id` (a URL). Normal form: as received. Source: {{OPEN-PAYMENTS}}.
 
-Receive fees: `x402.transaction` declares receive fees not applicable,
-because the x402 `exact` scheme transfers exactly `amount` to `payTo` and
-any facilitator charge is outside that transfer. Every other initial type
-declares that a receive fee may apply ({{fees}}, rule 4).
+Receive fees: `x402.transaction` declares receive fees not applicable for
+the x402 `exact` scheme only, because that scheme transfers exactly
+`amount` to `payTo` and any facilitator charge is outside that transfer.
+Other x402 schemes, present or future (for example schemes that batch many
+payments into one transfer), may differ, and a verifier MUST treat
+`receive_fee` as one that may apply for any scheme other than `exact`. The
+scheme is the `scheme` member of the x402 signed offer and of the
+`PaymentRequirements` the payer accepted {{X402}}; a verifier reads it from
+a wrapped `x402.offer` in the terms leg or a wrapped `x402.payment-payload`
+in the payer-observed leg whose octets it holds. A verifier that cannot
+establish that the scheme is `exact` treats the receive fee as one that may
+apply. Every other initial type declares that a receive fee may apply
+({{fees}}, rule 4).
 
 Notes on the initial types:
 
@@ -1006,7 +1024,7 @@ defines: a registrar submits a Signed Statement whose payload is the leg's
 Capsule ID to a SCITT Transparency Service {{RFC9943}} and obtains a Receipt
 {{RFC9942}}. A Receipt proves that the leg was registered in that
 Transparency Service's log; it does not prove that the leg's content is
-true, and it does not make a one-sided leg two-sided.
+true, and it does not make a one-sided leg a two-party record.
 
 Each sealer SHOULD register its own legs. A sealer MAY register with more
 than one Transparency Service. Registration gives a third party a way to
@@ -1036,7 +1054,7 @@ Receipt is the processor's statement; in these records it is carried in the
 payee's leg as the processor's object, and the payee's own observation is
 the leg itself.
 
-**BOLT 12 payer proofs.** A payer proof {{BOLT12}} is a two-sided proof of a
+**BOLT 12 payer proofs.** A payer proof {{BOLT12}} is a two-party proof of a
 Lightning payment. It is wrapped, not replaced; this document adds the
 delivery leg and a form that is the same across rails.
 
@@ -1058,7 +1076,7 @@ separate sealer.
 
 # Security Considerations {#security}
 
-**One party sealing both sides.** The main attack on a two-sided record is
+**One party sealing both sides.** The main attack on a two-party record is
 one party producing both halves. A payer-observed and payee-observed pair
 under one key is detected without any policy ({{sealers}}). A pair under
 two keys that one party controls is not detectable from the records; the
@@ -1158,6 +1176,30 @@ yes/no result) can be guessed; a sealer delivering such content SHOULD
 digest a structure that includes an unpredictable component, such as the
 full response object.
 
+# Open Issues {#open-issues}
+
+The following are expected to be addressed in a later revision. This
+document does not design them.
+
+Several payments per terms leg:
+: Terms that are paid in parts (for example one payment per invoice under
+  one terms leg) need a payment sequence or index on the observed legs and
+  a rule for the total. This revision joins one payer-observed and one
+  payee-observed leg per terms leg; partial payments and refunds are out
+  of scope ({{terms-leg}}).
+
+Key-policy result:
+: Whether each leg's key is accepted for its party is a separate result
+  from the payment state. A later revision is expected to report it
+  separately (for example whether the parties are bound), so that
+  implementations do not invent combined states.
+
+In-progress payments:
+: A payment that one side reports `settled` and the other `pending` is
+  in flight, not in disagreement. A later revision is expected to define an
+  `in_progress` state for it, distinct from `mismatch`; in this revision the
+  status difference is reported as `mismatch`.
+
 # IANA Considerations {#iana}
 
 This document asks IANA to create two registries in a new "Agent Settlement
@@ -1252,13 +1294,13 @@ updates this document.
 The source repository of this document carries conformance vectors in
 `vectors/settlement/`. They are generated by a deterministic script from
 fixed Ed25519 seeds and RFC 8785 canonical forms, and each case states its
-expected states and failure codes. The cases are: a two-sided x402
+expected states and failure codes. The cases are: a two-party x402
 settlement with matching legs and matched delivery; two Lightning payments
 of 1000 millisatoshi each where the payee recorded 995 received and a
 receive fee of 5, which agree; a receive fee that does not explain the
 difference, and an absent receive fee, on Lightning; one-sided payer and
 payee settlements; mismatches in asset and in delivered content; amounts
-equal at different scales; a two-sided BOLT 12 settlement wrapping a payer
+equal at different scales; a two-party BOLT 12 settlement wrapping a payer
 proof; an AP2 Payment Receipt wrapped by digest; and negative cases for a
 re-signed wrapped object, a wrapped object whose content does not match its
 digest, a floating-point amount, a decimal-fraction amount string, an

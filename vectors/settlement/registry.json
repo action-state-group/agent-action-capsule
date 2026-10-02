@@ -60,7 +60,8 @@
       "qualifiers": [
         "network"
       ],
-      "receive_fee": "not_applicable"
+      "receive_fee": "not_applicable",
+      "receive_fee_scope": "not_applicable for the x402 'exact' scheme only, established from a wrapped x402.offer or x402.payment-payload whose octets the verifier holds; may_apply for any other scheme or when the scheme cannot be established"
     },
     "ln.payment_hash": {
       "qualifiers": [],

@@ -1,6 +1,6 @@
 # Settlement records conformance vectors (draft-mih-agent-settlement-records-00)
 
-Conformance vectors for the two-sided settlement records defined in
+Conformance vectors for the two-party settlement records defined in
 `spec/draft-mih-agent-settlement-records-00.md`: leg records sealed by two
 independent sealers, the typed payment reference join, wrapped objects carried
 by digest, exact amounts, the delivered-content digest, and the states a
@@ -84,8 +84,12 @@ For each case, a verifier:
    `payer.amount = payee.received + payee.receive_fee`, exactly, at the largest
    scale, with one asset. An absent `receive_fee` counts as zero only where
    `registry.json` marks the payment reference type `"receive_fee":
-   "not_applicable"` (only `x402.transaction`); otherwise the pair is
-   `unjoined` with finding `fee_unstated` (§6.1).
+   "not_applicable"` (only `x402.transaction`, and only when the x402 scheme
+   is established as `exact` from a wrapped `x402.offer` or
+   `x402.payment-payload` whose octets the verifier holds, §7.2); otherwise
+   the pair is `unjoined` with finding `fee_unstated` (§6.1). Every x402 leg
+   in these vectors carries an explicit `receive_fee`, so no case depends on
+   that reading.
 
 `expect.settlements` has one entry per terms leg, in record order, each
 naming the terms leg's label. `expect.failures` and `expect.findings` list `{records, code}` in the order a

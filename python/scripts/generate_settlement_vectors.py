@@ -705,7 +705,12 @@ def registry() -> dict:
         "base_profile_codes": ["capsule_invalid", "envelope_invalid"],
         "payment_ref_types": {
             name: {"qualifiers": qualifiers,
-                   "receive_fee": "not_applicable" if name == "x402.transaction" else "may_apply"}
+                   "receive_fee": "not_applicable" if name == "x402.transaction" else "may_apply",
+                   **({"receive_fee_scope": "not_applicable for the x402 'exact' scheme only, established from a "
+                                            "wrapped x402.offer or x402.payment-payload whose octets the verifier "
+                                            "holds; may_apply for any other scheme or when the scheme cannot be "
+                                            "established"}
+                      if name == "x402.transaction" else {})}
             for name, qualifiers in (
                 ("x402.transaction", ["network"]), ("ln.payment_hash", []),
                 ("bolt12.invoice_payment_hash", []), ("ap2.transaction_id", []), ("ap2.payment_id", []),

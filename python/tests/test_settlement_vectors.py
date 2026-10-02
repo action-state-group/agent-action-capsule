@@ -337,12 +337,26 @@ def derive(case: dict) -> dict:
     for terms_id, terms_label in terms_ids.items():
         settlements.append(_settlement(terms_label, live[terms_label],
                                        {lbl: s for lbl, s in live.items() if s.get("terms_ref") == terms_id},
-                                       conflated, findings))
+                                       conflated, findings, objects))
     return {"conforming": not failures, "failures": failures, "findings": findings, "settlements": settlements}
 
 
+def _x402_scheme(legs: list[dict], objects: dict[str, bytes]) -> str | None:
+    """§7.2: the x402 scheme, read from a wrapped offer or payment payload whose octets are held."""
+    for s in legs:
+        for w in s.get("wrapped", []):
+            octets = _b64u_decode(w["content"]) if "content" in w else objects.get(w["digest"])
+            if octets is None:
+                continue
+            if w["type"] == "x402.offer" and octets.count(b".") == 2:
+                return json.loads(_b64u_decode(octets.split(b".")[1].decode("ascii"))).get("scheme")
+            if w["type"] == "x402.payment-payload":
+                return json.loads(octets).get("accepted", {}).get("scheme")
+    return None
+
+
 def _settlement(terms_label: str, terms_s: dict, legs: dict[str, dict], conflated: bool,
-                findings: list[dict]) -> dict:
+                findings: list[dict], objects: dict[str, bytes]) -> dict:
     payer = [(lbl, s) for lbl, s in legs.items() if s["leg"] == "payer_observed"]
     payee = [(lbl, s) for lbl, s in legs.items() if s["leg"] == "payee_observed"]
     result: dict[str, Any] = {"terms": terms_label}
@@ -358,7 +372,9 @@ def _settlement(terms_label: str, terms_s: dict, legs: dict[str, dict], conflate
         known = REGISTRY["payment_ref_types"]
         ref_type = b["payment_ref"]["type"]
         receive_fee = b.get("receive_fee")
-        if receive_fee is None and ref_type in known and known[ref_type]["receive_fee"] == "not_applicable":
+        not_applicable = ref_type in known and known[ref_type]["receive_fee"] == "not_applicable" and (
+            ref_type != "x402.transaction" or _x402_scheme([terms_s, a], objects) == "exact")  # §7.2 exact only
+        if receive_fee is None and not_applicable:
             receive_fee = {"value": "0", "assetCode": b["received"]["assetCode"],
                            "assetScale": b["received"]["assetScale"]}  # §6.1 rule 4
         if a["payment_ref"]["type"] not in known or ref_type not in known or a["payment_ref"]["type"] != ref_type:
@@ -459,8 +475,16 @@ def test_flipping_one_fact_moves_the_derived_state():
     assert state(run("x402-delivered-received", ["delivery", "content_digest"], "0" * 64))["delivery_state"] == "mismatch"
     assert run("x402-payee-observed", ["sealer_role"], "payer")["failures"][0]["code"] == "leg_role_mismatch"
     assert run("x402-payee-observed", ["received", "value"], "1.5")["failures"][0]["code"] == "amount_not_exact"
-    # x402 declares receive fees not applicable: an absent receive_fee is zero there.
+    # x402 'exact' declares receive fees not applicable: an absent receive_fee is zero there...
     assert state(run("x402-payee-observed", ["receive_fee"], None))["payment_state"] == "agreed"
+    # ...but only when the scheme is established as 'exact'; with the offer and payload octets withheld,
+    # the scheme is unknown and the fee may apply.
+    blind = copy.deepcopy(base)
+    blind["wrapped_objects"] = []
+    r = next(r for r in blind["records"] if r["label"] == "x402-payee-observed")
+    del r["capsule"]["settlement"]["receive_fee"]
+    _reseal(r, seeds["payee"])
+    assert state(derive(blind))["payment_state"] == "unjoined"
     conflated = run("x402-payee-observed", [], None, signer="payer")
     assert [f["code"] for f in conflated["failures"]] == ["sealer_not_authorized_for_role", "sealer_conflation"]
     assert state(conflated)["payment_state"] == "payer_stated"
