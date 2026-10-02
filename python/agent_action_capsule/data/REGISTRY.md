@@ -367,9 +367,13 @@ specification defines that extension's block shape and semantic checks; the
 neutral bundle core does not interpret it. A private `x-`-prefixed kind is not
 registered.
 
-No initial extension kind is defined. A company-specific row model such as
-`report/v1` is an extension only when its independently available
-specification is registered; this registry does not define that row model.
+| Value | Semantics |
+|---|---|
+| `producer-key/v1` | `{"public_key": "<64 lowercase hex>"}`: the declaring producer's Ed25519 public key, one key per block, defined in the Evidence Bundle draft (`-01` and later), "The producer-key/v1 Extension". Covered by the bundle digest like every extension. A verifier uses it only to classify a countersignature whose `signer.key_id` equals it as not independent (a self-countersignature). It can only downgrade an entry to not independent, never upgrade one, and it is not an identity or authority claim. A malformed block is ignored and does not fail the Bundle. |
+
+A company-specific row model such as `report/v1` is an extension only when
+its independently available specification is registered; this registry does
+not define that row model.
 
 ## 15. Evidence Bundle countersignature type
 

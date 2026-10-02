@@ -7,6 +7,7 @@
     "cross_language": "cross-language/seal-input.json",
     "interop": "interop/README.md",
     "evidence_request": "evidence-request/manifest.json",
-    "settlement": "settlement/manifest.json"
+    "settlement": "settlement/manifest.json",
+    "bundle_producer_key": "bundle/producer-key/vectors.json"
   }
 }

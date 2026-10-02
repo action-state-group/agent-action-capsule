@@ -283,6 +283,36 @@ that does not implement a registered extension kind MUST preserve its
 integrity status as digest-covered, report the block as uninterpreted, and
 MUST NOT apply that block's semantics. An unknown kind MUST NOT alter the
 core Capsule, closure, disclosure, or membership checks.</t>
+      <section anchor="producer-key">
+        <name>The producer-key/v1 Extension</name>
+        <t>The <tt>producer-key/v1</tt> extension kind declares the key of the producer that
+assembled the Bundle:</t>
+        <artwork><![CDATA[
+"extensions": {
+  "producer-key/v1": { "public_key": "<64 lowercase hex>" }
+}
+]]></artwork>
+        <t><tt>public_key</tt> is the producer's 32-byte Ed25519 <xref target="RFC8032"/> public key as 64
+lowercase hexadecimal characters. The block carries one key. A producer MUST
+NOT add other members to the block, and a verifier MUST ignore any it finds.
+Like every extension, the block is covered by the bundle digest, so a
+countersignature's <tt>over</tt> binds the declaration, and adding, removing, or
+changing the declaration afterwards makes that entry <tt>invalid</tt>.</t>
+        <t>A verifier that implements this kind uses <tt>public_key</tt> for one purpose only:
+it adds the key to the producer's keys when determining independence
+(<xref target="self-countersignature"/>), so that a <tt>countersign/v1</tt> entry whose
+<tt>signer.key_id</tt> equals it is reported as <tt>not independent</tt>. The declaration
+can only cause an entry to be reported as <tt>not independent</tt>. It MUST NOT
+cause any entry to be reported as independent, <tt>resolved</tt>, or valid, and it
+MUST NOT change any other result. It is not a claim of identity or of
+authority, and a verifier MUST NOT present it as one. The absence of this
+extension says nothing about whether any entry is independent.</t>
+        <t>The block is malformed when it is not an object, or when <tt>public_key</tt> is
+absent, is not a string, or is not exactly 64 lowercase hexadecimal
+characters. A verifier MUST ignore a malformed block when determining
+independence, MUST NOT fail the Bundle or any claim because of it, and still
+treats the block as digest-covered.</t>
+      </section>
     </section>
     <section anchor="bundle-digest">
       <name>Bundle Digest and Countersignatures</name>
@@ -434,14 +464,16 @@ present them as its own findings.</t>
         <name>Self-Countersignature</name>
         <t>A countersignature is a self-countersignature when <tt>signer.key_id</tt> equals the
 producer's key: the <tt>kid</tt> of a Producer Envelope over any record in <tt>records</tt>
-(<xref target="I-D.mih-scitt-agent-action-capsule"/>), or any other key the verifier holds
-for that producer. A self-countersignature is a well-formed entry that does
+(<xref target="I-D.mih-scitt-agent-action-capsule"/>), the <tt>public_key</tt> of a well-formed
+<tt>producer-key/v1</tt> extension (<xref target="producer-key"/>), or any other key the verifier
+holds for that producer. A self-countersignature is a well-formed entry that does
 not meet the definition of a countersignature, because its signer is the
 producer. A verifier MUST NOT reject it for being one, and MUST render it as
 not independent, never as a countersignature by a party other than the
 producer. The verifier computes
 independence itself for each entry; no entry member and no directory entry
-can change that result.</t>
+can change that result, and a producer key declaration can only change it
+to not independent.</t>
       </section>
     </section>
     <section anchor="fragment-codec">
@@ -491,7 +523,12 @@ the statement, not that the relying party should rely on that party: signer
 trust, and the choice of any directory used to put a name to a key, are
 outside this document. A self-countersignature is not a second party's
 check, and rendering it as one would present the producer's own claim as
-independent corroboration; <xref target="self-countersignature"/> forbids that. Results
+independent corroboration; <xref target="self-countersignature"/> forbids that. A
+<tt>producer-key/v1</tt> declaration can only cause an entry to be reported as not
+independent: a producer that declares a key it does not hold weakens only
+its own Bundle's countersignatures, and a producer that countersigns with a
+key it does not declare is still reported at most as an <tt>unresolved signer</tt>
+unless a directory the verifier chose lists that key. Results
 are listed per check and never combined, because an aggregate would hide a
 <tt>failed</tt> or <tt>not checked</tt> result behind a total.</t>
     </section>
@@ -504,9 +541,9 @@ group with these Specification Required registries, using <xref target="RFC8174"
           <t>"Evidence Bundle kind", initial value <tt>evidence-bundle/v2</tt>.</t>
         </li>
         <li>
-          <t>"Evidence Bundle extension kind", with no initial value. A registered
-specification defines each block; private <tt>x-</tt> prefixed kinds are not
-registered.</t>
+          <t>"Evidence Bundle extension kind", initial value <tt>producer-key/v1</tt>
+(<xref target="producer-key"/>). A registered specification defines each block;
+private <tt>x-</tt> prefixed kinds are not registered.</t>
         </li>
         <li>
           <t>"Evidence Bundle countersignature type", initial values <tt>cose-sign1</tt>
@@ -702,7 +739,7 @@ the same values and policy.</t>
         </reference>
       </references>
     </references>
-    <?line 511?>
+    <?line 552?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>
@@ -710,7 +747,9 @@ the same values and policy.</t>
 statement, and its five check results; defined countersignature,
 countersigner, and self-countersignature, and required a self-countersignature
 to be rendered as not independent; registered <tt>countersign/v1</tt> as a second
-countersignature type.</t>
+countersignature type; defined and registered the <tt>producer-key/v1</tt>
+extension kind, which declares the producer's key and can only cause a
+countersignature to be reported as not independent.</t>
     </section>
     <section numbered="false" anchor="acknowledgments">
       <name>Acknowledgments</name>
