@@ -508,3 +508,25 @@ def test_the_fee_rule_not_naive_equality_decides_agreement():
     payee_scaled = dict(payee, receive_fee={"value": "50", "assetCode": "BTC", "assetScale": 12})
     assert amount_rule_holds(payer, payee_scaled, payee_scaled["receive_fee"])
     assert not amount_rule_holds(payer, payee, {"value": "5", "assetCode": "XBT", "assetScale": 11})
+
+
+
+def test_decimal_amounts_at_mixed_scales_compare_exactly():
+    pytest.importorskip("scitt_cose")
+    case = next(c for c in CASES["cases"] if c["id"] == "pos-amount-decimals-mixed-scales")
+    legs = {r["label"]: r["capsule"]["settlement"] for r in case["records"]}
+    micro, usd = legs["dec-micro-payer-observed"]["amount"], legs["dec-usd-payer-observed"]["amount"]
+    assert (micro["value"], micro["assetScale"]) == ("1", 6)        # 0.000001
+    assert (usd["value"], usd["assetScale"]) == ("123456", 2)       # 1234.56
+    payee = legs["dec-usd-payee-observed"]
+    assert {payee["received"]["assetScale"], payee["receive_fee"]["assetScale"]} == {3}
+    assert amount_rule_holds(legs["dec-usd-payer-observed"], payee, payee["receive_fee"])
+    assert amount_rule_holds(legs["dec-micro-payer-observed"], legs["dec-micro-payee-observed"],
+                             legs["dec-micro-payee-observed"]["receive_fee"])
+    # Equal across scales, never by floating point: 1234.56 == 1234.560, and 0.000001 == 0.00000100.
+    assert amounts_equal(usd, {"value": "1234560", "assetCode": "USD", "assetScale": 3})
+    assert amounts_equal(micro, {"value": "100", "assetCode": micro["assetCode"], "assetScale": 8})
+    assert not amounts_equal(usd, {"value": "1234561", "assetCode": "USD", "assetScale": 3})
+    assert [s["payment_state"] for s in derive(case)["settlements"]] == ["agreed", "agreed"]
+    off = next(c for c in CASES["cases"] if c["id"] == "state-amount-decimals-off-by-one-unit")
+    assert [s["payment_state"] for s in derive(off)["settlements"]] == ["agreed", "mismatch"]

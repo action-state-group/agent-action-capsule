@@ -49,6 +49,8 @@ independent reading of the draft.
 | `pos-ln-receive-fee-two-payments` | Two Lightning payments, from the numbers of a real run: the payer sent 1000 msat with `routing_fee` 0; the payee's wallet recorded `received` 995 with `receive_fee` 5. 1000 = 995 + 5. | both settlements `agreed` (naive equality would say `mismatch`) |
 | `state-ln-receive-fee-mismatch` | The payee reports `received` 995 with `receive_fee` 0. | `mismatch`, differs `amount` |
 | `neg-ln-receive-fee-absent` | The payee reports `received` 995 and no `receive_fee`. Lightning receive fees may apply, so absent is not zero. | finding `fee_unstated`, `unjoined` (never a false `agreed`) |
+| `pos-amount-decimals-mixed-scales` | Non-trivial decimals at mixed scales: 0.000001 USDC as value 1 at scale 6, reported by the payee as 100 at scale 8; 1234.56 USD as value 123456 at scale 2, reported by the payee as 1234500 received plus 60 fee at scale 3. | both settlements `agreed`, compared exactly at the largest scale |
+| `state-amount-decimals-off-by-one-unit` | The same, but the payee reports 1234501 at scale 3 (1234.561 with the fee). | the USD settlement `mismatch`, differs `amount`; the USDC one `agreed` |
 
 Every observed leg in the other cases carries explicit fee members:
 `routing_fee` 0 on the payer side and `receive_fee` 0 on the payee side.

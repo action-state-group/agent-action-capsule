@@ -25,7 +25,7 @@
       "public_key_hex": "3954c5684ec709945665c50fa166ee5940a66e3e24f6e9ab79938eab8c8e67f7"
     }
   },
-  "count": 17,
+  "count": 19,
   "cases": [
     {
       "id": "pos-x402-two-sided-agreed",
@@ -3473,6 +3473,615 @@
           {
             "terms": "ln-terms-1",
             "payment_state": "unjoined",
+            "delivery_state": "none"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pos-amount-decimals-mixed-scales",
+      "section": [
+        "§6 Amounts",
+        "§6.1 Fees",
+        "§9.2 Payment State"
+      ],
+      "description": "Two settlements with non-trivial decimals at mixed scales. 0.000001 USDC is value 1 at scale 6; the payee reports it as 100 at scale 8 with a zero fee: 1 * 10^2 = 100 + 0. 1234.56 USD is value 123456 at scale 2; the payee reports 1234500 received and a fee of 60, both at scale 3: 123456 * 10 = 1234500 + 60. Both agree, exactly.",
+      "key_policy": {
+        "payer": "2cbfe3c87a19f0621a0b3231f64696ace6aa1a466495a947ced9ab21dfe5dcd0",
+        "payee": "7125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8"
+      },
+      "records": [
+        {
+          "label": "dec-micro-terms",
+          "capsule": {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "dec-micro-terms",
+            "action_type": "fyi",
+            "operator": "payee.example",
+            "developer": "settlement-example-agent@1",
+            "timestamp": "2026-10-01T12:00:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "settlement": {
+              "version": "0",
+              "leg": "terms",
+              "sealer_role": "payee",
+              "amount": {
+                "value": "1",
+                "assetCode": "eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "assetScale": 6
+              },
+              "payment_ref": {
+                "type": "x402.transaction",
+                "value": "0x2e699643ded922c8d98534860d94e2477238e3d587972bfc3ba9ce9fbbcc0771",
+                "network": "eip155:8453"
+              }
+            },
+            "capsule_id": "bf5142d3c6f8fe1c42756e5c5b22b2fbbd72f4039699a98d97d7e4fb415c58ca"
+          },
+          "capsule_id": "bf5142d3c6f8fe1c42756e5c5b22b2fbbd72f4039699a98d97d7e4fb415c58ca",
+          "envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458207125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8a05820bf5142d3c6f8fe1c42756e5c5b22b2fbbd72f4039699a98d97d7e4fb415c58ca5840115a2bae68718ee9c32e7f63fd197e57534765534901e62d5f7b4e6e6e7ce9770859f20912ff40b14cf44add48180c202f86855eeb0e6f1ac592a899f74da30f",
+          "envelope_kid": "7125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8"
+        },
+        {
+          "label": "dec-micro-payer-observed",
+          "capsule": {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "dec-micro-payer-observed",
+            "action_type": "fyi",
+            "operator": "payer.example",
+            "developer": "settlement-example-agent@1",
+            "timestamp": "2026-10-01T12:01:06Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "settlement": {
+              "version": "0",
+              "leg": "payer_observed",
+              "sealer_role": "payer",
+              "terms_ref": "bf5142d3c6f8fe1c42756e5c5b22b2fbbd72f4039699a98d97d7e4fb415c58ca",
+              "payment_ref": {
+                "type": "x402.transaction",
+                "value": "0x2e699643ded922c8d98534860d94e2477238e3d587972bfc3ba9ce9fbbcc0771",
+                "network": "eip155:8453"
+              },
+              "amount": {
+                "value": "1",
+                "assetCode": "eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "assetScale": 6
+              },
+              "status": "settled",
+              "observed_at": "2026-10-01T12:01:05Z",
+              "routing_fee": {
+                "value": "0",
+                "assetCode": "eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "assetScale": 6
+              }
+            },
+            "capsule_id": "7f56af0d57b3f3046ad1e27901f745174cf28ff9c397c71e9809fc544937f9c1"
+          },
+          "capsule_id": "7f56af0d57b3f3046ad1e27901f745174cf28ff9c397c71e9809fc544937f9c1",
+          "envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458202cbfe3c87a19f0621a0b3231f64696ace6aa1a466495a947ced9ab21dfe5dcd0a058207f56af0d57b3f3046ad1e27901f745174cf28ff9c397c71e9809fc544937f9c158403b62c4916a8474d3fbbedb5f23beddeb264d5590fa708862d69dc2b5d8c2ded6ea88dff7642bcc27e91b7b6f60b9051157d937c447618ccd90469decf97b440a",
+          "envelope_kid": "2cbfe3c87a19f0621a0b3231f64696ace6aa1a466495a947ced9ab21dfe5dcd0"
+        },
+        {
+          "label": "dec-micro-payee-observed",
+          "capsule": {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "dec-micro-payee-observed",
+            "action_type": "fyi",
+            "operator": "payee.example",
+            "developer": "settlement-example-agent@1",
+            "timestamp": "2026-10-01T12:02:06Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "settlement": {
+              "version": "0",
+              "leg": "payee_observed",
+              "sealer_role": "payee",
+              "terms_ref": "bf5142d3c6f8fe1c42756e5c5b22b2fbbd72f4039699a98d97d7e4fb415c58ca",
+              "payment_ref": {
+                "type": "x402.transaction",
+                "value": "0x2e699643ded922c8d98534860d94e2477238e3d587972bfc3ba9ce9fbbcc0771",
+                "network": "eip155:8453"
+              },
+              "received": {
+                "value": "100",
+                "assetCode": "eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "assetScale": 8
+              },
+              "status": "settled",
+              "observed_at": "2026-10-01T12:02:05Z",
+              "receive_fee": {
+                "value": "0",
+                "assetCode": "eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "assetScale": 8
+              }
+            },
+            "references": [
+              {
+                "type": "agent-action-capsule",
+                "digest_alg": "SHA-256",
+                "digest": "7f56af0d57b3f3046ad1e27901f745174cf28ff9c397c71e9809fc544937f9c1",
+                "citation_purpose": "counterparty_half"
+              }
+            ],
+            "capsule_id": "68156cc28098a845098ead3198376ad8ac3ebb2313d7c7a9ec0b255686f98637"
+          },
+          "capsule_id": "68156cc28098a845098ead3198376ad8ac3ebb2313d7c7a9ec0b255686f98637",
+          "envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458207125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8a0582068156cc28098a845098ead3198376ad8ac3ebb2313d7c7a9ec0b255686f98637584021107c62c42e0cddd61b7fc0838b667515a1ed003e5b99bed732da8dbd16aa107aacdfe1431de5050f8125ee3229ad19af67f5db067c30089c009afe4c7d790a",
+          "envelope_kid": "7125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8"
+        },
+        {
+          "label": "dec-usd-terms",
+          "capsule": {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "dec-usd-terms",
+            "action_type": "fyi",
+            "operator": "payee.example",
+            "developer": "settlement-example-agent@1",
+            "timestamp": "2026-10-01T12:00:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "settlement": {
+              "version": "0",
+              "leg": "terms",
+              "sealer_role": "payee",
+              "amount": {
+                "value": "123456",
+                "assetCode": "USD",
+                "assetScale": 2
+              },
+              "payment_ref": {
+                "type": "iso20022.uetr",
+                "value": "e9ff40dc-4b0b-4a3a-b0a1-0b957e00ba87"
+              }
+            },
+            "capsule_id": "a6c1822bb68176197a155d2c8caf91e20342527b6790b992b461bbcd3bae267a"
+          },
+          "capsule_id": "a6c1822bb68176197a155d2c8caf91e20342527b6790b992b461bbcd3bae267a",
+          "envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458207125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8a05820a6c1822bb68176197a155d2c8caf91e20342527b6790b992b461bbcd3bae267a584018a02cc86c3c81ff3492e3ae8e9c5d9affdcbcf1c467abc6f63f4aa4e125d22335b7df56224f7386f8fdc9c51f8d9750574540ae52dde469f43e74c63558f70d",
+          "envelope_kid": "7125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8"
+        },
+        {
+          "label": "dec-usd-payer-observed",
+          "capsule": {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "dec-usd-payer-observed",
+            "action_type": "fyi",
+            "operator": "payer.example",
+            "developer": "settlement-example-agent@1",
+            "timestamp": "2026-10-01T12:01:06Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "settlement": {
+              "version": "0",
+              "leg": "payer_observed",
+              "sealer_role": "payer",
+              "terms_ref": "a6c1822bb68176197a155d2c8caf91e20342527b6790b992b461bbcd3bae267a",
+              "payment_ref": {
+                "type": "iso20022.uetr",
+                "value": "e9ff40dc-4b0b-4a3a-b0a1-0b957e00ba87"
+              },
+              "amount": {
+                "value": "123456",
+                "assetCode": "USD",
+                "assetScale": 2
+              },
+              "status": "settled",
+              "observed_at": "2026-10-01T12:01:05Z",
+              "routing_fee": {
+                "value": "0",
+                "assetCode": "USD",
+                "assetScale": 2
+              }
+            },
+            "capsule_id": "2a36c21a3e704e234d404e8927f29125f6d6a20c20b78d5d6f1819beeb6924ba"
+          },
+          "capsule_id": "2a36c21a3e704e234d404e8927f29125f6d6a20c20b78d5d6f1819beeb6924ba",
+          "envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458202cbfe3c87a19f0621a0b3231f64696ace6aa1a466495a947ced9ab21dfe5dcd0a058202a36c21a3e704e234d404e8927f29125f6d6a20c20b78d5d6f1819beeb6924ba584089d4bfd69a3c83ae962e0d3d46ef2fde4a875f57b6eb3b83b5785bf44770339caf7a1883e81e171f4f31cf3072a2123b4b4c174d1991da4d6f032221c0e4d00e",
+          "envelope_kid": "2cbfe3c87a19f0621a0b3231f64696ace6aa1a466495a947ced9ab21dfe5dcd0"
+        },
+        {
+          "label": "dec-usd-payee-observed",
+          "capsule": {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "dec-usd-payee-observed",
+            "action_type": "fyi",
+            "operator": "payee.example",
+            "developer": "settlement-example-agent@1",
+            "timestamp": "2026-10-01T12:02:06Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "settlement": {
+              "version": "0",
+              "leg": "payee_observed",
+              "sealer_role": "payee",
+              "terms_ref": "a6c1822bb68176197a155d2c8caf91e20342527b6790b992b461bbcd3bae267a",
+              "payment_ref": {
+                "type": "iso20022.uetr",
+                "value": "e9ff40dc-4b0b-4a3a-b0a1-0b957e00ba87"
+              },
+              "received": {
+                "value": "1234500",
+                "assetCode": "USD",
+                "assetScale": 3
+              },
+              "status": "settled",
+              "observed_at": "2026-10-01T12:02:05Z",
+              "receive_fee": {
+                "value": "60",
+                "assetCode": "USD",
+                "assetScale": 3
+              }
+            },
+            "references": [
+              {
+                "type": "agent-action-capsule",
+                "digest_alg": "SHA-256",
+                "digest": "2a36c21a3e704e234d404e8927f29125f6d6a20c20b78d5d6f1819beeb6924ba",
+                "citation_purpose": "counterparty_half"
+              }
+            ],
+            "capsule_id": "afd337c9f5716a6f0fc91329364d18942b6b92809d02796e9737351034439d99"
+          },
+          "capsule_id": "afd337c9f5716a6f0fc91329364d18942b6b92809d02796e9737351034439d99",
+          "envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458207125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8a05820afd337c9f5716a6f0fc91329364d18942b6b92809d02796e9737351034439d995840164729c797ecdeb2f9ec239675011311c1b7632b522e327bad1ed27f2d4caae3bccab7aa024f9a6cbabe3309b9328760386d5a6873e77f220773c2d15a782709",
+          "envelope_kid": "7125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8"
+        }
+      ],
+      "wrapped_objects": [],
+      "expect": {
+        "conforming": true,
+        "failures": [],
+        "findings": [],
+        "settlements": [
+          {
+            "terms": "dec-micro-terms",
+            "payment_state": "agreed",
+            "agreed_status": "settled",
+            "terms_amount": "equal",
+            "delivery_state": "none"
+          },
+          {
+            "terms": "dec-usd-terms",
+            "payment_state": "agreed",
+            "agreed_status": "settled",
+            "terms_amount": "equal",
+            "delivery_state": "none"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state-amount-decimals-off-by-one-unit",
+      "section": [
+        "§6 Amounts",
+        "§6.1 Fees",
+        "§9.2 Payment State"
+      ],
+      "description": "As pos-amount-decimals-mixed-scales, but the payee reports 1234501 received at scale 3: 1234.501 + 0.060 = 1234.561, one unit at the common scale away from 1234.560. No tolerance: mismatch. The 0.000001 settlement still agrees.",
+      "key_policy": {
+        "payer": "2cbfe3c87a19f0621a0b3231f64696ace6aa1a466495a947ced9ab21dfe5dcd0",
+        "payee": "7125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8"
+      },
+      "records": [
+        {
+          "label": "dec-micro-terms",
+          "capsule": {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "dec-micro-terms",
+            "action_type": "fyi",
+            "operator": "payee.example",
+            "developer": "settlement-example-agent@1",
+            "timestamp": "2026-10-01T12:00:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "settlement": {
+              "version": "0",
+              "leg": "terms",
+              "sealer_role": "payee",
+              "amount": {
+                "value": "1",
+                "assetCode": "eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "assetScale": 6
+              },
+              "payment_ref": {
+                "type": "x402.transaction",
+                "value": "0x2e699643ded922c8d98534860d94e2477238e3d587972bfc3ba9ce9fbbcc0771",
+                "network": "eip155:8453"
+              }
+            },
+            "capsule_id": "bf5142d3c6f8fe1c42756e5c5b22b2fbbd72f4039699a98d97d7e4fb415c58ca"
+          },
+          "capsule_id": "bf5142d3c6f8fe1c42756e5c5b22b2fbbd72f4039699a98d97d7e4fb415c58ca",
+          "envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458207125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8a05820bf5142d3c6f8fe1c42756e5c5b22b2fbbd72f4039699a98d97d7e4fb415c58ca5840115a2bae68718ee9c32e7f63fd197e57534765534901e62d5f7b4e6e6e7ce9770859f20912ff40b14cf44add48180c202f86855eeb0e6f1ac592a899f74da30f",
+          "envelope_kid": "7125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8"
+        },
+        {
+          "label": "dec-micro-payer-observed",
+          "capsule": {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "dec-micro-payer-observed",
+            "action_type": "fyi",
+            "operator": "payer.example",
+            "developer": "settlement-example-agent@1",
+            "timestamp": "2026-10-01T12:01:06Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "settlement": {
+              "version": "0",
+              "leg": "payer_observed",
+              "sealer_role": "payer",
+              "terms_ref": "bf5142d3c6f8fe1c42756e5c5b22b2fbbd72f4039699a98d97d7e4fb415c58ca",
+              "payment_ref": {
+                "type": "x402.transaction",
+                "value": "0x2e699643ded922c8d98534860d94e2477238e3d587972bfc3ba9ce9fbbcc0771",
+                "network": "eip155:8453"
+              },
+              "amount": {
+                "value": "1",
+                "assetCode": "eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "assetScale": 6
+              },
+              "status": "settled",
+              "observed_at": "2026-10-01T12:01:05Z",
+              "routing_fee": {
+                "value": "0",
+                "assetCode": "eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "assetScale": 6
+              }
+            },
+            "capsule_id": "7f56af0d57b3f3046ad1e27901f745174cf28ff9c397c71e9809fc544937f9c1"
+          },
+          "capsule_id": "7f56af0d57b3f3046ad1e27901f745174cf28ff9c397c71e9809fc544937f9c1",
+          "envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458202cbfe3c87a19f0621a0b3231f64696ace6aa1a466495a947ced9ab21dfe5dcd0a058207f56af0d57b3f3046ad1e27901f745174cf28ff9c397c71e9809fc544937f9c158403b62c4916a8474d3fbbedb5f23beddeb264d5590fa708862d69dc2b5d8c2ded6ea88dff7642bcc27e91b7b6f60b9051157d937c447618ccd90469decf97b440a",
+          "envelope_kid": "2cbfe3c87a19f0621a0b3231f64696ace6aa1a466495a947ced9ab21dfe5dcd0"
+        },
+        {
+          "label": "dec-micro-payee-observed",
+          "capsule": {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "dec-micro-payee-observed",
+            "action_type": "fyi",
+            "operator": "payee.example",
+            "developer": "settlement-example-agent@1",
+            "timestamp": "2026-10-01T12:02:06Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "settlement": {
+              "version": "0",
+              "leg": "payee_observed",
+              "sealer_role": "payee",
+              "terms_ref": "bf5142d3c6f8fe1c42756e5c5b22b2fbbd72f4039699a98d97d7e4fb415c58ca",
+              "payment_ref": {
+                "type": "x402.transaction",
+                "value": "0x2e699643ded922c8d98534860d94e2477238e3d587972bfc3ba9ce9fbbcc0771",
+                "network": "eip155:8453"
+              },
+              "received": {
+                "value": "100",
+                "assetCode": "eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "assetScale": 8
+              },
+              "status": "settled",
+              "observed_at": "2026-10-01T12:02:05Z",
+              "receive_fee": {
+                "value": "0",
+                "assetCode": "eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "assetScale": 8
+              }
+            },
+            "references": [
+              {
+                "type": "agent-action-capsule",
+                "digest_alg": "SHA-256",
+                "digest": "7f56af0d57b3f3046ad1e27901f745174cf28ff9c397c71e9809fc544937f9c1",
+                "citation_purpose": "counterparty_half"
+              }
+            ],
+            "capsule_id": "68156cc28098a845098ead3198376ad8ac3ebb2313d7c7a9ec0b255686f98637"
+          },
+          "capsule_id": "68156cc28098a845098ead3198376ad8ac3ebb2313d7c7a9ec0b255686f98637",
+          "envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458207125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8a0582068156cc28098a845098ead3198376ad8ac3ebb2313d7c7a9ec0b255686f98637584021107c62c42e0cddd61b7fc0838b667515a1ed003e5b99bed732da8dbd16aa107aacdfe1431de5050f8125ee3229ad19af67f5db067c30089c009afe4c7d790a",
+          "envelope_kid": "7125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8"
+        },
+        {
+          "label": "dec-usd-terms",
+          "capsule": {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "dec-usd-terms",
+            "action_type": "fyi",
+            "operator": "payee.example",
+            "developer": "settlement-example-agent@1",
+            "timestamp": "2026-10-01T12:00:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "settlement": {
+              "version": "0",
+              "leg": "terms",
+              "sealer_role": "payee",
+              "amount": {
+                "value": "123456",
+                "assetCode": "USD",
+                "assetScale": 2
+              },
+              "payment_ref": {
+                "type": "iso20022.uetr",
+                "value": "e9ff40dc-4b0b-4a3a-b0a1-0b957e00ba87"
+              }
+            },
+            "capsule_id": "a6c1822bb68176197a155d2c8caf91e20342527b6790b992b461bbcd3bae267a"
+          },
+          "capsule_id": "a6c1822bb68176197a155d2c8caf91e20342527b6790b992b461bbcd3bae267a",
+          "envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458207125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8a05820a6c1822bb68176197a155d2c8caf91e20342527b6790b992b461bbcd3bae267a584018a02cc86c3c81ff3492e3ae8e9c5d9affdcbcf1c467abc6f63f4aa4e125d22335b7df56224f7386f8fdc9c51f8d9750574540ae52dde469f43e74c63558f70d",
+          "envelope_kid": "7125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8"
+        },
+        {
+          "label": "dec-usd-payer-observed",
+          "capsule": {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "dec-usd-payer-observed",
+            "action_type": "fyi",
+            "operator": "payer.example",
+            "developer": "settlement-example-agent@1",
+            "timestamp": "2026-10-01T12:01:06Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "settlement": {
+              "version": "0",
+              "leg": "payer_observed",
+              "sealer_role": "payer",
+              "terms_ref": "a6c1822bb68176197a155d2c8caf91e20342527b6790b992b461bbcd3bae267a",
+              "payment_ref": {
+                "type": "iso20022.uetr",
+                "value": "e9ff40dc-4b0b-4a3a-b0a1-0b957e00ba87"
+              },
+              "amount": {
+                "value": "123456",
+                "assetCode": "USD",
+                "assetScale": 2
+              },
+              "status": "settled",
+              "observed_at": "2026-10-01T12:01:05Z",
+              "routing_fee": {
+                "value": "0",
+                "assetCode": "USD",
+                "assetScale": 2
+              }
+            },
+            "capsule_id": "2a36c21a3e704e234d404e8927f29125f6d6a20c20b78d5d6f1819beeb6924ba"
+          },
+          "capsule_id": "2a36c21a3e704e234d404e8927f29125f6d6a20c20b78d5d6f1819beeb6924ba",
+          "envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458202cbfe3c87a19f0621a0b3231f64696ace6aa1a466495a947ced9ab21dfe5dcd0a058202a36c21a3e704e234d404e8927f29125f6d6a20c20b78d5d6f1819beeb6924ba584089d4bfd69a3c83ae962e0d3d46ef2fde4a875f57b6eb3b83b5785bf44770339caf7a1883e81e171f4f31cf3072a2123b4b4c174d1991da4d6f032221c0e4d00e",
+          "envelope_kid": "2cbfe3c87a19f0621a0b3231f64696ace6aa1a466495a947ced9ab21dfe5dcd0"
+        },
+        {
+          "label": "dec-usd-payee-observed",
+          "capsule": {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "dec-usd-payee-observed",
+            "action_type": "fyi",
+            "operator": "payee.example",
+            "developer": "settlement-example-agent@1",
+            "timestamp": "2026-10-01T12:02:06Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "settlement": {
+              "version": "0",
+              "leg": "payee_observed",
+              "sealer_role": "payee",
+              "terms_ref": "a6c1822bb68176197a155d2c8caf91e20342527b6790b992b461bbcd3bae267a",
+              "payment_ref": {
+                "type": "iso20022.uetr",
+                "value": "e9ff40dc-4b0b-4a3a-b0a1-0b957e00ba87"
+              },
+              "received": {
+                "value": "1234501",
+                "assetCode": "USD",
+                "assetScale": 3
+              },
+              "status": "settled",
+              "observed_at": "2026-10-01T12:02:05Z",
+              "receive_fee": {
+                "value": "60",
+                "assetCode": "USD",
+                "assetScale": 3
+              }
+            },
+            "references": [
+              {
+                "type": "agent-action-capsule",
+                "digest_alg": "SHA-256",
+                "digest": "2a36c21a3e704e234d404e8927f29125f6d6a20c20b78d5d6f1819beeb6924ba",
+                "citation_purpose": "counterparty_half"
+              }
+            ],
+            "capsule_id": "0f0ace2c087b87f18fcd0ebfe097da69cb69652d16a87fb716c3bd532bc072f9"
+          },
+          "capsule_id": "0f0ace2c087b87f18fcd0ebfe097da69cb69652d16a87fb716c3bd532bc072f9",
+          "envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458207125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8a058200f0ace2c087b87f18fcd0ebfe097da69cb69652d16a87fb716c3bd532bc072f95840a5616271e6e71aae967878d997ed65fe2c9f92e405db4657ebccea1762dc6aba25e78fbac4f60eb2eb5cd802741406c649f6c91713099191fde4199f7385da0c",
+          "envelope_kid": "7125e78196a360c3a278d00944a6133f53265c295fe8e1ed7f75a2a65d4681f8"
+        }
+      ],
+      "wrapped_objects": [],
+      "expect": {
+        "conforming": true,
+        "failures": [],
+        "findings": [],
+        "settlements": [
+          {
+            "terms": "dec-micro-terms",
+            "payment_state": "agreed",
+            "agreed_status": "settled",
+            "terms_amount": "equal",
+            "delivery_state": "none"
+          },
+          {
+            "terms": "dec-usd-terms",
+            "payment_state": "mismatch",
+            "differs": [
+              "amount"
+            ],
             "delivery_state": "none"
           }
         ]

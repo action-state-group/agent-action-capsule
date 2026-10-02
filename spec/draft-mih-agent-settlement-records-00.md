@@ -49,11 +49,35 @@ informative:
   I-D.mih-agent-bilateral-attestation:
     title: "Bilateral Attestation of Cross-Organization Agent Actions"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-bilateral-attestation-03
+      Internet-Draft: draft-mih-agent-bilateral-attestation-02
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
+    date: 2026-09-13
+  I-D.mih-sokolov-scitt-payload-binding:
+    title: "Canonicalization Declaration for SCITT Signed Statements"
+    seriesinfo:
+      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-05
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
+      - ins: A. Sokolov
+        name: Anton Sokolov
+        organization: Tyche Institute
+    date: 2026-09-11
+  I-D.mih-zhang-agent-disclosure-bundle:
+    title: "AAC Evidence Bundle"
+    seriesinfo:
+      Internet-Draft: draft-mih-zhang-agent-disclosure-bundle-00
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
+      - ins: Y. Zhang
+        name: Yiqun Zhang
+        organization: Independent
     date: 2026-09
   I-D.mih-scitt-agent-action-capsule-sel-disc:
   I-D.mih-agent-evidence-request:
@@ -64,7 +88,7 @@ informative:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-09
+    date: 2026-09-26
   I-D.ryan-httpauth-payment:
   I-D.dogru-cedulon-core:
   X402:
@@ -542,6 +566,11 @@ The amount is `value` divided by ten to the power `assetScale`. For example,
 "assetScale": 6}` is 1.5 units of that token, and `{"value": "21000",
 "assetCode": "BTC", "assetScale": 11}` is 21000 millisatoshi.
 
+Decimal amounts are exact: 1.50 USDC is `value` `"1500000"` with
+`assetScale` 6, 0.000001 is `value` `"1"` with `assetScale` 6, and
+1234.56 is `value` `"123456"` with `assetScale` 2; any decimal fraction is
+representable by choosing `assetScale`.
+
 The rules for amounts:
 
 1. `value` MUST be a JSON string matching the grammar above. A JSON number
@@ -718,7 +747,13 @@ The rules:
    which are the octets as the protocol delivered them (for example the
    ASCII octets of a JWS compact serialization). A sealer MUST NOT parse
    and re-serialize the object before digesting it, and MUST NOT apply RFC
-   8785 to it unless the type says so.
+   8785 to it unless the type says so. This is the rule that
+   {{I-D.mih-sokolov-scitt-payload-binding}}, Section 4.4, names
+   `as-transmitted`: no canonicalization, SHA-256 over the exact octet
+   sequence the carrying format already fixes, written as 64 lowercase hex
+   characters. A wrapped type's octet definition ({{iana-wrapped}}) plays
+   the role of that section's byte-boundary selector, and SHOULD name the
+   production in the type's own specification that fixes those octets.
 2. **Content check.** When `content` is present, a verifier MUST decode it
    and check that its SHA-256 equals `digest`. A mismatch is
    `wrapped_digest_mismatch`.
@@ -741,13 +776,27 @@ x402 objects in EIP-712 format, the protocol defines no byte string for the
 object as a whole, so the octets are the RFC 8785 form of the JSON envelope
 object (`format`, `payload`, `signature`); the EIP-712 signature covers the
 typed-data hash, not JSON octets, so this canonical form does not affect the
-signature.
+signature. In the terms of {{I-D.mih-sokolov-scitt-payload-binding}}, that
+type selects `jcs` (Section 4.1) rather than `as-transmitted`, because the
+container defines no byte sequence to select.
+
+{::comment}
+EDITOR'S NOTE (for Steven, not for publication): the COSE successor to the
+payload-binding draft (the deterministic preimage-encodings document, renamed
+draft-mih-sokolov-cose-det-encodings-00 on 2026-09-26) is not yet on the
+datatracker under that name or any earlier one. Its citation here is pending
+its submission; add it as an informative reference once it is posted.
+{:/comment}
 
 # Derived Settlement States {#states}
 
 ## Inputs {#state-inputs}
 
-A verifier derives states from a set of leg records. For each leg it first
+A verifier derives states from a set of leg records. A party that presents
+its own legs, the counterparty legs it holds, and the octets of the objects
+they wrap can carry them together in an Evidence Bundle
+{{I-D.mih-zhang-agent-disclosure-bundle}}, whose citation closure lets the
+verifier check that every leg a presented leg cites is present. For each leg it first
 checks:
 
 1. the Capsule checks of the base profile;
@@ -1062,8 +1111,10 @@ sealer's report of its own system's report. A verifier that needs the
 rail's own confirmation obtains it from the rail.
 
 **Canonicalization.** All digests over JSON in this document use the base
-profile's declared RFC 8785 construction. Wrapped objects use the octets
-their type defines. No digest is computed over an object re-encoded by
+profile's declared RFC 8785 construction, the `jcs` algorithm of
+{{I-D.mih-sokolov-scitt-payload-binding}}. Wrapped objects use the octets
+their type defines, under that document's `as-transmitted` rule
+({{wrap}}). No digest is computed over an object re-encoded by
 inference from its shape.
 
 # Privacy Considerations {#privacy}

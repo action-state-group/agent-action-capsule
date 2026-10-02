@@ -27,7 +27,7 @@
     <keyword>transparency</keyword>
     <keyword>evidence</keyword>
     <abstract>
-      <?line 144?>
+      <?line 168?>
 
 <t>A payment between two agents is observed by two systems: the payer's wallet
 or bank and the payee's. Existing payment protocols record one of those
@@ -47,7 +47,7 @@ ISO 20022, and Open Payments, and maps its states to ISO 20022 status codes.</t>
     </abstract>
     <note>
       <name>Note to Readers</name>
-      <?line 162?>
+      <?line 186?>
 
 <t>This document is an individual submission. It is a companion to the Agent
 Action Capsule profile <xref target="I-D.mih-scitt-agent-action-capsule"/> and to the
@@ -57,7 +57,7 @@ this document's source repository.</t>
     </note>
   </front>
   <middle>
-    <?line 170?>
+    <?line 194?>
 
 <section anchor="introduction">
       <name>Introduction</name>
@@ -674,6 +674,10 @@ Payments uses <xref target="OPEN-PAYMENTS"/>:</t>
 <tt>{"value": "1500000", "assetCode": "eip155:8453/erc20:0x8335...2913",
 "assetScale": 6}</tt> is 1.5 units of that token, and <tt>{"value": "21000",
 "assetCode": "BTC", "assetScale": 11}</tt> is 21000 millisatoshi.</t>
+      <t>Decimal amounts are exact: 1.50 USDC is <tt>value</tt> <tt>"1500000"</tt> with
+<tt>assetScale</tt> 6, 0.000001 is <tt>value</tt> <tt>"1"</tt> with <tt>assetScale</tt> 6, and
+1234.56 is <tt>value</tt> <tt>"123456"</tt> with <tt>assetScale</tt> 2; any decimal fraction is
+representable by choosing <tt>assetScale</tt>.</t>
       <t>The rules for amounts:</t>
       <ol spacing="normal" type="1"><li>
           <t><tt>value</tt> <bcp14>MUST</bcp14> be a JSON string matching the grammar above. A JSON number
@@ -933,7 +937,13 @@ never re-encodes it.</t>
 which are the octets as the protocol delivered them (for example the
 ASCII octets of a JWS compact serialization). A sealer <bcp14>MUST NOT</bcp14> parse
 and re-serialize the object before digesting it, and <bcp14>MUST NOT</bcp14> apply RFC
-8785 to it unless the type says so.</t>
+8785 to it unless the type says so. This is the rule that
+<xref target="I-D.mih-sokolov-scitt-payload-binding"/>, Section 4.4, names
+<tt>as-transmitted</tt>: no canonicalization, SHA-256 over the exact octet
+sequence the carrying format already fixes, written as 64 lowercase hex
+characters. A wrapped type's octet definition (<xref target="iana-wrapped"/>) plays
+the role of that section's byte-boundary selector, and <bcp14>SHOULD</bcp14> name the
+production in the type's own specification that fixes those octets.</t>
         </li>
         <li>
           <t><strong>Content check.</strong> When <tt>content</tt> is present, a verifier <bcp14>MUST</bcp14> decode it
@@ -963,13 +973,19 @@ x402 objects in EIP-712 format, the protocol defines no byte string for the
 object as a whole, so the octets are the RFC 8785 form of the JSON envelope
 object (<tt>format</tt>, <tt>payload</tt>, <tt>signature</tt>); the EIP-712 signature covers the
 typed-data hash, not JSON octets, so this canonical form does not affect the
-signature.</t>
+signature. In the terms of <xref target="I-D.mih-sokolov-scitt-payload-binding"/>, that
+type selects <tt>jcs</tt> (Section 4.1) rather than <tt>as-transmitted</tt>, because the
+container defines no byte sequence to select.</t>
     </section>
     <section anchor="states">
       <name>Derived Settlement States</name>
       <section anchor="state-inputs">
         <name>Inputs</name>
-        <t>A verifier derives states from a set of leg records. For each leg it first
+        <t>A verifier derives states from a set of leg records. A party that presents
+its own legs, the counterparty legs it holds, and the octets of the objects
+they wrap can carry them together in an Evidence Bundle
+<xref target="I-D.mih-zhang-agent-disclosure-bundle"/>, whose citation closure lets the
+verifier check that every leg a presented leg cites is present. For each leg it first
 checks:</t>
         <ol spacing="normal" type="1"><li>
             <t>the Capsule checks of the base profile;</t>
@@ -1604,8 +1620,10 @@ evidence the payment happened. The status in an observed leg is the
 sealer's report of its own system's report. A verifier that needs the
 rail's own confirmation obtains it from the rail.</t>
       <t><strong>Canonicalization.</strong> All digests over JSON in this document use the base
-profile's declared RFC 8785 construction. Wrapped objects use the octets
-their type defines. No digest is computed over an object re-encoded by
+profile's declared RFC 8785 construction, the <tt>jcs</tt> algorithm of
+<xref target="I-D.mih-sokolov-scitt-payload-binding"/>. Wrapped objects use the octets
+their type defines, under that document's <tt>as-transmitted</tt> rule
+(<xref target="wrap"/>). No digest is computed over an object re-encoded by
 inference from its shape.</t>
     </section>
     <section anchor="privacy">
@@ -1928,9 +1946,35 @@ been incorporated into this document. This document obsoletes RFC
             <author initials="S." surname="Mih" fullname="Steven Mih">
               <organization>Action State Group, Inc.</organization>
             </author>
+            <date year="2026" month="September" day="13"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-mih-agent-bilateral-attestation-02"/>
+        </reference>
+        <reference anchor="I-D.mih-sokolov-scitt-payload-binding">
+          <front>
+            <title>Canonicalization Declaration for SCITT Signed Statements</title>
+            <author initials="S." surname="Mih" fullname="Steven Mih">
+              <organization>Action State Group, Inc.</organization>
+            </author>
+            <author initials="A." surname="Sokolov" fullname="Anton Sokolov">
+              <organization>Tyche Institute</organization>
+            </author>
+            <date year="2026" month="September" day="11"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-mih-sokolov-scitt-payload-binding-05"/>
+        </reference>
+        <reference anchor="I-D.mih-zhang-agent-disclosure-bundle">
+          <front>
+            <title>AAC Evidence Bundle</title>
+            <author initials="S." surname="Mih" fullname="Steven Mih">
+              <organization>Action State Group, Inc.</organization>
+            </author>
+            <author initials="Y." surname="Zhang" fullname="Yiqun Zhang">
+              <organization>Independent</organization>
+            </author>
             <date year="2026" month="September"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-mih-agent-bilateral-attestation-03"/>
+          <seriesInfo name="Internet-Draft" value="draft-mih-zhang-agent-disclosure-bundle-00"/>
         </reference>
         <reference anchor="I-D.mih-scitt-agent-action-capsule-sel-disc">
           <front>
@@ -1969,7 +2013,7 @@ been incorporated into this document. This document obsoletes RFC
             <author initials="S." surname="Mih" fullname="Steven Mih">
               <organization>Action State Group, Inc.</organization>
             </author>
-            <date year="2026" month="September"/>
+            <date year="2026" month="September" day="26"/>
           </front>
           <seriesInfo name="Internet-Draft" value="draft-mih-agent-evidence-request-00"/>
         </reference>
@@ -2148,7 +2192,7 @@ been incorporated into this document. This document obsoletes RFC
         </reference>
       </references>
     </references>
-    <?line 1214?>
+    <?line 1265?>
 
 <section numbered="false" anchor="vectors">
       <name>Conformance Vectors</name>

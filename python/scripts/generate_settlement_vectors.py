@@ -635,6 +635,57 @@ def cases() -> list[dict]:
         ln_settlement(1, None), [],
         expect(conforming=True, payment_state="unjoined", delivery_state="none", terms="ln-terms-1",
                findings=[{"records": ["ln-payee-observed-1"], "code": "fee_unstated"}])))
+
+    # 18-19. Non-trivial decimals at mixed scales, compared exactly at the largest scale.
+    def uuid4_like(label: str) -> str:
+        h = list(label_hex(label, 16))
+        h[12] = "4"
+        h[16] = "89ab"[int(h[16], 16) % 4]
+        h = "".join(h)
+        return f"{h[0:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:32]}"
+
+    def decimal_settlement(tag: str, ref: dict, terms_amount: dict, sent: dict, routing_fee: dict,
+                           received: dict, receive_fee: dict) -> list[dict]:
+        dterms = terms_leg(f"{tag}-terms", "payee", PAYEE, terms_amount, [], payment_ref=ref)
+        dpayer = observed_leg(f"{tag}-payer-observed", "payer", PAYER, dterms, ref, sent, [], fee=routing_fee)
+        dpayee = observed_leg(f"{tag}-payee-observed", "payee", PAYEE, dterms, ref, received, [],
+                              fee=receive_fee, minute=2, references=[cite(dpayer)])
+        return [dterms, dpayer, dpayee]
+
+    micro = {"value": "1", "assetCode": USDC_ASSET, "assetScale": 6}              # 0.000001
+    micro_at_8 = {"value": "100", "assetCode": USDC_ASSET, "assetScale": 8}      # 0.00000100
+    usd_1234_56 = {"value": "123456", "assetCode": "USD", "assetScale": 2}       # 1234.56
+    uetr = {"type": "iso20022.uetr", "value": uuid4_like("iso20022 uetr")}
+
+    def decimal_records(received_usd: str) -> list[dict]:
+        return (decimal_settlement("dec-micro", x402_ref("0x" + label_hex("x402 micro transaction")), micro, micro,
+                                   zero(micro), micro_at_8, zero(micro_at_8))
+                + decimal_settlement("dec-usd", uetr, usd_1234_56, usd_1234_56, zero(usd_1234_56),
+                                     {"value": received_usd, "assetCode": "USD", "assetScale": 3},
+                                     {"value": "60", "assetCode": "USD", "assetScale": 3}))
+
+    out.append(case(
+        "pos-amount-decimals-mixed-scales", [S_AMOUNTS, S_FEES, S_PAYMENT],
+        "Two settlements with non-trivial decimals at mixed scales. 0.000001 USDC is value 1 at scale 6; "
+        "the payee reports it as 100 at scale 8 with a zero fee: 1 * 10^2 = 100 + 0. 1234.56 USD is value "
+        "123456 at scale 2; the payee reports 1234500 received and a fee of 60, both at scale 3: "
+        "123456 * 10 = 1234500 + 60. Both agree, exactly.",
+        decimal_records("1234500"), [],
+        expect(conforming=True, settlements=[
+            settlement("dec-micro-terms", delivery_state="none", payment_state="agreed", agreed_status="settled",
+                       terms_amount="equal"),
+            settlement("dec-usd-terms", delivery_state="none", payment_state="agreed", agreed_status="settled",
+                       terms_amount="equal")])))
+    out.append(case(
+        "state-amount-decimals-off-by-one-unit", [S_AMOUNTS, S_FEES, S_PAYMENT],
+        "As pos-amount-decimals-mixed-scales, but the payee reports 1234501 received at scale 3: "
+        "1234.501 + 0.060 = 1234.561, one unit at the common scale away from 1234.560. No tolerance: mismatch. "
+        "The 0.000001 settlement still agrees.",
+        decimal_records("1234501"), [],
+        expect(conforming=True, settlements=[
+            settlement("dec-micro-terms", delivery_state="none", payment_state="agreed", agreed_status="settled",
+                       terms_amount="equal"),
+            settlement("dec-usd-terms", delivery_state="none", payment_state="mismatch", differs=["amount"])])))
     return out
 
 
