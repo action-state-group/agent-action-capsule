@@ -1,7 +1,7 @@
-# Settlement profile conformance vectors (draft-mih-agent-settlement-profile-00)
+# Settlement records conformance vectors (draft-mih-agent-settlement-records-00)
 
 Conformance vectors for the two-sided settlement records defined in
-`spec/draft-mih-agent-settlement-profile-00.md`: leg records sealed by two
+`spec/draft-mih-agent-settlement-records-00.md`: leg records sealed by two
 independent sealers, the typed payment reference join, wrapped objects carried
 by digest, exact amounts, the delivered-content digest, and the states a
 verifier derives from the legs present.
@@ -107,4 +107,4 @@ verifier following the steps above, record by record, reports them.
 - Keys: `payer` and `payee` seal legs; `payee x402 offer signing` signs the
   x402 offer; `payer AP2 mandate signing` signs the AP2 mandate; `AP2 payment
   processor` signs the AP2 receipt. Each seed is SHA-256 of
-  `"draft-mih-agent-settlement-profile-00 conformance vectors: <name> key"`.
+  `"draft-mih-agent-settlement-records-00 conformance vectors: <name> key"`.

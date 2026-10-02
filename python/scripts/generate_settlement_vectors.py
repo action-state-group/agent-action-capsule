@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate the draft-mih-agent-settlement-profile-00 conformance vectors.
+"""Generate the draft-mih-agent-settlement-records-00 conformance vectors.
 
 Every expected result below is written by hand from the text of
-``spec/draft-mih-agent-settlement-profile-00.md`` and cites the section it
-comes from. Nothing here imports or runs an implementation of the profile: the
+``spec/draft-mih-agent-settlement-records-00.md`` and cites the section it
+comes from. Nothing here imports or runs an implementation of these records: the
 script builds leg records (format-4 Agent Action Capsules with a
 ``settlement`` member), computes each Capsule ID as SHA-256 over RFC 8785,
 signs each one with a Producer Envelope (COSE_Sign1, Ed25519) from a fixed
@@ -38,7 +38,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "settlement"
-DRAFT = "draft-mih-agent-settlement-profile-00"
+DRAFT = "draft-mih-agent-settlement-records-00"
 AAC_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-05"
 CAPSULE_ID_MEDIA_TYPE = "application/agent-action-capsule-id"
 
@@ -534,7 +534,7 @@ def cases() -> list[dict]:
     out.append(case(
         "neg-amount-json-float", [S_AMOUNTS, S_FAILURES],
         "The payer's amount value is the JSON number 1.5. A float fails the base profile's digest rules, "
-        "so the leg has no Capsule ID and no envelope, and it fails this profile's amount grammar.",
+        "so the leg has no Capsule ID and no envelope, and it fails this document's amount grammar.",
         [terms, payer, payee], objs,
         expect(conforming=False, payment_state="payee_stated", delivery_state="none",
                failures=[{"records": ["x402-payer-observed"], "code": "capsule_invalid"},

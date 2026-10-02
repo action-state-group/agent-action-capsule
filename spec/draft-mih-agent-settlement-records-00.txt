@@ -8,8 +8,8 @@ Intended status: Standards Track                          1 October 2026
 Expires: 4 April 2027
 
 
-            Two-Sided Settlement Records for Agent Payments
-                 draft-mih-agent-settlement-profile-00
+            Two-Party Settlement Records for Agent Payments
+                 draft-mih-agent-settlement-records-00
 
 Abstract
 
@@ -17,16 +17,16 @@ Abstract
    wallet or bank and the payee's.  Existing payment protocols record
    one of those observations, signed by one party, and most record
    nothing about what was delivered in exchange.  This document defines
-   a settlement profile of the Agent Action Capsule in which payer and
-   payee each seal, under their own key, only what their own system
-   observed.  A settlement is a set of up to four leg records (terms,
-   payer-observed, payee-observed, and delivered) that cite each other
-   by digest and join on a typed payment reference.  The state of a
-   settlement (one-sided, agreed, or mismatched) is derived by the
+   two-party settlement records, carried as Agent Action Capsules, in
+   which payer and payee each seal, under their own key, only what their
+   own system observed.  A settlement is a set of up to four leg records
+   (terms, payer-observed, payee-observed, and delivered) that cite each
+   other by digest and join on a typed payment reference.  The state of
+   a settlement (one-sided, agreed, or mismatched) is derived by the
    verifier from which legs are present and whether they agree; no
    record asserts it.  Signed objects from existing payment protocols
    are carried by digest and never re-signed.  Amounts are exact
-   integers with a decimal scale.  The profile defines a registry of
+   integers with a decimal scale.  The document defines a registry of
    payment reference types covering x402, Lightning, AP2, ACP, UCP, the
    Payment HTTP authentication scheme, ISO 20022, and Open Payments, and
    maps its states to ISO 20022 status codes.
@@ -55,7 +55,7 @@ Status of This Memo
 
 Mih                       Expires 4 April 2027                  [Page 1]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    Internet-Drafts are draft documents valid for a maximum of six months
@@ -111,7 +111,7 @@ Table of Contents
 
 Mih                       Expires 4 April 2027                  [Page 2]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    11. Crosswalk to AEP Fulfillment Fields . . . . . . . . . . . . .  27
@@ -167,10 +167,10 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                  [Page 3]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
-   This document defines a settlement profile in which:
+   This document defines settlement records in which:
 
    1.  The payer and the payee are independent sealers.  Each seals,
        under its own key, only what its own wallet or system observed.
@@ -199,21 +199,21 @@ Internet-Draft             Settlement Profile               October 2026
        claim, not an agreement.
 
    Each leg is an Agent Action Capsule
-   [I-D.mih-scitt-agent-action-capsule] with one additional member.  The
-   profile therefore inherits the Capsule's content identity, its
+   [I-D.mih-scitt-agent-action-capsule] with one additional member.
+   These records therefore inherit the Capsule's content identity, its
    Producer Envelope signature, its cross-record references, and its
    registration path to a SCITT Transparency Service [RFC9943].
 
 1.1.  What This Document Does Not Do
 
    This document does not move money, define a payment protocol, replace
-   any protocol it binds to, or decide disputes.  It defines no trust
-   policy for deciding which key may seal for a payer or payee; that is
-   the verifier's policy, as in [I-D.mih-scitt-agent-action-capsule].
-   It does not rank, rate, or otherwise grade the parties to a
-   settlement.  It records what each side observed, and it defines how a
-   verifier derives whether the observations agree.
-
+   any protocol it binds to, or decide between the parties.  It defines
+   no trust policy for deciding which key may seal for a payer or payee;
+   that is the verifier's policy, as in
+   [I-D.mih-scitt-agent-action-capsule].  It does not rank, rate, or
+   otherwise grade the parties to a settlement.  It records what each
+   side observed, and it defines how a verifier derives whether the
+   observations agree.
 
 
 
@@ -223,7 +223,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                  [Page 4]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
 2.  Conventions and Definitions
@@ -239,7 +239,7 @@ Internet-Draft             Settlement Profile               October 2026
    Payee:  The party to whom the funds are directed.
 
    Sealer:  The party that produces a leg record and signs it with a
-      Producer Envelope.  In this profile a sealer is always the payer
+      Producer Envelope.  In this document a sealer is always the payer
       or the payee.
 
    Leg:  One of the four records of a settlement: terms, payer-observed,
@@ -279,7 +279,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                  [Page 5]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
 3.  Two Independent Sealers
@@ -335,7 +335,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                  [Page 6]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
 4.1.  Carriage in a Capsule
@@ -354,9 +354,9 @@ Internet-Draft             Settlement Profile               October 2026
    A deployment in which the sealer's own gate dispatched the payment
    MAY instead record it as the effect of a separate Capsule with
    effect.type: "send_payment" and cite that Capsule from the payer-
-   observed leg; this profile does not require it.
+   observed leg; this document does not require it.
 
-   A verifier unaware of this profile processes a leg record as an
+   A verifier unaware of this document processes a leg record as an
    ordinary Capsule.  Every check of the base profile still applies to
    it.
 
@@ -391,7 +391,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                  [Page 7]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    |             |        |                 | observed leg, the       |
@@ -447,7 +447,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                  [Page 8]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    | valid_until | string | OPTIONAL, terms | [RFC3339] UTC time      |
@@ -478,10 +478,10 @@ Internet-Draft             Settlement Profile               October 2026
 
    *The terms reference.* Every leg other than the terms leg carries
    terms_ref, the capsule_id of the terms leg it answers.  A leg answers
-   exactly one terms leg. terms_ref is a bare intra-profile digest, in
-   the same way the base profile's cross_party.initiator_ref is: it
-   names the terms leg's capsule_id, and a verifier compares it with the
-   recomputed capsule_id of the terms leg it holds.
+   exactly one terms leg. terms_ref is a bare digest, in the same way
+   the base profile's cross_party.initiator_ref is: it names the terms
+   leg's capsule_id, and a verifier compares it with the recomputed
+   capsule_id of the terms leg it holds.
 
    *Counterparty legs.* A sealer that holds a leg sealed by the other
    party MAY cite it from its own leg with a references entry
@@ -503,7 +503,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                  [Page 9]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    The usual order of a settlement is shown below.  Only the terms leg
@@ -559,7 +559,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 10]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
       -  content_digest: the digest of the content to be delivered, when
@@ -615,7 +615,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 11]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    [I-D.ryan-httpauth-payment], or the ISO 20022 credit notification its
@@ -671,7 +671,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 12]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    +=================+========+==========+============================+
@@ -727,7 +727,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 13]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    when the terms leg carries deliverable.content_digest, a verifier
@@ -735,7 +735,7 @@ Internet-Draft             Settlement Profile               October 2026
    the terms carry only description_digest, the verifier can establish
    that both sides name the same delivered content, but not that the
    content matches the description; that judgment is outside this
-   profile.
+   document.
 
    For an inference, content_digest is the digest of the completion as
    returned at the serving boundary, the same value a Capsule with
@@ -783,14 +783,15 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 14]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    1.  value MUST be a JSON string matching the grammar above.  A JSON
        number in value is not conforming, whether or not it has a
        fractional part.  A floating-point number anywhere in a Capsule
        already fails the base profile's digest rules; a string with a
-       decimal point or exponent fails this profile as amount_not_exact.
+       decimal point or exponent fails this document as
+       amount_not_exact.
 
    2.  assetScale MUST be a JSON integer from 0 to 255.
 
@@ -815,7 +816,7 @@ Internet-Draft             Settlement Profile               October 2026
    number.  A Lightning payee's wallet, for example, can report 995
    millisatoshi received with a receive-side fee of 5 for a payment of
    1000 millisatoshi the payer sent with no routing fee.  Both
-   observations are honest.  This profile therefore records each side's
+   observations are honest.  This document therefore records each side's
    gross, fee, and net separately, and never compares the payer's and
    the payee's amounts directly.
 
@@ -836,10 +837,9 @@ Internet-Draft             Settlement Profile               October 2026
 
 
 
-
 Mih                       Expires 4 April 2027                 [Page 15]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    1.  A fee is non-negative: its value follows the grammar of rule 1
@@ -895,7 +895,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 16]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    Two payment references are the same reference if and only if their
@@ -951,7 +951,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 17]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    iso20022.uetr:  value is the ISO 20022 UETR (Unique End-to-end
@@ -997,7 +997,7 @@ Internet-Draft             Settlement Profile               October 2026
 
    Many payment protocols already produce signed objects: the x402
    signed offer and receipt, AP2 mandates and receipts, the BOLT 12
-   invoice and payer proof.  This profile carries such an object as it
+   invoice and payer proof.  These records carry such an object as it
    is.  It never re-signs it and never re-encodes it.
 
    A wrapped entry is a JSON object:
@@ -1007,7 +1007,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 18]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
      +============+========+==========+=============================+
@@ -1054,7 +1054,7 @@ Internet-Draft             Settlement Profile               October 2026
    4.  *Verification of the wrapped object is the wrapped protocol's.* A
        verifier MAY verify the wrapped object under its own protocol's
        rules (for example an AP2 receipt under the processor's key).
-       This profile does not change those rules, and a wrapped object's
+       This document does not change those rules, and a wrapped object's
        validity does not change what the leg itself proves.
 
 
@@ -1063,7 +1063,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 19]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    The octets for each initial type are defined in Section 16.2.  For
@@ -1119,7 +1119,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 20]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
      +==============+================================================+
@@ -1175,7 +1175,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 21]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    where all three carry the same assetCode and the sum and comparison
@@ -1231,7 +1231,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 22]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    +==========+========================================================+
@@ -1262,7 +1262,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 9.4.  Failures
 
-   The failure codes a verifier reports for this profile are:
+   The failure codes a verifier reports for these records are:
 
      +================================+=============================+
      | Code                           | Meaning                     |
@@ -1287,7 +1287,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 23]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
      +--------------------------------+-----------------------------+
@@ -1343,7 +1343,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 24]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
 10.  Status Values and ISO 20022
@@ -1399,7 +1399,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 25]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    The mapping is one-way: a sealer whose system reports an ISO 20022
@@ -1455,7 +1455,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 26]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
      +=============================+=====================+==========+
@@ -1486,7 +1486,7 @@ Internet-Draft             Settlement Profile               October 2026
    from a delivered leg and compared with one.
 
    +======================+========================+==================+
-   |AEP Section 3.7 field |This profile            |Note              |
+   |AEP Section 3.7 field |This document           |Note              |
    +======================+========================+==================+
    |fulfillment_id        |Capsule action_id       |                  |
    +----------------------+------------------------+------------------+
@@ -1511,7 +1511,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 27]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    +----------------------+------------------------+------------------+
@@ -1567,11 +1567,11 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 28]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    +=============================+=====================================+
-   | AEP Section 3.6 field       | This profile                        |
+   | AEP Section 3.6 field       | This document                       |
    +=============================+=====================================+
    | settlement_rail             | implied by the                      |
    |                             | payment_ref type                    |
@@ -1623,33 +1623,33 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 29]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
 13.  Relationship to Existing Work
 
    *Bilateral attestation.* [I-D.mih-agent-bilateral-attestation]
    defines a request/action exchange between two organizations, in which
-   each signs its own half and acknowledges the other's.  This profile
+   each signs its own half and acknowledges the other's.  This document
    applies the same discipline to a payment: each side signs only its
    own half, the halves cite each other by digest, and a missing half is
    a defined state rather than an error.  The settlement legs are not
    the bilateral exchange's objects; a deployment can use both, with an
    action attestation citing a terms leg.
 
-   *x402.* This profile binds to the x402 settlement response's
+   *x402.* This document binds to the x402 settlement response's
    transaction and network [X402], and wraps the signed offer and
    receipt [X402-OFFER-RECEIPT].  It adds a record of what the payer's
    side observed, which x402 does not define, and a delivered-content
    digest bound to the terms.
 
    *AP2.* AP2 mandates and receipts [AP2] are wrapped by digest.  A
-   Payment Receipt is the processor's statement; in this profile it is
+   Payment Receipt is the processor's statement; in these records it is
    carried in the payee's leg as the processor's object, and the payee's
    own observation is the leg itself.
 
    *BOLT 12 payer proofs.* A payer proof [BOLT12] is a two-sided proof
-   of a Lightning payment.  It is wrapped, not replaced; this profile
+   of a Lightning payment.  It is wrapped, not replaced; this document
    adds the delivery leg and a form that is the same across rails.
 
    *Payment HTTP authentication.* The Payment-Receipt
@@ -1661,11 +1661,11 @@ Internet-Draft             Settlement Profile               October 2026
    Manifest before payment and an issuer-signed Spend Receipt after it,
    with an optional second signature by the payee over a delivered-
    content hash (deliveredHash).  Both documents use COSE and bind
-   delivery by digest.  This profile differs in having two sealers of
+   delivery by digest.  This document differs in having two sealers of
    equal standing, each recording its own observation, and in deriving
    the settlement state from both.
 
-   *COSE countersignatures.* Nothing in this profile is a COSE
+   *COSE countersignatures.* Nothing in this document is a COSE
    countersignature [RFC9338].  Each leg is a separate Capsule from a
    separate sealer.
 
@@ -1679,7 +1679,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 30]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
 14.  Security Considerations
@@ -1735,7 +1735,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 31]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    *Fees.* A naive comparison of the payer's and the payee's amounts
@@ -1754,7 +1754,7 @@ Internet-Draft             Settlement Profile               October 2026
    sealer's report of its own system's report.  A verifier that needs
    the rail's own confirmation obtains it from the rail.
 
-   *Canonicalization.* All digests over JSON in this profile use the
+   *Canonicalization.* All digests over JSON in this document use the
    base profile's declared RFC 8785 construction.  Wrapped objects use
    the octets their type defines.  No digest is computed over an object
    re-encoded by inference from its shape.
@@ -1791,7 +1791,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 32]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    [I-D.mih-scitt-agent-action-capsule-sel-disc] to commit to the
@@ -1812,7 +1812,7 @@ Internet-Draft             Settlement Profile               October 2026
 16.  IANA Considerations
 
    This document asks IANA to create two registries in a new "Agent
-   Settlement Profile" registry group.  Until IANA establishes them, the
+   Settlement Records" registry group.  Until IANA establishes them, the
    source repository of this document keeps them as the interim registry
    of record.
 
@@ -1847,7 +1847,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 33]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    Each entry has: the type name; the issuer of the object under its own
@@ -1903,7 +1903,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 34]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
       delivery document octets.  Reference: this document.
@@ -1959,7 +1959,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 35]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    [RFC9052]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
@@ -2015,7 +2015,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 36]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    [I-D.mih-agent-bilateral-attestation]
@@ -2071,7 +2071,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Mih                       Expires 4 April 2027                 [Page 37]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    [RFC9942]  Steele, O., Birkholz, H., Delignat-Lavaud, A., and C.
@@ -2127,7 +2127,7 @@ Example
 
 Mih                       Expires 4 April 2027                 [Page 38]
 
-Internet-Draft             Settlement Profile               October 2026
+Internet-Draft          Agent Settlement Records            October 2026
 
 
    {
@@ -2167,7 +2167,7 @@ Internet-Draft             Settlement Profile               October 2026
 
 Acknowledgments
 
-   This profile was shaped by the public discussion of offer digests,
+   This document was shaped by the public discussion of offer digests,
    delivery hashes, and offline-verifiable receipts in the x402
    community, by the AP2 receipt model, by the BOLT 12 payer proof work,
    and by the AEP and Cedulon drafts.

@@ -1,16 +1,16 @@
 {
-  "draft": "draft-mih-agent-settlement-profile-00",
+  "draft": "draft-mih-agent-settlement-records-00",
   "provenance": "spec-derived",
   "generator": "python/scripts/generate_settlement_vectors.py",
   "files": [
     {
       "path": "cases.json",
-      "sha256": "92ce8e6875ec14fafc835e3df5e32c00b1206459d73554a2b92a6bcda9ca99b3",
+      "sha256": "379b239258b1dfe36a037c4608207955b7612da252839232a13e6a4a1ba7cda8",
       "count": 17
     },
     {
       "path": "registry.json",
-      "sha256": "6a73aba2719b11da239403b7d2150929d3abbeba5cdf1f087a988d1aa90bfbe6",
+      "sha256": "cc40feb7bbe800e191688614644e0cb7d9de8d2c0be083dd977cd0dcfd347fa4",
       "count": null
     }
   ]

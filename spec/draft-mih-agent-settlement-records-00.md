@@ -1,7 +1,7 @@
 ---
-title: "Two-Sided Settlement Records for Agent Payments"
-abbrev: "Settlement Profile"
-docname: draft-mih-agent-settlement-profile-00
+title: "Two-Party Settlement Records for Agent Payments"
+abbrev: "Agent Settlement Records"
+docname: draft-mih-agent-settlement-records-00
 date: 2026-10-01
 category: std
 submissiontype: IETF
@@ -146,16 +146,16 @@ informative:
 A payment between two agents is observed by two systems: the payer's wallet
 or bank and the payee's. Existing payment protocols record one of those
 observations, signed by one party, and most record nothing about what was
-delivered in exchange. This document defines a settlement profile of the
-Agent Action Capsule in which payer and payee each seal, under their own
-key, only what their own system observed. A settlement is a set of up to
+delivered in exchange. This document defines two-party settlement records,
+carried as Agent Action Capsules, in which payer and payee each seal, under
+their own key, only what their own system observed. A settlement is a set of up to
 four leg records (terms, payer-observed, payee-observed, and delivered) that
 cite each other by digest and join on a typed payment reference. The state
 of a settlement (one-sided, agreed, or mismatched) is derived by the
 verifier from which legs are present and whether they agree; no record
 asserts it. Signed objects from existing payment protocols are carried by
 digest and never re-signed. Amounts are exact integers with a decimal
-scale. The profile defines a registry of payment reference types covering
+scale. The document defines a registry of payment reference types covering
 x402, Lightning, AP2, ACP, UCP, the Payment HTTP authentication scheme,
 ISO 20022, and Open Payments, and maps its states to ISO 20022 status codes.
 
@@ -197,7 +197,7 @@ party check, offline, that the two sides' observations of one payment
 agree. When they disagree, or when one side says nothing, the evidence is
 one party's log against the other's.
 
-This document defines a settlement profile in which:
+This document defines settlement records in which:
 
 1. The payer and the payee are independent sealers. Each seals, under its
    own key, only what its own wallet or system observed. Neither attests to
@@ -219,7 +219,7 @@ This document defines a settlement profile in which:
    not an agreement.
 
 Each leg is an Agent Action Capsule {{I-D.mih-scitt-agent-action-capsule}}
-with one additional member. The profile therefore inherits the Capsule's
+with one additional member. These records therefore inherit the Capsule's
 content identity, its Producer Envelope signature, its cross-record
 references, and its registration path to a SCITT Transparency Service
 {{RFC9943}}.
@@ -227,7 +227,7 @@ references, and its registration path to a SCITT Transparency Service
 ## What This Document Does Not Do {#nongoals}
 
 This document does not move money, define a payment protocol, replace any
-protocol it binds to, or decide disputes. It defines no trust policy for
+protocol it binds to, or decide between the parties. It defines no trust policy for
 deciding which key may seal for a payer or payee; that is the verifier's
 policy, as in {{I-D.mih-scitt-agent-action-capsule}}. It does not rank,
 rate, or otherwise grade the parties to a settlement. It records what each
@@ -246,7 +246,7 @@ Payee:
 
 Sealer:
 : The party that produces a leg record and signs it with a Producer
-  Envelope. In this profile a sealer is always the payer or the payee.
+  Envelope. In this document a sealer is always the payer or the payee.
 
 Leg:
 : One of the four records of a settlement: terms, payer-observed,
@@ -340,10 +340,10 @@ A leg record SHOULD use `action_type: "fyi"` and an `assurance` block whose
 payment itself is not an effect the sealer's gate committed. A deployment
 in which the sealer's own gate dispatched the payment MAY instead record it
 as the effect of a separate Capsule with `effect.type: "send_payment"` and
-cite that Capsule from the payer-observed leg; this profile does not
+cite that Capsule from the payer-observed leg; this document does not
 require it.
 
-A verifier unaware of this profile processes a leg record as an ordinary
+A verifier unaware of this document processes a leg record as an ordinary
 Capsule. Every check of the base profile still applies to it.
 
 ## The settlement Member {#settlement-member}
@@ -382,7 +382,7 @@ Legs cite each other in two ways.
 
 **The terms reference.** Every leg other than the terms leg carries
 `terms_ref`, the `capsule_id` of the terms leg it answers. A leg answers
-exactly one terms leg. `terms_ref` is a bare intra-profile digest, in the
+exactly one terms leg. `terms_ref` is a bare digest, in the
 same way the base profile's `cross_party.initiator_ref` is: it names the
 terms leg's `capsule_id`, and a verifier compares it with the recomputed
 `capsule_id` of the terms leg it holds.
@@ -515,7 +515,7 @@ terms leg carries `deliverable.content_digest`, a verifier compares the
 delivered `content_digest` with it ({{delivery-state}}). When the terms
 carry only `description_digest`, the verifier can establish that both
 sides name the same delivered content, but not that the content matches
-the description; that judgment is outside this profile.
+the description; that judgment is outside this document.
 
 For an inference, `content_digest` is the digest of the completion as
 returned at the serving boundary, the same value a Capsule with
@@ -548,7 +548,7 @@ The rules for amounts:
    in `value` is not conforming, whether or not it has a fractional part. A
    floating-point number anywhere in a Capsule already fails the base
    profile's digest rules; a string with a decimal point or exponent fails
-   this profile as `amount_not_exact`.
+   this document as `amount_not_exact`.
 2. `assetScale` MUST be a JSON integer from 0 to 255.
 3. Two amounts are equal if and only if their `assetCode` strings are
    identical and their values are equal at a common scale: with
@@ -569,7 +569,7 @@ The two sides of one payment do not, in general, report the same number.
 A Lightning payee's wallet, for example, can report 995 millisatoshi
 received with a receive-side fee of 5 for a payment of 1000 millisatoshi
 the payer sent with no routing fee. Both observations are honest. This
-profile therefore records each side's gross, fee, and net separately, and
+document therefore records each side's gross, fee, and net separately, and
 never compares the payer's and the payee's amounts directly.
 
 The members, each an amount in the form above:
@@ -700,7 +700,7 @@ Notes on the initial types:
 
 Many payment protocols already produce signed objects: the x402 signed offer
 and receipt, AP2 mandates and receipts, the BOLT 12 invoice and payer proof.
-This profile carries such an object as it is. It never re-signs it and
+These records carry such an object as it is. It never re-signs it and
 never re-encodes it.
 
 A `wrapped` entry is a JSON object:
@@ -732,7 +732,7 @@ The rules:
    `wrapped_resigned`.
 4. **Verification of the wrapped object is the wrapped protocol's.** A
    verifier MAY verify the wrapped object under its own protocol's rules
-   (for example an AP2 receipt under the processor's key). This profile
+   (for example an AP2 receipt under the processor's key). This document
    does not change those rules, and a wrapped object's validity does not
    change what the leg itself proves.
 
@@ -835,7 +835,7 @@ The two states are independent. A payment can be `agreed` while delivery is
 
 ## Failures {#failures}
 
-The failure codes a verifier reports for this profile are:
+The failure codes a verifier reports for these records are:
 
 | Code | Meaning |
 |---|---|
@@ -914,7 +914,7 @@ records shipping and delivery. A delivered leg maps to it as follows, so
 that an AEP fulfillment artifact can be produced from a delivered leg and
 compared with one.
 
-| AEP Section 3.7 field | This profile | Note |
+| AEP Section 3.7 field | This document | Note |
 |---|---|---|
 | `fulfillment_id` | Capsule `action_id` | |
 | `platform_order_id` | `payment_ref` of type `acp.order_id` or `ucp.order_id` on the observed legs | |
@@ -936,7 +936,7 @@ follows. AEP records no fee fields; `routing_fee`, `received`, and
 `receive_fee` have no AEP counterpart, and an AEP export carries the
 payer's `amount` only.
 
-| AEP Section 3.6 field | This profile |
+| AEP Section 3.6 field | This document |
 |---|---|
 | `settlement_rail` | implied by the `payment_ref` type |
 | `stablecoin.chain` | `payment_ref.network` (`x402.transaction`) |
@@ -970,25 +970,25 @@ Transparency Service applies is that service's concern.
 
 **Bilateral attestation.** {{I-D.mih-agent-bilateral-attestation}} defines a
 request/action exchange between two organizations, in which each signs its
-own half and acknowledges the other's. This profile applies the same
+own half and acknowledges the other's. This document applies the same
 discipline to a payment: each side signs only its own half, the halves cite
 each other by digest, and a missing half is a defined state rather than an
 error. The settlement legs are not the bilateral exchange's objects; a
 deployment can use both, with an action attestation citing a terms leg.
 
-**x402.** This profile binds to the x402 settlement response's `transaction`
+**x402.** This document binds to the x402 settlement response's `transaction`
 and `network` {{X402}}, and wraps the signed offer and receipt
 {{X402-OFFER-RECEIPT}}. It adds a record of what the payer's side observed,
 which x402 does not define, and a delivered-content digest bound to the
 terms.
 
 **AP2.** AP2 mandates and receipts {{AP2}} are wrapped by digest. A Payment
-Receipt is the processor's statement; in this profile it is carried in the
+Receipt is the processor's statement; in these records it is carried in the
 payee's leg as the processor's object, and the payee's own observation is
 the leg itself.
 
 **BOLT 12 payer proofs.** A payer proof {{BOLT12}} is a two-sided proof of a
-Lightning payment. It is wrapped, not replaced; this profile adds the
+Lightning payment. It is wrapped, not replaced; this document adds the
 delivery leg and a form that is the same across rails.
 
 **Payment HTTP authentication.** The `Payment-Receipt`
@@ -999,11 +999,11 @@ leg, it becomes part of a signed record that can be registered.
 Manifest before payment and an issuer-signed Spend Receipt after it, with an
 optional second signature by the payee over a delivered-content hash
 (`deliveredHash`). Both documents use COSE and bind delivery by digest.
-This profile differs in having two sealers of equal standing, each
+This document differs in having two sealers of equal standing, each
 recording its own observation, and in deriving the settlement state from
 both.
 
-**COSE countersignatures.** Nothing in this profile is a COSE
+**COSE countersignatures.** Nothing in this document is a COSE
 countersignature {{RFC9338}}. Each leg is a separate Capsule from a
 separate sealer.
 
@@ -1061,7 +1061,7 @@ evidence the payment happened. The status in an observed leg is the
 sealer's report of its own system's report. A verifier that needs the
 rail's own confirmation obtains it from the rail.
 
-**Canonicalization.** All digests over JSON in this profile use the base
+**Canonicalization.** All digests over JSON in this document use the base
 profile's declared RFC 8785 construction. Wrapped objects use the octets
 their type defines. No digest is computed over an object re-encoded by
 inference from its shape.
@@ -1110,7 +1110,7 @@ full response object.
 # IANA Considerations {#iana}
 
 This document asks IANA to create two registries in a new "Agent Settlement
-Profile" registry group. Until IANA establishes them, the source repository
+Records" registry group. Until IANA establishes them, the source repository
 of this document keeps them as the interim registry of record.
 
 ## Payment Reference Types {#iana-payment-ref}
@@ -1260,7 +1260,7 @@ other members abbreviated):
 # Acknowledgments
 {:numbered="false"}
 
-This profile was shaped by the public discussion of offer digests, delivery
+This document was shaped by the public discussion of offer digests, delivery
 hashes, and offline-verifiable receipts in the x402 community, by the AP2
 receipt model, by the BOLT 12 payer proof work, and by the AEP and Cedulon
 drafts.
