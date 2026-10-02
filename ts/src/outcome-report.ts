@@ -588,7 +588,7 @@ function transcriptTurns(payload: ObjectValue): TranscriptTurn[] | undefined {
 }
 
 /** See `ConversationTranscript`. Reads only cited records, never anything uncited. */
-function findTranscript(
+export function findTranscript(
   result: ResultRoot,
   conversationId: string,
   claims: readonly ResultClaim[],

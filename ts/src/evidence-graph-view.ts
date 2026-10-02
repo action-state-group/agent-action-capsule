@@ -19,6 +19,8 @@ import {
 } from "./evidence-graph.js";
 import { renderOutcomeReportPage } from "./outcome-report-view.js";
 import { readOutcomeReportPresentation } from "./outcome-report-presentation.js";
+import { renderCompliancePage } from "./compliance-view.js";
+import { readCompliancePresentation } from "./compliance-presentation.js";
 import { readPresentationBlock } from "./presentation.js";
 import {
   buildReportRows,
@@ -1353,6 +1355,14 @@ export async function renderEvidenceGraph(
     },
     styled,
   );
+  // compliance/v1 is read the same way: a second card choice over the SAME
+  // verified Result root, after outcome-report's (a bundle that opted into
+  // both renders the outcome-report card) -- never a verification path of
+  // its own.
+  const compliance =
+    result !== undefined && outcomeReport === undefined
+      ? readCompliancePresentation(bundle)
+      : undefined;
   if (reportRows !== undefined) {
     renderReportRowsTable(reportRows, root);
   } else if (result !== undefined && outcomeReport !== undefined) {
@@ -1363,6 +1373,8 @@ export async function renderEvidenceGraph(
       verification,
       root,
     );
+  } else if (result !== undefined && compliance !== undefined) {
+    renderCompliancePage(result, compliance, bundle, verification, root);
   } else if (result !== undefined) {
     renderResultPage(result, root);
   } else if (graph !== undefined) {
