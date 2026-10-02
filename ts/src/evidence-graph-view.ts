@@ -17,6 +17,8 @@ import {
   type ReportNode,
   zoneStatement,
 } from "./evidence-graph.js";
+import { renderOutcomeReportPage } from "./outcome-report-view.js";
+import { readOutcomeReportPresentation } from "./outcome-report-presentation.js";
 import { readPresentationBlock } from "./presentation.js";
 import {
   buildReportRows,
@@ -142,6 +144,7 @@ function renderVerificationBanner(
   root: HTMLElement,
   verified: boolean,
   coverage: { uncheckpointed: number; total: number },
+  styled = false,
 ): void {
   const banner = element(
     "p",
@@ -153,6 +156,11 @@ function renderVerificationBanner(
   );
   banner.dataset.verify = verified ? "verified" : "failed";
   banner.dataset.uncheckpointed = String(coverage.uncheckpointed);
+  // Drawn in the outcome-report card's own look when that card renders
+  // (OUTCOME_REPORT_CSS's .oi-banner rules); the words and data attributes
+  // above are identical either way -- the class is presentation only.
+  if (styled)
+    banner.className = `oi oi-banner ${verified ? "oi-banner-ok" : "oi-banner-failed"}`;
   root.append(banner);
   if (verified) return;
   const refusal = element(
@@ -320,6 +328,14 @@ function renderCheckpointCoverage(
     host.append(line);
     if (coverage.status === "withheld") return;
   }
+  host.append(renderCoverageStatusCounts(records));
+  const details = element("details");
+  details.dataset.records = "coverage-detail";
+  const summary = element(
+    "summary",
+    `${recordsWord(records.length)}, by capsule id`,
+  );
+  details.append(summary);
   const list = element("ul");
   list.dataset.records = "coverage";
   for (const record of records) {
@@ -331,7 +347,36 @@ function renderCheckpointCoverage(
     item.append(status);
     list.append(item);
   }
-  host.append(list);
+  details.append(list);
+  host.append(details);
+}
+
+// Counts by seal status -- the line a reader actually needs (how many of
+// each) without scrolling a list that is one row per record (500+ rows on a
+// real day's book: 50 cases x 9 criteria + 50 cases + 1 Close). The full,
+// per-capsule-id list stays available (renderCheckpointCoverage wraps it in
+// a collapsed <details>), never removed, just not the first thing rendered.
+function renderCoverageStatusCounts(
+  records: readonly RecordCoverage[],
+): HTMLElement {
+  const counts = new Map<RecordCoverageStatus, number>();
+  for (const record of records) {
+    counts.set(record.status, (counts.get(record.status) ?? 0) + 1);
+  }
+  const list = element("ul");
+  list.dataset.records = "coverage-summary";
+  for (const status of Object.keys(COVERAGE_LABEL) as RecordCoverageStatus[]) {
+    const count = counts.get(status) ?? 0;
+    if (count === 0) continue;
+    const item = element(
+      "li",
+      `${recordsWord(count)} ${COVERAGE_LABEL[status]}`,
+    );
+    item.dataset.coverageStatus = status;
+    item.dataset.count = String(count);
+    list.append(item);
+  }
+  return list;
 }
 
 function renderCompletenessStatement(
@@ -379,14 +424,28 @@ function renderChecks(
 // entirely from VERIFIED data (the already-computed BundleVerificationResult
 // and the countersignature stamp classification), never from bundle-supplied
 // markup. It is never labeled a certificate.
+//
+// `styled` (true only when the outcome-report card rendered above it) draws
+// this same page in that card's look: the section takes the card's `.oi`
+// scope plus `.oi-vp`, and its content goes inside one `.sec` panel like
+// every card section. Content, order and data attributes are identical
+// either way, and it stays the last element of the rendering.
 async function renderVerificationPage(
   root: HTMLElement,
   bundle: unknown,
   verified: BundleVerificationResult,
   countersigners: CountersignerSource | undefined,
+  styled = false,
 ): Promise<void> {
-  const page = element("section");
-  page.dataset.page = "verification";
+  const section = element("section");
+  section.dataset.page = "verification";
+  let page = section;
+  if (styled) {
+    section.className = "oi oi-vp";
+    page = element("div");
+    page.className = "sec";
+    section.append(page);
+  }
   page.append(element("h2", "Verification"));
   const model = buildVerificationPageModel(bundle, verified);
   const summary = element("dl");
@@ -422,7 +481,7 @@ async function renderVerificationPage(
   renderCompletenessStatement(page, model.completeness);
   renderChecks(page, model.checks);
   page.append(element("p", model.verifyIndependentlyLine));
-  root.append(page);
+  root.append(section);
 }
 
 function metRate(report: ReportNode): string {
@@ -1272,18 +1331,48 @@ export async function renderEvidenceGraph(
       ? await buildEvidenceGraph(bundle)
       : undefined;
   const records = object(bundle).records;
+  // outcome-report/v1 is a card choice over the SAME verified Result root,
+  // never a different verification path: it is read only after `result` is
+  // already built from a bundle that passed the verify-first gate above, and
+  // it changes nothing about what `result` itself required to exist. Absent
+  // or not enabled, the generic Result page stays the default -- unchanged
+  // for every bundle that predates this card. Read before the banner only so
+  // the banner and the verification page can take the card's look; an
+  // unverified bundle never has a `result`, so it never does.
+  const outcomeReport =
+    result !== undefined ? readOutcomeReportPresentation(bundle) : undefined;
+  const styled = result !== undefined && outcomeReport !== undefined;
   root.replaceChildren();
   renderPresentationHeader(root, bundle);
-  renderVerificationBanner(root, verified, {
-    uncheckpointed: unboundRecordIds(verification).length,
-    total: Array.isArray(records) ? records.length : 0,
-  });
+  renderVerificationBanner(
+    root,
+    verified,
+    {
+      uncheckpointed: unboundRecordIds(verification).length,
+      total: Array.isArray(records) ? records.length : 0,
+    },
+    styled,
+  );
   if (reportRows !== undefined) {
     renderReportRowsTable(reportRows, root);
+  } else if (result !== undefined && outcomeReport !== undefined) {
+    await renderOutcomeReportPage(
+      result,
+      outcomeReport,
+      bundle,
+      verification,
+      root,
+    );
   } else if (result !== undefined) {
     renderResultPage(result, root);
   } else if (graph !== undefined) {
     renderGraph(graph, root, Array.isArray(records) ? records : []);
   }
-  await renderVerificationPage(root, bundle, verification, countersigners);
+  await renderVerificationPage(
+    root,
+    bundle,
+    verification,
+    countersigners,
+    styled,
+  );
 }
