@@ -166,3 +166,65 @@ it("population counts only the sessions a test has a sealed result for", async (
   )!;
   expect(row.querySelectorAll("td")[3]!.textContent).toBe("1");
 });
+
+// ---------------------------------------------------------------------------
+// (d) banner/verification-page styling, and the regression it guards
+// ---------------------------------------------------------------------------
+
+it("draws the verification banner and the verification page in the compliance card's look", async () => {
+  const { bundle } = await sealedComplianceBundle();
+  const root = await render(bundle);
+  const banner = root.querySelector<HTMLElement>('[data-verify="verified"]')!;
+  expect(banner.className).toBe("cc cc-banner cc-banner-ok");
+  const card = root.querySelector('[data-page="compliance"]')!;
+  expect(
+    banner.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  const verification = root.querySelector<HTMLElement>(
+    '[data-page="verification"]',
+  )!;
+  expect(root.lastElementChild).toBe(verification);
+  expect(verification.className).toBe("cc cc-vp");
+  // the content panel is a bare <section>, styled by the card's own `.cc
+  // section` rule rather than a parallel `.sec`-style class
+  const panel = verification.querySelector(":scope > section");
+  expect(panel).not.toBeNull();
+  expect(panel!.querySelector("h2")!.textContent).toBe("Verification");
+  // the card's stylesheet carries the rules the classes name
+  const style = root.querySelector(
+    '[data-page="compliance"] style',
+  )!.textContent!;
+  expect(style).toContain(".cc.cc-vp");
+  expect(style).toContain(".cc.cc-banner-ok");
+});
+
+it("leaves the outcome-report and plain Result paths unaffected by the compliance card's cardClass wiring", async () => {
+  // outcome-report path: the refactor from boolean `styled` to a `cardClass`
+  // discriminator must not change the "oi" look this path already had.
+  const { bundle: outcomeBundle } = await sealEvidenceBundle(
+    fixture("outcome-report-bundle.json"),
+  );
+  const outcomeRoot = await render(outcomeBundle);
+  const outcomeBanner = outcomeRoot.querySelector<HTMLElement>(
+    '[data-verify="verified"]',
+  )!;
+  expect(outcomeBanner.className).toBe("oi oi-banner oi-banner-ok");
+  const outcomeVerification = outcomeRoot.querySelector<HTMLElement>(
+    '[data-page="verification"]',
+  )!;
+  expect(outcomeVerification.className).toBe("oi oi-vp");
+
+  // plain Result path: no card opts in at all, so the banner and
+  // verification page stay entirely unstyled, as before.
+  const { bundle: resultBundle } = await sealEvidenceBundle(
+    fixture("result-root-bundle.json"),
+  );
+  const resultRoot = await render(resultBundle);
+  expect(
+    resultRoot.querySelector<HTMLElement>("[data-verify]")!.className,
+  ).toBe("");
+  expect(
+    resultRoot.querySelector<HTMLElement>('[data-page="verification"]')!
+      .className,
+  ).toBe("");
+});
