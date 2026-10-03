@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Nostr-host profile vectors (vectors/profiles/): freshness, digest re-derivation, and rule checks.
 
+Two sets are covered: ``nostr-host.*`` (current) and ``buzz.*`` (released in 0.6.0, superseded,
+kept as released bytes; the generator must reproduce them exactly).
+
 Go (go/canonical/profile_vectors_test.go) and TypeScript (ts/test/profile-vectors.test.ts)
 assert the same committed files against the same labels and rule codes.
 """
@@ -25,6 +28,8 @@ _SPEC.loader.exec_module(gen)
 
 MANIFEST = json.loads((VECTORS / "manifest.json").read_text(encoding="utf-8"))
 CASES = [c["file"] for c in MANIFEST["cases"]]
+CURRENT = "nostr-host"
+RELEASED = "buzz"
 WITHDRAWN = ("outcome" + "_digest", "content" + "_digest", "gate" + "_digest")
 
 
@@ -87,8 +92,36 @@ def test_no_withdrawn_per_profile_digest_names() -> None:
                 assert name not in text, (path, name)
 
 
-def test_moderation_worked_vector_names_content_and_decision_body_digests() -> None:
-    record = _load("buzz.moderation/v1/positive-semantic-judgment.json")["record"]
+def test_both_sets_cover_the_same_cases() -> None:
+    current = sorted(c.split("/", 1)[0].split(".", 1)[1] + "/" + c.split("/", 1)[1]
+                     for c in CASES if c.startswith(CURRENT + "."))
+    released = sorted(c.split("/", 1)[0].split(".", 1)[1] + "/" + c.split("/", 1)[1]
+                      for c in CASES if c.startswith(RELEASED + "."))
+    assert len(current) == 10
+    assert current == released
+    assert len(CASES) == 20
+
+
+def test_current_set_is_neutral_and_digests_are_its_own() -> None:
+    """The nostr-host set names no reference project and shares no digest with the released set."""
+    released_digests: set[str] = set()
+    for rel in CASES:
+        if rel.startswith(RELEASED + "."):
+            for entry in _load(rel)["digest_labels"]:
+                released_digests.add(json_digest({"label": entry["label"]}))
+    for rel in CASES:
+        if rel.startswith(CURRENT + "."):
+            text = (VECTORS / rel).read_text(encoding="utf-8")
+            assert "buzz" not in text.lower(), rel
+            doc = _load(rel)
+            assert doc["record"]["contract_ref"].startswith("ec:nostr-host.")
+            for entry in doc["digest_labels"]:
+                assert json_digest({"label": entry["label"]}) not in released_digests, (rel, entry)
+
+
+@pytest.mark.parametrize("prefix", [CURRENT, RELEASED])
+def test_moderation_worked_vector_names_content_and_decision_body_digests(prefix: str) -> None:
+    record = _load(f"{prefix}.moderation/v1/positive-semantic-judgment.json")["record"]
     roles = [c["role"] for c in record["payload_commitments"]]
     assert roles == ["moderated-content", "moderation-decision"]
     digests = {c["digest"] for c in record["payload_commitments"]}

@@ -5,7 +5,8 @@ package canonical_test
 // python/scripts/generate_profile_vectors.py. For every committed fixture this test re-derives
 // each labelled digest with canonical.JSONDigest and applies the same five rule codes the Python
 // checker applies, asserting the committed `expect.violations` exactly. TypeScript asserts the
-// same files in ts/test/profile-vectors.test.ts.
+// same files in ts/test/profile-vectors.test.ts. Two sets are covered: nostr-host.* (current) and
+// buzz.* (released in 0.6.0, superseded, kept as released bytes).
 
 import (
 	"encoding/json"
@@ -149,7 +150,12 @@ func TestProfileVectorsParity(t *testing.T) {
 	require.NoError(t, err)
 	var manifest profileManifest
 	require.NoError(t, json.Unmarshal(raw, &manifest))
-	require.Len(t, manifest.Cases, 10)
+	require.Len(t, manifest.Cases, 20)
+	sets := map[string]int{}
+	for _, c := range manifest.Cases {
+		sets[strings.SplitN(c.File, ".", 2)[0]]++
+	}
+	require.Equal(t, map[string]int{"nostr-host": 10, "buzz": 10}, sets)
 
 	for _, c := range manifest.Cases {
 		t.Run(c.File, func(t *testing.T) {

@@ -3,10 +3,27 @@
 **About the name Buzz in this file.** These profiles are written for agent hosts that run over the
 Nostr transport. The open-source Buzz project is used as the reference example of such a host,
 because its job, moderation and release flows are public. The profiles are not adopted, endorsed,
-or used by the Buzz project, and nothing here describes Buzz's own practices. The fixtures below
-were released in 0.6.0 with `buzz.`-prefixed ids and `buzz.example` hosts; released vectors are
-never rewritten, so they keep those ids. Copies under the neutral `nostr-host.` prefix supersede
-them.
+or used by the Buzz project, and nothing here describes Buzz's own practices.
+
+## Two sets: current and released
+
+| Directory | Profile id | Status |
+|---|---|---|
+| `nostr-host.agent-job/v1/` | `nostr-host.agent-job/v1` | **current** |
+| `nostr-host.moderation/v1/` | `nostr-host.moderation/v1` | **current** |
+| `nostr-host.release/v1/` | `nostr-host.release/v1` | **current** |
+| `buzz.agent-job/v1/` | `buzz.agent-job/v1` | released in 0.6.0, superseded, kept as released bytes |
+| `buzz.moderation/v1/` | `buzz.moderation/v1` | released in 0.6.0, superseded, kept as released bytes |
+| `buzz.release/v1/` | `buzz.release/v1` | released in 0.6.0, superseded, kept as released bytes |
+
+The `nostr-host.*` fixtures are neutral copies of the 0.6.0 set: the same records, rules and
+`semantic_digest` construction, with `host.example` hosts, `host:` subject and role refs, and
+`host-*` key, model, calibration and policy ids. Their digest labels start
+`nostr-host-profile-vector:`, so every digest in them is re-derived for the new records; none is
+shared with the released set. Released vectors are never rewritten, so the `buzz.*` files keep
+their 0.6.0 bytes (`buzz.example` hosts, `buzz-*` ids); the generator still reproduces them
+byte-identically and the tests assert it. `manifest.json` lists both sets (it has no supersession
+field; this table is the record). New work cites the `nostr-host.*` ids.
 
 **Status: subject shape ruled (2026-09-23); illustrative vectors, generated, two-language parity.**
 Registry placement of the profile entries is still **unruled** (see `capsule-registry`'s
@@ -36,7 +53,7 @@ So every record here carries exactly `subject: {event_id, semantic_digest}`:
 ## How they are generated
 
 `python/scripts/generate_profile_vectors.py` (Python reference) writes every file in this
-directory, including `manifest.json`:
+directory, both sets, including `manifest.json`:
 
 ```
 cd python && python -m scripts.generate_profile_vectors
@@ -51,9 +68,9 @@ Three suites assert the **same committed files**:
 
 | Language | Test | Asserts |
 |---|---|---|
-| Python | `python/tests/test_profile_vectors.py` | committed files == generator output (byte-identical); every labelled digest re-derives; rule codes == `expect`; each negative passes once its documented rule is disabled (it fails for that reason only); no withdrawn per-profile digest name appears anywhere here |
-| Go | `go/canonical/profile_vectors_test.go` | every labelled digest re-derives via `canonical.JSONDigest`; the same rule codes == `expect` |
-| TypeScript | `ts/test/profile-vectors.test.ts` | every labelled digest re-derives via `jsonDigest`; the same rule codes == `expect` |
+| Python | `python/tests/test_profile_vectors.py` | committed files == generator output (byte-identical, both sets); every labelled digest re-derives; rule codes == `expect`; each negative passes once its documented rule is disabled (it fails for that reason only); no withdrawn per-profile digest name appears anywhere here; both sets cover the same ten cases; the `nostr-host.*` set names no reference project and shares no digest with the released set |
+| Go | `go/canonical/profile_vectors_test.go` | ten cases per set; every labelled digest re-derives via `canonical.JSONDigest`; the same rule codes == `expect` |
+| TypeScript | `ts/test/profile-vectors.test.ts` | ten cases per set; every labelled digest re-derives via `jsonDigest`; the same rule codes == `expect` |
 
 ## Rules
 
@@ -69,22 +86,25 @@ Three suites assert the **same committed files**:
 
 ```
 manifest.json
-buzz.agent-job/v1/
+nostr-host.agent-job/v1/                 # current
   positive-01.json
   negative-event-id-as-digest.json
-buzz.moderation/v1/
-  positive-semantic-judgment.json      # worked content-vs-decision vector (below)
+nostr-host.moderation/v1/                # current
+  positive-semantic-judgment.json        # worked content-vs-decision vector (below)
   positive-human-report-review.json
   positive-obligation-reference.json
   negative-event-id-as-digest.json
   negative-message-text-present.json
   negative-score-field-present.json
-buzz.release/v1/
+nostr-host.release/v1/                   # current
   positive-01.json
   negative-event-id-as-digest.json
+buzz.agent-job/v1/                       # released in 0.6.0, superseded (same file names)
+buzz.moderation/v1/                      # released in 0.6.0, superseded (same file names)
+buzz.release/v1/                         # released in 0.6.0, superseded (same file names)
 ```
 
-## `buzz.moderation/v1`: the worked content-vs-decision vector
+## `nostr-host.moderation/v1`: the worked content-vs-decision vector
 
 A moderation record binds *what was moderated* and *what was decided about it*. In
 `positive-semantic-judgment.json`:
@@ -98,22 +118,23 @@ A moderation record binds *what was moderated* and *what was decided about it*. 
 
 Content and decision are two NAMED body digests, never subject fields. The three positives
 (`semantic_judgment`, `human_report` review, `obligation_reference`) share that one subject;
-a `buzz.moderation/v1` requirement needs the three together, not any single record. The
+a `nostr-host.moderation/v1` requirement needs the three together, not any single record. The
 obligation reference cites DSA Art. 17 and Art. 24(5) — a citation, never a compliance
 conclusion.
 
-`buzz.release/v1`'s positive carries the release's approval record the same way: one NAMED body
+`nostr-host.release/v1`'s positive carries the release's approval record the same way: one NAMED body
 digest (`role: "approval-record"`) beside the uniform subject.
 
 ## Negatives
 
-Each negative is a minimal mutation of its profile's positive and fails exactly one rule:
+Each negative is a minimal mutation of its profile's positive and fails exactly one rule. Both
+sets carry the same negatives:
 
 | File(s) | Mutation | Rule |
 |---|---|---|
-| `*/negative-event-id-as-digest.json` (all three profiles) | `subject.semantic_digest` set equal to `subject.event_id` | `event_id_as_digest` |
-| `buzz.moderation/v1/negative-message-text-present.json` | `judgment.moderated_text` added, carrying free text | `message_text_present` |
-| `buzz.moderation/v1/negative-score-field-present.json` | `judgment.principal_trust_score` added, a numeric score | `score_present` |
+| `*/negative-event-id-as-digest.json` (all three profiles, both sets) | `subject.semantic_digest` set equal to `subject.event_id` | `event_id_as_digest` |
+| `*.moderation/v1/negative-message-text-present.json` | `judgment.moderated_text` added, carrying free text | `message_text_present` |
+| `*.moderation/v1/negative-score-field-present.json` | `judgment.principal_trust_score` added, a numeric score | `score_present` |
 
 ## Still unruled (not decided by these vectors)
 
@@ -122,4 +143,5 @@ Each negative is a minimal mutation of its profile's positive and fails exactly 
   never authority: a `principal_ref` says who signed, nothing about what the signer may do.
 - `minimum_assurance` / `retention_check` values in the profile entries' evidence requirements are
   placeholders.
-- Registry placement of the four entries.
+- Registry placement of the four entries (the `nostr-pubkey` profile and the three
+  `nostr-host.*` profiles).

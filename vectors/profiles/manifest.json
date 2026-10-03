@@ -10,6 +10,66 @@
   ],
   "cases": [
     {
+      "file": "nostr-host.agent-job/v1/positive-01.json",
+      "valid": true,
+      "violations": []
+    },
+    {
+      "file": "nostr-host.agent-job/v1/negative-event-id-as-digest.json",
+      "valid": false,
+      "violations": [
+        "event_id_as_digest"
+      ]
+    },
+    {
+      "file": "nostr-host.moderation/v1/positive-semantic-judgment.json",
+      "valid": true,
+      "violations": []
+    },
+    {
+      "file": "nostr-host.moderation/v1/positive-human-report-review.json",
+      "valid": true,
+      "violations": []
+    },
+    {
+      "file": "nostr-host.moderation/v1/positive-obligation-reference.json",
+      "valid": true,
+      "violations": []
+    },
+    {
+      "file": "nostr-host.moderation/v1/negative-event-id-as-digest.json",
+      "valid": false,
+      "violations": [
+        "event_id_as_digest"
+      ]
+    },
+    {
+      "file": "nostr-host.moderation/v1/negative-message-text-present.json",
+      "valid": false,
+      "violations": [
+        "message_text_present"
+      ]
+    },
+    {
+      "file": "nostr-host.moderation/v1/negative-score-field-present.json",
+      "valid": false,
+      "violations": [
+        "score_present"
+      ]
+    },
+    {
+      "file": "nostr-host.release/v1/positive-01.json",
+      "valid": true,
+      "violations": []
+    },
+    {
+      "file": "nostr-host.release/v1/negative-event-id-as-digest.json",
+      "valid": false,
+      "violations": [
+        "event_id_as_digest"
+      ]
+    },
+    {
       "file": "buzz.agent-job/v1/positive-01.json",
       "valid": true,
       "violations": []
