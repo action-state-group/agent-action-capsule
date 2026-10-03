@@ -1,6 +1,7 @@
 import { verifyBundle, type BundleVerificationResult } from "./bundle.js";
 import {
   classifyCountersignatures,
+  declaredProducerKeys,
   type CountersignatureStamp,
   type CountersignerSource,
   type CountersignStatementView,
@@ -189,15 +190,6 @@ function renderPresentationHeader(root: HTMLElement, bundle: unknown): void {
     header.append(title);
   }
   root.append(header);
-}
-
-function producerPublicKeys(bundle: unknown): string[] {
-  const extensions = object(object(bundle).extensions);
-  const block = object(extensions["producer-key/v1"]);
-  const publicKey = block.public_key;
-  return typeof publicKey === "string" && /^[0-9a-f]{64}$/u.test(publicKey)
-    ? [publicKey]
-    : [];
 }
 
 function stampText(stamp: CountersignatureStamp): string {
@@ -415,7 +407,7 @@ async function renderVerificationPage(
   const stamps = await classifyCountersignatures(
     Array.isArray(countersignatures) ? countersignatures : [],
     verified.bundleDigest,
-    producerPublicKeys(bundle),
+    declaredProducerKeys(bundle),
     countersigners,
   );
   renderStamps(page, stamps);

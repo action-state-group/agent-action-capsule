@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Added
+- Evidence Bundle `-01` working revision (`spec/draft-mih-zhang-agent-disclosure-bundle-01`;
+  the posted `-00` files are unchanged). It defines the `countersign/v1` entry (signing input
+  `UTF8(JCS({over, signer, statement, type}))`, five per-check results, self-countersignature
+  rendered as not independent) and the `producer-key/v1` extension kind.
+- `producer-key/v1` registered in `REGISTRY.md` §14 (with the Python and Go mirrors), and
+  `countersign/v1` in §15. The block is `{"public_key": "<64 lowercase hex>"}`, digest-covered;
+  a verifier uses it only to classify a countersignature by that key as not independent. A
+  malformed block is ignored.
+- TypeScript: `declaredProducerKeys(bundle)` and `PRODUCER_KEY_V1`, exported from the
+  countersignature stamp; the evidence graph view now reads the declared key through it
+  (unchanged behaviour).
+- Vectors `vectors/bundle/producer-key/` (generator
+  `python/scripts/generate_bundle_producer_key_vectors.py`): a declared self-countersignature
+  is not independent; the same Bundle without the declaration, a different signer, and five
+  malformed blocks are not. Consumed by Python and TypeScript tests. Existing vector files are
+  unchanged; only the top-level `SHA256SUMS` and `manifest.json` gained entries.
+
 ### Changed
 - A null `references[].retention.declarant` is now reported as `missing_required_field` (check 1),
   as a null `disposition.approver` is: `declarant` is REQUIRED (§5.5.5). #148 had reported it as

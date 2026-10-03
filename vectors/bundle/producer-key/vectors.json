@@ -1,0 +1,1175 @@
+{
+  "format_version": "1",
+  "spec": "draft-mih-zhang-agent-disclosure-bundle-01",
+  "extension_kind": "producer-key/v1",
+  "provenance": "spec-derived",
+  "description": "producer-key/v1 declares the producer's Ed25519 public key. A verifier uses it only to classify a countersign/v1 entry signed by that key as not independent; a malformed block is ignored and never fails the Bundle. Stamps use the draft's four countersign/v1 states; no countersigner directory is consulted, so an independent valid entry is an unresolved signer.",
+  "keys": {
+    "producer_seed_hex": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
+    "producer_public_key_hex": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+    "other_seed_hex": "2121212121212121212121212121212121212121212121212121212121212121",
+    "other_public_key_hex": "884b8857f4eaa1613c61504db34d4beaf346517a0e31de3cddd4d9b4201d9d0b",
+    "note": "TEST-ONLY keys"
+  },
+  "extension_block_jcs": "{\"producer-key/v1\":{\"public_key\":\"66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a\"}}",
+  "count": 8,
+  "cases": [
+    {
+      "id": "declared-self-countersignature",
+      "section": [
+        "The producer-key/v1 Extension",
+        "Self-Countersignature"
+      ],
+      "description": "the Bundle declares the producer key, and the countersign/v1 entry is signed by that key",
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "report-single-record-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-09-16T19:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "model_attestation": {
+              "compute_attestation": {
+                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+              }
+            },
+            "countersignatures": [],
+            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "disclosures": {
+          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+            "agent_input": {
+              "report": "report/v1",
+              "rows": [
+                {
+                  "id": "r1",
+                  "result": "pass"
+                },
+                {
+                  "id": "r2",
+                  "result": "withheld"
+                }
+              ]
+            }
+          }
+        },
+        "completeness_certificate": {
+          "log_id": "vector-log",
+          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "first_seq": 1,
+          "last_seq": 1,
+          "body_digests": [
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 1,
+            "size": 1,
+            "from_index": 0,
+            "to_index": 0,
+            "witness": []
+          },
+          "memberships": {
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+              "log_coordinates": {
+                "log_id": "vector-log",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 1,
+                "leaf_index": 0,
+                "witness": [],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "mmr_size": 1
+        },
+        "extensions": {
+          "producer-key/v1": {
+            "public_key": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        },
+        "countersignatures": [
+          {
+            "type": "countersign/v1",
+            "signer": {
+              "id": "did:web:countersign.example",
+              "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+            },
+            "over": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
+            "statement": {
+              "checks": [
+                {
+                  "name": "chain consistency",
+                  "result": "established"
+                },
+                {
+                  "name": "range membership",
+                  "result": "failed"
+                }
+              ],
+              "recomputed_at": "2026-10-01T00:00:00Z",
+              "scope": {
+                "ledger_id": "ledger:test",
+                "closure_depth": 0
+              }
+            },
+            "signature": "fc770764987df255f24079dcfa531bcfd3c4551c3711ddbb78b174ba1c7c56dc0a5b5eabfb87114a328b00c9cd4dacd8e5cd86c9b9dc5cd3ca065fb5ffa8ba05"
+          }
+        ]
+      },
+      "bundle_digest": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
+      "expect": {
+        "signature": "valid",
+        "declared_producer_keys": [
+          "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+        ],
+        "stamp": "not independent"
+      }
+    },
+    {
+      "id": "undeclared-self-countersignature",
+      "section": [
+        "The producer-key/v1 Extension",
+        "Self-Countersignature"
+      ],
+      "description": "the same Bundle without the extension, signed by the same key; with no declaration and no countersigner directory consulted the key is an unlisted signer",
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "report-single-record-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-09-16T19:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "model_attestation": {
+              "compute_attestation": {
+                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+              }
+            },
+            "countersignatures": [],
+            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "disclosures": {
+          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+            "agent_input": {
+              "report": "report/v1",
+              "rows": [
+                {
+                  "id": "r1",
+                  "result": "pass"
+                },
+                {
+                  "id": "r2",
+                  "result": "withheld"
+                }
+              ]
+            }
+          }
+        },
+        "completeness_certificate": {
+          "log_id": "vector-log",
+          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "first_seq": 1,
+          "last_seq": 1,
+          "body_digests": [
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 1,
+            "size": 1,
+            "from_index": 0,
+            "to_index": 0,
+            "witness": []
+          },
+          "memberships": {
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+              "log_coordinates": {
+                "log_id": "vector-log",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 1,
+                "leaf_index": 0,
+                "witness": [],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "mmr_size": 1
+        },
+        "countersignatures": [
+          {
+            "type": "countersign/v1",
+            "signer": {
+              "id": "did:web:countersign.example",
+              "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+            },
+            "over": "1aa69730d34c8f15588db4ce8d1990e3d3b9c46aeb333b0adaee20d18dab759b",
+            "statement": {
+              "checks": [
+                {
+                  "name": "chain consistency",
+                  "result": "established"
+                },
+                {
+                  "name": "range membership",
+                  "result": "failed"
+                }
+              ],
+              "recomputed_at": "2026-10-01T00:00:00Z",
+              "scope": {
+                "ledger_id": "ledger:test",
+                "closure_depth": 0
+              }
+            },
+            "signature": "34bce2c43268d17688993df3e47dc808c3a7efd17816bd0c2472f3976214094649fbeb3faa9c01ea8af682e3c960f8e07f498fc9be057556209f65ca40195c09"
+          }
+        ]
+      },
+      "bundle_digest": "1aa69730d34c8f15588db4ce8d1990e3d3b9c46aeb333b0adaee20d18dab759b",
+      "expect": {
+        "signature": "valid",
+        "declared_producer_keys": [],
+        "stamp": "unresolved signer"
+      }
+    },
+    {
+      "id": "declared-other-signer",
+      "section": [
+        "The producer-key/v1 Extension",
+        "Self-Countersignature"
+      ],
+      "description": "the Bundle declares the producer key, and the entry is signed by a different key; the declaration changes nothing for a signer whose key differs",
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "report-single-record-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-09-16T19:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "model_attestation": {
+              "compute_attestation": {
+                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+              }
+            },
+            "countersignatures": [],
+            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "disclosures": {
+          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+            "agent_input": {
+              "report": "report/v1",
+              "rows": [
+                {
+                  "id": "r1",
+                  "result": "pass"
+                },
+                {
+                  "id": "r2",
+                  "result": "withheld"
+                }
+              ]
+            }
+          }
+        },
+        "completeness_certificate": {
+          "log_id": "vector-log",
+          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "first_seq": 1,
+          "last_seq": 1,
+          "body_digests": [
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 1,
+            "size": 1,
+            "from_index": 0,
+            "to_index": 0,
+            "witness": []
+          },
+          "memberships": {
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+              "log_coordinates": {
+                "log_id": "vector-log",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 1,
+                "leaf_index": 0,
+                "witness": [],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "mmr_size": 1
+        },
+        "extensions": {
+          "producer-key/v1": {
+            "public_key": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        },
+        "countersignatures": [
+          {
+            "type": "countersign/v1",
+            "signer": {
+              "id": "did:web:countersign.example",
+              "key_id": "884b8857f4eaa1613c61504db34d4beaf346517a0e31de3cddd4d9b4201d9d0b"
+            },
+            "over": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
+            "statement": {
+              "checks": [
+                {
+                  "name": "chain consistency",
+                  "result": "established"
+                },
+                {
+                  "name": "range membership",
+                  "result": "failed"
+                }
+              ],
+              "recomputed_at": "2026-10-01T00:00:00Z",
+              "scope": {
+                "ledger_id": "ledger:test",
+                "closure_depth": 0
+              }
+            },
+            "signature": "f24bb58914d17d68e5630193073657016344762d0703b75bbf3d0b51ca671efb59b2c27b0c368d3272d3e1962d0f4fce4b4500d2e03104dca16a6d26dcf0070b"
+          }
+        ]
+      },
+      "bundle_digest": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
+      "expect": {
+        "signature": "valid",
+        "declared_producer_keys": [
+          "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+        ],
+        "stamp": "unresolved signer"
+      }
+    },
+    {
+      "id": "malformed-uppercase-hex",
+      "section": [
+        "The producer-key/v1 Extension",
+        "Self-Countersignature"
+      ],
+      "description": "public_key is the producer key in uppercase hex; not 64 lowercase hex, so the block is ignored (never case-folded) and the Bundle does not fail",
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "report-single-record-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-09-16T19:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "model_attestation": {
+              "compute_attestation": {
+                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+              }
+            },
+            "countersignatures": [],
+            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "disclosures": {
+          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+            "agent_input": {
+              "report": "report/v1",
+              "rows": [
+                {
+                  "id": "r1",
+                  "result": "pass"
+                },
+                {
+                  "id": "r2",
+                  "result": "withheld"
+                }
+              ]
+            }
+          }
+        },
+        "completeness_certificate": {
+          "log_id": "vector-log",
+          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "first_seq": 1,
+          "last_seq": 1,
+          "body_digests": [
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 1,
+            "size": 1,
+            "from_index": 0,
+            "to_index": 0,
+            "witness": []
+          },
+          "memberships": {
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+              "log_coordinates": {
+                "log_id": "vector-log",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 1,
+                "leaf_index": 0,
+                "witness": [],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "mmr_size": 1
+        },
+        "extensions": {
+          "producer-key/v1": {
+            "public_key": "66BE7E332C7A453332BD9D0A7F7DB055F5C5EF1A06ADA66D98B39FB6810C473A"
+          }
+        },
+        "countersignatures": [
+          {
+            "type": "countersign/v1",
+            "signer": {
+              "id": "did:web:countersign.example",
+              "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+            },
+            "over": "1c812a3e44016f6c128d66fde8e665005ac671690fb4160030eecb34e1307bef",
+            "statement": {
+              "checks": [
+                {
+                  "name": "chain consistency",
+                  "result": "established"
+                },
+                {
+                  "name": "range membership",
+                  "result": "failed"
+                }
+              ],
+              "recomputed_at": "2026-10-01T00:00:00Z",
+              "scope": {
+                "ledger_id": "ledger:test",
+                "closure_depth": 0
+              }
+            },
+            "signature": "548d13dbe720fc0dc7d2baf666c88806db95c13a2b2d379152ee0eed304f548fa4f0ecafe8d9ba43aa60b50d8d118c0b676718f1819b59bdf59991946533080d"
+          }
+        ]
+      },
+      "bundle_digest": "1c812a3e44016f6c128d66fde8e665005ac671690fb4160030eecb34e1307bef",
+      "expect": {
+        "signature": "valid",
+        "declared_producer_keys": [],
+        "stamp": "unresolved signer"
+      }
+    },
+    {
+      "id": "malformed-short-hex",
+      "section": [
+        "The producer-key/v1 Extension",
+        "Self-Countersignature"
+      ],
+      "description": "public_key is 63 hex characters; malformed, ignored",
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "report-single-record-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-09-16T19:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "model_attestation": {
+              "compute_attestation": {
+                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+              }
+            },
+            "countersignatures": [],
+            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "disclosures": {
+          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+            "agent_input": {
+              "report": "report/v1",
+              "rows": [
+                {
+                  "id": "r1",
+                  "result": "pass"
+                },
+                {
+                  "id": "r2",
+                  "result": "withheld"
+                }
+              ]
+            }
+          }
+        },
+        "completeness_certificate": {
+          "log_id": "vector-log",
+          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "first_seq": 1,
+          "last_seq": 1,
+          "body_digests": [
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 1,
+            "size": 1,
+            "from_index": 0,
+            "to_index": 0,
+            "witness": []
+          },
+          "memberships": {
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+              "log_coordinates": {
+                "log_id": "vector-log",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 1,
+                "leaf_index": 0,
+                "witness": [],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "mmr_size": 1
+        },
+        "extensions": {
+          "producer-key/v1": {
+            "public_key": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473"
+          }
+        },
+        "countersignatures": [
+          {
+            "type": "countersign/v1",
+            "signer": {
+              "id": "did:web:countersign.example",
+              "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+            },
+            "over": "83aeaa241e1e303fd72faca38e5ace073f2a5cc1d6309adb8f91204faf71d2d3",
+            "statement": {
+              "checks": [
+                {
+                  "name": "chain consistency",
+                  "result": "established"
+                },
+                {
+                  "name": "range membership",
+                  "result": "failed"
+                }
+              ],
+              "recomputed_at": "2026-10-01T00:00:00Z",
+              "scope": {
+                "ledger_id": "ledger:test",
+                "closure_depth": 0
+              }
+            },
+            "signature": "9734169dbecf11bf9914afb2abb7c521897001e0a434a1357bdf7cceaf2a23881611084ddceec5093637ab7df7ce223e22e0283df056ec1d601c15eb58b5890d"
+          }
+        ]
+      },
+      "bundle_digest": "83aeaa241e1e303fd72faca38e5ace073f2a5cc1d6309adb8f91204faf71d2d3",
+      "expect": {
+        "signature": "valid",
+        "declared_producer_keys": [],
+        "stamp": "unresolved signer"
+      }
+    },
+    {
+      "id": "malformed-key-list",
+      "section": [
+        "The producer-key/v1 Extension",
+        "Self-Countersignature"
+      ],
+      "description": "public_key is a list holding the producer key; the block carries one key as a string, so this is malformed and ignored",
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "report-single-record-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-09-16T19:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "model_attestation": {
+              "compute_attestation": {
+                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+              }
+            },
+            "countersignatures": [],
+            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "disclosures": {
+          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+            "agent_input": {
+              "report": "report/v1",
+              "rows": [
+                {
+                  "id": "r1",
+                  "result": "pass"
+                },
+                {
+                  "id": "r2",
+                  "result": "withheld"
+                }
+              ]
+            }
+          }
+        },
+        "completeness_certificate": {
+          "log_id": "vector-log",
+          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "first_seq": 1,
+          "last_seq": 1,
+          "body_digests": [
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 1,
+            "size": 1,
+            "from_index": 0,
+            "to_index": 0,
+            "witness": []
+          },
+          "memberships": {
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+              "log_coordinates": {
+                "log_id": "vector-log",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 1,
+                "leaf_index": 0,
+                "witness": [],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "mmr_size": 1
+        },
+        "extensions": {
+          "producer-key/v1": {
+            "public_key": [
+              "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+            ]
+          }
+        },
+        "countersignatures": [
+          {
+            "type": "countersign/v1",
+            "signer": {
+              "id": "did:web:countersign.example",
+              "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+            },
+            "over": "1c7db14a08dbf19cc3ad7852481ec96753de2e29c28380290781cd6224641433",
+            "statement": {
+              "checks": [
+                {
+                  "name": "chain consistency",
+                  "result": "established"
+                },
+                {
+                  "name": "range membership",
+                  "result": "failed"
+                }
+              ],
+              "recomputed_at": "2026-10-01T00:00:00Z",
+              "scope": {
+                "ledger_id": "ledger:test",
+                "closure_depth": 0
+              }
+            },
+            "signature": "d5196f0be9f5776e2736b51297457a38716e3ecfe2f5d88118df5f537648965a5ec00664cfde439067413100071d2066a4428da83aa7ae5821f164421098cd08"
+          }
+        ]
+      },
+      "bundle_digest": "1c7db14a08dbf19cc3ad7852481ec96753de2e29c28380290781cd6224641433",
+      "expect": {
+        "signature": "valid",
+        "declared_producer_keys": [],
+        "stamp": "unresolved signer"
+      }
+    },
+    {
+      "id": "malformed-block-not-object",
+      "section": [
+        "The producer-key/v1 Extension",
+        "Self-Countersignature"
+      ],
+      "description": "the extension value is the bare key string, not a block object; malformed, ignored",
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "report-single-record-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-09-16T19:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "model_attestation": {
+              "compute_attestation": {
+                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+              }
+            },
+            "countersignatures": [],
+            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "disclosures": {
+          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+            "agent_input": {
+              "report": "report/v1",
+              "rows": [
+                {
+                  "id": "r1",
+                  "result": "pass"
+                },
+                {
+                  "id": "r2",
+                  "result": "withheld"
+                }
+              ]
+            }
+          }
+        },
+        "completeness_certificate": {
+          "log_id": "vector-log",
+          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "first_seq": 1,
+          "last_seq": 1,
+          "body_digests": [
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 1,
+            "size": 1,
+            "from_index": 0,
+            "to_index": 0,
+            "witness": []
+          },
+          "memberships": {
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+              "log_coordinates": {
+                "log_id": "vector-log",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 1,
+                "leaf_index": 0,
+                "witness": [],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "mmr_size": 1
+        },
+        "extensions": {
+          "producer-key/v1": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+        },
+        "countersignatures": [
+          {
+            "type": "countersign/v1",
+            "signer": {
+              "id": "did:web:countersign.example",
+              "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+            },
+            "over": "d4280b6ec6cd7c0f14a389893514633301520029003d443d88a709f7c6b581f7",
+            "statement": {
+              "checks": [
+                {
+                  "name": "chain consistency",
+                  "result": "established"
+                },
+                {
+                  "name": "range membership",
+                  "result": "failed"
+                }
+              ],
+              "recomputed_at": "2026-10-01T00:00:00Z",
+              "scope": {
+                "ledger_id": "ledger:test",
+                "closure_depth": 0
+              }
+            },
+            "signature": "3ca99fc29c7fd1a108e9f469d2cc07a9ab481eeafb9ac27923f1314d871d42ee80d988739510b64554f53a14b375e693a28366c820d920fcf8f2e3883107c00a"
+          }
+        ]
+      },
+      "bundle_digest": "d4280b6ec6cd7c0f14a389893514633301520029003d443d88a709f7c6b581f7",
+      "expect": {
+        "signature": "valid",
+        "declared_producer_keys": [],
+        "stamp": "unresolved signer"
+      }
+    },
+    {
+      "id": "malformed-missing-public-key",
+      "section": [
+        "The producer-key/v1 Extension",
+        "Self-Countersignature"
+      ],
+      "description": "the block is empty; malformed, ignored",
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "report-single-record-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-09-16T19:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "model_attestation": {
+              "compute_attestation": {
+                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+              }
+            },
+            "countersignatures": [],
+            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "disclosures": {
+          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+            "agent_input": {
+              "report": "report/v1",
+              "rows": [
+                {
+                  "id": "r1",
+                  "result": "pass"
+                },
+                {
+                  "id": "r2",
+                  "result": "withheld"
+                }
+              ]
+            }
+          }
+        },
+        "completeness_certificate": {
+          "log_id": "vector-log",
+          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "first_seq": 1,
+          "last_seq": 1,
+          "body_digests": [
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 1,
+            "size": 1,
+            "from_index": 0,
+            "to_index": 0,
+            "witness": []
+          },
+          "memberships": {
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+              "log_coordinates": {
+                "log_id": "vector-log",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 1,
+                "leaf_index": 0,
+                "witness": [],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "mmr_size": 1
+        },
+        "extensions": {
+          "producer-key/v1": {}
+        },
+        "countersignatures": [
+          {
+            "type": "countersign/v1",
+            "signer": {
+              "id": "did:web:countersign.example",
+              "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+            },
+            "over": "67575bf2ccfae2be082e98b652d3abcd70d0446c5c82415f9c79bd95ecfc3721",
+            "statement": {
+              "checks": [
+                {
+                  "name": "chain consistency",
+                  "result": "established"
+                },
+                {
+                  "name": "range membership",
+                  "result": "failed"
+                }
+              ],
+              "recomputed_at": "2026-10-01T00:00:00Z",
+              "scope": {
+                "ledger_id": "ledger:test",
+                "closure_depth": 0
+              }
+            },
+            "signature": "e47be89552bc5a5c2ea657e992edf8b74663c065dbda5fbb7f9134ba5ac91e0ea8dde525fd01f56bb706ed6e2d4f0f9e055e2f55234d189b924a618d7cb86504"
+          }
+        ]
+      },
+      "bundle_digest": "67575bf2ccfae2be082e98b652d3abcd70d0446c5c82415f9c79bd95ecfc3721",
+      "expect": {
+        "signature": "valid",
+        "declared_producer_keys": [],
+        "stamp": "unresolved signer"
+      }
+    }
+  ]
+}

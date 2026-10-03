@@ -1,0 +1,74 @@
+{
+  "provenance": "spec-derived",
+  "log_id": "https://log.example.org/agent-actions",
+  "entries": [
+    {
+      "seq": 1,
+      "leaf_index": 0,
+      "capsule_id": "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249",
+      "leaf_hash": "5425defa0d50b1df1aaae1ccac09ec69140a819cd394509e2abd60a529fce84d"
+    },
+    {
+      "seq": 2,
+      "leaf_index": 1,
+      "capsule_id": "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7",
+      "leaf_hash": "b5b67df67fca45aaf4115e5b18448e9499633123a8389d5f489d1a247874aee4"
+    }
+  ],
+  "mmr_nodes": [
+    "5425defa0d50b1df1aaae1ccac09ec69140a819cd394509e2abd60a529fce84d",
+    "b5b67df67fca45aaf4115e5b18448e9499633123a8389d5f489d1a247874aee4",
+    "9ad4dd80cdc58d2e897cd392ec9d3877b2893fdc621dcd175be040489fef4f5f"
+  ],
+  "mmr_size": 3,
+  "root": "9ad4dd80cdc58d2e897cd392ec9d3877b2893fdc621dcd175be040489fef4f5f",
+  "commitment_hex": "8158209ad4dd80cdc58d2e897cd392ec9d3877b2893fdc621dcd175be040489fef4f5f",
+  "checkpoint_claims_cbor_hex": "a6646b696e646e636c6c2d636865636b706f696e74686c6f675f73697a6503696973737565645f617474323032362d30392d31355431343a31303a30305a69707265765f73697a65006a636f6d6d69746d656e7458238158209ad4dd80cdc58d2e897cd392ec9d3877b2893fdc621dcd175be040489fef4f5f6f707265765f636f6d6d69746d656e7440",
+  "checkpoint_cose": "0oRYnKQBJwN4H2FwcGxpY2F0aW9uL2NsbC1jaGVja3BvaW50K2Nib3IEWCCnfiYUASZWCW0XDH6lLb3uxx-plIBwAIdNDTkmXuQL5Q-iAXglaHR0cHM6Ly9sb2cuZXhhbXBsZS5vcmcvYWdlbnQtYWN0aW9ucwJ4J2h0dHBzOi8vbG9nLmV4YW1wbGUub3JnL2FnZW50LWFjdGlvbnMjM6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMDktMTVUMTQ6MTA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggmtTdgM3FjS6JfNOS7J04d7KJP9xiHc0XW-BASJ_vT19vcHJldl9jb21taXRtZW50QFhA2JIo4CzmbYkXbzrjxnNp5E223qay82J_4HkMX_ztLnObwHUP5HvmBaSXB9sdLQQg3nVWk9-5x-iLlZAiGE1sBA",
+  "range_proof": {
+    "from_seq": 1,
+    "to_seq": 2,
+    "size": 3,
+    "from_index": 0,
+    "to_index": 1,
+    "witness": []
+  },
+  "memberships": {
+    "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249": {
+      "log_coordinates": {
+        "log_id": "https://log.example.org/agent-actions",
+        "seq": 1,
+        "leaf_index": 0
+      },
+      "inclusion_proof": {
+        "v": 1,
+        "kind": "inclusion",
+        "size": 3,
+        "leaf_index": 0,
+        "witness": [
+          "b5b67df67fca45aaf4115e5b18448e9499633123a8389d5f489d1a247874aee4"
+        ],
+        "peaks_left": [],
+        "peaks_right": []
+      }
+    },
+    "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7": {
+      "log_coordinates": {
+        "log_id": "https://log.example.org/agent-actions",
+        "seq": 2,
+        "leaf_index": 1
+      },
+      "inclusion_proof": {
+        "v": 1,
+        "kind": "inclusion",
+        "size": 3,
+        "leaf_index": 1,
+        "witness": [
+          "5425defa0d50b1df1aaae1ccac09ec69140a819cd394509e2abd60a529fce84d"
+        ],
+        "peaks_left": [],
+        "peaks_right": []
+      }
+    }
+  }
+}

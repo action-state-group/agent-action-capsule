@@ -25,6 +25,12 @@ same-commit files in CI.
   digest, exact amounts, delivered-content digests, derived states), derived
   from the draft text; `python/scripts/generate_settlement_vectors.py`
   regenerates them.
+- `minimum-necessary/`: provisional registry entries held for ratification
+  (`spec/REGISTRY.md` §10, §14, §16): SD-JWT (RFC 9901) presentations as a
+  revealed `agent_input`, the `disclosure-policy-decisions/v1` and
+  `sd-jwt-issuers/v1` Bundle extensions, and the `minimum_necessary_report/1`
+  result shape, over one worked example;
+  `python/scripts/generate_min_necessary_vectors.py` regenerates them.
 
 Reference-derived corpora and checksum manifests can be regenerated with:
 

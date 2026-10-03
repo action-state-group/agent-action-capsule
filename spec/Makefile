@@ -18,7 +18,7 @@ DRAFT    = draft-mih-scitt-agent-action-capsule-05
 # that is resolved would simply land a red gate.
 BILATERAL = draft-mih-agent-bilateral-attestation-03
 CPB      = draft-mih-sokolov-scitt-payload-binding-00
-BUNDLE   = draft-mih-zhang-agent-disclosure-bundle-00
+BUNDLE   = draft-mih-zhang-agent-disclosure-bundle-01
 EVREQ    = draft-mih-agent-evidence-request-00
 EVIDENCELAYER = draft-mih-agent-evidence-layer-00
 XML2RFC  ?= $(shell command -v xml2rfc)

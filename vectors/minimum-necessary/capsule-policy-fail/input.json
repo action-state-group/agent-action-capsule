@@ -1,0 +1,105 @@
+{
+  "description": "The transmitted presentation carries one Disclosure beyond the P-1 allow-list: the check fails and the agent does not run.",
+  "agent_input": {
+    "agent_input_version": "1",
+    "presentations": [
+      "eyJhbGciOiJFZERTQSIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsiLVpEWWxkV3R2Wk5CMEhRSi1vVGhud1hma25ndDA4dkZ5SU52UEdGbTFtMCIsIjBzWmVuZTJETHAyanczdEJyMjBPek8zM0hVY0tORHJVX2JyeHl2UzVJVVUiLCIxOVpuSXp3cEMtSldkc1oxUFNzVTR0WE1RZndmQ01mMXh0VENGZkhnbXVFIiwiQVNqcG9xdGRSN1h1TlNGbFlaZUJ6YWZJSDN0aFZZOXhscFl0a05PUGM0TSIsIkNVUFo2LWRqemFuRUlRWXlscFV6bm05QUpCbUtLdUZVU0VjeFpILWcyUnciLCJOSUtneDctRHhLN2hObVQ2RXV4bDBzVnhCTnFJUDJnVXFqelRVRm1RenRNIiwiUTV2cmpOT0trMkdMcGtERVZYc2xEVnR1UXF5ZWJUZGo3VkZJcW11dmRyUSIsIlI0MzlPMTlSNHNhQUxWNjlkdEVqZGdyX1RLN1FtVnBldkNlR1FOaVFVT2siLCJSdy1zeWtabVgtZHFNVmx2Y29kdmk1UHFDbkc0czJhTDNDRm8yNjNZZ3M0IiwiVExjRUw2dXZpUjhDVUhYd1d3SWJtVVd3cC1SRFBoVXRCWDBIdEFpMnRYayIsImZBQm1kTV9nNEtvSUZRV3NTcWl6TFpLX195QTNkd3JFTlY2LUxGMXN6UGciLCJnUll3cWRoVk5Rc1BQNWhvZWpaVHluanBvcG5PeFhkcWJmLVVBWkJWSW80Il0sIl9zZF9hbGciOiJzaGEtMjU2IiwiY2xhaW1faWQiOiJDTE0tMjAyNi0wOTE0LTAwMDciLCJpYXQiOjE3NTc4MDgwMDAsImlzcyI6Imh0dHBzOi8vZGF0YS5leGFtcGxlLm9yZyIsInZjdCI6Imh0dHBzOi8vZGF0YS5leGFtcGxlLm9yZy90eXBlcy9jbGFpbS04MzdwL3YxIn0.LoVvxYg-yRpZm6WYNAVo6avq4YqwwBBSFFoonuoynb6LZeWsB5fdfLEu7AicI33IsLQjHrH5WJCAugwfGQOVBw~WyJGWm01anhweFJPUGtNb21yblZMWkFBIiwibWVtYmVyX2lkIiwiTTQ4MjEzMzc3Il0~WyJ0VU9GTWRVX09zdHZKUHdQdXJ4MzJRIiwicGF0aWVudF9uYW1lIiwiSi4gRG9lIl0~WyJyYVdfRnp5dWJYTUswQlctM0FUaVR3IiwicGF0aWVudF9kb2IiLCIxOTcxLTAzLTIyIl0~WyIwOXhsZm1EbFVaOENaU2xLZkI3VFp3IiwicHJvdmlkZXJfbnBpIiwiMTIzNDU2Nzg5MyJd~WyJVTFJLRWNROHZISHIxc054dmpEVjZRIiwiZGF0ZV9vZl9zZXJ2aWNlIiwiMjAyNi0wOS0xNCJd~WyJBZzkxS0hrb1JET05HenI0SEU2WFBRIiwicGxhY2Vfb2Zfc2VydmljZSIsIjExIl0~WyI3ZlNWVF84dEQ2Um9TQ2tmQ0lfOVJBIiwiY3B0IiwiOTkyMTMiXQ~WyJqLWNDa05LWHdWYy02eVptc0VvU1VRIiwiaWNkMTAiLFsiRTExLjkiXV0~WyJTUmJXaWUxZkhSaXVxTzNYMU9LMURBIiwiY2hhcmdlIix7ImN1cnJlbmN5IjoiVVNEIiwidmFsdWUiOiIxNTAuMDAifV0~WyJTTlh1bEhRY2J4LTEyN0MySkdCakhBIiwidW5pdHMiLDFd~",
+      "eyJhbGciOiJFZERTQSIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsiMGU5Y1dzMGQ3QWd4OXhYYVNuT2E5N1ZNS09yemY3akdxV0RjdFRfWTJ3RSIsIkJIUFQtNEFKSGZVaGFycDJtR1FmaElxZ25xM2JSNDVNdUFhSDVCWkxmQVUiLCJEU1NRYVFGZ3g3Wk50LVBycHE2UnphOEpITHRJanJWVW5NRTQtR2ZPSjRvIiwiRmdhODJzeFNnTXB4WFJMcmFxYk4yVDI4NnNJZ19iTU1RTUhxOUpnZUlpSSIsIkZ6RHAxRHlsdHZOT1I3djBlT3JsWHAtTFJVVnRwaFViN3Q2d196cW1LUjAiLCJWTHNscTF0c0dQc1RWRTF3dHZVUlAzMlJWczFHX09GNmFUUFJNY0RvNGlrIiwiVzNCUVRXRWtCdkF5YmhXNlNzTTAxRVpyVEVOak12RkE3TXdMNmtSN1lPRSIsIndiS005Y3dkdml0VkFDQ29IamRjUkhocDk2Vmd0TzB6NjFMT0REN1E2YTgiXSwiX3NkX2FsZyI6InNoYS0yNTYiLCJjbGFpbV9pZCI6IkNMTS0yMDI2LTA5MTQtMDAwNyIsImlhdCI6MTc1NzgwODAwMCwiaXNzIjoiaHR0cHM6Ly9kYXRhLmV4YW1wbGUub3JnIiwibm90ZV9pZCI6IkVOQy03NzEyMCIsInZjdCI6Imh0dHBzOi8vZGF0YS5leGFtcGxlLm9yZy90eXBlcy9lbmNvdW50ZXItbm90ZS92MSJ9.SExV1we35scqnPee9ByDvA3_OBuDe2qu9tY-SaKi6oGKjgT8U3lpHNdN2Er6The9NFZlxuU_1-jPPb6UGmt2Bw~",
+      "eyJhbGciOiJFZERTQSIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsiOGt0Y1pUZ1FrWldrRFE0Y3JCZGo0aktKRy12WkFDMC1wRF9nelBheUR0RSIsIkVpd2xGa3ZMRXpqaFRrRndDVWg2Y1JOU0szcnk1d2pSX1ZyOGVLYXpiTVEiLCJMem9hOUVZWkxCOFFvMV95a3hBcWJOTDNURkloNl9OZ2NMY0xQMkNmMlJzIiwiV0lranNwZnFUNXBjcG5VNWYwQlpTc1pKb254SUd2S3d4U2pSMnRtZFFUUSIsImhQaWlXZVFRY3J0Xy1QUXlVNjd5dHZ1dm5DdnlVdUtqSGFOR1JMZzM1dUUiLCJtVEVjMm5ZNzFSQkZRZnBMeHV1VmpwSnF2T0RqVFV5YmpaSl9TNGRDb0FZIiwib010dmk5NjRpaFZ6N2N0S3lMam16NDBuUGU4WTlsUjh2OEhmN2Jkd1JFRSIsInNtb0R2OWNDZW1Ib1VGUzZ5SnpaaGE2dXpwQkhKYTNZX3BQTjFNd1NJSUkiLCJ1QjdpLWstR25WNjAwcl8yUjk1dU9qdGNVZ2VPMHpKVTBQYjEzYURLbGJVIl0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzU3ODA4MDAwLCJpc3MiOiJodHRwczovL2RhdGEuZXhhbXBsZS5vcmciLCJ2Y3QiOiJodHRwczovL2RhdGEuZXhhbXBsZS5vcmcvdHlwZXMvZWxpZ2liaWxpdHkvdjEifQ.cLykzHxbBjVzz-RtQDM3bhCCbSQdVjoxCrc535Gwgo57GSSW-MfhAC8m2mDDWgGu54eVQvamIrAPJFHgVCopAQ~WyJFX0hUZ04wclJQTkRXWlczSzZpeHlBIiwibWVtYmVyX2lkIiwiTTQ4MjEzMzc3Il0~WyJxVm84cDg2TkZYVXZURjNQd2ZhSnp3IiwiZ3JvdXBfbnVtYmVyIiwiRy01NTAxMCJd~WyI0MFUxTkdVcmxpcm9VcV9JMGd0RnZ3IiwicGxhbl9pZCIsIlBQTy1TVEQtMjAyNiJd~WyJYY2JOQzBSNjJpdTZfbWFfYm5DSTFRIiwiZWZmZWN0aXZlIix7ImZyb20iOiIyMDI2LTAxLTAxIiwidG8iOiIyMDI2LTEyLTMxIn1d~WyJRYlJQaDVMbkRPckFBMUo2T2ZPcm53IiwiY29wYXkiLHsiY3VycmVuY3kiOiJVU0QiLCJ2YWx1ZSI6IjMwLjAwIn1d~WyJtLVo2RGpZTzNvVHduQXZPVC1IY1B3IiwiZGVkdWN0aWJsZV9tZXQiLHRydWVd~WyI0VnAtc1hFUzMtV3BqLUtkbHMxSGRnIiwicHJpb3JfYXV0aF9yZXF1aXJlZCIsZmFsc2Vd~"
+    ]
+  },
+  "policy_decision": {
+    "policy_decision_version": "1",
+    "policy_id": "P-1",
+    "policy_version": "2026-08-01",
+    "agent": "claims-processor@2.4.1",
+    "role": "claims_processor",
+    "subject": {
+      "claim_id": "CLM-2026-0914-0007"
+    },
+    "sources": [
+      {
+        "vct": "https://data.example.org/types/claim-837p/v1",
+        "revealed": [
+          "member_id",
+          "patient_dob",
+          "provider_npi",
+          "date_of_service",
+          "place_of_service",
+          "cpt",
+          "icd10",
+          "charge",
+          "units"
+        ],
+        "withheld": [
+          "patient_name"
+        ]
+      },
+      {
+        "vct": "https://data.example.org/types/encounter-note/v1",
+        "revealed": [],
+        "withheld": [
+          "chief_complaint",
+          "history",
+          "exam",
+          "medications",
+          "assessment",
+          "plan"
+        ]
+      },
+      {
+        "vct": "https://data.example.org/types/eligibility/v1",
+        "revealed": [
+          "member_id",
+          "group_number",
+          "plan_id",
+          "effective",
+          "copay",
+          "deductible_met",
+          "prior_auth_required"
+        ],
+        "withheld": []
+      }
+    ],
+    "decided_at": "2026-09-15T14:02:11Z"
+  },
+  "capsule_payload": {
+    "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+    "format_version": "4",
+    "canonicalization_id": "jcs",
+    "action_id": "price-CLM-2026-0914-0007",
+    "action_type": "decide",
+    "operator": "EXAMPLE-ORG",
+    "developer": "claims-processor@2.4.1",
+    "timestamp": "2026-09-15T14:02:14Z",
+    "epoch_id": "policy-2026-08-01",
+    "model_attestation": {
+      "compute_attestation": {
+        "agent_input_digest": "5e32cef839dc6a84734425d979cd38ece0052de622751d7dddc53aa51b3ba412"
+      }
+    },
+    "constraints": [
+      {
+        "id": "org.example.disclosure_policy",
+        "check_type": "org.example.minimum_necessary",
+        "method": "org.example.sd_jwt_presentation",
+        "result": "fail",
+        "severity": "high",
+        "blocking": true,
+        "evidence_digest": "c81dc1406d7dbe869124af8b82738d3da7cea83ec5e09908b6d4326a72b1c0fc"
+      }
+    ],
+    "disposition": {
+      "approver": "policy",
+      "decision": "reject",
+      "human_disposed": false,
+      "verdict_class": "blocked"
+    },
+    "assurance": {
+      "attestation_mode": "self_attested",
+      "effect_mode": "not_applicable",
+      "ledger_mode": "standalone"
+    }
+  },
+  "producer_key": "claims-processor runtime"
+}
