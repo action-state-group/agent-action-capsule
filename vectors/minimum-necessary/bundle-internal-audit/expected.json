@@ -1,7 +1,7 @@
 {
   "provenance": "spec-derived",
   "description": "Both Capsules, both policy decisions, agent_input and agent_output revealed for both: every check passes.",
-  "bundle_digest": "774322768fadcb0c7ba0c794292dd91c39287ac8f30ba1ce4eff02b732789593",
+  "bundle_digest": "4af13419e999b975992fdb92ecf69e674d8b217dbaebfe52d0a5efe2d8f62f14",
   "graph_closure": {
     "status": "pass",
     "findings": []
@@ -37,8 +37,8 @@
     }
   ],
   "extensions": [
-    "disclosure_policy_decisions/v1",
-    "sd_jwt_issuers/v1"
+    "disclosure-policy-decisions/v1",
+    "sd-jwt-issuers/v1"
   ],
   "policy_decisions": {
     "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7": {

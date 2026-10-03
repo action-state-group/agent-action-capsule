@@ -6,8 +6,8 @@
 | Entry | REGISTRY.md section |
 |---|---|
 | `agent_input` presentation type `agent_input_version: "1"` (a list of SD-JWT presentations) | §10, Disclosure Envelope |
-| Evidence Bundle extension kind `disclosure_policy_decisions/v1` | §14 |
-| Evidence Bundle extension kind `sd_jwt_issuers/v1` | §14 |
+| Evidence Bundle extension kind `disclosure-policy-decisions/v1` | §14 |
+| Evidence Bundle extension kind `sd-jwt-issuers/v1` | §14 |
 | Evidence Request derivation `minimum_necessary_report/1` | §16 |
 
 They use one worked example: three records for one office visit (a
@@ -80,11 +80,11 @@ the audit finding names the procedure code, which is a record value.
 - `extensions`: the kinds present. A verifier that does not implement them
   reports them as uninterpreted and digest-covered.
 - `policy_decisions`: per Capsule, the JSON-DIGEST of its
-  `disclosure_policy_decisions/v1` entry, whether a constraint record in that
+  `disclosure-policy-decisions/v1` entry, whether a constraint record in that
   Capsule carries it as `evidence_digest`, and that record's `result`.
 - `sd_jwt_presentations`: per Capsule, the presentation-type check on a
   revealed `agent_input` that matched its digest: the issuer signature against
-  the `sd_jwt_issuers/v1` JWK, each Disclosure's digest against `_sd`, and the
+  the `sd-jwt-issuers/v1` JWK, each Disclosure's digest against `_sd`, and the
   disclosed names against the decision's `revealed` list for that `vct`.
   `not_evaluated` when `agent_input` is withheld or did not match its digest.
 

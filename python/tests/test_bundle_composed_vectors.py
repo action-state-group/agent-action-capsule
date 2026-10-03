@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""The proposed Evidence Bundle ``composed/v1`` vectors recompute from the files alone.
+"""The Evidence Bundle ``composed/v1`` vectors recompute from the files alone.
 
 The composed-digest, join, closure and redundancy checks below are an
-independent reading of the proposed text: they use only the standard library
+independent reading of the draft text: they use only the standard library
 and the bytes in ``vectors/bundle/composed/``. Nothing is imported from the
 generator. The base-profile checks (Capsule ID, Producer Envelope, per-member
 completeness claims) use this repository's reference library.
@@ -34,7 +34,7 @@ CASES = {c["id"]: c for c in DATA["cases"]}
 
 
 # ---------------------------------------------------------------------------
-# An independent reading of the proposed text
+# An independent reading of the draft text
 # ---------------------------------------------------------------------------
 
 

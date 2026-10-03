@@ -375,8 +375,8 @@ def test_bundle_extension_checks(name):
     case = _case(name)
     bundle, exp = case["input"]["bundle"], case["expected"]
     records = {r["capsule_id"]: r for r in bundle["records"]}
-    decisions = bundle["extensions"]["disclosure_policy_decisions/v1"]
-    issuers = bundle["extensions"]["sd_jwt_issuers/v1"]
+    decisions = bundle["extensions"]["disclosure-policy-decisions/v1"]
+    issuers = bundle["extensions"]["sd-jwt-issuers/v1"]
     assert set(decisions) == set(records)
     for capsule_id, decision in decisions.items():
         digest = _digest(decision)

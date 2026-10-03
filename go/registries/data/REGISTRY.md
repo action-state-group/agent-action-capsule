@@ -278,7 +278,7 @@ registered type is checked by DE-3 alone. Conformance vectors:
 
 | Discriminator | Value | Checks after a DE-3 match |
 |---|---|---|
-| `agent_input_version: "1"` | `{"agent_input_version": "1", "presentations": [<SD-JWT presentation>, ...]}`: the SD-JWT presentations (RFC 9901) the agent received, each an issuer-signed JWT followed by the Disclosures transmitted, exactly as transmitted. `agent_input_digest` is the JSON-DIGEST of this wrapper. | A checker verifying a revealed `agent_input` of this type MUST verify each SD-JWT inside it: (1) the issuer-signed JWT's signature against the JWK carried for its `iss` (in an Evidence Bundle, the `sd_jwt_issuers/v1` extension); (2) the digest of each Disclosure, under the JWT's `_sd_alg`, against its `_sd` array; and (3) the set of disclosed claim names against the `revealed` list for that presentation's `vct` in the policy decision bound to the Capsule (in an Evidence Bundle, the `disclosure_policy_decisions/v1` extension). Without a policy decision, check (3) is reported as not evaluated, never as passed. A failed check is a finding on that disclosure; a value that failed DE-3 is not checked and is never presented as confirmed. |
+| `agent_input_version: "1"` | `{"agent_input_version": "1", "presentations": [<SD-JWT presentation>, ...]}`: the SD-JWT presentations (RFC 9901) the agent received, each an issuer-signed JWT followed by the Disclosures transmitted, exactly as transmitted. `agent_input_digest` is the JSON-DIGEST of this wrapper. | A checker verifying a revealed `agent_input` of this type MUST verify each SD-JWT inside it: (1) the issuer-signed JWT's signature against the JWK carried for its `iss` (in an Evidence Bundle, the `sd-jwt-issuers/v1` extension); (2) the digest of each Disclosure, under the JWT's `_sd_alg`, against its `_sd` array; and (3) the set of disclosed claim names against the `revealed` list for that presentation's `vct` in the policy decision bound to the Capsule (in an Evidence Bundle, the `disclosure-policy-decisions/v1` extension). Without a policy decision, check (3) is reported as not evaluated, never as passed. A failed check is a finding on that disclosure; a value that failed DE-3 is not checked and is never presented as confirmed. |
 
 ## 11. `citation_purpose`
 
@@ -384,6 +384,7 @@ registered.
 | Value | Semantics |
 |---|---|
 | `producer-key/v1` | `{"public_key": "<64 lowercase hex>"}`: the declaring producer's Ed25519 public key, one key per block, defined in the Evidence Bundle draft (`-01` and later), "The producer-key/v1 Extension". Covered by the bundle digest like every extension. A verifier uses it only to classify a countersignature whose `signer.key_id` equals it as not independent (a self-countersignature). It can only downgrade an entry to not independent, never upgrade one, and it is not an identity or authority claim. A malformed block is ignored and does not fail the Bundle. |
+| `composed/v1` | `{"members", "observers", "joins"?, "not_requested"?, "missing"?, "composed_digest"}`: a composition of several responders' Evidence Request outcomes, defined in the Evidence Bundle draft (`-01` and later), "The composed/v1 Extension". Each member records one responder's outcome (`artifact`, `refusal` or `absence`), the observer that produced it and its digest; each observer has a `role` and an opaque `custody_domain`; each join declares a linkage basis and a state (`agree`, `mismatch`, `unjoined` or `one_sided`) that a verifier re-derives. `composed_digest` is SHA-256 over the JCS form of the member, observer, join and `not_requested` declarations (member bodies and `missing` excluded). A verifier reports composition closure (every member present or declared missing) separately from each member Bundle's own three claims, and reports two agreeing members in one custody domain as redundant, not corroborating. Conformance vectors: `vectors/bundle/composed/`. |
 
 A company-specific row model such as `report/v1` is an extension only when
 its independently available specification is registered; this registry does
@@ -391,7 +392,8 @@ not define that row model.
 
 ### Provisional: minimum-necessary extension kinds
 
-**Held for ratification; not yet registered.** These two kinds carry what a
+**Held for ratification; not yet registered.** The Evidence Bundle draft
+(`-01`) names these two kinds as provisional and does not define them. They carry what a
 checker needs to verify a revealed `agent_input` of presentation type
 `agent_input_version: "1"` (§10) and the disclosure-policy constraint record
 that binds it. Like every extension they are covered by the bundle digest; a
@@ -400,8 +402,8 @@ Conformance vectors: `vectors/minimum-necessary/`.
 
 | Value | Semantics |
 |---|---|
-| `disclosure_policy_decisions/v1` | `{"<capsule_id>": <policy decision>, ...}`, one entry per Capsule in `records` that recorded a disclosure-policy check. A policy decision names fields, never their values: `{"policy_decision_version": "1", "policy_id", "policy_version", "agent", "role", "subject", "sources": [{"vct", "revealed": [<name>, ...], "withheld": [<name>, ...]}], "decided_at"}`, where `subject` holds correlation handles only. Its JSON-DIGEST MUST equal the `evidence_digest` of a constraint record in that Capsule's `constraints`. A verifier reports, per Capsule, the matching record's `result`, or that no constraint record carries the digest; it locates the record by `evidence_digest`, not by its labels. A key naming no supplied record is a finding. Checking the revealed list against a revealed `agent_input` is the §10 presentation-type check. |
-| `sd_jwt_issuers/v1` | `{"<iss>": <JWK>, ...}`: for each SD-JWT issuer whose presentations appear in a revealed `agent_input` of presentation type `agent_input_version: "1"`, the public key (RFC 7517, public members only) under which that issuer's JWTs are verified. Verification is offline; the verifier fetches no issuer metadata. The key states which key signed, not who the issuer is. An entry carrying private key members is malformed and is ignored. |
+| `disclosure-policy-decisions/v1` | `{"<capsule_id>": <policy decision>, ...}`, one entry per Capsule in `records` that recorded a disclosure-policy check. A policy decision names fields, never their values: `{"policy_decision_version": "1", "policy_id", "policy_version", "agent", "role", "subject", "sources": [{"vct", "revealed": [<name>, ...], "withheld": [<name>, ...]}], "decided_at"}`, where `subject` holds correlation handles only. Its JSON-DIGEST MUST equal the `evidence_digest` of a constraint record in that Capsule's `constraints`. A verifier reports, per Capsule, the matching record's `result`, or that no constraint record carries the digest; it locates the record by `evidence_digest`, not by its labels. A key naming no supplied record is a finding. Checking the revealed list against a revealed `agent_input` is the §10 presentation-type check. |
+| `sd-jwt-issuers/v1` | `{"<iss>": <JWK>, ...}`: for each SD-JWT issuer whose presentations appear in a revealed `agent_input` of presentation type `agent_input_version: "1"`, the public key (RFC 7517, public members only) under which that issuer's JWTs are verified. Verification is offline; the verifier fetches no issuer metadata. The key states which key signed, not who the issuer is. An entry carrying private key members is malformed and is ignored. |
 
 The constraint record these kinds bind to is not registered; constraint `id`,
 `check_type` and `method` follow the namespacing convention (see "No registry"
@@ -450,10 +452,10 @@ refuses rather than truncating the result.
 
 | Token | Description | Declared fields |
 |---|---|---|
-| `minimum_necessary_report/1` | Per Capsule in the subject: which fields the agent was handed, under which policy, and whether the disclosure-policy check passed. | For each Capsule: its `disclosure_policy_decisions/v1` entry (§14: policy id and version, agent, role, subject handles, and per `vct` the `revealed` and `withheld` name lists) and the constraint record whose `evidence_digest` equals that entry's JSON-DIGEST (`id`, `check_type`, `method`, `result`, `blocking`, `evidence_digest`). No field values: no `disclosures` member, SD-JWT, Disclosure, or salt. |
+| `minimum_necessary_report/1` | Per Capsule in the subject: which fields the agent was handed, under which policy, and whether the disclosure-policy check passed. | For each Capsule: its `disclosure-policy-decisions/v1` entry (§14: policy id and version, agent, role, subject handles, and per `vct` the `revealed` and `withheld` name lists) and the constraint record whose `evidence_digest` equals that entry's JSON-DIGEST (`id`, `check_type`, `method`, `result`, `blocking`, `evidence_digest`). No field values: no `disclosures` member, SD-JWT, Disclosure, or salt. |
 
 The result is an Evidence Bundle (`evidence-bundle/v2`) over the subject's
-Capsules carrying the `disclosure_policy_decisions/v1` extension, with
+Capsules carrying the `disclosure-policy-decisions/v1` extension, with
 `completeness.suppressed_fields` naming `agent_input` and `agent_output` and no
 `disclosures` member. The Capsules, completeness certificate and checkpoint are
 digests-tier material, not part of the declared field set.

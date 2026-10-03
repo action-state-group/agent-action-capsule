@@ -1,7 +1,7 @@
 {
-  "draft": "draft-mih-zhang-agent-disclosure-bundle-01 (proposed section: The composed/v1 Extension)",
+  "draft": "draft-mih-zhang-agent-disclosure-bundle-01 (The composed/v1 Extension)",
   "provenance": "spec-derived",
-  "status": "proposed; not registered; held for the -01 editor pass",
+  "status": "registered in REGISTRY.md section 14; held for ratification with -01",
   "kind": "composed/v1",
   "digest_rule": "composed_digest = lowercase hex SHA-256 of the UTF-8 RFC 8785 (JCS) serialization of the digest input object (CPB canonicalization algorithm 'jcs'); see canonical_preimage in each case.",
   "envelope_profile": "AAC Producer Envelope: tagged COSE_Sign1, protected {1: -8, 3: 'application/agent-action-capsule-id', 4: raw Ed25519 public key}, empty unprotected map, attached payload = raw 32-byte capsule_id.",

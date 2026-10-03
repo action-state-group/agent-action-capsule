@@ -7,8 +7,8 @@
       "agent_input_version": "1"
     },
     "evidence_bundle_extension_kinds": [
-      "disclosure_policy_decisions/v1",
-      "sd_jwt_issuers/v1"
+      "disclosure-policy-decisions/v1",
+      "sd-jwt-issuers/v1"
     ],
     "evidence_request_derivation": "minimum_necessary_report/1"
   },
@@ -135,35 +135,35 @@
   "files": [
     {
       "path": "bundle-external-auditor/expected.json",
-      "sha256": "b5ef5da10d56600638ea69718e83f67e32e53e0c0469505d15603f9c78b95682"
+      "sha256": "f7fc824bedd8a352611c2726a81bd7455d0556210853ee182e06c8e95e06346a"
     },
     {
       "path": "bundle-external-auditor/input.json",
-      "sha256": "c88155ba99e9a5e93290397525b2c0fc896969f4396fab31ee84f51a6452e531"
+      "sha256": "cec4464c25b2109acf511a28a3be44b884bd787f68a3d0e8c279ebe831feb571"
     },
     {
       "path": "bundle-internal-audit/expected.json",
-      "sha256": "f563ee531bb45cc22e153be04090463b2610c792dc9dbd38ed1fba951dd469bb"
+      "sha256": "f89bd2ffb068d661c7a6eb476d05691aeab02e179ee88fb38ebb005225e97218"
     },
     {
       "path": "bundle-internal-audit/input.json",
-      "sha256": "ff2cd8ec769b5f8ec98c2df44d9961510e97dde40335cf5e2f39064435a09607"
+      "sha256": "632ffa74d1e724495bebfcc37a39494601866979748670e132e7eb5c7f45e96f"
     },
     {
       "path": "bundle-mismatch/expected.json",
-      "sha256": "f7ea34a117cd9604d73d5c531a73aa08740d08a494a35d51b4220549baf5939f"
+      "sha256": "e5b65bae155d2fd044ab026868004f72c1eb5f770251b190ce66733ae9caadf6"
     },
     {
       "path": "bundle-mismatch/input.json",
-      "sha256": "c5fb02112b50d6cfc1c265cff467fb6b6ea2656c2d0812f3dbc081e75332bc64"
+      "sha256": "5888459aac5a8b577b13f5c3e36d9df67ccd23fe01483389b2815fff1abe889a"
     },
     {
       "path": "bundle-not-registered/expected.json",
-      "sha256": "7c7d691a2447efd8281e5d1c06735bac4eebf26005bf37a2da507b73d220f96a"
+      "sha256": "f24b09c197c3514baf77a4fb64637c8ea83ab4e5b0cf49f36825bffbdbdb26fa"
     },
     {
       "path": "bundle-not-registered/input.json",
-      "sha256": "f203edbbc46a702f6f2047de7b590e69ca2e96e803c91e873e65e342775cd285"
+      "sha256": "c6cba555e8323eea4106bd846994013d5a930e36f3f4e1fcc76ed63c75b352de"
     },
     {
       "path": "capsule-audit/expected.json",

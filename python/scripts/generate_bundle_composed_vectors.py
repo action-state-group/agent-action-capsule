@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Generate the Evidence Bundle ``composed/v1`` conformance vectors (draft).
 
-The extension is the draft section "The composed/v1 Extension" proposed for
-``draft-mih-zhang-agent-disclosure-bundle-01``. It is NOT yet in that draft and
-NOT registered; these vectors are held with the proposal so the text and the
+The extension is the section "The composed/v1 Extension" of
+``draft-mih-zhang-agent-disclosure-bundle-01``, registered in REGISTRY.md
+section 14. The -01 revision is held for ratification; the text and these
 vectors are reviewed together.
 
-Every expected result below is written by hand from the proposed text. The
+Every expected result below is written by hand from the draft text. The
 script builds the literal objects (Capsules, member Evidence Bundles, the
 composing container), computes the digests the text defines (SHA-256 over RFC
 8785 JCS, lowercase hex: the CPB ``jcs`` algorithm), signs each Capsule with a
@@ -50,7 +50,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "bundle" / "composed"
-DRAFT = "draft-mih-zhang-agent-disclosure-bundle-01 (proposed section: The composed/v1 Extension)"
+DRAFT = "draft-mih-zhang-agent-disclosure-bundle-01 (The composed/v1 Extension)"
 KIND = "composed/v1"
 AAC_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-05"
 CAPSULE_ID_MEDIA_TYPE = "application/agent-action-capsule-id"
@@ -245,7 +245,7 @@ _JOIN_DIGEST_FIELDS = ("members", "basis", "pointer", "identifier_digest", "comp
 
 
 def digest_input(block: dict) -> dict:
-    """The exact object the composed digest is computed over (proposed text, Composed Digest)."""
+    """The exact object the composed digest is computed over (draft text, Composed Digest)."""
     members = sorted(({k: m[k] for k in _MEMBER_DIGEST_FIELDS if k in m} for m in block["members"]),
                      key=lambda m: m["id"])
     observers = sorted(({k: o[k] for k in ("id", "role", "custody_domain")} for o in block.get("observers", [])),
@@ -314,7 +314,7 @@ def container(composition: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Cases (expected results written by hand from the proposed text)
+# Cases (expected results written by hand from the draft text)
 # ---------------------------------------------------------------------------
 
 MEMBER_CLAIMS_DEPTH0 = {
@@ -454,7 +454,7 @@ def build() -> dict[str, bytes]:
         "vectors.json": _dump({
             "draft": DRAFT,
             "provenance": "spec-derived",
-            "status": "proposed; not registered; held for the -01 editor pass",
+            "status": "registered in REGISTRY.md section 14; held for ratification with -01",
             "kind": KIND,
             "digest_rule": "composed_digest = lowercase hex SHA-256 of the UTF-8 RFC 8785 (JCS) serialization "
                            "of the digest input object (CPB canonicalization algorithm 'jcs'); see "

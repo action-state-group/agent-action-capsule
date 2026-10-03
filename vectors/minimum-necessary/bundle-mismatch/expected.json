@@ -1,7 +1,7 @@
 {
   "provenance": "spec-derived",
   "description": "agent_input revealed with one Disclosure value altered: disclosure_mismatch on that Capsule, nothing else changes.",
-  "bundle_digest": "6d5a37abd19f27a236a1c4c4a038d6a6bb00e08ca50e9a25c69f41f32ddf2b88",
+  "bundle_digest": "bd6e69a22e78ce75114db3c3cf3b7ca99c2ee881d752f16087da8f09384d81e2",
   "graph_closure": {
     "status": "pass",
     "findings": []
@@ -37,8 +37,8 @@
     }
   ],
   "extensions": [
-    "disclosure_policy_decisions/v1",
-    "sd_jwt_issuers/v1"
+    "disclosure-policy-decisions/v1",
+    "sd-jwt-issuers/v1"
   ],
   "policy_decisions": {
     "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7": {

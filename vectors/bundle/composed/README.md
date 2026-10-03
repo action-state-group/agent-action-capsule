@@ -1,10 +1,9 @@
-# Evidence Bundle `composed/v1` vectors (proposed)
+# Evidence Bundle `composed/v1` vectors
 
-These vectors cover the proposed `composed/v1` Evidence Bundle extension
-("The composed/v1 Extension", drafted for
-`draft-mih-zhang-agent-disclosure-bundle-01`). The section is not yet in the
-draft and the kind is not registered. The vectors are held with the
-proposal so that the text and the vectors are reviewed together.
+These vectors cover the `composed/v1` Evidence Bundle extension ("The
+composed/v1 Extension" in `draft-mih-zhang-agent-disclosure-bundle-01`,
+registered in `spec/REGISTRY.md` §14). The -01 revision is held for
+ratification; the text and the vectors are reviewed together.
 
 A composition is an ordinary `evidence-bundle/v2` whose `extensions` carries
 one `composed/v1` block. The block lists each responder's answer to an

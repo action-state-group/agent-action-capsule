@@ -24,7 +24,7 @@
         <email>zhangyiqun-spec@gmail.com</email>
       </address>
     </author>
-    <date year="2026" month="October" day="01"/>
+    <date year="2026" month="October" day="02"/>
     <area>Security</area>
     <workgroup>SCITT</workgroup>
     <keyword>SCITT</keyword>
@@ -33,7 +33,7 @@
     <keyword>transparency</keyword>
     <keyword>audit</keyword>
     <abstract>
-      <?line 58?>
+      <?line 83?>
 
 <t>This document defines the AAC Evidence Bundle, a portable presentation and
 verification container for an Agent Action Capsule and the records that make
@@ -49,7 +49,7 @@ claims that party recomputed and with what result.</t>
     </abstract>
   </front>
   <middle>
-    <?line 72?>
+    <?line 97?>
 
 <section anchor="introduction">
       <name>Introduction</name>
@@ -225,7 +225,9 @@ DE-3 check.</t>
     <section anchor="completeness">
       <name>Completeness Claims and Log Membership</name>
       <t><tt>completeness_certificate</tt> and <tt>checkpoint</tt>, when supplied, support three
-separate claims. A verifier MUST report each claim independently.</t>
+separate claims. A verifier MUST report each claim independently. The
+<tt>composed/v1</tt> extension adds a fourth claim, composition closure
+(<xref target="composed-closure"/>), which is reported separately from these three.</t>
       <ol spacing="normal" type="1"><li>
           <t><strong>Graph closure</strong>: every citation reached under <xref target="closure"/> is supplied
 with matching identity or explicitly listed in <tt>completeness.missing</tt>.</t>
@@ -312,6 +314,437 @@ absent, is not a string, or is not exactly 64 lowercase hexadecimal
 characters. A verifier MUST ignore a malformed block when determining
 independence, MUST NOT fail the Bundle or any claim because of it, and still
 treats the block as digest-covered.</t>
+      </section>
+      <section anchor="composed">
+        <name>The composed/v1 Extension</name>
+        <t>The <tt>composed/v1</tt> extension kind carries an evidence set built from the
+answers of several responders as one portable object. Each responder answered
+one Evidence Request (<xref target="I-D.mih-agent-evidence-request"/>) with exactly one of
+three outcomes:</t>
+        <ul spacing="normal">
+          <li>
+            <t>an artifact, here an Evidence Bundle;</t>
+          </li>
+          <li>
+            <t>a signed refusal;</t>
+          </li>
+          <li>
+            <t>a recorded absence.</t>
+          </li>
+        </ul>
+        <t>Each answer is a <em>member</em> of the composition. The block declares:</t>
+        <ul spacing="normal">
+          <li>
+            <t>each member's digest and outcome;</t>
+          </li>
+          <li>
+            <t>the observer that produced each member;</t>
+          </li>
+          <li>
+            <t>the joins between members;</t>
+          </li>
+          <li>
+            <t>a <em>composed digest</em> that a judgment or other record can cite as the exact
+evidence set it was made from.</t>
+          </li>
+        </ul>
+        <t>The containing Bundle is an ordinary <tt>evidence-bundle/v2</tt>. Its <tt>root</tt> is the
+composing party's own record, and its core checks apply unchanged. The
+extension adds a set of member bundles alongside that record; it does not
+change what <tt>records</tt>, <tt>root</tt> or <tt>completeness</tt> mean.</t>
+        <artwork><![CDATA[
+"extensions": {
+  "composed/v1": {
+    "members": [
+      { "id": "<member id>", "observer": "<observer id>",
+        "request_digest": "<64 hex>", "outcome": "artifact",
+        "digest": "<64 hex>", "bundle": { ... } },
+      { "id": "<member id>", "observer": "<observer id>",
+        "request_digest": "<64 hex>", "outcome": "refusal",
+        "digest": "<64 hex>", "refusal": { ... } }
+    ],
+    "observers": [
+      { "id": "<observer id>", "role": "<role>",
+        "custody_domain": "<label>" }
+    ],
+    "joins": [
+      { "members": ["<member id>", "<member id>"],
+        "basis": "pre_agreed_identifier",
+        "pointer": "<JSON Pointer>",
+        "identifier_digest": "<64 hex>",
+        "compare": ["<JSON Pointer>"],
+        "state": "agree" }
+    ],
+    "not_requested": [ "<participant id>" ],
+    "missing": [ "<member id>" ],
+    "composed_digest": "<64 hex>"
+  }
+}
+]]></artwork>
+        <section anchor="composed-block">
+          <name>Block</name>
+          <t>The block is a JSON object conforming to this CDDL <xref target="RFC8610"/>:</t>
+          <sourcecode type="cddl"><![CDATA[
+composed-v1 = {
+  members: [+ composed-member],
+  observers: [+ composed-observer],
+  ? joins: [* composed-join],
+  ? not_requested: [* label-id],
+  ? missing: [* label-id],
+  composed_digest: digest-hex,
+}
+
+composed-member = artifact-member / refusal-member / absence-member
+
+member-common = (
+  id: label-id,
+  observer: label-id,             ; an observers[].id
+  request_digest: digest-hex,     ; the Evidence Request this answers
+  digest: digest-hex,             ; see "Members and Outcomes"
+)
+
+artifact-member = { member-common, outcome: "artifact",
+                    ? bundle: { * tstr => any } }  ; a Bundle
+refusal-member  = { member-common, outcome: "refusal",
+                    ? refusal: signed-refusal }
+absence-member  = { member-common, outcome: "absence",
+                    ? absence: recorded-absence }
+
+signed-refusal = {                ; as received, unmodified
+  request_digest: digest-hex,
+  reason: tstr,                   ; Evidence Request refusal reason
+  issued_at: tstr,                ; RFC 3339
+  * tstr => any,                  ; deployment signature members
+}
+
+recorded-absence = {              ; the requester's own record
+  request_digest: digest-hex,
+  window: { from: tstr, to: tstr },   ; RFC 3339
+  ? route: tstr,
+  ? commitment: digest-hex,       ; a retention commitment it held
+}
+
+composed-observer = {
+  id: label-id,
+  role: tstr,                     ; see "Observers and Redundancy"
+  custody_domain: tstr,           ; opaque, compared octet-for-octet
+}
+
+composed-join = {
+  members: [label-id, label-id],  ; two distinct ids, ascending
+  basis: join-basis,
+  ? pointer: tstr,                ; RFC 6901 JSON Pointer
+  ? identifier_digest: digest-hex,
+  ? compare: [+ tstr],            ; RFC 6901 JSON Pointers
+  state: join-state,
+}
+
+join-basis = "pre_agreed_identifier" / "shared_artifact_digest" /
+             "issued_receipt" / "same_interval"
+join-state = "agree" / "mismatch" / "unjoined" / "one_sided"
+
+label-id   = text .regexp "[A-Za-z0-9._:-]{1,128}"
+digest-hex = text .regexp "[0-9a-f]{64}"
+]]></sourcecode>
+          <t>A join's <tt>pointer</tt> and each <tt>compare</tt> element are JSON Pointers <xref target="RFC6901"/>.
+Member <tt>id</tt> values are unique, and so are observer <tt>id</tt> values. Every member's
+<tt>observer</tt> names a declared observer. Every join names two distinct declared
+members, in ascending order. No two joins share the same <tt>members</tt>, <tt>basis</tt>
+and <tt>pointer</tt>. <tt>not_requested</tt> names participants that the composing party
+knew of but did not ask. A participant listed there is not a member, and its
+identifier MUST NOT also appear as a member <tt>id</tt>. A block that violates any of
+these rules is malformed. A verifier reports a malformed block as a failed
+<tt>composed/v1</tt> check and MUST NOT report any composition result from it.</t>
+        </section>
+        <section anchor="composed-members">
+          <name>Members and Outcomes</name>
+          <t>A member records the outcome of one request to one responder, and nothing
+else. The three outcomes are those of <xref target="I-D.mih-agent-evidence-request"/>. They
+are never converted into one another:</t>
+          <ul spacing="normal">
+            <li>
+              <t>A refusal member exists only when the responder signed a refusal.</t>
+            </li>
+            <li>
+              <t>A timeout is an <tt>absence</tt>, never a <tt>refusal</tt>.</t>
+            </li>
+            <li>
+              <t>A received refusal is never recorded as an <tt>absence</tt>.</t>
+            </li>
+            <li>
+              <t>A request still inside its waiting window is pending. Pending is not an
+outcome, so a pending request MUST NOT be composed as a member.</t>
+            </li>
+          </ul>
+          <t><tt>digest</tt> depends on the outcome:</t>
+          <ul spacing="normal">
+            <li>
+              <t>For <tt>artifact</tt>, it is the member Evidence Bundle's bundle digest
+(<xref target="bundle-digest"/>).</t>
+            </li>
+            <li>
+              <t>For <tt>refusal</tt> and <tt>absence</tt>, it is the lowercase hexadecimal SHA-256 of the
+UTF-8 JCS <xref target="RFC8785"/> serialization of the refusal or absence object, as
+carried.</t>
+            </li>
+          </ul>
+          <t>When the body (<tt>bundle</tt>, <tt>refusal</tt> or <tt>absence</tt>) is carried, a verifier MUST
+recompute <tt>digest</tt> from it. For a refusal or absence, it MUST also require the
+body's <tt>request_digest</tt> to equal the member's. A refusal's signature is
+verified under the deployment's signature profile. A verifier that does not
+implement that profile reports the refusal as signature-unverified. It does
+not report it as failed, and it does not report it as absent.</t>
+          <t>An artifact that fails verification is still an <tt>artifact</tt> member. The
+verifier reports the failure on that member. It is not a fourth outcome, and
+the verifier MUST NOT report it as a successful grant.</t>
+          <t><strong>Each member keeps its own claims.</strong> A verifier MUST verify every carried
+member bundle as an Evidence Bundle under this document. It MUST report that
+bundle's graph closure, interval coverage and per-record membership
+(<xref target="completeness"/>), and its disclosures and countersignatures, <em>per member</em>.</t>
+          <t>The verifier MUST NOT merge one member's claims with another member's, or with
+the containing Bundle's. The containing Bundle's claims are about its own
+<tt>records</tt> only. A refusal or absence member is not a failed claim: a verifier
+reports it as what it is.</t>
+        </section>
+        <section anchor="composed-closure">
+          <name>Composition Closure</name>
+          <t>A <tt>composed/v1</tt> block makes a fourth completeness claim, <em>composition
+closure</em>. It holds when every member is either:</t>
+          <ul spacing="normal">
+            <li>
+              <t>present, meaning its body is carried and reproduces its <tt>digest</tt>; or</t>
+            </li>
+            <li>
+              <t>declared missing, meaning its <tt>id</tt> is listed in <tt>missing</tt> and it carries no
+body.</t>
+            </li>
+          </ul>
+          <t>The claim has three results:</t>
+          <ul spacing="normal">
+            <li>
+              <t><strong><tt>pass</tt></strong>: every member is present and <tt>missing</tt> is absent or empty.</t>
+            </li>
+            <li>
+              <t><strong><tt>withheld</tt></strong> (finding <tt>declared_incomplete</tt>): every member is present or
+declared missing, and at least one is declared missing.</t>
+            </li>
+            <li>
+              <t><strong><tt>fail</tt></strong>: in any of these cases:
+              </t>
+              <ul spacing="normal">
+                <li>
+                  <t>a member neither carries a body nor is listed in <tt>missing</tt>;</t>
+                </li>
+                <li>
+                  <t>a listed member carries a body;</t>
+                </li>
+                <li>
+                  <t>a carried body does not reproduce its <tt>digest</tt>;</t>
+                </li>
+                <li>
+                  <t><tt>missing</tt> names an undeclared member.</t>
+                </li>
+              </ul>
+            </li>
+          </ul>
+          <t>A verifier MUST report composition closure separately from the three
+per-member claims and from the containing Bundle's claims. It MUST NOT report
+it as one of them.</t>
+          <t>Declaring a member missing withholds its body, not its existence. Its <tt>id</tt>,
+<tt>observer</tt>, <tt>request_digest</tt>, <tt>outcome</tt> and <tt>digest</tt> remain in the composed
+digest.</t>
+          <t>Composition closure covers declared members only. A participant that is in
+neither <tt>members</tt> nor <tt>not_requested</tt> is not visible to a verifier from this
+block (<xref target="composed-security"/>).</t>
+        </section>
+        <section anchor="composed-joins">
+          <name>Joins</name>
+          <t>A join declares that two members' records are about the same thing, and how
+that is established. The producer DECLARES a state; a verifier DERIVES it
+again from the carried members. A declaration that does not match the
+derivation is a failed <tt>composed/v1</tt> check (finding <tt>join_state_mismatch</tt>). It
+is never a pass.</t>
+          <t>The states derive as follows:</t>
+          <ul spacing="normal">
+            <li>
+              <t><strong><tt>one_sided</tt></strong>: exactly one of the two members has outcome <tt>artifact</tt>.</t>
+            </li>
+            <li>
+              <t><strong><tt>unjoined</tt></strong>: neither member has outcome <tt>artifact</tt>; or both do, but the
+linkage basis does not establish that their records are about the same
+thing.</t>
+            </li>
+            <li>
+              <t><strong><tt>agree</tt></strong>: both members are artifacts and are linked, and every <tt>compare</tt>
+pointer resolves in both root records to values with identical JCS
+serializations. A join with no <tt>compare</tt> and a link is <tt>agree</tt>.</t>
+            </li>
+            <li>
+              <t><strong><tt>mismatch</tt></strong>: both members are artifacts and are linked, and at least one
+<tt>compare</tt> pointer resolves to different values, or does not resolve on one
+side.</t>
+            </li>
+          </ul>
+          <t>Linkage is evaluated on each artifact member's root record (its bundle's
+<tt>root</tt>). This document defines the derivation for two bases:</t>
+          <ul spacing="normal">
+            <li>
+              <t><strong><tt>pre_agreed_identifier</tt></strong>: <tt>pointer</tt> selects a string in each root record.
+The members are linked when SHA-256 of that string's UTF-8 octets equals
+<tt>identifier_digest</tt> on both sides. The identifier itself never enters the
+block.</t>
+            </li>
+            <li>
+              <t><strong><tt>shared_artifact_digest</tt></strong>: <tt>pointer</tt> selects a digest string in each root
+record. The members are linked when the two values are identical.</t>
+            </li>
+          </ul>
+          <t>The bases <tt>issued_receipt</tt> (the two records cite one Receipt) and
+<tt>same_interval</tt> (the two records fall in one declared interval) are reserved
+for a later specification that defines their derivation. A block MAY declare
+joins on them; such joins are digest-covered. A verifier that does not
+implement a derivation for the basis reports such a join as <tt>not_derivable</tt>.
+It MUST NOT report the join as a derived agreement, and MUST NOT count it as
+corroboration.</t>
+          <t>A join one of whose artifact members is declared missing is also
+<tt>not_derivable</tt>.</t>
+          <t>On a derived <tt>mismatch</tt>, a verifier reports each member's value at each
+differing pointer, and names no winner.</t>
+        </section>
+        <section anchor="composed-observers">
+          <name>Observers and Redundancy</name>
+          <t><tt>observers[]</tt> states, for each member, which observer produced it, in what
+<tt>role</tt>, and in which <tt>custody_domain</tt>. <tt>role</tt> is a short token naming where
+the observer sits, for example <tt>responder</tt>, <tt>runtime</tt> or <tt>network_boundary</tt>; this document does
+not define a role vocabulary, and a verifier reports the role without
+interpreting it. A custody domain is an opaque label that the composing party
+assigns. Two observers are in the same custody domain exactly when their
+labels are identical octet sequences.</t>
+          <t><strong>Same custody is redundant, not corroborating.</strong> For every join that derives
+<tt>agree</tt>, a verifier MUST report the pair as <tt>redundant</tt> in any of these cases:</t>
+          <ul spacing="normal">
+            <li>
+              <t>both members name the same observer;</t>
+            </li>
+            <li>
+              <t>the two observers have the same <tt>custody_domain</tt>;</t>
+            </li>
+            <li>
+              <t>the two members' root records carry the same <tt>key_id</tt>.</t>
+            </li>
+          </ul>
+          <t>It MUST present the result as "redundant, not corroborating", with the reason.
+Otherwise it MAY report the pair as corroborating, and it MUST qualify that as
+resting on <em>declared</em> custody.</t>
+          <t>Custody labels are the composing party's declaration. Like <tt>producer-key/v1</tt>
+(<xref target="producer-key"/>), they can only downgrade a result. Identical labels make a
+pair redundant. Distinct labels never establish that two observers are
+independent, and a verifier MUST NOT present them as doing so.</t>
+          <t>Corroboration is derived; it is never declared, and it is not part of the
+block. A verifier lists results per pair. It MUST NOT combine them into a
+count or score.</t>
+        </section>
+        <section anchor="composed-digest">
+          <name>Composed Digest</name>
+          <t>The composed digest is the digest a judgment cites as the evidence set it was
+made from. It is computed only from the declarations in the block, so it
+recomputes from the containing Bundle alone. It stays the same whether or not
+the member bodies are carried.</t>
+          <ol spacing="normal" type="1"><li>
+              <t>Build the <em>digest input</em> <tt>D</tt>, a JSON object with exactly these five
+members:
+              </t>
+              <ul spacing="normal">
+                <li>
+                  <t><tt>kind</tt>: the string <tt>"composed/v1"</tt>.</t>
+                </li>
+                <li>
+                  <t><tt>members</tt>: for each member, an object with exactly its <tt>id</tt>, <tt>observer</tt>,
+<tt>request_digest</tt>, <tt>outcome</tt> and <tt>digest</tt>. Sort the objects in ascending
+order of <tt>id</tt>.</t>
+                </li>
+                <li>
+                  <t><tt>observers</tt>: for each observer, an object with exactly its <tt>id</tt>, <tt>role</tt>
+and <tt>custody_domain</tt>. Sort in ascending order of <tt>id</tt>.</t>
+                </li>
+                <li>
+                  <t><tt>joins</tt>: for each join, an object with its <tt>members</tt>, <tt>basis</tt> and
+<tt>state</tt>, plus whichever of <tt>pointer</tt>, <tt>identifier_digest</tt> and <tt>compare</tt>
+the join carries (absent members stay absent, never <tt>null</tt>). Sort in
+ascending order of <tt>members[0]</tt>, then <tt>members[1]</tt>, then <tt>basis</tt>, then
+<tt>pointer</tt> (the empty string when absent). <tt>compare</tt> keeps its carried
+order. Use <tt>[]</tt> when the block has no <tt>joins</tt>.</t>
+                </li>
+                <li>
+                  <t><tt>not_requested</tt>: the block's <tt>not_requested</tt> sorted ascending, or <tt>[]</tt>
+when it has none.</t>
+                </li>
+              </ul>
+              <t>
+Identifiers are ASCII (<tt>label-id</tt>), so ascending order is octet order. The
+order in which arrays are carried does not affect the digest.</t>
+            </li>
+            <li>
+              <t><tt>composed_digest</tt> is the lowercase hexadecimal SHA-256 of the UTF-8 octets
+of the JCS <xref target="RFC8785"/> serialization of <tt>D</tt>. This is the canonicalization
+algorithm <tt>jcs</tt> of <xref target="I-D.mih-sokolov-scitt-payload-binding"/>: RFC 8785 with
+no normalization pass, SHA-256, bare hex. <tt>D</tt> contains no numbers.</t>
+            </li>
+            <li>
+              <t>Member bodies, <tt>missing</tt> and <tt>composed_digest</tt> itself are excluded.</t>
+            </li>
+          </ol>
+          <t>A verifier MUST recompute <tt>composed_digest</tt> and report a mismatch as a failed
+<tt>composed/v1</tt> check. It MUST NOT report the recomputed value as the digest of
+any member, nor as the containing Bundle's digest.</t>
+          <t>The containing Bundle's own digest (<xref target="bundle-digest"/>) still covers the whole
+block, bodies included. A countersignature over the containing Bundle
+therefore binds the composition and everything carried with it. The composed
+digest binds only the evidence set.</t>
+          <t>Because the composed digest covers each member's <tt>outcome</tt>, <tt>observer</tt> and
+<tt>digest</tt>, all observers' roles and custody labels, and every join
+declaration, changing any of them changes the composed digest. A judgment
+that cites a composed digest therefore also binds the declared custody, and
+with it the redundancy result a verifier derives from that custody.</t>
+        </section>
+        <section anchor="composed-verify">
+          <name>Verifying composed/v1</name>
+          <t>A verifier that implements <tt>composed/v1</tt> MUST report each of the following
+separately:</t>
+          <ol spacing="normal" type="1"><li>
+              <t>the recomputed composed digest, and whether it matches;</t>
+            </li>
+            <li>
+              <t>per member: outcome, body carried or declared missing, digest reproduced,
+and, for a carried member bundle, its own three completeness claims;</t>
+            </li>
+            <li>
+              <t>composition closure;</t>
+            </li>
+            <li>
+              <t>per join: the declared state, the derived state (or <tt>not_derivable</tt>), and
+whether they match;</t>
+            </li>
+            <li>
+              <t>per derived <tt>agree</tt>: <tt>redundant</tt> (with reason) or corroborating on
+declared custody.</t>
+            </li>
+          </ol>
+          <t>A verifier that does not implement <tt>composed/v1</tt> follows <xref target="extensions"/>: it
+reports the block as uninterpreted and integrity-covered. It MUST NOT present
+any member, join or composed digest as checked.</t>
+        </section>
+      </section>
+      <section anchor="provisional-kinds">
+        <name>Provisional Extension Kinds</name>
+        <t>The interim registry (<xref target="iana"/>) also records two extension kinds held for
+ratification and not registered: <tt>sd-jwt-issuers/v1</tt>, the issuer keys under
+which SD-JWT presentations <xref target="RFC9901"/> in a revealed <tt>agent_input</tt> are
+verified offline, and <tt>disclosure-policy-decisions/v1</tt>, the per-Capsule
+disclosure-policy decision that a constraint record binds by digest. This
+document does not define them. A verifier that does not implement them treats
+them as it treats any extension kind it does not implement (<xref target="extensions"/>):
+digest-covered and uninterpreted.</t>
       </section>
     </section>
     <section anchor="bundle-digest">
@@ -531,6 +964,51 @@ key it does not declare is still reported at most as an <tt>unresolved signer</t
 unless a directory the verifier chose lists that key. Results
 are listed per check and never combined, because an aggregate would hide a
 <tt>failed</tt> or <tt>not checked</tt> result behind a total.</t>
+      <section anchor="composed-security">
+        <name>composed/v1</name>
+        <ul spacing="normal">
+          <li>
+            <t><strong>Omitted participants.</strong> The composing party chooses whom to list.
+Composition closure proves that every <em>declared</em> member is present or
+declared missing. It cannot reveal a participant that the composing party
+never listed. <tt>not_requested</tt> makes a known omission explicit. Completeness
+against the real set of participants needs an independent statement of
+that set, such as a coordinator's sealed topology. A verifier MUST NOT
+describe composition closure as completeness of participation.</t>
+          </li>
+          <li>
+            <t><strong>Declarations versus derivations.</strong> Declared join states are re-derived;
+a mismatch fails. Declared custody can only downgrade
+(<xref target="composed-observers"/>). Nothing a producer declares can make two
+observers independent.</t>
+          </li>
+          <li>
+            <t><strong>Outcomes.</strong> Keeping refusal and absence distinct is evidentiary:
+synthesizing either one from the other forges the stronger record from the
+weaker.</t>
+          </li>
+        </ul>
+      </section>
+    </section>
+    <section anchor="privacy">
+      <name>Privacy Considerations</name>
+      <t>A Bundle reveals a preimage only through its disclosure overlay
+(<xref target="disclosures"/>); a member absent from the overlay stays WITHHELD. For the
+<tt>composed/v1</tt> extension (<xref target="composed"/>):</t>
+      <ul spacing="normal">
+        <li>
+          <t>Join identifiers enter only as digests (<tt>identifier_digest</tt>).</t>
+        </li>
+        <li>
+          <t><tt>custody_domain</tt> is an opaque label and SHOULD NOT be a network address, an
+account identifier or a personal name.</t>
+        </li>
+        <li>
+          <t>Withholding a member's body (<tt>missing</tt>) keeps the composed digest stable. A
+judgment can therefore be checked against a composition presented to an
+audience that may not see every member.</t>
+        </li>
+      </ul>
     </section>
     <section anchor="iana">
       <name>IANA Considerations</name>
@@ -541,9 +1019,12 @@ group with these Specification Required registries, using <xref target="RFC8174"
           <t>"Evidence Bundle kind", initial value <tt>evidence-bundle/v2</tt>.</t>
         </li>
         <li>
-          <t>"Evidence Bundle extension kind", initial value <tt>producer-key/v1</tt>
-(<xref target="producer-key"/>). A registered specification defines each block;
-private <tt>x-</tt> prefixed kinds are not registered.</t>
+          <t>"Evidence Bundle extension kind", initial values <tt>producer-key/v1</tt>
+(<xref target="producer-key"/>) and <tt>composed/v1</tt> (<xref target="composed"/>). A registered
+specification defines each block; private <tt>x-</tt> prefixed kinds are not
+registered. The kinds <tt>sd-jwt-issuers/v1</tt> and
+<tt>disclosure-policy-decisions/v1</tt> (<xref target="provisional-kinds"/>) are not initial
+values.</t>
         </li>
         <li>
           <t>"Evidence Bundle countersignature type", initial values <tt>cose-sign1</tt>
@@ -670,6 +1151,34 @@ the same values and policy.</t>
           <seriesInfo name="RFC" value="8032"/>
           <seriesInfo name="DOI" value="10.17487/RFC8032"/>
         </reference>
+        <reference anchor="RFC8610">
+          <front>
+            <title>Concise Data Definition Language (CDDL): A Notational Convention to Express Concise Binary Object Representation (CBOR) and JSON Data Structures</title>
+            <author fullname="H. Birkholz" initials="H." surname="Birkholz"/>
+            <author fullname="C. Vigano" initials="C." surname="Vigano"/>
+            <author fullname="C. Bormann" initials="C." surname="Bormann"/>
+            <date month="June" year="2019"/>
+            <abstract>
+              <t>This document proposes a notational convention to express Concise Binary Object Representation (CBOR) data structures (RFC 7049). Its main goal is to provide an easy and unambiguous way to express structures for protocol messages and data formats that use CBOR or JSON.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8610"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8610"/>
+        </reference>
+        <reference anchor="RFC6901">
+          <front>
+            <title>JavaScript Object Notation (JSON) Pointer</title>
+            <author fullname="P. Bryan" initials="P." role="editor" surname="Bryan"/>
+            <author fullname="K. Zyp" initials="K." surname="Zyp"/>
+            <author fullname="M. Nottingham" initials="M." role="editor" surname="Nottingham"/>
+            <date month="April" year="2013"/>
+            <abstract>
+              <t>JSON Pointer defines a string syntax for identifying a specific value within a JavaScript Object Notation (JSON) document.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6901"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6901"/>
+        </reference>
         <reference anchor="RFC9943">
           <front>
             <title>An Architecture for Trustworthy and Transparent Digital Supply Chains</title>
@@ -721,9 +1230,32 @@ the same values and policy.</t>
           </front>
           <seriesInfo name="Internet-Draft" value="draft-mih-agent-disclosure-envelope-00"/>
         </reference>
+        <reference anchor="I-D.mih-agent-evidence-request">
+          <front>
+            <title>An Interaction Model for Requesting Verifiable Evidence</title>
+            <author initials="S." surname="Mih" fullname="Steven Mih">
+              <organization>Action State Group, Inc.</organization>
+            </author>
+            <date year="2026" month="September" day="26"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-mih-agent-evidence-request-00"/>
+        </reference>
       </references>
       <references anchor="sec-informative-references">
         <name>Informative References</name>
+        <reference anchor="I-D.mih-sokolov-scitt-payload-binding">
+          <front>
+            <title>Canonicalization Declaration for SCITT Signed Statements</title>
+            <author initials="S." surname="Mih" fullname="Steven Mih">
+              <organization>Action State Group, Inc.</organization>
+            </author>
+            <author initials="A." surname="Sokolov" fullname="Anton Sokolov">
+              <organization>Tyche Institute</organization>
+            </author>
+            <date year="2026" month="September" day="26"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-mih-sokolov-scitt-payload-binding-06"/>
+        </reference>
         <reference anchor="RFC9338">
           <front>
             <title>CBOR Object Signing and Encryption (COSE): Countersignatures</title>
@@ -737,23 +1269,63 @@ the same values and policy.</t>
           <seriesInfo name="RFC" value="9338"/>
           <seriesInfo name="DOI" value="10.17487/RFC9338"/>
         </reference>
+        <reference anchor="RFC9901">
+          <front>
+            <title>Selective Disclosure for JSON Web Tokens</title>
+            <author fullname="D. Fett" initials="D." surname="Fett"/>
+            <author fullname="K. Yasuda" initials="K." surname="Yasuda"/>
+            <author fullname="B. Campbell" initials="B." surname="Campbell"/>
+            <date month="November" year="2025"/>
+            <abstract>
+              <t>This specification defines a mechanism for the selective disclosure
+of individual elements of a JSON data structure used as the payload
+of a JSON Web Signature (JWS). The primary use case is the selective
+disclosure of JSON Web Token (JWT) claims.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9901"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9901"/>
+        </reference>
       </references>
     </references>
-    <?line 552?>
+    <?line 967?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>
-      <t>Since -00: defined the <tt>countersign/v1</tt> countersignature entry, its
+      <t>Since -00:</t>
+      <ul spacing="normal">
+        <li>
+          <t>Countersignatures: defined the <tt>countersign/v1</tt> countersignature entry, its
 statement, and its five check results; defined countersignature,
-countersigner, and self-countersignature, and required a self-countersignature
-to be rendered as not independent; registered <tt>countersign/v1</tt> as a second
-countersignature type; defined and registered the <tt>producer-key/v1</tt>
-extension kind, which declares the producer's key and can only cause a
-countersignature to be reported as not independent.</t>
+countersigner, and self-countersignature, and required a
+self-countersignature to be rendered as not independent; registered
+<tt>countersign/v1</tt> as a second countersignature type.</t>
+        </li>
+        <li>
+          <t>Defined and registered the <tt>producer-key/v1</tt> extension kind, which declares
+the producer's key and can only cause a countersignature to be reported as
+not independent.</t>
+        </li>
+        <li>
+          <t>Defined and registered the <tt>composed/v1</tt> extension kind: one member per
+responder carrying its Evidence Request outcome (<tt>artifact</tt>, <tt>refusal</tt> or
+<tt>absence</tt>); observers with a role and a custody domain; joins whose
+declared state (<tt>agree</tt>, <tt>mismatch</tt>, <tt>unjoined</tt> or <tt>one_sided</tt>) a verifier
+re-derives; a fourth completeness claim, composition closure; same-custody
+agreement reported as redundant, not corroborating; and a composed digest
+(JCS, SHA-256) over the member, observer, join and <tt>not_requested</tt>
+declarations. Added Privacy Considerations.</t>
+        </li>
+        <li>
+          <t>Noted two provisional extension kinds, <tt>sd-jwt-issuers/v1</tt> and
+<tt>disclosure-policy-decisions/v1</tt>, held for ratification in the interim
+registry and not defined by this document.</t>
+        </li>
+      </ul>
     </section>
     <section numbered="false" anchor="acknowledgments">
       <name>Acknowledgments</name>
-      <t>The author thanks the SCITT working group and the Action State Group
+      <t>The authors thank the SCITT working group and the Action State Group
 architecture review for the evidence-bundle starting shape.</t>
     </section>
   </back>

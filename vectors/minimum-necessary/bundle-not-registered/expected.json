@@ -1,7 +1,7 @@
 {
   "provenance": "spec-derived",
   "description": "The checkpoint is present but carries no signature and is not registered with a Transparency Service: interval coverage and membership are qualified checkpoint_unverified.",
-  "bundle_digest": "ac1ce1248761bab0f45e9e0075eb1697a1b97052eabdc4c17f826c8c192980ee",
+  "bundle_digest": "23334cfb86c61acd50db909b59c83db3864d4d16bfdd086f39da6fd60603f886",
   "graph_closure": {
     "status": "pass",
     "findings": []
@@ -41,8 +41,8 @@
     }
   ],
   "extensions": [
-    "disclosure_policy_decisions/v1",
-    "sd_jwt_issuers/v1"
+    "disclosure-policy-decisions/v1",
+    "sd-jwt-issuers/v1"
   ],
   "policy_decisions": {
     "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7": {

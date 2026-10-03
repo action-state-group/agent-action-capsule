@@ -7,7 +7,7 @@ two policy-scoped presentations of them, the policy decisions that name the
 revealed and withheld fields, the Capsules that bind both by digest, a two-record
 log, and four Evidence Bundles. The set exercises the provisional registry
 entries in ``spec/REGISTRY.md``: the ``agent_input_version: "1"`` presentation
-type (§10), the ``disclosure_policy_decisions/v1`` and ``sd_jwt_issuers/v1``
+type (§10), the ``disclosure-policy-decisions/v1`` and ``sd-jwt-issuers/v1``
 Evidence Bundle extension kinds (§14) and the ``minimum_necessary_report/1``
 Evidence Request derivation (§16).
 
@@ -46,8 +46,8 @@ CLL_CHECKPOINT_CONTENT_TYPE = "application/cll-checkpoint+cbor"
 # Registry entries exercised (spec/REGISTRY.md). Kept as constants so a rename
 # at ratification is a one-line change plus a regeneration.
 AGENT_INPUT_VERSION = "1"
-EXT_POLICY_DECISIONS = "disclosure_policy_decisions/v1"
-EXT_SD_JWT_ISSUERS = "sd_jwt_issuers/v1"
+EXT_POLICY_DECISIONS = "disclosure-policy-decisions/v1"
+EXT_SD_JWT_ISSUERS = "sd-jwt-issuers/v1"
 DERIVATION = "minimum_necessary_report/1"
 
 # Constraint labels. Bare names are reserved for values seeded in the base
