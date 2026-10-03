@@ -1,0 +1,54 @@
+{
+  "provenance": "spec-derived",
+  "constraint_result": "fail",
+  "extra_disclosures": [
+    "https://data.example.org/types/claim-837p/v1#patient_name"
+  ],
+  "verdict_class": "blocked",
+  "capsule": {
+    "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+    "format_version": "4",
+    "canonicalization_id": "jcs",
+    "action_id": "price-CLM-2026-0914-0007",
+    "action_type": "decide",
+    "operator": "EXAMPLE-ORG",
+    "developer": "claims-processor@2.4.1",
+    "timestamp": "2026-09-15T14:02:14Z",
+    "epoch_id": "policy-2026-08-01",
+    "model_attestation": {
+      "compute_attestation": {
+        "agent_input_digest": "5e32cef839dc6a84734425d979cd38ece0052de622751d7dddc53aa51b3ba412"
+      }
+    },
+    "constraints": [
+      {
+        "id": "org.example.disclosure_policy",
+        "check_type": "org.example.minimum_necessary",
+        "method": "org.example.sd_jwt_presentation",
+        "result": "fail",
+        "severity": "high",
+        "blocking": true,
+        "evidence_digest": "c81dc1406d7dbe869124af8b82738d3da7cea83ec5e09908b6d4326a72b1c0fc"
+      }
+    ],
+    "disposition": {
+      "approver": "policy",
+      "decision": "reject",
+      "human_disposed": false,
+      "verdict_class": "blocked"
+    },
+    "assurance": {
+      "attestation_mode": "self_attested",
+      "effect_mode": "not_applicable",
+      "ledger_mode": "standalone"
+    },
+    "capsule_id": "5cb5daee811360b779909544204e0e542a71578557b5caa2a9e4eba3cb143f7e"
+  },
+  "capsule_id": "5cb5daee811360b779909544204e0e542a71578557b5caa2a9e4eba3cb143f7e",
+  "canonical_preimage": "{\"action_id\":\"price-CLM-2026-0914-0007\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"standalone\"},\"canonicalization_id\":\"jcs\",\"constraints\":[{\"blocking\":true,\"check_type\":\"org.example.minimum_necessary\",\"evidence_digest\":\"c81dc1406d7dbe869124af8b82738d3da7cea83ec5e09908b6d4326a72b1c0fc\",\"id\":\"org.example.disclosure_policy\",\"method\":\"org.example.sd_jwt_presentation\",\"result\":\"fail\",\"severity\":\"high\"}],\"developer\":\"claims-processor@2.4.1\",\"disposition\":{\"approver\":\"policy\",\"decision\":\"reject\",\"human_disposed\":false,\"verdict_class\":\"blocked\"},\"epoch_id\":\"policy-2026-08-01\",\"format_version\":\"4\",\"model_attestation\":{\"compute_attestation\":{\"agent_input_digest\":\"5e32cef839dc6a84734425d979cd38ece0052de622751d7dddc53aa51b3ba412\"}},\"operator\":\"EXAMPLE-ORG\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-09-15T14:02:14Z\"}",
+  "producer_envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820bb0b4b65d72c5932308454dbe3f843561e1678cec970c6d4cdf87286390e0883a058205cb5daee811360b779909544204e0e542a71578557b5caa2a9e4eba3cb143f7e584065eca3fcc383011c7cd63f41a14ccdd47cebbe37ed0a680f774d2d13a329e1228f45e8f4f5b2c49aaf39d643401a6f29326a99f582e73921850977ed788a1b07",
+  "producer_key_hex": "bb0b4b65d72c5932308454dbe3f843561e1678cec970c6d4cdf87286390e0883",
+  "class1": {
+    "ok": true
+  }
+}

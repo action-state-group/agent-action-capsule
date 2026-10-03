@@ -1,0 +1,50 @@
+{
+  "provenance": "spec-derived",
+  "capsule": {
+    "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+    "format_version": "4",
+    "canonicalization_id": "jcs",
+    "action_id": "price-CLM-2026-0914-0007",
+    "action_type": "decide",
+    "operator": "EXAMPLE-ORG",
+    "developer": "claims-processor@2.4.1",
+    "timestamp": "2026-09-15T14:02:14Z",
+    "epoch_id": "policy-2026-08-01",
+    "model_attestation": {
+      "compute_attestation": {
+        "agent_input_digest": "1a051437d63ef66e5eba28bbc4151ba12798384dd6bc0c3dafe2a4fce913c21c",
+        "agent_output_digest": "bc3eac6098626f5283cbecfb2a27ab1f4bcb903265ed8c8c4b86c7bc6887d87f"
+      }
+    },
+    "constraints": [
+      {
+        "id": "org.example.disclosure_policy",
+        "check_type": "org.example.minimum_necessary",
+        "method": "org.example.sd_jwt_presentation",
+        "result": "pass",
+        "severity": "high",
+        "blocking": true,
+        "evidence_digest": "c81dc1406d7dbe869124af8b82738d3da7cea83ec5e09908b6d4326a72b1c0fc"
+      }
+    ],
+    "disposition": {
+      "approver": "policy",
+      "decision": "accept",
+      "human_disposed": false,
+      "verdict_class": "executed"
+    },
+    "assurance": {
+      "attestation_mode": "self_attested",
+      "effect_mode": "not_applicable",
+      "ledger_mode": "standalone"
+    },
+    "capsule_id": "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249"
+  },
+  "capsule_id": "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249",
+  "canonical_preimage": "{\"action_id\":\"price-CLM-2026-0914-0007\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"standalone\"},\"canonicalization_id\":\"jcs\",\"constraints\":[{\"blocking\":true,\"check_type\":\"org.example.minimum_necessary\",\"evidence_digest\":\"c81dc1406d7dbe869124af8b82738d3da7cea83ec5e09908b6d4326a72b1c0fc\",\"id\":\"org.example.disclosure_policy\",\"method\":\"org.example.sd_jwt_presentation\",\"result\":\"pass\",\"severity\":\"high\"}],\"developer\":\"claims-processor@2.4.1\",\"disposition\":{\"approver\":\"policy\",\"decision\":\"accept\",\"human_disposed\":false,\"verdict_class\":\"executed\"},\"epoch_id\":\"policy-2026-08-01\",\"format_version\":\"4\",\"model_attestation\":{\"compute_attestation\":{\"agent_input_digest\":\"1a051437d63ef66e5eba28bbc4151ba12798384dd6bc0c3dafe2a4fce913c21c\",\"agent_output_digest\":\"bc3eac6098626f5283cbecfb2a27ab1f4bcb903265ed8c8c4b86c7bc6887d87f\"}},\"operator\":\"EXAMPLE-ORG\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-09-15T14:02:14Z\"}",
+  "producer_envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820bb0b4b65d72c5932308454dbe3f843561e1678cec970c6d4cdf87286390e0883a05820c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae424958409501f3ee22c14b7491ad3173bc97f4cd14eef578012812454f4c74b11387da1b5db0b2178bf09dc4d7b61080fa4afd0a6a0cc31deb2cc46e6c3f56040e54af04",
+  "producer_key_hex": "bb0b4b65d72c5932308454dbe3f843561e1678cec970c6d4cdf87286390e0883",
+  "class1": {
+    "ok": true
+  }
+}

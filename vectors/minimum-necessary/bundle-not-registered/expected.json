@@ -1,0 +1,185 @@
+{
+  "provenance": "spec-derived",
+  "description": "The checkpoint is present but carries no signature and is not registered with a Transparency Service: interval coverage and membership are qualified checkpoint_unverified.",
+  "bundle_digest": "ac1ce1248761bab0f45e9e0075eb1697a1b97052eabdc4c17f826c8c192980ee",
+  "graph_closure": {
+    "status": "pass",
+    "findings": []
+  },
+  "interval_coverage": {
+    "status": "pass",
+    "findings": [
+      "checkpoint_unverified"
+    ]
+  },
+  "per_record_membership": {
+    "status": "pass",
+    "findings": [
+      "checkpoint_unverified"
+    ]
+  },
+  "disclosures": [
+    {
+      "capsule_id": "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7",
+      "member": "agent_input",
+      "status": "disclosure_match"
+    },
+    {
+      "capsule_id": "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7",
+      "member": "agent_output",
+      "status": "disclosure_match"
+    },
+    {
+      "capsule_id": "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249",
+      "member": "agent_input",
+      "status": "disclosure_match"
+    },
+    {
+      "capsule_id": "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249",
+      "member": "agent_output",
+      "status": "disclosure_match"
+    }
+  ],
+  "extensions": [
+    "disclosure_policy_decisions/v1",
+    "sd_jwt_issuers/v1"
+  ],
+  "policy_decisions": {
+    "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7": {
+      "decision_digest": "3814ee8a789bd95f8b40e1f0d1d594a9199020dc5f60b5618c351e7d2eaedcad",
+      "status": "match",
+      "constraint_result": "pass"
+    },
+    "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249": {
+      "decision_digest": "c81dc1406d7dbe869124af8b82738d3da7cea83ec5e09908b6d4326a72b1c0fc",
+      "status": "match",
+      "constraint_result": "pass"
+    }
+  },
+  "sd_jwt_presentations": {
+    "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7": {
+      "status": "pass",
+      "presentations": [
+        {
+          "vct": "https://data.example.org/types/claim-837p/v1",
+          "issuer_signature": "valid",
+          "disclosures_bound": true,
+          "disclosed": [
+            "charge",
+            "cpt",
+            "date_of_service",
+            "icd10",
+            "place_of_service",
+            "provider_npi",
+            "units"
+          ],
+          "decision_revealed": [
+            "charge",
+            "cpt",
+            "date_of_service",
+            "icd10",
+            "place_of_service",
+            "provider_npi",
+            "units"
+          ],
+          "set_equal": true
+        },
+        {
+          "vct": "https://data.example.org/types/encounter-note/v1",
+          "issuer_signature": "valid",
+          "disclosures_bound": true,
+          "disclosed": [
+            "assessment",
+            "chief_complaint",
+            "exam",
+            "history",
+            "medications",
+            "plan"
+          ],
+          "decision_revealed": [
+            "assessment",
+            "chief_complaint",
+            "exam",
+            "history",
+            "medications",
+            "plan"
+          ],
+          "set_equal": true
+        },
+        {
+          "vct": "https://data.example.org/types/eligibility/v1",
+          "issuer_signature": "valid",
+          "disclosures_bound": true,
+          "disclosed": [],
+          "decision_revealed": [],
+          "set_equal": true
+        }
+      ]
+    },
+    "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249": {
+      "status": "pass",
+      "presentations": [
+        {
+          "vct": "https://data.example.org/types/claim-837p/v1",
+          "issuer_signature": "valid",
+          "disclosures_bound": true,
+          "disclosed": [
+            "charge",
+            "cpt",
+            "date_of_service",
+            "icd10",
+            "member_id",
+            "patient_dob",
+            "place_of_service",
+            "provider_npi",
+            "units"
+          ],
+          "decision_revealed": [
+            "charge",
+            "cpt",
+            "date_of_service",
+            "icd10",
+            "member_id",
+            "patient_dob",
+            "place_of_service",
+            "provider_npi",
+            "units"
+          ],
+          "set_equal": true
+        },
+        {
+          "vct": "https://data.example.org/types/encounter-note/v1",
+          "issuer_signature": "valid",
+          "disclosures_bound": true,
+          "disclosed": [],
+          "decision_revealed": [],
+          "set_equal": true
+        },
+        {
+          "vct": "https://data.example.org/types/eligibility/v1",
+          "issuer_signature": "valid",
+          "disclosures_bound": true,
+          "disclosed": [
+            "copay",
+            "deductible_met",
+            "effective",
+            "group_number",
+            "member_id",
+            "plan_id",
+            "prior_auth_required"
+          ],
+          "decision_revealed": [
+            "copay",
+            "deductible_met",
+            "effective",
+            "group_number",
+            "member_id",
+            "plan_id",
+            "prior_auth_required"
+          ],
+          "set_equal": true
+        }
+      ]
+    }
+  }
+}
