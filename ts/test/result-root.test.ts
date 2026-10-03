@@ -1151,3 +1151,67 @@ describe("headline values are recomputed, never taken on the producer's word", (
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// A claim cites a published capsule by its own id; a book bundle supplies it
+// as the evidence-book record that carries it (record id != capsule id). The
+// claim is supported through that record only when the record's header is
+// disclosed, matches its committed digest, and names the cited id as its
+// subject_ref. Before this, every requirement claim of a book bundle read
+// `unsupported`, whatever its evidence.
+// ---------------------------------------------------------------------------
+
+describe("claims citing a capsule a book record carries", () => {
+  const carried = "ab".repeat(32);
+
+  function bookCited(subjectRef: string): Obj {
+    const source = fixture("result-root-book-bundle.json");
+    const statement = (
+      ((source.disclosures as Obj).result as Obj).agent_input as Obj
+    ).statement as Obj;
+    const claim = (statement.claims as Obj[])[0]!;
+    const cite = (refs: Obj[]): void => {
+      for (const ref of refs) if (ref.digest === "day-1") ref.digest = carried;
+    };
+    cite(claim.evidence as Obj[]);
+    cite((claim.presentation as Obj).evidence as Obj[]);
+    (source.disclosures as Obj)["day-1"] = {
+      agent_input: {
+        v: 1,
+        book_id: "sealed-fixture-log",
+        record_type: "published_capsule",
+        epistemic_type: "producer_claim",
+        subject_ref: subjectRef,
+        payload_commitments: [],
+        links: [],
+      },
+    };
+    return source;
+  }
+
+  it("resolves the cited capsule id to the book record carrying it, keeping the cited id", async () => {
+    const { bundle, ids } = await sealEvidenceBundle(bookCited(carried));
+    const result = await buildResultRoot(bundle);
+    const claim = result.claims.find((c) => c.id === "claim-1")!;
+    expect(claim.evidence.map((e) => e.resolved)).toEqual([true, true]);
+    expect(claim.support).toBe("supported");
+    const record = result.records.get(carried)!;
+    expect(record.capsuleId).toBe(carried);
+    expect(record.bookRecordId).toBe(ids["day-1"]);
+    expect(record.agentInput.state).toBe("disclosed");
+  });
+
+  it("never resolves through a header that does not match its record's committed digest", async () => {
+    const { bundle, ids } = await sealEvidenceBundle(
+      bookCited("cd".repeat(32)),
+    );
+    const header = ((bundle.disclosures as Obj)[ids["day-1"]!] as Obj)
+      .agent_input as Obj;
+    header.subject_ref = carried;
+    const result = await buildResultRoot(bundle);
+    const claim = result.claims.find((c) => c.id === "claim-1")!;
+    expect(claim.evidence[0]).toEqual({ digest: carried, resolved: false });
+    expect(claim.support).toBe("unsupported");
+    expect(result.records.has(carried)).toBe(false);
+  });
+});
