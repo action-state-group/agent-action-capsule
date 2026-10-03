@@ -42,10 +42,13 @@ type DisclosureResult struct {
 
 // ExtensionResult reports an integrity-covered extension whose semantics were
 // deliberately not interpreted by the neutral core.
+// For composed/v1, which this verifier implements, Status is the block's own
+// result ("pass", "withheld" or "fail") and Composed carries the details.
 type ExtensionResult struct {
 	Kind             string
 	Status           string
 	IntegrityCovered bool
+	Composed         *ComposedResult
 }
 
 // CountersignatureResult makes the reserved countersignature slot explicit:
@@ -130,6 +133,12 @@ func BundleDigest(value interface{}) (string, error) {
 // VerifyBundle checks the Bundle's independent claims using only its supplied
 // evidence. Unknown extension blocks remain integrity-covered and uninterpreted.
 func VerifyBundle(value interface{}) VerificationResult {
+	return VerifyBundleWithOptions(value, Options{})
+}
+
+// VerifyBundleWithOptions is VerifyBundle with deployment options, such as a
+// refusal signature profile for composed/v1 refusal members.
+func VerifyBundleWithOptions(value interface{}, opts Options) VerificationResult {
 	invalid := ClaimResult{Status: "fail", Findings: []string{"bundle_malformed"}}
 	bundle, ok := value.(map[string]interface{})
 	if !ok {
@@ -148,7 +157,7 @@ func VerifyBundle(value interface{}) VerificationResult {
 	} else {
 		result.Disclosures = disclosures(map[string]interface{}{}, records)
 	}
-	result.Extensions = extensions(bundle["extensions"])
+	result.Extensions = extensions(bundle["extensions"], opts)
 	if signatures, ok := bundle["countersignatures"].([]interface{}); ok {
 		result.Countersignatures = make([]CountersignatureResult, len(signatures))
 		for i, signature := range signatures {
@@ -605,7 +614,7 @@ func sortedRecordIDs(records map[string]map[string]interface{}) []string {
 	sort.Strings(ids)
 	return ids
 }
-func extensions(raw interface{}) []ExtensionResult {
+func extensions(raw interface{}, opts Options) []ExtensionResult {
 	values, ok := raw.(map[string]interface{})
 	if !ok {
 		return nil
@@ -618,6 +627,11 @@ func extensions(raw interface{}) []ExtensionResult {
 	result := make([]ExtensionResult, len(kinds))
 	for i, kind := range kinds {
 		result[i] = ExtensionResult{Kind: kind, Status: "uninterpreted", IntegrityCovered: true}
+		if kind == ComposedKind {
+			composed := VerifyComposed(values[kind], opts)
+			result[i].Status = composed.Status
+			result[i].Composed = &composed
+		}
 	}
 	return result
 }
