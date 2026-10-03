@@ -222,7 +222,8 @@ def test_joins_are_rederived_not_trusted(case_id):
     case = CASES[case_id]
     block = _block(case)
     by_id = {m["id"]: m for m in block["members"]}
-    for join, want in zip(block["joins"], case["expect"]["joins"], strict=True):
+    assert len(block["joins"]) == len(case["expect"]["joins"])
+    for join, want in zip(block["joins"], case["expect"]["joins"]):
         assert join["members"] == want["members"] == sorted(join["members"])
         derived = _derive(join, by_id)
         assert derived == want["derived"]
@@ -237,7 +238,8 @@ def test_same_custody_agreement_is_redundant_not_corroborating(case_id):
     block = _block(case)
     by_id = {m["id"]: m for m in block["members"]}
     custody = {o["id"]: o["custody_domain"] for o in block["observers"]}
-    for join, want in zip(block["joins"], case["expect"]["corroboration"], strict=True):
+    assert len(block["joins"]) == len(case["expect"]["corroboration"])
+    for join, want in zip(block["joins"], case["expect"]["corroboration"]):
         if _derive(join, by_id) != "agree":
             assert want["result"] == "not_applicable"
             continue
