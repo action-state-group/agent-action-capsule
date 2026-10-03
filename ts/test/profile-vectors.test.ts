@@ -1,4 +1,4 @@
-// Buzz profile vectors (vectors/profiles/) — TypeScript parity with the Python reference
+// Nostr-host profile vectors (vectors/profiles/) — TypeScript parity with the Python reference
 // generator python/scripts/generate_profile_vectors.py. Re-derives every labelled digest with
 // jsonDigest and applies the same five rule codes as the Python and Go checkers, asserting the
 // committed `expect.violations` exactly.
@@ -86,7 +86,7 @@ function checkProfileRecord(record: JsonObject): string[] {
   return [...found].sort();
 }
 
-describe("Buzz profile vectors (Python-generated) — TypeScript parity", () => {
+describe("Nostr-host profile vectors (Python-generated) — TypeScript parity", () => {
   it("lists all ten fixtures", () => {
     expect(manifest.cases).toHaveLength(10);
   });
