@@ -26,8 +26,8 @@ Abstract
    disposition — performed, declined, or escalated to a human — by
    reference to the request; and each party acknowledges the other's
    attestation.  The combined record binds each organization to its
-   part, gives each proof of the other's, and can be anchored to a
-   transparency service so that a third party who trusts neither
+   part, gives each proof of the other's, and can be registered with a
+   Transparency Service so that a third party who trusts neither
    organization can verify the record end-to-end.  The exchange records
    refusals with the same fidelity as performance, and degrades
    gracefully when a counterparty cannot attest, marking the record's
@@ -142,11 +142,12 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    action record*: each organization's signature over its part of the
    exchange is durable, independently verifiable evidence that it
    produced that part, each holds proof of the other's, and the combined
-   record can be anchored so third parties can verify it.  It is an
-   individual submission.  It composes with the existing agent action
-   record layer [I-D.mih-scitt-agent-action-capsule] rather than
-   defining a new one, and its records are designed to be consumable by
-   the layers above the record, such as accountability composition
+   record can be registered with a Transparency Service so third parties
+   can verify it.  It is an individual submission.  It composes with the
+   existing agent action record layer
+   [I-D.mih-scitt-agent-action-capsule] rather than defining a new one,
+   and its records are designed to be consumable by the layers above the
+   record, such as accountability composition
    [I-D.mih-sato-agent-accountability-composition].  What any consumer
    derives from these records is that consumer's concern; this document
    defines the record, not what may be concluded from a collection of
@@ -160,7 +161,6 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    what it did about them.  A later assertion of different terms by
    either party can be checked against a record both parties signed,
    rather than argued over two private ones.
-
 
 
 
@@ -243,7 +243,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
    Party identifier:  An opaque string naming a party (requesting or
       performing) within an attestation.  A party identifier MAY resolve
-      to a registration entry admitted on the same transparency service
+      to a registration entry admitted on the same Transparency Service
       (for example, one admitted under
       [I-D.morrison-solo-agent-earn-registration]), in which case the
       party is a registered principal with an admission record rather
@@ -302,14 +302,14 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
        attestation.  On completion, each organization is bound to its
        part and holds proof of the other's.
 
-   Attestations and acknowledgments SHOULD be anchored: registered to a
-   transparency service per [RFC9943] — carried, for example, as the
+   Attestations and acknowledgments SHOULD be registered with a
+   Transparency Service per [RFC9943] — carried, for example, as the
    payload of a profiled Signed Statement per
    [I-D.mih-scitt-agent-action-capsule] — so that inclusion and non-
    equivocation are verifiable by a party who trusts neither
-   organization.  An unanchored bilateral record still binds the two
-   parties to each other; anchoring is what makes it evidence for
-   everyone else.
+   organization.  A bilateral record that is not registered still binds
+   the two parties to each other; registration is what makes it evidence
+   for everyone else.
 
    Wire encodings for the four objects are TBD for a future revision;
    this document fixes the exchange, the binding obligations, and the
@@ -343,16 +343,17 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    alongside the per-constraint results.  The digest fixes _which_
    constraints — their identities and parameters — were in force when
    the request was disposed, so that a verifier can establish the
-   applicable constraint set as of the attestation's anchored time, not
-   merely at verification time — the same establishable-as-of-anchored-
-   time property that Section 11.8 requires of key validity.  A
-   constraint set that can be silently re-parameterized after the fact
-   would let a performing party restate what it was obligated to check;
-   pinning its digest removes that degree of freedom.
+   applicable constraint set as of the attestation's registration time,
+   not merely at verification time — the same establishable-as-of-
+   registration-time property that Section 11.8 requires of key
+   validity.  A constraint set that can be silently re-parameterized
+   after the fact would let a performing party restate what it was
+   obligated to check; pinning its digest removes that degree of
+   freedom.
 
    *Input-commitment digest.* For each evaluation, the performing party
    SHOULD bind an input-commitment digest — a digest over the inputs the
-   constraints consulted — anchored as a commitment and disclosable to
+   constraints consulted — carried as a commitment and disclosable to
    the counterparty or an auditor under the selective-disclosure model
    (Section 12).  This is a SHOULD, not a MUST: the state a constraint
    consults varies across deployments, and an honest SHOULD serves a
@@ -381,7 +382,6 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    boundary enforcement works.  A refusal is the strongest form of this
    evidence, because here even the _counterparty that was refused_ has
    signed the record.
-
 
 
 
@@ -462,11 +462,11 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    An asymmetry disposition binds to its request by correlation
    identifier and the shared action digest; a half that cannot be
    matched to a counterpart is an *orphan* — a defined state, not an
-   error.  A requesting party's half, anchored (Section 9) and marked
-   with an asymmetry disposition, is admissible evidence that the
-   attempt was made — the one fact neither party can establish alone —
-   and a verifier weights an anchored-but-unacknowledged record
-   accordingly.
+   error.  A requesting party's half, registered with a Transparency
+   Service (Section 9) and marked with an asymmetry disposition, is
+   admissible evidence that the attempt was made — the one fact neither
+   party can establish alone — and a verifier weights a registered-but-
+   unacknowledged record accordingly.
 
 9.  Delivery Intermediary
 
@@ -486,7 +486,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    register them with more than one Transparency Service so that no
    single operator is relied on alone; the Transparency Service is the
    delivery intermediary's choice, this document names none, and a
-   delivery intermediary that will not anchor its own receipts is non-
+   delivery intermediary that will not register its own receipts is non-
    conformant.  A receiving gate SHOULD issue its own signed
    acknowledgment citing the envelope receipt by digest, so that
    delivery becomes a fact both parties assert rather than one the
@@ -512,8 +512,8 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    format: its attestations are designed to be carried in existing agent
    action records — the Agent Action Capsule
    [I-D.mih-scitt-agent-action-capsule] supplies the disposition
-   vocabulary, effect binding, and anchoring path this document relies
-   on, and its selective-disclosure profile
+   vocabulary, effect binding, and registration path this document
+   relies on, and its selective-disclosure profile
    [I-D.mih-scitt-agent-action-capsule-sel-disc] applies to cross-
    boundary privacy (Section 12).
 
@@ -535,8 +535,8 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    endings* that distinguish a countersign explicitly _refused_ from a
    counterparty that stayed _silent_ (delivery_unconfirmed,
    counterparty_timeout; Section 8) — a distinction PeerReview's fault
-   model does not draw; and (c) an *anchored, third-party-verifiable*
-   form — records are registered to a SCITT transparency service
+   model does not draw; and (c) a *registered, third-party-verifiable*
+   form — records are registered with a SCITT Transparency Service
    ([RFC9943]) and bound by content digest, so that a party who trusts
    neither organization can verify inclusion and non-equivocation
    directly, rather than relying on PeerReview's peer-witness overlay of
@@ -580,10 +580,10 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    SCITT Signed Statement that verifies identically over HTTP, A2A, MCP,
    or AGTP); it is bilateral in the strict sense — each party holds the
    other's signed attestation over the same action digest, rather than a
-   one-sided acknowledgment; and each record anchors to a transparency
-   service, so a party trusting neither agent can verify existence and
-   non-equivocation.  The two compose: an AGTP CONFIRM MAY carry and
-   anchor a capsule.
+   one-sided acknowledgment; and each record is registered with a
+   Transparency Service, so a party trusting neither agent can verify
+   existence and non-equivocation.  The two compose: an AGTP CONFIRM MAY
+   carry and register a capsule.
 
    [I-D.rampalli-scitt-capsule-provenance-binding] binds delegation-
    authorization references into the capsule payload as namespaced
@@ -604,12 +604,12 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
    A party that aborts mid-exchange (requests, then never acknowledges
    the decline; performs, then withholds the action attestation) creates
-   an asymmetric record.  Timeout dispositions and anchoring deadlines
-   bound the asymmetry: an unacknowledged attestation anchored with a
-   timeout marking is itself evidence of the counterparty's non-
-   completion.  Repeated non-completion is a property a relying party
-   can establish from the records it holds; what it does about it is
-   that party's decision, and this document neither scores
+   an asymmetric record.  Timeout dispositions and registration
+   deadlines bound the asymmetry: an unacknowledged attestation
+   registered with a timeout marking is itself evidence of the
+   counterparty's non-completion.  Repeated non-completion is a property
+   a relying party can establish from the records it holds; what it does
+   about it is that party's decision, and this document neither scores
 
 
 
@@ -650,11 +650,11 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    A party that can write records freely can write several in advance —
    one for each outcome it might later prefer to claim — and disclose
    only the convenient one.  Every disclosed record is then genuine,
-   correctly signed, and correctly anchored; nothing has been forged,
-   and no integrity check detects anything.  Anchoring does not prevent
-   this.  An append-only log establishes that a record existed at a time
-   and has not changed since; it does not establish that the record was
-   the only one written, or that its author believed it.
+   correctly signed, and correctly registered; nothing has been forged,
+   and no integrity check detects anything.  Registration does not
+   prevent this.  An append-only log establishes that a record existed
+   at a time and has not changed since; it does not establish that the
+   record was the only one written, or that its author believed it.
 
    The bilateral exchange resists this structurally rather than by
    detection.  The at-most-one rule of Section 4 means a performing
@@ -717,11 +717,11 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
    A signature valid at attestation time may be produced under a key
    compromised by verification time.  A verifier SHOULD be able to
-   establish key validity _as of the attestation's anchored time_, not
-   only at verification time; revocation and rotation semantics for
+   establish key validity _as of the attestation's registration time_,
+   not only at verification time; revocation and rotation semantics for
    organizational keys are inherited from the identity layer and are out
-   of scope here, but a record without an anchored time cannot support
-   this distinction.
+   of scope here, but a record without a registration time cannot
+   support this distinction.
 
 
 
@@ -756,7 +756,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 11.10.  Verification-Cost DoS
 
-   Verifying a request attestation (identity-chain plus anchor
+   Verifying a request attestation (identity-chain plus Receipt
    inclusion) is more expensive than producing one.  A performing party
    SHOULD be able to cheaply reject unverifiable request attestations
    before performing full verification, so request-attestation flooding
@@ -765,13 +765,13 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 12.  Privacy Considerations
 
    A bilateral record discloses, by construction, that two organizations
-   transacted — to each other, and if anchored with cleartext
-   identifiers, to anyone.  Deployments SHOULD anchor commitments rather
-   than cleartext (selective-disclosure structures per
+   transacted — to each other, and if registered with cleartext
+   identifiers, to anyone.  Deployments SHOULD register commitments
+   rather than cleartext (selective-disclosure structures per
    [I-D.mih-scitt-agent-action-capsule-sel-disc]), disclose material
    terms only to the counterparty and auditors, and treat counterparty
    identity itself as a selectively-disclosable field where the use case
-   allows.  Correlation of anchored records across a party's exchanges
+   allows.  Correlation of registered records across a party's exchanges
    (client-list reconstruction) is the residual risk; mitigations are
    TBD, and any layer that aggregates these records faces the same
    problem from the consumption side.
@@ -974,8 +974,8 @@ Acknowledgments
 
    Blake Morrison contributed the party-identifier MAY sentence in the
    Conventions and Definitions section, enabling party identifiers to
-   resolve to registration entries admitted on the same transparency
-   service.
+   resolve to registration entries admitted on the same Transparency
+   Service.
 
 Author's Address
 
