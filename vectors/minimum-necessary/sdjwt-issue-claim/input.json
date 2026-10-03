@@ -1,0 +1,44 @@
+{
+  "description": "Seal the claim record once as an SD-JWT: every non-correlation field is a salted Disclosure.",
+  "record": {
+    "claim_id": "CLM-2026-0914-0007",
+    "member_id": "M48213377",
+    "patient_name": "J. Doe",
+    "patient_dob": "1971-03-22",
+    "provider_npi": "1234567893",
+    "date_of_service": "2026-09-14",
+    "place_of_service": "11",
+    "cpt": "99213",
+    "icd10": [
+      "E11.9"
+    ],
+    "charge": {
+      "value": "150.00",
+      "currency": "USD"
+    },
+    "units": 1
+  },
+  "clear_fields": [
+    "claim_id"
+  ],
+  "vct": "https://data.example.org/types/claim-837p/v1",
+  "iss": "https://data.example.org",
+  "iat": 1757808000,
+  "salts": {
+    "member_id": "FZm5jxpxROPkMomrnVLZAA",
+    "patient_name": "tUOFMdU_OstvJPwPurx32Q",
+    "patient_dob": "raW_FzyubXMK0BW-3ATiTw",
+    "provider_npi": "09xlfmDlUZ8CZSlKfB7TZw",
+    "date_of_service": "ULRKEcQ8vHHr1sNxvjDV6Q",
+    "place_of_service": "Ag91KHkoRDONGzr4HE6XPQ",
+    "cpt": "7fSVT_8tD6RoSCkfCI_9RA",
+    "icd10": "j-cCkNKXwVc-6yZmsEoSUQ",
+    "charge": "SRbWie1fHRiuqO3X1OK1DA",
+    "units": "SNXulHQcbx-127C2JGBjHA"
+  },
+  "decoy_digests": [
+    "TLcEL6uviR8CUHXwWwIbmUWwp-RDPhUtBX0HtAi2tXk",
+    "R439O19R4saALV69dtEjdgr_TK7QmVpevCeGQNiQUOk"
+  ],
+  "issuer_key": "record issuer"
+}

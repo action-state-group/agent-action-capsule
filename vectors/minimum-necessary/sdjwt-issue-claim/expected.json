@@ -1,0 +1,85 @@
+{
+  "provenance": "spec-derived",
+  "jwt_header": {
+    "alg": "EdDSA",
+    "typ": "dc+sd-jwt"
+  },
+  "jwt_payload": {
+    "iss": "https://data.example.org",
+    "iat": 1757808000,
+    "vct": "https://data.example.org/types/claim-837p/v1",
+    "claim_id": "CLM-2026-0914-0007",
+    "_sd_alg": "sha-256",
+    "_sd": [
+      "-ZDYldWtvZNB0HQJ-oThnwXfkngt08vFyINvPGFm1m0",
+      "0sZene2DLp2jw3tBr20OzO33HUcKNDrU_brxyvS5IUU",
+      "19ZnIzwpC-JWdsZ1PSsU4tXMQfwfCMf1xtTCFfHgmuE",
+      "ASjpoqtdR7XuNSFlYZeBzafIH3thVY9xlpYtkNOPc4M",
+      "CUPZ6-djzanEIQYylpUznm9AJBmKKuFUSEcxZH-g2Rw",
+      "NIKgx7-DxK7hNmT6Euxl0sVxBNqIP2gUqjzTUFmQztM",
+      "Q5vrjNOKk2GLpkDEVXslDVtuQqyebTdj7VFIqmuvdrQ",
+      "R439O19R4saALV69dtEjdgr_TK7QmVpevCeGQNiQUOk",
+      "Rw-sykZmX-dqMVlvcodvi5PqCnG4s2aL3CFo263Ygs4",
+      "TLcEL6uviR8CUHXwWwIbmUWwp-RDPhUtBX0HtAi2tXk",
+      "fABmdM_g4KoIFQWsSqizLZK__yA3dwrENV6-LF1szPg",
+      "gRYwqdhVNQsPP5hoejZTynjpopnOxXdqbf-UAZBVIo4"
+    ]
+  },
+  "issuer_signed_jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsiLVpEWWxkV3R2Wk5CMEhRSi1vVGhud1hma25ndDA4dkZ5SU52UEdGbTFtMCIsIjBzWmVuZTJETHAyanczdEJyMjBPek8zM0hVY0tORHJVX2JyeHl2UzVJVVUiLCIxOVpuSXp3cEMtSldkc1oxUFNzVTR0WE1RZndmQ01mMXh0VENGZkhnbXVFIiwiQVNqcG9xdGRSN1h1TlNGbFlaZUJ6YWZJSDN0aFZZOXhscFl0a05PUGM0TSIsIkNVUFo2LWRqemFuRUlRWXlscFV6bm05QUpCbUtLdUZVU0VjeFpILWcyUnciLCJOSUtneDctRHhLN2hObVQ2RXV4bDBzVnhCTnFJUDJnVXFqelRVRm1RenRNIiwiUTV2cmpOT0trMkdMcGtERVZYc2xEVnR1UXF5ZWJUZGo3VkZJcW11dmRyUSIsIlI0MzlPMTlSNHNhQUxWNjlkdEVqZGdyX1RLN1FtVnBldkNlR1FOaVFVT2siLCJSdy1zeWtabVgtZHFNVmx2Y29kdmk1UHFDbkc0czJhTDNDRm8yNjNZZ3M0IiwiVExjRUw2dXZpUjhDVUhYd1d3SWJtVVd3cC1SRFBoVXRCWDBIdEFpMnRYayIsImZBQm1kTV9nNEtvSUZRV3NTcWl6TFpLX195QTNkd3JFTlY2LUxGMXN6UGciLCJnUll3cWRoVk5Rc1BQNWhvZWpaVHluanBvcG5PeFhkcWJmLVVBWkJWSW80Il0sIl9zZF9hbGciOiJzaGEtMjU2IiwiY2xhaW1faWQiOiJDTE0tMjAyNi0wOTE0LTAwMDciLCJpYXQiOjE3NTc4MDgwMDAsImlzcyI6Imh0dHBzOi8vZGF0YS5leGFtcGxlLm9yZyIsInZjdCI6Imh0dHBzOi8vZGF0YS5leGFtcGxlLm9yZy90eXBlcy9jbGFpbS04MzdwL3YxIn0.LoVvxYg-yRpZm6WYNAVo6avq4YqwwBBSFFoonuoynb6LZeWsB5fdfLEu7AicI33IsLQjHrH5WJCAugwfGQOVBw",
+  "sd": [
+    "-ZDYldWtvZNB0HQJ-oThnwXfkngt08vFyINvPGFm1m0",
+    "0sZene2DLp2jw3tBr20OzO33HUcKNDrU_brxyvS5IUU",
+    "19ZnIzwpC-JWdsZ1PSsU4tXMQfwfCMf1xtTCFfHgmuE",
+    "ASjpoqtdR7XuNSFlYZeBzafIH3thVY9xlpYtkNOPc4M",
+    "CUPZ6-djzanEIQYylpUznm9AJBmKKuFUSEcxZH-g2Rw",
+    "NIKgx7-DxK7hNmT6Euxl0sVxBNqIP2gUqjzTUFmQztM",
+    "Q5vrjNOKk2GLpkDEVXslDVtuQqyebTdj7VFIqmuvdrQ",
+    "R439O19R4saALV69dtEjdgr_TK7QmVpevCeGQNiQUOk",
+    "Rw-sykZmX-dqMVlvcodvi5PqCnG4s2aL3CFo263Ygs4",
+    "TLcEL6uviR8CUHXwWwIbmUWwp-RDPhUtBX0HtAi2tXk",
+    "fABmdM_g4KoIFQWsSqizLZK__yA3dwrENV6-LF1szPg",
+    "gRYwqdhVNQsPP5hoejZTynjpopnOxXdqbf-UAZBVIo4"
+  ],
+  "disclosures": {
+    "member_id": {
+      "disclosure": "WyJGWm01anhweFJPUGtNb21yblZMWkFBIiwibWVtYmVyX2lkIiwiTTQ4MjEzMzc3Il0",
+      "digest": "fABmdM_g4KoIFQWsSqizLZK__yA3dwrENV6-LF1szPg"
+    },
+    "patient_name": {
+      "disclosure": "WyJ0VU9GTWRVX09zdHZKUHdQdXJ4MzJRIiwicGF0aWVudF9uYW1lIiwiSi4gRG9lIl0",
+      "digest": "ASjpoqtdR7XuNSFlYZeBzafIH3thVY9xlpYtkNOPc4M"
+    },
+    "patient_dob": {
+      "disclosure": "WyJyYVdfRnp5dWJYTUswQlctM0FUaVR3IiwicGF0aWVudF9kb2IiLCIxOTcxLTAzLTIyIl0",
+      "digest": "CUPZ6-djzanEIQYylpUznm9AJBmKKuFUSEcxZH-g2Rw"
+    },
+    "provider_npi": {
+      "disclosure": "WyIwOXhsZm1EbFVaOENaU2xLZkI3VFp3IiwicHJvdmlkZXJfbnBpIiwiMTIzNDU2Nzg5MyJd",
+      "digest": "Rw-sykZmX-dqMVlvcodvi5PqCnG4s2aL3CFo263Ygs4"
+    },
+    "date_of_service": {
+      "disclosure": "WyJVTFJLRWNROHZISHIxc054dmpEVjZRIiwiZGF0ZV9vZl9zZXJ2aWNlIiwiMjAyNi0wOS0xNCJd",
+      "digest": "0sZene2DLp2jw3tBr20OzO33HUcKNDrU_brxyvS5IUU"
+    },
+    "place_of_service": {
+      "disclosure": "WyJBZzkxS0hrb1JET05HenI0SEU2WFBRIiwicGxhY2Vfb2Zfc2VydmljZSIsIjExIl0",
+      "digest": "gRYwqdhVNQsPP5hoejZTynjpopnOxXdqbf-UAZBVIo4"
+    },
+    "cpt": {
+      "disclosure": "WyI3ZlNWVF84dEQ2Um9TQ2tmQ0lfOVJBIiwiY3B0IiwiOTkyMTMiXQ",
+      "digest": "Q5vrjNOKk2GLpkDEVXslDVtuQqyebTdj7VFIqmuvdrQ"
+    },
+    "icd10": {
+      "disclosure": "WyJqLWNDa05LWHdWYy02eVptc0VvU1VRIiwiaWNkMTAiLFsiRTExLjkiXV0",
+      "digest": "NIKgx7-DxK7hNmT6Euxl0sVxBNqIP2gUqjzTUFmQztM"
+    },
+    "charge": {
+      "disclosure": "WyJTUmJXaWUxZkhSaXVxTzNYMU9LMURBIiwiY2hhcmdlIix7ImN1cnJlbmN5IjoiVVNEIiwidmFsdWUiOiIxNTAuMDAifV0",
+      "digest": "-ZDYldWtvZNB0HQJ-oThnwXfkngt08vFyINvPGFm1m0"
+    },
+    "units": {
+      "disclosure": "WyJTTlh1bEhRY2J4LTEyN0MySkdCakhBIiwidW5pdHMiLDFd",
+      "digest": "19ZnIzwpC-JWdsZ1PSsU4tXMQfwfCMf1xtTCFfHgmuE"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "description": "Seal the eligibility record once as an SD-JWT: every non-correlation field is a salted Disclosure.",
+  "record": {
+    "member_id": "M48213377",
+    "group_number": "G-55010",
+    "plan_id": "PPO-STD-2026",
+    "effective": {
+      "from": "2026-01-01",
+      "to": "2026-12-31"
+    },
+    "copay": {
+      "value": "30.00",
+      "currency": "USD"
+    },
+    "deductible_met": true,
+    "prior_auth_required": false
+  },
+  "clear_fields": [],
+  "vct": "https://data.example.org/types/eligibility/v1",
+  "iss": "https://data.example.org",
+  "iat": 1757808000,
+  "salts": {
+    "member_id": "E_HTgN0rRPNDWZW3K6ixyA",
+    "group_number": "qVo8p86NFXUvTF3PwfaJzw",
+    "plan_id": "40U1NGUrliroUq_I0gtFvw",
+    "effective": "XcbNC0R62iu6_ma_bnCI1Q",
+    "copay": "QbRPh5LnDOrAA1J6OfOrnw",
+    "deductible_met": "m-Z6DjYO3oTwnAvOT-HcPw",
+    "prior_auth_required": "4Vp-sXES3-Wpj-Kdls1Hdg"
+  },
+  "decoy_digests": [
+    "8ktcZTgQkZWkDQ4crBdj4jKJG-vZAC0-pD_gzPayDtE",
+    "EiwlFkvLEzjhTkFwCUh6cRNSK3ry5wjR_Vr8eKazbMQ"
+  ],
+  "issuer_key": "record issuer"
+}

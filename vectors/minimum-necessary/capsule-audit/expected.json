@@ -1,0 +1,58 @@
+{
+  "provenance": "spec-derived",
+  "capsule": {
+    "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+    "format_version": "4",
+    "canonicalization_id": "jcs",
+    "action_id": "audit-CLM-2026-0914-0007",
+    "action_type": "decide",
+    "operator": "EXAMPLE-ORG",
+    "developer": "claim-audit@1.2.0",
+    "timestamp": "2026-09-15T14:06:30Z",
+    "epoch_id": "policy-2026-08-01",
+    "model_attestation": {
+      "compute_attestation": {
+        "agent_input_digest": "9736e3913ad5d9ef33bd14d6f3340ab7c025cd87e51cecf7e438c993800e0f0c",
+        "agent_output_digest": "58ab2bb6d2b9a7ba99e76083464d5918a43e6e1beb4764d85275e3dc1d6d869a"
+      }
+    },
+    "constraints": [
+      {
+        "id": "org.example.disclosure_policy",
+        "check_type": "org.example.minimum_necessary",
+        "method": "org.example.sd_jwt_presentation",
+        "result": "pass",
+        "severity": "high",
+        "blocking": true,
+        "evidence_digest": "3814ee8a789bd95f8b40e1f0d1d594a9199020dc5f60b5618c351e7d2eaedcad"
+      }
+    ],
+    "disposition": {
+      "approver": "policy",
+      "decision": "accept",
+      "human_disposed": false,
+      "verdict_class": "executed"
+    },
+    "assurance": {
+      "attestation_mode": "self_attested",
+      "effect_mode": "not_applicable",
+      "ledger_mode": "standalone"
+    },
+    "references": [
+      {
+        "type": "agent-action-capsule",
+        "digest_alg": "SHA-256",
+        "digest": "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249",
+        "citation_purpose": "acted_on"
+      }
+    ],
+    "capsule_id": "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7"
+  },
+  "capsule_id": "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7",
+  "canonical_preimage": "{\"action_id\":\"audit-CLM-2026-0914-0007\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"standalone\"},\"canonicalization_id\":\"jcs\",\"constraints\":[{\"blocking\":true,\"check_type\":\"org.example.minimum_necessary\",\"evidence_digest\":\"3814ee8a789bd95f8b40e1f0d1d594a9199020dc5f60b5618c351e7d2eaedcad\",\"id\":\"org.example.disclosure_policy\",\"method\":\"org.example.sd_jwt_presentation\",\"result\":\"pass\",\"severity\":\"high\"}],\"developer\":\"claim-audit@1.2.0\",\"disposition\":{\"approver\":\"policy\",\"decision\":\"accept\",\"human_disposed\":false,\"verdict_class\":\"executed\"},\"epoch_id\":\"policy-2026-08-01\",\"format_version\":\"4\",\"model_attestation\":{\"compute_attestation\":{\"agent_input_digest\":\"9736e3913ad5d9ef33bd14d6f3340ab7c025cd87e51cecf7e438c993800e0f0c\",\"agent_output_digest\":\"58ab2bb6d2b9a7ba99e76083464d5918a43e6e1beb4764d85275e3dc1d6d869a\"}},\"operator\":\"EXAMPLE-ORG\",\"references\":[{\"citation_purpose\":\"acted_on\",\"digest\":\"c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249\",\"digest_alg\":\"SHA-256\",\"type\":\"agent-action-capsule\"}],\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-09-15T14:06:30Z\"}",
+  "producer_envelope_hex": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458205c272a98cde502e989288d3ec13337d32e6dacc39de317302d9aa5ee7195ec61a058206633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7584046b01678e9d6cc68aeedefb309421c819a4a2dfeb52900c543bc4a64629ec4651a0af6ab6164ca44f61bfb2aa3491b8eb1e96a177ec0670d08ed453ed071620a",
+  "producer_key_hex": "5c272a98cde502e989288d3ec13337d32e6dacc39de317302d9aa5ee7195ec61",
+  "class1": {
+    "ok": true
+  }
+}

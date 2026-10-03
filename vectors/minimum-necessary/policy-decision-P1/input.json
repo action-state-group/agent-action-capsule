@@ -1,0 +1,58 @@
+{
+  "description": "The P-1 policy decision document: field names only; its JSON-DIGEST is the constraint evidence_digest.",
+  "policy_decision": {
+    "policy_decision_version": "1",
+    "policy_id": "P-1",
+    "policy_version": "2026-08-01",
+    "agent": "claims-processor@2.4.1",
+    "role": "claims_processor",
+    "subject": {
+      "claim_id": "CLM-2026-0914-0007"
+    },
+    "sources": [
+      {
+        "vct": "https://data.example.org/types/claim-837p/v1",
+        "revealed": [
+          "member_id",
+          "patient_dob",
+          "provider_npi",
+          "date_of_service",
+          "place_of_service",
+          "cpt",
+          "icd10",
+          "charge",
+          "units"
+        ],
+        "withheld": [
+          "patient_name"
+        ]
+      },
+      {
+        "vct": "https://data.example.org/types/encounter-note/v1",
+        "revealed": [],
+        "withheld": [
+          "chief_complaint",
+          "history",
+          "exam",
+          "medications",
+          "assessment",
+          "plan"
+        ]
+      },
+      {
+        "vct": "https://data.example.org/types/eligibility/v1",
+        "revealed": [
+          "member_id",
+          "group_number",
+          "plan_id",
+          "effective",
+          "copay",
+          "deductible_met",
+          "prior_auth_required"
+        ],
+        "withheld": []
+      }
+    ],
+    "decided_at": "2026-09-15T14:02:11Z"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "provenance": "spec-derived",
+  "description": "Both Capsules and both policy decisions; agent_input and agent_output withheld: no record field value anywhere.",
+  "bundle_digest": "65050170ff8e4bc72a779244e54da5401a6775ee551e1b7d296e861577da1923",
+  "graph_closure": {
+    "status": "pass",
+    "findings": []
+  },
+  "interval_coverage": {
+    "status": "pass",
+    "findings": []
+  },
+  "per_record_membership": {
+    "status": "pass",
+    "findings": []
+  },
+  "disclosures": [
+    {
+      "capsule_id": "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7",
+      "member": "agent_input",
+      "status": "withheld"
+    },
+    {
+      "capsule_id": "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7",
+      "member": "agent_output",
+      "status": "withheld"
+    },
+    {
+      "capsule_id": "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249",
+      "member": "agent_input",
+      "status": "withheld"
+    },
+    {
+      "capsule_id": "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249",
+      "member": "agent_output",
+      "status": "withheld"
+    }
+  ],
+  "extensions": [
+    "disclosure_policy_decisions/v1",
+    "sd_jwt_issuers/v1"
+  ],
+  "policy_decisions": {
+    "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7": {
+      "decision_digest": "3814ee8a789bd95f8b40e1f0d1d594a9199020dc5f60b5618c351e7d2eaedcad",
+      "status": "match",
+      "constraint_result": "pass"
+    },
+    "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249": {
+      "decision_digest": "c81dc1406d7dbe869124af8b82738d3da7cea83ec5e09908b6d4326a72b1c0fc",
+      "status": "match",
+      "constraint_result": "pass"
+    }
+  },
+  "sd_jwt_presentations": {
+    "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7": {
+      "status": "not_evaluated",
+      "reason": "agent_input_withheld"
+    },
+    "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249": {
+      "status": "not_evaluated",
+      "reason": "agent_input_withheld"
+    }
+  }
+}

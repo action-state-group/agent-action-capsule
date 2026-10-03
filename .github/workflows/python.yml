@@ -1,9 +1,9 @@
 name: python
 on:
   push:
-    paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**"]
+    paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**", "vectors/minimum-necessary/**"]
   pull_request:
-    paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**"]
+    paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**", "vectors/minimum-necessary/**"]
 
 jobs:
   test:

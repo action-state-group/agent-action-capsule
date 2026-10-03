@@ -1,0 +1,62 @@
+{
+  "provenance": "spec-derived",
+  "jwt_header": {
+    "alg": "EdDSA",
+    "typ": "dc+sd-jwt"
+  },
+  "jwt_payload": {
+    "iss": "https://data.example.org",
+    "iat": 1757808000,
+    "vct": "https://data.example.org/types/encounter-note/v1",
+    "note_id": "ENC-77120",
+    "claim_id": "CLM-2026-0914-0007",
+    "_sd_alg": "sha-256",
+    "_sd": [
+      "0e9cWs0d7Agx9xXaSnOa97VMKOrzf7jGqWDctT_Y2wE",
+      "BHPT-4AJHfUharp2mGQfhIqgnq3bR45MuAaH5BZLfAU",
+      "DSSQaQFgx7ZNt-Prpq6Rza8JHLtIjrVUnME4-GfOJ4o",
+      "Fga82sxSgMpxXRLraqbN2T286sIg_bMMQMHq9JgeIiI",
+      "FzDp1DyltvNOR7v0eOrlXp-LRUVtphUb7t6w_zqmKR0",
+      "VLslq1tsGPsTVE1wtvURP32RVs1G_OF6aTPRMcDo4ik",
+      "W3BQTWEkBvAybhW6SsM01EZrTENjMvFA7MwL6kR7YOE",
+      "wbKM9cwdvitVACCoHjdcRHhp96VgtO0z61LODD7Q6a8"
+    ]
+  },
+  "issuer_signed_jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsiMGU5Y1dzMGQ3QWd4OXhYYVNuT2E5N1ZNS09yemY3akdxV0RjdFRfWTJ3RSIsIkJIUFQtNEFKSGZVaGFycDJtR1FmaElxZ25xM2JSNDVNdUFhSDVCWkxmQVUiLCJEU1NRYVFGZ3g3Wk50LVBycHE2UnphOEpITHRJanJWVW5NRTQtR2ZPSjRvIiwiRmdhODJzeFNnTXB4WFJMcmFxYk4yVDI4NnNJZ19iTU1RTUhxOUpnZUlpSSIsIkZ6RHAxRHlsdHZOT1I3djBlT3JsWHAtTFJVVnRwaFViN3Q2d196cW1LUjAiLCJWTHNscTF0c0dQc1RWRTF3dHZVUlAzMlJWczFHX09GNmFUUFJNY0RvNGlrIiwiVzNCUVRXRWtCdkF5YmhXNlNzTTAxRVpyVEVOak12RkE3TXdMNmtSN1lPRSIsIndiS005Y3dkdml0VkFDQ29IamRjUkhocDk2Vmd0TzB6NjFMT0REN1E2YTgiXSwiX3NkX2FsZyI6InNoYS0yNTYiLCJjbGFpbV9pZCI6IkNMTS0yMDI2LTA5MTQtMDAwNyIsImlhdCI6MTc1NzgwODAwMCwiaXNzIjoiaHR0cHM6Ly9kYXRhLmV4YW1wbGUub3JnIiwibm90ZV9pZCI6IkVOQy03NzEyMCIsInZjdCI6Imh0dHBzOi8vZGF0YS5leGFtcGxlLm9yZy90eXBlcy9lbmNvdW50ZXItbm90ZS92MSJ9.SExV1we35scqnPee9ByDvA3_OBuDe2qu9tY-SaKi6oGKjgT8U3lpHNdN2Er6The9NFZlxuU_1-jPPb6UGmt2Bw",
+  "sd": [
+    "0e9cWs0d7Agx9xXaSnOa97VMKOrzf7jGqWDctT_Y2wE",
+    "BHPT-4AJHfUharp2mGQfhIqgnq3bR45MuAaH5BZLfAU",
+    "DSSQaQFgx7ZNt-Prpq6Rza8JHLtIjrVUnME4-GfOJ4o",
+    "Fga82sxSgMpxXRLraqbN2T286sIg_bMMQMHq9JgeIiI",
+    "FzDp1DyltvNOR7v0eOrlXp-LRUVtphUb7t6w_zqmKR0",
+    "VLslq1tsGPsTVE1wtvURP32RVs1G_OF6aTPRMcDo4ik",
+    "W3BQTWEkBvAybhW6SsM01EZrTENjMvFA7MwL6kR7YOE",
+    "wbKM9cwdvitVACCoHjdcRHhp96VgtO0z61LODD7Q6a8"
+  ],
+  "disclosures": {
+    "chief_complaint": {
+      "disclosure": "WyJGaUp5MWdQMHNRTkEwbUh5Nng4enh3IiwiY2hpZWZfY29tcGxhaW50IiwiRm9sbG93LXVwLCB0eXBlIDIgZGlhYmV0ZXMiXQ",
+      "digest": "W3BQTWEkBvAybhW6SsM01EZrTENjMvFA7MwL6kR7YOE"
+    },
+    "history": {
+      "disclosure": "WyJTWGJyQ1c2VTBsXzdNMlhiODA5MHBBIiwiaGlzdG9yeSIsIlJlcG9ydHMgYWRoZXJlbmNlOyBubyBoeXBvZ2x5Y2VtaWMgZXBpc29kZXMuIl0",
+      "digest": "FzDp1DyltvNOR7v0eOrlXp-LRUVtphUb7t6w_zqmKR0"
+    },
+    "exam": {
+      "disclosure": "WyIxZ0NfTTI5SnFyU0NSOWtOY3R0VTFRIiwiZXhhbSIsIkJQIDEyOC84MjsgZm9vdCBleGFtIG5vcm1hbC4iXQ",
+      "digest": "VLslq1tsGPsTVE1wtvURP32RVs1G_OF6aTPRMcDo4ik"
+    },
+    "medications": {
+      "disclosure": "WyJ5UjNMNUZlcDEyZzJOaldZY2JaR3dnIiwibWVkaWNhdGlvbnMiLFsibWV0Zm9ybWluIDUwMCBtZyBCSUQiXV0",
+      "digest": "wbKM9cwdvitVACCoHjdcRHhp96VgtO0z61LODD7Q6a8"
+    },
+    "assessment": {
+      "disclosure": "WyI3dkhNNmdXYzRwYWRTTEVVY3NrUjV3IiwiYXNzZXNzbWVudCIsIkUxMS45LCBjb250cm9sbGVkIl0",
+      "digest": "Fga82sxSgMpxXRLraqbN2T286sIg_bMMQMHq9JgeIiI"
+    },
+    "plan": {
+      "disclosure": "WyIxLTJva0UwWU40Smo1Q3NOTGhvMV9BIiwicGxhbiIsIkNvbnRpbnVlIG1ldGZvcm1pbjsgQTFjIGluIDMgbW9udGhzLiJd",
+      "digest": "BHPT-4AJHfUharp2mGQfhIqgnq3bR45MuAaH5BZLfAU"
+    }
+  }
+}

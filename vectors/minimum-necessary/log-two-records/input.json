@@ -1,0 +1,10 @@
+{
+  "description": "Append the pricing and audit Capsules to a log (seq 1 and 2) and sign one checkpoint over the MMR.",
+  "log_id": "https://log.example.org/agent-actions",
+  "capsule_ids": [
+    "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249",
+    "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7"
+  ],
+  "checkpoint_issued_at": "2026-09-15T14:10:00Z",
+  "log_key": "log checkpoint"
+}

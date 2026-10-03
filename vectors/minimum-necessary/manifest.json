@@ -1,0 +1,257 @@
+{
+  "set": "aac-minimum-necessary-sd-jwt-v1",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_min_necessary_vectors.py",
+  "registry_entries": {
+    "agent_input_presentation_type": {
+      "agent_input_version": "1"
+    },
+    "evidence_bundle_extension_kinds": [
+      "disclosure_policy_decisions/v1",
+      "sd_jwt_issuers/v1"
+    ],
+    "evidence_request_derivation": "minimum_necessary_report/1"
+  },
+  "constraint_record": {
+    "id": "org.example.disclosure_policy",
+    "check_type": "org.example.minimum_necessary",
+    "method": "org.example.sd_jwt_presentation"
+  },
+  "sd_jwt": {
+    "alg": "EdDSA",
+    "typ": "dc+sd-jwt",
+    "_sd_alg": "sha-256",
+    "salt_bits": 128,
+    "decoys_per_record": 2,
+    "sd_order": "sorted"
+  },
+  "envelope_profile": "AAC Producer Envelope: tagged COSE_Sign1, protected {1: -8, 3: 'application/agent-action-capsule-id', 4: raw Ed25519 public key}, empty unprotected map, attached payload = raw 32-byte capsule_id.",
+  "keys": {
+    "record issuer": {
+      "seed_hex": "dddd855ab9c300bc3d462f11e9c472237967197c383eea958359e3cd1f4a62c6",
+      "public_key_hex": "58b85ca93b86bec12a3cb8c7d6e6c53606df6aa8f68c836d6084cba4dfe9354a",
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "WLhcqTuGvsEqPLjH1ubFNgbfaqj2jINtYITLpN_pNUo"
+      }
+    },
+    "claims-processor runtime": {
+      "seed_hex": "c547f14307678dce4285a2dcedd1b3682a9b6e232cc2700a42ca8fc2700bc1f7",
+      "public_key_hex": "bb0b4b65d72c5932308454dbe3f843561e1678cec970c6d4cdf87286390e0883",
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "uwtLZdcsWTIwhFTb4_hDVh4WeM7JcMbUzfhyhjkOCIM"
+      }
+    },
+    "claim-audit runtime": {
+      "seed_hex": "e70c0a5a977a21a0d884b7458d33d760403509448ce05da798beb0a8d1b6bcad",
+      "public_key_hex": "5c272a98cde502e989288d3ec13337d32e6dacc39de317302d9aa5ee7195ec61",
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "XCcqmM3lAumJKI0-wTM30y5trMOd4xcwLZql7nGV7GE"
+      }
+    },
+    "log checkpoint": {
+      "seed_hex": "f33f4cca87b3ce124bcd528b7a4d969904912ff9544851a1757fe043f424f81b",
+      "public_key_hex": "a77e2614012656096d170c7ea52dbdeec71fa994807000874d0d39265ee40be5",
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "p34mFAEmVgltFwx-pS297scfqZSAcACHTQ05Jl7kC-U"
+      }
+    }
+  },
+  "member_identifiers": {
+    "member_id": "M48213377",
+    "patient_name": "J. Doe",
+    "patient_dob": "1971-03-22"
+  },
+  "count": 15,
+  "cases": [
+    {
+      "name": "sdjwt-issue-claim",
+      "description": "Seal the claim record once as an SD-JWT: every non-correlation field is a salted Disclosure."
+    },
+    {
+      "name": "sdjwt-issue-note",
+      "description": "Seal the encounter_note record once as an SD-JWT: every non-correlation field is a salted Disclosure."
+    },
+    {
+      "name": "sdjwt-issue-eligibility",
+      "description": "Seal the eligibility record once as an SD-JWT: every non-correlation field is a salted Disclosure."
+    },
+    {
+      "name": "presentation-P1",
+      "description": "Build the P-1 presentations (only the Disclosures P-1 reveals) and the agent_input wrapper."
+    },
+    {
+      "name": "presentation-A1",
+      "description": "Build the A-1 presentations (only the Disclosures A-1 reveals) and the agent_input wrapper."
+    },
+    {
+      "name": "policy-decision-P1",
+      "description": "The P-1 policy decision document: field names only; its JSON-DIGEST is the constraint evidence_digest."
+    },
+    {
+      "name": "policy-decision-A1",
+      "description": "The A-1 policy decision document: field names only; its JSON-DIGEST is the constraint evidence_digest."
+    },
+    {
+      "name": "capsule-pricing",
+      "description": "Seal the action's Capsule: input and output by digest, the disclosure-policy constraint record, no field values."
+    },
+    {
+      "name": "capsule-audit",
+      "description": "Seal the action's Capsule: input and output by digest, the disclosure-policy constraint record, no field values."
+    },
+    {
+      "name": "capsule-policy-fail",
+      "description": "The transmitted presentation carries one Disclosure beyond the P-1 allow-list: the check fails and the agent does not run."
+    },
+    {
+      "name": "log-two-records",
+      "description": "Append the pricing and audit Capsules to a log (seq 1 and 2) and sign one checkpoint over the MMR."
+    },
+    {
+      "name": "bundle-internal-audit",
+      "description": "Both Capsules, both policy decisions, agent_input and agent_output revealed for both: every check passes."
+    },
+    {
+      "name": "bundle-external-auditor",
+      "description": "Both Capsules and both policy decisions; agent_input and agent_output withheld: no record field value anywhere."
+    },
+    {
+      "name": "bundle-mismatch",
+      "description": "agent_input revealed with one Disclosure value altered: disclosure_mismatch on that Capsule, nothing else changes."
+    },
+    {
+      "name": "bundle-not-registered",
+      "description": "The checkpoint is present but carries no signature and is not registered with a Transparency Service: interval coverage and membership are qualified checkpoint_unverified."
+    }
+  ],
+  "files": [
+    {
+      "path": "bundle-external-auditor/expected.json",
+      "sha256": "b5ef5da10d56600638ea69718e83f67e32e53e0c0469505d15603f9c78b95682"
+    },
+    {
+      "path": "bundle-external-auditor/input.json",
+      "sha256": "c88155ba99e9a5e93290397525b2c0fc896969f4396fab31ee84f51a6452e531"
+    },
+    {
+      "path": "bundle-internal-audit/expected.json",
+      "sha256": "f563ee531bb45cc22e153be04090463b2610c792dc9dbd38ed1fba951dd469bb"
+    },
+    {
+      "path": "bundle-internal-audit/input.json",
+      "sha256": "ff2cd8ec769b5f8ec98c2df44d9961510e97dde40335cf5e2f39064435a09607"
+    },
+    {
+      "path": "bundle-mismatch/expected.json",
+      "sha256": "f7ea34a117cd9604d73d5c531a73aa08740d08a494a35d51b4220549baf5939f"
+    },
+    {
+      "path": "bundle-mismatch/input.json",
+      "sha256": "c5fb02112b50d6cfc1c265cff467fb6b6ea2656c2d0812f3dbc081e75332bc64"
+    },
+    {
+      "path": "bundle-not-registered/expected.json",
+      "sha256": "7c7d691a2447efd8281e5d1c06735bac4eebf26005bf37a2da507b73d220f96a"
+    },
+    {
+      "path": "bundle-not-registered/input.json",
+      "sha256": "f203edbbc46a702f6f2047de7b590e69ca2e96e803c91e873e65e342775cd285"
+    },
+    {
+      "path": "capsule-audit/expected.json",
+      "sha256": "e4f1caa75145d41e7adfa2d90efbe6699a493a2a2e3660fb7783f636bca68d1c"
+    },
+    {
+      "path": "capsule-audit/input.json",
+      "sha256": "cacbd35358f9c693dfe67851490a9781c1ccd8fd4027888046e11e41eb7dadf8"
+    },
+    {
+      "path": "capsule-policy-fail/expected.json",
+      "sha256": "950d59bb5fd28898f04b5d01e5e342972a61d7be950959007b9de2635ce051b4"
+    },
+    {
+      "path": "capsule-policy-fail/input.json",
+      "sha256": "bbe7554950a2bcfb7fe4ee37a59bc7da87a2580bb1bb8bdd6b13b3e0c41bf81f"
+    },
+    {
+      "path": "capsule-pricing/expected.json",
+      "sha256": "60cd50b9430b3c96ac3c7c964ac880a991fb0dfa07bf8feac7a12a7247d4e951"
+    },
+    {
+      "path": "capsule-pricing/input.json",
+      "sha256": "a48c226de6b611615a0eb4fafba50ae64ffb7fecf73f6df20c5ca151d68180c4"
+    },
+    {
+      "path": "log-two-records/expected.json",
+      "sha256": "6d1c1dd31137e9bec3ab32af8acd337ea7e087410d3801be98f9b543a1754c71"
+    },
+    {
+      "path": "log-two-records/input.json",
+      "sha256": "02221bd7c395872b214304e42041edd308d03bf0f6a86075e3c6d814f15fb001"
+    },
+    {
+      "path": "policy-decision-A1/expected.json",
+      "sha256": "abc4ddf9cc118ada0878e3239d4ee72be846f397ac854a3c54fcf329cbf47b07"
+    },
+    {
+      "path": "policy-decision-A1/input.json",
+      "sha256": "608def314a3ce5e1d5ebd61daa53448eba6109bfbd227684f94b57a547d9d8ec"
+    },
+    {
+      "path": "policy-decision-P1/expected.json",
+      "sha256": "53aeefaa6a97c729f2d0c515c227b12e9e8cdc78bcf07b95f93634f93903060f"
+    },
+    {
+      "path": "policy-decision-P1/input.json",
+      "sha256": "a35105f136bdb2f9b255a763eff8607ed2f69bcc90197c1a854d25c7fe1f67f0"
+    },
+    {
+      "path": "presentation-A1/expected.json",
+      "sha256": "b62503684d006b9f3d07be0d92319ea9d60c4db600206d57947132f3bf7d4ab3"
+    },
+    {
+      "path": "presentation-A1/input.json",
+      "sha256": "56a61b70e693b86d0c0891f353208e03276794a27a1d4dcf89b8abf11e7219a3"
+    },
+    {
+      "path": "presentation-P1/expected.json",
+      "sha256": "91b20250b720e9da9fe2e2caefb415c65948caba6748911750bc76e688a0976e"
+    },
+    {
+      "path": "presentation-P1/input.json",
+      "sha256": "4485b26b1eb32834e58e1284b5555e2e67b3d121d4328cdb784310a0fe0ca253"
+    },
+    {
+      "path": "sdjwt-issue-claim/expected.json",
+      "sha256": "f668f432eb9f25cb0a04e167b6e331f3b31a8e09fc14adbee00e15ef6a66df33"
+    },
+    {
+      "path": "sdjwt-issue-claim/input.json",
+      "sha256": "b33347baafc281fb18a6460abbcbf023965318b2b335cad261a259d025784fcf"
+    },
+    {
+      "path": "sdjwt-issue-eligibility/expected.json",
+      "sha256": "718611f5ddea1024a162d47e4bfcd50fe735c5c68d8b7d65b38619e398f97348"
+    },
+    {
+      "path": "sdjwt-issue-eligibility/input.json",
+      "sha256": "74d1d2fdf60ba975acc3dccfcee5738025e081a6283409bdb9005d46279c8149"
+    },
+    {
+      "path": "sdjwt-issue-note/expected.json",
+      "sha256": "2def17ec0fe93e1a1ed2a65a1ff135857b4077de180c40d59ebff222739b63c0"
+    },
+    {
+      "path": "sdjwt-issue-note/input.json",
+      "sha256": "7fab71c2773b65ab3a2862c36437af587b9cd2416921531ba7bbf93fd70886ad"
+    }
+  ]
+}
