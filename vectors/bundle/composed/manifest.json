@@ -1,0 +1,12 @@
+{
+  "draft": "draft-mih-zhang-agent-disclosure-bundle-01 (proposed section: The composed/v1 Extension)",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_bundle_composed_vectors.py",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "f04526289dd5258f0055eb9d634c69c76792e7c4d2bc9535dc2497d74524b0d0",
+      "count": 3
+    }
+  ]
+}
