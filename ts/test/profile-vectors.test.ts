@@ -1,7 +1,8 @@
 // Nostr-host profile vectors (vectors/profiles/) — TypeScript parity with the Python reference
 // generator python/scripts/generate_profile_vectors.py. Re-derives every labelled digest with
 // jsonDigest and applies the same five rule codes as the Python and Go checkers, asserting the
-// committed `expect.violations` exactly.
+// committed `expect.violations` exactly. Two sets are covered: nostr-host.* (current) and buzz.*
+// (released in 0.6.0, superseded, kept as released bytes).
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -87,8 +88,14 @@ function checkProfileRecord(record: JsonObject): string[] {
 }
 
 describe("Nostr-host profile vectors (Python-generated) — TypeScript parity", () => {
-  it("lists all ten fixtures", () => {
-    expect(manifest.cases).toHaveLength(10);
+  it("lists all twenty fixtures (nostr-host.* current, buzz.* released in 0.6.0)", () => {
+    expect(manifest.cases).toHaveLength(20);
+    const sets: Record<string, number> = {};
+    for (const c of manifest.cases) {
+      const set = c.file.split(".")[0];
+      sets[set] = (sets[set] ?? 0) + 1;
+    }
+    expect(sets).toEqual({ "nostr-host": 10, buzz: 10 });
   });
   for (const item of manifest.cases)
     it(item.file, async () => {

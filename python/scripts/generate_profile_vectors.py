@@ -2,10 +2,17 @@
 """Generate the Nostr-host profile vectors in ../../vectors/profiles/.
 
 Illustrative EvidenceRecord fixtures for the ``nostr-pubkey`` host-principal profile and the
-three Evidence Contract profiles for Nostr-based agent hosts, released in 0.6.0 under the ids
-``buzz.agent-job/v1``, ``buzz.moderation/v1`` and ``buzz.release/v1``. Every record carries the one uniform subject shape
-``subject: {event_id, semantic_digest}``; any further digested fact is a NAMED body digest in
-``payload_commitments`` (``role`` names the fact), never a second subject field.
+three Evidence Contract profiles for Nostr-based agent hosts. Two namings are emitted from the
+same builders:
+
+- ``nostr-host.{agent-job,moderation,release}/v1`` (current): neutral ids, ``host.example``
+  hosts, ``host-*`` key and source ids.
+- ``buzz.{agent-job,moderation,release}/v1``: released in 0.6.0, superseded by the set above,
+  kept as released bytes. They are FROZEN: the generator must keep reproducing them exactly.
+
+Every record carries the one uniform subject shape ``subject: {event_id, semantic_digest}``;
+any further digested fact is a NAMED body digest in ``payload_commitments`` (``role`` names the
+fact), never a second subject field.
 
 Every 64-hex value is ``json_digest({"label": <label>})`` over a labelled placeholder, and each
 fixture lists its ``digest_labels`` so the Go and TypeScript parity tests re-derive every value
@@ -28,13 +35,12 @@ import copy
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from agent_action_capsule.canonical import json_digest
 
 OUT = Path(__file__).resolve().parents[2] / "vectors" / "profiles"
 
-LABEL_PREFIX = "buzz-profile-vector"
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 TEXT_KEY = re.compile(r"(^|_)(text|message|content|body)(_|$)")
 SCORE_KEY = re.compile(r"(^|_)(score|rating|rank)(_|$)")
@@ -53,8 +59,40 @@ STATUS = (
 )
 
 
-def label(kind: str, item: str) -> str:
-    return f"{LABEL_PREFIX}:{kind}:{item}"
+class Variant(NamedTuple):
+    """One naming of the three profiles. Only names differ; construction and rules are shared."""
+
+    prefix: str  # profile-id prefix: "<prefix>.agent-job/v1"
+    label_prefix: str  # first segment of every digest label
+    ns: str  # subject_ref / actor_role_ref namespace
+    ids: str  # prefix of key, model, calibration and policy ids
+    relay: str  # principal_ref_relay_hint
+
+
+#: Released in 0.6.0. FROZEN: these bytes are never rewritten; the generator must keep
+#: reproducing them exactly (python/tests/test_profile_vectors.py asserts it).
+BUZZ = Variant(
+    prefix="buzz",
+    label_prefix="buzz-profile-vector",
+    ns="buzz",
+    ids="buzz",
+    relay="wss://relay.buzz.example",
+)
+
+#: Current. Neutral copies of the released set: same construction, neutral ids and hosts.
+NOSTR_HOST = Variant(
+    prefix="nostr-host",
+    label_prefix="nostr-host-profile-vector",
+    ns="host",
+    ids="host",
+    relay="wss://relay.host.example",
+)
+
+VARIANTS = (NOSTR_HOST, BUZZ)
+
+
+def label(v: Variant, kind: str, item: str) -> str:
+    return f"{v.label_prefix}:{kind}:{item}"
 
 
 def digest(lbl: str) -> str:
@@ -112,10 +150,12 @@ def check_record(record: dict[str, Any], disabled: frozenset[str] = frozenset())
 # ---------------------------------------------------------------------------------------------
 # Fixture builders
 
-PUBKEY_LABEL = label("nostr-pubkey:principal", "buzz-agent-key-01")
+def _pubkey_label(v: Variant) -> str:
+    return label(v, "nostr-pubkey:principal", f"{v.ids}-agent-key-01")
 
 
 def _header(
+    v: Variant,
     *,
     seq: int,
     record_label: str,
@@ -134,8 +174,8 @@ def _header(
         "record_id": digest(record_label),
         "record_type": record_type,
         "epistemic_type": epistemic_type,
-        "principal_ref": "nostr-pubkey:" + digest(PUBKEY_LABEL),
-        "principal_ref_relay_hint": "wss://relay.buzz.example",
+        "principal_ref": "nostr-pubkey:" + digest(_pubkey_label(v)),
+        "principal_ref_relay_hint": v.relay,
         "subject_ref": subject_ref,
         "contract_ref": f"ec:{profile}@1",
         "requirement_refs": requirement_refs,
@@ -148,7 +188,7 @@ def _header(
     }
     labels = [
         {"path": "record_id", "label": record_label},
-        {"path": "principal_ref", "prefix": "nostr-pubkey:", "label": PUBKEY_LABEL},
+        {"path": "principal_ref", "prefix": "nostr-pubkey:", "label": _pubkey_label(v)},
         {"path": "subject.event_id", "label": event_label},
         {"path": "subject.semantic_digest", "label": semantic_label},
     ]
@@ -165,45 +205,57 @@ def _tail(record: dict[str, Any]) -> dict[str, Any]:
     return record
 
 
-def agent_job() -> tuple[dict[str, Any], list[dict[str, str]]]:
+def agent_job(v: Variant) -> tuple[dict[str, Any], list[dict[str, str]]]:
     job = "job-2026-09-22-0001"
+    p = f"{v.prefix}.agent-job/v1"
     record, labels = _header(
+        v,
         seq=1,
-        record_label=label("buzz.agent-job/v1:record", job),
+        record_label=label(v, f"{p}:record", job),
         record_type="observation",
         epistemic_type="system_of_record_fact",
-        subject_ref=f"buzz:agent-job:{job}",
-        profile="buzz.agent-job/v1",
+        subject_ref=f"{v.ns}:agent-job:{job}",
+        profile=p,
         requirement_refs=["req-outcome-1"],
         event_time="2026-09-22T14:03:11Z",
         committed="2026-09-22T14:03:12Z",
-        event_label=label("buzz.agent-job/v1:nostr-event-id", job),
-        semantic_label=label("buzz.agent-job/v1:job-outcome-payload", job),
+        event_label=label(v, f"{p}:nostr-event-id", job),
+        semantic_label=label(v, f"{p}:job-outcome-payload", job),
     )
     return _tail(record), labels
 
 
 MOD = "mod-2026-09-22-0007"
-MOD_EVENT = label("buzz.moderation/v1:nostr-event-id", MOD)
-MOD_SEMANTIC = label("buzz.moderation/v1:moderation-action-payload", MOD)
 
 
-def moderation_judgment() -> tuple[dict[str, Any], list[dict[str, str]]]:
+def _mod(v: Variant) -> tuple[str, str, str]:
+    """(profile id, event label, semantic label) shared by the three moderation records."""
+    p = f"{v.prefix}.moderation/v1"
+    return (
+        p,
+        label(v, f"{p}:nostr-event-id", MOD),
+        label(v, f"{p}:moderation-action-payload", MOD),
+    )
+
+
+def moderation_judgment(v: Variant) -> tuple[dict[str, Any], list[dict[str, str]]]:
+    p, mod_event, mod_semantic = _mod(v)
     record, labels = _header(
+        v,
         seq=10,
-        record_label=label("buzz.moderation/v1:semantic-judgment-record", MOD),
+        record_label=label(v, f"{p}:semantic-judgment-record", MOD),
         record_type="judgment",
         epistemic_type="semantic_judgment",
-        subject_ref=f"buzz:moderation-action:{MOD}",
-        profile="buzz.moderation/v1",
+        subject_ref=f"{v.ns}:moderation-action:{MOD}",
+        profile=p,
         requirement_refs=["req-human-role-1"],
         event_time="2026-09-22T15:10:00Z",
         committed="2026-09-22T15:10:02Z",
-        event_label=MOD_EVENT,
-        semantic_label=MOD_SEMANTIC,
+        event_label=mod_event,
+        semantic_label=mod_semantic,
     )
-    content = label("buzz.moderation/v1:moderated-content", MOD)
-    decision = label("buzz.moderation/v1:moderation-decision", MOD)
+    content = label(v, f"{p}:moderated-content", MOD)
+    decision = label(v, f"{p}:moderation-decision", MOD)
     record["payload_commitments"] = [
         _commit("moderated-content", content),
         _commit("moderation-decision", decision),
@@ -214,71 +266,77 @@ def moderation_judgment() -> tuple[dict[str, Any], list[dict[str, str]]]:
     ]
     record["judgment"] = {
         "disposition": "removed",
-        "evaluator_model_ref": "buzz-mod-model-v1",
-        "calibration_ref": "buzz-mod-calibration-2026-09",
+        "evaluator_model_ref": f"{v.ids}-mod-model-v1",
+        "calibration_ref": f"{v.ids}-mod-calibration-2026-09",
     }
     return _tail(record), labels
 
 
-def moderation_review() -> tuple[dict[str, Any], list[dict[str, str]]]:
+def moderation_review(v: Variant) -> tuple[dict[str, Any], list[dict[str, str]]]:
+    p, mod_event, mod_semantic = _mod(v)
     record, labels = _header(
+        v,
         seq=11,
-        record_label=label("buzz.moderation/v1:human-report-review-record", MOD),
+        record_label=label(v, f"{p}:human-report-review-record", MOD),
         record_type="human_report",
         epistemic_type="human_report",
-        subject_ref=f"buzz:moderation-action:{MOD}",
-        profile="buzz.moderation/v1",
+        subject_ref=f"{v.ns}:moderation-action:{MOD}",
+        profile=p,
         requirement_refs=["req-human-role-2"],
         event_time="2026-09-22T15:20:00Z",
         committed="2026-09-22T15:20:03Z",
-        event_label=MOD_EVENT,
-        semantic_label=MOD_SEMANTIC,
+        event_label=mod_event,
+        semantic_label=mod_semantic,
     )
-    record["actor_role_ref"] = "buzz:moderator"
+    record["actor_role_ref"] = f"{v.ns}:moderator"
     record["review"] = {
         "outcome": "confirmed",
-        "review_event_ref": f"buzz:moderator-review:{MOD}",
+        "review_event_ref": f"{v.ns}:moderator-review:{MOD}",
     }
     return _tail(record), labels
 
 
-def moderation_obligation() -> tuple[dict[str, Any], list[dict[str, str]]]:
+def moderation_obligation(v: Variant) -> tuple[dict[str, Any], list[dict[str, str]]]:
+    p, mod_event, mod_semantic = _mod(v)
     record, labels = _header(
+        v,
         seq=12,
-        record_label=label("buzz.moderation/v1:obligation-reference-record", MOD),
+        record_label=label(v, f"{p}:obligation-reference-record", MOD),
         record_type="claim",
         epistemic_type="obligation_reference",
-        subject_ref=f"buzz:moderation-action:{MOD}",
-        profile="buzz.moderation/v1",
+        subject_ref=f"{v.ns}:moderation-action:{MOD}",
+        profile=p,
         requirement_refs=["req-obligation-1"],
         event_time="2026-09-22T15:25:00Z",
         committed="2026-09-22T15:25:04Z",
-        event_label=MOD_EVENT,
-        semantic_label=MOD_SEMANTIC,
+        event_label=mod_event,
+        semantic_label=mod_semantic,
     )
     record["obligation_refs"] = ["dsa:article-17", "dsa:article-24-5"]
     return _tail(record), labels
 
 
-def release() -> tuple[dict[str, Any], list[dict[str, str]]]:
+def release(v: Variant) -> tuple[dict[str, Any], list[dict[str, str]]]:
     rel = "release-2026-09-22-0003"
+    p = f"{v.prefix}.release/v1"
     record, labels = _header(
+        v,
         seq=1,
-        record_label=label("buzz.release/v1:record", rel),
+        record_label=label(v, f"{p}:record", rel),
         record_type="observation",
         epistemic_type="system_of_record_fact",
-        subject_ref=f"buzz:release:{rel}",
-        profile="buzz.release/v1",
+        subject_ref=f"{v.ns}:release:{rel}",
+        profile=p,
         requirement_refs=["req-process-1", "req-obligation-1"],
         event_time="2026-09-22T18:00:00Z",
         committed="2026-09-22T18:00:05Z",
-        event_label=label("buzz.release/v1:nostr-event-id", rel),
-        semantic_label=label("buzz.release/v1:release-gate-record", rel),
+        event_label=label(v, f"{p}:nostr-event-id", rel),
+        semantic_label=label(v, f"{p}:release-gate-record", rel),
     )
-    approval = label("buzz.release/v1:approval-record", rel)
+    approval = label(v, f"{p}:approval-record", rel)
     record["payload_commitments"] = [_commit("approval-record", approval)]
     labels.append({"path": "payload_commitments.0.digest", "label": approval})
-    record["obligation_refs"] = ["buzz-release-policy/section-2/v1"]
+    record["obligation_refs"] = [f"{v.ids}-release-policy/section-2/v1"]
     return _tail(record), labels
 
 
@@ -302,58 +360,59 @@ def _with_judgment_field(
     return record, labels
 
 
-def cases() -> list[dict[str, Any]]:
-    job = agent_job()
-    mod = moderation_judgment()
-    rel = release()
+def cases(v: Variant) -> list[dict[str, Any]]:
+    job = agent_job(v)
+    mod = moderation_judgment(v)
+    rel = release(v)
+    p = v.prefix
     out: list[dict[str, Any]] = [
         {
-            "file": "buzz.agent-job/v1/positive-01.json",
+            "file": f"{p}.agent-job/v1/positive-01.json",
             "built": job,
             "expect": [],
             "note": "Agent-job terminal outcome: the uniform subject only; no extra body digest.",
         },
         {
-            "file": "buzz.agent-job/v1/negative-event-id-as-digest.json",
+            "file": f"{p}.agent-job/v1/negative-event-id-as-digest.json",
             "built": _event_id_as_digest(job),
             "expect": ["event_id_as_digest"],
             "note": "Mutated from positive-01.json: subject.semantic_digest set equal to "
             "subject.event_id - the transport event id stands in for the semantic digest.",
         },
         {
-            "file": "buzz.moderation/v1/positive-semantic-judgment.json",
+            "file": f"{p}.moderation/v1/positive-semantic-judgment.json",
             "built": mod,
             "expect": [],
             "note": "Worked content-vs-decision vector: subject.{event_id, semantic_digest} "
             "identify the moderation action event; the moderated content and the decision are "
             "two NAMED body digests (payload_commitments roles moderated-content and "
             "moderation-decision), never subject fields. One of the three records whose "
-            "combination a buzz.moderation/v1 requirement needs.",
+            f"combination a {p}.moderation/v1 requirement needs.",
         },
         {
-            "file": "buzz.moderation/v1/positive-human-report-review.json",
-            "built": moderation_review(),
+            "file": f"{p}.moderation/v1/positive-human-report-review.json",
+            "built": moderation_review(v),
             "expect": [],
             "note": "A human moderator's own review over the same moderation action (same "
             "subject). One of the three records whose combination is required.",
         },
         {
-            "file": "buzz.moderation/v1/positive-obligation-reference.json",
-            "built": moderation_obligation(),
+            "file": f"{p}.moderation/v1/positive-obligation-reference.json",
+            "built": moderation_obligation(v),
             "expect": [],
             "note": "Cites DSA Art. 17 and Art. 24(5) for the same moderation action; a "
             "citation, never a compliance conclusion. One of the three records whose "
             "combination is required.",
         },
         {
-            "file": "buzz.moderation/v1/negative-event-id-as-digest.json",
+            "file": f"{p}.moderation/v1/negative-event-id-as-digest.json",
             "built": _event_id_as_digest(mod),
             "expect": ["event_id_as_digest"],
             "note": "Mutated from positive-semantic-judgment.json: subject.semantic_digest set "
             "equal to subject.event_id.",
         },
         {
-            "file": "buzz.moderation/v1/negative-message-text-present.json",
+            "file": f"{p}.moderation/v1/negative-message-text-present.json",
             "built": _with_judgment_field(
                 mod, "moderated_text", "example moderated message text carried inline"
             ),
@@ -362,21 +421,21 @@ def cases() -> list[dict[str, Any]]:
             "carries free text inline. Records carry digests only, never message text.",
         },
         {
-            "file": "buzz.moderation/v1/negative-score-field-present.json",
+            "file": f"{p}.moderation/v1/negative-score-field-present.json",
             "built": _with_judgment_field(mod, "principal_trust_score", 42),
             "expect": ["score_present"],
             "note": "Mutated from positive-semantic-judgment.json: judgment.principal_trust_score "
             "carries a numeric score. No field carries a score or per-user history.",
         },
         {
-            "file": "buzz.release/v1/positive-01.json",
+            "file": f"{p}.release/v1/positive-01.json",
             "built": rel,
             "expect": [],
             "note": "Release gate: the uniform subject identifies the release-gate record; the "
             "separate approval record is a NAMED body digest (role approval-record).",
         },
         {
-            "file": "buzz.release/v1/negative-event-id-as-digest.json",
+            "file": f"{p}.release/v1/negative-event-id-as-digest.json",
             "built": _event_id_as_digest(rel),
             "expect": ["event_id_as_digest"],
             "note": "Mutated from positive-01.json: subject.semantic_digest set equal to "
@@ -390,7 +449,7 @@ def render() -> dict[str, str]:
     """Return {relative path: file text} for every generated file."""
     files: dict[str, str] = {}
     manifest = []
-    for case in cases():
+    for case in (c for v in VARIANTS for c in cases(v)):
         record, labels = case["built"]
         got = check_record(record)
         if got != case["expect"]:

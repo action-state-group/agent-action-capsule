@@ -19,6 +19,14 @@
   is not independent; the same Bundle without the declaration, a different signer, and five
   malformed blocks are not. Consumed by Python and TypeScript tests. Existing vector files are
   unchanged; only the top-level `SHA256SUMS` and `manifest.json` gained entries.
+- Profile vectors `vectors/profiles/nostr-host.{agent-job,moderation,release}/v1/` (profile ids
+  `nostr-host.agent-job/v1`, `nostr-host.moderation/v1`, `nostr-host.release/v1`): neutral
+  copies of the 0.6.0 `buzz.*` profile vectors, with `host.example` hosts and `host-*` key and
+  source ids. Same records, rules and `semantic_digest` construction; every digest is re-derived
+  from `nostr-host-profile-vector:` labels. They supersede the `buzz.*` set, which stays in
+  place byte-for-byte as released 0.6.0 vectors. `generate_profile_vectors.py` emits both sets;
+  `vectors/profiles/manifest.json` lists both, and the Python, Go and TypeScript parity tests
+  cover both.
 
 ### Changed
 - A null `references[].retention.declarant` is now reported as `missing_required_field` (check 1),
