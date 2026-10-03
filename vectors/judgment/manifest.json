@@ -1,0 +1,23 @@
+{
+  "set": "aac-judgment-extension-v1",
+  "status": "PROVISIONAL: the judgment extension is held for ratification and not registered; the rubric_digest and judge_parameters_digest rules are proposed and unratified.",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_judgment_extension_vectors.py",
+  "schema": "schemas/judgment/judgment-extension-v1.json",
+  "pending_registrations": {
+    "citation_purpose": [
+      "judged_from",
+      "calibrated_against"
+    ],
+    "capsule_extension_member": [
+      "x-judgment-v1"
+    ]
+  },
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "9dddcc94c959200a49373e3006b8191d4252d4275de3e6893264cc84f77db338",
+      "count": 4
+    }
+  ]
+}

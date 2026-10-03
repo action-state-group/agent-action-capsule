@@ -55,6 +55,7 @@ def main() -> None:
         "generate_min_necessary_vectors.py",
         "generate_bundle_producer_key_vectors.py",
         "generate_bundle_composed_vectors.py",
+        "generate_judgment_extension_vectors.py",
     ):
         subprocess.run([python, str(Path(__file__).with_name(script))], check=True, cwd=ROOT / "python")
     complete_capsule_manifest()
