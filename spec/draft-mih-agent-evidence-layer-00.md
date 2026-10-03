@@ -2,6 +2,7 @@
 title: "Evidence Layer"
 abbrev: "Evidence Layer"
 docname: draft-mih-agent-evidence-layer-00
+date: 2026-10-03
 category: info
 submissiontype: IETF
 ipr: trust200902
@@ -30,29 +31,63 @@ normative:
 informative:
   RFC9942:
   RFC9943:
-  I-D.mih-scitt-checkpointed-local-log:
-    title: "The Checkpointed Local Log"
+  I-D.mih-scitt-agent-action-capsule:
+    title: "An Agent Action Capsule Profile for SCITT"
+    seriesinfo:
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-05
     author:
       - ins: S. Mih
         name: Steven Mih
-    date: 2026-08
-    refcontent: Work in Progress
+        organization: Action State Group, Inc.
+    date: 2026-09
+  I-D.mih-scitt-checkpointed-local-log:
+    title: "The Checkpointed Local Log (CLL)"
+    seriesinfo:
+      Internet-Draft: draft-mih-scitt-checkpointed-local-log-01
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group
+    date: 2026-09
   I-D.mih-agent-evidence-request:
     title: "An Interaction Model for Requesting Verifiable Evidence"
+    seriesinfo:
+      Internet-Draft: draft-mih-agent-evidence-request-00
     author:
       - ins: S. Mih
         name: Steven Mih
+        organization: Action State Group, Inc.
     date: 2026-09
-    refcontent: Work in Progress
   I-D.mih-zhang-agent-disclosure-bundle:
     title: "AAC Evidence Bundle"
+    seriesinfo:
+      Internet-Draft: draft-mih-zhang-agent-disclosure-bundle-00
     author:
       - ins: S. Mih
         name: Steven Mih
+        organization: Action State Group, Inc.
       - ins: Y. Zhang
         name: Yiqun Zhang
+        organization: Independent
     date: 2026-09
-    refcontent: Work in Progress
+  I-D.mih-agent-disclosure-envelope:
+    title: "Disclosure Envelope Profile for Agent Action Capsules"
+    seriesinfo:
+      Internet-Draft: draft-mih-agent-disclosure-envelope-00
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
+    date: 2026-09
+  I-D.mih-agent-settlement-records:
+    title: "Two-Party Settlement Records for Agent Payments"
+    seriesinfo:
+      Internet-Draft: draft-mih-agent-settlement-records-00
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
+    date: 2026-10
 
 --- abstract
 
@@ -69,9 +104,9 @@ honestly from what a store actually holds, and so that an evidence bundle
 assembled in response is assembled from committed material rather than
 assembled and then made to look committed. Conformance to this layer MUST
 NOT require any particular implementation or commitment substrate: a
-Checkpointed Local Log is one conforming profile; a receipt from a SCITT
-transparency service is another; a Rekor-style transparency log or an
-implementer's own authenticated log also qualify. This document defines
+Checkpointed Local Log is one conforming profile; registration with a SCITT
+Transparency Service is another; any other append-only transparency log, or
+an implementer's own authenticated log, also qualifies. This document defines
 neither evidence sufficiency policy, request routing, settlement, nor any
 specific host-identity, signing, payload-storage, or replication mechanism.
 
@@ -96,9 +131,9 @@ This document names that substrate an **evidence store**, defines the
 store is implemented beyond that. Conformance to the evidence layer MUST
 NOT require any particular implementation or commitment substrate: a
 Checkpointed Local Log ({{I-D.mih-scitt-checkpointed-local-log}}) is one
-mechanism satisfying the interface in {{substrate}}; a transparency-service
-receipt {{RFC9943}} is another; a Rekor-style transparency log or an
-implementer's own authenticated log also qualify.
+mechanism satisfying the interface in {{substrate}}; registration with a
+SCITT Transparency Service {{RFC9943}} is another; any other append-only
+transparency log, or an implementer's own authenticated log, also qualifies.
 
 # Non-Goals {#nongoals}
 
@@ -113,15 +148,17 @@ This document deliberately does not define:
   questions this document does not reach.
 - **Settlement.** Any obligation, payment, or remedy that follows from a
   recorded fact is outside this document; a store records that something is
-  true of its own history, never what should happen as a result.
+  true of its own history, never what should happen as a result. Records
+  of a settlement, such as those of {{I-D.mih-agent-settlement-records}},
+  are ordinary records to a store.
 - **A host-identity scheme.** What a `principal_ref` ({{record}}) names,
   and how a party's key relates to any role or standing, is host- or
   deployment-defined. This document states only what a `principal_ref`
   cannot be taken to mean ({{security}}).
 - **A signing, payload-storage, or replication mechanism.** How a record or
   a checkpoint is signed, how payload bytes are stored and retrieved by
-  digest, and how records travel between stores, delivery intermediaries, or fleets are
-  implementation seams a host plugs in beneath a conforming store. This
+  digest, and how records travel between stores, delivery intermediaries,
+  or fleets are implementation seams a host plugs in beneath a conforming store. This
   document does not define any of the three, and a store's conformance to
   this document does not depend on which implementation of any of them it
   uses.
@@ -143,7 +180,8 @@ answer a request against that commitment. The subject of this document.
 
 **Record:** one committed entry in a store: a header ({{record}}) and,
 optionally, digests referencing payload bytes held or resolved separately
-({{retention}}).
+({{retention}}). A record MAY be an Agent Action Capsule
+{{I-D.mih-scitt-agent-action-capsule}}; this document does not require it.
 
 **Digest:** unless a deployment's evidence format states otherwise, the
 lowercase-hexadecimal SHA-256 digest of a value's canonical form — for a
@@ -166,6 +204,25 @@ or checkpointed about the record ({{record}}).
 
 **Retention state:** a value naming whether, and how, a record's payload
 can currently be resolved to bytes ({{retention}}).
+
+**Transparency Service, Registration Policy, Receipt:** as defined in
+{{RFC9943}}. A Receipt {{RFC9942}} proves that a statement is included in a
+Transparency Service's log. It proves nothing else: not consistency between
+two states of that log, and not that the statement is true.
+
+**Witness:** a party other than the store that receives the store's
+checkpoints and checks that each one extends the previous one it saw. A
+Transparency Service whose Registration Policy admits a checkpoint only when
+it is consistent with the previously registered one is one kind of witness.
+"Witness" is not a term defined by {{RFC9943}}.
+
+**Countersignature:** a signature over a record, or over a set of records,
+by a party other than its producer, made after that party independently
+recomputed named checks, in the manner of an Auditor {{RFC9943}}. It is not a
+Receipt and not a Transparency Service function.
+
+**Self-attested:** signed only by the record's own producer, with neither a
+witness nor a countersignature.
 
 # The Record Model {#record}
 
@@ -220,13 +277,14 @@ this document verifies that an `event_time_claim` is accurate.
 | `obligation_reference` | a reference to an obligation the record does not itself discharge |
 
 **`epistemic_type` is assigned once, at commit, and is never upgraded.** No
-signature, checkpoint, witness receipt, or countersignature attached to a
-record after it is committed changes what kind of statement it was when it
-was made. Those attach to a record; they attest to who signed it and when
-it was committed. They do not attest to how its content was known, which is
-what `epistemic_type` alone states. A record misclassified at commit is
-corrected only by a later record ({{retention}}); the original's
-`epistemic_type` does not change.
+signature, checkpoint, Receipt, witnessing, or countersignature attached to
+a record after it is committed changes what kind of statement it was when it
+was made, and neither does the assurance a record later reaches
+(self-attested, witnessed, or countersigned). Those attach to a record;
+they attest to who signed it and when it was committed. They do not attest
+to how its content was known, which is what `epistemic_type` alone states.
+A record misclassified at commit is corrected only by a later record
+({{retention}}); the original's `epistemic_type` does not change.
 
 The registry for this value set is established in {{iana}}.
 
@@ -283,6 +341,14 @@ needs a relationship this list does not name registers a new link type; it
 MUST NOT overload an existing token to mean something else for some of its
 records.
 
+These link types relate records of an evidence store. They are distinct
+from the `chain.relation` and `citation_purpose` vocabularies of
+{{I-D.mih-scitt-agent-action-capsule}}, which govern fields inside a
+Capsule. The token `supersedes` appears in both this registry and
+`chain.relation`; the two are separate registrations, and neither defines
+the other. When a store's records are Capsules, how each link type is
+carried in a Capsule's fields is not defined by this revision.
+
 # Record/Payload Separation, Retention, and Disclosure {#retention}
 
 A record's commitment — its presence in the store's committed history, its
@@ -310,7 +376,11 @@ availability rather than content, by a lifecycle record changing
 **`WITHHELD` MUST NOT be conflated with `DELETED`.** Both currently return no
 bytes; only one of them is permanent. A party that needs to distinguish
 "ask again under different authorization" from "the bytes are gone" reads
-`retention_state`, never a resolution failure alone.
+`retention_state`, never a resolution failure alone. A responder answering an
+Evidence Request ({{I-D.mih-agent-evidence-request}}) for a `WITHHELD`
+payload MUST NOT refuse it with reason `no_such_subject` or
+`retention_expired`; those reasons state that the subject does not resolve
+or that retention has lapsed, which is the `DELETED` case.
 
 ## Disclosure Records
 
@@ -336,6 +406,12 @@ disclosure record MAY carry that field's committed digest rather than
 nothing: a withheld field disclosed with its digest is never reported as
 blank and never as if it did not exist, mirroring the target record's own
 `WITHHELD` handling above.
+
+For one Capsule, the Disclosure Envelope
+({{I-D.mih-agent-disclosure-envelope}}) carries disclosed values beside the
+Capsule that commits to their digests. A disclosure record is the store's
+own record that such a disclosure was made; it does not replace the
+envelope's own verification.
 
 A disclosure record carries a `cites` link to each record whose payload it
 discloses. It states what was revealed about those records; it does not
@@ -387,15 +463,17 @@ regardless of mechanism:
 This document requires these four properties and no specific mechanism. A
 Checkpointed Local Log ({{I-D.mih-scitt-checkpointed-local-log}}) is the
 worked example used throughout the evidence family: append, a Merkle
-mountain range, and periodic checkpoints supply all four locally. A receipt
-issued by a SCITT transparency service {{RFC9943}}, carried as a COSE
-Receipt {{RFC9942}}, is an alternate profile: the transparency service's
-registration and receipt stand in for the local append/checkpoint pair, and
-inclusion and consistency are established by the receipt rather than by a
-log the store itself maintains. **Conformance to this document MUST NOT
-require any particular implementation or commitment substrate.** A
-Checkpointed Local Log, a SCITT transparency-service receipt, a Rekor-style
-transparency log, or an implementer's own authenticated log all qualify: a
+Mountain Range, and periodic signed checkpoints supply all four locally.
+Registration with a SCITT Transparency Service {{RFC9943}} is an alternate
+profile. The Transparency Service's log supplies append order and checkpoint
+identity, in place of a log the store itself maintains. A Receipt
+{{RFC9942}} proves inclusion of a registered statement, and only inclusion.
+Consistency comes from consistency proofs between two states of the
+Transparency Service's log, never from a Receipt. **Conformance to this
+document MUST NOT require any particular implementation or commitment
+substrate.** A Checkpointed Local Log, registration with a SCITT
+Transparency Service, any other append-only transparency log, or an
+implementer's own authenticated log all qualify: a
 store conforms by satisfying the four properties above under whichever
 substrate it uses, and states which substrate that is.
 
@@ -414,7 +492,7 @@ reasons.
 | `correlation` | resolve every record whose `subject_ref` (or an equivalent correlation field) matches — operational index |
 | `exchange` | resolve every record carrying a `cites` link ({{links}}) whose target is the named exchange half's digest |
 | `full_history` | the store's entire evidence body, subject to whatever disclosure policy governs the interaction ({{retention}}) |
-| `checkpoints` | the commitment substrate's checkpoint identity and receipts ({{substrate}}), requiring no record-level resolution |
+| `checkpoints` | the commitment substrate's checkpoints and any Receipts or witness records for them ({{substrate}}), requiring no record-level resolution |
 
 ## Three Kinds of "No" {#answers-absence}
 
@@ -433,6 +511,13 @@ things that could be reported as "no evidence for this subject":
    This is a `producer_claim` about the store's local state; it is not
    proof, and it is not a claim about anything on the requester's side.
 
+None of the three is the "recorded absence" outcome of
+{{I-D.mih-agent-evidence-request}}, which is the requester's own record that
+no response arrived. A store that holds no such record answers with a
+signed refusal carrying reason `no_such_subject`; a store that withholds
+answers with a policy refusal. Neither is ever reported as a recorded
+absence.
+
 A `no_such_subject` refusal ({{I-D.mih-agent-evidence-request}}) MAY be
 backed by a non-membership proof where the store's authenticated index
 supports one. Where it does not, the refusal is honest only if the store
@@ -442,8 +527,21 @@ does not present its own asserted absence as if it carried the same weight.
 
 Two independently held stores are compared under a declared contract or
 profile external to this document. Comparing corresponding candidates
-assigns each pairing one of six states: `MATCHED`, `A_ONLY`, `B_ONLY`,
-`CONFLICTING`, `INSUFFICIENT`, `UNRESOLVED`.
+assigns each pairing one of six states:
+
+- `MATCHED`: both sides hold a corresponding record, and the records agree
+  under the declared contract or profile.
+- `A_ONLY`, `B_ONLY`: a corresponding record was found on one side only.
+- `CONFLICTING`: both sides hold a corresponding record, and the records
+  disagree.
+- `INSUFFICIENT`: a candidate was found, but it lacks what the declared
+  contract or profile needs in order to compare it.
+- `UNRESOLVED`: the comparison was not, or could not be, decided.
+
+The precise rules for each state are those of the declared contract or
+profile. These are per-pairing states. They are not a judgment over the
+reconciliation as a whole, which is a policy layer this document does not
+define ({{nongoals}}).
 
 **One half unavailable is not disagreement.** `A_ONLY` and `B_ONLY` state
 that a corresponding record was not found on the other side — it may not
@@ -453,16 +551,29 @@ the records disagree. A reconciliation process MUST NOT report `A_ONLY` or
 `B_ONLY` as `CONFLICTING`, and MUST NOT infer a substantive dispute from
 the mere absence of a counterpart record.
 
-A **Close** is a record — `record_type` `close` — carrying a `closes` link
-({{links}}) to the range or set of records it binds, together with the
-period's inputs and the contract/profile versions used to reach the state
-population above. Close status is read from the links other records make
-to it, not from a field the Close itself sets:
+A **Close** is a record — `record_type` `close`, `epistemic_type`
+`producer_claim` — carrying a `closes` link ({{links}}) to the range or set
+of records it binds, together with the period's inputs and the
+contract/profile versions used to reach the state population above. Close
+status is read from the links other records make to it, not from a field
+the Close itself sets.
 
-- **AGREED:** a record from the counterparty carries an `acknowledges`
-  link to this Close.
-- **UNILATERAL:** no corresponding `acknowledges` link exists yet.
-- **CONTESTED:** a record carries a `rebuts` link to this Close.
+Only a counterparty record counts: a record committed by the counterparty's
+store and signed under a key other than the Close's. A link from any record
+of the Close's own store, or from a third party, never changes Close
+status. How a reader establishes which store committed a record, and under
+which key, is profile-defined; the record header of {{record}} names
+neither.
+
+- **CONTESTED:** a counterparty record carries a `rebuts` link to this
+  Close. While such a link stands, the Close is not AGREED, whatever else
+  links to it.
+- **AGREED:** the Close is not CONTESTED, and a counterparty record carries
+  an `acknowledges` link to this Close.
+- **UNILATERAL:** neither.
+
+Whether a later counterparty record can withdraw an earlier `rebuts` is not
+defined by this revision.
 
 **A Close is never rewritten.** Later evidence, or a correction to a
 Close's own population, is a new record carrying a `supersedes` link to the
@@ -580,12 +691,28 @@ or `exchange` subject ({{answers}}).
 
 # IANA Considerations {#iana}
 
-This document requests that IANA establish a registry titled "Evidence
-Layer Epistemic Types". The registration policy is Specification Required
-{{RFC8126}}.
-Each entry consists of a token (lowercase ASCII, underscore-separated), a
-one-line description, and a reference. The initial contents are those of
-{{epistemic-type}}:
+IANA is requested to create the "Evidence Layer Parameters" registry group
+with the two registries below. For both, the registration policy is
+Specification Required ({{RFC8126}}, Section 4.6), and the change controller
+is the IETF. Each entry consists of a token (lowercase ASCII,
+underscore-separated), a one-line description, and a reference.
+
+Until IANA creates these registries, the interim registry of record is
+`REGISTRY.md` in the source repository of
+{{I-D.mih-scitt-agent-action-capsule}}. It records the same values and
+policy, and the same designated-expert criteria it applies to its other
+registries.
+
+Neither registry duplicates an existing one. "Evidence Layer Link Types" is
+not the `chain.relation` or `citation_purpose` registry of
+{{I-D.mih-scitt-agent-action-capsule}}, which govern fields inside a Capsule
+({{links}}). "Evidence Layer Epistemic Types" is not that document's
+`domain` registry, which states what kind of act a Capsule records, not how
+its content came to be known.
+
+## Evidence Layer Epistemic Types
+
+Initial contents, from {{epistemic-type}}:
 
 | Token | Description | Reference |
 |---|---|---|
@@ -593,15 +720,14 @@ one-line description, and a reference. The initial contents are those of
 | `system_of_record_fact` | asserted by an external system of record | This document |
 | `producer_claim` | asserted by the record's own producer, unverified by the store | This document |
 | `human_report` | asserted by a human, not machine-observed | This document |
-| `semantic_judgment` | a judgment or classification reached by interpretation | This document |
+| `semantic_judgment` | a judgment or classification reached by interpretation, not direct observation | This document |
 | `derived_metric` | a value computed or aggregated from other records | This document |
 | `adjudication` | a ruling on a matter that was disputed or required judgment | This document |
 | `obligation_reference` | a reference to an obligation the record does not itself discharge | This document |
 
-This document further requests a registry titled "Evidence Layer Link
-Types", registration policy Specification Required. Each entry consists of
-a token, a one-line description, and a reference. The initial contents are
-those of {{links}}:
+## Evidence Layer Link Types
+
+Initial contents, from {{links}}:
 
 | Token | Description | Reference |
 |---|---|---|
@@ -612,7 +738,9 @@ those of {{links}}:
 | `rebuts` | the carrying record disputes the target's claim | This document |
 | `closes` | the carrying record binds a range or set of records as reconciled | This document |
 
-This document makes no other requests of IANA.
+This document makes no other requests of IANA. The `record_type` value
+`padding` ({{privacy-checkpoints}}) is reserved by this document;
+`record_type` is an open token and has no registry.
 
 --- back
 

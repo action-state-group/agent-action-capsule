@@ -460,6 +460,46 @@ Capsules carrying the `disclosure-policy-decisions/v1` extension, with
 `disclosures` member. The Capsules, completeness certificate and checkpoint are
 digests-tier material, not part of the declared field set.
 
+## 17. Evidence Layer epistemic type
+
+Defined in `draft-mih-agent-evidence-layer`, "Epistemic Type" and IANA
+Considerations ("Evidence Layer Epistemic Types"). This is a
+**Specification Required** registry. A token is lowercase ASCII,
+underscore-separated. It states how a record's content came to be known, is
+assigned once at commit, and is never upgraded. It is a different axis from
+`domain` (§8), which states what kind of act a Capsule records.
+
+| Token | Semantics |
+|---|---|
+| `observed_event` | Directly observed by the recording system or actor. |
+| `system_of_record_fact` | Asserted by an external system of record. |
+| `producer_claim` | Asserted by the record's own producer, unverified by the store. |
+| `human_report` | Asserted by a human, not machine-observed. |
+| `semantic_judgment` | A judgment or classification reached by interpretation, not direct observation. |
+| `derived_metric` | A value computed or aggregated from other records. |
+| `adjudication` | A ruling on a matter that was disputed or required judgment. |
+| `obligation_reference` | A reference to an obligation the record does not itself discharge. |
+
+## 18. Evidence Layer link type
+
+Defined in `draft-mih-agent-evidence-layer`, "Typed Links" and IANA
+Considerations ("Evidence Layer Link Types"). This is a **Specification
+Required** registry. A link is a typed, directed reference from one
+evidence-store record to another, identified by the target's digest, and
+never mutates its target. This registry is distinct from `chain.relation`
+(§6) and `citation_purpose` (§11), which govern fields inside a Capsule; the
+token `supersedes` is registered in both this registry and §6, and neither
+registration defines the other.
+
+| Token | Semantics |
+|---|---|
+| `cites` | The carrying record depends on the target's committed content. |
+| `adjudicates` | The carrying record renders a judgment about the target's claim. Its `epistemic_type` is `adjudication`. |
+| `supersedes` | The carrying record replaces the target's content for current use, without mutating it. |
+| `acknowledges` | The carrying record states its author has seen and holds the target: receipt, not agreement. |
+| `rebuts` | The carrying record disputes the target's claim. |
+| `closes` | The carrying record binds a range or set of records as reconciled. |
+
 ## No registry
 
 The following vocabularies are deliberately **not** registries of this document:
