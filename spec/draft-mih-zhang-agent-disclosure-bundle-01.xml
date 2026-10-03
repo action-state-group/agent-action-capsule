@@ -233,7 +233,7 @@ separate claims. A verifier MUST report each claim independently. The
 with matching identity or explicitly listed in <tt>completeness.missing</tt>.</t>
         </li>
         <li>
-          <t><strong>Interval coverage</strong>: the claimed sequence interval is anchored to a
+          <t><strong>Interval coverage</strong>: the claimed sequence interval is bound to a
 checkpointed range root. Without a verified Receipt <xref target="RFC9942"/> over the
 checkpoint from a Transparency Service, or a verified checkpoint
 signature, this is only relative to a producer-asserted checkpoint.</t>

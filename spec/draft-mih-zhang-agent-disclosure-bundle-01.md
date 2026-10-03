@@ -276,7 +276,7 @@ separate claims. A verifier MUST report each claim independently. The
 
 1. **Graph closure**: every citation reached under {{closure}} is supplied
    with matching identity or explicitly listed in `completeness.missing`.
-2. **Interval coverage**: the claimed sequence interval is anchored to a
+2. **Interval coverage**: the claimed sequence interval is bound to a
    checkpointed range root. Without a verified Receipt {{RFC9942}} over the
    checkpoint from a Transparency Service, or a verified checkpoint
    signature, this is only relative to a producer-asserted checkpoint.
