@@ -1,20 +1,13 @@
 # Fleet Collection Conventions — v0
 
 **Status.** Design specification, pre-Internet-Draft — the same drafting tier as
-`evidence-plan-ir-v0.md` in this directory. This document turns the four fleet-collection design
-areas of the per-area build plan's Part F into normative conventions so that a collector build
+`evidence-plan-ir-v0.md` in this directory. This document turns four fleet-collection design
+areas into normative conventions so that a collector build
 (OTel processor, Go collector-distribution component, or any other collection point) has a spec to
 build against instead of a design note. It defines conventions for how a fleet of agent
 deployments — spanning many clusters, one or many tenants — tags, classifies, records the
 lifecycle of, and identifies the emitters of the telemetry a Capsule producer or collector turns
 into Capsules.
-
-**Citation note.** This document's source is the per-area build plan's Part F, as distilled into
-the `[a17-fleet-collection-conventions-v0]` work item's own four-part "Do" list — the plan
-document itself (an upload external to this workspace) is not present here to cite by literal
-section/paragraph number. Each section below cites the corresponding **Part F item (N)** using
-that list's own numbering; a future revision SHOULD replace these with literal paragraph anchors
-once the source document is checked into a location this profile can cite directly.
 
 **Companion draft.** `draft-palanisamy-scitt-aac-otel-00` (OpenTelemetry Correlation Extension for
 Agent Action Capsules) defines the `org.agentactioncapsule.otel` payload block this document's
@@ -40,8 +33,8 @@ Context and W3C Baggage as OTel defines them.
 
 **Explicitly out of scope (never defined here):**
 
-- Collector code. This is a specs-only item (Area 17, 0–30 days) — no collector, processor, or
-  exporter implementation ships against this document until partner access is dated.
+- Collector code. This document is specification only; it defines no collector, processor, or
+  exporter implementation.
 - Any named customer, tenant, or deployment. Every worked example in this document uses a
   fictional stand-in, "a 500-cluster enterprise" — never a real operator's name.
 - Any Authority, Relay, or scoring concept. Materiality is carried here only as a coarse,
@@ -52,7 +45,7 @@ Context and W3C Baggage as OTel defines them.
 
 ---
 
-## 1. Outcome-context baggage keys — Part F item (1)
+## 1. Outcome-context baggage keys
 
 An **outcome context** is the small set of facts that name *which job* an action belongs to,
 carried as OpenTelemetry Baggage (the W3C/OpenTelemetry Baggage specification) so that every span
@@ -105,7 +98,7 @@ allow-list of its own, unlike the semconv attributes that block admits.
 This is not a new mechanism this document invents: it is the naming of the four keys that the
 `capsule-emit` OTel processor's `outcome_context_baggage_keys` allow-list and
 `ext.otel.outcome_context` sibling block already implement, wired to an empty allow-list pending
-exactly this document (see §5, cross-check with batch3).
+exactly this document (see §5).
 
 ### 1.4 No-propagation fallback and coverage labeling
 
@@ -129,10 +122,10 @@ must be able to tell the two apart.
 A collector **MUST** label every outcome-context-tagged record with the coverage it actually
 achieved. `context-correlated` **MUST NOT** be presented, displayed, or counted as equivalent to
 `key-correlated` by any downstream tool — the whole reason this document introduces the label is
-that silently treating a heuristic join as a real one is exactly the failure mode Part F asks this
+that silently treating a heuristic join as a real one is exactly the failure mode this
 document to close off.
 
-## 2. Observation vs. effect classification — Part F item (2)
+## 2. Observation vs. effect classification
 
 ### 2.1 The rule, adopted by reference
 
@@ -207,7 +200,7 @@ collection (fuller `semconv` capture, priority processing under backlog) but **M
 to decide whether an effect-classified span is collected at all. Materiality prioritizes effort;
 it never gates coverage.
 
-## 3. Lifecycle records — Part F item (3)
+## 3. Lifecycle records
 
 Fleet collection needs to know not just what an agent *did*, but when an agent instance or a job
 *existed* — because the absence of that knowledge, left unrecorded, becomes indistinguishable from
@@ -280,7 +273,7 @@ witnessed reference under `corroborates_source_time`, the reconstructed timing i
 new provenance-mode field; it states that lifecycle and gap records use the existing one when
 produced late, the same way any other Capsule does.
 
-## 4. Emitter identity — Part F item (4)
+## 4. Emitter identity
 
 ### 4.1 What identifies an emitter
 
@@ -341,23 +334,22 @@ second-hand rather than self-attested. A collector-attested record MUST NOT clai
 observation actually support — the same never-grades-up discipline the assurance ladder already
 applies everywhere else (`draft-mih-scitt-agent-action-capsule-05.md` §"Assurance").
 
-## 5. Cross-check against the batch-3 OTel processor
+## 5. Cross-check against the capsule-emit OTel processor
 
-`[batch3-otel-processor-v0-digests-only]` (repo `capsule-emit`, held on branch
-`batch3-otel-processor-v0-digests-only`, commits `188da2c`/`15ee675`/`26eff8a`) built the
+A digests-only OTel processor prototype in `capsule-emit` built the
 mechanism this document specifies *before* this document existed, and correctly refused to invent
 key names it had not been given — it shipped `outcome_context_baggage_keys=frozenset()` (empty)
-and filed a `Needs decision` in `action-state-ops/neutral/outbox.md` asking where the real key
+and left open where the real key
 names would come from.
 
 **This document resolves that block.** The four keys in §1.1
 (`org.agentactioncapsule.job_id`/`contract_ref`/`principal`/`materiality_hint`) are the answer;
 turning the mechanism on is the one-line `outcome_context_baggage_keys={...}` configuration change
-that item's own docstring already anticipated. No code change to `capsule_emit.otel.block` or
+that the prototype's docstring already anticipated. No code change to `capsule_emit.otel.block` or
 `.processor` is required for the four keys themselves.
 
-**Two items of drift found, both flagged here rather than silently fixed** (this item is
-specs-only; fixing either is follow-up work for whoever next touches that branch):
+**Two items of drift found, both flagged here rather than silently fixed** (this document is
+specification only; fixing either is follow-up work on the prototype):
 
 1. **`ext.otel.outcome_context` needs the `coverage` field (§1.4).** The held branch's
    `build_outcome_context_block` tags whatever Baggage entries the allow-list matches, but has no
@@ -373,13 +365,13 @@ specs-only; fixing either is follow-up work for whoever next touches that branch
    passive observation and should carry `provenance: "collector"`. This is a pre-existing gap in
    `capsule-emit` generally (grepping the whole `emit_capsule` call path finds no `provenance=`
    parameter anywhere, not only in the OTel processor), so fixing it fleet-collection-wide is
-   larger than this one processor and is noted here for the neutral lane, not fixed in this item.
+   larger than this one processor and is noted here, not fixed by this document.
 
 **A third observation, not a defect:** the processor's Signal 1 implementation
 (`capsule_emit/otel/signal.py`, `classify_span_signal_1`) evaluates only `http.request.method` and
 the db/messaging/rpc commit-step attributes — it never reads an MCP `readOnlyHint`/`destructiveHint`
 value, because no such span attribute exists to read (§2.2.1). This is the correct behavior for an
-OTel-span-only collection point given today's OTel GenAI semantic conventions, not a gap this item
+OTel-span-only collection point given today's OTel GenAI semantic conventions, not a gap this document
 introduces or that a follow-up needs to close — it is called out here only so a future reviewer
 does not mistake tier-3-only classification in this processor for an oversight against §2.2's
 tier-1/2 MCP priority. §2.3's never-sample posture, by contrast, is already fully satisfied: this
@@ -404,19 +396,3 @@ collector's heartbeat monitor detects the gap and emits a `terminated_without_cl
 `basis: heartbeat_timeout`, chained to that instance's open record, `provenance: collector`. No
 record in this example claims more than what was actually observed, and no gap is silent.
 
----
-
-## Reviewers (for Steven)
-
-Per Area 17's done-when ("conventions draft shared with Amplifier and one OTel-literate
-reviewer"), this document is not shared outside until Steven reviews it. Candidates found in the
-workspace (no identity invented; both are for Steven to confirm or replace):
-
-- **Amplifier contact:** no named individual is recorded anywhere this search reached
-  (`action-state-strategy/docs/strategy/product-strategy/amplifier-*`) — the partner name is
-  established, the contact person is not. Steven to name one.
-- **OTel-literate reviewer:** G. Palanisamy, co-author of `draft-palanisamy-scitt-aac-otel-00`,
-  the companion draft this document builds directly on and cites throughout. The most immediately
-  relevant OTel-literate reviewer already in this document's own author line, pending Steven's
-  confirmation that a co-author is an appropriate first reviewer versus someone independent of
-  that draft.
