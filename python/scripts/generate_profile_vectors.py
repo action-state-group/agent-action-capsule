@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate the Buzz profile vectors in ../../vectors/profiles/.
+"""Generate the Nostr-host profile vectors in ../../vectors/profiles/.
 
 Illustrative EvidenceRecord fixtures for the ``nostr-pubkey`` host-principal profile and the
-three Buzz Evidence Contract profiles (``buzz.agent-job/v1``, ``buzz.moderation/v1``,
-``buzz.release/v1``). Every record carries the one uniform subject shape
+three Evidence Contract profiles for Nostr-based agent hosts, released in 0.6.0 under the ids
+``buzz.agent-job/v1``, ``buzz.moderation/v1`` and ``buzz.release/v1``. Every record carries the one uniform subject shape
 ``subject: {event_id, semantic_digest}``; any further digested fact is a NAMED body digest in
 ``payload_commitments`` (``role`` names the fact), never a second subject field.
 

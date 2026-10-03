@@ -33,9 +33,23 @@ no term, path, line or count. Set it only on trusted runs (same-repo events);
 leaving it unset on runs reachable from a fork is what stops the reserved list
 leaking through the build log.
 
+Third-party adoption claims (public rule, no secret involved): open-source
+projects used as reference examples may be NAMED here, but no text may claim
+or imply that such a project uses, adopts, endorses or integrates this work.
+The project names and claim shapes are public (naming the project is not the
+problem; the claim is), so they live in this file as ``REFERENCE_PROJECTS`` and
+the patterns built from it. A sentence that negates the claim (the disclaimer
+"not adopted, endorsed, or used by the X project") passes: a hit is exempt
+when a negation word precedes it in the same sentence. Matching runs over the
+whole file, so a claim wrapped across a line break is still caught. This
+script is excluded from that check by path, because its self-test carries the
+claim shapes it bans.
+
 Usage: python .github/neutrality_scan.py [ROOT=.]
        python .github/neutrality_scan.py --self-test
-Exit 0 = clean; 1 = reserved vocabulary found (file:line only on a trusted run); 2 = misconfig.
+       python .github/neutrality_scan.py --claims-only [ROOT=.]   (no secret needed)
+Exit 0 = clean; 1 = reserved vocabulary or an adoption claim found (file:line only on a
+trusted run); 2 = misconfig.
 """
 from __future__ import annotations
 
@@ -54,6 +68,106 @@ SCAN_SUFFIXES = (
     ".html", ".py", ".go", ".rs", ".md", ".rst", ".txt", ".xml", ".toml",
     ".cfg", ".yml", ".yaml", ".json",
 )
+
+
+#: Open-source projects this repo may name as reference examples but must never
+#: present as users, adopters or endorsers of its work.
+REFERENCE_PROJECTS: tuple[str, ...] = ("Buzz",)
+
+#: Files the adoption-claim check reads. Wider than SCAN_SUFFIXES (it adds the
+#: TS/JS sources) because this rule is public and adding a suffix here cannot
+#: change what the secret-driven check reports.
+CLAIM_SUFFIXES = SCAN_SUFFIXES + (".ts", ".js", ".mjs")
+
+#: Repo-relative paths excluded from the adoption-claim check.
+CLAIM_SELF_PATHS = frozenset({".github/neutrality_scan.py"})
+
+_CLAIM_VERBS = (
+    r"(?:uses|using|adopts|adopted|adopting|endorses|endorsed|endorsing"
+    r"|integrates|integrated|integrating|implements|implemented|ships|shipped"
+    r"|deploys|deployed|relies\s+on|depends\s+on|runs\s+on|is\s+built\s+on)"
+)
+_PASSIVE_VERBS = (
+    r"(?:used|adopted|endorsed|integrated|implemented|shipped|deployed|relied\s+on)"
+)
+_ATTRIBUTED_NOUNS = (
+    r"(?:profiles?|contracts?|vectors?|records?|capsules?|adoption|integration"
+    r"|deployment|implementation)"
+)
+
+
+def _claim_pattern(projects: tuple[str, ...]) -> re.Pattern[str]:
+    """Adoption-claim shapes for the named projects.
+
+    1. active:     "Buzz uses ...", "the Buzz project has adopted ...", "Buzz integrates ..."
+    2. passive:    "used by Buzz", "adopted by the Buzz project", "deployed in Buzz"
+    3. possessive: "Buzz's ... profile", "Buzz's integration" (up to 3 words between)
+    4. attributive:"Buzz profile(s)", "Buzz Evidence Contract profile(s)", "Buzz-native profile"
+    "Buzz used as the reference example" is NOT a claim and does not match: the
+    active list carries "uses", never a bare "used".
+    """
+    name = "(?:" + "|".join(re.escape(p) for p in projects) + ")"
+    proj = rf"(?:the\s+)?\b{name}\b(?:\s+(?:project|team|maintainers|community))?"
+    aux = r"(?:(?:has|have|had|is|are|was|were|now|already|officially)\s+)*"
+    shapes = [
+        rf"{proj}\s+{aux}{_CLAIM_VERBS}\b",
+        rf"\b{_PASSIVE_VERBS}\s+(?:by|in|within|inside)\s+{proj}",
+        rf"\b{name}['’]s\s+(?:[\w-]+\s+){{0,3}}?{_ATTRIBUTED_NOUNS}\b",
+        rf"\b{name}(?:-native)?\s+(?:evidence\s+contract\s+)?profiles?\b",
+    ]
+    return re.compile("|".join(f"(?:{s})" for s in shapes), re.IGNORECASE)
+
+
+CLAIM_PATTERN = _claim_pattern(REFERENCE_PROJECTS)
+
+_NEGATION = re.compile(r"\b(?:not|never|no|nor|neither|none|nothing|nobody|without)\b|n['’]t\b", re.IGNORECASE)
+_SENTENCE_END = re.compile(r"[.!?](?:\s|$)|\n\s*\n")
+
+
+def _claim_offenders(text: str, pattern: re.Pattern[str] = CLAIM_PATTERN) -> list[tuple[int, str]]:
+    """(line, matched text) for every adoption claim in *text* that is not negated.
+
+    A claim is negated (and passes) when a negation word appears earlier in the
+    same sentence, which is the shape of the disclaimer "not adopted, endorsed,
+    or used by the X project". A negation AFTER the claim does not exempt it.
+    """
+    out: list[tuple[int, str]] = []
+    for m in pattern.finditer(text):
+        window_start = max(0, m.start() - 200)
+        prefix = text[window_start:m.start()]
+        ends = list(_SENTENCE_END.finditer(prefix))
+        sentence = prefix[ends[-1].end():] if ends else prefix
+        if _NEGATION.search(sentence):
+            continue
+        line = text.count("\n", 0, m.start()) + 1
+        out.append((line, " ".join(m.group(0).split())))
+    return out
+
+
+def scan_claims(root: Path, reveal: bool | None = None) -> list[str]:
+    """Adoption-claim offenders across the tracked tree (see module docstring)."""
+    if reveal is None:
+        reveal = _reveal_matches()
+    tracked = _git_tracked_files(root)
+    candidates: list[Path] = tracked if tracked is not None else sorted(root.rglob("*"))
+    offenders: list[str] = []
+    for path in candidates:
+        path = Path(path)
+        if path.suffix.lower() not in CLAIM_SUFFIXES or ".git/" in str(path):
+            continue
+        rel = path.relative_to(root)
+        if rel.as_posix() in CLAIM_SELF_PATHS:
+            continue
+        text = _read_regular_file(root, path)
+        if text is None:
+            continue
+        text = _strip_generated_comments(text)
+        for line, claim in _claim_offenders(text):
+            if reveal:
+                offenders.append(f"{rel}:{line}: adoption claim about a reference project: {claim!r}")
+            else:
+                offenders.append(f"{rel}:{line}: adoption claim about a reference project (redacted)")
+    return offenders
 
 
 def _load_config() -> tuple[re.Pattern[str], tuple[str, ...]]:
@@ -525,13 +639,69 @@ def _run_self_tests() -> None:
             if missing:
                 errors.append(f"tracked-name test failed: files with these names were not scanned: {missing!r}")
 
+    # Reference-project adoption claims: every claim shape fails, a neutral
+    # mention and the disclaimer pass.
+    claims = (
+        "Buzz uses Agent Action Capsule for its job records.",
+        "The Buzz project has adopted these profiles.",
+        "Buzz endorses this format.",
+        "Buzz integrates capsule-emit at the relay.",
+        "These vectors are used by Buzz in production.",
+        "The format is used by the Buzz project.",
+        "See Buzz's moderation profile below.",
+        "Buzz’s integration ships next month.",
+        "First Buzz Evidence Contract profiles.",
+        "the buzz.agent-job profile is a Buzz profile",
+        "Buzz\nuses this record shape.",
+        "This is not new. Buzz adopts it.",
+    )
+    for c in claims:
+        if not _claim_offenders(c):
+            errors.append(f"adoption-claim test failed: claim not caught: {c!r}")
+    neutral = (
+        "The open-source Buzz project is used as the reference example of such a host.",
+        "The profiles are not adopted, endorsed, or used by the Buzz project, and nothing "
+        "here describes Buzz's own practices.",
+        "Buzz used as the open-source reference example.",
+        "Profiles written for Nostr-based agent hosts, such as Buzz.",
+        "Nothing here says Buzz uses this work.",
+        "A buzzword is not a claim, and a buzzer adopts nothing.",
+    )
+    for n in neutral:
+        found = _claim_offenders(n)
+        if found:
+            errors.append(f"adoption-claim test failed: neutral text flagged: {n!r} -> {found!r}")
+    # The wrapped disclaimer, as it reads in a hard-wrapped Markdown file, passes;
+    # a claim placed after it in a new sentence is still caught, on its own line.
+    disclaimer = (
+        "**About the name Buzz in this file.** These profiles are written for\n"
+        "agent hosts that run over the Nostr transport. The open-source Buzz project is used as the\n"
+        "reference example of such a host. The\n"
+        "profiles are not adopted, endorsed, or used by the Buzz project, and nothing here describes Buzz's\n"
+        "own practices.\n"
+    )
+    if _claim_offenders(disclaimer):
+        errors.append(f"adoption-claim test failed: disclaimer flagged: {_claim_offenders(disclaimer)!r}")
+    tail = _claim_offenders(disclaimer + "Buzz uses them anyway.\n")
+    if [ln for ln, _ in tail] != [6]:
+        errors.append(f"adoption-claim test failed: claim after disclaimer not caught on line 6: {tail!r}")
+    with tempfile.TemporaryDirectory() as td:
+        troot = Path(td)
+        (troot / "a.ts").write_text("// used by Buzz\n", encoding="utf-8")
+        (troot / "b.md").write_text(disclaimer, encoding="utf-8")
+        found = scan_claims(troot, reveal=True)
+        if found != ["a.ts:1: adoption claim about a reference project: 'used by Buzz'"]:
+            errors.append(f"adoption-claim scan test failed: got {found!r}")
+        if scan_claims(troot, reveal=False) != ["a.ts:1: adoption claim about a reference project (redacted)"]:
+            errors.append("adoption-claim scan test failed: redacted form wrong")
+
     if errors:
         print("NEUTRALITY SELF-TEST FAILURES:")
         for e in errors:
             print(f"  {e}")
         raise SystemExit(1)
 
-    print("neutrality self-test: OK (span-based allow-phrase exemption; no links followed; every tracked name scanned; redacted by default)")
+    print("neutrality self-test: OK (span-based allow-phrase exemption; no links followed; every tracked name scanned; redacted by default; reference-project adoption claims caught, disclaimer passes)")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -541,9 +711,17 @@ def main(argv: list[str] | None = None) -> int:
         _run_self_tests()
         return 0
 
+    if argv and argv[0] == "--claims-only":
+        root = Path(argv[1]) if len(argv) > 1 else Path(".")
+        found = scan_claims(root, reveal=True)
+        for o in found:
+            print(f"  {o}")
+        print(f"adoption claims: {len(found)}")
+        return 1 if found else 0
+
     root = Path(argv[0]) if argv else Path(".")
     pattern, allow = _load_config()
-    offenders = scan(root, pattern, allow)
+    offenders = scan(root, pattern, allow) + scan_claims(root)
     if offenders:
         if not _reveal_matches():
             # Untrusted run: verdict only. The location count is the same oracle
