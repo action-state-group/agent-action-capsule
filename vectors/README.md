@@ -31,6 +31,11 @@ same-commit files in CI.
   `sd-jwt-issuers/v1` Bundle extensions, and the `minimum_necessary_report/1`
   result shape, over one worked example;
   `python/scripts/generate_min_necessary_vectors.py` regenerates them.
+- `vendored-registry/`: `check-vendored` cases: a vendored registry value-set
+  file (evidencebook's format) against the named section of a frozen
+  REGISTRY.md fixture at a pinned ref. A matching file passes; added, missing,
+  stale-ref, unpinned, unresolvable-ref, wrong-section and malformed files fail.
+  `python/scripts/generate_vendored_registry_vectors.py` regenerates them.
 
 Reference-derived corpora and checksum manifests can be regenerated with:
 

@@ -125,7 +125,7 @@ derived modes, the recomputed `capsule_id`). See
 |---|---|---|
 | `canonical.py` | §2, §5.1 | Current JSON-DIGEST uses plain RFC 8785 JCS. Format-4 `capsule_id` excludes itself **and** the local-only producer-envelope fields (`signature`, `key_id`) — those are attached to the ledger line after the id is computed, so they can never be part of its preimage — while committing the declaration and chain. This reference is format-4-only: any other `format_version` is rejected with `unsupported_format_version`, and the legacy absent-field construction has been removed. Vintage format-2 records are verified with the frozen `legacy-verify/v0.1.0` release, not this reference. |
 | `producer_envelope.py` | §3, §6 | Optional exact-profile COSE_Sign1 verification over the raw 32-byte Capsule ID. Returns the authenticated Ed25519 key; caller authorization remains separate. |
-| `registries.py` | §12 + Disclosure Envelope §4 | Parses every registry in `spec/REGISTRY.md` (19 tables in 18 sections; `### Provisional` subsections are not seeded) and exports them as importable sets (see [Registry value sets](#registry-value-sets)), plus the companion disclosure-eligibility table. |
+| `registries/` | §12 + Disclosure Envelope §4 | Parses every registry in `spec/REGISTRY.md` (19 tables in 18 sections; `### Provisional` subsections are not seeded) and exports them as importable sets (see [Registry value sets](#registry-value-sets)), plus the companion disclosure-eligibility table. `registries/vendored.py` is `check-vendored` (see [Checking a vendored registry copy in CI](#checking-a-vendored-registry-copy-in-ci)). |
 | `disclosure_envelope.py` | Disclosure Envelope DE-1–DE-3 | Runs Class 1 over the embedded Capsule independently, then validates eligibility, committed-digest presence, and disclosure JSON-DIGEST equality. |
 | `contracts.py` | §5.2–§5.4, §5.5.5 | Typed **producer** carriers whose constructors enforce the invariants a producer MUST NOT violate: the disposition honesty invariant and the closed `approver` enum (§5.4), the confirmed-effect binding and the status/digest table (§5.2), and `references[]` entry structure / AAC self-identity digest format (§5.5.5). A non-conforming Capsule cannot be built. Also the `effect_mode` derivation (§5.2) and the never-dispatch set (§5.4.2). |
 | `verify.py` | §6, §5.5.5 | The **Class 1 verifier**: the eight checks in fixed order plus `references[]` findings (§5.5.5, spliced into checks 1/6/8), a structured result that never throws, a single `ok` boolean, store-level chain checks (`verify_store`), and the SHOULD-level defensive disposition-honesty assert over arbitrary bytes. Unknown registry values are informational, never a rejection. |
@@ -223,6 +223,83 @@ defining draft and ordered values). It is generated from REGISTRY.md by
 `python scripts/generate_registries_json.py`; `--check` fails when it is stale,
 and the tests run that check. The Go module embeds the same file
 (`registries.JSON()`).
+
+**Name the field, never the bare string.** Acceptance criteria and tests that
+use a registry value name the field it sits in: "`chain.relation` equals
+`supersedes` on the approval capsule", not "the bundle contains `supersedes`".
+The same token can be registered on more than one axis (`supersedes` is in both
+§6 `chain.relation` and §18 link type), so a bare-string check passes on the
+wrong field.
+
+## Checking a vendored registry copy in CI
+
+A repo that keeps its own machine-readable copy of a registry (for example
+evidencebook's `schemas/vendor/epistemic-types.json`) can test that its copies
+agree with each other, but that cannot catch a re-vendor that never happened:
+all the copies agree and are wrong together. `check-vendored` compares the copy
+with the named section of REGISTRY.md at a pinned agent-action-capsule ref, and
+fails on any difference, naming the added and missing values:
+
+```sh
+python -m agent_action_capsule.registries check-vendored FILE... [--ref REF] [--registry PATH] [--json]
+```
+
+The file format is evidencebook's, unchanged: `values`, and a `source` object
+whose `interim_registry` names `(section N)` of REGISTRY.md; `source.document`,
+when present, must be the draft that owns that section. The comparison is a
+case-insensitive set comparison. Two optional fields: `source.registry_ref`
+records the ref the copy was vendored from (add it to carry the pin in the
+file; a different `--ref` then fails as `STALE_REF`), and `source.registry`
+names the registry when a section holds two tables. Every field is documented
+in `agent_action_capsule/registries/vendored.py`.
+
+Without `--registry`, the REGISTRY.md bundled in the installed package is used,
+and only when the pin is the installed version; any other pin fails as
+`REF_UNRESOLVABLE` instead of being checked against the wrong copy. To pin a
+commit, fetch REGISTRY.md at that commit and pass it with `--registry`.
+
+**The limit.** A pass proves the copy equals the registry at the pinned ref. It
+does not prove the pin is current. Bumping the pin is a deliberate change, made
+together with the re-vendor.
+
+GitHub Actions step for capsule-emit, capsule-engine, capsule-judge,
+capsule-cli and evidencebook (list the repo's own vendored files; the version is
+an example, and must be a release that includes `check-vendored`):
+
+```yaml
+      - name: vendored registry copies equal REGISTRY.md at the pinned AAC version
+        env:
+          AAC_VERSION: "0.7.0"  # bump deliberately, with the re-vendor in the same commit
+        run: |
+          pip install "agent-action-capsule==${AAC_VERSION}"
+          python -m agent_action_capsule.registries check-vendored \
+            --ref "v${AAC_VERSION}" schemas/vendor/epistemic-types.json
+```
+
+Pinned to a commit instead of a release:
+
+```yaml
+      - name: vendored registry copies equal REGISTRY.md at the pinned AAC commit
+        env:
+          AAC_REF: "<40-hex commit>"
+        run: |
+          curl -fsSL "https://raw.githubusercontent.com/action-state-group/agent-action-capsule/${AAC_REF}/spec/REGISTRY.md" \
+            -o "$RUNNER_TEMP/REGISTRY.md"
+          python -m agent_action_capsule.registries check-vendored \
+            --ref "$AAC_REF" --registry "$RUNNER_TEMP/REGISTRY.md" schemas/vendor/epistemic-types.json
+```
+
+A Go repo can run the Go command instead, with no Python toolchain; the module
+version is the pin:
+
+```yaml
+      - name: vendored registry copies equal REGISTRY.md at the pinned AAC version
+        run: |
+          go run github.com/action-state-group/agent-action-capsule/go/cmd/aac-check-vendored@v0.7.0 \
+            -ref v0.7.0 schemas/vendor/epistemic-types.json
+```
+
+The shared cases are in `vectors/vendored-registry/`.
 
 ## Scope boundary (deliberate)
 
