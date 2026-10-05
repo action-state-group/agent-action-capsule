@@ -20,7 +20,7 @@ class CitationDoc(TypedDict):
     type: str
     digest_alg: Literal["SHA-256"]
     digest: str
-    citation_purpose: str
+    judge_purpose: str
 
 
 class SamplingParamsDoc(TypedDict, total=False):

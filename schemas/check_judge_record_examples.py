@@ -30,6 +30,14 @@ mechanical half):
   3a. FROZEN: a superseded vector kept byte-for-byte (released vectors are
      never rewritten) is pinned by SHA-256 and MUST be rejected by the
      current schema -- see FROZEN_FIXTURES below.
+  3b. JUDGE_PURPOSE NAMESPACE: a judge-record citation states why it cites
+     its target in `judge_purpose` (spec/judge-record-family-v1.md section 0),
+     never in the Capsule's `citation_purpose` field (REGISTRY.md section 11).
+     For every positive that carries citations, the same record with each
+     `judge_purpose` key renamed to `citation_purpose` MUST be rejected; the
+     mutant (the schema with its own `judge_purpose` keys renamed back to
+     `citation_purpose`) MUST accept it, proving the rejection is the field
+     name and nothing else.
   4. EPISTEMIC TYPE PARITY: for every schema, its $defs root epistemic_type
      const equals SCHEMA_EPISTEMIC_TYPES[record_version] and is a member of
      schemas/vendor/epistemic-types.json's values -- with its own mutant
@@ -118,6 +126,15 @@ FIXTURES = {
         "calibration-summary", "pos-example-org-calibration-summary", "neg-clause-with-rate-field",
     ),
 }
+
+# Section 3b: the judge citation's own field (judge_purpose namespace) and the
+# Capsule field it must never be confused with (REGISTRY.md section 11). The
+# `"...":` forms match a fixture's object keys; the bare quoted forms also
+# match a schema's `required` entries.
+JUDGE_PURPOSE_KEY = '"judge_purpose":'
+CITATION_PURPOSE_KEY = '"citation_purpose":'
+JUDGE_PURPOSE_KEY_BARE = '"judge_purpose"'
+CITATION_PURPOSE_KEY_BARE = '"citation_purpose"'
 
 # Superseded vectors kept byte-for-byte: record_version -> [(vectors subdir,
 # file name, pinned SHA-256 of the file bytes, why the current schema rejects
@@ -293,6 +310,25 @@ def main() -> int:
             findings.append(f"POSITIVE-REJECTED {record_version}/{pos_name}: {pos_errors[0].message}")
         else:
             print(f"OK  {record_version:<28} {pos_name}.json")
+
+        # 3b: JUDGE_PURPOSE NAMESPACE -- citation_purpose on a judge citation is rejected.
+        pos_text = (vec_dir / f"{pos_name}.json").read_text(encoding="utf-8")
+        if JUDGE_PURPOSE_KEY in pos_text:
+            renamed: JudgeRecordDoc = json.loads(pos_text.replace(JUDGE_PURPOSE_KEY, CITATION_PURPOSE_KEY))
+            label = f"{record_version}/{pos_name} with citation_purpose for judge_purpose"
+            renamed_errors = list(validator.iter_errors(renamed))
+            if not renamed_errors:
+                findings.append(
+                    f"CITATION-PURPOSE-ACCEPTED {label}: a judge citation carrying the Capsule "
+                    "citation_purpose field validated clean"
+                )
+            else:
+                print(f"OK  NAMESPACE     {label} correctly REJECTED "
+                      f"({len(renamed_errors)} error(s))")
+                old_named_schema = json.loads(
+                    json.dumps(schema).replace(JUDGE_PURPOSE_KEY_BARE, CITATION_PURPOSE_KEY_BARE)
+                )
+                _mutant_check(label, schema, old_named_schema, renamed)
 
         neg_instance = _load_fixture(vec_dir / f"{neg_name}.json")
         neg_errors = list(validator.iter_errors(neg_instance))

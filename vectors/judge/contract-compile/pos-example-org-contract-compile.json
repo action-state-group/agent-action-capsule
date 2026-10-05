@@ -2,24 +2,24 @@
   "compiled_at": "2026-09-25T00:00:00Z",
   "compiled_skill": [
     {
-      "citation_purpose": "compiled_skill",
       "digest": "f20c56f80285969dd91d49b160c779d8be533133cebee0af40110b08af66e44d",
       "digest_alg": "SHA-256",
+      "judge_purpose": "compiled_skill",
       "type": "compiled-skill"
     }
   ],
   "contract": {
-    "citation_purpose": "compiles_contract",
     "digest": "5f5817639bf63331feed21f580312342277623d43c84adb1886f0e6d2a0d9e0d",
     "digest_alg": "SHA-256",
+    "judge_purpose": "compiles_contract",
     "type": "evidence-contract"
   },
   "contract_ref": "ec:example-org-claims-eval:2026-09-22@1",
   "epistemic_type": "producer_claim",
   "human_approval": {
-    "citation_purpose": "approves",
     "digest": "fa70292371b62c22a1b3026e6f9ce127b8bc68b65e854e97e7a03d4a7647e44f",
     "digest_alg": "SHA-256",
+    "judge_purpose": "approves",
     "type": "human-approval-record"
   },
   "record_id": "cc-example-org-1",

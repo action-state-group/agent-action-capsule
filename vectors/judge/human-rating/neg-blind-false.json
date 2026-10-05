@@ -1,9 +1,9 @@
 {
   "blind": false,
   "case": {
-    "citation_purpose": "rated_case",
     "digest": "1102a3393b59991bacf729d6b16b201b190bd254feaf44dd963545528ed5812b",
     "digest_alg": "SHA-256",
+    "judge_purpose": "rated_case",
     "type": "rated-case"
   },
   "epistemic_type": "human_report",

@@ -67,7 +67,7 @@ def citation(kind: str, purpose: str, value: object) -> CitationDoc:
         "type": kind,
         "digest_alg": ref["digest_alg"],
         "digest": ref["digest"],
-        "citation_purpose": purpose,
+        "judge_purpose": purpose,
     }
 
 

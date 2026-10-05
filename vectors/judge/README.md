@@ -13,6 +13,12 @@ directory's parent's parent to reproduce byte-identical output.
 `EXAMPLE-ORG` is the synthetic anchor/prospect placeholder throughout; no fixture here or in the generator
 names a company.
 
+Every citation in these fixtures states why it cites its target in `judge_purpose` (the namespace
+spec section 0 owns), never in the Capsule `citation_purpose` field (REGISTRY.md section 11).
+The checker's section 3b proves a judge citation carrying `citation_purpose` is rejected. Through
+v0.6.0 the same values rode a field named `citation_purpose`; those released bytes are not
+rewritten here.
+
 ## Fixtures, one positive + one negative per schema
 
 | Schema | Positive | Negative | Rule violated |
