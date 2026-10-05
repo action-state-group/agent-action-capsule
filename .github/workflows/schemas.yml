@@ -14,12 +14,14 @@ on:
     paths:
       - "schemas/**"
       - "vectors/evidence-result/**"
+      - "vectors/released/**"
       - "python/agent_action_capsule/canonical.py"
       - ".github/workflows/schemas.yml"
   pull_request:
     paths:
       - "schemas/**"
       - "vectors/evidence-result/**"
+      - "vectors/released/**"
       - "python/agent_action_capsule/canonical.py"
       - ".github/workflows/schemas.yml"
 
@@ -55,3 +57,6 @@ jobs:
 
       - name: Judge record family fixtures
         run: python3 schemas/check_judge_record_examples.py
+
+      - name: Released vectors are byte-frozen
+        run: python3 schemas/check_released_vectors.py

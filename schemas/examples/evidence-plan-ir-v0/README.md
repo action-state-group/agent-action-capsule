@@ -58,3 +58,8 @@ python3 schemas/check_evidence_plan_ir_examples.py
 Requires the `jsonschema` PyPI package (dev-time verification tool only; not a runtime dependency
 of the `agent_action_capsule` package — see that package's `pyproject.toml`, which stays
 stdlib-only by design).
+
+## Released bytes
+
+The bytes these fixtures had in `v0.6.0` (before the EXAMPLE-ORG rename) are kept, frozen, under
+`vectors/released/0.6.0/` at their original paths. See that directory's README.
