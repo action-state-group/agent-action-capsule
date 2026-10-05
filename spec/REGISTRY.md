@@ -172,6 +172,31 @@ form, and `sequence` is a deployed legacy alias slated for migration to
 invariant like any unregistered value — an informational finding, never a
 rejection — and producers SHOULD emit the registered `follows`.
 
+**Deployed legacy aliases — `resolves`, `escalates`, `adjudicates`,
+`assesses` (noted 2026-10-04).** Earlier releases of a deployed producer
+(capsule-emit, before its PRs #276 and #277) wrote these four tokens as
+`chain.relation` values before any of them was registered. None is registered
+as a separate value, and none is to be emitted: they are read-only legacy
+spellings found in records already written, and producers MUST emit the
+registered value instead. A verifier encountering one handles it under the
+never-reject invariant like any unregistered value — an informational finding,
+never a rejection — and MAY report it as the registered value it meant:
+
+- `resolves` → `supersedes`. An approval or denial closing a blocked capsule's
+  open state; terminal. That producer now emits `supersedes` (#276).
+- `escalates` → `supersedes`. An escalation closing or replacing the parent's
+  open state; terminal, as listed under `supersedes` above. Now emitted as
+  `supersedes` (#277).
+- `adjudicates` → `confirms`. A comparison verdict that observes the compared
+  record and leaves its open state as it was; non-terminal. Now emitted as
+  `confirms` (#277). This legacy `chain.relation` spelling is unrelated to the
+  `adjudicates` link type in the Evidence Layer link type registry (§18): the
+  two share a token across different axes, and neither defines the other. The
+  §18 registration does not make `adjudicates` a registered `chain.relation`
+  value.
+- `assesses` → `confirms`. A judge's verdict citing its subject; an
+  observation of the subject, non-terminal. Now emitted as `confirms` (#277).
+
 ## 7. Reserved payload members — selective disclosure
 
 Reserved by the companion Internet-Draft
