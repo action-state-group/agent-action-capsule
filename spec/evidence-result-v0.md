@@ -183,8 +183,9 @@ percentage above the fold.
 **Coverage (mandatory) — "requirements evaluated, excluded as not applicable, and unresolved."**
 `aggregate.coverage` states the evaluated population precisely: `evaluated_population` (requirements
 evaluated), `excluded_not_applicable` (excluded as `NOT_APPLICABLE` — outside the evaluated
-population by construction, not a gap), and `unknown_count` (the "unresolved" count — evaluated
-requirements that resolved `UNKNOWN`). An aggregate without a coverage statement is not a summary,
+population by construction, not a gap; `NOT_APPLICABLE` is an `EvidenceStatus` value, §2, not one of
+§1's four `Sufficiency` values), and `unknown_count` (the "unresolved" count — evaluated
+requirements whose `sufficiency` resolved `UNKNOWN`). An aggregate without a coverage statement is not a summary,
 it is a claim with the denominator hidden, and the companion schema refuses to validate one (§7).
 
 **Three buckets, never a single number.** Beneath coverage, `aggregate.buckets` groups every
@@ -383,7 +384,7 @@ The schema encoding of §2's disclosure policy. Every claim's `presentation` is 
 disclosure-carrier:
   kind: "disclosure"
   status: SATISFIED | INSUFFICIENT | NOT_FOUND | CONTRADICTED | NOT_APPLICABLE | UNKNOWN
-        # the eight-value EvidenceStatus (§1) MINUS WITHHELD and NOT_COMMITTED — §2's gate
+        # the eight-value EvidenceStatus (Dependency boundary, §2) MINUS WITHHELD and NOT_COMMITTED — §2's gate
   evidence: [digest-ref, ...]
 
 analysis-carrier:
@@ -408,8 +409,8 @@ characterize or narrate instead; §2's gate is one-directional and this is delib
 aggregate:
   coverage:
     evaluated_population: integer     # requirements actually evaluated
-    excluded_not_applicable: integer  # requirements excluded, NOT_APPLICABLE — §1's Sufficiency
-    unknown_count: integer            # evaluated requirements resolved UNKNOWN
+    excluded_not_applicable: integer  # requirements excluded as NOT_APPLICABLE — an EvidenceStatus value (§2), not §1's Sufficiency
+    unknown_count: integer            # evaluated requirements whose sufficiency resolved UNKNOWN (§1)
   buckets:
     met: [claim-id, ...]
     not_met: [claim-id, ...]
