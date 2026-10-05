@@ -564,7 +564,7 @@ close_unilateral: ClaimDoc = {
 # --- close-1 (UNILATERAL, peer named) -- the same unilateral Close, with ---
 #     the peer it was closed against named and nothing cited: example-org-sor has
 #     not (yet) acknowledged or rebutted it. `peer` is OPTIONAL on
-#     UNILATERAL (close-v1's peer_close is unconditional; the Evidence
+#     UNILATERAL (close-v1's peer-Close link is unconditional; the Evidence
 #     Layer defines UNILATERAL only as "no corresponding `acknowledges`
 #     link exists yet"). Naming the peer is not agreeing with it: the
 #     row must still carry no agreed affordance -- a renderer's rule,

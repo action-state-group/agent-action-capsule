@@ -27,6 +27,9 @@ mechanical half):
      fixture MUST validate clean, proving the check above can actually fail.
      The rule is then restored in memory (the committed schema file is never
      modified) and re-verified red.
+  3a. FROZEN: a superseded vector kept byte-for-byte (released vectors are
+     never rewritten) is pinned by SHA-256 and MUST be rejected by the
+     current schema -- see FROZEN_FIXTURES below.
   4. EPISTEMIC TYPE PARITY: for every schema, its $defs root epistemic_type
      const equals SCHEMA_EPISTEMIC_TYPES[record_version] and is a member of
      schemas/vendor/epistemic-types.json's values -- with its own mutant
@@ -59,6 +62,7 @@ NOT covered here (explicitly named, not silently skipped):
     for this task, not a fixture per allOf branch.
 """
 import copy
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -107,12 +111,30 @@ FIXTURES = {
         "adjudication-response", "pos-example-org-delivery-receipt", "neg-delivery-receipt-with-verdict",
     ),
     "evaluation-report/v1": ("evaluation-report", "pos-example-org-evaluation-report", "neg-case-without-method"),
-    "close/v1": ("close", "pos-example-org-close", "neg-reconcile-without-peer-close"),
+    "close/v1": ("close", "pos-example-org-close-linked", "neg-reconcile-without-peer-close"),
     "sample-manifest/v1": ("sample-manifest", "pos-example-org-sample-manifest", "neg-cases-empty"),
     "human-rating/v1": ("human-rating", "pos-example-org-human-rating", "neg-blind-false"),
     "calibration-summary/v1": (
         "calibration-summary", "pos-example-org-calibration-summary", "neg-clause-with-rate-field",
     ),
+}
+
+# Superseded vectors kept byte-for-byte: record_version -> [(vectors subdir,
+# file name, pinned SHA-256 of the file bytes, why the current schema rejects
+# it)]. pos-example-org-close.json carried the peer-Close link as
+# reconcile.peer_close with citation_purpose `reconciles_with`, an
+# unregistered Capsule citation_purpose; that link now lives on the Evidence
+# Layer link axis, in x-evidence-links (judge-record-family-v1 section 0a,
+# ruled 2026-10-04). Its successor is pos-example-org-close-linked.json.
+FROZEN_FIXTURES = {
+    "close/v1": [
+        (
+            "close",
+            "pos-example-org-close.json",
+            "7b7c5150f81f58844c1057679c566089ec2ab9b4b2427649bf47e07ac4ae3166",
+            "reconcile.peer_close / citation_purpose reconciles_with moved to x-evidence-links",
+        ),
+    ],
 }
 
 
@@ -187,9 +209,7 @@ def main() -> int:
     # _load_schema/_validator_for.
     def mutant_close(schema: dict) -> dict:
         mutant = copy.deepcopy(schema)
-        mutant["$defs"]["Reconcile"]["required"] = [
-            r for r in mutant["$defs"]["Reconcile"]["required"] if r != "peer_close"
-        ]
+        mutant["$defs"]["Close"]["allOf"] = []
         return mutant
 
     # `schema` is an arbitrary JSON Schema document -- justified above
@@ -221,7 +241,7 @@ def main() -> int:
             "AdjudicationResponse's delivery_receipt verdict/basis prohibition",
         ),
         "evaluation-report/v1": (mutant_evaluation_report, "Case.required's 'method' entry"),
-        "close/v1": (mutant_close, "Reconcile.required's 'peer_close' entry"),
+        "close/v1": (mutant_close, "Close's reconcile => exactly one x-evidence-links `cites` link rule"),
         "sample-manifest/v1": (mutant_sample_manifest, "SampleManifest.properties.cases.minItems"),
         "human-rating/v1": (mutant_human_rating, "HumanRating.properties.blind's const restriction"),
         "calibration-summary/v1": (
@@ -287,6 +307,28 @@ def main() -> int:
 
         mutant_fn, mutant_label = MUTANTS[record_version]
         _mutant_check(f"{record_version}/{neg_name}", schema, mutant_fn(schema), neg_instance)
+
+        # 3a: FROZEN -- bytes pinned, and the current schema rejects them.
+        for frozen_subdir, frozen_file, pinned_sha, why in FROZEN_FIXTURES.get(record_version, []):
+            frozen_path = VECTORS_DIR / frozen_subdir / frozen_file
+            if not frozen_path.exists():
+                findings.append(f"MISSING-FROZEN {record_version}/{frozen_file}: {frozen_path} not found")
+                continue
+            actual_sha = hashlib.sha256(frozen_path.read_bytes()).hexdigest()
+            if actual_sha != pinned_sha:
+                findings.append(
+                    f"FROZEN-BYTES-CHANGED {record_version}/{frozen_file}: sha256 {actual_sha}, "
+                    f"pinned {pinned_sha} -- a released vector is never rewritten"
+                )
+                continue
+            if not list(validator.iter_errors(_load_fixture(frozen_path))):
+                findings.append(
+                    f"FROZEN-STILL-VALID {record_version}/{frozen_file}: the current schema "
+                    f"accepts a superseded vector ({why})"
+                )
+                continue
+            print(f"OK  FROZEN        {record_version}/{frozen_file} -- bytes pinned, "
+                  f"rejected by the current schema ({why})")
 
     # --- 4: EPISTEMIC TYPE PARITY, three-way + its own mutant check --------
     if not VENDOR_PATH.exists():

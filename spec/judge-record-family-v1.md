@@ -51,7 +51,7 @@ citation:
 ```
 
 Each schema below fixes `citation_purpose` to a specific constant per field (`compiles_contract`,
-`grounds`, `method`, `approves`, `reconciles_with`, ...) rather than leaving it free at each call
+`grounds`, `method`, `approves`, ...) rather than leaving it free at each call
 site — a reader can tell what a citation is for from the field's own schema, not from trusting the
 string a producer happened to write.
 
@@ -61,6 +61,37 @@ epistemic type is a property of the *record shape*, not a per-instance choice. �
 family: every schema's `epistemic_type` const, a python-side table
 (`SCHEMA_EPISTEMIC_TYPES`), and `schemas/vendor/epistemic-types.json`'s vendored copy of the
 Evidence Layer's set must agree, with its own mutant check.
+
+## 0a. Evidence Layer links on a judge record — `x-evidence-links`
+
+A link from one evidence record to another, in the sense of the Evidence Layer's "Typed Links"
+(`draft-mih-agent-evidence-layer-00.md`; REGISTRY.md §18 "Evidence Layer link type"), is **not** a
+citation in the §0 sense and never takes a `citation_purpose`. The two axes answer different
+questions: a §0 citation says why this record read the target's bytes; an Evidence Layer link is a
+typed relationship between two committed records of an evidence store, from the closed six-token
+link vocabulary (`cites`, `adjudicates`, `supersedes`, `acknowledges`, `rebuts`, `closes`). A
+Capsule's `citation_purpose` (REGISTRY.md §11) and `chain.relation` (§6) are a third and fourth axis,
+and no link type is ever written into either.
+
+The Evidence Layer draft carries links in its record header (`links: [ {type, target} ]`) but does
+not define how they are carried on a record outside that header shape. Until a published spec
+registers a carriage, a judge record that carries Evidence Layer links does so in the x-prefixed
+extension member `x-evidence-links`:
+
+```
+x-evidence-links:            # OPTIONAL unless a record shape below requires it
+  - type: cites | adjudicates | supersedes | acknowledges | rebuts | closes
+    target: <64-hex>         # the target record's digest
+```
+
+Each entry has exactly the draft's `{type, target}` shape and its semantics: a link is part of the
+committed record and never mutates its target, and `type` is only ever a registered link type —
+an entry with any other `type` is malformed. The `x-` prefix marks the member as an extension, not
+a registered field; when the Evidence Layer (or another published spec) defines a carriage, this
+member is renamed to it by a new record version, and the `x-evidence-links` form stays readable for
+records already committed. *(Needs a line in `draft-mih-agent-evidence-layer-01`: how links are
+carried on a record that does not use the draft's header, so this section can cite it instead of
+defining it.)*
 
 ## 1. Contract Compile — `contract-compile/v1`
 
@@ -133,14 +164,30 @@ close:
   head: digest-ref
   reconcile?:
     tallies: { matched, a_only, b_only, conflicting, insufficient, unresolved: integer }
-    peer_close: citation           # citation_purpose: reconciles_with — REQUIRED if reconcile present
     status: AGREED | UNILATERAL | CONTESTED
+  x-evidence-links?: [ { type, target }, ... ]   # §0a — REQUIRED if reconcile present, with
+                                                 #   exactly one `cites` link: target = the
+                                                 #   peer's Close for the same period
 ```
 
 **One schema serves both the single-store period Close and capsule-emit-mesh's two-party Close** —
 no mesh-specific record kind exists for the latter; mesh's own repo has no formal schema for it
-today (searched: no `peer_reconciliation`/`seal_close` match). `reconcile.peer_close` cites the
-other side's own Close record, which is exactly the two-party mechanism. `reconcile.status` is a
+today (searched: no `peer_reconciliation`/`seal_close` match). A two-party Close carries one
+Evidence Layer `cites` link (§0a) whose target is the other side's own Close record for the same
+period, which is exactly the two-party mechanism. The link type is `cites` because its definition is
+the relationship: the reconcile tallies (`a_only`, `b_only`, `conflicting`, ...) are "intelligible
+only with reference to" the peer's Close, and a `cites` link "lifts nothing about the target beyond
+the target's own committed claim". It is deliberately not `acknowledges` — a counterparty
+`acknowledges` link is what makes the *peer's* Close AGREED, and this link is present under every
+status, UNILATERAL included — and not `closes`, which names the range or set of records a Close
+binds as reconciled; a Close does not bind the peer store's Close. No link this record carries changes its own status.
+
+The link was earlier carried as `reconcile.peer_close`, a §0 citation with `citation_purpose:
+reconciles_with`. That token is not registered (REGISTRY.md §11) and the relationship is an Evidence
+Layer link, not a Capsule citation, so it moved to `x-evidence-links` (ruled 2026-10-04). The
+released vector in the old shape is frozen byte-for-byte at
+`vectors/judge/close/pos-example-org-close.json` and is rejected by the current schema; its
+successor is `pos-example-org-close-linked.json`. `reconcile.status` is a
 **reporting convenience, not the authoritative source**: per the owning document, AGREED /
 UNILATERAL / CONTESTED is read fresh from `acknowledges`/`rebuts` links pointing *at* a Close, never
 trusted from a field the Close itself sets. A verifier that wants the authoritative status resolves

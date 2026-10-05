@@ -36,7 +36,7 @@ mechanical half):
      result, pos-example-org-close-contested-result -- the Evidence Layer's three
      Close states, read from links; UNILATERAL both with and without the
      peer named, since `peer` / `peer_close_ref` are OPTIONAL there, as
-     close-v1's unconditional `peer_close` has them) MUST validate, and
+     close-v1's unconditional peer-Close link has them) MUST validate, and
      four more negatives MUST fail, each with its own mutant check:
        - neg-close-agreed-without-peer.json: close-1 is AGREED but `peer`
          is removed (CloseClaim's AGREED-or-CONTESTED rule).
