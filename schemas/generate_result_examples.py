@@ -70,6 +70,7 @@ Regenerate with:
 Then check with:
     python3 schemas/check_evidence_result_examples.py
 """
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -84,6 +85,7 @@ from _result_types import (  # noqa: E402
     ClaimDoc,
     DigestRefDoc,
     EvidenceResultDoc,
+    ImplementationDoc,
     PeriodDoc,
     ProofRefDoc,
     RecordDoc,
@@ -93,6 +95,21 @@ OUT_DIR = REPO_ROOT / "vectors" / "evidence-result"
 
 CONTRACT_REF = "ec:example-org-claims-eval:2026-09-22@1"
 GENERATED_AT = "2026-09-22T00:00:00Z"
+
+
+# Code identity on every `recomputed` claim (spec section 1.1): a git commit
+# id, never a version string. The 40-hex value is the SHA-1 of a fixed
+# synthetic note, so it is computed, not hand-typed; it names no real
+# repository. Kept apart from any policy/configuration digest.
+SYNTHETIC_COMMIT = hashlib.sha1(b"EXAMPLE-ORG synthetic reference implementation commit, v0 placeholder").hexdigest()
+
+IMPLEMENTATION: ImplementationDoc = {
+    "name": "example-org-reference-checker",
+    "code_digest": {"alg": "git-commit", "value": SYNTHETIC_COMMIT},
+    # self-attested: comparable across windows, not checkable (spec 1.1).
+    "grade": "self-attested",
+    "captured_at": GENERATED_AT,
+}
 
 
 def digest_ref(value: object) -> DigestRefDoc:
@@ -122,6 +139,7 @@ claim_1: ClaimDoc = {
     "contract_ref": CONTRACT_REF,
     "requirement_ref": "req-claim-1",
     "tier": "recomputed",
+    "implementation": IMPLEMENTATION,
     "grade": "witnessed",
     "sufficiency": "SATISFIED",
     "verdict": "met",
@@ -170,6 +188,7 @@ claim_3: ClaimDoc = {
     "contract_ref": CONTRACT_REF,
     "requirement_ref": "req-claim-3",
     "tier": "recomputed",
+    "implementation": IMPLEMENTATION,
     "grade": "countersigned",
     "sufficiency": "GAP",
     "verdict": "not_evaluable",
@@ -270,6 +289,7 @@ reconcile_1: ClaimDoc = {
     "contract_ref": RECONCILE_CONTRACT_REF,
     "requirement_ref": "refund-lands",
     "tier": "recomputed",
+    "implementation": IMPLEMENTATION,
     "grade": "self-attested",
     "sufficiency": "SATISFIED",
     "verdict": "not_met",
@@ -309,6 +329,7 @@ reconcile_2: ClaimDoc = {
     "contract_ref": RECONCILE_CONTRACT_REF,
     "requirement_ref": "change-lands",
     "tier": "recomputed",
+    "implementation": IMPLEMENTATION,
     "grade": "self-attested",
     "sufficiency": "GAP",
     "verdict": "not_evaluable",
@@ -478,6 +499,7 @@ close_agreed: ClaimDoc = {
     "contract_ref": RECONCILE_CONTRACT_REF,
     "requirement_ref": "close",
     "tier": "recomputed",
+    "implementation": IMPLEMENTATION,
     "grade": "self-attested",
     "sufficiency": "SATISFIED",
     "verdict": "met",
@@ -517,6 +539,7 @@ close_contested: ClaimDoc = {
     "contract_ref": RECONCILE_CONTRACT_REF,
     "requirement_ref": "close",
     "tier": "recomputed",
+    "implementation": IMPLEMENTATION,
     "grade": "self-attested",
     "sufficiency": "SATISFIED",
     "verdict": "not_met",
@@ -544,6 +567,7 @@ close_unilateral: ClaimDoc = {
     "contract_ref": RECONCILE_CONTRACT_REF,
     "requirement_ref": "close",
     "tier": "recomputed",
+    "implementation": IMPLEMENTATION,
     "grade": "self-attested",
     "sufficiency": "SATISFIED",
     "verdict": "met",
@@ -725,6 +749,78 @@ neg_unrecognized_claim_type = _mutated(pos_example_org_claims_result)
 neg_unrecognized_claim_type["claims"][0]["type"] = "adjudication"
 
 
+# ---------------------------------------------------------------------------
+# Code identity on recomputed claims (spec sections 1.1 and 3.1)
+# ---------------------------------------------------------------------------
+# --- pos-example-org-recomputed-code-identity-result -- the claims
+#     positive with claim-3's code named by a git TREE id from a SHA-256
+#     repository (64 hex; claim-1 keeps the 40-hex commit), and one
+#     recomputed row the producer could not reproduce withheld and counted
+#     in coverage.producer_defects (PROPOSED) instead of relabelled
+#     `judged`: 1 withheld of 3 recomputed rows attempted (claim-1, claim-3,
+#     and the withheld one). The withheld row is in no bucket and not in
+#     evaluated_population.
+pos_example_org_recomputed_code_identity_result = _mutated(pos_example_org_claims_result)
+pos_example_org_recomputed_code_identity_result["claims"][2]["implementation"] = {
+    "name": "example-org-reference-checker",
+    "code_digest": {
+        "alg": "git-tree",
+        "value": json_digest({"note": "EXAMPLE-ORG synthetic reference implementation tree, SHA-256 repository, v0 placeholder"}),
+    },
+    "grade": "self-attested",
+    "captured_at": GENERATED_AT,
+}
+pos_example_org_recomputed_code_identity_result["aggregate"]["coverage"]["producer_defects"] = {
+    "count": 1,
+    "denominator": 3,
+    "as_of": GENERATED_AT,
+}
+pos_example_org_recomputed_code_identity_result["view"]["title"] = "EXAMPLE-ORG Claims Result -- code identity"
+
+# --- neg-recomputed-code-identity-version-string -- claim-1's code_digest
+#     value is a version string (an editable install that reports 0.0.1 for
+#     every build), alg unchanged
+neg_recomputed_code_identity_version_string = _mutated(pos_example_org_recomputed_code_identity_result)
+neg_recomputed_code_identity_version_string["claims"][0]["implementation"]["code_digest"]["value"] = "0.0.1"
+
+# --- neg-recomputed-code-identity-missing -- recomputed claim-1 with no
+#     implementation at all
+neg_recomputed_code_identity_missing = _mutated(pos_example_org_recomputed_code_identity_result)
+del neg_recomputed_code_identity_missing["claims"][0]["implementation"]
+
+# --- neg-recomputed-code-identity-unknown -- recomputed claim-1 whose
+#     producer admits it does not know its code: the honest form, and still
+#     not enough for tier `recomputed` (the row belongs in producer_defects)
+neg_recomputed_code_identity_unknown = _mutated(pos_example_org_recomputed_code_identity_result)
+neg_recomputed_code_identity_unknown["claims"][0]["implementation"]["code_digest"] = {
+    "alg": "unknown",
+    "value": "unknown",
+}
+
+# --- neg-recomputed-code-identity-grade-missing -- claim-1's
+#     implementation without its grade
+neg_recomputed_code_identity_grade_missing = _mutated(pos_example_org_recomputed_code_identity_result)
+del neg_recomputed_code_identity_grade_missing["claims"][0]["implementation"]["grade"]
+
+# --- neg-code-identity-unknown-countersigned -- the JUDGED claim-2 (where
+#     implementation is optional and `unknown` is legal) given an unknown
+#     code identity that claims `countersigned`. Only the unknown-is-self-
+#     attested-only rule rejects it; the recomputed rule does not apply.
+neg_code_identity_unknown_countersigned = _mutated(pos_example_org_recomputed_code_identity_result)
+neg_code_identity_unknown_countersigned["claims"][1]["implementation"] = {
+    "name": "example-org-judge-harness",
+    "code_digest": {"alg": "unknown", "value": "unknown"},
+    "grade": "countersigned",
+    "captured_at": GENERATED_AT,
+}
+
+# --- neg-producer-defects-count-over-denominator -- 4 withheld of 3
+#     attempted. Schema-valid (JSON Schema cannot compare siblings); the
+#     checker rejects it.
+neg_producer_defects_count_over_denominator = _mutated(pos_example_org_recomputed_code_identity_result)
+neg_producer_defects_count_over_denominator["aggregate"]["coverage"]["producer_defects"]["count"] = 4
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("pos-example-org-claims-result", pos_example_org_claims_result)
@@ -749,6 +845,13 @@ def main() -> int:
     write("neg-close-peer-ref-not-in-evidence", neg_close_peer_ref_not_in_evidence)
     write("neg-close-agreed-third-book", neg_close_agreed_third_book)
     write("neg-close-agreed-bookless-close", neg_close_agreed_bookless_close)
+    write("pos-example-org-recomputed-code-identity-result", pos_example_org_recomputed_code_identity_result)
+    write("neg-recomputed-code-identity-version-string", neg_recomputed_code_identity_version_string)
+    write("neg-recomputed-code-identity-missing", neg_recomputed_code_identity_missing)
+    write("neg-recomputed-code-identity-unknown", neg_recomputed_code_identity_unknown)
+    write("neg-recomputed-code-identity-grade-missing", neg_recomputed_code_identity_grade_missing)
+    write("neg-code-identity-unknown-countersigned", neg_code_identity_unknown_countersigned)
+    write("neg-producer-defects-count-over-denominator", neg_producer_defects_count_over_denominator)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)
     return 0

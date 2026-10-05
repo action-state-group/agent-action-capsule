@@ -30,6 +30,17 @@ mechanical half):
      then restored in memory (the committed schema file is never modified)
      and re-verified red.
 
+  4. CODE IDENTITY (spec section 6): attestation-record-recomputed-
+     implementation.json (a recomputed operator naming its code by a 64-hex
+     git tree id) validates against $defs/AttestationRecord, and
+     invalid-attestation-code-digest-is-policy-digest.json -- the same
+     record with the configuration digest copied into
+     implementation.code_digest.value -- validates against the schema (same
+     64-hex shape; JSON Schema cannot compare siblings) and is rejected
+     here: code identity and configuration digest are two fields, never
+     collapsed, and one value is never used for both. Mutant: the
+     comparison skipped, the fixture is accepted.
+
 Usage:
     python3 schemas/check_evidence_plan_ir_examples.py       # from repo root
     python3 check_evidence_plan_ir_examples.py                # from schemas/
@@ -69,7 +80,8 @@ SCHEMA_PATH = SCHEMAS_DIR / "evidence-plan-ir-v0.json"
 
 POSITIVE_PLANS = ["plan-outcome", "plan-obligation", "plan-process"]
 POSITIVE_RESULTS = ["plan-outcome-result", "plan-obligation-result", "plan-process-result"]
-POSITIVE_ATTESTATIONS = ["attestation-record-example"]
+POSITIVE_ATTESTATIONS = ["attestation-record-example", "attestation-record-recomputed-implementation"]
+NEGATIVE_CODE_IS_POLICY = "invalid-attestation-code-digest-is-policy-digest"
 NEGATIVE_PLAN = "invalid-local-only-under-remote-planner"
 NEGATIVE_LEGACY_FIELD = "invalid-legacy-contract-version-field"
 
@@ -91,6 +103,18 @@ def _validator_for(schema: dict, defn: str):
     sub_schema = dict(schema)
     sub_schema["$ref"] = f"#/$defs/{defn}"
     return jsonschema.Draft202012Validator(sub_schema)
+
+
+def code_is_policy_findings(name: str, record: IRDocument, skip_comparison: bool = False) -> list[str]:
+    implementation = record.get("implementation")
+    if implementation is None or skip_comparison:
+        return []
+    if implementation["code_digest"]["value"] == record["policy_digest"]["digest"]:
+        return [
+            f"{name}: implementation.code_digest.value equals policy_digest.digest -- a "
+            "configuration digest reused as the code digest"
+        ]
+    return []
 
 
 def main() -> int:
@@ -129,6 +153,27 @@ def main() -> int:
             findings.append(f"POSITIVE-ATTESTATION-REJECTED {name}: {errors[0].message}")
         else:
             print(f"OK  AttestationRecord {name}.json")
+
+    # --- 1c. CODE IDENTITY: never the configuration digest -----------------
+    for name in POSITIVE_ATTESTATIONS:
+        findings.extend(code_is_policy_findings(name, _load(name)))
+    reuse_instance = _load(NEGATIVE_CODE_IS_POLICY)
+    reuse_schema_errors = list(attestation_validator.iter_errors(reuse_instance))
+    if reuse_schema_errors:
+        findings.append(
+            f"CODE-IS-POLICY-SCHEMA-REJECTED {NEGATIVE_CODE_IS_POLICY}: the fixture exists to show "
+            f"the checker rule, but the schema already rejects it: {reuse_schema_errors[0].message}"
+        )
+    elif not code_is_policy_findings(NEGATIVE_CODE_IS_POLICY, reuse_instance):
+        findings.append(f"NEGATIVE-DID-NOT-FAIL {NEGATIVE_CODE_IS_POLICY}: the reused digest was accepted")
+    else:
+        print(f"OK  CHECKER       {NEGATIVE_CODE_IS_POLICY}.json schema-valid and correctly REJECTED "
+              "(code digest equals the configuration digest)")
+        if code_is_policy_findings(NEGATIVE_CODE_IS_POLICY, reuse_instance, skip_comparison=True):
+            findings.append(f"MUTANT-DID-NOT-FLIP {NEGATIVE_CODE_IS_POLICY}: skipping the comparison still rejected it")
+        else:
+            print(f"OK  MUTANT        {NEGATIVE_CODE_IS_POLICY} -- with the comparison skipped, the fixture "
+                  "is accepted (confirms the check is load-bearing)")
 
     # --- 2. NEGATIVE: the LOCAL_ONLY-under-remote-planner plan must fail ---
     negative_instance = _load(NEGATIVE_PLAN)
@@ -224,6 +269,7 @@ def main() -> int:
           f"{len(POSITIVE_RESULTS)} plan-result(s), "
           f"{len(POSITIVE_ATTESTATIONS)} attestation-record(s), "
           "2 negative plans (locality rule + retired contract_version field), "
+          "1 code-digest-reuse negative, "
           "and the mutant check all passed.")
     return 0
 

@@ -98,12 +98,31 @@ class RecordDoc(TypedDict, total=False):
     statement: dict
 
 
+class CodeDigestDoc(TypedDict):
+    # git-commit / git-tree with 40 or 64 lowercase hex, or the explicit
+    # {"alg": "unknown", "value": "unknown"}. Never a version string.
+    alg: Literal["git-commit", "git-tree", "unknown"]
+    value: str
+
+
+class ImplementationDoc(TypedDict):
+    # Code identity, kept apart from any policy/configuration digest.
+    name: str
+    code_digest: CodeDigestDoc
+    # Grade vocabulary: self-attested = comparable; witnessed/countersigned
+    # = checkable. An unknown code_digest is self-attested only.
+    grade: Literal["self-attested", "witnessed", "countersigned"]
+    captured_at: str
+
+
 class _ClaimTypedBodyDoc(TypedDict, total=False):
     # PROPOSED (2026-09-25 ruling): absent `type` means `requirement`; the
     # body key present must match `type` (schema's type<->body binding).
     type: Literal["requirement", "reconcile", "close"]
     reconcile: ReconcileClaimDoc
     close: CloseClaimDoc
+    # REQUIRED (known digest) when tier is `recomputed`; optional otherwise.
+    implementation: ImplementationDoc
 
 
 class ClaimDoc(_ClaimTypedBodyDoc):
@@ -119,7 +138,18 @@ class ClaimDoc(_ClaimTypedBodyDoc):
     presentation: PresentationDoc
 
 
-class CoverageDoc(TypedDict):
+class ProducerDefectsDoc(TypedDict):
+    # PROPOSED (spec section 3.1): withheld unreproducible recomputed rows.
+    count: int
+    denominator: int
+    as_of: str
+
+
+class _CoverageOptionalDoc(TypedDict, total=False):
+    producer_defects: ProducerDefectsDoc
+
+
+class CoverageDoc(_CoverageOptionalDoc):
     evaluated_population: int
     excluded_not_applicable: int
     unknown_count: int

@@ -26,6 +26,15 @@
       ],
       "grade": "witnessed",
       "id": "claim-1",
+      "implementation": {
+        "captured_at": "2026-09-22T00:00:00Z",
+        "code_digest": {
+          "alg": "git-commit",
+          "value": "27273b32d8c905e94aa139520dae1e0b5f804be0"
+        },
+        "grade": "self-attested",
+        "name": "example-org-reference-checker"
+      },
       "presentation": {
         "evidence": [
           {
@@ -78,6 +87,15 @@
       ],
       "grade": "self-attested",
       "id": "close-1",
+      "implementation": {
+        "captured_at": "2026-09-22T00:00:00Z",
+        "code_digest": {
+          "alg": "git-commit",
+          "value": "27273b32d8c905e94aa139520dae1e0b5f804be0"
+        },
+        "grade": "self-attested",
+        "name": "example-org-reference-checker"
+      },
       "presentation": {
         "evidence": [
           {

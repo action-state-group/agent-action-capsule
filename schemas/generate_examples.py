@@ -398,6 +398,32 @@ _legacy_header = plan_invalid_legacy_contract_version["header"]
 _legacy_header["contract_version"] = _legacy_header.pop("contract_ref")
 
 
+# ---------------------------------------------------------------------------
+# Code identity on an attestation record (spec section 6)
+# ---------------------------------------------------------------------------
+# outcome node-1's attestation (a recomputed operator) with `implementation`
+# added: a 64-hex git tree id from a SHA-256 repository, computed from a fixed
+# synthetic note, never a version string, and different from policy_digest.
+# The negative puts the configuration digest in the code-digest slot: same
+# shape (64 hex), so the schema accepts it; the checker rejects the reuse.
+attestation_recomputed_with_implementation: AttestationRecordDoc = json.loads(json.dumps(outcome_node1_attestation))
+attestation_recomputed_with_implementation["implementation"] = {
+    "name": "example-org-evidence-responder",
+    "code_digest": {
+        "alg": "git-tree",
+        "value": json_digest({"note": "EXAMPLE-ORG synthetic evidence responder tree, SHA-256 repository, v0 placeholder"}),
+    },
+    "grade": "self-attested",
+    "captured_at": "2026-09-22T00:00:00Z",
+}
+invalid_attestation_code_digest_is_policy_digest: AttestationRecordDoc = json.loads(
+    json.dumps(attestation_recomputed_with_implementation)
+)
+invalid_attestation_code_digest_is_policy_digest["implementation"]["code_digest"]["value"] = (
+    invalid_attestation_code_digest_is_policy_digest["policy_digest"]["digest"]
+)
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("plan-outcome", plan_outcome)
@@ -409,6 +435,8 @@ def main() -> int:
     write("attestation-record-example", obligation_node2_attestation)
     write("invalid-local-only-under-remote-planner", plan_invalid_local_only_under_remote_planner)
     write("invalid-legacy-contract-version-field", plan_invalid_legacy_contract_version)
+    write("attestation-record-recomputed-implementation", attestation_recomputed_with_implementation)
+    write("invalid-attestation-code-digest-is-policy-digest", invalid_attestation_code_digest_is_policy_digest)
     return 0
 
 

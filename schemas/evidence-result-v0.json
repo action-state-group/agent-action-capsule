@@ -24,8 +24,50 @@
       "pattern": "^[^@\\s]+@[^@\\s]+$"
     },
     "Tier": {
-      "description": "spec/evidence-result-v0.md section 1 -- mirrored from evidence-plan-ir-v0.md section 4.2, not redefined here.",
+      "description": "spec/evidence-result-v0.md section 1 -- mirrored from evidence-plan-ir-v0.md section 4.2, not redefined here. Tier says which rows could IN PRINCIPLE be re-run by a stranger; it does not say they can be today. Until a recomputed claim's `implementation` is present with a checkable grade (witnessed or countersigned), every row requires trusting the producer: a judged row because a model ran, a recomputed row because the code that ran is not checkably recorded.",
       "enum": ["recomputed", "judged"]
+    },
+    "CodeDigest": {
+      "description": "The code-identity value inside Implementation. Either a git object id -- `alg` `git-commit` (a commit) or `git-tree` (a tree), `value` 40 lowercase hex in a SHA-1 repository or 64 in a SHA-256 one, nothing else -- or the explicit admission of ignorance {alg: unknown, value: unknown}. A version string (0.0.1, v1.2.3, 1.0.0-dev) matches neither branch and fails validation: a version can stay the same across every build, so it names no code.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["alg", "value"],
+          "properties": {
+            "alg": { "enum": ["git-commit", "git-tree"] },
+            "value": { "type": "string", "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["alg", "value"],
+          "properties": {
+            "alg": { "const": "unknown" },
+            "value": { "const": "unknown" }
+          }
+        }
+      ]
+    },
+    "Implementation": {
+      "description": "Code identity: which code computed this claim, i.e. the implementation anyone re-running a `recomputed` claim would need. REQUIRED with a known digest (alg `git-commit` or `git-tree`) when the claim's tier is `recomputed` (Claim.allOf); OPTIONAL on a `judged` claim. `name` names the implementation. `code_digest` is a git commit or tree id, never a version string (CodeDigest). `captured_at` is when the digest was read. For an editable or from-source install the digest MUST be read from the source tree at check time, when this claim was computed, not at install time: such a tree can change with no reinstall and no version change. SEPARATE FROM ANY POLICY OR CONFIGURATION DIGEST: this field names code; a policy/configuration digest (evidence-plan-ir-v0.json AttestationRecord.policy_digest) names the configuration the code ran under. A source change with no configuration change is invisible to the configuration digest, and the reverse is invisible to this one. The two are never collapsed into one field, and one value is never used for both. LIMIT: a commit or tree digest on its own is a claim made by whoever built or ran the code, not something a stranger can verify from this Result or from any receipt. GRADE (REQUIRED): the grade of the code identity itself, from the same three-value vocabulary as the claim's `grade` (Grade; defined in draft-mih-agent-evidence-layer-00's Terminology, reused here by reference). `self-attested` (the producer's own word) gives COMPARABILITY: rows computed by the same code carry the same digest, which is enough to compare implementations across windows, and it is not attestable. `witnessed` or `countersigned` (an attested build identity, such as a verifiable build-provenance attestation over this digest) gives CHECKABILITY, and only that level can support any claim that a stranger can re-run the row. Reading a `self-attested` digest as proof that this code produced this claim is a misuse. UNKNOWN: {alg: unknown, value: unknown} admits the producer does not know its code identity, the same honest default as a build that was never given its commit. Its grade MUST be `self-attested`: an admission of ignorance is the producer's own statement, and there is no build identity for a witness or countersigner to check, so a higher level would claim checkability of nothing (keeping `grade` required on every form also keeps the field one shape). The unknown form is legal only where the field is optional and never supports tier `recomputed`: a verifier that meets it, or no implementation at all, on a `recomputed` claim rejects the claim. A producer that cannot name its code withholds the row and counts it in aggregate.coverage.producer_defects (spec section 3.1); it never relabels the row `judged`.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "code_digest", "grade", "captured_at"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "code_digest": { "$ref": "#/$defs/CodeDigest" },
+        "grade": { "$ref": "#/$defs/Grade" },
+        "captured_at": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "description": "An unknown code identity claims nothing above self-attested.",
+          "if": { "properties": { "code_digest": { "properties": { "alg": { "const": "unknown" } }, "required": ["alg"] } }, "required": ["code_digest"] },
+          "then": { "properties": { "grade": { "const": "self-attested" } } }
+        }
+      ]
     },
     "Grade": {
       "description": "The three-value assurance grade owned elsewhere in the spec; mirrored here, never redefined.",
@@ -222,6 +264,7 @@
           "items": { "$ref": "#/$defs/ProofRef" }
         },
         "presentation": { "$ref": "#/$defs/Presentation" },
+        "implementation": { "$ref": "#/$defs/Implementation" },
         "reconcile": { "$ref": "#/$defs/ReconcileClaim" },
         "close": { "$ref": "#/$defs/CloseClaim" }
       },
@@ -245,6 +288,18 @@
           "description": "A CONTESTED Close is never met. While a peer's `rebuts` link stands, the clause the claim reports on is at best `not_met` (sufficiency SATISFIED: the Close and the rebuttal are both in evidence) or `not_evaluable` (a sufficiency gap). `met` under CONTESTED fails validation; the checker's link walk applies the same rule to the RECOMPUTED state, so a Close relabelled out of CONTESTED to keep `met` fails there.",
           "if": { "properties": { "close": { "properties": { "close_state": { "const": "CONTESTED" } }, "required": ["close_state"] } }, "required": ["close"] },
           "then": { "properties": { "verdict": { "enum": ["not_met", "not_evaluable"] } } }
+        },
+        {
+          "description": "A recomputed claim names its code. tier `recomputed` requires `implementation` with a known code_digest (alg `git-commit` or `git-tree`); a missing implementation or the `unknown` form fails validation. Such a row is withheld and counted in aggregate.coverage.producer_defects, never relabelled `judged` (spec section 3.1).",
+          "if": { "properties": { "tier": { "const": "recomputed" } }, "required": ["tier"] },
+          "then": {
+            "required": ["implementation"],
+            "properties": {
+              "implementation": {
+                "properties": { "code_digest": { "properties": { "alg": { "enum": ["git-commit", "git-tree"] } } } }
+              }
+            }
+          }
         }
       ]
     },
@@ -256,7 +311,19 @@
       "properties": {
         "evaluated_population": { "type": "integer", "minimum": 0 },
         "excluded_not_applicable": { "type": "integer", "minimum": 0 },
-        "unknown_count": { "type": "integer", "minimum": 0 }
+        "unknown_count": { "type": "integer", "minimum": 0 },
+        "producer_defects": { "$ref": "#/$defs/ProducerDefects" }
+      }
+    },
+    "ProducerDefects": {
+      "description": "PROPOSED (spec section 3.1). Rows the producer attempted at tier `recomputed` and could not reproduce, including rows with no known code identity. Unreproducibility is the producer's failure, not the evidence's, so these rows leave the population: they are not claims in this Result, are not in evaluated_population, excluded_not_applicable or unknown_count, sit in no bucket, and enter no rate. They are counted here, with their own denominator and date. `count`: rows withheld. `denominator`: rows attempted at tier `recomputed` for this Result, the withheld ones included; count MUST NOT exceed it (checker-enforced, since JSON Schema cannot compare sibling values). `as_of`: when the count was taken. A tier is never downgraded to make a row publishable: such a row is never re-emitted as `judged` (Claim.allOf and evidence-plan-ir-v0.json's AttestationRecord fence make that either a schema violation or a judged row with no judge).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "denominator", "as_of"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "denominator": { "type": "integer", "minimum": 0 },
+        "as_of": { "type": "string", "format": "date-time" }
       }
     },
     "Buckets": {
