@@ -3,6 +3,20 @@
 ## Unreleased
 
 ### Added
+- `check-vendored`: checks that a vendored registry value-set file still equals the named
+  section of `spec/REGISTRY.md` at a pinned agent-action-capsule ref, and fails naming the added
+  and missing values. Python: `python -m agent_action_capsule.registries check-vendored FILE
+  [--ref REF] [--registry PATH] [--json]`; Go: `registries.CheckVendored` and
+  `go/cmd/aac-check-vendored`. It reads evidencebook's vendored-file format unchanged (its
+  `schemas/vendor/epistemic-types.json` passes with `--ref`); an optional `source.registry_ref`
+  carries the pin in the file. A pass proves the copy equals the registry at the pin, not that
+  the pin is current. The verifier is unchanged.
+- Vectors `vectors/vendored-registry/` (generator
+  `python/scripts/generate_vendored_registry_vectors.py`), run by Python and Go tests: a matching
+  file passes; added, missing, stale-ref, unpinned, unresolvable-ref, wrong-section and malformed
+  files fail.
+- README guidance: acceptance criteria and tests name the field a registry value sits in, never
+  the bare string (`supersedes` is registered in both §6 and §18).
 - Every registry in `spec/REGISTRY.md` is now parsed and importable in Python and Go, so
   downstream repos can import the value sets instead of vendoring copies. Python:
   `from agent_action_capsule.registries import EPISTEMIC_TYPES, LINK_TYPES, CHAIN_RELATIONS,
@@ -31,6 +45,8 @@
   unchanged; only the top-level `SHA256SUMS` and `manifest.json` gained entries.
 
 ### Changed
+- `agent_action_capsule.registries` is now a package (`registries/__init__.py`) so that
+  `python -m agent_action_capsule.registries` runs without a runpy warning. Imports are unchanged.
 - The registry loaders parsed only seven of the registries; they now parse all 19 tables in
   REGISTRY.md's 18 sections, still skipping `### Provisional` subsections. Sections are matched
   by title, not number. `load_registries()` / `registries.Load()` return the extra registries

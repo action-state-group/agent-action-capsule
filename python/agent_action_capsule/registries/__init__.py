@@ -130,7 +130,7 @@ def find_registry_md(start: Path | None = None) -> Path:
     if override:
         return Path(override)
     # Bundled copy included in the wheel (agent_action_capsule/data/REGISTRY.md).
-    bundled = Path(__file__).resolve().parent / "data" / "REGISTRY.md"
+    bundled = Path(__file__).resolve().parent.parent / "data" / "REGISTRY.md"
     if bundled.is_file():
         return bundled
     # Source-tree fallback: walk up looking for spec/REGISTRY.md.
@@ -307,7 +307,7 @@ def load_registries(path: Path | None = None) -> dict[str, frozenset[str]]:
 
 
 def _bundled_registry_md() -> Path:
-    bundled = Path(__file__).resolve().parent / "data" / "REGISTRY.md"
+    bundled = Path(__file__).resolve().parent.parent / "data" / "REGISTRY.md"
     if bundled.is_file():
         return bundled
     return find_registry_md()
@@ -398,7 +398,7 @@ def find_cpb_provisional(start: Path | None = None) -> Path | None:
     if override:
         p = Path(override)
         return p if p.is_file() else None
-    bundled = Path(__file__).resolve().parent / "data" / "cpb_provisional.json"
+    bundled = Path(__file__).resolve().parent.parent / "data" / "cpb_provisional.json"
     return bundled if bundled.is_file() else None
 
 

@@ -10,6 +10,7 @@
     "settlement": "settlement/manifest.json",
     "bundle_producer_key": "bundle/producer-key/vectors.json",
     "minimum_necessary": "minimum-necessary/manifest.json",
-    "bundle_composed": "bundle/composed/manifest.json"
+    "bundle_composed": "bundle/composed/manifest.json",
+    "vendored_registry": "vendored-registry/cases.json"
   }
 }

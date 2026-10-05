@@ -1,0 +1,64 @@
+{
+  "source": "vectors/vendored-registry/REGISTRY.fixture.md",
+  "generated_by": "python/scripts/generate_registries_json.py",
+  "registries": {
+    "chain.relation": {
+      "section": "6",
+      "title": "chain.relation",
+      "defined_in": "draft-mih-scitt-agent-action-capsule",
+      "values": [
+        "follows",
+        "confirms",
+        "supersedes",
+        "epoch_opens",
+        "duplicates"
+      ]
+    },
+    "disclosure_envelope.reserved_member": {
+      "section": "10",
+      "title": "Reserved wrapper members and disclosable fields \u2014 disclosure envelope",
+      "defined_in": "draft-mih-agent-disclosure-envelope",
+      "values": [
+        "capsule",
+        "disclosures"
+      ]
+    },
+    "disclosure_envelope.disclosable_field": {
+      "section": "10",
+      "title": "Reserved wrapper members and disclosable fields \u2014 disclosure envelope",
+      "defined_in": "draft-mih-agent-disclosure-envelope",
+      "values": [
+        "agent_input",
+        "agent_output"
+      ]
+    },
+    "epistemic_type": {
+      "section": "17",
+      "title": "Evidence Layer epistemic type",
+      "defined_in": "draft-mih-agent-evidence-layer",
+      "values": [
+        "observed_event",
+        "system_of_record_fact",
+        "producer_claim",
+        "human_report",
+        "semantic_judgment",
+        "derived_metric",
+        "adjudication",
+        "obligation_reference"
+      ]
+    },
+    "link_type": {
+      "section": "18",
+      "title": "Evidence Layer link type",
+      "defined_in": "draft-mih-agent-evidence-layer",
+      "values": [
+        "cites",
+        "adjudicates",
+        "supersedes",
+        "acknowledges",
+        "rebuts",
+        "closes"
+      ]
+    }
+  }
+}
