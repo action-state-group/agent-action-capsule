@@ -125,7 +125,7 @@ derived modes, the recomputed `capsule_id`). See
 |---|---|---|
 | `canonical.py` | §2, §5.1 | Current JSON-DIGEST uses plain RFC 8785 JCS. Format-4 `capsule_id` excludes itself **and** the local-only producer-envelope fields (`signature`, `key_id`) — those are attached to the ledger line after the id is computed, so they can never be part of its preimage — while committing the declaration and chain. This reference is format-4-only: any other `format_version` is rejected with `unsupported_format_version`, and the legacy absent-field construction has been removed. Vintage format-2 records are verified with the frozen `legacy-verify/v0.1.0` release, not this reference. |
 | `producer_envelope.py` | §3, §6 | Optional exact-profile COSE_Sign1 verification over the raw 32-byte Capsule ID. Returns the authenticated Ed25519 key; caller authorization remains separate. |
-| `registries.py` | §12 + Disclosure Envelope §4 | Loads the seven registries (incl. `citation_purpose`, draft-04) from `../spec/REGISTRY.md` and exports the companion disclosure-eligibility table. |
+| `registries.py` | §12 + Disclosure Envelope §4 | Parses every registry in `spec/REGISTRY.md` (19 tables in 18 sections; `### Provisional` subsections are not seeded) and exports them as importable sets (see [Registry value sets](#registry-value-sets)), plus the companion disclosure-eligibility table. |
 | `disclosure_envelope.py` | Disclosure Envelope DE-1–DE-3 | Runs Class 1 over the embedded Capsule independently, then validates eligibility, committed-digest presence, and disclosure JSON-DIGEST equality. |
 | `contracts.py` | §5.2–§5.4, §5.5.5 | Typed **producer** carriers whose constructors enforce the invariants a producer MUST NOT violate: the disposition honesty invariant and the closed `approver` enum (§5.4), the confirmed-effect binding and the status/digest table (§5.2), and `references[]` entry structure / AAC self-identity digest format (§5.5.5). A non-conforming Capsule cannot be built. Also the `effect_mode` derivation (§5.2) and the never-dispatch set (§5.4.2). |
 | `verify.py` | §6, §5.5.5 | The **Class 1 verifier**: the eight checks in fixed order plus `references[]` findings (§5.5.5, spliced into checks 1/6/8), a structured result that never throws, a single `ok` boolean, store-level chain checks (`verify_store`), and the SHOULD-level defensive disposition-honesty assert over arbitrary bytes. Unknown registry values are informational, never a rejection. |
@@ -192,6 +192,37 @@ constrains `digest` to 64-lowercase-hex; every other `type`/`digest_alg`
 combination is CPB's to define and stays open. `log_coordinates`, when
 present, is an upgrade (not a second identity) and its `inclusion_proof` is
 never independently verified by Class 1.
+
+## Registry value sets
+
+Every registry of record in [`spec/REGISTRY.md`](../spec/REGISTRY.md) is
+importable, so downstream code does not need to vendor its own copy:
+
+```python
+from agent_action_capsule.registries import (
+    EPISTEMIC_TYPES,    # REGISTRY.md §17, draft-mih-agent-evidence-layer-00 "Epistemic Type"
+    LINK_TYPES,         # REGISTRY.md §18, draft-mih-agent-evidence-layer-00 "Typed Links"
+    CHAIN_RELATIONS,    # REGISTRY.md §6, chain.relation
+    CITATION_PURPOSES,  # REGISTRY.md §11, citation_purpose
+    values, ordered_values, ALL_REGISTRY_NAMES,
+)
+
+values("epistemic_type")             # frozenset[str]
+ordered_values("irreversibility_class")  # tuple[str, ...], REGISTRY.md order
+```
+
+The values are parsed from the copy of REGISTRY.md bundled in the package
+(`agent_action_capsule/data/REGISTRY.md`, a verbatim mirror of the spec), never
+hard-coded. `ALL_REGISTRY_NAMES` lists the 19 names `values()` accepts.
+`load_registries(path)` parses a pinned snapshot instead; a registry the
+snapshot predates is absent from its result, not an empty set.
+
+For other languages the same data ships as
+`agent_action_capsule/data/registries.json` (each registry's section, title,
+defining draft and ordered values). It is generated from REGISTRY.md by
+`python scripts/generate_registries_json.py`; `--check` fails when it is stale,
+and the tests run that check. The Go module embeds the same file
+(`registries.JSON()`).
 
 ## Scope boundary (deliberate)
 

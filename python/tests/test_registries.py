@@ -39,7 +39,8 @@ EXPECTED_COUNTS = {
 
 def test_seven_registries_loaded():
     regs = load_registries()
-    assert set(regs) == set(REGISTRY_NAMES) == set(EXPECTED)
+    assert set(REGISTRY_NAMES) == set(EXPECTED)
+    assert set(REGISTRY_NAMES) <= set(regs)
 
 
 def test_seeded_values_exact_membership_and_count():

@@ -3,6 +3,16 @@
 ## Unreleased
 
 ### Added
+- Every registry in `spec/REGISTRY.md` is now parsed and importable in Python and Go, so
+  downstream repos can import the value sets instead of vendoring copies. Python:
+  `from agent_action_capsule.registries import EPISTEMIC_TYPES, LINK_TYPES, CHAIN_RELATIONS,
+  CITATION_PURPOSES, values, ordered_values, ALL_REGISTRY_NAMES`. Go:
+  `registries.EpistemicTypes()`, `LinkTypes()`, `ChainRelations()`, `CitationPurposes()`,
+  `Values(name)`, `AllRegistryNames`, `ParseTables`, `JSON()`. §17 epistemic type and §18 link
+  type are owned by `draft-mih-agent-evidence-layer-00`.
+- `registries.json`, generated from REGISTRY.md by `python/scripts/generate_registries_json.py`,
+  ships in the Python package data and is embedded in the Go module. Tests fail when it is stale,
+  and check that the Go parser reads REGISTRY.md to the same tables.
 - Evidence Bundle `-01` working revision (`spec/draft-mih-zhang-agent-disclosure-bundle-01`;
   the posted `-00` files are unchanged). It defines the `countersign/v1` entry (signing input
   `UTF8(JCS({over, signer, statement, type}))`, five per-check results, self-countersignature
@@ -21,6 +31,13 @@
   unchanged; only the top-level `SHA256SUMS` and `manifest.json` gained entries.
 
 ### Changed
+- The registry loaders parsed only seven of the registries; they now parse all 19 tables in
+  REGISTRY.md's 18 sections, still skipping `### Provisional` subsections. Sections are matched
+  by title, not number. `load_registries()` / `registries.Load()` return the extra registries
+  alongside the seven; `REGISTRY_NAMES` / `RegistryNames` still list the seven the verifier checks.
+- Fixed: loading a pinned REGISTRY.md snapshot that predates `citation_purpose` mapped it to an
+  empty set. A registry the snapshot predates is now absent from the result. Verifier behaviour is
+  unchanged: values of an absent registry are still informational, never a rejection.
 - A null `references[].retention.declarant` is now reported as `missing_required_field` (check 1),
   as a null `disposition.approver` is: `declarant` is REQUIRED (§5.5.5). #148 had reported it as
   `field_not_string`; #149 changed the code in every verifier (Python, Go, TypeScript, Rust).

@@ -1,5 +1,16 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""The seven profile registries (§12), sourced from ``spec/REGISTRY.md``.
+"""Every registry of record in ``spec/REGISTRY.md``, as importable value sets.
+
+Downstream code imports the sets instead of vendoring copies::
+
+    from agent_action_capsule.registries import EPISTEMIC_TYPES, LINK_TYPES
+    from agent_action_capsule.registries import CHAIN_RELATIONS, CITATION_PURPOSES
+    from agent_action_capsule.registries import values
+    values("epistemic_type")  # -> frozenset[str]
+
+``ALL_REGISTRY_NAMES`` lists every name ``values()`` accepts. The same data
+ships as ``agent_action_capsule/data/registries.json`` (generated from
+REGISTRY.md) for consumers in other languages.
 
 The seeded values are NOT hard-coded here: they are parsed at load time from the
 interim registry of record (``spec/REGISTRY.md``) so the code and the spec cannot
@@ -12,12 +23,24 @@ from __future__ import annotations
 import json
 import os
 import re
+from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 __all__ = [
+    "ALL_REGISTRY_NAMES",
+    "CHAIN_RELATIONS",
+    "CITATION_PURPOSES",
     "DISCLOSURE_ELIGIBLE_FIELDS",
+    "EPISTEMIC_TYPES",
+    "LINK_TYPES",
     "REGISTRY_NAMES",
+    "RegistryTable",
     "load_registries",
+    "ordered_values",
+    "parse_registry_tables",
+    "registries_document",
+    "values",
     "find_registry_md",
     "load_cpb_provisional_values",
     "find_cpb_provisional",
@@ -30,8 +53,10 @@ DISCLOSURE_ELIGIBLE_FIELDS = {
     "agent_output": "model_attestation.compute_attestation.agent_output_digest",
 }
 
-# The seven registry-governed vocabularies (§4). approver is deliberately NOT
-# here: it is a closed enum fixed by the spec (§5.4), not registry-governed.
+# The seven registry-governed vocabularies a Capsule's own fields carry (§4),
+# checked by the verifier. approver is deliberately NOT here: it is a closed enum
+# fixed by the spec (§5.4), not registry-governed. Every registry in
+# REGISTRY.md (not only these seven) is listed in ALL_REGISTRY_NAMES.
 REGISTRY_NAMES = (
     "verdict_class",
     "disposition.decision",
@@ -42,9 +67,57 @@ REGISTRY_NAMES = (
     "citation_purpose",
 )
 
-_HEADER_RE = re.compile(r"^##\s+\d+\.\s+`([^`]+)`\s*$")
+# Every table REGISTRY.md records, in document order, keyed by a stable name.
+# A section headed "## N. `name`" is keyed by that name. A section with a prose
+# title is keyed by the name below; a section holding more than one table maps
+# to one name per table, in order. Section NUMBERS are not used: they have
+# shifted between snapshots (e.g. Evidence Bundle kind was §12, now §13).
+_TITLE_KEYS: dict[str, tuple[str, ...]] = {
+    "Reserved payload members — selective disclosure": ("sel_disc.reserved_member",),
+    "Reserved wrapper members and disclosable fields — disclosure envelope": (
+        "disclosure_envelope.reserved_member",
+        "disclosure_envelope.disclosable_field",
+    ),
+    "Evidence Bundle kind": ("evidence_bundle.kind",),
+    "Evidence Bundle extension kind": ("evidence_bundle.extension_kind",),
+    "Evidence Bundle countersignature type": ("evidence_bundle.countersignature_type",),
+    "Evidence Request derivation": ("evidence_request.derivation",),
+    "Evidence Layer epistemic type": ("epistemic_type",),
+    "Evidence Layer link type": ("link_type",),
+}
+
+ALL_REGISTRY_NAMES = (
+    "verdict_class",                          # §1
+    "disposition.decision",                   # §2
+    "effect.type",                            # §3
+    "irreversibility_class",                  # §4 (ordered)
+    "effect_attestation",                     # §5
+    "chain.relation",                         # §6
+    "sel_disc.reserved_member",               # §7
+    "domain",                                 # §8
+    "provenance",                             # §9
+    "disclosure_envelope.reserved_member",    # §10, first table
+    "disclosure_envelope.disclosable_field",  # §10, second table
+    "citation_purpose",                       # §11
+    "provenance_mode",                        # §12 (provenance_mode.mode)
+    "evidence_bundle.kind",                   # §13
+    "evidence_bundle.extension_kind",         # §14
+    "evidence_bundle.countersignature_type",  # §15
+    "evidence_request.derivation",            # §16
+    "epistemic_type",                         # §17
+    "link_type",                              # §18
+)
+
+# Registries every snapshot of REGISTRY.md has carried since the first drop. A
+# pinned snapshot missing one of these is malformed; any other registry may be
+# absent from an older snapshot that predates it.
+_ALWAYS_PRESENT = REGISTRY_NAMES[:6]
+
+_HEADER_RE = re.compile(r"^##\s+\d+\.\s+(.+?)\s*$")
 _TICK_RE = re.compile(r"`([^`]+)`")
 _OL_ITEM_RE = re.compile(r"^\s*\d+\.\s+`([^`]+)`\s*$")
+_DRAFT_RE = re.compile(r"draft-[a-z0-9]+(?:-[a-z0-9]+)*[a-z0-9]")
+_BASE_DRAFT = "draft-mih-scitt-agent-action-capsule"
 
 
 def find_registry_md(start: Path | None = None) -> Path:
@@ -129,43 +202,178 @@ def _seeded_values_in_section(lines: list[str]) -> list[str]:
     return values
 
 
-def load_registries(path: Path | None = None) -> dict[str, frozenset[str]]:
-    """Parse ``spec/REGISTRY.md`` and return ``{registry_name: frozenset(values)}``
-    for the seven registries. Raises if a named registry is missing or empty —
-    except ``citation_purpose`` (a draft-04 addition), which resolves to an
-    empty frozenset against an older REGISTRY.md snapshot that predates its
-    section rather than raising: its existing vocabulary remains usable, and
-    new purposes simply surface as informationally unknown (mirrors the Go
-    loader's fallback)."""
-    md = (path or find_registry_md()).read_text(encoding="utf-8")
-    lines = md.splitlines()
+@dataclass(frozen=True)
+class RegistryTable:
+    """One parsed registry: its seeded values in document order, plus provenance."""
 
-    # Partition into sections keyed by the backticked name in each "## N. `name`".
-    sections: dict[str, list[str]] = {}
-    current: str | None = None
+    name: str
+    section: str
+    title: str
+    defined_in: str
+    values: tuple[str, ...]
+
+
+def _section_key_title(header_text: str) -> tuple[str, ...] | None:
+    m = _TICK_RE.fullmatch(header_text)
+    if m:
+        return (m.group(1),)
+    return _TITLE_KEYS.get(header_text)
+
+
+def _split_tables(lines: list[str]) -> list[list[str]]:
+    """Split a section into runs, one per Markdown table. Non-table lines before
+    the first table go with it, so inline-list and ordered-list loci still parse;
+    used only for sections that hold more than one table."""
+    runs: list[list[str]] = [[]]
+    in_table = False
+    for line in lines:
+        is_row = line.strip().startswith("|")
+        if is_row and not in_table and any(prev.strip().startswith("|") for prev in runs[-1]):
+            runs.append([])
+        in_table = is_row
+        runs[-1].append(line)
+    return runs
+
+
+def parse_registry_tables(md: str) -> dict[str, RegistryTable]:
+    """Parse REGISTRY.md text into ``{name: RegistryTable}`` for every registry
+    the text defines.
+
+    A ``### Provisional...`` subsection (held for ratification, not yet
+    registered) is skipped up to the next heading: its values are not seeded.
+    A registry whose heading is absent is not in the result. A registry whose
+    heading is present but which seeds no values (e.g. §14 before its first
+    registration: "No initial extension kind is defined") maps to an empty
+    tuple; the callers below decide where that is an error.
+    """
+    lines = md.splitlines()
+    sections: list[tuple[str, str, tuple[str, ...], list[str]]] = []
+    current: list[str] | None = None
+    skipping = False
     for line in lines:
         h = _HEADER_RE.match(line)
         if h:
-            current = h.group(1)
-            sections[current] = []
-        elif current is not None:
-            if line.startswith("## "):  # next non-registry section ends the block
-                current = None
+            keys = _section_key_title(h.group(1))
+            number = line.split(".", 1)[0].lstrip("#").strip()
+            if keys is not None:
+                current = []
+                sections.append((number, h.group(1).strip("`"), keys, current))
             else:
-                sections[current].append(line)
+                current = None
+            skipping = False
+            continue
+        if line.startswith("## "):
+            current = None
+            skipping = False
+            continue
+        if line.startswith("### "):
+            skipping = line[4:].lstrip().startswith("Provisional")
+            continue
+        if current is not None and not skipping:
+            current.append(line)
 
-    out: dict[str, frozenset[str]] = {}
-    for name in REGISTRY_NAMES:
-        if name not in sections:
-            if name == "citation_purpose":
-                out[name] = frozenset()
-                continue
-            raise ValueError(f"registry {name!r} not found in REGISTRY.md")
-        vals = _seeded_values_in_section(sections[name])
-        if not vals:
-            raise ValueError(f"registry {name!r} parsed with no seeded values")
-        out[name] = frozenset(vals)
+    out: dict[str, RegistryTable] = {}
+    for number, title, keys, body in sections:
+        m = _DRAFT_RE.search("\n".join(body))
+        defined_in = m.group(0) if m else _BASE_DRAFT
+        runs = [body] if len(keys) == 1 else _split_tables(body)
+        if len(runs) < len(keys):
+            raise ValueError(f"REGISTRY.md §{number} ({title}): expected {len(keys)} tables, found {len(runs)}")
+        for key, run in zip(keys, runs):
+            vals = _seeded_values_in_section(run)
+            out[key] = RegistryTable(key, number, title, defined_in, tuple(vals))
     return out
+
+
+def load_registries(path: Path | None = None) -> dict[str, frozenset[str]]:
+    """Parse ``spec/REGISTRY.md`` and return ``{registry_name: frozenset(values)}``
+    for every registry it defines (see ``ALL_REGISTRY_NAMES``).
+
+    The seven Capsule-field registries in ``REGISTRY_NAMES`` are what the
+    verifier checks. The first six are in every snapshot; their absence, or a
+    parse that seeds none of their values, raises. Any other registry, ``citation_purpose`` included, may be absent
+    from an older pinned snapshot that predates it: it is then left OUT of the
+    result, never mapped to an empty set, so a caller can tell "this snapshot
+    predates the registry" from "the registry is empty". The verifier treats an
+    absent registry's values as informationally unknown, as before.
+    """
+    tables = parse_registry_tables((path or find_registry_md()).read_text(encoding="utf-8"))
+    for name in _ALWAYS_PRESENT:
+        if name not in tables:
+            raise ValueError(f"registry {name!r} not found in REGISTRY.md")
+        if not tables[name].values:
+            raise ValueError(f"registry {name!r} parsed with no seeded values")
+    return {name: frozenset(t.values) for name, t in tables.items()}
+
+
+def _bundled_registry_md() -> Path:
+    bundled = Path(__file__).resolve().parent / "data" / "REGISTRY.md"
+    if bundled.is_file():
+        return bundled
+    return find_registry_md()
+
+
+@lru_cache(maxsize=1)
+def _authoritative_tables() -> dict[str, RegistryTable]:
+    tables = parse_registry_tables(_bundled_registry_md().read_text(encoding="utf-8"))
+    missing = [n for n in ALL_REGISTRY_NAMES if n not in tables]
+    extra = [n for n in tables if n not in ALL_REGISTRY_NAMES]
+    empty = [n for n, t in tables.items() if not t.values]
+    if missing or extra or empty:
+        raise ValueError(
+            "bundled REGISTRY.md registries differ from ALL_REGISTRY_NAMES: "
+            f"missing={missing} extra={extra} empty={empty}"
+        )
+    return tables
+
+
+def values(name: str) -> frozenset[str]:
+    """The seeded values of registry ``name`` in this package's bundled
+    REGISTRY.md (the authoritative copy, not ``AAC_REGISTRY_PATH``). Raises
+    ``KeyError`` for a name not in ``ALL_REGISTRY_NAMES``."""
+    tables = _authoritative_tables()
+    if name not in tables:
+        raise KeyError(f"unknown registry {name!r}; known: {', '.join(ALL_REGISTRY_NAMES)}")
+    return frozenset(tables[name].values)
+
+
+def ordered_values(name: str) -> tuple[str, ...]:
+    """As :func:`values`, in REGISTRY.md document order (meaningful for the
+    ordered ``irreversibility_class`` registry)."""
+    tables = _authoritative_tables()
+    if name not in tables:
+        raise KeyError(f"unknown registry {name!r}; known: {', '.join(ALL_REGISTRY_NAMES)}")
+    return tables[name].values
+
+
+def registries_document(md: str | None = None) -> dict:
+    """The machine-readable form shipped as ``data/registries.json``: every
+    registry with its section, title, defining draft and ordered values.
+    ``md`` defaults to the bundled REGISTRY.md."""
+    tables = parse_registry_tables(md) if md is not None else _authoritative_tables()
+    return {
+        "source": "spec/REGISTRY.md",
+        "generated_by": "python/scripts/generate_registries_json.py",
+        "registries": {
+            name: {
+                "section": t.section,
+                "title": t.title,
+                "defined_in": t.defined_in,
+                "values": list(t.values),
+            }
+            for name, t in tables.items()
+        },
+    }
+
+
+EPISTEMIC_TYPES: frozenset[str] = values("epistemic_type")
+"""REGISTRY.md §17, owned by draft-mih-agent-evidence-layer ("Epistemic Type")."""
+LINK_TYPES: frozenset[str] = values("link_type")
+"""REGISTRY.md §18, owned by draft-mih-agent-evidence-layer ("Typed Links")."""
+CHAIN_RELATIONS: frozenset[str] = values("chain.relation")
+"""REGISTRY.md §6 (`chain.relation`), base profile §5.5.4."""
+CITATION_PURPOSES: frozenset[str] = values("citation_purpose")
+"""REGISTRY.md §11 (`citation_purpose`), base profile Cross-record references."""
 
 
 # --------------------------------------------------------------------------- #

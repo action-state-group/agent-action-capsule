@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Command generate copies the authoritative registry into the Go package for embedding.
+// Command generate copies the authoritative registry, and the registries.json
+// generated from it, into the Go package for embedding.
 package main
 
 import (
@@ -8,9 +9,12 @@ import (
 )
 
 func main() {
-	const source = "../../spec/REGISTRY.md"
-	const destination = "data/REGISTRY.md"
+	copyFile("../../spec/REGISTRY.md", "data/REGISTRY.md")
+	// Generated from spec/REGISTRY.md by python/scripts/generate_registries_json.py.
+	copyFile("../../python/agent_action_capsule/data/registries.json", "data/registries.json")
+}
 
+func copyFile(source, destination string) {
 	contents, err := os.ReadFile(source)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "read %s: %v\n", source, err)
