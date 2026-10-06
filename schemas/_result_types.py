@@ -98,12 +98,21 @@ class RecordDoc(TypedDict, total=False):
     statement: dict
 
 
+class CountersignReportDoc(TypedDict):
+    # spec section 1.1: one countersign/v1 entry as the verifier reported it.
+    # `result` is the Evidence Bundle -01 per-entry result, verbatim.
+    result: Literal["invalid", "not independent", "unresolved signer", "resolved"]
+    signer_key_id: str
+
+
 class _ClaimTypedBodyDoc(TypedDict, total=False):
     # PROPOSED (2026-09-25 ruling): absent `type` means `requirement`; the
     # body key present must match `type` (schema's type<->body binding).
     type: Literal["requirement", "reconcile", "close"]
     reconcile: ReconcileClaimDoc
     close: CloseClaimDoc
+    # OPTIONAL on every claim type (spec section 1.1).
+    countersignatures: List[CountersignReportDoc]
 
 
 class ClaimDoc(_ClaimTypedBodyDoc):

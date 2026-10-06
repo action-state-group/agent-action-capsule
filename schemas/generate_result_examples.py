@@ -725,6 +725,93 @@ neg_unrecognized_claim_type = _mutated(pos_example_org_claims_result)
 neg_unrecognized_claim_type["claims"][0]["type"] = "adjudication"
 
 
+# ===========================================================================
+# Grade and countersignature results (spec section 1.1). Each fixture is one
+# judged claim, `cs-1`, so the countersignature rules are tested alone. A
+# countersign/v1 entry's result (Evidence Bundle -01) moves grade only when it
+# is `resolved`; `invalid`, `not independent`, and `unresolved signer` add
+# nothing. The two keys are digests of placeholder objects, used only because
+# a signer key_id has the same 64-hex shape.
+# ===========================================================================
+
+COUNTERSIGN_CONTRACT_REF = "ec:example-org-countersign:2026-10-05@1"
+PRODUCER_KEY_ID = json_digest({"note": "EXAMPLE-ORG producer Ed25519 public key, v0 placeholder"})
+OTHER_KEY_ID = json_digest({"note": "example countersigner Ed25519 public key, v0 placeholder"})
+
+cs_evidence_content = {"note": "EXAMPLE-ORG countersigned claim evidence artifact, v0 placeholder"}
+cs_inclusion_content = {"note": "EXAMPLE-ORG countersigned claim inclusion proof, v0 placeholder"}
+cs_receipt_content = {"note": "EXAMPLE-ORG countersigned claim Transparency Service Receipt, v0 placeholder"}
+
+
+def _countersign_result(grade: str, proofs: list, reports: list, title: str) -> EvidenceResultDoc:
+    claim: ClaimDoc = {
+        "id": "cs-1",
+        "contract_ref": COUNTERSIGN_CONTRACT_REF,
+        "requirement_ref": "req-cs-1",
+        "tier": "judged",
+        "grade": grade,
+        "sufficiency": "SATISFIED",
+        "verdict": "met",
+        "evidence": [digest_ref(cs_evidence_content)],
+        "proofs": proofs,
+        "presentation": {
+            "kind": "disclosure",
+            "status": "SATISFIED",
+            "evidence": [digest_ref(cs_evidence_content)],
+        },
+        "countersignatures": reports,
+    }
+    return {
+        "result_version": "evidence-result-v0",
+        "generated_at": "2026-10-05T00:00:00Z",
+        "claims": [claim],
+        "aggregate": {
+            "coverage": {"evaluated_population": 1, "excluded_not_applicable": 0, "unknown_count": 0},
+            "buckets": {"met": ["cs-1"], "not_met": [], "not_evaluable": []},
+        },
+        "view": {"spec_version": "presentation/v1", "producer_name": "EXAMPLE-ORG", "title": title},
+    }
+
+
+# --- pos: self-countersigned, no Receipt => self-attested ------------------
+pos_example_org_countersign_not_independent_result = _countersign_result(
+    "self-attested",
+    [proof_ref("inclusion_proof", cs_inclusion_content)],
+    [{"result": "not independent", "signer_key_id": PRODUCER_KEY_ID}],
+    "EXAMPLE-ORG Result -- self-countersigned, not independent",
+)
+
+# --- pos: unresolved signer, with a Receipt => witnessed --------------------
+pos_example_org_countersign_unresolved_signer_result = _countersign_result(
+    "witnessed",
+    [proof_ref("inclusion_proof", cs_inclusion_content), proof_ref("receipt", cs_receipt_content)],
+    [{"result": "unresolved signer", "signer_key_id": OTHER_KEY_ID}],
+    "EXAMPLE-ORG Result -- countersigned by an unresolved signer",
+)
+
+# --- pos: a self-countersignature and a resolved entry => countersigned -----
+#     Listed per entry, never combined: the self entry stays visible.
+pos_example_org_countersign_resolved_result = _countersign_result(
+    "countersigned",
+    [proof_ref("inclusion_proof", cs_inclusion_content), proof_ref("receipt", cs_receipt_content)],
+    [
+        {"result": "not independent", "signer_key_id": PRODUCER_KEY_ID},
+        {"result": "resolved", "signer_key_id": OTHER_KEY_ID},
+    ],
+    "EXAMPLE-ORG Result -- countersigned, resolved signer",
+)
+
+# --- negatives, one field each --------------------------------------------
+neg_countersigned_not_independent = _mutated(pos_example_org_countersign_not_independent_result)
+neg_countersigned_not_independent["claims"][0]["grade"] = "countersigned"
+
+neg_countersigned_unresolved_signer = _mutated(pos_example_org_countersign_unresolved_signer_result)
+neg_countersigned_unresolved_signer["claims"][0]["grade"] = "countersigned"
+
+neg_countersign_resolved_graded_down = _mutated(pos_example_org_countersign_resolved_result)
+neg_countersign_resolved_graded_down["claims"][0]["grade"] = "witnessed"
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("pos-example-org-claims-result", pos_example_org_claims_result)
@@ -749,6 +836,12 @@ def main() -> int:
     write("neg-close-peer-ref-not-in-evidence", neg_close_peer_ref_not_in_evidence)
     write("neg-close-agreed-third-book", neg_close_agreed_third_book)
     write("neg-close-agreed-bookless-close", neg_close_agreed_bookless_close)
+    write("pos-example-org-countersign-not-independent-result", pos_example_org_countersign_not_independent_result)
+    write("pos-example-org-countersign-unresolved-signer-result", pos_example_org_countersign_unresolved_signer_result)
+    write("pos-example-org-countersign-resolved-result", pos_example_org_countersign_resolved_result)
+    write("neg-countersigned-not-independent", neg_countersigned_not_independent)
+    write("neg-countersigned-unresolved-signer", neg_countersigned_unresolved_signer)
+    write("neg-countersign-resolved-graded-down", neg_countersign_resolved_graded_down)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)
     return 0

@@ -124,6 +124,17 @@ mechanical half):
          no book. Mutant `accept_bookless_close`: a walk that lets rules (1)
          and (2) run against a missing book (`book != None` is true for any
          book, so the named peer's link counts).
+  8. COUNTERSIGNATURE RESULTS NEVER GRADE UP (spec section 1.1): three
+     more positives (pos-example-org-countersign-not-independent-result at
+     self-attested, pos-example-org-countersign-unresolved-signer-result at
+     witnessed, pos-example-org-countersign-resolved-result at countersigned)
+     MUST validate, and three schema negatives MUST fail, each with a mutant
+     that strips only its Claim.allOf rule:
+       - neg-countersigned-not-independent.json and
+         neg-countersigned-unresolved-signer.json: grade raised to
+         `countersigned` with no `resolved` entry (COUNTERSIGN-UNCOUNTED).
+       - neg-countersign-resolved-graded-down.json: a `resolved` entry under
+         grade `witnessed` (COUNTERSIGN-RESOLVED).
 
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
@@ -378,6 +389,10 @@ POSITIVES = [
     "pos-example-org-close-unilateral-result",
     "pos-example-org-close-unilateral-named-peer-result",
     "pos-example-org-close-contested-result",
+    # spec section 1.1: countersignature results and grade
+    "pos-example-org-countersign-not-independent-result",
+    "pos-example-org-countersign-unresolved-signer-result",
+    "pos-example-org-countersign-resolved-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -393,6 +408,9 @@ NEGATIVES = [
     "neg-reconcile-tallies-missing-state",
     "neg-unrecognized-claim-type",
     "neg-close-contested-verdict-met",
+    "neg-countersigned-not-independent",
+    "neg-countersigned-unresolved-signer",
+    "neg-countersign-resolved-graded-down",
 ]
 
 
@@ -596,6 +614,34 @@ def main() -> int:
             "neg-close-contested-verdict-met",
             mutant,
             "Claim's CONTESTED-is-never-met if/then rule",
+        )
+
+    # --- spec section 1.1: countersignature results never grade up ---------
+    #     Each mutant strips only the one Claim.allOf rule (found by its
+    #     description tag); the sufficiency/verdict, type<->body, and
+    #     CONTESTED rules stay, so the stripped rule is the only one
+    #     rejecting the fixture.
+    def _strip_claim_rule(tag: str) -> dict:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["Claim"]["allOf"] = [
+            rule for rule in mutant["$defs"]["Claim"]["allOf"]
+            if not rule.get("description", "").startswith(tag)
+        ]
+        return mutant
+
+    for name in ("neg-countersigned-not-independent", "neg-countersigned-unresolved-signer"):
+        if negative_errors_by_name[name]:
+            _mutant_check(
+                name,
+                _strip_claim_rule("COUNTERSIGN-UNCOUNTED"),
+                "Claim's no-resolved-entry-is-never-countersigned rule",
+            )
+
+    if negative_errors_by_name["neg-countersign-resolved-graded-down"]:
+        _mutant_check(
+            "neg-countersign-resolved-graded-down",
+            _strip_claim_rule("COUNTERSIGN-RESOLVED"),
+            "Claim's resolved-entry-means-countersigned rule",
         )
 
     # --- 5. CLOSE STATE IS DERIVABLE: the link walk ----------------------------

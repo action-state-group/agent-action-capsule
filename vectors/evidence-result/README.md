@@ -141,6 +141,31 @@ The walk also applies the CONTESTED-is-never-met rule to the **recomputed** stat
 read `CONTESTED` with `verdict: met` fails), so relabelling the asserted state cannot rescue `met`; the
 schema half of that rule is `neg-close-contested-verdict-met` above.
 
+## Grade and countersignature results (spec section 1.1)
+
+`grade` keeps its three values. A countersign/v1 entry over the claim's bundle is reported in the
+OPTIONAL `countersignatures[]` with the Evidence Bundle -01 result, verbatim (`invalid`,
+`not independent`, `unresolved signer`, `resolved`), and the entry's `signer_key_id`. Only
+`resolved` moves `grade`, to `countersigned`; the other three add nothing. Each fixture is one
+judged claim, `cs-1`, so these rules are tested alone. The two signer keys are digests of
+placeholder objects (`PRODUCER_KEY_ID`, `OTHER_KEY_ID` in the generator), used for their 64-hex
+shape only.
+
+| File | `grade` | `proofs[].kind` | `countersignatures[]` |
+|---|---|---|---|
+| `pos-example-org-countersign-not-independent-result.json` | `self-attested` | `inclusion_proof` | `not independent` (producer key): a self-countersignature adds nothing |
+| `pos-example-org-countersign-unresolved-signer-result.json` | `witnessed` | `inclusion_proof`, `receipt` | `unresolved signer` (other key): not counted, so the grade is what the Receipt gives |
+| `pos-example-org-countersign-resolved-result.json` | `countersigned` | `inclusion_proof`, `receipt` | `not independent` (producer key), then `resolved` (other key): listed per entry, never combined |
+
+Negatives, each one field away from its positive, each with a mutant that strips only the
+`Claim.allOf` rule named:
+
+| File | Mutation | Rule violated |
+|---|---|---|
+| `neg-countersigned-not-independent.json` | `grade` `self-attested` → `countersigned` | `COUNTERSIGN-UNCOUNTED`: no `resolved` entry, so not `countersigned` |
+| `neg-countersigned-unresolved-signer.json` | `grade` `witnessed` → `countersigned` | same rule |
+| `neg-countersign-resolved-graded-down.json` | `grade` `countersigned` → `witnessed` | `COUNTERSIGN-RESOLVED`: a `resolved` entry means `countersigned` |
+
 ## Reproducing the validation run
 
 ```

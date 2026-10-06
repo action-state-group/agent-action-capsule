@@ -19,6 +19,12 @@
   is not independent; the same Bundle without the declaration, a different signer, and five
   malformed blocks are not. Consumed by Python and TypeScript tests. Existing vector files are
   unchanged; only the top-level `SHA256SUMS` and `manifest.json` gained entries.
+- Result v0 §1.1: how a countersignature moves a claim's `grade`. `grade` keeps its three
+  values; only an entry the Bundle -01 verifier reports as `resolved` yields `countersigned`,
+  and `invalid`, `not independent`, and `unresolved signer` add nothing. A new OPTIONAL
+  per-claim `countersignatures[]` (`{result, signer_key_id}`, result verbatim from Bundle -01)
+  keeps those entries visible. Three positives and three negatives under new names in
+  `vectors/evidence-result/`; existing vector files are unchanged.
 
 ### Changed
 - A null `references[].retention.declarant` is now reported as `missing_required_field` (check 1),
