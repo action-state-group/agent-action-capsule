@@ -31,7 +31,8 @@ gate (spec section 2):
 
 `aggregate.coverage` reports `evaluated_population: 3` (the three claims above),
 `excluded_not_applicable: 1` (one requirement excluded from the evaluated population entirely, not
-represented by a claim — spec section 1's `Sufficiency` `NOT_APPLICABLE` mapping), and
+represented by a claim — the `EvidenceStatus` value `NOT_APPLICABLE` (spec sections 2 and 6), which is
+not one of section 1's four `Sufficiency` values), and
 `unknown_count: 0`.
 
 ## Negative fixtures

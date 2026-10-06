@@ -252,9 +252,10 @@ by `decision.resolve_verdict` (§5) — is surfaced directly on the result envel
 `family` is `decision`. This lets a Result emitter read the verdict from the envelope directly,
 rather than having to dereference the decision node's `outputs` digest to recover it. The `verdict`
 vocabulary is the same closed three-value set §5 fixes for `decision.resolve_verdict`; this
-document does not extend it. `status` (the eight-value sufficiency status) and `verdict` (the
-three-value decision) are distinct axes: `status` says whether the bundle for a requirement was
-sufficient, `verdict` says how the requirement resolved.
+document does not extend it. `status` (the eight-value per-requirement bundle assertion status,
+not the four-value Sufficiency) and `verdict` (the three-value decision) are distinct axes:
+`status` says what the bundle assertion for a requirement found, `verdict` says how the requirement
+resolved.
 
 This document does not define how a `status` value is derived from `outputs`; that derivation is
 the (private) executor's concern. It defines only the closed vocabulary the field is drawn from
