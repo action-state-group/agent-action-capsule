@@ -98,6 +98,77 @@ it("the summary table shows one row per obligation with its article and status",
   expect(art26row.textContent).toContain("Applies 2 Dec 2027");
 });
 
+it("an obligation whose rows are all not_evaluable reads Not evaluable in the summary, never No exceptions", async () => {
+  // Absent is never pass: art50 has two rows (disclosure_before_first_turn,
+  // already always not_evaluable on this dataset, and
+  // disclosure_clear_or_obvious, met/not_met in the base fixture). Flip
+  // disclosure_clear_or_obvious's two sessions to not_evaluable too, so
+  // every row under art50 has zero met and zero not_met -- the obligation
+  // was never actually evaluated, and the summary must say so rather than
+  // defaulting to "No exceptions" because notMetCount happened to be zero.
+  const { bundle } = await sealedComplianceBundle((source) => {
+    const agentInput = ((source.disclosures as Obj).result as Obj)
+      .agent_input as Obj;
+    const claims = agentInput.claims as Obj[];
+    const flipped: string[] = [];
+    for (const claim of claims)
+      if (claim.requirement_ref === "art50.disclosure_clear_or_obvious") {
+        claim.verdict = "not_evaluable";
+        claim.sufficiency = "GAP";
+        flipped.push(claim.id as string);
+      }
+    const buckets = (agentInput.aggregate as Obj).buckets as Obj;
+    buckets.met = (buckets.met as string[]).filter(
+      (id) => !flipped.includes(id),
+    );
+    buckets.not_met = (buckets.not_met as string[]).filter(
+      (id) => !flipped.includes(id),
+    );
+    buckets.not_evaluable = [
+      ...(buckets.not_evaluable as string[]),
+      ...flipped,
+    ];
+  });
+  const root = await render(bundle);
+  const art50row = root.querySelector<HTMLElement>(
+    'tr[data-obligation="art50"]',
+  )!;
+  expect(art50row.textContent).toContain("Not evaluable");
+  expect(art50row.textContent).not.toContain("No exceptions");
+});
+
+it("a not-yet-applicable obligation whose rows are all not_evaluable says both, never no exceptions", async () => {
+  const { bundle } = await sealedComplianceBundle((source) => {
+    const agentInput = ((source.disclosures as Obj).result as Obj)
+      .agent_input as Obj;
+    const flipped: string[] = [];
+    for (const claim of agentInput.claims as Obj[])
+      if ((claim.requirement_ref as string).startsWith("art26.")) {
+        claim.verdict = "not_evaluable";
+        claim.sufficiency = "GAP";
+        flipped.push(claim.id as string);
+      }
+    const buckets = (agentInput.aggregate as Obj).buckets as Obj;
+    buckets.met = (buckets.met as string[]).filter(
+      (id) => !flipped.includes(id),
+    );
+    buckets.not_met = (buckets.not_met as string[]).filter(
+      (id) => !flipped.includes(id),
+    );
+    buckets.not_evaluable = [
+      ...(buckets.not_evaluable as string[]),
+      ...flipped,
+    ];
+  });
+  const root = await render(bundle);
+  const art26row = root.querySelector<HTMLElement>(
+    'tr[data-obligation="art26"]',
+  )!;
+  expect(art26row.textContent).toContain("Not yet applicable · not evaluable");
+  expect(art26row.textContent).not.toContain("no exceptions");
+  expect(art26row.textContent).not.toContain("No exceptions");
+});
+
 it("the test-results table carries all five tests with population, exceptions and not-evaluable counts", async () => {
   const { bundle } = await sealedComplianceBundle();
   const root = await render(bundle);

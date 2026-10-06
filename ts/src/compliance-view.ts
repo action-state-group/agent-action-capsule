@@ -115,6 +115,22 @@ function obligationStatus(obligation: ObligationModel): {
   text: string;
 } {
   const exceptions = obligation.rows.reduce((sum, r) => sum + r.notMetCount, 0);
+  // Absent is never pass: an obligation whose rows were never actually
+  // evaluated (no met, no not_met -- the same all-not_evaluable shape
+  // renderTests() already detects per row) reads "Not evaluable", never
+  // "No exceptions". Checked before the exception count: a not-yet-applicable
+  // obligation keeps saying so, alongside "not evaluable".
+  const evaluated = obligation.rows.some(
+    (r) => r.metCount > 0 || r.notMetCount > 0,
+  );
+  if (!evaluated)
+    return {
+      cls: "ne",
+      text:
+        obligation.applicability.status === "future"
+          ? "Not yet applicable · not evaluable"
+          : "Not evaluable",
+    };
   if (obligation.applicability.status === "not stated")
     return exceptions > 0
       ? { cls: "exc", text: `Exceptions noted (${fmt(exceptions)})` }
