@@ -18,10 +18,19 @@ import {
   type ReportNode,
   zoneStatement,
 } from "./evidence-graph.js";
-import { renderOutcomeReportPage } from "./outcome-report-view.js";
-import { readOutcomeReportPresentation } from "./outcome-report-presentation.js";
-import { renderCompliancePage } from "./compliance-view.js";
-import { readCompliancePresentation } from "./compliance-presentation.js";
+import {
+  frozenCopy,
+  readCardDeclarations,
+  verifiedBundle,
+  type CardNotice,
+  type CardRegistry,
+  type SelectedCard,
+} from "./card-registry.js";
+import {
+  defaultCardRegistry,
+  renderCardNotices,
+  sealCardView,
+} from "./card-view.js";
 import { readPresentationBlock } from "./presentation.js";
 import {
   buildReportRows,
@@ -148,7 +157,7 @@ function renderVerificationBanner(
   verified: boolean,
   coverage: { uncheckpointed: number; total: number },
   styled = false,
-): void {
+): HTMLElement {
   const banner = element(
     "p",
     verified
@@ -165,13 +174,14 @@ function renderVerificationBanner(
   if (styled)
     banner.className = `oi oi-banner ${verified ? "oi-banner-ok" : "oi-banner-failed"}`;
   root.append(banner);
-  if (verified) return;
+  if (verified) return banner;
   const refusal = element(
     "p",
     "This bundle did not verify. Its records, rows and payloads are not shown; the verification page below lists which checks failed.",
   );
   refusal.dataset.refusal = "unverified-bundle";
   root.append(refusal);
+  return banner;
 }
 
 // presentation/v1 is rendered here, in the header only, and nowhere else in
@@ -1296,17 +1306,63 @@ function renderGraph(
 }
 
 /**
+ * Mount the selected card between the banner and the verification page.
+ * The card gets frozen copies of the verified inputs (card-registry.ts), its
+ * view is sealed (card-view.ts) before it is attached, and afterwards the
+ * shell re-checks its own banner: still attached, same words, same verdict,
+ * and the only verdict marker in the page. Any failure -- the card throws
+ * (including on a write to frozen verified data), returns no element, or the
+ * banner changed -- returns false and the shell redraws without the card.
+ */
+async function mountCard(
+  root: HTMLElement,
+  banner: HTMLElement,
+  card: SelectedCard,
+  result: ResultRoot,
+  bundle: unknown,
+  verification: BundleVerificationResult,
+): Promise<boolean> {
+  const words = banner.textContent;
+  const verdict = banner.dataset.verify;
+  let view: unknown;
+  try {
+    view = await card.render({
+      result: frozenCopy(result),
+      bundle: verifiedBundle(bundle, verification),
+      chrome: frozenCopy(readPresentationBlock(bundle) ?? {}),
+    });
+  } catch {
+    return false;
+  }
+  if (!(view instanceof HTMLElement)) return false;
+  sealCardView(view);
+  view.dataset.card = card.kind;
+  root.append(view);
+  return (
+    banner.parentNode === root &&
+    banner.textContent === words &&
+    banner.dataset.verify === verdict &&
+    root.querySelectorAll("[data-verify]").length === 1
+  );
+}
+
+/**
  * Render a bundle into `root`. `countersigners` is the stamp's countersigner
  * source: the only way a verified, independent countersignature gets a name.
  * Omitted, every independent signer renders as unlisted. The emitted
  * report.html shell passes none today; a host page that holds a list passes
  * it here (see `pinnedCountersignerSource` to load one against a pinned
  * digest).
+ *
+ * `cards` is the card registry a verified Result v0 bundle is dispatched
+ * through (card-registry.ts); omitted, `defaultCardRegistry()`. A bundle
+ * only names a card by its extension kind; it never supplies one.
  */
 export async function renderEvidenceGraph(
   bundle: unknown,
   root: HTMLElement,
   countersigners?: CountersignerSource,
+  cards: CardRegistry = defaultCardRegistry(),
 ): Promise<void> {
   // Verify first. Row models are built only from a bundle that verified,
   // and nothing reaches the DOM until the verification result is in hand.
@@ -1325,50 +1381,51 @@ export async function renderEvidenceGraph(
       ? await buildEvidenceGraph(bundle)
       : undefined;
   const records = object(bundle).records;
-  // outcome-report/v1 is a card choice over the SAME verified Result root,
-  // never a different verification path: it is read only after `result` is
-  // already built from a bundle that passed the verify-first gate above, and
-  // it changes nothing about what `result` itself required to exist. Absent
-  // or not enabled, the generic Result page stays the default -- unchanged
-  // for every bundle that predates this card. Read before the banner only so
-  // the banner and the verification page can take the card's look; an
-  // unverified bundle never has a `result`, so it never does.
-  const outcomeReport =
-    result !== undefined ? readOutcomeReportPresentation(bundle) : undefined;
-  const styled = result !== undefined && outcomeReport !== undefined;
-  root.replaceChildren();
-  renderPresentationHeader(root, bundle);
-  renderVerificationBanner(
-    root,
-    verified,
-    {
-      uncheckpointed: unboundRecordIds(verification).length,
-      total: Array.isArray(records) ? records.length : 0,
-    },
-    styled,
-  );
-  // compliance/v1 is read the same way: a second card choice over the SAME
-  // verified Result root, after outcome-report's (a bundle that opted into
-  // both renders the outcome-report card) -- never a verification path of
-  // its own.
-  const compliance =
-    result !== undefined && outcomeReport === undefined
-      ? readCompliancePresentation(bundle)
-      : undefined;
+  // A card is a renderer choice over the SAME verified Result root, never a
+  // different verification path: it is resolved only after `result` is
+  // built from a bundle that passed the verify-first gate above. No card
+  // extension keeps the generic Result page, unchanged for every bundle that
+  // predates cards. Resolved before the banner only so the banner and the
+  // verification page can take the card's look; an unverified bundle never
+  // has a `result`, so it never has a card or a notice.
+  const resolution =
+    result !== undefined ? cards.resolveCard(bundle) : undefined;
+  const notices: CardNotice[] = [...(resolution?.notices ?? [])];
+  if (verified && result === undefined)
+    for (const kind of readCardDeclarations(bundle))
+      notices.push({ reason: "not-a-result-root", kind });
+  let card = resolution?.card;
+  const coverage = {
+    uncheckpointed: unboundRecordIds(verification).length,
+    total: Array.isArray(records) ? records.length : 0,
+  };
+  const drawChrome = (): HTMLElement => {
+    root.replaceChildren();
+    renderPresentationHeader(root, bundle);
+    const banner = renderVerificationBanner(
+      root,
+      verified,
+      coverage,
+      card?.styledChrome === true,
+    );
+    renderCardNotices(root, notices);
+    return banner;
+  };
+  const banner = drawChrome();
   if (reportRows !== undefined) {
     renderReportRowsTable(reportRows, root);
-  } else if (result !== undefined && outcomeReport !== undefined) {
-    await renderOutcomeReportPage(
-      result,
-      outcomeReport,
-      bundle,
-      verification,
-      root,
-    );
-  } else if (result !== undefined && compliance !== undefined) {
-    renderCompliancePage(result, compliance, bundle, verification, root);
   } else if (result !== undefined) {
-    renderResultPage(result, root);
+    if (
+      card !== undefined &&
+      !(await mountCard(root, banner, card, result, bundle, verification))
+    ) {
+      // The card failed or touched the shell's chrome: redraw the chrome
+      // from the verifier's result, say so, and show the generic page.
+      notices.push({ reason: "card-failed", kind: card.kind });
+      card = undefined;
+      drawChrome();
+    }
+    if (card === undefined) renderResultPage(result, root);
   } else if (graph !== undefined) {
     renderGraph(graph, root, Array.isArray(records) ? records : []);
   }
@@ -1377,6 +1434,6 @@ export async function renderEvidenceGraph(
     bundle,
     verification,
     countersigners,
-    styled,
+    card?.styledChrome === true,
   );
 }

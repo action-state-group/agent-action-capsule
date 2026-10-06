@@ -22,4 +22,8 @@ npm ci
 npm run check
 ```
 
+The viewer (`renderEvidenceGraph`) dispatches a verified Result v0 bundle to
+a card through a card registry: `defaultCardRegistry()`, `registerCard`,
+`resolveCard`. See `docs/card-extensions.md`.
+
 The tests consume the same-commit corpora under `../vectors/`.

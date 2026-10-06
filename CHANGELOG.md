@@ -3,6 +3,14 @@
 ## Unreleased
 
 ### Added
+- TypeScript card registry (`ts/src/card-registry.ts`, `ts/src/card-view.ts`): a bundle's
+  card extension (`extensions[<kind>]` with `enabled: true`) is dispatched through
+  `registerCard` / `resolveCard`; `defaultCardRegistry()` holds `outcome-report/v1` and
+  `eu-ai-act-compliance/v1`. An unknown kind falls back to the generic Result page with a
+  visible notice naming it; several kinds pick the first in registration order, with a notice
+  for the rest. A card receives only frozen verified data and the three `presentation/v1`
+  chrome members; its view is sealed and the banner stays the shell's. `renderEvidenceGraph`
+  takes the registry as an optional fourth argument. Contract: `ts/docs/card-extensions.md`.
 - Evidence Bundle `-01` working revision (`spec/draft-mih-zhang-agent-disclosure-bundle-01`;
   the posted `-00` files are unchanged). It defines the `countersign/v1` entry (signing input
   `UTF8(JCS({over, signer, statement, type}))`, five per-check results, self-countersignature

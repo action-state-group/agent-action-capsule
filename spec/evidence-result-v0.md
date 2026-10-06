@@ -434,6 +434,12 @@ view:
   title: string                       # optional
 ```
 
+A bundle MAY also declare a card: a bundle-level extension that selects which view draws the
+verified Result in place of the generic page (for example `outcome-report/v1`). A card is a
+viewer concern, not part of the Result document: it never carries a claim, verdict, digest or
+markup, and it can never change what verification found. Its contract (declaration, dispatch,
+fallback for an unknown kind, and the boundary) is `ts/docs/card-extensions.md`.
+
 ## 9. Field mapping — #102 evidence-graph model → Result v0
 
 PR #102's evidence-graph emitter model (`ts/src/evidence-graph.ts`, `agent-action-capsule`
