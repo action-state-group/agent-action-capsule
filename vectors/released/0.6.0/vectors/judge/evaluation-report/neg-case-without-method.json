@@ -1,0 +1,36 @@
+{
+  "cases": [
+    {
+      "acts": [
+        {
+          "citation_purpose": "grounds",
+          "digest": "f0a302dcc73fc53609e96e0029ed3a0e3b0b9da6beaa817cdcc954a18ea9f096",
+          "digest_alg": "SHA-256",
+          "type": "tau2-conversation"
+        }
+      ],
+      "case_id": "oo-sim-001",
+      "verdict": "met"
+    }
+  ],
+  "contract_ref": "ec:oo-claims-eval:2026-09-22@1",
+  "epistemic_type": "semantic_judgment",
+  "generated_at": "2026-09-25T00:00:00Z",
+  "judge_pin": {
+    "axes_digest": {
+      "digest": "287810b28b2d7721bc0cf9336559a8a1fa6eab65ee357c6efab1a9ed70b2442e",
+      "digest_alg": "SHA-256"
+    },
+    "model_id": "oo-judge-v1",
+    "prompt_digest": {
+      "digest": "c4ba90afe3c489dd53e02067e9d26920cd4e1adc702fd64f70a9fc03e2385040",
+      "digest_alg": "SHA-256"
+    },
+    "sampling": {
+      "seed": 1,
+      "temperature_micros": 0
+    }
+  },
+  "record_id": "er-oo-1",
+  "record_version": "evaluation-report/v1"
+}

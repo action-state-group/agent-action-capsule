@@ -31,6 +31,11 @@ same-commit files in CI.
   `sd-jwt-issuers/v1` Bundle extensions, and the `minimum_necessary_report/1`
   result shape, over one worked example;
   `python/scripts/generate_min_necessary_vectors.py` regenerates them.
+- `released/<version>/`: exact bytes of fixtures that shipped in a release
+  tag and were later renamed or regenerated on main, kept under their original
+  repository-relative paths. They are not current fixtures and may fail the
+  current schemas. `schemas/check_released_vectors.py` pins their SHA-256s
+  (and the digest of each `SHA256SUMS`) so they never change.
 
 Reference-derived corpora and checksum manifests can be regenerated with:
 

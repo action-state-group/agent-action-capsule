@@ -1,0 +1,20 @@
+{
+  "cases": [
+    "oo-sim-001",
+    "oo-sim-002"
+  ],
+  "epistemic_type": "producer_claim",
+  "generated_at": "2026-09-25T00:00:00Z",
+  "policy": {
+    "citation_purpose": "sampling_policy",
+    "digest": "3c672d4eebab71a3bf8f1183e85615b707f39917b664569260617c627192c6f2",
+    "digest_alg": "SHA-256",
+    "type": "sampling-policy"
+  },
+  "record_id": "sm-oo-1",
+  "record_version": "sample-manifest/v1",
+  "stratification": {
+    "held_out": 40,
+    "regression": 10
+  }
+}

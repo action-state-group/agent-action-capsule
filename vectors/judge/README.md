@@ -58,3 +58,8 @@ also runs the three-way `epistemic_type` parity check (schema const × `SCHEMA_E
 cd agent-action-capsule   # repo root
 python3 schemas/check_judge_record_examples.py
 ```
+
+## Released bytes
+
+The bytes these fixtures had in `v0.6.0` (before the EXAMPLE-ORG rename) are kept, frozen, under
+`vectors/released/0.6.0/` at their original paths. See that directory's README.
