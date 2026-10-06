@@ -2,9 +2,9 @@
 
 This reader's guide follows the editor's [-05 source](draft-mih-scitt-agent-action-capsule-05.md)
 and [rendered section numbers](draft-mih-scitt-agent-action-capsule-05.txt).
-The [repository README](../README.md#the-draft) identifies -04 as the posted
-revision and -05 as in preparation; this map describes the editor's source,
-not the posted revision. Git history preserves earlier maps.
+The current posted revision is -05 on the
+[Datatracker](https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/).
+This map describes the editor's -05 source. Git history preserves earlier maps.
 
 The seven base-profile vocabularies are `verdict_class`,
 `disposition.decision`, `effect.type`, `irreversibility_class`,
