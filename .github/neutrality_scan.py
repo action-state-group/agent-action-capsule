@@ -182,15 +182,20 @@ def _load_config() -> tuple[re.Pattern[str], tuple[str, ...]]:
         raise SystemExit(2)
     try:
         cfg = json.loads(raw)
-        if isinstance(cfg, str):
-            # Some secret-setting paths double-encode the JSON (the secret's
-            # raw value is a JSON string literal containing the real object).
-            # One extra decode recovers the intended dict; anything else past
-            # that is a genuine config error, not a shape we paper over.
-            cfg = json.loads(cfg)
     except json.JSONDecodeError as exc:
         print(f"error: NEUTRALITY_TERMS is not valid JSON: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc
+    if isinstance(cfg, str):
+        # A double-encoded secret (a JSON string whose text is the object) is
+        # refused, not unwrapped: the gate is fail-closed, so a mis-set secret
+        # stops the run instead of being guessed at.
+        print(
+            "error: NEUTRALITY_TERMS must be a JSON object, not a JSON string. "
+            "The secret looks double-encoded: re-set it to the raw object, "
+            'e.g. {"substring": ["..."]}.',
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
     if not isinstance(cfg, dict):
         print(
             f"error: NEUTRALITY_TERMS must decode to a JSON object, got {type(cfg).__name__}.",
@@ -694,6 +699,27 @@ def _run_self_tests() -> None:
             errors.append(f"adoption-claim scan test failed: got {found!r}")
         if scan_claims(troot, reveal=False) != ["a.ts:1: adoption claim about a reference project (redacted)"]:
             errors.append("adoption-claim scan test failed: redacted form wrong")
+
+    # A double-encoded NEUTRALITY_TERMS (a JSON string containing the object)
+    # is REFUSED with exit 2, never unwrapped and scanned.
+    prior_terms = os.environ.get("NEUTRALITY_TERMS")
+    try:
+        os.environ["NEUTRALITY_TERMS"] = json.dumps(json.dumps({"substring": ["x"]}))
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            try:
+                _load_config()
+                errors.append("double-encoded NEUTRALITY_TERMS was accepted; it must be refused")
+            except SystemExit as exc:
+                if exc.code != 2:
+                    errors.append(f"double-encoded NEUTRALITY_TERMS: expected exit 2, got {exc.code}")
+                elif "not a JSON string" not in err.getvalue():
+                    errors.append("double-encoded NEUTRALITY_TERMS: error message does not name the fix")
+    finally:
+        if prior_terms is None:
+            os.environ.pop("NEUTRALITY_TERMS", None)
+        else:
+            os.environ["NEUTRALITY_TERMS"] = prior_terms
 
     if errors:
         print("NEUTRALITY SELF-TEST FAILURES:")
