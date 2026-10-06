@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Added
+- Evidence Request vectors: three request cases for coverage that carries both members where a
+  value does not conform (`neg-coverage-both-pin-malformed`, `neg-coverage-both-freshness-malformed`,
+  `neg-coverage-both-both-malformed`), all refused `request_malformed`. Ambiguity note A4 is
+  amended with the 2026-10-06 ruling: a responder checks each present member's value first, and
+  only then refuses both-or-neither `coverage_unsatisfiable`. The normative sentence goes into
+  `-01` §3.2; the posted `-00` files are unchanged. Existing vector bytes are unchanged.
 - Evidence Bundle `-01` working revision (`spec/draft-mih-zhang-agent-disclosure-bundle-01`;
   the posted `-00` files are unchanged). It defines the `countersign/v1` entry (signing input
   `UTF8(JCS({over, signer, statement, type}))`, five per-check results, self-countersignature

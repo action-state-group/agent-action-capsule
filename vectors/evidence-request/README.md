@@ -80,7 +80,7 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 
 ## Cases
 
-### `request.json` (30 cases)
+### `request.json` (33 cases)
 
 | Case | § | Expect | Ambiguity |
 |---|---|---|---|
@@ -114,6 +114,9 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `neg-coverage-both` | 3, 3.2 | refuse `coverage_unsatisfiable` |  |
 | `neg-coverage-neither` | 3, 3.2 | refuse `coverage_unsatisfiable` |  |
 | `neg-coverage-missing` | 3, 3.2 | refuse `coverage_unsatisfiable` | A4 |
+| `neg-coverage-both-pin-malformed` | 3, 3.2 | refuse `request_malformed` | A4 |
+| `neg-coverage-both-freshness-malformed` | 3, 3.2 | refuse `request_malformed` | A3, A4 |
+| `neg-coverage-both-both-malformed` | 3, 3.2 | refuse `request_malformed` | A3, A4 |
 
 ### `resolution.json` (19 cases)
 
@@ -243,7 +246,7 @@ Each is marked on the cases it affects. The vectors follow the reading given.
 - **A1** §3.1 Subject: -00 gives six forms and their content but no wire shape. Vectors use a map with exactly one member, named by the form token, whose value is the content: null for full_history and checkpoints, a digest for record and exchange, [a, b] (two unsigned integers) for range, a text string for correlation.
 - **A2** §3.1, §3.2, §4.2: -00 names digests but not the hash algorithm or representation. Vectors use SHA-256 as 64 lowercase hex characters, as text in both the JSON and CBOR bindings.
 - **A3** §3.2 Coverage: min_freshness is 'size or time' with no shape. Vectors read the value itself: an unsigned integer is a log size, a text string is an RFC 3339 UTC time. Any other type is not a conforming value.
-- **A4** §3 / §3.2: coverage_unsatisfiable is assigned for 'both, or neither'. Vectors read an absent coverage field as 'neither' (coverage_unsatisfiable), and a coverage value that is not a map, or a member whose value does not conform, as request_malformed.
+- **A4** §3 / §3.2: coverage_unsatisfiable is assigned for 'both, or neither'. Vectors read an absent coverage field as 'neither' (coverage_unsatisfiable), and a coverage value that is not a map, or a member whose value does not conform, as request_malformed. *Amended 2026-10-06 (spec ruling):* -00 does not state which refusal wins when coverage carries both members and one of them does not conform. Ruling: request_malformed wins. A responder first checks that each member present in `coverage` has a conforming value; a non-conforming value is refused request_malformed, whether or not the other member is present. Only then is coverage carrying both members, or neither, refused coverage_unsatisfiable. The normative sentence goes into -01 §3.2; the posted -00 text is unchanged. Cases: `neg-coverage-both-pin-malformed`, `neg-coverage-both-freshness-malformed`, `neg-coverage-both-both-malformed`. (The A4 note embedded in the cases and manifest shipped in 0.6.0 is left as it was so those bytes do not change; the three new cases carry the amended text.)
 - **A5** §3.4-§3.6: deadline, nonce and route have no stated type. Vectors use text strings (deadline as an RFC 3339 UTC time).
 - **A6** §3.1 range: -00 does not say whether a > b is malformed. Vectors treat it as a value that does not conform (request_malformed).
 - **A7** §4.2 / §10: -00 names the refusal's contents but no member names or signature format. Vectors use request_digest, reason, issued_at, key_id and sig with the signature profile in refusal.json. In the CBOR binding the same map is the frame; the signature is still over the RFC 8785 body.
