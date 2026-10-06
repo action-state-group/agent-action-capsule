@@ -241,6 +241,16 @@ AMBIGUITY = {
     "Vectors tell them apart by form: a token has a '/N' suffix, a digest is 64 lowercase hex.",
 }
 
+# A4 amendment (spec ruling 2026-10-06). Kept out of AMBIGUITY["A4"] so the
+# cases shipped in 0.6.0 keep their bytes; the README carries the amended A4.
+A4_PRECEDENCE = (
+    "A4 (amended 2026-10-06): -00 does not state which refusal wins when coverage carries both "
+    "members and a value does not conform. A responder first checks that each member present in "
+    "coverage has a conforming value; a non-conforming value is refused request_malformed, whether "
+    "or not the other member is present. Only then is coverage carrying both members, or neither, "
+    "refused coverage_unsatisfiable."
+)
+
 # ---------------------------------------------------------------------------
 # request.json: the request map
 # ---------------------------------------------------------------------------
@@ -433,6 +443,24 @@ def request_cases() -> list[dict]:
           "No coverage field: the REQUIRED field is missing and the request carries neither member.",
           {"subject": {"record": R1}, "nonce": "n-0027"}, MALFORMED("coverage_unsatisfiable"),
           ambiguity=AMBIGUITY["A4"]),
+        # --- both members, one or both malformed: request_malformed wins -----
+        # (A4 as amended 2026-10-06; AMBIGUITY["A4"] itself is left as shipped
+        # in 0.6.0 so the existing cases keep their bytes.)
+        c("neg-coverage-both-pin-malformed", [S_REQ, S_COV],
+          "coverage carrying both members where expected_pin is not a digest: the "
+          "non-conforming value is refused request_malformed before the member count is checked.",
+          _req({"record": R1}, {"expected_pin": "not-a-digest", "min_freshness": 42}, nonce="n-0028"),
+          MALFORMED("request_malformed"), ambiguity=A4_PRECEDENCE),
+        c("neg-coverage-both-freshness-malformed", [S_REQ, S_COV],
+          "coverage carrying both members where min_freshness is {max_age_seconds}: the "
+          "non-conforming value is refused request_malformed before the member count is checked.",
+          _req({"record": R1}, {"expected_pin": ANCHOR_42, "min_freshness": {"max_age_seconds": 60}},
+               nonce="n-0029"),
+          MALFORMED("request_malformed"), ambiguity=AMBIGUITY["A3"] + " " + A4_PRECEDENCE),
+        c("neg-coverage-both-both-malformed", [S_REQ, S_COV],
+          "coverage carrying both members, neither of which conforms: refused request_malformed.",
+          _req({"record": R1}, {"expected_pin": "not-a-digest", "min_freshness": -1}, nonce="n-0030"),
+          MALFORMED("request_malformed"), ambiguity=AMBIGUITY["A3"] + " " + A4_PRECEDENCE),
     ]
     return cases
 

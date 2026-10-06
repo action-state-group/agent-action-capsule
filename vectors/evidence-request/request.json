@@ -3,7 +3,7 @@
   "provenance": "spec-derived",
   "corpus": "request",
   "description": "Request map validation: well formed, or the exact refusal reason.",
-  "count": 30,
+  "count": 33,
   "cases": [
     {
       "id": "pos-subject-full_history",
@@ -501,6 +501,57 @@
         "reason": "coverage_unsatisfiable"
       },
       "ambiguity": "§3 / §3.2: coverage_unsatisfiable is assigned for 'both, or neither'. Vectors read an absent coverage field as 'neither' (coverage_unsatisfiable), and a coverage value that is not a map, or a member whose value does not conform, as request_malformed."
+    },
+    {
+      "id": "neg-coverage-both-pin-malformed",
+      "section": [
+        "§3 The Request",
+        "§3.2 Coverage"
+      ],
+      "description": "coverage carrying both members where expected_pin is not a digest: the non-conforming value is refused request_malformed before the member count is checked.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"not-a-digest\",\"min_freshness\":42},\"nonce\":\"n-0028\",\"subject\":{\"record\":\"2ab350895f867d54a5cfdc1dd1aa214cbc723c659663460e7511dff16a5ccc85\"}}",
+      "request_json_digest": "1b88f55efc5ad0da3c6687717228c96a9677581e6a524a527d979d5027620c53",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30303238677375626a656374a1667265636f726478403261623335303839356638363764353461356366646331646431616132313463626337323363363539363633343630653735313164666631366135636363383568636f766572616765a26c65787065637465645f70696e6c6e6f742d612d6469676573746d6d696e5f66726573686e657373182a",
+      "request_cbor_digest": "40b3f8b173c669e637718626a3028f9a31b3d4c0d638e01c7e4e673a4bc46caa",
+      "expect": {
+        "well_formed": false,
+        "reason": "request_malformed"
+      },
+      "ambiguity": "A4 (amended 2026-10-06): -00 does not state which refusal wins when coverage carries both members and a value does not conform. A responder first checks that each member present in coverage has a conforming value; a non-conforming value is refused request_malformed, whether or not the other member is present. Only then is coverage carrying both members, or neither, refused coverage_unsatisfiable."
+    },
+    {
+      "id": "neg-coverage-both-freshness-malformed",
+      "section": [
+        "§3 The Request",
+        "§3.2 Coverage"
+      ],
+      "description": "coverage carrying both members where min_freshness is {max_age_seconds}: the non-conforming value is refused request_malformed before the member count is checked.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\",\"min_freshness\":{\"max_age_seconds\":60}},\"nonce\":\"n-0029\",\"subject\":{\"record\":\"2ab350895f867d54a5cfdc1dd1aa214cbc723c659663460e7511dff16a5ccc85\"}}",
+      "request_json_digest": "55d073d10cd5df83e55fc416dfb9161f09ac0df8d0b89b85f6274c232deb6f9a",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30303239677375626a656374a1667265636f726478403261623335303839356638363764353461356366646331646431616132313463626337323363363539363633343630653735313164666631366135636363383568636f766572616765a26c65787065637465645f70696e7840363434313337303935356432623430383838343739333936326136363464616563366262323565303664373661326635336438613830663636613637353230326d6d696e5f66726573686e657373a16f6d61785f6167655f7365636f6e6473183c",
+      "request_cbor_digest": "f14b7d67b683a04232b68836a3f8c1d85f616950ee2f57e5cb0cf32e2be3ba04",
+      "expect": {
+        "well_formed": false,
+        "reason": "request_malformed"
+      },
+      "ambiguity": "§3.2 Coverage: min_freshness is 'size or time' with no shape. Vectors read the value itself: an unsigned integer is a log size, a text string is an RFC 3339 UTC time. Any other type is not a conforming value. A4 (amended 2026-10-06): -00 does not state which refusal wins when coverage carries both members and a value does not conform. A responder first checks that each member present in coverage has a conforming value; a non-conforming value is refused request_malformed, whether or not the other member is present. Only then is coverage carrying both members, or neither, refused coverage_unsatisfiable."
+    },
+    {
+      "id": "neg-coverage-both-both-malformed",
+      "section": [
+        "§3 The Request",
+        "§3.2 Coverage"
+      ],
+      "description": "coverage carrying both members, neither of which conforms: refused request_malformed.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"not-a-digest\",\"min_freshness\":-1},\"nonce\":\"n-0030\",\"subject\":{\"record\":\"2ab350895f867d54a5cfdc1dd1aa214cbc723c659663460e7511dff16a5ccc85\"}}",
+      "request_json_digest": "ce63da6342ac5428ee06cf650e6d359284d8ba3b5442d4c245557ecd0e83e35b",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30303330677375626a656374a1667265636f726478403261623335303839356638363764353461356366646331646431616132313463626337323363363539363633343630653735313164666631366135636363383568636f766572616765a26c65787065637465645f70696e6c6e6f742d612d6469676573746d6d696e5f66726573686e65737320",
+      "request_cbor_digest": "291a9be9d58d376e1b04be615e66d29c30cc6018510c4eac0bd9e87c2c9c5fa4",
+      "expect": {
+        "well_formed": false,
+        "reason": "request_malformed"
+      },
+      "ambiguity": "§3.2 Coverage: min_freshness is 'size or time' with no shape. Vectors read the value itself: an unsigned integer is a log size, a text string is an RFC 3339 UTC time. Any other type is not a conforming value. A4 (amended 2026-10-06): -00 does not state which refusal wins when coverage carries both members and a value does not conform. A responder first checks that each member present in coverage has a conforming value; a non-conforming value is refused request_malformed, whether or not the other member is present. Only then is coverage carrying both members, or neither, refused coverage_unsatisfiable."
     }
   ]
 }
