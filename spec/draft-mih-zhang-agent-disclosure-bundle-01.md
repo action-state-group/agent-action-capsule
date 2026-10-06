@@ -25,7 +25,7 @@ author:
  - ins: Y. Zhang
    name: Yiqun Zhang
    organization: Independent
-   email: zhangyiqun-spec@gmail.com
+   email: zhangyiqun9164@gmail.com
 
 normative:
   RFC2119:
