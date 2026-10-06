@@ -12,3 +12,5 @@ export * from "./verification-page.js";
 export * from "./evidence-graph-view.js";
 export * from "./outcome-report-view.js";
 export * from "./compliance-view.js";
+export * from "./card-registry.js";
+export * from "./card-view.js";
