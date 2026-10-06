@@ -65,7 +65,7 @@ import {
   verifyClass1,
   verifyDisclosureEnvelope,
   verifyStore,
-} from "@action-state-group/agent-action-capsule";
+} from "@action-state-group/agent-action-capsule/core";
 
 const capsuleVectors = ${JSON.stringify(capsuleVectors)};
 const disclosureVectors = ${JSON.stringify(disclosureVectors)};

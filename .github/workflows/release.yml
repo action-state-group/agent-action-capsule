@@ -46,7 +46,8 @@ jobs:
   # Only a `release` (tag) event publishes. `workflow_dispatch` runs `build`
   # above as a dry run and stops — it never uploads, even run manually.
   publish:
-    if: github.event_name == 'release'
+    # TypeScript releases have their own npm workflow and must not publish Python.
+    if: github.event_name == 'release' && !startsWith(github.event.release.tag_name, 'ts/v')
     needs: build
     runs-on: ubuntu-latest
     environment: pypi

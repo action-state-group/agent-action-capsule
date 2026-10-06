@@ -6,7 +6,7 @@ import { decodeFragment, encodeFragment, verifyBundle } from "../src/index.js";
 // The single-record report bundle (the /demos shape) and its two distinguishing
 // negatives. `expected` holds for every conforming verifier, including the one
 // embedded in a rendered report; the Python reference additionally pins
-// `expected_without_cll`, which does not apply here (cll is a hard dependency).
+// `expected_without_cll`, which does not apply here (the Bundle verifier requires the cll peer).
 type Expected = {
   graph_closure: string;
   interval_coverage: string;
