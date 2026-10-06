@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeCapsuleId,
   decodeStrictJson,
+  jcs,
   verifyClass1,
   verifyStore,
   type ParsedJson,
@@ -13,6 +14,15 @@ const root = resolve(import.meta.dirname, "..", "..", "vectors", "capsule");
 const manifest = JSON.parse(
   readFileSync(resolve(root, "vectors.json"), "utf8"),
 ) as { cases: Array<{ name: string; kind: string }> };
+const readExpected = (name: string) =>
+  JSON.parse(readFileSync(resolve(root, name, "expected.json"), "utf8")) as {
+    capsule_id_recomputed?: string;
+    canonical_preimages?: { capsule_id?: string };
+    same_capsule_id_as?: string;
+  };
+// Excluded from the capsule_id preimage: capsule_id and the local-only
+// Producer Envelope fields.
+const preimageExcluded = new Set(["capsule_id", "signature", "key_id"]);
 describe("complete upstream AAC corpus", () => {
   for (const item of manifest.cases)
     it(item.name, async () => {
@@ -33,6 +43,20 @@ describe("complete upstream AAC corpus", () => {
           findings: Array<{ code: string }>;
         }>;
       };
+      const extra = readExpected(item.name);
+      const preimage = extra.canonical_preimages?.capsule_id;
+      const record = input as Record<string, ParsedJson>;
+      if (preimage !== undefined && !("ledger" in record)) {
+        // Spec-derived literal RFC 8785 bytes, not only their digest.
+        const body = Object.fromEntries(
+          Object.entries(record).filter(([k]) => !preimageExcluded.has(k)),
+        );
+        expect(new TextDecoder().decode(jcs(body))).toBe(preimage);
+      }
+      if (extra.same_capsule_id_as !== undefined)
+        expect(extra.capsule_id_recomputed).toBe(
+          readExpected(extra.same_capsule_id_as).capsule_id_recomputed,
+        );
       if (item.kind === "canonical") {
         if (expected.exception !== null)
           await expect(
