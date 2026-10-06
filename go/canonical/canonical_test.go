@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
@@ -81,5 +82,21 @@ func TestComputeCapsuleIDRejectsInvalidDeclaration(t *testing.T) {
 			})
 			require.EqualError(t, err, test.want)
 		})
+	}
+}
+
+func TestJCSNegativeZeroIsZero(t *testing.T) {
+	var v interface{}
+	dec := json.NewDecoder(strings.NewReader(`{"a":-0,"b":[0,-0]}`))
+	dec.UseNumber()
+	if err := dec.Decode(&v); err != nil {
+		t.Fatal(err)
+	}
+	got, err := canonical.JCS(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != `{"a":0,"b":[0,0]}` {
+		t.Fatalf("JCS(-0) = %s, want negative zero written as 0 (RFC 8785)", got)
 	}
 }
