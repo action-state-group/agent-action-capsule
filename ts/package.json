@@ -65,5 +65,13 @@
     "@action-state-group/cll": {
       "optional": true
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/action-state-group/agent-action-capsule.git",
+    "directory": "ts"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
