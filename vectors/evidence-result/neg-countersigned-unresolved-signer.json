@@ -1,0 +1,68 @@
+{
+  "aggregate": {
+    "buckets": {
+      "met": [
+        "cs-1"
+      ],
+      "not_evaluable": [],
+      "not_met": []
+    },
+    "coverage": {
+      "evaluated_population": 1,
+      "excluded_not_applicable": 0,
+      "unknown_count": 0
+    }
+  },
+  "claims": [
+    {
+      "contract_ref": "ec:example-org-countersign:2026-10-05@1",
+      "countersignatures": [
+        {
+          "result": "unresolved signer",
+          "signer_key_id": "44e1dd6a060d4015b467510ed6cc5716ccd369cc8c45ccf0584e1e3eeb07a677"
+        }
+      ],
+      "evidence": [
+        {
+          "digest": "67047c8558fc68cd5489162bbcab84554a64a46fd3ce7f36585ea29ca20d197e",
+          "digest_alg": "SHA-256"
+        }
+      ],
+      "grade": "countersigned",
+      "id": "cs-1",
+      "presentation": {
+        "evidence": [
+          {
+            "digest": "67047c8558fc68cd5489162bbcab84554a64a46fd3ce7f36585ea29ca20d197e",
+            "digest_alg": "SHA-256"
+          }
+        ],
+        "kind": "disclosure",
+        "status": "SATISFIED"
+      },
+      "proofs": [
+        {
+          "digest": "5a132a8cb94861af7fc6822c771f7da33954f772ef2a2aebaca7b6b1a2cf6d3f",
+          "digest_alg": "SHA-256",
+          "kind": "inclusion_proof"
+        },
+        {
+          "digest": "6f4f6d907e5de3ae8afa0055ddf3cb8194c850acc05273b353cb4b5777705d76",
+          "digest_alg": "SHA-256",
+          "kind": "receipt"
+        }
+      ],
+      "requirement_ref": "req-cs-1",
+      "sufficiency": "SATISFIED",
+      "tier": "judged",
+      "verdict": "met"
+    }
+  ],
+  "generated_at": "2026-10-05T00:00:00Z",
+  "result_version": "evidence-result-v0",
+  "view": {
+    "producer_name": "EXAMPLE-ORG",
+    "spec_version": "presentation/v1",
+    "title": "EXAMPLE-ORG Result -- countersigned by an unresolved signer"
+  }
+}

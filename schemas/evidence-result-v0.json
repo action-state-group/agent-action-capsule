@@ -31,6 +31,20 @@
       "description": "The three-value assurance grade owned elsewhere in the spec; mirrored here, never redefined.",
       "enum": ["self-attested", "witnessed", "countersigned"]
     },
+    "CountersignResult": {
+      "description": "The four results a verifier reports for a countersign/v1 entry, used verbatim by reference from the Evidence Bundle (draft-mih-zhang-agent-disclosure-bundle-01, 'Verifying a countersign/v1 Entry'): invalid; not independent (a self-countersignature: the signer key is the producer's); unresolved signer (independent, and the key is in no directory consulted); resolved (independent, and the key is found). Owned by that document, never redefined here. Only `resolved` yields grade `countersigned` (spec section 1.1).",
+      "enum": ["invalid", "not independent", "unresolved signer", "resolved"]
+    },
+    "CountersignReport": {
+      "description": "spec section 1.1 -- one countersign/v1 entry over the claim's bundle, as the Result builder's verifier reported it. `result` is the Bundle's per-entry result; `signer_key_id` is the entry's signer.key_id (a 32-byte Ed25519 public key as 64 lowercase hex). A reporting convenience: a verifier re-verifies the entry against the bundle and never trusts this field.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "signer_key_id"],
+      "properties": {
+        "result": { "$ref": "#/$defs/CountersignResult" },
+        "signer_key_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
     "Sufficiency": {
       "description": "The four-value Evidence Contract sufficiency result: whether enough of the right evidence was found, committed, and disclosed to make a determination on the requirement at all. Owned by the Evidence Contract, mirrored here, never redefined.",
       "enum": ["SATISFIED", "GAP", "INSUFFICIENT", "UNKNOWN"]
@@ -222,6 +236,12 @@
           "items": { "$ref": "#/$defs/ProofRef" }
         },
         "presentation": { "$ref": "#/$defs/Presentation" },
+        "countersignatures": {
+          "description": "OPTIONAL (spec section 1.1). One report per countersign/v1 entry over the claim's bundle, in the bundle's order, never combined. Keeps self-countersigned and unresolved-signer entries visible without moving grade.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/CountersignReport" }
+        },
         "reconcile": { "$ref": "#/$defs/ReconcileClaim" },
         "close": { "$ref": "#/$defs/CloseClaim" }
       },
@@ -245,6 +265,22 @@
           "description": "A CONTESTED Close is never met. While a peer's `rebuts` link stands, the clause the claim reports on is at best `not_met` (sufficiency SATISFIED: the Close and the rebuttal are both in evidence) or `not_evaluable` (a sufficiency gap). `met` under CONTESTED fails validation; the checker's link walk applies the same rule to the RECOMPUTED state, so a Close relabelled out of CONTESTED to keep `met` fails there.",
           "if": { "properties": { "close": { "properties": { "close_state": { "const": "CONTESTED" } }, "required": ["close_state"] } }, "required": ["close"] },
           "then": { "properties": { "verdict": { "enum": ["not_met", "not_evaluable"] } } }
+        },
+        {
+          "description": "COUNTERSIGN-UNCOUNTED (spec section 1.1): when `countersignatures` is present and no entry is `resolved`, grade MUST NOT be `countersigned`. An invalid, not independent, or unresolved signer entry adds nothing; the grade is what the bundle establishes without it.",
+          "if": {
+            "required": ["countersignatures"],
+            "properties": { "countersignatures": { "not": { "contains": { "properties": { "result": { "const": "resolved" } }, "required": ["result"] } } } }
+          },
+          "then": { "properties": { "grade": { "not": { "const": "countersigned" } } } }
+        },
+        {
+          "description": "COUNTERSIGN-RESOLVED (spec section 1.1): an entry with result `resolved` means the bundle establishes `countersigned`, and grade is the highest rung the bundle establishes.",
+          "if": {
+            "required": ["countersignatures"],
+            "properties": { "countersignatures": { "contains": { "properties": { "result": { "const": "resolved" } }, "required": ["result"] } } }
+          },
+          "then": { "properties": { "grade": { "const": "countersigned" } } }
         }
       ]
     },

@@ -91,7 +91,7 @@ Every claim also carries:
   (`recomputed` ⇔ *Verifiable*, `judged` ⇔ *Attested* on the assurance ladder, 2026-09-22 ruling).
 - `grade` (`self-attested | witnessed | countersigned`) — the assurance grade the claim's own
   bundle carries on the Witness/Countersign ladder, owned elsewhere,
-  mirrored here, never redefined.
+  mirrored here, never redefined. How a countersignature moves it: §1.1.
 - `evidence[]` — the evidence this claim rests on, by digest only (§5). A claim never inlines
   evidence bytes; a reader who wants the bytes resolves the digest against the evidence's own
   disclosure record.
@@ -108,6 +108,63 @@ evidence by digest" is structurally impossible here: `evidence[]` is REQUIRED on
 (§4), by digest only. "A number that cannot be traced to claims" is §3's concern — every count in
 `aggregate.coverage` and every entry in `aggregate.buckets` resolves to real claim objects in this
 same Result, never a number computed and reported without the claims that back it.
+
+### 1.1 Grade and countersignature results
+
+`grade` keeps its three values. This section says how a countersignature on the claim's bundle
+moves it, and adds one OPTIONAL field so that a countersignature which does not move it stays
+visible.
+
+The Evidence Bundle (`draft-mih-zhang-agent-disclosure-bundle-01`, "Verifying a countersign/v1
+Entry") has a verifier report each `countersign/v1` entry as exactly one of `invalid`,
+`not independent`, `unresolved signer` (independent, and the key is in no directory consulted),
+or `resolved` (independent, and the key is found). Those four values, and the conditions behind
+them (the `over` comparison, the signature check, and independence as that document's
+"Self-Countersignature" section computes it), are the Bundle's. They are used here by reference
+and never redefined.
+
+**The rule.** A claim's `grade` is the highest rung its bundle actually establishes. It is never
+graded up:
+
+| Bundle -01 entry result | Ladder rung (as some producers name it) | Moves `grade`? | The claim's `grade` |
+|---|---|---|---|
+| no entry | `self-attested` / `witnessed` | no | `witnessed` when the record has a Transparency Service Receipt, else `self-attested` |
+| `invalid` | none (not a countersignature of this bundle) | no | the grade the claim has without the entry |
+| `not independent` | `self-countersigned` | no | the grade the claim has without the entry |
+| `unresolved signer` | `unresolved-signer` | no | the grade the claim has without the entry |
+| `resolved` | `countersigned` | yes | `countersigned` |
+
+- A `not independent` entry (a self-countersignature) adds nothing above the grade the claim has
+  without it. The producer signing its own bundle a second time is still the producer's word.
+- An `unresolved signer` entry is not counted as a countersignature. The key differs from the
+  producer's, but nobody the verifier consulted can say whose it is.
+- An `invalid` entry is not counted.
+- Only a `resolved` entry yields `countersigned`. A claim whose bundle carries one MUST say
+  `countersigned`.
+- A Receipt that a countersign entry carries is over the countersigner's statement, and the Bundle
+  says it "says nothing about the Bundle". It never makes the claim `witnessed`.
+
+`resolved` depends on which directory the verifier consulted, and the Bundle privileges none. A
+relying party that re-verifies with a different directory and gets `unresolved signer` reads the
+claim at the grade it has without that entry.
+
+**`countersignatures` (OPTIONAL).** One entry per `countersign/v1` entry over the claim's bundle,
+in the bundle's order, each as the verifier reported it. Results are listed per entry and never
+combined, as the Bundle requires:
+
+```
+countersignatures:                    # OPTIONAL; when present, at least one entry
+  - result: invalid | not independent | unresolved signer | resolved   # Bundle -01, verbatim
+    signer_key_id: <64 lowercase hex> # the entry's signer.key_id, as the entry carries it
+```
+
+The field is a report of what the Result builder's verifier found, the same posture §4.1 takes
+for `close_state`. A verifier re-verifies each entry against the bundle and never trusts the
+field. When the field is present, the schema binds it to `grade` (`Claim`'s countersignature
+rules): `grade: countersigned` requires at least one entry with `result: resolved`, and an entry
+with `result: resolved` requires `grade: countersigned`. So a claim whose entries are all
+`invalid`, `not independent`, or `unresolved signer` cannot say `countersigned`. A claim without
+the field is unchanged and validates as before.
 
 ## 2. Disclosure policy — `disclosure` · `analysis` · `story`
 
@@ -217,6 +274,7 @@ claim:
   evidence: [digest-ref, ...]         # §5 — by digest only
   proofs: [proof-ref, ...]            # §5 — by digest only
   presentation: disclosure-carrier | analysis-carrier | story-carrier   # §2, §6
+  countersignatures: [countersign-report, ...]   # OPTIONAL, §1.1
 ```
 
 **Normative, not schema-enforced in v0:** claim `id` uniqueness within a Result, and every
@@ -495,3 +553,12 @@ mutant proof. One further schema negative
 `neg-close-ref-not-in-evidence` and `neg-close-peer-ref-not-in-evidence` (a cited digest missing from
 `evidence[]`). The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against these same
 fixtures, not here.
+
+§1.1's countersignature rules add three positives, one judged claim each
+(`pos-example-org-countersign-not-independent-result.json`: `self-attested` with a self-countersignature;
+`pos-example-org-countersign-unresolved-signer-result.json`: `witnessed` with an unresolved signer;
+`pos-example-org-countersign-resolved-result.json`: `countersigned` with a self-countersignature and a
+resolved entry side by side) and three schema negatives, each one field away from its positive, each
+with a mutant: `neg-countersigned-not-independent` and `neg-countersigned-unresolved-signer` (grade
+raised to `countersigned`), and `neg-countersign-resolved-graded-down` (a `resolved` entry under
+`grade: witnessed`).
