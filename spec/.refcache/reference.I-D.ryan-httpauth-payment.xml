@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<reference anchor="I-D.ryan-httpauth-payment" target="https://datatracker.ietf.org/doc/html/draft-ryan-httpauth-payment-01">
+   <front>
+      <title>The &quot;Payment&quot; HTTP Authentication Scheme</title>
+      <author initials="B." surname="Ryan" fullname="Brendan Ryan">
+         <organization>Tempo Labs</organization>
+      </author>
+      <author initials="J." surname="Moxey" fullname="Jake Moxey">
+         <organization>Tempo Labs</organization>
+      </author>
+      <author initials="T." surname="Meagher" fullname="Tom Meagher">
+         <organization>Tempo Labs</organization>
+      </author>
+      <author initials="J." surname="Weinstein" fullname="Jeff Weinstein">
+         <organization>Stripe</organization>
+      </author>
+      <author initials="S." surname="Kaliski" fullname="Steve Kaliski">
+         <organization>Stripe</organization>
+      </author>
+      <date month="March" day="17" year="2026" />
+      <abstract>
+	 <t>   This document defines the &quot;Payment&quot; HTTP authentication scheme,
+   enabling HTTP resources to require a payment challenge to be
+   fulfilled before access.  The scheme extends HTTP Authentication,
+   using the HTTP 402 &quot;Payment Required&quot; status code.
+
+   The protocol is payment-method agnostic, supporting any payment
+   network or currency through registered payment method identifiers.
+   Specific payment methods are defined in separate payment method
+   specifications.
+
+	 </t>
+      </abstract>
+   </front>
+   <seriesInfo name="Internet-Draft" value="draft-ryan-httpauth-payment-01" />
+   
+</reference>

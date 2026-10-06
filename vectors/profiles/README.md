@@ -1,4 +1,12 @@
-# Profile vectors — `nostr-pubkey` host-principal profile + first Buzz Evidence Contract profiles
+# Profile vectors — `nostr-pubkey` host-principal profile + three Evidence Contract profiles for Nostr-based agent hosts
+
+**About the name Buzz in this file.** These profiles are written for agent hosts that run over the
+Nostr transport. The open-source Buzz project is used as the reference example of such a host,
+because its job, moderation and release flows are public. The profiles are not adopted, endorsed,
+or used by the Buzz project, and nothing here describes Buzz's own practices. The fixtures below
+were released in 0.6.0 with `buzz.`-prefixed ids and `buzz.example` hosts; released vectors are
+never rewritten, so they keep those ids. Copies under the neutral `nostr-host.` prefix supersede
+them.
 
 **Status: subject shape ruled (2026-09-23); illustrative vectors, generated, two-language parity.**
 Registry placement of the profile entries is still **unruled** (see `capsule-registry`'s
@@ -16,8 +24,8 @@ record *shape* the profiles name; they are not yet a conformance suite for any p
 
 So every record here carries exactly `subject: {event_id, semantic_digest}`:
 
-- `event_id` — the Buzz transport event id (a specific Nostr transmission; not recomputable from
-  bytes).
+- `event_id` — the host's Nostr transport event id (a specific Nostr transmission; not
+  recomputable from bytes).
 - `semantic_digest` — the content identity of that event's payload (recomputable).
 
 "What kind" of subject a record is about comes from `contract_ref` (the profile id) and

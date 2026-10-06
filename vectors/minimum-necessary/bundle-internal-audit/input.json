@@ -1,0 +1,332 @@
+{
+  "description": "Both Capsules, both policy decisions, agent_input and agent_output revealed for both: every check passes.",
+  "bundle": {
+    "bundle_version": "2",
+    "bundle_kind": "evidence-bundle/v2",
+    "root": "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7",
+    "records": [
+      {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "price-CLM-2026-0914-0007",
+        "action_type": "decide",
+        "operator": "EXAMPLE-ORG",
+        "developer": "claims-processor@2.4.1",
+        "timestamp": "2026-09-15T14:02:14Z",
+        "epoch_id": "policy-2026-08-01",
+        "model_attestation": {
+          "compute_attestation": {
+            "agent_input_digest": "1a051437d63ef66e5eba28bbc4151ba12798384dd6bc0c3dafe2a4fce913c21c",
+            "agent_output_digest": "bc3eac6098626f5283cbecfb2a27ab1f4bcb903265ed8c8c4b86c7bc6887d87f"
+          }
+        },
+        "constraints": [
+          {
+            "id": "org.example.disclosure_policy",
+            "check_type": "org.example.minimum_necessary",
+            "method": "org.example.sd_jwt_presentation",
+            "result": "pass",
+            "severity": "high",
+            "blocking": true,
+            "evidence_digest": "c81dc1406d7dbe869124af8b82738d3da7cea83ec5e09908b6d4326a72b1c0fc"
+          }
+        ],
+        "disposition": {
+          "approver": "policy",
+          "decision": "accept",
+          "human_disposed": false,
+          "verdict_class": "executed"
+        },
+        "assurance": {
+          "attestation_mode": "self_attested",
+          "effect_mode": "not_applicable",
+          "ledger_mode": "standalone"
+        },
+        "capsule_id": "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249"
+      },
+      {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "audit-CLM-2026-0914-0007",
+        "action_type": "decide",
+        "operator": "EXAMPLE-ORG",
+        "developer": "claim-audit@1.2.0",
+        "timestamp": "2026-09-15T14:06:30Z",
+        "epoch_id": "policy-2026-08-01",
+        "model_attestation": {
+          "compute_attestation": {
+            "agent_input_digest": "9736e3913ad5d9ef33bd14d6f3340ab7c025cd87e51cecf7e438c993800e0f0c",
+            "agent_output_digest": "58ab2bb6d2b9a7ba99e76083464d5918a43e6e1beb4764d85275e3dc1d6d869a"
+          }
+        },
+        "constraints": [
+          {
+            "id": "org.example.disclosure_policy",
+            "check_type": "org.example.minimum_necessary",
+            "method": "org.example.sd_jwt_presentation",
+            "result": "pass",
+            "severity": "high",
+            "blocking": true,
+            "evidence_digest": "3814ee8a789bd95f8b40e1f0d1d594a9199020dc5f60b5618c351e7d2eaedcad"
+          }
+        ],
+        "disposition": {
+          "approver": "policy",
+          "decision": "accept",
+          "human_disposed": false,
+          "verdict_class": "executed"
+        },
+        "assurance": {
+          "attestation_mode": "self_attested",
+          "effect_mode": "not_applicable",
+          "ledger_mode": "standalone"
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249",
+            "citation_purpose": "acted_on"
+          }
+        ],
+        "capsule_id": "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7"
+      }
+    ],
+    "completeness": {
+      "closure_depth": 2,
+      "records_mode": "complete",
+      "payloads_mode": "all",
+      "suppressed_fields": [],
+      "missing": []
+    },
+    "disclosures": {
+      "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249": {
+        "agent_input": {
+          "agent_input_version": "1",
+          "presentations": [
+            "eyJhbGciOiJFZERTQSIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsiLVpEWWxkV3R2Wk5CMEhRSi1vVGhud1hma25ndDA4dkZ5SU52UEdGbTFtMCIsIjBzWmVuZTJETHAyanczdEJyMjBPek8zM0hVY0tORHJVX2JyeHl2UzVJVVUiLCIxOVpuSXp3cEMtSldkc1oxUFNzVTR0WE1RZndmQ01mMXh0VENGZkhnbXVFIiwiQVNqcG9xdGRSN1h1TlNGbFlaZUJ6YWZJSDN0aFZZOXhscFl0a05PUGM0TSIsIkNVUFo2LWRqemFuRUlRWXlscFV6bm05QUpCbUtLdUZVU0VjeFpILWcyUnciLCJOSUtneDctRHhLN2hObVQ2RXV4bDBzVnhCTnFJUDJnVXFqelRVRm1RenRNIiwiUTV2cmpOT0trMkdMcGtERVZYc2xEVnR1UXF5ZWJUZGo3VkZJcW11dmRyUSIsIlI0MzlPMTlSNHNhQUxWNjlkdEVqZGdyX1RLN1FtVnBldkNlR1FOaVFVT2siLCJSdy1zeWtabVgtZHFNVmx2Y29kdmk1UHFDbkc0czJhTDNDRm8yNjNZZ3M0IiwiVExjRUw2dXZpUjhDVUhYd1d3SWJtVVd3cC1SRFBoVXRCWDBIdEFpMnRYayIsImZBQm1kTV9nNEtvSUZRV3NTcWl6TFpLX195QTNkd3JFTlY2LUxGMXN6UGciLCJnUll3cWRoVk5Rc1BQNWhvZWpaVHluanBvcG5PeFhkcWJmLVVBWkJWSW80Il0sIl9zZF9hbGciOiJzaGEtMjU2IiwiY2xhaW1faWQiOiJDTE0tMjAyNi0wOTE0LTAwMDciLCJpYXQiOjE3NTc4MDgwMDAsImlzcyI6Imh0dHBzOi8vZGF0YS5leGFtcGxlLm9yZyIsInZjdCI6Imh0dHBzOi8vZGF0YS5leGFtcGxlLm9yZy90eXBlcy9jbGFpbS04MzdwL3YxIn0.LoVvxYg-yRpZm6WYNAVo6avq4YqwwBBSFFoonuoynb6LZeWsB5fdfLEu7AicI33IsLQjHrH5WJCAugwfGQOVBw~WyJGWm01anhweFJPUGtNb21yblZMWkFBIiwibWVtYmVyX2lkIiwiTTQ4MjEzMzc3Il0~WyJyYVdfRnp5dWJYTUswQlctM0FUaVR3IiwicGF0aWVudF9kb2IiLCIxOTcxLTAzLTIyIl0~WyIwOXhsZm1EbFVaOENaU2xLZkI3VFp3IiwicHJvdmlkZXJfbnBpIiwiMTIzNDU2Nzg5MyJd~WyJVTFJLRWNROHZISHIxc054dmpEVjZRIiwiZGF0ZV9vZl9zZXJ2aWNlIiwiMjAyNi0wOS0xNCJd~WyJBZzkxS0hrb1JET05HenI0SEU2WFBRIiwicGxhY2Vfb2Zfc2VydmljZSIsIjExIl0~WyI3ZlNWVF84dEQ2Um9TQ2tmQ0lfOVJBIiwiY3B0IiwiOTkyMTMiXQ~WyJqLWNDa05LWHdWYy02eVptc0VvU1VRIiwiaWNkMTAiLFsiRTExLjkiXV0~WyJTUmJXaWUxZkhSaXVxTzNYMU9LMURBIiwiY2hhcmdlIix7ImN1cnJlbmN5IjoiVVNEIiwidmFsdWUiOiIxNTAuMDAifV0~WyJTTlh1bEhRY2J4LTEyN0MySkdCakhBIiwidW5pdHMiLDFd~",
+            "eyJhbGciOiJFZERTQSIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsiMGU5Y1dzMGQ3QWd4OXhYYVNuT2E5N1ZNS09yemY3akdxV0RjdFRfWTJ3RSIsIkJIUFQtNEFKSGZVaGFycDJtR1FmaElxZ25xM2JSNDVNdUFhSDVCWkxmQVUiLCJEU1NRYVFGZ3g3Wk50LVBycHE2UnphOEpITHRJanJWVW5NRTQtR2ZPSjRvIiwiRmdhODJzeFNnTXB4WFJMcmFxYk4yVDI4NnNJZ19iTU1RTUhxOUpnZUlpSSIsIkZ6RHAxRHlsdHZOT1I3djBlT3JsWHAtTFJVVnRwaFViN3Q2d196cW1LUjAiLCJWTHNscTF0c0dQc1RWRTF3dHZVUlAzMlJWczFHX09GNmFUUFJNY0RvNGlrIiwiVzNCUVRXRWtCdkF5YmhXNlNzTTAxRVpyVEVOak12RkE3TXdMNmtSN1lPRSIsIndiS005Y3dkdml0VkFDQ29IamRjUkhocDk2Vmd0TzB6NjFMT0REN1E2YTgiXSwiX3NkX2FsZyI6InNoYS0yNTYiLCJjbGFpbV9pZCI6IkNMTS0yMDI2LTA5MTQtMDAwNyIsImlhdCI6MTc1NzgwODAwMCwiaXNzIjoiaHR0cHM6Ly9kYXRhLmV4YW1wbGUub3JnIiwibm90ZV9pZCI6IkVOQy03NzEyMCIsInZjdCI6Imh0dHBzOi8vZGF0YS5leGFtcGxlLm9yZy90eXBlcy9lbmNvdW50ZXItbm90ZS92MSJ9.SExV1we35scqnPee9ByDvA3_OBuDe2qu9tY-SaKi6oGKjgT8U3lpHNdN2Er6The9NFZlxuU_1-jPPb6UGmt2Bw~",
+            "eyJhbGciOiJFZERTQSIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsiOGt0Y1pUZ1FrWldrRFE0Y3JCZGo0aktKRy12WkFDMC1wRF9nelBheUR0RSIsIkVpd2xGa3ZMRXpqaFRrRndDVWg2Y1JOU0szcnk1d2pSX1ZyOGVLYXpiTVEiLCJMem9hOUVZWkxCOFFvMV95a3hBcWJOTDNURkloNl9OZ2NMY0xQMkNmMlJzIiwiV0lranNwZnFUNXBjcG5VNWYwQlpTc1pKb254SUd2S3d4U2pSMnRtZFFUUSIsImhQaWlXZVFRY3J0Xy1QUXlVNjd5dHZ1dm5DdnlVdUtqSGFOR1JMZzM1dUUiLCJtVEVjMm5ZNzFSQkZRZnBMeHV1VmpwSnF2T0RqVFV5YmpaSl9TNGRDb0FZIiwib010dmk5NjRpaFZ6N2N0S3lMam16NDBuUGU4WTlsUjh2OEhmN2Jkd1JFRSIsInNtb0R2OWNDZW1Ib1VGUzZ5SnpaaGE2dXpwQkhKYTNZX3BQTjFNd1NJSUkiLCJ1QjdpLWstR25WNjAwcl8yUjk1dU9qdGNVZ2VPMHpKVTBQYjEzYURLbGJVIl0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzU3ODA4MDAwLCJpc3MiOiJodHRwczovL2RhdGEuZXhhbXBsZS5vcmciLCJ2Y3QiOiJodHRwczovL2RhdGEuZXhhbXBsZS5vcmcvdHlwZXMvZWxpZ2liaWxpdHkvdjEifQ.cLykzHxbBjVzz-RtQDM3bhCCbSQdVjoxCrc535Gwgo57GSSW-MfhAC8m2mDDWgGu54eVQvamIrAPJFHgVCopAQ~WyJFX0hUZ04wclJQTkRXWlczSzZpeHlBIiwibWVtYmVyX2lkIiwiTTQ4MjEzMzc3Il0~WyJxVm84cDg2TkZYVXZURjNQd2ZhSnp3IiwiZ3JvdXBfbnVtYmVyIiwiRy01NTAxMCJd~WyI0MFUxTkdVcmxpcm9VcV9JMGd0RnZ3IiwicGxhbl9pZCIsIlBQTy1TVEQtMjAyNiJd~WyJYY2JOQzBSNjJpdTZfbWFfYm5DSTFRIiwiZWZmZWN0aXZlIix7ImZyb20iOiIyMDI2LTAxLTAxIiwidG8iOiIyMDI2LTEyLTMxIn1d~WyJRYlJQaDVMbkRPckFBMUo2T2ZPcm53IiwiY29wYXkiLHsiY3VycmVuY3kiOiJVU0QiLCJ2YWx1ZSI6IjMwLjAwIn1d~WyJtLVo2RGpZTzNvVHduQXZPVC1IY1B3IiwiZGVkdWN0aWJsZV9tZXQiLHRydWVd~WyI0VnAtc1hFUzMtV3BqLUtkbHMxSGRnIiwicHJpb3JfYXV0aF9yZXF1aXJlZCIsZmFsc2Vd~"
+          ]
+        },
+        "agent_output": {
+          "claim_id": "CLM-2026-0914-0007",
+          "allowed_amount": {
+            "value": "112.40",
+            "currency": "USD"
+          },
+          "member_responsibility": {
+            "value": "30.00",
+            "currency": "USD"
+          },
+          "reason_codes": [
+            "CO-45"
+          ]
+        }
+      },
+      "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7": {
+        "agent_input": {
+          "agent_input_version": "1",
+          "presentations": [
+            "eyJhbGciOiJFZERTQSIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsiLVpEWWxkV3R2Wk5CMEhRSi1vVGhud1hma25ndDA4dkZ5SU52UEdGbTFtMCIsIjBzWmVuZTJETHAyanczdEJyMjBPek8zM0hVY0tORHJVX2JyeHl2UzVJVVUiLCIxOVpuSXp3cEMtSldkc1oxUFNzVTR0WE1RZndmQ01mMXh0VENGZkhnbXVFIiwiQVNqcG9xdGRSN1h1TlNGbFlaZUJ6YWZJSDN0aFZZOXhscFl0a05PUGM0TSIsIkNVUFo2LWRqemFuRUlRWXlscFV6bm05QUpCbUtLdUZVU0VjeFpILWcyUnciLCJOSUtneDctRHhLN2hObVQ2RXV4bDBzVnhCTnFJUDJnVXFqelRVRm1RenRNIiwiUTV2cmpOT0trMkdMcGtERVZYc2xEVnR1UXF5ZWJUZGo3VkZJcW11dmRyUSIsIlI0MzlPMTlSNHNhQUxWNjlkdEVqZGdyX1RLN1FtVnBldkNlR1FOaVFVT2siLCJSdy1zeWtabVgtZHFNVmx2Y29kdmk1UHFDbkc0czJhTDNDRm8yNjNZZ3M0IiwiVExjRUw2dXZpUjhDVUhYd1d3SWJtVVd3cC1SRFBoVXRCWDBIdEFpMnRYayIsImZBQm1kTV9nNEtvSUZRV3NTcWl6TFpLX195QTNkd3JFTlY2LUxGMXN6UGciLCJnUll3cWRoVk5Rc1BQNWhvZWpaVHluanBvcG5PeFhkcWJmLVVBWkJWSW80Il0sIl9zZF9hbGciOiJzaGEtMjU2IiwiY2xhaW1faWQiOiJDTE0tMjAyNi0wOTE0LTAwMDciLCJpYXQiOjE3NTc4MDgwMDAsImlzcyI6Imh0dHBzOi8vZGF0YS5leGFtcGxlLm9yZyIsInZjdCI6Imh0dHBzOi8vZGF0YS5leGFtcGxlLm9yZy90eXBlcy9jbGFpbS04MzdwL3YxIn0.LoVvxYg-yRpZm6WYNAVo6avq4YqwwBBSFFoonuoynb6LZeWsB5fdfLEu7AicI33IsLQjHrH5WJCAugwfGQOVBw~WyIwOXhsZm1EbFVaOENaU2xLZkI3VFp3IiwicHJvdmlkZXJfbnBpIiwiMTIzNDU2Nzg5MyJd~WyJVTFJLRWNROHZISHIxc054dmpEVjZRIiwiZGF0ZV9vZl9zZXJ2aWNlIiwiMjAyNi0wOS0xNCJd~WyJBZzkxS0hrb1JET05HenI0SEU2WFBRIiwicGxhY2Vfb2Zfc2VydmljZSIsIjExIl0~WyI3ZlNWVF84dEQ2Um9TQ2tmQ0lfOVJBIiwiY3B0IiwiOTkyMTMiXQ~WyJqLWNDa05LWHdWYy02eVptc0VvU1VRIiwiaWNkMTAiLFsiRTExLjkiXV0~WyJTUmJXaWUxZkhSaXVxTzNYMU9LMURBIiwiY2hhcmdlIix7ImN1cnJlbmN5IjoiVVNEIiwidmFsdWUiOiIxNTAuMDAifV0~WyJTTlh1bEhRY2J4LTEyN0MySkdCakhBIiwidW5pdHMiLDFd~",
+            "eyJhbGciOiJFZERTQSIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsiMGU5Y1dzMGQ3QWd4OXhYYVNuT2E5N1ZNS09yemY3akdxV0RjdFRfWTJ3RSIsIkJIUFQtNEFKSGZVaGFycDJtR1FmaElxZ25xM2JSNDVNdUFhSDVCWkxmQVUiLCJEU1NRYVFGZ3g3Wk50LVBycHE2UnphOEpITHRJanJWVW5NRTQtR2ZPSjRvIiwiRmdhODJzeFNnTXB4WFJMcmFxYk4yVDI4NnNJZ19iTU1RTUhxOUpnZUlpSSIsIkZ6RHAxRHlsdHZOT1I3djBlT3JsWHAtTFJVVnRwaFViN3Q2d196cW1LUjAiLCJWTHNscTF0c0dQc1RWRTF3dHZVUlAzMlJWczFHX09GNmFUUFJNY0RvNGlrIiwiVzNCUVRXRWtCdkF5YmhXNlNzTTAxRVpyVEVOak12RkE3TXdMNmtSN1lPRSIsIndiS005Y3dkdml0VkFDQ29IamRjUkhocDk2Vmd0TzB6NjFMT0REN1E2YTgiXSwiX3NkX2FsZyI6InNoYS0yNTYiLCJjbGFpbV9pZCI6IkNMTS0yMDI2LTA5MTQtMDAwNyIsImlhdCI6MTc1NzgwODAwMCwiaXNzIjoiaHR0cHM6Ly9kYXRhLmV4YW1wbGUub3JnIiwibm90ZV9pZCI6IkVOQy03NzEyMCIsInZjdCI6Imh0dHBzOi8vZGF0YS5leGFtcGxlLm9yZy90eXBlcy9lbmNvdW50ZXItbm90ZS92MSJ9.SExV1we35scqnPee9ByDvA3_OBuDe2qu9tY-SaKi6oGKjgT8U3lpHNdN2Er6The9NFZlxuU_1-jPPb6UGmt2Bw~WyJGaUp5MWdQMHNRTkEwbUh5Nng4enh3IiwiY2hpZWZfY29tcGxhaW50IiwiRm9sbG93LXVwLCB0eXBlIDIgZGlhYmV0ZXMiXQ~WyJTWGJyQ1c2VTBsXzdNMlhiODA5MHBBIiwiaGlzdG9yeSIsIlJlcG9ydHMgYWRoZXJlbmNlOyBubyBoeXBvZ2x5Y2VtaWMgZXBpc29kZXMuIl0~WyIxZ0NfTTI5SnFyU0NSOWtOY3R0VTFRIiwiZXhhbSIsIkJQIDEyOC84MjsgZm9vdCBleGFtIG5vcm1hbC4iXQ~WyJ5UjNMNUZlcDEyZzJOaldZY2JaR3dnIiwibWVkaWNhdGlvbnMiLFsibWV0Zm9ybWluIDUwMCBtZyBCSUQiXV0~WyI3dkhNNmdXYzRwYWRTTEVVY3NrUjV3IiwiYXNzZXNzbWVudCIsIkUxMS45LCBjb250cm9sbGVkIl0~WyIxLTJva0UwWU40Smo1Q3NOTGhvMV9BIiwicGxhbiIsIkNvbnRpbnVlIG1ldGZvcm1pbjsgQTFjIGluIDMgbW9udGhzLiJd~",
+            "eyJhbGciOiJFZERTQSIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsiOGt0Y1pUZ1FrWldrRFE0Y3JCZGo0aktKRy12WkFDMC1wRF9nelBheUR0RSIsIkVpd2xGa3ZMRXpqaFRrRndDVWg2Y1JOU0szcnk1d2pSX1ZyOGVLYXpiTVEiLCJMem9hOUVZWkxCOFFvMV95a3hBcWJOTDNURkloNl9OZ2NMY0xQMkNmMlJzIiwiV0lranNwZnFUNXBjcG5VNWYwQlpTc1pKb254SUd2S3d4U2pSMnRtZFFUUSIsImhQaWlXZVFRY3J0Xy1QUXlVNjd5dHZ1dm5DdnlVdUtqSGFOR1JMZzM1dUUiLCJtVEVjMm5ZNzFSQkZRZnBMeHV1VmpwSnF2T0RqVFV5YmpaSl9TNGRDb0FZIiwib010dmk5NjRpaFZ6N2N0S3lMam16NDBuUGU4WTlsUjh2OEhmN2Jkd1JFRSIsInNtb0R2OWNDZW1Ib1VGUzZ5SnpaaGE2dXpwQkhKYTNZX3BQTjFNd1NJSUkiLCJ1QjdpLWstR25WNjAwcl8yUjk1dU9qdGNVZ2VPMHpKVTBQYjEzYURLbGJVIl0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzU3ODA4MDAwLCJpc3MiOiJodHRwczovL2RhdGEuZXhhbXBsZS5vcmciLCJ2Y3QiOiJodHRwczovL2RhdGEuZXhhbXBsZS5vcmcvdHlwZXMvZWxpZ2liaWxpdHkvdjEifQ.cLykzHxbBjVzz-RtQDM3bhCCbSQdVjoxCrc535Gwgo57GSSW-MfhAC8m2mDDWgGu54eVQvamIrAPJFHgVCopAQ~"
+          ]
+        },
+        "agent_output": {
+          "claim_id": "CLM-2026-0914-0007",
+          "finding": "99213 supported",
+          "basis": [
+            "exam",
+            "assessment",
+            "plan"
+          ]
+        }
+      }
+    },
+    "extensions": {
+      "disclosure-policy-decisions/v1": {
+        "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249": {
+          "policy_decision_version": "1",
+          "policy_id": "P-1",
+          "policy_version": "2026-08-01",
+          "agent": "claims-processor@2.4.1",
+          "role": "claims_processor",
+          "subject": {
+            "claim_id": "CLM-2026-0914-0007"
+          },
+          "sources": [
+            {
+              "vct": "https://data.example.org/types/claim-837p/v1",
+              "revealed": [
+                "member_id",
+                "patient_dob",
+                "provider_npi",
+                "date_of_service",
+                "place_of_service",
+                "cpt",
+                "icd10",
+                "charge",
+                "units"
+              ],
+              "withheld": [
+                "patient_name"
+              ]
+            },
+            {
+              "vct": "https://data.example.org/types/encounter-note/v1",
+              "revealed": [],
+              "withheld": [
+                "chief_complaint",
+                "history",
+                "exam",
+                "medications",
+                "assessment",
+                "plan"
+              ]
+            },
+            {
+              "vct": "https://data.example.org/types/eligibility/v1",
+              "revealed": [
+                "member_id",
+                "group_number",
+                "plan_id",
+                "effective",
+                "copay",
+                "deductible_met",
+                "prior_auth_required"
+              ],
+              "withheld": []
+            }
+          ],
+          "decided_at": "2026-09-15T14:02:11Z"
+        },
+        "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7": {
+          "policy_decision_version": "1",
+          "policy_id": "A-1",
+          "policy_version": "2026-08-01",
+          "agent": "claim-audit@1.2.0",
+          "role": "claim_auditor",
+          "subject": {
+            "claim_id": "CLM-2026-0914-0007"
+          },
+          "sources": [
+            {
+              "vct": "https://data.example.org/types/claim-837p/v1",
+              "revealed": [
+                "provider_npi",
+                "date_of_service",
+                "place_of_service",
+                "cpt",
+                "icd10",
+                "charge",
+                "units"
+              ],
+              "withheld": [
+                "member_id",
+                "patient_name",
+                "patient_dob"
+              ]
+            },
+            {
+              "vct": "https://data.example.org/types/encounter-note/v1",
+              "revealed": [
+                "chief_complaint",
+                "history",
+                "exam",
+                "medications",
+                "assessment",
+                "plan"
+              ],
+              "withheld": []
+            },
+            {
+              "vct": "https://data.example.org/types/eligibility/v1",
+              "revealed": [],
+              "withheld": [
+                "member_id",
+                "group_number",
+                "plan_id",
+                "effective",
+                "copay",
+                "deductible_met",
+                "prior_auth_required"
+              ]
+            }
+          ],
+          "decided_at": "2026-09-15T14:06:27Z"
+        }
+      },
+      "sd-jwt-issuers/v1": {
+        "https://data.example.org": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "WLhcqTuGvsEqPLjH1ubFNgbfaqj2jINtYITLpN_pNUo"
+        }
+      }
+    },
+    "completeness_certificate": {
+      "log_id": "https://log.example.org/agent-actions",
+      "first_seq": 1,
+      "last_seq": 2,
+      "range_root": "9ad4dd80cdc58d2e897cd392ec9d3877b2893fdc621dcd175be040489fef4f5f",
+      "body_digests": [
+        "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249",
+        "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7"
+      ],
+      "range_proof": {
+        "from_seq": 1,
+        "to_seq": 2,
+        "size": 3,
+        "from_index": 0,
+        "to_index": 1,
+        "witness": []
+      },
+      "memberships": {
+        "c4bd73bbe22bb2a52921b57fd1a27b49ed9df5010b0d350d24e40a685aae4249": {
+          "log_coordinates": {
+            "log_id": "https://log.example.org/agent-actions",
+            "seq": 1,
+            "leaf_index": 0
+          },
+          "inclusion_proof": {
+            "v": 1,
+            "kind": "inclusion",
+            "size": 3,
+            "leaf_index": 0,
+            "witness": [
+              "b5b67df67fca45aaf4115e5b18448e9499633123a8389d5f489d1a247874aee4"
+            ],
+            "peaks_left": [],
+            "peaks_right": []
+          }
+        },
+        "6633bbe90085b1f9135f8791fc64c4ac1a3a955eaf693c7e09f40ebd71d067e7": {
+          "log_coordinates": {
+            "log_id": "https://log.example.org/agent-actions",
+            "seq": 2,
+            "leaf_index": 1
+          },
+          "inclusion_proof": {
+            "v": 1,
+            "kind": "inclusion",
+            "size": 3,
+            "leaf_index": 1,
+            "witness": [
+              "5425defa0d50b1df1aaae1ccac09ec69140a819cd394509e2abd60a529fce84d"
+            ],
+            "peaks_left": [],
+            "peaks_right": []
+          }
+        }
+      }
+    },
+    "checkpoint": {
+      "mmr_size": 3,
+      "root": "9ad4dd80cdc58d2e897cd392ec9d3877b2893fdc621dcd175be040489fef4f5f",
+      "cose": "0oRYnKQBJwN4H2FwcGxpY2F0aW9uL2NsbC1jaGVja3BvaW50K2Nib3IEWCCnfiYUASZWCW0XDH6lLb3uxx-plIBwAIdNDTkmXuQL5Q-iAXglaHR0cHM6Ly9sb2cuZXhhbXBsZS5vcmcvYWdlbnQtYWN0aW9ucwJ4J2h0dHBzOi8vbG9nLmV4YW1wbGUub3JnL2FnZW50LWFjdGlvbnMjM6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMDktMTVUMTQ6MTA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggmtTdgM3FjS6JfNOS7J04d7KJP9xiHc0XW-BASJ_vT19vcHJldl9jb21taXRtZW50QFhA2JIo4CzmbYkXbzrjxnNp5E223qay82J_4HkMX_ztLnObwHUP5HvmBaSXB9sdLQQg3nVWk9-5x-iLlZAiGE1sBA"
+    }
+  }
+}

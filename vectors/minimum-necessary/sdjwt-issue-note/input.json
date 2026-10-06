@@ -1,0 +1,35 @@
+{
+  "description": "Seal the encounter_note record once as an SD-JWT: every non-correlation field is a salted Disclosure.",
+  "record": {
+    "note_id": "ENC-77120",
+    "claim_id": "CLM-2026-0914-0007",
+    "chief_complaint": "Follow-up, type 2 diabetes",
+    "history": "Reports adherence; no hypoglycemic episodes.",
+    "exam": "BP 128/82; foot exam normal.",
+    "medications": [
+      "metformin 500 mg BID"
+    ],
+    "assessment": "E11.9, controlled",
+    "plan": "Continue metformin; A1c in 3 months."
+  },
+  "clear_fields": [
+    "note_id",
+    "claim_id"
+  ],
+  "vct": "https://data.example.org/types/encounter-note/v1",
+  "iss": "https://data.example.org",
+  "iat": 1757808000,
+  "salts": {
+    "chief_complaint": "FiJy1gP0sQNA0mHy6x8zxw",
+    "history": "SXbrCW6U0l_7M2Xb8090pA",
+    "exam": "1gC_M29JqrSCR9kNcttU1Q",
+    "medications": "yR3L5Fep12g2NjWYcbZGwg",
+    "assessment": "7vHM6gWc4padSLEUcskR5w",
+    "plan": "1-2okE0YN4Jj5CsNLho1_A"
+  },
+  "decoy_digests": [
+    "DSSQaQFgx7ZNt-Prpq6Rza8JHLtIjrVUnME4-GfOJ4o",
+    "0e9cWs0d7Agx9xXaSnOa97VMKOrzf7jGqWDctT_Y2wE"
+  ],
+  "issuer_key": "record issuer"
+}

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 package canonical_test
 
-// Buzz profile vectors (vectors/profiles/) — Go parity with the Python reference generator
+// Nostr-host profile vectors (vectors/profiles/) — Go parity with the Python reference generator
 // python/scripts/generate_profile_vectors.py. For every committed fixture this test re-derives
 // each labelled digest with canonical.JSONDigest and applies the same five rule codes the Python
 // checker applies, asserting the committed `expect.violations` exactly. TypeScript asserts the

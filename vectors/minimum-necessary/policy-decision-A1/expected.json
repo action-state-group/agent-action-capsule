@@ -1,0 +1,6 @@
+{
+  "provenance": "spec-derived",
+  "canonical": "{\"agent\":\"claim-audit@1.2.0\",\"decided_at\":\"2026-09-15T14:06:27Z\",\"policy_decision_version\":\"1\",\"policy_id\":\"A-1\",\"policy_version\":\"2026-08-01\",\"role\":\"claim_auditor\",\"sources\":[{\"revealed\":[\"provider_npi\",\"date_of_service\",\"place_of_service\",\"cpt\",\"icd10\",\"charge\",\"units\"],\"vct\":\"https://data.example.org/types/claim-837p/v1\",\"withheld\":[\"member_id\",\"patient_name\",\"patient_dob\"]},{\"revealed\":[\"chief_complaint\",\"history\",\"exam\",\"medications\",\"assessment\",\"plan\"],\"vct\":\"https://data.example.org/types/encounter-note/v1\",\"withheld\":[]},{\"revealed\":[],\"vct\":\"https://data.example.org/types/eligibility/v1\",\"withheld\":[\"member_id\",\"group_number\",\"plan_id\",\"effective\",\"copay\",\"deductible_met\",\"prior_auth_required\"]}],\"subject\":{\"claim_id\":\"CLM-2026-0914-0007\"}}",
+  "json_digest": "3814ee8a789bd95f8b40e1f0d1d594a9199020dc5f60b5618c351e7d2eaedcad",
+  "constraint_evidence_digest": "3814ee8a789bd95f8b40e1f0d1d594a9199020dc5f60b5618c351e7d2eaedcad"
+}

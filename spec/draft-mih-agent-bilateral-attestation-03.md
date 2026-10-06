@@ -64,7 +64,7 @@ attestation recording the constraint results and the disposition — performed,
 declined, or escalated to a human — by reference to the request; and each
 party acknowledges the other's attestation. The combined record binds each
 organization to its part, gives each proof of the other's, and can be
-anchored to a transparency service so that a third party who trusts neither
+registered with a Transparency Service so that a third party who trusts neither
 organization can verify the record end-to-end. The exchange records refusals
 with the same fidelity as performance, and degrades gracefully when a
 counterparty cannot attest, marking the record's reduced assurance rather
@@ -96,7 +96,7 @@ action-level, not transport-level.
 This document describes an exchange producing a **bilaterally attested action
 record**: each organization's signature over its part of the exchange is
 durable, independently verifiable evidence that it produced that part, each
-holds proof of the other's, and the combined record can be anchored so third
+holds proof of the other's, and the combined record can be registered with a Transparency Service so third
 parties can verify it. It is an individual submission. It
 composes with the existing agent action record layer
 {{I-D.mih-scitt-agent-action-capsule}} rather than defining a new one, and
@@ -175,7 +175,7 @@ Acknowledgment:
 Party identifier:
 : An opaque string naming a party (requesting or performing) within an
   attestation. A party identifier MAY resolve to a registration entry
-  admitted on the same transparency service (for example, one admitted under
+  admitted on the same Transparency Service (for example, one admitted under
   {{I-D.morrison-solo-agent-earn-registration}}), in which case the party is
   a registered principal with an admission record rather than a bare key.
   Where it does, the attestation carries the digest of the admitted Signed
@@ -223,13 +223,13 @@ The exchange has four moves:
    completion, each organization is bound to its part and holds proof of the
    other's.
 
-Attestations and acknowledgments SHOULD be anchored: registered to a
-transparency service per {{RFC9943}} — carried, for
+Attestations and acknowledgments SHOULD be registered with a
+Transparency Service per {{RFC9943}} — carried, for
 example, as the payload of a profiled Signed Statement per
 {{I-D.mih-scitt-agent-action-capsule}} — so that inclusion and
 non-equivocation are verifiable by a party who trusts neither organization.
-An unanchored bilateral record still binds the two parties to each other;
-anchoring is what makes it evidence for everyone else.
+A bilateral record that is not registered still binds the two parties to each other;
+registration is what makes it evidence for everyone else.
 
 Wire encodings for the four objects are TBD for a future revision; this
 document fixes the exchange, the binding obligations, and the disposition
@@ -254,15 +254,15 @@ of the constraint-set snapshot in effect at evaluation time, alongside the
 per-constraint results. The digest fixes *which* constraints — their
 identities and parameters — were in force when the request was disposed, so
 that a verifier can establish the applicable constraint set as of the
-attestation's anchored time, not merely at verification time — the same
-establishable-as-of-anchored-time property that {{key-compromise-revocation}}
+attestation's registration time, not merely at verification time — the same
+establishable-as-of-registration-time property that {{key-compromise-revocation}}
 requires of key validity. A constraint set that can be silently
 re-parameterized after the fact would let a performing party restate what it
 was obligated to check; pinning its digest removes that degree of freedom.
 
 **Input-commitment digest.** For each evaluation, the performing party SHOULD
 bind an input-commitment digest — a digest over the inputs the constraints
-consulted — anchored as a commitment and disclosable to the counterparty or
+consulted — carried as a commitment and disclosable to the counterparty or
 an auditor under the selective-disclosure model ({{privacy-considerations}}).
 This is a SHOULD, not a MUST: the state a constraint consults varies across
 deployments, and an honest SHOULD serves a verifier better than a nominal
@@ -344,9 +344,9 @@ already made; only the latter is evidentiary against the performing party.
 An asymmetry disposition binds to its request by correlation identifier and
 the shared action digest; a half that cannot be matched to a counterpart is
 an **orphan** — a defined state, not an error. A requesting party's half,
-anchored ({{delivery-intermediary}}) and marked with an asymmetry disposition, is
+registered with a Transparency Service ({{delivery-intermediary}}) and marked with an asymmetry disposition, is
 admissible evidence that the attempt was made — the one fact neither party
-can establish alone — and a verifier weights an anchored-but-unacknowledged
+can establish alone — and a verifier weights a registered-but-unacknowledged
 record accordingly.
 
 # Delivery Intermediary {#delivery-intermediary}
@@ -366,7 +366,7 @@ Receipts {{RFC9942}} for consistency, and may register them with more than
 one Transparency Service so that no single operator is relied on alone;
 the Transparency Service is the delivery intermediary's choice, this document names none,
 and a delivery intermediary that
-will not anchor its own receipts is non-conformant. A receiving gate SHOULD
+will not register its own receipts is non-conformant. A receiving gate SHOULD
 issue its own signed acknowledgment citing the envelope receipt by digest, so that delivery becomes a fact both
 parties assert rather than one the delivery intermediary asserts alone. Signed delivery
 receipts, and the fabrication attacks against them, are long-settled
@@ -380,7 +380,7 @@ are deployment concerns outside this document's scope.
 **Record layer.** This document defines an exchange, not a record format:
 its attestations are designed to be carried in existing agent action records
 — the Agent Action Capsule {{I-D.mih-scitt-agent-action-capsule}} supplies
-the disposition vocabulary, effect binding, and anchoring path this document
+the disposition vocabulary, effect binding, and registration path this document
 relies on, and its selective-disclosure profile
 {{I-D.mih-scitt-agent-action-capsule-sel-disc}} applies to cross-boundary
 privacy ({{privacy-considerations}}).
@@ -402,8 +402,8 @@ arbitrary distributed-system state; (b) **asymmetric endings** that
 distinguish a countersign explicitly *refused* from a counterparty that
 stayed *silent* (`delivery_unconfirmed`, `counterparty_timeout`;
 {{asymmetry-dispositions}}) — a distinction PeerReview's fault model does not
-draw; and (c) an **anchored, third-party-verifiable** form — records are
-registered to a SCITT transparency service ({{RFC9943}}) and bound by
+draw; and (c) a **registered, third-party-verifiable** form — records are
+registered with a SCITT Transparency Service ({{RFC9943}}) and bound by
 content digest, so that a party who trusts neither organization can verify
 inclusion and non-equivocation directly, rather than relying on PeerReview's
 peer-witness overlay of mutually monitoring nodes.
@@ -437,9 +437,9 @@ audit. The bilateral attestation specified here differs in three respects:
 it is transport-agnostic (a SCITT Signed Statement that verifies identically
 over HTTP, A2A, MCP, or AGTP); it is bilateral in the strict sense — each
 party holds the other's signed attestation over the same action digest,
-rather than a one-sided acknowledgment; and each record anchors to a
-transparency service, so a party trusting neither agent can verify existence
-and non-equivocation. The two compose: an AGTP CONFIRM MAY carry and anchor a
+rather than a one-sided acknowledgment; and each record is registered with a
+Transparency Service, so a party trusting neither agent can verify existence
+and non-equivocation. The two compose: an AGTP CONFIRM MAY carry and register a
 capsule.
 
 {{I-D.rampalli-scitt-capsule-provenance-binding}} binds delegation-authorization
@@ -462,8 +462,8 @@ bound to the *record*, not merely the transport session.
 A party that aborts mid-exchange (requests,
 then never acknowledges the decline; performs, then withholds the action
 attestation) creates an asymmetric record. Timeout dispositions and
-anchoring deadlines bound the asymmetry: an unacknowledged attestation
-anchored with a timeout marking is itself evidence of the counterparty's
+registration deadlines bound the asymmetry: an unacknowledged attestation
+registered with a timeout marking is itself evidence of the counterparty's
 non-completion. Repeated non-completion is a property a relying party can
 establish from the records it holds; what it does about it is that party's
 decision, and this document neither scores counterparties nor defines a
@@ -498,8 +498,8 @@ verdict.
 A party that can write records freely can write several in advance — one for
 each outcome it might later prefer to claim — and disclose only the
 convenient one. Every disclosed record is then genuine, correctly signed, and
-correctly anchored; nothing has been forged, and no integrity check detects
-anything. Anchoring does not prevent this. An append-only log establishes
+correctly registered; nothing has been forged, and no integrity check detects
+anything. Registration does not prevent this. An append-only log establishes
 that a record existed at a time and has not changed since; it does not
 establish that the record was the only one written, or that its author
 believed it.
@@ -552,10 +552,10 @@ infrastructure.
 
 A signature valid at attestation time may
 be produced under a key compromised by verification time. A verifier SHOULD be
-able to establish key validity *as of the attestation's anchored time*, not
+able to establish key validity *as of the attestation's registration time*, not
 only at verification time; revocation and rotation semantics for organizational
 keys are inherited from the identity layer and are out of scope here, but a
-record without an anchored time cannot support this distinction.
+record without a registration time cannot support this distinction.
 
 ## Canonicalization and Hash Agility {#canonicalization}
 
@@ -583,7 +583,7 @@ unstated choice.
 ## Verification-Cost DoS
 
 Verifying a request attestation (identity-chain plus
-anchor inclusion) is more expensive than producing one. A performing party
+Receipt inclusion) is more expensive than producing one. A performing party
 SHOULD be able to cheaply reject unverifiable request attestations before
 performing full verification, so request-attestation flooding cannot exhaust a
 performer at the effect boundary.
@@ -591,13 +591,13 @@ performer at the effect boundary.
 # Privacy Considerations {#privacy-considerations}
 
 A bilateral record discloses, by construction, that two organizations
-transacted — to each other, and if anchored with cleartext identifiers, to
-anyone. Deployments SHOULD anchor commitments rather than cleartext
+transacted — to each other, and if registered with cleartext identifiers, to
+anyone. Deployments SHOULD register commitments rather than cleartext
 (selective-disclosure structures per
 {{I-D.mih-scitt-agent-action-capsule-sel-disc}}), disclose material terms
 only to the counterparty and auditors, and treat counterparty identity
 itself as a selectively-disclosable field where the use case allows.
-Correlation of anchored records across a party's exchanges (client-list
+Correlation of registered records across a party's exchanges (client-list
 reconstruction) is the residual risk; mitigations are TBD, and any layer that
 aggregates these records faces the same problem from the consumption side.
 
@@ -622,4 +622,4 @@ in this revision: constraint-set pinning (MUST), input-commitment digest
 
 Blake Morrison contributed the party-identifier MAY sentence in the
 Conventions and Definitions section, enabling party identifiers to resolve
-to registration entries admitted on the same transparency service.
+to registration entries admitted on the same Transparency Service.

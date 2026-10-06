@@ -6,6 +6,10 @@
     "disclosure_envelope": "disclosure-envelope/vectors.json",
     "cross_language": "cross-language/seal-input.json",
     "interop": "interop/README.md",
-    "evidence_request": "evidence-request/manifest.json"
+    "evidence_request": "evidence-request/manifest.json",
+    "settlement": "settlement/manifest.json",
+    "bundle_producer_key": "bundle/producer-key/vectors.json",
+    "minimum_necessary": "minimum-necessary/manifest.json",
+    "bundle_composed": "bundle/composed/manifest.json"
   }
 }

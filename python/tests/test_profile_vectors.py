@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Buzz profile vectors (vectors/profiles/): freshness, digest re-derivation, and rule checks.
+"""Nostr-host profile vectors (vectors/profiles/): freshness, digest re-derivation, and rule checks.
 
 Go (go/canonical/profile_vectors_test.go) and TypeScript (ts/test/profile-vectors.test.ts)
 assert the same committed files against the same labels and rule codes.
