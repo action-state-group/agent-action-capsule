@@ -31,6 +31,11 @@ same-commit files in CI.
   `sd-jwt-issuers/v1` Bundle extensions, and the `minimum_necessary_report/1`
   result shape, over one worked example;
   `python/scripts/generate_min_necessary_vectors.py` regenerates them.
+- `profiles/`: illustrative Evidence Contract profile vectors for Nostr-based
+  agent hosts. `nostr-host.{agent-job,moderation,release}/v1/` are current;
+  `buzz.{agent-job,moderation,release}/v1/` were released in 0.6.0 and are
+  superseded, kept as released bytes. `python/scripts/generate_profile_vectors.py`
+  regenerates both sets; see `profiles/README.md`.
 
 Reference-derived corpora and checksum manifests can be regenerated with:
 
