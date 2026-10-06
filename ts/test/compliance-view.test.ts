@@ -95,7 +95,7 @@ it("the summary table shows one row per obligation with its article and status",
   const art26row = root.querySelector<HTMLElement>(
     'tr[data-obligation="art26"]',
   )!;
-  expect(art26row.textContent).toContain("Applies 2 Aug 2027");
+  expect(art26row.textContent).toContain("Applies 2 Dec 2027");
 });
 
 it("the test-results table carries all five tests with population, exceptions and not-evaluable counts", async () => {

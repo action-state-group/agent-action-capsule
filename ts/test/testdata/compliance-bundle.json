@@ -492,7 +492,7 @@
           "judged_terms": ["\u201cin accordance with\u201d"],
           "applicability": {
             "status": "future",
-            "note": "Applies 2 Aug 2027 \u00b7 high-risk deferred tier"
+            "note": "Applies 2 Dec 2027 (Annex III high-risk; 2 Aug 2028 Annex I), and only if the system is classified high-risk"
           },
           "method": "A compiled rule row, recomputed; a judged row where no rule can decide it.",
           "rows": [
