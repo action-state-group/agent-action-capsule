@@ -787,6 +787,42 @@ it("renders records that sit outside the checkpoint as uncheckpointed, one statu
   ).toBe("self-witnessed: no transparency-service receipt");
 });
 
+it("summarizes checkpoint coverage by status, with the full per-record list behind a collapsed details", async () => {
+  // Same 4-record fixture as above (2 checkpointed, 2 uncheckpointed) --
+  // this test only checks the summary/collapse shape a real 500+-record
+  // book's verification page needs, not the per-status math again.
+  const { bundle } = await sealEvidenceBundle(
+    (await fixture("report-rows-uncheckpointed-bundle.json")) as Record<
+      string,
+      unknown
+    >,
+    { uncheckpointed: ["act-backfilled", "act-late"] },
+  );
+  const root = document.createElement("main");
+  await renderEvidenceGraph(bundle, root);
+  const verification = root.querySelector<HTMLElement>(
+    '[data-page="verification"]',
+  )!;
+
+  const summary = verification.querySelectorAll<HTMLElement>(
+    '[data-records="coverage-summary"] > li',
+  );
+  const byStatus = Object.fromEntries(
+    Array.from(summary, (li) => [li.dataset.coverageStatus, li.dataset.count]),
+  );
+  expect(byStatus).toEqual({ checkpointed: "2", uncheckpointed: "2" });
+
+  // the full list is still there, every record present, just collapsed
+  const details = verification.querySelector<HTMLElement>(
+    '[data-records="coverage-detail"]',
+  )!;
+  expect(details.tagName).toBe("DETAILS");
+  expect(details.hasAttribute("open")).toBe(false);
+  expect(
+    details.querySelectorAll('[data-records="coverage"] > li'),
+  ).toHaveLength(4);
+});
+
 it("still fails the bundle for any membership finding other than an unbound record", async () => {
   const { bundle } = await sealEvidenceBundle(
     (await fixture("report-rows-uncheckpointed-bundle.json")) as Record<

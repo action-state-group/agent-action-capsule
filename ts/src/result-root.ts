@@ -1,7 +1,7 @@
-import { isHex64 } from "./json.js";
+import { isHex64, jsonDigest, sha256Hex } from "./json.js";
 import { verifyProducerEnvelope } from "./producer-envelope-verification.js";
 import { hexToBytes } from "./producer-envelope-wire.js";
-import { computeCapsuleId } from "./verify.js";
+import { computeCapsuleId, decodeCapsuleJson } from "./verify.js";
 import {
   asString,
   committedDigest,
@@ -375,10 +375,64 @@ export interface RecomputedCounts {
   readonly mismatches: readonly CountMismatch[];
 }
 
+/** See `CitedRecord.stated`. */
+export interface StatedTimes {
+  readonly timestamp?: string;
+  readonly provenanceMode?: ObjectValue;
+}
+
+function statedTimes(capsule: ObjectValue): StatedTimes {
+  const timestamp = asString(capsule.timestamp);
+  const provenanceMode = isObject(capsule.provenance_mode)
+    ? capsule.provenance_mode
+    : undefined;
+  return {
+    ...(timestamp === undefined ? {} : { timestamp }),
+    ...(provenanceMode === undefined ? {} : { provenanceMode }),
+  };
+}
+
 /** A record reachable from a claim's evidence, resolved from this bundle. */
 export interface CitedRecord extends RecordTimes {
   readonly capsuleId: string;
   readonly agentInput: DisclosureResolution;
+  /**
+   * Present only when this record is an evidence-book `published_capsule`
+   * record whose header is disclosed: the agent_input original of the capsule
+   * that record carries (see `resolveCarriedInput`). For such a record
+   * `agentInput` is the book's header, never the capsule's own input, so a
+   * reader that wants what the capsule sealed reads this instead.
+   */
+  readonly carriedInput?: DisclosureResolution;
+  /**
+   * Present only when the claim cited this capsule by its own id and the
+   * bundle supplies it as an evidence-book record that carries it (a
+   * disclosed `published_capsule` header whose `subject_ref` is that id):
+   * the book record's own id, under which the bundle's records, memberships
+   * and disclosures hold it. `capsuleId` stays the id the claim cited.
+   */
+  readonly bookRecordId?: string;
+  /**
+   * For an evidence-book `published_capsule` record: the id of the capsule it
+   * carries and that capsule's agent_input commitment, present only when the
+   * capsule bytes match their commitment and the recomputed id equals both
+   * `capsule_id` and the header's `subject_ref` (see
+   * `carriedCapsuleCommitment`). Present even when the original itself is
+   * not carried, so two records can be shown to commit to the same input.
+   */
+  readonly carriedCapsuleId?: string;
+  readonly carriedInputDigest?: string;
+  /**
+   * The occurrence-time fields the capsule itself states, verbatim, never
+   * parsed or assigned a zone: its `timestamp` and, when present, its
+   * `provenance_mode` block (AAC -05 "Provenance mode and backfilled
+   * records"). For an evidence-book record these are the CARRIED capsule's,
+   * read only when `carriedCapsuleCommitment`'s checks pass -- the book
+   * record's own timestamp is when the book took it in, never when the
+   * action happened. For a plain record they are the record's own. Absent
+   * for a book record whose carried capsule does not check out.
+   */
+  readonly stated?: StatedTimes;
   readonly agentOutput: DisclosureResolution;
   /** The digests the record committed to, so a withheld member shows its digest. */
   readonly agentInputDigest?: string;
@@ -954,6 +1008,161 @@ export async function isResultRoot(bundle: unknown): Promise<boolean> {
   );
 }
 
+/** The evidence-book bundle extension that carries a disclosed record's payloads, keyed by payload commitment (SHA-256 of the exact bytes), each base64url without padding. */
+export const BOOK_PAYLOADS_EXTENSION = "evidencebook/payloads";
+/**
+ * The bundle extension `capsulectl disclose --attach-input-originals` builds
+ * at disclose time: a published capsule's id -> its agent_input original's
+ * exact bytes, base64url without padding. The book itself stores only
+ * digests; an original rides in a bundle only when its producer opts in.
+ */
+export const AGENT_INPUT_ORIGINALS_EXTENSION =
+  "capsulectl/agent-input-originals/v1";
+/** The evidence-book `record_type` of a record that carries a published capsule as its payloads. */
+export const PUBLISHED_CAPSULE_RECORD_TYPE = "published_capsule";
+
+const utf8 = new TextDecoder("utf-8", { fatal: true });
+
+function base64UrlBytes(value: string): Uint8Array | undefined {
+  if (!/^[A-Za-z0-9_-]*$/u.test(value)) return undefined;
+  try {
+    const padded = `${value}${"=".repeat((4 - (value.length % 4)) % 4)}`;
+    const binary = atob(padded.replaceAll("-", "+").replaceAll("_", "/"));
+    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  } catch {
+    return undefined;
+  }
+}
+
+/** The payload bytes committed under `digest`, only when they hash to it. */
+async function verifiedBookPayload(
+  payloads: ObjectValue,
+  digest: string,
+): Promise<Uint8Array | undefined> {
+  const encoded = asString(payloads[digest]);
+  if (encoded === undefined) return undefined;
+  const bytes = base64UrlBytes(encoded);
+  if (bytes === undefined) return undefined;
+  return (await sha256Hex(bytes)) === digest ? bytes : undefined;
+}
+
+/**
+ * The agent_input original of the capsule an evidence-book
+ * `published_capsule` record carries, resolved from the bundle's
+ * `evidencebook/payloads` extension. `undefined` when `header` is not such a
+ * record's header. Every link is checked, none is taken on the producer's
+ * word: the header (already matched to the record's committed digest by
+ * `resolveDisclosure`) commits to the carried capsule's bytes as its first
+ * payload; those bytes must hash to that commitment, decode as a capsule whose
+ * recomputed capsule id equals both its stated `capsule_id` and the header's
+ * `subject_ref`; and an original is `disclosed` only when some other payload
+ * the header commits to hashes to its commitment AND its JSON-DIGEST equals
+ * the capsule's own `agent_input_digest`. A capsule published before the book
+ * carried originals (two payloads, capsule and producer envelope) resolves
+ * `withheld`; a broken link resolves `disclosure_mismatch`.
+ */
+/**
+ * The capsule a `published_capsule` book header carries, checked link by link
+ * (capsule bytes against their commitment, recomputed id against
+ * `capsule_id` and `subject_ref`): its id and its agent_input commitment.
+ * Undefined when any link fails or the header is not a published capsule.
+ */
+export async function carriedCapsuleCommitment(
+  header: unknown,
+  payloads: ObjectValue,
+): Promise<
+  { capsuleId: string; inputDigest: string; stated: StatedTimes } | undefined
+> {
+  if (!isObject(header) || header.record_type !== PUBLISHED_CAPSULE_RECORD_TYPE)
+    return undefined;
+  const commitments = Array.isArray(header.payload_commitments)
+    ? header.payload_commitments.filter(isHex64)
+    : [];
+  const capsuleDigest = commitments[0];
+  if (capsuleDigest === undefined) return undefined;
+  const capsuleBytes = await verifiedBookPayload(payloads, capsuleDigest);
+  if (capsuleBytes === undefined) return undefined;
+  try {
+    const capsule = decodeCapsuleJson(capsuleBytes);
+    const id = await computeCapsuleId(capsule);
+    if (id !== capsule.capsule_id || id !== header.subject_ref)
+      return undefined;
+    const committed = committedDigest(
+      capsule as unknown as RecordWithId,
+      "agent_input",
+    );
+    return isHex64(committed)
+      ? {
+          capsuleId: id,
+          inputDigest: committed,
+          stated: statedTimes(capsule as unknown as ObjectValue),
+        }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function resolveCarriedInput(
+  header: unknown,
+  payloads: ObjectValue,
+  originals: ObjectValue = {},
+): Promise<DisclosureResolution | undefined> {
+  if (!isObject(header) || header.record_type !== PUBLISHED_CAPSULE_RECORD_TYPE)
+    return undefined;
+  const commitments = Array.isArray(header.payload_commitments)
+    ? header.payload_commitments.filter(isHex64)
+    : [];
+  const capsuleDigest = commitments[0];
+  if (capsuleDigest === undefined) return { state: "withheld" };
+  const capsuleBytes = await verifiedBookPayload(payloads, capsuleDigest);
+  if (capsuleBytes === undefined) return { state: "withheld" };
+  let committed: string | undefined;
+  let capsuleId: string;
+  try {
+    const capsule = decodeCapsuleJson(capsuleBytes);
+    const id = await computeCapsuleId(capsule);
+    if (id !== capsule.capsule_id || id !== header.subject_ref)
+      return { state: "disclosure_mismatch" };
+    capsuleId = id;
+    committed = committedDigest(
+      capsule as unknown as RecordWithId,
+      "agent_input",
+    );
+  } catch {
+    return { state: "disclosure_mismatch" };
+  }
+  if (!isHex64(committed)) return { state: "withheld" };
+  for (const digest of commitments.slice(1)) {
+    const bytes = await verifiedBookPayload(payloads, digest);
+    if (bytes === undefined) continue;
+    try {
+      const value: unknown = JSON.parse(utf8.decode(bytes));
+      if ((await jsonDigest(value)) === committed)
+        return { state: "disclosed", payload: value };
+    } catch {
+      /* not JSON (the producer envelope), or JCS cannot render it */
+    }
+  }
+  // An original attached at disclose time (AGENT_INPUT_ORIGINALS_EXTENSION),
+  // keyed by the capsule id just recomputed: disclosed only when its
+  // JSON-DIGEST is the capsule's committed agent_input_digest.
+  const attached = asString(originals[capsuleId]);
+  if (attached !== undefined) {
+    const bytes = base64UrlBytes(attached);
+    if (bytes === undefined) return { state: "disclosure_mismatch" };
+    try {
+      const value: unknown = JSON.parse(utf8.decode(bytes));
+      if ((await jsonDigest(value)) === committed)
+        return { state: "disclosed", payload: value };
+    } catch {
+      /* not JSON, or JCS cannot render it */
+    }
+    return { state: "disclosure_mismatch" };
+  }
+  return { state: "withheld" };
+}
+
 /**
  * Build the Result-root model. Throws `EvidenceGraphError` when the bundle
  * has no root record, when no disclosed member of the root carries an
@@ -1028,19 +1237,98 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
   const recordsById = new Map(
     records.map((record) => [record.capsule_id, record]),
   );
+  const bookPayloads =
+    isObject(bundle.extensions) &&
+    isObject(bundle.extensions[BOOK_PAYLOADS_EXTENSION])
+      ? bundle.extensions[BOOK_PAYLOADS_EXTENSION]
+      : {};
+  const inputOriginals =
+    isObject(bundle.extensions) &&
+    isObject(bundle.extensions[AGENT_INPUT_ORIGINALS_EXTENSION])
+      ? bundle.extensions[AGENT_INPUT_ORIGINALS_EXTENSION]
+      : {};
+
+  // A book bundle (capsulectl disclose on a jsonl profile) supplies a
+  // published capsule as the evidence-book record that carries it, under
+  // the BOOK record's id; a claim cites the capsule by its own id (what
+  // `publish` returned and the producer recorded). The carried capsule's id
+  // is the header's `subject_ref`, read only from a header that is itself
+  // disclosed and matched to the book record's committed digest -- never
+  // from an unverified value. Built on first need: a payload-form bundle,
+  // where every cited id is a record id, never pays for it.
+  let carriersById: Map<string, RecordWithId> | undefined;
+  const bookCarrier = async (id: string): Promise<RecordWithId | undefined> => {
+    if (carriersById === undefined) {
+      carriersById = new Map();
+      for (const record of records) {
+        const entry = disclosures[record.capsule_id];
+        if (
+          !isObject(entry) ||
+          !isObject(entry.agent_input) ||
+          entry.agent_input.record_type !== PUBLISHED_CAPSULE_RECORD_TYPE
+        )
+          continue;
+        const header = await resolveDisclosure(
+          record,
+          disclosures,
+          "agent_input",
+        );
+        if (header.state !== "disclosed" || !isObject(header.payload)) continue;
+        const subject = header.payload.subject_ref;
+        if (isHex64(subject) && !recordsById.has(subject))
+          carriersById.set(subject, record);
+      }
+    }
+    return carriersById.get(id);
+  };
 
   const cited = new Map<string, CitedRecord>();
-  const resolveRecord = async (id: string): Promise<void> => {
+  const resolveRecord = async (
+    id: string,
+    carrier?: RecordWithId,
+  ): Promise<void> => {
     if (cited.has(id)) return;
-    const record = recordsById.get(id);
+    const record = carrier ?? recordsById.get(id);
     if (record === undefined) return;
     const cites = actedOnReferences(record);
-    const coordinates = logCoordinates(memberships, id);
+    const coordinates = logCoordinates(memberships, record.capsule_id);
     const agentInputDigest = committedDigest(record, "agent_input");
     const agentOutputDigest = committedDigest(record, "agent_output");
+    const agentInput = await resolveDisclosure(
+      record,
+      disclosures,
+      "agent_input",
+    );
+    const carriedInput =
+      agentInput.state === "disclosed"
+        ? await resolveCarriedInput(
+            agentInput.payload,
+            bookPayloads,
+            inputOriginals,
+          )
+        : undefined;
+    const carriedCapsule =
+      agentInput.state === "disclosed"
+        ? await carriedCapsuleCommitment(agentInput.payload, bookPayloads)
+        : undefined;
     cited.set(id, {
       capsuleId: id,
-      agentInput: await resolveDisclosure(record, disclosures, "agent_input"),
+      ...(record.capsule_id === id ? {} : { bookRecordId: record.capsule_id }),
+      agentInput,
+      ...(carriedInput === undefined ? {} : { carriedInput }),
+      ...(carriedCapsule === undefined
+        ? {}
+        : {
+            carriedCapsuleId: carriedCapsule.capsuleId,
+            carriedInputDigest: carriedCapsule.inputDigest,
+          }),
+      ...(carriedCapsule !== undefined
+        ? { stated: carriedCapsule.stated }
+        : agentInput.state === "disclosed" &&
+            isObject(agentInput.payload) &&
+            agentInput.payload.record_type === PUBLISHED_CAPSULE_RECORD_TYPE
+          ? {}
+          : { stated: statedTimes(record) }),
       agentOutput: await resolveDisclosure(record, disclosures, "agent_output"),
       ...(agentInputDigest === undefined ? {} : { agentInputDigest }),
       ...(agentOutputDigest === undefined ? {} : { agentOutputDigest }),
@@ -1063,9 +1351,12 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
     const evidence: ClaimEvidenceRef[] = [];
     for (const ref of raw.evidence as ObjectValue[]) {
       const digest = ref.digest as string;
-      const resolved = recordsById.has(digest);
+      const carrier = recordsById.has(digest)
+        ? undefined
+        : await bookCarrier(digest);
+      const resolved = recordsById.has(digest) || carrier !== undefined;
       evidence.push({ digest, resolved });
-      if (resolved) await resolveRecord(digest);
+      if (resolved) await resolveRecord(digest, carrier);
     }
     const missing = evidence
       .filter((ref) => !ref.resolved)
