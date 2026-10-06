@@ -3,6 +3,12 @@
 //
 // JSON-DIGEST := HEX(SHA-256(JCS(v))) using plain RFC 8785 JCS.
 //
+// JCS here is the Agent Action Capsule profile of RFC 8785, not a general
+// RFC 8785 serializer: numbers are integers only. Where RFC 8785 would
+// serialize a float or an integer beyond ±(2^53−1), JCS returns an error
+// instead. Every value it does accept is serialized exactly as RFC 8785
+// specifies (negative zero included, written "0").
+//
 // The profile forbids JSON floating-point numbers in any digest-bearing field (§5.1);
 // a float reaching the serializer is a producer error and is rejected.
 // Integers outside the ±(2^53−1) JS-safe range are also rejected (digest-reproducibility
@@ -160,6 +166,12 @@ func jcsValue(v interface{}) (string, error) {
 		}
 		if IsUnsafeInt(tv) {
 			return "", &UnsafeIntError{Path: ""}
+		}
+		if tv.String() == "-0" {
+			// RFC 8785 serializes negative zero as "0" (ECMAScript
+			// Number::toString); emitting "-0" would give a different digest
+			// from every other conforming serializer.
+			return "0", nil
 		}
 		return tv.String(), nil
 	case []interface{}:
