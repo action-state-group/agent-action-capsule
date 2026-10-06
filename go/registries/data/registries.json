@@ -1,0 +1,211 @@
+{
+  "source": "spec/REGISTRY.md",
+  "generated_by": "python/scripts/generate_registries_json.py",
+  "registries": {
+    "verdict_class": {
+      "section": "1",
+      "title": "verdict_class",
+      "defined_in": "draft-mih-scitt-agent-action-capsule",
+      "values": [
+        "executed",
+        "blocked",
+        "hitl_dispatched",
+        "denied",
+        "timeout",
+        "errored",
+        "engine_failure",
+        "deferred",
+        "needs_decision",
+        "expired",
+        "escalated",
+        "resolved",
+        "epoch_boundary"
+      ]
+    },
+    "disposition.decision": {
+      "section": "2",
+      "title": "disposition.decision",
+      "defined_in": "draft-mih-scitt-agent-action-capsule",
+      "values": [
+        "accept",
+        "reject",
+        "needs_input",
+        "deferred"
+      ]
+    },
+    "effect.type": {
+      "section": "3",
+      "title": "effect.type",
+      "defined_in": "draft-mih-scitt-agent-action-capsule",
+      "values": [
+        "write_order",
+        "send_payment",
+        "inference_completion"
+      ]
+    },
+    "irreversibility_class": {
+      "section": "4",
+      "title": "irreversibility_class",
+      "defined_in": "draft-mih-scitt-agent-action-capsule",
+      "values": [
+        "two_way",
+        "one_way_recoverable",
+        "one_way_consequential",
+        "one_way_terminal"
+      ]
+    },
+    "effect_attestation": {
+      "section": "5",
+      "title": "effect_attestation",
+      "defined_in": "draft-mih-scitt-agent-action-capsule",
+      "values": [
+        "gate_executed",
+        "runtime_claimed",
+        "host_served_observed"
+      ]
+    },
+    "chain.relation": {
+      "section": "6",
+      "title": "chain.relation",
+      "defined_in": "draft-mih-scitt-agent-action-capsule",
+      "values": [
+        "follows",
+        "confirms",
+        "supersedes",
+        "epoch_opens",
+        "duplicates"
+      ]
+    },
+    "sel_disc.reserved_member": {
+      "section": "7",
+      "title": "Reserved payload members — selective disclosure",
+      "defined_in": "draft-mih-scitt-agent-action-capsule-sel-disc",
+      "values": [
+        "_sd_alg",
+        "_sd"
+      ]
+    },
+    "domain": {
+      "section": "8",
+      "title": "domain",
+      "defined_in": "draft-mih-scitt-agent-action-capsule",
+      "values": [
+        "action",
+        "memory",
+        "reasoning"
+      ]
+    },
+    "provenance": {
+      "section": "9",
+      "title": "provenance",
+      "defined_in": "draft-mih-scitt-agent-action-capsule",
+      "values": [
+        "gate",
+        "runtime",
+        "collector"
+      ]
+    },
+    "disclosure_envelope.reserved_member": {
+      "section": "10",
+      "title": "Reserved wrapper members and disclosable fields — disclosure envelope",
+      "defined_in": "draft-mih-agent-disclosure-envelope",
+      "values": [
+        "capsule",
+        "disclosures"
+      ]
+    },
+    "disclosure_envelope.disclosable_field": {
+      "section": "10",
+      "title": "Reserved wrapper members and disclosable fields — disclosure envelope",
+      "defined_in": "draft-mih-agent-disclosure-envelope",
+      "values": [
+        "agent_input",
+        "agent_output"
+      ]
+    },
+    "citation_purpose": {
+      "section": "11",
+      "title": "citation_purpose",
+      "defined_in": "draft-mih-scitt-agent-action-capsule",
+      "values": [
+        "acted_on",
+        "responds_to",
+        "ran_under",
+        "corroborates_source_time",
+        "counterparty_half",
+        "counterparty_inclusion"
+      ]
+    },
+    "provenance_mode": {
+      "section": "12",
+      "title": "provenance_mode",
+      "defined_in": "draft-mih-scitt-agent-action-capsule",
+      "values": [
+        "contemporaneous",
+        "backfilled"
+      ]
+    },
+    "evidence_bundle.kind": {
+      "section": "13",
+      "title": "Evidence Bundle kind",
+      "defined_in": "draft-mih-zhang-agent-disclosure-bundle",
+      "values": [
+        "evidence-bundle/v2"
+      ]
+    },
+    "evidence_bundle.extension_kind": {
+      "section": "14",
+      "title": "Evidence Bundle extension kind",
+      "defined_in": "draft-mih-zhang-agent-disclosure-bundle",
+      "values": [
+        "producer-key/v1",
+        "composed/v1"
+      ]
+    },
+    "evidence_bundle.countersignature_type": {
+      "section": "15",
+      "title": "Evidence Bundle countersignature type",
+      "defined_in": "draft-mih-zhang-agent-disclosure-bundle",
+      "values": [
+        "cose-sign1",
+        "countersign/v1"
+      ]
+    },
+    "evidence_request.derivation": {
+      "section": "16",
+      "title": "Evidence Request derivation",
+      "defined_in": "draft-mih-agent-evidence-request",
+      "values": [
+        "history_card/1"
+      ]
+    },
+    "epistemic_type": {
+      "section": "17",
+      "title": "Evidence Layer epistemic type",
+      "defined_in": "draft-mih-agent-evidence-layer",
+      "values": [
+        "observed_event",
+        "system_of_record_fact",
+        "producer_claim",
+        "human_report",
+        "semantic_judgment",
+        "derived_metric",
+        "adjudication",
+        "obligation_reference"
+      ]
+    },
+    "link_type": {
+      "section": "18",
+      "title": "Evidence Layer link type",
+      "defined_in": "draft-mih-agent-evidence-layer",
+      "values": [
+        "cites",
+        "adjudicates",
+        "supersedes",
+        "acknowledges",
+        "rebuts",
+        "closes"
+      ]
+    }
+  }
+}

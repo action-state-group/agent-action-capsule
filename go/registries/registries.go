@@ -1,7 +1,18 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Package registries parses the profile registries (§12). The authoritative
-// table is generated from spec/REGISTRY.md and embedded in the package; callers
-// may also load an explicit historical snapshot.
+// Package registries parses every registry of record in spec/REGISTRY.md. The
+// authoritative copy is generated from spec/REGISTRY.md and embedded in the
+// package; callers may also load an explicit historical snapshot.
+//
+// Downstream code imports the value sets instead of vendoring copies:
+//
+//	import "github.com/action-state-group/agent-action-capsule/go/registries"
+//
+//	registries.EpistemicTypes()           // §17, draft-mih-agent-evidence-layer
+//	registries.LinkTypes()                // §18, draft-mih-agent-evidence-layer
+//	registries.ChainRelations()           // §6
+//	registries.CitationPurposes()         // §11
+//	registries.Values("epistemic_type")   // any name in AllRegistryNames
+//	registries.JSON()                     // the generated registries.json
 package registries
 
 import (
@@ -14,6 +25,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 //go:generate go run ./internal/generate
@@ -24,8 +36,18 @@ import (
 //go:embed data/REGISTRY.md
 var authoritativeRegistry []byte
 
-// RegistryNames is the ordered list of registry-governed vocabularies (§4).
-// disposition.approver is deliberately absent: it is a closed enum (§5.4), not registry-governed.
+// registriesJSON is python/agent_action_capsule/data/registries.json, copied by
+// go generate. It is generated from spec/REGISTRY.md by
+// python/scripts/generate_registries_json.py; the tests check it equals this
+// package's own parse of the embedded REGISTRY.md.
+//
+//go:embed data/registries.json
+var registriesJSON []byte
+
+// RegistryNames is the ordered list of the seven registry-governed vocabularies
+// a Capsule's own fields carry (§4), which the verifier checks.
+// disposition.approver is deliberately absent: it is a closed enum (§5.4), not
+// registry-governed. AllRegistryNames lists every registry in REGISTRY.md.
 var RegistryNames = []string{
 	"verdict_class",
 	"disposition.decision",
@@ -36,6 +58,56 @@ var RegistryNames = []string{
 	"citation_purpose",
 }
 
+// AllRegistryNames lists every registry REGISTRY.md records, in document
+// order. Section 10 holds two tables, so 18 sections give 19 names.
+var AllRegistryNames = []string{
+	"verdict_class",                         // §1
+	"disposition.decision",                  // §2
+	"effect.type",                           // §3
+	"irreversibility_class",                 // §4 (ordered)
+	"effect_attestation",                    // §5
+	"chain.relation",                        // §6
+	"sel_disc.reserved_member",              // §7
+	"domain",                                // §8
+	"provenance",                            // §9
+	"disclosure_envelope.reserved_member",   // §10, first table
+	"disclosure_envelope.disclosable_field", // §10, second table
+	"citation_purpose",                      // §11
+	"provenance_mode",                       // §12 (provenance_mode.mode)
+	"evidence_bundle.kind",                  // §13
+	"evidence_bundle.extension_kind",        // §14
+	"evidence_bundle.countersignature_type", // §15
+	"evidence_request.derivation",           // §16
+	"epistemic_type",                        // §17
+	"link_type",                             // §18
+}
+
+// titleKeys maps a prose section title to its registry name(s), one per table.
+// A "## N. `name`" heading is keyed by name. Section numbers are not used:
+// they have shifted between snapshots.
+var titleKeys = map[string][]string{
+	"Reserved payload members — selective disclosure":                       {"sel_disc.reserved_member"},
+	"Reserved wrapper members and disclosable fields — disclosure envelope": {"disclosure_envelope.reserved_member", "disclosure_envelope.disclosable_field"},
+	"Evidence Bundle kind":                  {"evidence_bundle.kind"},
+	"Evidence Bundle extension kind":        {"evidence_bundle.extension_kind"},
+	"Evidence Bundle countersignature type": {"evidence_bundle.countersignature_type"},
+	"Evidence Request derivation":           {"evidence_request.derivation"},
+	"Evidence Layer epistemic type":         {"epistemic_type"},
+	"Evidence Layer link type":              {"link_type"},
+}
+
+// alwaysPresent are the registries every REGISTRY.md snapshot has carried.
+var alwaysPresent = []string{
+	"verdict_class",
+	"disposition.decision",
+	"effect.type",
+	"irreversibility_class",
+	"effect_attestation",
+	"chain.relation",
+}
+
+const baseDraft = "draft-mih-scitt-agent-action-capsule"
+
 // DisclosureEligibleFields is the companion Disclosure Envelope registry
 // table. Values are dotted paths below the Capsule root.
 var DisclosureEligibleFields = map[string]string{
@@ -44,8 +116,9 @@ var DisclosureEligibleFields = map[string]string{
 }
 
 var (
-	// ## N. `name`
-	headerRE = regexp.MustCompile("^##\\s+\\d+\\.\\s+`([^`]+)`\\s*$")
+	// ## N. title
+	headerRE = regexp.MustCompile("^##\\s+(\\d+)\\.\\s+(.+?)\\s*$")
+	draftRE  = regexp.MustCompile("draft-[a-z0-9]+(?:-[a-z0-9]+)*[a-z0-9]")
 	tickRE   = regexp.MustCompile("`([^`]+)`")
 	// N. `token`
 	olItemRE = regexp.MustCompile("^\\s*\\d+\\.\\s+`([^`]+)`\\s*$")
@@ -188,53 +261,209 @@ func Load(path string) (map[string]map[string]bool, error) {
 	return parse(f)
 }
 
-func parse(source io.Reader) (map[string]map[string]bool, error) {
-	var allLines []string
+// Table is one parsed registry: its seeded values in document order, plus
+// where REGISTRY.md records it.
+type Table struct {
+	Name      string   `json:"-"`
+	Section   string   `json:"section"`
+	Title     string   `json:"title"`
+	DefinedIn string   `json:"defined_in"`
+	Values    []string `json:"values"`
+}
+
+func sectionKeys(title string) []string {
+	if tok, ok := backtickFullMatch(title); ok {
+		return []string{tok}
+	}
+	return titleKeys[title]
+}
+
+// splitTables splits a section into one run per Markdown table; lines before
+// the first table go with it.
+func splitTables(lines []string) [][]string {
+	runs := [][]string{nil}
+	inTable := false
+	runHasRow := false
+	for _, line := range lines {
+		isRow := strings.HasPrefix(strings.TrimSpace(line), "|")
+		if isRow && !inTable && runHasRow {
+			runs = append(runs, nil)
+			runHasRow = false
+		}
+		inTable = isRow
+		if isRow {
+			runHasRow = true
+		}
+		runs[len(runs)-1] = append(runs[len(runs)-1], line)
+	}
+	return runs
+}
+
+// ParseTables parses REGISTRY.md text into every registry it defines, returned
+// in document order. A "### Provisional..." subsection (held for ratification)
+// is skipped up to the next heading. A registry whose heading is absent is not
+// returned; one whose heading is present but seeds no values has empty Values.
+func ParseTables(source io.Reader) ([]Table, error) {
+	type section struct {
+		number, title string
+		keys          []string
+		body          []string
+	}
+	var sections []*section
+	var current *section
+	skipping := false
 	scanner := bufio.NewScanner(source)
 	for scanner.Scan() {
-		allLines = append(allLines, scanner.Text())
+		line := scanner.Text()
+		if m := headerRE.FindStringSubmatch(line); m != nil {
+			current = nil
+			skipping = false
+			if keys := sectionKeys(m[2]); keys != nil {
+				current = &section{number: m[1], title: strings.Trim(m[2], "`"), keys: keys}
+				sections = append(sections, current)
+			}
+			continue
+		}
+		if strings.HasPrefix(line, "## ") {
+			current = nil
+			skipping = false
+			continue
+		}
+		if strings.HasPrefix(line, "### ") {
+			skipping = strings.HasPrefix(strings.TrimSpace(line[4:]), "Provisional")
+			continue
+		}
+		if current != nil && !skipping {
+			current.body = append(current.body, line)
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("reading REGISTRY.md: %w", err)
 	}
 
-	// Partition lines into sections keyed by backtick-name in "## N. `name`".
-	sections := make(map[string][]string)
-	var current string
-	for _, line := range allLines {
-		if m := headerRE.FindStringSubmatch(line); m != nil {
-			current = m[1]
-			sections[current] = nil
-		} else if current != "" {
-			if strings.HasPrefix(line, "## ") {
-				current = ""
-			} else {
-				sections[current] = append(sections[current], line)
+	var out []Table
+	for _, sec := range sections {
+		definedIn := baseDraft
+		if m := draftRE.FindString(strings.Join(sec.body, "\n")); m != "" {
+			definedIn = m
+		}
+		runs := [][]string{sec.body}
+		if len(sec.keys) > 1 {
+			runs = splitTables(sec.body)
+		}
+		if len(runs) < len(sec.keys) {
+			return nil, fmt.Errorf("REGISTRY.md §%s (%s): expected %d tables, found %d", sec.number, sec.title, len(sec.keys), len(runs))
+		}
+		for i, key := range sec.keys {
+			vals := seededValuesInSection(runs[i])
+			if vals == nil {
+				vals = []string{}
 			}
+			out = append(out, Table{Name: key, Section: sec.number, Title: sec.title, DefinedIn: definedIn, Values: vals})
 		}
-	}
-
-	out := make(map[string]map[string]bool)
-	for _, name := range RegistryNames {
-		sec, ok := sections[name]
-		if !ok {
-			if name == "citation_purpose" {
-				// Older snapshots predate references. Their existing vocabulary
-				// remains usable; new purposes are simply informationally unknown.
-				out[name] = make(map[string]bool)
-				continue
-			}
-			return nil, fmt.Errorf("registry %q not found in REGISTRY.md", name)
-		}
-		vals := seededValuesInSection(sec)
-		if len(vals) == 0 {
-			return nil, fmt.Errorf("registry %q parsed with no seeded values", name)
-		}
-		m := make(map[string]bool, len(vals))
-		for _, v := range vals {
-			m[v] = true
-		}
-		out[name] = m
 	}
 	return out, nil
 }
+
+// parse returns {registry_name: set} for every registry the snapshot defines.
+// The six registries in every snapshot must be present and non-empty. Any
+// other registry (citation_purpose included) that an older snapshot predates is
+// left out of the map, never mapped to an empty set; the verifier reads a
+// missing registry's values as informationally unknown.
+func parse(source io.Reader) (map[string]map[string]bool, error) {
+	tables, err := ParseTables(source)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]map[string]bool, len(tables))
+	for _, t := range tables {
+		m := make(map[string]bool, len(t.Values))
+		for _, v := range t.Values {
+			m[v] = true
+		}
+		out[t.Name] = m
+	}
+	for _, name := range alwaysPresent {
+		vals, ok := out[name]
+		if !ok {
+			return nil, fmt.Errorf("registry %q not found in REGISTRY.md", name)
+		}
+		if len(vals) == 0 {
+			return nil, fmt.Errorf("registry %q parsed with no seeded values", name)
+		}
+	}
+	return out, nil
+}
+
+var (
+	authoritativeOnce   sync.Once
+	authoritativeTables map[string]Table
+	authoritativeErr    error
+)
+
+func loadAuthoritativeTables() (map[string]Table, error) {
+	authoritativeOnce.Do(func() {
+		tables, err := ParseTables(bytes.NewReader(authoritativeRegistry))
+		if err != nil {
+			authoritativeErr = err
+			return
+		}
+		byName := make(map[string]Table, len(tables))
+		for _, t := range tables {
+			byName[t.Name] = t
+		}
+		for _, name := range AllRegistryNames {
+			if t, ok := byName[name]; !ok || len(t.Values) == 0 {
+				authoritativeErr = fmt.Errorf("embedded REGISTRY.md: registry %q missing or empty", name)
+				return
+			}
+		}
+		if len(byName) != len(AllRegistryNames) {
+			authoritativeErr = fmt.Errorf("embedded REGISTRY.md defines %d registries, AllRegistryNames lists %d", len(byName), len(AllRegistryNames))
+			return
+		}
+		authoritativeTables = byName
+	})
+	return authoritativeTables, authoritativeErr
+}
+
+// Values returns the seeded values of registry name, in REGISTRY.md document
+// order, from the embedded authoritative copy. The caller owns the slice.
+func Values(name string) ([]string, error) {
+	tables, err := loadAuthoritativeTables()
+	if err != nil {
+		return nil, err
+	}
+	t, ok := tables[name]
+	if !ok {
+		return nil, fmt.Errorf("unknown registry %q; known: %s", name, strings.Join(AllRegistryNames, ", "))
+	}
+	return append([]string(nil), t.Values...), nil
+}
+
+// mustValues is for the named accessors below, whose registries are always in
+// the embedded copy; TestNamedAccessors and the drift tests pin that, so a
+// failure here is a build defect, not a runtime condition.
+func mustValues(name string) []string {
+	vals, err := Values(name)
+	if err != nil {
+		panic(err)
+	}
+	return vals
+}
+
+// EpistemicTypes returns REGISTRY.md §17, owned by draft-mih-agent-evidence-layer ("Epistemic Type").
+func EpistemicTypes() []string { return mustValues("epistemic_type") }
+
+// LinkTypes returns REGISTRY.md §18, owned by draft-mih-agent-evidence-layer ("Typed Links").
+func LinkTypes() []string { return mustValues("link_type") }
+
+// ChainRelations returns REGISTRY.md §6 (chain.relation), base profile §5.5.4.
+func ChainRelations() []string { return mustValues("chain.relation") }
+
+// CitationPurposes returns REGISTRY.md §11 (citation_purpose), base profile Cross-record references.
+func CitationPurposes() []string { return mustValues("citation_purpose") }
+
+// JSON returns a copy of the embedded registries.json: every registry with its
+// section, title, defining draft and ordered values.
+func JSON() []byte { return append([]byte(nil), registriesJSON...) }
