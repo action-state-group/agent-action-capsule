@@ -8,6 +8,7 @@ import {
 } from "./countersignature-stamp.js";
 import {
   buildEvidenceGraph,
+  EvidenceGraphError,
   type ActNode,
   type AxisJudgment,
   type CalibrationCount,
@@ -1320,10 +1321,19 @@ export async function renderEvidenceGraph(
     verified && reportRows === undefined && (await isResultRoot(bundle))
       ? await buildResultRoot(bundle)
       : undefined;
-  const graph =
-    verified && reportRows === undefined && result === undefined
-      ? await buildEvidenceGraph(bundle)
-      : undefined;
+  // The evaluation-summary/v1 aggregate is optional: a verified bundle whose
+  // root is none of the three families (a deal root, for example) renders
+  // without the aggregate panel and says so, instead of rendering nothing.
+  let graph: EvidenceGraph | undefined;
+  let noAggregate = false;
+  if (verified && reportRows === undefined && result === undefined) {
+    try {
+      graph = await buildEvidenceGraph(bundle);
+    } catch (err) {
+      if (!(err instanceof EvidenceGraphError)) throw err;
+      noAggregate = true;
+    }
+  }
   const records = object(bundle).records;
   // outcome-report/v1 is a card choice over the SAME verified Result root,
   // never a different verification path: it is read only after `result` is
@@ -1371,6 +1381,12 @@ export async function renderEvidenceGraph(
     renderResultPage(result, root);
   } else if (graph !== undefined) {
     renderGraph(graph, root, Array.isArray(records) ? records : []);
+  } else if (noAggregate) {
+    const note = document.createElement("p");
+    note.setAttribute("data-notice", "no-aggregate");
+    note.textContent =
+      "This bundle carries no evaluation summary, so there is no aggregate view. The records and their verification are below.";
+    root.append(note);
   }
   await renderVerificationPage(
     root,
