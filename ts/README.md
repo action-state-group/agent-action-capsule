@@ -48,6 +48,45 @@ npm run check
 
 The tests consume the same-commit corpora under `../vectors/`.
 
+## Bundle verification verdict
+
+`verifyBundle` reports each Evidence Bundle claim on its own: graph closure,
+the checkpoint signature (`checkpointSignature`), interval coverage,
+per-record membership, and the records' producer signatures
+(`producerSignatures`, with each record's state in `recordSignatures`).
+`bundleVerdict(result)` combines them into one of three verdicts, using the
+same rules as `capsulectl verify --bundle`:
+
+- `invalid`: a claim failed, a record failed its identity check, or a
+  disclosed member is neither a match nor withheld.
+- `incomplete`: nothing failed, but some claim was not shown. A claim counts
+  as not shown when it is not `pass` or carries a finding, such as
+  `checkpoint_signature_absent`, `checkpoint_unverified`,
+  `producer_signature_unclaimed` or `declared_incomplete`.
+  `bundleVerdictDetail(result)` lists those claims.
+- `valid`: every claim passes with no findings.
+
+A missing witness receipt does not lower the verdict, because this library
+checks no receipts.
+
+The browser build can't authenticate a COSE checkpoint, because CLL's browser
+substrate has no checkpoint authenticator. So in that build the checkpoint
+claim is `withheld` with `checkpoint_unverified`, and interval coverage and
+per-record membership carry the same finding. Under the Evidence Bundle draft,
+those claims hold only relative to a producer-asserted checkpoint. The
+browser build reports them that way, so it is at most `incomplete`, even for
+a bundle that the Node build or the CLI calls `valid`.
+
+Producer signatures are verified with WebCrypto Ed25519. Where a runtime
+lacks it, a signed record is reported as `producer_signature_unverified`
+rather than passed.
+
+The rendered page puts the verdict in its banner as `data-verdict` (`valid`,
+`incomplete` or `invalid`). It sets `data-checkpoint` to `verified`,
+`unverified`, `invalid` or `absent`. The banner says "passed" only for
+`valid`. The older `data-verify` attribute still records only whether the
+page rendered the bundle's rows; it is not the verdict.
+
 ## Release
 
 The manual [Publish TypeScript npm package](https://github.com/action-state-group/agent-action-capsule/actions/workflows/publish-ts.yml)

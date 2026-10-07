@@ -123,6 +123,7 @@ export const OUTCOME_REPORT_CSS = `
 .oi .note{font-size:13px;color:var(--slate);margin-top:12px}
 .oi.oi-banner{max-width:1080px;margin:26px auto 0;padding:12px 18px;border-radius:6px;font-weight:700;font-size:15px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .oi.oi-banner-ok{background:var(--ok-l);color:var(--ok);border:1px solid var(--ok)}
+.oi.oi-banner-incomplete{background:var(--gold-l);color:var(--ink);border:1px solid var(--gold)}
 .oi.oi-banner-failed{background:var(--bad-l);color:var(--bad);border:1px solid var(--bad)}
 .oi.oi-vp{padding:0 0 26px}
 .oi.oi-vp .sec{margin-bottom:0}

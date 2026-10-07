@@ -1,4 +1,10 @@
-import { MmrTree, inclusionProof, rangeProof } from "@action-state-group/cll";
+import {
+  MmrTree,
+  createCheckpointIdentity,
+  inclusionProof,
+  rangeProof,
+  signCheckpoint,
+} from "@action-state-group/cll";
 // Imported directly (not via src/index.js) so this helper also loads under
 // the jsdom test environment, where the emitter's node:fs shell read cannot.
 import { jsonDigest } from "../../src/json.js";
@@ -117,7 +123,16 @@ export interface SealOptions {
   readonly unsigned?: readonly string[];
   /** Alias -> test signer whose key signs the envelope, whatever `key_id` states. */
   readonly signWith?: Readonly<Record<string, "a" | "b" | "c">>;
+  /**
+   * Sign the checkpoint: a real cll COSE checkpoint (`checkpoint.cose`) over
+   * the fixture log, from a deterministic test seed, with the JSON copy
+   * carrying log_id, key_id and timestamp as the signed values.
+   */
+  readonly signCheckpoint?: boolean;
 }
+
+const base64url = (bytes: Uint8Array): string =>
+  Buffer.from(bytes).toString("base64url");
 
 export async function sealEvidenceBundle(
   source: Obj,
@@ -252,6 +267,26 @@ export async function sealEvidenceBundle(
     };
   });
   const root = hex(await tree.root());
+  let checkpoint: Obj = { root, mmr_size: Number(size) };
+  if (options.signCheckpoint) {
+    const signed = await signCheckpoint({
+      logId,
+      mmrSize: size,
+      peaks: tree.peakHashes(),
+      previousSize: 0n,
+      previousPeaks: [],
+      timestamp: "2026-09-14T00:00:00Z",
+      identity: createCheckpointIdentity(new Uint8Array(32).fill(0x6b)),
+    });
+    checkpoint = {
+      log_id: signed.logId,
+      root: signed.root,
+      mmr_size: Number(signed.mmrSize),
+      key_id: signed.keyId,
+      timestamp: signed.timestamp,
+      cose: base64url(signed.cose),
+    };
+  }
 
   const {
     records: _records,
@@ -292,7 +327,7 @@ export async function sealEvidenceBundle(
         },
         memberships: members,
       },
-      checkpoint: { root, mmr_size: Number(size) },
+      checkpoint,
     },
   };
 }

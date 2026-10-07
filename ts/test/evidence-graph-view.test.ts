@@ -705,9 +705,16 @@ it("renders records that sit outside the checkpoint as uncheckpointed, one statu
   const banner = root.querySelector<HTMLElement>("[data-verify]")!;
   expect(banner.dataset.verify).toBe("verified");
   expect(banner.dataset.uncheckpointed).toBe("2");
-  expect(banner.textContent).toBe(
-    "Bundle verification passed; 2 of 4 records uncheckpointed",
+  // rows still render (the render gate admits uncheckpointed records), but
+  // the verdict follows capsulectl: an unbound record fails per-record
+  // membership, so the verdict is INVALID and the banner never says "passed"
+  expect(banner.dataset.verdict).toBe("invalid");
+  expect(banner.dataset.checkpoint).toBe("unverified");
+  expect(banner.textContent).toMatch(
+    /^Bundle verification INVALID: 2 of 4 records uncheckpointed, bound to no log position, so per-record membership fails\./u,
   );
+  expect(banner.textContent).not.toContain("passed");
+  expect(banner.textContent).toContain("checkpoint_unverified");
   expect(root.querySelector("[data-refusal]")).toBeNull();
 
   // every row rendered; none dropped
@@ -1004,8 +1011,8 @@ it("evaluation graph: an uncheckpointed act shows its own status and its checkpo
   );
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
-  expect(root.querySelector<HTMLElement>("[data-verify]")!.textContent).toBe(
-    "Bundle verification passed; 1 of 5 records uncheckpointed",
+  expect(root.querySelector<HTMLElement>("[data-verify]")!.textContent).toMatch(
+    /^Bundle verification INVALID: 1 of 5 records uncheckpointed,/u,
   );
   expect(root.querySelectorAll("[data-report-date]")).toHaveLength(2);
   const panelFor = (capsuleId: string): HTMLElement =>
