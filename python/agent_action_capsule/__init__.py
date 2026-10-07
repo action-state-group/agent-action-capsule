@@ -60,7 +60,7 @@ from .parse import Capsule, parse_capsule
 from .registries import REGISTRY_NAMES, load_registries
 from .verify import Finding, VerificationResult, verify, verify_store
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 
 def anchor(*args, **kwargs):
