@@ -45,12 +45,33 @@ def _assert_canonical(inp, exp):
     )
 
 
+def _assert_preimage(inp, exp):
+    """A spec-derived capsule_id preimage is the literal RFC 8785 text: JCS must produce it."""
+    preimage = exp.get("canonical_preimages", {}).get("capsule_id")
+    if preimage is None or "ledger" in inp:
+        return
+    excluded = {"capsule_id", *canonical.LOCAL_ONLY_FIELDS}
+    body = {k: v for k, v in inp.items() if k not in excluded}
+    assert canonical.jcs(body).decode("utf-8") == preimage
+
+
+def _assert_same_capsule_id(exp):
+    """A twin case (e.g. -0 written 0) must pin the same capsule_id as the case it names."""
+    other = exp.get("same_capsule_id_as")
+    if other is None:
+        return
+    twin = json.loads((VECTORS / other / "expected.json").read_text(encoding="utf-8"))
+    assert exp["capsule_id_recomputed"] == twin["capsule_id_recomputed"]
+
+
 @pytest.mark.parametrize("name", CASES)
 def test_vector(name):
     case = VECTORS / name
     inp = json.loads((case / "input.json").read_text(encoding="utf-8"))
     exp = json.loads((case / "expected.json").read_text(encoding="utf-8"))
 
+    _assert_preimage(inp, exp)
+    _assert_same_capsule_id(exp)
     if exp.get("kind") == "canonical":
         _assert_canonical(inp, exp)
     elif isinstance(inp, dict) and "ledger" in inp:

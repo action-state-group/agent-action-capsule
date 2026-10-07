@@ -29,6 +29,8 @@ type capsuleVectorExpected struct {
 	Exception           *string                        `json:"exception"`
 	Findings            []capsuleVectorExpectedFinding `json:"findings"`
 	Results             []capsuleVectorExpected        `json:"results"`
+	CanonicalPreimages  map[string]string              `json:"canonical_preimages"`
+	SameCapsuleIDAs     *string                        `json:"same_capsule_id_as"`
 }
 
 func TestCapsuleVectors(t *testing.T) {
@@ -64,6 +66,8 @@ func TestCapsuleVectors(t *testing.T) {
 			var expected capsuleVectorExpected
 			require.NoError(t, json.Unmarshal(expectedData, &expected))
 			input := decodeCapsuleVector(t, inputData)
+			assertCapsuleVectorPreimage(t, input, expected)
+			assertCapsuleVectorSameID(t, vectorRoot, expected)
 
 			if item.Kind == "canonical" {
 				assertCanonicalCapsuleVector(t, input, expected)
@@ -87,6 +91,45 @@ func decodeCapsuleVector(t *testing.T, data []byte) interface{} {
 	decoder.UseNumber()
 	require.NoError(t, decoder.Decode(&value))
 	return value
+}
+
+// assertCapsuleVectorPreimage checks JCS bytes against a spec-derived literal
+// RFC 8785 preimage, not only the digest of them.
+func assertCapsuleVectorPreimage(t *testing.T, input interface{}, expected capsuleVectorExpected) {
+	t.Helper()
+	preimage, present := expected.CanonicalPreimages["capsule_id"]
+	if !present {
+		return
+	}
+	capsule, ok := input.(map[string]interface{})
+	require.True(t, ok)
+	if _, isStore := capsule["ledger"]; isStore {
+		return
+	}
+	body := make(map[string]interface{}, len(capsule))
+	for k, v := range capsule {
+		if k == "capsule_id" || canonical.LocalOnlyFields[k] {
+			continue
+		}
+		body[k] = v
+	}
+	actual, err := canonical.JCS(body)
+	require.NoError(t, err)
+	require.Equal(t, preimage, string(actual))
+}
+
+// assertCapsuleVectorSameID checks a twin case pins the same capsule_id as
+// the case it names (e.g. -0 written 0 digests the same).
+func assertCapsuleVectorSameID(t *testing.T, vectorRoot string, expected capsuleVectorExpected) {
+	t.Helper()
+	if expected.SameCapsuleIDAs == nil {
+		return
+	}
+	twinData, err := os.ReadFile(filepath.Join(vectorRoot, *expected.SameCapsuleIDAs, "expected.json"))
+	require.NoError(t, err)
+	var twin capsuleVectorExpected
+	require.NoError(t, json.Unmarshal(twinData, &twin))
+	require.Equal(t, twin.CapsuleIDRecomputed, expected.CapsuleIDRecomputed)
 }
 
 func assertCanonicalCapsuleVector(t *testing.T, input interface{}, expected capsuleVectorExpected) {

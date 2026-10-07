@@ -19,6 +19,13 @@
   is not independent; the same Bundle without the declaration, a different signer, and five
   malformed blocks are not. Consumed by Python and TypeScript tests. Existing vector files are
   unchanged; only the top-level `SHA256SUMS` and `manifest.json` gained entries.
+- Vectors `capsule/canonical-integer-negative-zero` and
+  `capsule/canonical-integer-negative-zero-as-zero` (spec-derived): `-0` as a direct member,
+  nested in an object and inside an array, beside `0`, must serialize as `0` (RFC 8785), and
+  the same input written with `0` must give the same `capsule_id`. Python, Go and TypeScript
+  now also check each case's JCS bytes against its literal `canonical_preimages.capsule_id`,
+  and a `same_capsule_id_as` twin against the case it names. Existing vector files are
+  unchanged; `capsule/vectors.json` and the two `SHA256SUMS` files gained entries.
 
 ### Changed
 - A null `references[].retention.declarant` is now reported as `missing_required_field` (check 1),

@@ -3,7 +3,7 @@
     "4"
   ],
   "spec": "draft-mih-scitt-agent-action-capsule-05",
-  "count": 112,
+  "count": 114,
   "cases": [
     {
       "name": "pos-v4-jcs-chain-committed",
@@ -648,6 +648,18 @@
       "kind": "negative",
       "description": "references[1].retention is an empty object: no declarant and no bound, reported in that order -> missing_required_field, retention_empty (check 1, §5.5.5).",
       "provenance": "reference-derived"
+    },
+    {
+      "name": "canonical-integer-negative-zero",
+      "kind": "positive",
+      "description": "Negative zero serialized as '0' (RFC 8785 S:3.2.2.3, ECMAScript Number::toString) as a direct member, nested in an object and inside an array, beside integer 0, under explicit format-4 plain JCS. input.json is raw JSON text: each consumer parses it with its integer-preserving decoder, so the -0 token reaches the serializer.",
+      "provenance": "spec-derived"
+    },
+    {
+      "name": "canonical-integer-negative-zero-as-zero",
+      "kind": "positive",
+      "description": "Twin of canonical-integer-negative-zero with every -0 token written 0 (action_id kept identical so the preimages match): the JCS bytes and capsule_id MUST equal that case's, so -0 and 0 give the same JSON-DIGEST.",
+      "provenance": "spec-derived"
     }
   ],
   "spec_versions": [
