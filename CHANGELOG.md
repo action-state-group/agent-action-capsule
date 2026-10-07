@@ -2,17 +2,54 @@
 
 ## Unreleased
 
+## 0.7.0 — 2026-10-07
+
+**Headline: string-typed fields are type-checked in every verifier.** A list, an object or a
+null where the profile requires a string now fails check 1 (`field_not_string`) in Python, Go,
+TypeScript and Rust, and a malformed `references[].retention` declaration (§5.5.5) is rejected
+(#147, #148, #149, #150). Records that 0.6.0 accepted with an informational finding, or silently,
+are now refused. Capsule vector case files shipped in 0.6.0 / `go/v0.6.0` are byte-identical; the
+new cases are added beside them. The Evidence Result and judge-record fixture vectors were
+regenerated with the `EXAMPLE-ORG` placeholder and their positive files renamed (#158); a consumer
+pinning those files by name or hash re-pins.
+
+### Verifier (all four implementations)
+- A non-string in a string-typed field fails check 1 (#147). The string-typed block members
+  (`disposition.decision`, `verdict_class`; `effect.status`, `type`, `irreversibility_class`,
+  `effect_attestation`; `chain.relation`; `assurance.effect_mode`, `attestation_mode`,
+  `ledger_mode`, `cross_party_rung`) holding any other JSON type, null included, give
+  `field_not_string` (error), in that order. A non-string `disposition.approver` gives
+  `field_not_string`. Python's closed-set lookups take strings only, so a list or an object no
+  longer raises and yields a single `verifier_internal_error`; a registry field holding a
+  non-string is treated as any unseeded value (informational, never a rejection). Fixes #146.
+- `provenance_mode.source_asserted_at`, `import_batch`, `imported_at` and
+  `references[].retention.declarant`, `retained_until`, `not_retained_after` are type-checked
+  the same way (#148).
+- A malformed `references[].retention` (§5.5.5) is rejected in check 1 (#149): a retention that
+  is not a JSON object (null included) is `field_not_object` and nothing else in it is checked; an
+  absent or null `declarant` is `missing_required_field`; an empty retention is
+  `retention_empty`.
+- Vectors `neg-retention-null` and `neg-retention-declarant-missing-and-empty` pin the finding
+  order; the generator now lets a case expect several findings (#150).
+
 ### Added
+- Evidence Request vectors (`vectors/evidence-request/`) for
+  `draft-mih-agent-evidence-request-00`, derived from the -00 text: the request map and its
+  refusal reasons, the six subject forms, coverage, exact-match resolution, the request digest
+  over the bytes as received (JSON and deterministic CBOR), signed refusals, the three outcomes
+  and pending, caller invariance, and retention commitments. Open readings are listed as
+  ambiguities in the README (#142). DIFFS items 1 and 2 are marked resolved (#170).
 - Evidence Request vectors: three request cases for coverage that carries both members where a
   value does not conform (`neg-coverage-both-pin-malformed`, `neg-coverage-both-freshness-malformed`,
   `neg-coverage-both-both-malformed`), all refused `request_malformed`. Ambiguity note A4 is
   amended with the 2026-10-06 ruling: a responder checks each present member's value first, and
   only then refuses both-or-neither `coverage_unsatisfiable`. The normative sentence goes into
-  `-01` §3.2; the posted `-00` files are unchanged. Existing vector bytes are unchanged.
+  `-01` §3.2; the posted `-00` files are unchanged. Existing vector bytes are unchanged (#189).
 - Evidence Bundle `-01` working revision (`spec/draft-mih-zhang-agent-disclosure-bundle-01`;
   the posted `-00` files are unchanged). It defines the `countersign/v1` entry (signing input
   `UTF8(JCS({over, signer, statement, type}))`, five per-check results, self-countersignature
-  rendered as not independent) and the `producer-key/v1` extension kind.
+  rendered as not independent), the `producer-key/v1` extension kind, `composed/v1`, and
+  provisional SD-JWT kinds (#167).
 - `producer-key/v1` registered in `REGISTRY.md` §14 (with the Python and Go mirrors), and
   `countersign/v1` in §15. The block is `{"public_key": "<64 lowercase hex>"}`, digest-covered;
   a verifier uses it only to classify a countersignature by that key as not independent. A
@@ -34,12 +71,67 @@
   and per-join redundancy. `bundle.ComposedDigest` recomputes the digest from the block alone.
   Refusal signatures use a caller-supplied profile (`Options.RefusalSignature`) and are
   `signature_unverified` without one. Tested byte for byte against `vectors/bundle/composed/`.
-  Python and TypeScript still report the block uninterpreted.
+  Python and TypeScript still report the block uninterpreted (#168).
+- Evidence Result v0: optional claim `type` (`requirement` | `reconcile` | `close`; absent means
+  `requirement`), with the `reconcile` and `close` bodies, fixtures and mutant checks. Existing
+  fixtures validate unchanged (#140).
+- TypeScript emitter: a sealed Result v0 as the bundle root (`buildResultRoot`). Headlines come
+  from the root and drill-downs from the records it cites; a claim whose cited ids do not resolve
+  renders `unsupported`, and a root that is not a Result v0 is an error (#141).
+- TypeScript emitter: two Result v0 presentation profiles, the outcome-report card
+  (`extensions["outcome-report/v1"]`, #160) and the EU AI Act obligations card (#164), each
+  selected only after the verify-first gate. A claim citing a published capsule now resolves to
+  the book record carrying it.
+- `spec/draft-mih-agent-settlement-records-00` with `vectors/settlement/` (14 spec-derived cases;
+  payer and payee legs, gross, fee and net per side, exact integer amount comparison), for
+  review (#159).
+- TypeScript package: isolated `./core` entry points and a manual npm trusted-publishing workflow
+  (`publish-ts.yml`, `ts/v*` tags). The npm package is versioned on its own train; the PyPI
+  release workflow ignores `ts/v*` releases (#184).
 
 ### Changed
 - A null `references[].retention.declarant` is now reported as `missing_required_field` (check 1),
   as a null `disposition.approver` is: `declarant` is REQUIRED (§5.5.5). #148 had reported it as
   `field_not_string`; #149 changed the code in every verifier (Python, Go, TypeScript, Rust).
+- `close/v1`: the peer-Close link moves off `citation_purpose` (`reconciles_with` was never
+  registered) into an Evidence Layer `cites` link carried in `x-evidence-links`. A Close with
+  `reconcile` carries exactly one `cites` link to the peer's Close for the same period. The old
+  positive `pos-example-org-close.json` is frozen and now rejected; the new positive is
+  `pos-example-org-close-linked.json` (#176).
+- `REGISTRY.md` §6: the `chain.relation` tokens `resolves`, `escalates`, `adjudicates`, `assesses`
+  are noted as read-only legacy aliases (never emitted; mapped to `supersedes` / `confirms`). The
+  parsed table is unchanged (#178).
+- Fixture placeholder org renamed to `EXAMPLE-ORG` across spec, schema descriptions, generators,
+  checkers and vectors (#158); the fixture placeholder is called the counterparty placeholder
+  (#154).
+
+### Fixed
+- Go `canonical.JCS` writes negative zero as `0`, as RFC 8785 and the Python and TypeScript
+  serializers do; `-0` previously gave a different digest in Go (#188).
+- TypeScript: a verified bundle whose root is not `report/v1`, a Result v0, or an
+  `evaluation-summary/v1` renders with a plain-text note instead of throwing (#191).
+- `vectors/disclosure-envelope/README.md` checksum refreshed in both `SHA256SUMS` files (#156).
+
+### Spec
+- Bilateral `-02`: retention decay of the bilateral property stated as a named mechanism property,
+  with the three verifier states kept apart (#119). Bilateral `-03`: RFC 9943 terms, no
+  "witnesses" role, "countersign" pinned (#151); the "anchor" verb replaced by SCITT registration
+  terms (#174).
+- Evidence Bundle `-01`: "anchored" becomes "bound" in Interval coverage (#173).
+- Evidence Layer `-00`: freshness pass before first upload (references pinned to posted
+  revisions, RFC 9942/9943 terms, Reconcile and Close states) (#175).
+- Result v0: names the right enum for `NOT_APPLICABLE` and `UNKNOWN` (wording only, #181); Close
+  rules stated without review-round attributions (#161).
+- AAC `-05` draft artifacts regenerated for the October build date (#153); guide and Bundle author
+  email refreshed (#183); rulings cited by date (#155); value sets and rules described directly
+  (#145).
+
+### CI
+- Neutrality scanner: reads only regular files and does not follow symlinks; redacts terms on
+  untrusted runs (#143); scans every tracked file (`git ls-files -z`) with pinned actions (#144);
+  catches adoption claims about reference projects (#169); refuses a double-encoded
+  `NEUTRALITY_TERMS` (#186).
+- Leak lint reads its term list from the `LEAK_LINT_TERMS` secret and fails closed (#171).
 
 ## 0.6.0 — 2026-09-27
 
