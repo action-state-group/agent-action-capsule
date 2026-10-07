@@ -215,6 +215,12 @@ write("evaluation-report", "neg-case-without-method", evaluation_report_neg)
 
 _peer_close_content = {"note": "EXAMPLE-ORG peer store's Close record, v1 placeholder"}
 
+# The link to the peer's Close is an Evidence Layer typed link (`cites`),
+# carried in `x-evidence-links` (judge-record-family-v1 section 0a) -- never a
+# Capsule citation_purpose. The released positive that carried it as
+# `reconcile.peer_close` (citation_purpose `reconciles_with`) is FROZEN at
+# vectors/judge/close/pos-example-org-close.json: this generator no longer
+# writes it, and check_judge_record_examples.py pins its bytes.
 close_pos: CloseDoc = {
     "record_version": "close/v1",
     "record_id": "close-example-org-1",
@@ -232,14 +238,17 @@ close_pos: CloseDoc = {
             "insufficient": 1,
             "unresolved": 0,
         },
-        "peer_close": citation("close", "reconciles_with", _peer_close_content),
         "status": "AGREED",
     },
+    "x-evidence-links": [{"type": "cites", "target": json_digest(_peer_close_content)}],
 }
-write("close", "pos-example-org-close", close_pos)
+write("close", "pos-example-org-close-linked", close_pos)
 
+# Negative: the same record with no link to the peer's Close. Byte-identical
+# to the committed negative (the old positive minus its peer_close), so the
+# negative keeps its name and its bytes.
 close_neg = copy.deepcopy(close_pos)
-del close_neg["reconcile"]["peer_close"]
+del close_neg["x-evidence-links"]
 write("close", "neg-reconcile-without-peer-close", close_neg)
 
 

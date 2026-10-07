@@ -21,10 +21,20 @@ names a company.
 | `adjudication-v1.json` | `pos-example-org-twin-adjudication` | `neg-contradicted-missing-party` | `verdict: contradicted` requires `contradicted_party` (section 6's if/then) |
 | `adjudication-response-v1.json` | `pos-example-org-delivery-receipt` | `neg-delivery-receipt-with-verdict` | `kind: delivery_receipt` prohibits `verdict`/`basis` — a delivery receipt is sealed before any decision (section 7) |
 | `evaluation-report-v1.json` | `pos-example-org-evaluation-report` | `neg-case-without-method` | `Case` requires `method` — a case with no cited rubric is not legal |
-| `close-v1.json` | `pos-example-org-close` | `neg-reconcile-without-peer-close` | `Reconcile` requires `peer_close` when present at all (section 3) |
+| `close-v1.json` | `pos-example-org-close-linked` | `neg-reconcile-without-peer-close` | a Close with `reconcile` requires `x-evidence-links` with exactly one `cites` link to the peer's Close (sections 0a, 3) |
 | `sample-manifest-v1.json` | `pos-example-org-sample-manifest` | `neg-cases-empty` | `cases` requires `minItems: 1` — a manifest naming zero cases is not a sample |
 | `human-rating-v1.json` | `pos-example-org-human-rating` | `neg-blind-false` | `blind` is fixed `true` (section 5) — a non-blind rating is not this schema |
 | `calibration-summary-v1.json` | `pos-example-org-calibration-summary` | `neg-clause-with-rate-field` | `KOfN.additionalProperties: false` — no field in this family is a stored rate (section 8) |
+
+## Frozen fixtures
+
+Released vectors are never rewritten. A fixture whose shape a later ruling retired stays here
+byte-for-byte; `check_judge_record_examples.py` pins its SHA-256 and confirms the current schema
+rejects it. The generator no longer writes it.
+
+| Fixture | Superseded by | Why |
+|---|---|---|
+| `close/pos-example-org-close.json` | `close/pos-example-org-close-linked.json` | carried the peer-Close link as `reconcile.peer_close` with `citation_purpose: reconciles_with`, an unregistered Capsule citation purpose; the link is an Evidence Layer `cites` link carried in `x-evidence-links` (spec section 0a, ruled 2026-10-04) |
 
 ## The `evaluation-report/v1` positive fixture's tau2 lineage
 

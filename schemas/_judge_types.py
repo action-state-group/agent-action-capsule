@@ -117,11 +117,21 @@ class ReconcileTalliesDoc(TypedDict):
 
 class ReconcileDoc(TypedDict):
     tallies: ReconcileTalliesDoc
-    peer_close: CitationDoc
     status: str
 
 
-class CloseDoc(TypedDict, total=False):
+class EvidenceLinkDoc(TypedDict):
+    # draft-mih-agent-evidence-layer-00 "Typed Links" entry: {type, target}.
+    type: Literal["cites", "adjudicates", "supersedes", "acknowledges", "rebuts", "closes"]
+    target: str
+
+
+# `x-evidence-links` is not a Python identifier, so the key is declared via
+# the functional TypedDict form and CloseDoc inherits it.
+_CloseLinksDoc = TypedDict("_CloseLinksDoc", {"x-evidence-links": List[EvidenceLinkDoc]}, total=False)
+
+
+class CloseDoc(_CloseLinksDoc, total=False):
     record_version: Literal["close/v1"]
     record_id: str
     epistemic_type: Literal["producer_claim"]

@@ -14,12 +14,14 @@ on:
     paths:
       - "schemas/**"
       - "vectors/evidence-result/**"
+      - "vectors/judge/**"
       - "python/agent_action_capsule/canonical.py"
       - ".github/workflows/schemas.yml"
   pull_request:
     paths:
       - "schemas/**"
       - "vectors/evidence-result/**"
+      - "vectors/judge/**"
       - "python/agent_action_capsule/canonical.py"
       - ".github/workflows/schemas.yml"
 

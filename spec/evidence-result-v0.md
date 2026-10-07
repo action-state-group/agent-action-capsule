@@ -280,10 +280,15 @@ re-reads the links and never trusts the field. `AGREED` and `CONTESTED` both exi
 record links to the Close, so both MUST cite that record (`peer` + `peer_close_ref`). On `UNILATERAL`
 both are OPTIONAL, never forbidden: a party MAY name the peer it closed unilaterally against, and MAY cite
 the peer's Close it reconciled with, which does not (yet) link back. This follows `close-v1.json`, whose
-`Reconcile` carries `peer_close` unconditionally (a `reconciles_with` citation, present under every
-`status` including `UNILATERAL`), and the Evidence Layer draft, which defines `UNILATERAL` only as "no
+reconciling Close carries its link to the peer's Close unconditionally — an Evidence Layer `cites` link in
+the `x-evidence-links` extension (`spec/judge-record-family-v1.md` §0a), present under every `status`
+including `UNILATERAL` — and the Evidence Layer draft, which defines `UNILATERAL` only as "no
 corresponding `acknowledges` link exists yet" — naming the peer is not agreeing with it. So a `close/v1`
-`UNILATERAL` record maps to a claim without dropping its `peer_close`; the earlier staging that forbade
+`UNILATERAL` record maps to a claim without dropping its link to the peer's Close (that link's target is
+what `peer_close_ref` cites on a `UNILATERAL` row). That link is an Evidence Layer link, never a Capsule
+`citation_purpose`: `close-v1.json` earlier carried it as `reconcile.peer_close` with the unregistered
+purpose `reconciles_with`, moved off the citation axis on 2026-10-04 (released vector frozen; see
+`judge-record-family-v1.md` §3). The earlier staging that forbade
 both on `UNILATERAL` was stricter than the draft, not required by it, and pinned an open question with a
 MUST-reject — it no longer does (whether a report *should* name the peer on a unilateral row stays open
 for the ruling; the schema no longer decides it). What keeps a unilateral row from *reading* as agreement
