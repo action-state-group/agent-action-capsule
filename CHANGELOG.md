@@ -25,6 +25,16 @@
   is not independent; the same Bundle without the declaration, a different signer, and five
   malformed blocks are not. Consumed by Python and TypeScript tests. Existing vector files are
   unchanged; only the top-level `SHA256SUMS` and `manifest.json` gained entries.
+- Go: `bundle.VerifyBundle` now interprets the `composed/v1` extension (bundle `-01` §7.2)
+  instead of reporting it uninterpreted. `ExtensionResult.Composed` reports the recomputed
+  composed digest, each member (outcome, body carried or declared missing, digest reproduced,
+  and a carried member Bundle's own verification), composition closure
+  (`pass`/`withheld`/`fail`), each join's declared and re-derived state
+  (`pre_agreed_identifier`, `shared_artifact_digest`; the reserved bases are `not_derivable`),
+  and per-join redundancy. `bundle.ComposedDigest` recomputes the digest from the block alone.
+  Refusal signatures use a caller-supplied profile (`Options.RefusalSignature`) and are
+  `signature_unverified` without one. Tested byte for byte against `vectors/bundle/composed/`.
+  Python and TypeScript still report the block uninterpreted.
 
 ### Changed
 - A null `references[].retention.declarant` is now reported as `missing_required_field` (check 1),
