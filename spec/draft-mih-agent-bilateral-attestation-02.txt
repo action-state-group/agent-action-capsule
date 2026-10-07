@@ -83,28 +83,28 @@ Table of Contents
    7.  Graceful Degradation  . . . . . . . . . . . . . . . . . . . .   8
    8.  Dispositions Across the Asymmetry . . . . . . . . . . . . . .   8
    9.  The Optional Relay  . . . . . . . . . . . . . . . . . . . . .   9
-   10. Relationship to Existing Work . . . . . . . . . . . . . . . .  10
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .  11
-     11.1.  Identity Is the Floor  . . . . . . . . . . . . . . . . .  11
-     11.2.  Half-Completed Exchanges . . . . . . . . . . . . . . . .  11
-     11.3.  Downgrade Attacks  . . . . . . . . . . . . . . . . . . .  12
-     11.4.  Replay and Cross-Binding . . . . . . . . . . . . . . . .  12
-     11.5.  Pre-Registration of Candidate Attestations . . . . . . .  12
-     11.6.  Commitments and Predictable Values . . . . . . . . . . .  13
-     11.7.  Key Establishment  . . . . . . . . . . . . . . . . . . .  13
-     11.8.  Key Compromise and Revocation  . . . . . . . . . . . . .  13
-     11.9.  Canonicalization and Hash Agility  . . . . . . . . . . .  14
-     11.10. Verification-Cost DoS  . . . . . . . . . . . . . . . . .  14
-   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  14
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  15
-   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  15
-     14.1.  Normative References . . . . . . . . . . . . . . . . . .  15
-     14.2.  Informative References . . . . . . . . . . . . . . . . .  15
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  17
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  18
-
-
-
+   10. Retention and the Decay of the Bilateral Property . . . . . .  10
+     10.1.  Three States . . . . . . . . . . . . . . . . . . . . . .  10
+     10.2.  Declared Retention . . . . . . . . . . . . . . . . . . .  11
+   11. Relationship to Existing Work . . . . . . . . . . . . . . . .  12
+   12. Security Considerations . . . . . . . . . . . . . . . . . . .  13
+     12.1.  Identity Is the Floor  . . . . . . . . . . . . . . . . .  14
+     12.2.  Half-Completed Exchanges . . . . . . . . . . . . . . . .  14
+     12.3.  Downgrade Attacks  . . . . . . . . . . . . . . . . . . .  14
+     12.4.  Replay and Cross-Binding . . . . . . . . . . . . . . . .  14
+     12.5.  Pre-Registration of Candidate Attestations . . . . . . .  15
+     12.6.  Commitments and Predictable Values . . . . . . . . . . .  15
+     12.7.  Key Establishment  . . . . . . . . . . . . . . . . . . .  16
+     12.8.  Key Compromise and Revocation  . . . . . . . . . . . . .  16
+     12.9.  Canonicalization and Hash Agility  . . . . . . . . . . .  16
+     12.10. Verification-Cost DoS  . . . . . . . . . . . . . . . . .  17
+   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  17
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  17
+   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  17
+     15.1.  Normative References . . . . . . . . . . . . . . . . . .  17
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  18
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  20
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  20
 
 
 
@@ -320,7 +320,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    construction and never to infer one from the object's shape.  The
    expected identifier names RFC 8785 JCS [RFC8785]; what this document
    fixes is that the construction is named rather than assumed (see
-   Section 11.9).  The hash function is part of the named construction,
+   Section 12.9).  The hash function is part of the named construction,
    so agility is obtained by naming a different one, never by
    reinterpreting an existing name.
 
@@ -345,7 +345,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    the request was disposed, so that a verifier can establish the
    applicable constraint set as of the attestation's anchored time, not
    merely at verification time — the same establishable-as-of-anchored-
-   time property that Section 11.8 requires of key validity.  A
+   time property that Section 12.8 requires of key validity.  A
    constraint set that can be silently re-parameterized after the fact
    would let a performing party restate what it was obligated to check;
    pinning its digest removes that degree of freedom.
@@ -354,7 +354,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    SHOULD bind an input-commitment digest — a digest over the inputs the
    constraints consulted — anchored as a commitment and disclosable to
    the counterparty or an auditor under the selective-disclosure model
-   (Section 12).  This is a SHOULD, not a MUST: the state a constraint
+   (Section 13).  This is a SHOULD, not a MUST: the state a constraint
    consults varies across deployments, and an honest SHOULD serves a
    verifier better than a nominal MUST that implementations cannot
    uniformly satisfy.  A future revision MAY promote it on
@@ -506,7 +506,131 @@ Mih                       Expires 17 March 2027                 [Page 9]
 Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
-10.  Relationship to Existing Work
+10.  Retention and the Decay of the Bilateral Property
+
+   The evidentiary strength of a bilateral record rests on two
+   independently-produced halves committing to the same digest:
+   agreement between parties who did not coordinate the production of
+   their commitment is itself hard to fabricate, and disagreement is
+   itself the finding (Section 12.6).  This property is not permanent.
+   It decays to the _shorter_ of the two parties' retention: each
+   organization decides for itself how long it keeps its half — and
+   whatever supporting material a verifier needs to reverify it — and
+   once either side's half is no longer reachable, what remains is a
+   single-sided ledger, the condition this document exists to beat.  An
+   implementer who first learns this during a years-later dispute has
+   learned it too late; this section states it as a named property of
+   the mechanism, not a caveat in Section 12.
+
+10.1.  Three States
+
+   A verifier evaluating a bilateral record is always in exactly one of
+   three states.  The states are jointly exhaustive and mutually
+   exclusive.  A verifier MUST NOT collapse the second and third into
+   one "incomplete" outcome, and a conformant report format MUST
+   distinguish all three.
+
+   *Both halves present and agreeing.* The bilateral property holds:
+   independently-produced signatures from both parties commit to the
+   same digest.  This is verifiable evidence that the two organizations
+   independently arrived at the same record of the exchange.  It is not
+   evidence that either organization's underlying content is itself true
+   — the request's material terms, or the action's disposition
+   rationale; agreement on a digest attests to the digest, not to what
+   it represents beyond what Section 4 and Section 5 already bind.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                       Expires 17 March 2027                [Page 10]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
+   *One half unavailable.* One party's half — or the material needed to
+   reverify it — has aged out of retention, been lost, or was never
+   anchored where this verifier can reach it.  The surviving half still
+   verifies on its own, against its own signature and, if anchored, its
+   own inclusion proof.  This is *not a finding against the record* and
+   MUST NOT be reported as one: a verifier MUST NOT render the record as
+   "bilaterally attested" once only one half remains reachable, and MUST
+   NOT report the missing half as tampering, revocation, or repudiation.
+   The correct report is that verification degraded from bilateral to
+   single-sided.  This MUST NOT be conflated with the reduced-assurance
+   indicator of Section 7: that indicator marks an exchange that never
+   reached full bilateral in the first place, while a half aging out of
+   retention marks one that did and later lost a half.  A fully-
+   bilateral record that decays and a record that started degraded are
+   different facts, and a consumer weighing the record needs to know
+   which it is holding.
+
+   *Both halves present and disagreeing.* The two parties' signed
+   commitments do not match — different digests, or a half that resolves
+   against a request or action attestation other than the one it claims
+   to complete.  This is a contradiction, and it MUST stay one: it MUST
+   NOT be reinterpreted or downgraded to a missing-half case, and
+   neither half MAY be preferred over the other absent a dispute-
+   resolution mechanism, which this document does not define.  A
+   verifier report that treats "disagree" the same as "one side didn't
+   answer" is how an implementer ends up filing a dropped shard as a
+   forged record, or the reverse; the two demand different responses and
+   MUST remain distinguishable in any report.
+
+10.2.  Declared Retention
+
+   A bilateral record SHOULD carry each side's declared retention, so a
+   relying party can tell at issue time how long the cross-check of
+   Section 4 is expected to remain checkable, rather than discovering
+   the answer during a dispute.  A declared retention is a producer
+   claim, in the same sense [I-D.mih-scitt-agent-action-capsule] treats
+   a self-attested timestamp: a statement by a named party, never
+   independently witnessed or attested by virtue of being carried in the
+   record.  It MUST NOT be verified, rederived, or graded the way that
+   document's assurance object grades claims backed by evidence in hand
+   — there is no evidence in hand for a promise about the future, so no
+   never-grades-up discipline applies to it; a declared retention simply
+   is not that kind of claim, and an implementation MUST NOT treat it as
+   if it were.  Consistent with that, its absence carries no penalty and
+   is never itself a finding: a record with no declared retention is not
+   thereby of lower assurance than one that carries one; it only tells
+   the relying party less about how long to expect the cross-check to
+   remain checkable, and a relying party MAY factor that absence into
+
+
+
+Mih                       Expires 17 March 2027                [Page 11]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
+   its own risk policy, which is that party's determination and not a
+   property this document defines.
+
+   The declaration itself — its syntax, and how it composes with an
+   algorithm-transition or reanchoring event over the record's lifetime
+   — is the concern of a forthcoming companion specification on
+   retention declarations and post-quantum reanchoring.  This document
+   states only where a bilateral record composes with such a declaration
+   and what a verifier may and may not conclude from its presence or
+   absence; it does not define a second retention-declaration mechanism
+   of its own.
+
+11.  Relationship to Existing Work
 
    *Record layer.* This document defines an exchange, not a record
    format: its attestations are designed to be carried in existing agent
@@ -515,7 +639,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    vocabulary, effect binding, and anchoring path this document relies
    on, and its selective-disclosure profile
    [I-D.mih-scitt-agent-action-capsule-sel-disc] applies to cross-
-   boundary privacy (Section 12).
+   boundary privacy (Section 13).
 
    *Accountability without a third party.* The general mechanism this
    document specifies — two parties each holding a record of an
@@ -542,6 +666,14 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    directly, rather than relying on PeerReview's peer-witness overlay of
    mutually monitoring nodes.
 
+
+
+
+Mih                       Expires 17 March 2027                [Page 12]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
    *Delegation receipts.* [I-D.nelson-agent-delegation-receipts] binds a
    _principal_ (the delegating user) to an authorization before any
    action, on one side of the boundary.  This document binds two
@@ -554,13 +686,6 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    _actions_ — what was requested and what was done.  A deployment may
    use RATS evidence to strengthen confidence in a counterparty's agent
    runtime; the two are orthogonal layers.
-
-
-
-Mih                       Expires 17 March 2027                [Page 10]
-
-Internet-Draft         Bilateral Agent Attestation        September 2026
-
 
    *Audit and approval records.* The audit architecture
    [I-D.kuehlewind-audit-architecture] describes recording agent
@@ -590,9 +715,22 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    extensions, complementing both this profile and the base Agent Action
    Capsule profile by shared action digest.
 
-11.  Security Considerations
+12.  Security Considerations
 
-11.1.  Identity Is the Floor
+
+
+
+
+
+
+
+
+Mih                       Expires 17 March 2027                [Page 13]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
+12.1.  Identity Is the Floor
 
    The evidentiary weight of a bilateral record is bounded by the
    binding of keys to organizations.  This document inherits, and does
@@ -600,7 +738,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    the credential chain to a root the relying party accepts, and that
    identity be bound to the _record_, not merely the transport session.
 
-11.2.  Half-Completed Exchanges
+12.2.  Half-Completed Exchanges
 
    A party that aborts mid-exchange (requests, then never acknowledges
    the decline; performs, then withholds the action attestation) creates
@@ -610,17 +748,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    completion.  Repeated non-completion is a property a relying party
    can establish from the records it holds; what it does about it is
    that party's decision, and this document neither scores
-
-
-
-Mih                       Expires 17 March 2027                [Page 11]
-
-Internet-Draft         Bilateral Agent Attestation        September 2026
-
-
    counterparties nor defines a vocabulary for doing so.
 
-11.3.  Downgrade Attacks
+12.3.  Downgrade Attacks
 
    If degraded operation is permitted, an attacker prefers to be
    recorded at reduced assurance.  Reduced-assurance records MUST be
@@ -632,7 +762,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    policy MUST be configured, never inferred from the absence of a
    request attestation.
 
-11.4.  Replay and Cross-Binding
+12.4.  Replay and Cross-Binding
 
    Nonces and digests bind each attestation to one request instance; an
    action attestation MUST NOT be verifiable against any request other
@@ -645,7 +775,18 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    violation.  Two independent verifiers deriving disposition from the
    same canonical bytes MUST reach the same verdict.
 
-11.5.  Pre-Registration of Candidate Attestations
+
+
+
+
+
+
+Mih                       Expires 17 March 2027                [Page 14]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
+12.5.  Pre-Registration of Candidate Attestations
 
    A party that can write records freely can write several in advance —
    one for each outcome it might later prefer to claim — and disclose
@@ -665,15 +806,6 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    of candidates therefore requires the counterparty's participation in
    producing the set.
 
-
-
-
-
-Mih                       Expires 17 March 2027                [Page 12]
-
-Internet-Draft         Bilateral Agent Attestation        September 2026
-
-
    The same property is what a unilateral record lacks, and the limit
    should be stated plainly: a party acting alone, keeping its own
    records, with no counterparty entitled to ask what else it wrote, can
@@ -681,7 +813,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    that for exchanges it covers.  It does not close it for records made
    outside an exchange.
 
-11.6.  Commitments and Predictable Values
+12.6.  Commitments and Predictable Values
 
    A digest establishes that its author held the digested bytes only to
    the extent that those bytes could not have been predicted.  Where an
@@ -702,7 +834,15 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    See also the low-entropy digest considerations of
    [I-D.mih-sokolov-scitt-payload-binding].
 
-11.7.  Key Establishment
+
+
+
+Mih                       Expires 17 March 2027                [Page 15]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
+12.7.  Key Establishment
 
    This document does not specify how parties establish mutual trust in
    each other's organizational keys.  First-use acceptance (TOFU) is a
@@ -713,7 +853,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    chaining to a root the relying party accepts, independent of the
    communicating parties' infrastructure.
 
-11.8.  Key Compromise and Revocation
+12.8.  Key Compromise and Revocation
 
    A signature valid at attestation time may be produced under a key
    compromised by verification time.  A verifier SHOULD be able to
@@ -723,14 +863,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    of scope here, but a record without an anchored time cannot support
    this distinction.
 
-
-
-Mih                       Expires 17 March 2027                [Page 13]
-
-Internet-Draft         Bilateral Agent Attestation        September 2026
-
-
-11.9.  Canonicalization and Hash Agility
+12.9.  Canonicalization and Hash Agility
 
    Because every binding is by digest, the canonicalization of the
    attested objects is security-relevant: divergent serializations of
@@ -754,7 +887,18 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    a canonicalization without declaring it interoperates only with
    implementations that made the same unstated choice.
 
-11.10.  Verification-Cost DoS
+
+
+
+
+
+
+Mih                       Expires 17 March 2027                [Page 16]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
+12.10.  Verification-Cost DoS
 
    Verifying a request attestation (identity-chain plus anchor
    inclusion) is more expensive than producing one.  A performing party
@@ -762,7 +906,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    before performing full verification, so request-attestation flooding
    cannot exhaust a performer at the effect boundary.
 
-12.  Privacy Considerations
+13.  Privacy Considerations
 
    A bilateral record discloses, by construction, that two organizations
    transacted — to each other, and if anchored with cleartext
@@ -776,26 +920,16 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
    TBD, and any layer that aggregates these records faces the same
    problem from the consumption side.
 
-
-
-
-
-
-Mih                       Expires 17 March 2027                [Page 14]
-
-Internet-Draft         Bilateral Agent Attestation        September 2026
-
-
-13.  IANA Considerations
+14.  IANA Considerations
 
    This document has no IANA actions at this time.  A future revision
    defining wire encodings is expected to register media types for the
    four exchange objects and a registry for reduced-assurance indicator
    values.  TBD.
 
-14.  References
+15.  References
 
-14.1.  Normative References
+15.1.  Normative References
 
    [RFC9942]  Steele, O., Birkholz, H., Delignat-Lavaud, A., and C.
               Fournet, "CBOR Object Signing and Encryption (COSE)
@@ -813,6 +947,13 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/rfc/rfc8785>.
 
+
+
+Mih                       Expires 17 March 2027                [Page 17]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
@@ -829,18 +970,7 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
 
-14.2.  Informative References
-
-
-
-
-
-
-
-Mih                       Expires 17 March 2027                [Page 15]
-
-Internet-Draft         Bilateral Agent Attestation        September 2026
-
+15.2.  Informative References
 
    [RFC3461]  Moore, K., "Simple Mail Transfer Protocol (SMTP) Service
               Extension for Delivery Status Notifications (DSNs)",
@@ -873,6 +1003,13 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
               agent-action-capsule-sel-disc-00>.
 
+
+
+Mih                       Expires 17 March 2027                [Page 18]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
    [I-D.nelson-agent-delegation-receipts]
               Nelson, R., "Delegation Receipt Protocol for AI Agent
               Authorization", Work in Progress, Internet-Draft, draft-
@@ -887,16 +1024,6 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
               architecture-01, 7 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-kuehlewind-
               audit-architecture-01>.
-
-
-
-
-
-
-Mih                       Expires 17 March 2027                [Page 16]
-
-Internet-Draft         Bilateral Agent Attestation        September 2026
-
 
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
@@ -932,6 +1059,13 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
               2026, <https://datatracker.ietf.org/doc/html/draft-
               morrison-solo-agent-earn-registration-01>.
 
+
+
+Mih                       Expires 17 March 2027                [Page 19]
+
+Internet-Draft         Bilateral Agent Attestation        September 2026
+
+
    [PeerReview2007]
               Haeberlen, A., Kouznetsov, P., and P. Druschel,
               "PeerReview: Practical Accountability for Distributed
@@ -945,14 +1079,6 @@ Acknowledgments
    This exchange pattern owes its framing to discussions in the SCITT
    and agent-accountability communities, and composes with the work of
    the authors cited above.
-
-
-
-
-Mih                       Expires 17 March 2027                [Page 17]
-
-Internet-Draft         Bilateral Agent Attestation        September 2026
-
 
    Iman Schrock (EMILIA Protocol) contributed the constraint-record
    obligations in this revision: constraint-set pinning (MUST), input-
@@ -991,18 +1117,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                       Expires 17 March 2027                [Page 18]
+Mih                       Expires 17 March 2027                [Page 20]

@@ -365,6 +365,94 @@ addressed both decades ago — and this role inherits that discipline rather
 than reopening it. Reconciliation, directory, retry, and admission control
 are deployment concerns outside this document's scope.
 
+# Retention and the Decay of the Bilateral Property {#retention-decay}
+
+The evidentiary strength of a bilateral record rests on two
+independently-produced halves committing to the same digest: agreement
+between parties who did not coordinate the production of their commitment
+is itself hard to fabricate, and disagreement is itself the finding
+({{predictable-values}}). This property is not permanent. It decays to the
+*shorter* of the two parties' retention: each organization decides for
+itself how long it keeps its half — and whatever supporting material a
+verifier needs to reverify it — and once either side's half is no longer
+reachable, what remains is a single-sided ledger, the condition this
+document exists to beat. An implementer who first learns this during a
+years-later dispute has learned it too late; this section states it as a
+named property of the mechanism, not a caveat in
+{{security-considerations}}.
+
+## Three States
+
+A verifier evaluating a bilateral record is always in exactly one of three
+states. The states are jointly exhaustive and mutually exclusive. A
+verifier MUST NOT collapse the second and third into one "incomplete"
+outcome, and a conformant report format MUST distinguish all three.
+
+**Both halves present and agreeing.** The bilateral property holds:
+independently-produced signatures from both parties commit to the same
+digest. This is verifiable evidence that the two organizations
+independently arrived at the same record of the exchange. It is not
+evidence that either organization's underlying content is itself true —
+the request's material terms, or the action's disposition rationale;
+agreement on a digest attests to the digest, not to what it represents
+beyond what {{bilateral-exchange}} and {{constraint-records}} already bind.
+
+**One half unavailable.** One party's half — or the material needed to
+reverify it — has aged out of retention, been lost, or was never anchored
+where this verifier can reach it. The surviving half still verifies on its
+own, against its own signature and, if anchored, its own inclusion proof.
+This is **not a finding against the record** and MUST NOT be reported as
+one: a verifier MUST NOT render the record as "bilaterally attested" once
+only one half remains reachable, and MUST NOT report the missing half as
+tampering, revocation, or repudiation. The correct report is that
+verification degraded from bilateral to single-sided. This MUST NOT be
+conflated with the reduced-assurance indicator of {{graceful-degradation}}:
+that indicator marks an exchange that never reached full bilateral in the
+first place, while a half aging out of retention marks one that did and
+later lost a half. A fully-bilateral record that decays and a record that
+started degraded are different facts, and a consumer weighing the record
+needs to know which it is holding.
+
+**Both halves present and disagreeing.** The two parties' signed
+commitments do not match — different digests, or a half that resolves
+against a request or action attestation other than the one it claims to
+complete. This is a contradiction, and it MUST stay one: it MUST NOT be
+reinterpreted or downgraded to a missing-half case, and neither half MAY be
+preferred over the other absent a dispute-resolution mechanism, which this
+document does not define. A verifier report that treats "disagree" the
+same as "one side didn't answer" is how an implementer ends up filing a
+dropped shard as a forged record, or the reverse; the two demand different
+responses and MUST remain distinguishable in any report.
+
+## Declared Retention
+
+A bilateral record SHOULD carry each side's declared retention, so a
+relying party can tell at issue time how long the cross-check of
+{{bilateral-exchange}} is expected to remain checkable, rather than
+discovering the answer during a dispute. A declared retention is a
+producer claim, in the same sense {{I-D.mih-scitt-agent-action-capsule}}
+treats a self-attested timestamp: a statement by a named party, never
+independently witnessed or attested by virtue of being carried in the
+record. It MUST NOT be verified, rederived, or graded the way that
+document's `assurance` object grades claims backed by evidence in hand —
+there is no evidence in hand for a promise about the future, so no
+never-grades-up discipline applies to it; a declared retention simply is
+not that kind of claim, and an implementation MUST NOT treat it as if it
+were. Consistent with that, its absence carries no penalty and is never
+itself a finding: a record with no declared retention is not thereby of
+lower assurance than one that carries one; it only tells the relying party
+less about how long to expect the cross-check to remain checkable, and a
+relying party MAY factor that absence into its own risk policy, which is
+that party's determination and not a property this document defines.
+
+The declaration itself — its syntax, and how it composes with an
+algorithm-transition or reanchoring event over the record's lifetime — is
+the concern of a forthcoming companion specification on retention
+declarations and post-quantum reanchoring. This document states only
+where a bilateral record composes with such a declaration and what a
+verifier may and may not conclude from its presence or absence; it does
+not define a second retention-declaration mechanism of its own.
+
 # Relationship to Existing Work
 
 **Record layer.** This document defines an exchange, not a record format:
@@ -437,7 +525,7 @@ references into the capsule payload as namespaced extensions, complementing
 both this profile and the base Agent Action Capsule profile by shared action
 digest.
 
-# Security Considerations
+# Security Considerations {#security-considerations}
 
 ## Identity Is the Floor
 
