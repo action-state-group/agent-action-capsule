@@ -3,7 +3,7 @@ module github.com/action-state-group/agent-action-capsule/go
 go 1.27.0
 
 require (
-	github.com/action-state-group/cll-go v0.0.0-20260915155019-7a077913a24c
+	github.com/action-state-group/checkpointed-local-log/go v0.0.0-20261007180255-c13f117793af
 	github.com/fxamacker/cbor/v2 v2.9.0
 	github.com/stretchr/testify v1.12.1
 )
