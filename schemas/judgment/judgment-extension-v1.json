@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentactioncapsule.org/schemas/judgment/judgment-extension-v1.json",
   "title": "Judgment extension v1 (PROVISIONAL)",
-  "description": "PROVISIONAL, held for ratification; not registered, not normative. Companion schema for the Agent Action Capsule judgment extension: a Capsule that records a judgment (by an AI judge or a human expert) over an evidence set. The extension adds only what the base profile lacks -- rubric_digest, rubric_version, judge_parameters_digest -- in one namespaced member at /model_attestation/compute_attestation/x-judgment-v1. Base fields keep their meaning: developer = the judge (model and version, or a non-identifying rater role label), compute_attestation.agent_output_digest = JSON-DIGEST of the judge's answer {verdict, rationale}, references[] = exactly one citation_purpose judged_from naming the evidence set by digest. The binding makes a judgment re-runnable, not reproducible: a verifier never re-runs a model; it recomputes digests from published preimages. The digest rules for rubric_digest and judge_parameters_digest stated in the $defs below are PROPOSED and UNRATIFIED (see vectors/judgment/README.md). The root validates a judgment Capsule as an overlay: it constrains only the members this extension relies on and leaves every other Capsule member to the base profile's own Class 1 checks.",
+  "description": "PROVISIONAL, held for ratification; not registered, not normative. Companion schema for the Agent Action Capsule judgment extension: a Capsule that records a judgment (by an AI judge or a human expert) over an evidence set. The extension adds only what the base profile lacks -- rubric_digest, rubric_version, judge_parameters_digest, and for a model judge model_hosting -- in one namespaced member at /model_attestation/compute_attestation/x-judgment-v1. Base fields keep their meaning: developer = the judge (model and version, or a non-identifying rater role label), compute_attestation.agent_output_digest = JSON-DIGEST of the judge's answer {verdict, rationale}, references[] = exactly one citation_purpose judged_from naming the evidence set by digest. The binding makes a judgment re-runnable, not reproducible: a verifier never re-runs a model; it recomputes digests from published preimages. The digest rules for rubric_digest and judge_parameters_digest stated in the $defs below are PROPOSED and UNRATIFIED (see vectors/judgment/README.md). How each member corresponds to a pack's judge declaration is stated in spec/judgment-extension-v1.md. The root validates a judgment Capsule as an overlay: it constrains only the members this extension relies on and leaves every other Capsule member to the base profile's own Class 1 checks.",
   "$ref": "#/$defs/JudgmentCapsule",
   "$defs": {
     "HexDigest": {
@@ -26,8 +26,12 @@
           "minLength": 1
         },
         "judge_parameters_digest": {
-          "description": "PROPOSED rule: JSON-DIGEST of the published judge-parameters object -- JudgeParameters for a model judge, ExpertProtocolParameters for a human expert. Excludes the judge's identity, which developer carries.",
+          "description": "PROPOSED rule: JSON-DIGEST of the published judge-parameters object -- JudgeParameters for a model judge, ExpertProtocolParameters for a human expert. Excludes the judge's identity, which developer carries, and model_hosting, which this member carries.",
           "$ref": "#/$defs/HexDigest"
+        },
+        "model_hosting": {
+          "description": "PROPOSED. Where the model named by developer ran, over the same closed set a pack's judge declaration uses. hosted: reached through another party's endpoint whose weights the producer does not hold and whose model can change without its name changing; the verdict is attributable, not re-derivable. self_hosted: the producer runs the weights; whether they are published is not stated here. Outside judge_parameters_digest (it describes the judge, not how the judge was asked); committed by capsule_id like every member. A model-judge record MUST carry it; a human-expert record MUST NOT. A verifier that finds it absent on a model-judge record treats the judgment as hosted. See spec/judgment-extension-v1.md.",
+          "enum": ["hosted", "self_hosted"]
         }
       }
     },
@@ -54,7 +58,7 @@
       "required": ["developer", "model_attestation", "references"],
       "properties": {
         "developer": {
-          "description": "Base field. The judge: model identifier and version (for example model@version) for an AI judge, or a role or pseudonymous rater label for a human expert -- never a personal name or contact identifier.",
+          "description": "Base field. The judge. For a model judge: model_id, or model_id \"@\" version, where model_id is the model identifier exactly as a pack's judge declaration names it (byte-equal, no normalization) and contains no \"@\". For a human expert: a role or pseudonymous rater label -- never a personal name or contact identifier. See spec/judgment-extension-v1.md, Model identity.",
           "type": "string",
           "minLength": 1
         },
@@ -86,7 +90,7 @@
       }
     },
     "JudgeAnswer": {
-      "description": "Preimage of agent_output_digest. verdict uses the Evidence Contract's three-value vocabulary.",
+      "description": "Preimage of agent_output_digest. verdict uses the Evidence Contract's three-value vocabulary. This definition is the answer schema of every x-judgment-v1 record: a pack's judge declaration that pins an answer schema hash for a judge recorded under this member pins JSON-DIGEST of this definition's value as published in this file (spec/judgment-extension-v1.md, Answer schema).",
       "type": "object",
       "additionalProperties": false,
       "required": ["verdict"],
@@ -118,11 +122,11 @@
       "required": ["instruction_template_digest", "prompt_digest", "axes_digest", "sampling_params"],
       "properties": {
         "instruction_template_digest": {
-          "description": "JSON-DIGEST of the instruction template object the judge code wraps around the rubric and the evidence.",
+          "description": "JSON-DIGEST of the instruction template object the judge code wraps around the rubric and the evidence, as published, before anything is interpolated into it. An interpolated prompt carries the action's content and never enters this preimage. This is the digest a pack's judge declaration pins as its prompt template hash (spec/judgment-extension-v1.md).",
           "$ref": "#/$defs/HexDigest"
         },
         "prompt_digest": {
-          "description": "SHA-256 of the raw bytes of the published judge prompt file.",
+          "description": "SHA-256 of the raw bytes of the published judge prompt file. A published artifact, never an interpolated prompt. Not a template-object digest: a pack's prompt template hash never equals this value, even where an implementation calls its own template digest prompt_digest (spec/judgment-extension-v1.md).",
           "$ref": "#/$defs/HexDigest"
         },
         "axes_digest": {

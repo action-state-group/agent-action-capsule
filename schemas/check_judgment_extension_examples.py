@@ -12,7 +12,9 @@ PROVISIONAL) against schemas/judgment/judgment-extension-v1.json:
      validates once `rubric_version` is dropped from the member's `required`
      list in memory, proving the rejection is load-bearing; the committed
      schema file is never modified.
-  3. The published preimages validate against their $defs (JudgeParameters,
+  3. model_hosting accepts exactly the closed set {hosted, self_hosted} (checked on
+     in-memory copies of pos-ai-judge; the vectors are not rewritten).
+  4. The published preimages validate against their $defs (JudgeParameters,
      ExpertProtocolParameters, RubricDocument, JudgeAnswer).
 
 Digest recomputation is python/tests/test_judgment_extension_vectors.py's job.
@@ -66,6 +68,16 @@ def main() -> int:
     if root.is_valid(cases["neg-missing-rubric-version"]["capsule"]):
         failures.append("restore: neg-missing-rubric-version validates under the committed schema")
 
+    # model_hosting: the closed set a pack's judge declaration uses, accepted on the
+    # member; a value outside it is rejected (in-memory copies; vectors unchanged).
+    hosting_checks = 0
+    for value, want in (("hosted", True), ("self_hosted", True), ("hosted_remote", False), ("", False)):
+        capsule = copy.deepcopy(cases["pos-ai-judge"]["capsule"])
+        capsule["model_attestation"]["compute_attestation"]["x-judgment-v1"]["model_hosting"] = value
+        hosting_checks += 1
+        if root.is_valid(capsule) is not want:
+            failures.append(f"model_hosting={value!r}: schema_valid={not want}, expected {want}")
+
     pre = {cid: cases[cid]["preimages"]["values"] for cid in ("pos-ai-judge", "pos-human-expert")}
     checks = [
         ("JudgeParameters", pre["pos-ai-judge"]["judge_parameters"]),
@@ -80,7 +92,7 @@ def main() -> int:
     for line in failures:
         print(f"FAIL {line}")
     if not failures:
-        print(f"ok: {len(data['cases'])} cases, 1 mutant, {len(checks)} preimages")
+        print(f"ok: {len(data['cases'])} cases, 1 mutant, {hosting_checks} model_hosting checks, {len(checks)} preimages")
     return 1 if failures else 0
 
 
