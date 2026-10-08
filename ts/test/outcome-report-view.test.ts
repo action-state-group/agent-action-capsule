@@ -531,7 +531,9 @@ it("draws the verification banner and the verification page in the card's look -
   const root = await render(bundle);
   const banner = root.querySelector<HTMLElement>('[data-verify="verified"]')!;
   expect(banner.classList.contains("oi-banner")).toBe(true);
-  expect(banner.classList.contains("oi-banner-ok")).toBe(true);
+  // an unsigned checkpoint and unsigned records: INCOMPLETE, drawn as such
+  expect(banner.dataset.verdict).toBe("incomplete");
+  expect(banner.classList.contains("oi-banner-incomplete")).toBe(true);
   const card = root.querySelector('[data-page="outcome-report"]')!;
   expect(
     banner.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,

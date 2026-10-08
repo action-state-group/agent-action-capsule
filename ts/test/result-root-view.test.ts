@@ -246,9 +246,16 @@ it("renders a cited record outside the checkpoint as uncheckpointed under the Re
   const banner = root.querySelector<HTMLElement>("[data-verify]")!;
   expect(banner.dataset.verify).toBe("verified");
   expect(banner.dataset.uncheckpointed).toBe("1");
-  expect(banner.textContent).toBe(
-    "Bundle verification passed; 1 of 5 records uncheckpointed",
+  // rows still render (the render gate admits uncheckpointed records), but
+  // the verdict follows capsulectl: an unbound record fails per-record
+  // membership, so the verdict is INVALID and the banner never says "passed"
+  expect(banner.dataset.verdict).toBe("invalid");
+  expect(banner.dataset.checkpoint).toBe("unverified");
+  expect(banner.textContent).toMatch(
+    /^Bundle verification INVALID: 1 of 5 records uncheckpointed, bound to no log position, so per-record membership fails\./u,
   );
+  expect(banner.textContent).not.toContain("passed");
+  expect(banner.textContent).toContain("checkpoint_unverified");
   const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
   expect(page).not.toBeNull();
   const coverage = page.querySelector<HTMLElement>('[data-coverage="result"]')!;

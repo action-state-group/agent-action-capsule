@@ -1,4 +1,10 @@
-import { verifyBundle, type BundleVerificationResult } from "./bundle.js";
+import {
+  bundleVerdictDetail,
+  VERDICT_CLAIMS,
+  verifyBundle,
+  type BundleVerdict,
+  type BundleVerificationResult,
+} from "./bundle.js";
 import {
   classifyCountersignatures,
   declaredProducerKeys,
@@ -139,34 +145,149 @@ function bundleVerified(result: BundleVerificationResult): boolean {
 const recordsWord = (count: number): string =>
   `${count} ${count === 1 ? "record" : "records"}`;
 
+/** Whether the checkpoint the coverage claims rest on was authenticated here. */
+export type BannerCheckpoint = "verified" | "unverified" | "invalid" | "absent";
+
+/** The banner's words and stable attributes, from the verification result alone. */
+export interface VerificationBanner {
+  readonly verdict: BundleVerdict;
+  readonly checkpoint: BannerCheckpoint;
+  readonly text: string;
+}
+
+// Plain words for each claim that did not fail but was not shown, naming the
+// finding the verifier gave so a reader can match it to `verify --bundle`.
+// No digits: on a Result page the coverage line is the first number a reader
+// meets. A coverage claim whose only finding is `checkpoint_unverified` is
+// left to the checkpoint sentence that follows.
+function notShownWords(
+  claim: string,
+  findings: readonly string[],
+  total: number,
+): string {
+  if (claim === "checkpoint")
+    return findings.includes("checkpoint_signature_absent")
+      ? "a checkpoint signature, because the checkpoint is not signed (checkpoint_signature_absent)"
+      : "the checkpoint signature, which this page could not authenticate (checkpoint_unverified)";
+  if (claim === "producer_signatures") {
+    const parts: string[] = [];
+    const count = (prefix: string): number =>
+      findings.filter((finding) => finding.startsWith(prefix)).length;
+    const unclaimed = count("producer_signature_unclaimed:");
+    const unverified = count("producer_signature_unverified:");
+    if (unclaimed)
+      parts.push(
+        `${unclaimed === total ? "any" : "every"} record's producer signature, because ${unclaimed === total ? "no record is" : "some records are not"} signed (producer_signature_unclaimed)`,
+      );
+    if (unverified)
+      parts.push(
+        "producer signatures this page could not check (producer_signature_unverified)",
+      );
+    return parts.join("; ");
+  }
+  const names = [...new Set(findings.map((f) => f.split(":", 1)[0]!))].filter(
+    (name) => name !== "checkpoint_unverified",
+  );
+  if (findings.length && names.length === 0) return "";
+  const name = claim.replaceAll("_", " ");
+  return names.length ? `${name} (${names.join(", ")})` : name;
+}
+
+/**
+ * The banner, computed in one place from the verification result alone:
+ * the verdict (`bundleVerdictDetail`, capsulectl's three outcomes), whether
+ * the checkpoint was authenticated, and the words. Never "passed" unless the
+ * verdict is `valid`. Whenever interval coverage or per-record membership
+ * carries `checkpoint_unverified`, the words say they are relative to a
+ * producer-asserted checkpoint (Evidence Bundle -01, completeness). Records
+ * bound to no log position fail per-record membership, so their count is
+ * named under an `invalid` verdict.
+ */
+export function verificationBanner(
+  result: BundleVerificationResult,
+  coverage: { uncheckpointed: number; total: number },
+): VerificationBanner {
+  const detail = bundleVerdictDetail(result);
+  const checkpoint: BannerCheckpoint =
+    result.checkpointSignature.status === "fail"
+      ? "invalid"
+      : detail.checkpointUnverified
+        ? "unverified"
+        : result.checkpointSignature.status === "pass"
+          ? "verified"
+          : "absent";
+  const notShown = detail.notShown
+    .map((entry) => notShownWords(entry.claim, entry.findings, coverage.total))
+    .filter((words) => words !== "");
+  const sentences: string[] = [];
+  if (detail.verdict === "valid")
+    sentences.push(
+      "Bundle verification passed: VALID. Every check passed, including the checkpoint signature and every record's producer signature.",
+    );
+  else if (detail.verdict === "incomplete")
+    sentences.push(
+      notShown.length
+        ? `Bundle verification INCOMPLETE: no check failed, but this page did not show ${notShown.join("; ")}.`
+        : "Bundle verification INCOMPLETE: no check failed, but not every claim was shown.",
+    );
+  else {
+    const unboundOnly =
+      coverage.uncheckpointed > 0 &&
+      detail.failed.length === 1 &&
+      detail.failed[0] === "per_record_membership" &&
+      membershipProvenOrUnbound(result);
+    sentences.push(
+      unboundOnly
+        ? `Bundle verification INVALID: ${coverage.uncheckpointed} of ${recordsWord(coverage.total)} uncheckpointed, bound to no log position, so per-record membership fails.`
+        : `Bundle verification failed: INVALID (${detail.failed.map((name) => name.replaceAll("_", " ")).join(", ")}).`,
+    );
+    if (notShown.length)
+      sentences.push(`Also not shown: ${notShown.join("; ")}.`);
+  }
+  if (detail.checkpointUnverified)
+    sentences.push(
+      result.checkpointSignature.findings.includes(
+        "checkpoint_signature_absent",
+      )
+        ? "Interval coverage and per-record membership are checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed."
+        : "Interval coverage and per-record membership are checkpoint_unverified: relative to a producer-asserted checkpoint this page could not authenticate.",
+    );
+  return { verdict: detail.verdict, checkpoint, text: sentences.join(" ") };
+}
+
 // The banner is drawn from the verification result alone and precedes every
 // row in the DOM; an unverified bundle gets the refusal line here and no
 // rows at all, so a reader never meets a payload before the verdict on the
-// bundle that carries it. It says what IS proven: a verified bundle with
-// records outside the checkpoint names their count up front.
+// bundle that carries it. `data-verdict` is the stable verdict (valid,
+// incomplete, invalid); `data-verify` stays the render gate (whether rows are
+// shown), which also admits a bundle whose only failure is uncheckpointed
+// records.
 function renderVerificationBanner(
   root: HTMLElement,
-  verified: boolean,
+  result: BundleVerificationResult,
+  rendered: boolean,
   coverage: { uncheckpointed: number; total: number },
   styled = false,
 ): void {
-  const banner = element(
-    "p",
-    verified
-      ? coverage.uncheckpointed === 0
-        ? "Bundle verification passed"
-        : `Bundle verification passed; ${coverage.uncheckpointed} of ${recordsWord(coverage.total)} uncheckpointed`
-      : "Bundle verification failed",
-  );
-  banner.dataset.verify = verified ? "verified" : "failed";
+  const words = verificationBanner(result, coverage);
+  const banner = element("p", words.text);
+  banner.dataset.verify = rendered ? "verified" : "failed";
+  banner.dataset.verdict = words.verdict;
+  banner.dataset.checkpoint = words.checkpoint;
   banner.dataset.uncheckpointed = String(coverage.uncheckpointed);
   // Drawn in the outcome-report card's own look when that card renders
   // (OUTCOME_REPORT_CSS's .oi-banner rules); the words and data attributes
   // above are identical either way -- the class is presentation only.
   if (styled)
-    banner.className = `oi oi-banner ${verified ? "oi-banner-ok" : "oi-banner-failed"}`;
+    banner.className = `oi oi-banner ${
+      words.verdict === "valid"
+        ? "oi-banner-ok"
+        : words.verdict === "incomplete"
+          ? "oi-banner-incomplete"
+          : "oi-banner-failed"
+    }`;
   root.append(banner);
-  if (verified) return;
+  if (rendered) return;
   const refusal = element(
     "p",
     "This bundle did not verify. Its records, rows and payloads are not shown; the verification page below lists which checks failed.",
@@ -399,6 +520,41 @@ function renderCompletenessStatement(
   host.append(details);
 }
 
+// The verdict and the claims it is computed over, each with its status and
+// every finding the verifier gave -- `checkpoint_unverified` included, so the
+// page never drops a finding the banner's verdict rests on.
+function renderVerdictClaims(
+  host: HTMLElement,
+  verified: BundleVerificationResult,
+): void {
+  const detail = bundleVerdictDetail(verified);
+  host.append(element("h4", "Verdict"));
+  const verdict = element("p", `verdict: ${detail.verdict.toUpperCase()}`);
+  verdict.dataset.pageVerdict = detail.verdict;
+  host.append(verdict);
+  const list = element("ul");
+  list.dataset.verdictClaims = "";
+  for (const [claim, key] of VERDICT_CLAIMS) {
+    const value = verified[key];
+    const item = element(
+      "li",
+      `${claim}: ${value.status}${value.findings.length ? ` (${value.findings.join(", ")})` : ""}`,
+    );
+    item.dataset.claim = claim;
+    item.dataset.claimStatus = value.status;
+    list.append(item);
+  }
+  host.append(list);
+  if (detail.checkpointUnverified) {
+    const note = element(
+      "p",
+      "checkpoint_unverified: interval coverage and per-record membership are relative to a producer-asserted checkpoint; its signature was not authenticated here.",
+    );
+    note.dataset.checkpoint = "unverified";
+    host.append(note);
+  }
+}
+
 function renderChecks(
   host: HTMLElement,
   checks: readonly CheckSummary[],
@@ -474,6 +630,7 @@ async function renderVerificationPage(
   );
   renderStamps(page, stamps);
   renderCompletenessStatement(page, model.completeness);
+  renderVerdictClaims(page, verified);
   renderChecks(page, model.checks);
   page.append(element("p", model.verifyIndependentlyLine));
   root.append(section);
@@ -1350,6 +1507,7 @@ export async function renderEvidenceGraph(
   renderPresentationHeader(root, bundle);
   renderVerificationBanner(
     root,
+    verification,
     verified,
     {
       uncheckpointed: unboundRecordIds(verification).length,
