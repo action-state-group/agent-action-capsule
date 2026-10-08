@@ -133,6 +133,12 @@ pinning those files by name or hash re-pins.
   `NEUTRALITY_TERMS` (#186).
 - Leak lint reads its term list from the `LEAK_LINT_TERMS` secret and fails closed (#171).
 
+### Fixed
+- TypeScript Result root: a claim citing a capsule that a book record carries resolves only when
+  the carried capsule's id, recomputed from its own bytes, matches the header's `subject_ref`.
+  Previously the lookup keyed on the header's stated `subject_ref`, so a header naming an id with
+  no carried capsule behind it could make the claim read as supported. Unreleased code only.
+
 ## 0.6.0 — 2026-09-27
 
 **Headline: the -05 wire.** Producers now emit `spec_version`
