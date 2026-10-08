@@ -2,22 +2,135 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="__CSP_SLOT__" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Evidence Graph</title>
+    <title>__TITLE_SLOT__</title>
     <style>
-      body {
+      /*
+       * Base shell stylesheet. It owns the page frame only: theme tokens,
+       * typography baseline, page width, overflow containment, focus and
+       * motion defaults, native details/summary disclosure, the
+       * verification-banner area and print defaults. Every rule sits inside
+       * :where() so it has zero specificity and any presentation module's
+       * own stylesheet wins. No report layout lives here.
+       */
+      :root {
+        --aac-bg: #ffffff;
+        --aac-fg: #1f2733;
+        --aac-muted: #6b7482;
+        --aac-line: #e3ded3;
+        --aac-accent: #232f42;
+        --aac-focus: #2b5a85;
+        --aac-ok: #2e7d5b;
+        --aac-ok-bg: #e3f1ea;
+        --aac-bad: #b5462f;
+        --aac-bad-bg: #f8e6e1;
+        --aac-warn: #8a6a2f;
+        --aac-warn-bg: #fbefd9;
+        --aac-font: system-ui, sans-serif;
+        --aac-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --aac-line-height: 1.5;
+        --aac-page-width: none;
+        --aac-gutter: 0;
+        --aac-radius: 10px;
+      }
+      :where(html) {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+      :where(body) {
         margin: 0;
-        font-family: system-ui, sans-serif;
+        font-family: var(--aac-font);
+        line-height: var(--aac-line-height);
+        color: var(--aac-fg);
+        background: var(--aac-bg);
+        overflow-wrap: break-word;
+      }
+      :where(#app) {
+        box-sizing: border-box;
+        max-width: var(--aac-page-width);
+        margin-inline: auto;
+        padding-inline: var(--aac-gutter);
+      }
+      :where(img, svg, video, canvas) {
+        max-width: 100%;
+        height: auto;
+      }
+      :where(pre) {
+        overflow-x: auto;
+      }
+      :where(code, kbd, samp, pre) {
+        font-family: var(--aac-mono);
+      }
+      :where(summary) {
+        cursor: pointer;
+      }
+      :where(:focus-visible) {
+        outline: 2px solid var(--aac-focus);
+        outline-offset: 2px;
+      }
+      :where(.aac-banner) {
+        display: block;
+        margin: 0 0 1rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--aac-line);
+        border-radius: var(--aac-radius);
+      }
+      :where(.aac-banner[data-state="verified"]) {
+        color: var(--aac-ok);
+        background: var(--aac-ok-bg);
+      }
+      :where(.aac-banner[data-state="failed"]) {
+        color: var(--aac-bad);
+        background: var(--aac-bad-bg);
+      }
+      :where(.aac-banner[data-state="partial"]) {
+        color: var(--aac-warn);
+        background: var(--aac-warn-bg);
+      }
+      @media (max-width: 760px) {
+        :where(table) {
+          display: block;
+          max-width: 100%;
+          overflow-x: auto;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        :where(*, *::before, *::after) {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+      @media print {
+        :where(body) {
+          color: #000;
+          background: #fff;
+        }
+        :where(#app) {
+          max-width: none;
+          padding: 0;
+        }
+        :where(summary, h1, h2, h3, h4) {
+          break-after: avoid;
+        }
+        :where(tr, img, svg, figure) {
+          break-inside: avoid;
+        }
       }
     </style>
+    <!-- prettier-ignore -->
+    <style>__THEME_SLOT__</style>
   </head>
   <body>
     <div id="app"></div>
     <!-- prettier-ignore -->
-    <script>window.__BUNDLE__ = __BUNDLE_JSON__;</script>
+    <script>window.__BUNDLE__ = __BUNDLE_SLOT__;</script>
     <!-- prettier-ignore -->
-    <script>__BROWSER_IIFE__</script>
+    <script>__CORE_RUNTIME_SLOT__</script>
     <!-- prettier-ignore -->
-    <script>renderEvidenceGraph(window.__BUNDLE__, document.getElementById("app"));</script>
+    __MODULE_SLOT__
+    <!-- prettier-ignore -->
+    <script>__BOOTSTRAP_SLOT__</script>
   </body>
 </html>

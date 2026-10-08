@@ -1,0 +1,7 @@
+# CSP hash sources for the stylesheets the reference core runtime
+# (ts/src/browser.ts, built as evidence-graph.iife.js) inserts as <style>
+# elements at render time. One "sha256-<base64> <constant>" per line, in the
+# order of CORE_RUNTIME_STYLES in ts/src/emitter.ts. ts/test/emitter.test.ts
+# recomputes these from the TypeScript constants and fails on any drift.
+sha256-8WyH+xhO/jeUhbdh1XnJU0cbNLFIE1Yiw8TLSocc1pw= OUTCOME_REPORT_CSS
+sha256-oQbkQzXDT++dH4m6vbr18yW8/0w+dKjfRWSIo3mhgYs= COMPLIANCE_CSS
