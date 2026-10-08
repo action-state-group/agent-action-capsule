@@ -6,9 +6,9 @@ import {
   calibrationCount,
   EvidenceGraphError,
   recordTimes,
-  resolveDisclosure,
   zoneStatement,
 } from "../src/evidence-graph.js";
+import { resolveDisclosure } from "../src/bundle.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 const fixture = async (name: string): Promise<unknown> =>
@@ -123,7 +123,10 @@ describe("buildEvidenceGraph", () => {
       ...root,
       references: (root.references as unknown[]).slice(0, 1),
     };
-    const graph = await buildEvidenceGraph({
+    // Editing the root changes its capsule id, so each variant is resealed:
+    // a builder reads only records the verifier accepted (a record whose id
+    // does not recompute is not in the VerifiedBundleContext at all).
+    const restricted = await sealEvidenceBundle({
       ...bundle,
       records: [
         ...bundle.records.filter((record) => record !== root),
@@ -131,26 +134,31 @@ describe("buildEvidenceGraph", () => {
         unrelated,
       ],
     });
+    const graph = await buildEvidenceGraph(restricted.bundle);
 
     expect(graph.reports.map((report) => report.capsuleId)).toEqual([
-      referenced,
+      restricted.ids[referenced],
     ]);
+    const firstReportReferences = (
+      firstReport.references as Array<{ digest: string }>
+    ).map((reference) => restricted.ids[reference.digest]);
     expect(
       graph.reports[0]!.cases.flatMap((caseNode) => caseNode.acts).every(
-        (act) =>
-          (firstReport.references as Array<{ digest: string }>).some(
-            (reference) => reference.digest === act.capsuleId,
-          ),
+        (act) => firstReportReferences.includes(act.capsuleId),
       ),
     ).toBe(true);
     expect(
       (
-        await buildEvidenceGraph({
-          ...bundle,
-          records: bundle.records.map((record) =>
-            record === root ? { ...root, references: [] } : record,
-          ),
-        })
+        await buildEvidenceGraph(
+          (
+            await sealEvidenceBundle({
+              ...bundle,
+              records: bundle.records.map((record) =>
+                record === root ? { ...root, references: [] } : record,
+              ),
+            })
+          ).bundle,
+        )
       ).reports,
     ).toEqual([]);
   });

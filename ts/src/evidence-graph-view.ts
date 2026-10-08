@@ -1,4 +1,10 @@
-import { verifyBundle, type BundleVerificationResult } from "./bundle.js";
+import {
+  buildVerifiedBundleContext,
+  isVerifiedBundleContext,
+  withCountersigners,
+  type BundleVerificationResult,
+  type VerifiedBundleContext,
+} from "./bundle.js";
 import {
   classifyCountersignatures,
   declaredProducerKeys,
@@ -427,11 +433,10 @@ function renderChecks(
 // either way, and it stays the last element of the rendering.
 async function renderVerificationPage(
   root: HTMLElement,
-  bundle: unknown,
-  verified: BundleVerificationResult,
-  countersigners: CountersignerSource | undefined,
+  context: VerifiedBundleContext,
   styled = false,
 ): Promise<void> {
+  const { bundle, verification: verified, countersigners } = context;
   const section = element("section");
   section.dataset.page = "verification";
   let page = section;
@@ -465,9 +470,8 @@ async function renderVerificationPage(
     model.uncheckpointedCount,
     model.coverage,
   );
-  const countersignatures = object(bundle).countersignatures;
   const stamps = await classifyCountersignatures(
-    Array.isArray(countersignatures) ? countersignatures : [],
+    context.countersignatures.map((entry) => entry.value),
     verified.bundleDigest,
     declaredProducerKeys(bundle),
     countersigners,
@@ -1299,27 +1303,49 @@ function renderGraph(
 /**
  * Render a bundle into `root`. `countersigners` is the stamp's countersigner
  * source: the only way a verified, independent countersignature gets a name.
- * Omitted, every independent signer renders as unlisted. The emitted
- * report.html shell passes none today; a host page that holds a list passes
- * it here (see `pinnedCountersignerSource` to load one against a pinned
- * digest).
+ * Omitted, the context's own source is used (see
+ * `buildVerifiedBundleContext`); with neither, every independent signer
+ * renders as unlisted. The emitted report.html shell passes a bare bundle
+ * and no list; a host page that holds a list passes it here or builds the
+ * context with it (see `pinnedCountersignerSource` to load one against a
+ * pinned digest).
+ *
+ * Given a bundle, it is verified once here; given a context, its one
+ * verification run is reused. Every builder below reads that same context.
  */
 export async function renderEvidenceGraph(
+  context: VerifiedBundleContext,
+  root: HTMLElement,
+  countersigners?: CountersignerSource,
+): Promise<void>;
+export async function renderEvidenceGraph(
   bundle: unknown,
+  root: HTMLElement,
+  countersigners?: CountersignerSource,
+): Promise<void>;
+export async function renderEvidenceGraph(
+  input: unknown,
   root: HTMLElement,
   countersigners?: CountersignerSource,
 ): Promise<void> {
   // Verify first. Row models are built only from a bundle that verified,
   // and nothing reaches the DOM until the verification result is in hand.
-  const verification = await verifyBundle(bundle);
+  const context = isVerifiedBundleContext(input)
+    ? countersigners === undefined
+      ? input
+      : withCountersigners(input, countersigners)
+    : await buildVerifiedBundleContext(input, {
+        ...(countersigners === undefined ? {} : { countersigners }),
+      });
+  const { bundle, verification } = context;
   const verified = bundleVerified(verification);
   // Root families, in order: report/v1 (the generic row model), a Result v0
   // root (throws when the document it names is not one), and only then the
   // evaluation-summary/v1 graph (which throws on anything else).
-  const reportRows = verified ? await buildReportRows(bundle) : undefined;
+  const reportRows = verified ? await buildReportRows(context) : undefined;
   const result =
-    verified && reportRows === undefined && (await isResultRoot(bundle))
-      ? await buildResultRoot(bundle)
+    verified && reportRows === undefined && (await isResultRoot(context))
+      ? await buildResultRoot(context)
       : undefined;
   // The evaluation-summary/v1 aggregate is optional: a verified bundle whose
   // root is none of the three families (a deal root, for example) renders
@@ -1328,7 +1354,7 @@ export async function renderEvidenceGraph(
   let noAggregate = false;
   if (verified && reportRows === undefined && result === undefined) {
     try {
-      graph = await buildEvidenceGraph(bundle);
+      graph = await buildEvidenceGraph(context);
     } catch (err) {
       if (!(err instanceof EvidenceGraphError)) throw err;
       noAggregate = true;
@@ -1388,11 +1414,5 @@ export async function renderEvidenceGraph(
       "This bundle carries no evaluation summary, so there is no aggregate view. The records and their verification are below.";
     root.append(note);
   }
-  await renderVerificationPage(
-    root,
-    bundle,
-    verification,
-    countersigners,
-    styled,
-  );
+  await renderVerificationPage(root, context, styled);
 }

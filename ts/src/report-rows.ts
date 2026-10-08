@@ -1,15 +1,18 @@
 import {
+  disclosureOf,
+  verifiedBundleContext,
+  verifiedPayload,
+  type VerifiedBundleContext,
+} from "./bundle.js";
+import {
   asString,
-  disclosurePayload,
   isObject,
   logCoordinates,
   recordTimes,
-  resolveDisclosure,
   type DisclosureState,
   type RecordTimes,
   type ResolvedLogCoordinates,
   type ObjectValue,
-  type RecordWithId,
 } from "./evidence-graph.js";
 
 /**
@@ -62,8 +65,16 @@ const rowCitationDigests = (row: ObjectValue): string[] =>
  * A malformed row is dropped, never patched with invented data.
  */
 export async function buildReportRows(
+  context: VerifiedBundleContext,
+): Promise<ReportRows | undefined>;
+export async function buildReportRows(
   bundle: unknown,
+): Promise<ReportRows | undefined>;
+export async function buildReportRows(
+  input: unknown,
 ): Promise<ReportRows | undefined> {
+  const context = await verifiedBundleContext(input);
+  const bundle = context.bundle;
   if (
     !isObject(bundle) ||
     !Array.isArray(bundle.records) ||
@@ -71,30 +82,21 @@ export async function buildReportRows(
   ) {
     return undefined;
   }
-  const disclosures = bundle.disclosures;
-  const records = bundle.records.filter(
-    (record): record is RecordWithId =>
-      isObject(record) && asString(record.capsule_id) !== undefined,
-  );
-  const root = asString(bundle.root);
-  const rootRecord = records.find((record) => record.capsule_id === root);
+  const rootRecord =
+    context.root === undefined
+      ? undefined
+      : context.recordIndex.get(context.root);
   if (rootRecord === undefined) return undefined;
-  const rootPayload = await disclosurePayload(
-    rootRecord,
-    disclosures,
+  const rootPayload = verifiedPayload(
+    context,
+    rootRecord.capsule_id,
     "agent_input",
   );
   if (!isObject(rootPayload) || rootPayload.spec_version !== "report/v1")
     return undefined;
 
-  const memberships = isObject(bundle.completeness_certificate)
-    ? isObject(bundle.completeness_certificate.memberships)
-      ? bundle.completeness_certificate.memberships
-      : {}
-    : {};
-  const recordsById = new Map(
-    records.map((record) => [record.capsule_id, record]),
-  );
+  const memberships = context.completeness.memberships;
+  const recordsById = context.recordIndex;
 
   const rows: ReportRow[] = [];
   for (const raw of Array.isArray(rootPayload.rows) ? rootPayload.rows : []) {
@@ -109,11 +111,7 @@ export async function buildReportRows(
     for (const digest of rowCitationDigests(raw)) {
       const record = recordsById.get(digest);
       if (record === undefined) continue;
-      const resolved = await resolveDisclosure(
-        record,
-        disclosures,
-        "agent_input",
-      );
+      const resolved = disclosureOf(context, record.capsule_id, "agent_input");
       const coordinates = logCoordinates(memberships, record.capsule_id);
       citations.push({
         capsuleId: record.capsule_id,

@@ -22,6 +22,13 @@ import {
 import { resolveDisclosurePath } from "./disclosure-path.js";
 import { disclosureEligibleFields } from "./registries.js";
 import { verifyClass1, type VerificationResult } from "./verify.js";
+import type { CountersignerSource } from "./countersignature-stamp.js";
+import type {
+  DisclosureField,
+  DisclosureResolution,
+  ObjectValue,
+  RecordWithId,
+} from "./evidence-graph.js";
 
 export interface ClaimResult {
   readonly status: "pass" | "withheld" | "fail";
@@ -673,3 +680,278 @@ function extensions(raw: unknown): ExtensionResult[] {
         }))
     : [];
 }
+
+/**
+ * Everything a presentation builder may read about a bundle, built ONCE from
+ * one `verifyBundle` run. Builders never re-resolve a disclosure: a payload
+ * reaches them only through `resolvedDisclosures`, which is derived from the
+ * verifier's own `verification.disclosures`, so a member the verifier
+ * classified as a mismatch (or one it never classified, because its record
+ * failed identity) can never be read as a payload.
+ *
+ * Only {@link buildVerifiedBundleContext} makes one; a hand-built object of
+ * the same shape is not a context and is treated as a raw bundle.
+ */
+export interface VerifiedBundleContext {
+  /** The bundle exactly as supplied. */
+  readonly bundle: unknown;
+  /** `bundle.root` when it is a string. */
+  readonly root: string | undefined;
+  /** The one verification run every builder shares. */
+  readonly verification: BundleVerificationResult;
+  /**
+   * capsule_id -> both disclosable members, resolved from
+   * `verification.disclosures`: `disclosed` (carrying the supplied value)
+   * only for a `disclosure_match`; `disclosure_mismatch` for a mismatch or a
+   * member with no committed digest; `withheld` otherwise. One entry per
+   * record in `records`.
+   */
+  readonly resolvedDisclosures: ReadonlyMap<
+    string,
+    Readonly<Record<DisclosureField, DisclosureResolution>>
+  >;
+  /**
+   * The records whose identity the verifier accepted, in bundle order. A
+   * record's capsule_id is the digest every agent-action-capsule reference
+   * cites it by, so `recordIndex` is the index by id and by digest alike.
+   */
+  readonly records: readonly RecordWithId[];
+  readonly recordIndex: ReadonlyMap<string, RecordWithId>;
+  /** The verifier's countersignature results (each `unverified` at this layer). */
+  readonly countersignatures: readonly CountersignatureResult[];
+  /**
+   * The caller's countersigner source, the only thing that ever names an
+   * independent countersigner. Never read from the bundle.
+   */
+  readonly countersigners: CountersignerSource | undefined;
+  /** The verifier's extension results. */
+  readonly extensions: readonly ExtensionResult[];
+  readonly completeness: {
+    readonly graphClosure: ClaimResult;
+    readonly intervalCoverage: ClaimResult;
+    readonly perRecordMembership: ClaimResult;
+    /**
+     * `completeness_certificate.memberships` as supplied (or empty): the log
+     * coordinates builders display beside a record.
+     */
+    readonly memberships: ObjectValue;
+  };
+}
+
+export interface VerifiedBundleContextOptions {
+  readonly countersigners?: CountersignerSource;
+}
+
+const contexts = new WeakSet<object>();
+
+/** True only for a context {@link buildVerifiedBundleContext} made. */
+export function isVerifiedBundleContext(
+  value: unknown,
+): value is VerifiedBundleContext {
+  return object(value) && contexts.has(value);
+}
+
+const WITHHELD: DisclosureResolution = Object.freeze({ state: "withheld" });
+const MISMATCHED: DisclosureResolution = Object.freeze({
+  state: "disclosure_mismatch",
+});
+
+/** Verify `bundle` once and carry the result every builder reads. */
+export async function buildVerifiedBundleContext(
+  bundle: unknown,
+  options: VerifiedBundleContextOptions = {},
+): Promise<VerifiedBundleContext> {
+  return contextFrom(
+    bundle,
+    await verifyBundle(bundle),
+    options.countersigners,
+  );
+}
+
+/**
+ * `input` itself when it is already a context, else a fresh context over it.
+ * The single entry every builder's legacy `(bundle)` signature goes through.
+ */
+export async function verifiedBundleContext(
+  input: unknown,
+): Promise<VerifiedBundleContext> {
+  return isVerifiedBundleContext(input)
+    ? input
+    : buildVerifiedBundleContext(input);
+}
+
+/** The same context with a different countersigner source. */
+export function withCountersigners(
+  context: VerifiedBundleContext,
+  countersigners: CountersignerSource | undefined,
+): VerifiedBundleContext {
+  return contextFrom(
+    context.bundle,
+    context.verification,
+    countersigners,
+    context,
+  );
+}
+
+function contextFrom(
+  bundle: unknown,
+  verification: BundleVerificationResult,
+  countersigners: CountersignerSource | undefined,
+  reuse?: VerifiedBundleContext,
+): VerifiedBundleContext {
+  let records: readonly RecordWithId[],
+    recordIndex: ReadonlyMap<string, RecordWithId>,
+    resolvedDisclosures: VerifiedBundleContext["resolvedDisclosures"];
+  if (reuse !== undefined) {
+    ({ records, recordIndex, resolvedDisclosures } = reuse);
+  } else {
+    const index = new Map<string, RecordWithId>();
+    if (object(bundle) && Array.isArray(bundle.records))
+      for (const record of bundle.records)
+        if (
+          object(record) &&
+          typeof record.capsule_id === "string" &&
+          !index.has(record.capsule_id) &&
+          verification.capsuleResults[record.capsule_id]?.ok === true &&
+          verification.capsuleResults[record.capsule_id]?.capsuleId ===
+            record.capsule_id
+        )
+          index.set(record.capsule_id, record as RecordWithId);
+    records = Object.freeze([...index.values()]);
+    recordIndex = index;
+    resolvedDisclosures = resolveFromVerification(
+      bundle,
+      verification.disclosures,
+      index,
+    );
+  }
+  const certificate = object(bundle)
+    ? bundle.completeness_certificate
+    : undefined;
+  const context: VerifiedBundleContext = Object.freeze({
+    bundle,
+    root:
+      object(bundle) && typeof bundle.root === "string"
+        ? bundle.root
+        : undefined,
+    verification,
+    resolvedDisclosures,
+    records,
+    recordIndex,
+    countersignatures: verification.countersignatures,
+    countersigners,
+    extensions: verification.extensions,
+    completeness: Object.freeze({
+      graphClosure: verification.graphClosure,
+      intervalCoverage: verification.intervalCoverage,
+      perRecordMembership: verification.perRecordMembership,
+      memberships:
+        object(certificate) && object(certificate.memberships)
+          ? certificate.memberships
+          : {},
+    }),
+  });
+  contexts.add(context);
+  return context;
+}
+
+function resolveFromVerification(
+  bundle: unknown,
+  results: readonly DisclosureResult[],
+  index: ReadonlyMap<string, RecordWithId>,
+): VerifiedBundleContext["resolvedDisclosures"] {
+  const status = new Map<string, string>();
+  for (const result of results)
+    status.set(`${result.capsuleId}\u0000${result.member}`, result.status);
+  const overlay =
+    object(bundle) && object(bundle.disclosures) ? bundle.disclosures : {};
+  const resolved = new Map<
+    string,
+    Readonly<Record<DisclosureField, DisclosureResolution>>
+  >();
+  const one = (id: string, field: DisclosureField): DisclosureResolution => {
+    switch (status.get(`${id}\u0000${field}`)) {
+      case DISCLOSURE_MATCH: {
+        const entry = overlay[id];
+        return object(entry) && Object.hasOwn(entry, field)
+          ? Object.freeze({ state: "disclosed", payload: entry[field] })
+          : MISMATCHED;
+      }
+      case DISCLOSURE_MISMATCH:
+      case DISCLOSURE_NO_COMMITTED_DIGEST:
+        return MISMATCHED;
+      default:
+        return WITHHELD;
+    }
+  };
+  for (const id of index.keys())
+    resolved.set(
+      id,
+      Object.freeze({
+        agent_input: one(id, "agent_input"),
+        agent_output: one(id, "agent_output"),
+      }),
+    );
+  return resolved;
+}
+
+/**
+ * One record's disclosable member as the verifier resolved it. A record the
+ * context does not hold (absent, or rejected by the verifier) is `withheld`.
+ */
+export function disclosureOf(
+  context: VerifiedBundleContext,
+  capsuleId: string,
+  field: DisclosureField,
+): DisclosureResolution {
+  return context.resolvedDisclosures.get(capsuleId)?.[field] ?? WITHHELD;
+}
+
+/** The verified payload of a member, or undefined when withheld or mismatched. */
+export function verifiedPayload(
+  context: VerifiedBundleContext,
+  capsuleId: string,
+  field: DisclosureField,
+): unknown {
+  return disclosureOf(context, capsuleId, field).payload;
+}
+
+/**
+ * Resolve one disclosable member of a record from a disclosure overlay,
+ * standalone. Kept for callers outside a {@link VerifiedBundleContext};
+ * no builder in this library calls it -- they read the context's
+ * `resolvedDisclosures`, derived from `verifyBundle`. The overlay is keyed
+ * by `capsule_id`; a supplied value is `disclosed` only when its JSON-DIGEST
+ * equals the digest the record committed to (DE-3), otherwise
+ * `disclosure_mismatch`; an absent value is `withheld`.
+ */
+export const resolveDisclosure = async (
+  record: RecordWithId,
+  disclosures: ObjectValue,
+  field: DisclosureField,
+): Promise<DisclosureResolution> => {
+  const entry = disclosures[record.capsule_id];
+  if (!object(entry) || !Object.hasOwn(entry, field))
+    return { state: "withheld" };
+  const committed = resolveDisclosurePath(
+    record as ParsedJson,
+    disclosureEligibleFields[field],
+  );
+  if (isHex64(committed)) {
+    try {
+      if ((await jsonDigest(entry[field])) === committed)
+        return { state: "disclosed", payload: entry[field] };
+    } catch {
+      /* a value JCS cannot render cannot be the committed preimage */
+    }
+  }
+  return { state: "disclosure_mismatch" };
+};
+
+/** The standalone {@link resolveDisclosure} payload, or undefined. */
+export const disclosurePayload = async (
+  record: RecordWithId,
+  disclosures: ObjectValue,
+  field: DisclosureField,
+): Promise<unknown> =>
+  (await resolveDisclosure(record, disclosures, field)).payload;
