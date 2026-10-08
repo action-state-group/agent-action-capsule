@@ -3,7 +3,7 @@
 //! (identical to `go/bundle/testdata/vectors.json`). This test constructs its
 //! portable proof material exactly as the Go/Python references do, using
 //! `cll`'s low-level MMR functions directly (the Rust `cll` crate has no
-//! stateful tree wrapper like Go's `cll-go/mmr.New()`).
+//! stateful tree wrapper like Go's `checkpointed-local-log/go/mmr.New()`).
 
 use aac_bundle::canonical;
 use aac_bundle::{decode_fragment, encode_fragment, verify_bundle, VerificationResult};
