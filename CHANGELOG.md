@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+- Go: the CLL dependency moves from `github.com/action-state-group/cll-go` (a pseudo-version) to its
+  successor `github.com/action-state-group/checkpointed-local-log/go` v0.1.0. Import paths change;
+  the `checkpoint` and `mmr` API the bundle package uses is unchanged, and the Go vector results are
+  identical.
+
 ## 0.7.0 — 2026-10-07
 
 **Headline: string-typed fields are type-checked in every verifier.** A list, an object or a
