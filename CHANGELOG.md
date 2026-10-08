@@ -41,6 +41,13 @@
   stay uninterpreted). `integrityCovered` is now false when the bundle digest is uncomputable. The
   verification page renders one row per extension (id, integrity, semantics); an uninterpreted
   block reads "Integrity verified; meaning not interpreted by this viewer". No verdict changes.
+- TypeScript: the presentation registry (`spec/presentation-contract-v0.md`).
+  `renderEvidenceGraph` picks its page shape with `resolve(context, audience, format)` instead of
+  an if-chain; the five page shapes and the no-aggregate note are six built-in modules whose
+  manifests (`BUILTIN_MANIFESTS`) state the old precedence with `forbids`. `PresentationRegistry`,
+  `createPresentationRegistry`, `registerPresentation`, `resolvePresentation` and
+  `describeContext` are new. Registration refuses two same-tier manifests one descriptor could
+  match; a tie is an error, never first-wins. Rendered output is byte-identical for every fixture.
 ### Emitter (Go and TypeScript)
 - The HTML shell has named slots: `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`,
   `MODULE_SLOT` (zero or more digest-pinned scripts) and `BOOTSTRAP_SLOT`, plus `CSP_SLOT` for the

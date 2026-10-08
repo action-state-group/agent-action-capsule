@@ -1010,6 +1010,17 @@ export async function isResultRoot(input: unknown): Promise<boolean> {
     !isObject(bundle.disclosures)
   )
     return false;
+  return carriesResultDocument(context);
+}
+
+/**
+ * True when the context's root record (one whose identity verified)
+ * discloses a member carrying an Evidence Result v0, in either form: the
+ * root-document test behind both {@link isResultRoot} and the
+ * `result_version` profile token of a presentation descriptor. Synchronous
+ * and side-effect free; it does not check that the document is well-formed.
+ */
+export function carriesResultDocument(context: VerifiedBundleContext): boolean {
   const record =
     context.root === undefined
       ? undefined
