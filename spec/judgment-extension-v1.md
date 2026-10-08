@@ -11,7 +11,8 @@ to match.
 
 A Capsule that records a judgment, by a model judge or a human expert, carries one member at
 `/model_attestation/compute_attestation/x-judgment-v1`: `rubric_digest`, `rubric_version`,
-`judge_parameters_digest`, and, for a model judge, `model_hosting`. Base fields keep their
+`judge_parameters_digest`, and, for a model judge, `model_hosting` with the optional
+`model_reference` and `model_digest` (§2). Base fields keep their
 meaning: `developer` is the judge, `agent_output_digest` binds the judge's answer
 `{verdict, rationale}`, and `references[]` carries exactly one `judged_from` entry.
 
@@ -52,14 +53,59 @@ model again, and the name can stay fixed while the model changes. Therefore:
   re-runnable by whoever holds the weights. As with every judgment, it is never reproducible
   (vectors README: "re-runnable, not reproducible").
 
-**Relation to existing vocabulary, which this document does not redefine.** A claim whose
-evidence is a judgment record has Result v0 `tier: judged` whatever its hosting
-(`evidence-result-v0.md` §1). `model_hosting` refines what `judged` can mean for re-derivation;
-it never changes a claim's `tier`. The claim's `grade` (`self-attested | witnessed |
-countersigned`) attests the bundle that carries the record. A `witnessed` or `countersigned`
-grade does not make a `hosted` verdict re-derivable.
+**`model_hosting` is checkable through the identity ladder (§2).** A `hosted` record cannot
+carry `model_digest`. A `self_hosted` record without `model_digest` sits at rung 1 or 2, and
+is visibly weaker than one that carries it. A reader can see the difference from the record
+alone, without trusting the producer's hosting claim.
 
-## 2. Model identity (`developer`)
+## 2. Model identity
+
+### 2.1 The identity ladder
+
+A judgment record can identify the model that produced it at one of four rungs. Each rung
+proves strictly more than the one below it.
+
+| Rung | Carried by | What it proves |
+|---|---|---|
+| 1. Name | `developer` (`model_id`, §2.2) | Nothing about bytes. A name is not proof of the bytes served: a proxy or a mis-deployed host can serve a different model under the same name. |
+| 2. Reference | `model_reference` (optional) | Which artifact was **named**, for example a repository, a revision and a file. It does not prove which bytes were loaded. |
+| 3. Loaded bytes | `model_digest` (optional) | Which bytes the producer **says** it loaded: lowercase-hex SHA-256 over the raw bytes of the model file actually loaded. Anyone holding a file can check it against this digest. |
+| 4. Above self-report | outside this member | That the reported bytes are the bytes that ran: a trusted execution environment with a load hook, or an independent referee. |
+
+**Rung 3 is still self-reported.** A producer can report a digest for a file it did not load.
+`model_digest` therefore makes a judgment **re-derivable in principle**, not proven. Text,
+renderings and verifiers MUST NOT describe a rung 3 record as proven, verified or attested
+model identity. Only rung 4 is above self-report, and this member does not carry rung 4.
+
+**Absent is absent.** A producer that did not compute, or could not compute, a digest of the
+loaded bytes omits `model_digest`. It never writes a zero, an empty string or any other
+placeholder. The same applies to `model_reference`. The schema rejects an empty value, an
+all-zero digest and an empty or blank reference. A renderer shows an absent field as absent,
+never as a zero or an empty value. This is the same discipline as `not_evaluable`: an honest
+absent fact, never a fabricated one.
+
+**Rules.**
+
+- `model_digest` requires `model_hosting`. A record with `model_hosting: hosted` MUST NOT carry
+  `model_digest`, because nobody outside a hosted endpoint holds the loaded bytes. A hosted
+  judgment is therefore at rung 1 or 2. That is why it is attributable and not re-derivable
+  (§1), and it follows from the data, not from an assertion.
+- A model judgment at rung 1 or 2 is `judged` (Result v0 `tier`) at best. It never supports
+  `recomputed`.
+- `recomputed` REQUIRES rung 3. Rung 3 is necessary, not sufficient: sampling, batching and the
+  other `judge_parameters_digest` inputs still bear on whether a verdict re-derives. This
+  document does not say when a judged verdict becomes `recomputed`. It says only that, below
+  rung 3, it cannot.
+- The model file is a single file. A model loaded from several files is out of scope for v1.
+
+**Relation to existing vocabulary, which this document does not redefine.** `tier`
+(`recomputed | judged`) keeps its meaning from `evidence-result-v0.md` §1. The ladder only
+constrains which `tier` a model judgment's evidence can support. A claim's `grade`
+(`self-attested | witnessed | countersigned`) attests the bundle that carries the record. A
+`witnessed` or `countersigned` grade moves no record up the ladder, and does not make a
+`hosted` verdict re-derivable.
+
+### 2.2 Model identifier (`developer`)
 
 For a model judge, `developer` MUST be `model_id` or `model_id "@" version`, where:
 
@@ -101,8 +147,10 @@ The judge declaration's members are `model_id`, `prompt_template_hash`, `schema_
 
 | Pack judge declaration | Pack method | Record member | Record method | Join |
 |---|---|---|---|---|
-| `model_id` | string, verbatim | `developer` (base) | string: `model_id` or `model_id@version` (§2) | **value-level**. Outside any digest except `capsule_id`. |
+| `model_id` | string, verbatim | `developer` (base) | string: `model_id` or `model_id@version` (§2.2) | **value-level**. Outside any digest except `capsule_id`. |
 | `model_hosting` | closed set `hosted \| self_hosted` | `x-judgment-v1.model_hosting` | same closed set; absent on a model-judge record reads as `hosted` (§1) | **value-level, exact**. |
+| `model_digest` (optional) | lowercase-hex SHA-256 over the raw bytes of the model file | `x-judgment-v1.model_digest` (optional) | same method, over the file actually loaded (§2.1) | **digest-level, equal, when both carry it.** If the declaration carries it and the record does not, the join fails: the record does not show the declared bytes. If only the record carries it, it is not part of the join. A hosted declaration or record never carries it. |
+| *(no member)* | | `x-judgment-v1.model_reference` (optional) | reference string (§2.1, rung 2) | **No pack counterpart.** |
 | `prompt_template_hash` | JSON-DIGEST of the instruction template object, as published, before interpolation | `JudgeParameters.instruction_template_digest`, reached by recomputing `judge_parameters_digest` from the published `JudgeParameters` | JSON-DIGEST of the same object | **digest-level, equal**. |
 | *(no member)* | | `JudgeParameters.prompt_digest` | RAW-DIGEST of the published judge prompt file | **No pack counterpart.** MUST NOT be compared with `prompt_template_hash`. |
 | `schema_hash` | JSON-DIGEST of the answer schema | *(no member)*: the answer schema digest (§3), fixed by the member name | JSON-DIGEST of `$defs/JudgeAnswer` | **digest-level, against a constant**. |
@@ -125,15 +173,17 @@ Neither digest preimage carries the action's content. `instruction_template_dige
 
 Given a judge declaration `D`, a judgment Capsule `C` whose member is `M`, and the published
 `JudgeParameters` `P` behind `C`, a verifier reports **"produced by the declared judge"** if and
-only if all five checks hold:
+only if all six checks hold:
 
 1. `JSON-DIGEST(P)` equals `M.judge_parameters_digest`.
 2. `P.instruction_template_digest` equals `D.prompt_template_hash`.
 3. `D.schema_hash` equals the answer schema digest (§3).
 4. `C.developer` equals `D.model_id`, or begins with `D.model_id` followed by `@`.
 5. `M.model_hosting` (or `hosted`, if absent) equals `D.model_hosting`.
+6. If `D.model_digest` is present, `M.model_digest` is present and equal to it.
 
-Checks 1 to 3 are digest-level. Checks 4 and 5 are value-level. A pass establishes
+Checks 1 to 3 and 6 are digest-level. Checks 4 and 5 are value-level. When check 6 applies,
+the join reaches rung 3, which is still self-reported (§2.1). A pass establishes
 **attribution**, not re-derivation (§1). It says nothing about the rubric, the sampling
 parameters or the fields read, which the declaration does not pin (§4.1). A human-expert record
 never joins a judge declaration: check 1 fails on shape, because its preimage is

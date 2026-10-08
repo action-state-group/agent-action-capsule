@@ -14,7 +14,10 @@ PROVISIONAL) against schemas/judgment/judgment-extension-v1.json:
      schema file is never modified.
   3. model_hosting accepts exactly the closed set {hosted, self_hosted} (checked on
      in-memory copies of pos-ai-judge; the vectors are not rewritten).
-  4. The published preimages validate against their $defs (JudgeParameters,
+  4. model_digest / model_reference: empty, all-zero and uppercase digests, empty or
+     blank references, a digest without model_hosting, and a digest beside hosted are
+     rejected, each with a mutant proving the rule is load-bearing.
+  5. The published preimages validate against their $defs (JudgeParameters,
      ExpertProtocolParameters, RubricDocument, JudgeAnswer).
 
 Digest recomputation is python/tests/test_judgment_extension_vectors.py's job.
@@ -78,6 +81,52 @@ def main() -> int:
         if root.is_valid(capsule) is not want:
             failures.append(f"model_hosting={value!r}: schema_valid={not want}, expected {want}")
 
+    # model_digest / model_reference: absent stays absent. An empty or all-zero digest
+    # and an empty reference are rejected; a digest needs model_hosting and never sits
+    # beside hosted. In-memory copies of pos-ai-judge only; the vectors are unchanged.
+    zero = "0" * 64
+    real = "9f2c" * 16
+
+    def with_member(**fields):
+        capsule = copy.deepcopy(cases["pos-ai-judge"]["capsule"])
+        capsule["model_attestation"]["compute_attestation"]["x-judgment-v1"].update(fields)
+        return capsule
+
+    identity_cases = [
+        ("self_hosted + model_digest", with_member(model_hosting="self_hosted", model_digest=real), True),
+        ("self_hosted + model_reference", with_member(model_hosting="self_hosted", model_reference="example/judge@r1/model.weights"), True),
+        ("empty model_digest", with_member(model_hosting="self_hosted", model_digest=""), False),
+        ("all-zero model_digest", with_member(model_hosting="self_hosted", model_digest=zero), False),
+        ("uppercase model_digest", with_member(model_hosting="self_hosted", model_digest=real.upper()), False),
+        ("empty model_reference", with_member(model_hosting="self_hosted", model_reference=""), False),
+        ("blank model_reference", with_member(model_hosting="self_hosted", model_reference="  "), False),
+        ("model_digest without model_hosting", with_member(model_digest=real), False),
+        ("hosted + model_digest", with_member(model_hosting="hosted", model_digest=real), False),
+    ]
+    for label, capsule, want in identity_cases:
+        if root.is_valid(capsule) is not want:
+            failures.append(f"{label}: schema_valid={not want}, expected {want}")
+
+    # MUTANTS: each identity rejection is load-bearing. Drop the rule in memory and the
+    # rejected value validates; the committed schema file is never modified.
+    def mutant_valid(mutate, capsule):
+        m = copy.deepcopy(schema)
+        mutate(m["$defs"]["JudgmentMember"])
+        return validator(m).is_valid(capsule)
+
+    identity_mutants = [
+        ("empty model_digest", lambda d: d["properties"]["model_digest"]["allOf"].pop(0),
+         identity_cases[2][1]),
+        ("all-zero model_digest", lambda d: d["properties"]["model_digest"]["allOf"].pop(1),
+         identity_cases[3][1]),
+        ("model_digest without model_hosting", lambda d: d.pop("dependentRequired"),
+         identity_cases[7][1]),
+        ("hosted + model_digest", lambda d: d.pop("then"), identity_cases[8][1]),
+    ]
+    for label, mutate, capsule in identity_mutants:
+        if not mutant_valid(mutate, capsule):
+            failures.append(f"mutant: {label} still rejected without its rule")
+
     pre = {cid: cases[cid]["preimages"]["values"] for cid in ("pos-ai-judge", "pos-human-expert")}
     checks = [
         ("JudgeParameters", pre["pos-ai-judge"]["judge_parameters"]),
@@ -92,7 +141,8 @@ def main() -> int:
     for line in failures:
         print(f"FAIL {line}")
     if not failures:
-        print(f"ok: {len(data['cases'])} cases, 1 mutant, {hosting_checks} model_hosting checks, {len(checks)} preimages")
+        print(f"ok: {len(data['cases'])} cases, 1 mutant, {hosting_checks} model_hosting checks, "
+              f"{len(identity_cases)} identity checks, {len(identity_mutants)} identity mutants, {len(checks)} preimages")
     return 1 if failures else 0
 
 
