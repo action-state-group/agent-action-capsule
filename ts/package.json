@@ -56,10 +56,10 @@
     "prettier": "3.6.2",
     "typescript": "7.0.2",
     "vitest": "4.1.11",
-    "@action-state-group/cll": "github:action-state-group/cll-ts#0ac72b3"
+    "@action-state-group/cll": "0.2.0"
   },
   "peerDependencies": {
-    "@action-state-group/cll": "github:action-state-group/cll-ts#0ac72b3"
+    "@action-state-group/cll": "0.2.0"
   },
   "peerDependenciesMeta": {
     "@action-state-group/cll": {
