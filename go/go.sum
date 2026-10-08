@@ -1,5 +1,5 @@
-github.com/action-state-group/checkpointed-local-log/go v0.0.0-20261007180255-c13f117793af h1:lzZZwtEJhGFukZCtEWS3G3jaf4fhIZ+cpfLKwiN5ktM=
-github.com/action-state-group/checkpointed-local-log/go v0.0.0-20261007180255-c13f117793af/go.mod h1:zyHyXVNqA4pMTJ14xtcRoDHZF0n4QyjS5KMDD3KwQ2Q=
+github.com/action-state-group/checkpointed-local-log/go v0.1.0 h1:bDJSW+fy3eZnwneJBOGuvqYXe0VlvDfPKEJ6ecHnTek=
+github.com/action-state-group/checkpointed-local-log/go v0.1.0/go.mod h1:zyHyXVNqA4pMTJ14xtcRoDHZF0n4QyjS5KMDD3KwQ2Q=
 github.com/datatrails/go-datatrails-merklelog/mmr v0.4.2-0.20250428132117-275103a34a08 h1:hfoqVFr2B8uIqnbKxHTFSP2J5Er6Znd4giwut3GcYYM=
 github.com/datatrails/go-datatrails-merklelog/mmr v0.4.2-0.20250428132117-275103a34a08/go.mod h1:D9U4yGzzpH3ObRlgbeZzn9RJVcgWgekEWE+Ye1q0yoU=
 github.com/fxamacker/cbor/v2 v2.9.0 h1:NpKPmjDBgUfBms6tr6JZkTHtfFGcMKsw3eGcmD/sapM=
