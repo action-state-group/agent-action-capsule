@@ -1,6 +1,7 @@
 import {
   buildVerifiedBundleContext,
   isVerifiedBundleContext,
+  type ExtensionInterpreterId,
   withCountersigners,
   type BundleVerificationResult,
   type VerifiedBundleContext,
@@ -51,6 +52,7 @@ import {
   type CheckSummary,
   type CompletenessStatement,
   type CoverageStatement,
+  type ExtensionRow,
   type ReceiptEntry,
   type RecordCoverage,
   type RecordCoverageStatus,
@@ -421,6 +423,42 @@ function renderChecks(
   host.append(list);
 }
 
+// One row per extension: id, integrity, semantics. The id is the bundle's
+// own member name, set as text only. Integrity and semantics are separate
+// cells so "covered" can never read as "understood": an uninterpreted block
+// says so in words (EXTENSION_NOT_INTERPRETED). Nothing is drawn for a bundle
+// with no extensions.
+function renderExtensions(
+  host: HTMLElement,
+  rows: readonly ExtensionRow[],
+): void {
+  if (rows.length === 0) return;
+  host.append(element("h4", "Extensions"));
+  const table = element("table");
+  table.dataset.extensions = "";
+  const head = element("tr");
+  for (const label of ["extension", "integrity", "semantics"])
+    head.append(element("th", label));
+  const thead = element("thead");
+  thead.append(head);
+  const body = element("tbody");
+  for (const row of rows) {
+    const tr = element("tr");
+    tr.dataset.extensionId = row.id;
+    tr.dataset.integrity = row.integrity;
+    tr.dataset.semantics =
+      row.interpreter === undefined ? "uninterpreted" : "interpreted";
+    tr.append(
+      element("td", row.id),
+      element("td", row.integrity),
+      element("td", row.semantics),
+    );
+    body.append(tr);
+  }
+  table.append(thead, body);
+  host.append(table);
+}
+
 // The viewer-owned verification page: the last page of the rendering, drawn
 // entirely from VERIFIED data (the already-computed BundleVerificationResult
 // and the countersignature stamp classification), never from bundle-supplied
@@ -431,10 +469,14 @@ function renderChecks(
 // scope plus `.oi-vp`, and its content goes inside one `.sec` panel like
 // every card section. Content, order and data attributes are identical
 // either way, and it stays the last element of the rendering.
+//
+// `applied` is the set of extension interpreters this rendering ran; an
+// extension row says "interpreted by" only for one of them.
 async function renderVerificationPage(
   root: HTMLElement,
   context: VerifiedBundleContext,
-  styled = false,
+  styled: boolean,
+  applied: ReadonlySet<ExtensionInterpreterId>,
 ): Promise<void> {
   const { bundle, verification: verified, countersigners } = context;
   const section = element("section");
@@ -447,7 +489,7 @@ async function renderVerificationPage(
     section.append(page);
   }
   page.append(element("h2", "Verification"));
-  const model = buildVerificationPageModel(bundle, verified);
+  const model = buildVerificationPageModel(bundle, verified, applied);
   const summary = element("dl");
   appendValue(summary, "bundle digest", model.bundleDigest ?? "uncomputable");
   appendValue(summary, "checkpoint root", model.checkpointRoot ?? "absent");
@@ -479,6 +521,7 @@ async function renderVerificationPage(
   renderStamps(page, stamps);
   renderCompletenessStatement(page, model.completeness);
   renderChecks(page, model.checks);
+  renderExtensions(page, model.extensions);
   page.append(element("p", model.verifyIndependentlyLine));
   root.append(section);
 }
@@ -1414,5 +1457,17 @@ export async function renderEvidenceGraph(
       "This bundle carries no evaluation summary, so there is no aggregate view. The records and their verification are below.";
     root.append(note);
   }
-  await renderVerificationPage(root, context, styled);
+  // The interpreters this rendering actually ran (see extension-interpreters.ts):
+  // the presentation header and the countersignature stamp always run; the
+  // Result root and its cards only when they rendered above.
+  const applied = new Set<ExtensionInterpreterId>([
+    "presentation-header",
+    "countersignature-stamp",
+  ]);
+  if (reportRows === undefined && result !== undefined) {
+    applied.add("result-root");
+    if (outcomeReport !== undefined) applied.add("outcome-report-card");
+    else if (compliance !== undefined) applied.add("compliance-card");
+  }
+  await renderVerificationPage(root, context, styled, applied);
 }

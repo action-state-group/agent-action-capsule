@@ -1,4 +1,8 @@
-import type { BundleVerificationResult } from "./bundle.js";
+import type {
+  BundleVerificationResult,
+  ExtensionInterpreterId,
+  ExtensionResult,
+} from "./bundle.js";
 import type { VerificationResult } from "./verify.js";
 
 export type CheckStatus = "pass" | "withheld" | "fail" | "not_checked";
@@ -68,6 +72,66 @@ export type CoverageStatement =
   | { readonly status: "not_established"; readonly reason: string }
   | { readonly status: "withheld"; readonly reason: string };
 
+/**
+ * The semantics cell of an uninterpreted extension whose block the bundle
+ * digest covers. Exact user-facing wording: covered bytes are not understood
+ * bytes, and this line never lets the first read as the second.
+ */
+export const EXTENSION_NOT_INTERPRETED =
+  "Integrity verified; meaning not interpreted by this viewer";
+/**
+ * The same cell when the bundle digest could not be computed: nothing about
+ * the block's bytes was verified either, so the line must not claim it.
+ */
+export const EXTENSION_NOT_INTERPRETED_NOT_COVERED =
+  "Integrity not verified; meaning not interpreted by this viewer";
+
+/**
+ * One row per `extensions` member, in kind order: its id, whether the bundle
+ * digest covers it, and who (if anyone) applied its meaning. `interpreter`
+ * is set only for a block this rendering actually interpreted.
+ */
+export interface ExtensionRow {
+  readonly id: string;
+  readonly integrity: "covered" | "not covered";
+  readonly interpreter?: ExtensionInterpreterId;
+  /** "interpreted by <interpreter>", or one of the two not-interpreted lines. */
+  readonly semantics: string;
+}
+
+/**
+ * The verification page's extension rows. `applied`, when given, is the set
+ * of interpreters this rendering actually ran: an extension the library can
+ * interpret but whose module did not render (an outcome-report/v1 block on a
+ * root that is not a Result, say) is shown as not interpreted, because here
+ * its meaning was not applied. Omitted, the verifier's status stands.
+ */
+export function extensionRows(
+  extensions: readonly ExtensionResult[],
+  applied?: ReadonlySet<ExtensionInterpreterId>,
+): readonly ExtensionRow[] {
+  return extensions.map((extension): ExtensionRow => {
+    const integrity = extension.integrityCovered ? "covered" : "not covered";
+    if (
+      extension.status === "interpreted" &&
+      (applied === undefined || applied.has(extension.interpreter))
+    )
+      return {
+        id: extension.kind,
+        integrity,
+        interpreter: extension.interpreter,
+        semantics: `interpreted by ${extension.interpreter}`,
+      };
+    return {
+      id: extension.kind,
+      integrity,
+      semantics: extension.integrityCovered
+        ? EXTENSION_NOT_INTERPRETED
+        : EXTENSION_NOT_INTERPRETED_NOT_COVERED,
+    };
+  });
+}
+
 export interface VerificationPageModel {
   readonly bundleDigest?: string;
   readonly checkpointRoot?: string;
@@ -86,6 +150,8 @@ export interface VerificationPageModel {
   readonly coverage: CoverageStatement;
   readonly completeness?: CompletenessStatement;
   readonly checks: readonly CheckSummary[];
+  /** One row per supplied extension (empty when the bundle carries none). */
+  readonly extensions: readonly ExtensionRow[];
   readonly verifyIndependentlyLine: string;
 }
 
@@ -276,6 +342,7 @@ function summarize(name: string, status: CheckStatus): CheckSummary {
 export function buildVerificationPageModel(
   bundle: unknown,
   verified: BundleVerificationResult,
+  appliedInterpreters?: ReadonlySet<ExtensionInterpreterId>,
 ): VerificationPageModel {
   const top = object(bundle) ?? {};
   const checkpoint = object(top.checkpoint);
@@ -330,6 +397,7 @@ export function buildVerificationPageModel(
       ? {}
       : { completeness: completenessStatement(top.completeness)! }),
     checks,
+    extensions: extensionRows(verified.extensions, appliedInterpreters),
     verifyIndependentlyLine: VERIFY_INDEPENDENTLY_LINE,
   };
 }

@@ -86,16 +86,25 @@ describe("producer-key/v1 vectors", () => {
       );
       expect(stamps.map((s) => s.kind)).toEqual([STAMP_KIND[c.expect.stamp]]);
 
-      // Digest-covered and never a failure: the core reports the block as
-      // an uninterpreted extension.
+      // Digest-covered and never a failure. A well-formed declaration is
+      // interpreted by the countersignature stamp (the only reader of the
+      // key); a malformed one is ignored by that reader, so it is reported
+      // uninterpreted -- its meaning was never applied.
       if (c.bundle.extensions !== undefined) {
         const verified = await verifyBundle(c.bundle);
         expect(verified.extensions).toEqual([
-          {
-            kind: PRODUCER_KEY_V1,
-            status: "uninterpreted",
-            integrityCovered: true,
-          },
+          keys.length > 0
+            ? {
+                kind: PRODUCER_KEY_V1,
+                status: "interpreted",
+                interpreter: "countersignature-stamp",
+                integrityCovered: true,
+              }
+            : {
+                kind: PRODUCER_KEY_V1,
+                status: "uninterpreted",
+                integrityCovered: true,
+              },
         ]);
       }
     });

@@ -1,4 +1,8 @@
 import { isHex64, jsonDigest, sha256Hex } from "./json.js";
+import {
+  AGENT_INPUT_ORIGINALS_EXTENSION,
+  BOOK_PAYLOADS_EXTENSION,
+} from "./extension-interpreters.js";
 import { verifyProducerEnvelope } from "./producer-envelope-verification.js";
 import { hexToBytes } from "./producer-envelope-wire.js";
 import { computeCapsuleId, decodeCapsuleJson } from "./verify.js";
@@ -1013,16 +1017,12 @@ export async function isResultRoot(input: unknown): Promise<boolean> {
   return record !== undefined && resultDocument(context, record) !== undefined;
 }
 
-/** The evidence-book bundle extension that carries a disclosed record's payloads, keyed by payload commitment (SHA-256 of the exact bytes), each base64url without padding. */
-export const BOOK_PAYLOADS_EXTENSION = "evidencebook/payloads";
-/**
- * The bundle extension `capsulectl disclose --attach-input-originals` builds
- * at disclose time: a published capsule's id -> its agent_input original's
- * exact bytes, base64url without padding. The book itself stores only
- * digests; an original rides in a bundle only when its producer opts in.
- */
-export const AGENT_INPUT_ORIGINALS_EXTENSION =
-  "capsulectl/agent-input-originals/v1";
+// Both kinds live with the extension interpreter table, so the table and
+// this builder name the same strings; re-exported here unchanged.
+export {
+  AGENT_INPUT_ORIGINALS_EXTENSION,
+  BOOK_PAYLOADS_EXTENSION,
+} from "./extension-interpreters.js";
 /** The evidence-book `record_type` of a record that carries a published capsule as its payloads. */
 export const PUBLISHED_CAPSULE_RECORD_TYPE = "published_capsule";
 
