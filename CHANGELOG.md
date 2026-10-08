@@ -17,6 +17,13 @@
   throws, and every later reader sees what the verifier produced. The caller's bundle and
   countersigner list are copied, not frozen. Payload objects a builder returns from the context
   are the frozen ones.
+- `spec/presentation-contract-v0.md` + `schemas/presentation-manifest-v0.json`: the presentation
+  contract (module interface, `aac.presentation-manifest/v0` manifests, resolution where an
+  ambiguous match is a hard error, two trust classes, the chrome and text-binding rules,
+  `sha256-jcs-nonce256`, `wording_sha256`, invariants, depth levels L0/L1/L2 mapped to the shell
+  slots). The six built-in manifests express today's dispatch; `schemas/check_presentation_manifest_examples.py`
+  proves no pair is ambiguous and that they resolve as today over 1,536 cases. Documents and
+  schema only; no runtime change.
 
 ### Emitter (Go and TypeScript)
 - The HTML shell has named slots: `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`,

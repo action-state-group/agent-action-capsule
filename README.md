@@ -29,6 +29,9 @@ denied Capsule is affirmative evidence that a gate worked.
   registry for the seven profile vocabularies until IANA registries are
   established on RFC publication.
 - **Reader's guide:** [`spec/section-map.md`](spec/section-map.md).
+- **Presentation contract:** [`spec/presentation-contract-v0.md`](spec/presentation-contract-v0.md)
+  — how a verified bundle becomes a page: module interface, manifests and their resolution,
+  trust classes, text binding, invariants and depth levels.
 
 The authoritative version of the draft is the one on the
 [Datatracker](https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/);
