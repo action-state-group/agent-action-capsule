@@ -2,8 +2,15 @@
  * The compliance card's own stylesheet, trimmed to the sections this card
  * renders (summary, test results, findings, sessions drill-down via native
  * `<details>`, quality protocol, run info) and scoped under `.cc` on every
- * selector, so it can never leak onto, or be affected by, the verification
- * page or any other card on the same document.
+ * selector, so it can never leak onto, or be affected by, any other card on
+ * the same document.
+ *
+ * Also carries the `.cc.cc-banner`/`.cc.cc-vp` rules for the shared
+ * verification banner and verification page (`evidence-graph-view.ts`'s
+ * `renderVerificationBanner`/`renderVerificationPage`) when the compliance
+ * card is the one rendering, mirroring the equivalent `.oi.oi-banner`/
+ * `.oi.oi-vp` rules in `outcome-report-styles.ts` but drawn from this card's
+ * own tokens and box model.
  */
 export const COMPLIANCE_CSS = `
 .cc{--navy:#232F42;--gold:#E8A33D;--gold-l:#FBEFD9;--cream:#F6F2EA;--line:#E3DED3;--slate:#6B7482;--ink:#1F2733;--ok:#2E7D5B;--ok-l:#E3F1EA;--bad:#B5462F;--bad-l:#F8E6E1;--person:#5B4BA0;--person-l:#ECE8F7;--r:14px;
@@ -61,4 +68,23 @@ export const COMPLIANCE_CSS = `
 .cc .ran .v{font-weight:600;color:var(--navy);word-break:break-word;font-size:13.5px}
 .cc .applic{font-size:13px;color:var(--slate)}
 @media (max-width:760px){.cc .ran{grid-template-columns:1fr}}
+.cc.cc-banner{margin:26px auto 0;padding:14px 20px;border-radius:var(--r);font-weight:700;font-size:15px}
+.cc.cc-banner-ok{background:var(--ok-l);color:var(--ok);border:1px solid var(--ok)}
+.cc.cc-banner-failed{background:var(--bad-l);color:var(--bad);border:1px solid var(--bad)}
+.cc.cc-vp h4{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--slate);margin:22px 0 8px;padding-top:14px;border-top:1px solid var(--line)}
+.cc.cc-vp h2 + dl{margin-top:14px}
+.cc.cc-vp dl{display:grid;grid-template-columns:150px 1fr;gap:6px 14px;margin:0;font-size:13px}
+.cc.cc-vp dt{color:var(--slate)}
+.cc.cc-vp dd{margin:0;font-family:ui-monospace,Menlo,monospace;word-break:break-all;color:var(--navy)}
+.cc.cc-vp p{font-size:14px;margin:6px 0}
+.cc.cc-vp ul,.cc.cc-vp ol{margin:6px 0;padding-left:22px;font-size:14px}
+.cc.cc-vp li{padding:2px 0}
+.cc.cc-vp ol li strong{color:var(--navy)}
+.cc.cc-vp [data-check-status="pass"] span,.cc.cc-vp [data-check-status="passed"] span{color:var(--ok)}
+.cc.cc-vp details{margin-top:8px;font-size:13px}
+.cc.cc-vp summary{cursor:pointer;color:var(--navy);font-weight:600}
+.cc.cc-vp details ul{font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all;max-height:420px;overflow:auto}
+.cc.cc-vp .seal-checkpointed{color:var(--ok)}
+.cc.cc-vp .seal-uncheckpointed,.cc.cc-vp .seal-membership_invalid{color:var(--bad)}
+.cc.cc-vp > section > p:last-child{margin-top:18px;padding:12px 14px;border-radius:10px;background:var(--cream);color:var(--slate)}
 `;

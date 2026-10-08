@@ -148,7 +148,7 @@ function renderVerificationBanner(
   root: HTMLElement,
   verified: boolean,
   coverage: { uncheckpointed: number; total: number },
-  styled = false,
+  cardClass?: "oi" | "cc",
 ): void {
   const banner = element(
     "p",
@@ -160,11 +160,12 @@ function renderVerificationBanner(
   );
   banner.dataset.verify = verified ? "verified" : "failed";
   banner.dataset.uncheckpointed = String(coverage.uncheckpointed);
-  // Drawn in the outcome-report card's own look when that card renders
-  // (OUTCOME_REPORT_CSS's .oi-banner rules); the words and data attributes
-  // above are identical either way -- the class is presentation only.
-  if (styled)
-    banner.className = `oi oi-banner ${verified ? "oi-banner-ok" : "oi-banner-failed"}`;
+  // Drawn in the rendering card's own look when a card renders
+  // (OUTCOME_REPORT_CSS's .oi-banner rules or COMPLIANCE_CSS's .cc-banner
+  // rules); the words and data attributes above are identical either way --
+  // the class is presentation only.
+  if (cardClass)
+    banner.className = `${cardClass} ${cardClass}-banner ${cardClass}-banner-${verified ? "ok" : "failed"}`;
   root.append(banner);
   if (verified) return;
   const refusal = element(
@@ -420,25 +421,36 @@ function renderChecks(
 // and the countersignature stamp classification), never from bundle-supplied
 // markup. It is never labeled a certificate.
 //
-// `styled` (true only when the outcome-report card rendered above it) draws
-// this same page in that card's look: the section takes the card's `.oi`
-// scope plus `.oi-vp`, and its content goes inside one `.sec` panel like
-// every card section. Content, order and data attributes are identical
+// `cardClass` (set only when the outcome-report or compliance card rendered
+// above it) draws this same page in that card's look: the section takes the
+// card's own scope (`.oi` or `.cc`) plus its `-vp` variant. For the
+// outcome-report card, the content goes inside one `.sec` panel like every
+// card section; the compliance card has no `.sec` equivalent, so its content
+// goes inside a bare `<section>`, styled by `.cc section` the same as the
+// card's own sections. Content, order and data attributes are identical
 // either way, and it stays the last element of the rendering.
 async function renderVerificationPage(
   root: HTMLElement,
   bundle: unknown,
   verified: BundleVerificationResult,
   countersigners: CountersignerSource | undefined,
-  styled = false,
+  cardClass?: "oi" | "cc",
 ): Promise<void> {
   const section = element("section");
   section.dataset.page = "verification";
   let page = section;
-  if (styled) {
-    section.className = "oi oi-vp";
-    page = element("div");
-    page.className = "sec";
+  if (cardClass) {
+    section.className = `${cardClass} ${cardClass}-vp`;
+    if (cardClass === "oi") {
+      page = element("div");
+      page.className = "sec";
+    } else {
+      // The compliance card has no `.sec` white-card class (its own
+      // sections use the bare `<section>` tag, styled by `.cc section`
+      // in compliance-styles.ts) -- reuse that existing rule instead of
+      // inventing a parallel one.
+      page = element("section");
+    }
     section.append(page);
   }
   page.append(element("h2", "Verification"));
@@ -1345,7 +1357,21 @@ export async function renderEvidenceGraph(
   // unverified bundle never has a `result`, so it never does.
   const outcomeReport =
     result !== undefined ? readOutcomeReportPresentation(bundle) : undefined;
-  const styled = result !== undefined && outcomeReport !== undefined;
+  // compliance/v1 is read the same way: a second card choice over the SAME
+  // verified Result root, after outcome-report's (a bundle that opted into
+  // both renders the outcome-report card) -- never a verification path of
+  // its own. Read before the banner for the same reason outcomeReport is:
+  // so the banner and the verification page can take the card's look.
+  const compliance =
+    result !== undefined && outcomeReport === undefined
+      ? readCompliancePresentation(bundle)
+      : undefined;
+  const cardClass: "oi" | "cc" | undefined =
+    outcomeReport !== undefined
+      ? "oi"
+      : compliance !== undefined
+        ? "cc"
+        : undefined;
   root.replaceChildren();
   renderPresentationHeader(root, bundle);
   renderVerificationBanner(
@@ -1355,16 +1381,8 @@ export async function renderEvidenceGraph(
       uncheckpointed: unboundRecordIds(verification).length,
       total: Array.isArray(records) ? records.length : 0,
     },
-    styled,
+    cardClass,
   );
-  // compliance/v1 is read the same way: a second card choice over the SAME
-  // verified Result root, after outcome-report's (a bundle that opted into
-  // both renders the outcome-report card) -- never a verification path of
-  // its own.
-  const compliance =
-    result !== undefined && outcomeReport === undefined
-      ? readCompliancePresentation(bundle)
-      : undefined;
   if (reportRows !== undefined) {
     renderReportRowsTable(reportRows, root);
   } else if (result !== undefined && outcomeReport !== undefined) {
@@ -1393,6 +1411,6 @@ export async function renderEvidenceGraph(
     bundle,
     verification,
     countersigners,
-    styled,
+    cardClass,
   );
 }
