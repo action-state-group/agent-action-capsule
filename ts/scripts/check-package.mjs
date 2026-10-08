@@ -82,7 +82,7 @@ try {
     "--no-audit",
     "--no-fund",
     process.env.CLL_PACKAGE ??
-      metadata.devDependencies["@action-state-group/cll"],
+      `@action-state-group/cll@${metadata.devDependencies["@action-state-group/cll"]}`,
   ]);
   writeFileSync(
     join(temporary, "bundle.mjs"),

@@ -23,7 +23,7 @@ CLL or its storage drivers. To use `@action-state-group/agent-action-capsule/bun
 or the existing broad root entry, explicitly install the pinned compatible CLL:
 
 ```bash
-npm install @action-state-group/agent-action-capsule github:action-state-group/cll-ts#0ac72b3
+npm install @action-state-group/agent-action-capsule @action-state-group/cll@0.2.0
 ```
 
 The existing root exports remain available with CLL installed. The separate
