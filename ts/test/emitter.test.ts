@@ -33,6 +33,7 @@ describe("emitEvidenceGraphHtml", () => {
 
     expect(html).not.toContain("__BUNDLE_JSON__");
     expect(html).not.toContain("__BROWSER_IIFE__");
+    expect(html).not.toMatch(/__[A-Z_]+_SLOT__/u);
   });
 
   it("returns self-contained HTML with an inline bundle", () => {

@@ -18,6 +18,31 @@
   countersigner list are copied, not frozen. Payload objects a builder returns from the context
   are the frozen ones.
 
+### Emitter (Go and TypeScript)
+- The HTML shell has named slots: `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`,
+  `MODULE_SLOT` (zero or more digest-pinned scripts) and `BOOTSTRAP_SLOT`, plus `CSP_SLOT` for the
+  policy. Each slot must occur exactly once in the shell. New entry points take the optional
+  fills: `EmitEvidenceGraphHTMLWithOptions` (Go) and the third `options` argument of
+  `emitEvidenceGraphHtml` (TypeScript). A supplied title is HTML-escaped; with none, the title
+  stays "Evidence Graph". A module's bytes must match its lowercase hex SHA-256 pin, and a
+  core-runtime pin is checked when given.
+- Every emitted page carries a Content-Security-Policy meta element: `default-src 'none'`,
+  `script-src` and `style-src` as SHA-256 hashes of the inline elements actually written (plus the
+  two stylesheets the reference runtime inserts at render time, listed in
+  `go/emitter/runtime-style-hashes.txt`), `img-src data:`, `connect-src 'none'`,
+  `base-uri 'none'`, `form-action 'none'`. A script whose hash is not listed does not run. The core
+  runtime's entry is the base64 form of the same digest as its hex `.sha256` pin.
+- The shell carries a base stylesheet: theme tokens as CSS variables, a typography baseline,
+  page width, overflow containment (wide tables scroll inside their own box below 760px), focus
+  and reduced-motion defaults, details/summary disclosure, a verification-banner class and print
+  defaults. Every rule has zero specificity, so a presentation's own stylesheet wins. No report
+  layout is in the shell. Rendered page content is unchanged.
+- Inline content that would change where its element ends (`</script`, `</style`, `<!--`) or
+  that the HTML parser rewrites before hashing (CR, NUL) is refused.
+- Pages emitted by this version run only the scripts the emitter wrote. A consumer that edits
+  the emitted HTML afterwards to add a script or style element must pass it through the new
+  slots instead, or the browser will refuse it.
+
 ## 0.7.0 — 2026-10-07
 
 **Headline: string-typed fields are type-checked in every verifier.** A list, an object or a
