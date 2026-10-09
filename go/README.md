@@ -26,3 +26,16 @@ GOWORK=off go test ./...
 GOWORK=off go test -race ./...
 GOWORK=off go run ./cmd/vector_runner/
 ```
+
+## Presentation resolver
+
+`presentation/` is the Go resolver of `spec/presentation-contract-v0.md`, the
+twin of `ts/src/presentation-registry.ts`: `ParseManifest`, `Registry`
+(`Register`, `List`, `Refused`, `Resolve`, `ResolveWith`), `Describe` and
+`DescribeBundle` (the section 4.2 descriptor of a bundle `bundle.VerifyBundle`
+checked), `RefusalRow` and `RefusalLine` (the section 3.2 wording),
+`NewBuiltinRegistry` and `NewSectionRegistry`. Go has no module code, so
+`Resolve` selects by the declarative match as if every module could render;
+`ResolveWith` takes a `canRender` answer. The vectors under
+`../vectors/presentation-resolution/` are normative for both implementations,
+and both test suites run every case.
