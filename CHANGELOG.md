@@ -17,6 +17,22 @@
   throws, and every later reader sees what the verifier produced. The caller's bundle and
   countersigner list are copied, not frozen. Payload objects a builder returns from the context
   are the frozen ones.
+- `spec/presentation-contract-v0.md` + `schemas/presentation-manifest-v0.json`: the presentation
+  contract (module interface, `aac.presentation-manifest/v0` manifests, resolution where an
+  ambiguous match is a hard error, two trust classes, the chrome and text-binding rules,
+  `sha256-jcs-nonce256`, `wording_sha256`, invariants, depth levels L0/L1/L2 mapped to the shell
+  slots). The six built-in manifests express today's dispatch; `schemas/check_presentation_manifest_examples.py`
+  proves no pair is ambiguous and that they resolve as today over 1,536 cases. Documents and
+  schema only; no runtime change.
+- Presentation contract amendments: a presentation ABI versioned on its own. Every manifest
+  declares `presentation_api` (`aac.presentation-api/v0`) and `runtime_min`; `id` is the module
+  id. A runtime refuses a module whose `presentation_api` it does not implement, or whose
+  `runtime_min` it does not meet, and says so on the page in fixed words, never by a silent
+  fallback. The verified bundle context MUST be effectively immutable. Invariant I4 now holds
+  for every packaging target supported for a bundle, and an unsupported target MUST be reported.
+  A module MUST NOT take wording or depth from a bundle-carried presentation setting. New
+  negatives: a manifest with no `presentation_api`, a module with an unsupported one (refused at
+  resolution), and a declarative module naming a hint as its wording source.
 
 ### Emitter (Go and TypeScript)
 - The HTML shell has named slots: `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`,
