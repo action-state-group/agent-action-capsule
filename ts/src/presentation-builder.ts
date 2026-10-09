@@ -132,8 +132,12 @@ export const STATIC_NOT_SELF_VERIFYING =
 export const STATIC_BUILD_TIME_STATEMENT =
   "This page runs no code. It shows the verification result computed when it was built and cannot re-verify anything in your browser.";
 
-/** The core runtime (the browser IIFE) and, optionally, its pin. */
-export interface PresentationRuntime {
+/**
+ * The core runtime script (the browser IIFE) and, optionally, its pin. Not
+ * the presentation runtime's ABI declaration (`PresentationRuntime`, contract
+ * section 3.2): this is the code the page carries.
+ */
+export interface CoreRuntimeScript {
   readonly code: string;
   /** Lowercase hex SHA-256 of `code`; checked when given. */
   readonly sha256?: string;
@@ -146,7 +150,7 @@ export interface BuildPresentationOptions {
   readonly audience: string;
   readonly format: PackagingTarget;
   /** The core runtime; required for `html` and `fragment`. */
-  readonly runtime?: PresentationRuntime;
+  readonly runtime?: CoreRuntimeScript;
   /** Digest-pinned module-slot scripts the page runs after the runtime. */
   readonly modules?: readonly EmitterModule[];
   /**
@@ -273,7 +277,7 @@ interface OfflineSettings {
 // (audience "*", nothing else) give exactly emitEvidenceGraphHtml's page.
 async function packageOffline(
   settings: OfflineSettings,
-  runtime: PresentationRuntime,
+  runtime: CoreRuntimeScript,
   modules: readonly EmitterModule[],
 ): Promise<string> {
   const entries =
@@ -313,9 +317,9 @@ async function packageOffline(
 }
 
 function requireRuntime(
-  runtime: PresentationRuntime | undefined,
+  runtime: CoreRuntimeScript | undefined,
   format: PackagingTarget,
-): PresentationRuntime {
+): CoreRuntimeScript {
   if (runtime === undefined)
     throw new PackagingUnavailableError({
       code: "runtime-missing",
@@ -659,7 +663,7 @@ async function packageStatic(
  */
 export async function offlineHtmlFromFragment(
   token: string,
-  runtime: PresentationRuntime,
+  runtime: CoreRuntimeScript,
   modules: readonly EmitterModule[] = [],
   maxLength?: number,
 ): Promise<string> {
@@ -706,7 +710,7 @@ export const FRAGMENT_VIEWER_BOOTSTRAP =
  * comes back in the offline file {@link offlineHtmlFromFragment} rebuilds.
  */
 export function buildFragmentViewerHtml(
-  runtime: PresentationRuntime,
+  runtime: CoreRuntimeScript,
   modules: readonly EmitterModule[] = [],
 ): string {
   return emitEvidenceGraphHtml(FRAGMENT_VIEWER_MARKER, runtime.code, {

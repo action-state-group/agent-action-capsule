@@ -608,6 +608,8 @@ describe("buildPresentation", () => {
       manifest: {
         spec_version: "aac.presentation-manifest/v0",
         id,
+        presentation_api: "aac.presentation-api/v0",
+        runtime_min: "0.1.0",
         trust_class: "trusted-executable",
         requires: { bundle_kind: "evidence-bundle/v2" },
         audiences: ["*"],
@@ -869,6 +871,8 @@ describe("packaging availability", () => {
       manifest: {
         spec_version: "aac.presentation-manifest/v0",
         id: "org.example.scripted/v0",
+        presentation_api: "aac.presentation-api/v0",
+        runtime_min: "0.1.0",
         trust_class: "trusted-executable",
         requires: { bundle_kind: "evidence-bundle/v2" },
         audiences: ["*"],
