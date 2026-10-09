@@ -134,6 +134,45 @@ describe.skipIf(executablePath === undefined)(
       expect(violations).toContain("script-src-elem");
     });
 
+    describe("a module that inserts a stylesheet at render time", () => {
+      const pinned = "#probe{color:rgb(1, 2, 3)}";
+      const unlisted = "#probe{color:rgb(4, 5, 6)}";
+      const inserting = (css: string): string =>
+        `const style = document.createElement("style"); style.textContent = ${JSON.stringify(css)}; document.head.appendChild(style); const probe = document.createElement("div"); probe.id = "probe"; document.body.appendChild(probe); window.moduleRan = true;`;
+      const color = (loaded: Page): Promise<string> =>
+        loaded.evaluate(
+          () => getComputedStyle(document.getElementById("probe")!).color,
+        );
+
+      it("applies a stylesheet the module pinned, with no CSP violation", async () => {
+        const code = inserting(pinned);
+        const { page: loaded, violations } = await load(
+          emitEvidenceGraphHtml({ note: "csp" }, core, {
+            coreRuntimeSha256: hex(core),
+            modules: [{ code, sha256: hex(code), styleSha256: [hex(pinned)] }],
+            bootstrap: "window.booted = true;",
+          }),
+        );
+        expect(await flag(loaded, "moduleRan")).toBe(true);
+        expect(violations).toEqual([]);
+        expect(await color(loaded)).toBe("rgb(1, 2, 3)");
+      });
+
+      it("blocks a stylesheet the module did not pin", async () => {
+        const code = inserting(unlisted);
+        const { page: loaded, violations } = await load(
+          emitEvidenceGraphHtml({ note: "csp" }, core, {
+            coreRuntimeSha256: hex(core),
+            modules: [{ code, sha256: hex(code), styleSha256: [hex(pinned)] }],
+            bootstrap: "window.booted = true;",
+          }),
+        );
+        expect(await flag(loaded, "moduleRan")).toBe(true);
+        expect(violations).toContain("style-src-elem");
+        expect(await color(loaded)).not.toBe("rgb(4, 5, 6)");
+      });
+    });
+
     describe("with the reference core runtime", () => {
       let runtime: string;
 

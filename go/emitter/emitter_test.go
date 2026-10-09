@@ -59,3 +59,31 @@ func TestEmitEvidenceGraphHTMLEscapesScriptBreakingBundleContent(t *testing.T) {
 		t.Fatal("bundle content can break out of its script element")
 	}
 }
+
+// A page that fills every optional slot, including a module with stylesheet
+// pins, must equal the TypeScript emitter's byte for byte.
+// ts/test/emitter-csp.test.ts writes and checks the same golden.
+func TestEmitWithModuleStylesMatchesTypeScript(t *testing.T) {
+	module := "window.moduleRan=true;"
+	got, err := EmitEvidenceGraphHTMLWithOptions(loadWeekBundle(t), []byte("/*IIFE_MARKER*/"), Options{
+		Title:             "Module styles",
+		ThemeCSS:          ":root{--aac-accent:#123456}",
+		CoreRuntimeSHA256: hexPinOf("/*IIFE_MARKER*/"),
+		Modules: []Module{{
+			Code:        []byte(module),
+			SHA256:      hexPinOf(module),
+			StyleSHA256: []string{hexPinOf(".m{color:red}"), hexPinOf(".n{color:blue}")},
+		}},
+		Bootstrap: "window.booted=true;",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := os.ReadFile(filepath.Join("testdata", "expected-module-styles.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal([]byte(got), want) {
+		t.Fatal("Go HTML with module styles differs from TypeScript HTML")
+	}
+}

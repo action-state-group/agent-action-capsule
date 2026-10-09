@@ -49,6 +49,12 @@ export interface EmitterModule {
   readonly code: string;
   /** Lowercase hex SHA-256 of the UTF-8 bytes of `code` (a `.sha256` pin). */
   readonly sha256: string;
+  /**
+   * Lowercase hex SHA-256 of each stylesheet the module inserts at render
+   * time (the manifest's `style_sha256`). Each is added to the page's
+   * `style-src`.
+   */
+  readonly styleSha256?: readonly string[];
 }
 
 export interface EmitterOptions {
@@ -193,11 +199,21 @@ export function emitEvidenceGraphHtml(
   ) {
     throw new Error("browser IIFE does not match its SHA-256 pin");
   }
+  const moduleStyleSources: string[] = [];
   modules.forEach((module, index) => {
     checkInline(`module ${index}`, module.code, "</script");
     if (cspHashSourceFromHex(module.sha256) !== cspHashSource(module.code)) {
       throw new Error(`module ${index} does not match its SHA-256 pin`);
     }
+    (module.styleSha256 ?? []).forEach((pin, styleIndex) => {
+      try {
+        moduleStyleSources.push(cspHashSourceFromHex(pin));
+      } catch (error) {
+        throw new Error(
+          `module ${index} style ${styleIndex}: ${(error as Error).message}`,
+        );
+      }
+    });
   });
 
   const embeddedBundleJson = escapeJsonForHtmlScript(bundleJson);
@@ -217,6 +233,7 @@ export function emitEvidenceGraphHtml(
   const styleSources = unique([
     ...inline.style.map(cspHashSource),
     ...CORE_RUNTIME_STYLES.map(cspHashSource),
+    ...moduleStyleSources,
   ]);
   const csp = [
     "default-src 'none'",

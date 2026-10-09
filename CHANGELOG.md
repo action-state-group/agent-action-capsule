@@ -42,6 +42,11 @@
   `emitEvidenceGraphHtml` (TypeScript). A supplied title is HTML-escaped; with none, the title
   stays "Evidence Graph". A module's bytes must match its lowercase hex SHA-256 pin, and a
   core-runtime pin is checked when given.
+- A module carries a list of stylesheet pins (`Module.StyleSHA256` in Go, `styleSha256` in
+  TypeScript): the lowercase hex SHA-256 of each stylesheet it inserts at render time, as in the
+  presentation contract's `style_sha256`. The emitter lists each, in base64 form, in `style-src`
+  after the core runtime's, and refuses a malformed pin. Pages with no module stylesheets are
+  unchanged.
 - Every emitted page carries a Content-Security-Policy meta element: `default-src 'none'`,
   `script-src` and `style-src` as SHA-256 hashes of the inline elements actually written (plus the
   two stylesheets the reference runtime inserts at render time, listed in

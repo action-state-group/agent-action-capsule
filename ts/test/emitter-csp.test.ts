@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -93,6 +93,66 @@ describe("emitter Content-Security-Policy", () => {
     ).toThrow("browser IIFE does not match its SHA-256 pin");
   });
 
+  it("adds each module stylesheet pin to style-src after the core runtime's", () => {
+    const first = ".m{color:red}";
+    const second = ".n{color:blue}";
+    const module = "window.moduleRan=true;";
+    const html = emitEvidenceGraphHtml(bundle, iife, {
+      modules: [
+        { code: module, sha256: hex(module), styleSha256: [hex(first)] },
+        {
+          code: "window.other=1;",
+          sha256: hex("window.other=1;"),
+          styleSha256: [hex(second), hex(first)],
+        },
+      ],
+    });
+    expect(csp(html).get("style-src")).toEqual([
+      ...inline(html, "style").map(source),
+      ...CORE_RUNTIME_STYLES.map(source),
+      source(first),
+      source(second),
+    ]);
+    expect(cspHashSourceFromHex(hex(first))).toBe(source(first));
+  });
+
+  it("an empty style pin list leaves the page unchanged", () => {
+    const module = "window.moduleRan=true;";
+    expect(
+      emitEvidenceGraphHtml(bundle, iife, {
+        modules: [{ code: module, sha256: hex(module), styleSha256: [] }],
+      }),
+    ).toBe(
+      emitEvidenceGraphHtml(bundle, iife, {
+        modules: [{ code: module, sha256: hex(module) }],
+      }),
+    );
+  });
+
+  it("refuses a malformed module stylesheet pin", () => {
+    const module = "window.moduleRan=true;";
+    for (const pin of [
+      hex("x").toUpperCase(),
+      hex("x").slice(1),
+      `${hex("x")}0`,
+      "",
+      `sha256-${hex("x")}`,
+    ])
+      expect(() =>
+        emitEvidenceGraphHtml(bundle, iife, {
+          modules: [
+            {
+              code: module,
+              sha256: hex(module),
+              styleSha256: [hex("ok"), pin],
+            },
+          ],
+        }),
+      ).toThrow(
+        "module 0 style 1: SHA-256 pin must be 64 lowercase hex characters",
+      );
+  });
+
   it("go/emitter/runtime-style-hashes.txt matches the core runtime stylesheets", () => {
     const listed = readFileSync(
       resolve(process.cwd(), "..", "go", "emitter", "runtime-style-hashes.txt"),
@@ -178,5 +238,42 @@ describe("emitter slots", () => {
     const html = emitEvidenceGraphHtml(bundle, iife);
     const shell = html.replace(/<script>[\s\S]*?<\/script>/gu, "");
     expect(shell).not.toMatch(/\b(?:src|href)=|<link|url\(|https?:/iu);
+  });
+});
+
+/**
+ * Go/TS parity for a page that fills every optional slot, including a
+ * module with stylesheet pins. go/emitter's
+ * TestEmitWithModuleStylesMatchesTypeScript reads the same golden. To
+ * regenerate it after an intentional change, run this file with
+ * AAC_WRITE_GOLDEN=1.
+ */
+describe("emitter options parity", () => {
+  const golden = resolve(
+    process.cwd(),
+    "..",
+    "go",
+    "emitter",
+    "testdata",
+    "expected-module-styles.html",
+  );
+  const module = "window.moduleRan=true;";
+
+  it("emits byte-for-byte the HTML the Go twin is pinned to", () => {
+    const html = emitEvidenceGraphHtml(bundle, iife, {
+      title: "Module styles",
+      themeCss: ":root{--aac-accent:#123456}",
+      coreRuntimeSha256: hex(iife),
+      modules: [
+        {
+          code: module,
+          sha256: hex(module),
+          styleSha256: [hex(".m{color:red}"), hex(".n{color:blue}")],
+        },
+      ],
+      bootstrap: "window.booted=true;",
+    });
+    if (process.env.AAC_WRITE_GOLDEN === "1") writeFileSync(golden, html);
+    expect(html).toBe(readFileSync(golden, "utf8"));
   });
 });

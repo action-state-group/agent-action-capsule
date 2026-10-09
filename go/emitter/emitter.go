@@ -48,6 +48,10 @@ type Module struct {
 	Code []byte
 	// SHA256 is the lowercase hex SHA-256 of Code (a .sha256 pin).
 	SHA256 string
+	// StyleSHA256 lists the lowercase hex SHA-256 of each stylesheet the
+	// module inserts at render time (the manifest's style_sha256). Each is
+	// added to the page's style-src.
+	StyleSHA256 []string
 }
 
 // Options fills the shell's optional slots. The zero value reproduces the
@@ -199,7 +203,8 @@ func EmitEvidenceGraphHTML(bundle map[string]interface{}, browserIIFE []byte) (s
 // EmitEvidenceGraphHTMLWithOptions embeds an evidence bundle, the browser
 // runtime and any digest-pinned modules in the HTML shell, and writes a
 // Content-Security-Policy whose script-src and style-src list the SHA-256 of
-// every inline element actually emitted.
+// every inline element actually emitted, then the stylesheets the core
+// runtime and each module insert at render time.
 func EmitEvidenceGraphHTMLWithOptions(bundle map[string]interface{}, browserIIFE []byte, options Options) (string, error) {
 	bundleJSON, err := canonical.JCS(bundle)
 	if err != nil {
@@ -249,6 +254,7 @@ func EmitEvidenceGraphHTMLWithOptions(bundle map[string]interface{}, browserIIFE
 		}
 	}
 	moduleScripts := make([]string, 0, len(options.Modules))
+	moduleStyleSources := []string{}
 	for index, module := range options.Modules {
 		name := fmt.Sprintf("module %d", index)
 		if err := checkInline(name, string(module.Code), "</script"); err != nil {
@@ -258,6 +264,13 @@ func EmitEvidenceGraphHTMLWithOptions(bundle map[string]interface{}, browserIIFE
 			return "", err
 		}
 		moduleScripts = append(moduleScripts, "<script>"+string(module.Code)+"</script>")
+		for styleIndex, pin := range module.StyleSHA256 {
+			source, err := CSPHashSourceFromHex(pin)
+			if err != nil {
+				return "", fmt.Errorf("%s style %d: %w", name, styleIndex, err)
+			}
+			moduleStyleSources = append(moduleStyleSources, source)
+		}
 	}
 
 	embeddedBundleText := escapeJSONForHTMLScript(bundleText)
@@ -288,6 +301,7 @@ func EmitEvidenceGraphHTMLWithOptions(bundle map[string]interface{}, browserIIFE
 		styleSources = append(styleSources, cspHashSource(style))
 	}
 	styleSources = append(styleSources, coreRuntimeStyleSources()...)
+	styleSources = append(styleSources, moduleStyleSources...)
 	csp := strings.Join([]string{
 		"default-src 'none'",
 		"script-src " + strings.Join(unique(scriptSources), " "),
