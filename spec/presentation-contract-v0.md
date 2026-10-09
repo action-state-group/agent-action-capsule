@@ -811,9 +811,8 @@ These are facts in the current code that this contract does not silently paper o
 4. The viewer renders `presentation/v1` header chrome before the banner even when the bundle
    did not verify. Section 6 permits header chrome; I1 forbids any module content. Whether
    producer-supplied chrome should appear above a refusal is left to a revision.
-5. The emitter accepts module scripts with pins but has no input for a module's stylesheet
-   pins; section 5.1's `style_sha256` needs that input before a module-slot module may insert a
-   stylesheet.
+5. The emitter accepts a module's stylesheet pins and lists them in `style-src`; the builder
+   does not yet check them against the manifest's `style_sha256` (section 5.1).
 6. The extension result type marks every extension uninterpreted; section 9.1's L2 requires the
    interpretation status to be reported truthfully per extension.
 7. Resolved. The per-extension rows of the verification section and the registry were

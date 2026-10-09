@@ -68,6 +68,46 @@ func TestEmitCSPListsEveryInlineElement(t *testing.T) {
 	require.Len(t, coreRuntimeStyleSources(), 2)
 }
 
+func TestEmitListsModuleStylePins(t *testing.T) {
+	first, second := ".m{color:red}", ".n{color:blue}"
+	module := "window.moduleRan=true;"
+	html, err := EmitEvidenceGraphHTMLWithOptions(loadWeekBundle(t), nil, Options{
+		Modules: []Module{
+			{Code: []byte(module), SHA256: hexPinOf(module), StyleSHA256: []string{hexPinOf(first)}},
+			{Code: []byte("window.other=1;"), SHA256: hexPinOf("window.other=1;"), StyleSHA256: []string{hexPinOf(second), hexPinOf(first)}},
+		},
+	})
+	require.NoError(t, err)
+	styles := []string{}
+	for _, match := range inlineStyle.FindAllStringSubmatch(html, -1) {
+		styles = append(styles, sourceOf(match[1]))
+	}
+	styles = append(styles, coreRuntimeStyleSources()...)
+	styles = append(styles, sourceOf(first), sourceOf(second))
+	require.Equal(t, styles, policyOf(t, html)["style-src"])
+
+	withEmpty, err := EmitEvidenceGraphHTMLWithOptions(loadWeekBundle(t), nil, Options{
+		Modules: []Module{{Code: []byte(module), SHA256: hexPinOf(module), StyleSHA256: []string{}}},
+	})
+	require.NoError(t, err)
+	without, err := EmitEvidenceGraphHTMLWithOptions(loadWeekBundle(t), nil, Options{
+		Modules: []Module{{Code: []byte(module), SHA256: hexPinOf(module)}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, without, withEmpty)
+}
+
+func TestEmitRefusesMalformedModuleStylePin(t *testing.T) {
+	module := "window.moduleRan=true;"
+	pin := hexPinOf("x")
+	for _, bad := range []string{strings.ToUpper(pin), pin[1:], pin + "0", "", "sha256-" + pin} {
+		_, err := EmitEvidenceGraphHTMLWithOptions(loadWeekBundle(t), nil, Options{
+			Modules: []Module{{Code: []byte(module), SHA256: hexPinOf(module), StyleSHA256: []string{hexPinOf("ok"), bad}}},
+		})
+		require.ErrorContains(t, err, "module 0 style 1: SHA-256 pin must be 64 lowercase hex characters")
+	}
+}
+
 func TestEmitCoreRuntimeHashIsItsHexPin(t *testing.T) {
 	runtime := "/*IIFE_MARKER*/"
 	pin := hexPinOf(runtime)
