@@ -15,3 +15,5 @@ export * from "./verification-page.js";
 export * from "./evidence-graph-view.js";
 export * from "./outcome-report-view.js";
 export * from "./compliance-view.js";
+export * from "./presentation-fragment.js";
+export * from "./presentation-mount.js";

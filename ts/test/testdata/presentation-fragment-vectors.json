@@ -1,0 +1,84 @@
+{
+  "description": "Tokens written by capsule-viewer's fragment codec (src/capsule_viewer/fragment.py, encode_fragment, commit 7592055) for payloads whose members are in RFC 8785 order. ascii_json is true when the payload's JSON text has no character at or above U+007F; then the Evidence Bundle permalink codec writes the same token. Otherwise fragment.py writes \\uXXXX escapes where the bundle codec writes UTF-8, and each decoder reads the other's token.",
+  "cases": [
+    {
+      "name": "empty-object",
+      "ascii_json": true,
+      "fragment_py": "e30",
+      "payload": {}
+    },
+    {
+      "name": "one-byte-tail",
+      "ascii_json": true,
+      "fragment_py": "eyJhIjoiYiJ9",
+      "payload": {
+        "a": "b"
+      }
+    },
+    {
+      "name": "two-byte-tail",
+      "ascii_json": true,
+      "fragment_py": "eyJhYiI6ImNkIn0",
+      "payload": {
+        "ab": "cd"
+      }
+    },
+    {
+      "name": "ascii-presentation-fragment",
+      "ascii_json": true,
+      "fragment_py": "eyJhdWRpZW5jZSI6ImNvdW50ZXJwYXJ0eSIsImJ1bmRsZSI6eyJidW5kbGVfdmVyc2lvbiI6ImV2aWRlbmNlLWJ1bmRsZS92MiIsImVzYyI6InF1b3RlXCIgc2xhc2gvIGJhY2tcXCB0YWJcdCBubFxuIGN0bFx1MDAwMSA8PiYiLCJuIjotNDIsIm5lc3RlZCI6eyJ6IjpbMSwyLHsieCI6dHJ1ZSwieSI6bnVsbH1dfSwicmVjb3JkcyI6W119LCJjb3JlX3J1bnRpbWVfc2hhMjU2IjoiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIsImRlcHRoIjoiTDEiLCJmcmFnbWVudF92ZXJzaW9uIjoiYWFjLnByZXNlbnRhdGlvbi1mcmFnbWVudC92MCIsIm1vZHVsZV9zaGEyNTYiOltdLCJwcmVzZW50YXRpb24iOiJhYWMuYnVpbHRpbi5uby1hZ2dyZWdhdGUvdjAifQ",
+      "payload": {
+        "audience": "counterparty",
+        "bundle": {
+          "bundle_version": "evidence-bundle/v2",
+          "esc": "quote\" slash/ back\\ tab\t nl\n ctl\u0001 <>&",
+          "n": -42,
+          "nested": {
+            "z": [
+              1,
+              2,
+              {
+                "x": true,
+                "y": null
+              }
+            ]
+          },
+          "records": []
+        },
+        "core_runtime_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "depth": "L1",
+        "fragment_version": "aac.presentation-fragment/v0",
+        "module_sha256": [],
+        "presentation": "aac.builtin.no-aggregate/v0"
+      }
+    },
+    {
+      "name": "key-order",
+      "ascii_json": true,
+      "fragment_py": "eyIxMCI6MywiOSI6NCwiYSI6MiwiYiI6MX0",
+      "payload": {
+        "10": 3,
+        "9": 4,
+        "a": 2,
+        "b": 1
+      }
+    },
+    {
+      "name": "delete-character",
+      "ascii_json": false,
+      "fragment_py": "eyJzIjoiYVx1MDA3ZmIifQ",
+      "payload": {
+        "s": "ab"
+      }
+    },
+    {
+      "name": "non-ascii",
+      "ascii_json": false,
+      "fragment_py": "eyJzZXAiOiJcdTIwMjgiLCJ0aXRsZSI6IkNhZlx1MDBlOSBcdTIwMTQgXHU2NWU1XHU2NzJjIFx1ZDgzZFx1ZGUwMCJ9",
+      "payload": {
+        "sep": " ",
+        "title": "Café — 日本 😀"
+      }
+    }
+  ]
+}

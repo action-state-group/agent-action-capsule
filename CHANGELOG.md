@@ -48,6 +48,26 @@
   `createPresentationRegistry`, `registerPresentation`, `resolvePresentation` and
   `describeContext` are new. Registration refuses two same-tier manifests one descriptor could
   match; a tie is an error, never first-wins. Rendered output is byte-identical for every fixture.
+- TypeScript and Go: one presentation builder (`spec/presentation-builder-v0.md`).
+  `buildPresentation(context, {presentation, audience, format})` scopes the bundle for the
+  audience, resolves the module through the registry, and packages the result as an offline
+  `.html` file with its per-page CSP, a fragment permalink (`aac.presentation-fragment/v0`, the
+  Evidence Bundle permalink codec, refused over 1,046,528 characters, never truncated) or a
+  mount for a host element. `offlineHtmlFromFragment` (Go: `OfflineHTMLFromFragment`) rebuilds
+  the exact offline file from a fragment; `BuildOfflineHTML` is the Go twin of the offline
+  packaging. With the default settings the builder writes exactly the page the emitter writes.
+  `renderEvidenceGraph` takes optional `depth` and `wording` options.
+- TypeScript: the builder reports packaging availability and gains a static target.
+  `availablePackagings(context, settings)` returns, for `html`, `fragment`, `embedded` and
+  `static`, available or unavailable with a reason (`fragment-too-large` with the length and the
+  limit, `runtime-missing`, `no-document`, `static-carries-script`), and returns no packaging.
+  Fragments are packaged within a default budget of 65,536 characters
+  (`FRAGMENT_TOKEN_DEFAULT_BUDGET`; `maxFragmentLength` lowers it or raises it up to the
+  1,046,528 ceiling), so a monthly report of a few hundred kilobytes is reported unavailable as a
+  link; a direct build still throws `FragmentTooLargeError`. `format: "static"` renders the page
+  at build time into HTML with no script (`script-src 'none'`), no bundle and no runtime, stating
+  "Not self-verifying; verify the bundle separately." and the verification result computed at
+  build time. The default offline output is unchanged byte for byte.
 - TypeScript: the presentation registry applies the presentation ABI. A `PresentationRegistry`
   takes the runtime's declaration (`REFERENCE_PRESENTATION_RUNTIME`: `aac.presentation-api/v0`,
   runtime 0.1.0); every manifest, the six built-ins included, carries `presentation_api` and
@@ -80,6 +100,14 @@
   runtime, and a refused section is named on the page root and in its `composed/v1` row, never
   skipped silently. `extensionRows` and `buildVerificationPageModel` take the refusals; the model
   gains `presentationRefusals`. Pages with no refusal are unchanged.
+- TypeScript: the builder refuses a module the page's runtime would refuse (presentation contract
+  section 3.2). A module-slot script may be passed with its `manifest`
+  (`PresentationModuleScript`); when the page's runtime would refuse that module, or when
+  `presentation` names a module the registry holds as refused, `buildPresentation` writes no page
+  and throws `PresentationModuleRefusedError`, naming the module's id, `presentation_api` and
+  `runtime_min` and the runtime's declaration. The builder's core runtime type is renamed
+  `CoreRuntimeScript` (it was `PresentationRuntime`, now the name of the runtime's ABI
+  declaration). Default output is unchanged byte for byte.
 ### Emitter (Go and TypeScript)
 - The HTML shell has named slots: `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`,
   `MODULE_SLOT` (zero or more digest-pinned scripts) and `BOOTSTRAP_SLOT`, plus `CSP_SLOT` for the

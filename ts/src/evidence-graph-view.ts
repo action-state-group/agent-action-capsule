@@ -38,6 +38,10 @@ import {
   zoneStatement,
 } from "./evidence-graph.js";
 import { renderOutcomeReportPage } from "./outcome-report-view.js";
+import type {
+  PresentationDepth,
+  WordingPackInput,
+} from "./presentation-fragment.js";
 import {
   readOutcomeReportPresentation,
   type OutcomeReportPresentation,
@@ -1631,6 +1635,14 @@ export interface RenderEvidenceGraphOptions {
   readonly sections?: PresentationResolver;
   readonly audience?: string;
   readonly format?: PresentationFormat;
+  /** The opening depth handed to the module's host; "L2" when omitted. */
+  readonly depth?: PresentationDepth;
+  /**
+   * The wording pack the page was built with, carried so the page holds
+   * the exact words it was built with (presentation only; contract I3).
+   * The built-in modules use the core's own labels and do not read it.
+   */
+  readonly wording?: WordingPackInput;
 }
 
 const OUTCOME_CHROME = "oi";
@@ -1796,7 +1808,7 @@ export async function renderEvidenceGraph(
       L0: root,
       L1: root,
       L2: root,
-      depth: "L2",
+      depth: options.depth ?? "L2",
       setChromeClass(name: string): void {
         if (name !== OUTCOME_CHROME)
           throw new Error(`unknown chrome class ${JSON.stringify(name)}`);
