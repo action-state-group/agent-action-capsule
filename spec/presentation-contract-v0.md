@@ -53,7 +53,7 @@ contract and is not described here beyond its manifest.
   countersignature results, the caller's countersigner source and the extension results.
 - **Verified**: the bundle passed the viewer's verification gate (graph closure, interval
   coverage, per-record membership proven or unbound, every record's identity, every disclosure
-  a match or withheld). Today this is `bundleVerified` in `ts/src/evidence-graph-view.ts`.
+  a match or withheld). Today this is `bundleVerified` in `ts/src/presentation-registry.ts`.
 - **Descriptor**: the resolution inputs derived from a context (section 4.2).
 - **Module**: a presentation, from a single panel to a whole report application, selected by
   its manifest.
@@ -105,8 +105,10 @@ interface PresentationModule<Model> {
 
   /** Pure and side-effect free. True exactly when buildModel(context) would
    *  produce a model. Called only on a verified context, and only after the
-   *  manifest matched (section 4.3). */
-  canRender(context: VerifiedBundleContext): boolean;
+   *  manifest matched (section 4.3). MAY be asynchronous: a module that must
+   *  build its model to decide (computing a digest is asynchronous) returns a
+   *  promise, and the runtime awaits it. */
+  canRender(context: VerifiedBundleContext): boolean | Promise<boolean>;
 
   /** Builds the module's model from verified content. Pure: no DOM, no
    *  network, no clock, no randomness. */
@@ -276,10 +278,11 @@ manifest that names it is rejected.
 | `fallback` | yes | `true` for a fallback, `false` for a specific module. |
 | `priority` | specific only | An integer ≥ 1. REQUIRED when `fallback` is `false`; MUST be absent when `fallback` is `true` (section 4.4). |
 | `executable` | trusted-executable only | `carrier` (`"core-runtime"` or `"module-slot"`); for `module-slot`, `script_sha256` and optional `style_sha256[]`; optional `wording_sha256`. |
-| `declarative` | declarative only | `renderer` (`"aac.declarative-renderer/v0"`), `wording_sha256`, `fields[]` (section 5.2). |
+| `declarative` | declarative only | `renderer` (`"aac.declarative-renderer/v0"`), `wording_sha256`, `fields[]`, each field reading the root's `agent_input` or, with `member: "agent_output"`, its `agent_output` (section 5.2). |
 
 A manifest carries no presentation words: no title, label or description. Words live in the
-wording pack (section 7.4). Unknown members are an error.
+wording pack (section 7.4); a module's human-readable name is its pack's reserved `module.title`
+entry. Unknown members are an error.
 
 **`id` is the module id.** A module and its manifest have one identity, and `id` is it: the
 registry keys modules by it, the ambiguity error and the refusal name it, and
@@ -341,6 +344,7 @@ those are separate inputs.
    **ambiguity error** naming every id in `S`. If `|S| = 1` and its module is refused, record
    the refusal and continue, calling no method of it. If `|S| = 1` and its module's
    `canRender(context)` is true, select it. If `|S| = 1` and `canRender` is false, continue.
+   (`canRender` may return a promise; "is true" means the value it resolves to.)
 4. **Fallback tier.** Let `F = { m ∈ C : m.fallback = true }`. If `|F| ≥ 2`, raise the
    ambiguity error naming every id in `F`. If `|F| = 1` and its module is refused, record the
    refusal and continue. If `|F| = 1` and its `canRender(context)` is true, select it.
@@ -361,9 +365,18 @@ be resolved, and MUST NOT show any module's content. On "no presentation", the h
 banner, a fixed notice that no presentation is available for this bundle, audience and format,
 and the core's verification section; no module content.
 
-If a selected module's `buildModel` or `render` throws, the host MUST discard everything that
-module wrote and show the refusal with the statement that the presentation failed. It MUST NOT
-fall through to another module: that would be first-wins by exception.
+A selected module can fail in two places, and they are handled differently (this rule
+records the reference runtime's behaviour and is pending ratification):
+
+- **`buildModel` throws** (or its promise rejects). The model is built before anything is
+  drawn, so the render itself fails: the runtime writes nothing to the page root and the error
+  reaches the caller, and a builder writes no page. A verified bundle whose model cannot be
+  built is a defect for the caller to see, not a page to show.
+- **`render` throws** (or its promise rejects). The host MUST discard everything that module
+  wrote and show the refusal with the statement that the presentation failed.
+
+In neither case does the runtime fall through to another module: that would be first-wins by
+exception.
 
 ### 4.4 Priority
 
@@ -433,8 +446,16 @@ A declarative module is a manifest and a wording pack. It contains no code. The 
 declarative renderer (`aac.declarative-renderer/v0`, part of the core runtime) interprets it.
 
 `declarative.fields[]` lists what to show. Each field names a `level` (`L0` or `L1`), a
-`source` (an RFC 6901 JSON Pointer into the root record's verified `agent_input`), a `kind`
-and a `label_key` (the wording key of its label):
+`source`, an optional `member`, a `kind` and a `label_key` (the wording key of its label):
+
+- `member` names the root record's payload the field reads: `agent_input` (the default, when
+  `member` is absent) or `agent_output`. A record keeps its inputs in one and its results in
+  the other, and a declarative module may show rows from either. No other member can be named.
+- `source` is an RFC 6901 JSON Pointer into that member's verified payload: the payload as the
+  context holds it when the verifier resolved that member of the root record as `disclosed`.
+  A `withheld` or mismatched member has no payload, so no source in it resolves.
+- A field's `member` applies to its whole `source`; the `columns[]` of a `rows` field carry no
+  `member` of their own, because their sources are relative to the row.
 
 | `kind` | What the renderer shows |
 |---|---|
@@ -445,9 +466,11 @@ and a `label_key` (the wording key of its label):
 | `rows` | An array of objects, one row each; `columns[]` uses the four kinds above, with sources relative to the row. |
 
 There is no free-text kind: a declarative module never displays prose taken from a payload.
-`canRender` for a declarative module is true exactly when every field's source resolves to a
-value of its kind in the verified root payload. L2 for a declarative module is the core's
-verification section alone.
+`canRender` for a declarative module is true exactly when, for every field, the root record's
+member the field names (`agent_input` when it names none) is `disclosed` in the context and the
+field's source resolves, in that member's payload, to a value of its kind. A field whose member
+is withheld or mismatched makes `canRender` false; the renderer never reads the other member in
+its place. L2 for a declarative module is the core's verification section alone.
 
 ## 6. The chrome rule
 
@@ -583,6 +606,20 @@ A wording pack is a JSON object (`$defs/WordingPack`):
 `entries` maps wording keys to non-empty strings. One pack is one locale; a translation is a
 different pack with a different `wording_sha256`.
 
+**Reserved keys.** Every other key is the module's own. Two keys have one meaning in every
+`aac.wording-pack/v0` pack, and a pack that carries either uses it only for that meaning:
+
+| Key | Meaning | Who reads it |
+|---|---|---|
+| `page.title` | The text of the page's `<title>` (`TITLE_SLOT`, section 9.2). | The builder, when it is given no title of its own; otherwise the shell's default title is used. |
+| `module.title` | The presentation's own human-readable name, as a list or choice UI shows it (for example a picker that offers the modules a registry lists for a bundle). | A host or tool that names the module to a person. |
+
+The two are distinct and neither stands in for the other: `page.title` names one page,
+`module.title` names the presentation that drew it. A tool that needs a module's name and finds
+no `module.title` shows the module `id`, never the `page.title`; a builder that finds no
+`page.title` never uses `module.title` for the page. Both are presentation words (section 7.3):
+neither ever comes from the bundle, and the manifest still carries no title (section 4.1).
+
 `wording_sha256` is the lowercase hex SHA-256 of the pack's **exact bytes as distributed**. The
 bytes are hashed as they are; a consumer MUST NOT re-serialize a pack before hashing it. A
 producer SHOULD distribute the JCS form of the pack, so that independent producers of the same
@@ -595,8 +632,9 @@ pack arrive at the same digest. A renderer MUST refuse a pack whose bytes do not
   the banner, the refusal and the core's verification checks, and nothing else from any module:
   no headline, no summary, no "what matters", no softened L0. The refusal's text is the core's:
   "This bundle did not verify. Its records, rows and payloads are not shown; the verification
-  page below lists which checks failed." An ambiguity error or a module failure (section 4.3)
-  collapses the same way.
+  page below lists which checks failed." An ambiguity error or a module's `render` failure
+  (section 4.3) collapses the same way; a `buildModel` failure rejects the render and draws
+  nothing (section 4.3).
 - **I2. Depth selects among verified content.** Every level shows only content from the
   verified context. Changing the depth opens or closes levels; it never adds content the
   context does not hold, never removes the banner or the refusal, and never hides a finding.
@@ -663,7 +701,7 @@ and in every format, so printing and I4 hold. On a failed bundle, L0 and L1 are 
 | Shell slot | Role in this contract |
 |---|---|
 | `CSP_SLOT` | The page policy. `script-src` lists the core runtime's pin and each module-slot module's `script_sha256`; `style-src` lists the inline theme, the core runtime's inserted stylesheets and each module's `style_sha256`. Pinning is enforcement. |
-| `TITLE_SLOT` | The page title: chrome. Filled by the builder from the selected module's wording pack or the `presentation/v1` title, HTML-escaped; never from a payload. |
+| `TITLE_SLOT` | The page title: chrome. Filled by the builder from its own title setting, else the wording pack's `page.title` (section 7.4), else the shell's default, HTML-escaped; never from a payload or a bundle-carried setting. |
 | `THEME_SLOT` | Theme tokens (`--aac-*` CSS custom properties). Presentation only (I3). |
 | `BUNDLE_SLOT` | The bundle, the page's only data. |
 | `CORE_RUNTIME_SLOT` | The verify core, the context, the registry, the built-in modules, the declarative renderer and the services. |
@@ -691,17 +729,22 @@ stylesheet owns the module's layout.
   schema negative is proven load-bearing by a mutant, the static and runtime ambiguity tests
   are run over the built-ins, the examples and an ambiguous pair, the built-in manifests are
   resolved over every descriptor the current viewer distinguishes and compared with today's
-  dispatch, and a module with an unsupported `presentation_api` is shown to be refused, reported
-  in the words of section 3.2 and never selected.
+  dispatch, a module with an unsupported `presentation_api` is shown to be refused, reported
+  in the words of section 3.2 and never selected, and the declarative source rule of section
+  5.2 (`member`, its default, and a member that is not `disclosed`) is modelled over in-memory
+  roots, with a mutant that ignores `member`.
 
 ## Appendix A. The built-in manifests
 
-Today `renderEvidenceGraph` (`ts/src/evidence-graph-view.ts`) dispatches in control flow:
-`report/v1` rows, then a Result root with `outcome-report/v1`, then a Result root with
-`eu-ai-act-compliance/v1` (read only when `outcome-report/v1` is absent), then the generic
+Before the registry, `renderEvidenceGraph` (`ts/src/evidence-graph-view.ts`) dispatched in
+control flow: `report/v1` rows, then a Result root with `outcome-report/v1`, then a Result root
+with `eu-ai-act-compliance/v1` (read only when `outcome-report/v1` is absent), then the generic
 Result page, then the `evaluation-summary/v1` graph, then the no-aggregate note. That gives
 five page shapes and one floor. They are expressed here as six manifests, five specific and one
-fallback; the files are in `schemas/examples/presentation-manifest-v0/`. All six have
+fallback; the files are in `schemas/examples/presentation-manifest-v0/`. The reference runtime
+now dispatches only through these manifests (`ts/src/builtin-manifests.ts`, compared with the
+files by `ts/test/builtin-manifests.test.ts`); the "today" of A.3 is that control flow, kept as
+the oracle the checker compares resolution with. All six have
 `trust_class: "trusted-executable"`, `executable.carrier: "core-runtime"`,
 `presentation_api: "aac.presentation-api/v0"`, `runtime_min: "0.1.0"`,
 `requires.bundle_kind: "evidence-bundle/v2"`, `audiences: ["*"]` and all three formats.
@@ -782,7 +825,16 @@ In `schemas/examples/presentation-manifest-v0/`, as one registry. Each declares
 - `example-generic-fallback.json` (`org.example.generic-view/v0`): a fallback with no profile.
 - `example-declarative-rules.json` (`org.example.rules-table/v0`): a declarative module that
   renders a count in L0 and a table of rules in L1, with words from
-  `example-wording-pack.json`, whose exact bytes hash to its `wording_sha256`.
+  `example-wording-pack.json`, whose exact bytes hash to its `wording_sha256`. Its fields name
+  no `member`, so they read the root's `agent_input`.
+- `example-declarative-outcome.json` (`org.example.rules-outcome/v0`): a declarative module for
+  a record that keeps its rows in `agent_output`. Its L0 shows a run identifier from
+  `agent_input` (no `member`) and a count from `agent_output`, and its L1 table reads its rows
+  from `agent_output` (`member: "agent_output"`), with words from
+  `example-wording-pack-outcome.json`.
+
+Both wording packs carry the two reserved keys of section 7.4, `page.title` and `module.title`,
+with different strings.
 
 Negatives, each rejected:
 
@@ -794,6 +846,7 @@ Negatives, each rejected:
 | `neg-presentation-v1-namespace.json` | schema: `spec_version: "presentation/v1"`. |
 | `neg-hint-wording-source.json` | schema: a declarative module naming the `presentation/v1` block as a wording source. The manifest has no such member: wording comes only from the pack `wording_sha256` binds (section 6). |
 | `neg-missing-presentation-api.json` | schema: no `presentation_api` (a malformed manifest, not a refused one). |
+| `neg-declarative-member.json` | schema: a declarative field whose `member` is `disclosures`; a field reads only `agent_input` or `agent_output` (section 5.2). |
 | `neg-unsupported-presentation-api.json` | the checker's resolution test: a schema-valid specific module declaring `aac.presentation-api/v99`, registered beside the examples into a runtime that implements only `aac.presentation-api/v0`. It is refused (`presentation_api_unsupported`); a descriptor it matches resolves to the generic fallback with the refusal in the result, and its extension's row reads exactly as section 3.2 words it. A resolver that ignores `presentation_api` would select it instead. |
 | `neg-ambiguous-pair/a.json`, `b.json` | the checker's resolution test: both are schema-valid specific modules (priorities 1 and 9) that one descriptor matches; the static test reports the pair and resolving it raises the ambiguity error. |
 
@@ -812,11 +865,27 @@ These are facts in the current code that this contract does not silently paper o
    did not verify. Section 6 permits header chrome; I1 forbids any module content. Whether
    producer-supplied chrome should appear above a refusal is left to a revision.
 5. The emitter accepts a module's stylesheet pins and lists them in `style-src`; the builder
-   does not yet check them against the manifest's `style_sha256` (section 5.1).
-6. The extension result type marks every extension uninterpreted; section 9.1's L2 requires the
-   interpretation status to be reported truthfully per extension.
+   does not yet pass a module-slot module's pins to the emitter, nor check them against the
+   manifest's `style_sha256` (section 5.1).
+6. Resolved in the reference runtime. The TypeScript extension result reports each extension
+   as `interpreted` (naming the viewer module that reads it, only when that module's own reader
+   accepts the block) or `uninterpreted`, with whether the bundle digest covered it, and the
+   verification section shows one row per extension with both (section 9.1). The Go, Python
+   and Rust bundle verifiers, which render no page, still report every extension
+   `uninterpreted`.
 7. Resolved. The per-extension rows of the verification section and the registry were
    separate changes; they are now joined. The reference runtime reports a refusal in the
    resolution result, as `data-presentation-refused` on the page root, and in the section 3.2
    wording: in the row of each extension the refused module requires, or, for a refused module
    that requires no extension, in a line after the rows.
+8. The reference runtime resolves twice: the page registry of this document, and a section
+   registry, by the same algorithm, for views that render beneath whichever page module was
+   selected. Its one built-in, `aac.builtin.composed/v0` (requires `composed/v1`), cannot be a
+   page manifest: one descriptor matches it together with each specific page manifest, so
+   section 4.5 would refuse it there. This document does not yet describe the section registry.
+9. The reference runtime's `PresentationServices` carry `details`, `badge` and `disclosure`;
+   the other services of section 3 are not implemented yet, and neither is the declarative
+   renderer (section 5.2): no declarative module can be rendered by it today.
+10. The reference runtime hands a module one element as `L0`, `L1` and `L2` alike: the built-in
+    modules predate the depth levels, and the core writes its verification section after them.
+    Section 9.1's separate regions are not yet created.

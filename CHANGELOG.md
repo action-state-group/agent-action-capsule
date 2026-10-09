@@ -108,6 +108,23 @@
   `runtime_min` and the runtime's declaration. The builder's core runtime type is renamed
   `CoreRuntimeScript` (it was `PresentationRuntime`, now the name of the runtime's ABI
   declaration). Default output is unchanged byte for byte.
+- Presentation contract revision 1 (`spec/presentation-contract-v0.md`,
+  `schemas/presentation-manifest-v0.json`):
+  - A declarative field may name `member`: `agent_input` (the default) or `agent_output`, so a
+    declarative module can show rows a record keeps in `agent_output`. `source` points into that
+    member's verified payload; a member that is not `disclosed` makes `canRender` false. New
+    fixtures: `example-declarative-outcome.json` (with its wording pack) and
+    `neg-declarative-member.json`; the checker models the source rule, with a mutant.
+  - `module.title` is reserved in `aac.wording-pack/v0`: the presentation's own name for list and
+    choice UIs, distinct from `page.title` (the page's `<title>`, which the builder reads). Both
+    reserved keys are documented in one table; both example packs carry them.
+  - `canRender` returns `boolean | Promise<boolean>`, as the reference runtime already types it.
+  - **Pending ratification:** a `buildModel` failure on a verified bundle rejects the render and
+    draws nothing (the reference runtime's behaviour); only a `render` failure shows the refusal.
+    The contract previously required the refusal for both.
+  - Appendix C brought up to date: extension interpretation status is now reported (item 6);
+    the section registry, the unimplemented services and declarative renderer, and the single
+    depth element are recorded. Appendix A and the `TITLE_SLOT` row describe the code as it is.
 ### Emitter (Go and TypeScript)
 - The HTML shell has named slots: `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`,
   `MODULE_SLOT` (zero or more digest-pinned scripts) and `BOOTSTRAP_SLOT`, plus `CSP_SLOT` for the
