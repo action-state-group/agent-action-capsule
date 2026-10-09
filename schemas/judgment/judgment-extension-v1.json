@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentactioncapsule.org/schemas/judgment/judgment-extension-v1.json",
+  "title": "Judgment extension v1 (PROVISIONAL)",
+  "description": "PROVISIONAL, held for ratification; not registered, not normative. Companion schema for the Agent Action Capsule judgment extension: a Capsule that records a judgment (by an AI judge or a human expert) over an evidence set. The extension adds only what the base profile lacks -- rubric_digest, rubric_version, judge_parameters_digest -- in one namespaced member at /model_attestation/compute_attestation/x-judgment-v1. Base fields keep their meaning: developer = the judge (model and version, or a non-identifying rater role label), compute_attestation.agent_output_digest = JSON-DIGEST of the judge's answer {verdict, rationale}, references[] = exactly one citation_purpose judged_from naming the evidence set by digest. The binding makes a judgment re-runnable, not reproducible: a verifier never re-runs a model; it recomputes digests from published preimages. The digest rules for rubric_digest and judge_parameters_digest stated in the $defs below are PROPOSED and UNRATIFIED (see vectors/judgment/README.md). The root validates a judgment Capsule as an overlay: it constrains only the members this extension relies on and leaves every other Capsule member to the base profile's own Class 1 checks.",
+  "$ref": "#/$defs/JudgmentCapsule",
+  "$defs": {
+    "HexDigest": {
+      "description": "Lowercase-hex SHA-256.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "JudgmentMember": {
+      "description": "The extension member, carried at /model_attestation/compute_attestation/x-judgment-v1. Closed: an extra member is a schema failure, so a later revision adds members by a new versioned member name, never silently.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rubric_digest", "rubric_version", "judge_parameters_digest"],
+      "properties": {
+        "rubric_digest": {
+          "description": "PROPOSED rule: JSON-DIGEST (lowercase-hex SHA-256 of UTF8(JCS(value)), no member filtering) of one published rubric document (RubricDocument). The digest covers the whole document value.",
+          "$ref": "#/$defs/HexDigest"
+        },
+        "rubric_version": {
+          "description": "The producer's human label for the rubric, verbatim. A label, never identity: two records with equal rubric_version and different rubric_digest were judged against two different rubrics.",
+          "type": "string",
+          "minLength": 1
+        },
+        "judge_parameters_digest": {
+          "description": "PROPOSED rule: JSON-DIGEST of the published judge-parameters object -- JudgeParameters for a model judge, ExpertProtocolParameters for a human expert. Excludes the judge's identity, which developer carries.",
+          "$ref": "#/$defs/HexDigest"
+        }
+      }
+    },
+    "Reference": {
+      "description": "A references[] entry: a CPB typed digest reference with a citation purpose. Digest is identity.",
+      "type": "object",
+      "required": ["type", "digest_alg", "digest"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" },
+        "citation_purpose": { "type": "string", "minLength": 1 }
+      }
+    },
+    "JudgedFromReference": {
+      "description": "Matches a references[] entry whose citation_purpose is judged_from (pending registration). The target is the evidence set the judgment was made from: a Capsule's capsule_id, an Evidence Bundle digest, or a composed/v1 composed digest.",
+      "type": "object",
+      "required": ["citation_purpose"],
+      "properties": { "citation_purpose": { "const": "judged_from" } }
+    },
+    "JudgmentCapsule": {
+      "description": "Overlay on an Agent Action Capsule carrying the judgment extension. Requires: developer; model_attestation.compute_attestation with agent_output_digest and the x-judgment-v1 member; references[] containing exactly one judged_from entry. Other Capsule members are not constrained here.",
+      "type": "object",
+      "required": ["developer", "model_attestation", "references"],
+      "properties": {
+        "developer": {
+          "description": "Base field. The judge: model identifier and version (for example model@version) for an AI judge, or a role or pseudonymous rater label for a human expert -- never a personal name or contact identifier.",
+          "type": "string",
+          "minLength": 1
+        },
+        "model_attestation": {
+          "type": "object",
+          "required": ["compute_attestation"],
+          "properties": {
+            "compute_attestation": {
+              "type": "object",
+              "required": ["agent_output_digest", "x-judgment-v1"],
+              "properties": {
+                "agent_output_digest": {
+                  "description": "Base field. JSON-DIGEST of the judge's answer object (JudgeAnswer).",
+                  "$ref": "#/$defs/HexDigest"
+                },
+                "x-judgment-v1": { "$ref": "#/$defs/JudgmentMember" }
+              }
+            }
+          }
+        },
+        "references": {
+          "description": "Exactly one judged_from entry. Other entries (for example calibrated_against, pending registration) are allowed.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/Reference" },
+          "contains": { "$ref": "#/$defs/JudgedFromReference" },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      }
+    },
+    "JudgeAnswer": {
+      "description": "Preimage of agent_output_digest. verdict uses the Evidence Contract's three-value vocabulary.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict"],
+      "properties": {
+        "verdict": { "enum": ["met", "not_met", "not_evaluable"] },
+        "rationale": { "type": "string" }
+      }
+    },
+    "RubricDocument": {
+      "description": "Preimage of rubric_digest: the rubric as published, digested whole. Content is producer-defined. When the judge reads reference text (a policy document), the rubric SHOULD carry policy_digest so that text is bound too. Floats are forbidden, as in every digest-bearing value.",
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "policy_digest": {
+          "description": "SHA-256 of the raw bytes of the reference text the judge reads.",
+          "$ref": "#/$defs/HexDigest"
+        }
+      }
+    },
+    "SamplingParams": {
+      "description": "Sampling parameters as sent to the judge model. Integers, strings and booleans only: no floats (a fractional temperature is a decimal string, or an integer in micros).",
+      "type": "object",
+      "additionalProperties": { "type": ["integer", "string", "boolean"] }
+    },
+    "JudgeParameters": {
+      "description": "Preimage of judge_parameters_digest for a model judge: everything about how the judge was asked, except the model (developer carries it). Inner *_digest members are SHA-256 of raw file bytes (prompt_digest, axes_digest) or JSON-DIGEST of a JSON value (instruction_template_digest).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instruction_template_digest", "prompt_digest", "axes_digest", "sampling_params"],
+      "properties": {
+        "instruction_template_digest": {
+          "description": "JSON-DIGEST of the instruction template object the judge code wraps around the rubric and the evidence.",
+          "$ref": "#/$defs/HexDigest"
+        },
+        "prompt_digest": {
+          "description": "SHA-256 of the raw bytes of the published judge prompt file.",
+          "$ref": "#/$defs/HexDigest"
+        },
+        "axes_digest": {
+          "description": "SHA-256 of the raw bytes of the published axes file.",
+          "$ref": "#/$defs/HexDigest"
+        },
+        "sampling_params": { "$ref": "#/$defs/SamplingParams" },
+        "min_confidence_micros": {
+          "description": "Confidence floor in micros (0..1000000) below which the judge's verdict is reported as not_evaluable.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "judge_batch": {
+          "description": "Number of cases sent to the judge in one request. Batching changes the request the model sees.",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "ExpertProtocolParameters": {
+      "description": "Preimage of judge_parameters_digest for a human expert: the rating protocol and the packet the rater was shown.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "packet_digest"],
+      "properties": {
+        "protocol": { "type": "string", "minLength": 1 },
+        "packet_digest": {
+          "description": "JSON-DIGEST of the packet shown to the rater.",
+          "$ref": "#/$defs/HexDigest"
+        }
+      }
+    }
+  }
+}

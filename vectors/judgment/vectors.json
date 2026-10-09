@@ -1,0 +1,500 @@
+{
+  "set": "aac-judgment-extension-v1",
+  "status": "PROVISIONAL: the judgment extension is held for ratification and not registered; the rubric_digest and judge_parameters_digest rules are proposed and unratified.",
+  "provenance": "spec-derived",
+  "schema": "schemas/judgment/judgment-extension-v1.json",
+  "member": "x-judgment-v1",
+  "member_pointer": "/model_attestation/compute_attestation/x-judgment-v1",
+  "digest_rules": {
+    "json_digest": "lowercase hex SHA-256 of UTF8(JCS(value)) (RFC 8785), no member filtering",
+    "rubric_digest": "json_digest(rubric)  [PROPOSED, UNRATIFIED]",
+    "judge_parameters_digest": "json_digest(judge_parameters): {instruction_template_digest, prompt_digest, axes_digest, sampling_params, min_confidence_micros?, judge_batch?} for a model judge; {protocol, packet_digest} for a human expert  [PROPOSED, UNRATIFIED]",
+    "agent_output_digest": "json_digest({verdict, rationale})",
+    "raw_file_digests": "prompt_digest, axes_digest, policy_digest: SHA-256 of the raw file bytes",
+    "capsule_id": "json_digest(capsule minus capsule_id)"
+  },
+  "raw_files": {
+    "policy.md": "# EXAMPLE-ORG refund policy\n\n1. A refund over 500.00 requires a supervisor approval reference.\n2. The agent states the refund amount to the customer before issuing it.\n",
+    "judge-prompt.md": "You are grading one recorded agent action against one rubric criterion.\nAnswer met, not_met or not_evaluable, and give a one-sentence rationale.\n",
+    "axes.json": "{\"axes\":[{\"id\":\"A1\",\"name\":\"policy adherence\"}]}\n"
+  },
+  "evidence": {
+    "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+    "format_version": "4",
+    "canonicalization_id": "jcs",
+    "action_id": "example-support-refund-0001",
+    "action_type": "fyi",
+    "operator": "EXAMPLE-ORG",
+    "developer": "example-support-agent@1.0",
+    "timestamp": "2026-10-01T09:00:00Z",
+    "assurance": {
+      "attestation_mode": "self_attested",
+      "effect_mode": "not_applicable",
+      "ledger_mode": "standalone"
+    },
+    "model_attestation": {
+      "compute_attestation": {
+        "agent_input_digest": "ebf39189c83310de5f190780f4172af1232e8dec98026bb75d07fe31c1d339e6",
+        "agent_output_digest": "4f24430cc37c757dfc2d196502ceb5f78c4ce265042af33bd9aea5f807c03327"
+      }
+    },
+    "capsule_id": "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea"
+  },
+  "count": 4,
+  "cases": [
+    {
+      "id": "pos-ai-judge",
+      "kind": "positive",
+      "description": "A model judge's judgment of one evidence Capsule, citing it with judged_from and citing the expert judgment over the same evidence with calibrated_against.",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "example-judgment-model-C1-0001",
+        "action_type": "fyi",
+        "operator": "EXAMPLE-ORG",
+        "developer": "example-judge-model@2026-09-15",
+        "timestamp": "2026-10-01T11:00:00Z",
+        "assurance": {
+          "attestation_mode": "self_attested",
+          "effect_mode": "not_applicable",
+          "ledger_mode": "standalone"
+        },
+        "model_attestation": {
+          "compute_attestation": {
+            "agent_output_digest": "b5a04d327f021eed980b2037dab05dc3501d28f7624390a6685fbdf52bc96e33",
+            "x-judgment-v1": {
+              "rubric_digest": "b9b8e1c49e145f847ca053e99e42a973aca374805ea6eb579b417cf1cbc038df",
+              "rubric_version": "1.2",
+              "judge_parameters_digest": "a7a20883853c17308a0fcab3200c2426a2275111910103bee4a8e5bce66e8c19"
+            }
+          }
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea",
+            "citation_purpose": "judged_from"
+          },
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "12d356caacb54e867a478ad19d6708b5e6d15b9e6a8b07d8169ca5b08c77edf6",
+            "citation_purpose": "calibrated_against"
+          }
+        ],
+        "capsule_id": "9fb7a104b1bb62ed605ad8c911f202d0c607f6c7fb5a206d37a7db9c1928c94b"
+      },
+      "preimages": {
+        "values": {
+          "rubric": {
+            "rubric_id": "org.example.refund-policy-adherence",
+            "criteria": [
+              {
+                "id": "C1",
+                "claim": "A refund over 500.00 carries a supervisor approval reference."
+              },
+              {
+                "id": "C2",
+                "claim": "The agent stated the refund amount before issuing it."
+              }
+            ],
+            "verdicts": [
+              "met",
+              "not_met",
+              "not_evaluable"
+            ],
+            "policy_digest": "588f66faa5ff26a06786f09dfa15d58946c4daf869511c2d300f572366877bde"
+          },
+          "judge_parameters": {
+            "instruction_template_digest": "374b69dffe600793e5ec404717f464f36721b8624803eaa7462acaf12b03c41d",
+            "prompt_digest": "7aff785c89c46976da8173abf354f3fe34904872920421a601ff9ff6e17420cf",
+            "axes_digest": "a81c839d374ca12329572815925aa251c369e82e22d7ea0a5dd3e32c4e4d5c58",
+            "sampling_params": {
+              "temperature": "0",
+              "max_output_tokens": 512,
+              "seed": 7
+            },
+            "min_confidence_micros": 700000,
+            "judge_batch": 1
+          },
+          "agent_output": {
+            "verdict": "met",
+            "rationale": "Approval reference present for a refund over 500.00."
+          },
+          "instruction_template": {
+            "template": "Criterion: {claim}\nEvidence: {evidence}\nAnswer with one option.",
+            "na_instructions": "Choose not_evaluable when the evidence does not bear on the criterion.",
+            "options": [
+              "met",
+              "not_met"
+            ],
+            "na_option": "not_evaluable"
+          }
+        },
+        "canonical": {
+          "rubric": "{\"criteria\":[{\"claim\":\"A refund over 500.00 carries a supervisor approval reference.\",\"id\":\"C1\"},{\"claim\":\"The agent stated the refund amount before issuing it.\",\"id\":\"C2\"}],\"policy_digest\":\"588f66faa5ff26a06786f09dfa15d58946c4daf869511c2d300f572366877bde\",\"rubric_id\":\"org.example.refund-policy-adherence\",\"verdicts\":[\"met\",\"not_met\",\"not_evaluable\"]}",
+          "judge_parameters": "{\"axes_digest\":\"a81c839d374ca12329572815925aa251c369e82e22d7ea0a5dd3e32c4e4d5c58\",\"instruction_template_digest\":\"374b69dffe600793e5ec404717f464f36721b8624803eaa7462acaf12b03c41d\",\"judge_batch\":1,\"min_confidence_micros\":700000,\"prompt_digest\":\"7aff785c89c46976da8173abf354f3fe34904872920421a601ff9ff6e17420cf\",\"sampling_params\":{\"max_output_tokens\":512,\"seed\":7,\"temperature\":\"0\"}}",
+          "agent_output": "{\"rationale\":\"Approval reference present for a refund over 500.00.\",\"verdict\":\"met\"}",
+          "instruction_template": "{\"na_instructions\":\"Choose not_evaluable when the evidence does not bear on the criterion.\",\"na_option\":\"not_evaluable\",\"options\":[\"met\",\"not_met\"],\"template\":\"Criterion: {claim}\\nEvidence: {evidence}\\nAnswer with one option.\"}"
+        }
+      },
+      "expect": {
+        "schema_valid": true,
+        "capsule_id": "9fb7a104b1bb62ed605ad8c911f202d0c607f6c7fb5a206d37a7db9c1928c94b",
+        "digests": {
+          "rubric_digest": "b9b8e1c49e145f847ca053e99e42a973aca374805ea6eb579b417cf1cbc038df",
+          "judge_parameters_digest": "a7a20883853c17308a0fcab3200c2426a2275111910103bee4a8e5bce66e8c19",
+          "agent_output_digest": "b5a04d327f021eed980b2037dab05dc3501d28f7624390a6685fbdf52bc96e33",
+          "judged_from": [
+            "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea"
+          ]
+        },
+        "inner_digests": {
+          "judge_parameters.instruction_template_digest": "json-digest of preimages.values.instruction_template",
+          "judge_parameters.prompt_digest": "sha256 of raw_files['judge-prompt.md']",
+          "judge_parameters.axes_digest": "sha256 of raw_files['axes.json']",
+          "rubric.policy_digest": "sha256 of raw_files['policy.md']"
+        },
+        "judged_from_target": "evidence.capsule_id",
+        "calibrated_against_target": "pos-human-expert capsule_id",
+        "result": "pass",
+        "findings": []
+      }
+    },
+    {
+      "id": "pos-human-expert",
+      "kind": "positive",
+      "description": "A human expert's judgment of the same evidence under the same rubric; judge_parameters covers the rating protocol and the packet shown to the rater.",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "example-judgment-expert-C1-0001",
+        "action_type": "fyi",
+        "operator": "EXAMPLE-ORG",
+        "developer": "human-expert/org.example.blind-review",
+        "timestamp": "2026-10-01T10:00:00Z",
+        "assurance": {
+          "attestation_mode": "self_attested",
+          "effect_mode": "not_applicable",
+          "ledger_mode": "standalone"
+        },
+        "model_attestation": {
+          "compute_attestation": {
+            "agent_output_digest": "672d65c194e19f5a84844e5f8c928fb667f9229580d5432af81ca2a14e025a38",
+            "x-judgment-v1": {
+              "rubric_digest": "b9b8e1c49e145f847ca053e99e42a973aca374805ea6eb579b417cf1cbc038df",
+              "rubric_version": "1.2",
+              "judge_parameters_digest": "c17f539a117be7cf1914b58db70e150773c605aa601b65444881182ead1cb9fc"
+            }
+          }
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea",
+            "citation_purpose": "judged_from"
+          }
+        ],
+        "capsule_id": "12d356caacb54e867a478ad19d6708b5e6d15b9e6a8b07d8169ca5b08c77edf6"
+      },
+      "preimages": {
+        "values": {
+          "rubric": {
+            "rubric_id": "org.example.refund-policy-adherence",
+            "criteria": [
+              {
+                "id": "C1",
+                "claim": "A refund over 500.00 carries a supervisor approval reference."
+              },
+              {
+                "id": "C2",
+                "claim": "The agent stated the refund amount before issuing it."
+              }
+            ],
+            "verdicts": [
+              "met",
+              "not_met",
+              "not_evaluable"
+            ],
+            "policy_digest": "588f66faa5ff26a06786f09dfa15d58946c4daf869511c2d300f572366877bde"
+          },
+          "judge_parameters": {
+            "protocol": "org.example.blind-review/1",
+            "packet_digest": "6521c8f1c1fcc37890bbc69d2972db99558dd0156a79d7adfda2528c685475d0"
+          },
+          "agent_output": {
+            "verdict": "met",
+            "rationale": "The refund carries approval reference SUP-EX-77."
+          },
+          "packet": {
+            "evidence": "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea",
+            "rubric_digest": "b9b8e1c49e145f847ca053e99e42a973aca374805ea6eb579b417cf1cbc038df",
+            "criterion": "C1",
+            "shown": [
+              "agent_input",
+              "agent_output"
+            ],
+            "model_verdict_shown": false
+          }
+        },
+        "canonical": {
+          "rubric": "{\"criteria\":[{\"claim\":\"A refund over 500.00 carries a supervisor approval reference.\",\"id\":\"C1\"},{\"claim\":\"The agent stated the refund amount before issuing it.\",\"id\":\"C2\"}],\"policy_digest\":\"588f66faa5ff26a06786f09dfa15d58946c4daf869511c2d300f572366877bde\",\"rubric_id\":\"org.example.refund-policy-adherence\",\"verdicts\":[\"met\",\"not_met\",\"not_evaluable\"]}",
+          "judge_parameters": "{\"packet_digest\":\"6521c8f1c1fcc37890bbc69d2972db99558dd0156a79d7adfda2528c685475d0\",\"protocol\":\"org.example.blind-review/1\"}",
+          "agent_output": "{\"rationale\":\"The refund carries approval reference SUP-EX-77.\",\"verdict\":\"met\"}",
+          "packet": "{\"criterion\":\"C1\",\"evidence\":\"e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea\",\"model_verdict_shown\":false,\"rubric_digest\":\"b9b8e1c49e145f847ca053e99e42a973aca374805ea6eb579b417cf1cbc038df\",\"shown\":[\"agent_input\",\"agent_output\"]}"
+        }
+      },
+      "expect": {
+        "schema_valid": true,
+        "capsule_id": "12d356caacb54e867a478ad19d6708b5e6d15b9e6a8b07d8169ca5b08c77edf6",
+        "digests": {
+          "rubric_digest": "b9b8e1c49e145f847ca053e99e42a973aca374805ea6eb579b417cf1cbc038df",
+          "judge_parameters_digest": "c17f539a117be7cf1914b58db70e150773c605aa601b65444881182ead1cb9fc",
+          "agent_output_digest": "672d65c194e19f5a84844e5f8c928fb667f9229580d5432af81ca2a14e025a38",
+          "judged_from": [
+            "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea"
+          ]
+        },
+        "inner_digests": {
+          "judge_parameters.packet_digest": "json-digest of preimages.values.packet",
+          "rubric.policy_digest": "sha256 of raw_files['policy.md']"
+        },
+        "judged_from_target": "evidence.capsule_id",
+        "same_as_pos_ai_judge": [
+          "rubric_digest",
+          "judged_from"
+        ],
+        "result": "pass",
+        "findings": []
+      }
+    },
+    {
+      "id": "neg-judge-parameters-digest-mismatch",
+      "kind": "negative",
+      "description": "Schema-valid and Class 1 valid, but judge_parameters_digest does not recompute from the published judge parameters: it was computed over temperature \"1\", the published parameters say \"0\".",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "example-judgment-model-C1-0002",
+        "action_type": "fyi",
+        "operator": "EXAMPLE-ORG",
+        "developer": "example-judge-model@2026-09-15",
+        "timestamp": "2026-10-01T11:00:00Z",
+        "assurance": {
+          "attestation_mode": "self_attested",
+          "effect_mode": "not_applicable",
+          "ledger_mode": "standalone"
+        },
+        "model_attestation": {
+          "compute_attestation": {
+            "agent_output_digest": "b5a04d327f021eed980b2037dab05dc3501d28f7624390a6685fbdf52bc96e33",
+            "x-judgment-v1": {
+              "rubric_digest": "b9b8e1c49e145f847ca053e99e42a973aca374805ea6eb579b417cf1cbc038df",
+              "rubric_version": "1.2",
+              "judge_parameters_digest": "6c0ccf1e31922375dc0b4f52fd4285728407de092de63c002a96b2fcb4c4e89f"
+            }
+          }
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea",
+            "citation_purpose": "judged_from"
+          }
+        ],
+        "capsule_id": "fe111e975af5707fb8ac9633d2b9b6da22e9af08dd77c4fceabe102209c85bbb"
+      },
+      "preimages": {
+        "values": {
+          "rubric": {
+            "rubric_id": "org.example.refund-policy-adherence",
+            "criteria": [
+              {
+                "id": "C1",
+                "claim": "A refund over 500.00 carries a supervisor approval reference."
+              },
+              {
+                "id": "C2",
+                "claim": "The agent stated the refund amount before issuing it."
+              }
+            ],
+            "verdicts": [
+              "met",
+              "not_met",
+              "not_evaluable"
+            ],
+            "policy_digest": "588f66faa5ff26a06786f09dfa15d58946c4daf869511c2d300f572366877bde"
+          },
+          "judge_parameters": {
+            "instruction_template_digest": "374b69dffe600793e5ec404717f464f36721b8624803eaa7462acaf12b03c41d",
+            "prompt_digest": "7aff785c89c46976da8173abf354f3fe34904872920421a601ff9ff6e17420cf",
+            "axes_digest": "a81c839d374ca12329572815925aa251c369e82e22d7ea0a5dd3e32c4e4d5c58",
+            "sampling_params": {
+              "temperature": "0",
+              "max_output_tokens": 512,
+              "seed": 7
+            },
+            "min_confidence_micros": 700000,
+            "judge_batch": 1
+          },
+          "agent_output": {
+            "verdict": "met",
+            "rationale": "Approval reference present for a refund over 500.00."
+          },
+          "instruction_template": {
+            "template": "Criterion: {claim}\nEvidence: {evidence}\nAnswer with one option.",
+            "na_instructions": "Choose not_evaluable when the evidence does not bear on the criterion.",
+            "options": [
+              "met",
+              "not_met"
+            ],
+            "na_option": "not_evaluable"
+          }
+        },
+        "canonical": {
+          "rubric": "{\"criteria\":[{\"claim\":\"A refund over 500.00 carries a supervisor approval reference.\",\"id\":\"C1\"},{\"claim\":\"The agent stated the refund amount before issuing it.\",\"id\":\"C2\"}],\"policy_digest\":\"588f66faa5ff26a06786f09dfa15d58946c4daf869511c2d300f572366877bde\",\"rubric_id\":\"org.example.refund-policy-adherence\",\"verdicts\":[\"met\",\"not_met\",\"not_evaluable\"]}",
+          "judge_parameters": "{\"axes_digest\":\"a81c839d374ca12329572815925aa251c369e82e22d7ea0a5dd3e32c4e4d5c58\",\"instruction_template_digest\":\"374b69dffe600793e5ec404717f464f36721b8624803eaa7462acaf12b03c41d\",\"judge_batch\":1,\"min_confidence_micros\":700000,\"prompt_digest\":\"7aff785c89c46976da8173abf354f3fe34904872920421a601ff9ff6e17420cf\",\"sampling_params\":{\"max_output_tokens\":512,\"seed\":7,\"temperature\":\"0\"}}",
+          "agent_output": "{\"rationale\":\"Approval reference present for a refund over 500.00.\",\"verdict\":\"met\"}",
+          "instruction_template": "{\"na_instructions\":\"Choose not_evaluable when the evidence does not bear on the criterion.\",\"na_option\":\"not_evaluable\",\"options\":[\"met\",\"not_met\"],\"template\":\"Criterion: {claim}\\nEvidence: {evidence}\\nAnswer with one option.\"}"
+        }
+      },
+      "expect": {
+        "schema_valid": true,
+        "capsule_id": "fe111e975af5707fb8ac9633d2b9b6da22e9af08dd77c4fceabe102209c85bbb",
+        "digests": {
+          "rubric_digest": "b9b8e1c49e145f847ca053e99e42a973aca374805ea6eb579b417cf1cbc038df",
+          "judge_parameters_digest": "6c0ccf1e31922375dc0b4f52fd4285728407de092de63c002a96b2fcb4c4e89f",
+          "agent_output_digest": "b5a04d327f021eed980b2037dab05dc3501d28f7624390a6685fbdf52bc96e33",
+          "judged_from": [
+            "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea"
+          ]
+        },
+        "recomputed_judge_parameters_digest": "a7a20883853c17308a0fcab3200c2426a2275111910103bee4a8e5bce66e8c19",
+        "result": "fail",
+        "findings": [
+          {
+            "code": "judge_parameters_digest_mismatch",
+            "pointer": "/model_attestation/compute_attestation/x-judgment-v1/judge_parameters_digest"
+          }
+        ]
+      }
+    },
+    {
+      "id": "neg-missing-rubric-version",
+      "kind": "negative",
+      "description": "The extension member lacks the required rubric_version. The digests recompute; the schema rejects the member.",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "example-judgment-model-C1-0003",
+        "action_type": "fyi",
+        "operator": "EXAMPLE-ORG",
+        "developer": "example-judge-model@2026-09-15",
+        "timestamp": "2026-10-01T11:00:00Z",
+        "assurance": {
+          "attestation_mode": "self_attested",
+          "effect_mode": "not_applicable",
+          "ledger_mode": "standalone"
+        },
+        "model_attestation": {
+          "compute_attestation": {
+            "agent_output_digest": "b5a04d327f021eed980b2037dab05dc3501d28f7624390a6685fbdf52bc96e33",
+            "x-judgment-v1": {
+              "rubric_digest": "b9b8e1c49e145f847ca053e99e42a973aca374805ea6eb579b417cf1cbc038df",
+              "judge_parameters_digest": "a7a20883853c17308a0fcab3200c2426a2275111910103bee4a8e5bce66e8c19"
+            }
+          }
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea",
+            "citation_purpose": "judged_from"
+          }
+        ],
+        "capsule_id": "9309cb2201223954a502c741041a31bf2bc5c7dc52f57bb5242e4261a2d77cae"
+      },
+      "preimages": {
+        "values": {
+          "rubric": {
+            "rubric_id": "org.example.refund-policy-adherence",
+            "criteria": [
+              {
+                "id": "C1",
+                "claim": "A refund over 500.00 carries a supervisor approval reference."
+              },
+              {
+                "id": "C2",
+                "claim": "The agent stated the refund amount before issuing it."
+              }
+            ],
+            "verdicts": [
+              "met",
+              "not_met",
+              "not_evaluable"
+            ],
+            "policy_digest": "588f66faa5ff26a06786f09dfa15d58946c4daf869511c2d300f572366877bde"
+          },
+          "judge_parameters": {
+            "instruction_template_digest": "374b69dffe600793e5ec404717f464f36721b8624803eaa7462acaf12b03c41d",
+            "prompt_digest": "7aff785c89c46976da8173abf354f3fe34904872920421a601ff9ff6e17420cf",
+            "axes_digest": "a81c839d374ca12329572815925aa251c369e82e22d7ea0a5dd3e32c4e4d5c58",
+            "sampling_params": {
+              "temperature": "0",
+              "max_output_tokens": 512,
+              "seed": 7
+            },
+            "min_confidence_micros": 700000,
+            "judge_batch": 1
+          },
+          "agent_output": {
+            "verdict": "met",
+            "rationale": "Approval reference present for a refund over 500.00."
+          },
+          "instruction_template": {
+            "template": "Criterion: {claim}\nEvidence: {evidence}\nAnswer with one option.",
+            "na_instructions": "Choose not_evaluable when the evidence does not bear on the criterion.",
+            "options": [
+              "met",
+              "not_met"
+            ],
+            "na_option": "not_evaluable"
+          }
+        },
+        "canonical": {
+          "rubric": "{\"criteria\":[{\"claim\":\"A refund over 500.00 carries a supervisor approval reference.\",\"id\":\"C1\"},{\"claim\":\"The agent stated the refund amount before issuing it.\",\"id\":\"C2\"}],\"policy_digest\":\"588f66faa5ff26a06786f09dfa15d58946c4daf869511c2d300f572366877bde\",\"rubric_id\":\"org.example.refund-policy-adherence\",\"verdicts\":[\"met\",\"not_met\",\"not_evaluable\"]}",
+          "judge_parameters": "{\"axes_digest\":\"a81c839d374ca12329572815925aa251c369e82e22d7ea0a5dd3e32c4e4d5c58\",\"instruction_template_digest\":\"374b69dffe600793e5ec404717f464f36721b8624803eaa7462acaf12b03c41d\",\"judge_batch\":1,\"min_confidence_micros\":700000,\"prompt_digest\":\"7aff785c89c46976da8173abf354f3fe34904872920421a601ff9ff6e17420cf\",\"sampling_params\":{\"max_output_tokens\":512,\"seed\":7,\"temperature\":\"0\"}}",
+          "agent_output": "{\"rationale\":\"Approval reference present for a refund over 500.00.\",\"verdict\":\"met\"}",
+          "instruction_template": "{\"na_instructions\":\"Choose not_evaluable when the evidence does not bear on the criterion.\",\"na_option\":\"not_evaluable\",\"options\":[\"met\",\"not_met\"],\"template\":\"Criterion: {claim}\\nEvidence: {evidence}\\nAnswer with one option.\"}"
+        }
+      },
+      "expect": {
+        "schema_valid": false,
+        "capsule_id": "9309cb2201223954a502c741041a31bf2bc5c7dc52f57bb5242e4261a2d77cae",
+        "digests": {
+          "rubric_digest": "b9b8e1c49e145f847ca053e99e42a973aca374805ea6eb579b417cf1cbc038df",
+          "judge_parameters_digest": "a7a20883853c17308a0fcab3200c2426a2275111910103bee4a8e5bce66e8c19",
+          "agent_output_digest": "b5a04d327f021eed980b2037dab05dc3501d28f7624390a6685fbdf52bc96e33",
+          "judged_from": [
+            "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea"
+          ]
+        },
+        "result": "fail",
+        "findings": [
+          {
+            "code": "schema_required_member_missing",
+            "pointer": "/model_attestation/compute_attestation/x-judgment-v1/rubric_version"
+          }
+        ]
+      }
+    }
+  ]
+}

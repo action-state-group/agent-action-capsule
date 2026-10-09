@@ -31,6 +31,11 @@ same-commit files in CI.
   `sd-jwt-issuers/v1` Bundle extensions, and the `minimum_necessary_report/1`
   result shape, over one worked example;
   `python/scripts/generate_min_necessary_vectors.py` regenerates them.
+- `judgment/`: PROVISIONAL judgment extension cases (the `x-judgment-v1`
+  Capsule member: `rubric_digest`, `rubric_version`, `judge_parameters_digest`,
+  schema `schemas/judgment/judgment-extension-v1.json`). The digest rules are
+  proposed and unratified;
+  `python/scripts/generate_judgment_extension_vectors.py` regenerates them.
 
 Reference-derived corpora and checksum manifests can be regenerated with:
 

@@ -15,6 +15,7 @@ on:
       - "schemas/**"
       - "vectors/evidence-result/**"
       - "vectors/judge/**"
+      - "vectors/judgment/**"
       - "python/agent_action_capsule/canonical.py"
       - ".github/workflows/schemas.yml"
   pull_request:
@@ -22,6 +23,7 @@ on:
       - "schemas/**"
       - "vectors/evidence-result/**"
       - "vectors/judge/**"
+      - "vectors/judgment/**"
       - "python/agent_action_capsule/canonical.py"
       - ".github/workflows/schemas.yml"
 
@@ -57,3 +59,6 @@ jobs:
 
       - name: Judge record family fixtures
         run: python3 schemas/check_judge_record_examples.py
+
+      - name: Judgment extension fixtures (provisional)
+        run: python3 schemas/check_judgment_extension_examples.py
