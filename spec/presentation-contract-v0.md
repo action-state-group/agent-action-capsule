@@ -816,7 +816,8 @@ These are facts in the current code that this contract does not silently paper o
    stylesheet.
 6. The extension result type marks every extension uninterpreted; section 9.1's L2 requires the
    interpretation status to be reported truthfully per extension.
-7. The per-extension rows of the verification section and the registry are separate changes
-   that have not yet met in one code line. Until they do, the reference runtime reports a
-   refusal in the resolution result and as `data-presentation-refused` on the page root, and the
-   extension-row wording of section 3.2 lands when the two are joined.
+7. Resolved. The per-extension rows of the verification section and the registry were
+   separate changes; they are now joined. The reference runtime reports a refusal in the
+   resolution result, as `data-presentation-refused` on the page root, and in the section 3.2
+   wording: in the row of each extension the refused module requires, or, for a refused module
+   that requires no extension, in a line after the rows.
