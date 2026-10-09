@@ -18,6 +18,8 @@ import {
 } from "../src/evidence-graph-view.js";
 import {
   describeContext,
+  presentationRefusalLine,
+  presentationRefusalRow,
   PresentationAmbiguityError,
   PresentationRegistrationError,
   PresentationRegistry,
@@ -25,6 +27,7 @@ import {
   type PresentationManifest,
   type PresentationModule,
   type PresentationResolver,
+  REFERENCE_PRESENTATION_RUNTIME,
 } from "../src/presentation-registry.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
@@ -59,6 +62,8 @@ function manifest(overrides: Partial<Obj> = {}): PresentationManifest {
   return {
     spec_version: "aac.presentation-manifest/v0",
     id: "org.example.view/v0",
+    presentation_api: "aac.presentation-api/v0",
+    runtime_min: "0.1.0",
     trust_class: "trusted-executable",
     requires: {
       bundle_kind: "evidence-bundle/v2",
@@ -199,8 +204,9 @@ describe("registration (spec section 4.5)", () => {
 
   it("does not call disjoint audiences or formats ambiguous", () => {
     const registry = new PresentationRegistry();
-    const add = (id: string, audiences: string[], formats: string[]): void =>
+    const add = (id: string, audiences: string[], formats: string[]): void => {
       registry.register(spyModule(manifest({ id, audiences, formats })).module);
+    };
     add("org.example.a/v0", ["owner"], ["html"]);
     add("org.example.b/v0", ["counterparty"], ["html"]);
     add("org.example.c/v0", ["*"], ["embedded"]);
@@ -216,6 +222,10 @@ describe("registration (spec section 4.5)", () => {
     ["a specific module with no priority", { priority: undefined }],
     ["the presentation/v1 namespace", { spec_version: "presentation/v1" }],
     ["no id", { id: undefined }],
+    ["no presentation_api", { presentation_api: undefined }],
+    ["a malformed presentation_api", { presentation_api: "v0" }],
+    ["no runtime_min", { runtime_min: undefined }],
+    ["a malformed runtime_min", { runtime_min: "1.0" }],
     ["a malformed id", { id: "Example View" }],
     ["no formats", { formats: [] }],
     [
@@ -481,4 +491,147 @@ it("renderEvidenceGraph has no payload-specific branch: the page shape comes fro
   ])
     expect(body, banned).not.toContain(banned);
   expect(body).toContain("registry.resolve(");
+});
+
+describe("the presentation ABI (spec section 3.2)", () => {
+  const UNSUPPORTED = "aac.presentation-api/v99";
+
+  it("the reference runtime implements exactly aac.presentation-api/v0 at 0.1.0, and every built-in declares it", () => {
+    expect(REFERENCE_PRESENTATION_RUNTIME).toEqual({
+      presentationApis: ["aac.presentation-api/v0"],
+      runtimeVersion: "0.1.0",
+    });
+    for (const m of BUILTIN_MANIFESTS) {
+      expect(m.presentation_api).toBe("aac.presentation-api/v0");
+      expect(m.runtime_min).toBe("0.1.0");
+    }
+    expect(createPresentationRegistry().refused()).toEqual([]);
+  });
+
+  it("refuses a module whose presentation_api the runtime does not implement, and says so", async () => {
+    const future = spyModule(
+      manifest({ id: "org.example.future/v1", presentation_api: UNSUPPORTED }),
+    );
+    const registry = createPresentationRegistry();
+    const registration = registry.register(future.module);
+    const refusal = {
+      id: "org.example.future/v1",
+      presentation_api: UNSUPPORTED,
+      runtime_min: "0.1.0",
+      reason: "presentation_api_unsupported",
+      extensions: ["producer-key/v1"],
+      runtimeVersion: "0.1.0",
+    };
+    expect(registration).toEqual({ status: "refused", refusal });
+    expect(registry.list().map((m) => m.manifest.id)).not.toContain(
+      "org.example.future/v1",
+    );
+    expect(registry.refused()).toEqual([refusal]);
+
+    // Resolution: not selected, never called, and not silent -- the
+    // fallback renders WITH the refusal in the result.
+    const context = await buildVerifiedBundleContext(producerKeyBundle());
+    const resolution = await registry.resolve(context, "*", "html");
+    expect(resolution.kind).toBe("module");
+    if (resolution.kind !== "module") throw new Error("unreachable");
+    expect(resolution.module.manifest.id).toBe(
+      BUILTIN_MANIFEST_NO_AGGREGATE.id,
+    );
+    expect(resolution.refused).toEqual([refusal]);
+    expect(future.calls).toEqual([]);
+
+    // The page names it.
+    const root = await render(producerKeyBundle(), registry);
+    expect(root.dataset.presentationRefused).toBe("org.example.future/v1");
+    expect(future.calls).toEqual([]);
+
+    // The words of the contract, exactly.
+    expect(presentationRefusalRow(resolution.refused[0]!, true)).toBe(
+      "Integrity verified; meaning not interpreted: presentation module org.example.future/v1 needs presentation API aac.presentation-api/v99, which this viewer does not implement",
+    );
+    expect(presentationRefusalRow(resolution.refused[0]!, false)).toBe(
+      "Integrity not verified; meaning not interpreted: presentation module org.example.future/v1 needs presentation API aac.presentation-api/v99, which this viewer does not implement",
+    );
+    expect(presentationRefusalLine(resolution.refused[0]!)).toBe(
+      "Presentation module org.example.future/v1 was not used: it needs presentation API aac.presentation-api/v99, which this viewer does not implement",
+    );
+  });
+
+  it("the same module on a supported API is selected: the refusal is the API's doing", async () => {
+    const current = spyModule(manifest({ id: "org.example.future/v1" }));
+    const registry = createPresentationRegistry();
+    expect(registry.register(current.module)).toEqual({ status: "registered" });
+    const root = await render(producerKeyBundle(), registry);
+    expect(root.querySelector("[data-test-module]")?.textContent).toBe(
+      "module org.example.future/v1",
+    );
+    expect(root.dataset.presentationRefused).toBeUndefined();
+  });
+
+  it("refuses a module whose runtime_min the runtime does not meet", async () => {
+    const newer = spyModule(
+      manifest({ id: "org.example.newer/v0", runtime_min: "0.2.0" }),
+    );
+    const registry = createPresentationRegistry();
+    const registration = registry.register(newer.module);
+    expect(registration).toMatchObject({
+      status: "refused",
+      refusal: { reason: "runtime_too_old", runtime_min: "0.2.0" },
+    });
+    if (registration.status !== "refused") throw new Error("unreachable");
+    expect(presentationRefusalLine(registration.refusal)).toBe(
+      "Presentation module org.example.newer/v0 was not used: it needs runtime 0.2.0 or later; this viewer is 0.1.0",
+    );
+    const root = await render(producerKeyBundle(), registry);
+    expect(root.dataset.presentationRefused).toBe("org.example.newer/v0");
+    expect(newer.calls).toEqual([]);
+
+    // A runtime at 0.2.0 implementing the same API accepts it.
+    const later = new PresentationRegistry({
+      presentationApis: ["aac.presentation-api/v0"],
+      runtimeVersion: "0.2.0",
+    });
+    expect(later.register(newer.module)).toEqual({ status: "registered" });
+  });
+
+  it("a refused module still counts for ambiguity, so nothing silently takes its place", () => {
+    const registry = new PresentationRegistry();
+    registry.register(
+      spyModule(
+        manifest({
+          id: "org.example.future/v1",
+          presentation_api: UNSUPPORTED,
+        }),
+      ).module,
+    );
+    expect(() =>
+      registry.register(
+        spyModule(manifest({ id: "org.example.stand-in/v0" })).module,
+      ),
+    ).toThrow(PresentationAmbiguityError);
+  });
+
+  it("a runtime that implements none of the built-ins' API refuses all six and renders no module", async () => {
+    const registry = new PresentationRegistry({
+      presentationApis: ["aac.presentation-api/v1"],
+      runtimeVersion: "1.0.0",
+    });
+    for (const module of BUILTIN_PRESENTATIONS)
+      expect(registry.register(module).status).toBe("refused");
+    expect(registry.list()).toEqual([]);
+    const context = await buildVerifiedBundleContext(producerKeyBundle());
+    const resolution = await registry.resolve(context, "*", "html");
+    expect(resolution).toMatchObject({ kind: "no-presentation" });
+    if (resolution.kind !== "no-presentation") throw new Error("unreachable");
+    expect(resolution.refused.map((r) => r.id)).toEqual([
+      BUILTIN_MANIFEST_NO_AGGREGATE.id,
+    ]);
+    const root = await render(producerKeyBundle(), registry);
+    expect(root.dataset.presentationRefused).toBe(
+      BUILTIN_MANIFEST_NO_AGGREGATE.id,
+    );
+    expect(
+      root.querySelector('[data-notice="no-presentation"]'),
+    ).not.toBeNull();
+  });
 });

@@ -55,6 +55,7 @@ import {
   type PresentationFormat,
   type PresentationHost,
   type PresentationModule,
+  type PresentationRegistration,
   type PresentationResolution,
   type PresentationResolver,
   type PresentationServices,
@@ -1540,11 +1541,16 @@ const defaultRegistry = createPresentationRegistry();
 
 /**
  * Register a module with the registry `renderEvidenceGraph` uses by default
- * (the module-slot entry point). Refused when its manifest is malformed,
+ * (the module-slot entry point). Throws when its manifest is malformed,
  * dead, a duplicate, or co-matchable with a registered module of its tier.
+ * A module whose `presentation_api` this runtime does not implement (or
+ * whose `runtime_min` it does not meet) is registered as refused: it is
+ * never selected, and every page it would have rendered names it.
  */
-export function registerPresentation(module: PresentationModule): void {
-  defaultRegistry.register(module);
+export function registerPresentation(
+  module: PresentationModule,
+): PresentationRegistration {
+  return defaultRegistry.register(module);
 }
 
 /** Resolve over the default registry (spec section 4.3). */
@@ -1660,9 +1666,19 @@ export async function renderEvidenceGraph(
     );
   } catch (err) {
     if (!(err instanceof PresentationAmbiguityError)) throw err;
-    resolution = { kind: "no-presentation" };
+    resolution = { kind: "no-presentation", refused: [] };
     refusal = "presentation-unresolved";
   }
+  // A module this runtime refused (spec section 3.2) is never silent: the
+  // page root names every one that matched. The extension-row wording of the
+  // contract (presentationRefusalRow / presentationRefusalLine) is drawn
+  // where the per-extension rows are rendered; until those rows are on this
+  // code line, this attribute and the resolution result carry the refusal.
+  const refusedIds =
+    resolution.kind === "refusal"
+      ? []
+      : resolution.refused.map((refused) => refused.id);
+
   if (resolution.kind === "refusal" && verified)
     throw new Error("resolver refused a bundle that verified");
   if (resolution.kind === "module" && !verified)
@@ -1686,6 +1702,9 @@ export async function renderEvidenceGraph(
     return renderVerificationBanner(root, verified, coverage);
   };
   let banner = drawFrame();
+  if (refusedIds.length > 0)
+    root.dataset.presentationRefused = refusedIds.join(" ");
+  else delete root.dataset.presentationRefused;
   let chrome: string | undefined;
   if (selected !== undefined) {
     const host: PresentationHost = {

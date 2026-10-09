@@ -48,6 +48,17 @@
   `createPresentationRegistry`, `registerPresentation`, `resolvePresentation` and
   `describeContext` are new. Registration refuses two same-tier manifests one descriptor could
   match; a tie is an error, never first-wins. Rendered output is byte-identical for every fixture.
+- TypeScript: the presentation registry applies the presentation ABI. A `PresentationRegistry`
+  takes the runtime's declaration (`REFERENCE_PRESENTATION_RUNTIME`: `aac.presentation-api/v0`,
+  runtime 0.1.0); every manifest, the six built-ins included, carries `presentation_api` and
+  `runtime_min`. A manifest missing either is malformed and throws at registration. A module whose
+  `presentation_api` the runtime does not implement, or whose `runtime_min` it does not meet, is
+  registered as refused (`register` returns the outcome; `refused()` lists them): never selected,
+  none of its methods called, still counted for ambiguity, and every resolution it matches
+  carries it in `refused`. `renderEvidenceGraph` names refused modules in
+  `data-presentation-refused` on the page root; `presentationRefusalRow` and
+  `presentationRefusalLine` give the contract's exact words for the verification page. Rendered
+  output is byte-identical for every fixture.
 ### Emitter (Go and TypeScript)
 - The HTML shell has named slots: `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`,
   `MODULE_SLOT` (zero or more digest-pinned scripts) and `BOOTSTRAP_SLOT`, plus `CSP_SLOT` for the

@@ -19,6 +19,8 @@ export const BUILTIN_MANIFEST_REPORT_ROWS: PresentationManifest = Object.freeze(
   {
     spec_version: "aac.presentation-manifest/v0",
     id: "aac.builtin.report-rows/v0",
+    presentation_api: "aac.presentation-api/v0",
+    runtime_min: "0.1.0",
     trust_class: "trusted-executable",
     requires: {
       bundle_kind: "evidence-bundle/v2",
@@ -36,6 +38,8 @@ export const BUILTIN_MANIFEST_RESULT_OUTCOME_REPORT: PresentationManifest =
   Object.freeze({
     spec_version: "aac.presentation-manifest/v0",
     id: "aac.builtin.result-outcome-report/v0",
+    presentation_api: "aac.presentation-api/v0",
+    runtime_min: "0.1.0",
     trust_class: "trusted-executable",
     requires: {
       bundle_kind: "evidence-bundle/v2",
@@ -54,6 +58,8 @@ export const BUILTIN_MANIFEST_RESULT_COMPLIANCE: PresentationManifest =
   Object.freeze({
     spec_version: "aac.presentation-manifest/v0",
     id: "aac.builtin.result-compliance/v0",
+    presentation_api: "aac.presentation-api/v0",
+    runtime_min: "0.1.0",
     trust_class: "trusted-executable",
     requires: {
       bundle_kind: "evidence-bundle/v2",
@@ -74,6 +80,8 @@ export const BUILTIN_MANIFEST_RESULT_COMPLIANCE: PresentationManifest =
 export const BUILTIN_MANIFEST_RESULT: PresentationManifest = Object.freeze({
   spec_version: "aac.presentation-manifest/v0",
   id: "aac.builtin.result/v0",
+  presentation_api: "aac.presentation-api/v0",
+  runtime_min: "0.1.0",
   trust_class: "trusted-executable",
   requires: {
     bundle_kind: "evidence-bundle/v2",
@@ -94,6 +102,8 @@ export const BUILTIN_MANIFEST_EVALUATION_SUMMARY_GRAPH: PresentationManifest =
   Object.freeze({
     spec_version: "aac.presentation-manifest/v0",
     id: "aac.builtin.evaluation-summary-graph/v0",
+    presentation_api: "aac.presentation-api/v0",
+    runtime_min: "0.1.0",
     trust_class: "trusted-executable",
     requires: {
       bundle_kind: "evidence-bundle/v2",
@@ -111,6 +121,8 @@ export const BUILTIN_MANIFEST_NO_AGGREGATE: PresentationManifest =
   Object.freeze({
     spec_version: "aac.presentation-manifest/v0",
     id: "aac.builtin.no-aggregate/v0",
+    presentation_api: "aac.presentation-api/v0",
+    runtime_min: "0.1.0",
     trust_class: "trusted-executable",
     requires: { bundle_kind: "evidence-bundle/v2" },
     audiences: ["*"],

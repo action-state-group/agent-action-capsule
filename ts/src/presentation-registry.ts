@@ -19,9 +19,35 @@ import { unboundRecordIds } from "./verification-page.js";
  * one tier. Two that can match one descriptor are rejected when the second
  * is registered, and a runtime tie (only reachable by a resolver that skipped
  * that test) raises {@link PresentationAmbiguityError}, never first-wins.
+ *
+ * The registry also applies the presentation ABI (section 3.2): a runtime
+ * declares the `presentation_api` versions it implements and its runtime
+ * version, and a module whose manifest asks for an API it does not implement
+ * (or a newer runtime) is registered as REFUSED. A refused module is never
+ * selected and none of its methods is called; it still counts for ambiguity,
+ * so nothing silently takes its place, and every resolution it would have
+ * taken part in carries the refusal.
  */
 
 export const PRESENTATION_MANIFEST_VERSION = "aac.presentation-manifest/v0";
+
+/** The presentation ABI this runtime implements (spec section 3.2). */
+export const PRESENTATION_API_V0 = "aac.presentation-api/v0";
+
+/** What a presentation runtime implements (spec section 3.2). */
+export interface PresentationRuntime {
+  /** Every `presentation_api` value the runtime implements. */
+  readonly presentationApis: readonly string[];
+  /** The runtime's own version, `MAJOR.MINOR.PATCH`. */
+  readonly runtimeVersion: string;
+}
+
+/** This repository's runtime: exactly `aac.presentation-api/v0`, version 0.1.0. */
+export const REFERENCE_PRESENTATION_RUNTIME: PresentationRuntime =
+  Object.freeze({
+    presentationApis: Object.freeze([PRESENTATION_API_V0]),
+    runtimeVersion: "0.1.0",
+  });
 
 export type PresentationFormat = "html" | "fragment" | "embedded";
 export const PRESENTATION_FORMATS: readonly PresentationFormat[] = [
@@ -32,7 +58,12 @@ export const PRESENTATION_FORMATS: readonly PresentationFormat[] = [
 
 export interface PresentationManifest {
   readonly spec_version: typeof PRESENTATION_MANIFEST_VERSION;
+  /** The module id: one identity for the module and its manifest. */
   readonly id: string;
+  /** The presentation ABI the module is written against. */
+  readonly presentation_api: string;
+  /** The lowest runtime version the module needs, `MAJOR.MINOR.PATCH`. */
+  readonly runtime_min: string;
   readonly trust_class: "trusted-executable" | "declarative";
   readonly requires: {
     readonly bundle_kind: string;
@@ -127,10 +158,102 @@ export interface PresentationDescriptor {
   readonly extensions: ReadonlySet<string>;
 }
 
+/** Why a runtime refused a module (spec section 3.2), in order of precedence. */
+export type PresentationRefusalReason =
+  | "presentation_api_unsupported"
+  | "runtime_too_old";
+
+/** A refused module, as the page reports it. */
+export interface PresentationRefusal {
+  readonly id: string;
+  readonly presentation_api: string;
+  readonly runtime_min: string;
+  readonly reason: PresentationRefusalReason;
+  /** The extension kinds the module requires: the rows that name it. */
+  readonly extensions: readonly string[];
+  /** The refusing runtime's version, for the `runtime_too_old` wording. */
+  readonly runtimeVersion: string;
+}
+
+/**
+ * `module` and `no-presentation` carry every refusal recorded while
+ * resolving (section 4.3): modules that matched but that this runtime
+ * refused. A non-empty list is never silent: the page names each one.
+ */
 export type PresentationResolution<Model = unknown> =
   | { readonly kind: "refusal" }
-  | { readonly kind: "no-presentation" }
-  | { readonly kind: "module"; readonly module: PresentationModule<Model> };
+  | {
+      readonly kind: "no-presentation";
+      readonly refused: readonly PresentationRefusal[];
+    }
+  | {
+      readonly kind: "module";
+      readonly module: PresentationModule<Model>;
+      readonly refused: readonly PresentationRefusal[];
+    };
+
+function need(refusal: PresentationRefusal): string {
+  return refusal.reason === "presentation_api_unsupported"
+    ? `needs presentation API ${refusal.presentation_api}, which this viewer does not implement`
+    : `needs runtime ${refusal.runtime_min} or later; this viewer is ${refusal.runtimeVersion}`;
+}
+
+/**
+ * The semantics cell of the row of an extension a refused module requires
+ * (spec section 3.2), exactly. `covered` is whether the bundle digest covers
+ * the block.
+ */
+export function presentationRefusalRow(
+  refusal: PresentationRefusal,
+  covered: boolean,
+): string {
+  return `${covered ? "Integrity verified" : "Integrity not verified"}; meaning not interpreted: presentation module ${refusal.id} ${need(refusal)}`;
+}
+
+/** The line for a refused module that requires no extension (section 3.2). */
+export function presentationRefusalLine(refusal: PresentationRefusal): string {
+  return `Presentation module ${refusal.id} was not used: it ${need(refusal)}`;
+}
+
+const RUNTIME_VERSION = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u;
+const PRESENTATION_API = /^aac\.presentation-api\/v(0|[1-9][0-9]*)$/u;
+
+function compareVersions(a: string, b: string): number {
+  const left = a.split(".").map(Number);
+  const right = b.split(".").map(Number);
+  for (let i = 0; i < 3; i += 1)
+    if (left[i] !== right[i]) return left[i]! - right[i]!;
+  return 0;
+}
+
+/** Section 3.2: why `runtime` refuses `manifest`, or undefined. */
+export function presentationRefusalReason(
+  manifest: PresentationManifest,
+  runtime: PresentationRuntime = REFERENCE_PRESENTATION_RUNTIME,
+): PresentationRefusalReason | undefined {
+  if (!runtime.presentationApis.includes(manifest.presentation_api))
+    return "presentation_api_unsupported";
+  if (compareVersions(runtime.runtimeVersion, manifest.runtime_min) < 0)
+    return "runtime_too_old";
+  return undefined;
+}
+
+function refusalOf(
+  manifest: PresentationManifest,
+  reason: PresentationRefusalReason,
+  runtime: PresentationRuntime,
+): PresentationRefusal {
+  return Object.freeze({
+    id: manifest.id,
+    presentation_api: manifest.presentation_api,
+    runtime_min: manifest.runtime_min,
+    reason,
+    extensions: Object.freeze([
+      ...(manifest.requires.extensions?.required ?? []),
+    ]),
+    runtimeVersion: runtime.runtimeVersion,
+  });
+}
 
 /** Something that resolves a context to one presentation. */
 export interface PresentationResolver {
@@ -332,6 +455,8 @@ export function manifestsCoMatchable(
 const MANIFEST_MEMBERS = new Set([
   "spec_version",
   "id",
+  "presentation_api",
+  "runtime_min",
   "trust_class",
   "requires",
   "forbids",
@@ -363,6 +488,18 @@ export function manifestProblems(manifest: PresentationManifest): string[] {
     problems.push(`spec_version is not ${PRESENTATION_MANIFEST_VERSION}`);
   if (typeof manifest.id !== "string" || !MANIFEST_ID.test(manifest.id))
     problems.push("id is not <dotted name>/v<major>");
+  // A missing or malformed presentation_api is a malformed manifest; a
+  // well-formed one the runtime does not implement is a refusal, not this.
+  if (
+    typeof manifest.presentation_api !== "string" ||
+    !PRESENTATION_API.test(manifest.presentation_api)
+  )
+    problems.push("presentation_api is not aac.presentation-api/v<major>");
+  if (
+    typeof manifest.runtime_min !== "string" ||
+    !RUNTIME_VERSION.test(manifest.runtime_min)
+  )
+    problems.push("runtime_min is not MAJOR.MINOR.PATCH");
   if (
     manifest.trust_class !== "trusted-executable" &&
     manifest.trust_class !== "declarative"
@@ -435,13 +572,17 @@ export async function resolveModules(
   audience: string,
   format: PresentationFormat,
   canRender: (module: PresentationModule) => boolean | Promise<boolean>,
+  refuse: (
+    module: PresentationModule,
+  ) => PresentationRefusal | undefined = () => undefined,
 ): Promise<PresentationResolution> {
   // 1. Verification gate: no manifest is matched, no module is called.
   if (!descriptor.verified) return { kind: "refusal" };
-  // 2. Match.
+  // 2. Match, refused modules included.
   const matched = modules.filter((m) =>
     manifestMatches(m.manifest, descriptor, audience, format),
   );
+  const refused: PresentationRefusal[] = [];
   // 3. Specific tier, then 4. fallback tier. Ambiguity is decided on the
   // declarative match, before any canRender is called.
   for (const fallback of [false, true]) {
@@ -451,22 +592,53 @@ export async function resolveModules(
         tier.map((m) => m.manifest.id).sort(),
       );
     const only = tier[0];
-    if (only !== undefined && (await canRender(only)))
-      return { kind: "module", module: only };
+    if (only === undefined) continue;
+    // A refused module is recorded and skipped; none of its methods runs.
+    const refusal = refuse(only);
+    if (refusal !== undefined) {
+      refused.push(refusal);
+      continue;
+    }
+    if (await canRender(only))
+      return { kind: "module", module: only, refused: Object.freeze(refused) };
   }
   // 5. Nothing.
-  return { kind: "no-presentation" };
+  return { kind: "no-presentation", refused: Object.freeze(refused) };
 }
 
+/** The outcome of {@link PresentationRegistry.register}. */
+export type PresentationRegistration =
+  | { readonly status: "registered" }
+  | { readonly status: "refused"; readonly refusal: PresentationRefusal };
+
 export class PresentationRegistry implements PresentationResolver {
+  /** Every module, refused ones included: all of them count for ambiguity. */
   readonly #modules: PresentationModule[] = [];
+  readonly #refused = new Map<PresentationModule, PresentationRefusal>();
+  readonly #runtime: PresentationRuntime;
+
+  /** `runtime` is what this registry's runtime implements (section 3.2). */
+  constructor(runtime: PresentationRuntime = REFERENCE_PRESENTATION_RUNTIME) {
+    this.#runtime = runtime;
+  }
+
+  /** The runtime declaration this registry applies. */
+  get runtime(): PresentationRuntime {
+    return this.#runtime;
+  }
 
   /**
-   * Register a module. Refuses a malformed or dead manifest, a duplicate id,
-   * and any module whose manifest some descriptor could match together with
-   * an already registered module of the same tier (section 4.5).
+   * Register a module. Throws on a malformed or dead manifest (a missing
+   * `presentation_api` included), a duplicate id, and any module whose
+   * manifest some descriptor could match together with an already
+   * registered module of the same tier (section 4.5), refused or not.
+   *
+   * A well-formed manifest whose `presentation_api` this runtime does not
+   * implement, or whose `runtime_min` it does not meet, is registered as
+   * refused (section 3.2): never selected, reported by every resolution it
+   * matches, and listed by {@link refused}.
    */
-  register(module: PresentationModule): void {
+  register(module: PresentationModule): PresentationRegistration {
     const manifest = module.manifest;
     const problems = manifestProblems(manifest);
     if (problems.length > 0)
@@ -488,11 +660,24 @@ export class PresentationRegistry implements PresentationResolver {
         );
     }
     this.#modules.push(module);
+    const reason = presentationRefusalReason(manifest, this.#runtime);
+    if (reason === undefined) return { status: "registered" };
+    const refusal = refusalOf(manifest, reason, this.#runtime);
+    this.#refused.set(module, refusal);
+    return { status: "refused", refusal };
   }
 
-  /** Every registered module, in registration order (which decides nothing). */
+  /**
+   * Every module this registry can select, in registration order (which
+   * decides nothing). Refused modules are not here; see {@link refused}.
+   */
   list(): readonly PresentationModule[] {
-    return [...this.#modules];
+    return this.#modules.filter((module) => !this.#refused.has(module));
+  }
+
+  /** Every module this runtime refused, with the reason. */
+  refused(): readonly PresentationRefusal[] {
+    return [...this.#refused.values()];
   }
 
   /** Section 4.3: the one module for this context, audience and format. */
@@ -507,6 +692,7 @@ export class PresentationRegistry implements PresentationResolver {
       audience,
       format,
       (module) => module.canRender(context),
+      (module) => this.#refused.get(module),
     );
   }
 }
