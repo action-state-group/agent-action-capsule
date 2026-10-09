@@ -694,6 +694,14 @@ stylesheet owns the module's layout.
   dispatch, and a module with an unsupported `presentation_api` is shown to be refused, reported
   in the words of section 3.2 and never selected.
 
+Two registries implement sections 3.2 and 4.2 to 4.5: the TypeScript reference runtime
+(`ts/src/presentation-registry.ts`) and the Go package `go/presentation`, which a builder or
+command-line tool written in Go uses to list and resolve presentations and to refuse a page
+before writing it. `vectors/presentation-resolution/` holds the shared resolution vectors (the
+table of appendix A.3, registration and refusal cases with their exact wording, and the
+descriptors of real bundles). They are normative for both: each implementation runs every case,
+and a result that differs from a case is a defect in that implementation.
+
 ## Appendix A. The built-in manifests
 
 Today `renderEvidenceGraph` (`ts/src/evidence-graph-view.ts`) dispatches in control flow:
