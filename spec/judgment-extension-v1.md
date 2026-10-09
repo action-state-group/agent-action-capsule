@@ -152,7 +152,7 @@ The judge declaration's members are `model_id`, `prompt_template_hash`, `schema_
 | `model_digest` (optional) | lowercase-hex SHA-256 over the raw bytes of the model file | `x-judgment-v1.model_digest` (optional) | same method, over the file actually loaded (§2.1) | **digest-level, equal, when both carry it.** If the declaration carries it and the record does not, the join fails: the record does not show the declared bytes. If only the record carries it, it is not part of the join. A hosted declaration or record never carries it. |
 | *(no member)* | | `x-judgment-v1.model_reference` (optional) | reference string (§2.1, rung 2) | **No pack counterpart.** |
 | `prompt_template_hash` | JSON-DIGEST of the instruction template object, as published, before interpolation | `JudgeParameters.instruction_template_digest`, reached by recomputing `judge_parameters_digest` from the published `JudgeParameters` | JSON-DIGEST of the same object | **digest-level, equal**. |
-| *(no member)* | | `JudgeParameters.prompt_digest` | RAW-DIGEST of the published judge prompt file | **No pack counterpart.** MUST NOT be compared with `prompt_template_hash`. |
+| *(no member)* | | `JudgeParameters.prompt_file_digest` (optional) | RAW-DIGEST of a published judge prompt file | **No pack counterpart.** MUST NOT be compared with `prompt_template_hash`. |
 | `schema_hash` | JSON-DIGEST of the answer schema | *(no member)*: the answer schema digest (§3), fixed by the member name | JSON-DIGEST of `$defs/JudgeAnswer` | **digest-level, against a constant**. |
 | *(no member)* | | `JudgeParameters.axes_digest` | RAW-DIGEST of the published axes file | **No pack counterpart.** |
 | `input_refs` | list of action field names | *(no member)* | | **Not joinable.** `judged_from` names the evidence by digest, not which of its fields the template read. |
@@ -163,10 +163,16 @@ The template object is whatever object the judge publishes as its instruction te
 shape is producer-defined. The pack's `prompt_template_hash` and the record's
 `instruction_template_digest` MUST be JSON-DIGESTs of the same published object. An
 implementation that calls its own template-object digest `prompt_digest` computes the value
-that joins with `instruction_template_digest`, not with this extension's `prompt_digest`.
+that joins with `instruction_template_digest`, not with this extension's `prompt_file_digest`.
+
+`prompt_file_digest` is OPTIONAL. A producer carries it only when the judge publishes a prompt
+file separately from its instruction template. When there is no such file it is absent, never a
+zero, an empty string or any other placeholder (§2.1, "absent is absent"). Its presence or
+absence changes `judge_parameters_digest`, like every other `JudgeParameters` member, and takes
+no part in the join with a pack's judge declaration.
 
 Neither digest preimage carries the action's content. `instruction_template_digest` and
-`prompt_template_hash` cover the template before interpolation. `prompt_digest` and
+`prompt_template_hash` cover the template before interpolation. `prompt_file_digest` and
 `axes_digest` cover published files. An interpolated prompt never enters either side.
 
 ### 4.2 Procedure

@@ -19,6 +19,9 @@ PROVISIONAL) against schemas/judgment/judgment-extension-v1.json:
      rejected, each with a mutant proving the rule is load-bearing.
   5. The published preimages validate against their $defs (JudgeParameters,
      ExpertProtocolParameters, RubricDocument, JudgeAnswer).
+  6. prompt_file_digest is optional: JudgeParameters without it validates, an empty
+     value is rejected, and the retired name prompt_digest is rejected (with a mutant
+     proving that rejection rests on additionalProperties: false).
 
 Digest recomputation is python/tests/test_judgment_extension_vectors.py's job.
 
@@ -138,11 +141,30 @@ def main() -> int:
         if not validator(schema, def_name).is_valid(value):
             failures.append(f"preimage does not validate against $defs/{def_name}")
 
+    # prompt_file_digest: optional, absent is absent, and the retired name is not accepted.
+    params_validator = validator(schema, "JudgeParameters")
+    base_params = pre["pos-ai-judge"]["judge_parameters"]
+    without_file = {k: v for k, v in base_params.items() if k != "prompt_file_digest"}
+    renamed = {**without_file, "prompt_digest": base_params["prompt_file_digest"]}
+    prompt_file_cases = [
+        ("JudgeParameters without prompt_file_digest", without_file, True),
+        ("empty prompt_file_digest", {**base_params, "prompt_file_digest": ""}, False),
+        ("retired name prompt_digest", renamed, False),
+    ]
+    for label, value, want in prompt_file_cases:
+        if params_validator.is_valid(value) is not want:
+            failures.append(f"{label}: valid={not want}, expected {want}")
+    open_params = copy.deepcopy(schema)
+    open_params["$defs"]["JudgeParameters"].pop("additionalProperties")
+    if not validator(open_params, "JudgeParameters").is_valid(renamed):
+        failures.append("mutant: retired name prompt_digest still rejected without additionalProperties: false")
+
     for line in failures:
         print(f"FAIL {line}")
     if not failures:
         print(f"ok: {len(data['cases'])} cases, 1 mutant, {hosting_checks} model_hosting checks, "
-              f"{len(identity_cases)} identity checks, {len(identity_mutants)} identity mutants, {len(checks)} preimages")
+              f"{len(identity_cases)} identity checks, {len(identity_mutants)} identity mutants, {len(checks)} preimages, "
+              f"{len(prompt_file_cases)} prompt_file_digest checks, 1 prompt_file_digest mutant")
     return 1 if failures else 0
 
 

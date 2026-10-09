@@ -135,17 +135,17 @@
       "additionalProperties": { "type": ["integer", "string", "boolean"] }
     },
     "JudgeParameters": {
-      "description": "Preimage of judge_parameters_digest for a model judge: everything about how the judge was asked, except the model (developer carries it). Inner *_digest members are SHA-256 of raw file bytes (prompt_digest, axes_digest) or JSON-DIGEST of a JSON value (instruction_template_digest).",
+      "description": "Preimage of judge_parameters_digest for a model judge: everything about how the judge was asked, except the model (developer carries it). Inner *_digest members are SHA-256 of raw file bytes (prompt_file_digest, axes_digest) or JSON-DIGEST of a JSON value (instruction_template_digest).",
       "type": "object",
       "additionalProperties": false,
-      "required": ["instruction_template_digest", "prompt_digest", "axes_digest", "sampling_params"],
+      "required": ["instruction_template_digest", "axes_digest", "sampling_params"],
       "properties": {
         "instruction_template_digest": {
           "description": "JSON-DIGEST of the instruction template object the judge code wraps around the rubric and the evidence, as published, before anything is interpolated into it. An interpolated prompt carries the action's content and never enters this preimage. This is the digest a pack's judge declaration pins as its prompt template hash (spec/judgment-extension-v1.md).",
           "$ref": "#/$defs/HexDigest"
         },
-        "prompt_digest": {
-          "description": "SHA-256 of the raw bytes of the published judge prompt file. A published artifact, never an interpolated prompt. Not a template-object digest: a pack's prompt template hash never equals this value, even where an implementation calls its own template digest prompt_digest (spec/judgment-extension-v1.md).",
+        "prompt_file_digest": {
+          "description": "OPTIONAL. SHA-256 of the raw bytes of a published judge prompt file, present only when the judge publishes one separately from its instruction template; absent otherwise, never a placeholder. A published artifact, never an interpolated prompt. Not a template-object digest: it MUST NOT be compared with a pack's prompt template hash, which joins with instruction_template_digest, even where an implementation calls its own template digest prompt_digest (spec/judgment-extension-v1.md).",
           "$ref": "#/$defs/HexDigest"
         },
         "axes_digest": {
