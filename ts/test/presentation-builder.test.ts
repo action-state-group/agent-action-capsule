@@ -7,15 +7,24 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { emitEvidenceGraphHtml } from "../src/emitter.js";
 import { createPresentationRegistry } from "../src/evidence-graph-view.js";
 import {
+  availablePackagings,
   buildFragmentViewerHtml,
   buildPresentation,
   offlineHtmlFromFragment,
+  PACKAGING_TARGETS,
+  PackagingUnavailableError,
   PresentationBuildError,
+  STATIC_BUILD_TIME_STATEMENT,
+  STATIC_NOT_SELF_VERIFYING,
   type BuildPresentationOptions,
   type BuiltPresentation,
+  type PackagingAvailability,
+  type PackagingTarget,
 } from "../src/presentation-builder.js";
 import {
   decodePresentationFragment,
+  FRAGMENT_TOKEN_DEFAULT_BUDGET,
+  FRAGMENT_TOKEN_MAX_LENGTH,
   FragmentTooLargeError,
   type DisclosureScope,
   type WordingPackInput,
@@ -25,6 +34,7 @@ import {
   type PresentationModule,
   type PresentationResolver,
 } from "../src/presentation-registry.js";
+import { monthlyComplianceFixture } from "./helpers/monthly-fixtures.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 // The builder runs in node (the emitter reads its shell with node:fs), so
@@ -71,6 +81,16 @@ interface Snapshot {
   readonly html: string;
 }
 
+// The markup as HTML parsing reads it. A page drawn by script can hold a
+// table row directly in its table; the same markup, parsed, gets the implied
+// tbody. Comparing the parsed form compares what the markup means, so the
+// static page (parsed) and the pages drawn in the reader's browser compare.
+const parsed = (html: string): string => {
+  const holder = host.window.document.createElement("div");
+  holder.innerHTML = html;
+  return holder.innerHTML;
+};
+
 function snapshot(root: Element): Snapshot {
   const values = (name: string): (string | null)[] =>
     [...root.querySelectorAll(`[${name}]`)].map((e) => e.getAttribute(name));
@@ -83,7 +103,7 @@ function snapshot(root: Element): Snapshot {
       ...new Set(root.innerHTML.match(/[0-9a-f]{64}/gu) ?? []),
     ].sort(),
     text: (root.textContent ?? "").replace(/\s+/gu, " ").trim(),
-    html: root.innerHTML,
+    html: parsed(root.innerHTML),
   };
 }
 
@@ -123,6 +143,45 @@ async function openPage(html: string, url: string): Promise<Snapshot> {
   }
 }
 
+/**
+ * Open a static page as a browser would, with scripting off (it has no
+ * script to run; its CSP allows none). Returns what #app shows and the
+ * page itself for the static checks.
+ */
+function openStatic(html: string): { snapshot: Snapshot; page: Document } {
+  const dom = new JSDOM(html);
+  return {
+    snapshot: snapshot(dom.window.document.getElementById("app")!),
+    page: dom.window.document,
+  };
+}
+
+/** What every static page must say and carry, for one verification state. */
+function expectStaticPage(html: string, verify: string): void {
+  const { page } = openStatic(html);
+  expect(page.querySelectorAll("script")).toHaveLength(0);
+  expect(
+    [...page.querySelectorAll("*")].flatMap((e) =>
+      [...e.attributes].filter((a) => a.name.startsWith("on")),
+    ),
+  ).toEqual([]);
+  const csp = page
+    .querySelector('meta[http-equiv="Content-Security-Policy"]')!
+    .getAttribute("content")!;
+  expect(csp).toMatch(/^default-src 'none'; script-src 'none'; style-src /u);
+  expect(csp).toContain("connect-src 'none'");
+  const notice = page.querySelector(
+    '[data-static-notice="not-self-verifying"]',
+  )!;
+  expect(notice.getAttribute("data-built-verification")).toBe(verify);
+  const text = (notice.textContent ?? "").replace(/\s+/gu, " ");
+  expect(text).toContain(STATIC_NOT_SELF_VERIFYING);
+  expect(text).toContain(STATIC_BUILD_TIME_STATEMENT);
+  expect(text).toContain(
+    `when this page was built: ${verify === "verified" ? "verified" : "did not verify"}.`,
+  );
+}
+
 type Outcome =
   | {
       readonly kind: "shown";
@@ -134,9 +193,9 @@ type Outcome =
 async function showAll(
   bundle: unknown,
   options: Omit<BuildPresentationOptions, "format" | "runtime">,
-): Promise<Record<"html" | "fragment" | "embedded", Outcome>> {
-  const out = {} as Record<"html" | "fragment" | "embedded", Outcome>;
-  for (const format of ["html", "fragment", "embedded"] as const) {
+): Promise<Record<PackagingTarget, Outcome>> {
+  const out = {} as Record<PackagingTarget, Outcome>;
+  for (const format of PACKAGING_TARGETS) {
     let built: BuiltPresentation;
     try {
       built = await buildPresentation(bundle, {
@@ -159,6 +218,7 @@ async function showAll(
         buildFragmentViewerHtml({ code: runtime }),
         `file:///viewer.html#${built.fragment}`,
       );
+    else if (built.format === "static") shown = openStatic(built.html).snapshot;
     else {
       const element = document.createElement("main");
       await built.mount(element);
@@ -201,7 +261,17 @@ const AUDIENCES: readonly [
   ["public", () => ({})],
 ];
 
-describe("one builder, three packagings: acceptance over (bundle, audience) pairs", () => {
+// What availablePackagings reported, in one line for the table.
+const availabilityLine = (report: readonly PackagingAvailability[]): string =>
+  report
+    .map((a) =>
+      a.available
+        ? `${a.target} available`
+        : `${a.target} unavailable (${a.reason.code}${a.reason.code === "fragment-too-large" ? ` ${a.reason.length} > ${a.reason.limit}` : ""})`,
+    )
+    .join(", ");
+
+describe("one builder, four packagings: acceptance over (bundle, audience) pairs", () => {
   const sealed = new Map<string, unknown>();
   beforeAll(async () => {
     for (const [, file, verifies] of FIXTURES)
@@ -217,14 +287,15 @@ describe("one builder, three packagings: acceptance over (bundle, audience) pair
 
   for (const [label, file, verifies] of FIXTURES)
     for (const [audience, scope] of AUDIENCES)
-      it(`${label} × ${audience}: every format shows the same verified content and identifiers`, async () => {
+      it(`${label} × ${audience}: every supported packaging shows the same verified content and identifiers`, async () => {
         const bundle = sealed.get(`${file}:${verifies}`);
         const disclose = scope(bundle);
-        const outcome = await showAll(bundle, {
+        const settings = {
           presentation: "auto",
           audience,
           ...(disclose === undefined ? {} : { disclose }),
-        });
+        };
+        const outcome = await showAll(bundle, settings);
         const shown = Object.entries(outcome).filter(
           (e): e is [string, Extract<Outcome, { kind: "shown" }>] =>
             e[1].kind === "shown",
@@ -241,17 +312,40 @@ describe("one builder, three packagings: acceptance over (bundle, audience) pair
             expect(r.error).toMatch(
               /refusing to scope a bundle that did not verify/u,
             );
+          // Not a packaging question: availablePackagings throws the same.
+          await expect(
+            availablePackagings(bundle, {
+              ...settings,
+              runtime: { code: runtime },
+            }),
+          ).rejects.toThrow(/refusing to scope a bundle that did not verify/u);
           table.push(
-            `${label} | ${audience} | refused in all three: cannot scope a failing bundle`,
+            `${label} | ${audience} | refused in all four: cannot scope a failing bundle`,
           );
           return;
+        }
+        // The availability report agrees with what was built, target by target.
+        const report = await availablePackagings(bundle, {
+          ...settings,
+          runtime: { code: runtime },
+        });
+        expect(report.map((a) => a.target)).toEqual([...PACKAGING_TARGETS]);
+        for (const a of report) {
+          expect(a.available, a.target).toBe(
+            outcome[a.target].kind === "shown",
+          );
+          if (!a.available) {
+            expect(a.reason.code).toBe("fragment-too-large");
+            if (a.reason.code === "fragment-too-large")
+              expect(a.reason.length).toBeGreaterThan(a.reason.limit);
+          }
         }
         // Only a fragment too large for a URL may be refused, and only for size.
         for (const [format, r] of refused) {
           expect(format).toBe("fragment");
           expect(r.error).toMatch(/^FragmentTooLargeError/u);
         }
-        expect(shown.length).toBeGreaterThanOrEqual(2);
+        expect(shown.length).toBeGreaterThanOrEqual(3);
         const [first, ...rest] = shown;
         for (const [, s] of rest) {
           expect(s.built.module).toBe(first![1].built.module);
@@ -260,6 +354,14 @@ describe("one builder, three packagings: acceptance over (bundle, audience) pair
         const snap = first![1].snapshot;
         expect(snap.verify).toEqual([verifies ? "verified" : "failed"]);
         if (verifies) expect(snap.evidence_ids.length).toBeGreaterThan(0);
+
+        // The static page: no script, the statement, the build-time state.
+        const statik = outcome.static;
+        expect(statik.kind).toBe("shown");
+        if (statik.kind === "shown" && statik.built.format === "static") {
+          expect(statik.built.verification).toBe(snap.verify[0]);
+          expectStaticPage(statik.built.html, snap.verify[0]!);
+        }
 
         // The hand-back: the fragment rebuilds the exact offline file.
         const html = outcome.html;
@@ -278,7 +380,7 @@ describe("one builder, three packagings: acceptance over (bundle, audience) pair
             ).toBe(html.built.html);
         }
         table.push(
-          `${label} | ${audience} | module ${first![1].built.module ?? first![1].built.resolution} | verify ${snap.verify.join(",")} | ids ${snap.evidence_ids.length} | formats shown ${shown.map(([f]) => f).join("+")}${refused.length > 0 ? ` | fragment refused: too large` : ""}`,
+          `${label} | ${audience} | module ${first![1].built.module ?? first![1].built.resolution} | verify ${snap.verify.join(",")} | ids ${snap.evidence_ids.length} | identical across ${shown.map(([f]) => f).join("+")} | ${availabilityLine(report)}`,
         );
       }, 180_000);
 
@@ -615,6 +717,273 @@ describe("buildPresentation", () => {
     );
     expect(shown.refusals).toEqual(["fragment-unreadable"]);
     expect(shown.verify).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Packaging availability, monthly-scale bundles, and the static page
+// ---------------------------------------------------------------------------
+
+describe("packaging availability", () => {
+  // A month of the compliance report, derived deterministically from the
+  // committed two-session fixture: 40 sessions (about 490 KB of JCS) and 80
+  // sessions (about 1 MB).
+  const monthly = new Map<number, unknown>();
+  beforeAll(async () => {
+    for (const sessions of [40, 80])
+      monthly.set(
+        sessions,
+        (await sealEvidenceBundle(monthlyComplianceFixture(sessions))).bundle,
+      );
+  }, 120_000);
+
+  it("the monthly fixtures are deterministic and monthly-report scale", async () => {
+    const again = (await sealEvidenceBundle(monthlyComplianceFixture(40)))
+      .bundle;
+    expect(JSON.stringify(again)).toBe(JSON.stringify(monthly.get(40)));
+    const size = (n: number): number => JSON.stringify(monthly.get(n)).length;
+    expect(size(40)).toBeGreaterThan(300_000);
+    expect(size(40)).toBeLessThan(1_000_000);
+    expect(size(80)).toBeGreaterThan(size(40));
+  });
+
+  for (const [sessions, raise] of [
+    [40, false],
+    [80, false],
+    [80, true],
+  ] as const)
+    it(`a ${sessions}-session monthly report: the fragment is reported unavailable${raise ? " even at the maximum budget" : ""}, never a link`, async () => {
+      const bundle = monthly.get(sessions);
+      const settings = {
+        presentation: "auto",
+        audience: "*",
+        runtime: { code: runtime },
+        ...(raise ? { maxFragmentLength: FRAGMENT_TOKEN_MAX_LENGTH } : {}),
+      };
+      const report = await availablePackagings(bundle, settings);
+      const limit = raise
+        ? FRAGMENT_TOKEN_MAX_LENGTH
+        : FRAGMENT_TOKEN_DEFAULT_BUDGET;
+      expect(report.map((a) => [a.target, a.available])).toEqual([
+        ["html", true],
+        ["fragment", false],
+        ["embedded", true],
+        ["static", true],
+      ]);
+      const fragment = report[1]!;
+      if (fragment.available) throw new Error("fragment reported available");
+      expect(fragment.reason).toMatchObject({
+        code: "fragment-too-large",
+        subject: "fragment token",
+        limit,
+      });
+      if (fragment.reason.code !== "fragment-too-large")
+        throw new Error("unexpected reason");
+      expect(fragment.reason.length).toBeGreaterThan(limit);
+      expect(fragment.reason.message).toContain(
+        `${fragment.reason.length} characters, over the ${limit}-character maximum`,
+      );
+      // A direct call keeps its error: no link is ever returned.
+      await expect(
+        buildPresentation(bundle, { ...settings, format: "fragment" }),
+      ).rejects.toThrow(FragmentTooLargeError);
+
+      // The supported packagings show the same thing.
+      const html = await buildPresentation(bundle, {
+        ...settings,
+        format: "html",
+      });
+      const statik = await buildPresentation(bundle, {
+        ...settings,
+        format: "static",
+      });
+      const embedded = await buildPresentation(bundle, {
+        ...settings,
+        format: "embedded",
+      });
+      if (
+        html.format !== "html" ||
+        statik.format !== "static" ||
+        embedded.format !== "embedded"
+      )
+        throw new Error("unexpected format");
+      const element = document.createElement("main");
+      await embedded.mount(element);
+      const fromEmbedded = snapshot(element);
+      const fromStatic = openStatic(statik.html).snapshot;
+      expect(fromStatic).toEqual(fromEmbedded);
+      expect(await openPage(html.html, "file:///monthly.html")).toEqual(
+        fromStatic,
+      );
+      expect(fromStatic.verify).toEqual(["verified"]);
+      expect(fromStatic.pages).toContain("verification");
+      expectStaticPage(statik.html, "verified");
+    }, 180_000);
+
+  it("reports a missing runtime for html and fragment, and a missing DOM for static", async () => {
+    const { bundle } = await sealEvidenceBundle(
+      fixture("report-rows-bundle.json"),
+    );
+    const report = await availablePackagings(bundle, {
+      presentation: "auto",
+      audience: "*",
+    });
+    expect(
+      report.map((a) => [a.target, a.available ? "ok" : a.reason.code]),
+    ).toEqual([
+      ["html", "runtime-missing"],
+      ["fragment", "runtime-missing"],
+      ["embedded", "ok"],
+      ["static", "ok"],
+    ]);
+    const saved = globalThis.document;
+    try {
+      Reflect.deleteProperty(globalThis, "document");
+      const noDom = await availablePackagings(bundle, {
+        presentation: "auto",
+        audience: "*",
+        runtime: { code: "/*IIFE_MARKER*/" },
+      });
+      expect(noDom[3]).toMatchObject({
+        target: "static",
+        available: false,
+        reason: { code: "no-document" },
+      });
+      await expect(
+        buildPresentation(bundle, {
+          presentation: "auto",
+          audience: "*",
+          format: "static",
+        }),
+      ).rejects.toThrow(PackagingUnavailableError);
+    } finally {
+      globalThis.document = saved;
+    }
+  });
+
+  it("a static page is refused, and reported, when a module writes a script", async () => {
+    const { bundle } = await sealEvidenceBundle(
+      fixture("report-rows-bundle.json"),
+    );
+    const scripted: PresentationModule = {
+      manifest: {
+        spec_version: "aac.presentation-manifest/v0",
+        id: "org.example.scripted/v0",
+        trust_class: "trusted-executable",
+        requires: { bundle_kind: "evidence-bundle/v2" },
+        audiences: ["*"],
+        formats: ["html"],
+        fallback: false,
+        priority: 1,
+        executable: { carrier: "core-runtime" },
+      },
+      canRender: () => true,
+      buildModel: () => null,
+      render: (_model, host) => {
+        const button = document.createElement("button");
+        button.setAttribute("onclick", "alert(1)");
+        host.L1.append(button);
+      },
+    };
+    const registry: PresentationResolver = {
+      resolve: (_context, audience, format) =>
+        resolveModules(
+          [scripted],
+          {
+            verified: true,
+            bundle_kind: "evidence-bundle/v2",
+            profiles: new Set(),
+            extensions: new Set(),
+          },
+          audience,
+          format,
+          () => true,
+        ),
+    };
+    const report = await availablePackagings(bundle, {
+      presentation: "auto",
+      audience: "*",
+      registry,
+    });
+    expect(report[3]).toMatchObject({
+      target: "static",
+      available: false,
+      reason: { code: "static-carries-script" },
+    });
+  });
+});
+
+describe("the static page", () => {
+  it("carries the html page's theme and title, and no bundle or code", async () => {
+    const { bundle } = await sealEvidenceBundle(
+      fixture("compliance-bundle.json"),
+    );
+    const words = await pack({ "page.title": "Findings" }, "en");
+    const settings = {
+      presentation: "auto",
+      audience: "*",
+      themeCss: ":root{--aac-accent:#7a1f5c}",
+      wording: words,
+      depth: "L1" as const,
+    };
+    const statik = await buildPresentation(bundle, {
+      ...settings,
+      format: "static",
+    });
+    const html = await buildPresentation(bundle, {
+      ...settings,
+      format: "html",
+      runtime: { code: runtime },
+    });
+    if (statik.format !== "static" || html.format !== "html")
+      throw new Error("unexpected format");
+    expect(statik.html).toContain("<title>Findings</title>");
+    expect(statik.html).toContain("<style>:root{--aac-accent:#7a1f5c}</style>");
+    expect(statik.html).not.toContain("__BUNDLE__");
+    expect(statik.html).not.toMatch(/<script/iu);
+    expect(openStatic(statik.html).snapshot).toEqual(
+      await openPage(html.html, "file:///themed.html"),
+    );
+    expectStaticPage(statik.html, "verified");
+  });
+
+  it("every style it carries is in its CSP, by hash", async () => {
+    const { bundle } = await sealEvidenceBundle(
+      fixture("outcome-report-bundle.json"),
+    );
+    const built = await buildPresentation(bundle, {
+      presentation: "auto",
+      audience: "*",
+      format: "static",
+    });
+    if (built.format !== "static") throw new Error("static expected");
+    const { page } = openStatic(built.html);
+    const csp = page
+      .querySelector('meta[http-equiv="Content-Security-Policy"]')!
+      .getAttribute("content")!;
+    const source = (text: string): string =>
+      `'sha256-${createHash("sha256").update(text, "utf8").digest("base64")}'`;
+    for (const style of page.querySelectorAll("style"))
+      expect(csp).toContain(source(style.textContent ?? ""));
+    const attributes = [...page.querySelectorAll("[style]")].map(
+      (e) => e.getAttribute("style")!,
+    );
+    // The outcome report's bars carry their widths as style attributes.
+    expect(attributes.length).toBeGreaterThan(0);
+    expect(csp).toContain("'unsafe-hashes'");
+    for (const value of attributes) expect(csp).toContain(source(value));
+  }, 120_000);
+
+  it("states a failed verification as computed at build time", async () => {
+    const built = await buildPresentation(fixture("report-rows-bundle.json"), {
+      presentation: "auto",
+      audience: "*",
+      format: "static",
+    });
+    if (built.format !== "static") throw new Error("static expected");
+    expect(built.verification).toBe("failed");
+    expect(built.resolution).toBe("refusal");
+    expectStaticPage(built.html, "failed");
   });
 });
 

@@ -243,3 +243,101 @@ export function emitEvidenceGraphHtml(
 
   return html;
 }
+
+/**
+ * The stylesheet of the static page's notice (the statement that the page
+ * is not self-verifying). Hashed into the static page's CSP like the shell's
+ * own stylesheet.
+ */
+export const STATIC_NOTICE_CSS =
+  ":where(.aac-static-notice){display:block;margin:0 0 1rem;padding:0.75rem 1rem;border:1px solid var(--aac-line);border-radius:var(--aac-radius);color:var(--aac-warn);background:var(--aac-warn-bg)}:where(.aac-static-notice p){margin:0.25rem 0}";
+
+/** What a static page carries: markup already rendered, and no code. */
+export interface StaticPageInput {
+  /** The rendered page: the children of `#app`, serialized as HTML. */
+  readonly appHtml: string;
+  /** The text of every `<style>` element in `appHtml`. */
+  readonly appStyles: readonly string[];
+  /** The value of every `style` attribute in `appHtml`. */
+  readonly appStyleAttributes: readonly string[];
+  /** The notice placed before `#app`, as HTML. */
+  readonly noticeHtml: string;
+}
+
+/**
+ * Write a static page: the same shell, base stylesheet, title and theme as
+ * {@link emitEvidenceGraphHtml}, with already rendered markup in `#app` and
+ * no script at all: no bundle element, no runtime, no module, no bootstrap.
+ * The CSP allows no script (`script-src 'none'`) and lists every style it
+ * carries by hash (style attributes through `'unsafe-hashes'`).
+ *
+ * The caller guarantees the markup has no script element and no event
+ * handler attribute; the CSP would block either anyway.
+ */
+export function emitStaticEvidenceGraphHtml(
+  input: StaticPageInput,
+  options: Pick<EmitterOptions, "title" | "themeCss"> = {},
+): string {
+  const title =
+    options.title === undefined || options.title === ""
+      ? DEFAULT_EVIDENCE_GRAPH_TITLE
+      : options.title;
+  const themeCss = options.themeCss ?? "";
+  for (const [name, value] of [
+    ["title", title],
+    ["theme CSS", themeCss],
+  ] as const) {
+    if (slots.some((slot) => value.includes(slot))) {
+      throw new Error(`${name} must not contain emitter placeholders`);
+    }
+  }
+  checkInline("theme CSS", themeCss, "</style");
+  input.appStyles.forEach((style, index) =>
+    checkInline(`static style ${index}`, style, "</style"),
+  );
+
+  // The head is the shell's, with the notice stylesheet added; the body is
+  // replaced whole, so none of the shell's script elements is written. The
+  // rendered markup is spliced in last, after every slot is filled, so text
+  // in it is never read as a slot.
+  let page = replaceSingle(shell, titleSlot, escapeHtmlText(title));
+  page = replaceSingle(page, themeSlot, themeCss);
+  const headEnd = page.indexOf("</head>");
+  const bodyStart = page.indexOf("<body>");
+  const bodyEnd = page.lastIndexOf("</body>");
+  if (headEnd === -1 || bodyStart < headEnd || bodyEnd < bodyStart) {
+    throw new Error("emitter shell has no head or body");
+  }
+  let head = `${page.slice(0, headEnd)}  <style>${STATIC_NOTICE_CSS}</style>\n  ${page.slice(headEnd, bodyStart)}`;
+  const inline = inlineElements(head);
+  if (inline.script.length > 0) {
+    throw new Error("static page head must carry no script");
+  }
+  const styleSources = unique([
+    ...inline.style.map(cspHashSource),
+    ...input.appStyles.map(cspHashSource),
+  ]);
+  const attributeSources = unique(input.appStyleAttributes.map(cspHashSource));
+  const csp = [
+    "default-src 'none'",
+    "script-src 'none'",
+    `style-src ${[
+      ...styleSources,
+      ...(attributeSources.length === 0
+        ? []
+        : ["'unsafe-hashes'", ...attributeSources]),
+    ].join(" ")}`,
+    "img-src data:",
+    "connect-src 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+  ].join("; ");
+  head = replaceSingle(head, cspSlot, csp);
+  if (slots.some((slot) => head.includes(slot))) {
+    throw new Error("emitter shell embed invariant failed");
+  }
+  const html =
+    `${head}<body>\n    ${input.noticeHtml}\n    ` +
+    `<div id="app">${input.appHtml}</div>\n  ${page.slice(bodyEnd)}`;
+  return html;
+}

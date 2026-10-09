@@ -29,10 +29,21 @@ export const FRAGMENT_ADDRESS_ALLOWANCE = 2_048;
 /** The longest token encoded or decoded: the URL limit less the allowance. */
 export const FRAGMENT_TOKEN_MAX_LENGTH =
   FRAGMENT_URL_MAX_LENGTH - FRAGMENT_ADDRESS_ALLOWANCE;
+/**
+ * The presentation builder's default token budget: the longest link it
+ * offers without being asked for more. A token this long still fits a chat
+ * message or an email; a report of a few hundred kilobytes does not, and is
+ * reported unavailable as a link rather than packaged as one nobody can
+ * paste. A caller MAY raise it up to {@link FRAGMENT_TOKEN_MAX_LENGTH}.
+ * The codec's own default (and every decoder's) stays the maximum.
+ */
+export const FRAGMENT_TOKEN_DEFAULT_BUDGET = 65_536;
 
 export class FragmentTooLargeError extends Error {
   readonly length: number;
   readonly maxLength: number;
+  /** What was too long: `"fragment token"` or `"permalink URL"`. */
+  readonly subject: string;
   constructor(length: number, maxLength: number, what = "fragment token") {
     super(
       `${what} is ${length} characters, over the ${maxLength}-character maximum; it is refused, never truncated. Share the offline .html instead.`,
@@ -40,6 +51,7 @@ export class FragmentTooLargeError extends Error {
     this.name = "FragmentTooLargeError";
     this.length = length;
     this.maxLength = maxLength;
+    this.subject = what;
   }
 }
 

@@ -57,6 +57,17 @@
   the exact offline file from a fragment; `BuildOfflineHTML` is the Go twin of the offline
   packaging. With the default settings the builder writes exactly the page the emitter writes.
   `renderEvidenceGraph` takes optional `depth` and `wording` options.
+- TypeScript: the builder reports packaging availability and gains a static target.
+  `availablePackagings(context, settings)` returns, for `html`, `fragment`, `embedded` and
+  `static`, available or unavailable with a reason (`fragment-too-large` with the length and the
+  limit, `runtime-missing`, `no-document`, `static-carries-script`), and returns no packaging.
+  Fragments are packaged within a default budget of 65,536 characters
+  (`FRAGMENT_TOKEN_DEFAULT_BUDGET`; `maxFragmentLength` lowers it or raises it up to the
+  1,046,528 ceiling), so a monthly report of a few hundred kilobytes is reported unavailable as a
+  link; a direct build still throws `FragmentTooLargeError`. `format: "static"` renders the page
+  at build time into HTML with no script (`script-src 'none'`), no bundle and no runtime, stating
+  "Not self-verifying; verify the bundle separately." and the verification result computed at
+  build time. The default offline output is unchanged byte for byte.
 - TypeScript: the presentation registry applies the presentation ABI. A `PresentationRegistry`
   takes the runtime's declaration (`REFERENCE_PRESENTATION_RUNTIME`: `aac.presentation-api/v0`,
   runtime 0.1.0); every manifest, the six built-ins included, carries `presentation_api` and

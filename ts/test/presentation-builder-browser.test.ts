@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { JSDOM } from "jsdom";
 import { chromium, type Browser } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -16,6 +17,11 @@ import {
   buildPresentation,
 } from "../src/presentation-builder.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
+
+// The static packaging renders at build time; in node it needs a document.
+const host = new JSDOM();
+globalThis.document = host.window.document;
+globalThis.HTMLElement = host.window.HTMLElement;
 
 // A real CSP-enforcing browser, found as emitter-csp-browser.test.ts finds
 // one; skipped when none is installed.
@@ -39,11 +45,13 @@ interface Opened {
   readonly violations: string[];
   readonly verify: string | null;
   readonly page: string;
+  /** `page` as HTML parsing reads it. */
+  readonly parsed: string;
   readonly text: string;
 }
 
 describe.skipIf(executablePath === undefined)(
-  "offline file and fragment permalink in a CSP-enforcing browser",
+  "offline file, fragment permalink and static page in a CSP-enforcing browser",
   () => {
     let browser: Browser;
     let directory: string;
@@ -95,7 +103,12 @@ describe.skipIf(executablePath === undefined)(
       await page.waitForTimeout(200);
       const shown = await page.evaluate(() => {
         const app = document.getElementById("app")!;
+        // The markup as parsing reads it (a script-drawn table row gets the
+        // implied tbody), so a static page and a drawn page compare.
+        const holder = document.createElement("div");
+        holder.innerHTML = app.innerHTML;
         return {
+          parsed: holder.innerHTML,
           verify:
             app.querySelector("[data-verify]")?.getAttribute("data-verify") ??
             null,
@@ -112,6 +125,7 @@ describe.skipIf(executablePath === undefined)(
         violations: shown.violations,
         verify: shown.verify,
         page: shown.page,
+        parsed: shown.parsed,
         text: shown.text,
       };
     }
@@ -155,6 +169,46 @@ describe.skipIf(executablePath === undefined)(
         }
         expect(b.page).toBe(a.page);
       }, 60_000);
+
+    for (const name of [
+      "report-rows-bundle.json",
+      "compliance-bundle.json",
+      "outcome-report-bundle.json",
+    ])
+      it(`${name}: the static page runs no script, makes no request, breaks no CSP rule and shows what the offline file shows`, async () => {
+        const { bundle } = await sealEvidenceBundle(
+          JSON.parse(
+            readFileSync(
+              resolve(import.meta.dirname, "testdata", name),
+              "utf8",
+            ),
+          ),
+        );
+        const settings = {
+          presentation: "auto",
+          audience: "*",
+          runtime: { code: runtime },
+        };
+        const offline = await buildPresentation(bundle, {
+          ...settings,
+          format: "html",
+        });
+        const statik = await buildPresentation(bundle, {
+          ...settings,
+          format: "static",
+        });
+        if (offline.format !== "html" || statik.format !== "static")
+          throw new Error("unexpected format");
+        const a = await open("offline.html", offline.html);
+        const b = await open("static.html", statik.html);
+        for (const opened of [a, b]) {
+          expect(opened.requests).toEqual([opened.document]);
+          expect(opened.violations).toEqual([]);
+          expect(opened.verify).toBe("verified");
+        }
+        expect(b.parsed).toBe(a.parsed);
+        expect(b.text).toBe(a.text);
+      }, 120_000);
   },
   120_000,
 );

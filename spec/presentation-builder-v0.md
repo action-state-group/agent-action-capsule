@@ -1,21 +1,22 @@
 # Presentation Builder — v0
 
 **Status.** Design specification beside `spec/presentation-contract-v0.md`. This document defines
-the one builder that turns a verified Evidence Bundle into a page for one audience, and the three
-ways it packages that page: one offline `.html` file, a fragment permalink, and an element in a
-host page. The reference is `ts/src/presentation-builder.ts` (with
+the one builder that turns a verified Evidence Bundle into a page for one audience, and the four
+ways it packages that page: one offline `.html` file, a fragment permalink, an element in a host
+page, and a static page that runs no script. It also defines how the builder reports that a
+packaging is unavailable for a bundle. The reference is `ts/src/presentation-builder.ts` (with
 `ts/src/presentation-fragment.ts` and `ts/src/presentation-mount.ts`); the Go twin of the offline
-packaging is `go/emitter/presentation.go`.
+packaging is `go/emitter/presentation.go`. The static packaging is TypeScript only (section 2.4).
 
 The key words MUST, MUST NOT, SHOULD and MAY are to be interpreted as described in BCP 14
 (RFC 2119, RFC 8174) when, and only when, they appear in all capitals.
 
 ## Dependency boundary
 
-**Owns:** `buildPresentation`; the three packagings; the fragment payload
-`aac.presentation-fragment/v0`; the fragment size limits; the share-side scoping step; the
-hand-back from a fragment to the offline file; the one wording key the builder reads
-(`page.title`).
+**Owns:** `buildPresentation`; the four packagings; `availablePackagings` and its reasons; the
+fragment payload `aac.presentation-fragment/v0`; the fragment size limits and the default link
+budget; the static page and its statement; the share-side scoping step; the hand-back from a
+fragment to the offline file; the one wording key the builder reads (`page.title`).
 
 **Depends on, and does not redefine:** bundle verification and `VerifiedBundleContext`
 (`ts/src/bundle.ts`); the registry, the manifest, the formats `html` / `fragment` / `embedded`,
@@ -38,7 +39,10 @@ buildPresentation(context, { presentation, audience, format, ...settings })
   registry (`resolve(context, audience, format)`); it never selects a module itself. An explicit
   id that the registry does not select is an error, and so is an ambiguous match.
 - `audience` is an audience token; `"*"` is no particular audience.
-- `format` is `html` (offline file), `fragment` (permalink) or `embedded` (host element).
+- `format` is a packaging target: `html` (offline file), `fragment` (permalink), `embedded`
+  (host element) or `static` (no-script page). The first three are the contract's formats; the
+  static page is the `html` page rendered at build time, so the registry resolves it, and the
+  module renders it, as `html`.
 - Settings: `runtime` (the core runtime and, optionally, its pin; required for `html` and
   `fragment`), `modules` (digest-pinned module-slot scripts), `registry` (the resolver; the
   built-ins when omitted), `disclose` (section 3), `depth`, `title`, `themeCss`, `wording` (a
@@ -47,7 +51,42 @@ buildPresentation(context, { presentation, audience, format, ...settings })
 The steps run in this order: scope (section 3), verify the scoped bundle, resolve, package. Every
 packaging carries the same scoped bundle and the same settings.
 
-## 2. The three packagings
+**Supported targets.** The builder supports four packaging targets: `html`, `fragment`,
+`embedded` and `static`. A target is *supported* for one (bundle, audience) and one set of
+settings when the builder can package it; otherwise it is *unavailable*, and the builder says so
+(section 1.1). It never hands out a packaging that cannot be used, such as a link too long to
+share.
+
+### 1.1 Availability
+
+```ts
+availablePackagings(context, { presentation, audience, ...settings })
+  // => [{ target, available: true } | { target, available: false, reason }, ...]
+```
+
+`availablePackagings` takes the same arguments as `buildPresentation` without `format` and
+returns one entry per target, in the order `html`, `fragment`, `embedded`, `static`. It returns
+no packaging. An entry is `available: true` exactly when `buildPresentation` succeeds for that
+target with the same settings. Otherwise it is `available: false` with a `reason`:
+
+| `reason.code` | Target | Meaning | Other members |
+|---|---|---|---|
+| `fragment-too-large` | `fragment` | The token, or the whole URL with `viewerUrl`, is over the budget. | `subject` (`"fragment token"` or `"permalink URL"`), `length`, `limit` |
+| `runtime-missing` | `html`, `fragment` | No core runtime was given. | |
+| `no-document` | `static` | No DOM `document` to render with at build time. | |
+| `static-carries-script` | `static` | The rendered page holds a script element or an event-handler attribute. | |
+
+Every reason also carries a `message` in words. An error of the request itself (no audience, a
+bad depth or wording pack, an ambiguous registry, a requested presentation the registry does not
+select, scoping a bundle that did not verify) is not a packaging question: it is thrown, by both
+calls, as it is for every target alike.
+
+A direct `buildPresentation` call for an unavailable target throws. A fragment over its budget
+throws `FragmentTooLargeError` (with `length`, `maxLength` and `subject`), as it always has; the
+other reasons throw `PackagingUnavailableError`, a `PresentationBuildError` carrying the same
+`reason`.
+
+## 2. The four packagings
 
 ### 2.1 Offline `.html` (`html`)
 
@@ -103,12 +142,17 @@ holds.
 
 **Size limits.** The longest URL planned for is 1,048,576 characters (1 MiB), the smallest of the
 major browsers' documented limits. 2,048 characters are kept for the viewer's address and the
-`#`, so the longest token is 1,046,528 characters. A token over the limit, or a whole URL over
-1 MiB when `viewerUrl` is given, is refused with `FragmentTooLargeError`, which names the length
-and the limit. Nothing is ever truncated. A caller MAY set a lower limit (`maxFragmentLength`),
-for example for a link that will be pasted into a chat or an email, which commonly cut links far
-shorter; a limit above the maximum is an error. A decoder refuses an over-long token before
-decoding it. A bundle too large for a permalink is shared as the offline file.
+`#`, so the longest token is 1,046,528 characters (`FRAGMENT_TOKEN_MAX_LENGTH`). That is a ceiling,
+not a link anyone can share: chat and email cut links far shorter. The builder therefore packages a
+fragment within a **budget**, by default 65,536 characters (`FRAGMENT_TOKEN_DEFAULT_BUDGET`), and
+a caller MAY lower it or raise it up to the ceiling (`maxFragmentLength`); a budget above the
+ceiling is an error. A monthly report of a few hundred kilobytes is over the default budget, and
+its fragment is reported unavailable (section 1.1), not packaged as an unusable link. A token over
+the budget, or a whole URL over 1 MiB when `viewerUrl` is given, is refused with
+`FragmentTooLargeError`, which names the length and the limit. Nothing is ever truncated. The
+codec's own encoder and every decoder keep the ceiling as their limit, so any link a caller chose
+to make opens; a decoder refuses an over-long token before decoding it. A bundle too large for a
+permalink is shared as the offline file or the static page.
 
 **The viewer.** `buildFragmentViewerHtml(runtime)` writes a serverless viewer: an offline page
 with the same shell and CSP whose data is its own `location.hash`. It renders the payload as the
@@ -129,6 +173,47 @@ than used to build a different file.
 and wording, as the `embedded` format, through the caller's registry. The host page owns its own
 CSP.
 
+### 2.4 Static page (`static`)
+
+The same presentation model, rendered at build time into HTML that runs no script at all. The
+builder renders the scoped bundle exactly as the offline file renders it in the reader's browser
+(the same bundle, audience, `html` format, depth, wording pack and registry), and writes the
+result into the emitter's shell, with its base stylesheet, title and theme, and nothing else: no
+bundle element, no core runtime, no module, no bootstrap.
+
+**Statement.** The page states, before the rendered content, the constant
+`STATIC_NOT_SELF_VERIFYING`:
+
+> Not self-verifying; verify the bundle separately.
+
+then the constant `STATIC_BUILD_TIME_STATEMENT`:
+
+> This page runs no code. It shows the verification result computed when it was built and cannot
+> re-verify anything in your browser.
+
+then the verification result the builder computed at build time ("verified" or "did not
+verify"), which is also on the notice as `data-built-verification` and returned as
+`verification`. That result is the one the rendered content shows; the builder refuses to write a
+page where the two differ.
+
+**CSP.** `default-src 'none'; script-src 'none'; style-src <hashes>; img-src data:;
+connect-src 'none'; base-uri 'none'; form-action 'none'`. Every `<style>` element the page carries
+is listed by hash. A rendered element's `style` attribute (a bar's width, for one) is listed by
+hash under `'unsafe-hashes'`; no other inline style applies. The page makes no request and runs
+nothing. The builder refuses (`static-carries-script`) a rendering that holds a script element or
+an event-handler attribute, which the CSP would block anyway.
+
+**What it does not do.** It does not carry the bundle: the reader verifies the bundle, shared
+separately, with a verifier they trust. Controls that the scripted page answers on click (a row's
+detail, a claim's detail, a cited record) are written but do nothing; native `<details>`
+disclosure still opens. It needs a DOM `document` at build time; in Node that is a jsdom
+document set as `globalThis.document`, and without one the target is unavailable
+(`no-document`). There is no Go twin: the presentation model is rendered by the TypeScript
+modules only.
+
+**Use.** A copy for a reader who should not run code from the sender, and a copy whose every byte
+is data that a share-side check can read whole, with no vendored script to exempt.
+
 ## 3. Scoping
 
 Scoping decides what one audience may see. It happens in the share builder, before anything is
@@ -148,15 +233,26 @@ whoever holds the artifact can read everything in it.
 
 ## 4. Acceptance
 
-Acceptance is over (bundle, audience) pairs (contract I4). For one bundle and one audience, the
-offline file, the fragment permalink and the embedded element MUST select the same module and
-show the same verified content, the same verification state and the same evidence identifiers.
+Acceptance is over (bundle, audience) pairs (contract I4). **Identical semantics across SUPPORTED
+packagings:** for one bundle and one audience, every packaging that is available (section 1.1)
+MUST select the same module and show the same verified content, the same verification state and
+the same evidence identifiers. A packaging that is unavailable is reported, never approximated.
+The rendered markup is compared as HTML parsing reads it: a static page is parsed, and parsing
+adds the elements HTML implies (a table row's `tbody`), which a page drawn by script may omit.
+
 `ts/test/presentation-builder.test.ts` checks this over the fixtures for each built-in page shape
-and a bundle that does not verify, for three audiences, in all three formats, by rendering each
-packaging and comparing what it shows; the only refusal it accepts is a fragment over the size
-limit. The same file checks that theme, wording, locale and depth leave every evidence
-identifier unchanged, and `ts/test/presentation-builder-browser.test.ts` opens the offline file
-and the fragment URL in a CSP-enforcing browser and finds no request beyond the document itself.
+and a bundle that does not verify, for three audiences, in all four targets, by rendering each
+packaging and comparing what it shows, and checks that `availablePackagings` reports exactly the
+targets that built; the only unavailability the fixtures meet is a fragment over its budget. Two
+monthly-scale compliance bundles, derived deterministically from the committed two-session
+fixture (`ts/test/helpers/monthly-fixtures.ts`: 40 sessions, about 490 KB, and 80 sessions, about
+1 MB), assert that the fragment is reported unavailable with its length and limit, at the default
+budget and, for the larger, at the ceiling, while the other three targets show the same thing.
+Every static page in the table is checked for no script, its CSP and its statement. The same file
+checks that theme, wording, locale and depth leave every evidence identifier unchanged, and
+`ts/test/presentation-builder-browser.test.ts` opens the offline file, the fragment URL and the
+static page in a CSP-enforcing browser and finds no request beyond the document itself, no CSP
+violation, and the static page showing what the offline file shows.
 
 The Go and TypeScript offline outputs match byte for byte for the same inputs
 (`go/emitter/testdata/expected-offline.html` and `offline-fragment.txt`).
@@ -169,4 +265,7 @@ The Go and TypeScript offline outputs match byte for byte for the same inputs
    runtime it holds. The hand-back does check.
 3. The countersigner list of the caller's context does not travel in any packaging; a page names
    no independent countersigner unless its host supplies a list.
-4. The offline file's `<html lang>` stays `en` whatever the wording pack's locale.
+4. The offline file's `<html lang>` stays `en` whatever the wording pack's locale. So does the
+   static page's.
+5. The static page's click-driven controls are inert (section 2.4); what they would reveal is
+   not on the page.

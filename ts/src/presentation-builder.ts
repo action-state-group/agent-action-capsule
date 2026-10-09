@@ -6,20 +6,27 @@ import {
 import {
   DEFAULT_EVIDENCE_GRAPH_BOOTSTRAP,
   emitEvidenceGraphHtml,
+  emitStaticEvidenceGraphHtml,
   escapeJsonForHtmlScript,
   type EmitterModule,
 } from "./emitter.js";
-import { createPresentationRegistry } from "./evidence-graph-view.js";
+import {
+  createPresentationRegistry,
+  renderEvidenceGraph,
+} from "./evidence-graph-view.js";
 import { isHex64, jcs, sha256Hex } from "./json.js";
 import {
   bundleVerified,
   PresentationAmbiguityError,
   type PresentationFormat,
+  type PresentationResolution,
   type PresentationResolver,
 } from "./presentation-registry.js";
 import {
   decodePresentationFragment,
   encodePresentationFragment,
+  FRAGMENT_TOKEN_DEFAULT_BUDGET,
+  FragmentTooLargeError,
   PRESENTATION_DEPTHS,
   PRESENTATION_FRAGMENT_VERSION,
   scopeDisclosures,
@@ -31,7 +38,7 @@ import {
 import { mountPresentation } from "./presentation-mount.js";
 
 /**
- * One builder, three packagings (spec/presentation-builder-v0.md):
+ * One builder, four packagings (spec/presentation-builder-v0.md):
  * `buildPresentation(context, {presentation, audience, format})` scopes the
  * bundle for the audience, resolves the one module the registry selects,
  * and packages the same scoped bundle and settings as
@@ -40,10 +47,15 @@ import { mountPresentation } from "./presentation-mount.js";
  * - `fragment`: a permalink token for the URL fragment, which a browser
  *   never sends; the offline file is rebuilt from it byte for byte by
  *   {@link offlineHtmlFromFragment};
- * - `embedded`: a mount function for a host element.
+ * - `embedded`: a mount function for a host element;
+ * - `static`: the page rendered at build time into HTML that runs no
+ *   script at all, and says it is not self-verifying.
  *
- * For one (bundle, audience) the three show the same module, the same
- * verified content and the same verification state (contract I4).
+ * A packaging can be unavailable for a bundle (a fragment over the link
+ * budget, for one); {@link availablePackagings} reports which, and why,
+ * without packaging anything. For one (bundle, audience) every SUPPORTED
+ * packaging shows the same module, the same verified content and the same
+ * verification state (contract I4).
  */
 
 export class PresentationBuildError extends Error {
@@ -52,6 +64,73 @@ export class PresentationBuildError extends Error {
     this.name = "PresentationBuildError";
   }
 }
+
+/** A packaging target: the three contract formats, and the static page. */
+export type PackagingTarget = PresentationFormat | "static";
+export const PACKAGING_TARGETS: readonly PackagingTarget[] = Object.freeze([
+  "html",
+  "fragment",
+  "embedded",
+  "static",
+]);
+
+/** Why a packaging target is unavailable for one (bundle, audience). */
+export type PackagingUnavailableReason =
+  | {
+      /** The token, or the whole URL, is over the link budget. */
+      readonly code: "fragment-too-large";
+      readonly subject: string;
+      readonly length: number;
+      readonly limit: number;
+      readonly message: string;
+    }
+  | {
+      /** `html` and `fragment` need the core runtime, and none was given. */
+      readonly code: "runtime-missing";
+      readonly message: string;
+    }
+  | {
+      /** `static` renders at build time and needs a DOM `document`. */
+      readonly code: "no-document";
+      readonly message: string;
+    }
+  | {
+      /** The rendered page carries a script, so it cannot be static. */
+      readonly code: "static-carries-script";
+      readonly message: string;
+    };
+
+/** One target's availability: available, or unavailable with its reason. */
+export type PackagingAvailability =
+  | { readonly target: PackagingTarget; readonly available: true }
+  | {
+      readonly target: PackagingTarget;
+      readonly available: false;
+      readonly reason: PackagingUnavailableReason;
+    };
+
+/**
+ * A direct build of a packaging that is unavailable. (A fragment over the
+ * budget keeps throwing {@link FragmentTooLargeError}, as it always has.)
+ */
+export class PackagingUnavailableError extends PresentationBuildError {
+  readonly reason: PackagingUnavailableReason;
+  constructor(reason: PackagingUnavailableReason) {
+    super(reason.message);
+    this.name = "PackagingUnavailableError";
+    this.reason = reason;
+  }
+}
+
+/**
+ * What the static page says, word for word. It runs no code, so it shows
+ * the verification result the builder computed and cannot re-verify.
+ */
+export const STATIC_NOT_SELF_VERIFYING =
+  "Not self-verifying; verify the bundle separately.";
+/** The static page's second statement, before the build-time result. */
+export const STATIC_BUILD_TIME_STATEMENT =
+  "This page runs no code. It shows the verification result computed when it was built and cannot re-verify anything in your browser.";
 
 /** The core runtime (the browser IIFE) and, optionally, its pin. */
 export interface PresentationRuntime {
@@ -65,7 +144,7 @@ export interface BuildPresentationOptions {
   readonly presentation: string;
   /** The audience token; `"*"` is no particular audience. */
   readonly audience: string;
-  readonly format: PresentationFormat;
+  readonly format: PackagingTarget;
   /** The core runtime; required for `html` and `fragment`. */
   readonly runtime?: PresentationRuntime;
   /** Digest-pinned module-slot scripts the page runs after the runtime. */
@@ -86,7 +165,11 @@ export interface BuildPresentationOptions {
   /** Theme CSS for the THEME_SLOT (presentation only). */
   readonly themeCss?: string;
   readonly wording?: WordingPackInput;
-  /** `fragment` only: lower the token limit (never above the maximum). */
+  /**
+   * `fragment` only: the token budget. Omitted, it is
+   * FRAGMENT_TOKEN_DEFAULT_BUDGET; it may be lowered, or raised up to
+   * FRAGMENT_TOKEN_MAX_LENGTH, never above.
+   */
   readonly maxFragmentLength?: number;
   /** `fragment` only: the viewer address the token is appended to. */
   readonly viewerUrl?: string;
@@ -112,6 +195,12 @@ export type BuiltPresentation =
   | (BuiltCommon & {
       readonly format: "embedded";
       mount(element: HTMLElement): Promise<void>;
+    })
+  | (BuiltCommon & {
+      readonly format: "static";
+      readonly html: string;
+      /** The verification result the builder computed and the page states. */
+      readonly verification: "verified" | "failed";
     });
 
 /** The wording key the builder reads for the page title. */
@@ -225,34 +314,32 @@ async function packageOffline(
 
 function requireRuntime(
   runtime: PresentationRuntime | undefined,
-  format: PresentationFormat,
+  format: PackagingTarget,
 ): PresentationRuntime {
   if (runtime === undefined)
-    throw new PresentationBuildError(`format ${format} needs the core runtime`);
+    throw new PackagingUnavailableError({
+      code: "runtime-missing",
+      message: `format ${format} needs the core runtime`,
+    });
   return runtime;
 }
 
-/**
- * Build one presentation of a bundle for one audience in one format.
- * `input` is a verified context or a bundle (verified here).
- *
- * Steps, in order: scope the bundle for the audience (only when `disclose`
- * is given, and never for a bundle that did not verify, since removing a
- * disclosure could hide the failure); verify the scoped bundle; resolve the
- * module through the registry (an ambiguity is an error; an explicit
- * `presentation` that the registry does not select is an error); package.
- */
-export async function buildPresentation(
+/** Everything every packaging shares: scoped, verified and resolved once. */
+interface Prepared {
+  readonly common: BuiltCommon;
+  readonly context: VerifiedBundleContext;
+  readonly registry: PresentationResolver;
+}
+
+// Check the settings, then scope and verify the scoped bundle: once for
+// every packaging.
+async function scopeAndVerify(
   input: VerifiedBundleContext | unknown,
-  options: BuildPresentationOptions,
-): Promise<BuiltPresentation> {
-  const { audience, format } = options;
+  options: Omit<BuildPresentationOptions, "format">,
+): Promise<VerifiedBundleContext> {
+  const { audience } = options;
   if (typeof audience !== "string" || audience === "")
     throw new PresentationBuildError("audience is required");
-  if (format !== "html" && format !== "fragment" && format !== "embedded")
-    throw new PresentationBuildError(
-      `format ${JSON.stringify(format)} is not html, fragment or embedded`,
-    );
   if (
     options.depth !== undefined &&
     !PRESENTATION_DEPTHS.includes(options.depth)
@@ -263,23 +350,29 @@ export async function buildPresentation(
   const given = isVerifiedBundleContext(input)
     ? input
     : await buildVerifiedBundleContext(input);
-  let context = given;
-  if (options.disclose !== undefined) {
-    if (!bundleVerified(given.verification))
-      throw new PresentationBuildError(
-        "refusing to scope a bundle that did not verify: removing a disclosure could hide the failure",
-      );
-    context = await buildVerifiedBundleContext(
-      scopeDisclosures(given.bundle, options.disclose),
-      given.countersigners === undefined
-        ? {}
-        : { countersigners: given.countersigners },
+  if (options.disclose === undefined) return given;
+  if (!bundleVerified(given.verification))
+    throw new PresentationBuildError(
+      "refusing to scope a bundle that did not verify: removing a disclosure could hide the failure",
     );
-  }
-  const bundle = context.bundle;
+  return buildVerifiedBundleContext(
+    scopeDisclosures(given.bundle, options.disclose),
+    given.countersigners === undefined
+      ? {}
+      : { countersigners: given.countersigners },
+  );
+}
 
+// Resolve for one contract format. The static page is the html page
+// rendered at build time, so it is resolved, and rendered, as html.
+async function resolveFor(
+  context: VerifiedBundleContext,
+  options: Omit<BuildPresentationOptions, "format">,
+  format: PresentationFormat,
+): Promise<Prepared> {
+  const { audience } = options;
   const registry = options.registry ?? createPresentationRegistry();
-  let resolution;
+  let resolution: PresentationResolution;
   try {
     resolution = await registry.resolve(context, audience, format);
   } catch (err) {
@@ -295,12 +388,99 @@ export async function buildPresentation(
     throw new PresentationBuildError(
       `presentation ${options.presentation} was requested but the registry selected ${module ?? resolution.kind} for audience ${audience} and format ${format}`,
     );
-  const common: BuiltCommon = {
-    audience,
-    module,
-    resolution: resolution.kind,
-    bundle,
+  return {
+    common: {
+      audience,
+      module,
+      resolution: resolution.kind,
+      bundle: context.bundle,
+    },
+    context,
+    registry,
   };
+}
+
+const contractFormat = (target: PackagingTarget): PresentationFormat =>
+  target === "static" ? "html" : target;
+
+/**
+ * Build one presentation of a bundle for one audience in one packaging.
+ * `input` is a verified context or a bundle (verified here).
+ *
+ * Steps, in order: scope the bundle for the audience (only when `disclose`
+ * is given, and never for a bundle that did not verify, since removing a
+ * disclosure could hide the failure); verify the scoped bundle; resolve the
+ * module through the registry (an ambiguity is an error; an explicit
+ * `presentation` that the registry does not select is an error); package.
+ *
+ * A packaging that is unavailable throws: {@link FragmentTooLargeError} for
+ * a fragment over its budget, {@link PackagingUnavailableError} otherwise.
+ * Ask {@link availablePackagings} first to learn which are available.
+ */
+export async function buildPresentation(
+  input: VerifiedBundleContext | unknown,
+  options: BuildPresentationOptions,
+): Promise<BuiltPresentation> {
+  const { format } = options;
+  if (!PACKAGING_TARGETS.includes(format))
+    throw new PresentationBuildError(
+      `format ${JSON.stringify(format)} is not html, fragment, embedded or static`,
+    );
+  const context = await scopeAndVerify(input, options);
+  const prepared = await resolveFor(context, options, contractFormat(format));
+  return packageAs(prepared, format, options);
+}
+
+/**
+ * Report, for one (bundle, audience) and these settings, which packaging
+ * targets are available and why each other one is not, without returning
+ * any packaging: an unusable link is never handed out. Errors of the
+ * request itself (no audience, a bad wording pack, an ambiguous registry,
+ * scoping a bundle that did not verify) are thrown as buildPresentation
+ * throws them, since no packaging of it exists.
+ *
+ * Available here means buildPresentation succeeds for that target with the
+ * same settings: every target is packaged and the result discarded.
+ */
+export async function availablePackagings(
+  input: VerifiedBundleContext | unknown,
+  options: Omit<BuildPresentationOptions, "format">,
+): Promise<readonly PackagingAvailability[]> {
+  const context = await scopeAndVerify(input, options);
+  const out: PackagingAvailability[] = [];
+  for (const target of PACKAGING_TARGETS) {
+    const prepared = await resolveFor(context, options, contractFormat(target));
+    try {
+      await packageAs(prepared, target, options);
+      out.push({ target, available: true });
+    } catch (err) {
+      if (err instanceof FragmentTooLargeError)
+        out.push({
+          target,
+          available: false,
+          reason: {
+            code: "fragment-too-large",
+            subject: err.subject,
+            length: err.length,
+            limit: err.maxLength,
+            message: err.message,
+          },
+        });
+      else if (err instanceof PackagingUnavailableError)
+        out.push({ target, available: false, reason: err.reason });
+      else throw err;
+    }
+  }
+  return out;
+}
+
+async function packageAs(
+  prepared: Prepared,
+  format: PackagingTarget,
+  options: Omit<BuildPresentationOptions, "format">,
+): Promise<BuiltPresentation> {
+  const { common, registry } = prepared;
+  const { audience, bundle } = common;
   const modules = options.modules ?? [];
 
   if (format === "html") {
@@ -329,7 +509,7 @@ export async function buildPresentation(
     const payload: PresentationFragment = {
       fragment_version: PRESENTATION_FRAGMENT_VERSION,
       audience,
-      presentation: module ?? "auto",
+      presentation: common.module ?? "auto",
       ...(options.depth === undefined ? {} : { depth: options.depth }),
       ...(options.title === undefined ? {} : { title: options.title }),
       ...(options.themeCss === undefined
@@ -348,9 +528,7 @@ export async function buildPresentation(
       bundle,
     };
     const encoded = encodePresentationFragment(payload, {
-      ...(options.maxFragmentLength === undefined
-        ? {}
-        : { maxLength: options.maxFragmentLength }),
+      maxLength: options.maxFragmentLength ?? FRAGMENT_TOKEN_DEFAULT_BUDGET,
       ...(options.viewerUrl === undefined
         ? {}
         : { viewerUrl: options.viewerUrl }),
@@ -362,6 +540,11 @@ export async function buildPresentation(
       ...(encoded.url === undefined ? {} : { url: encoded.url }),
       payload,
     };
+  }
+
+  if (format === "static") {
+    const page = await packageStatic(prepared, options);
+    return { ...common, format, ...page };
   }
 
   return {
@@ -377,6 +560,95 @@ export async function buildPresentation(
         registry,
       }),
   };
+}
+
+const escapeText = (value: string): string =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&#34;");
+
+/**
+ * The static page: render the scoped bundle at build time exactly as the
+ * offline file renders it in the reader's browser (same bundle, audience,
+ * html format, depth, wording and registry), then write the markup with no
+ * script. The page states that it is not self-verifying and gives the
+ * verification result the builder computed.
+ */
+async function packageStatic(
+  prepared: Prepared,
+  options: Omit<BuildPresentationOptions, "format">,
+): Promise<{ html: string; verification: "verified" | "failed" }> {
+  if (typeof document === "undefined")
+    throw new PackagingUnavailableError({
+      code: "no-document",
+      message:
+        "format static renders at build time and needs a DOM document (in node, a jsdom document as globalThis.document)",
+    });
+  const { common, context, registry } = prepared;
+  const root = document.createElement("div");
+  // From the bundle, as the offline file does: the page there verifies the
+  // bundle it carries and names no countersigner, so this does the same.
+  await renderEvidenceGraph(common.bundle, root, undefined, {
+    audience: common.audience,
+    format: "html",
+    ...(options.depth === undefined ? {} : { depth: options.depth }),
+    ...(options.wording === undefined ? {} : { wording: options.wording }),
+    registry,
+  });
+  const verification = bundleVerified(context.verification)
+    ? "verified"
+    : "failed";
+  const shown = [...root.querySelectorAll("[data-verify]")].map((e) =>
+    e.getAttribute("data-verify"),
+  );
+  if (shown.length !== 1 || shown[0] !== verification)
+    throw new Error(
+      "the rendered verification state differs from the builder's",
+    );
+  const all = [...root.querySelectorAll("*")];
+  if (
+    all.some(
+      (e) =>
+        e.localName === "script" ||
+        [...e.attributes].some((a) => a.name.toLowerCase().startsWith("on")),
+    )
+  )
+    throw new PackagingUnavailableError({
+      code: "static-carries-script",
+      message:
+        "the rendered page carries a script element or an event-handler attribute, so it cannot be packaged as static",
+    });
+  const appStyles = all
+    .filter((e) => e.localName === "style")
+    .map((e) => e.textContent ?? "");
+  const appStyleAttributes = all
+    .map((e) => e.getAttribute("style"))
+    .filter((v): v is string => v !== null);
+
+  const entries =
+    options.wording === undefined
+      ? undefined
+      : await checkWordingPack(options.wording);
+  const title =
+    options.title !== undefined && options.title !== ""
+      ? options.title
+      : entries?.[WORDING_TITLE_KEY];
+  const noticeHtml =
+    `<aside class="aac-static-notice" data-static-notice="not-self-verifying" data-built-verification="${verification}">` +
+    `<p><strong>${escapeText(STATIC_NOT_SELF_VERIFYING)}</strong></p>` +
+    `<p>${escapeText(STATIC_BUILD_TIME_STATEMENT)}</p>` +
+    `<p>Verification result when this page was built: <strong>${verification === "verified" ? "verified" : "did not verify"}</strong>.</p>` +
+    `</aside>`;
+  const html = emitStaticEvidenceGraphHtml(
+    { appHtml: root.innerHTML, appStyles, appStyleAttributes, noticeHtml },
+    {
+      ...(title === undefined ? {} : { title }),
+      ...(options.themeCss === undefined ? {} : { themeCss: options.themeCss }),
+    },
+  );
+  return { html, verification };
 }
 
 /**
