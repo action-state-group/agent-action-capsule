@@ -17,3 +17,5 @@ export * from "./result-root.js";
 export * from "./verify.js";
 export * from "./verification-page.js";
 export * from "./emitter.js";
+export * from "./presentation-fragment.js";
+export * from "./presentation-builder.js";

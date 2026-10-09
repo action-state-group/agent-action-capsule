@@ -78,8 +78,8 @@ function replaceSingle(
   return `${parts[0]}${value}${parts[1]}`;
 }
 
-// JSON embedded in a script element must not be able to terminate that element.
-function escapeJsonForHtmlScript(json: string): string {
+/** JSON embedded in a script element must not be able to terminate that element. */
+export function escapeJsonForHtmlScript(json: string): string {
   return json
     .replaceAll("<", "\\u003c")
     .replaceAll(">", "\\u003e")

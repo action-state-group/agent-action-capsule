@@ -48,6 +48,15 @@
   `createPresentationRegistry`, `registerPresentation`, `resolvePresentation` and
   `describeContext` are new. Registration refuses two same-tier manifests one descriptor could
   match; a tie is an error, never first-wins. Rendered output is byte-identical for every fixture.
+- TypeScript and Go: one presentation builder (`spec/presentation-builder-v0.md`).
+  `buildPresentation(context, {presentation, audience, format})` scopes the bundle for the
+  audience, resolves the module through the registry, and packages the result as an offline
+  `.html` file with its per-page CSP, a fragment permalink (`aac.presentation-fragment/v0`, the
+  Evidence Bundle permalink codec, refused over 1,046,528 characters, never truncated) or a
+  mount for a host element. `offlineHtmlFromFragment` (Go: `OfflineHTMLFromFragment`) rebuilds
+  the exact offline file from a fragment; `BuildOfflineHTML` is the Go twin of the offline
+  packaging. With the default settings the builder writes exactly the page the emitter writes.
+  `renderEvidenceGraph` takes optional `depth` and `wording` options.
 - TypeScript: the presentation registry applies the presentation ABI. A `PresentationRegistry`
   takes the runtime's declaration (`REFERENCE_PRESENTATION_RUNTIME`: `aac.presentation-api/v0`,
   runtime 0.1.0); every manifest, the six built-ins included, carries `presentation_api` and
