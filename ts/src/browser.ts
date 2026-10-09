@@ -4,6 +4,8 @@ export * from "./bundle.js";
 export * from "./json.js";
 export * from "./model.js";
 export * from "./presentation.js";
+export * from "./presentation-registry.js";
+export * from "./builtin-manifests.js";
 export * from "./producer-envelope-verification.js";
 export * from "./registries.js";
 export * from "./result-root.js";

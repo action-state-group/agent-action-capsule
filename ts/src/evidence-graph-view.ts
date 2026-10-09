@@ -1,11 +1,20 @@
 import {
   buildVerifiedBundleContext,
+  disclosureOf,
   isVerifiedBundleContext,
   type ExtensionInterpreterId,
   withCountersigners,
   type BundleVerificationResult,
   type VerifiedBundleContext,
 } from "./bundle.js";
+import {
+  BUILTIN_MANIFEST_EVALUATION_SUMMARY_GRAPH,
+  BUILTIN_MANIFEST_NO_AGGREGATE,
+  BUILTIN_MANIFEST_REPORT_ROWS,
+  BUILTIN_MANIFEST_RESULT,
+  BUILTIN_MANIFEST_RESULT_COMPLIANCE,
+  BUILTIN_MANIFEST_RESULT_OUTCOME_REPORT,
+} from "./builtin-manifests.js";
 import {
   classifyCountersignatures,
   declaredProducerKeys,
@@ -21,16 +30,36 @@ import {
   type CalibrationCount,
   type CalibrationNode,
   type CaseNode,
+  type DisclosureState,
   type EvidenceGraph,
   type RecordTimes,
   type ReportNode,
   zoneStatement,
 } from "./evidence-graph.js";
 import { renderOutcomeReportPage } from "./outcome-report-view.js";
-import { readOutcomeReportPresentation } from "./outcome-report-presentation.js";
+import {
+  readOutcomeReportPresentation,
+  type OutcomeReportPresentation,
+} from "./outcome-report-presentation.js";
 import { renderCompliancePage } from "./compliance-view.js";
-import { readCompliancePresentation } from "./compliance-presentation.js";
+import {
+  readCompliancePresentation,
+  type CompliancePresentation,
+} from "./compliance-presentation.js";
 import { readPresentationBlock } from "./presentation.js";
+import {
+  bundleVerified,
+  PresentationAmbiguityError,
+  PresentationRegistry,
+  type PresentationBadgeState,
+  type PresentationFormat,
+  type PresentationHost,
+  type PresentationModule,
+  type PresentationRegistration,
+  type PresentationResolution,
+  type PresentationResolver,
+  type PresentationServices,
+} from "./presentation-registry.js";
 import {
   buildReportRows,
   type ReportRow,
@@ -110,40 +139,6 @@ function appendTime(
   parent.append(cell);
 }
 
-// Per-record membership may fail solely because some supplied records are
-// bound to no log position (the verifier's `membership_record_unbound`): real
-// records that sit outside any checkpoint. That is coverage, not a broken
-// proof -- every other record's inclusion proof still verified -- so the
-// bundle renders, each such record carries its own `uncheckpointed` status,
-// and the banner and verification page state how many there are. Any other
-// membership finding (an invalid proof, bad coordinates, a missing sequence)
-// still fails the bundle as a whole: `unboundRecordIds` leaves out a record
-// whose supplied entry was rejected, so the counts below can only agree when
-// every finding is a clean unbound record.
-function membershipProvenOrUnbound(result: BundleVerificationResult): boolean {
-  return (
-    result.perRecordMembership.status === "pass" ||
-    (result.perRecordMembership.status === "fail" &&
-      result.perRecordMembership.findings.length > 0 &&
-      result.perRecordMembership.findings.length ===
-        unboundRecordIds(result).length)
-  );
-}
-
-function bundleVerified(result: BundleVerificationResult): boolean {
-  return (
-    result.graphClosure.status === "pass" &&
-    result.intervalCoverage.status === "pass" &&
-    membershipProvenOrUnbound(result) &&
-    Object.values(result.capsuleResults).every((capsule) => capsule.ok) &&
-    result.disclosures.every(
-      (disclosure) =>
-        disclosure.status === "disclosure_match" ||
-        disclosure.status === "withheld",
-    )
-  );
-}
-
 const recordsWord = (count: number): string =>
   `${count} ${count === 1 ? "record" : "records"}`;
 
@@ -156,8 +151,7 @@ function renderVerificationBanner(
   root: HTMLElement,
   verified: boolean,
   coverage: { uncheckpointed: number; total: number },
-  styled = false,
-): void {
+): HTMLElement {
   const banner = element(
     "p",
     verified
@@ -168,19 +162,22 @@ function renderVerificationBanner(
   );
   banner.dataset.verify = verified ? "verified" : "failed";
   banner.dataset.uncheckpointed = String(coverage.uncheckpointed);
-  // Drawn in the outcome-report card's own look when that card renders
-  // (OUTCOME_REPORT_CSS's .oi-banner rules); the words and data attributes
-  // above are identical either way -- the class is presentation only.
-  if (styled)
-    banner.className = `oi oi-banner ${verified ? "oi-banner-ok" : "oi-banner-failed"}`;
   root.append(banner);
-  if (verified) return;
+  if (verified) return banner;
   const refusal = element(
     "p",
     "This bundle did not verify. Its records, rows and payloads are not shown; the verification page below lists which checks failed.",
   );
   refusal.dataset.refusal = "unverified-bundle";
   root.append(refusal);
+  return banner;
+}
+
+// Drawn in the outcome-report card's own look when that card renders
+// (OUTCOME_REPORT_CSS's .oi-banner rules); the words and data attributes are
+// identical either way -- the class is presentation only.
+function styleBanner(banner: HTMLElement, verified: boolean): void {
+  banner.className = `oi oi-banner ${verified ? "oi-banner-ok" : "oi-banner-failed"}`;
 }
 
 // presentation/v1 is rendered here, in the header only, and nowhere else in
@@ -1343,6 +1340,275 @@ function renderGraph(
   root.append(calendar, detail);
 }
 
+// ---------------------------------------------------------------------------
+// The built-in presentations (spec/presentation-contract-v0.md appendix A).
+// Which one renders is decided by their manifests (builtin-manifests.ts),
+// never here: each module only builds its model and draws it.
+// ---------------------------------------------------------------------------
+
+// A model built by canRender is kept for buildModel, per context, so a
+// module never builds twice and canRender stays the one place that decides.
+function memo<T>(
+  build: (context: VerifiedBundleContext) => Promise<T>,
+): (context: VerifiedBundleContext) => Promise<T> {
+  const cache = new WeakMap<VerifiedBundleContext, Promise<T>>();
+  return (context) => {
+    let value = cache.get(context);
+    if (value === undefined) {
+      value = build(context);
+      cache.set(context, value);
+    }
+    return value;
+  };
+}
+
+const reportRowsOf = memo(buildReportRows);
+// A Result root whose document is malformed makes buildResultRoot throw. The
+// throw rejects renderEvidenceGraph before anything is written, exactly as
+// before the registry: a malformed Result is refused, never rendered as one.
+const resultRootOf = memo(async (context: VerifiedBundleContext) =>
+  (await isResultRoot(context)) ? buildResultRoot(context) : undefined,
+);
+// EvidenceGraphError means "no evaluation-summary graph here" (the module
+// declines and the fallback renders); any other error propagates.
+const evidenceGraphOf = memo(async (context: VerifiedBundleContext) => {
+  try {
+    return await buildEvidenceGraph(context);
+  } catch (err) {
+    if (!(err instanceof EvidenceGraphError)) throw err;
+    return undefined;
+  }
+});
+
+function defined<T>(value: T | undefined, id: string): T {
+  if (value === undefined)
+    throw new Error(`${id}: buildModel called although canRender was false`);
+  return value;
+}
+
+const reportRowsModule: PresentationModule<ReportRows> = {
+  manifest: BUILTIN_MANIFEST_REPORT_ROWS,
+  canRender: async (context) => (await reportRowsOf(context)) !== undefined,
+  buildModel: async (context) =>
+    defined(await reportRowsOf(context), BUILTIN_MANIFEST_REPORT_ROWS.id),
+  render: (model, host) => renderReportRowsTable(model, host.L1),
+};
+
+interface ResultCardModel<Card> {
+  readonly result: ResultRoot;
+  readonly card: Card;
+  readonly bundle: unknown;
+  readonly verification: BundleVerificationResult;
+}
+
+const resultOutcomeReportModule: PresentationModule<
+  ResultCardModel<OutcomeReportPresentation>
+> = {
+  manifest: BUILTIN_MANIFEST_RESULT_OUTCOME_REPORT,
+  canRender: async (context) =>
+    readOutcomeReportPresentation(context.bundle) !== undefined &&
+    (await isResultRoot(context)),
+  buildModel: async (context) => ({
+    result: defined(
+      await resultRootOf(context),
+      BUILTIN_MANIFEST_RESULT_OUTCOME_REPORT.id,
+    ),
+    card: defined(
+      readOutcomeReportPresentation(context.bundle),
+      BUILTIN_MANIFEST_RESULT_OUTCOME_REPORT.id,
+    ),
+    bundle: context.bundle,
+    verification: context.verification,
+  }),
+  render: async (model, host) => {
+    // The banner and the verification page take the card's look.
+    host.setChromeClass("oi");
+    await renderOutcomeReportPage(
+      model.result,
+      model.card,
+      model.bundle,
+      model.verification,
+      host.L1,
+    );
+  },
+};
+
+const resultComplianceModule: PresentationModule<
+  ResultCardModel<CompliancePresentation>
+> = {
+  manifest: BUILTIN_MANIFEST_RESULT_COMPLIANCE,
+  canRender: async (context) =>
+    readCompliancePresentation(context.bundle) !== undefined &&
+    (await isResultRoot(context)),
+  buildModel: async (context) => ({
+    result: defined(
+      await resultRootOf(context),
+      BUILTIN_MANIFEST_RESULT_COMPLIANCE.id,
+    ),
+    card: defined(
+      readCompliancePresentation(context.bundle),
+      BUILTIN_MANIFEST_RESULT_COMPLIANCE.id,
+    ),
+    bundle: context.bundle,
+    verification: context.verification,
+  }),
+  render: (model, host) =>
+    renderCompliancePage(
+      model.result,
+      model.card,
+      model.bundle,
+      model.verification,
+      host.L1,
+    ),
+};
+
+const resultModule: PresentationModule<ResultRoot> = {
+  manifest: BUILTIN_MANIFEST_RESULT,
+  canRender: (context) => isResultRoot(context),
+  buildModel: async (context) =>
+    defined(await resultRootOf(context), BUILTIN_MANIFEST_RESULT.id),
+  render: (model, host) => renderResultPage(model, host.L1),
+};
+
+const evaluationSummaryGraphModule: PresentationModule<{
+  readonly graph: EvidenceGraph;
+  readonly records: unknown[];
+}> = {
+  manifest: BUILTIN_MANIFEST_EVALUATION_SUMMARY_GRAPH,
+  canRender: async (context) => (await evidenceGraphOf(context)) !== undefined,
+  buildModel: async (context) => {
+    const records = object(context.bundle).records;
+    return {
+      graph: defined(
+        await evidenceGraphOf(context),
+        BUILTIN_MANIFEST_EVALUATION_SUMMARY_GRAPH.id,
+      ),
+      records: Array.isArray(records) ? records : [],
+    };
+  },
+  render: (model, host) => renderGraph(model.graph, host.L1, model.records),
+};
+
+// The evaluation-summary/v1 aggregate is optional: a verified bundle whose
+// root is none of the other families (a deal root, for example) renders
+// without the aggregate panel and says so, instead of rendering nothing.
+const noAggregateModule: PresentationModule<null> = {
+  manifest: BUILTIN_MANIFEST_NO_AGGREGATE,
+  canRender: () => true,
+  buildModel: () => null,
+  render: (_model, host) => {
+    const note = document.createElement("p");
+    note.setAttribute("data-notice", "no-aggregate");
+    note.textContent =
+      "This bundle carries no evaluation summary, so there is no aggregate view. The records and their verification are below.";
+    host.L1.append(note);
+  },
+};
+
+// The extension interpreters each built-in module runs when it renders: a
+// Result page reads the book payload extensions, and each card reads its own
+// block. The rows table, the graph and the no-aggregate note read none.
+const BUILTIN_MODULE_INTERPRETERS: Readonly<
+  Record<string, readonly ExtensionInterpreterId[]>
+> = Object.freeze({
+  [BUILTIN_MANIFEST_RESULT_OUTCOME_REPORT.id]: [
+    "result-root",
+    "outcome-report-card",
+  ],
+  [BUILTIN_MANIFEST_RESULT_COMPLIANCE.id]: ["result-root", "compliance-card"],
+  [BUILTIN_MANIFEST_RESULT.id]: ["result-root"],
+});
+
+/** The six built-in modules, registered by default. */
+export const BUILTIN_PRESENTATIONS: readonly PresentationModule[] =
+  Object.freeze([
+    reportRowsModule,
+    resultOutcomeReportModule,
+    resultComplianceModule,
+    resultModule,
+    evaluationSummaryGraphModule,
+    noAggregateModule,
+  ] as PresentationModule[]);
+
+/** A fresh registry holding the six built-in modules. */
+export function createPresentationRegistry(): PresentationRegistry {
+  const registry = new PresentationRegistry();
+  for (const module of BUILTIN_PRESENTATIONS) registry.register(module);
+  return registry;
+}
+
+const defaultRegistry = createPresentationRegistry();
+
+/**
+ * Register a module with the registry `renderEvidenceGraph` uses by default
+ * (the module-slot entry point). Throws when its manifest is malformed,
+ * dead, a duplicate, or co-matchable with a registered module of its tier.
+ * A module whose `presentation_api` this runtime does not implement (or
+ * whose `runtime_min` it does not meet) is registered as refused: it is
+ * never selected, and every page it would have rendered names it.
+ */
+export function registerPresentation(
+  module: PresentationModule,
+): PresentationRegistration {
+  return defaultRegistry.register(module);
+}
+
+/** Resolve over the default registry (spec section 4.3). */
+export function resolvePresentation(
+  context: VerifiedBundleContext,
+  audience: string = DEFAULT_AUDIENCE,
+  format: PresentationFormat = DEFAULT_FORMAT,
+): Promise<PresentationResolution> {
+  return defaultRegistry.resolve(context, audience, format);
+}
+
+/** `"*"`: no particular audience, so only modules serving every audience. */
+const DEFAULT_AUDIENCE = "*";
+const DEFAULT_FORMAT: PresentationFormat = "html";
+
+export interface RenderEvidenceGraphOptions {
+  /** Resolves the presentation; the default registry when omitted. */
+  readonly registry?: PresentationResolver;
+  readonly audience?: string;
+  readonly format?: PresentationFormat;
+}
+
+const OUTCOME_CHROME = "oi";
+
+function presentationServices(
+  context: VerifiedBundleContext,
+): PresentationServices {
+  return Object.freeze({
+    details(summary: string, open = false): HTMLDetailsElement {
+      const details = document.createElement("details");
+      if (open) details.open = true;
+      details.append(element("summary", summary));
+      return details;
+    },
+    badge(state: PresentationBadgeState): HTMLElement {
+      const badge = element("span", state);
+      badge.dataset.badge = state;
+      return badge;
+    },
+    disclosure(
+      capsuleId: string,
+      member: "agent_input" | "agent_output",
+    ): DisclosureState {
+      return disclosureOf(context, capsuleId, member).state;
+    },
+  });
+}
+
+// The refusal for a verified bundle whose presentation could not be resolved
+// (an ambiguity) or failed (a module threw while rendering): the core's
+// words, no module content, the verification page below (contract I1).
+const PRESENTATION_REFUSALS = {
+  "presentation-unresolved":
+    "The presentation for this bundle could not be resolved. No presentation content is shown; the verification page below lists the checks.",
+  "presentation-failed":
+    "The presentation for this bundle failed. No presentation content is shown; the verification page below lists the checks.",
+} as const;
+
 /**
  * Render a bundle into `root`. `countersigners` is the stamp's countersigner
  * source: the only way a verified, independent countersignature gets a name.
@@ -1354,25 +1620,31 @@ function renderGraph(
  * pinned digest).
  *
  * Given a bundle, it is verified once here; given a context, its one
- * verification run is reused. Every builder below reads that same context.
+ * verification run is reused. The page shape comes from the presentation
+ * registry: `resolve(context, audience, format)` picks one module by its
+ * manifest, and the page is the header, the banner, that module's content
+ * and the verification page.
  */
 export async function renderEvidenceGraph(
   context: VerifiedBundleContext,
   root: HTMLElement,
   countersigners?: CountersignerSource,
+  options?: RenderEvidenceGraphOptions,
 ): Promise<void>;
 export async function renderEvidenceGraph(
   bundle: unknown,
   root: HTMLElement,
   countersigners?: CountersignerSource,
+  options?: RenderEvidenceGraphOptions,
 ): Promise<void>;
 export async function renderEvidenceGraph(
   input: unknown,
   root: HTMLElement,
   countersigners?: CountersignerSource,
+  options: RenderEvidenceGraphOptions = {},
 ): Promise<void> {
-  // Verify first. Row models are built only from a bundle that verified,
-  // and nothing reaches the DOM until the verification result is in hand.
+  // Verify first. Nothing reaches the DOM until the verification result is
+  // in hand, and no module is consulted for a bundle that did not verify.
   const context = isVerifiedBundleContext(input)
     ? countersigners === undefined
       ? input
@@ -1382,92 +1654,111 @@ export async function renderEvidenceGraph(
       });
   const { bundle, verification } = context;
   const verified = bundleVerified(verification);
-  // Root families, in order: report/v1 (the generic row model), a Result v0
-  // root (throws when the document it names is not one), and only then the
-  // evaluation-summary/v1 graph (which throws on anything else).
-  const reportRows = verified ? await buildReportRows(context) : undefined;
-  const result =
-    verified && reportRows === undefined && (await isResultRoot(context))
-      ? await buildResultRoot(context)
-      : undefined;
-  // The evaluation-summary/v1 aggregate is optional: a verified bundle whose
-  // root is none of the three families (a deal root, for example) renders
-  // without the aggregate panel and says so, instead of rendering nothing.
-  let graph: EvidenceGraph | undefined;
-  let noAggregate = false;
-  if (verified && reportRows === undefined && result === undefined) {
+  const registry = options.registry ?? defaultRegistry;
+  let refusal: keyof typeof PRESENTATION_REFUSALS | undefined;
+  let selected: { module: PresentationModule; model: unknown } | undefined;
+  let resolution: PresentationResolution;
+  try {
+    resolution = await registry.resolve(
+      context,
+      options.audience ?? DEFAULT_AUDIENCE,
+      options.format ?? DEFAULT_FORMAT,
+    );
+  } catch (err) {
+    if (!(err instanceof PresentationAmbiguityError)) throw err;
+    resolution = { kind: "no-presentation", refused: [] };
+    refusal = "presentation-unresolved";
+  }
+  // A module this runtime refused (spec section 3.2) is never silent: the
+  // page root names every one that matched. The extension-row wording of the
+  // contract (presentationRefusalRow / presentationRefusalLine) is drawn
+  // where the per-extension rows are rendered; until those rows are on this
+  // code line, this attribute and the resolution result carry the refusal.
+  const refusedIds =
+    resolution.kind === "refusal"
+      ? []
+      : resolution.refused.map((refused) => refused.id);
+
+  if (resolution.kind === "refusal" && verified)
+    throw new Error("resolver refused a bundle that verified");
+  if (resolution.kind === "module" && !verified)
+    throw new Error("resolver selected a module for an unverified bundle");
+  // A module's model is built before the page is written, so a model that
+  // cannot be built rejects with nothing drawn (as it always has).
+  if (resolution.kind === "module")
+    selected = {
+      module: resolution.module,
+      model: await resolution.module.buildModel(context),
+    };
+  const records = object(bundle).records;
+  const coverage = {
+    uncheckpointed: unboundRecordIds(verification).length,
+    total: Array.isArray(records) ? records.length : 0,
+  };
+
+  const drawFrame = (): HTMLElement => {
+    root.replaceChildren();
+    renderPresentationHeader(root, bundle);
+    return renderVerificationBanner(root, verified, coverage);
+  };
+  let banner = drawFrame();
+  if (refusedIds.length > 0)
+    root.dataset.presentationRefused = refusedIds.join(" ");
+  else delete root.dataset.presentationRefused;
+  let chrome: string | undefined;
+  if (selected !== undefined) {
+    const host: PresentationHost = {
+      L0: root,
+      L1: root,
+      L2: root,
+      depth: "L2",
+      setChromeClass(name: string): void {
+        if (name !== OUTCOME_CHROME)
+          throw new Error(`unknown chrome class ${JSON.stringify(name)}`);
+        chrome = name;
+        styleBanner(banner, verified);
+      },
+    };
     try {
-      graph = await buildEvidenceGraph(context);
-    } catch (err) {
-      if (!(err instanceof EvidenceGraphError)) throw err;
-      noAggregate = true;
+      await selected.module.render(
+        selected.model,
+        host,
+        presentationServices(context),
+      );
+    } catch {
+      // Everything the module wrote is discarded; no other module is tried.
+      chrome = undefined;
+      banner = drawFrame();
+      refusal = "presentation-failed";
     }
   }
-  const records = object(bundle).records;
-  // outcome-report/v1 is a card choice over the SAME verified Result root,
-  // never a different verification path: it is read only after `result` is
-  // already built from a bundle that passed the verify-first gate above, and
-  // it changes nothing about what `result` itself required to exist. Absent
-  // or not enabled, the generic Result page stays the default -- unchanged
-  // for every bundle that predates this card. Read before the banner only so
-  // the banner and the verification page can take the card's look; an
-  // unverified bundle never has a `result`, so it never does.
-  const outcomeReport =
-    result !== undefined ? readOutcomeReportPresentation(bundle) : undefined;
-  const styled = result !== undefined && outcomeReport !== undefined;
-  root.replaceChildren();
-  renderPresentationHeader(root, bundle);
-  renderVerificationBanner(
-    root,
-    verified,
-    {
-      uncheckpointed: unboundRecordIds(verification).length,
-      total: Array.isArray(records) ? records.length : 0,
-    },
-    styled,
-  );
-  // compliance/v1 is read the same way: a second card choice over the SAME
-  // verified Result root, after outcome-report's (a bundle that opted into
-  // both renders the outcome-report card) -- never a verification path of
-  // its own.
-  const compliance =
-    result !== undefined && outcomeReport === undefined
-      ? readCompliancePresentation(bundle)
-      : undefined;
-  if (reportRows !== undefined) {
-    renderReportRowsTable(reportRows, root);
-  } else if (result !== undefined && outcomeReport !== undefined) {
-    await renderOutcomeReportPage(
-      result,
-      outcomeReport,
-      bundle,
-      verification,
-      root,
+  if (refusal !== undefined) {
+    const note = element("p", PRESENTATION_REFUSALS[refusal]);
+    note.dataset.refusal = refusal;
+    root.append(note);
+  } else if (resolution.kind === "no-presentation") {
+    const note = element(
+      "p",
+      "No presentation is available for this bundle, audience and format. The records and their verification are below.",
     );
-  } else if (result !== undefined && compliance !== undefined) {
-    renderCompliancePage(result, compliance, bundle, verification, root);
-  } else if (result !== undefined) {
-    renderResultPage(result, root);
-  } else if (graph !== undefined) {
-    renderGraph(graph, root, Array.isArray(records) ? records : []);
-  } else if (noAggregate) {
-    const note = document.createElement("p");
-    note.setAttribute("data-notice", "no-aggregate");
-    note.textContent =
-      "This bundle carries no evaluation summary, so there is no aggregate view. The records and their verification are below.";
+    note.dataset.notice = "no-presentation";
     root.append(note);
   }
   // The interpreters this rendering actually ran (see extension-interpreters.ts):
-  // the presentation header and the countersignature stamp always run; the
-  // Result root and its cards only when they rendered above.
+  // the presentation header and the countersignature stamp always run; a
+  // module's own interpreters only when that module rendered.
   const applied = new Set<ExtensionInterpreterId>([
     "presentation-header",
     "countersignature-stamp",
   ]);
-  if (reportRows === undefined && result !== undefined) {
-    applied.add("result-root");
-    if (outcomeReport !== undefined) applied.add("outcome-report-card");
-    else if (compliance !== undefined) applied.add("compliance-card");
-  }
-  await renderVerificationPage(root, context, styled, applied);
+  if (selected !== undefined && refusal === undefined)
+    for (const id of BUILTIN_MODULE_INTERPRETERS[selected.module.manifest.id] ??
+      [])
+      applied.add(id);
+  await renderVerificationPage(
+    root,
+    context,
+    chrome === OUTCOME_CHROME,
+    applied,
+  );
 }

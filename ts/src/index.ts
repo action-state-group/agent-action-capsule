@@ -7,6 +7,8 @@ export * from "./model.js";
 export * from "./outcome-report.js";
 export * from "./outcome-report-presentation.js";
 export * from "./presentation.js";
+export * from "./presentation-registry.js";
+export * from "./builtin-manifests.js";
 export * from "./producer-envelope.js";
 export * from "./registries.js";
 export * from "./report-rows.js";
