@@ -35,11 +35,12 @@ JSON-DIGEST is the base profile's rule: lowercase-hex SHA-256 of
   document. When the judge reads reference text, the rubric carries
   `policy_digest` = SHA-256 of that text's raw bytes.
 - `judge_parameters_digest` = JSON-DIGEST of
-  `{instruction_template_digest, prompt_digest, axes_digest, sampling_params,
+  `{instruction_template_digest, prompt_file_digest?, axes_digest, sampling_params,
   min_confidence_micros?, judge_batch?}` for a model judge, or of
   `{protocol, packet_digest}` for a human expert. `instruction_template_digest`
-  and `packet_digest` are JSON-DIGESTs; `prompt_digest` and `axes_digest` are
-  SHA-256 of raw file bytes.
+  and `packet_digest` are JSON-DIGESTs; `prompt_file_digest` (optional:
+  present only when the judge publishes a separate prompt file) and
+  `axes_digest` are SHA-256 of raw file bytes.
 - `agent_output_digest` = JSON-DIGEST(`{verdict, rationale}`).
 
 ## Cases (`vectors.json`)

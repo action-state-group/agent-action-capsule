@@ -150,7 +150,7 @@ def test_inner_digests_recompute():
     ai = CASES["pos-ai-judge"]["preimages"]["values"]
     params = ai["judge_parameters"]
     assert params["instruction_template_digest"] == _json_digest(ai["instruction_template"])
-    assert params["prompt_digest"] == _raw("judge-prompt.md")
+    assert params["prompt_file_digest"] == _raw("judge-prompt.md")
     assert params["axes_digest"] == _raw("axes.json")
     for case in DATA["cases"]:
         assert case["preimages"]["values"]["rubric"]["policy_digest"] == _raw("policy.md")

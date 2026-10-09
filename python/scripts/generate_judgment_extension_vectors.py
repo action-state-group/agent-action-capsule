@@ -14,13 +14,13 @@ The digest rules below are PROPOSED and UNRATIFIED:
 
 * ``rubric_digest`` = JSON-DIGEST of the published rubric document;
 * ``judge_parameters_digest`` = JSON-DIGEST of
-  ``{instruction_template_digest, prompt_digest, axes_digest, sampling_params,
-  min_confidence_micros, judge_batch}`` for a model judge, or of
+  ``{instruction_template_digest, prompt_file_digest?, axes_digest, sampling_params,
+  min_confidence_micros?, judge_batch?}`` for a model judge, or of
   ``{protocol, packet_digest}`` for a human expert;
 * ``agent_output_digest`` = JSON-DIGEST of ``{verdict, rationale}``.
 
 JSON-DIGEST is lowercase-hex SHA-256 of ``UTF8(JCS(value))`` (RFC 8785), the
-base profile's rule. Inner file digests (``prompt_digest``, ``axes_digest``,
+base profile's rule. Inner file digests (``prompt_file_digest``, ``axes_digest``,
 ``policy_digest``) are SHA-256 of the raw file bytes, which every case
 carries as text so they recompute too.
 
@@ -156,7 +156,7 @@ RUBRIC_VERSION = "1.2"
 
 JUDGE_PARAMETERS = {
     "instruction_template_digest": json_digest(INSTRUCTION_TEMPLATE),
-    "prompt_digest": raw_digest("judge-prompt.md"),
+    "prompt_file_digest": raw_digest("judge-prompt.md"),
     "axes_digest": raw_digest("axes.json"),
     "sampling_params": {"temperature": "0", "max_output_tokens": 512, "seed": 7},
     "min_confidence_micros": 700000,
@@ -306,7 +306,7 @@ def case_ai_judge() -> dict:
             "digests": _digests(AI_JUDGE),
             "inner_digests": {
                 "judge_parameters.instruction_template_digest": "json-digest of preimages.values.instruction_template",
-                "judge_parameters.prompt_digest": "sha256 of raw_files['judge-prompt.md']",
+                "judge_parameters.prompt_file_digest": "sha256 of raw_files['judge-prompt.md']",
                 "judge_parameters.axes_digest": "sha256 of raw_files['axes.json']",
                 "rubric.policy_digest": "sha256 of raw_files['policy.md']",
             },
@@ -431,12 +431,12 @@ def build() -> dict[str, bytes]:
                 "json_digest": "lowercase hex SHA-256 of UTF8(JCS(value)) (RFC 8785), no member filtering",
                 "rubric_digest": "json_digest(rubric)  [PROPOSED, UNRATIFIED]",
                 "judge_parameters_digest": "json_digest(judge_parameters): {instruction_template_digest, "
-                                           "prompt_digest, axes_digest, sampling_params, "
+                                           "prompt_file_digest?, axes_digest, sampling_params, "
                                            "min_confidence_micros?, judge_batch?} for a model judge; "
                                            "{protocol, packet_digest} for a human expert  "
                                            "[PROPOSED, UNRATIFIED]",
                 "agent_output_digest": "json_digest({verdict, rationale})",
-                "raw_file_digests": "prompt_digest, axes_digest, policy_digest: SHA-256 of the raw file bytes",
+                "raw_file_digests": "prompt_file_digest, axes_digest, policy_digest: SHA-256 of the raw file bytes",
                 "capsule_id": "json_digest(capsule minus capsule_id)",
             },
             "raw_files": RAW_FILES,
