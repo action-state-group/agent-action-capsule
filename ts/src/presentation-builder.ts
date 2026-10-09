@@ -17,10 +17,17 @@ import {
 import { isHex64, jcs, sha256Hex } from "./json.js";
 import {
   bundleVerified,
+  manifestProblems,
   PresentationAmbiguityError,
+  presentationRefusalReason,
+  PresentationRegistry,
+  REFERENCE_PRESENTATION_RUNTIME,
   type PresentationFormat,
+  type PresentationManifest,
+  type PresentationRefusalReason,
   type PresentationResolution,
   type PresentationResolver,
+  type PresentationRuntime,
 } from "./presentation-registry.js";
 import {
   decodePresentationFragment,
@@ -143,6 +150,57 @@ export interface CoreRuntimeScript {
   readonly sha256?: string;
 }
 
+/**
+ * A module-slot script the page inlines. With its `manifest`, the builder
+ * checks the module against the page's runtime before writing anything
+ * (contract section 3.2); the manifest must pin this script
+ * (`executable.carrier` `module-slot`, `script_sha256` equal to `sha256`).
+ */
+export interface PresentationModuleScript extends EmitterModule {
+  readonly manifest?: PresentationManifest;
+}
+
+/**
+ * The builder was asked to put into a page a module the page's runtime
+ * would refuse (contract section 3.2). No page is written; the error names
+ * both sides: the module (id, `presentation_api`, `runtime_min`) and the
+ * runtime's declaration.
+ */
+export class PresentationModuleRefusedError extends PresentationBuildError {
+  readonly module: {
+    readonly id: string;
+    readonly presentation_api: string;
+    readonly runtime_min: string;
+  };
+  readonly reason: PresentationRefusalReason;
+  readonly runtime: PresentationRuntime;
+  constructor(
+    module: {
+      readonly id: string;
+      readonly presentation_api: string;
+      readonly runtime_min: string;
+    },
+    reason: PresentationRefusalReason,
+    runtime: PresentationRuntime,
+  ) {
+    const apis =
+      runtime.presentationApis.length === 0
+        ? "no presentation API"
+        : runtime.presentationApis.join(", ");
+    super(
+      `presentation module ${module.id} (presentation_api ${module.presentation_api}, runtime_min ${module.runtime_min}) would be refused by the page's runtime (implements ${apis}; runtime version ${runtime.runtimeVersion}): ${reason}; no page is written`,
+    );
+    this.name = "PresentationModuleRefusedError";
+    this.module = Object.freeze({
+      id: module.id,
+      presentation_api: module.presentation_api,
+      runtime_min: module.runtime_min,
+    });
+    this.reason = reason;
+    this.runtime = runtime;
+  }
+}
+
 export interface BuildPresentationOptions {
   /** `"auto"`, or the module id the caller expects; a mismatch is an error. */
   readonly presentation: string;
@@ -151,8 +209,12 @@ export interface BuildPresentationOptions {
   readonly format: PackagingTarget;
   /** The core runtime; required for `html` and `fragment`. */
   readonly runtime?: CoreRuntimeScript;
-  /** Digest-pinned module-slot scripts the page runs after the runtime. */
-  readonly modules?: readonly EmitterModule[];
+  /**
+   * Digest-pinned module-slot scripts the page runs after the runtime. A
+   * script given with its manifest is refused at build time when the page's
+   * runtime would refuse the module.
+   */
+  readonly modules?: readonly PresentationModuleScript[];
   /**
    * The registry the builder resolves with; the built-ins when omitted.
    * It must hold the modules whose code `modules` carries.
@@ -367,6 +429,57 @@ async function scopeAndVerify(
   );
 }
 
+/**
+ * The page's runtime declaration (contract section 3.2): the registry's,
+ * when the builder resolves with a PresentationRegistry (the default one is
+ * the reference runtime, which the core runtime script also is); otherwise
+ * the reference runtime's.
+ */
+function pageRuntime(registry: PresentationResolver): PresentationRuntime {
+  return registry instanceof PresentationRegistry
+    ? registry.runtime
+    : REFERENCE_PRESENTATION_RUNTIME;
+}
+
+// Contract section 3.2: a builder asked to put into a page a module the
+// page's runtime would refuse writes no page and names both sides. Two ways
+// to ask: inline a module-slot script whose manifest the runtime refuses,
+// or request by id a module the registry holds as refused (or that matched
+// this resolution and was refused).
+function refuseRefusedModules(
+  options: Omit<BuildPresentationOptions, "format">,
+  registry: PresentationResolver,
+  resolution: PresentationResolution,
+): void {
+  const runtime = pageRuntime(registry);
+  for (const script of options.modules ?? []) {
+    const manifest = script.manifest;
+    if (manifest === undefined) continue;
+    const problems = manifestProblems(manifest);
+    if (problems.length > 0)
+      throw new PresentationBuildError(
+        `module manifest ${JSON.stringify(manifest.id)} is malformed: ${problems.join("; ")}`,
+      );
+    if (
+      manifest.executable?.carrier !== "module-slot" ||
+      manifest.executable.script_sha256 !== script.sha256
+    )
+      throw new PresentationBuildError(
+        `module manifest ${manifest.id} does not pin this module-slot script (sha256 ${script.sha256})`,
+      );
+    const reason = presentationRefusalReason(manifest, runtime);
+    if (reason !== undefined)
+      throw new PresentationModuleRefusedError(manifest, reason, runtime);
+  }
+  if (options.presentation === "auto") return;
+  const refused = [
+    ...(resolution.kind === "refusal" ? [] : resolution.refused),
+    ...(registry instanceof PresentationRegistry ? registry.refused() : []),
+  ].find((refusal) => refusal.id === options.presentation);
+  if (refused !== undefined)
+    throw new PresentationModuleRefusedError(refused, refused.reason, runtime);
+}
+
 // Resolve for one contract format. The static page is the html page
 // rendered at build time, so it is resolved, and rendered, as html.
 async function resolveFor(
@@ -386,6 +499,7 @@ async function resolveFor(
       );
     throw err;
   }
+  refuseRefusedModules(options, registry, resolution);
   const module =
     resolution.kind === "module" ? resolution.module.manifest.id : null;
   if (options.presentation !== "auto" && options.presentation !== module)

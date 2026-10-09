@@ -5,7 +5,10 @@ import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { beforeAll, describe, expect, it } from "vitest";
 import { emitEvidenceGraphHtml } from "../src/emitter.js";
-import { createPresentationRegistry } from "../src/evidence-graph-view.js";
+import {
+  BUILTIN_PRESENTATIONS,
+  createPresentationRegistry,
+} from "../src/evidence-graph-view.js";
 import {
   availablePackagings,
   buildFragmentViewerHtml,
@@ -14,6 +17,7 @@ import {
   PACKAGING_TARGETS,
   PackagingUnavailableError,
   PresentationBuildError,
+  PresentationModuleRefusedError,
   STATIC_BUILD_TIME_STATEMENT,
   STATIC_NOT_SELF_VERIFYING,
   type BuildPresentationOptions,
@@ -30,7 +34,10 @@ import {
   type WordingPackInput,
 } from "../src/presentation-fragment.js";
 import {
+  PresentationRegistry,
+  REFERENCE_PRESENTATION_RUNTIME,
   resolveModules,
+  type PresentationManifest,
   type PresentationModule,
   type PresentationResolver,
 } from "../src/presentation-registry.js";
@@ -648,6 +655,167 @@ describe("buildPresentation", () => {
         registry: ambiguous,
       }),
     ).rejects.toThrow(PresentationBuildError);
+  });
+
+  it("refuses to inline a module the page's runtime would refuse, naming both sides (contract 3.2)", async () => {
+    const { bundle } = await sealEvidenceBundle(
+      fixture("report-rows-bundle.json"),
+    );
+    const code = "/*future module*/";
+    const manifest = (
+      overrides: Partial<PresentationManifest>,
+    ): PresentationManifest => ({
+      spec_version: "aac.presentation-manifest/v0",
+      id: "org.example.future/v1",
+      presentation_api: "aac.presentation-api/v0",
+      runtime_min: "0.1.0",
+      trust_class: "trusted-executable",
+      requires: { bundle_kind: "evidence-bundle/v2" },
+      audiences: ["*"],
+      formats: ["html"],
+      fallback: false,
+      priority: 1,
+      executable: { carrier: "module-slot", script_sha256: hex(code) },
+      ...overrides,
+    });
+    const build = (
+      m: PresentationManifest,
+      format: PackagingTarget = "html",
+    ): Promise<BuiltPresentation> =>
+      buildPresentation(bundle, {
+        presentation: "auto",
+        audience: "*",
+        format,
+        runtime: { code: "/*IIFE_MARKER*/" },
+        modules: [{ code, sha256: hex(code), manifest: m }],
+      });
+
+    // presentation_api the runtime does not implement: every packaging fails.
+    const unsupported = manifest({
+      presentation_api: "aac.presentation-api/v1",
+    });
+    for (const format of PACKAGING_TARGETS) {
+      const err = await build(unsupported, format).then(
+        () => undefined,
+        (e: unknown) => e,
+      );
+      expect(err).toBeInstanceOf(PresentationModuleRefusedError);
+      expect(err).toBeInstanceOf(PresentationBuildError);
+      const refused = err as PresentationModuleRefusedError;
+      expect(refused.module).toEqual({
+        id: "org.example.future/v1",
+        presentation_api: "aac.presentation-api/v1",
+        runtime_min: "0.1.0",
+      });
+      expect(refused.reason).toBe("presentation_api_unsupported");
+      expect(refused.runtime).toEqual(REFERENCE_PRESENTATION_RUNTIME);
+      expect(refused.message).toBe(
+        "presentation module org.example.future/v1 (presentation_api aac.presentation-api/v1, runtime_min 0.1.0) would be refused by the page's runtime (implements aac.presentation-api/v0; runtime version 0.1.0): presentation_api_unsupported; no page is written",
+      );
+    }
+    // availablePackagings treats it as an error of the request, not a target.
+    await expect(
+      availablePackagings(bundle, {
+        presentation: "auto",
+        audience: "*",
+        runtime: { code: "/*IIFE_MARKER*/" },
+        modules: [{ code, sha256: hex(code), manifest: unsupported }],
+      }),
+    ).rejects.toThrow(PresentationModuleRefusedError);
+
+    // runtime_min newer than the runtime.
+    await expect(build(manifest({ runtime_min: "0.2.0" }))).rejects.toThrow(
+      "presentation module org.example.future/v1 (presentation_api aac.presentation-api/v0, runtime_min 0.2.0) would be refused by the page's runtime (implements aac.presentation-api/v0; runtime version 0.1.0): runtime_too_old; no page is written",
+    );
+
+    // A manifest that does not pin this script, or is malformed, is an error too.
+    await expect(
+      build(
+        manifest({
+          executable: { carrier: "module-slot", script_sha256: hex("other") },
+        }),
+      ),
+    ).rejects.toThrow(/does not pin this module-slot script/u);
+    await expect(
+      build(manifest({ runtime_min: undefined as unknown as string })),
+    ).rejects.toThrow(/runtime_min is not MAJOR.MINOR.PATCH/u);
+
+    // The same module on the runtime's API is inlined, byte for byte as without a manifest.
+    const accepted = await build(manifest({}));
+    const plain = await buildPresentation(bundle, {
+      presentation: "auto",
+      audience: "*",
+      format: "html",
+      runtime: { code: "/*IIFE_MARKER*/" },
+      modules: [{ code, sha256: hex(code) }],
+    });
+    if (accepted.format !== "html" || plain.format !== "html")
+      throw new Error("html expected");
+    expect(accepted.html).toBe(plain.html);
+    expect(accepted.html).toContain(code);
+  });
+
+  it("refuses a requested presentation the registry holds as refused, naming both sides", async () => {
+    const { bundle } = await sealEvidenceBundle(
+      fixture("report-rows-bundle.json"),
+    );
+    // The fallback alone, so the refused module is ambiguous with nothing.
+    const registry = new PresentationRegistry();
+    registry.register(BUILTIN_PRESENTATIONS.at(-1)!);
+    const registration = registry.register({
+      manifest: {
+        spec_version: "aac.presentation-manifest/v0",
+        id: "org.example.newer/v0",
+        presentation_api: "aac.presentation-api/v0",
+        runtime_min: "0.3.0",
+        trust_class: "trusted-executable",
+        requires: {
+          bundle_kind: "evidence-bundle/v2",
+          extensions: { required: ["org.example.unused/v0"] },
+        },
+        audiences: ["*"],
+        formats: ["html"],
+        fallback: false,
+        priority: 1,
+        executable: { carrier: "core-runtime" },
+      },
+      canRender: () => {
+        throw new Error("a refused module was called");
+      },
+      buildModel: () => {
+        throw new Error("a refused module was called");
+      },
+      render: () => {
+        throw new Error("a refused module was called");
+      },
+    });
+    expect(registration.status).toBe("refused");
+    const err = await buildPresentation(bundle, {
+      presentation: "org.example.newer/v0",
+      audience: "*",
+      format: "html",
+      runtime: { code: "/*IIFE_MARKER*/" },
+      registry,
+    }).then(
+      () => undefined,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(PresentationModuleRefusedError);
+    expect((err as PresentationModuleRefusedError).reason).toBe(
+      "runtime_too_old",
+    );
+    expect((err as Error).message).toBe(
+      "presentation module org.example.newer/v0 (presentation_api aac.presentation-api/v0, runtime_min 0.3.0) would be refused by the page's runtime (implements aac.presentation-api/v0; runtime version 0.1.0): runtime_too_old; no page is written",
+    );
+    // "auto" is not a request for that module: the page renders as before.
+    const auto = await buildPresentation(bundle, {
+      presentation: "auto",
+      audience: "*",
+      format: "html",
+      runtime: { code: "/*IIFE_MARKER*/" },
+      registry,
+    });
+    expect(auto.module).toBe("aac.builtin.no-aggregate/v0");
   });
 
   it("needs the runtime for html and fragment, and an audience", async () => {

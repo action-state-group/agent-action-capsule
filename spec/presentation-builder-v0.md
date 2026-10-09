@@ -51,6 +51,17 @@ buildPresentation(context, { presentation, audience, format, ...settings })
 The steps run in this order: scope (section 3), verify the scoped bundle, resolve, package. Every
 packaging carries the same scoped bundle and the same settings.
 
+**A module the page's runtime would refuse.** A module-slot script may be given with its manifest,
+which must pin it (`executable.carrier` `module-slot`, `script_sha256` equal to the script's pin).
+When the page's runtime would refuse that module (presentation contract section 3.2:
+`presentation_api_unsupported` or `runtime_too_old`), or when `presentation` names a module the
+registry holds as refused, the builder writes no page in any packaging and fails with
+`PresentationModuleRefusedError`, naming the module's id, `presentation_api` and `runtime_min`
+and the runtime's declaration (the `presentation_api` values it implements and its version). The
+page's runtime is the registry's when the builder resolves with a `PresentationRegistry`, and the
+reference runtime otherwise. `availablePackagings` throws the same error: it is an error of the
+request, not of one target.
+
 **Supported targets.** The builder supports four packaging targets: `html`, `fragment`,
 `embedded` and `static`. A target is *supported* for one (bundle, audience) and one set of
 settings when the builder can package it; otherwise it is *unavailable*, and the builder says so
