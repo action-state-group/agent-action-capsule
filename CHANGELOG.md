@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- TypeScript: the Class 1 verifier now refuses a `provenance_mode` that is not a JSON object
+  (`block_not_object`, check 1, error), as the Python and Go verifiers already do, and in the
+  same position: after `cross_party`, before `constraints`. A record carrying
+  `provenance_mode: "backfilled"` previously verified in TypeScript and failed in Go and Python.
+  The evidence graph reads the mode from `provenance_mode.mode`. The two report test fixtures
+  that carried the string form now carry a well-formed backfilled block; their rendered output
+  is unchanged. Check 9 (the block's members) is still Python and Go only.
 - TypeScript: `VerifiedBundleContext` (`buildVerifiedBundleContext`) verifies a bundle once and is
   what every builder reads. `buildReportRows`, `buildResultRoot`, `isResultRoot`,
   `buildEvidenceGraph` and `renderEvidenceGraph` take a context (new overload; the `(bundle)`
