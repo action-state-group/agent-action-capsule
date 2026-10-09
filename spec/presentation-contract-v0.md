@@ -2,9 +2,9 @@
 
 **Status.** Design specification, pre-Internet-Draft, beside `spec/evidence-result-v0.md` and
 `spec/evidence-plan-ir-v0.md`. This document defines how a verified Evidence Bundle becomes a
-page: the module interface, the declarative manifest a module is selected by, the two module
-trust classes, the chrome rule, the text-binding rule, the presentation invariants and the
-three depth levels every module fills. It is normative for any viewer, builder or module that
+page: the module interface and the presentation ABI that versions it, the declarative
+manifest a module is selected by, the two module trust classes, the chrome rule, the
+text-binding rule, the presentation invariants and the three depth levels every module fills. It is normative for any viewer, builder or module that
 claims to follow it. It defines no runtime code; the reference registry is a separate change.
 
 **Companion schema.** `schemas/presentation-manifest-v0.json`, a JSON Schema (2020-12) for one
@@ -19,7 +19,9 @@ BCP 14 (RFC 2119, RFC 8174) when, and only when, they appear in all capitals.
 
 ## Dependency boundary
 
-**Owns:** the `PresentationModule` interface; the manifest namespace
+**Owns:** the `PresentationModule` interface and the presentation ABI that versions it
+(`presentation_api`, `runtime_min`, the runtime's declaration and the refusal of section 3.2);
+the immutability requirement on the context a module reads (section 3.1); the manifest namespace
 `aac.presentation-manifest/v0` and its fields; the resolution algorithm and its ambiguity error;
 the resolution descriptor; the trust classes; the chrome rule as it applies to modules; the
 text-binding rule; the wording pack shape (`aac.wording-pack/v0`) and the meaning of
@@ -30,7 +32,7 @@ text-binding rule; the wording pack shape (`aac.wording-pack/v0`) and the meanin
 - Bundle verification (`draft-mih-zhang-agent-disclosure-bundle`, and the reference
   `verifyBundle`): what "the bundle verified" means is decided there, once.
 - `VerifiedBundleContext` (`ts/src/bundle.ts`): the one object built from one verification run.
-  A module reads verified content only through it.
+  A module reads verified content only through it, and cannot change it (section 3.1).
 - The bundle kind and extension kind registries (`spec/REGISTRY.md` sections 13 and 14).
 - The emitter shell and its named slots (`go/emitter/shell.html`, `ts/src/emitter-shell.html`):
   `CSP_SLOT`, `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`, `MODULE_SLOT`,
@@ -45,8 +47,8 @@ contract and is not described here beyond its manifest.
 
 ## 1. Terms
 
-- **Verified bundle context** (the context): a `VerifiedBundleContext`. It carries the bundle as
-  supplied, the one verification result, the disclosures as the verifier resolved them
+- **Verified bundle context** (the context): a `VerifiedBundleContext`. It carries a frozen copy
+  of the bundle as supplied, the one verification result, the disclosures as the verifier resolved them
   (`disclosed`, `withheld` or `disclosure_mismatch`), the records whose identity verified, the
   countersignature results, the caller's countersigner source and the extension results.
 - **Verified**: the bundle passed the viewer's verification gate (graph closure, interval
@@ -63,8 +65,15 @@ contract and is not described here beyond its manifest.
 - **Audience**: who the page is built for (for example the record holder, a counterparty, an
   adjudicator). An audience is an input to resolution and to disclosure, never an output of a
   module.
-- **Format**: how the page is packaged: `html` (one offline file), `fragment` (a page whose
-  bundle travels in the URL fragment), `embedded` (a region inside a host page).
+- **Format** (packaging target): how the page is packaged: `html` (one offline file),
+  `fragment` (a page whose bundle travels in the URL fragment), `embedded` (a region inside a
+  host page). A format is **supported** for a bundle when a page in that packaging can be
+  produced for it (section 8, I4).
+- **Presentation runtime** (the runtime): the core runtime that builds the context, holds the
+  registry and calls modules. It declares the presentation API versions it implements and its
+  own runtime version (section 3.2).
+- **Refused module**: a module whose manifest the runtime cannot honour, because it does not
+  implement the manifest's `presentation_api` or is older than its `runtime_min` (section 3.2).
 
 ## 2. The pipeline
 
@@ -145,6 +154,103 @@ banner, the refusal or the core's verification checks. A module MAY recompute a 
 figure from verified content (a coverage count, a per-bucket total) and MUST then show a
 disagreement with the producer's stated figure as a disagreement, never silently prefer either.
 
+### 3.1 The context is effectively immutable
+
+**A `VerifiedBundleContext` MUST be effectively immutable.** No module can change the
+verification result or the resolved-disclosure map that anything downstream of it sees.
+
+- A runtime MUST build the context over its own copy of the bundle, verify that copy, and make
+  the context's whole object graph unchangeable before any module receives it: the bundle
+  copy; the verification result, including every claim, capsule result, disclosure result,
+  extension result and countersignature result; the resolved-disclosure map, each of its
+  entries and each disclosed payload; the record list, the record index and each record; the
+  countersigner source; and the completeness members.
+- A map in the context MUST be handed out as a read-only view that has no mutating method, not
+  as a mutable map object made read-only by type alone.
+- An attempt to change any part of the context MUST fail. In an ES module, which is strict
+  code, the attempt throws a `TypeError`. The attempt MUST NOT change what any later reader
+  sees: the next module, the core's verification section, the banner and the refusal all read
+  the original.
+- A module MUST NOT attempt such a change. A module that needs a derived structure (a sorted
+  list, an index of its own) builds a new one from the context.
+- The caller's own bundle object is not the context: the runtime copies it and does not freeze
+  it, and a later change to it does not reach the context.
+
+### 3.2 The presentation ABI
+
+The interfaces of this section (`PresentationModule`, `PresentationHost`,
+`PresentationServices`), the closed badge vocabulary, and the members and immutability of the
+context together are the **presentation ABI**. It is versioned by its own identifier,
+`presentation_api`, which is independent of the manifest namespace (`spec_version`), of the
+bundle and capsule format versions, of any package or release version, and of any
+command-line tool's plugin interface. A module written against the presentation ABI is loaded
+by a presentation runtime, never through a plugin mechanism of some other tool, and a change to
+either one never implies a change to the other.
+
+- **`presentation_api`** is `aac.presentation-api/v<major>`. This document defines
+  `aac.presentation-api/v0`. The identifier bumps, to a new major, exactly when a change would
+  break a conforming module: a member of the interfaces above is removed or its meaning
+  changes, a context member is removed or changes meaning, a service is removed or its output
+  changes, or a badge state is removed. Adding a service, a context member or a badge state does
+  not bump it.
+- **The runtime's declaration.** A runtime declares the set of `presentation_api` values it
+  implements and its own **runtime version**, `MAJOR.MINOR.PATCH`. An addition within one
+  presentation API raises the runtime's minor version. The reference runtime in this
+  repository implements exactly `{aac.presentation-api/v0}` and declares runtime version
+  `0.1.0`.
+- **`runtime_min`** is the lowest runtime version that provides everything the module uses
+  within its `presentation_api`, in the same `MAJOR.MINOR.PATCH` form. Versions are compared
+  numerically, component by component.
+
+**Refusal.** A runtime refuses a module, in this order of reasons:
+
+1. `presentation_api_unsupported`: the manifest's `presentation_api` is not in the set the
+   runtime implements;
+2. `runtime_too_old`: the runtime's version is lower than the manifest's `runtime_min`.
+
+A refused module is registered as refused, not rejected as malformed. It MUST NOT be selected,
+and none of its methods is called. It still takes part in the static ambiguity test (section
+4.5) and in the match of section 4.3, step 2, so that a runtime which refuses it can never put
+another specific module in its place. When its manifest matches the descriptor, audience and
+format being resolved, the refusal is part of the resolution result and MUST be shown on the
+page. **There is no silent fallback**: a page that renders another module (or the "no
+presentation" notice) where a refused module matched says so, in these words.
+
+- **In the extension row.** For each extension kind in the refused module's
+  `requires.extensions.required` that the bundle carries, that kind's row on the verification
+  section has the semantics cell, exactly:
+
+  `Integrity verified; meaning not interpreted: presentation module <id> needs presentation API <presentation_api>, which this viewer does not implement`
+
+  for `presentation_api_unsupported`, and
+
+  `Integrity verified; meaning not interpreted: presentation module <id> needs runtime <runtime_min> or later; this viewer is <runtime version>`
+
+  for `runtime_too_old`. When the bundle digest could not be computed, the cell begins
+  `Integrity not verified;` instead of `Integrity verified;` and is otherwise the same. The row
+  carries `data-semantics="refused"`, `data-refused-module="<id>"` and
+  `data-refusal="<reason>"`. A refusal takes precedence over "interpreted by": the refused
+  module did not run, so nothing interpreted the block on its behalf.
+- **When it requires no extension.** A refused module whose manifest requires no extension has
+  no row of its own, so the verification section shows, after the extension rows, one line per
+  such module, exactly:
+
+  `Presentation module <id> was not used: it needs presentation API <presentation_api>, which this viewer does not implement`
+
+  or
+
+  `Presentation module <id> was not used: it needs runtime <runtime_min> or later; this viewer is <runtime version>`
+
+  carrying `data-presentation-refused="<id>"` and `data-refusal="<reason>"`.
+- `<id>`, `<presentation_api>`, `<runtime_min>` and `<runtime version>` are inserted as text,
+  never as markup.
+
+A manifest with **no** `presentation_api` (or no `runtime_min`) is malformed, not refused: the
+schema rejects it and a registry rejects it at registration like any other malformed manifest.
+A builder asked to put into a page a module the page's runtime would refuse MUST NOT write the
+page, and MUST name the module, its `presentation_api` and `runtime_min`, and the runtime's
+declaration: the builder knows both sides, so it fails at build time instead.
+
 ## 4. The manifest
 
 ### 4.1 Fields
@@ -156,7 +262,9 @@ manifest that names it is rejected.
 | Field | Required | Meaning |
 |---|---|---|
 | `spec_version` | yes | The constant `"aac.presentation-manifest/v0"`. |
-| `id` | yes | `<dotted name>/v<major>`, for example `org.example.view/v0`. Unique in a registry. The `aac.` prefix is reserved for modules this repository ships. An id is never inferred: a new major version is a new manifest. |
+| `id` | yes | The **module id**: `<dotted name>/v<major>`, for example `org.example.view/v0`. Unique in a registry. The `aac.` prefix is reserved for modules this repository ships. An id is never inferred: a new major version is a new manifest. |
+| `presentation_api` | yes | The presentation ABI the module is written against (section 3.2), for example `aac.presentation-api/v0`. |
+| `runtime_min` | yes | The lowest runtime version the module needs, `MAJOR.MINOR.PATCH` (section 3.2). |
 | `trust_class` | yes | `"trusted-executable"` or `"declarative"` (section 5). |
 | `requires.bundle_kind` | yes | The bundle kind the module renders, compared by string equality. |
 | `requires.profiles` | no | Profile tokens (section 4.2) the root MUST carry. At most one token per profile key. |
@@ -172,6 +280,13 @@ manifest that names it is rejected.
 
 A manifest carries no presentation words: no title, label or description. Words live in the
 wording pack (section 7.4). Unknown members are an error.
+
+**`id` is the module id.** A module and its manifest have one identity, and `id` is it: the
+registry keys modules by it, the ambiguity error and the refusal name it, and
+`data-refused-module` carries it. There is no separate `module_id` member, because two members
+for one identity could disagree. The id's `/v<major>` is the module's own major version;
+`presentation_api` is the ABI's version; `runtime_min` is the runtime's version. The three move
+independently.
 
 ### 4.2 The descriptor
 
@@ -213,7 +328,7 @@ those are separate inputs.
 
 1. **Verification gate.** If the context is not verified, return the refusal. No manifest is
    matched and no module method is called.
-2. **Match.** Let `C` be every `m` in `M` such that:
+2. **Match.** Let `C` be every `m` in `M`, refused modules included (section 3.2), such that:
    `m.requires.bundle_kind = D.bundle_kind`;
    `m.requires.profiles ⊆ D.profiles`;
    `m.requires.extensions.required ⊆ D.extensions`;
@@ -223,12 +338,17 @@ those are separate inputs.
    `format ∈ m.formats`.
    (An absent list is empty.)
 3. **Specific tier.** Let `S = { m ∈ C : m.fallback = false }`. If `|S| ≥ 2`, raise the
-   **ambiguity error** naming every id in `S`. If `|S| = 1` and its module's
+   **ambiguity error** naming every id in `S`. If `|S| = 1` and its module is refused, record
+   the refusal and continue, calling no method of it. If `|S| = 1` and its module's
    `canRender(context)` is true, select it. If `|S| = 1` and `canRender` is false, continue.
 4. **Fallback tier.** Let `F = { m ∈ C : m.fallback = true }`. If `|F| ≥ 2`, raise the
-   ambiguity error naming every id in `F`. If `|F| = 1` and its `canRender(context)` is true,
-   select it.
+   ambiguity error naming every id in `F`. If `|F| = 1` and its module is refused, record the
+   refusal and continue. If `|F| = 1` and its `canRender(context)` is true, select it.
 5. **Nothing.** Otherwise return **no presentation**.
+
+The result of steps 3 to 5 carries every refusal recorded on the way, each with the module id,
+its `presentation_api`, its `runtime_min` and the reason, and the page shows each as section
+3.2 words it.
 
 **An ambiguous match is a hard error, never first-wins.** Registration order, file order,
 priority, id order and `canRender` MUST NOT break a tie between two matching manifests of one
@@ -276,6 +396,9 @@ or 4 could meet at runtime, and step 3 or 4 is reached only by a registry that s
 
 A manifest whose own `requires` and `forbids` intersect, or that requires two tokens of one
 profile key, can never match; a registry SHOULD reject it as dead.
+
+Refused manifests are part of `M` for this test: whether a runtime implements a module's
+presentation API never changes which modules are ambiguous with it.
 
 Registering a manifest whose `id` is already registered is an error. Manifests that differ
 only in `audiences` or `formats` are not ambiguous when those sets are disjoint.
@@ -331,9 +454,22 @@ verification section alone.
 Generalized from `spec/evidence-result-v0.md` section 8, for both trust classes:
 
 **A module reads presentation hints only for its own chrome.** Presentation hints are the
-`presentation/v1` block, a Result's `view`, a display setting inside a presentation extension
-(for example `outcome-report/v1`'s `percentages`), the theme, the locale and the wording pack.
-Chrome is the module's header, title, labels, layout, number formatting and styling.
+bundle-carried presentation settings (the `presentation/v1` block, a Result's `view`, a display
+setting inside a presentation extension such as `outcome-report/v1`'s `percentages`, and any
+other producer-supplied block about how to present) and the viewer's inputs (the theme, the
+locale, the wording pack and the depth setting). Chrome is the module's header, layout, number
+formatting and styling.
+
+- **Wording and depth never come from the bundle.** A module MUST NOT read a bundle-carried
+  presentation setting to choose, supply, select or alter **wording** (any presentation word of
+  section 7.3: a label, heading, column name, explanation, notice or button text) or **depth**
+  (which level opens, which disclosures start open, which level a region is placed in). The
+  module's wording pack, bound by `wording_sha256` (section 7.4), and the core's own fixed text
+  are the only sources of wording; the shell's depth setting (`host.depth`, section 9) is the
+  only source of depth. A module that reads a bundle-carried setting for wording or depth is
+  non-conformant, whatever the setting says. The header fields the core's `presentation/v1`
+  reader extracts (title, producer name, logo) are shown as the producer's own header content
+  and are not module wording.
 
 - A hint MUST NOT supply data: no claim, verdict, status, count, digest, sufficiency, grade or
   record reference is ever read from a hint. A renderer that reads a hint for anything beyond
@@ -349,6 +485,20 @@ Chrome is the module's header, title, labels, layout, number formatting and styl
   example a producer's note) is neither evidentiary nor presentation wording. A module MAY show
   it only as text (never markup), only under a fixed label from its wording pack that says it is
   the producer's note and not evidence, and never in L0.
+
+**Detecting a module that takes wording or depth from the bundle.** The manifest has no member
+through which a module could name a bundle-carried setting as a source of wording or depth: a
+manifest is closed, and the only wording source it can name is `wording_sha256`. The schema
+therefore rejects a manifest that declares one (`neg-hint-wording-source.json`, appendix B).
+Code inside a trusted-executable module is not visible to a schema, so for it the test is
+behavioural and a reviewer or conformance harness applies it: render one verified bundle with
+the same wording pack, locale, theme and depth three times, with its bundle-carried
+presentation settings as supplied, removed, and with every string in them altered and every
+display flag flipped. Outside the header fields the core's header reader extracts and the
+formatting a display flag is defined to control (such as `percentages`), the module's regions
+MUST be byte-identical across the three, and which levels and disclosures are open MUST be the
+same. A reviewer also checks that the module's source reads a bundle-carried setting only in
+its chrome code path, never where a label, heading, notice or depth is chosen.
 
 ## 7. The text-binding rule
 
@@ -454,14 +604,34 @@ pack arrive at the same digest. A renderer MUST refuse a pack whose bytes do not
   digest, every `capsule_id`, every disclosure digest, `composed_digest` and every identifier
   inside a payload are the same whatever theme, wording pack, locale or depth renders them.
   None of those four is ever inside a digest-committed payload of the evidence.
-- **I4. Acceptance is over (bundle, audience) pairs.** For one bundle and one audience, every
-  format (`html`, `fragment`, `embedded`) MUST show the same semantic content: the same module,
-  the same verified items at each level, the same verification state, findings and refusal.
-  Formats differ only in packaging. Conformance goldens are keyed by (bundle digest, audience).
-  A variant that shows different semantic content for the same pair is non-conforming unless
-  it is declared as an exemption by a revision of this document.
+- **I4. Acceptance is over (bundle, audience) pairs, for every supported packaging target.**
+  For one bundle and one audience, every packaging target (`html`, `fragment`, `embedded`)
+  that is **supported** for that bundle MUST show identical semantic content and identical
+  verification state: the same module (or the same refusal or notice), the same verified items
+  at each level, the same verification state, findings, refusals and extension rows. Supported
+  targets differ only in packaging.
+
+  Whether a target is supported for a bundle MAY depend on the artifact's size (a bundle too
+  large to travel in a URL fragment) or on a capability of the target (a host page that cannot
+  run the core runtime for `embedded`). **Availability MUST be reported explicitly.** A builder
+  asked for a target that is not supported for a bundle produces no artifact for it and reports
+  the target with its reason (`artifact_too_large`, `capability_missing`); it never produces a
+  truncated, partial or differently resolved artifact in its place. A tool or page that offers
+  targets lists an unsupported one as unavailable, with the reason. A target that the module
+  resolved for the pair in `html` does not list in its `formats` is not supported for that pair
+  (reason `module_format_unsupported`): a builder reports it so and MUST NOT produce it by
+  resolving a different module.
+
+  Conformance goldens are keyed by (bundle digest, audience) and hold for every supported
+  target. A variant that shows different semantic content or verification state for the same
+  pair on two supported targets is non-conforming unless it is declared as an exemption by a
+  revision of this document.
 - **I5. Modules never verify** (section 3).
 - **I6. Ambiguity is an error** (section 4.3).
+- **I7. The context cannot be changed by a module** (section 3.1): every module and the core
+  read the verification result and the resolved disclosures the verifier produced.
+- **I8. A refused module is refused out loud** (section 3.2): never selected, never silently
+  replaced, always named on the page it would have rendered.
 
 ## 9. Depth levels and the shell
 
@@ -474,14 +644,17 @@ this order, after the header chrome and the verification banner:
 |---|---|---|---|
 | L0 | what matters | The module's headline over verified content: one screen, no scrolling at a phone's width, every figure on it traceable to L1. | The module. |
 | L1 | why | The reasons: rows, claims, joins and their cited evidence, each item a `details` disclosure. | The module. |
-| L2 | verify | The core's verification section (the three bundle claims, every record's identity and membership, disclosure states, countersignatures, every extension with its integrity and interpretation status), then any module-specific detail. | The core, then the module. |
+| L2 | verify | The core's verification section (the three bundle claims, every record's identity and membership, disclosure states, countersignatures, every extension with its integrity and interpretation status, every refused module as section 3.2 words it), then any module-specific detail. | The core, then the module. |
 
 The core's part of L2 is always present and always comes before any module detail in L2. A
 module MUST NOT replace, reorder or reword it; it MAY append detail (for example a
 recomputation it showed in L1) after it.
 
 `depth` is the requested opening level: at `L0` only L0 is open; at `L1`, L1's disclosures
-are open; at `L2`, everything is open. Every level is present in the document at every depth
+are open; at `L2`, everything is open. The shell's depth setting, given to the module as
+`host.depth`, is the only source of depth. A module MUST NOT take a depth, a default open
+level or the open state of a disclosure from a bundle-carried presentation setting (section 6),
+and a module that does is non-conformant. Every level is present in the document at every depth
 and in every format, so printing and I4 hold. On a failed bundle, L0 and L1 are not created
 (I1).
 
@@ -506,14 +679,20 @@ stylesheet owns the module's layout.
 
 - A manifest conforms when it validates against `$defs/PresentationManifest`.
 - A registry conforms when it applies section 4.5 at registration and section 4.3 at
-  resolution, including the ambiguity error.
-- A module conforms when it satisfies sections 3, 6, 7 and 9 and its manifest conforms.
+  resolution, including the ambiguity error, and refuses modules as section 3.2 requires.
+- A runtime conforms when the context it hands a module is effectively immutable (section 3.1)
+  and it declares the presentation API versions it implements and its runtime version
+  (section 3.2).
+- A module conforms when it satisfies sections 3, 6, 7 and 9 and its manifest conforms. A
+  module that reads a bundle-carried presentation setting for wording or depth does not
+  conform; section 6 says how that is detected.
 - A viewer conforms when it satisfies section 8.
 - `schemas/check_presentation_manifest_examples.py` checks the committed manifests: each
   schema negative is proven load-bearing by a mutant, the static and runtime ambiguity tests
-  are run over the built-ins, the examples and an ambiguous pair, and the built-in manifests are
+  are run over the built-ins, the examples and an ambiguous pair, the built-in manifests are
   resolved over every descriptor the current viewer distinguishes and compared with today's
-  dispatch.
+  dispatch, and a module with an unsupported `presentation_api` is shown to be refused, reported
+  in the words of section 3.2 and never selected.
 
 ## Appendix A. The built-in manifests
 
@@ -524,6 +703,7 @@ Result page, then the `evaluation-summary/v1` graph, then the no-aggregate note.
 five page shapes and one floor. They are expressed here as six manifests, five specific and one
 fallback; the files are in `schemas/examples/presentation-manifest-v0/`. All six have
 `trust_class: "trusted-executable"`, `executable.carrier: "core-runtime"`,
+`presentation_api: "aac.presentation-api/v0"`, `runtime_min: "0.1.0"`,
 `requires.bundle_kind: "evidence-bundle/v2"`, `audiences: ["*"]` and all three formats.
 
 ### A.1 The manifests
@@ -589,7 +769,8 @@ the registry change, govern what "unchanged" means.
 
 ## Appendix B. Example manifests
 
-In `schemas/examples/presentation-manifest-v0/`, as one registry:
+In `schemas/examples/presentation-manifest-v0/`, as one registry. Each declares
+`presentation_api: "aac.presentation-api/v0"` and `runtime_min: "0.1.0"`:
 
 - `example-unilateral.json` (`org.example.unilateral/v0`): a module-slot module for a root
   profile `spec_version:org.example.exchange/v0` that **forbids** `composed/v1`.
@@ -611,6 +792,9 @@ Negatives, each rejected:
 | `neg-fallback-with-priority.json` | schema: a fallback carrying `priority`. |
 | `neg-missing-id.json` | schema: no `id`. |
 | `neg-presentation-v1-namespace.json` | schema: `spec_version: "presentation/v1"`. |
+| `neg-hint-wording-source.json` | schema: a declarative module naming the `presentation/v1` block as a wording source. The manifest has no such member: wording comes only from the pack `wording_sha256` binds (section 6). |
+| `neg-missing-presentation-api.json` | schema: no `presentation_api` (a malformed manifest, not a refused one). |
+| `neg-unsupported-presentation-api.json` | the checker's resolution test: a schema-valid specific module declaring `aac.presentation-api/v99`, registered beside the examples into a runtime that implements only `aac.presentation-api/v0`. It is refused (`presentation_api_unsupported`); a descriptor it matches resolves to the generic fallback with the refusal in the result, and its extension's row reads exactly as section 3.2 words it. A resolver that ignores `presentation_api` would select it instead. |
 | `neg-ambiguous-pair/a.json`, `b.json` | the checker's resolution test: both are schema-valid specific modules (priorities 1 and 9) that one descriptor matches; the static test reports the pair and resolving it raises the ambiguity error. |
 
 ## Appendix C. Divergences recorded while writing this
@@ -632,3 +816,7 @@ These are facts in the current code that this contract does not silently paper o
    stylesheet.
 6. The extension result type marks every extension uninterpreted; section 9.1's L2 requires the
    interpretation status to be reported truthfully per extension.
+7. The per-extension rows of the verification section and the registry are separate changes
+   that have not yet met in one code line. Until they do, the reference runtime reports a
+   refusal in the resolution result and as `data-presentation-refused` on the page root, and the
+   extension-row wording of section 3.2 lands when the two are joined.

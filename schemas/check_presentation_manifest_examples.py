@@ -26,6 +26,11 @@ mechanical half):
        - neg-missing-id.json: `id` removed.
        - neg-presentation-v1-namespace.json: `spec_version` set to
          `presentation/v1`, the bundle extension kind for header chrome.
+       - neg-missing-presentation-api.json: `presentation_api` removed (a
+         malformed manifest, not a refused one).
+       - neg-hint-wording-source.json: a declarative module naming the
+         `presentation/v1` block as a wording source; wording comes only
+         from the pack `wording_sha256` binds (spec section 6).
      MUTANT CHECK: each rejection is re-tested with the one schema rule it
      depends on removed (in memory; the committed schema is never modified).
      The same fixture MUST then validate, and the restored schema MUST
@@ -57,6 +62,18 @@ mechanical half):
      outcome-report/v1, result's two extensions, graph's result_version,
      outcome-report's report/v1). Each removal MUST make the static test
      report a pair and the enumeration raise an ambiguity error.
+  7. PRESENTATION ABI (spec section 3.2): every built-in and example
+     manifest declares a presentation_api the reference runtime implements
+     and a runtime_min it meets. neg-unsupported-presentation-api.json is
+     schema-valid, declares aac.presentation-api/v99 and, registered beside
+     the examples, is co-matchable with none of them. In a runtime that
+     implements only aac.presentation-api/v0 it is refused
+     (presentation_api_unsupported); the descriptor it matches resolves to
+     the generic fallback WITH the refusal in the result, and the row of its
+     required extension reads exactly as section 3.2 words it. A copy with
+     a supported API and a too-high runtime_min is refused as
+     runtime_too_old, with the section 3.2 line. MUTANT: a resolver that
+     ignores presentation_api selects the unsupported module.
 
 Usage:
     python3 schemas/check_presentation_manifest_examples.py       # from repo root
@@ -74,6 +91,13 @@ NOT covered here (explicitly named, not silently skipped):
     against the bytes it inlines (the emitter refuses a mismatch).
   - JSON Pointer sources in the declarative example are not resolved against
     a payload here; no rules-comparison payload is committed in this repo.
+  - Whether a trusted-executable module's code reads a bundle-carried
+    presentation setting for wording or depth: code is not visible to a
+    schema. Spec section 6 gives the behavioural test a reviewer or a
+    conformance harness applies; the schema half (no manifest can name such
+    a source) is neg-hint-wording-source.json.
+  - Immutability of the context (spec section 3.1) is a property of the
+    runtime's code and is tested there, not here.
 """
 from __future__ import annotations
 
@@ -108,6 +132,11 @@ EXAMPLES = [
     "example-declarative-rules",
 ]
 AMBIGUOUS_PAIR = ["neg-ambiguous-pair/a", "neg-ambiguous-pair/b"]
+UNSUPPORTED_API = "neg-unsupported-presentation-api"
+
+# The reference runtime's declaration (spec section 3.2).
+RUNTIME_APIS = frozenset({"aac.presentation-api/v0"})
+RUNTIME_VERSION = "0.1.0"
 WORDING_PACK = "example-wording-pack"
 
 ID_ROWS = "aac.builtin.report-rows/v0"
@@ -139,12 +168,22 @@ def _strip_namespace_const(schema: dict) -> None:
     }
 
 
+def _strip_presentation_api_required(schema: dict) -> None:
+    schema["$defs"]["PresentationManifest"]["required"].remove("presentation_api")
+
+
+def _strip_declarative_additional(schema: dict) -> None:
+    del schema["$defs"]["Declarative"]["additionalProperties"]
+
+
 # (fixture, the rule it depends on, how to remove that rule in memory)
 SCHEMA_NEGATIVES = [
     ("neg-unknown-field", "additionalProperties: false", _strip_additional),
     ("neg-fallback-with-priority", "fallback => no priority", _strip_fallback_priority),
     ("neg-missing-id", "id required", _strip_id_required),
     ("neg-presentation-v1-namespace", "spec_version const", _strip_namespace_const),
+    ("neg-missing-presentation-api", "presentation_api required", _strip_presentation_api_required),
+    ("neg-hint-wording-source", "declarative closed", _strip_declarative_additional),
 ]
 
 
@@ -223,8 +262,45 @@ def matches(m: dict, d: Descriptor, audience: str, fmt: str) -> bool:
     )
 
 
-def resolve(registry, d, audience, fmt, can_render, first_wins=False):
-    """Section 4.3, exactly. `first_wins` is the MUTANT only (check 5)."""
+def _version(text: str) -> tuple[int, int, int]:
+    major, minor, patch = (int(part) for part in text.split("."))
+    return major, minor, patch
+
+
+def refusal_reason(m: dict, apis=RUNTIME_APIS, version=RUNTIME_VERSION) -> str | None:
+    """Section 3.2: why a runtime refuses this module, or None."""
+    if m["presentation_api"] not in apis:
+        return "presentation_api_unsupported"
+    if _version(version) < _version(m["runtime_min"]):
+        return "runtime_too_old"
+    return None
+
+
+def _need(m: dict, reason: str, version: str) -> str:
+    if reason == "presentation_api_unsupported":
+        return (f"needs presentation API {m['presentation_api']}, "
+                "which this viewer does not implement")
+    return f"needs runtime {m['runtime_min']} or later; this viewer is {version}"
+
+
+def refusal_row(m: dict, reason: str, covered: bool = True, version=RUNTIME_VERSION) -> str:
+    """Section 3.2: the semantics cell of a required extension's row."""
+    integrity = "Integrity verified" if covered else "Integrity not verified"
+    return (f"{integrity}; meaning not interpreted: presentation module {m['id']} "
+            f"{_need(m, reason, version)}")
+
+
+def refusal_line(m: dict, reason: str, version=RUNTIME_VERSION) -> str:
+    """Section 3.2: the line for a refused module that requires no extension."""
+    return (f"Presentation module {m['id']} was not used: it "
+            f"{_need(m, reason, version)}")
+
+
+def resolve(registry, d, audience, fmt, can_render, first_wins=False,
+            refused=None, honour_api=True):
+    """Section 4.3, exactly. `first_wins` is the MUTANT only (check 5);
+    `honour_api=False` is the MUTANT only (check 7). Refusals recorded on the
+    way are appended to `refused` as (id, reason)."""
     if not d.verified:
         return REFUSAL
     matched = [m for m in registry if matches(m, d, audience, fmt)]
@@ -233,6 +309,11 @@ def resolve(registry, d, audience, fmt, can_render, first_wins=False):
         if len(tier) > 1 and not first_wins:
             raise AmbiguityError(sorted(m["id"] for m in tier))
         if tier:
+            reason = refusal_reason(tier[0]) if honour_api else None
+            if reason is not None:
+                if refused is not None:
+                    refused.append((tier[0]["id"], reason))
+                continue
             if can_render(tier[0]["id"], d):
                 return tier[0]["id"]
     return NO_PRESENTATION
@@ -369,6 +450,7 @@ def main() -> int:
         builtins = [_load(n) for n in BUILTINS]
         examples = [_load(n) for n in EXAMPLES]
         pair = [_load(n) for n in AMBIGUOUS_PAIR]
+        unsupported = _load(UNSUPPORTED_API)
         pack_bytes = (EXAMPLES_DIR / f"{WORDING_PACK}.json").read_bytes()
     except FileNotFoundError as exc:
         print(f"ERROR: fixture missing: {exc}")
@@ -378,7 +460,8 @@ def main() -> int:
     # --- 1. POSITIVE ---
     manifest_validator = _validator_for(schema, "PresentationManifest")
     for name, instance in zip(
-        BUILTINS + EXAMPLES + AMBIGUOUS_PAIR, builtins + examples + pair
+        BUILTINS + EXAMPLES + AMBIGUOUS_PAIR + [UNSUPPORTED_API],
+        builtins + examples + pair + [unsupported],
     ):
         errors = list(manifest_validator.iter_errors(instance))
         if errors:
@@ -501,6 +584,61 @@ def main() -> int:
     if static_findings(builtins) or preservation_findings(builtins)[0]:
         findings.append("MUTANT-RESTORE-FAILED built-ins")
 
+    # --- 7. PRESENTATION ABI ---
+    for m in builtins + examples:
+        reason = refusal_reason(m)
+        if reason is not None:
+            findings.append(f"ABI-REFUSED {m['id']}: the reference runtime refuses it ({reason})")
+    if not any(f.startswith("ABI-REFUSED") for f in findings):
+        print(f"OK  ABI           every built-in and example declares a presentation_api in "
+              f"{sorted(RUNTIME_APIS)} and runtime_min <= {RUNTIME_VERSION}")
+    with_unsupported = examples + [unsupported]
+    found = static_findings(with_unsupported)
+    findings.extend(found)
+    if refusal_reason(unsupported) != "presentation_api_unsupported":
+        findings.append(f"ABI-NOT-REFUSED {unsupported['id']}: {refusal_reason(unsupported)}")
+    witness = Descriptor(
+        True,
+        unsupported["requires"]["bundle_kind"],
+        frozenset(_req_profiles(unsupported)),
+        frozenset(_req_extensions(unsupported)),
+    )
+    refused: list[tuple[str, str]] = []
+    got = resolve(with_unsupported, witness, "owner", "html", lambda _i, _d: True,
+                  refused=refused)
+    fallback_id = next(m["id"] for m in examples if m["fallback"])
+    if got != fallback_id or refused != [(unsupported["id"], "presentation_api_unsupported")]:
+        findings.append(
+            f"ABI-RESOLUTION {unsupported['id']}: resolved {got} with refusals {refused}; "
+            f"want {fallback_id} with the refusal recorded"
+        )
+    else:
+        print(f"OK  ABI           {unsupported['id']} ({unsupported['presentation_api']}) is "
+              f"refused; its descriptor resolves to {got} with the refusal in the result")
+    row = refusal_row(unsupported, "presentation_api_unsupported")
+    want_row = ("Integrity verified; meaning not interpreted: presentation module "
+                "org.example.future-view/v1 needs presentation API aac.presentation-api/v99, "
+                "which this viewer does not implement")
+    if row != want_row:
+        findings.append(f"ABI-ROW-WORDING: {row!r}")
+    else:
+        print(f"OK  ABI           row for {_req_extensions(unsupported)}: {row!r}")
+    too_new = dict(unsupported, presentation_api="aac.presentation-api/v0", runtime_min="0.2.0")
+    line = refusal_line(too_new, refusal_reason(too_new) or "")
+    want_line = ("Presentation module org.example.future-view/v1 was not used: it needs "
+                 "runtime 0.2.0 or later; this viewer is 0.1.0")
+    if refusal_reason(too_new) != "runtime_too_old" or line != want_line:
+        findings.append(f"ABI-RUNTIME-MIN: {refusal_reason(too_new)} {line!r}")
+    else:
+        print(f"OK  ABI           runtime_min 0.2.0 on runtime 0.1.0 is refused: {line!r}")
+    mutant_got = resolve(with_unsupported, witness, "owner", "html", lambda _i, _d: True,
+                         honour_api=False)
+    if mutant_got == unsupported["id"]:
+        print(f"OK  MUTANT        a resolver that ignores presentation_api selects "
+              f"{mutant_got}: the refusal is load-bearing")
+    else:
+        findings.append(f"MUTANT-HARNESS-BROKEN: the API-blind resolver picked {mutant_got}")
+
     if findings:
         print("\nFAIL — findings:")
         for f in findings:
@@ -508,7 +646,8 @@ def main() -> int:
         return 1
     print(f"\nOK — {len(BUILTINS)} built-in and {len(EXAMPLES)} example manifests, "
           f"{len(SCHEMA_NEGATIVES)} schema negatives with mutants, the wording binding, "
-          "the static and runtime ambiguity tests, and behaviour preservation all passed.")
+          "the static and runtime ambiguity tests, behaviour preservation and the "
+          "presentation ABI refusal all passed.")
     return 0
 
 

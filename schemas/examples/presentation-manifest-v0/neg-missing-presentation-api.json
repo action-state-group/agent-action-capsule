@@ -1,18 +1,21 @@
 {
   "spec_version": "aac.presentation-manifest/v0",
-  "id": "org.example.unilateral/v0",
-  "presentation_api": "aac.presentation-api/v0",
+  "id": "aac.builtin.result/v0",
   "runtime_min": "0.1.0",
   "trust_class": "trusted-executable",
   "requires": {
     "bundle_kind": "evidence-bundle/v2",
     "profiles": [
-      "spec_version:org.example.exchange/v0"
+      "result_version:evidence-result-v0"
     ]
   },
   "forbids": {
+    "profiles": [
+      "spec_version:report/v1"
+    ],
     "extensions": [
-      "composed/v1"
+      "outcome-report/v1",
+      "eu-ai-act-compliance/v1"
     ]
   },
   "audiences": [
@@ -26,7 +29,6 @@
   "fallback": false,
   "priority": 1,
   "executable": {
-    "carrier": "module-slot",
-    "script_sha256": "1f0e3dad99908345f7439f8ffabdffc41f0e3dad99908345f7439f8ffabdffc4"
+    "carrier": "core-runtime"
   }
 }

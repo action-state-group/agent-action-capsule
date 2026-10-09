@@ -10,8 +10,18 @@
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
+    "PresentationApi": {
+      "description": "The presentation ABI a module is written against (spec section 3.2): aac.presentation-api/v<major>. Versioned on its own, independent of spec_version, of bundle and capsule formats, of package versions and of any command-line tool's plugin interface. A schema-valid value the runtime does not implement is refused at resolution (and reported), not rejected here.",
+      "type": "string",
+      "pattern": "^aac\\.presentation-api/v(0|[1-9][0-9]*)$"
+    },
+    "RuntimeVersion": {
+      "description": "MAJOR.MINOR.PATCH, compared numerically component by component (spec section 3.2).",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
     "ManifestId": {
-      "description": "Dotted name, then a slash and a major version: org.example.view/v0. The aac. prefix is reserved for modules this repository ships.",
+      "description": "The module id. Dotted name, then a slash and a major version: org.example.view/v0. The aac. prefix is reserved for modules this repository ships. There is no separate module_id member: id is the module's identity (spec section 4.1).",
       "type": "string",
       "pattern": "^[a-z0-9]+(\\.[a-z0-9_-]+)+/v[0-9]+$"
     },
@@ -180,6 +190,8 @@
       "required": [
         "spec_version",
         "id",
+        "presentation_api",
+        "runtime_min",
         "trust_class",
         "requires",
         "audiences",
@@ -192,6 +204,11 @@
           "const": "aac.presentation-manifest/v0"
         },
         "id": { "$ref": "#/$defs/ManifestId" },
+        "presentation_api": { "$ref": "#/$defs/PresentationApi" },
+        "runtime_min": {
+          "description": "The lowest presentation runtime version the module needs within its presentation_api. A runtime older than this refuses the module and says so (spec section 3.2).",
+          "$ref": "#/$defs/RuntimeVersion"
+        },
         "trust_class": { "enum": ["trusted-executable", "declarative"] },
         "requires": { "$ref": "#/$defs/Requires" },
         "forbids": { "$ref": "#/$defs/Forbids" },
