@@ -34,6 +34,13 @@
   negatives: a manifest with no `presentation_api`, a module with an unsupported one (refused at
   resolution), and a declarative module naming a hint as its wording source.
 
+- TypeScript: `ExtensionResult.status` is `interpreted` (with an `interpreter` id) or
+  `uninterpreted`; only a block a viewer module actually reads is `interpreted`
+  (`presentation/v1`, `producer-key/v1`, `outcome-report/v1`, `eu-ai-act-compliance/v1`,
+  `evidencebook/payloads`, `capsulectl/agent-input-originals/v1`; `composed/v1` and unknown kinds
+  stay uninterpreted). `integrityCovered` is now false when the bundle digest is uncomputable. The
+  verification page renders one row per extension (id, integrity, semantics); an uninterpreted
+  block reads "Integrity verified; meaning not interpreted by this viewer". No verdict changes.
 ### Emitter (Go and TypeScript)
 - The HTML shell has named slots: `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`,
   `MODULE_SLOT` (zero or more digest-pinned scripts) and `BOOTSTRAP_SLOT`, plus `CSP_SLOT` for the

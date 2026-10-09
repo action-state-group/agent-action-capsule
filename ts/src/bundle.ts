@@ -20,6 +20,10 @@ import {
   DISCLOSURE_NO_COMMITTED_DIGEST,
 } from "./disclosure-envelope.js";
 import { resolveDisclosurePath } from "./disclosure-path.js";
+import {
+  extensionInterpreter,
+  type ExtensionInterpreterId,
+} from "./extension-interpreters.js";
 import { disclosureEligibleFields } from "./registries.js";
 import { verifyClass1, type VerificationResult } from "./verify.js";
 import type { CountersignerSource } from "./countersignature-stamp.js";
@@ -39,11 +43,34 @@ export interface DisclosureResult {
   readonly member: string;
   readonly status: string;
 }
-export interface ExtensionResult {
-  readonly kind: string;
-  readonly status: "uninterpreted";
-  readonly integrityCovered: true;
-}
+/**
+ * One `extensions` member, as this verifier and viewer stand towards it.
+ *
+ * `integrityCovered` is whether the block is bound into the computed bundle
+ * digest: true exactly when `bundleDigest` was computed, because the
+ * canonical form it hashes includes `extensions` (Evidence Bundle -01,
+ * "Bundle Digest and Countersignatures"). It says the bytes are pinned, never
+ * that their meaning is understood or correct.
+ *
+ * `interpreted` means this library has a module that applies the kind's
+ * meaning AND that module's own reader accepts this block; `interpreter`
+ * names the module. Every other block -- an unknown kind, a kind with no
+ * module here (composed/v1), a block its reader ignores -- is `uninterpreted`
+ * and its semantics are never applied (draft "Typed Extensions").
+ */
+export type ExtensionResult =
+  | {
+      readonly kind: string;
+      readonly status: "interpreted";
+      readonly interpreter: ExtensionInterpreterId;
+      readonly integrityCovered: boolean;
+    }
+  | {
+      readonly kind: string;
+      readonly status: "uninterpreted";
+      readonly integrityCovered: boolean;
+    };
+export type { ExtensionInterpreterId } from "./extension-interpreters.js";
 export interface CountersignatureResult {
   readonly value: unknown;
   readonly status: "unverified";
@@ -147,7 +174,7 @@ export async function verifyBundle(
       Object.hasOwn(bundle, "disclosures") ? bundle.disclosures : {},
       collected.records,
     ),
-    extensions: extensions(bundle.extensions),
+    extensions: extensions(bundle, digest !== undefined),
     countersignatures: Array.isArray(bundle.countersignatures)
       ? bundle.countersignatures.map((value) => ({
           value,
@@ -669,15 +696,22 @@ async function disclosures(
   }
   return findings;
 }
-function extensions(raw: unknown): ExtensionResult[] {
+function extensions(bundle: Bundle, covered: boolean): ExtensionResult[] {
+  const raw = bundle.extensions;
   return object(raw)
     ? Object.keys(raw)
         .sort()
-        .map((kind) => ({
-          kind,
-          status: "uninterpreted",
-          integrityCovered: true,
-        }))
+        .map((kind): ExtensionResult => {
+          const interpreter = extensionInterpreter(kind, bundle);
+          return interpreter === undefined
+            ? { kind, status: "uninterpreted", integrityCovered: covered }
+            : {
+                kind,
+                status: "interpreted",
+                interpreter,
+                integrityCovered: covered,
+              };
+        })
     : [];
 }
 
