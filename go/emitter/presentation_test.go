@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -161,4 +162,85 @@ func TestFragmentCodecMatchesFragmentPyVectors(t *testing.T) {
 		require.NoError(t, err, c.Name)
 		require.Equal(t, c.Payload, decoded, c.Name)
 	}
+}
+
+// styledModule is a module-slot script with stylesheet pins and, when
+// manifestStyles is not nil, a manifest declaring those style_sha256.
+func styledModule(t *testing.T, carried []string, manifestStyles []string) Module {
+	t.Helper()
+	code := "window.moduleRan=true;"
+	module := Module{Code: []byte(code), SHA256: hexPinOf(code), StyleSHA256: carried}
+	if manifestStyles == nil {
+		return module
+	}
+	executable := map[string]interface{}{"carrier": "module-slot", "script_sha256": module.SHA256}
+	if len(manifestStyles) > 0 {
+		executable["style_sha256"] = manifestStyles
+	}
+	raw, err := json.Marshal(map[string]interface{}{
+		"spec_version": "aac.presentation-manifest/v0", "id": "org.example.styled/v0",
+		"presentation_api": "aac.presentation-api/v0", "runtime_min": "0.1.0",
+		"trust_class": "trusted-executable", "requires": map[string]interface{}{"bundle_kind": "evidence-bundle/v2"},
+		"audiences": []string{"*"}, "formats": []string{"html"}, "fallback": false, "priority": 1,
+		"executable": executable,
+	})
+	require.NoError(t, err)
+	module.Manifest = raw
+	return module
+}
+
+func TestBuildOfflineHTMLPassesModuleStylePins(t *testing.T) {
+	first, second := hexPinOf(".m{color:red}"), hexPinOf(".n{color:blue}")
+	week := loadWeekBundle(t)
+	for _, module := range []Module{
+		styledModule(t, []string{first, second}, nil),
+		styledModule(t, []string{first, second}, []string{first, second}),
+		// A set: order and repetition decide nothing.
+		styledModule(t, []string{second, first, second}, []string{first, second}),
+	} {
+		got, err := BuildOfflineHTML(week, []byte(marker), OfflineOptions{Audience: "*", Modules: []Module{module}})
+		require.NoError(t, err)
+		bare := module
+		bare.Manifest = nil
+		want, err := EmitEvidenceGraphHTMLWithOptions(week, []byte(marker), Options{Modules: []Module{bare}})
+		require.NoError(t, err)
+		require.True(t, got == want, "the builder's page is the emitter's page for the same module")
+		styles := policyOf(t, got)["style-src"]
+		require.Contains(t, styles, sourceOf(".m{color:red}"))
+		require.Contains(t, styles, sourceOf(".n{color:blue}"))
+	}
+}
+
+func TestBuildOfflineHTMLRefusesManifestStyleMismatch(t *testing.T) {
+	first, second := hexPinOf(".m{color:red}"), hexPinOf(".n{color:blue}")
+	week := loadWeekBundle(t)
+	for _, c := range []struct {
+		carried, declared []string
+	}{
+		{[]string{first}, []string{first, second}},
+		{[]string{first, second}, []string{first}},
+		{[]string{first}, []string{second}},
+		{[]string{first}, []string{}}, // the manifest declares no stylesheet
+		{nil, []string{first}},
+	} {
+		_, err := BuildOfflineHTML(week, []byte(marker), OfflineOptions{
+			Audience: "*", Modules: []Module{styledModule(t, c.carried, c.declared)},
+		})
+		var mismatch *StylePinsError
+		require.ErrorAs(t, err, &mismatch)
+		require.Equal(t, "org.example.styled/v0", mismatch.Module)
+		require.Equal(t, fmt.Sprintf("module manifest org.example.styled/v0 style_sha256 [%s] does not equal the module's style pins [%s] as a set; no page is written",
+			strings.Join(c.declared, ", "), strings.Join(c.carried, ", ")), err.Error())
+	}
+	// Both empty is equal.
+	_, err := BuildOfflineHTML(week, []byte(marker), OfflineOptions{
+		Audience: "*", Modules: []Module{styledModule(t, nil, []string{})},
+	})
+	require.NoError(t, err)
+	// A manifest that does not pin the script is refused before the styles.
+	other := styledModule(t, []string{first}, []string{first})
+	other.SHA256 = hexPinOf("other")
+	other.Code = []byte("other")
+	_, err = BuildOfflineHTML(week, []byte(marker), OfflineOptions{Audience: "*", Modules: []Module{other}})
+	require.ErrorContains(t, err, "does not pin this module-slot script")
 }

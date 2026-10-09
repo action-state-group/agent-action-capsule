@@ -18,12 +18,14 @@ import {
   PackagingUnavailableError,
   PresentationBuildError,
   PresentationModuleRefusedError,
+  PresentationStylePinsError,
   STATIC_BUILD_TIME_STATEMENT,
   STATIC_NOT_SELF_VERIFYING,
   type BuildPresentationOptions,
   type BuiltPresentation,
   type PackagingAvailability,
   type PackagingTarget,
+  type PresentationModuleScript,
 } from "../src/presentation-builder.js";
 import {
   decodePresentationFragment,
@@ -753,6 +755,160 @@ describe("buildPresentation", () => {
       throw new Error("html expected");
     expect(accepted.html).toBe(plain.html);
     expect(accepted.html).toContain(code);
+  });
+
+  describe("module stylesheet pins (contract 5.1)", () => {
+    const code = "/*styled module*/";
+    const first = hex(".m{color:red}");
+    const second = hex(".n{color:blue}");
+    const b64 = (pin: string): string =>
+      `'sha256-${Buffer.from(pin, "hex").toString("base64")}'`;
+    const styleSrc = (html: string): string =>
+      /style-src ([^;"]*)/u.exec(html)![1]!;
+    const manifest = (style?: readonly string[]): PresentationManifest => ({
+      spec_version: "aac.presentation-manifest/v0",
+      id: "org.example.styled/v0",
+      presentation_api: "aac.presentation-api/v0",
+      runtime_min: "0.1.0",
+      trust_class: "trusted-executable",
+      requires: { bundle_kind: "evidence-bundle/v2" },
+      audiences: ["*"],
+      formats: ["html"],
+      fallback: false,
+      priority: 1,
+      executable: {
+        carrier: "module-slot",
+        script_sha256: hex(code),
+        ...(style === undefined ? {} : { style_sha256: style }),
+      },
+    });
+    const build = async (
+      module: PresentationModuleScript,
+      format: PackagingTarget = "html",
+    ): Promise<BuiltPresentation> =>
+      buildPresentation(
+        (await sealEvidenceBundle(fixture("report-rows-bundle.json"))).bundle,
+        {
+          presentation: "auto",
+          audience: "*",
+          format,
+          runtime: { code: "/*IIFE_MARKER*/" },
+          modules: [module],
+        },
+      );
+    const html = async (module: PresentationModuleScript): Promise<string> => {
+      const built = await build(module);
+      if (built.format !== "html") throw new Error("html expected");
+      return built.html;
+    };
+
+    it("passes each module's style pins to the emitter, with or without a manifest", async () => {
+      const { bundle } = await sealEvidenceBundle(
+        fixture("report-rows-bundle.json"),
+      );
+      const emitted = emitEvidenceGraphHtml(bundle, "/*IIFE_MARKER*/", {
+        modules: [{ code, sha256: hex(code), styleSha256: [first, second] }],
+      });
+      for (const module of [
+        { code, sha256: hex(code), styleSha256: [first, second] },
+        {
+          code,
+          sha256: hex(code),
+          styleSha256: [first, second],
+          manifest: manifest([first, second]),
+        },
+      ]) {
+        const page = await html(module);
+        expect(page).toBe(emitted);
+        expect(styleSrc(page)).toContain(b64(first));
+        expect(styleSrc(page)).toContain(b64(second));
+      }
+      // Without pins the page is the one it always was.
+      const unpinned = await html({ code, sha256: hex(code) });
+      expect(unpinned).toBe(
+        emitEvidenceGraphHtml(bundle, "/*IIFE_MARKER*/", {
+          modules: [{ code, sha256: hex(code) }],
+        }),
+      );
+      expect(styleSrc(unpinned)).not.toContain(b64(first));
+    });
+
+    it("compares the manifest's style_sha256 with the module's pins as a set", async () => {
+      const inOrder = await html({
+        code,
+        sha256: hex(code),
+        styleSha256: [first, second],
+        manifest: manifest([first, second]),
+      });
+      const reordered = await html({
+        code,
+        sha256: hex(code),
+        styleSha256: [second, first, second],
+        manifest: manifest([first, second]),
+      });
+      expect(styleSrc(reordered)).toContain(b64(first));
+      expect(styleSrc(reordered)).toContain(b64(second));
+      expect(inOrder).toContain(code);
+      // No stylesheet on either side is equal too.
+      await expect(
+        html({ code, sha256: hex(code), manifest: manifest() }),
+      ).resolves.toContain(code);
+    });
+
+    it("writes no page when they differ, in any packaging, and names both lists", async () => {
+      const cases: [readonly string[] | undefined, readonly string[]][] = [
+        [[first, second], [first]],
+        [[first], [first, second]],
+        [[second], [first]],
+        [undefined, [first]],
+        [[first], []],
+      ];
+      for (const [declared, carried] of cases) {
+        const module = {
+          code,
+          sha256: hex(code),
+          ...(carried.length === 0 ? {} : { styleSha256: carried }),
+          manifest: manifest(declared),
+        };
+        for (const format of PACKAGING_TARGETS) {
+          const err = await build(module, format).then(
+            () => undefined,
+            (e: unknown) => e,
+          );
+          expect(err, format).toBeInstanceOf(PresentationStylePinsError);
+          expect(err).toBeInstanceOf(PresentationBuildError);
+          const mismatch = err as PresentationStylePinsError;
+          expect(mismatch.module).toBe("org.example.styled/v0");
+          expect(mismatch.manifestStyleSha256).toEqual(declared ?? []);
+          expect(mismatch.moduleStyleSha256).toEqual(carried);
+          expect(mismatch.message).toBe(
+            `module manifest org.example.styled/v0 style_sha256 [${(declared ?? []).join(", ")}] does not equal the module's style pins [${carried.join(", ")}] as a set; no page is written`,
+          );
+        }
+      }
+    });
+
+    it("applies the same check when the offline file is rebuilt from a fragment", async () => {
+      const module = {
+        code,
+        sha256: hex(code),
+        styleSha256: [first],
+        manifest: manifest([first]),
+      };
+      const built = await build(module, "fragment");
+      const offline = await html(module);
+      if (built.format !== "fragment") throw new Error("fragment expected");
+      await expect(
+        offlineHtmlFromFragment(built.fragment, { code: "/*IIFE_MARKER*/" }, [
+          module,
+        ]),
+      ).resolves.toBe(offline);
+      await expect(
+        offlineHtmlFromFragment(built.fragment, { code: "/*IIFE_MARKER*/" }, [
+          { ...module, styleSha256: [second] },
+        ]),
+      ).rejects.toThrow(PresentationStylePinsError);
+    });
   });
 
   it("refuses a requested presentation the registry holds as refused, naming both sides", async () => {

@@ -62,6 +62,17 @@ page's runtime is the registry's when the builder resolves with a `PresentationR
 reference runtime otherwise. `availablePackagings` throws the same error: it is an error of the
 request, not of one target.
 
+**Module stylesheet pins.** A module-slot script carries the SHA-256 pins of the stylesheets it
+inserts at render time (`styleSha256`; Go: `Module.StyleSHA256`), and the builder passes them to
+the emitter, which lists each in the page's `style-src` (presentation contract section 5.1). When
+the script is given with its manifest, the manifest's `executable.style_sha256` (absent: empty)
+MUST equal the script's pins as a set: order and repetition decide nothing. Otherwise the builder
+writes no page in any packaging and fails with `PresentationStylePinsError` (Go:
+`*StylePinsError`), naming the module's id and both lists as given. The Go offline packaging
+(`BuildOfflineHTML`, and so `OfflineHTMLFromFragment`) applies the same check to a `Module` given
+with its `Manifest`, after the same check that the manifest pins the script. A page with no
+module stylesheets is unchanged byte for byte.
+
 **Supported targets.** The builder supports four packaging targets: `html`, `fragment`,
 `embedded` and `static`. A target is *supported* for one (bundle, audience) and one set of
 settings when the builder can package it; otherwise it is *unavailable*, and the builder says so
@@ -280,3 +291,6 @@ The Go and TypeScript offline outputs match byte for byte for the same inputs
    static page's.
 5. The static page's click-driven controls are inert (section 2.4); what they would reveal is
    not on the page.
+6. The fragment's `module_sha256` pins module scripts only. A module's stylesheet pins are not
+   in the fragment: the hand-back takes them from the modules it is given, and checks them
+   against a manifest given with a module.
