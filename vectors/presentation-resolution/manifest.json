@@ -1,0 +1,253 @@
+{
+  "contract": "spec/presentation-contract-v0.md (sections 3.2, 4.2-4.5, appendix A)",
+  "provenance": "reference-derived",
+  "generator": "ts/test/helpers/presentation-resolution-vectors.ts",
+  "normative_for": [
+    "ts/src/presentation-registry.ts",
+    "go/presentation"
+  ],
+  "builtin_manifests": [
+    {
+      "spec_version": "aac.presentation-manifest/v0",
+      "id": "aac.builtin.report-rows/v0",
+      "presentation_api": "aac.presentation-api/v0",
+      "runtime_min": "0.1.0",
+      "trust_class": "trusted-executable",
+      "requires": {
+        "bundle_kind": "evidence-bundle/v2",
+        "profiles": [
+          "spec_version:report/v1"
+        ]
+      },
+      "audiences": [
+        "*"
+      ],
+      "formats": [
+        "html",
+        "fragment",
+        "embedded"
+      ],
+      "fallback": false,
+      "priority": 1,
+      "executable": {
+        "carrier": "core-runtime"
+      }
+    },
+    {
+      "spec_version": "aac.presentation-manifest/v0",
+      "id": "aac.builtin.result-outcome-report/v0",
+      "presentation_api": "aac.presentation-api/v0",
+      "runtime_min": "0.1.0",
+      "trust_class": "trusted-executable",
+      "requires": {
+        "bundle_kind": "evidence-bundle/v2",
+        "profiles": [
+          "result_version:evidence-result-v0"
+        ],
+        "extensions": {
+          "required": [
+            "outcome-report/v1"
+          ]
+        }
+      },
+      "forbids": {
+        "profiles": [
+          "spec_version:report/v1"
+        ]
+      },
+      "audiences": [
+        "*"
+      ],
+      "formats": [
+        "html",
+        "fragment",
+        "embedded"
+      ],
+      "fallback": false,
+      "priority": 1,
+      "executable": {
+        "carrier": "core-runtime"
+      }
+    },
+    {
+      "spec_version": "aac.presentation-manifest/v0",
+      "id": "aac.builtin.result-compliance/v0",
+      "presentation_api": "aac.presentation-api/v0",
+      "runtime_min": "0.1.0",
+      "trust_class": "trusted-executable",
+      "requires": {
+        "bundle_kind": "evidence-bundle/v2",
+        "profiles": [
+          "result_version:evidence-result-v0"
+        ],
+        "extensions": {
+          "required": [
+            "eu-ai-act-compliance/v1"
+          ]
+        }
+      },
+      "forbids": {
+        "profiles": [
+          "spec_version:report/v1"
+        ],
+        "extensions": [
+          "outcome-report/v1"
+        ]
+      },
+      "audiences": [
+        "*"
+      ],
+      "formats": [
+        "html",
+        "fragment",
+        "embedded"
+      ],
+      "fallback": false,
+      "priority": 1,
+      "executable": {
+        "carrier": "core-runtime"
+      }
+    },
+    {
+      "spec_version": "aac.presentation-manifest/v0",
+      "id": "aac.builtin.result/v0",
+      "presentation_api": "aac.presentation-api/v0",
+      "runtime_min": "0.1.0",
+      "trust_class": "trusted-executable",
+      "requires": {
+        "bundle_kind": "evidence-bundle/v2",
+        "profiles": [
+          "result_version:evidence-result-v0"
+        ]
+      },
+      "forbids": {
+        "profiles": [
+          "spec_version:report/v1"
+        ],
+        "extensions": [
+          "outcome-report/v1",
+          "eu-ai-act-compliance/v1"
+        ]
+      },
+      "audiences": [
+        "*"
+      ],
+      "formats": [
+        "html",
+        "fragment",
+        "embedded"
+      ],
+      "fallback": false,
+      "priority": 1,
+      "executable": {
+        "carrier": "core-runtime"
+      }
+    },
+    {
+      "spec_version": "aac.presentation-manifest/v0",
+      "id": "aac.builtin.evaluation-summary-graph/v0",
+      "presentation_api": "aac.presentation-api/v0",
+      "runtime_min": "0.1.0",
+      "trust_class": "trusted-executable",
+      "requires": {
+        "bundle_kind": "evidence-bundle/v2",
+        "profiles": [
+          "spec_version:evaluation-summary/v1"
+        ]
+      },
+      "forbids": {
+        "profiles": [
+          "result_version:evidence-result-v0"
+        ]
+      },
+      "audiences": [
+        "*"
+      ],
+      "formats": [
+        "html",
+        "fragment",
+        "embedded"
+      ],
+      "fallback": false,
+      "priority": 1,
+      "executable": {
+        "carrier": "core-runtime"
+      }
+    },
+    {
+      "spec_version": "aac.presentation-manifest/v0",
+      "id": "aac.builtin.no-aggregate/v0",
+      "presentation_api": "aac.presentation-api/v0",
+      "runtime_min": "0.1.0",
+      "trust_class": "trusted-executable",
+      "requires": {
+        "bundle_kind": "evidence-bundle/v2"
+      },
+      "audiences": [
+        "*"
+      ],
+      "formats": [
+        "html",
+        "fragment",
+        "embedded"
+      ],
+      "fallback": true,
+      "executable": {
+        "carrier": "core-runtime"
+      }
+    }
+  ],
+  "builtin_section_manifests": [
+    {
+      "spec_version": "aac.presentation-manifest/v0",
+      "id": "aac.builtin.composed/v0",
+      "presentation_api": "aac.presentation-api/v0",
+      "runtime_min": "0.1.0",
+      "trust_class": "trusted-executable",
+      "requires": {
+        "bundle_kind": "evidence-bundle/v2",
+        "extensions": {
+          "required": [
+            "composed/v1"
+          ]
+        }
+      },
+      "audiences": [
+        "*"
+      ],
+      "formats": [
+        "html",
+        "fragment",
+        "embedded"
+      ],
+      "fallback": false,
+      "priority": 1,
+      "executable": {
+        "carrier": "core-runtime"
+      }
+    }
+  ],
+  "reference_runtime": {
+    "presentation_apis": [
+      "aac.presentation-api/v0"
+    ],
+    "runtime_version": "0.1.0"
+  },
+  "files": [
+    {
+      "path": "table.json",
+      "sha256": "eb23a4af71ecdd0130476b4ec1e33f54bebbc90286216d9f850e9ae4e7daf7e0",
+      "count": 1536
+    },
+    {
+      "path": "registration.json",
+      "sha256": "8a825941aca4c81f7028afe7501a54ddc106c18d5b5cc5c291259ca881672083",
+      "count": 53
+    },
+    {
+      "path": "descriptors.json",
+      "sha256": "d654c66ed9090212503f389299c860192dfd68086adc76c2508f96781f0ceddf",
+      "count": 377
+    }
+  ]
+}
