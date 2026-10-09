@@ -151,13 +151,66 @@ export interface CoreRuntimeScript {
 }
 
 /**
- * A module-slot script the page inlines. With its `manifest`, the builder
- * checks the module against the page's runtime before writing anything
- * (contract section 3.2); the manifest must pin this script
- * (`executable.carrier` `module-slot`, `script_sha256` equal to `sha256`).
+ * A module-slot script the page inlines. Its `styleSha256` pins reach the
+ * page's `style-src` (contract section 5.1). With its `manifest`, the
+ * builder checks the module against the page's runtime before writing
+ * anything (contract section 3.2); the manifest must pin this script
+ * (`executable.carrier` `module-slot`, `script_sha256` equal to `sha256`)
+ * and its stylesheets (`executable.style_sha256` equal to `styleSha256` as
+ * a set, an absent list being empty).
  */
 export interface PresentationModuleScript extends EmitterModule {
   readonly manifest?: PresentationManifest;
+}
+
+/**
+ * A module's manifest pins other stylesheets than the module carries
+ * (contract section 5.1). No page is written; the error names both lists.
+ */
+export class PresentationStylePinsError extends PresentationBuildError {
+  readonly module: string;
+  /** The manifest's `executable.style_sha256`, as given (absent: empty). */
+  readonly manifestStyleSha256: readonly string[];
+  /** The module's `styleSha256`, as given (absent: empty). */
+  readonly moduleStyleSha256: readonly string[];
+  constructor(
+    module: string,
+    manifestStyleSha256: readonly string[],
+    moduleStyleSha256: readonly string[],
+  ) {
+    super(
+      `module manifest ${module} style_sha256 [${manifestStyleSha256.join(", ")}] does not equal the module's style pins [${moduleStyleSha256.join(", ")}] as a set; no page is written`,
+    );
+    this.name = "PresentationStylePinsError";
+    this.module = module;
+    this.manifestStyleSha256 = Object.freeze([...manifestStyleSha256]);
+    this.moduleStyleSha256 = Object.freeze([...moduleStyleSha256]);
+  }
+}
+
+// Contract section 5.1: the stylesheets a module inserts are the ones its
+// manifest pins, compared as sets (order and repetition decide nothing).
+function checkStylePins(script: PresentationModuleScript): void {
+  const manifest = script.manifest;
+  if (manifest === undefined) return;
+  const declared = manifest.executable?.style_sha256 ?? [];
+  const carried = script.styleSha256 ?? [];
+  const a = new Set(declared);
+  const b = new Set(carried);
+  if (a.size !== b.size || [...a].some((pin) => !b.has(pin)))
+    throw new PresentationStylePinsError(manifest.id, declared, carried);
+}
+
+// What the emitter is given for each module: its code and pins, script and
+// stylesheets alike. The manifest stays with the builder.
+function emitterModules(
+  modules: readonly PresentationModuleScript[],
+): EmitterModule[] {
+  return modules.map((m) => ({
+    code: m.code,
+    sha256: m.sha256,
+    ...(m.styleSha256 === undefined ? {} : { styleSha256: m.styleSha256 }),
+  }));
 }
 
 /**
@@ -467,6 +520,7 @@ function refuseRefusedModules(
       throw new PresentationBuildError(
         `module manifest ${manifest.id} does not pin this module-slot script (sha256 ${script.sha256})`,
       );
+    checkStylePins(script);
     const reason = presentationRefusalReason(manifest, runtime);
     if (reason !== undefined)
       throw new PresentationModuleRefusedError(manifest, reason, runtime);
@@ -599,7 +653,7 @@ async function packageAs(
 ): Promise<BuiltPresentation> {
   const { common, registry } = prepared;
   const { audience, bundle } = common;
-  const modules = options.modules ?? [];
+  const modules = emitterModules(options.modules ?? []);
 
   if (format === "html") {
     const html = await packageOffline(
@@ -773,15 +827,18 @@ async function packageStatic(
  * The hand-back: rebuild the exact offline .html a fragment was made from.
  * The fragment carries pins, not code; the runtime and modules given here
  * must match them, or this refuses rather than build a different file.
+ * A module given with its manifest has its stylesheet pins checked against
+ * it, as {@link buildPresentation} checks them.
  * It never scopes: the fragment's bundle was scoped before encoding.
  */
 export async function offlineHtmlFromFragment(
   token: string,
   runtime: CoreRuntimeScript,
-  modules: readonly EmitterModule[] = [],
+  modules: readonly PresentationModuleScript[] = [],
   maxLength?: number,
 ): Promise<string> {
   const payload = decodePresentationFragment(token, maxLength);
+  modules.forEach(checkStylePins);
   const runtimePin = await sha256Hex(new TextEncoder().encode(runtime.code));
   if (runtimePin !== payload.core_runtime_sha256)
     throw new PresentationBuildError(
@@ -805,7 +862,7 @@ export async function offlineHtmlFromFragment(
       wording: payload.wording,
     },
     { code: runtime.code, sha256: runtimePin },
-    modules,
+    emitterModules(modules),
   );
 }
 

@@ -121,6 +121,13 @@
   presentation contract's `style_sha256`. The emitter lists each, in base64 form, in `style-src`
   after the core runtime's, and refuses a malformed pin. Pages with no module stylesheets are
   unchanged.
+- The presentation builder passes each module's stylesheet pins through to the emitter
+  (`buildPresentation`, `offlineHtmlFromFragment`; Go `BuildOfflineHTML`,
+  `OfflineHTMLFromFragment`). A module given with its manifest (`PresentationModuleScript.manifest`;
+  Go: the new optional `Module.Manifest`) must declare the same stylesheets in
+  `executable.style_sha256`, compared as a set; on a mismatch no page is written and
+  `PresentationStylePinsError` (Go: `*StylePinsError`) names both lists. Default output is
+  unchanged byte for byte.
 - Every emitted page carries a Content-Security-Policy meta element: `default-src 'none'`,
   `script-src` and `style-src` as SHA-256 hashes of the inline elements actually written (plus the
   two stylesheets the reference runtime inserts at render time, listed in

@@ -5,6 +5,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -48,7 +49,12 @@ interface Opened {
   /** `page` as HTML parsing reads it. */
   readonly parsed: string;
   readonly text: string;
+  /** The computed color of `#probe`, when a module drew one. */
+  readonly probeColor: string | null;
 }
+
+const hex = (value: string): string =>
+  createHash("sha256").update(value, "utf8").digest("hex");
 
 describe.skipIf(executablePath === undefined)(
   "offline file, fragment permalink and static page in a CSP-enforcing browser",
@@ -107,7 +113,9 @@ describe.skipIf(executablePath === undefined)(
         // implied tbody), so a static page and a drawn page compare.
         const holder = document.createElement("div");
         holder.innerHTML = app.innerHTML;
+        const probe = document.getElementById("probe");
         return {
+          probeColor: probe === null ? null : getComputedStyle(probe).color,
           parsed: holder.innerHTML,
           verify:
             app.querySelector("[data-verify]")?.getAttribute("data-verify") ??
@@ -127,8 +135,58 @@ describe.skipIf(executablePath === undefined)(
         page: shown.page,
         parsed: shown.parsed,
         text: shown.text,
+        probeColor: shown.probeColor,
       };
     }
+
+    it("a module stylesheet pinned through its manifest applies with no CSP violation through buildPresentation", async () => {
+      const { bundle } = await sealEvidenceBundle(
+        JSON.parse(
+          readFileSync(
+            resolve(import.meta.dirname, "testdata", "report-rows-bundle.json"),
+            "utf8",
+          ),
+        ),
+      );
+      const css = "#probe{color:rgb(1, 2, 3)}";
+      const code = `const style = document.createElement("style"); style.textContent = ${JSON.stringify(css)}; document.head.appendChild(style); const probe = document.createElement("div"); probe.id = "probe"; document.body.appendChild(probe);`;
+      const built = await buildPresentation(bundle, {
+        presentation: "auto",
+        audience: "*",
+        format: "html",
+        runtime: { code: runtime },
+        modules: [
+          {
+            code,
+            sha256: hex(code),
+            styleSha256: [hex(css)],
+            manifest: {
+              spec_version: "aac.presentation-manifest/v0",
+              id: "org.example.styled/v0",
+              presentation_api: "aac.presentation-api/v0",
+              runtime_min: "0.1.0",
+              trust_class: "trusted-executable",
+              requires: { bundle_kind: "evidence-bundle/v2" },
+              audiences: ["*"],
+              formats: ["html"],
+              fallback: false,
+              priority: 1,
+              executable: {
+                carrier: "module-slot",
+                script_sha256: hex(code),
+                style_sha256: [hex(css)],
+              },
+            },
+          },
+        ],
+      });
+      if (built.format !== "html") throw new Error("html expected");
+      const opened = await open("styled.html", built.html);
+      expect(opened.violations).toEqual([]);
+      expect(opened.verify).toBe("verified");
+      expect(opened.probeColor).toBe("rgb(1, 2, 3)");
+      expect(opened.requests).toEqual([opened.document]);
+    }, 60_000);
 
     for (const name of ["report-rows-bundle.json", "result-root-bundle.json"])
       it(`${name}: the fragment URL opens with no request beyond its own document and shows what the offline file shows`, async () => {
