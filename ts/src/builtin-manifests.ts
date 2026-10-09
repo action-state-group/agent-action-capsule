@@ -142,3 +142,39 @@ export const BUILTIN_MANIFESTS: readonly PresentationManifest[] = Object.freeze(
     BUILTIN_MANIFEST_NO_AGGREGATE,
   ],
 );
+
+/**
+ * The composition section: the generic view of a `composed/v1` block
+ * (members, observers, joins, composition closure, composed digest, and
+ * same-custody agreement shown as redundant, not corroborating). A specific
+ * module selected by the engaged extension alone.
+ *
+ * It is NOT one of the page manifests above, and must not be: one
+ * descriptor matches it together with each of the five specific page
+ * manifests (a Result root that also carries composed/v1, say), so the
+ * registration test of contract section 4.5 refuses it in that set, and it
+ * would equally refuse every composition-aware page module (appendix B,
+ * `org.example.composition-aware/v0`) that it is meant to sit beneath. It is
+ * resolved in the core's section registry instead, by the same algorithm,
+ * and renders after whichever page module the page registry selected.
+ */
+export const BUILTIN_MANIFEST_COMPOSED: PresentationManifest = Object.freeze({
+  spec_version: "aac.presentation-manifest/v0",
+  id: "aac.builtin.composed/v0",
+  presentation_api: "aac.presentation-api/v0",
+  runtime_min: "0.1.0",
+  trust_class: "trusted-executable",
+  requires: {
+    bundle_kind: "evidence-bundle/v2",
+    extensions: { required: ["composed/v1"] },
+  },
+  audiences: ["*"],
+  formats: ["html", "fragment", "embedded"],
+  fallback: false,
+  priority: 1,
+  executable: { carrier: "core-runtime" },
+}) as PresentationManifest;
+
+/** The built-in section manifests (one today). */
+export const BUILTIN_SECTION_MANIFESTS: readonly PresentationManifest[] =
+  Object.freeze([BUILTIN_MANIFEST_COMPOSED]);

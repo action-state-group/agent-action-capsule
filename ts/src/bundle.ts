@@ -24,6 +24,11 @@ import {
   extensionInterpreter,
   type ExtensionInterpreterId,
 } from "./extension-interpreters.js";
+import {
+  COMPOSED_KIND,
+  verifyComposed,
+  type ComposedResult,
+} from "./composed.js";
 import { disclosureEligibleFields } from "./registries.js";
 import { verifyClass1, type VerificationResult } from "./verify.js";
 import type { CountersignerSource } from "./countersignature-stamp.js";
@@ -55,8 +60,13 @@ export interface DisclosureResult {
  * `interpreted` means this library has a module that applies the kind's
  * meaning AND that module's own reader accepts this block; `interpreter`
  * names the module. Every other block -- an unknown kind, a kind with no
- * module here (composed/v1), a block its reader ignores -- is `uninterpreted`
- * and its semantics are never applied (draft "Typed Extensions").
+ * module here, a block its reader ignores -- is `uninterpreted` and its
+ * semantics are never applied (draft "Typed Extensions").
+ *
+ * A composed/v1 block is verified by this verifier whatever its status (as
+ * the Go reference does, go/bundle/bundle.go `extensions`): `composed`
+ * carries that verification. `status` says only whether a viewer module
+ * applies the block's meaning; a malformed block is `uninterpreted`.
  */
 export type ExtensionResult =
   | {
@@ -64,11 +74,15 @@ export type ExtensionResult =
       readonly status: "interpreted";
       readonly interpreter: ExtensionInterpreterId;
       readonly integrityCovered: boolean;
+      /** composed/v1 only: the block's verification (`composed.ts`). */
+      readonly composed?: ComposedResult;
     }
   | {
       readonly kind: string;
       readonly status: "uninterpreted";
       readonly integrityCovered: boolean;
+      /** composed/v1 only: the block's verification (`composed.ts`). */
+      readonly composed?: ComposedResult;
     };
 export type { ExtensionInterpreterId } from "./extension-interpreters.js";
 export interface CountersignatureResult {
@@ -174,7 +188,7 @@ export async function verifyBundle(
       Object.hasOwn(bundle, "disclosures") ? bundle.disclosures : {},
       collected.records,
     ),
-    extensions: extensions(bundle, digest !== undefined),
+    extensions: await extensions(bundle, digest !== undefined),
     countersignatures: Array.isArray(bundle.countersignatures)
       ? bundle.countersignatures.map((value) => ({
           value,
@@ -696,23 +710,39 @@ async function disclosures(
   }
   return findings;
 }
-function extensions(bundle: Bundle, covered: boolean): ExtensionResult[] {
+async function extensions(
+  bundle: Bundle,
+  covered: boolean,
+): Promise<ExtensionResult[]> {
   const raw = bundle.extensions;
-  return object(raw)
-    ? Object.keys(raw)
-        .sort()
-        .map((kind): ExtensionResult => {
-          const interpreter = extensionInterpreter(kind, bundle);
-          return interpreter === undefined
-            ? { kind, status: "uninterpreted", integrityCovered: covered }
-            : {
-                kind,
-                status: "interpreted",
-                interpreter,
-                integrityCovered: covered,
-              };
-        })
-    : [];
+  if (!object(raw)) return [];
+  const results: ExtensionResult[] = [];
+  for (const kind of Object.keys(raw).sort()) {
+    const interpreter = extensionInterpreter(kind, bundle);
+    // composed/v1 is verified here, its member bundles recursively by this
+    // same verifier (go/bundle/bundle.go extensions -> VerifyComposed).
+    const composed =
+      kind === COMPOSED_KIND
+        ? { composed: await verifyComposed(raw[kind], verifyBundle) }
+        : {};
+    results.push(
+      interpreter === undefined
+        ? {
+            kind,
+            status: "uninterpreted",
+            integrityCovered: covered,
+            ...composed,
+          }
+        : {
+            kind,
+            status: "interpreted",
+            interpreter,
+            integrityCovered: covered,
+            ...composed,
+          },
+    );
+  }
+  return results;
 }
 
 /**

@@ -1,0 +1,87 @@
+{
+  "bundle_version": "2",
+  "bundle_kind": "evidence-bundle/v2",
+  "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+  "records": [
+    {
+      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+      "format_version": "4",
+      "canonicalization_id": "jcs",
+      "action_id": "example-run-0001/compose",
+      "action_type": "fyi",
+      "operator": "composer.example",
+      "developer": "composed-example-agent@1",
+      "timestamp": "2026-10-02T12:30:00Z",
+      "assurance": {
+        "attestation_mode": "self_attested",
+        "effect_mode": "not_applicable",
+        "ledger_mode": "standalone"
+      },
+      "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+      "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+    }
+  ],
+  "completeness": {
+    "closure_depth": 0,
+    "records_mode": "complete",
+    "payloads_mode": "all"
+  },
+  "extensions": {
+    "composed/v1": {
+      "members": [
+        {
+          "id": "responder-a",
+          "observer": "obs-a",
+          "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+          "outcome": "refusal",
+          "refusal": {
+            "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+            "reason": "out_of_scope",
+            "issued_at": "2026-10-02T12:12:00Z"
+          },
+          "digest": "3da2abec6953c332022508a6d23d5bdbca92c85e13c71ddcae787d768a1c851f"
+        },
+        {
+          "id": "responder-b",
+          "observer": "obs-b",
+          "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+          "outcome": "absence",
+          "absence": {
+            "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+            "window": {
+              "from": "2026-10-02T12:00:00Z",
+              "to": "2026-10-02T13:00:00Z"
+            }
+          },
+          "digest": "42704b1df309627f8bc26e1ec79d74456e32aa2081bd132bb9ff05207488d2f3"
+        }
+      ],
+      "observers": [
+        {
+          "id": "obs-a",
+          "role": "responder",
+          "custody_domain": "custody-a.example"
+        },
+        {
+          "id": "obs-b",
+          "role": "responder",
+          "custody_domain": "custody-b.example"
+        }
+      ],
+      "joins": [
+        {
+          "members": ["responder-a", "responder-b"],
+          "basis": "pre_agreed_identifier",
+          "pointer": "/model_attestation/compute_attestation/x-example-exchange-v1/exchange_id",
+          "identifier_digest": "e006d2f0045534fa35912ea3c7e3210c50a8cba21bb17b64360fa3d697a629a9",
+          "compare": [
+            "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+          ],
+          "state": "unjoined"
+        }
+      ],
+      "composed_digest": "67c6a56de3cc5e4aa9f15aba0be67db15ae583644a25e7629470292bef1d9fcb"
+    }
+  }
+}

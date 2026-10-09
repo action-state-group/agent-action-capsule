@@ -3,6 +3,7 @@ import {
   PRODUCER_KEY_V1,
 } from "./countersignature-stamp.js";
 import { readCompliancePresentation } from "./compliance-presentation.js";
+import { COMPOSED_KIND, composedBlockProblem } from "./composed.js";
 import { readOutcomeReportPresentation } from "./outcome-report-presentation.js";
 import { readPresentationBlock } from "./presentation.js";
 
@@ -26,7 +27,9 @@ export type ExtensionInterpreterId =
   | "countersignature-stamp"
   | "outcome-report-card"
   | "compliance-card"
-  | "result-root";
+  | "result-root"
+  // The composition section's module id (builtin-manifests.ts).
+  | "aac.builtin.composed/v0";
 
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -40,8 +43,8 @@ interface Interpreter {
 /**
  * Every extension kind this viewer has an interpreter for, each keyed to the
  * reader that interpreter uses, so "interpreted" can never drift from what
- * the module actually reads. A kind absent here (composed/v1 included, until
- * a module for it lands) is uninterpreted, whatever its block holds.
+ * the module actually reads. A kind absent here is uninterpreted, whatever
+ * its block holds.
  */
 const INTERPRETERS: Readonly<Record<string, Interpreter>> = Object.freeze({
   // evidence-graph-view.ts renderPresentationHeader -> presentation.ts readPresentationBlock
@@ -63,6 +66,15 @@ const INTERPRETERS: Readonly<Record<string, Interpreter>> = Object.freeze({
   "eu-ai-act-compliance/v1": {
     id: "compliance-card",
     accepts: (bundle) => readCompliancePresentation(bundle) !== undefined,
+  },
+  // evidence-graph-view.ts composition section -> composed.ts verifyComposed;
+  // a malformed block yields no composition result, so it is not interpreted.
+  [COMPOSED_KIND]: {
+    id: "aac.builtin.composed/v0",
+    accepts: (bundle) =>
+      object(bundle) &&
+      object(bundle.extensions) &&
+      composedBlockProblem(bundle.extensions[COMPOSED_KIND]) === undefined,
   },
   // result-root.ts buildResultRoot reads both blocks when it is an object
   [BOOK_PAYLOADS_EXTENSION]: {

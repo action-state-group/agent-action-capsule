@@ -1,0 +1,144 @@
+{
+  "exit_code": 3,
+  "output": {
+    "bundle_digest": "e73966c331fee8209e0e9ce4c1b4b1daa90180a52c3478619fddcb733a43c1e9",
+    "checkpoint": {
+      "findings": ["checkpoint_signature_absent"],
+      "status": "withheld"
+    },
+    "countersignatures": [],
+    "disclosures": [],
+    "extensions": [
+      {
+        "composed": {
+          "composed_digest": {
+            "declared": "0d676a3a0c77b3c075d00e3000b4dbd3d9fe8438073de855d3e7c5eeaf724979",
+            "matches": true,
+            "recomputed": "0d676a3a0c77b3c075d00e3000b4dbd3d9fe8438073de855d3e7c5eeaf724979"
+          },
+          "composition_closure": {
+            "findings": [],
+            "missing": [],
+            "status": "pass"
+          },
+          "corroboration": [
+            {
+              "members": ["responder-a", "responder-b"],
+              "result": "not_applicable"
+            }
+          ],
+          "findings": [],
+          "joins": [
+            {
+              "basis": "pre_agreed_identifier",
+              "declared": "one_sided",
+              "derived": "one_sided",
+              "members": ["responder-a", "responder-b"],
+              "result": "derived_matches"
+            }
+          ],
+          "members": [
+            {
+              "body": "carried",
+              "bundle": {
+                "bundle_digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "checkpoint": {
+                  "findings": ["checkpoint_signature_absent"],
+                  "status": "withheld"
+                },
+                "countersignatures": [],
+                "disclosures": [
+                  {
+                    "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                    "member": "agent_output",
+                    "status": "withheld"
+                  },
+                  {
+                    "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                    "member": "agent_input",
+                    "status": "withheld"
+                  }
+                ],
+                "extensions": [],
+                "graph_closure": {
+                  "findings": [],
+                  "status": "pass"
+                },
+                "interval_coverage": {
+                  "findings": ["completeness_evidence_absent"],
+                  "status": "withheld"
+                },
+                "per_record_membership": {
+                  "findings": ["completeness_evidence_absent"],
+                  "status": "withheld"
+                },
+                "producer_signatures": {
+                  "findings": [],
+                  "status": "pass"
+                },
+                "record_identity": {
+                  "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b": "passed"
+                },
+                "record_signatures": {
+                  "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b": "authored"
+                },
+                "verdict": "INCOMPLETE",
+                "witnesses": {
+                  "findings": ["witness_receipt_absent"],
+                  "receipts": [],
+                  "status": "withheld"
+                }
+              },
+              "digest": "reproduced",
+              "findings": [],
+              "id": "responder-a",
+              "observer": "obs-a",
+              "outcome": "artifact"
+            },
+            {
+              "body": "carried",
+              "digest": "reproduced",
+              "findings": [],
+              "id": "responder-b",
+              "observer": "obs-b",
+              "outcome": "absence"
+            }
+          ],
+          "scope": "composition closure covers the declared members only; it is not completeness of participation",
+          "status": "pass"
+        },
+        "kind": "composed/v1",
+        "status": "pass"
+      }
+    ],
+    "graph_closure": {
+      "findings": [],
+      "status": "pass"
+    },
+    "interval_coverage": {
+      "findings": ["completeness_evidence_absent"],
+      "status": "withheld"
+    },
+    "per_record_membership": {
+      "findings": ["completeness_evidence_absent"],
+      "status": "withheld"
+    },
+    "producer_signatures": {
+      "findings": [],
+      "status": "pass"
+    },
+    "record_identity": {
+      "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5": "passed"
+    },
+    "record_signatures": {
+      "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5": "authored"
+    },
+    "spec_version": "capsule-cli-result/v1",
+    "verdict": "INCOMPLETE",
+    "witnesses": {
+      "findings": ["witness_receipt_absent"],
+      "receipts": [],
+      "status": "withheld"
+    }
+  }
+}

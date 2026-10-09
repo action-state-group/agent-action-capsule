@@ -3,6 +3,12 @@ import type {
   ExtensionInterpreterId,
   ExtensionResult,
 } from "./bundle.js";
+import {
+  presentationRefusalLine,
+  presentationRefusalRow,
+  type PresentationRefusal,
+  type PresentationRefusalReason,
+} from "./presentation-registry.js";
 import type { VerificationResult } from "./verify.js";
 
 export type CheckStatus = "pass" | "withheld" | "fail" | "not_checked";
@@ -95,8 +101,29 @@ export interface ExtensionRow {
   readonly id: string;
   readonly integrity: "covered" | "not covered";
   readonly interpreter?: ExtensionInterpreterId;
-  /** "interpreted by <interpreter>", or one of the two not-interpreted lines. */
+  /**
+   * Set when a presentation module that requires this extension matched and
+   * this runtime refused it (presentation contract section 3.2). It takes
+   * precedence over `interpreter`: the refused module never ran.
+   */
+  readonly refusal?: PresentationRefusal;
+  /**
+   * "interpreted by <interpreter>", one of the two not-interpreted lines, or
+   * the refusal wording of section 3.2 (`presentationRefusalRow`).
+   */
   readonly semantics: string;
+}
+
+/**
+ * A refused presentation module that requires no extension, so has no row
+ * of its own: the verification page shows `line` after the extension rows
+ * (presentation contract section 3.2).
+ */
+export interface PresentationRefusalNotice {
+  readonly id: string;
+  readonly reason: PresentationRefusalReason;
+  /** `presentationRefusalLine`, exactly. */
+  readonly line: string;
 }
 
 /**
@@ -109,9 +136,20 @@ export interface ExtensionRow {
 export function extensionRows(
   extensions: readonly ExtensionResult[],
   applied?: ReadonlySet<ExtensionInterpreterId>,
+  refused: readonly PresentationRefusal[] = [],
 ): readonly ExtensionRow[] {
   return extensions.map((extension): ExtensionRow => {
     const integrity = extension.integrityCovered ? "covered" : "not covered";
+    // The first refused module (in resolution order) that requires this
+    // kind names the row; the refusal outranks any interpreter.
+    const refusal = refused.find((r) => r.extensions.includes(extension.kind));
+    if (refusal !== undefined)
+      return {
+        id: extension.kind,
+        integrity,
+        refusal,
+        semantics: presentationRefusalRow(refusal, extension.integrityCovered),
+      };
     if (
       extension.status === "interpreted" &&
       (applied === undefined || applied.has(extension.interpreter))
@@ -152,7 +190,25 @@ export interface VerificationPageModel {
   readonly checks: readonly CheckSummary[];
   /** One row per supplied extension (empty when the bundle carries none). */
   readonly extensions: readonly ExtensionRow[];
+  /**
+   * One per refused presentation module that requires no extension, in
+   * resolution order; empty when nothing was refused.
+   */
+  readonly presentationRefusals: readonly PresentationRefusalNotice[];
   readonly verifyIndependentlyLine: string;
+}
+
+/** The refused modules that have no extension row (section 3.2). */
+export function presentationRefusalNotices(
+  refused: readonly PresentationRefusal[],
+): readonly PresentationRefusalNotice[] {
+  return refused
+    .filter((refusal) => refusal.extensions.length === 0)
+    .map((refusal) => ({
+      id: refusal.id,
+      reason: refusal.reason,
+      line: presentationRefusalLine(refusal),
+    }));
 }
 
 const UNBOUND = "membership_record_unbound:";
@@ -343,6 +399,7 @@ export function buildVerificationPageModel(
   bundle: unknown,
   verified: BundleVerificationResult,
   appliedInterpreters?: ReadonlySet<ExtensionInterpreterId>,
+  refused: readonly PresentationRefusal[] = [],
 ): VerificationPageModel {
   const top = object(bundle) ?? {};
   const checkpoint = object(top.checkpoint);
@@ -397,7 +454,12 @@ export function buildVerificationPageModel(
       ? {}
       : { completeness: completenessStatement(top.completeness)! }),
     checks,
-    extensions: extensionRows(verified.extensions, appliedInterpreters),
+    extensions: extensionRows(
+      verified.extensions,
+      appliedInterpreters,
+      refused,
+    ),
+    presentationRefusals: presentationRefusalNotices(refused),
     verifyIndependentlyLine: VERIFY_INDEPENDENTLY_LINE,
   };
 }

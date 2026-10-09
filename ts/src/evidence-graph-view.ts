@@ -8,6 +8,7 @@ import {
   type VerifiedBundleContext,
 } from "./bundle.js";
 import {
+  BUILTIN_MANIFEST_COMPOSED,
   BUILTIN_MANIFEST_EVALUATION_SUMMARY_GRAPH,
   BUILTIN_MANIFEST_NO_AGGREGATE,
   BUILTIN_MANIFEST_REPORT_ROWS,
@@ -42,6 +43,7 @@ import {
   type OutcomeReportPresentation,
 } from "./outcome-report-presentation.js";
 import { renderCompliancePage } from "./compliance-view.js";
+import { composedSectionModule } from "./composed-view.js";
 import {
   readCompliancePresentation,
   type CompliancePresentation,
@@ -55,9 +57,11 @@ import {
   type PresentationFormat,
   type PresentationHost,
   type PresentationModule,
+  type PresentationRefusal,
   type PresentationRegistration,
   type PresentationResolution,
   type PresentationResolver,
+  type PresentationRuntime,
   type PresentationServices,
 } from "./presentation-registry.js";
 import {
@@ -82,6 +86,7 @@ import {
   type CompletenessStatement,
   type CoverageStatement,
   type ExtensionRow,
+  type PresentationRefusalNotice,
   type ReceiptEntry,
   type RecordCoverage,
   type RecordCoverageStatus,
@@ -423,9 +428,26 @@ function renderChecks(
 // One row per extension: id, integrity, semantics. The id is the bundle's
 // own member name, set as text only. Integrity and semantics are separate
 // cells so "covered" can never read as "understood": an uninterpreted block
-// says so in words (EXTENSION_NOT_INTERPRETED). Nothing is drawn for a bundle
-// with no extensions.
+// says so in words (EXTENSION_NOT_INTERPRETED). A row whose meaning a refused
+// presentation module would have applied says that instead (presentation
+// contract section 3.2), and names the module and the reason. A refused
+// module with no extension of its own gets one line after the table. Nothing
+// is drawn for a bundle with no extensions and no refusal.
 function renderExtensions(
+  host: HTMLElement,
+  rows: readonly ExtensionRow[],
+  refusals: readonly PresentationRefusalNotice[],
+): void {
+  renderExtensionTable(host, rows);
+  for (const notice of refusals) {
+    const line = element("p", notice.line);
+    line.dataset.presentationRefused = notice.id;
+    line.dataset.refusal = notice.reason;
+    host.append(line);
+  }
+}
+
+function renderExtensionTable(
   host: HTMLElement,
   rows: readonly ExtensionRow[],
 ): void {
@@ -444,7 +466,15 @@ function renderExtensions(
     tr.dataset.extensionId = row.id;
     tr.dataset.integrity = row.integrity;
     tr.dataset.semantics =
-      row.interpreter === undefined ? "uninterpreted" : "interpreted";
+      row.refusal !== undefined
+        ? "refused"
+        : row.interpreter === undefined
+          ? "uninterpreted"
+          : "interpreted";
+    if (row.refusal !== undefined) {
+      tr.dataset.refusedModule = row.refusal.id;
+      tr.dataset.refusal = row.refusal.reason;
+    }
     tr.append(
       element("td", row.id),
       element("td", row.integrity),
@@ -468,12 +498,14 @@ function renderExtensions(
 // either way, and it stays the last element of the rendering.
 //
 // `applied` is the set of extension interpreters this rendering ran; an
-// extension row says "interpreted by" only for one of them.
+// extension row says "interpreted by" only for one of them. `refused` is
+// every module this runtime refused that matched (page, then section).
 async function renderVerificationPage(
   root: HTMLElement,
   context: VerifiedBundleContext,
   styled: boolean,
   applied: ReadonlySet<ExtensionInterpreterId>,
+  refused: readonly PresentationRefusal[],
 ): Promise<void> {
   const { bundle, verification: verified, countersigners } = context;
   const section = element("section");
@@ -486,7 +518,7 @@ async function renderVerificationPage(
     section.append(page);
   }
   page.append(element("h2", "Verification"));
-  const model = buildVerificationPageModel(bundle, verified, applied);
+  const model = buildVerificationPageModel(bundle, verified, applied, refused);
   const summary = element("dl");
   appendValue(summary, "bundle digest", model.bundleDigest ?? "uncomputable");
   appendValue(summary, "checkpoint root", model.checkpointRoot ?? "absent");
@@ -518,7 +550,7 @@ async function renderVerificationPage(
   renderStamps(page, stamps);
   renderCompletenessStatement(page, model.completeness);
   renderChecks(page, model.checks);
-  renderExtensions(page, model.extensions);
+  renderExtensions(page, model.extensions, model.presentationRefusals);
   page.append(element("p", model.verifyIndependentlyLine));
   root.append(section);
 }
@@ -1517,6 +1549,7 @@ const BUILTIN_MODULE_INTERPRETERS: Readonly<
   ],
   [BUILTIN_MANIFEST_RESULT_COMPLIANCE.id]: ["result-root", "compliance-card"],
   [BUILTIN_MANIFEST_RESULT.id]: ["result-root"],
+  [BUILTIN_MANIFEST_COMPOSED.id]: ["aac.builtin.composed/v0"],
 });
 
 /** The six built-in modules, registered by default. */
@@ -1538,6 +1571,31 @@ export function createPresentationRegistry(): PresentationRegistry {
 }
 
 const defaultRegistry = createPresentationRegistry();
+
+/**
+ * The built-in sections: modules resolved after the page module, in their
+ * own registry, and rendered after its content. One today, the composition
+ * section; see BUILTIN_MANIFEST_COMPOSED for why it is not a page module.
+ */
+export const BUILTIN_SECTIONS: readonly PresentationModule[] = Object.freeze([
+  composedSectionModule,
+] as PresentationModule[]);
+
+/**
+ * A fresh section registry holding the built-in sections. The section
+ * registry applies the presentation ABI as the page registry does: under a
+ * `runtime` that refuses a section, the section is registered as refused,
+ * never drawn, and every page it matches names it.
+ */
+export function createSectionRegistry(
+  runtime?: PresentationRuntime,
+): PresentationRegistry {
+  const registry = new PresentationRegistry(runtime);
+  for (const module of BUILTIN_SECTIONS) registry.register(module);
+  return registry;
+}
+
+const defaultSections = createSectionRegistry();
 
 /**
  * Register a module with the registry `renderEvidenceGraph` uses by default
@@ -1569,6 +1627,8 @@ const DEFAULT_FORMAT: PresentationFormat = "html";
 export interface RenderEvidenceGraphOptions {
   /** Resolves the presentation; the default registry when omitted. */
   readonly registry?: PresentationResolver;
+  /** Resolves the section after the page; the built-in sections when omitted. */
+  readonly sections?: PresentationResolver;
   readonly audience?: string;
   readonly format?: PresentationFormat;
 }
@@ -1670,14 +1730,12 @@ export async function renderEvidenceGraph(
     refusal = "presentation-unresolved";
   }
   // A module this runtime refused (spec section 3.2) is never silent: the
-  // page root names every one that matched. The extension-row wording of the
-  // contract (presentationRefusalRow / presentationRefusalLine) is drawn
-  // where the per-extension rows are rendered; until those rows are on this
-  // code line, this attribute and the resolution result carry the refusal.
-  const refusedIds =
-    resolution.kind === "refusal"
-      ? []
-      : resolution.refused.map((refused) => refused.id);
+  // page root names every one that matched, page and section alike, and the
+  // verification page shows the contract's words in the extension rows
+  // (presentationRefusalRow) or, for a module requiring no extension, in a
+  // line after them (presentationRefusalLine).
+  const refused: PresentationRefusal[] =
+    resolution.kind === "refusal" ? [] : [...resolution.refused];
 
   if (resolution.kind === "refusal" && verified)
     throw new Error("resolver refused a bundle that verified");
@@ -1690,6 +1748,33 @@ export async function renderEvidenceGraph(
       module: resolution.module,
       model: await resolution.module.buildModel(context),
     };
+  // The section registry is resolved the same way, after the page and only
+  // for a verified bundle whose page resolved: a section never stands in for
+  // a refusal (contract I1), and its ambiguity is the page's refusal too.
+  let section: { module: PresentationModule; model: unknown } | undefined;
+  if (verified && refusal === undefined) {
+    let sectionResolution: PresentationResolution;
+    try {
+      sectionResolution = await (options.sections ?? defaultSections).resolve(
+        context,
+        options.audience ?? DEFAULT_AUDIENCE,
+        options.format ?? DEFAULT_FORMAT,
+      );
+    } catch (err) {
+      if (!(err instanceof PresentationAmbiguityError)) throw err;
+      sectionResolution = { kind: "no-presentation", refused: [] };
+      selected = undefined;
+      refusal = "presentation-unresolved";
+    }
+    // A refused section is named like a refused page module, never skipped.
+    if (sectionResolution.kind !== "refusal")
+      refused.push(...sectionResolution.refused);
+    if (sectionResolution.kind === "module")
+      section = {
+        module: sectionResolution.module,
+        model: await sectionResolution.module.buildModel(context),
+      };
+  }
   const records = object(bundle).records;
   const coverage = {
     uncheckpointed: unboundRecordIds(verification).length,
@@ -1702,8 +1787,8 @@ export async function renderEvidenceGraph(
     return renderVerificationBanner(root, verified, coverage);
   };
   let banner = drawFrame();
-  if (refusedIds.length > 0)
-    root.dataset.presentationRefused = refusedIds.join(" ");
+  if (refused.length > 0)
+    root.dataset.presentationRefused = refused.map((r) => r.id).join(" ");
   else delete root.dataset.presentationRefused;
   let chrome: string | undefined;
   if (selected !== undefined) {
@@ -1732,16 +1817,40 @@ export async function renderEvidenceGraph(
       refusal = "presentation-failed";
     }
   }
-  if (refusal !== undefined) {
-    const note = element("p", PRESENTATION_REFUSALS[refusal]);
-    note.dataset.refusal = refusal;
-    root.append(note);
-  } else if (resolution.kind === "no-presentation") {
+  if (refusal === undefined && resolution.kind === "no-presentation") {
     const note = element(
       "p",
       "No presentation is available for this bundle, audience and format. The records and their verification are below.",
     );
     note.dataset.notice = "no-presentation";
+    root.append(note);
+  }
+  // The section renders after the page module, into the same regions. If it
+  // throws, everything any module wrote is discarded for the refusal.
+  if (section !== undefined && refusal === undefined) {
+    try {
+      await section.module.render(
+        section.model,
+        {
+          L0: root,
+          L1: root,
+          L2: root,
+          depth: "L2",
+          setChromeClass(): void {
+            throw new Error("a section has no chrome");
+          },
+        },
+        presentationServices(context),
+      );
+    } catch {
+      chrome = undefined;
+      banner = drawFrame();
+      refusal = "presentation-failed";
+    }
+  }
+  if (refusal !== undefined) {
+    const note = element("p", PRESENTATION_REFUSALS[refusal]);
+    note.dataset.refusal = refusal;
     root.append(note);
   }
   // The interpreters this rendering actually ran (see extension-interpreters.ts):
@@ -1751,14 +1860,17 @@ export async function renderEvidenceGraph(
     "presentation-header",
     "countersignature-stamp",
   ]);
-  if (selected !== undefined && refusal === undefined)
-    for (const id of BUILTIN_MODULE_INTERPRETERS[selected.module.manifest.id] ??
-      [])
-      applied.add(id);
+  if (refusal === undefined)
+    for (const ran of [selected, section])
+      if (ran !== undefined)
+        for (const id of BUILTIN_MODULE_INTERPRETERS[ran.module.manifest.id] ??
+          [])
+          applied.add(id);
   await renderVerificationPage(
     root,
     context,
     chrome === OUTCOME_CHROME,
     applied,
+    refused,
   );
 }

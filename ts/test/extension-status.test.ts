@@ -145,7 +145,7 @@ describe("extension interpretation status", () => {
     ).toBe(before.root.innerHTML);
   });
 
-  it("composed/v1 and an unknown kind render two rows, both covered, composed uninterpreted (no module yet)", async () => {
+  it("composed/v1 and an unknown kind render two rows, both covered; on a refused bundle composed/v1 is not interpreted (its section did not render)", async () => {
     const bundle = withExtensions(composedAgree(), { "x-unknown/v1": {} });
     const { rows } = await render(bundle);
     expect(rows.map((row) => row.cells)).toEqual([
