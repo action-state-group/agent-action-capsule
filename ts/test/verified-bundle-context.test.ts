@@ -8,6 +8,7 @@ import {
   disclosureOf,
   isVerifiedBundleContext,
   type VerifiedBundleContext,
+  withCountersigners,
 } from "../src/bundle.js";
 import { renderEvidenceGraph } from "../src/browser.js";
 import {
@@ -294,5 +295,255 @@ describe("VerifiedBundleContext: countersigners", () => {
     expect(
       root.querySelector('[data-stamp-kind="unresolved-signer"]'),
     ).not.toBeNull();
+  });
+});
+
+describe("VerifiedBundleContext: effectively immutable", () => {
+  async function countersignedContext(): Promise<{
+    bundle: Obj;
+    context: VerifiedBundleContext;
+  }> {
+    const bundle = await derivedFixture(
+      "week-bundle-directory-countersigned.json",
+    );
+    bundle.extensions = { "example-extension/v1": { enabled: true } };
+    const context = await buildVerifiedBundleContext(bundle, {
+      countersigners: fixture("countersigners.json") as never,
+    });
+    return { bundle, context };
+  }
+
+  /** Everything a reader can observe, as plain data. */
+  function snapshot(context: VerifiedBundleContext): unknown {
+    return JSON.parse(
+      JSON.stringify({
+        bundle: context.bundle,
+        root: context.root,
+        verification: context.verification,
+        resolvedDisclosures: [...context.resolvedDisclosures],
+        records: context.records,
+        recordIndex: [...context.recordIndex],
+        countersignatures: context.countersignatures,
+        countersigners: context.countersigners,
+        extensions: context.extensions,
+        completeness: context.completeness,
+      }),
+    );
+  }
+
+  // Each entry is a module trying to change one part of the context for
+  // every reader after it. Every one must throw.
+  type Mutable = Record<string, unknown> & unknown[];
+  const attempts: ReadonlyArray<
+    readonly [string, (context: VerifiedBundleContext) => void]
+  > = [
+    [
+      "the context itself",
+      (c) => {
+        (c as unknown as Obj).root = "forged";
+      },
+    ],
+    [
+      "the verification result",
+      (c) => {
+        (c.verification as unknown as Obj).graphClosure = {
+          status: "pass",
+          findings: [],
+        };
+      },
+    ],
+    [
+      "a claim inside the verification result",
+      (c) => {
+        (c.verification.perRecordMembership as unknown as Obj).status = "pass";
+      },
+    ],
+    [
+      "a capsule result inside the verification result",
+      (c) => {
+        const first = Object.values(c.verification.capsuleResults)[0]!;
+        (first as unknown as Obj).ok = false;
+      },
+    ],
+    [
+      "the verifier's disclosure results",
+      (c) => {
+        (c.verification.disclosures as unknown as Mutable).push({
+          capsuleId: "forged",
+          member: "agent_input",
+          status: "disclosure_match",
+        });
+      },
+    ],
+    [
+      "resolvedDisclosures (set)",
+      (c) => {
+        (c.resolvedDisclosures as unknown as Map<string, unknown>).set(
+          "forged",
+          {},
+        );
+      },
+    ],
+    [
+      "resolvedDisclosures (delete)",
+      (c) => {
+        const [id] = [...c.resolvedDisclosures.keys()];
+        (c.resolvedDisclosures as unknown as Map<string, unknown>).delete(id!);
+      },
+    ],
+    [
+      "a resolved disclosure entry",
+      (c) => {
+        const [entry] = [...c.resolvedDisclosures.values()];
+        (entry as unknown as Obj).agent_input = {
+          state: "disclosed",
+          payload: "forged",
+        };
+      },
+    ],
+    [
+      "a disclosed payload",
+      (c) => {
+        const disclosed = [...c.resolvedDisclosures.values()]
+          .flatMap((entry) => [entry.agent_input, entry.agent_output])
+          .find(
+            (member) =>
+              member.state === "disclosed" &&
+              typeof member.payload === "object" &&
+              member.payload !== null,
+          )!;
+        const payload = disclosed.payload as Obj;
+        payload[Object.keys(payload)[0] ?? "member"] = "forged";
+      },
+    ],
+    [
+      "the record list",
+      (c) => {
+        (c.records as unknown as Mutable).reverse();
+      },
+    ],
+    [
+      "the record index (set)",
+      (c) => {
+        (c.recordIndex as unknown as Map<string, unknown>).set("forged", {});
+      },
+    ],
+    [
+      "the record index (clear)",
+      (c) => {
+        (c.recordIndex as unknown as Map<string, unknown>).clear();
+      },
+    ],
+    [
+      "an indexed record",
+      (c) => {
+        const [record] = [...c.recordIndex.values()];
+        (record as unknown as Obj).operator = "forged";
+      },
+    ],
+    [
+      "the extensions",
+      (c) => {
+        (c.extensions as unknown as Mutable).length = 0;
+      },
+    ],
+    [
+      "an extension result",
+      (c) => {
+        (c.extensions[0] as unknown as Obj).status = "verified";
+      },
+    ],
+    [
+      "the countersignatures",
+      (c) => {
+        (c.countersignatures as unknown as Mutable).pop();
+      },
+    ],
+    [
+      "a countersignature's value",
+      (c) => {
+        (c.countersignatures[0]!.value as Obj).kind = "forged";
+      },
+    ],
+    [
+      "the countersigner list",
+      (c) => {
+        (c.countersigners as unknown as Mutable).length = 0;
+      },
+    ],
+    [
+      "the completeness claims",
+      (c) => {
+        (c.completeness as unknown as Obj).graphClosure = {
+          status: "pass",
+          findings: [],
+        };
+      },
+    ],
+    [
+      "the completeness memberships",
+      (c) => {
+        (c.completeness.memberships as Obj).forged = {};
+      },
+    ],
+    [
+      "the bundle copy",
+      (c) => {
+        ((c.bundle as Obj).records as Mutable).length = 0;
+      },
+    ],
+  ];
+
+  it("the fixture exercises every part", async () => {
+    const { context } = await countersignedContext();
+    expect(context.extensions.length).toBeGreaterThan(0);
+    expect(context.countersignatures.length).toBeGreaterThan(0);
+    expect(context.countersigners?.length).toBeGreaterThan(0);
+    expect(context.records.length).toBeGreaterThan(0);
+    expect(
+      [...context.resolvedDisclosures.values()]
+        .flatMap((entry) => [entry.agent_input, entry.agent_output])
+        .some(
+          (member) =>
+            member.state === "disclosed" &&
+            typeof member.payload === "object" &&
+            member.payload !== null,
+        ),
+    ).toBe(true);
+    expect(typeof context.countersignatures[0]!.value).toBe("object");
+  });
+
+  it.each(attempts)(
+    "a module mutating %s throws and the next module sees the original",
+    async (_part, mutate) => {
+      const { context } = await countersignedContext();
+      const before = snapshot(context);
+      const graphBefore = await buildEvidenceGraph(context);
+      const htmlBefore = await renderedText(context);
+      expect(() => mutate(context)).toThrow(TypeError);
+      expect(snapshot(context)).toEqual(before);
+      expect(await buildEvidenceGraph(context)).toEqual(graphBefore);
+      expect(await renderedText(context)).toBe(htmlBefore);
+    },
+  );
+
+  it("is built over a copy: the caller's bundle and list stay writable and later edits do not reach it", async () => {
+    const { bundle, context } = await countersignedContext();
+    const before = snapshot(context);
+    expect(Object.isFrozen(bundle)).toBe(false);
+    expect(context.bundle).not.toBe(bundle);
+    (bundle.records as Obj[]).length = 0;
+    bundle.root = "edited";
+    expect(snapshot(context)).toEqual(before);
+  });
+
+  it("a context with a new countersigner list is frozen the same way", async () => {
+    const { context } = await countersignedContext();
+    const swapped = withCountersigners(context, [
+      ...(context.countersigners ?? []),
+    ]);
+    expect(Object.isFrozen(swapped)).toBe(true);
+    expect(Object.isFrozen(swapped.countersigners)).toBe(true);
+    expect(swapped.recordIndex).toBe(context.recordIndex);
   });
 });

@@ -691,9 +691,19 @@ function extensions(raw: unknown): ExtensionResult[] {
  *
  * Only {@link buildVerifiedBundleContext} makes one; a hand-built object of
  * the same shape is not a context and is treated as a raw bundle.
+ *
+ * A context is effectively immutable. It is built over the library's own
+ * copy of the bundle, and its whole object graph (the bundle copy, the
+ * verification result, `resolvedDisclosures`, `records`, `recordIndex`,
+ * `countersignatures`, `countersigners`, `extensions` and `completeness`) is
+ * frozen before it is returned. The two maps are read-only views with no
+ * mutating methods. A builder that tries to change any part of it throws (in
+ * strict mode, which every ES module is) and the next reader sees the
+ * original. The caller's own bundle and countersigner list are copied, never
+ * frozen.
  */
 export interface VerifiedBundleContext {
-  /** The bundle exactly as supplied. */
+  /** A frozen copy of the bundle as supplied. */
   readonly bundle: unknown;
   /** `bundle.root` when it is a string. */
   readonly root: string | undefined;
@@ -744,6 +754,110 @@ export interface VerifiedBundleContextOptions {
 
 const contexts = new WeakSet<object>();
 
+/**
+ * A read-only view over a map the context owns. `Object.freeze` does not stop
+ * `Map.prototype.set`, so the context never hands out the `Map` itself: the
+ * view exposes only the reading half of the interface and holds the map in a
+ * private field.
+ */
+class ReadonlyMapView<K, V> implements ReadonlyMap<K, V> {
+  readonly #map: ReadonlyMap<K, V>;
+  constructor(map: ReadonlyMap<K, V>) {
+    this.#map = map;
+    Object.freeze(this);
+  }
+  get size(): number {
+    return this.#map.size;
+  }
+  get(key: K): V | undefined {
+    return this.#map.get(key);
+  }
+  has(key: K): boolean {
+    return this.#map.has(key);
+  }
+  forEach(
+    callback: (value: V, key: K, map: ReadonlyMap<K, V>) => void,
+    thisArg?: unknown,
+  ): void {
+    this.#map.forEach((value, key) => callback.call(thisArg, value, key, this));
+  }
+  entries(): MapIterator<[K, V]> {
+    return this.#map.entries();
+  }
+  keys(): MapIterator<K> {
+    return this.#map.keys();
+  }
+  values(): MapIterator<V> {
+    return this.#map.values();
+  }
+  [Symbol.iterator](): MapIterator<[K, V]> {
+    return this.#map.entries();
+  }
+}
+Object.freeze(ReadonlyMapView.prototype);
+
+const plain = (value: object): boolean => {
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return (
+    Array.isArray(value) || prototype === Object.prototype || prototype === null
+  );
+};
+
+/**
+ * A structural copy of JSON-shaped input: arrays and plain objects are copied
+ * (own enumerable string keys, each read once), primitives are kept. Keys are
+ * defined, not assigned, so a parsed `__proto__` member stays a member. Any
+ * other object is kept by reference and left as it is.
+ */
+function ownedCopy<T>(value: T, seen = new Map<object, unknown>()): T {
+  if (value === null || typeof value !== "object" || !plain(value))
+    return value;
+  const done = seen.get(value);
+  if (done !== undefined) return done as T;
+  if (Array.isArray(value)) {
+    const out: unknown[] = [];
+    seen.set(value, out);
+    for (const item of value) out.push(ownedCopy(item, seen));
+    return out as T;
+  }
+  const out: Record<string, unknown> = {};
+  seen.set(value, out);
+  for (const key of Object.keys(value))
+    Object.defineProperty(out, key, {
+      value: ownedCopy((value as Record<string, unknown>)[key], seen),
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  return out as T;
+}
+
+/**
+ * Freeze an object graph the context owns: arrays and plain objects,
+ * recursively through data properties (accessors are never invoked). A
+ * {@link ReadonlyMapView} freezes itself and its entries are frozen through
+ * it.
+ */
+function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
+  if (value === null || typeof value !== "object" || seen.has(value))
+    return value;
+  seen.add(value);
+  if (value instanceof ReadonlyMapView) {
+    for (const [key, entry] of value as ReadonlyMapView<unknown, unknown>) {
+      deepFreeze(key, seen);
+      deepFreeze(entry, seen);
+    }
+    return value;
+  }
+  if (!plain(value)) return value;
+  Object.freeze(value);
+  for (const descriptor of Object.values(
+    Object.getOwnPropertyDescriptors(value),
+  ))
+    if ("value" in descriptor) deepFreeze(descriptor.value, seen);
+  return value;
+}
+
 /** True only for a context {@link buildVerifiedBundleContext} made. */
 export function isVerifiedBundleContext(
   value: unknown,
@@ -761,10 +875,16 @@ export async function buildVerifiedBundleContext(
   bundle: unknown,
   options: VerifiedBundleContextOptions = {},
 ): Promise<VerifiedBundleContext> {
+  // Verify the library's own frozen copy, so the bytes verified are the
+  // bytes every builder reads and nothing (the caller included) can change
+  // them afterwards.
+  const owned = deepFreeze(ownedCopy(bundle));
   return contextFrom(
-    bundle,
-    await verifyBundle(bundle),
-    options.countersigners,
+    owned,
+    await verifyBundle(owned),
+    options.countersigners === undefined
+      ? undefined
+      : deepFreeze(ownedCopy(options.countersigners)),
   );
 }
 
@@ -788,7 +908,9 @@ export function withCountersigners(
   return contextFrom(
     context.bundle,
     context.verification,
-    countersigners,
+    countersigners === undefined
+      ? undefined
+      : deepFreeze(ownedCopy(countersigners)),
     context,
   );
 }
@@ -818,7 +940,7 @@ function contextFrom(
         )
           index.set(record.capsule_id, record as RecordWithId);
     records = Object.freeze([...index.values()]);
-    recordIndex = index;
+    recordIndex = new ReadonlyMapView(index);
     resolvedDisclosures = resolveFromVerification(
       bundle,
       verification.disclosures,
@@ -828,7 +950,8 @@ function contextFrom(
   const certificate = object(bundle)
     ? bundle.completeness_certificate
     : undefined;
-  const context: VerifiedBundleContext = Object.freeze({
+  deepFreeze(verification);
+  const context: VerifiedBundleContext = deepFreeze({
     bundle,
     root:
       object(bundle) && typeof bundle.root === "string"
@@ -841,7 +964,7 @@ function contextFrom(
     countersignatures: verification.countersignatures,
     countersigners,
     extensions: verification.extensions,
-    completeness: Object.freeze({
+    completeness: {
       graphClosure: verification.graphClosure,
       intervalCoverage: verification.intervalCoverage,
       perRecordMembership: verification.perRecordMembership,
@@ -849,7 +972,7 @@ function contextFrom(
         object(certificate) && object(certificate.memberships)
           ? certificate.memberships
           : {},
-    }),
+    },
   });
   contexts.add(context);
   return context;
@@ -892,7 +1015,7 @@ function resolveFromVerification(
         agent_output: one(id, "agent_output"),
       }),
     );
-  return resolved;
+  return new ReadonlyMapView(resolved);
 }
 
 /**
