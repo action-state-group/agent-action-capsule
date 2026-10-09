@@ -57,9 +57,11 @@ import {
   type PresentationFormat,
   type PresentationHost,
   type PresentationModule,
+  type PresentationRefusal,
   type PresentationRegistration,
   type PresentationResolution,
   type PresentationResolver,
+  type PresentationRuntime,
   type PresentationServices,
 } from "./presentation-registry.js";
 import {
@@ -84,6 +86,7 @@ import {
   type CompletenessStatement,
   type CoverageStatement,
   type ExtensionRow,
+  type PresentationRefusalNotice,
   type ReceiptEntry,
   type RecordCoverage,
   type RecordCoverageStatus,
@@ -425,9 +428,26 @@ function renderChecks(
 // One row per extension: id, integrity, semantics. The id is the bundle's
 // own member name, set as text only. Integrity and semantics are separate
 // cells so "covered" can never read as "understood": an uninterpreted block
-// says so in words (EXTENSION_NOT_INTERPRETED). Nothing is drawn for a bundle
-// with no extensions.
+// says so in words (EXTENSION_NOT_INTERPRETED). A row whose meaning a refused
+// presentation module would have applied says that instead (presentation
+// contract section 3.2), and names the module and the reason. A refused
+// module with no extension of its own gets one line after the table. Nothing
+// is drawn for a bundle with no extensions and no refusal.
 function renderExtensions(
+  host: HTMLElement,
+  rows: readonly ExtensionRow[],
+  refusals: readonly PresentationRefusalNotice[],
+): void {
+  renderExtensionTable(host, rows);
+  for (const notice of refusals) {
+    const line = element("p", notice.line);
+    line.dataset.presentationRefused = notice.id;
+    line.dataset.refusal = notice.reason;
+    host.append(line);
+  }
+}
+
+function renderExtensionTable(
   host: HTMLElement,
   rows: readonly ExtensionRow[],
 ): void {
@@ -446,7 +466,15 @@ function renderExtensions(
     tr.dataset.extensionId = row.id;
     tr.dataset.integrity = row.integrity;
     tr.dataset.semantics =
-      row.interpreter === undefined ? "uninterpreted" : "interpreted";
+      row.refusal !== undefined
+        ? "refused"
+        : row.interpreter === undefined
+          ? "uninterpreted"
+          : "interpreted";
+    if (row.refusal !== undefined) {
+      tr.dataset.refusedModule = row.refusal.id;
+      tr.dataset.refusal = row.refusal.reason;
+    }
     tr.append(
       element("td", row.id),
       element("td", row.integrity),
@@ -470,12 +498,14 @@ function renderExtensions(
 // either way, and it stays the last element of the rendering.
 //
 // `applied` is the set of extension interpreters this rendering ran; an
-// extension row says "interpreted by" only for one of them.
+// extension row says "interpreted by" only for one of them. `refused` is
+// every module this runtime refused that matched (page, then section).
 async function renderVerificationPage(
   root: HTMLElement,
   context: VerifiedBundleContext,
   styled: boolean,
   applied: ReadonlySet<ExtensionInterpreterId>,
+  refused: readonly PresentationRefusal[],
 ): Promise<void> {
   const { bundle, verification: verified, countersigners } = context;
   const section = element("section");
@@ -488,7 +518,7 @@ async function renderVerificationPage(
     section.append(page);
   }
   page.append(element("h2", "Verification"));
-  const model = buildVerificationPageModel(bundle, verified, applied);
+  const model = buildVerificationPageModel(bundle, verified, applied, refused);
   const summary = element("dl");
   appendValue(summary, "bundle digest", model.bundleDigest ?? "uncomputable");
   appendValue(summary, "checkpoint root", model.checkpointRoot ?? "absent");
@@ -520,7 +550,7 @@ async function renderVerificationPage(
   renderStamps(page, stamps);
   renderCompletenessStatement(page, model.completeness);
   renderChecks(page, model.checks);
-  renderExtensions(page, model.extensions);
+  renderExtensions(page, model.extensions, model.presentationRefusals);
   page.append(element("p", model.verifyIndependentlyLine));
   root.append(section);
 }
@@ -1551,9 +1581,16 @@ export const BUILTIN_SECTIONS: readonly PresentationModule[] = Object.freeze([
   composedSectionModule,
 ] as PresentationModule[]);
 
-/** A fresh section registry holding the built-in sections. */
-export function createSectionRegistry(): PresentationRegistry {
-  const registry = new PresentationRegistry();
+/**
+ * A fresh section registry holding the built-in sections. The section
+ * registry applies the presentation ABI as the page registry does: under a
+ * `runtime` that refuses a section, the section is registered as refused,
+ * never drawn, and every page it matches names it.
+ */
+export function createSectionRegistry(
+  runtime?: PresentationRuntime,
+): PresentationRegistry {
+  const registry = new PresentationRegistry(runtime);
   for (const module of BUILTIN_SECTIONS) registry.register(module);
   return registry;
 }
@@ -1693,14 +1730,12 @@ export async function renderEvidenceGraph(
     refusal = "presentation-unresolved";
   }
   // A module this runtime refused (spec section 3.2) is never silent: the
-  // page root names every one that matched. The extension-row wording of the
-  // contract (presentationRefusalRow / presentationRefusalLine) is drawn
-  // where the per-extension rows are rendered; until those rows are on this
-  // code line, this attribute and the resolution result carry the refusal.
-  const refusedIds =
-    resolution.kind === "refusal"
-      ? []
-      : resolution.refused.map((refused) => refused.id);
+  // page root names every one that matched, page and section alike, and the
+  // verification page shows the contract's words in the extension rows
+  // (presentationRefusalRow) or, for a module requiring no extension, in a
+  // line after them (presentationRefusalLine).
+  const refused: PresentationRefusal[] =
+    resolution.kind === "refusal" ? [] : [...resolution.refused];
 
   if (resolution.kind === "refusal" && verified)
     throw new Error("resolver refused a bundle that verified");
@@ -1731,6 +1766,9 @@ export async function renderEvidenceGraph(
       selected = undefined;
       refusal = "presentation-unresolved";
     }
+    // A refused section is named like a refused page module, never skipped.
+    if (sectionResolution.kind !== "refusal")
+      refused.push(...sectionResolution.refused);
     if (sectionResolution.kind === "module")
       section = {
         module: sectionResolution.module,
@@ -1749,8 +1787,8 @@ export async function renderEvidenceGraph(
     return renderVerificationBanner(root, verified, coverage);
   };
   let banner = drawFrame();
-  if (refusedIds.length > 0)
-    root.dataset.presentationRefused = refusedIds.join(" ");
+  if (refused.length > 0)
+    root.dataset.presentationRefused = refused.map((r) => r.id).join(" ");
   else delete root.dataset.presentationRefused;
   let chrome: string | undefined;
   if (selected !== undefined) {
@@ -1833,5 +1871,6 @@ export async function renderEvidenceGraph(
     context,
     chrome === OUTCOME_CHROME,
     applied,
+    refused,
   );
 }

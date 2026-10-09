@@ -25,12 +25,14 @@ import {
   composedDigestPreimage,
   createPresentationRegistry,
   createSectionRegistry,
+  extensionRows,
   renderEvidenceGraph,
   verifyBundle,
   verifyComposed,
   type ComposedResult,
   type PresentationManifest,
   type PresentationModule,
+  type RenderEvidenceGraphOptions,
 } from "../src/browser.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
@@ -519,5 +521,206 @@ describe("precedence (contract sections 4.3 to 4.5)", () => {
         stub({ ...BUILTIN_MANIFEST_COMPOSED, id: "org.example.other/v0" }),
       ),
     ).toThrow(PresentationAmbiguityError);
+  });
+});
+
+describe("the presentation ABI on the composition section and the extension rows (contract section 3.2)", () => {
+  const V1_ONLY = {
+    presentationApis: ["aac.presentation-api/v1"],
+    runtimeVersion: "1.0.0",
+  };
+  const agree = (): Promise<Obj> =>
+    sealed(VECTORS.cases.find((c) => c.id === "agree")!.container);
+  /** A module whose every method fails the test if called. */
+  const untouchable = (manifest: PresentationManifest): PresentationModule => ({
+    manifest,
+    canRender: () => {
+      throw new Error("a refused module's canRender was called");
+    },
+    buildModel: () => {
+      throw new Error("a refused module's buildModel was called");
+    },
+    render: () => {
+      throw new Error("a refused module's render was called");
+    },
+  });
+  const rows = (root: HTMLElement): HTMLElement[] =>
+    Array.from(
+      root.querySelectorAll<HTMLElement>("table[data-extensions] tbody tr"),
+    );
+  const fallbackOnly = (): PresentationRegistry => {
+    const registry = new PresentationRegistry();
+    registry.register(BUILTIN_PRESENTATIONS.at(-1)!);
+    return registry;
+  };
+  const renderWith = async (
+    bundle: unknown,
+    options: RenderEvidenceGraphOptions,
+  ): Promise<HTMLElement> => {
+    const root = document.createElement("main");
+    await renderEvidenceGraph(bundle, root, undefined, options);
+    return root;
+  };
+
+  it("the composition section manifest declares aac.presentation-api/v0 at 0.1.0, and the reference runtime refuses no section", () => {
+    expect(BUILTIN_MANIFEST_COMPOSED.presentation_api).toBe(
+      "aac.presentation-api/v0",
+    );
+    expect(BUILTIN_MANIFEST_COMPOSED.runtime_min).toBe("0.1.0");
+    expect(createSectionRegistry().refused()).toEqual([]);
+    expect(createSectionRegistry().list()).toEqual(BUILTIN_SECTIONS);
+  });
+
+  it("a refused section is named on the page and in the composed/v1 row, never silently skipped", async () => {
+    const sections = createSectionRegistry(V1_ONLY);
+    expect(sections.refused().map((r) => r.id)).toEqual([
+      BUILTIN_MANIFEST_COMPOSED.id,
+    ]);
+    const root = await renderWith(await agree(), { sections });
+    expect(root.querySelector('[data-section="composition"]')).toBeNull();
+    expect(root.dataset.presentationRefused).toBe(BUILTIN_MANIFEST_COMPOSED.id);
+    const [row, ...rest] = rows(root);
+    expect(rest).toEqual([]);
+    expect(row!.dataset.extensionId).toBe("composed/v1");
+    expect(row!.dataset.semantics).toBe("refused");
+    expect(row!.dataset.refusedModule).toBe(BUILTIN_MANIFEST_COMPOSED.id);
+    expect(row!.dataset.refusal).toBe("presentation_api_unsupported");
+    expect(extensionCells(root)).toEqual([
+      [
+        "composed/v1",
+        "covered",
+        "Integrity verified; meaning not interpreted: presentation module aac.builtin.composed/v0 needs presentation API aac.presentation-api/v0, which this viewer does not implement",
+      ],
+    ]);
+    // A module with an extension row gets no separate line.
+    expect(
+      root.querySelectorAll(
+        '[data-page="verification"] [data-presentation-refused]',
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("a section refused for runtime_too_old reads the runtime wording", async () => {
+    const sections = createSectionRegistry({
+      presentationApis: ["aac.presentation-api/v0"],
+      runtimeVersion: "0.0.9",
+    });
+    const root = await renderWith(await agree(), { sections });
+    expect(root.querySelector('[data-section="composition"]')).toBeNull();
+    const [row] = rows(root);
+    expect(row!.dataset.refusal).toBe("runtime_too_old");
+    expect(extensionCells(root)[0]![2]).toBe(
+      "Integrity verified; meaning not interpreted: presentation module aac.builtin.composed/v0 needs runtime 0.1.0 or later; this viewer is 0.0.9",
+    );
+  });
+
+  it("a refused page module's row outranks the section's 'interpreted by'", async () => {
+    const registry = fallbackOnly();
+    const refusedPage = untouchable({
+      ...BUILTIN_MANIFEST_COMPOSED,
+      id: "org.example.composition-page/v0",
+      presentation_api: "aac.presentation-api/v9",
+    });
+    expect(registry.register(refusedPage).status).toBe("refused");
+    const root = await renderWith(await agree(), { registry });
+    // The section still ran (its own registry accepts it) ...
+    expect(root.querySelector('[data-section="composition"]')).not.toBeNull();
+    // ... but the row names the refused module: the refusal takes precedence.
+    const [row] = rows(root);
+    expect(row!.dataset.semantics).toBe("refused");
+    expect(row!.dataset.refusedModule).toBe("org.example.composition-page/v0");
+    expect(extensionCells(root)[0]![2]).toBe(
+      "Integrity verified; meaning not interpreted: presentation module org.example.composition-page/v0 needs presentation API aac.presentation-api/v9, which this viewer does not implement",
+    );
+    expect(root.dataset.presentationRefused).toBe(
+      "org.example.composition-page/v0",
+    );
+  });
+
+  it("a refused module that requires no extension gets the contract's line after the extension rows", async () => {
+    const registry = fallbackOnly();
+    const plain: PresentationManifest = {
+      spec_version: "aac.presentation-manifest/v0",
+      id: "org.example.plain/v0",
+      presentation_api: "aac.presentation-api/v0",
+      runtime_min: "0.2.0",
+      trust_class: "trusted-executable",
+      requires: { bundle_kind: "evidence-bundle/v2" },
+      audiences: ["*"],
+      formats: ["html", "fragment", "embedded"],
+      fallback: false,
+      priority: 1,
+      executable: { carrier: "core-runtime" },
+    };
+    expect(registry.register(untouchable(plain)).status).toBe("refused");
+    const root = await renderWith(await agree(), { registry });
+    const page = root.querySelector<HTMLElement>('[data-page="verification"]')!;
+    const line = page.querySelector<HTMLElement>(
+      "p[data-presentation-refused]",
+    )!;
+    expect(line.textContent).toBe(
+      "Presentation module org.example.plain/v0 was not used: it needs runtime 0.2.0 or later; this viewer is 0.1.0",
+    );
+    expect(line.dataset.presentationRefused).toBe("org.example.plain/v0");
+    expect(line.dataset.refusal).toBe("runtime_too_old");
+    // After the extension rows, which are untouched by this refusal.
+    const table = page.querySelector("table[data-extensions]")!;
+    expect(
+      table.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(rows(root)[0]!.dataset.semantics).toBe("interpreted");
+    expect(root.dataset.presentationRefused).toBe("org.example.plain/v0");
+  });
+
+  it("a page and a section refused together are both named, page first", async () => {
+    const registry = fallbackOnly();
+    registry.register(
+      untouchable({
+        ...BUILTIN_MANIFEST_COMPOSED,
+        id: "org.example.composition-page/v0",
+        presentation_api: "aac.presentation-api/v9",
+      }),
+    );
+    const root = await renderWith(await agree(), {
+      registry,
+      sections: createSectionRegistry(V1_ONLY),
+    });
+    expect(root.dataset.presentationRefused).toBe(
+      `org.example.composition-page/v0 ${BUILTIN_MANIFEST_COMPOSED.id}`,
+    );
+    // One row, named by the first refusal in resolution order.
+    expect(rows(root).map((r) => r.dataset.refusedModule)).toEqual([
+      "org.example.composition-page/v0",
+    ]);
+  });
+
+  it("extensionRows: an uncovered block's refusal row begins 'Integrity not verified;'", () => {
+    const [row] = extensionRows(
+      [
+        {
+          kind: "composed/v1",
+          integrityCovered: false,
+          status: "uninterpreted",
+        },
+      ],
+      undefined,
+      [
+        {
+          id: "org.example.x/v0",
+          presentation_api: "aac.presentation-api/v3",
+          runtime_min: "0.1.0",
+          reason: "presentation_api_unsupported",
+          extensions: ["composed/v1"],
+          runtimeVersion: "0.1.0",
+        },
+      ],
+    );
+    expect(row).toMatchObject({
+      id: "composed/v1",
+      integrity: "not covered",
+      refusal: { id: "org.example.x/v0" },
+      semantics:
+        "Integrity not verified; meaning not interpreted: presentation module org.example.x/v0 needs presentation API aac.presentation-api/v3, which this viewer does not implement",
+    });
   });
 });

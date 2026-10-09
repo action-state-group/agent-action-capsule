@@ -70,6 +70,16 @@
   drawn after the page module, because as a page module it is ambiguous with the five specific
   built-ins and with any composition-aware page module. Its extension row then reads "interpreted by
   aac.builtin.composed/v0". No viewer verdict changes; pages without `composed/v1` are unchanged.
+- TypeScript: the verification page draws presentation refusals (contract section 3.2). Each
+  extension a refused module requires gets the `presentationRefusalRow` wording in its semantics
+  cell, with `data-semantics="refused"`, `data-refused-module` and `data-refusal`; a refusal
+  outranks "interpreted by". A refused module that requires no extension gets the
+  `presentationRefusalLine` after the extension rows (`data-presentation-refused`,
+  `data-refusal`). The section registry applies the same ABI: the composition section manifest
+  declares `aac.presentation-api/v0` and runtime 0.1.0, `createSectionRegistry` takes an optional
+  runtime, and a refused section is named on the page root and in its `composed/v1` row, never
+  skipped silently. `extensionRows` and `buildVerificationPageModel` take the refusals; the model
+  gains `presentationRefusals`. Pages with no refusal are unchanged.
 ### Emitter (Go and TypeScript)
 - The HTML shell has named slots: `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`,
   `MODULE_SLOT` (zero or more digest-pinned scripts) and `BOOTSTRAP_SLOT`, plus `CSP_SLOT` for the
