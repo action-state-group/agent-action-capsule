@@ -79,9 +79,10 @@ it.skipIf(!present)(
       "example-composition-aware",
       "example-generic-fallback",
       "example-declarative-rules",
+      "example-declarative-outcome",
     ])
       examples.register(stub(load(name)));
-    expect(examples.list()).toHaveLength(4);
+    expect(examples.list()).toHaveLength(5);
     for (const name of [
       "neg-unknown-field",
       "neg-fallback-with-priority",
