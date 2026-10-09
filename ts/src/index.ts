@@ -1,6 +1,7 @@
 export * from "./countersignature-stamp.js";
 export * from "./disclosure-envelope.js";
 export * from "./bundle.js";
+export * from "./composed.js";
 export * from "./evidence-graph.js";
 export * from "./json.js";
 export * from "./model.js";

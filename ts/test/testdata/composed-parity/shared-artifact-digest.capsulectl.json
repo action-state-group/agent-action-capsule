@@ -1,0 +1,194 @@
+{
+  "exit_code": 3,
+  "output": {
+    "bundle_digest": "14efc901b1522e548917a572c1b3d9d50fd3b3c8d0547ed1ea351002b4b7fd21",
+    "checkpoint": {
+      "findings": ["checkpoint_signature_absent"],
+      "status": "withheld"
+    },
+    "countersignatures": [],
+    "disclosures": [],
+    "extensions": [
+      {
+        "composed": {
+          "composed_digest": {
+            "declared": "16f30315c573e4415dd53613c852793bdab921cf1b4c2ec69d62ed5e6e60681b",
+            "matches": true,
+            "recomputed": "16f30315c573e4415dd53613c852793bdab921cf1b4c2ec69d62ed5e6e60681b"
+          },
+          "composition_closure": {
+            "findings": [],
+            "missing": [],
+            "status": "pass"
+          },
+          "corroboration": [
+            {
+              "members": ["responder-a", "responder-b"],
+              "qualifier": "custody_declared",
+              "result": "corroborating"
+            }
+          ],
+          "findings": [],
+          "joins": [
+            {
+              "basis": "shared_artifact_digest",
+              "declared": "agree",
+              "derived": "agree",
+              "members": ["responder-a", "responder-b"],
+              "result": "derived_matches"
+            }
+          ],
+          "members": [
+            {
+              "body": "carried",
+              "bundle": {
+                "bundle_digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "checkpoint": {
+                  "findings": ["checkpoint_signature_absent"],
+                  "status": "withheld"
+                },
+                "countersignatures": [],
+                "disclosures": [
+                  {
+                    "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                    "member": "agent_input",
+                    "status": "withheld"
+                  },
+                  {
+                    "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                    "member": "agent_output",
+                    "status": "withheld"
+                  }
+                ],
+                "extensions": [],
+                "graph_closure": {
+                  "findings": [],
+                  "status": "pass"
+                },
+                "interval_coverage": {
+                  "findings": ["completeness_evidence_absent"],
+                  "status": "withheld"
+                },
+                "per_record_membership": {
+                  "findings": ["completeness_evidence_absent"],
+                  "status": "withheld"
+                },
+                "producer_signatures": {
+                  "findings": [],
+                  "status": "pass"
+                },
+                "record_identity": {
+                  "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b": "passed"
+                },
+                "record_signatures": {
+                  "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b": "authored"
+                },
+                "verdict": "INCOMPLETE",
+                "witnesses": {
+                  "findings": ["witness_receipt_absent"],
+                  "receipts": [],
+                  "status": "withheld"
+                }
+              },
+              "digest": "reproduced",
+              "findings": [],
+              "id": "responder-a",
+              "observer": "obs-a",
+              "outcome": "artifact"
+            },
+            {
+              "body": "carried",
+              "bundle": {
+                "bundle_digest": "690c028cc5dc1a859a592f41e78291cfebcbfa4e999c181afde11e96542e4c08",
+                "checkpoint": {
+                  "findings": ["checkpoint_signature_absent"],
+                  "status": "withheld"
+                },
+                "countersignatures": [],
+                "disclosures": [
+                  {
+                    "capsule_id": "7692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff89175",
+                    "member": "agent_input",
+                    "status": "withheld"
+                  },
+                  {
+                    "capsule_id": "7692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff89175",
+                    "member": "agent_output",
+                    "status": "withheld"
+                  }
+                ],
+                "extensions": [],
+                "graph_closure": {
+                  "findings": [],
+                  "status": "pass"
+                },
+                "interval_coverage": {
+                  "findings": ["completeness_evidence_absent"],
+                  "status": "withheld"
+                },
+                "per_record_membership": {
+                  "findings": ["completeness_evidence_absent"],
+                  "status": "withheld"
+                },
+                "producer_signatures": {
+                  "findings": [],
+                  "status": "pass"
+                },
+                "record_identity": {
+                  "7692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff89175": "passed"
+                },
+                "record_signatures": {
+                  "7692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff89175": "authored"
+                },
+                "verdict": "INCOMPLETE",
+                "witnesses": {
+                  "findings": ["witness_receipt_absent"],
+                  "receipts": [],
+                  "status": "withheld"
+                }
+              },
+              "digest": "reproduced",
+              "findings": [],
+              "id": "responder-b",
+              "observer": "obs-b",
+              "outcome": "artifact"
+            }
+          ],
+          "scope": "composition closure covers the declared members only; it is not completeness of participation",
+          "status": "pass"
+        },
+        "kind": "composed/v1",
+        "status": "pass"
+      }
+    ],
+    "graph_closure": {
+      "findings": [],
+      "status": "pass"
+    },
+    "interval_coverage": {
+      "findings": ["completeness_evidence_absent"],
+      "status": "withheld"
+    },
+    "per_record_membership": {
+      "findings": ["completeness_evidence_absent"],
+      "status": "withheld"
+    },
+    "producer_signatures": {
+      "findings": [],
+      "status": "pass"
+    },
+    "record_identity": {
+      "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5": "passed"
+    },
+    "record_signatures": {
+      "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5": "authored"
+    },
+    "spec_version": "capsule-cli-result/v1",
+    "verdict": "INCOMPLETE",
+    "witnesses": {
+      "findings": ["witness_receipt_absent"],
+      "receipts": [],
+      "status": "withheld"
+    }
+  }
+}

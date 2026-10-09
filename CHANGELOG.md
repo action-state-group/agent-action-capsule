@@ -59,6 +59,17 @@
   `data-presentation-refused` on the page root; `presentationRefusalRow` and
   `presentationRefusalLine` give the contract's exact words for the verification page. Rendered
   output is byte-identical for every fixture.
+- TypeScript: `composed/v1` is verified and shown. `verifyBundle` verifies the block as the Go
+  reference does (`verifyComposed`, `composedDigest`, `composedDigestPreimage`; member bundles
+  recursively) and reports it on the extension result as `composed`; the results equal
+  `capsulectl verify --bundle` for every published vector and five derived cases. A new built-in
+  composition section (`aac.builtin.composed/v0`, requires `composed/v1`) renders, on a bundle that
+  verified, the composed digest, members, observers, composition closure, each join's declared and
+  derived state, and per agreeing pair "redundant, not corroborating" or corroborating on declared
+  custody. It is resolved in a section registry (`BUILTIN_SECTIONS`, `createSectionRegistry`) and
+  drawn after the page module, because as a page module it is ambiguous with the five specific
+  built-ins and with any composition-aware page module. Its extension row then reads "interpreted by
+  aac.builtin.composed/v0". No viewer verdict changes; pages without `composed/v1` are unchanged.
 ### Emitter (Go and TypeScript)
 - The HTML shell has named slots: `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`,
   `MODULE_SLOT` (zero or more digest-pinned scripts) and `BOOTSTRAP_SLOT`, plus `CSP_SLOT` for the

@@ -8,6 +8,7 @@ import {
   type VerifiedBundleContext,
 } from "./bundle.js";
 import {
+  BUILTIN_MANIFEST_COMPOSED,
   BUILTIN_MANIFEST_EVALUATION_SUMMARY_GRAPH,
   BUILTIN_MANIFEST_NO_AGGREGATE,
   BUILTIN_MANIFEST_REPORT_ROWS,
@@ -42,6 +43,7 @@ import {
   type OutcomeReportPresentation,
 } from "./outcome-report-presentation.js";
 import { renderCompliancePage } from "./compliance-view.js";
+import { composedSectionModule } from "./composed-view.js";
 import {
   readCompliancePresentation,
   type CompliancePresentation,
@@ -1517,6 +1519,7 @@ const BUILTIN_MODULE_INTERPRETERS: Readonly<
   ],
   [BUILTIN_MANIFEST_RESULT_COMPLIANCE.id]: ["result-root", "compliance-card"],
   [BUILTIN_MANIFEST_RESULT.id]: ["result-root"],
+  [BUILTIN_MANIFEST_COMPOSED.id]: ["aac.builtin.composed/v0"],
 });
 
 /** The six built-in modules, registered by default. */
@@ -1538,6 +1541,24 @@ export function createPresentationRegistry(): PresentationRegistry {
 }
 
 const defaultRegistry = createPresentationRegistry();
+
+/**
+ * The built-in sections: modules resolved after the page module, in their
+ * own registry, and rendered after its content. One today, the composition
+ * section; see BUILTIN_MANIFEST_COMPOSED for why it is not a page module.
+ */
+export const BUILTIN_SECTIONS: readonly PresentationModule[] = Object.freeze([
+  composedSectionModule,
+] as PresentationModule[]);
+
+/** A fresh section registry holding the built-in sections. */
+export function createSectionRegistry(): PresentationRegistry {
+  const registry = new PresentationRegistry();
+  for (const module of BUILTIN_SECTIONS) registry.register(module);
+  return registry;
+}
+
+const defaultSections = createSectionRegistry();
 
 /**
  * Register a module with the registry `renderEvidenceGraph` uses by default
@@ -1569,6 +1590,8 @@ const DEFAULT_FORMAT: PresentationFormat = "html";
 export interface RenderEvidenceGraphOptions {
   /** Resolves the presentation; the default registry when omitted. */
   readonly registry?: PresentationResolver;
+  /** Resolves the section after the page; the built-in sections when omitted. */
+  readonly sections?: PresentationResolver;
   readonly audience?: string;
   readonly format?: PresentationFormat;
 }
@@ -1690,6 +1713,30 @@ export async function renderEvidenceGraph(
       module: resolution.module,
       model: await resolution.module.buildModel(context),
     };
+  // The section registry is resolved the same way, after the page and only
+  // for a verified bundle whose page resolved: a section never stands in for
+  // a refusal (contract I1), and its ambiguity is the page's refusal too.
+  let section: { module: PresentationModule; model: unknown } | undefined;
+  if (verified && refusal === undefined) {
+    let sectionResolution: PresentationResolution;
+    try {
+      sectionResolution = await (options.sections ?? defaultSections).resolve(
+        context,
+        options.audience ?? DEFAULT_AUDIENCE,
+        options.format ?? DEFAULT_FORMAT,
+      );
+    } catch (err) {
+      if (!(err instanceof PresentationAmbiguityError)) throw err;
+      sectionResolution = { kind: "no-presentation" };
+      selected = undefined;
+      refusal = "presentation-unresolved";
+    }
+    if (sectionResolution.kind === "module")
+      section = {
+        module: sectionResolution.module,
+        model: await sectionResolution.module.buildModel(context),
+      };
+  }
   const records = object(bundle).records;
   const coverage = {
     uncheckpointed: unboundRecordIds(verification).length,
@@ -1732,16 +1779,40 @@ export async function renderEvidenceGraph(
       refusal = "presentation-failed";
     }
   }
-  if (refusal !== undefined) {
-    const note = element("p", PRESENTATION_REFUSALS[refusal]);
-    note.dataset.refusal = refusal;
-    root.append(note);
-  } else if (resolution.kind === "no-presentation") {
+  if (refusal === undefined && resolution.kind === "no-presentation") {
     const note = element(
       "p",
       "No presentation is available for this bundle, audience and format. The records and their verification are below.",
     );
     note.dataset.notice = "no-presentation";
+    root.append(note);
+  }
+  // The section renders after the page module, into the same regions. If it
+  // throws, everything any module wrote is discarded for the refusal.
+  if (section !== undefined && refusal === undefined) {
+    try {
+      await section.module.render(
+        section.model,
+        {
+          L0: root,
+          L1: root,
+          L2: root,
+          depth: "L2",
+          setChromeClass(): void {
+            throw new Error("a section has no chrome");
+          },
+        },
+        presentationServices(context),
+      );
+    } catch {
+      chrome = undefined;
+      banner = drawFrame();
+      refusal = "presentation-failed";
+    }
+  }
+  if (refusal !== undefined) {
+    const note = element("p", PRESENTATION_REFUSALS[refusal]);
+    note.dataset.refusal = refusal;
     root.append(note);
   }
   // The interpreters this rendering actually ran (see extension-interpreters.ts):
@@ -1751,10 +1822,12 @@ export async function renderEvidenceGraph(
     "presentation-header",
     "countersignature-stamp",
   ]);
-  if (selected !== undefined && refusal === undefined)
-    for (const id of BUILTIN_MODULE_INTERPRETERS[selected.module.manifest.id] ??
-      [])
-      applied.add(id);
+  if (refusal === undefined)
+    for (const ran of [selected, section])
+      if (ran !== undefined)
+        for (const id of BUILTIN_MODULE_INTERPRETERS[ran.module.manifest.id] ??
+          [])
+          applied.add(id);
   await renderVerificationPage(
     root,
     context,
