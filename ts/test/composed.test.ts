@@ -428,7 +428,7 @@ describe("the composition section", () => {
     const plain = read("test", "testdata", "week-bundle.json") as Obj;
     const context = await buildVerifiedBundleContext(plain);
     expect(await createSectionRegistry().resolve(context, "*", "html")).toEqual(
-      { kind: "no-presentation" },
+      { kind: "no-presentation", refused: [] },
     );
     const root = await render(plain);
     expect(root.querySelector('[data-section="composition"]')).toBeNull();
@@ -474,6 +474,8 @@ describe("precedence (contract sections 4.3 to 4.5)", () => {
     const compositionAware: PresentationManifest = {
       spec_version: "aac.presentation-manifest/v0",
       id: "org.example.composition-aware/v0",
+      presentation_api: "aac.presentation-api/v0",
+      runtime_min: "0.1.0",
       trust_class: "trusted-executable",
       requires: {
         bundle_kind: "evidence-bundle/v2",

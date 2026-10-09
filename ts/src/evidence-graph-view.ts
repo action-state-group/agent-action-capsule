@@ -1727,7 +1727,7 @@ export async function renderEvidenceGraph(
       );
     } catch (err) {
       if (!(err instanceof PresentationAmbiguityError)) throw err;
-      sectionResolution = { kind: "no-presentation" };
+      sectionResolution = { kind: "no-presentation", refused: [] };
       selected = undefined;
       refusal = "presentation-unresolved";
     }

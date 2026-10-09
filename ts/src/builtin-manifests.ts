@@ -161,6 +161,8 @@ export const BUILTIN_MANIFESTS: readonly PresentationManifest[] = Object.freeze(
 export const BUILTIN_MANIFEST_COMPOSED: PresentationManifest = Object.freeze({
   spec_version: "aac.presentation-manifest/v0",
   id: "aac.builtin.composed/v0",
+  presentation_api: "aac.presentation-api/v0",
+  runtime_min: "0.1.0",
   trust_class: "trusted-executable",
   requires: {
     bundle_kind: "evidence-bundle/v2",
