@@ -89,6 +89,13 @@ Every claim also carries:
 - `tier` (`recomputed | judged`) — how the claim's evidence was resolved and its verdict
   projected, mirroring `evidence-plan-ir-v0.md` §4.2's vocabulary and its ruled mapping
   (`recomputed` ⇔ *Verifiable*, `judged` ⇔ *Attested* on the assurance ladder, 2026-09-22 ruling).
+  **What tier does and does not tell a reader:** tier says which rows could *in principle* be
+  re-run by a stranger. It does not say that any row can be re-run today. Today every row
+  requires trusting the producer: a `judged` row because a model ran, and a `recomputed` row
+  because the code that ran is not recorded in a form a stranger can check. That changes for a
+  `recomputed` row only when its `implementation` (§1.1) is present with a checkable grade
+  (`witnessed` or `countersigned`). Nothing in this document permits reading `recomputed`
+  as "a stranger can re-run this now".
 - `grade` (`self-attested | witnessed | countersigned`) — the assurance grade the claim's own
   bundle carries on the Witness/Countersign ladder, owned elsewhere,
   mirrored here, never redefined.
@@ -97,6 +104,8 @@ Every claim also carries:
   disclosure record.
 - `proofs[]` — the inclusion-proof/receipt refs that make the claim's evidence and grade
   checkable, by digest only, never inline bytes (§5).
+- `implementation` — which code computed the claim (§1.1). REQUIRED, with a known commit or
+  tree digest, when `tier` is `recomputed`; OPTIONAL when `tier` is `judged`.
 
 A claim never re-derives, and never self-declares, its own sufficiency — **"the evidence record
 never self-declares that it satisfies a requirement; the Evidence Contract defines sufficiency."**
@@ -108,6 +117,65 @@ evidence by digest" is structurally impossible here: `evidence[]` is REQUIRED on
 (§4), by digest only. "A number that cannot be traced to claims" is §3's concern — every count in
 `aggregate.coverage` and every entry in `aggregate.buckets` resolves to real claim objects in this
 same Result, never a number computed and reported without the claims that back it.
+
+### 1.1 Code identity on a recomputed claim
+
+`tier: recomputed` says a row could in principle be re-run (§1). Even in principle, that needs
+the claim to say which code to re-run. A policy or configuration
+digest does not say it: a source change with no configuration change leaves the configuration
+digest unchanged. A version string does not say it either: a project can report the same
+version (`0.0.1`, say) for every build it has ever made, and an editable install changes its
+source without a reinstall or a version change. So a `recomputed` claim carries its own
+code-identity field, `implementation`:
+
+```
+implementation:
+  name: string                        # names the implementation
+  code_digest:
+    alg: git-commit | git-tree        # a git commit id or a git tree id
+    value: <40-hex> | <64-hex>        # 40 in a SHA-1 repository, 64 in a SHA-256 one
+  grade: self-attested | witnessed | countersigned       # of the code identity itself
+  captured_at: <RFC 3339>             # when the digest was read
+```
+
+The rules, normative:
+
+1. **A digest, never a version.** `code_digest.value` is a git commit or tree id, lowercase hex,
+   40 or 64 characters. A version string is not a code identity and fails validation.
+2. **Captured at check time.** For an editable or from-source install the producer MUST read the
+   digest from the source tree when it computes the claim, not when the software was installed.
+   `captured_at` records that moment. A digest read at install time can name code that no longer
+   matches what ran.
+3. **Separate from the configuration digest.** Code identity and a policy/configuration digest
+   (`evidence-plan-ir-v0.md` §6 `policy_digest`) are two fields. They are never collapsed into one
+   field, and one value is never used for both. Each change is invisible to the other's digest.
+4. **The code identity has its own grade.** `grade` is REQUIRED and uses the same
+   three-value vocabulary as the claim's `grade` (`self-attested | witnessed | countersigned`),
+   defined in `draft-mih-agent-evidence-layer-00` (Terminology) and reused here by reference. It
+   is separate from the claim's `grade`, which is about the claim's evidence, not its code.
+   - `self-attested`: the producer's own word. A commit or tree digest at this level is a claim
+     made by whoever built or ran the code; a stranger cannot verify it from the Result or from any
+     receipt. It gives **comparability**: two claims computed by the same code carry the same
+     digest, which is enough to compare implementations across windows, and a re-run under a
+     different digest is a re-run of different code. It is not attestable, and a reader MUST NOT
+     treat it as proof that this code produced this claim.
+   - `witnessed` or `countersigned`: an attested build identity, for example a verifiable
+     build-provenance attestation over this digest. It gives **checkability**, and only this level
+     can support any claim that a stranger can re-run the row.
+
+   The schema states these limits in the field's own description.
+5. **Admitting ignorance.** `code_digest: {alg: unknown, value: unknown}` says the producer does not
+   know its code identity, in the way a build that was never given its commit reports `unknown`
+   rather than guessing. Its `grade` MUST be `self-attested`. An admission of ignorance is the
+   producer's own statement, and there is no build identity for a witness or countersigner to
+   check, so any higher level would claim checkability of nothing. Requiring `self-attested` rather
+   than omitting `grade` keeps the field one shape. The `unknown` form is allowed where the field
+   is optional. It never supports `tier: recomputed`: a verifier that finds it, or finds no
+   `implementation` at all, on a `recomputed` claim MUST reject that claim. The producer's remedy is
+   §3.1, not a different tier.
+
+Companion schema: `$defs/Implementation`, `$defs/CodeDigest`, and the last `Claim.allOf` rule.
+`evidence-plan-ir-v0.json` mirrors both definitions on the attestation record.
 
 ## 2. Disclosure policy — `disclosure` · `analysis` · `story`
 
@@ -203,6 +271,36 @@ aggregate-level. Nothing above the fold summarizes assurance; a sponsor who want
 particular `met`/`not_met`/`not_evaluable` bucket entry was produced reads that claim's own `tier`
 and `grade`, not a rollup.
 
+### 3.1 A tier is never downgraded
+
+**Ruled (2026-10-04), normative:** a claim's tier is never downgraded to make a row publishable.
+
+If a producer cannot reproduce a row it would report as `recomputed`, including because it cannot
+name the code that computed it (§1.1), it MUST NOT emit that row as `judged`. Relabelling does not
+work anyway: `evidence-plan-ir-v0.json`'s `AttestationRecord` requires `model` and `model_version`
+when the operator is `semantic.judge_adjudicate` and forbids them otherwise, so a relabelled row is
+either a schema violation or a `judged` row that cannot name its judge.
+
+An unreproducible row is the producer's defect, not a property of the evidence. The row leaves
+the population:
+
+- it is not a claim in the Result;
+- it is not counted in `evaluated_population`, `excluded_not_applicable` or `unknown_count`, and
+  sits in no bucket, so it enters no rate;
+- it is counted separately in `aggregate.coverage.producer_defects` (**PROPOSED**), with its own
+  denominator and date:
+
+```
+producer_defects:                     # OPTIONAL, PROPOSED
+  count: integer                      # rows withheld
+  denominator: integer                # rows attempted at tier recomputed, withheld ones included
+  as_of: <RFC 3339>                   # when the count was taken
+```
+
+`count` MUST NOT exceed `denominator` (checker-enforced; JSON Schema cannot compare sibling
+values). The field is optional so every Result that validated before it existed still validates;
+a producer that withholds rows under this rule MUST report them here rather than omit them.
+
 ## 4. Claim
 
 ```
@@ -217,6 +315,7 @@ claim:
   evidence: [digest-ref, ...]         # §5 — by digest only
   proofs: [proof-ref, ...]            # §5 — by digest only
   presentation: disclosure-carrier | analysis-carrier | story-carrier   # §2, §6
+  implementation: implementation      # §1.1 — REQUIRED (known digest) when tier is recomputed
 ```
 
 **Normative, not schema-enforced in v0:** claim `id` uniqueness within a Result, and every
@@ -416,6 +515,7 @@ aggregate:
     evaluated_population: integer     # requirements actually evaluated
     excluded_not_applicable: integer  # requirements excluded as NOT_APPLICABLE — an EvidenceStatus value (§2), not §1's Sufficiency
     unknown_count: integer            # evaluated requirements whose sufficiency resolved UNKNOWN (§1)
+    producer_defects: {count, denominator, as_of}   # OPTIONAL, PROPOSED — §3.1
   buckets:
     met: [claim-id, ...]
     not_met: [claim-id, ...]
@@ -500,3 +600,19 @@ mutant proof. One further schema negative
 `neg-close-ref-not-in-evidence` and `neg-close-peer-ref-not-in-evidence` (a cited digest missing from
 `evidence[]`). The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against these same
 fixtures, not here.
+
+§1.1 and §3.1 add one positive and six negatives. Every `recomputed` claim in the fixtures above
+now carries `implementation` (a 40-hex git commit); those fixtures are unreleased regenerations,
+and the 0.6.0 release bytes are unchanged in the `v0.6.0` tag.
+`pos-example-org-recomputed-code-identity-result.json` names claim-3's code by a 64-hex git tree
+id and withholds one unreproducible row into `producer_defects` (1 of 3). Schema negatives, each
+with a mutant: `neg-recomputed-code-identity-version-string` (`value: "0.0.1"`),
+`neg-recomputed-code-identity-missing` (no `implementation` on a recomputed claim),
+`neg-recomputed-code-identity-unknown` (the `unknown` form under `recomputed`),
+`neg-recomputed-code-identity-grade-missing` (no `grade`),
+`neg-code-identity-unknown-countersigned` (the `unknown` form claiming `countersigned`, on the
+`judged` claim-2 so only that rule fires). All fixture code identities are `self-attested`. Checker negative:
+`neg-producer-defects-count-over-denominator` (schema-valid, rejected by the count check). A
+configuration digest reused as the code digest is checked where both fields sit together, on the
+Plan IR attestation record (`schemas/examples/evidence-plan-ir-v0/invalid-attestation-code-digest-is-policy-digest.json`);
+a Result claim carries no configuration digest to compare against.

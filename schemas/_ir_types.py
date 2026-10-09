@@ -80,7 +80,24 @@ class AdjudicatorDoc(TypedDict, total=False):
     model_version: str
 
 
-class AttestationRecordDoc(TypedDict):
+class CodeDigestDoc(TypedDict):
+    alg: str  # git-commit | git-tree | unknown
+    value: str
+
+
+class ImplementationDoc(TypedDict):
+    # Code identity; mirrors evidence-result-v0.json's Implementation.
+    name: str
+    code_digest: CodeDigestDoc
+    grade: str  # self-attested | witnessed | countersigned
+    captured_at: str
+
+
+class _AttestationOptionalDoc(TypedDict, total=False):
+    implementation: ImplementationDoc  # never the same value as policy_digest
+
+
+class AttestationRecordDoc(_AttestationOptionalDoc):
     adjudicator: AdjudicatorDoc
     operator: str
     inputs: List[DigestRefDoc]

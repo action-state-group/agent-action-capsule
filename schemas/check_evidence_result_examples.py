@@ -125,6 +125,31 @@ mechanical half):
          and (2) run against a missing book (`book != None` is true for any
          book, so the named peer's link counts).
 
+  8. CODE IDENTITY ON RECOMPUTED CLAIMS (spec sections 1.1 and 3.1).
+     pos-example-org-recomputed-code-identity-result.json (claim-1 named by
+     a 40-hex git commit, claim-3 by a 64-hex git tree, one unreproducible
+     row withheld into coverage.producer_defects) MUST validate, and:
+       - neg-recomputed-code-identity-version-string.json: code_digest.value
+         "0.0.1". Mutant: CodeDigest's hex pattern widened to any string.
+       - neg-recomputed-code-identity-missing.json: recomputed claim-1 with
+         no implementation. Mutant: the recomputed-names-its-code Claim rule
+         stripped.
+       - neg-recomputed-code-identity-unknown.json: {alg: unknown, value:
+         unknown} under tier recomputed. Same mutant.
+       - neg-recomputed-code-identity-grade-missing.json: claim-1's
+         implementation with no `grade`. Mutant: 'grade' dropped
+         from Implementation.required.
+       - neg-code-identity-unknown-countersigned.json: the judged claim-2
+         given {alg: unknown} with grade `countersigned`. Mutant:
+         Implementation's unknown-is-self-attested-only rule stripped.
+       - neg-producer-defects-count-over-denominator.json: schema-valid,
+         rejected here (count > denominator); its mutant skips the
+         comparison.
+     A configuration digest reused as the code digest is checked where
+     both fields sit side by side, on the Plan IR attestation record
+     (check_evidence_plan_ir_examples.py); a Result claim carries no
+     configuration digest to compare against.
+
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
     python3 check_evidence_result_examples.py                # from schemas/
@@ -378,6 +403,7 @@ POSITIVES = [
     "pos-example-org-close-unilateral-result",
     "pos-example-org-close-unilateral-named-peer-result",
     "pos-example-org-close-contested-result",
+    "pos-example-org-recomputed-code-identity-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -393,7 +419,28 @@ NEGATIVES = [
     "neg-reconcile-tallies-missing-state",
     "neg-unrecognized-claim-type",
     "neg-close-contested-verdict-met",
+    "neg-recomputed-code-identity-version-string",
+    "neg-recomputed-code-identity-missing",
+    "neg-recomputed-code-identity-unknown",
+    "neg-recomputed-code-identity-grade-missing",
+    "neg-code-identity-unknown-countersigned",
 ]
+
+# Schema-valid, checker-rejected: producer_defects.count over its
+# denominator (spec section 3.1).
+DEFECTS_NEGATIVE = "neg-producer-defects-count-over-denominator"
+
+
+def producer_defects_findings(name: str, result: EvidenceResultDoc, skip_comparison: bool = False) -> list[str]:
+    defects = result["aggregate"]["coverage"].get("producer_defects")
+    if defects is None or skip_comparison:
+        return []
+    if defects["count"] > defects["denominator"]:
+        return [
+            f"{name}: aggregate.coverage.producer_defects.count {defects['count']} exceeds "
+            f"its denominator {defects['denominator']}"
+        ]
+    return []
 
 
 def _load(name: str) -> EvidenceResultDoc:
@@ -598,6 +645,72 @@ def main() -> int:
             "Claim's CONTESTED-is-never-met if/then rule",
         )
 
+    # --- 8. CODE IDENTITY ON RECOMPUTED CLAIMS --------------------------------
+    def _strip_recomputed_rule(base: dict) -> dict:
+        mutant = copy.deepcopy(base)
+        mutant["$defs"]["Claim"]["allOf"] = [
+            rule for rule in mutant["$defs"]["Claim"]["allOf"]
+            if not rule.get("description", "").startswith("A recomputed claim names its code")
+        ]
+        return mutant
+
+    if negative_errors_by_name["neg-recomputed-code-identity-version-string"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["CodeDigest"]["oneOf"][0]["properties"]["value"] = {"type": "string"}
+        _mutant_check(
+            "neg-recomputed-code-identity-version-string",
+            mutant,
+            "CodeDigest's 40/64-hex pattern",
+        )
+
+    for neg_name in ("neg-recomputed-code-identity-missing", "neg-recomputed-code-identity-unknown"):
+        if negative_errors_by_name[neg_name]:
+            _mutant_check(
+                neg_name,
+                _strip_recomputed_rule(schema),
+                "Claim's recomputed-names-its-code if/then rule",
+            )
+
+    if negative_errors_by_name["neg-recomputed-code-identity-grade-missing"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["Implementation"]["required"] = [
+            r for r in mutant["$defs"]["Implementation"]["required"] if r != "grade"
+        ]
+        _mutant_check(
+            "neg-recomputed-code-identity-grade-missing",
+            mutant,
+            "Implementation.required's 'grade' entry",
+        )
+
+    if negative_errors_by_name["neg-code-identity-unknown-countersigned"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["Implementation"]["allOf"] = []
+        _mutant_check(
+            "neg-code-identity-unknown-countersigned",
+            mutant,
+            "Implementation's unknown-is-self-attested-only rule",
+        )
+
+    for name in POSITIVES:
+        defect_findings = producer_defects_findings(name, _load(name))
+        findings.extend(defect_findings)
+    defects_instance = _load(DEFECTS_NEGATIVE)
+    defects_schema_errors = list(validator.iter_errors(defects_instance))
+    if defects_schema_errors:
+        findings.append(
+            f"DEFECTS-NEGATIVE-SCHEMA-REJECTED {DEFECTS_NEGATIVE}: this fixture exists to show "
+            f"the checker rule, but the schema already rejects it: {defects_schema_errors[0].message}"
+        )
+    elif not producer_defects_findings(DEFECTS_NEGATIVE, defects_instance):
+        findings.append(f"DEFECTS-NEGATIVE-DID-NOT-FAIL {DEFECTS_NEGATIVE}: count over denominator was accepted")
+    else:
+        print(f"OK  CHECKER       {DEFECTS_NEGATIVE}.json schema-valid and correctly REJECTED (count > denominator)")
+        if producer_defects_findings(DEFECTS_NEGATIVE, defects_instance, skip_comparison=True):
+            findings.append(f"MUTANT-DID-NOT-FLIP {DEFECTS_NEGATIVE}: skipping the comparison still rejected it")
+        else:
+            print(f"OK  MUTANT        {DEFECTS_NEGATIVE} -- with the count/denominator comparison skipped, "
+                  "the fixture is accepted (confirms the check is load-bearing)")
+
     # --- 5. CLOSE STATE IS DERIVABLE: the link walk ----------------------------
     #        Schema validation cannot see across records; this can. Every
     #        positive that carries a close claim must ship its records and
@@ -675,7 +788,8 @@ def main() -> int:
         return 1
 
     print(f"\nOK — {len(POSITIVES)} positive result(s), {len(NEGATIVES)} negative fixture(s), "
-          f"{len(LINK_NEGATIVES)} link-walk negative(s), and all mutant checks passed.")
+          f"{len(LINK_NEGATIVES)} link-walk negative(s), 1 producer-defects negative, "
+          "and all mutant checks passed.")
     return 0
 
 

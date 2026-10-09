@@ -14,6 +14,11 @@
     "coverage": {
       "evaluated_population": 3,
       "excluded_not_applicable": 1,
+      "producer_defects": {
+        "as_of": "2026-09-22T00:00:00Z",
+        "count": 1,
+        "denominator": 3
+      },
       "unknown_count": 0
     }
   },
@@ -28,15 +33,6 @@
       ],
       "grade": "witnessed",
       "id": "claim-1",
-      "implementation": {
-        "captured_at": "2026-09-22T00:00:00Z",
-        "code_digest": {
-          "alg": "git-commit",
-          "value": "27273b32d8c905e94aa139520dae1e0b5f804be0"
-        },
-        "grade": "self-attested",
-        "name": "example-org-reference-checker"
-      },
       "presentation": {
         "evidence": [
           {
@@ -56,6 +52,7 @@
       ],
       "requirement_ref": "req-claim-1",
       "sufficiency": "SATISFIED",
+      "tier": "recomputed",
       "verdict": "met"
     },
     {
@@ -103,8 +100,8 @@
       "implementation": {
         "captured_at": "2026-09-22T00:00:00Z",
         "code_digest": {
-          "alg": "git-commit",
-          "value": "27273b32d8c905e94aa139520dae1e0b5f804be0"
+          "alg": "git-tree",
+          "value": "3e27cd8d3749dfa848c37c5d4c37d845e8255760ba786afcef1e1768bb88e15a"
         },
         "grade": "self-attested",
         "name": "example-org-reference-checker"
@@ -132,6 +129,6 @@
   "view": {
     "producer_name": "EXAMPLE-ORG",
     "spec_version": "presentation/v1",
-    "title": "EXAMPLE-ORG Claims Result -- Round 0"
+    "title": "EXAMPLE-ORG Claims Result -- code identity"
   }
 }

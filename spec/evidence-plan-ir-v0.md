@@ -152,6 +152,11 @@ planner — all three are conforming there by construction; only `LOCAL_ONLY` is
 | `recomputed` | The result is mechanically reproducible: a deterministic function of the node's cited inputs, with no model inference or human judgment in the loop. |
 | `judged` | The result was produced by a semantic adjudicator (model or human) applying judgment to the cited inputs, pinned by the attestation record's `adjudicator`/`policy_digest` fields (§6). |
 
+`recomputed` says a result could in principle be re-run by a stranger; it does not say one can be
+today. Until the attestation record's `implementation` (§6) is present with a checkable grade
+(`witnessed` or `countersigned`), a `recomputed` result requires trusting the producer just as
+a `judged` one does: the code that ran is not checkably recorded.
+
 **Ruled mapping (2026-09-22) — stated here as a mapping only, never redefined:** on the
 assurance ladder owned by the Witness/Countersign definitions — the grade vocabulary is
 still being reconciled elsewhere (open at the time of writing), and this document
@@ -202,6 +207,14 @@ attestation-record:
   policy_digest: { digest_alg: "SHA-256", digest: <64-hex> }
                                  # the digest of the policy/prompt/manifest the operator ran
                                  # under; the policy content itself is never inlined here
+  implementation:                # OPTIONAL in v0 — code identity of the executor; mirrors
+                                 # evidence-result-v0.md §1.1, never redefined
+    name: string
+    code_digest: { alg: git-commit | git-tree, value: <40-hex> | <64-hex> }
+                                 # or { alg: unknown, value: unknown }; never a version string
+    grade: self-attested | witnessed | countersigned       # of the code identity; `unknown`
+                                 # code_digest is self-attested only
+    captured_at: <RFC 3339>      # read at check time for an editable / from-source install
   contract_ref: string          # MUST equal the owning plan's header.contract_ref
 ```
 
@@ -209,6 +222,17 @@ attestation-record:
 explicitly; they are conditionally required on `tier: judged` and conditionally forbidden
 otherwise, so a reader can tell from the record alone whether judgment was involved without also
 needing the owning node.
+
+`policy_digest` and `implementation` answer different questions and are never collapsed.
+`policy_digest` is a configuration digest: it names the policy, prompt or manifest the operator ran
+under, and a source change with no configuration change is invisible to it. `implementation` names
+the code, by git commit or tree id, never by version string, read at check time for an editable or
+from-source install. `implementation.code_digest.value` MUST NOT equal `policy_digest.digest`
+(checker-enforced; both can be 64 hex, so JSON Schema alone cannot see the reuse). The same limit
+as `evidence-result-v0.md` §1.1 applies: a `self-attested` digest is a claim by whoever built or
+ran the code and gives comparability only; a `witnessed` or `countersigned` build identity gives
+checkability. `adjudicator.id` stays a free-form executor label and is
+not a code identity.
 
 ## 6.1 Result envelope
 

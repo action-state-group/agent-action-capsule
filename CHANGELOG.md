@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Added
+- Result v0 §1.1: a `recomputed` claim names the code that computed it, in `implementation`
+  (`name`, `code_digest` {`git-commit` | `git-tree`, 40 or 64 lowercase hex}, `captured_at`). A
+  version string is rejected; an editable or from-source install reads the digest at check time.
+  The field is separate from any policy/configuration digest, and its description states the
+  limit. The code identity carries its own `grade` (`self-attested | witnessed |
+  countersigned`, the claim's grade vocabulary): self-attested gives comparability, witnessed
+  or countersigned gives checkability. `{alg: unknown, value: unknown}` admits ignorance, is self-attested only, and never
+  supports `recomputed`. Tier now says which rows could in principle be re-run, not that they can be
+  today.
+  The Plan IR attestation record mirrors the field (optional) and must not reuse `policy_digest`
+  as the code digest (checker-enforced).
+- Result v0 §3.1 (rule ruled, field PROPOSED): a tier is never downgraded to publish a row. An
+  unreproducible recomputed row is withheld and counted in the optional
+  `aggregate.coverage.producer_defects` {`count`, `denominator`, `as_of`}, outside every rate.
+- Vectors: `pos-example-org-recomputed-code-identity-result`, six Result negatives
+  (`neg-recomputed-code-identity-{version-string,missing,unknown,grade-missing}`,
+  `neg-code-identity-unknown-countersigned`, `neg-producer-defects-count-over-denominator`) and two Plan IR attestation examples
+  (`attestation-record-recomputed-implementation`,
+  `invalid-attestation-code-digest-is-policy-digest`). The unreleased Result fixtures that carry
+  `recomputed` claims were regenerated with `implementation`; released 0.6.0 bytes are unchanged.
+
 ## 0.7.0 — 2026-10-07
 
 **Headline: string-typed fields are type-checked in every verifier.** A list, an object or a

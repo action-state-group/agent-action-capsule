@@ -48,6 +48,16 @@ header field from `contract_version` to `contract_ref`; the value is unchanged).
 proves it is name-specific by renaming the key back to `contract_ref` in memory and confirming the
 SAME fixture then validates clean.
 
+## Code identity on the attestation record (spec §6)
+
+- `attestation-record-recomputed-implementation.json` — outcome node-1's attestation (a recomputed
+  operator) with `implementation`: a 64-hex git tree id, `grade: self-attested`, different
+  from `policy_digest`. Validates.
+- `invalid-attestation-code-digest-is-policy-digest.json` — the same record with the configuration
+  digest copied into `implementation.code_digest.value`. Same 64-hex shape, so it validates against
+  the schema; `check_evidence_plan_ir_examples.py` rejects it (code identity and configuration
+  digest are two fields, and one value is never used for both). Mutant: comparison skipped, accepted.
+
 ## Reproducing the validation run
 
 ```

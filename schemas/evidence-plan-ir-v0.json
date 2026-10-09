@@ -239,6 +239,52 @@
         "model_version": ["model"]
       }
     },
+    "CodeDigest": {
+      "description": "Mirrored from evidence-result-v0.json's CodeDigest, never redefined: a git commit or tree id (40 lowercase hex in a SHA-1 repository, 64 in a SHA-256 one) or the explicit {alg: unknown, value: unknown}. Never a version string.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["alg", "value"],
+          "properties": {
+            "alg": { "enum": ["git-commit", "git-tree"] },
+            "value": { "type": "string", "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["alg", "value"],
+          "properties": {
+            "alg": { "const": "unknown" },
+            "value": { "const": "unknown" }
+          }
+        }
+      ]
+    },
+    "CodeIdentityGrade": {
+      "description": "Mirrored from evidence-result-v0.json's Grade (the three-value vocabulary defined in draft-mih-agent-evidence-layer-00's Terminology), never redefined. Used here only for Implementation.grade.",
+      "enum": ["self-attested", "witnessed", "countersigned"]
+    },
+    "Implementation": {
+      "description": "Mirrored from evidence-result-v0.json's Implementation, never redefined; that definition's description governs, including its limits: a self-attested commit or tree digest is a claim by whoever built or ran the code and gives comparability only; a witnessed or countersigned build identity gives checkability. An unknown code_digest carries grade self-attested and nothing higher.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "code_digest", "grade", "captured_at"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "code_digest": { "$ref": "#/$defs/CodeDigest" },
+        "grade": { "$ref": "#/$defs/CodeIdentityGrade" },
+        "captured_at": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "description": "An unknown code identity claims nothing above self-attested.",
+          "if": { "properties": { "code_digest": { "properties": { "alg": { "const": "unknown" } }, "required": ["alg"] } }, "required": ["code_digest"] },
+          "then": { "properties": { "grade": { "const": "self-attested" } } }
+        }
+      ]
+    },
     "AttestationRecord": {
       "type": "object",
       "additionalProperties": false,
@@ -251,7 +297,14 @@
           "minItems": 1,
           "items": { "$ref": "#/$defs/DigestRef" }
         },
-        "policy_digest": { "$ref": "#/$defs/DigestRef" },
+        "policy_digest": {
+          "description": "The digest of the policy / prompt / manifest / configuration the operator ran under (spec section 6). A CONFIGURATION digest, not a code digest: a source change with no configuration change is invisible to it. Code identity is the separate `implementation` field; the two are never collapsed into one field, and one value is never used for both (spec section 6).",
+          "$ref": "#/$defs/DigestRef"
+        },
+        "implementation": {
+          "description": "Code identity of the executor that produced this record: the same shape, rules and limits as evidence-result-v0.json's Implementation, mirrored here, never redefined (see that definition's description, which governs). OPTIONAL in v0 on every operator. Never the same value as policy_digest: `code_digest.value` MUST differ from `policy_digest.digest` (checker-enforced, since JSON Schema cannot compare sibling values; a 64-hex git-tree id and a SHA-256 configuration digest have the same shape, so reuse is otherwise invisible). A self-attested commit or tree digest is a claim by whoever built or ran the code, not something a stranger verifies from this record: it makes code identity comparable, not checkable; only a witnessed or countersigned build identity is checkable.",
+          "$ref": "#/$defs/Implementation"
+        },
         "contract_ref": { "$ref": "#/$defs/ContractRef" }
       },
       "allOf": [

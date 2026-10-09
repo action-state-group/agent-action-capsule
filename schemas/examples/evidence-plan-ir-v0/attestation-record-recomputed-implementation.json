@@ -1,0 +1,26 @@
+{
+  "adjudicator": {
+    "id": "example-org-evidence-responder-v0"
+  },
+  "contract_ref": "ec:example-org-outcome-eval:2026-09-22@1",
+  "implementation": {
+    "captured_at": "2026-09-22T00:00:00Z",
+    "code_digest": {
+      "alg": "git-tree",
+      "value": "fe57ab4527f52d67a17f1cfbbe3a68ec352c684c1d80810060eb63c8ecf32087"
+    },
+    "grade": "self-attested",
+    "name": "example-org-evidence-responder"
+  },
+  "inputs": [
+    {
+      "digest": "1f93a2924124c5e43d23aab3d314d68a5d207f918379574ff5ad33482b4cccda",
+      "digest_alg": "SHA-256"
+    }
+  ],
+  "operator": "evidence.request_answer",
+  "policy_digest": {
+    "digest": "e7ab9ad817e80bfa2ed1527422ecbdfef83ffb0a441a73a5d3cd18cf6babedb8",
+    "digest_alg": "SHA-256"
+  }
+}

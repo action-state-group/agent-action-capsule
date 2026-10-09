@@ -141,6 +141,28 @@ The walk also applies the CONTESTED-is-never-met rule to the **recomputed** stat
 read `CONTESTED` with `verdict: met` fails), so relabelling the asserted state cannot rescue `met`; the
 schema half of that rule is `neg-close-contested-verdict-met` above.
 
+## Code identity on recomputed claims (spec §1.1, §3.1)
+
+Every `recomputed` claim in the fixtures above carries `implementation`: which code computed it, by
+git commit id (40 hex, the SHA-1 of a fixed synthetic note, so it names no real repository). These
+fixtures are unreleased regenerations; the 0.6.0 release bytes are unchanged in the `v0.6.0` tag.
+Every fixture code identity is `grade: self-attested`: comparable, not checkable. Only a
+`witnessed` or `countersigned` build identity is checkable.
+
+| File | Mutation | What rejects it |
+|---|---|---|
+| `pos-example-org-recomputed-code-identity-result.json` | the claims positive, claim-3 named by a 64-hex git **tree** id; `coverage.producer_defects` = 1 withheld of 3 recomputed rows attempted | validates |
+| `neg-recomputed-code-identity-version-string.json` | claim-1 `code_digest.value` = `"0.0.1"` | `CodeDigest`: 40/64 lowercase hex only. Mutant: the hex pattern widened to any string |
+| `neg-recomputed-code-identity-missing.json` | recomputed claim-1 with no `implementation` | the `Claim.allOf` rule "A recomputed claim names its code". Mutant: that rule stripped |
+| `neg-recomputed-code-identity-unknown.json` | claim-1 `code_digest` = `{alg: unknown, value: unknown}` | the same rule: `unknown` never supports `recomputed`. Same mutant |
+| `neg-recomputed-code-identity-grade-missing.json` | claim-1 `implementation` without `grade` | `Implementation.required`. Mutant: `grade` dropped from it |
+| `neg-code-identity-unknown-countersigned.json` | the judged claim-2 given `{alg: unknown}` with `grade: countersigned` | `Implementation`'s rule: an unknown identity is `self-attested` only. Mutant: that rule stripped |
+| `neg-producer-defects-count-over-denominator.json` | `producer_defects.count` 4 of `denominator` 3 | schema-valid; the checker rejects count > denominator. Mutant: comparison skipped |
+
+A configuration digest reused as the code digest is checked on the Plan IR attestation record,
+where both fields sit together
+(`schemas/examples/evidence-plan-ir-v0/invalid-attestation-code-digest-is-policy-digest.json`).
+
 ## Reproducing the validation run
 
 ```
