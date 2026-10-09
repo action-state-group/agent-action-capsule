@@ -3,14 +3,18 @@ import { verifyProducerEnvelope } from "./producer-envelope-verification.js";
 import { hexToBytes } from "./producer-envelope-wire.js";
 import { computeCapsuleId, decodeCapsuleJson } from "./verify.js";
 import {
+  disclosureOf,
+  verifiedBundleContext,
+  verifiedPayload,
+  type VerifiedBundleContext,
+} from "./bundle.js";
+import {
   asString,
   committedDigest,
-  disclosurePayload,
   EvidenceGraphError,
   isObject,
   logCoordinates,
   recordTimes,
-  resolveDisclosure,
   type DisclosureField,
   type DisclosureResolution,
   type ObjectValue,
@@ -775,12 +779,11 @@ function closeBody(
  * digest, contributes nothing.
  */
 async function inboundCloseLinks(
-  records: readonly RecordWithId[],
-  disclosures: ObjectValue,
+  context: VerifiedBundleContext,
 ): Promise<ReadonlyMap<string, readonly CloseLink[]>> {
   const inbound = new Map<string, CloseLink[]>();
-  for (const record of records) {
-    const header = await disclosurePayload(record, disclosures, "agent_input");
+  for (const record of context.records) {
+    const header = verifiedPayload(context, record.capsule_id, "agent_input");
     if (!isObject(header) || !Array.isArray(header.links)) continue;
     const bookId = asString(header.book_id);
     const signer = await signerOf(record);
@@ -940,21 +943,21 @@ interface CarriedResult {
  * "evidence_result"` -- the document is then its `statement`, taken as
  * written. Neither member carrying one means the root is not a Result root.
  */
-async function resultDocument(
+function resultDocument(
+  context: VerifiedBundleContext,
   root: RecordWithId,
-  disclosures: ObjectValue,
-): Promise<CarriedResult | undefined> {
-  return (await resultCarriers(root, disclosures))[0];
+): CarriedResult | undefined {
+  return resultCarriers(context, root)[0];
 }
 
 /** Every disclosed member of `record` that carries a Result v0, in `agent_output`, `agent_input` order. */
-async function resultCarriers(
+function resultCarriers(
+  context: VerifiedBundleContext,
   record: RecordWithId,
-  disclosures: ObjectValue,
-): Promise<CarriedResult[]> {
+): CarriedResult[] {
   const carriers: CarriedResult[] = [];
   for (const member of ["agent_output", "agent_input"] as const) {
-    const payload = await disclosurePayload(record, disclosures, member);
+    const payload = verifiedPayload(context, record.capsule_id, member);
     if (!isObject(payload)) continue;
     if (payload.result_version === RESULT_VERSION)
       carriers.push({ member, form: "payload", document: payload });
@@ -971,11 +974,11 @@ async function resultCarriers(
  * What the root does carry, for the error that says it is not a Result:
  * a book record header of some other `record_type`, or nothing named.
  */
-async function nonResultDescription(
+function nonResultDescription(
+  context: VerifiedBundleContext,
   root: RecordWithId,
-  disclosures: ObjectValue,
-): Promise<string> {
-  const header = await disclosurePayload(root, disclosures, "agent_input");
+): string {
+  const header = verifiedPayload(context, root.capsule_id, "agent_input");
   const recordType = isObject(header) ? header.record_type : undefined;
   return typeof recordType === "string"
     ? `agent_input is a book record header of record_type ${JSON.stringify(recordType)}, not ${JSON.stringify(RESULT_RECORD_TYPE)}`
@@ -990,22 +993,24 @@ async function nonResultDescription(
  * the document (in book form, the header's `statement`) is well-formed;
  * `buildResultRoot` decides that and throws when it is not.
  */
-export async function isResultRoot(bundle: unknown): Promise<boolean> {
+export async function isResultRoot(
+  context: VerifiedBundleContext,
+): Promise<boolean>;
+export async function isResultRoot(bundle: unknown): Promise<boolean>;
+export async function isResultRoot(input: unknown): Promise<boolean> {
+  const context = await verifiedBundleContext(input);
+  const bundle = context.bundle;
   if (
     !isObject(bundle) ||
     !Array.isArray(bundle.records) ||
     !isObject(bundle.disclosures)
   )
     return false;
-  const root = asString(bundle.root);
-  const record = bundle.records.find(
-    (candidate): candidate is RecordWithId =>
-      isObject(candidate) && candidate.capsule_id === root,
-  );
-  return (
-    record !== undefined &&
-    (await resultDocument(record, bundle.disclosures)) !== undefined
-  );
+  const record =
+    context.root === undefined
+      ? undefined
+      : context.recordIndex.get(context.root);
+  return record !== undefined && resultDocument(context, record) !== undefined;
 }
 
 /** The evidence-book bundle extension that carries a disclosed record's payloads, keyed by payload commitment (SHA-256 of the exact bytes), each base64url without padding. */
@@ -1052,7 +1057,7 @@ async function verifiedBookPayload(
  * `evidencebook/payloads` extension. `undefined` when `header` is not such a
  * record's header. Every link is checked, none is taken on the producer's
  * word: the header (already matched to the record's committed digest by
- * `resolveDisclosure`) commits to the carried capsule's bytes as its first
+ * the verifier, via the context's resolved disclosures) commits to the carried capsule's bytes as its first
  * payload; those bytes must hash to that commitment, decode as a capsule whose
  * recomputed capsule id equals both its stated `capsule_id` and the header's
  * `subject_ref`; and an original is `disclosed` only when some other payload
@@ -1173,27 +1178,37 @@ export async function resolveCarriedInput(
  * `recognized: false`, and a claim whose evidence is not in the bundle is
  * carried as `unsupported`.
  */
-export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
+export async function buildResultRoot(
+  context: VerifiedBundleContext,
+): Promise<ResultRoot>;
+export async function buildResultRoot(bundle: unknown): Promise<ResultRoot>;
+export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
+  const context = await verifiedBundleContext(input);
+  const bundle = context.bundle;
   if (
     !isObject(bundle) ||
     !Array.isArray(bundle.records) ||
     !isObject(bundle.disclosures)
   )
     throw new EvidenceGraphError("bundle must contain records and disclosures");
-  const disclosures = bundle.disclosures;
-  const records = bundle.records.filter(
-    (record): record is RecordWithId =>
-      isObject(record) && asString(record.capsule_id) !== undefined,
-  );
-  const root = asString(bundle.root);
-  const rootRecord = records.find((record) => record.capsule_id === root);
+  const records = context.records;
+  const rootRecord =
+    context.root === undefined
+      ? undefined
+      : context.recordIndex.get(context.root);
   if (rootRecord === undefined)
-    throw new EvidenceGraphError("root record not supplied");
-  const rootCarriers = await resultCarriers(rootRecord, disclosures);
+    throw new EvidenceGraphError(
+      bundle.records.some(
+        (record) => isObject(record) && record.capsule_id === context.root,
+      )
+        ? "root record failed verification"
+        : "root record not supplied",
+    );
+  const rootCarriers = resultCarriers(context, rootRecord);
   const carried = rootCarriers[0];
   if (carried === undefined)
     throw new EvidenceGraphError(
-      `root is not a Result v0: ${await nonResultDescription(rootRecord, disclosures)}`,
+      `root is not a Result v0: ${nonResultDescription(context, rootRecord)}`,
     );
   // One headline document per root (2026-09-28): the root carries exactly
   // one Result v0, in one member, and no other record in the bundle
@@ -1204,10 +1219,7 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
     );
   const otherCarriers: string[] = [];
   for (const record of records)
-    if (
-      record !== rootRecord &&
-      (await resultCarriers(record, disclosures)).length > 0
-    )
+    if (record !== rootRecord && resultCarriers(context, record).length > 0)
       otherCarriers.push(record.capsule_id);
   if (otherCarriers.length > 0)
     throw new EvidenceGraphError(
@@ -1229,14 +1241,8 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
     );
   const document = carried.document as ObjectValue;
 
-  const memberships = isObject(bundle.completeness_certificate)
-    ? isObject(bundle.completeness_certificate.memberships)
-      ? bundle.completeness_certificate.memberships
-      : {}
-    : {};
-  const recordsById = new Map(
-    records.map((record) => [record.capsule_id, record]),
-  );
+  const memberships = context.completeness.memberships;
+  const recordsById = context.recordIndex;
   const bookPayloads =
     isObject(bundle.extensions) &&
     isObject(bundle.extensions[BOOK_PAYLOADS_EXTENSION])
@@ -1261,19 +1267,13 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
     if (carriersById === undefined) {
       carriersById = new Map();
       for (const record of records) {
-        const entry = disclosures[record.capsule_id];
+        const header = disclosureOf(context, record.capsule_id, "agent_input");
         if (
-          !isObject(entry) ||
-          !isObject(entry.agent_input) ||
-          entry.agent_input.record_type !== PUBLISHED_CAPSULE_RECORD_TYPE
+          header.state !== "disclosed" ||
+          !isObject(header.payload) ||
+          header.payload.record_type !== PUBLISHED_CAPSULE_RECORD_TYPE
         )
           continue;
-        const header = await resolveDisclosure(
-          record,
-          disclosures,
-          "agent_input",
-        );
-        if (header.state !== "disclosed" || !isObject(header.payload)) continue;
         const subject = header.payload.subject_ref;
         if (isHex64(subject) && !recordsById.has(subject))
           carriersById.set(subject, record);
@@ -1294,11 +1294,7 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
     const coordinates = logCoordinates(memberships, record.capsule_id);
     const agentInputDigest = committedDigest(record, "agent_input");
     const agentOutputDigest = committedDigest(record, "agent_output");
-    const agentInput = await resolveDisclosure(
-      record,
-      disclosures,
-      "agent_input",
-    );
+    const agentInput = disclosureOf(context, record.capsule_id, "agent_input");
     const carriedInput =
       agentInput.state === "disclosed"
         ? await resolveCarriedInput(
@@ -1329,7 +1325,7 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
             agentInput.payload.record_type === PUBLISHED_CAPSULE_RECORD_TYPE
           ? {}
           : { stated: statedTimes(record) }),
-      agentOutput: await resolveDisclosure(record, disclosures, "agent_output"),
+      agentOutput: disclosureOf(context, record.capsule_id, "agent_output"),
       ...(agentInputDigest === undefined ? {} : { agentInputDigest }),
       ...(agentOutputDigest === undefined ? {} : { agentOutputDigest }),
       ...(coordinates === undefined ? {} : { logCoordinates: coordinates }),
@@ -1343,7 +1339,7 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
     (raw) => raw.type === CLOSE_CLAIM,
   );
   const inbound = hasCloseClaim
-    ? await inboundCloseLinks(records, disclosures)
+    ? await inboundCloseLinks(context)
     : new Map<string, readonly CloseLink[]>();
 
   const claims: ResultClaim[] = [];
@@ -1381,7 +1377,7 @@ export async function buildResultRoot(bundle: unknown): Promise<ResultRoot> {
       const closeHeader =
         closeRecord === undefined
           ? undefined
-          : await disclosurePayload(closeRecord, disclosures, "agent_input");
+          : verifiedPayload(context, closeRecord.capsule_id, "agent_input");
       const closeBookId = isObject(closeHeader)
         ? asString(closeHeader.book_id)
         : undefined;

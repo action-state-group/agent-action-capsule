@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- TypeScript: `VerifiedBundleContext` (`buildVerifiedBundleContext`) verifies a bundle once and is
+  what every builder reads. `buildReportRows`, `buildResultRoot`, `isResultRoot`,
+  `buildEvidenceGraph` and `renderEvidenceGraph` take a context (new overload; the `(bundle)`
+  form still works and builds one); the 24 per-builder disclosure re-resolution sites are gone and
+  a payload reaches a builder only when `verifyBundle` classified it `disclosure_match`.
+  `renderEvidenceGraph` reads the countersigner list from the context when no third argument is
+  passed. Rendered output is byte-identical for every fixture. Called directly, a builder no
+  longer reads a record whose capsule_id does not recompute (it previously could).
+- TypeScript: a `VerifiedBundleContext` is effectively immutable. It is built over the library's
+  own copy of the bundle and its whole object graph (verification result, `resolvedDisclosures`,
+  records and `recordIndex`, countersignatures and the countersigner list, extensions,
+  completeness) is frozen; the two maps are read-only views. Code that tries to change any of it
+  throws, and every later reader sees what the verifier produced. The caller's bundle and
+  countersigner list are copied, not frozen. Payload objects a builder returns from the context
+  are the frozen ones.
+
 ## 0.7.0 — 2026-10-07
 
 **Headline: string-typed fields are type-checked in every verifier.** A list, an object or a

@@ -1,4 +1,9 @@
-import { isHex64, jsonDigest } from "./json.js";
+import {
+  disclosureOf,
+  verifiedBundleContext,
+  verifiedPayload,
+  type VerifiedBundleContext,
+} from "./bundle.js";
 
 /**
  * How a record's disclosable member resolved against the bundle overlay:
@@ -252,45 +257,6 @@ export interface DisclosureResolution {
   readonly payload?: unknown;
 }
 
-/**
- * Resolve one disclosable member of a record from the bundle's disclosure
- * overlay. The overlay is keyed by `capsule_id` (Evidence Bundle spec,
- * "Bundle-Level Disclosures"); a payload digest is never a lookup key, so a
- * supplied entry under some other name is simply not this record's
- * disclosure. A supplied value is accepted only when its JSON-DIGEST equals
- * the digest the record itself committed to -- the same DE-3 rule the bundle
- * verifier applies -- so a forged or edited value never leaves this function
- * as a payload: it resolves to `disclosure_mismatch` and the view shows the
- * committed digest instead.
- */
-export const resolveDisclosure = async (
-  record: RecordWithId,
-  disclosures: ObjectValue,
-  field: DisclosureField,
-): Promise<DisclosureResolution> => {
-  const entry = disclosures[record.capsule_id];
-  if (!isObject(entry) || !Object.hasOwn(entry, field))
-    return { state: "withheld" };
-  const committed = committedDigest(record, field);
-  if (isHex64(committed)) {
-    try {
-      if ((await jsonDigest(entry[field])) === committed)
-        return { state: "disclosed", payload: entry[field] };
-    } catch {
-      /* a value JCS cannot render cannot be the committed preimage */
-    }
-  }
-  return { state: "disclosure_mismatch" };
-};
-
-/** The verified payload for a member, or undefined when withheld or mismatched. */
-export const disclosurePayload = async (
-  record: RecordWithId,
-  disclosures: ObjectValue,
-  field: DisclosureField,
-): Promise<unknown> =>
-  (await resolveDisclosure(record, disclosures, field)).payload;
-
 export const logCoordinates = (
   memberships: ObjectValue,
   capsuleId: string,
@@ -344,9 +310,22 @@ const committedDigests = (
   };
 };
 
+/**
+ * Build the evaluation-summary/v1 graph. Every payload is read from the
+ * context's verifier-resolved disclosures; the legacy `(bundle)` form
+ * verifies the bundle once and reads from that context.
+ */
+export async function buildEvidenceGraph(
+  context: VerifiedBundleContext,
+): Promise<EvidenceGraph>;
 export async function buildEvidenceGraph(
   bundle: unknown,
+): Promise<EvidenceGraph>;
+export async function buildEvidenceGraph(
+  input: unknown,
 ): Promise<EvidenceGraph> {
+  const context = await verifiedBundleContext(input);
+  const bundle = context.bundle;
   if (
     !isObject(bundle) ||
     !Array.isArray(bundle.records) ||
@@ -354,21 +333,24 @@ export async function buildEvidenceGraph(
   ) {
     throw new EvidenceGraphError("bundle must contain records and disclosures");
   }
-  const disclosures = bundle.disclosures;
-  const records = bundle.records.filter(
-    (record): record is RecordWithId =>
-      isObject(record) && asString(record.capsule_id) !== undefined,
-  );
-  const root = asString(bundle.root);
-  const rootRecord = records.find((record) => record.capsule_id === root);
+  const records = context.records;
+  const rootRecord =
+    context.root === undefined
+      ? undefined
+      : context.recordIndex.get(context.root);
   if (rootRecord === undefined) {
-    throw new EvidenceGraphError("root aggregate payload not disclosed");
+    // A supplied root the verifier rejected discloses nothing to read.
+    throw new EvidenceGraphError(
+      bundle.records.some(
+        (record) => isObject(record) && record.capsule_id === context.root,
+      )
+        ? "root aggregate payload is not disclosed"
+        : "root aggregate payload not disclosed",
+    );
   }
-  const rootPayload = await disclosurePayload(
-    rootRecord,
-    disclosures,
-    "agent_input",
-  );
+  const payloadOf = (record: RecordWithId): unknown =>
+    verifiedPayload(context, record.capsule_id, "agent_input");
+  const rootPayload = payloadOf(rootRecord);
   if (
     !isObject(rootPayload) ||
     rootPayload.spec_version !== "evaluation-summary/v1"
@@ -376,11 +358,7 @@ export async function buildEvidenceGraph(
     throw new EvidenceGraphError("root aggregate payload is not disclosed");
   }
 
-  const memberships = isObject(bundle.completeness_certificate)
-    ? isObject(bundle.completeness_certificate.memberships)
-      ? bundle.completeness_certificate.memberships
-      : {}
-    : {};
+  const memberships = context.completeness.memberships;
   const aggregate: SummaryNode = {
     capsuleId: rootRecord.capsule_id,
     ...(asString(rootPayload.cross_case_aggregation) === undefined
@@ -406,9 +384,7 @@ export async function buildEvidenceGraph(
       : {}),
   };
 
-  const recordsById = new Map(
-    records.map((record) => [record.capsule_id, record]),
-  );
+  const recordsById = context.recordIndex;
   const reportIds = new Set<string>();
   const visitedSummaries = new Set<string>();
   const collectReports = async (record: RecordWithId): Promise<void> => {
@@ -417,11 +393,7 @@ export async function buildEvidenceGraph(
     for (const id of actedOnReferences(record)) {
       const referenced = recordsById.get(id);
       if (referenced === undefined) continue;
-      const payload = await disclosurePayload(
-        referenced,
-        disclosures,
-        "agent_input",
-      );
+      const payload = payloadOf(referenced);
       if (!isObject(payload)) continue;
       if (payload.spec_version === "evaluation-report/v1") reportIds.add(id);
       else if (payload.spec_version === "evaluation-summary/v1")
@@ -433,7 +405,7 @@ export async function buildEvidenceGraph(
   const reports: ReportNode[] = [];
   for (const reportId of reportIds) {
     const record = recordsById.get(reportId)!;
-    const payload = await disclosurePayload(record, disclosures, "agent_input");
+    const payload = payloadOf(record);
     if (!isObject(payload) || payload.spec_version !== "evaluation-report/v1")
       continue;
     const date = asString(payload.date);
@@ -444,14 +416,10 @@ export async function buildEvidenceGraph(
     for (const actId of actedOnReferences(record)) {
       const actRecord = recordsById.get(actId);
       if (actRecord === undefined) continue;
-      const input = await resolveDisclosure(
-        actRecord,
-        disclosures,
-        "agent_input",
-      );
-      const output = await resolveDisclosure(
-        actRecord,
-        disclosures,
+      const input = disclosureOf(context, actRecord.capsule_id, "agent_input");
+      const output = disclosureOf(
+        context,
+        actRecord.capsule_id,
         "agent_output",
       );
       const inputCase =
@@ -606,7 +574,7 @@ export async function buildEvidenceGraph(
       continue;
     const reportId = asString(record.chain.parent_capsule_id);
     if (reportId === undefined) continue;
-    const payload = await disclosurePayload(record, disclosures, "agent_input");
+    const payload = payloadOf(record);
     const ratingVerdict = isObject(payload)
       ? verdict(payload.verdict)
       : undefined;
@@ -622,7 +590,7 @@ export async function buildEvidenceGraph(
   }
   let calibration: CalibrationNode | undefined;
   for (const record of records) {
-    const payload = await disclosurePayload(record, disclosures, "agent_input");
+    const payload = payloadOf(record);
     if (!isObject(payload) || payload.spec_version !== "calibration-summary/v1")
       continue;
     calibration = {
