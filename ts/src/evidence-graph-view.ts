@@ -91,6 +91,7 @@ import {
   FAILED_ON_THIS_PAGE,
   FULL_VERIFIER_LINE,
   NOT_CHECKED_ON_THIS_PAGE,
+  RECEIPT_GRADE_DISPLAY,
   verificationCheckWords,
   type VerificationCheckLists,
   type CheckSummary,
@@ -259,10 +260,7 @@ function renderSignerStatement(
   });
   item.append(checks);
   if (statement.receipt === "unverified") {
-    const receipt = element(
-      "p",
-      "receipt present, not verified by this viewer",
-    );
+    const receipt = element("p", "receipt present, not checked by this viewer");
     receipt.dataset.countersignReceipt = "unverified";
     item.append(receipt);
   }
@@ -301,7 +299,10 @@ function renderReceipts(
   }
   const list = element("ul");
   receipts.forEach((receipt) => {
-    const item = element("li", `${receipt.witness} · ${receipt.grade} · `);
+    const item = element(
+      "li",
+      `${receipt.witness} · ${RECEIPT_GRADE_DISPLAY[receipt.grade]} · `,
+    );
     item.append(renderTime(receipt.time));
     list.append(item);
   });

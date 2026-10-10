@@ -526,10 +526,15 @@ The words are the core's own fixed text. A host MAY supply its own text for runn
 verifier (for example a command line); it is presentation only, shown as text after the
 pointer, and it changes no list. Nothing from the bundle reaches the lists' words.
 
-Two word rules hold for the lists and the lines around them:
+Two word rules hold for all of the verification page's own text: the lists, the lines around
+them and every other row (check names, receipt and countersignature lines). Values the page
+shows from the bundle, such as a witness name or a countersigner's statement, are data, not the
+page's words.
 
 - **"Verified" is used only for a check the page ran.** A line for a check that is not run
-  here never calls it verified.
+  here never calls it verified. A witness receipt this runtime does not check shows its grade
+  as claimed and not checked here (for example "consistency claimed (not checked here)"); the
+  grade value itself is unchanged.
 - **No line says "identity" or "freshness".** None of these checks establishes who produced the
   records or that the file is the most recent copy, and the page says so in those plain words.
 
