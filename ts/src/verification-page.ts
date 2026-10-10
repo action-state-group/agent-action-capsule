@@ -24,6 +24,17 @@ export interface CheckSummary {
 /** A receipt's grade WORD, read from the receipt header -- never a client-ladder word. */
 export type ReceiptGradeWord = "consistency-verified" | "existence-and-time";
 
+/**
+ * How the verification page shows a receipt's grade. This runtime does not
+ * check witness receipts, so the shown text says the grade is the receipt's
+ * claim and never calls it verified. The grade word itself is unchanged.
+ */
+export const RECEIPT_GRADE_DISPLAY: Readonly<Record<ReceiptGradeWord, string>> =
+  Object.freeze({
+    "consistency-verified": "consistency claimed (not checked here)",
+    "existence-and-time": "existence and time claimed (not checked here)",
+  });
+
 export interface ReceiptEntry {
   readonly witness: string;
   readonly grade: ReceiptGradeWord;
@@ -573,7 +584,7 @@ export function verificationCheckLists(
 }
 
 export const VERIFY_INDEPENDENTLY_LINE =
-  "verify independently at verify.agentactioncapsule.org or with the CLI";
+  "verify independently at verify.agentactioncapsule.org or with a full verifier";
 
 const FIVE_WORD_RESULT: Readonly<Record<CheckStatus, string>> = Object.freeze({
   pass: "passed with no errors found",
@@ -678,7 +689,7 @@ export function buildVerificationPageModel(
       capsuleGroupStatus(verified.capsuleResults, [1]),
     ),
     summarize(
-      "Capsule identity",
+      "Capsule ID matches contents",
       capsuleGroupStatus(verified.capsuleResults, [2]),
     ),
     summarize(

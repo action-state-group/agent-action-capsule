@@ -321,6 +321,80 @@ describe("the lists' words", () => {
     }
   });
 
+  // The whole panel, every row: the core's own text never says "identity"
+  // or "freshness", and says "verified" only of a check this page ran. The
+  // only such lines are the cited-signers item (the page checked those
+  // signatures) and the extension integrity cell, whose words the contract
+  // fixes (section 3.2): "Integrity verified" when the bundle digest covering
+  // the block was computed here, "Integrity not verified" when it could not
+  // be. The fixtures carry no such word in their own data (witness names,
+  // countersigner check names), so every hit would be the core's text.
+  it("on every row of the rendered panel: no banned word, and verified only for a check the page ran", async () => {
+    const countersigned = await derivedFixture(
+      "week-bundle-directory-countersigned.json",
+    );
+    const [entry] = countersigned.countersignatures as Obj[];
+    const witnessed = (bundle: Obj): Obj => ({
+      ...bundle,
+      receipts: [
+        {
+          witness: "witness-a.example",
+          grade: "mmr-verified",
+          time: "2026-09-15T00:00:00Z",
+        },
+        {
+          witness: "witness-b.example",
+          grade: "countersigned-observed",
+          time: "2026-09-15T01:00:00Z",
+        },
+      ],
+    });
+    const bundles: unknown[] = [
+      await sealed("result-root-close-bundle.json"),
+      witnessed(await sealed("result-root-bundle.json")),
+      await sealed("outcome-report-bundle.json"),
+      await sealed("compliance-bundle.json"),
+      testdata("result-root-close-bundle.json"),
+      {
+        ...countersigned,
+        countersignatures: [
+          { ...entry, receipt: { witness: "witness-a.example" } },
+          { type: "x-other-countersign/v1", signature: "00" },
+        ],
+      },
+      signedCheckpointBundle(),
+      vector("minimum-necessary", "bundle-mismatch", "input.json").bundle,
+      ...(vector("bundle", "composed", "vectors.json").cases as Obj[]).map(
+        (c) => c.container,
+      ),
+    ];
+    const allowed = (node: Element, text: string): boolean =>
+      node.closest(
+        'ul[data-checks="page"] > li[data-check="cited-signers"]',
+      ) !== null ||
+      (node.closest("table[data-extensions] td") !== null &&
+        /^Integrity (?:not )?verified;/u.test(text));
+    let rows = 0;
+    for (const bundle of bundles) {
+      const { root } = await show(bundle);
+      const panel = root.querySelector('[data-page="verification"]')!;
+      for (const node of panel.querySelectorAll("*")) {
+        // Each element's own text, not its children's.
+        const text = Array.from(node.childNodes)
+          .filter((child) => child.nodeType === 3)
+          .map((child) => child.textContent ?? "")
+          .join("");
+        if (text.trim() === "") continue;
+        rows += 1;
+        expect(text).not.toMatch(/\b(?:identity|freshness|fresh)\b/iu);
+        if (/\bverified\b/iu.test(text))
+          expect(allowed(node, text), text).toBe(true);
+      }
+      expect(panel.textContent).not.toContain("consistency-verified");
+    }
+    expect(rows).toBeGreaterThan(100);
+  });
+
   it("a check id the lists know always has words", () => {
     const ids: readonly VerificationCheckId[] = VERIFICATION_CHECK_IDS;
     expect(Object.keys(VERIFICATION_CHECK_WORDS).sort()).toEqual(
