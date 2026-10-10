@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import { readCompliancePresentation } from "../src/compliance-presentation.js";
+import { NOT_STATED } from "../src/outcome-report.js";
 
 function bundle(block: unknown): unknown {
   return { extensions: { "eu-ai-act-compliance/v1": block } };
@@ -45,19 +46,22 @@ it("enabled but zero recognizable obligations reads as undefined", () => {
   ).toBeUndefined();
 });
 
-it("a well-formed block parses with its default regulation name", () => {
+it("a well-formed block with no regulation field reads it as NOT_STATED, never a filled-in guess", () => {
+  // Absent is never pass: the bundle itself never asserted this card's
+  // regulation, so it is reported as not stated rather than silently
+  // defaulted to the EU AI Act citation this card happens to be about today.
   const presentation = readCompliancePresentation(
     bundle({ enabled: true, obligations: [MINIMAL_OBLIGATION] }),
   )!;
   expect(presentation.enabled).toBe(true);
-  expect(presentation.regulation).toBe("Regulation (EU) 2024/1689");
+  expect(presentation.regulation).toBe(NOT_STATED);
   expect(presentation.obligations).toHaveLength(1);
   expect(presentation.obligations[0]!.rows[0]!.criterionId).toBe(
     "art5.no_manipulation_or_deception",
   );
 });
 
-it("an explicit regulation string overrides the default", () => {
+it("an explicit regulation string is read as stated", () => {
   const presentation = readCompliancePresentation(
     bundle({
       enabled: true,
