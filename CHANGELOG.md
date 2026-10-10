@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Registry §3 (`effect.type`): four values held for ratification, not yet registered:
+  `make_offer`, `accept_agreement`, `cancel_commitment` and `sign_document`, each defined as the
+  effect an agent's action commits for the party it acts for, with the meaning of
+  `request_digest`, `response_digest` and a `confirmed` status. They are listed as provisional
+  and the registry loaders do not read them as registered; a verifier treats them as
+  unregistered values (informational, never a rejection) until the Internet-Draft carries them.
 - TypeScript: `VerifiedBundleContext` (`buildVerifiedBundleContext`) verifies a bundle once and is
   what every builder reads. `buildReportRows`, `buildResultRoot`, `isResultRoot`,
   `buildEvidenceGraph` and `renderEvidenceGraph` take a context (new overload; the `(bundle)`

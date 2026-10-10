@@ -50,6 +50,23 @@ def test_seeded_values_exact_membership_and_count():
         assert loaded == expected, f"{name}: {loaded ^ expected}"
 
 
+PROVISIONAL_EFFECT_TYPES = {"make_offer", "accept_agreement", "cancel_commitment", "sign_document"}
+
+
+def test_provisional_effect_types_are_documented_but_not_seeded():
+    """§3's held-for-ratification values are listed as bullets, not table rows,
+    so the loader does not read them as registered until they are ratified."""
+    from agent_action_capsule import registries as _r
+
+    text = _r.find_registry_md().read_text(encoding="utf-8")
+    section = text.split("## 3. `effect.type`", 1)[1].split("\n## 4.", 1)[0]
+    provisional = section.split("### Provisional: commitment effect types", 1)[1]
+    assert "Held for ratification; not yet registered." in provisional
+    for value in PROVISIONAL_EFFECT_TYPES:
+        assert f"- `{value}`: " in provisional, value
+    assert not PROVISIONAL_EFFECT_TYPES & set(load_registries()["effect.type"])
+
+
 def test_chain_relation_includes_confirms_and_supersedes():
     assert set(load_registries()["chain.relation"]) == {"follows", "confirms", "supersedes", "epoch_opens", "duplicates"}
 
