@@ -39,7 +39,7 @@ company name.
 
 ## 0. The family-wide citation convention
 
-Every record in this family cites what it read by digest, with a `citation_purpose` stating why —
+Every record in this family cites what it read by digest, with a `judge_purpose` stating why —
 never a bare digest and never inline bytes:
 
 ```
@@ -47,13 +47,44 @@ citation:
   type: string               # the cited artifact/record type, open token
   digest_alg: "SHA-256"
   digest: <64-hex>
-  citation_purpose: string    # open token stating why this record cites the target
+  judge_purpose: string      # why this record cites the target; a judge_purpose value (below)
 ```
 
-Each schema below fixes `citation_purpose` to a specific constant per field (`compiles_contract`,
-`grounds`, `method`, `approves`, ...) rather than leaving it free at each call
-site — a reader can tell what a citation is for from the field's own schema, not from trusting the
-string a producer happened to write.
+Each schema below fixes `judge_purpose` to a specific constant per field rather than leaving it
+free at each call site — a reader can tell what a citation is for from the field's own schema, not
+from trusting the string a producer happened to write.
+
+**The `judge_purpose` namespace.** This document owns `judge_purpose` and its values. The values
+are exactly these, per record shape, and a new value is added only by a revision of this document
+that names the record shape and field it belongs to:
+
+| Record shape | Field | `judge_purpose` |
+|---|---|---|
+| `contract-compile/v1` (§1) | `contract` | `compiles_contract` |
+| `contract-compile/v1` (§1) | `compiled_skill[]` | `compiled_skill` |
+| `contract-compile/v1` (§1) | `human_approval` | `approves` |
+| `evaluation-report/v1` (§2) | `cases[].acts[]` | `grounds` |
+| `evaluation-report/v1` (§2) | `cases[].method` | `method` |
+| `sample-manifest/v1` (§4) | `policy` | `sampling_policy` |
+| `human-rating/v1` (§5) | `case` | `rated_case` |
+| `adjudication/v1` (§6) | `parties[]` | `adjudicated_party` |
+| `adjudication/v1` (§6) | `referee` | `referee` |
+| `adjudication-response/v1` (§7) | `adjudication` | `responds_to` |
+| `calibration-summary/v1` (§8) | `judge_pin` | `calibrates` |
+
+`judge_purpose` is **not** the Agent Action Capsule's `citation_purpose` (the `references[]` field
+whose values are registered in REGISTRY.md §11), and none of these values is registered there.
+It is also not an Evidence Layer link type (§0a; REGISTRY.md §18) and not a `chain.relation`
+(REGISTRY.md §6). A judge-record citation never carries a `citation_purpose` member: every
+`Citation` object is closed (`additionalProperties: false`), so one is rejected, and §0's check
+proves that rejection with its own mutant. Where a token is spelled the same on two axes
+(`responds_to` is both a `judge_purpose` value here and a registered Capsule `citation_purpose`),
+each axis's meaning is fixed by its own owner and neither is read as the other.
+
+*(History: through v0.6.0 these citations carried the field name `citation_purpose` with the same
+values, which put nine unregistered tokens on the Capsule axis. Ruled 2026-10-04: the judge family
+gets its own namespace instead of registering them. Released vectors in the old shape are never
+rewritten; the current fixtures under `vectors/judge/` use `judge_purpose`.)*
 
 Every schema also fixes `epistemic_type` to exactly one value (a `const`, never an `enum`) — the
 epistemic type is a property of the *record shape*, not a per-instance choice. §0's own check,
@@ -66,12 +97,12 @@ Evidence Layer's set must agree, with its own mutant check.
 
 A link from one evidence record to another, in the sense of the Evidence Layer's "Typed Links"
 (`draft-mih-agent-evidence-layer-00.md`; REGISTRY.md §18 "Evidence Layer link type"), is **not** a
-citation in the §0 sense and never takes a `citation_purpose`. The two axes answer different
+citation in the §0 sense and never takes a `judge_purpose` or a `citation_purpose`. The two axes answer different
 questions: a §0 citation says why this record read the target's bytes; an Evidence Layer link is a
 typed relationship between two committed records of an evidence store, from the closed six-token
 link vocabulary (`cites`, `adjudicates`, `supersedes`, `acknowledges`, `rebuts`, `closes`). A
-Capsule's `citation_purpose` (REGISTRY.md §11) and `chain.relation` (§6) are a third and fourth axis,
-and no link type is ever written into either.
+judge record's `judge_purpose` (§0), a Capsule's `citation_purpose` (REGISTRY.md §11) and `chain.relation`
+(§6) are further axes, and no link type is ever written into any of them.
 
 The Evidence Layer draft carries links in its record header (`links: [ {type, target} ]`) but does
 not define how they are carried on a record outside that header shape. Until a published spec
@@ -106,9 +137,9 @@ contract-compile:
   epistemic_type: "producer_claim"
   compiled_at: date-time
   contract_ref: <contract_id>@<version>
-  contract: citation                # citation_purpose: compiles_contract
-  compiled_skill: [citation, ...]   # citation_purpose: compiled_skill, >=1
-  human_approval: citation          # citation_purpose: approves — REQUIRED, not optional
+  contract: citation                # judge_purpose: compiles_contract
+  compiled_skill: [citation, ...]   # judge_purpose: compiled_skill, >=1
+  human_approval: citation          # judge_purpose: approves — REQUIRED, not optional
 ```
 
 A Contract Compile with no `human_approval` citation is not a legal record in this family — the
@@ -134,8 +165,8 @@ evaluation-report:
   cases:
     - case_id: string
       verdict: met | not_met | not_evaluable   # owned by the Evidence Contract
-      acts: [citation, ...]         # citation_purpose: grounds, >=1
-      method: citation              # citation_purpose: method — REQUIRED
+      acts: [citation, ...]         # judge_purpose: grounds, >=1
+      method: citation              # judge_purpose: method — REQUIRED
 ```
 
 **This is the single-party case of `adjudication/v1`'s shape, not a parallel family.** A `Case`'s
@@ -203,7 +234,7 @@ sample-manifest:
   record_id: string
   epistemic_type: "producer_claim"
   generated_at: date-time
-  policy: citation                  # citation_purpose: sampling_policy
+  policy: citation                  # judge_purpose: sampling_policy
   stratification: { <stratum>: integer, ... }
   cases: [string, ...]              # case ids, >=1
 ```
@@ -220,7 +251,7 @@ human-rating:
   rated_at: date-time
   blind: true                       # fixed const — a non-blind rating is not this schema
   rater_ref: principal_ref          # opaque; never a name in this schema
-  case: citation                    # citation_purpose: rated_case
+  case: citation                    # judge_purpose: rated_case
   label: string
 ```
 
@@ -255,8 +286,8 @@ adjudication:
     axes_digest?: digest-ref
     weights_digest?: digest-ref
     sampling: { <param>: int | string | bool, ... }   # never a float
-  parties: [citation, ...]          # citation_purpose: adjudicated_party, 1-2 items
-  referee?: citation                # citation_purpose: referee
+  parties: [citation, ...]          # judge_purpose: adjudicated_party, 1-2 items
+  referee?: citation                # judge_purpose: referee
 ```
 
 `verdict: contradicted` is a fixed token; the *which party* half of mesh's own
@@ -279,7 +310,7 @@ adjudication-response:
   epistemic_type: "producer_claim"
   responded_at: date-time
   kind: delivery_receipt | ack | rebuttal
-  adjudication: citation            # citation_purpose: responds_to
+  adjudication: citation            # judge_purpose: responds_to
   verdict?: corroborated | inconclusive | contradicted   # REQUIRED for ack/rebuttal, PROHIBITED for delivery_receipt
   basis?: string                    # REQUIRED non-empty for rebuttal, PROHIBITED otherwise
 ```
@@ -304,7 +335,7 @@ calibration-summary:
   record_id: string
   epistemic_type: "derived_metric"
   computed_at: date-time
-  judge_pin: citation                # citation_purpose: calibrates
+  judge_pin: citation                # judge_purpose: calibrates
   clauses:
     - clause_ref: string
       agreement: { k: integer, n: integer }
@@ -330,7 +361,7 @@ table is the schema-level unification that convergence did not itself produce.
 | capsule-judge `judge_judgment.detail.prompt_digest`, `.model_id` | `evaluation-report/v1 judge_pin.prompt_digest`, `.model_id` | same names; `prompt_digest` becomes a `digest-ref` object, was a bare digest string |
 | capsule-judge `judge_judgment.detail.label` | `evaluation-report/v1 cases[].verdict` | renamed and revocabularied: `label` was an open string; `verdict` is the closed `met`/`not_met`/`not_evaluable` set owned by the Evidence Contract |
 | capsule-judge `judge_judgment.detail.confidence_micros` | *(no counterpart)* | a confidence figure has no field in this family — the same "never a score above the fold" discipline `evidence-result-v0.md` §3 rules; `calibration-summary/v1` reports k-of-n counts, never a confidence value |
-| capsule-judge `judge_judgment.detail.evidence.turn_capsule_ids[]` | `evaluation-report/v1 cases[].acts[]` | renamed and typed: bare ids become `citation` objects (`citation_purpose: grounds`), by digest only — the identical `evidenceIds` → digest-ref rename `evidence-result-v0.md` §9 already made for its own family |
+| capsule-judge `judge_judgment.detail.evidence.turn_capsule_ids[]` | `evaluation-report/v1 cases[].acts[]` | renamed and typed: bare ids become `citation` objects (`judge_purpose: grounds`), by digest only — the identical `evidenceIds` → digest-ref rename `evidence-result-v0.md` §9 already made for its own family |
 | capsule-judge `judge_judgment.detail.judge_pin.judge_pin_digest` | *(no counterpart — recomputed, not carried)* | this family cites the judge pin's own fields directly; a reader who wants the digest computes it over the same canonicalization, same discipline as every other digest here |
 | capsule-judge `judge_judgment.detail.judge_pin.sampling_params` | `evaluation-report/v1 judge_pin.sampling` / `adjudication/v1 basis.sampling` | same name, same int/string/bool-only discipline |
 | capsule-judge `judge_judgment.detail.judge_pin.adjudication_sampling_rate_micros` | `sample-manifest/v1` (policy-level) | a sampling rate is a manifest-level policy fact, not a per-judgment field — moved out of the judgment record entirely |
@@ -338,7 +369,7 @@ table is the schema-level unification that convergence did not itself produce.
 | capsule-judge `judge_adjudication.detail.judgment_capsule_id` + `chain.relation: confirms` | folded into `evaluation-report/v1`'s single-party `Case` | capsule-judge's two-capsule pattern (judgment, then a separate confirming capsule) collapses to one record for the single-party case; the two-party case is `adjudication/v1` |
 | capsule-judge `judge_adjudication.detail.agrees_with_judge` (bool) | `evaluation-report/v1 cases[].verdict` (direct) | no separate agree/disagree field — a case's `verdict` IS the adjudicated outcome |
 | capsule-judge `calibration.py` `JudgeCalibrationStats.{judgment,adjudicated,agreement,drift_check,drift}_count` | `calibration-summary/v1 clauses[].agreement{k,n}` / `.drift{k,n}` | same never-store-a-rate discipline, now per-clause rather than judge-pin-global, cited to a `judge_pin` by digest rather than an embedded `judge_pin_digest` string |
-| mesh `adjudication.detail.half_a_capsule_id` / `half_b_capsule_id` | `adjudication/v1 parties[]` (`citation_purpose: adjudicated_party`) | unified into one order-independent array of `citation` |
+| mesh `adjudication.detail.half_a_capsule_id` / `half_b_capsule_id` | `adjudication/v1 parties[]` (`judge_purpose: adjudicated_party`) | unified into one order-independent array of `citation` |
 | mesh `adjudication.detail.referee_capsule_id` / `referee_id` | `adjudication/v1 referee` | unified into one citation; a referee's model identity belongs in `basis.model_id`, not a second bare id |
 | mesh `adjudication.detail.verdict` (`"corroborated"`\|`"inconclusive"`\|`"contradicted:<owner_id>"`) | `adjudication/v1 verdict` + `contradicted_party` | split: a fixed three-value enum plus a separate field for the dynamic owner id |
 | mesh `adjudication.detail.margin` / `margin_tau` / `divergence_index` / `weights_digest` | `adjudication/v1` top-level `margin`/`margin_tau`/`divergence_index` (exact decimal strings) / `basis.weights_digest` | same values, relocated and typed |

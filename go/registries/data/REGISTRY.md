@@ -313,7 +313,9 @@ entry — a Capsule's citation of a record outside its own `chain` scope (a
 different producer or stream). Distinct from, and never a repurposing of,
 CPB's own `purpose` field on a typed digest reference
 (scitt-payload-binding), which selects among an artifact type's registered
-digest contexts.
+digest contexts. Also distinct from the `judge_purpose` field on judge-record
+citations (`spec/judge-record-family-v1.md` §0), whose values that document
+owns and which are deliberately not registered here.
 
 | Value | Semantics |
 |---|---|
