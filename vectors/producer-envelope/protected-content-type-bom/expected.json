@@ -1,0 +1,7 @@
+{
+  "ok": false,
+  "finding_codes": [
+    "envelope_content_type_mismatch"
+  ],
+  "public_key_hex": null
+}

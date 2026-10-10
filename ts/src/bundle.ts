@@ -114,8 +114,13 @@ const fail = (...findings: string[]): ClaimResult => ({
   status: "fail",
   findings,
 });
+// A JsonNumber (a decoded number kept with its spelling) is a value, not a
+// Bundle object.
 const object = (value: unknown): value is Bundle =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+  value !== null &&
+  typeof value === "object" &&
+  !Array.isArray(value) &&
+  !(value instanceof JsonNumber);
 const integer = (value: unknown): value is number =>
   typeof value === "number" && Number.isSafeInteger(value);
 const hex = (value: string): Uint8Array =>

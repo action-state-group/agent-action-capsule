@@ -70,10 +70,13 @@ class Reader {
       major = first >>> 5,
       add = first & 31;
     if (major === 7) {
-      const width =
-        add === 25 ? 2 : add === 26 ? 4 : add === 27 ? 8 : add === 24 ? 1 : 0;
-      if (add === 31) throw new SyntaxError("unexpected CBOR break");
-      this.take(width);
+      // Simple values 0-23 inline, 24 with a one-byte value of at least 32,
+      // then half, single and double floats. 28-30 are reserved and 31 is a
+      // break, which a definite-length map never contains.
+      if (add >= 28) throw new SyntaxError("reserved or break CBOR value");
+      if (add === 24 && this.byte() < 32)
+        throw new SyntaxError("non-preferred CBOR simple value");
+      if (add > 24) this.take(add === 25 ? 2 : add === 26 ? 4 : 8);
       return OPAQUE;
     }
     const argument = this.argument(add);
@@ -96,7 +99,8 @@ type HeaderValue =
   | Uint8Array
   | typeof OPAQUE;
 const OPAQUE = Symbol("opaque CBOR value");
-const utf8 = new TextDecoder("utf-8", { fatal: true });
+// ignoreBOM: a leading U+FEFF is part of the signed text, not a marker to drop.
+const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /**
  * Decode the protected header map: definite length, integer labels only, each

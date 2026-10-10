@@ -25,7 +25,7 @@
     surrogate escapes, and `DecodeCapsuleJSON` rejects trailing data. Python Bundle integers are
     bounded to ±(2^53 − 1). Go, Python and TypeScript refuse base64url with non-zero trailing
     bits, as Rust does. Go reports withheld disclosures in a fixed order.
-  - Vectors (`python/scripts/generate_parity_hardening_vectors.py`): five `capsule/` cases, four
+  - Vectors (`python/scripts/generate_parity_hardening_vectors.py`): five `capsule/` cases, six
     `producer-envelope/` cases, two `disclosure-envelope/` cases and two `bundle/` closure-depth
     cases. Released cases are unchanged.
 - TypeScript evidence graph: `provenanceMode` is read from the `provenance_mode` block's `mode`,

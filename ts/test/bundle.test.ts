@@ -400,6 +400,32 @@ describe("parity hardening", () => {
     expect(result.graphClosure.findings).toContain("closure_depth_invalid");
   });
 
+  it("treats a float-spelled number in an object position as a value, not an object", async () => {
+    const bundle = await fixture("pos-valid-bundle");
+    const [first] = bundle.records as Bundle[];
+    const id = first!.capsule_id as string;
+    const toFragment = (text: string): string =>
+      btoa(text).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
+    const disclosed = JSON.stringify({ ...bundle, disclosures: {} }).replace(
+      '"disclosures":{}',
+      `"disclosures":{"${id}":2.0}`,
+    );
+    const result = await verifyBundle(decodeFragment(toFragment(disclosed)));
+    // A malformed overlay entry, as in Go and Python, not a member named "raw".
+    expect(result.disclosures.filter((item) => item.capsuleId === id)).toEqual([
+      { capsuleId: id, member: "", status: "disclosure_mismatch" },
+    ]);
+    const records = JSON.stringify(bundle).replace(
+      '"records":[',
+      '"records":[2.0,',
+    );
+    const recordResult = await verifyBundle(
+      decodeFragment(toFragment(records)),
+    );
+    // record_malformed, as in Go and Python, not an identity failure.
+    expect(recordResult.graphClosure.findings).toContain("record_malformed:0");
+  });
+
   it("keeps the last duplicate and refuses non-canonical base64url", () => {
     expect(decodeFragment("eyJhIjoxLCJhIjoyfQ")).toEqual({ a: 2 });
     expect(decodeFragment("e30")).toEqual({});

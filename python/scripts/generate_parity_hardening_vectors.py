@@ -9,8 +9,9 @@ verifiers once disagreed, so their conformance runners now exercise it:
   the -02 addendum's ``domain`` and ``provenance`` are strings and its
   ``self_reported_reasoning`` and ``provenance_mode`` blocks are objects.
 - producer-envelope/: protected-header labels are integers, each label
-  appears once, ``alg`` is an integer, and ``alg`` is checked before the
-  label count.
+  appears once, ``alg`` is an integer and is checked before the label count,
+  reserved CBOR simple values are malformed, and a leading U+FEFF in the
+  content type is kept.
 - disclosure-envelope/: a missing ``capsule`` member fails rather than the
   envelope being read as its own Capsule, and a committed digest is lowercase
   hexadecimal.
@@ -173,6 +174,18 @@ def producer_envelope_cases() -> list[dict]:
             "protected alg is the half-precision float -8.0, not the integer -8",
             bytes([0xA3, 0x01, 0xF9, 0xC8, 0x00]) + ct + kid,
             "envelope_algorithm_mismatch",
+        ),
+        (
+            "protected-content-type-bom",
+            "protected content type is the profile value preceded by U+FEFF, which a decoder must not strip",
+            bytes([0xA3, 0x01, 0x27, 0x03]) + _text("\ufeff" + CONTENT_TYPE) + kid,
+            "envelope_content_type_mismatch",
+        ),
+        (
+            "protected-reserved-simple-value",
+            "protected alg is CBOR additional information 28, which is reserved and malformed",
+            bytes([0xA3, 0x01, 0xFC]) + ct + kid,
+            "envelope_malformed",
         ),
         (
             "wrong-algorithm-extra-header",
