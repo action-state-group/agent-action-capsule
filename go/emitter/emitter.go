@@ -16,6 +16,7 @@ import (
 const (
 	cspSlot         = "__CSP_SLOT__"
 	titleSlot       = "__TITLE_SLOT__"
+	noscriptSlot    = "__NOSCRIPT_SLOT__"
 	themeSlot       = "__THEME_SLOT__"
 	bundleSlot      = "__BUNDLE_SLOT__"
 	coreRuntimeSlot = "__CORE_RUNTIME_SLOT__"
@@ -26,9 +27,13 @@ const (
 	DefaultTitle = "Evidence Graph"
 	// DefaultBootstrap is the bootstrap script used when Options.Bootstrap is empty.
 	DefaultBootstrap = `renderEvidenceGraph(window.__BUNDLE__, document.getElementById("app"));`
+	// DefaultNoscriptText is the plain text shown, in place of the page,
+	// to a reader whose browser runs no script, when Options.NoscriptText
+	// is empty.
+	DefaultNoscriptText = "This page needs JavaScript to show and check its contents. To check it without JavaScript, verify the bundle with a full verifier."
 )
 
-var slots = []string{cspSlot, titleSlot, themeSlot, bundleSlot, coreRuntimeSlot, moduleSlot, bootstrapSlot}
+var slots = []string{cspSlot, titleSlot, noscriptSlot, themeSlot, bundleSlot, coreRuntimeSlot, moduleSlot, bootstrapSlot}
 
 //go:embed shell.html
 var shell string
@@ -68,6 +73,10 @@ type Options struct {
 	Modules []Module
 	// Bootstrap is the final script; empty uses DefaultBootstrap.
 	Bootstrap string
+	// NoscriptText is plain text, HTML-escaped into the <noscript> element
+	// before the app root; empty uses DefaultNoscriptText. The host supplies
+	// its own words (for example how to verify the file without a browser).
+	NoscriptText string
 }
 
 func replaceSingle(template, placeholder, value string) (string, error) {
@@ -220,12 +229,17 @@ func EmitEvidenceGraphHTMLWithOptions(bundle map[string]interface{}, browserIIFE
 	if bootstrap == "" {
 		bootstrap = DefaultBootstrap
 	}
+	noscript := options.NoscriptText
+	if noscript == "" {
+		noscript = DefaultNoscriptText
+	}
 
 	type input struct{ name, value string }
 	inputs := []input{
 		{"bundle JSON", bundleText},
 		{"browser IIFE", browserText},
 		{"title", title},
+		{"noscript text", noscript},
 		{"theme CSS", options.ThemeCSS},
 		{"bootstrap", bootstrap},
 	}
@@ -277,6 +291,7 @@ func EmitEvidenceGraphHTMLWithOptions(bundle map[string]interface{}, browserIIFE
 	html := shell
 	for _, fill := range []struct{ slot, value string }{
 		{titleSlot, escapeHTMLText(title)},
+		{noscriptSlot, escapeHTMLText(noscript)},
 		{themeSlot, options.ThemeCSS},
 		{bundleSlot, embeddedBundleText},
 		{coreRuntimeSlot, browserText},

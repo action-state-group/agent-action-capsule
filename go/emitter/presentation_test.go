@@ -162,3 +162,51 @@ func TestFragmentCodecMatchesFragmentPyVectors(t *testing.T) {
 		require.Equal(t, c.Payload, decoded, c.Name)
 	}
 }
+
+// The no-script slot: ts/test/emitter-csp.test.ts ("the no-script slot")
+// writes the golden; the emitter, the offline builder and the fragment
+// hand-back all write it byte for byte.
+func TestEmitNoscriptTextMatchesTypeScript(t *testing.T) {
+	text := `To check this file without JavaScript, run: example-verify --bundle "<this file>" & read its report.`
+	week := loadWeekBundle(t)
+	want := readTestdata(t, "expected-noscript.html")
+
+	got, err := EmitEvidenceGraphHTMLWithOptions(week, []byte(marker), Options{NoscriptText: text})
+	require.NoError(t, err)
+	require.True(t, got == want, "Go HTML with noscript text differs from TypeScript HTML")
+	require.Contains(t, got, "<noscript>To check this file without JavaScript, run: example-verify --bundle &#34;&lt;this file&gt;&#34; &amp; read its report.</noscript>\n    <div id=\"app\"></div>")
+
+	offline, err := BuildOfflineHTML(week, []byte(marker), OfflineOptions{Audience: "*", NoscriptText: text})
+	require.NoError(t, err)
+	require.True(t, offline == want)
+
+	small := map[string]interface{}{"note": "noscript"}
+	token, err := bundle.EncodeFragment(map[string]interface{}{
+		"fragment_version": PresentationFragmentVersion, "audience": "*", "presentation": "auto",
+		"noscript_text": text, "core_runtime_sha256": hexPinOf(marker),
+		"module_sha256": []interface{}{}, "bundle": small,
+	})
+	require.NoError(t, err)
+	handBack, err := OfflineHTMLFromFragment(token, []byte(marker), nil)
+	require.NoError(t, err)
+	direct, err := EmitEvidenceGraphHTMLWithOptions(small, []byte(marker), Options{NoscriptText: text})
+	require.NoError(t, err)
+	require.True(t, handBack == direct, "the hand-back keeps the noscript text")
+
+	defaultPage, err := EmitEvidenceGraphHTML(week, []byte(marker))
+	require.NoError(t, err)
+	require.Contains(t, defaultPage, "<noscript>"+DefaultNoscriptText+"</noscript>")
+	require.Equal(t, policyOf(t, defaultPage), policyOf(t, got), "the noscript text adds nothing to the policy")
+
+	_, err = EmitEvidenceGraphHTMLWithOptions(week, nil, Options{NoscriptText: "__CSP_SLOT__"})
+	require.ErrorContains(t, err, "noscript text must not contain emitter placeholders")
+
+	bad, err := bundle.EncodeFragment(map[string]interface{}{
+		"fragment_version": PresentationFragmentVersion, "audience": "*", "presentation": "auto",
+		"noscript_text": true, "core_runtime_sha256": hexPinOf(marker),
+		"module_sha256": []interface{}{}, "bundle": small,
+	})
+	require.NoError(t, err)
+	_, err = DecodePresentationFragment(bad, 0)
+	require.ErrorContains(t, err, "noscript_text is not a string")
+}

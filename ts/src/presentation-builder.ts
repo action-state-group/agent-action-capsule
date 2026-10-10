@@ -230,6 +230,12 @@ export interface BuildPresentationOptions {
   readonly title?: string;
   /** Theme CSS for the THEME_SLOT (presentation only). */
   readonly themeCss?: string;
+  /**
+   * Plain text for the NOSCRIPT_SLOT, shown when the browser runs no script
+   * (`html` and `fragment`; presentation only). Absent uses the shell's
+   * default.
+   */
+  readonly noscriptText?: string;
   readonly wording?: WordingPackInput;
   /**
    * `fragment` only: the token budget. Omitted, it is
@@ -331,6 +337,7 @@ interface OfflineSettings {
   readonly depth: PresentationDepth | undefined;
   readonly title: string | undefined;
   readonly themeCss: string | undefined;
+  readonly noscriptText: string | undefined;
   readonly wording: WordingPackInput | undefined;
 }
 
@@ -370,6 +377,9 @@ async function packageOffline(
   return emitEvidenceGraphHtml(settings.bundle, runtime.code, {
     ...(title === undefined ? {} : { title }),
     ...(settings.themeCss === undefined ? {} : { themeCss: settings.themeCss }),
+    ...(settings.noscriptText === undefined
+      ? {}
+      : { noscriptText: settings.noscriptText }),
     ...(runtime.sha256 === undefined
       ? {}
       : { coreRuntimeSha256: runtime.sha256 }),
@@ -609,6 +619,7 @@ async function packageAs(
         depth: options.depth,
         title: options.title,
         themeCss: options.themeCss,
+        noscriptText: options.noscriptText,
         wording: options.wording,
       },
       requireRuntime(options.runtime, format),
@@ -633,6 +644,9 @@ async function packageAs(
       ...(options.themeCss === undefined
         ? {}
         : { theme_css: options.themeCss }),
+      ...(options.noscriptText === undefined
+        ? {}
+        : { noscript_text: options.noscriptText }),
       ...(options.wording === undefined
         ? {}
         : {
@@ -802,6 +816,7 @@ export async function offlineHtmlFromFragment(
       depth: payload.depth,
       title: payload.title,
       themeCss: payload.theme_css,
+      noscriptText: payload.noscript_text,
       wording: payload.wording,
     },
     { code: runtime.code, sha256: runtimePin },
