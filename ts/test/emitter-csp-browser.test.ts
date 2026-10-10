@@ -14,6 +14,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { emitEvidenceGraphHtml } from "../src/emitter.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
+/** Launching Chromium on a loaded CI runner can exceed vitest's 10 s hook default. */
+const BROWSER_HOOK_TIMEOUT_MS = 60_000;
+
 // These tests need a real CSP-enforcing browser. They use AAC_CHROMIUM_PATH,
 // then Playwright's own Chromium, then a system Chrome/Chromium (present on
 // GitHub-hosted Ubuntu runners), and skip when none is installed.
@@ -51,18 +54,20 @@ describe.skipIf(executablePath === undefined)(
   "emitted page under a CSP-enforcing browser",
   () => {
     let browser: Browser;
-    let directory: string;
+    let directory = "";
     let pageCount = 0;
 
     beforeAll(async () => {
-      browser = await chromium.launch({ executablePath: executablePath! });
       directory = mkdtempSync(join(tmpdir(), "aac-csp-"));
-    });
+      browser = await chromium.launch({ executablePath: executablePath! });
+    }, BROWSER_HOOK_TIMEOUT_MS);
 
     afterAll(async () => {
       await browser?.close();
-      rmSync(directory, { recursive: true, force: true });
-    });
+      if (directory !== "") {
+        rmSync(directory, { recursive: true, force: true });
+      }
+    }, BROWSER_HOOK_TIMEOUT_MS);
 
     async function load(html: string, width = 1280): Promise<Loaded> {
       const file = join(directory, `page-${pageCount++}.html`);
