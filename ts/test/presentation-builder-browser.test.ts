@@ -18,6 +18,9 @@ import {
 } from "../src/presentation-builder.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
+/** Launching Chromium on a loaded CI runner can exceed vitest's 10 s hook default. */
+const BROWSER_HOOK_TIMEOUT_MS = 60_000;
+
 // The static packaging renders at build time; in node it needs a document.
 const host = new JSDOM();
 globalThis.document = host.window.document;
@@ -54,12 +57,12 @@ describe.skipIf(executablePath === undefined)(
   "offline file, fragment permalink and static page in a CSP-enforcing browser",
   () => {
     let browser: Browser;
-    let directory: string;
+    let directory = "";
     let runtime: string;
 
     beforeAll(async () => {
-      browser = await chromium.launch({ executablePath: executablePath! });
       directory = mkdtempSync(join(tmpdir(), "aac-builder-"));
+      browser = await chromium.launch({ executablePath: executablePath! });
       const result = await build({
         entryPoints: [resolve(process.cwd(), "src", "browser.ts")],
         bundle: true,
@@ -71,12 +74,14 @@ describe.skipIf(executablePath === undefined)(
         write: false,
       });
       runtime = result.outputFiles[0]!.text;
-    });
+    }, BROWSER_HOOK_TIMEOUT_MS);
 
     afterAll(async () => {
       await browser?.close();
-      rmSync(directory, { recursive: true, force: true });
-    });
+      if (directory !== "") {
+        rmSync(directory, { recursive: true, force: true });
+      }
+    }, BROWSER_HOOK_TIMEOUT_MS);
 
     async function open(
       file: string,
