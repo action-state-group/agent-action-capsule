@@ -1219,3 +1219,95 @@ describe("the Go twin's goldens", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// The no-script slot through the builder
+// ---------------------------------------------------------------------------
+
+describe("the no-script text through the builder", () => {
+  const text =
+    'To check this file without JavaScript, run: example-verify --bundle "<this file>" & read its report.';
+
+  it("the html packaging fills the slot; with default settings it is the emitter page", async () => {
+    const bundle = fixture("week-bundle.json");
+    const built = await buildPresentation(bundle, {
+      presentation: "auto",
+      audience: "*",
+      format: "html",
+      runtime: { code: "/*IIFE_MARKER*/" },
+      noscriptText: text,
+    });
+    if (built.format !== "html") throw new Error("html expected");
+    expect(built.html).toBe(
+      emitEvidenceGraphHtml(bundle, "/*IIFE_MARKER*/", { noscriptText: text }),
+    );
+    expect(built.html).toBe(
+      readFileSync(
+        resolve(
+          process.cwd(),
+          "..",
+          "go",
+          "emitter",
+          "testdata",
+          "expected-noscript.html",
+        ),
+        "utf8",
+      ),
+    );
+  }, 120_000);
+
+  it("the fragment carries noscript_text and the hand-back rebuilds the same file", async () => {
+    const { bundle } = await sealEvidenceBundle(
+      fixture("report-rows-bundle.json"),
+    );
+    const settings = {
+      presentation: "auto",
+      audience: "*",
+      runtime: { code: "/*IIFE_MARKER*/" },
+      noscriptText: text,
+    };
+    const html = await buildPresentation(bundle, {
+      ...settings,
+      format: "html",
+    });
+    const fragment = await buildPresentation(bundle, {
+      ...settings,
+      format: "fragment",
+    });
+    if (html.format !== "html" || fragment.format !== "fragment")
+      throw new Error("unexpected format");
+    expect(fragment.payload.noscript_text).toBe(text);
+    expect(decodePresentationFragment(fragment.fragment).noscript_text).toBe(
+      text,
+    );
+    expect(
+      await offlineHtmlFromFragment(fragment.fragment, {
+        code: "/*IIFE_MARKER*/",
+      }),
+    ).toBe(html.html);
+    const plain = await buildPresentation(bundle, {
+      presentation: "auto",
+      audience: "*",
+      runtime: { code: "/*IIFE_MARKER*/" },
+      format: "fragment",
+    });
+    if (plain.format !== "fragment") throw new Error("fragment expected");
+    expect("noscript_text" in plain.payload).toBe(false);
+  }, 120_000);
+
+  it("the static page carries no noscript element: it runs no script and says so", async () => {
+    const { bundle } = await sealEvidenceBundle(
+      fixture("report-rows-bundle.json"),
+    );
+    const built = await buildPresentation(bundle, {
+      presentation: "auto",
+      audience: "*",
+      format: "static",
+      noscriptText: text,
+    });
+    if (built.format !== "static") throw new Error("static expected");
+    expect(built.html).not.toContain("<noscript");
+    expect(built.html).not.toContain("example-verify");
+    expect(built.html).toContain(STATIC_NOT_SELF_VERIFYING);
+  }, 120_000);
+});

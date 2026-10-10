@@ -45,8 +45,10 @@ buildPresentation(context, { presentation, audience, format, ...settings })
   module renders it, as `html`.
 - Settings: `runtime` (the core runtime and, optionally, its pin; required for `html` and
   `fragment`), `modules` (digest-pinned module-slot scripts), `registry` (the resolver; the
-  built-ins when omitted), `disclose` (section 3), `depth`, `title`, `themeCss`, `wording` (a
-  wording pack's exact text and its `wording_sha256`), `maxFragmentLength`, `viewerUrl`.
+  built-ins when omitted), `disclose` (section 3), `depth`, `title`, `themeCss`, `noscriptText`
+  (the plain text the page shows when the browser runs no script; presentation contract
+  section 6.1), `wording` (a wording pack's exact text and its `wording_sha256`),
+  `maxFragmentLength`, `viewerUrl`.
 
 The steps run in this order: scope (section 3), verify the scoped bundle, resolve, package. Every
 packaging carries the same scoped bundle and the same settings.
@@ -142,7 +144,7 @@ the link can read all of it. What an audience may see is decided before encoding
 | `fragment_version` | The constant `"aac.presentation-fragment/v0"`. |
 | `audience` | The audience token. |
 | `presentation` | The module id the builder resolved, or `"auto"`. Informational. |
-| `depth`, `title`, `theme_css` | Optional settings, as in section 1. |
+| `depth`, `title`, `theme_css`, `noscript_text` | Optional settings, as in section 1. |
 | `wording` | Optional: `{pack, sha256}`, the pack's exact text and its digest. |
 | `core_runtime_sha256` | Lowercase hex SHA-256 of the core runtime the page was built with. |
 | `module_sha256` | The pins of the module-slot scripts, in order. |

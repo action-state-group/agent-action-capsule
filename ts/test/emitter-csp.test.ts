@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CORE_RUNTIME_STYLES,
+  DEFAULT_EVIDENCE_GRAPH_NOSCRIPT_TEXT,
   DEFAULT_EVIDENCE_GRAPH_TITLE,
   cspHashSourceFromHex,
   emitEvidenceGraphHtml,
@@ -273,6 +274,73 @@ describe("emitter options parity", () => {
       ],
       bootstrap: "window.booted=true;",
     });
+    if (process.env.AAC_WRITE_GOLDEN === "1") writeFileSync(golden, html);
+    expect(html).toBe(readFileSync(golden, "utf8"));
+  });
+});
+
+/**
+ * The no-script slot: plain text the host fills, HTML-escaped into the one
+ * `<noscript>` element before the app root. It is not a script or a style,
+ * so it adds nothing to the policy. go/emitter's
+ * TestEmitNoscriptTextMatchesTypeScript reads the same golden; regenerate it
+ * with AAC_WRITE_GOLDEN=1.
+ */
+describe("the no-script slot", () => {
+  const golden = resolve(
+    process.cwd(),
+    "..",
+    "go",
+    "emitter",
+    "testdata",
+    "expected-noscript.html",
+  );
+  const text =
+    'To check this file without JavaScript, run: example-verify --bundle "<this file>" & read its report.';
+  const escaped =
+    "To check this file without JavaScript, run: example-verify --bundle &#34;&lt;this file&gt;&#34; &amp; read its report.";
+  const noscripts = (html: string): string[] =>
+    [...html.matchAll(/<noscript>([\s\S]*?)<\/noscript>/gu)].map((m) => m[1]!);
+
+  it("renders the default text once, before the app root", () => {
+    const html = emitEvidenceGraphHtml(bundle, iife);
+    expect(noscripts(html)).toEqual([DEFAULT_EVIDENCE_GRAPH_NOSCRIPT_TEXT]);
+    expect(html).toContain(
+      `<body>\n    <noscript>${DEFAULT_EVIDENCE_GRAPH_NOSCRIPT_TEXT}</noscript>\n    <div id="app"></div>`,
+    );
+    expect(emitEvidenceGraphHtml(bundle, iife, { noscriptText: "" })).toBe(
+      html,
+    );
+  });
+
+  it("the default is plain words with no command in it", () => {
+    expect(DEFAULT_EVIDENCE_GRAPH_NOSCRIPT_TEXT).not.toMatch(/[<>&"'`]|--|:/u);
+    expect(DEFAULT_EVIDENCE_GRAPH_NOSCRIPT_TEXT).toContain("full verifier");
+  });
+
+  it("escapes the host's text and adds nothing to the policy", () => {
+    const html = emitEvidenceGraphHtml(bundle, iife, { noscriptText: text });
+    expect(noscripts(html)).toEqual([escaped]);
+    expect(html).not.toContain(text);
+    expect(csp(html)).toEqual(csp(emitEvidenceGraphHtml(bundle, iife)));
+    expect(
+      emitEvidenceGraphHtml(bundle, iife, {
+        noscriptText: "</noscript><script>window.x=1</script>",
+      }),
+    ).not.toContain("<script>window.x=1");
+  });
+
+  it("refuses a placeholder in the text", () => {
+    expect(() =>
+      emitEvidenceGraphHtml(bundle, iife, { noscriptText: "__CSP_SLOT__" }),
+    ).toThrow("noscript text must not contain emitter placeholders");
+    expect(() =>
+      emitEvidenceGraphHtml({ note: "__NOSCRIPT_SLOT__" }, iife),
+    ).toThrow("bundle JSON must not contain emitter placeholders");
+  });
+
+  it("emits byte-for-byte the HTML the Go twin is pinned to", () => {
+    const html = emitEvidenceGraphHtml(bundle, iife, { noscriptText: text });
     if (process.env.AAC_WRITE_GOLDEN === "1") writeFileSync(golden, html);
     expect(html).toBe(readFileSync(golden, "utf8"));
   });

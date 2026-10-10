@@ -500,6 +500,31 @@ MUST be byte-identical across the three, and which levels and disclosures are op
 same. A reviewer also checks that the module's source reads a bundle-carried setting only in
 its chrome code path, never where a label, heading, notice or depth is chosen.
 
+### 6.1 The no-script slot
+
+The shell has one more chrome slot, `NOSCRIPT_SLOT`, for a reader whose browser runs no script.
+The shell renders it inside one `<noscript>` element in the body, before the app root (`#app`),
+so a browser that runs scripts shows nothing of it and one that does not shows it in place of
+the page.
+
+- **Plain text the host fills.** The slot holds plain text only. The host (the builder or the
+  tool writing the page) supplies it through the emitter's no-script text option, and the
+  emitter HTML-escapes it, as it does the title. It is never markup, never a style and never a
+  script, and nothing from the bundle or from a module reaches it. It is presentation only (I3).
+- **No policy change.** The `<noscript>` element is neither an inline script nor a stylesheet,
+  so the page's Content-Security-Policy is the same whatever the slot holds.
+- **A neutral default.** With no text supplied, the emitter writes a fixed default that says the
+  page needs JavaScript to show and check its contents and points to verifying the bundle with a
+  full verifier. The default names no product and no command; a host that has a command (for
+  example its own verifier's command line) supplies it as its text.
+- **Nothing else of the chrome without scripts.** The shell's `#app` is empty until the runtime
+  renders, so with scripts disabled the page shows the slot text and nothing else: no header, no
+  banner, no module content, no verification page and no list.
+- **Which packagings carry it.** Every page the emitter writes with the shell's body carries the
+  slot: the offline file, and the file a fragment permalink rebuilds (the fragment carries the
+  host's text, when one was given, so the rebuilt file is the same). The static page carries no
+  `<noscript>` element: it runs no script and already says it is not self-verifying.
+
 ## 7. The text-binding rule
 
 Words on a page are of two kinds, and each has one place to live.
