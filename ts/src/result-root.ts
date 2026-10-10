@@ -42,8 +42,7 @@ import {
  * evidence does not all resolve in `records` is `unsupported`. It is never
  * shown as `met`, and it is never dropped.
  *
- * Headline values are never taken on the producer's word (maintainer's
- * adversarial review, 2026-09-28). Four consequences, each pinned in
+ * Headline values are never taken on the producer's word (2026-09-28). Four consequences, each pinned in
  * test/result-root.test.ts: the buckets must partition the claims exactly
  * (every claim in exactly one bucket, entries equal to claims) or the
  * Result is rejected; the coverage counts and the per-bucket counts are
@@ -213,7 +212,7 @@ export const UNVERIFIED_KEY_LABEL = "stated key_id (not verified)";
 
 /**
  * An inbound acknowledges/rebuts link that made no state: it is not from
- * the counterparty (maintainer's third pass, 2026-09-29). `reason` says
+ * the counterparty (2026-09-29). `reason` says
  * which of the three parts failed, for the reader.
  */
 export interface IgnoredCloseLink extends CloseLink {
@@ -251,7 +250,7 @@ export interface ResultClose {
    * when the linking record (1) carries a `book_id` that differs from the
    * Close's, (2) that `book_id` is the claim's named `peer`, and (3) it is
    * signed under a different, VERIFIED `key_id` than the Close
-   * (maintainer's third and fourth passes, 2026-09-29: neither book nor
+   * (2026-09-29: neither book nor
    * key alone is enough; a key_id counts only when the record's Producer
    * Envelope verifies under it). A Close with no `book_id`, or no verified
    * `key_id`, takes no link at all.
@@ -314,8 +313,8 @@ export interface ResultClaim {
   /** Present on a recognized `close` claim. */
   readonly close?: ResultClose;
   /**
-   * The claim FAILED verification (maintainer's second and third passes,
-   * 2026-09-28 / 2026-09-29): its close state, recomputed from this
+   * The claim FAILED verification (2026-09-28 /
+   * 2026-09-29): its close state, recomputed from this
    * bundle's counterparty links, is not the state the Result asserts; or
    * `close_ref` / `peer_close_ref` is not among the claim's `evidence[]`
    * digests; or `peer_close_ref` is not the counterparty record carrying
@@ -812,8 +811,7 @@ async function inboundCloseLinks(
  * A record's signer as the bundle model exposes it: the local Producer
  * Envelope `key_id` carried beside `signature` on a composite capsule
  * (excluded from the capsule id, capsule-05 check 2) -- the Ed25519 public
- * key, 64 hex -- and whether it is VERIFIED (maintainer's fourth pass,
- * 2026-09-29: "verify the signature under key_id, or label it 'stated
+ * key, 64 hex -- and whether it is VERIFIED (2026-09-29: "verify the signature under key_id, or label it 'stated
  * key_id (not verified)' and don't let it pass the check"). The key
  * material travels with the record: the envelope's protected `kid` is the
  * raw public key. So `keyVerified` is true only when (a) `signature` is
@@ -859,7 +857,7 @@ async function keyVerifies(
 
 /**
  * Split a Close's inbound links into the ones that make its state and the
- * ones that do not (maintainer's third pass, 2026-09-29: "neither book_id
+ * ones that do not (2026-09-29: "neither book_id
  * nor signer alone is enough, since a producer can mint a second book or a
  * second key equally easily"). A link counts only when ALL of:
  *   (1) the linking record's `book_id` is present and differs from the
@@ -1440,8 +1438,8 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
       };
       if (supplied) await resolveRecord(closeRef);
     }
-    // Three rules FAIL a close claim (#140 section 4.1; maintainer's
-    // second and third passes, 2026-09-28 / 2026-09-29). The claim's
+    // Three rules FAIL a close claim (#140 section 4.1;
+    // 2026-09-28 / 2026-09-29). The claim's
     // stated sufficiency and verdict are then the producer's words only:
     // never drawn as the claim's, never counted under its verdict.
     //   evidence:       close_ref and peer_close_ref must be among the
