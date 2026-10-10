@@ -86,6 +86,14 @@ import {
 } from "./result-root.js";
 import {
   buildVerificationPageModel,
+  CHECKED_ON_THIS_PAGE,
+  CHECKS_SCOPE_LINE,
+  FAILED_ON_THIS_PAGE,
+  FULL_VERIFIER_LINE,
+  NOT_CHECKED_ON_THIS_PAGE,
+  RECEIPT_GRADE_DISPLAY,
+  verificationCheckWords,
+  type VerificationCheckLists,
   type CheckSummary,
   type CompletenessStatement,
   type CoverageStatement,
@@ -252,10 +260,7 @@ function renderSignerStatement(
   });
   item.append(checks);
   if (statement.receipt === "unverified") {
-    const receipt = element(
-      "p",
-      "receipt present, not verified by this viewer",
-    );
+    const receipt = element("p", "receipt present, not checked by this viewer");
     receipt.dataset.countersignReceipt = "unverified";
     item.append(receipt);
   }
@@ -294,7 +299,10 @@ function renderReceipts(
   }
   const list = element("ul");
   receipts.forEach((receipt) => {
-    const item = element("li", `${receipt.witness} · ${receipt.grade} · `);
+    const item = element(
+      "li",
+      `${receipt.witness} · ${RECEIPT_GRADE_DISPLAY[receipt.grade]} · `,
+    );
     item.append(renderTime(receipt.time));
     list.append(item);
   });
@@ -490,6 +498,56 @@ function renderExtensionTable(
   host.append(table);
 }
 
+// The page's own checks in up to three lists (presentation contract section
+// 6.1): what ran here and passed, what ran here and failed, and what the
+// bundle calls for that this page did not run. A list with no entries is not
+// drawn. The not-checked list ends with the neutral pointer to a full
+// verifier and, when the host supplied one, its own verifier text (shown as
+// text, never markup).
+function renderCheckLists(
+  host: HTMLElement,
+  lists: VerificationCheckLists,
+  verifierHint: string | undefined,
+): void {
+  const groups = [
+    ["page", CHECKED_ON_THIS_PAGE, lists.page],
+    ["failed", FAILED_ON_THIS_PAGE, lists.failed],
+    ["not-checked", NOT_CHECKED_ON_THIS_PAGE, lists.notChecked],
+  ] as const;
+  for (const [which, heading, ids] of groups) {
+    if (ids.length === 0) continue;
+    host.append(element("h4", heading));
+    const list = element("ul");
+    list.dataset.checks = which;
+    for (const id of ids) {
+      const item = element(
+        "li",
+        verificationCheckWords(
+          id,
+          which === "not-checked" ? "notChecked" : which,
+          lists,
+        ),
+      );
+      item.dataset.check = id;
+      list.append(item);
+    }
+    host.append(list);
+    if (which === "not-checked") {
+      const pointer = element("p", FULL_VERIFIER_LINE);
+      pointer.dataset.checks = "full-verifier";
+      host.append(pointer);
+      if (verifierHint !== undefined && verifierHint !== "") {
+        const hint = element("pre", verifierHint);
+        hint.dataset.verifierHint = "";
+        host.append(hint);
+      }
+    }
+  }
+  const scope = element("p", CHECKS_SCOPE_LINE);
+  scope.dataset.checks = "scope";
+  host.append(scope);
+}
+
 // The viewer-owned verification page: the last page of the rendering, drawn
 // entirely from VERIFIED data (the already-computed BundleVerificationResult
 // and the countersignature stamp classification), never from bundle-supplied
@@ -510,6 +568,8 @@ async function renderVerificationPage(
   styled: boolean,
   applied: ReadonlySet<ExtensionInterpreterId>,
   refused: readonly PresentationRefusal[],
+  citedSigners: boolean,
+  verifierHint: string | undefined,
 ): Promise<void> {
   const { bundle, verification: verified, countersigners } = context;
   const section = element("section");
@@ -522,7 +582,16 @@ async function renderVerificationPage(
     section.append(page);
   }
   page.append(element("h2", "Verification"));
-  const model = buildVerificationPageModel(bundle, verified, applied, refused);
+  const stamps = await classifyCountersignatures(
+    context.countersignatures.map((entry) => entry.value),
+    verified.bundleDigest,
+    declaredProducerKeys(bundle),
+    countersigners,
+  );
+  const model = buildVerificationPageModel(bundle, verified, applied, refused, {
+    stamps,
+    citedSigners,
+  });
   const summary = element("dl");
   appendValue(summary, "bundle digest", model.bundleDigest ?? "uncomputable");
   appendValue(summary, "checkpoint root", model.checkpointRoot ?? "absent");
@@ -545,16 +614,11 @@ async function renderVerificationPage(
     model.uncheckpointedCount,
     model.coverage,
   );
-  const stamps = await classifyCountersignatures(
-    context.countersignatures.map((entry) => entry.value),
-    verified.bundleDigest,
-    declaredProducerKeys(bundle),
-    countersigners,
-  );
   renderStamps(page, stamps);
   renderCompletenessStatement(page, model.completeness);
   renderChecks(page, model.checks);
   renderExtensions(page, model.extensions, model.presentationRefusals);
+  renderCheckLists(page, model.checkLists, verifierHint);
   page.append(element("p", model.verifyIndependentlyLine));
   root.append(section);
 }
@@ -1643,6 +1707,32 @@ export interface RenderEvidenceGraphOptions {
    * The built-in modules use the core's own labels and do not read it.
    */
   readonly wording?: WordingPackInput;
+  /**
+   * The host's own text for running a full verifier (for example its
+   * command line), shown as plain text under the verification page's
+   * not-checked list, after the core's neutral pointer. Presentation only:
+   * it changes no list and no result. Omitted, only the pointer is shown.
+   */
+  readonly verifierHint?: string;
+}
+
+/**
+ * True when the rendered page module checked the producer signature of the
+ * records it cites as signers: the built-in Result page, on a Close (or a
+ * record linking to it) that carries a `key_id` (result-root.ts `signerOf`).
+ */
+function citesCheckedSigners(
+  selected: { module: PresentationModule; model: unknown } | undefined,
+): boolean {
+  if (selected === undefined || selected.module !== resultModule) return false;
+  return (selected.model as ResultRoot).claims.some(
+    (claim) =>
+      claim.close !== undefined &&
+      (claim.close.keyId !== undefined ||
+        [...claim.close.links, ...claim.close.ignored].some(
+          (link) => link.keyId !== undefined,
+        )),
+  );
 }
 
 const OUTCOME_CHROME = "oi";
@@ -1884,5 +1974,7 @@ export async function renderEvidenceGraph(
     chrome === OUTCOME_CHROME,
     applied,
     refused,
+    refusal === undefined && citesCheckedSigners(selected),
+    options.verifierHint,
   );
 }

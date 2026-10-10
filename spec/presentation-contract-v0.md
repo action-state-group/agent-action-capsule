@@ -500,6 +500,50 @@ MUST be byte-identical across the three, and which levels and disclosures are op
 same. A reviewer also checks that the module's source reads a bundle-carried setting only in
 its chrome code path, never where a label, heading, notice or depth is chosen.
 
+### 6.1 The verification page's check lists
+
+The core's verification page, drawn after every module and on every page including a refusal,
+states which checks the rendering runtime ran. It does so in up to three lists, each derived
+from that runtime's own results (its verification result, its countersignature
+classification, and what its own page module checked) and never from a claim, status or
+summary carried in the bundle:
+
+- **Checked on this page.** Each check this runtime ran that passed.
+- **Failed on this page.** Each check this runtime ran that did not pass. A check that fails is
+  never listed as checked on this page: editing a record, a disclosed value, a membership entry
+  or a countersignature moves its check from the first list to this one.
+- **Not checked on this page.** Each check the bundle calls for, by what it carries (a signed
+  checkpoint, a signature on a record, a witness receipt, a countersignature of a type the
+  runtime does not check, a receipt with a countersignature), that this runtime does not run
+  or could not complete. When the runtime passed the bundle without checking the checkpoint's
+  signature (the verifier recorded `checkpoint_unverified`), the line says so. The list ends
+  with a pointer to verify the bundle with a full verifier, which names no product or command.
+
+A check the bundle does not call for is in no list. An empty list is not drawn. Each line names
+what was checked, never its outcome, so it reads true under any of the three headings.
+
+The words are the core's own fixed text. A host MAY supply its own text for running a full
+verifier (for example a command line); it is presentation only, shown as text after the
+pointer, and it changes no list. Nothing from the bundle reaches the lists' words.
+
+Two word rules hold for all of the verification page's own text: the lists, the lines around
+them and every other row (check names, receipt and countersignature lines). Values the page
+shows from the bundle, such as a witness name or a countersigner's statement, are data, not the
+page's words.
+
+- **"Verified" is used only for a check the page ran.** A line for a check that is not run
+  here never calls it verified. A witness receipt this runtime does not check shows its grade
+  as claimed and not checked here (for example "consistency claimed (not checked here)"); the
+  grade value itself is unchanged.
+- **No line says "identity" or "freshness".** None of these checks establishes who produced the
+  records or that the file is the most recent copy, and the page says so in those plain words.
+
+**Modules MUST NOT restate verification.** A module does not draw its own list of which checks
+ran, passed, failed or were not run, and does not re-derive one from the verification result;
+the verification page is the one place a reader finds it. A module that shows a check's
+outcome beside the item it concerns (a signer marked verified or not, for example) is not
+restating the lists.
+
 ## 7. The text-binding rule
 
 Words on a page are of two kinds, and each has one place to live.
