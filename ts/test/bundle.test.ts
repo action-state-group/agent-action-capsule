@@ -200,6 +200,10 @@ async function fixture(name: string): Promise<Bundle> {
     delete (bundle.completeness as Bundle).closure_depth;
     delete (bundle.completeness as Bundle).missing;
   }
+  if (name === "pos-closure-depth-max-safe")
+    (bundle.completeness as Bundle).closure_depth = Number.MAX_SAFE_INTEGER;
+  if (name === "neg-closure-depth-unsafe")
+    (bundle.completeness as Bundle).closure_depth = 2 ** 53;
   if (name === "neg-portable-proof-version-kind") {
     const member = (
       (bundle.completeness_certificate as Bundle).memberships as Bundle
@@ -217,7 +221,7 @@ async function fixture(name: string): Promise<Bundle> {
 }
 describe("shared Evidence Bundle vectors", () => {
   it("pins the shared manifest source and SHA-256", () => {
-    expect(vectors.count).toBe(12);
+    expect(vectors.count).toBe(14);
     expect(
       readFileSync(
         resolve(
@@ -240,7 +244,9 @@ describe("shared Evidence Bundle vectors", () => {
   for (const vector of vectors.cases)
     it(vector.name, async () => {
       const bundle = await fixture(vector.name);
-      expect(decodeFragment(encodeFragment(bundle))).toEqual(bundle);
+      // JCS refuses an unsafe integer, so that case has no fragment form.
+      if (vector.name !== "neg-closure-depth-unsafe")
+        expect(decodeFragment(encodeFragment(bundle))).toEqual(bundle);
       const actual = await verifyBundle(bundle);
       expect(actual.graphClosure.status).toBe(vector.expected.graph_closure);
       expect(actual.intervalCoverage.status).toBe(
@@ -345,5 +351,76 @@ describe("shared Evidence Bundle vectors", () => {
     const result = await verifyBundle(bundle);
     expect(result.intervalCoverage.status).toBe("fail");
     expect(result.intervalCoverage.findings).toContain("range_proof_invalid");
+  });
+});
+
+describe("parity hardening", () => {
+  it("reports one dangling citation once however many records reach it", async () => {
+    // The root's reference and its chain parent's chain both cite one absent
+    // target: one finding, in Go, Python, Rust and TS alike.
+    const absent = "e".repeat(64),
+      parent = await capsule(5, undefined, undefined, {
+        parent_capsule_id: absent,
+        relation: "derived_from",
+      }),
+      root = await capsule(6, undefined, undefined, {
+        parent_capsule_id: parent.capsule_id,
+        relation: "derived_from",
+      });
+    delete root.capsule_id;
+    root.references = [
+      {
+        type: "agent-action-capsule",
+        digest_alg: "SHA-256",
+        digest: absent,
+        citation_purpose: "acted_on",
+      },
+    ];
+    root.capsule_id = await computeCapsuleId(root as never);
+    const result = await verifyBundle(await testBundle([parent, root], root));
+    expect(result.graphClosure.status).toBe("fail");
+    expect(
+      result.graphClosure.findings.filter(
+        (finding) => finding === `citation_dangling:${absent}`,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("keeps a float-spelled integer's spelling so it fails like Go, Python and Rust", async () => {
+    const bundle = await fixture("pos-valid-bundle");
+    const text = JSON.stringify(bundle).replace(
+      '"closure_depth":2',
+      '"closure_depth":2.0',
+    );
+    const fragment = btoa(text)
+      .replaceAll("+", "-")
+      .replaceAll("/", "_")
+      .replace(/=+$/u, "");
+    const result = await verifyBundle(decodeFragment(fragment));
+    expect(result.graphClosure.findings).toContain("closure_depth_invalid");
+  });
+
+  it("keeps the last duplicate and refuses non-canonical base64url", () => {
+    expect(decodeFragment("eyJhIjoxLCJhIjoyfQ")).toEqual({ a: 2 });
+    expect(decodeFragment("e30")).toEqual({});
+    // "e31" decodes to the same two bytes leniently; its trailing bits are not zero.
+    expect(() => decodeFragment("e31")).toThrow();
+  });
+
+  it("treats a disclosure named constructor or __proto__ as ineligible", async () => {
+    const bundle = await fixture("pos-valid-bundle");
+    const [first] = bundle.records as Bundle[];
+    const overlay = JSON.parse(
+      `{"${first!.capsule_id as string}":{"constructor":1,"__proto__":2}}`,
+    ) as Bundle;
+    bundle.disclosures = overlay;
+    const result = await verifyBundle(bundle);
+    expect(
+      result.disclosures
+        .filter((item) => item.capsuleId === first!.capsule_id)
+        .map((item) => [item.member, item.status]),
+    ).toEqual(
+      expect.arrayContaining([["constructor", "disclosure_ineligible_field"]]),
+    );
   });
 });

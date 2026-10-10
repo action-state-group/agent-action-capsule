@@ -1,4 +1,3 @@
-import { decode } from "cborg";
 import {
   CONTENT_TYPE,
   equalBytes,
@@ -38,13 +37,88 @@ class Reader {
     throw new SyntaxError("unsupported or indefinite CBOR length");
   }
   public bytes(): Uint8Array {
-    const length = this.length(2);
+    return this.take(this.length(2));
+  }
+  private take(length: number): Uint8Array {
     const end = this.offset + length;
     if (end > this.data.length) throw new SyntaxError("truncated CBOR bytes");
     const value = this.data.slice(this.offset, end);
     this.offset = end;
     return value;
   }
+  /** A definite-length argument of any width, refusing indefinite lengths. */
+  private argument(add: number): bigint {
+    if (add < 24) return BigInt(add);
+    const width =
+      add === 24 ? 1 : add === 25 ? 2 : add === 26 ? 4 : add === 27 ? 8 : 0;
+    if (width === 0)
+      throw new SyntaxError("unsupported or indefinite CBOR length");
+    let value = 0n;
+    for (let i = 0; i < width; i += 1)
+      value = (value << 8n) | BigInt(this.byte());
+    return value;
+  }
+  /**
+   * One header value, typed only as far as the envelope checks need: integers,
+   * text and byte strings keep their CBOR type, so a float or a boolean never
+   * compares equal to an integer label or algorithm. Anything else is skipped
+   * and kept as an opaque marker.
+   */
+  public item(depth = 0): HeaderValue {
+    if (depth > 8) throw new SyntaxError("CBOR nesting too deep");
+    const first = this.byte(),
+      major = first >>> 5,
+      add = first & 31;
+    if (major === 7) {
+      const width =
+        add === 25 ? 2 : add === 26 ? 4 : add === 27 ? 8 : add === 24 ? 1 : 0;
+      if (add === 31) throw new SyntaxError("unexpected CBOR break");
+      this.take(width);
+      return OPAQUE;
+    }
+    const argument = this.argument(add);
+    if (major === 0 || major === 1)
+      return { int: major === 0 ? argument : -1n - argument };
+    const length = Number(argument);
+    if (major === 2) return this.take(length);
+    if (major === 3) return utf8.decode(this.take(length));
+    if (major === 4) for (let i = 0; i < length; i += 1) this.item(depth + 1);
+    else if (major === 5)
+      for (let i = 0; i < length * 2; i += 1) this.item(depth + 1);
+    else if (major === 6) this.item(depth + 1);
+    return OPAQUE;
+  }
+}
+
+type HeaderValue =
+  | { readonly int: bigint }
+  | string
+  | Uint8Array
+  | typeof OPAQUE;
+const OPAQUE = Symbol("opaque CBOR value");
+const utf8 = new TextDecoder("utf-8", { fatal: true });
+
+/**
+ * Decode the protected header map: definite length, integer labels only, each
+ * label once, no trailing bytes. These match the Go and Python decoders, which
+ * reject a non-integer or repeated label as a malformed envelope.
+ */
+function protectedHeaderMap(data: Uint8Array): Map<bigint, HeaderValue> {
+  const reader = new Reader(data);
+  const pairs = reader.length(5);
+  if (pairs > 16) throw new SyntaxError("protected header has too many labels");
+  const headers = new Map<bigint, HeaderValue>();
+  for (let i = 0; i < pairs; i += 1) {
+    const label = reader.item(1);
+    if (typeof label !== "object" || !("int" in label))
+      throw new SyntaxError("protected header label MUST be an integer");
+    if (headers.has(label.int))
+      throw new SyntaxError("duplicate protected header label");
+    headers.set(label.int, reader.item(1));
+  }
+  if (reader.offset !== data.length)
+    throw new SyntaxError("trailing CBOR data in protected header");
+  return headers;
 }
 
 /** Verify an attached AAC Producer Envelope with platform WebCrypto. */
@@ -80,36 +154,33 @@ export async function verifyProducerEnvelope(
     const signature = reader.bytes();
     if (reader.offset !== data.length)
       throw new SyntaxError("trailing CBOR data");
-    const protectedHeaders = decode(protectedBytes, {
-      allowIndefinite: false,
-      coerceUndefinedToNull: false,
-      useMaps: true,
-    }) as unknown;
-    if (!(protectedHeaders instanceof Map) || protectedHeaders.size !== 3)
+    const protectedHeaders = protectedHeaderMap(protectedBytes);
+    // Same order as Go and Python, so one malformed header yields one code.
+    const algorithm = protectedHeaders.get(1n);
+    if (
+      typeof algorithm !== "object" ||
+      !("int" in algorithm) ||
+      algorithm.int !== -8n
+    )
       return fail(
-        "envelope_protected_headers_invalid",
-        "protected header MUST contain exactly content type, kid, and alg",
+        "envelope_algorithm_mismatch",
+        "protected alg (label 1) MUST be EdDSA (-8)",
       );
-    if (protectedHeaders.get(3) !== CONTENT_TYPE)
+    if (protectedHeaders.get(3n) !== CONTENT_TYPE)
       return fail(
         "envelope_content_type_mismatch",
         `protected content type MUST be ${CONTENT_TYPE}`,
       );
-    const publicKey = protectedHeaders.get(4);
-    if (!(publicKey instanceof Uint8Array))
-      return fail(
-        "envelope_kid_invalid",
-        "protected kid (label 4) MUST be raw 32-byte Ed25519 public key",
-      );
-    if (publicKey.length !== 32)
+    const publicKey = protectedHeaders.get(4n);
+    if (!(publicKey instanceof Uint8Array) || publicKey.length !== 32)
       return fail(
         "envelope_kid_invalid",
         "protected kid (label 4) MUST be the raw 32-byte Ed25519 public key",
       );
-    if (protectedHeaders.get(1) !== -8)
+    if (protectedHeaders.size !== 3)
       return fail(
-        "envelope_algorithm_mismatch",
-        "protected alg (label 1) MUST be EdDSA (-8)",
+        "envelope_protected_headers_invalid",
+        "protected header MUST contain exactly alg, content type, and kid",
       );
     if (!equalBytes(payload, hexToBytes(capsuleId)))
       return fail(

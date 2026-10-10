@@ -358,21 +358,30 @@ fn graph(
     if !is_str(complete.get("records_mode"), expected_mode) {
         findings.push("records_mode_mismatch".to_string());
     }
+    // Breadth-first, each target once: a record first reached at its shortest
+    // distance already carries the most remaining depth, and the walk stops when
+    // no new record is reached, so work is bounded by the supplied records.
+    let mut visited: HashSet<String> = HashSet::from([root.clone()]);
+    let mut dangling: HashSet<String> = HashSet::new();
     let mut frontier = vec![root];
-    for _ in 0..depth {
+    let mut level = 0;
+    while level < depth && !frontier.is_empty() {
         let mut next = Vec::new();
         for source_id in &frontier {
             if let Some(source) = records.get(source_id) {
                 for target in citation_targets(source) {
                     if records.contains_key(&target) {
-                        next.push(target);
-                    } else if !missing.contains(&target) {
+                        if visited.insert(target.clone()) {
+                            next.push(target);
+                        }
+                    } else if !missing.contains(&target) && dangling.insert(target.clone()) {
                         findings.push(format!("citation_dangling:{target}"));
                     }
                 }
             }
         }
         frontier = next;
+        level += 1;
     }
     if !findings.is_empty() {
         return ClaimResult::fail(findings);

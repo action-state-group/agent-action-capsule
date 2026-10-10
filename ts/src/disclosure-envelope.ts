@@ -57,7 +57,9 @@ export async function verifyDisclosureEnvelope(
   envelope: ParsedJson,
 ): Promise<DisclosureEnvelopeResult> {
   const wrapper = asJsonObject(envelope);
-  const capsule = wrapper?.capsule ?? envelope;
+  // As in Go and Python, a missing `capsule` member is verified as null and
+  // fails; an envelope object is never read as its own Capsule.
+  const capsule = wrapper === undefined ? envelope : (wrapper.capsule ?? null);
   const capsuleResult = await verifyClass1(capsule);
   const disclosures = asJsonObject(wrapper?.disclosures);
   const findings: DisclosureFinding[] = [];
@@ -67,10 +69,11 @@ export async function verifyDisclosureEnvelope(
     for (const [member, value] of Object.entries(disclosures).sort(
       ([left], [right]) => (left < right ? -1 : left > right ? 1 : 0),
     )) {
-      const path =
-        disclosureEligibleFields[
-          member as keyof typeof disclosureEligibleFields
-        ];
+      const path = Object.hasOwn(disclosureEligibleFields, member)
+        ? disclosureEligibleFields[
+            member as keyof typeof disclosureEligibleFields
+          ]
+        : undefined;
       if (path === undefined) {
         findings.push({ member, code: DISCLOSURE_INELIGIBLE_FIELD });
         continue;

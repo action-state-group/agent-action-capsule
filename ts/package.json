@@ -45,10 +45,8 @@
     "typecheck": "tsc --noEmit",
     "check:package": "node scripts/check-package.mjs"
   },
-  "dependencies": {
-    "cborg": "6.1.2"
-  },
   "devDependencies": {
+    "@action-state-group/cll": "0.2.0",
     "@types/jsdom": "30.0.0",
     "@types/node": "22.20.2",
     "esbuild": "0.28.2",
@@ -56,8 +54,7 @@
     "playwright-core": "1.64.0",
     "prettier": "3.6.2",
     "typescript": "7.0.2",
-    "vitest": "4.1.11",
-    "@action-state-group/cll": "0.2.0"
+    "vitest": "4.1.11"
   },
   "peerDependencies": {
     "@action-state-group/cll": "0.2.0"

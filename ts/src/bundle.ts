@@ -7,9 +7,12 @@ import {
   type MmrRangeProof,
 } from "@action-state-group/cll";
 import {
+  decodeStrictJson,
   isHex64,
   jcs,
   jsonDigest,
+  JsonNumber,
+  setMember,
   sha256Hex,
   type ParsedJson,
 } from "./json.js";
@@ -106,7 +109,6 @@ export interface BundleVerificationResult {
 }
 type Bundle = Record<string, unknown>;
 type Proof = MmrInclusionProof;
-const text = new TextDecoder("utf-8", { fatal: true });
 const pass = (): ClaimResult => ({ status: "pass", findings: [] });
 const fail = (...findings: string[]): ClaimResult => ({
   status: "fail",
@@ -121,27 +123,56 @@ const hex = (value: string): Uint8Array =>
 
 /** Encode a Bundle as unpadded RFC 4648 base64url over UTF-8 JCS bytes. */
 export function encodeFragment(bundle: unknown): string {
-  return btoa(
-    Array.from(jcs(bundle), (byte) => String.fromCharCode(byte)).join(""),
-  )
+  return encodeBase64Url(jcs(bundle));
+}
+/**
+ * Decode unpadded base64url, refusing non-zero trailing bits so each byte
+ * string has one spelling, as the Go (strict), Python and Rust decoders do.
+ */
+function base64UrlDecode(value: string): Uint8Array {
+  const padded = `${value}${"=".repeat((4 - (value.length % 4)) % 4)}`;
+  const binary = atob(padded.replaceAll("-", "+").replaceAll("_", "/"));
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  if (encodeBase64Url(bytes) !== value)
+    throw new TypeError("non-canonical base64url");
+  return bytes;
+}
+const encodeBase64Url = (bytes: Uint8Array): string =>
+  btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""))
     .replaceAll("+", "-")
     .replaceAll("/", "_")
     .replace(/=+$/u, "");
-}
-/** Decode an unpadded Evidence Bundle URL fragment without verifying its claims. */
+/**
+ * Decode an unpadded Evidence Bundle URL fragment without verifying its claims.
+ *
+ * Integers spelled as plain decimal within the safe range become numbers. Any
+ * other number keeps its spelling as a {@link JsonNumber}, so a float-spelled
+ * `2.0` fails the same integer checks it fails in Go, Python and Rust instead
+ * of being read as `2`.
+ */
 export function decodeFragment(fragment: string): unknown {
   if (!/^[A-Za-z0-9_-]*$/u.test(fragment))
     throw new TypeError("fragment base64url");
   try {
-    const padded = `${fragment}${"=".repeat((4 - (fragment.length % 4)) % 4)}`;
-    const binary = atob(padded.replaceAll("-", "+").replaceAll("_", "/"));
-    const value: unknown = JSON.parse(
-      text.decode(Uint8Array.from(binary, (char) => char.charCodeAt(0))),
+    return plainIntegers(
+      decodeStrictJson(base64UrlDecode(fragment), { lastDuplicateWins: true }),
     );
-    return value;
   } catch (error) {
     throw new TypeError("fragment UTF-8 JSON");
   }
+}
+function plainIntegers(value: ParsedJson): unknown {
+  if (value instanceof JsonNumber) {
+    if (!/^-?(?:0|[1-9]\d*)$/u.test(value.raw)) return value;
+    const number = Number(value.raw);
+    return Number.isSafeInteger(number) ? number : value;
+  }
+  if (Array.isArray(value)) return value.map(plainIntegers);
+  if (value === null || typeof value !== "object") return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, member] of Object.entries(value))
+    setMember(out, key, plainIntegers(member));
+  return out;
 }
 /** Compute SHA-256(JCS(bundle without countersignatures)). */
 export async function bundleDigest(bundle: Bundle): Promise<string> {
@@ -269,14 +300,25 @@ function graph(
     (missing.size ? "declared_incomplete" : "complete")
   )
     findings.push("records_mode_mismatch");
+  // Breadth-first, each target once: a record first reached at its shortest
+  // distance already carries the most remaining depth, and the walk stops when
+  // no new record is reached, so work is bounded by the supplied records.
   let frontier = [root];
-  for (let level = 0; level < depth; level += 1) {
+  const visited = new Set([root]),
+    dangling = new Set<string>();
+  for (let level = 0; level < depth && frontier.length; level += 1) {
     const next: string[] = [];
     for (const source of frontier)
       for (const target of citations(records.get(source)!))
-        if (records.has(target)) next.push(target);
-        else if (!missing.has(target))
+        if (records.has(target)) {
+          if (!visited.has(target)) {
+            visited.add(target);
+            next.push(target);
+          }
+        } else if (!missing.has(target) && !dangling.has(target)) {
+          dangling.add(target);
           findings.push(`citation_dangling:${target}`);
+        }
     frontier = next;
   }
   return findings.length
@@ -396,11 +438,7 @@ async function authenticateCheckpoint(
   const checkpointMetadata = await loadCheckpointMetadata();
   if (!checkpointMetadata) return "unverified";
   try {
-    const padded = `${checkpoint.cose}${"=".repeat((4 - (checkpoint.cose.length % 4)) % 4)}`;
-    const binary = atob(padded.replaceAll("-", "+").replaceAll("_", "/"));
-    const metadata = await checkpointMetadata(
-      Uint8Array.from(binary, (char) => char.charCodeAt(0)),
-    );
+    const metadata = await checkpointMetadata(base64UrlDecode(checkpoint.cose));
     return metadata &&
       metadata.logId === logId &&
       metadata.size === BigInt(size) &&
@@ -664,7 +702,7 @@ async function disclosures(
     const supplied = object(raw[id]) ? raw[id] : {};
     for (const [member, path] of Object.entries(disclosureEligibleFields))
       if (
-        !(member in supplied) &&
+        !Object.hasOwn(supplied, member) &&
         typeof resolveDisclosurePath(record as ParsedJson, path) === "string"
       )
         findings.push({ capsuleId: id, member, status: "withheld" });
@@ -677,10 +715,13 @@ async function disclosures(
       continue;
     }
     for (const member of Object.keys(members).sort()) {
-      const path =
-        disclosureEligibleFields[
-          member as keyof typeof disclosureEligibleFields
-        ];
+      // Own members only: a disclosure named `constructor` or `__proto__` is
+      // an ineligible field, not a lookup on the registry object's prototype.
+      const path = Object.hasOwn(disclosureEligibleFields, member)
+        ? disclosureEligibleFields[
+            member as keyof typeof disclosureEligibleFields
+          ]
+        : undefined;
       if (!path) {
         findings.push({
           capsuleId: id,

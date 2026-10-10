@@ -154,3 +154,18 @@ func findingCodes(result verify.VerificationResult) []string {
 	}
 	return codes
 }
+
+func TestDecodeCapsuleJSONRejectsWhatEncodingJSONWouldRepair(t *testing.T) {
+	value, err := verify.DecodeCapsuleJSON([]byte(" {\"a\":1} \n"))
+	require.NoError(t, err)
+	require.Equal(t, map[string]interface{}{"a": json.Number("1")}, value)
+	for _, text := range []string{
+		`{"a":1} trailing`,
+		`{"a":1}{"b":2}`,
+		`{"a":"\ud800"}`,
+		"{\"a\":\"\xff\"}",
+	} {
+		_, err := verify.DecodeCapsuleJSON([]byte(text))
+		require.Error(t, err, text)
+	}
+}

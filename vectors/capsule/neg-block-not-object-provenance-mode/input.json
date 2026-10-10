@@ -1,0 +1,23 @@
+{
+  "action_id": "neg-block-not-object-provenance-mode",
+  "action_type": "decide",
+  "assurance": {
+    "attestation_mode": "self_attested",
+    "effect_mode": "not_applicable",
+    "ledger_mode": "standalone"
+  },
+  "canonicalization_id": "jcs",
+  "developer": "conformance-vector@v1",
+  "disposition": {
+    "approver": "policy",
+    "decision": "accept",
+    "human_disposed": false,
+    "verdict_class": "executed"
+  },
+  "format_version": "4",
+  "operator": "AAC-CONFORMANCE",
+  "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+  "timestamp": "2026-10-10T00:00:00Z",
+  "provenance_mode": "backfilled",
+  "capsule_id": "81166bbd5134edd7af7a039d7add6c621fb0e868c723a6c1eaf9439afcdfa79c"
+}

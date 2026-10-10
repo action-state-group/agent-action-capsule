@@ -11,6 +11,7 @@ second hashing path.
 """
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
@@ -18,6 +19,9 @@ from typing import Any
 from .canonical import FloatInDigestError, UnsafeIntegerError, json_digest
 from .registries import DISCLOSURE_ELIGIBLE_FIELDS
 from .verify import VerificationResult, verify
+
+# DE-2: a committed digest is exactly 64 lowercase hexadecimal characters.
+_HEX64 = re.compile(r"[0-9a-f]{64}")
 
 MATCH = "disclosure_match"
 MISMATCH = "disclosure_mismatch"
@@ -74,7 +78,7 @@ def verify_disclosure_envelope(envelope: Any) -> DisclosureEnvelopeResult:
                 continue
 
             stored = _committed_digest(capsule, DISCLOSURE_ELIGIBLE_FIELDS[member])
-            if not isinstance(stored, str) or len(stored) != 64:
+            if not isinstance(stored, str) or _HEX64.fullmatch(stored) is None:
                 findings.append(DisclosureFinding(member, NO_COMMITTED_DIGEST))
                 continue
 
@@ -101,7 +105,7 @@ def build_disclosure_envelope(capsule: Mapping[str, Any], disclosures: Mapping[s
         if path is None:
             raise ValueError(f"{INELIGIBLE}: {member}")
         stored = _committed_digest(capsule, path)
-        if not isinstance(stored, str) or len(stored) != 64:
+        if not isinstance(stored, str) or _HEX64.fullmatch(stored) is None:
             raise ValueError(f"{NO_COMMITTED_DIGEST}: {member}")
         try:
             computed = json_digest(value)

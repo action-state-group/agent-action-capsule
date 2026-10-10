@@ -38,7 +38,17 @@
     },
     {
       "capsule_id": "act-naive",
-      "provenance_mode": "backfilled",
+      "provenance_mode": {
+        "mode": "backfilled",
+        "source_ref": {
+          "type": "x-fixture-import",
+          "digest_alg": "SHA-256",
+          "digest": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "source_asserted_at": "2026-08-26T20:14:58.000001",
+        "import_batch": "fixture-batch",
+        "imported_at": "2026-09-14T00:00:00Z"
+      },
       "occurred_at": "2026-08-26T20:14:58.000001",
       "timestamp": "2026-09-14T00:00:00Z"
     },

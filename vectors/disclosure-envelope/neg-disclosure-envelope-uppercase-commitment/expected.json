@@ -1,0 +1,24 @@
+{
+  "description": "DE-2 requires a lowercase-hex committed digest; an uppercase one is no commitment",
+  "kind": "negative",
+  "ok": false,
+  "capsule": {
+    "ok": true,
+    "derived": {
+      "effect_mode": "confirmed",
+      "attestation_mode": "self_attested",
+      "ledger_mode": "standalone"
+    },
+    "capsule_id_recomputed": "16b82775dbf884359ccf1cd5f2d5c0e3b1b2fa30faf601b12ef43eaa12ee4885",
+    "findings": []
+  },
+  "disclosures_checked": 1,
+  "disclosures_matched": 0,
+  "disclosure_findings": [
+    {
+      "member": "agent_input",
+      "code": "disclosure_no_committed_digest"
+    }
+  ],
+  "provenance": "reference-derived"
+}

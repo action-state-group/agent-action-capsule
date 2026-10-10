@@ -3,6 +3,7 @@
 package bundle
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -87,17 +88,24 @@ func EncodeFragment(value interface{}) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(encoded), nil
 }
 
+// strictB64URL rejects non-zero trailing bits, so each byte string has exactly
+// one unpadded base64url spelling, as the Rust verifier's decoder requires.
+var strictB64URL = base64.RawURLEncoding.Strict()
+
 // DecodeFragment decodes an unpadded Evidence Bundle URL fragment. It only
 // decodes transport; VerifyBundle applies the Bundle semantic checks.
 func DecodeFragment(fragment string) (interface{}, error) {
 	if !b64url.MatchString(fragment) {
 		return nil, fmt.Errorf("fragment must be unpadded base64url")
 	}
-	raw, err := base64.RawURLEncoding.DecodeString(fragment)
+	raw, err := strictB64URL.DecodeString(fragment)
 	if err != nil {
 		return nil, fmt.Errorf("fragment is not UTF-8 JSON: %w", err)
 	}
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	if err := canonical.CheckJSONText(raw); err != nil {
+		return nil, fmt.Errorf("fragment is not UTF-8 JSON: %w", err)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	var value interface{}
 	if err := decoder.Decode(&value); err != nil {
@@ -250,14 +258,25 @@ func graph(bundle map[string]interface{}, records map[string]map[string]interfac
 	if complete["records_mode"] != expectedMode {
 		findings = append(findings, "records_mode_mismatch")
 	}
+	// Breadth-first, each target once: a record first reached at its shortest
+	// distance already carries the most remaining depth, so revisiting it adds
+	// nothing, and the walk stops when no new record is reached. Both bound the
+	// work by the records supplied rather than by the declared depth.
 	frontier := []string{root}
-	for i := int64(0); i < depth; i++ {
+	visited := map[string]bool{root: true}
+	dangling := map[string]bool{}
+	for i := int64(0); i < depth && len(frontier) != 0; i++ {
 		var next []string
 		for _, sourceID := range frontier {
 			for _, target := range citationTargets(records[sourceID]) {
-				if records[target] != nil {
-					next = append(next, target)
-				} else if !missing[target] {
+				switch {
+				case records[target] != nil:
+					if !visited[target] {
+						visited[target] = true
+						next = append(next, target)
+					}
+				case !missing[target] && !dangling[target]:
+					dangling[target] = true
 					findings = append(findings, "citation_dangling:"+target)
 				}
 			}
@@ -337,7 +356,7 @@ func authenticateCheckpoint(checkpointValue map[string]interface{}, logID string
 	if !ok || !b64url.MatchString(encoded) {
 		return "invalid"
 	}
-	cose, err := base64.RawURLEncoding.DecodeString(encoded)
+	cose, err := strictB64URL.DecodeString(encoded)
 	if err != nil {
 		return "invalid"
 	}
@@ -530,6 +549,16 @@ func hashes(raw interface{}) ([][]byte, error) {
 	return result, nil
 }
 
+// eligibleMembers is registries.DisclosureEligibleFields' names, sorted.
+var eligibleMembers = func() []string {
+	names := make([]string, 0, len(registries.DisclosureEligibleFields))
+	for name := range registries.DisclosureEligibleFields {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}()
+
 func disclosures(raw interface{}, records map[string]map[string]interface{}) []DisclosureResult {
 	overlay, ok := raw.(map[string]interface{})
 	if !ok {
@@ -546,9 +575,11 @@ func disclosures(raw interface{}, records map[string]map[string]interface{}) []D
 		if !present {
 			supplied = map[string]interface{}{}
 		}
-		for member, path := range registries.DisclosureEligibleFields {
+		// Sorted, not map order, so withheld findings come out in the same order
+		// on every run and in every language.
+		for _, member := range eligibleMembers {
 			if _, exists := supplied[member]; !exists {
-				if _, committed := committedDigest(records[id], path); committed {
+				if _, committed := committedDigest(records[id], registries.DisclosureEligibleFields[member]); committed {
 					result = append(result, DisclosureResult{CapsuleID: id, Member: member, Status: "withheld"})
 				}
 			}

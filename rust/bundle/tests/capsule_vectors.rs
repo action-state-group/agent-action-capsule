@@ -2,16 +2,14 @@
 //! Runs the Class 1 verifier over the shared `vectors/capsule/` corpus that
 //! the Python, Go and TypeScript verifiers run.
 //!
-//! This crate ports checks 1-7 and omits check 8 by design (see the scope
-//! note in `src/verify.rs`), and every check-8 finding is `info`. So each
+//! This crate ports checks 1-7 and 9 and omits check 8 by design (see the
+//! scope note in `src/verify.rs`), and every check-8 finding is `info`. So each
 //! bare-Capsule case is compared on `ok`, the recomputed `capsule_id`, and the
 //! ordered (check, severity, code) of every finding that is not `info`.
 //! Canonicalization cases (no `ok`) and store cases (`{"ledger": [...]}`) are
 //! skipped: they exercise surfaces this crate does not expose.
 //!
-//! The provenance-mode corpus is Python and Go (check 9). This crate does not
-//! implement check 9, but the corpus's check-1 type cases
-//! (`neg-field-not-string-*`) still apply, and run here the same way.
+//! The provenance-mode corpus (check 9) runs the same way.
 
 use aac_bundle::verify::verify;
 use serde_json::Value;
@@ -43,10 +41,8 @@ fn capsule_corpus_matches_the_siblings() {
 }
 
 #[test]
-fn provenance_mode_type_cases_match_the_siblings() {
-    check_corpus(provenance_corpus(), |name| {
-        name.starts_with("neg-field-not-string-")
-    });
+fn provenance_mode_corpus_matches_the_siblings() {
+    check_corpus(provenance_corpus(), |_| true);
 }
 
 fn check_corpus(root: PathBuf, select: impl Fn(&str) -> bool) {
@@ -103,5 +99,35 @@ fn check_corpus(root: PathBuf, select: impl Fn(&str) -> bool) {
         "{} of {run} cases diverge:\n{}",
         failures.len(),
         failures.join("\n")
+    );
+}
+
+#[test]
+fn null_effect_attestation_counts_as_absent() {
+    // As in Go, Python and TS: a null effect_attestation is absent, so a
+    // not_applicable effect with one is not effect_attestation_present.
+    let manifest = read(corpus().join("vectors.json"));
+    let name = manifest["cases"]
+        .as_array()
+        .expect("cases")
+        .iter()
+        .filter_map(|case| case["name"].as_str())
+        .find(|name| {
+            let input = read(corpus().join(name).join("input.json"));
+            input["effect"].is_null()
+                && read(corpus().join(name).join("expected.json"))["ok"] == Value::Bool(true)
+        })
+        .expect("a positive case without an effect block");
+    let mut input = read(corpus().join(name).join("input.json"));
+    input["effect"] =
+        serde_json::json!({"status": "planned", "type": "x", "effect_attestation": null});
+    let codes: Vec<String> = verify(&input, None)
+        .findings
+        .into_iter()
+        .map(|f| f.code)
+        .collect();
+    assert!(
+        !codes.contains(&"effect_attestation_present".to_string()),
+        "{codes:?}"
     );
 }

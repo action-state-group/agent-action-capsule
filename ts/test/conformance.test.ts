@@ -76,19 +76,26 @@ describe("complete upstream AAC corpus", () => {
     });
 });
 
-// The provenance-mode corpus is Python and Go: this verifier does not
-// implement check 9 or derive provenance_mode. Its check-1 cases still apply,
-// so they run here on ok, capsule_id and findings.
-describe("provenance_mode check-1 type cases", () => {
+// The provenance-mode corpus: every bare-Capsule case runs here on ok,
+// capsule_id, derived assurance and findings, check 9 included. Store cases
+// (`{"ledger": [...]}`) exercise the duplicates-collapse pass, which
+// verifyStore does not implement, and are skipped.
+describe("provenance_mode corpus", () => {
   const pmRoot = resolve(root, "..", "..", "provenance-mode-vectors");
   const pmManifest = JSON.parse(
     readFileSync(resolve(pmRoot, "vectors.json"), "utf8"),
   ) as { cases: Array<{ name: string }> };
-  const typed = pmManifest.cases.filter((item) =>
-    item.name.startsWith("neg-field-not-string-"),
+  const bare = pmManifest.cases.filter(
+    (item) =>
+      !(
+        "ledger" in
+        (JSON.parse(
+          readFileSync(resolve(pmRoot, item.name, "input.json"), "utf8"),
+        ) as object)
+      ),
   );
-  it("has cases", () => expect(typed.length).toBeGreaterThan(0));
-  for (const item of typed)
+  it("has cases", () => expect(bare.length).toBeGreaterThan(20));
+  for (const item of bare)
     it(item.name, async () => {
       const input = decodeStrictJson(
         readFileSync(resolve(pmRoot, item.name, "input.json")),
@@ -98,11 +105,13 @@ describe("provenance_mode check-1 type cases", () => {
       ) as {
         ok: boolean;
         capsule_id_recomputed: string;
+        derived: Record<string, string>;
         findings: Array<{ code: string }>;
       };
       const actual = await verifyClass1(input);
       expect(actual.ok).toBe(expected.ok);
       expect(actual.capsuleId).toBe(expected.capsule_id_recomputed);
+      expect(actual.assurance).toEqual(expected.derived);
       expect(actual.findings.map((finding) => finding.code)).toEqual(
         expected.findings.map((finding) => finding.code),
       );
