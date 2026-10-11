@@ -1,0 +1,45 @@
+{
+  "descriptor": {
+    "verified": true,
+    "bundle_kind": "evidence-bundle/v2",
+    "profiles": [],
+    "extensions": ["x-deal-v0"]
+  },
+  "register": {
+    "deal-view then unilateral": {
+      "error": "PresentationAmbiguityError",
+      "ids": ["capsulectl.deal-view/v0", "capsuleviewer.receipt.unilateral/v0"],
+      "message": "manifests capsulectl.deal-view/v0 and capsuleviewer.receipt.unilateral/v0 are both specific and one descriptor can match both; state precedence with forbids"
+    },
+    "unilateral then deal-view": {
+      "error": "PresentationAmbiguityError",
+      "ids": ["capsulectl.deal-view/v0", "capsuleviewer.receipt.unilateral/v0"],
+      "message": "manifests capsuleviewer.receipt.unilateral/v0 and capsulectl.deal-view/v0 are both specific and one descriptor can match both; state precedence with forbids"
+    },
+    "deal-view as a fallback": {
+      "error": "PresentationAmbiguityError",
+      "ids": ["aac.builtin.no-aggregate/v0", "capsulectl.deal-view/v0"],
+      "message": "manifests aac.builtin.no-aggregate/v0 and capsulectl.deal-view/v0 are both fallbacks and one descriptor can match both; state precedence with forbids"
+    }
+  },
+  "resolve": {
+    "keep": {
+      "error": "PresentationAmbiguityError",
+      "ids": ["capsulectl.deal-view/v0", "capsuleviewer.receipt.unilateral/v0"],
+      "canRender": []
+    },
+    "counterparty": {
+      "error": "PresentationAmbiguityError",
+      "ids": ["capsulectl.deal-view/v0", "capsuleviewer.receipt.unilateral/v0"],
+      "canRender": []
+    },
+    "adjudicator": {
+      "error": "PresentationAmbiguityError",
+      "ids": ["capsulectl.deal-view/v0", "capsuleviewer.receipt.unilateral/v0"],
+      "canRender": []
+    },
+    "*": {
+      "winner": "capsulectl.deal-view/v0"
+    }
+  }
+}
