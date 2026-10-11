@@ -7,9 +7,12 @@ import {
   type MmrRangeProof,
 } from "@action-state-group/cll";
 import {
+  digestCapability,
   isHex64,
+  probeEd25519,
   jcs,
   jsonDigest,
+  Sha256UnavailableError,
   sha256Hex,
   type ParsedJson,
 } from "./json.js";
@@ -157,6 +160,9 @@ export async function bundleDigest(bundle: Bundle): Promise<string> {
 export async function verifyBundle(
   bundle: unknown,
 ): Promise<BundleVerificationResult> {
+  // Every check below hashes. With no SHA-256 nothing can be checked, and a
+  // result here would read as a failed check, so there is none.
+  if (digestCapability() === "none") throw new Sha256UnavailableError();
   const invalid = fail("bundle_malformed");
   if (!object(bundle))
     return {
@@ -943,6 +949,8 @@ export async function buildVerifiedBundleContext(
   // bytes every builder reads and nothing (the caller included) can change
   // them afterwards.
   const owned = deepFreeze(ownedCopy(bundle));
+  // Settles ed25519Available() for every reader of this context.
+  await probeEd25519();
   return contextFrom(
     owned,
     await verifyBundle(owned),

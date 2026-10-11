@@ -463,8 +463,8 @@ describe("classifyCountersignatures", () => {
       countersigners,
     );
     expect(result).toEqual([
-      { kind: "unverified", type: "cose-sign1" },
-      { kind: "unverified", type: "countersign/v2" },
+      { kind: "unverified", type: "cose-sign1", reason: "type" },
+      { kind: "unverified", type: "countersign/v2", reason: "type" },
     ]);
   });
 

@@ -1,4 +1,4 @@
-import { jcs, sha256Hex } from "./json.js";
+import { jcs, probeEd25519, sha256Hex } from "./json.js";
 import { hexToBytes, producerPublicKeySpki } from "./producer-envelope-wire.js";
 
 /** The countersignatures[] entry type this stamp verifies. */
@@ -52,7 +52,11 @@ export interface CountersignStatementView {
  * verification rules:
  * - "hollow": no countersignatures[] entries -- the default.
  * - "unverified": an entry of a type this viewer does not implement,
- *   including the reserved `cose-sign1` slot. It changes no other result.
+ *   including the reserved `cose-sign1` slot (`reason` "type"), or a
+ *   countersign/v1 entry whose signature this runtime cannot check because
+ *   it has no Ed25519 (`reason` "no-ed25519": no SubtleCrypto outside a
+ *   secure context, or a SubtleCrypto without Ed25519). It changes no other
+ *   result.
  * - "invalid": a countersign/v1 entry that is malformed, signs a different
  *   bundle digest, or whose signature fails. Its checks are never shown.
  * - "not-independent": the signer key is the producer's own key.
@@ -62,7 +66,11 @@ export interface CountersignStatementView {
  */
 export type CountersignatureStamp =
   | { readonly kind: "hollow" }
-  | { readonly kind: "unverified"; readonly type: string }
+  | {
+      readonly kind: "unverified";
+      readonly type: string;
+      readonly reason: "type" | "no-ed25519";
+    }
   | { readonly kind: "invalid" }
   | {
       readonly kind: "not-independent";
@@ -217,15 +225,38 @@ export async function verifyCountersignV1Signature(
   keyId: string,
   signatureHex: string,
 ): Promise<boolean> {
+  return (
+    (await checkCountersignV1Signature(entry, keyId, signatureHex)) === true
+  );
+}
+
+/**
+ * As {@link verifyCountersignV1Signature}, but `undefined` when this runtime
+ * cannot check an Ed25519 signature at all: no SubtleCrypto, or one that
+ * rejects the Ed25519 key as not supported.
+ */
+async function checkCountersignV1Signature(
+  entry: CountersignV1Signed,
+  keyId: string,
+  signatureHex: string,
+): Promise<boolean | undefined> {
   if (!KEY_ID.test(keyId) || !SIGNATURE.test(signatureHex)) return false;
+  if (!(await probeEd25519())) return undefined;
+  let key: CryptoKey;
   try {
-    const key = await globalThis.crypto.subtle.importKey(
+    key = await globalThis.crypto.subtle.importKey(
       "spki",
       producerPublicKeySpki(hexToBytes(keyId)) as BufferSource,
       { name: "Ed25519" },
       false,
       ["verify"],
     );
+  } catch (error) {
+    return (error as { name?: unknown } | null)?.name === "NotSupportedError"
+      ? undefined
+      : false;
+  }
+  try {
     return await globalThis.crypto.subtle.verify(
       { name: "Ed25519" },
       key,
@@ -267,7 +298,7 @@ async function classifyCountersignV1(
   // are never shown. An absent or empty `type` is verified as countersign/v1:
   // the signing input binds "countersign/v1", so a signature over "" fails.
   if (entry.over !== bundleDigest) return { kind: "invalid" };
-  const signed = await verifyCountersignV1Signature(
+  const signed = await checkCountersignV1Signature(
     {
       over: entry.over,
       signer: entry.signer,
@@ -277,6 +308,8 @@ async function classifyCountersignV1(
     keyId,
     entry.signature,
   );
+  if (signed === undefined)
+    return { kind: "unverified", type: COUNTERSIGN_V1, reason: "no-ed25519" };
   if (!signed) return { kind: "invalid" };
   const view: CountersignStatementView = {
     checks,
@@ -338,7 +371,7 @@ export async function classifyCountersignatures(
     if (entry === undefined || typeof type !== "string") {
       results.push({ kind: "invalid" });
     } else if (type !== "" && type !== COUNTERSIGN_V1) {
-      results.push({ kind: "unverified", type });
+      results.push({ kind: "unverified", type, reason: "type" });
     } else if (bundleDigest === undefined) {
       results.push({ kind: "invalid" });
     } else {

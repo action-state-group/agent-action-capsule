@@ -37,6 +37,7 @@ import {
   type ReportNode,
   zoneStatement,
 } from "./evidence-graph.js";
+import { digestCapability } from "./json.js";
 import { renderOutcomeReportPage } from "./outcome-report-view.js";
 import type {
   PresentationDepth,
@@ -182,6 +183,45 @@ function renderVerificationBanner(
   return banner;
 }
 
+/** The words a page says when this viewer cannot verify the bundle at all. */
+export const UNABLE_TO_VERIFY_LINES = {
+  banner: "Unable to verify in this viewer",
+  reason:
+    "This viewer cannot compute the SHA-256 digests the checks need, so nothing was checked and no records are shown. This is not a failed check: the file may well be valid.",
+  command: "To check this file, run:",
+  noCommand:
+    "To check this file, open it from a secure (https) page, or check it with a verifier outside this viewer.",
+} as const;
+
+/**
+ * Render the "unable to verify in this viewer" state into `root`: drawn,
+ * in place of any verification result, when this runtime has no SHA-256
+ * (`digestCapability() === "none"`). It never says the bundle failed, and
+ * it shows no record. `verifyCommand` is the exact command a reader runs
+ * to check the file elsewhere; without one, the page says where to check
+ * it instead.
+ */
+export function renderUnableToVerify(
+  root: HTMLElement,
+  options: { readonly verifyCommand?: string } = {},
+): void {
+  root.replaceChildren();
+  const banner = element("p", UNABLE_TO_VERIFY_LINES.banner);
+  banner.dataset.verify = "unable";
+  const reason = element("p", UNABLE_TO_VERIFY_LINES.reason);
+  reason.dataset.refusal = "unable-to-verify";
+  root.append(banner, reason);
+  if (options.verifyCommand === undefined) {
+    root.append(element("p", UNABLE_TO_VERIFY_LINES.noCommand));
+    return;
+  }
+  const command = element("code", options.verifyCommand);
+  command.dataset.verifyCommand = "";
+  const block = element("pre");
+  block.append(command);
+  root.append(element("p", UNABLE_TO_VERIFY_LINES.command), block);
+}
+
 // Drawn in the outcome-report card's own look when that card renders
 // (OUTCOME_REPORT_CSS's .oi-banner rules); the words and data attributes are
 // identical either way -- the class is presentation only.
@@ -222,7 +262,9 @@ function stampText(stamp: CountersignatureStamp): string {
     case "hollow":
       return "Countersigned: none";
     case "unverified":
-      return `a ${stamp.type} countersignature is present; this viewer does not verify that type`;
+      return stamp.reason === "no-ed25519"
+        ? `a ${stamp.type} countersignature is present; its signature is not checked in this viewer`
+        : `a ${stamp.type} countersignature is present; this viewer does not verify that type`;
     case "invalid":
       return "a countersignature is present but failed to verify";
     case "not-independent":
@@ -1643,6 +1685,11 @@ export interface RenderEvidenceGraphOptions {
    * The built-in modules use the core's own labels and do not read it.
    */
   readonly wording?: WordingPackInput;
+  /**
+   * The exact command that checks this file outside the page, shown when
+   * this viewer cannot verify it (see {@link renderUnableToVerify}).
+   */
+  readonly verifyCommand?: string;
 }
 
 const OUTCOME_CHROME = "oi";
@@ -1715,6 +1762,16 @@ export async function renderEvidenceGraph(
   countersigners?: CountersignerSource,
   options: RenderEvidenceGraphOptions = {},
 ): Promise<void> {
+  // With no SHA-256 nothing can be verified: say so, never "failed".
+  if (!isVerifiedBundleContext(input) && digestCapability() === "none") {
+    renderUnableToVerify(
+      root,
+      options.verifyCommand === undefined
+        ? {}
+        : { verifyCommand: options.verifyCommand },
+    );
+    return;
+  }
   // Verify first. Nothing reaches the DOM until the verification result is
   // in hand, and no module is consulted for a bundle that did not verify.
   const context = isVerifiedBundleContext(input)
