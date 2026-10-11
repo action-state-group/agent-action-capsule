@@ -13,8 +13,9 @@
 //! `capsule_id`. Since this crate's only consumer of `Verify` is
 //! `bundle::records()`, which uses exactly `ok` and `capsule_id`, check 8 is
 //! omitted rather than embedding and re-parsing REGISTRY.md's Markdown tables
-//! for output nothing here observes. Every `error`-severity check (1-7) is
-//! ported in full, so `ok` and `capsule_id` are bit-exact with the siblings.
+//! for output nothing here observes. Every `error`-severity check (1-7 and
+//! check 9, provenance mode) is ported in full, so `ok` and `capsule_id` are
+//! bit-exact with the siblings.
 //! A future consumer that needs check 8's informational findings should port
 //! it then, not stub it now.
 
@@ -321,12 +322,32 @@ pub fn verify(capsule: &Value, store: Option<&[Value]>) -> VerificationResult {
         }
     }
 
-    for field in ["effect", "assurance", "disposition", "chain", "cross_party"] {
+    for field in [
+        "effect",
+        "assurance",
+        "disposition",
+        "chain",
+        "cross_party",
+        "self_reported_reasoning",
+        "provenance_mode",
+    ] {
         if let Some(v) = capsule_map.get(field) {
             if !v.is_object() {
                 findings.push(mkf(
                     "block_not_object",
                     &format!("{field} MUST be a JSON object when present"),
+                    Some(1),
+                    "error",
+                ));
+            }
+        }
+    }
+    for field in ["domain", "provenance"] {
+        if let Some(v) = capsule_map.get(field) {
+            if !v.is_string() {
+                findings.push(mkf(
+                    &format!("{field}_not_string"),
+                    &format!("{field} MUST be a string when present (§-02)"),
                     Some(1),
                     "error",
                 ));
@@ -513,7 +534,10 @@ pub fn verify(capsule: &Value, store: Option<&[Value]>) -> VerificationResult {
     }
 
     // ---- Check 5: Effect-attestation matrix ---------------------------------
-    let ea = effect.and_then(|e| e.get("effect_attestation"));
+    // JSON null counts as absent, as in the Go, Python and TS verifiers.
+    let ea = effect
+        .and_then(|e| e.get("effect_attestation"))
+        .filter(|v| !v.is_null());
     if effect_mode == "confirmed" || effect_mode == "dispatched_unconfirmed" {
         if ea.is_none() {
             findings.push(mkf(
@@ -665,11 +689,169 @@ pub fn verify(capsule: &Value, store: Option<&[Value]>) -> VerificationResult {
     // ---- Check 8: Unknown registry values -----------------------------------
     // Deliberately omitted -- info-severity only, see module doc.
 
+    provenance_mode_findings(capsule_map, &mut findings, &mut derived);
+
     let ok = !findings.iter().any(|f| f.severity == "error");
     VerificationResult {
         ok,
         findings,
         assurance: derived,
         capsule_id: recomputed_id,
+    }
+}
+
+const PROVENANCE_BACKFILLED_FIELDS: [&str; 4] = [
+    "source_ref",
+    "source_asserted_at",
+    "import_batch",
+    "imported_at",
+];
+
+fn non_empty_str(v: Option<&Value>) -> bool {
+    matches!(v, Some(Value::String(s)) if !s.is_empty())
+}
+
+/// Check 9: provenance mode (§5.3(bis)), ported from the Go and Python
+/// siblings. A backfilled record's occurrence-time claim is capped at
+/// self-attested unless a `references[]` entry cites
+/// `corroborates_source_time`. A time-rung overclaim and the
+/// `imported_at == source_asserted_at` laundering shape gate `ok`.
+fn provenance_mode_findings(
+    capsule_map: &Map<String, Value>,
+    findings: &mut Vec<Finding>,
+    derived: &mut BTreeMap<String, String>,
+) {
+    let Some(pm) = as_map(capsule_map.get("provenance_mode")) else {
+        return;
+    };
+    let invalid = |detail: String| mkf("provenance_mode_invalid", &detail, Some(9), "error");
+    let mode = pm.get("mode").and_then(Value::as_str);
+    match mode {
+        Some(m @ ("backfilled" | "contemporaneous")) => {
+            derived.insert("provenance_mode".to_string(), m.to_string());
+        }
+        _ => findings.push(invalid(format!(
+            "provenance_mode.mode MUST be one of backfilled|contemporaneous (§5.3(bis) \
+             Provenance mode); got {}",
+            pm.get("mode").map_or("<nil>".to_string(), Value::to_string)
+        ))),
+    }
+    match mode {
+        Some("backfilled") => {
+            for field in PROVENANCE_BACKFILLED_FIELDS {
+                let present = match pm.get(field) {
+                    None | Some(Value::Null) => false,
+                    Some(Value::String(s)) => !s.is_empty(),
+                    Some(_) => true,
+                };
+                if !present {
+                    findings.push(mkf(
+                        "provenance_mode_missing_required_field",
+                        &format!(
+                            "provenance_mode.{field} is REQUIRED when mode='backfilled' \
+                             (§5.3(bis) Provenance mode)"
+                        ),
+                        Some(9),
+                        "error",
+                    ));
+                }
+            }
+            match pm.get("source_ref") {
+                Some(Value::Object(source_ref)) => {
+                    for field in ["type", "digest_alg", "digest"] {
+                        if !non_empty_str(source_ref.get(field)) {
+                            findings.push(mkf(
+                                "provenance_mode_source_ref_malformed",
+                                &format!(
+                                    "provenance_mode.source_ref.{field} MUST be a non-empty \
+                                     string (§5.3(bis) Provenance mode)"
+                                ),
+                                Some(9),
+                                "error",
+                            ));
+                        }
+                    }
+                }
+                Some(_) => findings.push(mkf(
+                    "provenance_mode_source_ref_malformed",
+                    "provenance_mode.source_ref MUST be a JSON object when present (§5.3(bis) \
+                     Provenance mode)",
+                    Some(9),
+                    "error",
+                )),
+                None => {}
+            }
+            if let (Some(Value::String(imported)), Some(Value::String(asserted))) =
+                (pm.get("imported_at"), pm.get("source_asserted_at"))
+            {
+                if imported == asserted {
+                    findings.push(mkf(
+                        "provenance_time_laundering_shape",
+                        "provenance_mode.imported_at equals source_asserted_at on a backfilled \
+                         record; this is the shape a laundering producer would construct to \
+                         make an import look contemporaneous (§5.3(bis) Provenance mode)",
+                        Some(9),
+                        "error",
+                    ));
+                }
+            }
+            let mut time_rung = None;
+            match pm.get("time_rung") {
+                None | Some(Value::Null) => {}
+                Some(Value::String(r)) if r == "self_attested" || r == "witnessed" => {
+                    time_rung = Some(r.as_str());
+                }
+                Some(other) => findings.push(invalid(format!(
+                    "provenance_mode.time_rung MUST be one of self_attested|witnessed \
+                     (§5.3(bis) Provenance mode); got {other}"
+                ))),
+            }
+            let corroborated = capsule_map
+                .get("references")
+                .and_then(Value::as_array)
+                .is_some_and(|refs| {
+                    refs.iter().filter_map(Value::as_object).any(|r| {
+                        r.get("citation_purpose").and_then(Value::as_str)
+                            == Some("corroborates_source_time")
+                            && non_empty_str(r.get("type"))
+                            && non_empty_str(r.get("digest_alg"))
+                            && non_empty_str(r.get("digest"))
+                    })
+                });
+            if time_rung == Some("witnessed") && !corroborated {
+                findings.push(mkf(
+                    "provenance_time_rung_overclaim",
+                    "provenance_mode.time_rung='witnessed' claimed without a well-formed \
+                     references[] entry citing citation_purpose='corroborates_source_time' \
+                     (§5.3(bis) Provenance mode)",
+                    Some(9),
+                    "error",
+                ));
+            }
+            derived.insert(
+                "provenance_time_rung".to_string(),
+                if corroborated {
+                    "witnessed"
+                } else {
+                    "self_attested"
+                }
+                .to_string(),
+            );
+        }
+        Some("contemporaneous") => {
+            let orphaned: Vec<&str> = PROVENANCE_BACKFILLED_FIELDS
+                .iter()
+                .copied()
+                .chain(["time_rung"])
+                .filter(|f| !matches!(pm.get(*f), None | Some(Value::Null)))
+                .collect();
+            if !orphaned.is_empty() {
+                findings.push(invalid(format!(
+                    "provenance_mode fields {orphaned:?} are meaningful only when \
+                     mode='backfilled' (§5.3(bis) Provenance mode)"
+                )));
+            }
+        }
+        _ => {}
     }
 }

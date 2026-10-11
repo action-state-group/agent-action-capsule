@@ -307,6 +307,19 @@ fn test_case(name: &str) -> Value {
             completeness.remove("closure_depth");
             completeness.remove("missing");
         }
+        "pos-closure-depth-max-safe" | "neg-closure-depth-unsafe" => {
+            let depth = if name.starts_with("pos-") {
+                (1u64 << 53) - 1
+            } else {
+                1u64 << 53
+            };
+            let b = bundle.as_object_mut().expect("test fixture");
+            b.get_mut("completeness")
+                .expect("test fixture")
+                .as_object_mut()
+                .expect("test fixture")
+                .insert("closure_depth".into(), json!(depth));
+        }
         "neg-portable-proof-version-kind" => {
             let b = bundle.as_object_mut().expect("test fixture");
             let id = capsule_id(&middle).to_string();
@@ -364,17 +377,18 @@ fn compare_claims(a: &VerificationResult, b: &VerificationResult) {
 #[test]
 fn bundle_vectors() {
     let manifest = manifest();
-    assert_eq!(manifest.count, 12);
+    assert_eq!(manifest.count, 14);
     assert_eq!(manifest.cases.len(), manifest.count);
 
     for case in &manifest.cases {
         let input = test_case(&case.name);
-        let fragment = encode_fragment(&input).expect("encode");
-        let decoded = decode_fragment(&fragment).expect("decode");
-
         let result = verify_bundle(&input);
-        let decoded_result = verify_bundle(&decoded);
-        compare_claims(&result, &decoded_result);
+        // JCS refuses an unsafe integer, so that case has no fragment form.
+        if case.name != "neg-closure-depth-unsafe" {
+            let fragment = encode_fragment(&input).expect("encode");
+            let decoded = decode_fragment(&fragment).expect("decode");
+            compare_claims(&result, &verify_bundle(&decoded));
+        }
 
         assert_eq!(
             case.expected.graph_closure, result.graph_closure.status,
@@ -533,4 +547,51 @@ fn interval_rejects_sub_tip_range() {
         .interval_coverage
         .findings
         .contains(&"range_proof_invalid".to_string()));
+}
+
+#[test]
+fn closure_reports_each_dangling_target_once() {
+    // One absent target reached from two records (the root's reference and its
+    // chain parent's chain) is one dangling citation, in every language.
+    let absent = "e".repeat(64);
+    let parent = test_capsule(
+        5,
+        None,
+        None,
+        Some(json!({"parent_capsule_id": absent, "relation": "derived_from"})),
+    );
+    let mut root = test_capsule(
+        6,
+        None,
+        None,
+        Some(json!({"parent_capsule_id": capsule_id(&parent), "relation": "derived_from"})),
+    );
+    root.remove("capsule_id");
+    root.insert(
+        "references".into(),
+        json!([{"type": "agent-action-capsule", "digest_alg": "SHA-256", "digest": absent, "citation_purpose": "acted_on"}]),
+    );
+    let id = canonical::compute_capsule_id(&root).expect("test fixture: capsule id");
+    root.insert("capsule_id".into(), json!(id));
+    let result = verify_bundle(&test_bundle(&[parent, root.clone()], &root, None, &[]));
+    assert_eq!(result.graph_closure.status, "fail");
+    let dangling = format!("citation_dangling:{absent}");
+    assert_eq!(
+        result
+            .graph_closure
+            .findings
+            .iter()
+            .filter(|f| **f == dangling)
+            .count(),
+        1,
+        "{:?}",
+        result.graph_closure.findings
+    );
+}
+
+#[test]
+fn fragment_refuses_non_canonical_base64url() {
+    assert_eq!(decode_fragment("e30").expect("canonical"), json!({}));
+    // "e31" carries the same two bytes with non-zero trailing bits.
+    assert!(decode_fragment("e31").is_err());
 }

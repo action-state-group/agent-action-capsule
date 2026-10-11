@@ -232,7 +232,12 @@ const calendarDay = (date: string): number | undefined => {
 export const recordTimes = (record: RecordWithId): RecordTimes => {
   const sealTime = asString(record.timestamp);
   const actionTime = asString(record.occurred_at);
-  const provenanceMode = asString(record.provenance_mode);
+  // provenance_mode is a block (§5.3(bis)); its mode member names the mode.
+  const block = record.provenance_mode;
+  const provenanceMode =
+    block !== null && typeof block === "object" && !Array.isArray(block)
+      ? asString((block as Record<string, unknown>).mode)
+      : undefined;
   return {
     ...(sealTime === undefined ? {} : { sealTime }),
     ...(actionTime === undefined ? {} : { actionTime }),

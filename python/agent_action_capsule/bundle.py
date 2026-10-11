@@ -20,7 +20,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from .canonical import FloatInDigestError, UnsafeIntegerError, jcs
+from .canonical import MAX_SAFE_INTEGER, FloatInDigestError, UnsafeIntegerError, jcs
 from .disclosure_envelope import (
     INELIGIBLE,
     MATCH,
@@ -114,6 +114,18 @@ def encode_fragment(bundle: Any) -> str:
     return base64.urlsafe_b64encode(jcs(bundle)).rstrip(b"=").decode("ascii")
 
 
+def _b64url_decode(text: str) -> bytes:
+    """Decode unpadded base64url, refusing non-zero trailing bits.
+
+    Without the round trip a byte string has several accepted spellings; Go
+    (strict mode), Rust and TS accept only the canonical one.
+    """
+    raw = base64.b64decode(text + "=" * (-len(text) % 4), altchars=b"-_", validate=True)
+    if base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != text:
+        raise binascii.Error("non-canonical base64url")
+    return raw
+
+
 def decode_fragment(fragment: str) -> Any:
     """Decode an unpadded Evidence Bundle URL fragment.
 
@@ -123,7 +135,7 @@ def decode_fragment(fragment: str) -> Any:
     if not isinstance(fragment, str) or not _B64URL.fullmatch(fragment):
         raise ValueError("fragment must be unpadded base64url")
     try:
-        raw = base64.b64decode(fragment + "=" * (-len(fragment) % 4), altchars=b"-_", validate=True)
+        raw = _b64url_decode(fragment)
         return json.loads(raw.decode("utf-8"))
     except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError) as err:
         raise ValueError("fragment is not UTF-8 JSON") from err
@@ -202,6 +214,15 @@ def _records(raw: Any) -> tuple[dict[str, Mapping[str, Any]], dict[str, Any], li
     return records, results, findings
 
 
+def _safe_int(value: Any) -> bool:
+    """A JSON integer within ±(2**53 - 1), the bound Go, Rust and TS apply.
+
+    Python integers are unbounded, so without this a Bundle integer the other
+    verifiers reject (for example a ``closure_depth`` of 2**60) is accepted.
+    """
+    return isinstance(value, int) and not isinstance(value, bool) and -MAX_SAFE_INTEGER <= value <= MAX_SAFE_INTEGER
+
+
 def _verify_graph(bundle: Mapping[str, Any], records: Mapping[str, Mapping[str, Any]], record_findings: list[str]) -> ClaimResult:
     findings = list(record_findings)
     if bundle.get("bundle_version") != "2" or bundle.get("bundle_kind") != "evidence-bundle/v2":
@@ -214,7 +235,7 @@ def _verify_graph(bundle: Mapping[str, Any], records: Mapping[str, Mapping[str, 
     if not isinstance(completeness, Mapping):
         return ClaimResult("fail", tuple([*findings, "completeness_malformed"]))
     depth = completeness.get("closure_depth", 2)
-    if isinstance(depth, bool) or not isinstance(depth, int) or depth < 0:
+    if isinstance(depth, bool) or not _safe_int(depth) or depth < 0:
         return ClaimResult("fail", tuple([*findings, "closure_depth_invalid"]))
     missing_raw = completeness.get("missing", [])
     if not isinstance(missing_raw, list) or any(not isinstance(x, str) or not _HEX64.fullmatch(x) for x in missing_raw):
@@ -226,19 +247,26 @@ def _verify_graph(bundle: Mapping[str, Any], records: Mapping[str, Mapping[str, 
     if completeness.get("records_mode") != expected_mode:
         findings.append("records_mode_mismatch")
 
+    # Breadth-first, each target once: a record first reached at its shortest
+    # distance already carries the most remaining depth, and the walk stops when
+    # no new record is reached, so work is bounded by the supplied records.
     frontier = [root]
-    for _ in range(depth):
+    visited = {root}
+    dangling: set[str] = set()
+    level = 0
+    while level < depth and frontier:
         next_frontier: list[str] = []
         for source_id in frontier:
-            source = records.get(source_id)
-            if source is None:
-                continue
-            for target in _citation_targets(source):
+            for target in _citation_targets(records[source_id]):
                 if target in records:
-                    next_frontier.append(target)
-                elif target not in missing:
+                    if target not in visited:
+                        visited.add(target)
+                        next_frontier.append(target)
+                elif target not in missing and target not in dangling:
+                    dangling.add(target)
                     findings.append(f"citation_dangling:{target}")
         frontier = next_frontier
+        level += 1
     if findings:
         return ClaimResult("fail", tuple(findings))
     if missing:
@@ -319,9 +347,7 @@ def _authenticate_checkpoint(checkpoint: Mapping[str, Any], log_id: str, root: b
     try:
         from cll.checkpoint import verify_checkpoint_cose_offline
 
-        result = verify_checkpoint_cose_offline(
-            base64.b64decode(encoded + "=" * (-len(encoded) % 4), altchars=b"-_", validate=True)
-        )
+        result = verify_checkpoint_cose_offline(_b64url_decode(encoded))
         decoded = result.decoded
         return (
             "verified"
@@ -367,8 +393,8 @@ def _certificate(certificate: Mapping[str, Any], checkpoint: Mapping[str, Any]) 
         or not isinstance(root_hex, str)
         or isinstance(first_seq, bool)
         or isinstance(last_seq, bool)
-        or not isinstance(first_seq, int)
-        or not isinstance(last_seq, int)
+        or not _safe_int(first_seq)
+        or not _safe_int(last_seq)
         or first_seq < 1
         or last_seq < first_seq
         or not _HEX64.fullmatch(root_hex)
@@ -381,7 +407,7 @@ def _certificate(certificate: Mapping[str, Any], checkpoint: Mapping[str, Any]) 
             return None
         range_fields = _range_proof_fields(certificate.get("range_proof"))
         checkpoint_size = checkpoint.get("mmr_size")
-        if isinstance(checkpoint_size, bool) or not isinstance(checkpoint_size, int) or checkpoint_size != range_fields["size"]:
+        if isinstance(checkpoint_size, bool) or not _safe_int(checkpoint_size) or checkpoint_size != range_fields["size"]:
             return None
         return root, log_id, first_seq, last_seq, range_fields
     except (TypeError, ValueError, KeyError):
@@ -438,8 +464,8 @@ def _verify_memberships(
             coordinates.get("log_id") != log_id
             or isinstance(seq, bool)
             or isinstance(leaf_index, bool)
-            or not isinstance(seq, int)
-            or not isinstance(leaf_index, int)
+            or not _safe_int(seq)
+            or not _safe_int(leaf_index)
             or seq < first_seq
             or seq > last_seq
             or leaf_index != seq - 1
@@ -483,9 +509,9 @@ def _inclusion_proof(raw: Any) -> Any:
         or isinstance(v, bool)
         or isinstance(size, bool)
         or isinstance(leaf_index, bool)
-        or not isinstance(v, int)
-        or not isinstance(size, int)
-        or not isinstance(leaf_index, int)
+        or not _safe_int(v)
+        or not _safe_int(size)
+        or not _safe_int(leaf_index)
         or v != 1
         or size < 0
         or leaf_index < 0
@@ -523,11 +549,11 @@ def _range_proof_fields(raw: Any) -> dict[str, Any]:
         or isinstance(size, bool)
         or isinstance(from_index, bool)
         or isinstance(to_index, bool)
-        or not isinstance(from_seq, int)
-        or not isinstance(to_seq, int)
-        or not isinstance(size, int)
-        or not isinstance(from_index, int)
-        or not isinstance(to_index, int)
+        or not _safe_int(from_seq)
+        or not _safe_int(to_seq)
+        or not _safe_int(size)
+        or not _safe_int(from_index)
+        or not _safe_int(to_index)
         or from_seq < 1
         or to_seq < from_seq
         or size < 0

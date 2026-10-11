@@ -45,7 +45,7 @@ func TestDisclosureEnvelopeVectors(t *testing.T) {
 				Capsule struct {
 					OK                  bool              `json:"ok"`
 					Derived             map[string]string `json:"derived"`
-					CapsuleIDRecomputed string            `json:"capsule_id_recomputed"`
+					CapsuleIDRecomputed *string           `json:"capsule_id_recomputed"`
 					Findings            []struct {
 						Code string `json:"code"`
 					} `json:"findings"`
@@ -59,8 +59,8 @@ func TestDisclosureEnvelopeVectors(t *testing.T) {
 			require.Equal(t, expected.OK, actual.OK())
 			require.Equal(t, expected.Capsule.OK, actual.CapsuleResult.OK)
 			require.Equal(t, expected.Capsule.Derived, actual.CapsuleResult.Assurance)
-			require.NotNil(t, actual.CapsuleResult.CapsuleID)
-			require.Equal(t, expected.Capsule.CapsuleIDRecomputed, *actual.CapsuleResult.CapsuleID)
+			// A missing capsule has no recomputed identity (null in the vector).
+			require.Equal(t, expected.Capsule.CapsuleIDRecomputed, actual.CapsuleResult.CapsuleID)
 			actualCodes := make([]string, len(actual.CapsuleResult.Findings))
 			for index, finding := range actual.CapsuleResult.Findings {
 				actualCodes[index] = finding.Code
@@ -72,7 +72,11 @@ func TestDisclosureEnvelopeVectors(t *testing.T) {
 			require.Equal(t, expectedCodes, actualCodes)
 			require.Equal(t, expected.Checked, actual.DisclosuresChecked())
 			require.Equal(t, expected.Matched, actual.DisclosuresMatched())
-			require.Equal(t, expected.DisclosureFindings, actual.DisclosureFindings)
+			if len(expected.DisclosureFindings) == 0 {
+				require.Empty(t, actual.DisclosureFindings)
+			} else {
+				require.Equal(t, expected.DisclosureFindings, actual.DisclosureFindings)
+			}
 		})
 	}
 }

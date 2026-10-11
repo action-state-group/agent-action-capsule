@@ -1,7 +1,7 @@
 {
   "format_version": "1",
   "profile": "draft-mih-scitt-agent-action-capsule-04#producer-envelope",
-  "count": 8,
+  "count": 14,
   "cases": [
     {
       "name": "valid",
@@ -34,6 +34,30 @@
     {
       "name": "invalid-kid",
       "description": "protected kid is not a raw 32-byte Ed25519 public key"
+    },
+    {
+      "name": "protected-label-boolean",
+      "description": "protected alg is keyed by CBOR true, not the integer label 1"
+    },
+    {
+      "name": "protected-label-duplicate",
+      "description": "protected header repeats label 1"
+    },
+    {
+      "name": "protected-alg-float",
+      "description": "protected alg is the half-precision float -8.0, not the integer -8"
+    },
+    {
+      "name": "wrong-algorithm-extra-header",
+      "description": "wrong alg and an extra label together: alg is checked first"
+    },
+    {
+      "name": "protected-content-type-bom",
+      "description": "protected content type is the profile value preceded by U+FEFF, which a decoder must not strip"
+    },
+    {
+      "name": "protected-reserved-simple-value",
+      "description": "protected alg is CBOR additional information 28, which is reserved and malformed"
     }
   ]
 }

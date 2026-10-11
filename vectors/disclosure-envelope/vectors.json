@@ -1,7 +1,7 @@
 {
   "format_version": "1",
   "spec": "draft-mih-scitt-agent-action-capsule-disclosure-envelope-00",
-  "count": 7,
+  "count": 9,
   "cases": [
     {
       "name": "neg-disclosure-envelope-ineligible",
@@ -44,6 +44,18 @@
       "kind": "positive",
       "description": "DE-3 matches a nested agent_output disclosure containing objects inside an array.",
       "provenance": "spec-derived"
+    },
+    {
+      "name": "neg-disclosure-envelope-capsule-missing",
+      "kind": "negative",
+      "description": "a valid bare Capsule passed as an envelope has no capsule member and fails Class 1; it is never read as its own Capsule",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-disclosure-envelope-uppercase-commitment",
+      "kind": "negative",
+      "description": "DE-2 requires a lowercase-hex committed digest; an uppercase one is no commitment",
+      "provenance": "reference-derived"
     }
   ]
 }

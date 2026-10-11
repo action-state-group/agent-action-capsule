@@ -9,6 +9,7 @@ import {
   JcsUnsafeIntegerError,
   jcs,
   JsonNumber,
+  setMember,
   sha256Hex,
   type ParsedJson,
 } from "./json.js";
@@ -67,7 +68,7 @@ export async function computeCapsuleId(capsule: RecordValue): Promise<string> {
   for (const [key, value] of Object.entries(capsule)) {
     if (key === "capsule_id" || key === "signature" || key === "key_id")
       continue;
-    copy[key] = value;
+    setMember(copy, key, value);
   }
   return sha256Hex(jcs(copy));
 }
@@ -223,9 +224,18 @@ export async function verifyClass1(
     "disposition",
     "chain",
     "cross_party",
+    "self_reported_reasoning",
+    "provenance_mode",
   ])
     if (field in top && object(top[field]) === undefined)
       add("block_not_object", `${field} MUST be a JSON object when present`, 1);
+  for (const field of ["domain", "provenance"])
+    if (field in top && typeof top[field] !== "string")
+      add(
+        `${field}_not_string`,
+        `${field} MUST be a string when present (§-02)`,
+        1,
+      );
   if ("constraints" in top && !Array.isArray(top.constraints))
     add(
       "constraints_not_array",
@@ -575,6 +585,7 @@ export async function verifyClass1(
     }
   }
   findings.push(...references.filter((finding) => finding.check === 8));
+  provenanceModeFindings(top, add, assurance);
 
   return {
     ok: !findings.some((finding) => finding.severity === "error"),
@@ -582,6 +593,121 @@ export async function verifyClass1(
     assurance,
     ...(recomputed === undefined ? {} : { capsuleId: recomputed }),
   };
+}
+
+const PROVENANCE_BACKFILLED_FIELDS = [
+  "source_ref",
+  "source_asserted_at",
+  "import_batch",
+  "imported_at",
+] as const;
+
+const nonEmptyString = (value: ParsedJson | undefined): boolean =>
+  typeof value === "string" && value !== "";
+const shown = (value: ParsedJson | undefined): string =>
+  value instanceof JsonNumber ? value.raw : JSON.stringify(value ?? null);
+
+/**
+ * Check 9: provenance mode (§5.3(bis)), ported from the Go and Python
+ * verifiers. A backfilled record's occurrence-time claim is capped at
+ * self-attested unless a `references[]` entry cites
+ * `corroborates_source_time`; a time-rung overclaim and the
+ * `imported_at == source_asserted_at` laundering shape gate `ok`.
+ */
+function provenanceModeFindings(
+  top: Record<string, ParsedJson>,
+  add: (code: string, detail: string, check?: number) => void,
+  assurance: Record<string, string>,
+): void {
+  const pm = object(top.provenance_mode);
+  if (pm === undefined) return;
+  const mode = pm.mode;
+  if (mode === "backfilled" || mode === "contemporaneous")
+    assurance.provenance_mode = mode;
+  else
+    add(
+      "provenance_mode_invalid",
+      `provenance_mode.mode MUST be one of backfilled|contemporaneous (§5.3(bis) Provenance mode); got ${shown(mode)}`,
+      9,
+    );
+  if (mode === "backfilled") {
+    for (const field of PROVENANCE_BACKFILLED_FIELDS) {
+      const value = pm[field];
+      if (value === undefined || value === null || value === "")
+        add(
+          "provenance_mode_missing_required_field",
+          `provenance_mode.${field} is REQUIRED when mode='backfilled' (§5.3(bis) Provenance mode)`,
+          9,
+        );
+    }
+    if (Object.hasOwn(pm, "source_ref")) {
+      const sourceRef = object(pm.source_ref);
+      if (sourceRef === undefined)
+        add(
+          "provenance_mode_source_ref_malformed",
+          "provenance_mode.source_ref MUST be a JSON object when present (§5.3(bis) Provenance mode)",
+          9,
+        );
+      else
+        for (const field of ["type", "digest_alg", "digest"])
+          if (!nonEmptyString(sourceRef[field]))
+            add(
+              "provenance_mode_source_ref_malformed",
+              `provenance_mode.source_ref.${field} MUST be a non-empty string (§5.3(bis) Provenance mode)`,
+              9,
+            );
+    }
+    if (
+      typeof pm.imported_at === "string" &&
+      typeof pm.source_asserted_at === "string" &&
+      pm.imported_at === pm.source_asserted_at
+    )
+      add(
+        "provenance_time_laundering_shape",
+        "provenance_mode.imported_at equals source_asserted_at on a backfilled record; this is the shape a laundering producer would construct to make an import look contemporaneous (§5.3(bis) Provenance mode)",
+        9,
+      );
+    let timeRung: string | undefined;
+    const rawRung = pm.time_rung;
+    if (rawRung === "self_attested" || rawRung === "witnessed")
+      timeRung = rawRung;
+    else if (rawRung !== undefined && rawRung !== null)
+      add(
+        "provenance_mode_invalid",
+        `provenance_mode.time_rung MUST be one of self_attested|witnessed (§5.3(bis) Provenance mode); got ${shown(rawRung)}`,
+        9,
+      );
+    const references = Array.isArray(top.references) ? top.references : [];
+    const corroborated = references.some((raw) => {
+      const reference = object(raw);
+      return (
+        reference !== undefined &&
+        reference.citation_purpose === "corroborates_source_time" &&
+        nonEmptyString(reference.type) &&
+        nonEmptyString(reference.digest_alg) &&
+        nonEmptyString(reference.digest)
+      );
+    });
+    if (timeRung === "witnessed" && !corroborated)
+      add(
+        "provenance_time_rung_overclaim",
+        "provenance_mode.time_rung='witnessed' claimed without a well-formed references[] entry citing citation_purpose='corroborates_source_time' (§5.3(bis) Provenance mode)",
+        9,
+      );
+    assurance.provenance_time_rung = corroborated
+      ? "witnessed"
+      : "self_attested";
+  } else if (mode === "contemporaneous") {
+    const orphaned = [...PROVENANCE_BACKFILLED_FIELDS, "time_rung"].filter(
+      (field) => pm[field] !== undefined && pm[field] !== null,
+    );
+    if (orphaned.length)
+      add(
+        "provenance_mode_invalid",
+        `provenance_mode fields [${orphaned.join(" ")}] are meaningful only when mode='backfilled' (§5.3(bis) Provenance mode)`,
+        9,
+      );
+  }
 }
 
 export async function verifyStore(

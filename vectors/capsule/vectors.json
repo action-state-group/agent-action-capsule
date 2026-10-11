@@ -3,7 +3,7 @@
     "4"
   ],
   "spec": "draft-mih-scitt-agent-action-capsule-05",
-  "count": 112,
+  "count": 117,
   "cases": [
     {
       "name": "pos-v4-jcs-chain-committed",
@@ -647,6 +647,36 @@
       "name": "neg-retention-declarant-missing-and-empty",
       "kind": "negative",
       "description": "references[1].retention is an empty object: no declarant and no bound, reported in that order -> missing_required_field, retention_empty (check 1, §5.5.5).",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "canonical-nested-member-named-proto",
+      "kind": "positive",
+      "description": "A nested member named __proto__ is an ordinary member: it stays in the canonical form and the capsule_id.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-field-not-string-domain-number",
+      "kind": "negative",
+      "description": "The -02 addendum's domain member is a string; a number is a check-1 type error.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-field-not-string-provenance-list",
+      "kind": "negative",
+      "description": "The -02 addendum's provenance member is a string; a list is a check-1 type error.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-block-not-object-self-reported-reasoning",
+      "kind": "negative",
+      "description": "self_reported_reasoning is a block; a string where the object belongs is a check-1 type error.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-block-not-object-provenance-mode",
+      "kind": "negative",
+      "description": "provenance_mode is a block; a string where the object belongs is a check-1 type error.",
       "provenance": "reference-derived"
     }
   ],

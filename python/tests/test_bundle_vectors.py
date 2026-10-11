@@ -87,6 +87,10 @@ def _case(name):
     elif name == "pos-default-completeness-values":
         bundle["completeness"].pop("closure_depth")
         bundle["completeness"].pop("missing")
+    elif name == "pos-closure-depth-max-safe":
+        bundle["completeness"]["closure_depth"] = 2**53 - 1
+    elif name == "neg-closure-depth-unsafe":
+        bundle["completeness"]["closure_depth"] = 2**53
     elif name == "neg-portable-proof-version-kind":
         proof = bundle["completeness_certificate"]["memberships"][middle["capsule_id"]]["inclusion_proof"]
         proof["v"] = 2
@@ -104,7 +108,8 @@ def _case(name):
 @pytest.mark.parametrize("case", MANIFEST["cases"], ids=lambda c: c["name"])
 def test_bundle_vector(case):
     bundle = _case(case["name"])
-    assert decode_fragment(encode_fragment(bundle)) == bundle
+    if case["name"] != "neg-closure-depth-unsafe":  # JCS refuses an unsafe integer
+        assert decode_fragment(encode_fragment(bundle)) == bundle
     result = verify_bundle(bundle)
     expected = case["expected"]
     assert result.graph_closure.status == expected["graph_closure"]
@@ -179,3 +184,26 @@ def test_transport_only_decode_and_reserved_reporting():
     assert result.countersignatures[0].value == "reserved"
     assert result.verification is not None
     assert result.verification.status == "producer_self_report"
+
+
+def test_closure_reports_each_dangling_target_once():
+    # One absent target reached from two records (the root's reference and its
+    # chain parent's chain) is one dangling citation, reported once, in Go,
+    # Python, Rust and TS alike.
+    absent = "e" * 64
+    parent = _capsule(5, chain={"parent_capsule_id": absent, "relation": "derived_from"})
+    root = _capsule(6, chain={"parent_capsule_id": parent["capsule_id"], "relation": "derived_from"})
+    root.pop("capsule_id")
+    root["references"] = [{"type": "agent-action-capsule", "digest_alg": "SHA-256", "digest": absent, "citation_purpose": "acted_on"}]
+    root["capsule_id"] = compute_capsule_id(root)
+    result = verify_bundle(_bundle([parent, root], root))
+    assert result.graph_closure.status == "fail", result.graph_closure
+    assert result.graph_closure.findings.count(f"citation_dangling:{absent}") == 1
+
+
+def test_fragment_refuses_non_canonical_base64url():
+    assert encode_fragment({}) == "e30"
+    assert decode_fragment("e30") == {}
+    # "e31" carries the same two bytes with non-zero trailing bits.
+    with pytest.raises(ValueError):
+        decode_fragment("e31")

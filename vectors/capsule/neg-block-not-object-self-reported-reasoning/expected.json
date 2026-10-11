@@ -1,0 +1,20 @@
+{
+  "capsule_id_recomputed": "15cb191b991d8e70a395c0c66d1e33fe0d8467fa34234dcec32509e5c3b7ab95",
+  "derived": {
+    "effect_mode": "not_applicable",
+    "attestation_mode": "self_attested",
+    "ledger_mode": "standalone"
+  },
+  "description": "self_reported_reasoning is a block; a string where the object belongs is a check-1 type error.",
+  "findings": [
+    {
+      "check": 1,
+      "code": "block_not_object",
+      "detail": "self_reported_reasoning MUST be a JSON object when present",
+      "severity": "error"
+    }
+  ],
+  "kind": "negative",
+  "ok": false,
+  "provenance": "reference-derived"
+}

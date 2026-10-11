@@ -54,8 +54,36 @@ export function isHex64(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-f]{64}$/u.test(value);
 }
 
+/**
+ * Add an own enumerable member. Plain assignment would treat a member named
+ * `__proto__` as the object's prototype and drop it from the value.
+ */
+export function setMember<T>(
+  target: Record<string, T>,
+  key: string,
+  value: T,
+): void {
+  Object.defineProperty(target, key, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+}
+
+export interface DecodeJsonOptions {
+  /**
+   * Keep the last value of a repeated object name instead of rejecting it, as
+   * the Go, Python and Rust Bundle fragment decoders do.
+   */
+  readonly lastDuplicateWins?: boolean;
+}
+
 /** Decode strict JSON without losing number spelling or accepting duplicate names. */
-export function decodeStrictJson(input: Uint8Array | string): ParsedJson {
+export function decodeStrictJson(
+  input: Uint8Array | string,
+  options: DecodeJsonOptions = {},
+): ParsedJson {
   let text: string;
   try {
     text = typeof input === "string" ? input : utf8.decode(input);
@@ -92,14 +120,14 @@ export function decodeStrictJson(input: Uint8Array | string): ParsedJson {
         if (text[offset] !== '"')
           throw new SyntaxError(`object name expected at byte ${offset}`);
         const key = parseString();
-        if (seen.has(key))
+        if (seen.has(key) && !options.lastDuplicateWins)
           throw new SyntaxError(`duplicate object name ${JSON.stringify(key)}`);
         seen.add(key);
         ws();
         if (text[offset] !== ":")
           throw new SyntaxError(`':' expected at byte ${offset}`);
         offset += 1;
-        value[key] = parse(depth + 1);
+        setMember(value, key, parse(depth + 1));
         ws();
         if (text[offset] === "}") {
           offset += 1;

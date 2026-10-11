@@ -1,0 +1,30 @@
+{
+  "action_id": "canonical-nested-member-named-proto",
+  "action_type": "decide",
+  "assurance": {
+    "attestation_mode": "self_attested",
+    "effect_mode": "not_applicable",
+    "ledger_mode": "standalone"
+  },
+  "canonicalization_id": "jcs",
+  "developer": "conformance-vector@v1",
+  "disposition": {
+    "approver": "policy",
+    "decision": "accept",
+    "human_disposed": false,
+    "verdict_class": "executed"
+  },
+  "format_version": "4",
+  "operator": "AAC-CONFORMANCE",
+  "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+  "timestamp": "2026-10-10T00:00:00Z",
+  "extension": {
+    "canonical_test_value": {
+      "__proto__": {
+        "inner": "kept"
+      },
+      "b": "x"
+    }
+  },
+  "capsule_id": "e6a8e78f2cfbc36e9c96721de1c7c09500174ef32c9db07f5b0103f1d78fa9d1"
+}

@@ -1,0 +1,20 @@
+{
+  "capsule_id_recomputed": "e52fecfb2376d8ebadc2aa1300313cdb39eb6844e9f169aecbf9cda6b3622962",
+  "derived": {
+    "effect_mode": "not_applicable",
+    "attestation_mode": "self_attested",
+    "ledger_mode": "standalone"
+  },
+  "description": "The -02 addendum's domain member is a string; a number is a check-1 type error.",
+  "findings": [
+    {
+      "check": 1,
+      "code": "domain_not_string",
+      "detail": "domain MUST be a string when present (§-02)",
+      "severity": "error"
+    }
+  ],
+  "kind": "negative",
+  "ok": false,
+  "provenance": "reference-derived"
+}
