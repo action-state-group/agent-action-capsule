@@ -443,3 +443,62 @@ func TestResolvePointer(t *testing.T) {
 		require.False(t, ok, pointer)
 	}
 }
+
+// An artifact member may carry its signed response envelope without the
+// artifact bytes. Its request digest must be the member's and its artifact
+// digest the member's bundle digest, and its signature is checked under the
+// deployment profile, as a refusal's is; a member without one is judged as
+// before. The response is outside the composed digest, as member bodies are.
+func TestComposedArtifactResponseBindsTheRequest(t *testing.T) {
+	signed := func(state string) ResponseSignatureVerifier {
+		return func(map[string]interface{}) string { return state }
+	}
+	bind := func(t *testing.T, opts Options, edit func(response map[string]interface{})) *ComposedResult {
+		t.Helper()
+		container, block := cloneCase(t, composedCases(t)["agree"])
+		member := memberByID(block, "responder-a")
+		response := map[string]interface{}{"request_digest": member["request_digest"], "artifact_digest": member["digest"]}
+		reseal(t, block)
+		edit(response)
+		member["response"] = response
+		return verifyBlock(t, container, opts)
+	}
+	verified := Options{ResponseSignature: signed(RefusalSignatureVerified)}
+	same := func(map[string]interface{}) {}
+
+	ok := bind(t, verified, same)
+	require.Equal(t, "pass", ok.Status)
+	require.Equal(t, RefusalSignatureVerified, ok.Members[0].ResponseSignature)
+	require.Empty(t, memberByIDResult(ok, "responder-b").ResponseSignature, "a member without a response is judged as before")
+
+	unverified := bind(t, Options{}, same)
+	require.Equal(t, "withheld", unverified.Status, "no deployment profile: the response is signature-unverified, not failed")
+	require.Contains(t, unverified.Findings, "response_signature_unverified:responder-a")
+	require.Equal(t, RefusalSignatureUnverified, bind(t, Options{ResponseSignature: signed("unknown")}, same).Members[0].ResponseSignature)
+
+	forged := bind(t, Options{ResponseSignature: signed(RefusalSignatureInvalid)}, same)
+	require.Equal(t, "fail", forged.Status)
+	require.Contains(t, forged.Members[0].Findings, "response_signature_invalid")
+	require.Contains(t, forged.Findings, "response_signature_invalid:responder-a")
+
+	other := bind(t, verified, func(r map[string]interface{}) { r["request_digest"] = strings.Repeat("1", 64) })
+	require.Equal(t, "fail", other.Status)
+	require.Contains(t, other.Members[0].Findings, "response_request_digest_mismatch")
+	require.Contains(t, other.Findings, "member_response_request_digest_mismatch:responder-a")
+
+	elsewhere := bind(t, verified, func(r map[string]interface{}) { r["artifact_digest"] = strings.Repeat("2", 64) })
+	require.Equal(t, "fail", elsewhere.Status)
+	require.Contains(t, elsewhere.Findings, "member_response_artifact_digest_mismatch:responder-a")
+
+	malformed := bind(t, verified, func(r map[string]interface{}) { delete(r, "artifact_digest") })
+	require.True(t, malformed.Malformed)
+}
+
+func memberByIDResult(r *ComposedResult, id string) ComposedMemberResult {
+	for _, m := range r.Members {
+		if m.ID == id {
+			return m
+		}
+	}
+	return ComposedMemberResult{}
+}
