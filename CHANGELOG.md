@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- TypeScript: verification works without WebCrypto. `crypto.subtle` exists only in a secure
+  context, so a report in a non-secure or opaque origin (some apps' attachment viewers, an http:
+  or data: page) could not hash, and every digest, membership and range check failed on a valid
+  bundle. `sha256Hex` now uses a plain
+  SHA-256 (`src/sha256.ts`, FIPS 180-4 examples and node:crypto cross-checks in
+  `test/sha256.test.ts`) when SubtleCrypto is absent, and `@action-state-group/cll` 0.2.1 does the
+  same for MMR proofs: the built browser runtime, run with no `crypto` global, passes the same ten
+  checks on a fixture as with WebCrypto (`test/no-webcrypto-iife.test.ts`). New:
+  `digestCapability()` ("webcrypto" | "fallback" | "none"), `probeEd25519()` and
+  `ed25519Available()`.
+- TypeScript: a runtime with no SHA-256 at all (only reachable with the fallback switched off by
+  `setSha256FallbackForTesting(false)`) is never reported as a failed verification:
+  `verifyBundle` and `buildVerifiedBundleContext` throw `Sha256UnavailableError`, and
+  `renderEvidenceGraph` draws the "unable to verify in this viewer" state
+  (`renderUnableToVerify`, `data-verify="unable"`) with `options.verifyCommand` when given.
+- TypeScript: without Ed25519 (no SubtleCrypto, or one that rejects Ed25519 as not supported), a
+  countersign/v1 entry is stamped `{ kind: "unverified", reason: "no-ed25519" }`, "not checked in
+  this viewer", instead of "invalid". The `unverified` stamp gains `reason` (`"type"` for a type
+  this viewer does not implement, as before).
+- TypeScript: without Ed25519 a record's Producer Envelope is not checked: its signer is a stated
+  key_id with `keyNotChecked: true`, the ignored-link reasons say this viewer cannot check it, and
+  a close claim's state is shown as asserted (`derivation: "producer-asserted"`) instead of being
+  recomputed from links it cannot check. Before, the claim was failed for a state mismatch.
 - TypeScript: `VerifiedBundleContext` (`buildVerifiedBundleContext`) verifies a bundle once and is
   what every builder reads. `buildReportRows`, `buildResultRoot`, `isResultRoot`,
   `buildEvidenceGraph` and `renderEvidenceGraph` take a context (new overload; the `(bundle)`
