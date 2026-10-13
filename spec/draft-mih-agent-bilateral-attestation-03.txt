@@ -4,8 +4,8 @@
 
 Network Working Group                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Informational                         27 September 2026
-Expires: 31 March 2027
+Intended status: Informational                           13 October 2026
+Expires: 16 April 2027
 
 
        Bilateral Attestation of Cross-Organization Agent Actions
@@ -48,14 +48,14 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 31 March 2027.
+   This Internet-Draft will expire on 16 April 2027.
 
 
 
 
-Mih                       Expires 31 March 2027                 [Page 1]
+Mih                       Expires 16 April 2027                 [Page 1]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
 Copyright Notice
@@ -109,9 +109,9 @@ Table of Contents
 
 
 
-Mih                       Expires 31 March 2027                 [Page 2]
+Mih                       Expires 16 April 2027                 [Page 2]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
 1.  Introduction
@@ -165,9 +165,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                 [Page 3]
+Mih                       Expires 16 April 2027                 [Page 3]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
    *Agent-to-agent service delegation.* An orchestrating agent
@@ -221,9 +221,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                 [Page 4]
+Mih                       Expires 16 April 2027                 [Page 4]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
       referencing a request attestation by digest, recording the
@@ -277,9 +277,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                 [Page 5]
+Mih                       Expires 16 April 2027                 [Page 5]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
        Verification gates execution: no verified request attestation, no
@@ -333,9 +333,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                 [Page 6]
+Mih                       Expires 16 April 2027                 [Page 6]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
    *Constraint-set pinning.* The action attestation MUST bind a content
@@ -389,9 +389,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                 [Page 7]
+Mih                       Expires 16 April 2027                 [Page 7]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
    For the requesting party, a history of acknowledged declines is
@@ -445,9 +445,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                 [Page 8]
+Mih                       Expires 16 April 2027                 [Page 8]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
    These are weaker than, and MUST NOT be conflated with, a declined
@@ -501,9 +501,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                 [Page 9]
+Mih                       Expires 16 April 2027                 [Page 9]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
 10.  Relationship to Existing Work
@@ -557,9 +557,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                [Page 10]
+Mih                       Expires 16 April 2027                [Page 10]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
    *Audit and approval records.* The audit architecture
@@ -613,9 +613,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                [Page 11]
+Mih                       Expires 16 April 2027                [Page 11]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
    counterparties nor defines a vocabulary for doing so.
@@ -669,9 +669,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                [Page 12]
+Mih                       Expires 16 April 2027                [Page 12]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
    The same property is what a unilateral record lacks, and the limit
@@ -725,9 +725,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                [Page 13]
+Mih                       Expires 16 April 2027                [Page 13]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
 11.9.  Canonicalization and Hash Agility
@@ -781,9 +781,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                [Page 14]
+Mih                       Expires 16 April 2027                [Page 14]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
 13.  IANA Considerations
@@ -837,9 +837,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                [Page 15]
+Mih                       Expires 16 April 2027                [Page 15]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
    [RFC3461]  Moore, K., "Simple Mail Transfer Protocol (SMTP) Service
@@ -893,9 +893,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                [Page 16]
+Mih                       Expires 16 April 2027                [Page 16]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
    [I-D.kuehlewind-audit-architecture]
@@ -949,9 +949,9 @@ Internet-Draft         Bilateral Agent Attestation        September 2026
 
 
 
-Mih                       Expires 31 March 2027                [Page 17]
+Mih                       Expires 16 April 2027                [Page 17]
 
-Internet-Draft         Bilateral Agent Attestation        September 2026
+Internet-Draft         Bilateral Agent Attestation          October 2026
 
 
    [PeerReview2007]
@@ -1005,4 +1005,4 @@ Author's Address
 
 
 
-Mih                       Expires 31 March 2027                [Page 18]
+Mih                       Expires 16 April 2027                [Page 18]
