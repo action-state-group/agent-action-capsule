@@ -100,6 +100,31 @@
   the inputs with code separate from the generator. It also asserts that no case yields `met` or
   `not_met` unless sufficiency is `SATISFIED`. §11.5 now points to the corpus, and open points
   P-54 to P-57 are added.
+- Python: `agent_action_capsule.interop_profile` is a reference verifier for
+  `spec/interop-profile-v0.md`. Its input is the requester's retained request octets, the
+  replies, a trust policy, a verification policy, an evaluation time and the contract version.
+  It reports:
+  - every §7.2 property of each reply as `PASS`, `FAIL`, `NOT_PRESENT`, `NOT_CHECKED` or
+    `INCONCLUSIVE`, with the method used, including the §6.2.1 Checkpointed Local Log
+    `anchor_inclusion` procedure;
+  - `caller_invariance` across every envelope held, and `native_check` of a carried JWS;
+  - the §8.1 row for each requirement evaluated, with the claim's `evidence[]` and `proofs[]`.
+    It also gives the row's status, sufficiency and verdict, except under row 7. There the
+    contract judges the Artifact's content, which the profile does not define, so the result
+    comes from an evaluator the caller supplies, or is left empty as the vectors leave it;
+  - the acceptance properties and finding (§11.1). Acceptance records are read as JSON. Cited
+    authority is labelled `agent_origin_assertion` and is not otherwise checked;
+  - the lifecycle properties and findings, with what a verifier shows (§11.2). Links in an
+    Evidence Layer record header are not evaluated;
+  - reply classification over A2A and MCP, and the manifest properties (§11.4).
+
+  It does not raise on malformed or hostile input; it reports it. It works offline and reads no
+  clock. Online checks are `NOT_CHECKED` unless the caller supplies
+  a resolver. Trust is checked as of each object's own time or as of the evaluation time, never
+  "now". It needs `cryptography` for Ed25519, and nothing from outside this repository.
+  `python/tests/test_interop_profile_verifier.py` runs it on all 49 cases and matches every
+  expected value. It also checks the §10, §10.1 and §11.4 worked examples and each step of
+  §6.2.1.
 
 - TypeScript: verification works without WebCrypto. `crypto.subtle` exists only in a secure
   context, so a report in a non-secure or opaque origin (some apps' attachment viewers, an http:
