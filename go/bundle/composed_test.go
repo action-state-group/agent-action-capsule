@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -33,12 +34,12 @@ func composedCases(t *testing.T) map[string]composedCase {
 		Cases []composedCase `json:"cases"`
 	}
 	require.NoError(t, decoder.Decode(&file))
-	require.Equal(t, json.Number("3"), file.Count)
+	require.Equal(t, json.Number("5"), file.Count)
 	cases := map[string]composedCase{}
 	for _, c := range file.Cases {
 		cases[c.ID] = c
 	}
-	require.Len(t, cases, 3)
+	require.Len(t, cases, 5)
 	return cases
 }
 
@@ -68,7 +69,21 @@ func expectShape(result *ComposedResult) map[string]interface{} {
 				"per_record_membership": m.Bundle.PerRecordMembership.Status,
 			}
 		}
-		members[m.ID] = map[string]interface{}{"outcome": m.Outcome, "body": m.Body, "digest": m.Digest, "claims": claims}
+		member := map[string]interface{}{"outcome": m.Outcome, "body": m.Body, "digest": m.Digest, "claims": claims}
+		if m.ResponseSignature != "" {
+			binding := func(finding string) string {
+				if slices.Contains(m.Findings, finding) {
+					return "mismatch"
+				}
+				return "matches"
+			}
+			member["response"] = map[string]interface{}{
+				"request_digest":  binding("response_request_digest_mismatch"),
+				"artifact_digest": binding("response_artifact_digest_mismatch"),
+				"signature":       m.ResponseSignature,
+			}
+		}
+		members[m.ID] = member
 	}
 	closure := map[string]interface{}{"status": result.CompositionClosure.Status, "missing": stringValues(result.CompositionClosure.Missing)}
 	if result.CompositionClosure.Status == "withheld" {
@@ -96,6 +111,7 @@ func expectShape(result *ComposedResult) map[string]interface{} {
 	}
 	return map[string]interface{}{
 		"composed_digest":     result.ComposedDigest.Recomputed,
+		"status":              result.Status,
 		"members":             members,
 		"composition_closure": closure,
 		"joins":               joins,
@@ -113,7 +129,6 @@ func stringValues(values []string) []interface{} {
 
 func TestComposedVectors(t *testing.T) {
 	cases := composedCases(t)
-	wantStatus := map[string]string{"agree": "pass", "one-member-missing": "withheld", "same-custody-redundant": "pass"}
 	for id, c := range cases {
 		c := c
 		t.Run(id, func(t *testing.T) {
@@ -129,7 +144,7 @@ func TestComposedVectors(t *testing.T) {
 			result := VerifyBundle(c.Container)
 			require.Equal(t, "pass", result.GraphClosure.Status)
 			composed := composedResultOf(t, result)
-			require.Equal(t, wantStatus[id], composed.Status, composed.Findings)
+			require.Equal(t, c.Expect["status"], composed.Status, composed.Findings)
 			require.True(t, composed.ComposedDigest.Matches)
 			require.NotEqual(t, *result.BundleDigest, composed.ComposedDigest.Recomputed)
 
@@ -151,7 +166,10 @@ func TestComposedVectors(t *testing.T) {
 		})
 	}
 	require.Equal(t, cases["agree"].Expect["composed_digest"], cases["one-member-missing"].Expect["composed_digest"])
-	require.Equal(t, "agree", cases["one-member-missing"].Expect["composed_digest_equals_case"])
+	for _, id := range []string{"one-member-missing", "artifact-response-bound", "artifact-response-other-request"} {
+		require.Equal(t, cases["agree"].Expect["composed_digest"], cases[id].Expect["composed_digest"], id)
+		require.Equal(t, "agree", cases[id].Expect["composed_digest_equals_case"], id)
+	}
 }
 
 func memberByID(block map[string]interface{}, id string) map[string]interface{} {

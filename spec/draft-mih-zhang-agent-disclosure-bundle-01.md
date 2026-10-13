@@ -440,7 +440,8 @@ member-common = (
 )
 
 artifact-member = { member-common, outcome: "artifact",
-                    ? bundle: { * tstr => any } }  ; a Bundle
+                    ? bundle: { * tstr => any },   ; a Bundle
+                    ? response: artifact-response }
 refusal-member  = { member-common, outcome: "refusal",
                     ? refusal: signed-refusal }
 absence-member  = { member-common, outcome: "absence",
@@ -451,6 +452,12 @@ signed-refusal = {                ; as received, unmodified
   reason: tstr,                   ; Evidence Request refusal reason
   issued_at: tstr,                ; RFC 3339
   * tstr => any,                  ; deployment signature members
+}
+
+artifact-response = {             ; as received, artifact bytes removed
+  request_digest: digest-hex,
+  artifact_digest: digest-hex,
+  * tstr => any,                  ; deployment members and signature
 }
 
 recorded-absence = {              ; the requester's own record
@@ -519,6 +526,19 @@ body's `request_digest` to equal the member's. A refusal's signature is
 verified under the deployment's signature profile. A verifier that does not
 implement that profile reports the refusal as signature-unverified. It does
 not report it as failed, and it does not report it as absent.
+
+An artifact member MAY carry `response`: the responder's signed response
+to the request, as received, with the artifact bytes removed. A response
+signature that names the artifact by digest therefore still verifies without
+them. When the bundle and `response` are both carried, a verifier MUST require
+the response's `request_digest` to equal the member's, and its
+`artifact_digest` to equal the member's `digest`. Either mismatch is a failed
+`composed/v1` check. This binds the artifact to the request it answered, as a
+refusal's or absence's own `request_digest` does. The response's signature is
+verified under the deployment's signature profile, exactly as a refusal's is.
+A verifier that does not implement that profile reports the response as
+signature-unverified, which is neither failed nor absent. `response` is not
+part of the composed digest ({{composed-digest}}).
 
 An artifact that fails verification is still an `artifact` member. The
 verifier reports the failure on that member. It is not a fourth outcome, and
@@ -671,7 +691,8 @@ the member bodies are carried.
    of the JCS {{RFC8785}} serialization of `D`. This is the canonicalization
    algorithm `jcs` of {{I-D.mih-sokolov-scitt-payload-binding}}: RFC 8785 with
    no normalization pass, SHA-256, bare hex. `D` contains no numbers.
-3. Member bodies, `missing` and `composed_digest` itself are excluded.
+3. Member bodies, each member's `response`, `missing` and `composed_digest`
+   itself are excluded.
 
 A verifier MUST recompute `composed_digest` and report a mismatch as a failed
 `composed/v1` check. It MUST NOT report the recomputed value as the digest of
@@ -695,7 +716,9 @@ separately:
 
 1. the recomputed composed digest, and whether it matches;
 2. per member: outcome, body carried or declared missing, digest reproduced,
-   and, for a carried member bundle, its own three completeness claims;
+   and, for a carried member bundle, its own three completeness claims and,
+   when it carries `response`, whether the response's digests match and its
+   signature state;
 3. composition closure;
 4. per join: the declared state, the derived state (or `not_derivable`), and
    whether they match;

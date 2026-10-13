@@ -26,6 +26,15 @@ Each case records the literal JCS preimage as `expect.canonical_preimage`.
 | `agree` | two artifacts, separate custody | join `agree`, derived; closure `pass`; `corroborating` (on declared custody) |
 | `one-member-missing` | the same, with one Bundle not carried and listed in `missing` | same composed digest as `agree`; closure `withheld` (`declared_incomplete`); join `not_derivable`; no corroboration |
 | `same-custody-redundant` | runtime and boundary observers, one custody domain | join `agree`; `redundant, not corroborating` |
+| `artifact-response-bound` | `agree`, with responder-a carrying its `response` envelope | same composed digest as `agree`; the envelope's digests match the member's; signature `signature_unverified` (no deployment profile), so the block is `withheld` |
+| `artifact-response-other-request` | the same, the envelope naming another request | block `fail` (`member_response_request_digest_mismatch`) |
+
+An artifact member may carry `response`: the responder's signed response
+envelope without the artifact bytes. Its `request_digest` must equal the
+member's and its `artifact_digest` the member's digest. Its signature is
+checked under the deployment's profile, as a refusal's is; a verifier with no
+profile reports it `signature_unverified`. Like member bodies, the envelope is
+outside the composed digest. Each case states the block's expected `status`.
 
 Each member's three completeness claims (graph closure, interval coverage,
 per-record membership) are reported per member and never merged into the
