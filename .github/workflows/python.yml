@@ -40,3 +40,6 @@ jobs:
       # synthetic terms only, so this pull_request job needs no secret.
       - name: leak-lint tests
         run: python -m pytest -q .github/test_leak_lint.py
+
+      - name: release guard tests
+        run: python -m pytest -q .github/test_check_python_release.py
