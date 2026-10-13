@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- composed/v1 (`draft-mih-zhang-agent-disclosure-bundle-01`): an artifact member may carry
+  `response`, the responder's signed response as received with the artifact bytes removed. A
+  verifier requires its `request_digest` to equal the member's and its `artifact_digest` the
+  member's digest (either mismatch fails the block). Its signature is checked under the
+  deployment profile, as a refusal's is, and otherwise reported `signature_unverified`. It is
+  outside the composed digest. Go: `Options.ResponseSignature` and
+  `ComposedMemberResult.ResponseSignature`. TypeScript mirrors the check without a signature
+  profile. Vectors: `artifact-response-bound` and `artifact-response-other-request`, and every
+  composed/v1 case now states the block's expected `status`.
 - Spec: `spec/interop-profile-v0.md`, the Minimum Evidence Interoperability Profile v0
   (`evidence-interop/0`). It is an Informational, pre-Internet-Draft profile that pins
   `draft-mih-agent-evidence-request-00` and its conformance vectors, the Disclosure Envelope
