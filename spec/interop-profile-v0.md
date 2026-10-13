@@ -11,8 +11,8 @@ drop it.
 This revision covers versions (§3), naming (§4), canonical bytes (§5), the digest and signature
 binding of every message (§6), per-property verification statuses (§7), the mapping from
 outcomes to an Evidence Result (§8), error codes (§9), the acceptance record (§11.1), lifecycle
-links (§11.2), and carriage over A2A and MCP with discovery (§11.4). Sections 11.3 and 11.5 are
-placeholders for parts that later revisions fill in.
+links (§11.2), the Evidence Contract prose (§11.3), and carriage over A2A and MCP with
+discovery (§11.4). Section 11.5 is a placeholder for parts that later revisions fill in.
 
 The documents this profile pins are Internet-Drafts, work in progress, or specifications kept in
 this repository. Open-source repositories, this one included, are implementations of them.
@@ -44,8 +44,9 @@ shape (§6.4), the identity of recipient-specific disclosures and their salted-d
 (§6.5), the per-property verification status vocabulary and property catalogue (§7),
 the outcome-to-status mapping (§8), the acceptance record, acceptance receipt, ordering
 evidence rules and acceptance findings (§11.1), the lifecycle statement, its issuer rules,
-lifecycle findings and what a verifier shows (§11.2), and the A2A and MCP carriages, the manifest,
-the discovery rules and the discovery properties (§11.4).
+lifecycle findings and what a verifier shows (§11.2), the rules for using an Evidence Contract
+under this profile (§11.3.7), and the A2A and MCP carriages, the manifest, the discovery rules
+and the discovery properties (§11.4).
 
 **Pins, never redefines:**
 
@@ -58,7 +59,7 @@ the discovery rules and the discovery properties (§11.4).
 | RES | Evidence Result v0 | `spec/evidence-result-v0.md` | the claim, sufficiency, verdict and presentation carrier rules |
 | BA | `draft-mih-agent-bilateral-attestation` | -02 (`spec/draft-mih-agent-bilateral-attestation-02.md`) | the requesting and performing parties, and acknowledgment as receipt without agreement |
 | EL | `draft-mih-agent-evidence-layer` | -00 (`spec/draft-mih-agent-evidence-layer-00.md`) | what a Receipt proves, witnesses, the link shape and its closed vocabulary, and the `cites`, `acknowledges`, `supersedes` and `rebuts` links |
-| EC | Evidence Contract v0 schema | `evidence-contract-v0.json`, `$defs/bundleAssertionStatus`, `$defs/contractResult` and the requirement `uncertainty` member | the eight-value status, its four-value projection, and per-requirement handling of missing and conflicting evidence |
+| EC | Evidence Contract v0 schema | `capsule_engine/schemas/evidence-contract-v0.json` in the capsule-engine repository at commit `fd43d4329ea31d69e9bdd0a79f23f013c3615219`, SHA-256 of the file `6d10d5eb97e15421db0ab922b5f6d1f0a2e9f453fb64e52fb45306ba029ad480` | the contract and every member and value of it (§11.3); the eight-value status, its four-value projection, and per-requirement handling of missing and conflicting evidence |
 | CLL | `draft-mih-scitt-checkpointed-local-log` | -01 as posted: <https://www.ietf.org/archive/id/draft-mih-scitt-checkpointed-local-log-01.txt>, SHA-256 of that file `2ef340206e6ba4260b84ba265f794ab9756aefa7cdaeac98e95cea646cfb678f` | the checkpoint and its claims, the peak-list commitment, the log identity, and the inclusion and consistency claims, behind the `cll-*` material kinds (§6.2.1) |
 | A2A | Agent2Agent (A2A) Protocol Specification | v1.0.1, tag commit `3303592588e388e62e0f69f701af531d2f4e3991`: <https://github.com/a2aproject/A2A/blob/v1.0.1/docs/specification.md>, SHA-256 of that file `627ccfe6ffb1be2c56811c3dcc18780deb419f41cdc98248095c939b2d9dc9cb`, with `specification/a2a.proto` at the same tag, SHA-256 `e195bf96ab630c69797851970203e1b2b6b19528f2e9803b7d904b91a5104016` | the Agent Card extension declaration and default modes, the `Message`, `Part`, `Task`, `Artifact` and `TaskArtifactUpdateEvent` objects, task states and multi-turn continuation, `ListTasks` scoping, ProtoJSON bytes, Agent Card signing, and the `A2A-Version` and `A2A-Extensions` service parameters, behind the A2A binding (§11.4.4) |
 | MCP | Model Context Protocol specification | 2026-07-28, as published at <https://modelcontextprotocol.io/specification/2026-07-28>; source `docs/specification/2026-07-28/server/tools.mdx` (SHA-256 `ed550806a58eb7744b858fb9f26001aa5e55dac9e2babe88317cc81d9d4c490d`), `docs/specification/2026-07-28/basic/index.mdx` (SHA-256 `03586b10e3214c55478293f1199fffb0bbf95bbef5df3d6a8378e860697bd63f`), `docs/specification/2026-07-28/changelog.mdx` (SHA-256 `b327e576f4c96b34e92f338f8ffefc35e13d0e953ab76bdb3aab342d104c8e53`) and `schema/2026-07-28/schema.ts` (SHA-256 `742750af0bb8c716e7030c4977c992b55d1adc4407e9e66997db5846baedc2cd`) at commit `3778656b2e0ba6725035e816fe3085374cbaa736` of `github.com/modelcontextprotocol/modelcontextprotocol` | `tools/list`, `tools/call`, tool definitions, `structuredContent`, `content`, `isError`, `_meta`, `input_required` results and their retries, the error classes, `x-mcp-header` and the Streamable HTTP request headers, behind the MCP binding (§11.4.5); not the tasks extension |
@@ -217,6 +218,11 @@ that to every object it defines.
 | Resolution outcomes | `upheld`, `dismissed` | P-34 |
 | Dispute statuses | `open`, `upheld`, `dismissed`, `conflicting` | P-36 |
 | Lifecycle findings | `lifecycle_not_effective`, `lifecycle_not_issuer`, `lifecycle_forked`, `lifecycle_effective` | P-35 |
+| Evidence Contract members | `id`, `version`, `requirements`, `subject`, `principal`, `temporal`, `disclosure`, `consequence` | EC; §11.3.1 |
+| Requirement profiles | `outcome`, `obligation`, `process`, `quality`, `human_role`, `attribution`, `settlement` | EC; §11.3.2 |
+| Evidence requirements members | `accepted_epistemic_types`, `required_sources`, `independence`, `minimum_assurance`, `freshness`, `coverage` | EC; §11.3.3 |
+| Epistemic types | `observed_event`, `system_of_record_fact`, `producer_claim`, `human_report`, `semantic_judgment`, `derived_metric`, `adjudication`, `obligation_reference` | EL §4.1; EC |
+| Other requirement members and values | as §11.3.2 to §11.3.6 list them, verbatim from the schema | EC |
 
 The one value type that differs between encodings is opaque bytes (`artifact`, and each entry
 of `verification_content`). CBOR carries them as a byte string (major type 2). JSON carries them
@@ -1107,10 +1113,10 @@ envelope over the changed digest instead makes `anchor_inclusion` `FAIL` at step
 
 ## 11. Parts filled by later revisions
 
-§11.1, §11.2 and §11.4 are specified. The other headings are placeholders, and nothing under
-them is specified yet. §11.1, §11.2 and §11.4 were filled before `evidence-interop/0` was
-published. They add objects and properties, and add rows to the tables of §4 and §7.2. They
-change no existing signing input or byte rule, so they keep the identifier (§3.1).
+§11.1 to §11.4 are specified. The other headings are placeholders, and nothing under them is
+specified yet. §11.1 to §11.4 were filled before `evidence-interop/0` was published. They add
+objects and properties, and add rows to the tables of §4 and §7.2. They change no existing
+signing input or byte rule, so they keep the identifier (§3.1).
 
 ### 11.1 Acceptance record
 
@@ -1791,8 +1797,303 @@ statement may change the latest supported state.
 
 ### 11.3 Evidence Contract prose
 
-*Placeholder.* Scope: the normative prose for the Evidence Contract, kept as a section of this
-profile.
+An Evidence Contract states what must be established, what evidence is acceptable, and how missing
+or conflicting evidence is handled. It never states what is true, and it never says that a
+requirement is satisfied [EC `$comment`]. This section describes the Evidence Contract v0 schema
+pinned in the Dependency boundary (EC) member by member, and says how a contract feeds this profile.
+It describes the schema as it is: it adds no member or value to the contract. Where this profile
+needs something the schema does not say, the requirement is this profile's own, tagged P-46 and on,
+and listed in §13.
+
+A contract is a JSON value. Validity is validity against the pinned schema, which uses JSON Schema
+draft 2020-12 [EC]. In the tables below, "text" means a JSON string, "non-empty" means a `minLength`
+of 1, and "closed" means the object's `additionalProperties` is `false`. An optional member may be
+absent, and the schema states no default for an absent member [EC]. A present member is never
+`null`, except `window.cure` and `window.grace`, the quality dimensions (§11.3.5), and members an
+open stub accepts without listing [EC].
+
+#### 11.3.1 The contract
+
+The root object (`$defs/evidenceContract`) is closed [EC].
+
+| Member | Presence | Type and allowed values | Meaning |
+|---|---|---|---|
+| `id` | REQUIRED | non-empty text | the contract's identifier, the same across its versions |
+| `version` | REQUIRED | non-empty text | the version of this contract; no ordering of versions is defined |
+| `requirements` | REQUIRED | array of at least one requirement (§11.3.2) | what must be established, one entry per requirement |
+| `subject` | OPTIONAL | object (§11.3.6) | what kind of work the contract is about |
+| `principal` | OPTIONAL | object (§11.3.6) | the principal the contract cites |
+| `temporal` | OPTIONAL | object (§11.3.6) | the periods the contract names |
+| `disclosure` | OPTIONAL | object (§11.3.6) | a reference to the disclosure policy that applies |
+| `consequence` | OPTIONAL | object (§11.3.6) | what kind of consequence follows from the evaluation |
+
+The schema puts no requirement on the characters of `id` or `version`. It does not require the `id`
+of each requirement to be unique within a contract [EC]; this profile does (§11.3.7).
+
+#### 11.3.2 Requirements and their profiles
+
+Each entry of `requirements` MUST match exactly one of nine shapes [EC `$defs/requirement`,
+`oneOf`]. The requirement's `profile` member names which. `profile` takes one of seven values, and a
+contract MAY mix profiles across its requirements [EC]. The outcome and obligation profiles each
+have two shapes. The schema accepts both and states that the two spellings have not been reconciled
+[EC].
+
+| Shape (`$defs`) | `profile` | Required members | Closed |
+|---|---|---|---|
+| native outcome (`requirementOutcomeNative`) | `outcome`, or absent | `id`, `statement`, `evidence_rule`, `forward_verdict`, `backward_verdict` | yes |
+| native obligation (`requirementObligationNative`) | `obligation` | those five, `profile` and `clause` | yes |
+| abstract outcome (`requirementOutcomeGeneric`) | `outcome` | `id`, `profile`, `statement` | yes |
+| abstract obligation (`requirementObligationGeneric`) | `obligation` | `id`, `profile`, `statement`, `clause_ref` | yes |
+| process (`requirementProcess`) | `process` | `id`, `profile`, `statement` | no: a typed stub |
+| quality (`requirementQuality`) | `quality` | `id`, `profile`, `statement` | no: a typed stub |
+| human role (`requirementHumanRole`) | `human_role` | `id`, `profile`, `statement` | no: a typed stub |
+| attribution (`requirementAttribution`) | `attribution` | `id`, `profile`, `ref` | yes: a typed stub |
+| settlement (`requirementSettlement`) | `settlement` | `id`, `profile`, `ref` | yes: a typed stub |
+
+How a requirement selects its shape follows from the table. A requirement with no `profile` member
+can only be a native outcome. For `outcome` and `obligation`, a requirement carrying `evidence_rule`
+can only be native, because the abstract shapes are closed and do not list it, and one without it
+can only be abstract, because the native shapes require it. The other five values each have one
+shape. A typed stub is a profile whose fields are sketched but not yet normative [EC]. The open
+stubs (process, quality, human role) accept members the schema does not list.
+
+Members that appear in several shapes:
+
+- `id`: non-empty text. The requirement's identifier within the contract. An Evidence Result claim
+  names it as `requirement_ref` [RES §4].
+- `profile`: text, one of `outcome`, `obligation`, `process`, `quality`, `human_role`,
+  `attribution`, `settlement`, used as the table above shows [EC].
+- `statement`: non-empty text. The claim the requirement asks to have established, in words. Every
+  shape but attribution and settlement requires it [EC].
+- `status`, `result`: forbidden in every shape, the open stubs included. The schema gives each the
+  subschema `false`, so a requirement carrying either is invalid. A contract never declares its own
+  outcome [EC `$comment`].
+- `evidence_requirements`: the object of §11.3.3. Allowed in the abstract shapes, process and human
+  role.
+- `obligation_refs`: array of non-empty text. References to obligations the requirement relates to.
+  Allowed in abstract outcome, process, quality and human role.
+
+#### 11.3.3 Evidence requirements
+
+`evidence_requirements` (`$defs/evidenceRequirements`) is closed. Every member is OPTIONAL [EC].
+
+| Member | Type and allowed values | Meaning |
+|---|---|---|
+| `accepted_epistemic_types` | array of at least one epistemic type | the kinds of evidence the requirement accepts |
+| `required_sources` | array of non-empty text | the sources the evidence is required to come from |
+| `independence` | text | how independent of each other, or of the party evaluated, the evidence is required to be |
+| `minimum_assurance` | array of non-empty text | the assurance properties the evidence is required to have at least |
+| `freshness` | text | how recent the evidence is required to be |
+| `coverage` | text | how much of the subject the evidence is required to cover |
+
+An **epistemic type** (`$defs/epistemicType`) is one of eight text values: `observed_event`,
+`system_of_record_fact`, `producer_claim`, `human_report`, `semantic_judgment`, `derived_metric`,
+`adjudication`, `obligation_reference`. EC mirrors the set from EL §4.1, which owns it [EC; EL
+§4.1].
+
+The schema fixes no vocabulary, syntax or unit for `independence`, `freshness`, `coverage`,
+`required_sources` or `minimum_assurance` [EC]. This profile reads each as opaque text (§11.3.7).
+The contract's `coverage` and `freshness` are not a request's `coverage` member or that member's
+`min_freshness` (§4) [ER §3.2]. This revision defines no mapping between them [P-50].
+
+The schema has no member that says whether evidence is needed before the action or may follow it
+[P-49]. `forward_verdict` (§11.3.4) is not that member: it says whether the claim can be checked
+before the action, not when its evidence must exist. Whether a contract was accepted before the
+action is §11.1, and is about the agreement, not the evidence.
+
+#### 11.3.4 Native outcome and obligation members
+
+The two native shapes share one set of members (`$defs/requirementNativeBase`) [EC]. Besides `id`,
+`profile`, `statement`, `status` and `result` (§11.3.2):
+
+| Member | Presence | Type and allowed values | Meaning |
+|---|---|---|---|
+| `evidence_rule` | REQUIRED | non-empty text | a reference or expression naming what counts as confirming evidence for the statement; the schema fixes no syntax for it |
+| `forward_verdict` | REQUIRED | `DETERMINISTIC`, `UNAVAILABLE-MODEL-REQUIRED`, `UNAVAILABLE-STATE-REQUIRED`, `REFUSED` | whether the statement can be checked before the action runs: automatically; not without a model's judgment; not because the record it needs does not exist yet; or not at all |
+| `backward_verdict` | REQUIRED | `DETERMINISTIC`, `MODEL-ASSISTED`, `MANUAL`, `WITH-INSTRUMENTATION`, `REFUSED` | how the statement can be shown afterwards: from the record alone; with a judgment over the record; only by a person attesting directly; only once a record not captured today is captured; or not at all |
+| `window` | OPTIONAL | object, below | the bounded period within which the statement is to hold |
+| `effect_claim` | OPTIONAL | `recommendation.acted_on`, `resolution.followed_action`, `agent.caused_resolution` | the effect the statement claims: a recommendation was acted on; a resolution followed the action; the agent caused the resolution |
+| `refusal_reason_code` | OPTIONAL | `agent_caused_resolution_undecomposable`, `unbounded_goal_unmonitorable`, `subjective_state_unattestable` | why a verdict is `REFUSED`: a causal claim that the evidence can only show as correlation; a goal with no window; a person's own felt state, which no record can show. The schema neither requires it when a verdict is `REFUSED` nor forbids it otherwise |
+| `re_derivability_grade` | OPTIONAL | `pure_replay`, `ledger_state_dependent` | whether a third party can recompute the result from the declared inputs alone, or needs the producer's log state too |
+| `declared_by` | OPTIONAL | text | who declared the requirement; reserved, with no meaning assigned |
+| `evidence_mapping_by` | OPTIONAL | text | who mapped evidence to the requirement; reserved, with no meaning assigned |
+| `required_assurance_grade` | OPTIONAL | text | the assurance grade the evidence is required to reach |
+| `exposure_denominator_ref` | OPTIONAL | text | a reference to the population the result is counted over |
+| `retention_check` | OPTIONAL | text | a reference to the check that the evidence is retained long enough |
+| `measurability` | OPTIONAL | `measured`, `declared_not_measured` | whether the statement is measured from evidence, or declared and not measured |
+| `evidence_instrument` | OPTIONAL | object, below | where the input the statement is measured from is found |
+| `tier` | OPTIONAL | `must_have`, `informational` | whether the requirement gates an overall judgment of the work, or is reported without gating |
+| `mode` | OPTIONAL | `structural`, `value`, `judged`, `fold_rollup`, `fold_counterparty`, `fold_agent`, `fold_cohort` | how the requirement is judged: presence or absence of fields; arithmetic over values; a judgment; or an aggregation over results, counterparties, agents or a cohort |
+| `clause_ref` | OPTIONAL | text | a free-form citation of the clause or section the requirement derives from |
+| `clause` | OPTIONAL; REQUIRED in native obligation | object, below | the structured, versioned citation of that clause |
+| `epistemic_type` | OPTIONAL | one epistemic type (§11.3.3) | the kind of claim the requirement's evidence is |
+
+`window` (`$defs/window`) is closed [EC]. `duration` is REQUIRED: non-empty text, an ISO 8601
+duration such as `P7D` [EC]. `cure` and `grace` are OPTIONAL, each text or `null`: the cure and
+grace periods. The schema checks only that `duration` is non-empty, not its syntax [EC].
+
+`evidence_instrument` (`$defs/evidenceInstrument`) is closed [EC]. `kind` is REQUIRED, either
+`structured_field` or `tool_call_name`: the input is a named field of a record, or the name of a
+tool call [EC]. `field` and `name` are OPTIONAL non-empty text, the field name and the tool-call
+name. The schema does not tie either to `kind` [EC].
+
+`clause` (`$defs/clauseSpec`) is closed [EC]. `instrument` and `article` are REQUIRED non-empty
+text: the cited instrument and the article within it [EC]. The rest are OPTIONAL:
+
+- `as_amended_by`: array of non-empty text, the amending instruments in force when the citation was
+  confirmed;
+- `paragraph` and `jurisdiction`: text;
+- `text_snapshot_digest`: 64 lowercase hexadecimal characters, the SHA-256 of the clause text as
+  read when the citation was confirmed, so that a later change to the text is a visible change of
+  digest; the schema does not fix the form or encoding of the text that is hashed;
+- `effective_from`: the date from which the clause applies, matching the pattern
+  `^\d{4}-\d{2}-\d{2}$` (ASCII digits, as JSON Schema's ECMA-262 patterns read `\d`); the schema
+  does not check that it is a calendar date;
+- `source_url`: text, where the clause text was read;
+- `contested`: boolean, `true` when the clause's effective date is itself disputed.
+
+The native `tier` is not the claim's `tier` (`recomputed` or `judged`) [RES §4], and
+`required_assurance_grade` is not tied by the schema to the claim's `grade` vocabulary [EC; RES §4].
+
+#### 11.3.5 Abstract and stub profile members
+
+**Abstract outcome** (closed). Besides `id`, `profile`, `statement`, `status`, `result`,
+`evidence_requirements` and `obligation_refs` (§11.3.2), all OPTIONAL [EC]:
+
+- `authority` (`$defs/authorityBlock`, closed): `required_role`, text, the role whose determination
+  the requirement needs; `escalation_path`, text, where the requirement is escalated. Both OPTIONAL.
+- `adjudication` (`$defs/adjudication`, closed): `mode`, REQUIRED, one of `deterministic`,
+  `semantic`, `human`, `hybrid`, saying who or what decides the requirement; `policy_ref`, OPTIONAL
+  text, the policy the decision follows [EC].
+- `uncertainty` (`$defs/uncertainty`, closed): `on_missing`, OPTIONAL, one of `insufficient`,
+  `unknown`, `escalate`, the handling of missing evidence; `on_conflict`, OPTIONAL, one of
+  `contradicted`, `escalate`, the handling of conflicting evidence. §8 gives their effect.
+
+**Abstract obligation** (closed). Besides `id`, `profile`, `statement`, `status`, `result` and
+`evidence_requirements`: `clause_ref`, REQUIRED non-empty text, the citation of the obligation;
+`required_role`, OPTIONAL text, the role the obligation falls on; `retention_check`, OPTIONAL text,
+as in §11.3.4; `exceptions`, OPTIONAL array of text, the exceptions that apply [EC]. The schema
+calls this shape a sketch [EC].
+
+**Process** (open). Besides the common members, all OPTIONAL [EC]: `required_sequence`, array of
+non-empty text, the steps in the order required; `tools_used`, array of non-empty text, the tools
+the process uses; `escalation_path`, text; `approvals`, array of non-empty text, the approvals
+required; `efficiency`, an object with no members specified; `safety_exceptions`, array of non-empty
+text, the safety exceptions that apply.
+
+**Quality** (open). Besides the common members and `uncertainty` as above, all OPTIONAL [EC]:
+`correctness`, `completeness`, `business_specificity`, `unsupported_claims` and `robustness`, the
+named quality dimensions. The schema allows any JSON value for each.
+
+**Human role** (open). Besides the common members, all OPTIONAL objects with no members specified
+[EC]: `review`, `override`, `escalation`, `human_report` and `workload_or_learning`, the human
+activities the requirement concerns. The schema's description says that a measure of human
+experience is to stay typed as `human_report` evidence, or a metric derived from it, and that the
+schema does not enforce this [EC `requirementHumanRole`]. This revision adds no check for it.
+
+**Attribution** and **settlement** (closed). Besides `id`, `profile`, `status` and `result`, one
+REQUIRED member, `ref`: non-empty text, a reference to the attribution or settlement terms [EC]. The
+schema states that the rest of each profile is not yet normative [EC].
+
+#### 11.3.6 Root object members
+
+All four objects are closed [EC].
+
+- `subject` (`$defs/subject`): `job_type`, REQUIRED non-empty text, the kind of work the contract
+  applies to; `population_selector`, OPTIONAL text, which instances of that work it applies to [EC].
+- `principal` (`$defs/principal`): `principal_ref`, REQUIRED text matching `^[a-z0-9_-]+:.+$`, a
+  `scheme:value` reference whose scheme a profile defines (this profile defines none);
+  `authority_context`, OPTIONAL array of text [EC]. The reference cites a principal. It does not
+  grant, verify or interpret authority, and control of a key is never taken as authority [EC]. That
+  is the same separation as §11.1.6.
+- `temporal` (`$defs/temporal`): `evaluation_period`, OPTIONAL text, the period the contract is
+  evaluated over; `reversal_window`, OPTIONAL text, the period during which a result can still be
+  reversed.
+- `disclosure` (`$defs/disclosure`): `policy_ref`, OPTIONAL text, the disclosure policy that
+  applies.
+- `consequence` (`$defs/consequence`): `class`, REQUIRED, one of `none`, `report`, `escalation`,
+  `settlement`, `other`; `rule_ref`, OPTIONAL text, the rule that sets the consequence [EC].
+
+**Result vocabularies, which are not contract members.** The schema also defines three value sets
+that a contract never carries. They are the outputs of evaluating a contract against evidence [EC
+`$comment`]:
+
+- `bundleAssertionStatus`: the eight-value per-requirement status, `SATISFIED`, `INSUFFICIENT`,
+  `NOT_FOUND`, `NOT_COMMITTED`, `WITHHELD`, `CONTRADICTED`, `NOT_APPLICABLE`, `UNKNOWN`;
+- `contractResult`: its four-value projection, `SATISFIED`, `GAP`, `INSUFFICIENT`, `UNKNOWN`, as §8
+  states it;
+- `verdict`: `met`, `not_met`, `not_evaluable`, never `met` or `not_met` unless the projection is
+  `SATISFIED` [RES §1].
+
+#### 11.3.7 How a contract feeds this profile
+
+**The contract version document.** The document §11.1.2 calls the contract version document is one
+complete `evidenceContract` object, valid against the pinned schema [P-46]. Its `contract_digest`
+is SHA-256 over UTF-8 of JCS of that whole object (§5.1) [DE §2; P-25]. Every member present is
+covered: the root members, every requirement and every member of each, including members an open
+stub accepts without listing them. No member is left out of the digest, and none is added to it
+[P-46]. A change to any byte of the canonical form is a new contract version digest, even where
+`version` is unchanged. An absent optional member and the same member present with any value are
+different documents with different digests [P-46].
+
+Two documents can therefore share one `contract_ref` and differ in digest. A claim names only
+`contract_ref` [RES §4], so a claim alone cannot tell them apart. Where an acceptance record exists,
+its `contract_digest` names the one evaluated (§11.1.2). Where none exists, this revision does not
+decide [P-46].
+
+A contract version document used under this profile MUST NOT carry a number that is not an integer
+from 0 to 2^53 − 1, as for every object of §5.2, and a verifier MUST NOT compute `contract_digest`
+over one that does [P-46]. Only the open stubs and the quality dimensions can carry numbers at all
+[EC]. A duplicate member name makes the document not well-formed (§5.2), and a verifier MUST NOT
+compute `contract_digest` over it [P-12].
+
+**The contract reference.** `contract_ref` is `id`, then `@`, then `version` [RES §1]. A verifier
+MUST build the string from the document it holds and compare it with the record's or claim's
+`contract_ref` as exact strings, and MUST NOT split a `contract_ref` to find an `id` [P-46]. The
+schema allows `@` in `id` and in `version`, so splitting is ambiguous. `contract_digest` is what
+binds (§11.1.2).
+
+**Requirements become claims.** In this section the verifier is also what evaluates the contract
+(§1). One evaluation of one contract version gives one claim for each requirement it evaluates, and
+a re-evaluation gives new claims [RES §1; P-47]:
+
+- Within one contract version, the `id` of each requirement MUST be unique, so that a claim's
+  `requirement_ref` names one requirement [P-47]. A verifier that finds two requirements with one
+  `id` MUST NOT evaluate that contract version, and emits no claim under it [P-47].
+- The claim's `contract_ref` is the contract's (above), its `requirement_ref` is the requirement's
+  `id`, and its sufficiency and verdict, and the status kept in its carrier (§8.3), come from §8
+  [RES §4; P-17].
+- Where a requirement carries `uncertainty`, §8 applies its `on_missing` and `on_conflict`. The
+  schema types that member only in the abstract outcome and quality shapes [EC]. On a process or
+  human role requirement, an `uncertainty` member is one the open stub accepts without listing, and
+  it does not change §8's defaults [P-48]. Every other requirement takes §8's defaults [P-17].
+- `NOT_APPLICABLE` removes a requirement from the evaluated population, and no claim states it as a
+  result [EC `contractResult`]. No contract member says when a requirement does not apply. This
+  revision defines none [P-51].
+- The rows of §8.1 are tried first. Only where row 7 applies does the contract's content decide, and
+  there the following hold.
+- A verifier MUST NOT report a requirement `SATISFIED` unless it applied every condition the
+  requirement states [P-48]. Where it cannot apply one, it MUST report the requirement `UNKNOWN`,
+  whatever `uncertainty` says, because nothing is missing [P-48]. This covers `evidence_rule` and
+  the opaque-text members of §11.3.3 and §11.3.4, a reference it cannot resolve, an open-stub member
+  it does not implement, and an attribution or settlement `ref` it cannot follow. This revision
+  fixes no reading of those members, so two verifiers that read one differently can report different
+  statuses for the same contract and evidence [P-48].
+- Where a requirement names `accepted_epistemic_types`, evidence counts toward it only when the
+  evidence's own epistemic type is one of them. A native `epistemic_type` is read the same way, as a
+  list of one [P-48]. For an EL record the evidence's type is the record header's `epistemic_type`
+  [EL §4.1]. For other evidence, an Artifact that is not an EL record included, this revision does
+  not say how the type is known, so such evidence never counts toward a requirement that names a
+  type [P-48].
+
+**Which shape.** A claim does not record whether its requirement used a native or an abstract shape,
+and this profile reads both as EC accepts them [P-52].
+
+**Corrected and disputed evidence.** No contract member says whether a requirement is evaluated
+against the historical claim of a record or its latest supported state (§11.2.6), or what an open or
+upheld dispute does to a requirement's status. This revision does not define either. Until a later
+revision does, lifecycle statements change no status, sufficiency or verdict (§11.2.6), so in effect
+a requirement is evaluated against each record as issued [P-36; P-53].
 
 ### 11.4 Carriage and discovery
 
@@ -2406,6 +2707,37 @@ a later draft revision.
   the mapping of §8, unknown members are `NOT_CHECKED` under a profile the verifier does not
   implement, and a consistency `FAIL` is attributable only between authenticated copies
   (§11.4.7).
+- **P-46** The contract version document is one whole `evidenceContract` object valid against the
+  pinned schema, and `contract_digest` covers every member present, with none added or left out.
+  Numbers outside 0 to 2^53 − 1 are not allowed. `contract_ref` is built from `id` and `version` and
+  compared as an exact string, never split. Open: which of two documents with one `contract_ref` and
+  different digests a claim is about when no acceptance record exists. Candidate for the schema's
+  next revision: forbid `@` in `id` (§11.3.7).
+- **P-47** Requirement `id` values are unique within a contract version, and a contract version
+  with a repeated `id` is not evaluated and gives no claims. One evaluation gives one claim per
+  requirement evaluated. The schema does not enforce uniqueness (§11.3.7).
+- **P-48** Under §8.1 row 7, a requirement with a condition the verifier cannot apply is `UNKNOWN`,
+  never `SATISFIED`, whatever `uncertainty` says. An `uncertainty` member on an open stub does not
+  change §8's defaults. Evidence counts toward a requirement that names accepted epistemic types, or
+  a native `epistemic_type`, only when its own type is known and is one of them. Open: a vocabulary
+  or syntax for `evidence_rule`, `independence`, `freshness`, `coverage`, `required_sources`,
+  `minimum_assurance` and `required_assurance_grade`, which the schema leaves as opaque text, so
+  that two verifiers reach one status (§11.3.3, §11.3.7).
+- **P-49** Open: the schema has no member saying whether a requirement's evidence must exist before
+  the action or may follow it. `forward_verdict` says only whether the statement can be checked
+  before the action. Candidate for the schema's next revision (§11.3.3).
+- **P-50** Open: a contract's `coverage` and `freshness` are not a request's coverage members, and
+  no mapping between them is defined (§11.3.3).
+- **P-51** Open: no contract member says when a requirement does not apply, so this revision gives
+  no way to reach `NOT_APPLICABLE` (§11.3.7).
+- **P-52** Open: the outcome and obligation profiles each have a native and an abstract shape, both
+  accepted, and a claim does not record which was used. The schema states the two are not yet
+  reconciled. Nor does it state what an absent `tier`, `mode` or `measurability` means (§11.3.1,
+  §11.3.2, §11.3.7).
+- **P-53** Until a later revision decides whether a requirement is evaluated against a record's
+  historical claim or its latest supported state, lifecycle statements change no evaluation, so each
+  record is evaluated as issued. Open: that choice, and what an open or upheld dispute does to a
+  requirement's status (§11.3.7, P-36).
 
 ## References
 

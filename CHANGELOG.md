@@ -73,6 +73,18 @@
   and `manifest_consistency`, and describes the cross-carriage invariance case as a future
   vector. It pins A2A v1.0.1 and MCP 2026-07-28.
 
+- Spec: `spec/interop-profile-v0.md` §11.3 now describes the Evidence Contract v0 schema, pinned
+  by commit and file SHA-256. It covers every member and allowed value, with its type and
+  presence: the root (`id`, `version`, `requirements` and four optional objects), the seven
+  requirement profiles and the nine shapes they take, evidence requirements (accepted epistemic
+  types, sources, independence, minimum assurance, freshness, coverage), and the native, abstract
+  and stub members. It describes the schema and does not extend it. It also says how a contract
+  feeds the profile: the acceptance record's `contract_digest` covers the whole contract object,
+  `contract_ref` is built and compared and never split, each requirement gives one claim, and a
+  requirement the verifier cannot apply is `UNKNOWN`. Requirement ids must be unique within a
+  contract version. Open points P-46 to P-53 list what the schema does not say, among them
+  whether evidence is needed before the action, which the schema has no member for.
+
 - TypeScript: verification works without WebCrypto. `crypto.subtle` exists only in a secure
   context, so a report in a non-secure or opaque origin (some apps' attachment viewers, an http:
   or data: page) could not hash, and every digest, membership and range check failed on a valid
