@@ -10,8 +10,8 @@ drop it.
 
 This revision covers versions (§3), naming (§4), canonical bytes (§5), the digest and signature
 binding of every message (§6), per-property verification statuses (§7), the mapping from
-outcomes to an Evidence Result (§8), error codes (§9), and the acceptance record (§11.1).
-Sections 11.2–11.5 are placeholders for parts that later revisions fill in.
+outcomes to an Evidence Result (§8), error codes (§9), the acceptance record (§11.1) and lifecycle
+links (§11.2). Sections 11.3–11.5 are placeholders for parts that later revisions fill in.
 
 The documents this profile pins are Internet-Drafts, work in progress, or specifications kept in
 this repository. Open-source repositories, this one included, are implementations of them.
@@ -41,8 +41,9 @@ member names and signing input of the artifact response envelope (§6.2), the ve
 kind identifiers this profile adds and their check procedure (§6.2.1), the absence record
 shape (§6.4), the identity of recipient-specific disclosures and their salted-digest commitments
 (§6.5), the per-property verification status vocabulary and property catalogue (§7),
-the outcome-to-status mapping (§8), and the acceptance record, acceptance receipt, ordering
-evidence rules and acceptance findings (§11.1).
+the outcome-to-status mapping (§8), the acceptance record, acceptance receipt, ordering
+evidence rules and acceptance findings (§11.1), and the lifecycle statement, its issuer rules,
+lifecycle findings and what a verifier shows (§11.2).
 
 **Pins, never redefines:**
 
@@ -54,7 +55,7 @@ evidence rules and acceptance findings (§11.1).
 | SR | `draft-mih-agent-settlement-records` | -00 (`spec/draft-mih-agent-settlement-records-00.md`) | the as-transmitted rule for wrapped foreign objects |
 | RES | Evidence Result v0 | `spec/evidence-result-v0.md` | the claim, sufficiency, verdict and presentation carrier rules |
 | BA | `draft-mih-agent-bilateral-attestation` | -02 (`spec/draft-mih-agent-bilateral-attestation-02.md`) | the requesting and performing parties, and acknowledgment as receipt without agreement |
-| EL | `draft-mih-agent-evidence-layer` | -00 (`spec/draft-mih-agent-evidence-layer-00.md`) | what a Receipt proves, witnesses, and the `cites` and `acknowledges` links |
+| EL | `draft-mih-agent-evidence-layer` | -00 (`spec/draft-mih-agent-evidence-layer-00.md`) | what a Receipt proves, witnesses, the link shape and its closed vocabulary, and the `cites`, `acknowledges`, `supersedes` and `rebuts` links |
 | EC | Evidence Contract v0 schema | `evidence-contract-v0.json`, `$defs/bundleAssertionStatus`, `$defs/contractResult` and the requirement `uncertainty` member | the eight-value status, its four-value projection, and per-requirement handling of missing and conflicting evidence |
 | CLL | `draft-mih-scitt-checkpointed-local-log` | -01 as posted: <https://www.ietf.org/archive/id/draft-mih-scitt-checkpointed-local-log-01.txt>, SHA-256 of that file `2ef340206e6ba4260b84ba265f794ab9756aefa7cdaeac98e95cea646cfb678f` | the checkpoint and its claims, the peak-list commitment, the log identity, and the inclusion and consistency claims, behind the `cll-*` material kinds (§6.2.1) |
 | MMR | `draft-bryce-cose-receipts-mmr-profile` | -02 as posted: <https://www.ietf.org/archive/id/draft-bryce-cose-receipts-mmr-profile-02.txt>, SHA-256 of that file `c6dc055aa61bcdea1566db5a754d055a199a89c9900810b336d99202a44e9893` | the inclusion and consistency proof encodings and the algorithms that check them; CLL -01 cites this revision normatively |
@@ -198,6 +199,13 @@ that to every object it defines.
 | Acceptance receipt members | `profile`, `acceptance_digest`, `received_at`, `receiver`, `sig` | P-27 |
 | Authority label | `agent_origin_assertion` | P-29 |
 | Acceptance findings | `not_accepted`, `accepted_after_action`, `accepted_not_cited`, `accepted_before_action`, `accepted_execution_cites` | P-30 |
+| Lifecycle statement members | `profile`, `issuer`, `link`, `basis`, `scope`, `content`, `process`, `outcome`, `issued_at`, `sig` | P-32 |
+| Link members | `type`, `target` | EL §5 |
+| Lifecycle link tokens | `supersedes`, `rebuts` (EL's registered tokens); `amends`, `disputes`, `resolves` (this profile's, proposed for EL -01) | EL §5; P-32 |
+| Process reference members | `scheme`, `id` | P-32 |
+| Resolution outcomes | `upheld`, `dismissed` | P-34 |
+| Dispute statuses | `open`, `upheld`, `dismissed`, `conflicting` | P-36 |
+| Lifecycle findings | `lifecycle_not_effective`, `lifecycle_not_issuer`, `lifecycle_forked`, `lifecycle_effective` | P-35 |
 
 The one value type that differs between encodings is opaque bytes (`artifact`, and each entry
 of `verification_content`). CBOR carries them as a byte string (major type 2). JSON carries them
@@ -670,6 +678,7 @@ check. It never states whether a requirement is satisfied. §8 is the only bridg
 | `issued_at_form` | envelope, refusal | present and of the §5.2 time form. ER requires it on a refusal [ER §4.2 item 3]; for the envelope and for the form, see [ERV A5; P-12] | yes |
 | `native_check` | each foreign object in a verified Artifact | the object's own verification method over its as-transmitted octets (§5.1); `method` names that method | per requirement (§8) |
 | acceptance properties | acceptance records and receipts | §11.1.7 | decide the acceptance finding (§11.1.8), never a status of §8 |
+| lifecycle properties | lifecycle statements | §11.2.5 | decide the lifecycle finding (§11.2.5), never a status of §8 |
 
 When `profile_version` is not `PASS`, every other envelope property is `NOT_CHECKED` [P-4].
 `native_check` is not an envelope property: it applies to foreign objects inside an Artifact
@@ -1085,10 +1094,10 @@ envelope over the changed digest instead makes `anchor_inclusion` `FAIL` at step
 
 ## 11. Parts filled by later revisions
 
-§11.1 is specified. The headings from §11.2 on are placeholders, and nothing under them is
-specified yet. §11.1 was filled before `evidence-interop/0` was published. It adds objects and
-properties, and adds rows to the tables of §4 and §7.2. It changes no existing signing input or
-byte rule, so it keeps the identifier (§3.1).
+§11.1 and §11.2 are specified. The headings from §11.3 on are placeholders, and nothing under
+them is specified yet. §11.1 and §11.2 were filled before `evidence-interop/0` was published.
+They add objects and properties, and add rows to the tables of §4 and §7.2. They change no
+existing signing input or byte rule, so they keep the identifier (§3.1).
 
 ### 11.1 Acceptance record
 
@@ -1450,9 +1459,322 @@ the acceptor turns G into `NOT_PRESENT`. No variant except E and G may yield
 
 ### 11.2 Lifecycle links
 
-*Placeholder.* Scope: issuer rules for corrections and challenges. `amends`, `disputes` and
-`resolves` are new link tokens, proposed for `draft-mih-agent-evidence-layer` -01. `contradicts`
-maps to the registered `rebuts`.
+A signed record is never edited. A correction or a challenge is a new signed statement that names
+the earlier record by digest. This section defines that statement, says who may issue each kind,
+and says what a verifier shows: the claim as it was first made and the latest state the held
+statements support, side by side.
+
+**Not EL's lifecycle record.** EL uses "lifecycle record" for a record that changes a payload's
+`retention_state` [EL §6]. The statement here is a different object. It never changes retention.
+
+#### 11.2.1 The five links and Evidence Layer -00
+
+EL's link types are a closed vocabulary. A deployment that needs a relationship EL does not name
+registers a new token, and never overloads an existing one [EL §5, §13.2]. EL -00 registers
+`cites`, `adjudicates`, `supersedes`, `acknowledges`, `rebuts` and `closes`. This profile uses five
+lifecycle tokens [P-32]:
+
+| Token | In EL -00 | Meaning under this profile |
+|---|---|---|
+| `supersedes` | registered [EL §5] | as EL defines it: the statement replaces the target's content for current use, without mutating the target [EL §5, §6] |
+| `amends` | not registered | the statement changes part of the target's content for current use. The rest of the target's content stands |
+| `rebuts` | registered [EL §5] | as EL defines it: the statement disputes the target's claim [EL §5]. Contradiction is carried as `rebuts` |
+| `disputes` | not registered | the statement submits the target's claim, for decision, to the resolving process that its `process` names. A `resolves` statement closes it |
+| `resolves` | not registered | the statement is that resolving process's decision on one `disputes` statement |
+
+- **Contradiction is `rebuts`.** This profile has no `contradicts` token. A statement that
+  contradicts its target carries `rebuts`, with EL's meaning unchanged [P-32].
+- **`disputes` is not `rebuts`.** `rebuts` contests a claim and asks nothing of anyone. Nothing
+  resolves it in this revision, and EL -00 does not define its withdrawal [EL §10]. `disputes`
+  names a resolving process and is closed only by that process's `resolves` statement. That
+  submission is the relationship `rebuts` does not name, so the profile carries it as a new token
+  rather than overloading `rebuts` [EL §5]. A statement that both contests and submits is two
+  statements.
+- **Three tokens wait for EL -01.** `amends`, `disputes` and `resolves` are this profile's own
+  tokens. Registration is proposed for `draft-mih-agent-evidence-layer` -01, under EL's
+  Specification Required policy [EL §13]. Until they are registered, they are not EL link types
+  [EL §5]. An EL store therefore MUST NOT put them in a record's `links` header, and carries the
+  lifecycle statement as a record payload instead [P-32].
+- **A Close.** EL reads a Close's status from `rebuts` and `acknowledges` links only [EL §10]. A
+  `disputes` statement therefore never makes a Close CONTESTED. A counterparty that contests a
+  Close issues `rebuts`. This section does not change EL §10.
+- `cites`, `adjudicates`, `acknowledges` and `closes` are not lifecycle links. A lifecycle
+  statement uses `cites` only through `basis` (§11.2.2). An EL adjudication record is one kind of
+  evidence a resolving process can cite there.
+
+#### 11.2.2 The lifecycle statement
+
+| Member | Signed | Presence | Value |
+|---|---|---|---|
+| `profile` | yes | REQUIRED | the profile identifier, `evidence-interop/0` |
+| `issuer` | yes | REQUIRED | the key identifier (§5.2) of the key that signs the statement |
+| `link` | yes | REQUIRED | `{"type": <token>, "target": <digest>}`, the shape of an EL link [EL §5]: `type` is exactly one token of §11.2.1, in exact case; `target` is the digest of the target record (§11.2.3) |
+| `basis` | yes, when present | OPTIONAL | an array of digests, each of a record the statement depends on, in the sense of EL `cites` [EL §5] |
+| `scope` | yes, when present | OPTIONAL; absent in `supersedes` | an array of text strings, each naming a part of the target in the target format's own addressing. Absent means the whole target |
+| `content` | yes, when present | REQUIRED in `amends` and `supersedes`; OPTIONAL otherwise | the digest (§5.1) of the content the statement asserts: the replacement for `supersedes`, the changed parts for `amends`, the counter-claim, grounds or decision for the others |
+| `process` | yes, when present | REQUIRED in `disputes` and `resolves`; absent otherwise | `{"scheme": <text>, "id": <text>}`, naming a resolving process and the case in it, for example a merchant's refund case, a payment network's dispute case or an adjudicator's docket entry. Compared as exact strings, as for `transaction` (§11.1.2) |
+| `outcome` | yes, when present | REQUIRED in `resolves`; absent otherwise | `upheld`: the challenge succeeds, and the target's claim is not supported in the disputed scope; `dismissed`: the target's claim stands |
+| `issued_at` | yes | REQUIRED | the time the issuer claims it signed the statement |
+| `sig` | — | REQUIRED | Ed25519 by `issuer` over the signing input |
+
+Rules [P-32]:
+
+- The **signing input** is UTF-8 of JCS over the object made of every member present except
+  `sig` (§5.1). The **statement digest** is SHA-256 over UTF-8 of JCS of the whole statement,
+  `sig` included, as for the acceptance record (§11.1.2).
+- A statement carries exactly one lifecycle link, and no member other than those above. Another
+  relationship is another statement.
+- `issued_at` is the issuer's claim. It never orders statements. The order of corrections is
+  given by which record each one targets (§11.2.6) [P-32].
+- This profile does not interpret `scope`, `content` or `basis`. A verifier shows them. How an
+  amendment applies to the target's content is the target format's matter.
+- The statement is a JSON object, or the same map in CBOR (§4). It is not a reply to an evidence
+  request, and the message types of §1 do not apply to it.
+
+**Links in an EL record header.** A `supersedes` or `rebuts` link in the `links` header of an EL
+record [EL §4] is evaluated under this profile as a lifecycle statement with that `link`, issued
+by the record's issuer (§11.2.3) [P-32]. Its `lifecycle_signature` is the check of the record's
+own producer signature, and `method` names that method. Its `lifecycle_form` checks only the
+link. Its statement digest is the digest of the EL record. Each header link of a record is
+evaluated on its own. A record whose header link and payload statement carry the same `link`
+counts once [P-32]. So a header `supersedes` from a non-issuer gets `lifecycle_not_issuer`, exactly as a
+statement does [P-32]. EL -00 itself states no issuer rule for `supersedes`, so a reader of EL
+alone can show a different current state. P-32 proposes the rule for EL -01.
+
+#### 11.2.3 The issuer of a record
+
+The **issuer** of a record is the key whose signature makes the record that party's own statement.
+It is fixed by the record's kind [P-33]:
+
+| Record | Issuer |
+|---|---|
+| lifecycle statement | `issuer` |
+| acceptance record | `proposer` for `state` `proposed`; `acceptor` otherwise (§11.1.1) |
+| acceptance receipt | `receiver` (§11.1.4) |
+| envelope | `responder` (§6.2) |
+| refusal | `key_id` (§6.3) |
+| absence record | `key_id`, when signed (§6.4) |
+| any other record, including an EL record | the key its own format names as the producer's signature, verified by that format's method, which `method` names (§7.1). EL leaves this to the profile [EL §10], and this is the profile's reading |
+
+- The issuer is established only when that signature verifies. An `issuer` or `key_id` member
+  whose signature does not verify establishes nothing [P-33].
+- A countersignature, a witness's signature and a Receipt never make a key the issuer of a
+  record [EL §3; P-33]. They attest to a record. They do not make it the signer's statement.
+- A record with no producer signature that verifies has no issuer. Under this profile no
+  statement can amend or supersede it. It can still be disputed or rebutted [P-33]. An EL record,
+  a Close included, therefore needs a producer signature before this profile counts a correction
+  of it.
+
+**Key rotation.** A statement is the issuer's own when it is signed by the same key as the
+target. It is also the issuer's own when the relying party's trust policy, as of evaluation (the
+evaluation time of §11.1.7), states that the signing key succeeds the target's key. That means the
+target's key was replaced by it for the same party, directly or through a sequence of such
+replacements [P-33]. Succession runs one way. A key never succeeds a key that replaced it, so a
+retired key cannot correct its successor's statements. This revision defines no format for a
+succession statement. A trust policy that knows of none has no successor keys.
+
+A key that the trust policy merely maps to the same party is not a successor [P-33]. A party
+can hold several keys for different agents or roles. Treating every key of a party as the issuer
+would let one of them correct what another signed. Whether the party may do that is a question
+of authority, and this profile never infers authority from a key (§11.1.6).
+
+#### 11.2.4 Issuer rules
+
+| Token | Who may issue it | What it must carry | Effect on the displayed state (§11.2.6) | When violated: property and finding (§11.2.5) |
+|---|---|---|---|---|
+| `supersedes` | only the issuer of the target, or its successor key (§11.2.3) | `link`, `content`; no `scope` | the target's content is replaced for current use; the target stays in the history | `lifecycle_issuer` `FAIL`; `lifecycle_not_issuer`; no effect. An excluded target kind: `lifecycle_target` `FAIL`; `lifecycle_not_effective` |
+| `amends` | only the issuer of the target, or its successor key (§11.2.3) | `link`, `content`; `scope` RECOMMENDED | the changed parts apply on top of the target for current use; the target stays in the history | as for `supersedes` |
+| `rebuts` | anyone | `link` | none on the content; shown as a rebuttal of the target | there is no issuer rule to violate. A statement failing form, signature or target gets `lifecycle_not_effective` and is not shown as a rebuttal |
+| `disputes` | anyone | `link`, `process` | none on the content; shown as a dispute of the target, `open` until resolved | as for `rebuts` |
+| `resolves` | the resolving process: a key the trust policy, as of evaluation, accepts as the resolver for the case `process` names | `link` naming one `disputes` statement, the same `process` as that statement, `outcome` | sets the status of that dispute (§11.2.6); none on the content | `lifecycle_target` `FAIL` (not an effective `disputes` statement, or a different `process`) or `lifecycle_signer_trust` not `PASS` (not the resolver); `lifecycle_not_effective`; the dispute stays `open` |
+
+Rules [P-33, P-34]:
+
+- Only the issuer of a record, or its successor key, may amend or supersede it [P-33]. A
+  `supersedes` or `amends` statement issued by any other key is invalid. A verifier MUST report it
+  with `lifecycle_issuer` `FAIL` and the finding `lifecycle_not_issuer`, and MUST NOT let it change
+  the displayed content [P-33].
+- An invalid statement keeps its token, because EL forbids overloading one [EL §5]. A verifier
+  MUST NOT read a non-issuer `supersedes` as a `disputes` or a `rebuts`, or read any statement as a
+  token other than its own [P-33]. A party that wants to challenge another's record issues
+  `disputes` or `rebuts`.
+- `amends` and `supersedes` MUST NOT target an acceptance record, an acceptance receipt, an
+  envelope, a refusal or an absence record [P-33]. Those are evaluated as held, by §6 to §8 and
+  §11.1, and an agreement changes only through §11.1 (a new proposal). Such a statement gets
+  `lifecycle_target` `FAIL`. Those records can still be disputed or rebutted.
+- Anyone may dispute or rebut any record. Neither ever changes the target's content [P-34].
+- **Resolving process.** A `resolves` statement is that process's own statement, signed by the key
+  the trust policy accepts for it [P-34].
+  - Its `process` is the citation of the resolving process that this profile requires. It names
+    the process and the case. It MUST equal the `process` of the `disputes` statement it targets,
+    so that only the forum the disputant named can close the dispute [P-34].
+  - It MUST target exactly one `disputes` statement whose finding is `lifecycle_effective`, and
+    MUST state the `outcome` [P-34].
+  - Its `basis` SHOULD cite the record of the decision [P-34], for example an EL adjudication
+    record [EL §4.1, §5].
+- The trust policy decides which keys may resolve which processes. It MAY accept a party to the
+  dispute, for example a merchant resolving a dispute through its own refund process [P-34].
+  - A presentation MUST name the resolver [P-34].
+  - When the trust policy maps the resolver's key to the same party as the target's issuer, or as
+    the disputant, the verifier MUST say so in the `detail` of `lifecycle_signer_trust`, and a
+    presentation MUST show it [P-34].
+- A resolution never changes the target's content. An `upheld` outcome is shown beside the
+  claim. Only the target's issuer can replace the content, by `amends` or `supersedes` [P-34].
+- A statement that amends or supersedes a `disputes`, `rebuts` or `resolves` statement does not
+  change a dispute's status, or whether a rebuttal is shown [P-34].
+
+#### 11.2.5 Verification properties and findings
+
+These properties join the catalogue of §7.2 and use the vocabulary of §7.1 [P-35]. "Trust as of
+evaluation" is as in §11.1.7. A trust policy MAY still accept a key it has since retired for
+statements it holds evidence were signed before the retirement [P-35]. `issued_at` is not such
+evidence (§11.2.2). This revision defines none for lifecycle statements.
+
+| Property | Applies to | Check | Decides the finding |
+|---|---|---|---|
+| `lifecycle_form` | lifecycle statement | `profile` is `evidence-interop/0`; `issuer` has the key-identifier form; `link.type` is one token of §11.2.1 in exact case; `link.target`, each `basis` entry and `content` are digests (§5.2); `scope` is an array of text strings; `process` has exactly `scheme` and `id`, both text strings; `outcome` is `upheld` or `dismissed`; members are present or absent as §11.2.2 requires for the token, and no other member is present; `issued_at` has the §5.2 form | yes |
+| `lifecycle_signature` | lifecycle statement | `sig` verifies under `issuer` over the §11.2.2 signing input | yes |
+| `lifecycle_target` | lifecycle statement | a record whose digest is `link.target` is held. For `amends` and `supersedes`, it is none of the kinds §11.2.4 excludes. For `resolves`, it is a `disputes` statement whose finding is `lifecycle_effective` and whose `process` equals this statement's. `NOT_PRESENT` when no record with that digest is held; `FAIL` when the record held does not meet these conditions | yes |
+| `lifecycle_issuer` | `amends` and `supersedes` statements | the target's issuer is established (§11.2.3), and `issuer` is that key or its successor. `FAIL` when the target has no issuer, or when `issuer` is not that key and the trust policy does not state that it succeeds that key, including when the policy does not know `issuer`. `INCONCLUSIVE` only when the policy records a succession that it cannot evaluate | yes |
+| `lifecycle_signer_trust` | lifecycle statement | trust as of evaluation accepts `issuer`; for `resolves`, as the resolver for `process` | for `amends`, `supersedes` and `resolves`; reported, not deciding, for `disputes` and `rebuts` |
+| `lifecycle_unique` | `amends` and `supersedes` statements | computed per statement. A statement **qualifies** when its `lifecycle_form`, `lifecycle_signature`, `lifecycle_target`, `lifecycle_issuer` and `lifecycle_signer_trust` all pass. `FAIL` when it qualifies and another qualifying statement with a different statement digest has the same `link.target`; `PASS` when it qualifies and at least one other held `amends` or `supersedes` statement has the same `link.target` but none of them qualifies; `NOT_CHECKED` when it does not qualify, or when no other `amends` or `supersedes` statement with that `link.target` is held | a `FAIL` gives `lifecycle_forked` |
+
+Properties that do not apply to a statement's token are not reported for it, as for the
+envelope and refusal properties of §7.2. When `lifecycle_signature` is not `PASS`, the
+statement's issuer is not established. `lifecycle_issuer`, `lifecycle_signer_trust` and
+`lifecycle_unique` are then `NOT_CHECKED` for it. A verifier MUST NOT report `lifecycle_issuer` as
+`PASS` from the `issuer` member alone [P-35]. When a statement names a `profile` the verifier does
+not implement, every property of it is `NOT_CHECKED`, as for the acceptance record (§11.1.7)
+[P-35].
+
+A verifier reports one **lifecycle finding** per statement. The first row that applies decides
+[P-35]:
+
+| Finding | When |
+|---|---|
+| `lifecycle_not_effective` | `lifecycle_form`, `lifecycle_signature` or `lifecycle_target` is not `PASS` |
+| `lifecycle_not_issuer` | the token is `amends` or `supersedes`, and `lifecycle_issuer` is `FAIL` |
+| `lifecycle_not_effective` | the token is `amends` or `supersedes`, and `lifecycle_issuer` is not `PASS`; or the token is `amends`, `supersedes` or `resolves`, and `lifecycle_signer_trust` is not `PASS` |
+| `lifecycle_forked` | `lifecycle_unique` is `FAIL` |
+| `lifecycle_effective` | otherwise: the statement has the effect §11.2.4 gives its token |
+
+`lifecycle_not_issuer` is decided before signer trust, so a non-issuer's statement gets it whether
+or not the trust policy knows the non-issuer's key [P-35].
+
+#### 11.2.6 What a verifier shows
+
+For a record `R0` that is not itself an `amends` or `supersedes` statement, the verifier builds
+its **chain** [P-36]:
+
+- `R0` is the first element.
+- The next element is the `amends` or `supersedes` statement targeting the current last element
+  whose finding is `lifecycle_effective`. Each element of the chain therefore has the issuer of
+  `R0`, or a successor of it.
+- The chain ends when no such statement is held.
+- When the statements targeting the last element include `lifecycle_forked` ones, the chain is
+  **forked** there. Each `lifecycle_forked` statement starts a **branch**. The branch is that
+  statement, followed by the elements built from it by the same rule.
+
+An issuer that wants to correct a correction targets the latest element. Two corrections of the
+same element are a fork, never a sequence.
+
+The **latest supported state** of an unforked chain is its last element, with the `content`
+digests of the chain's `amends` and `supersedes` statements in chain order. It is supported by the
+issuer's own statements, and by nothing else. A forked chain has no latest supported state [P-36]. How those contents apply to the target is the target
+format's matter (§11.2.2).
+
+A verifier, and any presentation of its result, MUST show all of the following [P-36]:
+
+1. **The historical claim:** `R0` as committed, with its digest. It is shown even when later
+   statements replace its content.
+2. **The latest supported state**, with the digest of the chain's last element. When the chain is
+   forked, there is none. The verifier MUST then report the chain as forked at the digest of its
+   last element, MUST show each branch labelled as forked, and MUST NOT choose a branch or show
+   any element as current [P-36]. When the chain is only `R0` and is not forked, the latest
+   supported state is the historical claim, and the presentation says that nothing corrects it.
+3. **Challenges:** every `disputes` and `rebuts` statement whose finding is `lifecycle_effective`
+   and whose target is an element of the chain or of a branch. Each is shown on the element it
+   names, with its issuer, `lifecycle_signer_trust` status, `scope` and `content` digest. Wherever
+   the latest supported state is shown, the presentation MUST also say which earlier elements
+   carry a challenge [P-36]. A dispute is also shown with its status:
+   - `open`: no `resolves` statement targeting it has the finding `lifecycle_effective`;
+   - `upheld` or `dismissed`: every effective `resolves` statement targeting it gives that
+     outcome;
+   - `conflicting`: two effective `resolves` statements targeting it give different outcomes.
+     The verifier shows both.
+
+Rules [P-36]:
+
+- A verifier MUST NOT show the latest supported state in place of the historical claim without
+  saying so [P-36]. It MUST NOT show the historical claim as current once the chain has a second
+  element or is forked [P-36].
+- A statement whose finding is `lifecycle_not_effective` or `lifecycle_not_issuer` MUST NOT
+  change anything above [P-36]. A verifier reports it with its finding. A presentation that shows
+  it MUST show the finding with it, and MUST NOT show it as a correction or a challenge [P-36].
+  A `lifecycle_forked` statement is shown only as a branch, as item 2 says.
+- The chain is built from links alone. Neither `issued_at` nor the order in which statements were
+  received changes it [P-36].
+- Lifecycle statements change no status, sufficiency or verdict of §8, and no acceptance finding
+  of §11.1.8 [P-36]. Whether a contract evaluates the historical claim or the latest supported
+  state, and what an open or upheld dispute does to a requirement's status, is left to the
+  Evidence Contract prose (§11.3) [P-36].
+
+#### 11.2.7 The non-issuer supersession, as a vector
+
+§11.5 will hold the vectors, with their key seeds, record bytes and content documents fixed
+there. The case can be fully expressed with the objects above. Its pinned inputs are:
+
+- trust roots: keys `I`, `N` and `I2`, each trusted. `I` and `N` are mapped to two different
+  parties. `I2` is mapped to the same party as `I`. The trust policy states no key succession,
+  except in variant G;
+- evaluation time `2026-10-12T02:00:00Z`;
+- a target record `R0`, a JSON record signed by `I` with the producer signature of the format
+  §11.5 fixes, issued `2026-10-12T00:00:00Z`. Its issuer is `I` (§11.2.3), and it is none of the
+  kinds §11.2.4 excludes;
+- two content documents, with digests `x` and `y`, and a process reference `p`.
+
+Variants A to I each hold `R0` and the statements listed. Every statement listed targets `R0`,
+and each is issued `2026-10-12T00:30:00Z` unless the row says otherwise.
+
+| Variant | Statements held | Properties of the statement under test | Finding | Latest supported state |
+|---|---|---|---|---|
+| A. Non-issuer supersedes | `S_N`: `supersedes` by `N`, `content` `x` | `lifecycle_form`, `lifecycle_signature`, `lifecycle_target`, `lifecycle_signer_trust` `PASS`; `lifecycle_issuer` `FAIL`; `lifecycle_unique` `NOT_CHECKED` | `lifecycle_not_issuer` | `R0`, nothing corrects it |
+| B. Control: issuer supersedes | `S_I`: as `S_N`, but by `I` | all `PASS` except `lifecycle_unique` `NOT_CHECKED` | `lifecycle_effective` | `S_I`, content `x` |
+| C. Non-issuer writes the issuer's key | as `S_N`, with `issuer` `I`, but signed by `N` | `lifecycle_form`, `lifecycle_target` `PASS`; `lifecycle_signature` `FAIL`; `lifecycle_issuer`, `lifecycle_signer_trust`, `lifecycle_unique` `NOT_CHECKED` | `lifecycle_not_effective` | `R0`, nothing corrects it |
+| D. Both | `S_N` and `S_I` | `S_N` as A; `S_I` all `PASS`, including `lifecycle_unique`, since `S_N` does not qualify | `S_N` `lifecycle_not_issuer`; `S_I` `lifecycle_effective` | `S_I`, content `x`, in either order of receipt |
+| E. Non-issuer amends | as `S_N`, with `link.type` `amends` | as A | `lifecycle_not_issuer` | `R0`, nothing corrects it |
+| F. Second key of the issuer's party | as `S_N`, but by `I2` | as A | `lifecycle_not_issuer` | `R0`, nothing corrects it |
+| G. Rotated key | as F, and the trust policy states that `I2` succeeds `I` | as B | `lifecycle_effective` | the statement by `I2`, content `x` |
+| H. Non-issuer disputes | a `disputes` statement by `N`, `process` `p`, no `content` | `lifecycle_form`, `lifecycle_signature`, `lifecycle_target`, `lifecycle_signer_trust` `PASS`; `lifecycle_issuer` and `lifecycle_unique` do not apply | `lifecycle_effective` | `R0`, nothing corrects it; one `open` dispute by `N` |
+| I. Fork | `S_I`, and `S_I'`: `supersedes` by `I`, `content` `y`, issued `2026-10-12T00:40:00Z` | each: all `PASS` except `lifecycle_unique` `FAIL` | each `lifecycle_forked` | none: forked at `R0`, both branches shown, neither chosen |
+
+In every variant the historical claim shown is `R0`. Variant A differs from B only in the signing
+key. It shows that the bytes of a superseding statement cannot make it a correction: the issuer
+of the target decides. Variant C shows that writing the issuer's key into `issuer` does not help
+either. Variant F records that a second key of the same party is not the issuer, and G records
+the one way such a key becomes it. No variant in which `N` signs a `supersedes` or `amends`
+statement may change the latest supported state.
+
+#### 11.2.8 Limits
+
+- Succession is only as good as the trust policy. A policy that wrongly records a key as a
+  successor lets that key correct the issuer's records. This revision defines no succession
+  format.
+- A compromised issuer key can supersede the issuer's records. Trust as of evaluation (§11.1.7)
+  stops that only after the policy stops trusting the key. The historical claim is always shown,
+  so the replaced content is not lost.
+- Trust as of evaluation also cuts the other way. Once a policy stops trusting a retired key, the
+  corrections that key signed stop counting, and the chain falls back to an earlier element,
+  unless the policy keeps accepting the key for statements made before its retirement (§11.2.5).
+- An issuer can equivocate by showing different relying parties different single corrections of
+  one record. Each relying party then sees an unforked chain. A fork is detected only by a
+  verifier that holds both statements, as for `acceptance_unique` (§11.1.10). This revision
+  defines no way out of a fork. A further correction targets one branch, and the fork stays.
+- A resolving process is only as independent as the trust policy requires. Resolution by a party
+  to the dispute is allowed, and is visible because the resolver is named and the same-party case
+  is flagged.
+- This revision does not define withdrawing a dispute or rebuttal, appealing a resolution, or
+  correcting a resolution.
 
 ### 11.3 Evidence Contract prose
 
@@ -1593,6 +1915,42 @@ a later draft revision.
 
   This revision adds these kinds and two pins without changing the identifier
   `evidence-interop/0` (P-1), because no revision of this profile has been published yet.
+- **P-32** The lifecycle statement: its members, signing input and statement digest, one lifecycle
+  link per statement in the shape of an EL link, and the five tokens. Contradiction is EL's
+  `rebuts`, and there is no `contradicts` token. `disputes` is kept apart from `rebuts` by naming
+  a resolving process. An EL header `supersedes` or `rebuts` link is evaluated as a statement
+  issued by the record's issuer. Candidate for `draft-mih-agent-evidence-layer` -01:
+  - register `amends`, `disputes` and `resolves` as new link types;
+  - add the issuer rule of P-33 to `supersedes`;
+  - word `disputes` and `rebuts` so that they cannot be read as one relationship. `rebuts`'s
+    -00 description uses the verb "disputes".
+
+  Until then an EL store carries the three only in a statement payload, never in a `links`
+  header (§11.2.1, §11.2.2).
+- **P-33** The issuer of a record, by kind, with EL records signed by their own format's producer
+  signature. Countersignatures, witnesses and Receipts never make a key the issuer. Only the
+  issuer, or a successor key that the trust policy names, may amend or supersede. Succession is
+  transitive and one-way, and a key mapped only to the same party is not a successor. An invalid
+  statement is never read as another token. Acceptance records and receipts, envelopes, refusals
+  and absence records are never amended or superseded. Open: a format for succession statements,
+  and whether a later revision lets a party correct records any of its keys signed (§11.2.3,
+  §11.2.4).
+- **P-34** Anyone may dispute or rebut, and neither changes content. A `disputes` statement names
+  a resolving process. A `resolves` statement is that process's own statement, carrying the same
+  `process` and an `outcome`, and it targets one `disputes` statement. The trust policy decides
+  who resolves what, and same-party resolution is flagged. Open: withdrawing a dispute or
+  rebuttal, appeals, and correcting a resolution (§11.2.4, §11.2.8).
+- **P-35** The lifecycle properties, the rule that `issuer` counts only once the signature
+  verifies, the optional acceptance of a retired key for earlier statements, and the four
+  lifecycle findings, with the non-issuer finding decided before signer trust. Open: the evidence
+  that a statement was signed before its key's retirement (§11.2.5).
+- **P-36** The chain built from links alone; forks shown as branches and never resolved by the
+  verifier; the historical claim and the latest supported state always shown together; challenges
+  and dispute statuses shown, including those on earlier elements; and ineffective statements
+  never shown as a correction or challenge. Lifecycle statements change no §8 status and no
+  acceptance finding. Open: how a contract evaluates a corrected or disputed record, left to §11.3
+  (§11.2.6). Open: a way out of a fork, and detecting equivocation without holding both
+  statements (§11.2.8).
 
 ## References
 

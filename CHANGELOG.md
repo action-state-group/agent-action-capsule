@@ -44,6 +44,21 @@
   described as a future vector. It pins `draft-mih-agent-bilateral-attestation-02` and
   `draft-mih-agent-evidence-layer-00`.
 
+- Spec: `spec/interop-profile-v0.md` §11.2 now defines lifecycle links. A correction or
+  challenge is a new signed lifecycle statement naming the earlier record by digest, with one
+  link of five tokens. `supersedes` and `rebuts` are the Evidence Layer's registered tokens, and
+  contradiction is carried as `rebuts`. `amends`, `disputes` and `resolves` are the profile's own,
+  proposed for registration in `draft-mih-agent-evidence-layer` -01, and are not edited into
+  -00. Only the issuer of a record, the key that signed it, or a successor key that the trust
+  policy names, may amend or supersede it. A non-issuer `supersedes` is reported
+  `lifecycle_issuer` `FAIL` with the finding `lifecycle_not_issuer`, and changes nothing. Anyone
+  may dispute or rebut, and neither changes the record. A `disputes` statement names a resolving
+  process, and only that process's `resolves` statement, carrying the same process and an
+  outcome, closes it. A `supersedes` link in an Evidence Layer record header follows the same
+  issuer rule. A verifier always shows the historical claim beside the latest supported state,
+  shows forks without choosing a branch, and shows every dispute and rebuttal. The section adds the verification properties, four
+  lifecycle findings, and the non-issuer supersession described as a future vector.
+
 - TypeScript: verification works without WebCrypto. `crypto.subtle` exists only in a secure
   context, so a report in a non-secure or opaque origin (some apps' attachment viewers, an http:
   or data: page) could not hash, and every digest, membership and range check failed on a valid
