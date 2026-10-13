@@ -1,9 +1,9 @@
 name: Python CI
 on:
   push:
-    paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**", "vectors/minimum-necessary/**", ".github/**"]
+    paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**", "vectors/evidence-request/**", "vectors/minimum-necessary/**", ".github/**"]
   pull_request:
-    paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**", "vectors/minimum-necessary/**", ".github/**"]
+    paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**", "vectors/evidence-request/**", "vectors/minimum-necessary/**", ".github/**"]
 
 jobs:
   test:

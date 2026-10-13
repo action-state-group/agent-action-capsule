@@ -61,6 +61,20 @@
   `spec/REGISTRY.md`. It is not verification: `verify()` still never rejects an unregistered
   value. No registered set changes. Vectors: `vectors/registry-conformance/` (26 sealed
   Capsules).
+- Python: `agent_action_capsule.evidence_request`, the Evidence Request responder, moved here
+  from capsule-emit so the implementation sits next to its draft and vectors.
+  `answer(request_bytes, *, store, signer, now=None, allow_forced_checkpoint=False)` returns
+  an `Artifact` or a signed `Refusal`. Where the evidence comes from is the caller's
+  `EvidenceStore` (`holds`, `bundle`, `select_range`, `records`, `chain_segment`,
+  `force_checkpoint`). A store raises `NotYetCovered` for a held subject that no checkpoint
+  covers yet. Also exported: `parse_request`, `request_digest`, `sign_refusal`,
+  `verify_refusal_offline`, `normalize_refusal_reason` and the refusal-reason tokens. The wire
+  behaviour is unchanged. The four open differences from -00 in
+  `vectors/evidence-request/DIFFS.md` still apply, and those vectors are unchanged. New tests
+  check `verify_refusal_offline` against 19 of the 21 `refusal.json` cases. The other two (a
+  list-valued reason, a missing `issued_at`) cannot be built as a `Refusal`. They also check
+  that `sign_refusal` reproduces each valid primary-key signature byte for byte. The python
+  workflow now also runs on changes under `vectors/evidence-request/`.
 - composed/v1 (`draft-mih-zhang-agent-disclosure-bundle-01`): an artifact member may carry
   `response`, the responder's signed response as received with the artifact bytes removed. A
   verifier requires its `request_digest` to equal the member's and its `artifact_digest` the

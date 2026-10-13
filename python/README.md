@@ -77,6 +77,17 @@ Without it those two claims fail closed as `completeness_verifier_unavailable`.
 That finding means this installation could not check the proofs. It does not
 mean the certificate is invalid.
 
+To answer an Evidence Request, call
+`agent_action_capsule.evidence_request.answer(request_bytes, store=..., signer=...)`.
+It parses the request, decides the answer and signs any refusal. Your `store`
+(an `EvidenceStore`) resolves subjects to records and builds the bundles, so the
+responder works over any log. `verify_refusal_offline` checks a signed refusal
+with no network. The module needs `cryptography` only to verify refusals, so
+install the `envelope` extra for that. The request shape predates
+`draft-mih-agent-evidence-request-00` in four places;
+[`vectors/evidence-request/DIFFS.md`](../vectors/evidence-request/DIFFS.md)
+lists them.
+
 To verify both layers of a SCITT **Signed Statement**, install the optional extra
 and pass `--transparent`:
 
