@@ -2460,7 +2460,7 @@ A verifier can check the form of a discovery object, but not that it leaks nothi
 written as a text string inside `description` passes `manifest_form`. §11.4.3 binds the
 responder, not the verifier.
 
-#### 11.4.8 Carriage invariance, as a future vector (informative)
+#### 11.4.8 Carriage invariance (informative; vectors in §11.5)
 
 The conformance vectors (§11.5) carry this case and its negative halves as `carriage-*`, generated from
 the following:
