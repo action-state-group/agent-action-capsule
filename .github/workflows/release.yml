@@ -4,7 +4,7 @@
 # short-lived GitHub Actions OIDC token for a PyPI upload token at publish time.
 # See RELEASING.md for the one-time PyPI Trusted-Publisher configuration this
 # depends on (Steven's side, not this workflow's).
-name: release
+name: Publish Python package
 
 on:
   release:

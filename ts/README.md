@@ -50,7 +50,7 @@ The tests consume the same-commit corpora under `../vectors/`.
 
 ## Release
 
-The manual [Publish TypeScript npm package](https://github.com/action-state-group/agent-action-capsule/actions/workflows/publish-ts.yml)
+The manual [Publish TypeScript package](https://github.com/action-state-group/agent-action-capsule/actions/workflows/publish-ts.yml)
 workflow follows capsule-emit-ts's main-only trusted-publishing convention.
 
 1. Update the version in `ts/package.json` and both root version fields in
