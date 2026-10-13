@@ -1,0 +1,72 @@
+{
+  "conformant": false,
+  "description": "disposition.decision carries hitl_dispatched, a registered verdict_class value that is not a registered disposition.decision value. The registered pairing is decision needs_input with verdict_class hitl_dispatched.",
+  "findings": [
+    {
+      "axis": "verdict_class",
+      "path": "disposition.verdict_class",
+      "status": "registered",
+      "value": "executed"
+    },
+    {
+      "axis": "disposition.decision",
+      "path": "disposition.decision",
+      "registered_on": [
+        "verdict_class"
+      ],
+      "status": "cross_axis",
+      "value": "hitl_dispatched"
+    },
+    {
+      "axis": "effect.type",
+      "path": "effect.type",
+      "status": "registered",
+      "value": "write_order"
+    },
+    {
+      "axis": "irreversibility_class",
+      "path": "effect.irreversibility_class",
+      "status": "registered",
+      "value": "two_way"
+    },
+    {
+      "axis": "effect_attestation",
+      "path": "effect.effect_attestation",
+      "status": "registered",
+      "value": "gate_executed"
+    },
+    {
+      "axis": "chain.relation",
+      "path": "chain.relation",
+      "status": "registered",
+      "value": "follows"
+    },
+    {
+      "axis": "citation_purpose",
+      "path": "references[0].citation_purpose",
+      "status": "registered",
+      "value": "acted_on"
+    },
+    {
+      "axis": "domain",
+      "path": "domain",
+      "status": "registered",
+      "value": "action"
+    },
+    {
+      "axis": "provenance",
+      "path": "provenance",
+      "status": "registered",
+      "value": "gate"
+    },
+    {
+      "axis": "provenance_mode",
+      "path": "provenance_mode.mode",
+      "status": "registered",
+      "value": "contemporaneous"
+    }
+  ],
+  "kind": "negative",
+  "provenance": "reference-derived",
+  "verify_ok": true
+}

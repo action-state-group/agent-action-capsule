@@ -1,0 +1,47 @@
+{
+  "action_id": "registry-conformance",
+  "action_type": "decide",
+  "assurance": {
+    "attestation_mode": "self_attested",
+    "effect_mode": "confirmed",
+    "ledger_mode": "chained"
+  },
+  "canonicalization_id": "jcs",
+  "capsule_id": "003d1753ee37e66c93162234407c2193eb813de6830f7205efbbfd3609fea88b",
+  "chain": {
+    "parent_capsule_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "relation": "follows"
+  },
+  "developer": "agent@v1",
+  "disposition": {
+    "approver": "policy",
+    "decision": "accept",
+    "human_disposed": false,
+    "verdict_class": "executed"
+  },
+  "domain": "action",
+  "effect": {
+    "effect_attestation": "gate_executed",
+    "irreversibility_class": "two_way",
+    "request_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "response_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "status": "confirmed",
+    "type": "write_order"
+  },
+  "format_version": "4",
+  "operator": "ACME-CO",
+  "provenance": "gate",
+  "provenance_mode": {
+    "mode": "contemporaneous"
+  },
+  "references": [
+    {
+      "citation_purpose": "mentions",
+      "digest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "digest_alg": "SHA-256",
+      "type": "agent-action-capsule"
+    }
+  ],
+  "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+  "timestamp": "2026-10-13T00:00:00Z"
+}

@@ -1,0 +1,71 @@
+{
+  "conformant": false,
+  "description": "disposition.verdict_class carries a list holding a registered value: a present value that is not a string is unregistered, whatever it contains.",
+  "findings": [
+    {
+      "axis": "verdict_class",
+      "path": "disposition.verdict_class",
+      "status": "unregistered",
+      "value": [
+        "executed"
+      ]
+    },
+    {
+      "axis": "disposition.decision",
+      "path": "disposition.decision",
+      "status": "registered",
+      "value": "accept"
+    },
+    {
+      "axis": "effect.type",
+      "path": "effect.type",
+      "status": "registered",
+      "value": "write_order"
+    },
+    {
+      "axis": "irreversibility_class",
+      "path": "effect.irreversibility_class",
+      "status": "registered",
+      "value": "two_way"
+    },
+    {
+      "axis": "effect_attestation",
+      "path": "effect.effect_attestation",
+      "status": "registered",
+      "value": "gate_executed"
+    },
+    {
+      "axis": "chain.relation",
+      "path": "chain.relation",
+      "status": "registered",
+      "value": "follows"
+    },
+    {
+      "axis": "citation_purpose",
+      "path": "references[0].citation_purpose",
+      "status": "registered",
+      "value": "acted_on"
+    },
+    {
+      "axis": "domain",
+      "path": "domain",
+      "status": "registered",
+      "value": "action"
+    },
+    {
+      "axis": "provenance",
+      "path": "provenance",
+      "status": "registered",
+      "value": "gate"
+    },
+    {
+      "axis": "provenance_mode",
+      "path": "provenance_mode.mode",
+      "status": "registered",
+      "value": "contemporaneous"
+    }
+  ],
+  "kind": "negative",
+  "provenance": "reference-derived",
+  "verify_ok": false
+}

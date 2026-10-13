@@ -1,0 +1,72 @@
+{
+  "conformant": false,
+  "description": "chain.relation carries cites, a registered Evidence Layer link type (\u00a718) that is not a registered chain.relation value.",
+  "findings": [
+    {
+      "axis": "verdict_class",
+      "path": "disposition.verdict_class",
+      "status": "registered",
+      "value": "executed"
+    },
+    {
+      "axis": "disposition.decision",
+      "path": "disposition.decision",
+      "status": "registered",
+      "value": "accept"
+    },
+    {
+      "axis": "effect.type",
+      "path": "effect.type",
+      "status": "registered",
+      "value": "write_order"
+    },
+    {
+      "axis": "irreversibility_class",
+      "path": "effect.irreversibility_class",
+      "status": "registered",
+      "value": "two_way"
+    },
+    {
+      "axis": "effect_attestation",
+      "path": "effect.effect_attestation",
+      "status": "registered",
+      "value": "gate_executed"
+    },
+    {
+      "axis": "chain.relation",
+      "path": "chain.relation",
+      "registered_on": [
+        "Evidence Layer link type"
+      ],
+      "status": "cross_axis",
+      "value": "cites"
+    },
+    {
+      "axis": "citation_purpose",
+      "path": "references[0].citation_purpose",
+      "status": "registered",
+      "value": "acted_on"
+    },
+    {
+      "axis": "domain",
+      "path": "domain",
+      "status": "registered",
+      "value": "action"
+    },
+    {
+      "axis": "provenance",
+      "path": "provenance",
+      "status": "registered",
+      "value": "gate"
+    },
+    {
+      "axis": "provenance_mode",
+      "path": "provenance_mode.mode",
+      "status": "registered",
+      "value": "contemporaneous"
+    }
+  ],
+  "kind": "negative",
+  "provenance": "reference-derived",
+  "verify_ok": true
+}

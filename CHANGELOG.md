@@ -11,6 +11,14 @@
   `go/v*`, `ts/v*` and `vectors/v*` tags of the other artifacts. The PyPI version
   is unchanged (`0.8.0`, not `python/0.8.0`). Releases up to 0.7.0 keep their bare
   `v<version>` tags.
+- Registry conformance, a producer-side check: `agent_action_capsule.registry_conformance`
+  (also `python -m agent_action_capsule.registry_conformance FILE...`, exit 1 on a
+  non-conformant value) and Go `registries.LoadAxes` / `CheckCapsule`. It classifies every
+  registry-governed Capsule field as `registered`, `legacy_alias` (§6), `cross_axis` (registered
+  on a different registry), `private` (`x-` domain) or `unregistered`, with the sets parsed from
+  `spec/REGISTRY.md`. It is not verification: `verify()` still never rejects an unregistered
+  value. No registered set changes. Vectors: `vectors/registry-conformance/` (26 sealed
+  Capsules).
 - composed/v1 (`draft-mih-zhang-agent-disclosure-bundle-01`): an artifact member may carry
   `response`, the responder's signed response as received with the artifact bytes removed. A
   verifier requires its `request_digest` to equal the member's and its `artifact_digest` the
