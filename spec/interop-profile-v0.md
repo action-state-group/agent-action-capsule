@@ -10,8 +10,9 @@ drop it.
 
 This revision covers versions (§3), naming (§4), canonical bytes (§5), the digest and signature
 binding of every message (§6), per-property verification statuses (§7), the mapping from
-outcomes to an Evidence Result (§8), error codes (§9), the acceptance record (§11.1) and lifecycle
-links (§11.2). Sections 11.3–11.5 are placeholders for parts that later revisions fill in.
+outcomes to an Evidence Result (§8), error codes (§9), the acceptance record (§11.1), lifecycle
+links (§11.2), and carriage over A2A and MCP with discovery (§11.4). Sections 11.3 and 11.5 are
+placeholders for parts that later revisions fill in.
 
 The documents this profile pins are Internet-Drafts, work in progress, or specifications kept in
 this repository. Open-source repositories, this one included, are implementations of them.
@@ -42,8 +43,9 @@ kind identifiers this profile adds and their check procedure (§6.2.1), the abse
 shape (§6.4), the identity of recipient-specific disclosures and their salted-digest commitments
 (§6.5), the per-property verification status vocabulary and property catalogue (§7),
 the outcome-to-status mapping (§8), the acceptance record, acceptance receipt, ordering
-evidence rules and acceptance findings (§11.1), and the lifecycle statement, its issuer rules,
-lifecycle findings and what a verifier shows (§11.2).
+evidence rules and acceptance findings (§11.1), the lifecycle statement, its issuer rules,
+lifecycle findings and what a verifier shows (§11.2), and the A2A and MCP carriages, the manifest,
+the discovery rules and the discovery properties (§11.4).
 
 **Pins, never redefines:**
 
@@ -58,6 +60,8 @@ lifecycle findings and what a verifier shows (§11.2).
 | EL | `draft-mih-agent-evidence-layer` | -00 (`spec/draft-mih-agent-evidence-layer-00.md`) | what a Receipt proves, witnesses, the link shape and its closed vocabulary, and the `cites`, `acknowledges`, `supersedes` and `rebuts` links |
 | EC | Evidence Contract v0 schema | `evidence-contract-v0.json`, `$defs/bundleAssertionStatus`, `$defs/contractResult` and the requirement `uncertainty` member | the eight-value status, its four-value projection, and per-requirement handling of missing and conflicting evidence |
 | CLL | `draft-mih-scitt-checkpointed-local-log` | -01 as posted: <https://www.ietf.org/archive/id/draft-mih-scitt-checkpointed-local-log-01.txt>, SHA-256 of that file `2ef340206e6ba4260b84ba265f794ab9756aefa7cdaeac98e95cea646cfb678f` | the checkpoint and its claims, the peak-list commitment, the log identity, and the inclusion and consistency claims, behind the `cll-*` material kinds (§6.2.1) |
+| A2A | Agent2Agent (A2A) Protocol Specification | v1.0.1, tag commit `3303592588e388e62e0f69f701af531d2f4e3991`: <https://github.com/a2aproject/A2A/blob/v1.0.1/docs/specification.md>, SHA-256 of that file `627ccfe6ffb1be2c56811c3dcc18780deb419f41cdc98248095c939b2d9dc9cb`, with `specification/a2a.proto` at the same tag, SHA-256 `e195bf96ab630c69797851970203e1b2b6b19528f2e9803b7d904b91a5104016` | the Agent Card extension declaration and default modes, the `Message`, `Part`, `Task`, `Artifact` and `TaskArtifactUpdateEvent` objects, task states and multi-turn continuation, `ListTasks` scoping, ProtoJSON bytes, Agent Card signing, and the `A2A-Version` and `A2A-Extensions` service parameters, behind the A2A binding (§11.4.4) |
+| MCP | Model Context Protocol specification | 2026-07-28, as published at <https://modelcontextprotocol.io/specification/2026-07-28>; source `docs/specification/2026-07-28/server/tools.mdx` (SHA-256 `ed550806a58eb7744b858fb9f26001aa5e55dac9e2babe88317cc81d9d4c490d`), `docs/specification/2026-07-28/basic/index.mdx` (SHA-256 `03586b10e3214c55478293f1199fffb0bbf95bbef5df3d6a8378e860697bd63f`), `docs/specification/2026-07-28/changelog.mdx` (SHA-256 `b327e576f4c96b34e92f338f8ffefc35e13d0e953ab76bdb3aab342d104c8e53`) and `schema/2026-07-28/schema.ts` (SHA-256 `742750af0bb8c716e7030c4977c992b55d1adc4407e9e66997db5846baedc2cd`) at commit `3778656b2e0ba6725035e816fe3085374cbaa736` of `github.com/modelcontextprotocol/modelcontextprotocol` | `tools/list`, `tools/call`, tool definitions, `structuredContent`, `content`, `isError`, `_meta`, `input_required` results and their retries, the error classes, `x-mcp-header` and the Streamable HTTP request headers, behind the MCP binding (§11.4.5); not the tasks extension |
 | MMR | `draft-bryce-cose-receipts-mmr-profile` | -02 as posted: <https://www.ietf.org/archive/id/draft-bryce-cose-receipts-mmr-profile-02.txt>, SHA-256 of that file `c6dc055aa61bcdea1566db5a754d055a199a89c9900810b336d99202a44e9893` | the inclusion and consistency proof encodings and the algorithms that check them; CLL -01 cites this revision normatively |
 
 **Why these CLL and MMR bytes.** CLL and MMR are pinned to the text posted in the IETF
@@ -65,7 +69,8 @@ Internet-Draft archive and identified by the SHA-256 of that `.txt` file. CLL's 
 repository is not settled, and copies kept beside implementations can differ from what was posted.
 No unposted CLL revision is pinned. MMR -02 is pinned because it is the revision CLL -01 cites.
 
-Section numbers for ER, DE, SR, BA, EL, CLL and MMR are those of the rendered `.txt` of the pinned revision. In
+Section numbers for ER, DE, SR, BA, EL, CLL and MMR are those of the rendered `.txt` of the pinned revision. Section numbers for A2A are those of the pinned `specification.md`. MCP pages have no
+section numbers, so MCP is cited by page and heading, for example `[MCP Tools §Structured Content]`. In
 this document a requirement written as `[ER §4.2]` pins that section, and `[P-n]` marks a
 requirement this profile adds (§13).
 
@@ -137,8 +142,7 @@ requires a new profile identifier [P-1].
 
 1. A responder that advertises this profile MUST list every profile identifier it supports in the
    manifest that ER §10 says a responder SHOULD publish in the HTTP binding, as a `profiles` member:
-   an array of text strings [ER §10; P-2]. The rest of the manifest is outside this revision
-   (§11.4).
+   an array of text strings [ER §10; P-2]. §11.4.2 gives the whole manifest.
 2. A requester following this profile MUST put the identifier it wants in the request's `profile`
    member (§6.1) [P-2]. ER requires a responder to ignore request fields it does not understand, and
    forbids a requester to rely on an undefined field being understood [ER §3]. So a responder that
@@ -191,7 +195,14 @@ that to every object it defines.
 | Property statuses | `PASS`, `FAIL`, `NOT_PRESENT`, `NOT_CHECKED`, `INCONCLUSIVE` | §7.1 |
 | Property names | the names in §7.2 | §7.2 |
 | Subprotocol | `evidence-request/1` | ER §10 |
-| Manifest member | `profiles` | P-2 |
+| Manifest members (JSON only) | `profiles`, `drafts`, `subject_forms`, `derivations`, `bindings`, `refusal_policy`, `retention` | P-2; P-41 |
+| Binding tokens | `evidence-request/1`, `http`, `a2a`, `mcp` | ER §10; P-41 |
+| Refusal policy values | `uniform`, `specific` | P-41 |
+| A2A extension URI | `https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/` | P-37 |
+| Carried media types | `application/cbor`, `application/json` | P-38; P-40 |
+| MCP tool names | `evidence_manifest`, `evidence_request` | P-40 |
+| MCP argument and result members (JSON only) | `request`, `reply`, `media_type` | P-40 |
+| Discovery property names | `manifest_form`, `manifest_consistency` | P-45 |
 | Acceptance record members | `profile`, `state`, `contract_ref`, `contract_digest`, `transaction`, `proposer`, `acceptor`, `proposal_digest`, `counter_contract_digest`, `session`, `authority`, `issued_at`, `sig` | P-25 |
 | Acceptance states | `proposed`, `accepted`, `declined`, `countered` | P-24 |
 | Transaction reference members | `scheme`, `id` | P-25 |
@@ -679,6 +690,8 @@ check. It never states whether a requirement is satisfied. §8 is the only bridg
 | `native_check` | each foreign object in a verified Artifact | the object's own verification method over its as-transmitted octets (§5.1); `method` names that method | per requirement (§8) |
 | acceptance properties | acceptance records and receipts | §11.1.7 | decide the acceptance finding (§11.1.8), never a status of §8 |
 | lifecycle properties | lifecycle statements | §11.2.5 | decide the lifecycle finding (§11.2.5), never a status of §8 |
+| `manifest_form` | a manifest | §11.4.7 [P-45] | no; reported separately, never a status of §8 |
+| `manifest_consistency` | two or more manifests from one responder | §11.4.7 [P-45] | no; reported separately, never a status of §8 |
 
 When `profile_version` is not `PASS`, every other envelope property is `NOT_CHECKED` [P-4].
 `native_check` is not an envelope property: it applies to foreign objects inside an Artifact
@@ -1094,10 +1107,10 @@ envelope over the changed digest instead makes `anchor_inclusion` `FAIL` at step
 
 ## 11. Parts filled by later revisions
 
-§11.1 and §11.2 are specified. The headings from §11.3 on are placeholders, and nothing under
-them is specified yet. §11.1 and §11.2 were filled before `evidence-interop/0` was published.
-They add objects and properties, and add rows to the tables of §4 and §7.2. They change no
-existing signing input or byte rule, so they keep the identifier (§3.1).
+§11.1, §11.2 and §11.4 are specified. The other headings are placeholders, and nothing under
+them is specified yet. §11.1, §11.2 and §11.4 were filled before `evidence-interop/0` was
+published. They add objects and properties, and add rows to the tables of §4 and §7.2. They
+change no existing signing input or byte rule, so they keep the identifier (§3.1).
 
 ### 11.1 Acceptance record
 
@@ -1783,8 +1796,405 @@ profile.
 
 ### 11.4 Carriage and discovery
 
-*Placeholder.* This covers the A2A and MCP bindings, the full manifest, verification-material
-kinds beyond those of §6.2.1, and the shape of a carried retention commitment.
+This section carries the exchange of §2 over A2A and over MCP, beside the two bindings ER
+defines [ER §10]. ER §10 binds a message-oriented agent protocol by mapping the request to a named
+message type and the outcomes to reply types. Here the name is the A2A extension URI or the MCP
+tool name. Two outcomes have a reply, and absence has none [ER §4]. A2A and MCP are two more
+adapters of that one exchange. They add no message, no member of any signed object, no outcome
+and no status. The revisions used are pinned in the Dependency boundary table: A2A at v1.0.1 and
+MCP at 2026-07-28. Field names below are theirs, in the JSON form each specification uses.
+
+**Three things kept distinct.** This profile never treats any one of them as another:
+
+1. the **canonical Artifact** and the reply that carries it (§6.2);
+2. an **A2A `Artifact`**, a container of `Part`s inside an A2A `Task` [A2A §4.1.7]. Here one
+   carries the reply octets. It is not the canonical Artifact, and its own fields are never
+   signed or verified;
+3. an **MCP tool result** [MCP Tools §Tool Result]. Here one carries the reply octets. It is
+   not the canonical Artifact either.
+
+#### 11.4.1 One exchange, three carriages
+
+| | Native stream [ER §10] | A2A (§11.4.4) | MCP (§11.4.5) |
+|---|---|---|---|
+| Advertised by | the subprotocol `evidence-request/1`, offered at connection time | an Agent Card extension entry | the tools `evidence_manifest` and `evidence_request` in `tools/list` |
+| Manifest (§11.4.2) | not carried; ER puts the manifest in the HTTP binding | the extension entry's `params` | the `evidence_manifest` tool result |
+| Request | one request frame: the request octets | one `Message` with one `Part` whose `raw` is the request octets: base64 in A2A's JSON bindings, bytes in its gRPC binding | the `evidence_request` argument `request`: the request octets in base64url without padding |
+| Reply | one response frame: the reply octets | one A2A `Artifact` with one `Part` whose `raw` is the reply octets | the result's `structuredContent.reply`: the reply octets in base64url without padding |
+| Pending [ER §4.3] | stream open, no response frame yet | no reply Artifact, and the task not in a terminal state (§11.4.4) | no result yet, or an interim `input_required` result |
+| Transport condition (§9.2) | stream closed or timed out with no response frame; subprotocol not offered | anything else (§11.4.4) | anything else (§11.4.5) |
+
+Rules for every carriage:
+
+1. A carriage moves the request octets and the reply octets as opaque bytes. It never parses
+   and re-serializes them [ER §4.2; P-43]. Where the carriage is JSON and has to write bytes as
+   text, the octets are those obtained by decoding that text. The request digest is SHA-256 over
+   those decoded octets as received, never over the text and never over a re-serialization
+   [ER §4.2; ERV `digest.json`; P-43]. The text forms differ: A2A's JSON bindings write bytes as
+   ProtoJSON base64 [A2A §5.5], while MCP here and §4 use base64url without padding. The decoded
+   octets are what must be equal.
+2. The same request octets therefore give the same request digest over every carriage
+   [ER §4.2; P-43]. The native stream frame is deterministic CBOR [ER §10]. So a requester
+   following this profile that may send one request over more than one carriage SHOULD encode it
+   as deterministic CBOR everywhere [P-43].
+3. A responder MUST write the reply in the encoding of the request, and label it with the
+   request's media type [P-43]. Over the native stream both are deterministic CBOR [ER §10].
+4. Nothing a carriage adds is part of the request [ER §3, §5; P-43]. Carriage-added fields
+   MUST NOT influence the artifact [ER §3.7, §5]. They include the A2A `messageId`, `contextId`,
+   `taskId`, `referenceTaskIds`, `tenant`, `configuration` and `metadata`, any follow-up
+   `Message` in an interrupted task, the `A2A-Extensions` and `A2A-Version` service parameters,
+   the MCP `_meta` members, `inputResponses` and `requestState`, the JSON-RPC `id`, and any
+   client identification either protocol carries. None of them is signed.
+5. Authentication through an A2A security scheme or MCP authorization decides **whether** to
+   answer, never **what** a given (subject, anchor, derivation) yields [ER §3.7, §5]. A
+   responder that declines MUST either put a signed refusal in the reply position or send no
+   reply at all [ER §4.2, §4.5; P-39; P-40]. Sending no reply is permitted, and is a transport
+   condition to the requester [ER §4.4]. An A2A or MCP error is never a refusal, and a responder
+   MUST NOT present one as its refusal [ER §10; P-39; P-40].
+6. A requester classifies by the reply octets alone. A2A task states, the MCP `isError` flag and
+   any human-readable text are never what makes a reply an envelope or a refusal, and never what
+   makes a reply absent [ER §10; P-19; P-39; P-40]. Anything that is not a reply in the
+   carriage's reply position is a transport condition: the request stays pending, then becomes an
+   absence (§9.2) [ER §4.5; P-21].
+7. Media types are compared as exact strings, with no parameters [P-43]. The two values are
+   `application/cbor` for deterministic CBOR (RFC 8949) and `application/json` for JCS
+   (RFC 8785).
+8. Each distinct reply is classified and verified on its own (§7). Two replies to one request
+   digest, whether over one carriage or several, are compared through `caller_invariance` like
+   any two envelopes [ER §5; P-43]. The requester keeps every reply it receives.
+
+#### 11.4.2 The manifest
+
+ER says a responder SHOULD publish a manifest of its evidence stream identifiers, the subject
+forms and derivations it supports, and where retention commitments can be fetched [ER §10]. This
+profile fixes one manifest object and serves it unchanged over every carriage [P-41]:
+
+| Member | Presence | Value |
+|---|---|---|
+| `profiles` | REQUIRED | array of profile identifiers the responder implements (§3.3) [P-2] |
+| `drafts` | REQUIRED | array of Internet-Draft names with revision whose request map the responder accepts, for example `draft-mih-agent-evidence-request-00` [P-41] |
+| `subject_forms` | REQUIRED | array of the subject form tokens (§4) the responder answers [ER §10] |
+| `derivations` | OPTIONAL | array of derivation identifiers (§5.2) that any requester may name [ER §10] |
+| `bindings` | REQUIRED | array of binding tokens: `evidence-request/1` (the native stream), `http`, `a2a`, `mcp` [P-41] |
+| `refusal_policy` | OPTIONAL | `uniform` or `specific` [P-41] |
+| `retention` | OPTIONAL | a URI, as a text string, where the responder's retention commitments can be fetched [ER §9, §10] |
+
+Rules:
+
+- The manifest is a JSON object, never CBOR. Every value is a text string or a non-empty array of
+  text strings, sorted by code point with no duplicates [P-41]. It has no number, no boolean and
+  no nested map, so a count or a structure has no place to go. The sort order makes two honest
+  manifests byte-equal under JCS.
+- A responder MUST serve one manifest, the same JSON value, wherever it serves one: the HTTP
+  binding, the A2A extension `params` and the `evidence_manifest` result [P-41]. It MUST serve
+  the same manifest to every requester, authenticated or not, including in an A2A extended Agent
+  Card [P-41]. A manifest tailored to its caller is a per-audience statement, which is what caller
+  invariance forbids for artifacts [ER §5]. Two manifests are the same when their JCS
+  serializations are equal.
+- A responder MUST NOT include members or tokens beyond those defined by the profile identifiers
+  it lists in `profiles` [P-41]. A requester forming a request ignores a member or token it does
+  not know [P-41]. A verifier reports one through `manifest_form` (§11.4.7), because an unexpected
+  member may be a disclosure.
+- `refusal_policy` `uniform` declares that the responder answers `policy_declined` wherever a more
+  specific token would disclose what its policy protects [ER §4.2, §12]. `specific` declares
+  that it does not. The declaration is informative to the requester. A verifier still maps the
+  token it receives (§8.1), never the declaration [P-41].
+- `derivations` MUST NOT list a recipient-specific derivation (§6.5) [P-42]. Its identifier is
+  the digest of a definition that names the recipient, so listing it would publish a counterparty.
+- No stream identifier is listed. ER defines no request member naming a stream, so a listed
+  identifier could not be used in a request (P-23).
+
+#### 11.4.3 What discovery may and may not reveal
+
+Discovery says what can be asked, never what exists. The **discovery objects** are:
+
+- the manifest;
+- the A2A extension entry, and any A2A `AgentSkill` declared for this exchange;
+- the MCP definitions of `evidence_manifest` and `evidence_request`: `name`, `title`,
+  `description`, `icons`, `inputSchema`, `outputSchema`, `annotations` and `_meta`;
+- the resource at the manifest's `retention` URI, to the extent it answers callers who are not
+  authenticated.
+
+A discovery object MAY contain the manifest members of §11.4.2 and fixed descriptive text about
+the exchange [P-42]. It MUST NOT contain any of the following [ER §12; P-42]:
+
+- a count or size of any kind: records, checkpoints, exchanges, requesters, counterparties,
+  refusals, or a log size;
+- an anchor, a checkpoint, a record digest or any other digest of the responder's evidence;
+- a time of activity: first, last, or a cadence;
+- a principal reference, a counterparty's name, key or identifier, a route, a correlation
+  identifier, an exchange-half digest or a transaction reference;
+- a recipient-specific derivation identifier (§11.4.2);
+- history card content, a score, a rating or any summary of conduct.
+
+So the `retention` resource MUST NOT be an enumerable index of commitments open to unauthenticated
+callers [ER §9; P-42]. Retention commitments name subjects, routes and principals, and a list of
+them is a history.
+
+A discovery object MUST be the same for every caller [P-42]. MCP 2026-07-28 already makes list
+results independent of the connection [MCP Key Changes, major change 1]. This profile also
+requires that of the two tool definitions, whoever calls `tools/list`.
+
+A responder MUST NOT make an A2A task that carries this exchange visible to any client other than
+the one that sent its request [P-42]. A2A already scopes `ListTasks` to tasks visible to the
+authenticated client [A2A §3.1.4]. A task list shared more widely would publish history and
+counterparties.
+
+Identifiers a responder mints for the carriage, such as an A2A task `id`, `contextId` or
+`artifactId`, MUST be unpredictable and MUST NOT encode a count or a time [P-42]. A sequential
+identifier tells each requester how many requests came before it.
+
+These rules do not stop a requester learning things by asking. ER describes coverage probing and
+reason-token leakage [ER §12]. `refusal_policy` `uniform` is how a responder declares the
+mitigation ER allows.
+
+#### 11.4.4 A2A binding
+
+**Declaration.** A responder that carries this exchange over A2A MUST list one `AgentExtension`
+in its Agent Card's `capabilities.extensions` [P-37; A2A §4.4.3, §4.6.1]:
+
+| Field | Value |
+|---|---|
+| `uri` | exactly `https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/` [P-37] |
+| `description` | fixed text describing the exchange, within §11.4.3 |
+| `required` | `false` [P-37] |
+| `params` | the manifest (§11.4.2) [P-41] |
+
+The URI is the draft's canonical Datatracker URL. A responder MUST NOT advertise this binding
+under any other URI [P-37]. The entry MUST set `required` to `false` [P-37]. A2A marks an
+extension `required` when a client must understand and comply with it [A2A §4.4.4], and this
+exchange is opted into per request. No `AgentSkill` is needed: the extension entry is what
+advertises the exchange. The Agent Card SHOULD list `application/cbor` and `application/json` in
+`defaultInputModes` and `defaultOutputModes`, so that a client does not withhold the request as an
+unsupported mode [P-37].
+
+**Request.** The requester sends one `SendMessage` or `SendStreamingMessage` whose `Message`
+MUST have [P-38]:
+
+- `role` `ROLE_USER`;
+- `parts` holding exactly one `Part`, whose `raw` is the request octets and whose `mediaType` is
+  one of the two media types of §11.4.1;
+- `extensions` containing the extension URI.
+
+The requester MUST send `A2A-Version` `1.0` and list the extension URI in the `A2A-Extensions`
+service parameter [P-38; A2A §3.2.6, §3.6.1]. Without a version, A2A reads the request as
+protocol 0.3 [A2A §3.6.2]. The request `Message` MUST NOT carry `taskId`, so that each request
+starts its own task [P-38]. If the requester sets `acceptedOutputModes`, it MUST include the
+request's media type [P-38].
+
+A `Message` that holds the request anywhere other than one `raw` part, or holds it in a `raw`
+part with any other media type, is not a request under this profile [P-38]. A `data` or `text`
+part, or `metadata`, carries no request octets, so no request digest exists to bind a reply to.
+An unknown media type leaves the encoding unknown, and two responders guessing would read one
+octet string two ways. The responder MUST NOT answer such a `Message` with an envelope or a
+refusal [P-38]. It answers with an A2A error, such as `ContentTypeNotSupportedError` [A2A §3.1.1],
+which is a transport condition to the requester (§9.2).
+
+**Reply.** The responder MUST return a `Task`, not a direct `Message` [P-39]. A2A says task
+results should be returned in Artifacts rather than in Messages [A2A §3.7]. In that task the reply
+MUST be one A2A `Artifact` whose `extensions` contain the extension URI, with exactly one `Part`,
+whose `raw` is the reply octets and whose `mediaType` is that of the request [P-39]. When the
+responder streams, it MUST send that Artifact whole, in one `TaskArtifactUpdateEvent` with
+`append` false and `lastChunk` true [P-39; A2A §4.2.2].
+
+Both an envelope and a refusal leave the task in `TASK_STATE_COMPLETED` [P-39]. A refusal is a
+successful exchange carrying a refusal answer [ER §10]. A task that ends `TASK_STATE_REJECTED`,
+`TASK_STATE_FAILED` or `TASK_STATE_CANCELED` without a reply Artifact is the responder sending no
+reply, which rule 5 of §11.4.1 permits. A responder MUST NOT present such a task as its refusal
+[ER §4.5; P-39].
+
+A task may stop in `TASK_STATE_INPUT_REQUIRED` or `TASK_STATE_AUTH_REQUIRED` [A2A §3.4.3, §7.6].
+The follow-up `Message` that continues it carries `taskId`, as A2A requires, and carries no
+request octets [P-39]. It is carriage (rule 4 of §11.4.1), and the request stays the one sent
+first.
+
+The requester looks for reply Artifacts by the extension URI, whatever the task state. Artifacts
+with the same `artifactId` are one Artifact, however many times they are delivered.
+
+- **A reply Artifact with exactly one `Part`, carrying `raw` with the request's media type:** a
+  reply. It is classified by §1 and verified by §7. Each distinct reply Artifact is a reply on
+  its own (rule 8 of §11.4.1).
+- **A reply Artifact of any other shape:** a transport condition [P-39].
+- **No reply Artifact, task in `TASK_STATE_SUBMITTED`, `TASK_STATE_WORKING`,
+  `TASK_STATE_INPUT_REQUIRED`, `TASK_STATE_AUTH_REQUIRED` or `TASK_STATE_UNSPECIFIED`:** pending
+  [ER §4.3; P-39].
+- **No reply Artifact, and the task completed, failed, was canceled or was rejected; or an A2A
+  error; or a direct `Message`:** a transport condition [ER §4.5, §10; P-39]. The request stays
+  pending until the window closes, then becomes an absence. `TASK_STATE_REJECTED` in particular
+  is never a refusal. It is unsigned and names no registered reason [ER §4.2].
+
+The task's `status.message`, the Artifact's `name`, `description` and `metadata`, and the task's
+`history` are never part of the reply and are never verified [P-39].
+
+**Example (informative).** Request B of §10, in a JSON-RPC `SendMessage`. The request octets are
+228 bytes, a multiple of three, so their base64 has no padding. These octets also happen to
+encode with no `+` or `/`, so the string is the same in base64 and base64url:
+
+```
+POST /rpc HTTP/1.1
+Content-Type: application/json
+A2A-Version: 1.0
+A2A-Extensions: https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/
+
+{"jsonrpc": "2.0", "id": 1, "method": "SendMessage", "params": {"message": {
+  "messageId": "m-1", "role": "ROLE_USER",
+  "extensions": ["https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/"],
+  "parts": [{"mediaType": "application/cbor",
+    "raw": "pGVub25jZXYyMDI2LTEwLTEyVDAwOjAwOjA1Wi9iZ3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8wZ3N1YmplY3ShZnJlY29yZHhAMmFiMzUwODk1Zjg2N2Q1NGE1Y2ZkYzFkZDFhYTIxNGNiYzcyM2M2NTk2NjM0NjBlNzUxMWRmZjE2YTVjY2M4NWhjb3ZlcmFnZaFsZXhwZWN0ZWRfcGlueEA2NDQxMzcwOTU1ZDJiNDA4ODg0NzkzOTYyYTY2NGRhZWM2YmIyNWUwNmQ3NmEyZjUzZDhhODBmNjZhNjc1MjAy"}]}}}
+```
+
+The responder hashes the 228 decoded octets and gets request B's digest,
+`ba7fee76b7afe9f3ec5ce46975865e06040492f0da733b28cbc86bd2be609d5e`, the same as over the native
+stream. The completed task carries one Artifact
+`{"artifactId": "…", "extensions": ["https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/"], "parts": [{"mediaType": "application/cbor", "raw": "<the reply octets>"}]}`.
+
+#### 11.4.5 MCP binding
+
+**Listing.** A responder that carries this exchange over MCP MUST list two tools, under exactly
+these names [P-40]:
+
+| Tool | `inputSchema` | Result |
+|---|---|---|
+| `evidence_manifest` | `{"type": "object", "additionalProperties": false}` | `structuredContent` is the manifest (§11.4.2) |
+| `evidence_request` | below | `structuredContent` is `{"reply": <base64url>, "media_type": <media type>}` |
+
+The `evidence_request` input schema is:
+
+```json
+{
+ "type": "object",
+ "properties": {
+  "request": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
+  "media_type": {"enum": ["application/cbor", "application/json"]}
+ },
+ "required": ["request", "media_type"],
+ "additionalProperties": false
+}
+```
+
+Its `outputSchema` is the same shape, with `reply` in place of `request`. These argument and
+result members are JSON only, and never appear as CBOR map keys. MCP lets a client that aggregates
+several servers prefix tool names [MCP Tools §Tool Names]. That is the client's affair: the server
+lists the names above.
+
+**Request.** `request` is the request octets in base64url without padding (RFC 4648 §5), as §4
+writes opaque bytes [P-40]. `media_type` is one of the two media types of §11.4.1. The responder
+decodes `request` and computes the request digest over the decoded octets (§11.4.1) [ER §4.2].
+The `request` property MUST NOT carry an `x-mcp-header` annotation [P-40]. That would copy the
+request into an HTTP header that intermediaries see, and the request itself leaks interest
+[ER §12]. Over Streamable HTTP, MCP already puts the tool name in a request header [MCP Key
+Changes, minor change 4], so intermediaries can see that an `evidence_request` call was made.
+Only transport confidentiality hides that [ER §12].
+
+**Reply.** Both an envelope and a refusal are returned as a result with `isError` false and
+`structuredContent` `{"reply": <the reply octets in base64url>, "media_type": <that of the request>}`
+[P-40]. A refusal is a successful exchange carrying a refusal answer [ER §10]. MCP requires a
+`content` array in every tool result [MCP schema `CallToolResult`]. It may be empty. MCP says a
+tool returning structured content should also return it as serialized JSON in a text block [MCP
+Tools §Structured Content], and a responder MAY do so. A requester reads only `structuredContent`,
+and never verifies `content` [P-40].
+
+The requester classifies what comes back:
+
+- **A result whose `structuredContent.reply` is base64url and whose `media_type` is that of the
+  request:** the reply, whatever `isError` says. It is classified by §1 and verified by §7
+  [P-40].
+- **An `input_required` result with no reply yet:** pending [ER §4.3; P-40]. The retry MUST carry
+  the same `request` and `media_type` [P-40]. Its `inputResponses` and `requestState` are
+  carriage (rule 4 of §11.4.1). Different octets are a different request with a different digest.
+- **Anything else:** a transport condition [ER §4.5, §10; P-40]. This includes a result without
+  a well-formed `structuredContent.reply`, a JSON-RPC error, an unknown tool, and a task handle
+  from MCP's tasks extension, which this revision does not pin. It is never a refusal, even when
+  its text says the caller is not authorized.
+
+**Example (informative).** The same request B, as a `tools/call`:
+
+```
+{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "evidence_request",
+ "arguments": {"media_type": "application/cbor",
+  "request": "pGVub25jZXYyMDI2LTEwLTEyVDAwOjAwOjA1Wi9iZ3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8wZ3N1YmplY3ShZnJlY29yZHhAMmFiMzUwODk1Zjg2N2Q1NGE1Y2ZkYzFkZDFhYTIxNGNiYzcyM2M2NTk2NjM0NjBlNzUxMWRmZjE2YTVjY2M4NWhjb3ZlcmFnZaFsZXhwZWN0ZWRfcGlueEA2NDQxMzcwOTU1ZDJiNDA4ODg0NzkzOTYyYTY2NGRhZWM2YmIyNWUwNmQ3NmEyZjUzZDhhODBmNjZhNjc1MjAy"}}}
+```
+
+The decoded octets are the same 228 bytes, and the request digest is again
+`ba7fee76b7afe9f3ec5ce46975865e06040492f0da733b28cbc86bd2be609d5e`.
+
+#### 11.4.6 Exchange inquiry
+
+An **exchange inquiry** is a request whose subject is the `exchange` form, sent by one party of
+an exchange to the other about that exchange. ER calls this the symmetric ask [ER §6]. It is an
+ordinary request over any of the three carriages. It has no message, tool, task type or
+extension of its own [ER §6; P-44].
+
+Its subject is the requester's own half digest [ER §3.1]. An A2A task identifier or other
+transaction reference of the original exchange is never the subject [P-44]. A requester SHOULD
+NOT point at the original A2A task through `referenceTaskIds`, and SHOULD NOT reuse its
+`contextId` [P-44]. A2A invites an agent to use referenced tasks as context [A2A §3.4.3], and
+that context MUST NOT influence the artifact [ER §5]. The reference would also tie the inquiry to
+the transaction in the responder's A2A state. `exchange` in a manifest's `subject_forms` says
+only that exchange inquiries are answered, never about which exchanges (§11.4.3). Invariance for
+this subject is checked against the responder's own recorded ask, not across requesters [ER §5].
+
+#### 11.4.7 Discovery properties
+
+Carriage adds no property for messages. `request_binding`, `artifact_digest` and
+`caller_invariance` apply unchanged whatever carriage delivered a reply. `caller_invariance`
+compares envelopes from the native stream, A2A and MCP alike, because the artifact MUST NOT
+depend on the transport [ER §5].
+
+Two properties apply to manifests (§7.2). Neither enters the mapping of §8 [P-45]:
+
+- `manifest_form`: the manifest has every member §11.4.2 marks as required, every value of the form
+  given there, every array sorted with no duplicates, and `derivations` lists no identifier the
+  verifier knows is recipient-specific. A number, boolean or map anywhere in it is `FAIL`. A
+  member or token outside §11.4.2 is `FAIL` when the verifier implements every identifier in
+  `profiles`, and `NOT_CHECKED` otherwise, since a later profile may define it [P-45].
+- `manifest_consistency`: two or more manifests from one responder, obtained over different
+  carriages or as different callers, have equal JCS serializations. With fewer than two it is
+  `NOT_CHECKED`, as `caller_invariance` is (§7.2) [P-45]. Manifests are unsigned, so a `FAIL`
+  is attributable to the responder only when each copy was authenticated as the responder's, for
+  example through a signed Agent Card [A2A §8.4]. Otherwise a proxy or aggregator may be the
+  cause.
+
+A verifier can check the form of a discovery object, but not that it leaks nothing. A count
+written as a text string inside `description` passes `manifest_form`. §11.4.3 binds the
+responder, not the verifier.
+
+#### 11.4.8 Carriage invariance, as a future vector (informative)
+
+The conformance vectors (§11.5) do not yet carry this case. A later revision can generate it from
+the following:
+
+- **Inputs.** The responder key and log material of §10.1. Request C of §10.1, encoded as
+  deterministic CBOR instead of JCS: one octet string R, retained by the requester. A trust policy
+  that accepts the responder key and the log key. An evaluation time after every `issued_at`. R
+  sent three times: as a native stream frame, as the `raw` part of an A2A `Message` (§11.4.4),
+  and as the `request` argument of `evidence_request` (§11.4.5). The responder answers each
+  with an envelope, with three distinct `issued_at` values. One manifest, served as A2A `params`
+  and as the `evidence_manifest` result.
+- **Expected.** The three `request_digest` values are equal to SHA-256(R) and to each other. The
+  three `artifact` octet strings are identical, and so are the three `artifact_digest` values.
+  For each envelope every required property of §7.2 is `PASS`, and §8.1 row 7 applies.
+  `caller_invariance` is `PASS` over the three. The two manifests give `manifest_form` `PASS` and
+  `manifest_consistency` `PASS`.
+
+Each negative half changes one thing:
+
+| Change | Expected |
+|---|---|
+| the MCP adapter hashes a JSON re-encoding of R instead of the received octets | that envelope's `request_binding` `FAIL`; §8.1 row 2, `INSUFFICIENT` |
+| the A2A adapter re-serializes the canonical Artifact and the responder signs a valid envelope over it | `caller_invariance` `FAIL` against the other two; §8.1 row 1, `CONTRADICTED` |
+| the A2A task ends `TASK_STATE_REJECTED` with no reply Artifact | pending, then a recorded absence once the window closes; never a refusal; `UNKNOWN` |
+| the MCP result has `isError` true, no `structuredContent.reply`, and text saying the caller is not authorized | as the row above |
+| the MCP result has `isError` true and a valid `structuredContent.reply` | the reply, verified as in the positive case |
+| one A2A task carries two reply Artifacts, with distinct `artifactId`s, whose envelopes sign different artifact octets | each verified on its own; `caller_invariance` `FAIL`; §8.1 row 1 |
+| the A2A extension `params` adds a count member | `manifest_form` `FAIL`; `manifest_consistency` `FAIL` against the `evidence_manifest` result |
+
+#### 11.4.9 Not filled in this revision
+
+Still unspecified: the shape of a carried retention commitment (the envelope's `retention`,
+§6.2); verification-material kinds beyond §6.2.1 (P-13); where the HTTP binding serves the
+manifest; stream addressing (P-23); and MCP's tasks extension. Filling any of them only adds
+objects, rows and properties, so it keeps the identifier (§3.1) [P-1].
 
 ### 11.5 Conformance vectors
 
@@ -1951,6 +2361,51 @@ a later draft revision.
   acceptance finding. Open: how a contract evaluates a corrected or disputed record, left to §11.3
   (§11.2.6). Open: a way out of a fork, and detecting equivocation without holding both
   statements (§11.2.8).
+- **P-37** The A2A Agent Card extension entry: the URI is exactly the draft's Datatracker URL,
+  `required` is `false`, and `params` is the manifest (§11.4.4). The URI carries no version. A2A
+  says an extension URI should carry version information and that a breaking change to an
+  extension needs a new URI [A2A §4.6.3]. Here versions are negotiated inside the exchange, through
+  `profiles`, `drafts` and the request's `profile`. A breaking change to the carriage itself, as
+  opposed to the profile or the draft, has no URI to move to. Candidate for a later revision: a
+  versioned URI under the draft's Datatracker URL, or a statement that the carriage never changes
+  incompatibly.
+- **P-38** The A2A request: one `Message` with exactly one `raw` `Part` holding the request octets,
+  `application/cbor` or `application/json`, the extension URI in `extensions` and in
+  `A2A-Extensions`, `A2A-Version` `1.0`, no `taskId`, and the request's media type in any
+  `acceptedOutputModes`. A request anywhere else, or under another media type, is answered with an
+  A2A error and never with an envelope or refusal (§11.4.4).
+- **P-39** The A2A reply: a `Task`, never a direct `Message`; a reply Artifact with exactly one
+  `raw` `Part`, sent whole when streamed; `TASK_STATE_COMPLETED` for both envelope and refusal;
+  reply Artifacts found by the extension URI whatever the task state and counted by `artifactId`;
+  follow-up messages in an interrupted task treated as carriage; every other ending a transport
+  condition; and `TASK_STATE_REJECTED` never a refusal (§11.4.4).
+- **P-40** The MCP tools `evidence_manifest` and `evidence_request`, their schemas, base64url
+  carriage of the request and reply octets, `isError` false for both envelope and refusal and
+  ignored when a reply is present, `structuredContent` as the only carrier read, retries with the
+  same arguments, no `x-mcp-header` on `request`, the tasks extension left unpinned, and every
+  other result a transport condition (§11.4.5).
+- **P-41** The manifest: its members; text-only values in sorted, duplicate-free arrays; one
+  manifest served unchanged on every carriage and to every caller; no members or tokens beyond the
+  listed profiles define; and the `refusal_policy` declaration as informative only (§11.4.2). ER's
+  manifest also lists evidence stream identifiers. This profile leaves them out until a request
+  can name a stream (P-23).
+- **P-42** What discovery may and may not reveal: no counts, sizes, evidence digests, activity
+  times, parties, routes, transaction references, recipient-specific derivations or conduct
+  summaries; no unauthenticated enumerable index at the `retention` URI; the same discovery
+  objects for every caller; A2A tasks of this exchange visible only to their requester; and
+  carriage identifiers that are unpredictable and encode no count or time (§11.4.2, §11.4.3).
+- **P-43** Carriage moves the request and reply octets unchanged. The request digest is over the
+  decoded octets on every carriage. Deterministic CBOR SHOULD be used across carriages. The reply
+  MUST take the request's encoding and media type, media types are compared exactly, each reply
+  is verified on its own, and carriage-added fields never influence the artifact (§11.4.1).
+- **P-44** "Exchange inquiry" names a request on the `exchange` subject, sent by one party of an
+  exchange to the other. It has no message, tool, task type or extension of its own. Its subject
+  is the half digest, never a transaction reference, and it does not reference the original A2A
+  task or context (§11.4.6).
+- **P-45** The discovery properties `manifest_form` and `manifest_consistency`. They never enter
+  the mapping of §8, unknown members are `NOT_CHECKED` under a profile the verifier does not
+  implement, and a consistency `FAIL` is attributable only between authenticated copies
+  (§11.4.7).
 
 ## References
 
@@ -1976,6 +2431,11 @@ a later draft revision.
   <https://www.ietf.org/archive/id/draft-bryce-cose-receipts-mmr-profile-02.txt>, SHA-256
   `c6dc055aa61bcdea1566db5a754d055a199a89c9900810b336d99202a44e9893` (Internet-Draft, work in
   progress).
+- Agent2Agent (A2A) Protocol Specification v1.0.1,
+  <https://github.com/a2aproject/A2A/blob/v1.0.1/docs/specification.md>, and
+  `specification/a2a.proto` at the same tag.
+- Model Context Protocol specification, revision 2026-07-28,
+  <https://modelcontextprotocol.io/specification/2026-07-28>.
 - Evidence Result v0, `spec/evidence-result-v0.md`.
 - Evidence Contract v0 schema, `evidence-contract-v0.json`.
-- RFC 2119, RFC 8174 (BCP 14); RFC 3339; RFC 4648; RFC 8032; RFC 8785; RFC 8949; RFC 9052; RFC 9597.
+- RFC 2119, RFC 8174 (BCP 14); RFC 3339; RFC 4648; RFC 8032; RFC 8259; RFC 8785; RFC 8949; RFC 9052; RFC 9597.

@@ -59,6 +59,20 @@
   shows forks without choosing a branch, and shows every dispute and rebuttal. The section adds the verification properties, four
   lifecycle findings, and the non-issuer supersession described as a future vector.
 
+- Spec: `spec/interop-profile-v0.md` §11.4 now carries the exchange over A2A and MCP as two
+  more adapters of the same request, beside the native `evidence-request/1` stream. Every
+  carriage moves the request and reply octets unchanged, so the same request octets give the
+  same request digest and the same canonical Artifact on all three. A2A: an Agent Card extension
+  whose URI is the draft's Datatracker URL, one `raw` part for the request, and one reply
+  Artifact in a completed task. MCP: the tools `evidence_manifest` and `evidence_request`, with
+  the octets in base64url and the reply in `structuredContent`. A2A task states, MCP errors and
+  `TASK_STATE_REJECTED` are never refusals. The section fixes one manifest, served unchanged on
+  every carriage and to every caller, and states what discovery must not reveal: no counts,
+  sizes, evidence digests, activity times, parties or conduct summaries. It names a request on
+  the `exchange` subject an "exchange inquiry", adds the discovery properties `manifest_form`
+  and `manifest_consistency`, and describes the cross-carriage invariance case as a future
+  vector. It pins A2A v1.0.1 and MCP 2026-07-28.
+
 - TypeScript: verification works without WebCrypto. `crypto.subtle` exists only in a secure
   context, so a report in a non-secure or opaque origin (some apps' attachment viewers, an http:
   or data: page) could not hash, and every digest, membership and range check failed on a valid
