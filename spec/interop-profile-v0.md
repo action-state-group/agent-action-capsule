@@ -1255,7 +1255,7 @@ Rules [P-28]:
     point.
   - A witness's countersignature over a checkpoint does not adopt any time the checkpoint's
     operator wrote. Only a time the witness itself signs is an ordering point [P-28].
-  - This revision names no log or receipt mechanism (P-13). A verifier that does not implement
+  - This revision names no receipt mechanism, and the log material of §6.2.1 carries no time signed by a party other than the acceptor (P-13). A verifier that does not implement
     the mechanism of a form (ii) object reports it as `NOT_CHECKED`.
 - Before comparison, a time given at finer than seconds precision is reduced to the §5.2 form.
   An ordering point is rounded up and an action time is rounded down [P-28].
