@@ -16,8 +16,8 @@ for parts that later revisions fill in.
 The documents this profile pins are Internet-Drafts, work in progress, or specifications kept in
 this repository. Open-source repositories, this one included, are implementations of them.
 
-No IPR disclosures are in effect against the Internet-Drafts this profile pins as of 2026-10-13.
-Each draft's Datatracker IPR page:
+For IPR disclosures against the Internet-Drafts this profile pins, see each draft's Datatracker
+IPR page:
 
 - `draft-mih-agent-evidence-request`:
   <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-mih-agent-evidence-request>
