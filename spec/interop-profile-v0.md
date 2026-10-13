@@ -29,11 +29,16 @@ IPR page:
   <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-mih-agent-bilateral-attestation>
 - `draft-mih-agent-evidence-layer`:
   <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-mih-agent-evidence-layer>
+- `draft-mih-scitt-checkpointed-local-log`:
+  <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-mih-scitt-checkpointed-local-log>
+- `draft-bryce-cose-receipts-mmr-profile`:
+  <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-bryce-cose-receipts-mmr-profile>
 
 ## Dependency boundary
 
 **Owns:** the profile version identifier and its negotiation (§3), the name table (§4), the
-member names and signing input of the artifact response envelope (§6.2), the absence record
+member names and signing input of the artifact response envelope (§6.2), the verification-material
+kind identifiers this profile adds and their check procedure (§6.2.1), the absence record
 shape (§6.4), the identity of recipient-specific disclosures and their salted-digest commitments
 (§6.5), the per-property verification status vocabulary and property catalogue (§7),
 the outcome-to-status mapping (§8), and the acceptance record, acceptance receipt, ordering
@@ -51,8 +56,15 @@ evidence rules and acceptance findings (§11.1).
 | BA | `draft-mih-agent-bilateral-attestation` | -02 (`spec/draft-mih-agent-bilateral-attestation-02.md`) | the requesting and performing parties, and acknowledgment as receipt without agreement |
 | EL | `draft-mih-agent-evidence-layer` | -00 (`spec/draft-mih-agent-evidence-layer-00.md`) | what a Receipt proves, witnesses, and the `cites` and `acknowledges` links |
 | EC | Evidence Contract v0 schema | `evidence-contract-v0.json`, `$defs/bundleAssertionStatus`, `$defs/contractResult` and the requirement `uncertainty` member | the eight-value status, its four-value projection, and per-requirement handling of missing and conflicting evidence |
+| CLL | `draft-mih-scitt-checkpointed-local-log` | -01 as posted: <https://www.ietf.org/archive/id/draft-mih-scitt-checkpointed-local-log-01.txt>, SHA-256 of that file `2ef340206e6ba4260b84ba265f794ab9756aefa7cdaeac98e95cea646cfb678f` | the checkpoint and its claims, the peak-list commitment, the log identity, and the inclusion and consistency claims, behind the `cll-*` material kinds (§6.2.1) |
+| MMR | `draft-bryce-cose-receipts-mmr-profile` | -02 as posted: <https://www.ietf.org/archive/id/draft-bryce-cose-receipts-mmr-profile-02.txt>, SHA-256 of that file `c6dc055aa61bcdea1566db5a754d055a199a89c9900810b336d99202a44e9893` | the inclusion and consistency proof encodings and the algorithms that check them; CLL -01 cites this revision normatively |
 
-Section numbers for ER, DE, SR, BA and EL are those of the rendered `.txt` of the pinned revision. In
+**Why these CLL and MMR bytes.** CLL and MMR are pinned to the text posted in the IETF
+Internet-Draft archive and identified by the SHA-256 of that `.txt` file. CLL's canonical source
+repository is not settled, and copies kept beside implementations can differ from what was posted.
+No unposted CLL revision is pinned. MMR -02 is pinned because it is the revision CLL -01 cites.
+
+Section numbers for ER, DE, SR, BA, EL, CLL and MMR are those of the rendered `.txt` of the pinned revision. In
 this document a requirement written as `[ER §4.2]` pins that section, and `[P-n]` marks a
 requirement this profile adds (§13).
 
@@ -171,6 +183,7 @@ that to every object it defines.
 | Envelope members | `profile`, `request_digest`, `subject`, `derivation`, `anchor`, `artifact_digest`, `verification`, `responder`, `issued_at`, `sig`, `artifact`, `verification_content`, `retention` | P-7 |
 | Anchor members | `digest`, `freshness` | P-7 |
 | Verification entry members | `kind`, `digest` | P-7 |
+| Verification material kinds | `cll-checkpoint`, `cll-inclusion-proof`, `cll-consistency-proof` | CLL §3; P-31 |
 | Absence record members | `outcome`, `request_digest`, `route`, `window`, `opened`, `closed`, `recorded_at`, `retention`, `key_id`, `sig` | ER §4.4; P-8 |
 | Property report members | `property`, `status`, `method`, `detail` | P-16 |
 | Outcome names | `artifact`, `refusal`, `recorded_absence`; the state `pending` | ER §4; ERV `registry.json` |
@@ -345,22 +358,166 @@ The **signing input** is UTF-8 of JCS over the object made of the signed members
    the verification material. A responder MUST NOT send an empty `artifact` with the proofs in
    `verification_content` [ER §4.1]. For these, `verification` is absent and the verifier checks
    `anchor_inclusion` over the `artifact` itself (§7.2). The absence of `verification` is then
-   not `NOT_PRESENT`. In v0 that check is still `NOT_CHECKED` unless the verifier implements the
-   commitment mechanism from elsewhere, because this revision names none (P-13).
+   not `NOT_PRESENT`. No kind in this revision applies to these subjects (§6.2.1), so in v0 the
+   check is `NOT_CHECKED` unless the verifier implements a mechanism from elsewhere (P-13).
 
 **Verification material kinds.** `kind` names an evidence-mechanism-specific proof format
-[ER §4.1 item 3]. This revision registers no kinds (§11.4, P-13). A verifier that does not
-implement a `kind` reports `anchor_inclusion` as `NOT_CHECKED` (§7.2). A verifier MAY implement
-a mechanism defined elsewhere, such as a checkpointed log's inclusion proof, and name it in
-`method`.
+[ER §4.1 item 3]. This revision registers three kinds, all for one mechanism, the Checkpointed
+Local Log (§6.2.1). A verifier that does not implement a `kind` it receives reports
+`anchor_inclusion` as `NOT_CHECKED` (§7.2). A verifier MAY implement a mechanism defined
+elsewhere and name it in `method` [P-13].
 
-**Consequence for v0.** `anchor_inclusion` is required (§7.2). So a verifier built from this
-document alone, with no mechanism from elsewhere, never reaches `PASS` on an envelope. It reports
-`anchor_inclusion` as `NOT_CHECKED` (§8: `UNKNOWN`), or as `NOT_PRESENT` when no material was
-sent (§8: `INSUFFICIENT`). It can never produce `met` or `not_met` from an artifact response.
-Request binding, signature, artifact digest, anchor match and caller invariance are all fully
-checkable from this document. Whether the artifact is in the anchor is not, until §11.4 fixes a
-kind.
+**Consequence for v0.** `anchor_inclusion` is required (§7.2). With the kinds of §6.2.1, a
+verifier built from this document alone can check every required envelope property of a
+`record` subject with no derivation, served from a Checkpointed Local Log, and can reach `PASS`
+on all of them. §10.1 shows that path with real bytes. For every other subject form, for any
+derivation, and for the `checkpoints` subject, no kind in this revision applies. There the
+verifier reports `anchor_inclusion` as `NOT_CHECKED` (§8: `UNKNOWN`) unless it implements a
+mechanism from elsewhere, and so it cannot produce `met` or `not_met` (P-13). An envelope sent
+with no material reports `NOT_PRESENT` (§8: `INSUFFICIENT`).
+
+#### 6.2.1 Checkpointed Local Log material
+
+A responder whose evidence stream is a Checkpointed Local Log [CLL §2, §3] proves an artifact
+against an anchor with the three kinds below. CLL defines the checkpoint and its commitment, and
+takes its proof formats from MMR [CLL §1, §4]. The anchor is a checkpoint, and `anchor_inclusion`
+checks that the artifact's digest is a committed entry under it.
+
+**Identifiers.** `cll-checkpoint` is CLL's own string, the value of the checkpoint's `kind` claim
+[CLL §3], reused verbatim (§4). Neither CLL nor MMR gives the inclusion proof or the consistency
+proof a text identifier. MMR labels them only with the integers -1 and -2 inside a COSE Receipt's
+`vdp` header [MMR §5, §7]. So `cll-inclusion-proof` and `cll-consistency-proof` are this
+profile's own identifiers (P-31).
+
+**The bytes.**
+
+| `kind` | Octets of the `verification_content` item | Presence |
+|---|---|---|
+| `cll-checkpoint` | the checkpoint as a COSE_Sign1 (RFC 9052) in one fixed form: CBOR tag 18, an empty unprotected header, and an attached payload. The payload is the CBOR claims map of [CLL §3], keyed by the text claim names of CLL's Table 1. `commitment` and `prev_commitment` are byte strings whose content is the deterministic CBOR of the peak list [CLL §3.1]. The protected header carries the RFC 9052 parameters `alg` (label 1) and `kid` (label 4), and CWT_Claims (label 15, RFC 9597) with `iss` (1) and `sub` (2), as CLL requires [CLL §3, §3.3] | REQUIRED, exactly one |
+| `cll-inclusion-proof` | the MMR `inclusion-proof` array `[index, inclusion-path]` in deterministic CBOR (RFC 8949 §4.2.1): the octets that MMR's `bstr .cbor` wraps, not that byte string [MMR §4]. `index` is the zero-based MMR node index of the leaf. Each path element is a 32-octet byte string | REQUIRED, exactly one |
+| `cll-consistency-proof` | the MMR `consistency-proof` array `[tree-size-1, tree-size-2, consistency-paths, right-peaks]` in deterministic CBOR, again the octets inside `bstr .cbor` [MMR §6]. It proves that the checkpoint's `commitment` extends its own `prev_commitment` [CLL §3, §3.2 item 2] | OPTIONAL, at most one |
+
+**One form per checkpoint.** CLL lets a witness's countersignature ride in the checkpoint's
+unprotected header [CLL §3.3 item 2], and COSE allows a tagged and an untagged form. Either would give
+one signed checkpoint several digests. So the `cll-checkpoint` item MUST be the tagged form with an
+empty unprotected header [P-31]. A responder holding a countersigned copy removes the
+countersignature before sending it. Witness confirmations are not a kind in this revision (P-13).
+
+**What the envelope's `verification` covers.** Each entry's `digest` is SHA-256 over that item's
+octets as carried, as for every kind (§6.2). Through the `cll-checkpoint` entry, the envelope
+signature covers the exact checkpoint, including its own signature. Under this mechanism
+`anchor.digest` MUST equal the `digest` of the `cll-checkpoint` entry [P-31]. The coverage anchor
+is that checkpoint, identified by SHA-256 over its octets in the form above. A requester pins a
+CLL checkpoint in `expected_pin` by that same digest [ER §3.2; P-31]. The two proofs are bound
+only as octets. They carry no signature of their own, and they count only once the procedure
+below recomputes the signed commitment from them [MMR §5.1].
+
+**The logged entry.** CLL entries are opaque byte strings, typically the digest of a record
+[CLL §1.1]. MMR leaves are a hash H(x) of a value x that the caller defines [MMR §8.1]. Neither
+draft fixes how an entry becomes a leaf, so this profile fixes it [P-31]:
+
+- the entry E for an artifact is the 32 raw octets of `artifact_digest`;
+- the leaf value is SHA-256(0x00 || E). So x is one zero octet followed by E, a 33-octet
+  preimage, which never has the 72-octet shape of an interior node's preimage [MMR §8.2.1].
+
+**Scope.** These kinds prove one artifact that is one log entry: the `record` subject, with no
+`derivation`, whose record digest is the artifact's own digest (`subject.record` equal to
+`artifact_digest`). ER lets a record be named by a digest that is not the SHA-256 of the octets
+served [ER §3.1]. These kinds cannot tie such a name to the artifact, so they do not apply to it.
+They also define no method for the other five subject forms, for a derivation (including a
+recipient-specific projection, §6.5), or for the `checkpoints` subject and the derivation of
+ER §8.1, whose artifact is itself the material (point 4 above) (P-13).
+
+**What the relying party must trust.** The checkpoint is signed by the key its `kid` names, for the
+log identity (`iss`, `sub`) in its CWT_Claims [CLL §3, §3.3]. Whether that key is the right one
+for that log identity is the relying party's policy, as `responder_trust` is for the responder's
+key. This profile does not decide it, and the log key need not be the responder's key.
+
+- A `PASS` shows that the artifact's digest is committed under a checkpoint signed by a key the
+  policy accepts for that log identity.
+- It does not show which of the responder's streams was asked about, because the request names
+  none (P-23). Under `expected_pin` the requester chose the checkpoint itself. Under
+  `min_freshness` the responder chose it, so a relying party SHOULD accept a log key only for
+  the log identities it expects that responder to answer from [P-31].
+- It does not show that the checkpoint was witnessed. A witness Receipt or countersignature
+  [CLL §3.3] is not a kind in this revision (P-13). An unwitnessed checkpoint is only as strong as
+  its producer [CLL §3.2 item 4, §4].
+- It never shows that the entry's content is true [CLL §5].
+
+**Check procedure for `anchor_inclusion`.** Steps run in order, and the first that yields a status
+decides. Each status means what §7.1 says. MMR's functions are used as MMR defines them [MMR §5.2,
+§7.1, §7.1.1, §9]:
+
+1. If `subject` is not the `record` form, or `derivation` is present: `NOT_CHECKED`. No kind in
+   this revision defines that method (P-13). For the `checkpoints` subject, point 4 above applies.
+2. If `verification` is absent or empty: `NOT_PRESENT`.
+3. If any entry's `kind` is not one of the three above: `NOT_CHECKED`, by the rule for
+   unimplemented kinds (§6.2). If one kind appears more than once: `FAIL`. If there is no
+   `cll-checkpoint` entry, or no `cll-inclusion-proof` entry: `NOT_PRESENT`.
+4. If `envelope_signature`, `artifact_digest` or `verification_binding` is not `PASS`:
+   `NOT_CHECKED`. Material that is not bound to a verified envelope is never checked.
+5. If `subject.record` differs from `artifact_digest`: `NOT_CHECKED`. This is outside the scope
+   above, not a failure of the artifact [P-31].
+6. If the `cll-checkpoint` entry's `digest` differs from `anchor.digest`: `FAIL`.
+7. Decode the checkpoint. Any of the following is `FAIL` [CLL §3, §3.1, §3.2 item 2, §3.3;
+   P-12; P-31]:
+   - it is not well formed: not tag 18 over a four-element array, a non-empty unprotected header,
+     a detached (`nil`) payload, or a map with a duplicate key;
+   - the protected header lacks `alg`, lacks `kid`, or lacks CWT_Claims with `iss` and `sub`;
+   - the `kind` claim is not `cll-checkpoint`;
+   - `log_size` or `prev_size` is not an unsigned integer, `prev_size` exceeds `log_size`, or
+     `issued_at` is not an RFC 3339 text string;
+   - `commitment` is not a byte string holding the deterministic CBOR of an array of one or more
+     32-octet byte strings;
+   - `prev_size` is 0 and `prev_commitment` is not zero-length, or `prev_size` is above 0 and
+     `prev_commitment` is not of the same form as `commitment`.
+8. If `alg` is not EdDSA (-8), or the protected header carries `crit`: `NOT_CHECKED`. This
+   revision checks Ed25519 checkpoint signatures with no critical extensions only (P-31).
+9. The relying party's policy resolves (`iss`, `sub`, `kid`) to an Ed25519 public key it accepts
+   for that log identity as of the checkpoint's `issued_at`. If the policy rejects the key:
+   `FAIL`. If it cannot resolve the key's status: `INCONCLUSIVE`. If it excludes the check:
+   `NOT_CHECKED`.
+10. Verify the COSE_Sign1 signature under that key. Its input is the `Signature1` Sig_structure
+    with an empty external AAD (RFC 9052 §4.4). If it does not verify: `FAIL`.
+11. If `anchor.freshness` is present, it must name what the checkpoint commits. A size must equal
+    the checkpoint's `log_size`. A time must equal the checkpoint's `issued_at` converted to UTC
+    with any fractional seconds dropped (§5.2). Otherwise: `FAIL` [ER §4.1 item 2; P-31].
+12. Inclusion. Decode the inclusion proof; if it is malformed, `FAIL`. If `index_height(index)` is
+    not 0, so that `index` is not a leaf: `FAIL`. Compute
+    `r = included_root(index, SHA-256(0x00 || E), inclusion-path)`. If `r` is not one of the peaks
+    in `commitment`: `FAIL` [MMR §5.2; P-31].
+13. Consistency, only when a `cll-consistency-proof` entry is present. Any of the following is
+    `FAIL` [MMR §7.1, §7.1.1; CLL §3.2 item 2]:
+    - the proof is malformed, or `tree-size-1` exceeds `tree-size-2`;
+    - `prev_size` is 0, so there is no earlier commitment to extend;
+    - the number of peaks for `tree-size-1`, the number of `consistency-paths` and the number of
+      peaks in `prev_commitment` are not all equal;
+    - after `consistent_roots(tree-size-1 − 1, <peaks of prev_commitment>, consistency-paths)`,
+      the number of `right-peaks` is not the number of peaks for `tree-size-2` minus the number
+      of roots;
+    - those roots followed by `right-peaks` are not the peak list of `commitment`, element for
+      element.
+14. Otherwise: `PASS`. `method` names the pinned drafts and the checks run, for example
+    `CLL-01 checkpoint (Ed25519) + MMR-02 inclusion + MMR-02 consistency`.
+
+**Notes on the procedure.**
+
+- A consistency proof that verifies shows only the producer's internal relation: the
+  checkpoint's history extends the history its own `prev_commitment` commits to. It does not show
+  that no divergent history exists [CLL §3.2 item 2], and a responder may omit it. Its value is to
+  a requester holding the predecessor checkpoint, which can compare that checkpoint's
+  `commitment` with `prev_commitment`. A failed proof is a `FAIL`, because the producer has
+  signed a relation its own log contradicts, which CLL treats as evidence of mutation
+  [CLL §3.2 item 2]. A proof from some other earlier anchor the requester holds (ER §5) is not
+  expressible in v0, because the request has no member naming that anchor (P-13).
+- The procedure shows membership, not position. It does not compare the proofs' tree sizes with
+  `log_size` and `prev_size`. MMR counts tree size in nodes [MMR §6, §7.1], and CLL -01 describes
+  `log_size` as a number of entries [CLL §3]. When the inclusion path is not empty, a recomputed
+  root equal to a committed peak also fixes the leaf's node position, because every interior
+  node's hash covers its position [MMR §8.2]. When the path is empty, so the leaf is itself a
+  peak, `index` is not verified (P-31).
+- MMR's misprinted `all_ones` primitive (Appendix B.4) is read as intended: `pos` has all bits set
+  below its most significant bit, that is `pos & (pos + 1) == 0` (P-31).
 
 ### 6.3 Signed refusal
 
@@ -507,7 +664,7 @@ check. It never states whether a requirement is satisfied. §8 is the only bridg
 | `artifact_digest` | envelope | SHA-256 of the received `artifact` octets equals `artifact_digest` | yes |
 | `verification_binding` | envelope | each `verification_content` item hashes to the `digest` at the same position in `verification`, and the counts match | yes, when `verification` is present |
 | `anchor_match` | envelope | under `expected_pin`: `anchor.digest` equals the pin; under `min_freshness`: `anchor.freshness` is present and meets the floor [ER §3.2, §4.1 item 2] | yes |
-| `anchor_inclusion` | envelope | the artifact verifies against `anchor.digest` using `verification_content`, by the method each `kind` names [ER §4.1 item 3]; for the `checkpoints` subject and the derivation of ER §8.1, the `artifact` is itself the material [ER §4.1] | yes |
+| `anchor_inclusion` | envelope | the artifact verifies against `anchor.digest` using `verification_content`, by the method each `kind` names [ER §4.1 item 3]; for the `cll-*` kinds, the procedure of §6.2.1 [P-31]; for the `checkpoints` subject and the derivation of ER §8.1, the `artifact` is itself the material [ER §4.1] | yes |
 | `caller_invariance` | two or more envelopes | for envelopes with the same `responder`, `subject`, `derivation` and `anchor.digest`, each of which has passed `envelope_signature`, `responder_trust` and `artifact_digest`: identical `artifact_digest` [ER §5]. `NOT_CHECKED` with fewer than two such envelopes [P-17] | a `FAIL` is adverse (§8) |
 | `reason_registered` | refusal | `reason` is exactly one token of §9.1, exact case [ERV A13] | yes |
 | `issued_at_form` | envelope, refusal | present and of the §5.2 time form. ER requires it on a refusal [ER §4.2 item 3]; for the envelope and for the form, see [ERV A5; P-12] | yes |
@@ -639,9 +796,14 @@ The claim's fields [RES §4, §5] are filled as follows:
   - for an envelope, `artifact_digest`;
   - for a refusal, SHA-256 over the refusal octets as received [P-18];
   - for an absence, the absence record digest (§5.1).
-- `proofs[]` [RES §5] lists the `verification` entries actually used. RES §5 closes `proof-ref.kind`
-  to `inclusion_proof` and `receipt`. So only entries whose mechanism is one of those two can be
-  listed, and v0 fixes no mechanism (P-13).
+- `proofs[]` [RES §5] lists those `verification` entries actually used whose shape RES can name,
+  each by its `digest` with `digest_alg` `SHA-256`. RES §5 closes `proof-ref.kind` to
+  `inclusion_proof` and `receipt`. A `cll-inclusion-proof` entry is listed with `kind`
+  `inclusion_proof` [RES §5; P-31]. A `cll-checkpoint` or `cll-consistency-proof` entry is
+  neither shape, so it is not listed. So in v0 the claim does not name the checkpoint, or the
+  envelope, that the inclusion proof resolves against: `evidence[]` names only the artifact
+  digest, which can appear under many anchors. The listed inclusion proof is checkable only by a
+  party that also holds the envelope (P-13).
 - `contract_ref` is the `<contract_id>@<version>` of the contract evaluated [RES §1]. The
   contract-digest binding of an accepted contract is §11.1.
 - `tier` and `grade` are set by the evaluator as RES §1 defines. This profile does not set them.
@@ -755,9 +917,11 @@ whitespace are not significant, because the signature is over the JCS signing in
 
 The two envelopes differ in request digest and issuance and name one artifact digest. That pair
 is the invariance property of §6.2. `verification` and `verification_content` are omitted here,
-because no verification-material kind is fixed in this revision (§11.4). So in this example
-`anchor_inclusion` is `NOT_PRESENT`, which maps to `INSUFFICIENT` (§8.1 row 3). That shows the
-v0 limit stated in §6.2, not a defect in the example.
+and anchor A is a label digest, not a real checkpoint. So for envelopes A and B
+`anchor_inclusion` is `NOT_PRESENT`, which maps to `INSUFFICIENT` (§8.1 row 3). Their record digest
+R1 is not the artifact's digest, so even with material the kinds of §6.2.1 would report
+`NOT_CHECKED` for them (§6.2.1, scope). §10.1 asks for the same artifact by its own digest and
+reaches `PASS` with real verification material.
 
 **Refusal.** Had the responder held no record R1, it would have answered request A with this
 refusal. Signing input:
@@ -776,6 +940,148 @@ would record this (unsigned; JCS text):
 ```
 
 absence record digest `82108c5666f4d2049d620cd9c799289bbb9f5f9bfe2801d7f51fd821df6848d5`
+
+### 10.1 PASS path with Checkpointed Local Log material
+
+This example serves the artifact above from a real seven-entry log, with the material of §6.2.1.
+Every value is reproducible. The log key is derived from the seed
+`SHA-256("evidence-interop/0 worked example: CLL log key")`. Entry E<sub>k</sub>, for k from 0 to 6,
+is `SHA-256("evidence-interop/0 worked example: log entry k")`, except that E<sub>2</sub> is the
+artifact digest. Each leaf value is SHA-256(0x00 || E<sub>k</sub>), and interior nodes follow MMR
+§8.2.1.
+
+```
+log key seed     996d8b3da69fec3bb7d43956f2ea30228ce427628e17f90f75b8c31dc2670f6f
+log key (kid)    c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af
+entry E2         2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244
+node 0   9dd6fa16eda8001ef682c41b1a85486abbfa7d3c6671f0e1b67188ac711c5c13
+node 1   c350182577d6c73e06e21cd8b495cd64b2ff6c065b5248e7eb58f8c61671f466
+node 2   17752cda0f5ae552687612bfe2edb35ce414b769d27de369b3860e04475c2e1f
+node 3   614c868161c3d559bf541d1966141ea1b7269da3c4215504eda9fd4882263f8d
+node 4   4533a265601326452641c2c27001175afc7c240733ffa9f4ed7a8fb535233d75
+node 5   5fd6bcdffa11db57a68be512c36d09ce0abd0044845724b6379d1c77e1af8edc
+node 6   361efe575f427af6b6cee7de0f21a4c5ac4bb768741ba10495ca03023d854a22
+node 7   b3d51096fbe67bc5e7c8da6703552171684e4427ff2db63628019665a2e8a81a
+node 8   a85021d96677a01944104a0b618836427db205a81734bd2d04c3d88f18402c9b
+node 9   00606ac0b2fbff9aea2afaee91782d5fdf59b23c6c1dc80faf18528094c8a5d3
+node 10  41c3925fe360c20b027ba9429cd61455902efb32b1096e3d412d1eeb42184d3f
+```
+
+The leaves are nodes 0, 1, 3, 4, 7, 8 and 10, and E<sub>2</sub>'s leaf is node 3. After three entries
+the MMR has 4 nodes and peaks at nodes 2 and 3. After seven it has 11 nodes and peaks at nodes 6, 9
+and 10.
+
+**The checkpoint.** It is a COSE_Sign1 with CBOR tag 18 and an EdDSA signature under the log key.
+The protected header is `{1: -8, 4: <log key>, 15: {1: "https://producer.example", 2:
+"evidence-stream-1"}}`, and the unprotected header is empty. The payload claims are `kind`
+`"cll-checkpoint"`, `log_size` 7, `prev_size` 3, `issued_at` `"2026-10-12T00:00:00Z"`, `cadence`
+3600, `commitment` = the deterministic CBOR of `[node 6, node 9, node 10]`, and `prev_commitment`
+= the deterministic CBOR of `[node 2, node 3]`. `log_size` and `prev_size` count entries, as CLL -01
+describes them (P-31). The checkpoint octets, in hex:
+
+```
+d2845856a30127045820c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af0fa201781868747470733a2f2f70726f64756365722e6578616d706c65027165766964656e63652d73747265616d2d31a059011fa7646b696e646e636c6c2d636865636b706f696e7467636164656e6365190e10686c6f675f73697a6507696973737565645f617474323032362d31302d31325430303a30303a30305a69707265765f73697a65036a636f6d6d69746d656e745867835820361efe575f427af6b6cee7de0f21a4c5ac4bb768741ba10495ca03023d854a22582000606ac0b2fbff9aea2afaee91782d5fdf59b23c6c1dc80faf18528094c8a5d3582041c3925fe360c20b027ba9429cd61455902efb32b1096e3d412d1eeb42184d3f6f707265765f636f6d6d69746d656e74584582582017752cda0f5ae552687612bfe2edb35ce414b769d27de369b3860e04475c2e1f5820614c868161c3d559bf541d1966141ea1b7269da3c4215504eda9fd4882263f8d5840ef5f2f56ba5f5ed2c497274bcc942d8193a7d318d11989de3b409009fa895e739e8fa08adb12406de5f2b6be2e77e9f33988fb19c7cdf57344083306fc8eb30b
+```
+
+Their SHA-256, the anchor digest A<sub>C</sub>, is `16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99`.
+
+**The inclusion proof** is `[3, [node 4, node 2]]`, in hex:
+
+```
+82038258204533a265601326452641c2c27001175afc7c240733ffa9f4ed7a8fb535233d75582017752cda0f5ae552687612bfe2edb35ce414b769d27de369b3860e04475c2e1f
+```
+
+`included_root(3, leaf of E2, [node 4, node 2])` gives node 6, the first peak in `commitment`.
+
+**The consistency proof** is `[4, 11, [[node 5], [node 4, node 2]], [node 9, node 10]]`, in hex:
+
+```
+84040b828158205fd6bcdffa11db57a68be512c36d09ce0abd0044845724b6379d1c77e1af8edc8258204533a265601326452641c2c27001175afc7c240733ffa9f4ed7a8fb535233d75582017752cda0f5ae552687612bfe2edb35ce414b769d27de369b3860e04475c2e1f82582000606ac0b2fbff9aea2afaee91782d5fdf59b23c6c1dc80faf18528094c8a5d3582041c3925fe360c20b027ba9429cd61455902efb32b1096e3d412d1eeb42184d3f
+```
+
+Both old peaks, nodes 2 and 3, lead to node 6. Node 6 followed by the right-peaks, nodes 9 and 10,
+is exactly the peak list of `commitment`.
+
+**Request C, JSON binding.** It pins the checkpoint and names the artifact's record digest:
+
+```
+{"coverage":{"expected_pin":"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99"},"nonce":"2026-10-12T00:00:10Z/c","profile":"evidence-interop/0","subject":{"record":"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244"}}
+```
+
+request digest `3e68348cdf52d26447fff2ff47ec16b9539a93cee72497bf50a99f3d39c158cd`
+
+**Envelope for request C.** Signing input:
+
+```
+{"anchor":{"digest":"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99"},"artifact_digest":"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244","issued_at":"2026-10-12T00:00:11Z","profile":"evidence-interop/0","request_digest":"3e68348cdf52d26447fff2ff47ec16b9539a93cee72497bf50a99f3d39c158cd","responder":"e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117","subject":{"record":"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244"},"verification":[{"digest":"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99","kind":"cll-checkpoint"},{"digest":"013ac5a3bdff9cf62a3ea2816b3cd197151930f6dd49d67d9286f12c3c47527a","kind":"cll-inclusion-proof"},{"digest":"06550cca75319242ea40e7f3fd9ff0b8e5e3bfa8a06122f678578a57cb4bdc71","kind":"cll-consistency-proof"}]}
+```
+
+`sig` = `d98fcb97d551c5accc5094baf58d8d6446d21b74228602a88392dcf1719cc9b9ab87f15e6f80792e1199e564a4f263dc35b2e8d015e65046bf2d095ec820800b`
+
+The complete response object for request C, in the JSON binding:
+
+```json
+{
+ "anchor": {
+  "digest": "16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99"
+ },
+ "artifact": "eyJleGFtcGxlIjoiZXZpZGVuY2UgcmVjb3JkIiwic2VxIjoxfQ",
+ "artifact_digest": "2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244",
+ "issued_at": "2026-10-12T00:00:11Z",
+ "profile": "evidence-interop/0",
+ "request_digest": "3e68348cdf52d26447fff2ff47ec16b9539a93cee72497bf50a99f3d39c158cd",
+ "responder": "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117",
+ "sig": "d98fcb97d551c5accc5094baf58d8d6446d21b74228602a88392dcf1719cc9b9ab87f15e6f80792e1199e564a4f263dc35b2e8d015e65046bf2d095ec820800b",
+ "subject": {
+  "record": "2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244"
+ },
+ "verification": [
+  {
+   "digest": "16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99",
+   "kind": "cll-checkpoint"
+  },
+  {
+   "digest": "013ac5a3bdff9cf62a3ea2816b3cd197151930f6dd49d67d9286f12c3c47527a",
+   "kind": "cll-inclusion-proof"
+  },
+  {
+   "digest": "06550cca75319242ea40e7f3fd9ff0b8e5e3bfa8a06122f678578a57cb4bdc71",
+   "kind": "cll-consistency-proof"
+  }
+ ],
+ "verification_content": [
+  "0oRYVqMBJwRYIMgqz2bvK9wQYBdUS5GHPfvckvCWOwmdSbD2Ib7fduKvD6IBeBhodHRwczovL3Byb2R1Y2VyLmV4YW1wbGUCcWV2aWRlbmNlLXN0cmVhbS0xoFkBH6dka2luZG5jbGwtY2hlY2twb2ludGdjYWRlbmNlGQ4QaGxvZ19zaXplB2lpc3N1ZWRfYXR0MjAyNi0xMC0xMlQwMDowMDowMFppcHJldl9zaXplA2pjb21taXRtZW50WGeDWCA2Hv5XX0J69rbO594PIaTFrEu3aHQboQSVygMCPYVKIlggAGBqwLL7_5rqKvrukXgtX99ZsjxsHcgPrxhSgJTIpdNYIEHDkl_jYMILAnupQpzWFFWQLvsysQluPUEtHutCGE0_b3ByZXZfY29tbWl0bWVudFhFglggF3Us2g9a5VJodhK_4u2zXOQUt2nSfeNps4YOBEdcLh9YIGFMhoFhw9VZv1QdGWYUHqG3Jp2jxCFVBO2p_UiCJj-NWEDvXy9Wul9e0sSXJ0vMlC2Bk6fTGNEZid47QJAJ-olec56PoIrbEkBt5fK2vi536fM5iPsZx831c0QIMwb8jrML",
+  "ggOCWCBFM6JlYBMmRSZBwsJwARda_HwkBzP_qfTteo-1NSM9dVggF3Us2g9a5VJodhK_4u2zXOQUt2nSfeNps4YOBEdcLh8",
+  "hAQLgoFYIF_WvN_6EdtXpovlEsNtCc4KvQBEhFcktjedHHfhr47cglggRTOiZWATJkUmQcLCcAEXWvx8JAcz_6n07XqPtTUjPXVYIBd1LNoPWuVSaHYSv-Lts1zkFLdp0n3jabOGDgRHXC4fglggAGBqwLL7_5rqKvrukXgtX99ZsjxsHcgPrxhSgJTIpdNYIEHDkl_jYMILAnupQpzWFFWQLvsysQluPUEtHutCGE0_"
+ ]
+}
+```
+
+**Verification.** The verifier holds request C's octets. Its policy accepts the responder key, and
+accepts the log key for (`https://producer.example`, `evidence-stream-1`). It runs offline.
+
+| Property | Status | How |
+|---|---|---|
+| `profile_version` | `PASS` | `evidence-interop/0`, as sent |
+| `envelope_signature` | `PASS` | Ed25519 over the signing input above |
+| `responder_trust` | `PASS` | the policy accepts the responder key |
+| `issued_at_form` | `PASS` | `2026-10-12T00:00:11Z` |
+| `request_binding` | `PASS` | SHA-256 of request C's octets |
+| `subject_binding` | `PASS` | the same `record` digest, and no derivation |
+| `artifact_digest` | `PASS` | SHA-256 of the decoded `artifact` |
+| `verification_binding` | `PASS` | three items, three matching digests, in order |
+| `anchor_match` | `PASS` | `anchor.digest` equals the pin A<sub>C</sub> |
+| `anchor_inclusion` | `PASS` | §6.2.1 steps 1 to 14: the checkpoint digest is A<sub>C</sub>, the signature verifies under the log key, E<sub>2</sub> is the artifact digest and the record digest, inclusion reaches node 6, and consistency reproduces the commitment |
+| `caller_invariance` | `NOT_CHECKED` | only one envelope for anchor A<sub>C</sub> is held; not required (§7.2) |
+| `responder_key_current` | `NOT_CHECKED` | offline; not required (§7.2) |
+
+Every required envelope property is `PASS`, so §8.1 row 7 applies, and the contract evaluates the
+Artifact's content. The claim's `evidence[]` cites the artifact digest. Its `proofs[]` is
+`[{"kind": "inclusion_proof", "digest_alg": "SHA-256", "digest": "013ac5a3bdff9cf62a3ea2816b3cd197151930f6dd49d67d9286f12c3c47527a"}]`
+(§8.3).
+
+Changing any octet of the inclusion proof makes `verification_binding` `FAIL`. Re-signing the
+envelope over the changed digest instead makes `anchor_inclusion` `FAIL` at step 12.
 
 ## 11. Parts filled by later revisions
 
@@ -1156,7 +1462,7 @@ profile.
 ### 11.4 Carriage and discovery
 
 *Placeholder.* This covers the A2A and MCP bindings, the full manifest, verification-material
-kinds, and the shape of a carried retention commitment.
+kinds beyond those of §6.2.1, and the shape of a carried retention commitment.
 
 ### 11.5 Conformance vectors
 
@@ -1208,9 +1514,19 @@ a later draft revision.
 - **P-11** The verifier MUST run a foreign object's native check before reporting on it (§5.1).
 - **P-12** Time form with seconds precision; unsigned integers no larger than 2^53 − 1 and no
   floats; duplicate members rejected in JSON and CBOR (§5.2).
-- **P-13** Verification-material kinds: none registered in v0 (§6.2). Until one is, a verifier built
-  from this document alone cannot check `anchor_inclusion`, never reaches `PASS` on an envelope, and
-  cannot fill `proofs[]` (§6.2, §8.3, §11.4).
+- **P-13** Verification-material kinds cover only the Checkpointed Local Log, for a `record` subject
+  with no derivation (§6.2.1). Still without a kind:
+  - the other subject forms and every derivation;
+  - the `checkpoints` subject and history_card/1, whose artifact is the material;
+  - a witness Receipt or countersignature over a checkpoint;
+  - a consistency proof from an earlier anchor the requester holds, which ER §5 allows but the
+    request has no member to name.
+
+  For these, a verifier built from this document alone reports `anchor_inclusion` as
+  `NOT_CHECKED`. RES v0's closed `proof-ref.kind` has no value for a checkpoint or a consistency
+  proof, so those entries are not listed in `proofs[]`, and a claim does not name the checkpoint
+  or envelope its inclusion proof resolves against. Candidate for a later RES revision: a proof
+  kind for a checkpoint, or an envelope-digest reference in `evidence[]` (§6.2, §8.3, §11.4).
 - **P-14** Recipient-specific disclosure as a definition-digest derivation whose definition names
   the recipient's principal reference. The definition document's member names are not fixed (§6.5).
 - **P-15** A verifier checks octets and envelope, never a rendering (§6.6).
@@ -1254,6 +1570,29 @@ a later draft revision.
   how candidates are chosen and ranked (equivocation and self-admitted late acceptance first), how a
   finding may be presented, and how it is bound into
   an Evidence Result claim (§11.1.7, §11.1.8).
+- **P-31** The Checkpointed Local Log material kinds (§6.2.1). This profile adds:
+  - the identifiers `cll-inclusion-proof` and `cll-consistency-proof`, since CLL -01 and MMR -02
+    define none (`cll-checkpoint` is CLL's own);
+  - `anchor.digest` as SHA-256 over the checkpoint's COSE_Sign1 octets as emitted;
+  - the entry as the artifact digest and the leaf value SHA-256(0x00 || E), with the kinds
+    applying only where `subject.record` equals `artifact_digest`;
+  - one checkpoint form (tag 18, empty unprotected header), so one checkpoint has one digest;
+  - a relying party's log-key acceptance scoped to the log identities it expects from a
+    responder;
+  - the proofs carried as the arrays inside MMR's `bstr .cbor`, and an empty inclusion path
+    accepted where the leaf is itself a peak (MMR's CDDL writes `[ + bstr ]` and its prose
+    allows an empty path);
+  - Ed25519 (EdDSA, -8) checkpoints with no `crit` only, and `anchor.freshness` checked against
+    the checkpoint's `log_size` or `issued_at`;
+  - MMR's `all_ones` read as `pos & (pos + 1) == 0`.
+
+  Left unchecked in v0: the proofs' tree sizes against `log_size` and `prev_size`. MMR counts
+  nodes, while CLL -01 describes `log_size` as entries, and known implementations write the node
+  count there. Candidates for CLL -02: register the two identifiers, fix the leaf construction,
+  and settle the unit of `log_size`.
+
+  This revision adds these kinds and two pins without changing the identifier
+  `evidence-interop/0` (P-1), because no revision of this profile has been published yet.
 
 ## References
 
@@ -1271,6 +1610,14 @@ a later draft revision.
 - `draft-mih-sokolov-scitt-payload-binding`, Section 4.4, as cited by SR §8 (Internet-Draft, work
   in progress).
 - `draft-mih-zhang-agent-disclosure-bundle` (Internet-Draft, work in progress).
+- `draft-mih-scitt-checkpointed-local-log-01`,
+  <https://www.ietf.org/archive/id/draft-mih-scitt-checkpointed-local-log-01.txt>, SHA-256
+  `2ef340206e6ba4260b84ba265f794ab9756aefa7cdaeac98e95cea646cfb678f` (Internet-Draft, work in
+  progress).
+- `draft-bryce-cose-receipts-mmr-profile-02`,
+  <https://www.ietf.org/archive/id/draft-bryce-cose-receipts-mmr-profile-02.txt>, SHA-256
+  `c6dc055aa61bcdea1566db5a754d055a199a89c9900810b336d99202a44e9893` (Internet-Draft, work in
+  progress).
 - Evidence Result v0, `spec/evidence-result-v0.md`.
 - Evidence Contract v0 schema, `evidence-contract-v0.json`.
-- RFC 2119, RFC 8174 (BCP 14); RFC 3339; RFC 4648; RFC 8032; RFC 8785; RFC 8949.
+- RFC 2119, RFC 8174 (BCP 14); RFC 3339; RFC 4648; RFC 8032; RFC 8785; RFC 8949; RFC 9052; RFC 9597.

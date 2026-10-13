@@ -23,6 +23,14 @@
   It includes a worked example with reproducible digests and Ed25519 signatures. The acceptance
   record, lifecycle links, Evidence Contract prose, carriage and vectors are placeholder
   headings for later revisions.
+- Spec: `spec/interop-profile-v0.md` registers its first verification-material kinds:
+  `cll-checkpoint`, `cll-inclusion-proof` and `cll-consistency-proof`, for a Checkpointed Local
+  Log. They are pinned to the posted `draft-mih-scitt-checkpointed-local-log-01` and
+  `draft-bryce-cose-receipts-mmr-profile-02`, each by the SHA-256 of its archive `.txt`. The new
+  §6.2.1 gives their bytes and the step-by-step `anchor_inclusion` check. A `record` envelope can
+  now reach `PASS` on every required property: §10.1 does so with real bytes, a computed
+  seven-entry log, a signed checkpoint, and inclusion and consistency proofs. Open point P-13 is
+  narrowed, and P-31 is added.
 
 - Spec: `spec/interop-profile-v0.md` §11.1 now defines the acceptance record: one signed record
   type (`proposed`, then `accepted`, `declined` or `countered`) naming the contract version
