@@ -1,0 +1,14 @@
+{
+  "set": "aac-salted-digest-commitment-v1",
+  "status": "INFORMATIVE: describes a construction a profile may use; it registers nothing and places no requirement on producers.",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_salted_digest_commitment_vectors.py",
+  "note": "docs/salted-digest-commitment.md",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "223a93cd3a5fa9141778d688e3f0bcf34efe3f66dcac3184634a3869278e1ecd",
+      "count": 9
+    }
+  ]
+}

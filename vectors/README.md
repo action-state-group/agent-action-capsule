@@ -36,6 +36,12 @@ same-commit files in CI.
   schema `schemas/judgment/judgment-extension-v1.json`). The digest rules are
   proposed and unratified;
   `python/scripts/generate_judgment_extension_vectors.py` regenerates them.
+- `salted-digest-commitment/`: INFORMATIVE cases for the salted JSON-DIGEST
+  commitment `sha256-jcs-nonce256` described in
+  `docs/salted-digest-commitment.md` (openings that match, five that do not,
+  and the equal-nonce equality case);
+  `python/scripts/generate_salted_digest_commitment_vectors.py` regenerates
+  them.
 
 - `presentation-resolution/`: shared presentation resolution vectors for
   `spec/presentation-contract-v0.md` (ABI refusal, the descriptor, the match,

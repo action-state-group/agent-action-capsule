@@ -1,0 +1,124 @@
+{
+  "set": "aac-salted-digest-commitment-v1",
+  "status": "INFORMATIVE: describes a construction a profile may use; it registers nothing and places no requirement on producers.",
+  "provenance": "spec-derived",
+  "identifier": "sha256-jcs-nonce256",
+  "note": "docs/salted-digest-commitment.md",
+  "rules": {
+    "json_digest": "lowercase hex SHA-256 of UTF8(JCS(value)) (RFC 8785), no member filtering",
+    "nonce": "256 bits as 64 lowercase hex characters",
+    "commitment": "json_digest({\"nonce\": N, \"text\": T})",
+    "opening": "{\"nonce\": N, \"text\": T}, checked as Disclosure Envelope DE-3 checks a disclosed value"
+  },
+  "count": 9,
+  "positive": [
+    {
+      "id": "pos-ascii",
+      "description": "ASCII text.",
+      "opening": {
+        "nonce": "abababababababababababababababababababababababababababababababab",
+        "text": "412.00 USD"
+      },
+      "opening_jcs": "{\"nonce\":\"abababababababababababababababababababababababababababababababab\",\"text\":\"412.00 USD\"}",
+      "commitment": "47c96a7dc56f9f7e78c114f1d2fdd22ce4b0a5c190a93e65fcd6bea7e6628edf",
+      "expected": "match"
+    },
+    {
+      "id": "pos-non-ascii-newline",
+      "description": "Text with a non-ASCII character (U+20AC) and a newline, which JCS escapes as \\n.",
+      "opening": {
+        "nonce": "2222222222222222222222222222222222222222222222222222222222222222",
+        "text": "Proceed with the €412.00 order?\nReason: within your limit."
+      },
+      "opening_jcs": "{\"nonce\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"text\":\"Proceed with the €412.00 order?\\nReason: within your limit.\"}",
+      "commitment": "f732d44a07fd0076bdcd0148f27c2bc8106dea66f245bc85a38efb87e33773d4",
+      "expected": "match"
+    },
+    {
+      "id": "pos-non-ascii-punctuation",
+      "description": "Text with U+2014 and an apostrophe, which JCS leaves unescaped.",
+      "opening": {
+        "nonce": "3333333333333333333333333333333333333333333333333333333333333333",
+        "text": "Yes, go ahead — that's fine."
+      },
+      "opening_jcs": "{\"nonce\":\"3333333333333333333333333333333333333333333333333333333333333333\",\"text\":\"Yes, go ahead — that's fine.\"}",
+      "commitment": "f33b6f9567a69e85e59aafd405850f056d561da658246631812b98d720bed2f7",
+      "expected": "match"
+    }
+  ],
+  "negative": [
+    {
+      "id": "neg-text-edited",
+      "description": "The disclosed text differs in its last character.",
+      "against": "pos-non-ascii-punctuation",
+      "commitment": "f33b6f9567a69e85e59aafd405850f056d561da658246631812b98d720bed2f7",
+      "opening": {
+        "nonce": "3333333333333333333333333333333333333333333333333333333333333333",
+        "text": "Yes, go ahead — that's fine!"
+      },
+      "opening_jcs": "{\"nonce\":\"3333333333333333333333333333333333333333333333333333333333333333\",\"text\":\"Yes, go ahead — that's fine!\"}",
+      "recomputed": "1a55ae76323edf70d9bc0bd8e6f6feea151419b0875b5bf749f61c359aadbcd7",
+      "expected": "mismatch"
+    },
+    {
+      "id": "neg-nonce-other",
+      "description": "The right text with a different (well-formed) nonce.",
+      "against": "pos-non-ascii-punctuation",
+      "commitment": "f33b6f9567a69e85e59aafd405850f056d561da658246631812b98d720bed2f7",
+      "opening": {
+        "nonce": "2222222222222222222222222222222222222222222222222222222222222222",
+        "text": "Yes, go ahead — that's fine."
+      },
+      "opening_jcs": "{\"nonce\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"text\":\"Yes, go ahead — that's fine.\"}",
+      "recomputed": "d24f7b8e268e733e53c86a1925973fe0555dcaf92bbf08e5c43cb74f342c73f8",
+      "expected": "mismatch"
+    },
+    {
+      "id": "neg-nonce-uppercase",
+      "description": "The right nonce written in upper case; JCS does not case-fold strings.",
+      "against": "pos-ascii",
+      "commitment": "47c96a7dc56f9f7e78c114f1d2fdd22ce4b0a5c190a93e65fcd6bea7e6628edf",
+      "opening": {
+        "nonce": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB",
+        "text": "412.00 USD"
+      },
+      "opening_jcs": "{\"nonce\":\"ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB\",\"text\":\"412.00 USD\"}",
+      "recomputed": "15ab2944ce2c26b44e36a929d1d945f81f8725608ca9755f4eabeafe7851914f",
+      "expected": "mismatch"
+    },
+    {
+      "id": "neg-nonce-empty",
+      "description": "The right text with the nonce left empty.",
+      "against": "pos-non-ascii-punctuation",
+      "commitment": "f33b6f9567a69e85e59aafd405850f056d561da658246631812b98d720bed2f7",
+      "opening": {
+        "nonce": "",
+        "text": "Yes, go ahead — that's fine."
+      },
+      "opening_jcs": "{\"nonce\":\"\",\"text\":\"Yes, go ahead — that's fine.\"}",
+      "recomputed": "70739af41ef49e1c0c2a01a5f0937ab82abdcbba3805483b3f2e3881b2907e0d",
+      "expected": "mismatch"
+    },
+    {
+      "id": "neg-trailing-space",
+      "description": "The disclosed text has one trailing space added.",
+      "against": "pos-non-ascii-newline",
+      "commitment": "f732d44a07fd0076bdcd0148f27c2bc8106dea66f245bc85a38efb87e33773d4",
+      "opening": {
+        "nonce": "2222222222222222222222222222222222222222222222222222222222222222",
+        "text": "Proceed with the €412.00 order?\nReason: within your limit. "
+      },
+      "opening_jcs": "{\"nonce\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"text\":\"Proceed with the €412.00 order?\\nReason: within your limit. \"}",
+      "recomputed": "23f2161682b25294f7b9205898461f48e3d8f577ebae146e48a84ff5e691160d",
+      "expected": "mismatch"
+    }
+  ],
+  "equality": {
+    "id": "equality-same-nonce-same-text",
+    "nonce": "2222222222222222222222222222222222222222222222222222222222222222",
+    "text": "Proceed with the €412.00 order?\nReason: within your limit.",
+    "first": "f732d44a07fd0076bdcd0148f27c2bc8106dea66f245bc85a38efb87e33773d4",
+    "second": "f732d44a07fd0076bdcd0148f27c2bc8106dea66f245bc85a38efb87e33773d4",
+    "equal": true
+  }
+}

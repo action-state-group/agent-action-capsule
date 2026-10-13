@@ -12,6 +12,7 @@
     "minimum_necessary": "minimum-necessary/manifest.json",
     "bundle_composed": "bundle/composed/manifest.json",
     "judgment": "judgment/manifest.json",
-    "presentation_resolution": "presentation-resolution/manifest.json"
+    "presentation_resolution": "presentation-resolution/manifest.json",
+    "salted_digest_commitment": "salted-digest-commitment/manifest.json"
   }
 }
