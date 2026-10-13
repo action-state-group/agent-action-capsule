@@ -24,6 +24,18 @@
   record, lifecycle links, Evidence Contract prose, carriage and vectors are placeholder
   headings for later revisions.
 
+- Spec: `spec/interop-profile-v0.md` §11.1 now defines the acceptance record: one signed record
+  type (`proposed`, then `accepted`, `declined` or `countered`) naming the contract version
+  digest, a transaction reference and both parties, with an optional session scope. It also
+  defines the proposer's signed acceptance receipt, and two normative forms of ordering evidence:
+  a counterparty-signed receipt, and a transparency-service or witness receipt. Causal binding
+  is informative. A verifier reports "accepted before action" only with one of those forms, and
+  otherwise reports that the acceptance exists and execution cites it. An acknowledgment is a
+  receipt, never an acceptance, and acceptance is never authority. The section adds the
+  verification properties, five acceptance findings, and the backdated-acceptance case
+  described as a future vector. It pins `draft-mih-agent-bilateral-attestation-02` and
+  `draft-mih-agent-evidence-layer-00`.
+
 - TypeScript: verification works without WebCrypto. `crypto.subtle` exists only in a secure
   context, so a report in a non-secure or opaque origin (some apps' attachment viewers, an http:
   or data: page) could not hash, and every digest, membership and range check failed on a valid

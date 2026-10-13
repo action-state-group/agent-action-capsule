@@ -10,8 +10,8 @@ drop it.
 
 This revision covers versions (§3), naming (§4), canonical bytes (§5), the digest and signature
 binding of every message (§6), per-property verification statuses (§7), the mapping from
-outcomes to an Evidence Result (§8), and error codes (§9). Sections 11.1–11.5 are placeholders
-for parts that later revisions fill in.
+outcomes to an Evidence Result (§8), error codes (§9), and the acceptance record (§11.1).
+Sections 11.2–11.5 are placeholders for parts that later revisions fill in.
 
 The documents this profile pins are Internet-Drafts, work in progress, or specifications kept in
 this repository. Open-source repositories, this one included, are implementations of them.
@@ -25,14 +25,19 @@ IPR page:
   <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-mih-agent-disclosure-envelope>
 - `draft-mih-agent-settlement-records`:
   <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-mih-agent-settlement-records>
+- `draft-mih-agent-bilateral-attestation`:
+  <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-mih-agent-bilateral-attestation>
+- `draft-mih-agent-evidence-layer`:
+  <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-mih-agent-evidence-layer>
 
 ## Dependency boundary
 
 **Owns:** the profile version identifier and its negotiation (§3), the name table (§4), the
 member names and signing input of the artifact response envelope (§6.2), the absence record
 shape (§6.4), the identity of recipient-specific disclosures and their salted-digest commitments
-(§6.5), the per-property verification status vocabulary and property catalogue (§7), and
-the outcome-to-status mapping (§8).
+(§6.5), the per-property verification status vocabulary and property catalogue (§7),
+the outcome-to-status mapping (§8), and the acceptance record, acceptance receipt, ordering
+evidence rules and acceptance findings (§11.1).
 
 **Pins, never redefines:**
 
@@ -43,9 +48,11 @@ the outcome-to-status mapping (§8).
 | DE | `draft-mih-agent-disclosure-envelope` | -00 (`spec/draft-mih-agent-disclosure-envelope-00.md`) | the JSON value digest rule |
 | SR | `draft-mih-agent-settlement-records` | -00 (`spec/draft-mih-agent-settlement-records-00.md`) | the as-transmitted rule for wrapped foreign objects |
 | RES | Evidence Result v0 | `spec/evidence-result-v0.md` | the claim, sufficiency, verdict and presentation carrier rules |
+| BA | `draft-mih-agent-bilateral-attestation` | -02 (`spec/draft-mih-agent-bilateral-attestation-02.md`) | the requesting and performing parties, and acknowledgment as receipt without agreement |
+| EL | `draft-mih-agent-evidence-layer` | -00 (`spec/draft-mih-agent-evidence-layer-00.md`) | what a Receipt proves, witnesses, and the `cites` and `acknowledges` links |
 | EC | Evidence Contract v0 schema | `evidence-contract-v0.json`, `$defs/bundleAssertionStatus`, `$defs/contractResult` and the requirement `uncertainty` member | the eight-value status, its four-value projection, and per-requirement handling of missing and conflicting evidence |
 
-Section numbers for ER, DE and SR are those of the rendered `.txt` of the pinned revision. In
+Section numbers for ER, DE, SR, BA and EL are those of the rendered `.txt` of the pinned revision. In
 this document a requirement written as `[ER §4.2]` pins that section, and `[P-n]` marks a
 requirement this profile adds (§13).
 
@@ -103,7 +110,9 @@ claim (§8).
 This revision is identified by the text string `evidence-interop/0`. The identifier names this
 exact document revision. Any change to a signing input, a canonical byte rule, a member name, the
 status vocabulary or the mapping in §8 requires a new identifier [P-1]. v0 has no minor
-versions.
+versions. Until `evidence-interop/0` is first published, filling a placeholder of §11 under it is
+allowed, provided it changes no existing signing input or byte rule and only adds objects, rows
+and properties [P-1].
 
 ### 3.2 Pinned revisions
 
@@ -169,6 +178,13 @@ that to every object it defines.
 | Property names | the names in §7.2 | §7.2 |
 | Subprotocol | `evidence-request/1` | ER §10 |
 | Manifest member | `profiles` | P-2 |
+| Acceptance record members | `profile`, `state`, `contract_ref`, `contract_digest`, `transaction`, `proposer`, `acceptor`, `proposal_digest`, `counter_contract_digest`, `session`, `authority`, `issued_at`, `sig` | P-25 |
+| Acceptance states | `proposed`, `accepted`, `declined`, `countered` | P-24 |
+| Transaction reference members | `scheme`, `id` | P-25 |
+| Session members | `not_before`, `not_after`, `policy`, `terms` | P-26 |
+| Acceptance receipt members | `profile`, `acceptance_digest`, `received_at`, `receiver`, `sig` | P-27 |
+| Authority label | `agent_origin_assertion` | P-29 |
+| Acceptance findings | `not_accepted`, `accepted_after_action`, `accepted_not_cited`, `accepted_before_action`, `accepted_execution_cites` | P-30 |
 
 The one value type that differs between encodings is opaque bytes (`artifact`, and each entry
 of `verification_content`). CBOR carries them as a byte string (major type 2). JSON carries them
@@ -496,6 +512,7 @@ check. It never states whether a requirement is satisfied. §8 is the only bridg
 | `reason_registered` | refusal | `reason` is exactly one token of §9.1, exact case [ERV A13] | yes |
 | `issued_at_form` | envelope, refusal | present and of the §5.2 time form. ER requires it on a refusal [ER §4.2 item 3]; for the envelope and for the form, see [ERV A5; P-12] | yes |
 | `native_check` | each foreign object in a verified Artifact | the object's own verification method over its as-transmitted octets (§5.1); `method` names that method | per requirement (§8) |
+| acceptance properties | acceptance records and receipts | §11.1.7 | decide the acceptance finding (§11.1.8), never a status of §8 |
 
 When `profile_version` is not `PASS`, every other envelope property is `NOT_CHECKED` [P-4].
 `native_check` is not an envelope property: it applies to foreign objects inside an Artifact
@@ -762,13 +779,368 @@ absence record digest `82108c5666f4d2049d620cd9c799289bbb9f5f9bfe2801d7f51fd821d
 
 ## 11. Parts filled by later revisions
 
-These headings are placeholders. Nothing under them is specified yet.
+§11.1 is specified. The headings from §11.2 on are placeholders, and nothing under them is
+specified yet. §11.1 was filled before `evidence-interop/0` was published. It adds objects and
+properties, and adds rows to the tables of §4 and §7.2. It changes no existing signing input or
+byte rule, so it keeps the identifier (§3.1).
 
 ### 11.1 Acceptance record
 
-*Placeholder.* Scope: one signed acceptance record type with an optional session scope. The
-ordering evidence named normatively is a counterparty-signed receipt, or a transparency-service
-or witness receipt.
+An acceptance record is the signed answer of one party to an Evidence Contract version that the
+other party proposed. Without an accepted record, a contract's requirements are only what the
+requester expects. With one, they are also what the other party agreed to. This section defines
+one record type with four states and an optional session scope, the receipt the proposer signs
+for an answer, the evidence that can establish that an acceptance came before the action, and
+what a verifier reports.
+
+**Three things kept distinct.** This profile never treats any one of them as another:
+
+1. an **acceptance**: the performing party's signed agreement to one contract version, for one
+   transaction or one session (§11.1.1 to §11.1.3);
+2. an **acknowledgment**: a signed record that a party received something. It records receipt
+   and asserts no agreement with what was received [BA §3]. The acceptance receipt of §11.1.4 is
+   one (§11.1.6);
+3. **authority**: whether the party that accepted may spend for, bind or act for a principal.
+   Acceptance never shows it (§11.1.6).
+
+#### 11.1.1 Roles and states
+
+The **proposer** is the requesting party, and is the requester whose expectations a contract's
+requirements are until they are accepted. The **acceptor** is the performing party. Both roles
+are those BA defines [BA §3]. BA identifies a party by an organizational identity. This profile
+identifies each by a key identifier (§5.2), and the relying party's trust policy decides which
+party a key belongs to [P-24].
+
+| `state` | Signed by | Meaning |
+|---|---|---|
+| `proposed` | the proposer | offers contract version `contract_digest` for transaction `transaction` |
+| `accepted` | the acceptor | agrees to that contract version for that transaction, answering one `proposed` record |
+| `declined` | the acceptor | refuses it, answering one `proposed` record |
+| `countered` | the acceptor | refuses it and names a different contract version it would accept, answering one `proposed` record |
+
+Rules:
+
+- The signer of a record is fixed by its `state`: the proposer for `proposed`, and the acceptor
+  for the other three [P-24]. So an `accepted` record is always the acceptor's act.
+- A counteroffer is a new contract version with its own digest, never an edit of the proposed
+  one [P-24]. A `countered` record accepts nothing. For the counter version to be accepted, the
+  proposer issues a new `proposed` record naming it, and the acceptor answers that record [P-24].
+- An acceptor MUST NOT sign more than one answer to the same `proposed` record [P-24]. A verifier
+  that holds two verified answers to one proposal, with different record digests, reports
+  `acceptance_unique` as `FAIL` (§11.1.7).
+- An acceptor MUST sign an `accepted` record before it takes the action the transaction names
+  [P-24]. The record's own `issued_at` does not show that it did (§11.1.5).
+
+#### 11.1.2 The record
+
+| Member | Signed | Presence | Value |
+|---|---|---|---|
+| `profile` | yes | REQUIRED | the profile identifier, `evidence-interop/0` |
+| `state` | yes | REQUIRED | exactly one of `proposed`, `accepted`, `declined`, `countered`, exact case |
+| `contract_ref` | yes | REQUIRED | the contract version as `<contract_id>@<version>` [RES §1] |
+| `contract_digest` | yes | REQUIRED | SHA-256 over UTF-8 of JCS of the contract version document, as for any JSON value (§5.1) [DE §2] |
+| `transaction` | yes | REQUIRED | `{"scheme": <text>, "id": <text>}`: the exchange, or under `session` the session, this record is about |
+| `proposer` | yes | REQUIRED | the proposer's key identifier |
+| `acceptor` | yes | REQUIRED | the acceptor's key identifier |
+| `proposal_digest` | yes, when present | REQUIRED in `accepted`, `declined` and `countered`; absent in `proposed` | the record digest of the `proposed` record answered |
+| `counter_contract_digest` | yes, when present | REQUIRED in `countered`; absent otherwise | the digest, computed as for `contract_digest`, of the counter version |
+| `session` | yes, when present | OPTIONAL | the session scope (§11.1.3) |
+| `authority` | yes, when present | OPTIONAL | an array of digests, each over the as-transmitted octets (§5.1) of one principal authorization the signer cites (§11.1.6) |
+| `issued_at` | yes | REQUIRED | the time the signer claims it signed the record |
+| `sig` | — | REQUIRED | Ed25519 by the key the `state` names (§11.1.1) over the signing input |
+
+Rules [P-25]:
+
+- The **signing input** is UTF-8 of JCS over the object made of every member present except
+  `sig` (§5.1).
+- The **record digest** is SHA-256 over UTF-8 of JCS of the whole record, `sig` included, as for
+  the absence record (§5.1). Every other object cites a record by this digest.
+- `transaction.scheme` is a text string naming the kind of reference, for example a task
+  identifier of an agent-to-agent protocol, a checkout or payment-authorization identifier, a
+  payment resource, or a native exchange identifier. This revision registers no schemes. Two
+  transaction references are equal only when both members are equal as exact strings.
+- An answer MUST carry the same `contract_ref`, `contract_digest`, `transaction`, `proposer`,
+  `acceptor` and `session` values as the `proposed` record its `proposal_digest` names [P-25].
+- `contract_ref` is readable, and `contract_digest` is what binds. A verifier MUST check
+  `contract_digest` against the contract version it evaluates, and MUST also check that
+  `contract_ref` names that same version [P-25].
+- The record is a JSON object, or the same map in CBOR (§4). It is not a reply to an evidence
+  request, and the message types of §1 do not apply to it.
+
+#### 11.1.3 Session scope
+
+One accepted record MAY cover a bounded session of exchanges, so that each exchange cites the
+agreement instead of negotiating again [P-26]. `transaction` then names the session, and
+`session` is:
+
+| Member | Presence | Value |
+|---|---|---|
+| `not_before` | REQUIRED | a time |
+| `not_after` | REQUIRED | a time, not earlier than `not_before` |
+| `policy` | OPTIONAL | the digest of a policy document the parties agree for the session |
+| `terms` | OPTIONAL | the digest of further terms, for example a permitted spend |
+
+The digest of `policy` or `terms` is computed by §5.1: over UTF-8 of JCS for a JSON document,
+and over the octets as transmitted for any other document.
+
+Rules [P-26]:
+
+- The requirements of the session are the contract version's requirements. The session adds a
+  time window, not requirements.
+- Each exchange in a session is evaluated on its own, and gets its own finding (§11.1.8).
+- An exchange is covered by a session acceptance only when its execution records cite the
+  acceptance's record digest, and every time the verifier holds for the exchange lies within
+  `not_before` and `not_after`, both inclusive [P-26].
+- This profile does not interpret `policy` or `terms`. Neither is authority (§11.1.6).
+
+#### 11.1.4 Acceptance receipt
+
+The proposer MAY sign a receipt for an answer it received [P-27]. Every member is REQUIRED [P-27]:
+
+| Member | Signed | Value |
+|---|---|---|
+| `profile` | yes | the profile identifier |
+| `acceptance_digest` | yes | the record digest of the answer received |
+| `received_at` | yes | the time the proposer received it |
+| `receiver` | yes | the proposer's key identifier |
+| `sig` | — | Ed25519 by `receiver` over UTF-8 of JCS of the other four members |
+
+Its digest is SHA-256 over UTF-8 of JCS of the whole receipt, `sig` included. The receipt is an
+acknowledgment: it records receipt only, and asserts no agreement with what was received
+[BA §3; P-27]. Its only use under this profile is as ordering evidence (§11.1.5).
+
+#### 11.1.5 Ordering evidence
+
+A signature over a claimed time proves only that the signer asserted that time. An acceptance
+written after the action can carry any earlier `issued_at`. So a verifier grants that an
+acceptance came before the action only from evidence produced by a party other than the
+acceptor [P-28].
+
+Two points are compared:
+
+- The **action reference point** is the earliest time the verifier holds for the action. That
+  is the time the acceptor's own records claim for it, and every time at which a party other
+  than the acceptor attests that the action or its record existed. An example of the second is a
+  log checkpoint that covers the action's record, signed by an operator or witness other than
+  the acceptor. Each of these shows only that the action had happened by then, so the earliest
+  is used [P-28]. A relying party's trust policy MAY require that the action reference point
+  include a time attested by a party other than the acceptor [P-28].
+- The **ordering point** of one piece of ordering evidence is a time by which the accepted record
+  existed. A party other than the acceptor asserts that time and signs it [P-28].
+
+So "accepted before action" means that the acceptance existed before the earliest time the held
+evidence gives for the action. §11.1.10 states what that leaves open.
+
+| Form | Status | Ordering point |
+|---|---|---|
+| (i) Counterparty-signed acceptance receipt (§11.1.4) | **normative** | `received_at` |
+| (ii) Transparency-service or witness receipt: a proof that the accepted record's digest is included in a log. It comes with a time that the transparency service, or a witness [EL §3], itself asserts and signs as the time it registered or observed that inclusion | **normative** | that signed time |
+| Causal binding: execution records that commit to the acceptance's record digest and sit at a later position of an append-only log | **informative** | none |
+
+Rules [P-28]:
+
+- A form (i) receipt counts only when all of the following hold [P-28]:
+  - `receipt_signature` and `receipt_signer` pass;
+  - `acceptance_digest` equals the record digest of the accepted record being evaluated.
+- A form (ii) object counts only when its inclusion proof verifies and the time's signer is
+  neither the acceptor nor a key the acceptor controls, as the relying party's trust policy
+  decides [P-28].
+  - A receipt proves inclusion and nothing else [EL §3], so a receipt alone gives no ordering
+    point.
+  - A witness's countersignature over a checkpoint does not adopt any time the checkpoint's
+    operator wrote. Only a time the witness itself signs is an ordering point [P-28].
+  - This revision names no log or receipt mechanism (P-13). A verifier that does not implement
+    the mechanism of a form (ii) object reports it as `NOT_CHECKED`.
+- Before comparison, a time given at finer than seconds precision is reduced to the §5.2 form.
+  An ordering point is rounded up and an action time is rounded down [P-28].
+- An ordering point establishes the order only when it is strictly earlier than the action
+  reference point, with no clock-skew allowance [P-28].
+- Causal binding shows that the execution records were written after the acceptance existed. It
+  does not show that the action was taken after, and the acceptor can write both the acceptance
+  and those records. A verifier MAY report it in `detail`, and MUST NOT report
+  `acceptance_ordering` as `PASS` on the strength of it [P-28].
+- No other object is ordering evidence in this revision. A counterparty-signed object that cites
+  the acceptance's digest for another purpose, such as a request for the action, never counts.
+  Only the §11.1.4 receipt does [P-28].
+
+**`acceptance_ordering` status.** The first rule that applies decides [P-28]:
+
+1. `NOT_PRESENT`: the verifier holds no time for the action.
+2. `FAIL`: the record's own `issued_at` is not earlier than some time the verifier holds for the
+   action, including the acceptor's own claim. The acceptor's own record then states that it
+   accepted at or after the action. This test is applied even when the trust policy requires a
+   time from another party.
+3. `NOT_PRESENT`: the trust policy requires a time for the action from a party other than the
+   acceptor, and none is held.
+4. `PASS`: at least one form (i) or form (ii) object counts, and its ordering point is earlier
+   than the action reference point.
+5. `INCONCLUSIVE`: at least one form (i) or form (ii) object counts, and none of their ordering
+   points is earlier than the action reference point; or the trust policy could not resolve a
+   form (i) or form (ii) signer. A receipt received after the action does not show that the
+   acceptance was made after it.
+6. `NOT_CHECKED`: the only ordering evidence held is form (ii) objects whose mechanism the
+   verifier does not implement.
+7. `NOT_PRESENT`: no form (i) or form (ii) object counts. Objects that fail the conditions above
+   count as not held.
+
+#### 11.1.6 An acknowledgment is a receipt; acceptance is not authority
+
+- An acknowledgment records receipt only [BA §3]. So does an `acknowledges` link [EL §5] and an
+  acceptance receipt (§11.1.4). A verifier MUST NOT treat any of them as an acceptance, and MUST
+  NOT reach any finding other than `not_accepted` (§11.1.8) from them alone [P-29]. A BA action
+  attestation records how a request was handled [BA §3]. It is not an acceptance either.
+- An accepted record shows that the acceptor agreed to produce the evidence the contract version
+  names. It does not show that the acceptor may spend for, bind, or act for any principal [P-29].
+- A record **asserts authority** when it carries `authority`. A presentation asserts authority
+  when it states that the acceptor may spend for, bind or act for a principal [P-29].
+- A cited authorization supports the assertion only when two things hold [P-29]:
+  - it passes `native_check` (§7.2) over its as-transmitted octets [P-11];
+  - read by its own format, it names the acceptor's key, or a party the trust policy maps that
+    key to, and covers the transaction.
+
+  This profile does not define how a foreign format names a party or a scope. `method` names the
+  reading used.
+- Where no cited authorization supports it, the verifier MUST label the authority asserted, by
+  the record or by a presentation of it, with the token `agent_origin_assertion` [P-29]. The
+  verifier puts the token in the `detail` of the record's `acceptance_binding` report, and a
+  presentation shows it next to the assertion.
+- `policy`, `terms` and every other member of a record are agreement, never authority [P-29].
+
+#### 11.1.7 Verification properties
+
+These properties join the catalogue of §7.2 and use the vocabulary of §7.1 [P-30]. "Trust as of
+evaluation" means the relying party's trust policy at the evaluation time. A policy MAY still
+accept a key retired since, for a record whose `acceptance_ordering` passed with an ordering point
+before the retirement [P-30]. "Accepts a key as the proposer" means three things. The policy
+trusts the key, maps it to a party, and that party is not the one it maps the `acceptor` key to
+[P-30]. "As the acceptor" is the same with the roles exchanged.
+
+| Property | Applies to | Check | Decides the finding (§11.1.8) |
+|---|---|---|---|
+| `acceptance_form` | acceptance record | `profile` is `evidence-interop/0`; `state` is one of the four tokens in exact case; members are present or absent as §11.1.2 requires for that state; every time has the §5.2 form; under `session`, `not_after` is not earlier than `not_before` | yes |
+| `acceptance_signature` | acceptance record | `sig` verifies over the §11.1.2 signing input under the key the `state` names | yes |
+| `acceptance_signer_trust` | acceptance record | trust as of evaluation accepts the signing key as the proposer (for `proposed`) or as the acceptor (otherwise) | yes |
+| `acceptance_binding` | acceptance record | `contract_digest` equals the digest of the contract version evaluated, and `contract_ref` names that version | yes |
+| `proposal_binding` | answer and its `proposed` record | `proposal_digest` names a held `proposed` record; that record's `acceptance_signature` passes and trust as of evaluation accepts its signer as the proposer; the §11.1.2 equality rule holds. `NOT_PRESENT` when that record is not held | yes |
+| `acceptance_unique` | two or more answers | among answers with the same `proposal_digest` and `acceptor`, each with `acceptance_signature` and `acceptance_signer_trust` passed: one record digest. `NOT_CHECKED` with fewer than two | a `FAIL` is adverse |
+| `execution_cites_acceptance` | the execution records a requirement depends on | each is attributed to the `acceptor` key by its own signature, or by the trust policy; each commits to the accepted record's digest, by the citation its own format provides, for example a `cites` link [EL §5]; without `session` it names the record's `transaction`, and under `session` it lies within the window (§11.1.3). `method` names the citation. `NOT_PRESENT` when no execution record is held | yes |
+| `acceptance_ordering` | accepted record | §11.1.5 | yes |
+| `receipt_signature` | acceptance receipt | `sig` verifies under `receiver` over the §11.1.4 signing input | for form (i) |
+| `receipt_signer` | acceptance receipt | `receiver` equals the record's `proposer` and differs from its `acceptor`, and trust as of evaluation accepts it as the proposer | for form (i) |
+
+When a record or receipt names a `profile` the verifier does not implement, every property of that
+object is `NOT_CHECKED`. This applies the envelope rule of §3.3 step 5 to these objects [P-30].
+
+#### 11.1.8 Acceptance findings
+
+A verifier reports one acceptance finding per contract version and transaction. Under `session`,
+it reports one per exchange (§11.1.3). The candidates are the held `accepted` records whose
+`contract_digest` is that version's digest, and whose `proposer` and `acceptor` are the
+requester's and the performing party's keys for the transaction or exchange evaluated [P-30]:
+
+- A transaction's candidates carry no `session`, and their `transaction` equals it.
+- An exchange's candidates carry `session`, their `transaction` equals the session the exchange
+  belongs to, and their window covers the exchange.
+
+The verifier evaluates each candidate by the table below, where the first row that applies
+decides [P-30]:
+
+- If any candidate is `not_accepted` because `acceptance_unique` is `FAIL`, the finding is
+  `not_accepted`. An acceptor that equivocates on one proposal is not credited with another.
+- Otherwise, if any candidate is `accepted_after_action`, the finding is `accepted_after_action`.
+- Otherwise the verifier reports the strongest result, in the order `accepted_before_action`,
+  `accepted_execution_cites`, `accepted_not_cited`, `not_accepted`.
+
+The property reports of every candidate are reported with the finding. A `declined` or
+`countered` answer to a different proposal does not change the result for a candidate.
+
+| Finding | When |
+|---|---|
+| `not_accepted` | there is no candidate; or `acceptance_form`, `acceptance_signature`, `acceptance_signer_trust`, `acceptance_binding` or `proposal_binding` is not `PASS`; or `acceptance_unique` is `FAIL` |
+| `accepted_after_action` | `acceptance_ordering` is `FAIL` |
+| `accepted_not_cited` | `execution_cites_acceptance` is not `PASS` |
+| `accepted_before_action` | `acceptance_ordering` is `PASS` |
+| `accepted_execution_cites` | otherwise: the acceptance exists and execution cites it, and the order is not established |
+
+How a finding is used [P-30]:
+
+- With `not_accepted`, the contract's requirements are the requester's own expectations. A
+  verifier, and any presentation of its result, MUST present them as such, and MUST NOT present
+  any of them as a commitment of the other party [P-30].
+- With any other finding, the requirements MAY be presented as a commitment of the party the
+  `acceptor` key belongs to, with the finding stated. A verifier or presentation MUST NOT state or
+  imply that the acceptance came before the action unless the finding is `accepted_before_action`
+  [P-30]. Even then, a presentation MUST say that the acceptance came before the earliest
+  evidenced time of the action (§11.1.5), not before the action without qualification [P-30].
+- A finding changes no requirement's status, sufficiency or verdict (§8). It says whom a
+  requirement binds, not whether evidence meets it.
+- Where the finding is not `not_accepted`, each claim's `contract_ref` MUST equal the accepted
+  record's `contract_ref` [RES §1; P-30]. `acceptance_binding` makes this the same version §8.3
+  names. The claim's `evidence[]` MUST list the accepted record's digest and the digest of each
+  form (i) receipt relied on [RES §5; P-30]. A form (ii) receipt relied on is listed in
+  `proofs[]` as kind `receipt` [RES §5; P-30]. Like every other mechanism, that receipt is outside
+  v0 (P-13).
+
+#### 11.1.9 The backdated acceptance, as a vector
+
+§11.5 will hold the vectors, with their key seeds, contract bytes and execution-record format
+fixed there. The case is fully expressible with the objects above. Its pinned inputs:
+
+- trust roots: proposer key `P` and acceptor key `Q`, both trusted and mapped to two different
+  parties, except in variant F; the trust policy does not require a time for the action from a
+  party other than the acceptor;
+- the contract version document and its digest `c`, under `contract_ref` `C@1`;
+- one transaction reference `T`, and evaluation time `2026-10-12T01:00:00Z`;
+- a `proposed` record by `P`, `issued_at` `2026-10-12T00:00:00Z`;
+- one execution record signed by `Q`, naming `T`, claiming the action at `2026-10-12T00:10:00Z`,
+  and citing the accepted record's digest, with no party other than `Q` attesting the action. The
+  action reference point is therefore `2026-10-12T00:10:00Z`;
+- an `accepted` record by `Q`, answering the proposal, written after the action but carrying
+  `issued_at` `2026-10-12T00:05:00Z`. Variants A to C and E to G use these exact record bytes.
+  Variant D replaces it: the 00:05 record is not held, and the execution record cites D's record.
+
+| Variant | Ordering evidence held | `acceptance_ordering` | Finding |
+|---|---|---|---|
+| A. Backdated, no ordering evidence | none | `NOT_PRESENT` | `accepted_execution_cites` |
+| B. Backdated, receipt signed by the acceptor | a receipt with `receiver` `Q` and `received_at` `2026-10-12T00:06:00Z` (`receipt_signature` `PASS`, `receipt_signer` `FAIL`) | `NOT_PRESENT` | `accepted_execution_cites` |
+| C. Backdated, honest late receipt | a receipt by `P` with `received_at` `2026-10-12T00:20:00Z` (both receipt properties `PASS`) | `INCONCLUSIVE` | `accepted_execution_cites` |
+| D. Self-admitted late acceptance | none; a different accepted record, whose `issued_at` is `2026-10-12T00:20:00Z` | `FAIL` | `accepted_after_action` |
+| E. Control: the same record bytes, with the order shown | a receipt by `P` with `received_at` `2026-10-12T00:06:00Z` (both receipt properties `PASS`) | `PASS` | `accepted_before_action` |
+| F. Backdated, receipt by a second key of the acceptor | a receipt with `receiver` `P` and `received_at` `2026-10-12T00:06:00Z`, where the trust policy maps `P` to the same party as `Q` (`receipt_signature` `PASS`, `receipt_signer` `FAIL`) | `NOT_PRESENT` | `not_accepted` |
+| G. Limit: the action's time misstated late | as E, but the action truly took place at `2026-10-12T00:01:00Z` while the execution record claims `00:10:00Z` and no other party attests it | `PASS` | `accepted_before_action` |
+
+In variant F the trust policy maps `P` to the same party as `Q`. Neither key is then accepted in
+its role (§11.1.7), so `acceptance_signer_trust`, `proposal_binding` and `receipt_signer` are
+`FAIL`, and the finding is `not_accepted`. In every other variant, `acceptance_form`,
+`acceptance_signature`, `acceptance_signer_trust`, `acceptance_binding`, `proposal_binding` and
+`execution_cites_acceptance` are `PASS`, and `acceptance_unique` is `NOT_CHECKED`.
+
+Variant E differs from A only in the receipt. It shows what the ordering evidence adds: the bytes
+of the accepted record cannot tell a backdated acceptance from an honest one. Variant G has the
+same inputs as E, so it gets the same result. It records the limit of §11.1.10: the true action
+time is not among the inputs. A policy requiring a time for the action from a party other than
+the acceptor turns G into `NOT_PRESENT`. No variant except E and G may yield
+`accepted_before_action`.
+
+#### 11.1.10 Limits
+
+- The order is shown only against the times the held evidence gives for the action. Each of those
+  times is one by which the action had happened. None of them shows that it had not happened
+  earlier. An action that took place before every time the evidence gives for it defeats the
+  comparison. That happens when the acceptor's own record of the action carries a false later time,
+  or when a third party logs or sees the action only late, and no party saw it earlier
+  (variant G). No form of ordering evidence rules this out. A relying
+  party that needs more requires evidence of the action from a party that observed it (§11.1.5).
+- A trust policy that does not know a second key of the acceptor cannot tell it from the
+  counterparty's. Form (i) is only as strong as the policy's mapping of keys to parties.
+- A form (i) receipt is the counterparty's word. When proposer and acceptor act together, it
+  shows a third party nothing. Form (ii) is then the only form independent of both, and the
+  relying party's trust policy decides which signers count.
+- A party able to sign freely can sign several answers in advance and show only the convenient
+  one. Every answer must name a proposal signed by the proposer (`proposal_binding`), and the
+  one-answer rule (§11.1.1) applies. Together they make two shown answers to one proposal
+  detectable through `acceptance_unique`. A form (i) receipt also fixes which answer the proposer
+  received.
 
 ### 11.2 Lifecycle links
 
@@ -813,7 +1185,8 @@ to this profile:
 Each is a requirement this profile adds that no pinned document states. Each is a candidate for
 a later draft revision.
 
-- **P-1** The profile identifier names one exact revision. Any byte-level change requires a new
+- **P-1** The profile identifier names one exact revision. Before first publication, filling a §11
+  placeholder that only adds objects, rows and properties keeps it. Any byte-level change requires a new
   identifier (§3.1, §3.2).
 - **P-2** The `profile` request member and the `profiles` manifest member (§3.3, §6.1).
 - **P-3** An unsupported profile version is refused `request_malformed`. ER has no dedicated token.
@@ -859,6 +1232,28 @@ a later draft revision.
 - **P-22** HTTP requests under this profile are always POST with a body (§6.1).
 - **P-23** ER has no request field naming the evidence stream. v0 leaves stream addressing to the
   responder (§6.1).
+- **P-24** One acceptance record type with four states, its signer fixed by the state; parties
+  identified by key, mapped to parties by the trust policy; a counter is a new contract version
+  answered through a new proposal; at most one answer per proposal; an acceptance is signed
+  before the action (§11.1.1).
+- **P-25** The acceptance record's members, signing input and record digest; transaction references
+  compared as exact strings with no registered schemes; an answer repeats its proposal's terms;
+  `contract_digest` binds, and `contract_ref` must name the same version (§11.1.2).
+- **P-26** The session scope: a time window over one contract version, with each exchange citing
+  the acceptance and evaluated on its own (§11.1.3).
+- **P-27** The acceptance receipt the proposer signs, as an acknowledgment in BA's sense (§11.1.4).
+- **P-28** Ordering evidence: the action reference point (optionally required by policy to include
+  a time from a party other than the acceptor), the ordering point as a time a party other than the
+  acceptor signs, the two normative forms, rounding and strict comparison with no skew allowance,
+  causal binding as informative only, and the `acceptance_ordering` status rules (§11.1.5).
+- **P-29** An acknowledgment is never an acceptance; acceptance is never authority; authority is
+  supported only by a cited authorization that passes its native check and names the acceptor and
+  the transaction, else it is labelled `agent_origin_assertion` (§11.1.6).
+- **P-30** The acceptance properties, trust as of evaluation and the meaning of accepting a key in a
+  role, the unknown-`profile` rule for records and receipts, the five acceptance findings and
+  how candidates are chosen and ranked (equivocation and self-admitted late acceptance first), how a
+  finding may be presented, and how it is bound into
+  an Evidence Result claim (§11.1.7, §11.1.8).
 
 ## References
 
@@ -868,6 +1263,10 @@ a later draft revision.
 - `draft-mih-agent-disclosure-envelope-00`, `spec/draft-mih-agent-disclosure-envelope-00.md`
   (Internet-Draft, work in progress).
 - `draft-mih-agent-settlement-records-00`, `spec/draft-mih-agent-settlement-records-00.md`
+  (Internet-Draft, work in progress).
+- `draft-mih-agent-bilateral-attestation-02`, `spec/draft-mih-agent-bilateral-attestation-02.md`
+  (Internet-Draft, work in progress).
+- `draft-mih-agent-evidence-layer-00`, `spec/draft-mih-agent-evidence-layer-00.md`
   (Internet-Draft, work in progress).
 - `draft-mih-sokolov-scitt-payload-binding`, Section 4.4, as cited by SR §8 (Internet-Draft, work
   in progress).
