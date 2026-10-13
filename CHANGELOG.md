@@ -84,6 +84,22 @@
   requirement the verifier cannot apply is `UNKNOWN`. Requirement ids must be unique within a
   contract version. Open points P-46 to P-53 list what the schema does not say, among them
   whether evidence is needed before the action, which the schema has no member for.
+- Vectors: `vectors/interop-profile-v0/` holds 49 conformance cases for
+  `spec/interop-profile-v0.md`, generated deterministically by
+  `python/scripts/generate_interop_profile_v0_vectors.py`. The cases cover:
+  - the §10.1 exchange and caller invariance;
+  - tampered, misbound, forged, declined, missing and unsupported-version responses, and each
+    required envelope property failing on its own;
+  - a carried foreign object failing its native check;
+  - the backdated acceptance (§11.1.9 A to G);
+  - the non-issuer supersession (§11.2.7 A to I);
+  - carriage over the native stream, A2A and MCP (§11.4.8).
+
+  Each case pins its trust policy (test keys only), verification policy, contract version and
+  evaluation time. `python/tests/test_interop_profile_v0_vectors.py` derives every status from
+  the inputs with code separate from the generator. It also asserts that no case yields `met` or
+  `not_met` unless sufficiency is `SATISFIED`. §11.5 now points to the corpus, and open points
+  P-54 to P-57 are added.
 
 - TypeScript: verification works without WebCrypto. `crypto.subtle` exists only in a secure
   context, so a report in a non-secure or opaque origin (some apps' attachment viewers, an http:

@@ -36,6 +36,11 @@ same-commit files in CI.
   schema `schemas/judgment/judgment-extension-v1.json`). The digest rules are
   proposed and unratified;
   `python/scripts/generate_judgment_extension_vectors.py` regenerates them.
+- `interop-profile-v0/`: conformance cases for `spec/interop-profile-v0.md`
+  (`evidence-interop/0`): the exchange, a carried foreign object, the acceptance
+  record, lifecycle links and carriage over A2A and MCP, each pinning its trust
+  policy, verification policy, contract version and evaluation time;
+  `python/scripts/generate_interop_profile_v0_vectors.py` regenerates them.
 
 - `presentation-resolution/`: shared presentation resolution vectors for
   `spec/presentation-contract-v0.md` (ABI refusal, the descriptor, the match,

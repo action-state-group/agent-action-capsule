@@ -11,8 +11,8 @@ drop it.
 This revision covers versions (§3), naming (§4), canonical bytes (§5), the digest and signature
 binding of every message (§6), per-property verification statuses (§7), the mapping from
 outcomes to an Evidence Result (§8), error codes (§9), the acceptance record (§11.1), lifecycle
-links (§11.2), the Evidence Contract prose (§11.3), and carriage over A2A and MCP with
-discovery (§11.4). Section 11.5 is a placeholder for parts that later revisions fill in.
+links (§11.2), the Evidence Contract prose (§11.3), carriage over A2A and MCP with discovery
+(§11.4), and the conformance vectors (§11.5).
 
 The documents this profile pins are Internet-Drafts, work in progress, or specifications kept in
 this repository. Open-source repositories, this one included, are implementations of them.
@@ -1113,10 +1113,10 @@ envelope over the changed digest instead makes `anchor_inclusion` `FAIL` at step
 
 ## 11. Parts filled by later revisions
 
-§11.1 to §11.4 are specified. The other headings are placeholders, and nothing under them is
-specified yet. §11.1 to §11.4 were filled before `evidence-interop/0` was published. They add
-objects and properties, and add rows to the tables of §4 and §7.2. They change no existing
-signing input or byte rule, so they keep the identifier (§3.1).
+§11.1 to §11.4 are specified, and §11.5 points to the conformance vectors. §11.1 to §11.4 were
+filled before `evidence-interop/0` was published. They add objects and properties, and add rows to
+the tables of §4 and §7.2. They change no existing signing input or byte rule, so they keep the
+identifier (§3.1).
 
 ### 11.1 Acceptance record
 
@@ -1417,7 +1417,7 @@ How a finding is used [P-30]:
 
 #### 11.1.9 The backdated acceptance, as a vector
 
-§11.5 will hold the vectors, with their key seeds, contract bytes and execution-record format
+§11.5 holds the vectors (`acceptance-*`), with their key seeds, contract bytes and execution-record format
 fixed there. The case is fully expressible with the objects above. Its pinned inputs:
 
 - trust roots: proposer key `P` and acceptor key `Q`, both trusted and mapped to two different
@@ -1740,7 +1740,7 @@ Rules [P-36]:
 
 #### 11.2.7 The non-issuer supersession, as a vector
 
-§11.5 will hold the vectors, with their key seeds, record bytes and content documents fixed
+§11.5 holds the vectors (`lifecycle-*`), with their key seeds, record bytes and content documents fixed
 there. The case can be fully expressed with the objects above. Its pinned inputs are:
 
 - trust roots: keys `I`, `N` and `I2`, each trusted. `I` and `N` are mapped to two different
@@ -2462,7 +2462,7 @@ responder, not the verifier.
 
 #### 11.4.8 Carriage invariance, as a future vector (informative)
 
-The conformance vectors (§11.5) do not yet carry this case. A later revision can generate it from
+The conformance vectors (§11.5) carry this case and its negative halves as `carriage-*`, generated from
 the following:
 
 - **Inputs.** The responder key and log material of §10.1. Request C of §10.1, encoded as
@@ -2499,7 +2499,51 @@ objects, rows and properties, so it keeps the identifier (§3.1) [P-1].
 
 ### 11.5 Conformance vectors
 
-*Placeholder.*
+The vectors are in `vectors/interop-profile-v0/`. `python/scripts/generate_interop_profile_v0_vectors.py`
+generates them deterministically, and `python/tests/test_interop_profile_v0_vectors.py`
+checks them. Each case pins:
+
+- its trust policy, which holds test keys only, each derived from a public seed;
+- its verification policy;
+- the contract version, by `contract_ref` and `contract_digest`;
+- its evaluation time;
+- its inputs. Every request, reply and signed record is given as the octets carried; carriage
+  wrappers and plain references are given as JSON values.
+
+Each case also cites the sections its expected values come from. The contract document
+validates against the Evidence Contract v0 schema pinned as EC (§11.3), and the corpus records
+that pin's SHA-256.
+
+| Cases | What they show | Sections |
+|---|---|---|
+| `valid-exchange` | the bytes of §10.1, every required envelope property `PASS`, row 7 | §6.2.1, §8.1, §10.1 |
+| `invariance-two-nonces-two-transports` | two nonces, JSON and CBOR: two envelopes, one Artifact digest, `caller_invariance` `PASS` | §6.2, §7.2 |
+| `tampered-artifact`, `wrong-request-digest`, `envelope-*`, `verification-material-tampered`, `inclusion-proof-forged-and-signed` | one required envelope property `FAIL`, row 2 | §6.2.1, §7.2, §8.1 |
+| `forged-refusal-*`, `declined`, `missing-evidence-*` | a refusal under an untrusted key or with a bad signature; `policy_declined` (`WITHHELD`); `no_such_subject` (`GAP`); a recorded absence (`UNKNOWN`) | §6.3, §6.4, §8.1 |
+| `unsupported-version-*` | `profile_version` `FAIL`, `NOT_PRESENT` and `NOT_CHECKED`; a `request_malformed` refusal | §3.3, §8.1 |
+| `foreign-native-check-*` | a carried object failing its native check: row 5 for the requirement that is the check, row 6 for one it supports, row 2 when the envelope fails | §5.1, §8.1 |
+| `acceptance-*` | no acceptance; §11.1.9 variants A to G | §11.1 |
+| `lifecycle-*` | §11.2.7 variants A to I, and D in the other order of receipt | §11.2 |
+| `carriage-*` | §11.4.8 and each of its negative halves | §11.4 |
+
+Two record formats that §11.1.9 and §11.2.7 leave to this section are fixed for the vectors
+only, and are not registered:
+
+- an **execution record**: `action_at`, `issuer`, `links` (EL link shape, type `cites`),
+  `transaction` and `sig`;
+- a **producer record**: `claim`, `issued_at`, `producer` and `sig`, whose issuer is
+  `producer` (§11.2.3).
+
+For both, `sig` is Ed25519 over UTF-8 of JCS of the other members, and the digest is
+SHA-256 over UTF-8 of JCS of the whole record.
+
+The vectors fix four readings, each an open point:
+
+- `responder_trust` is reported for a message whose signature fails (P-54);
+- every envelope of a set whose `caller_invariance` fails takes row 1 (P-55);
+- the version-mismatch rule of §3.3 step 5 is exercised only where it does not meet the
+  unimplemented-version rule (P-56);
+- rows 5 and 6 read "every envelope property" as every required one (P-57).
 
 ## 12. Security considerations
 
@@ -2738,6 +2782,22 @@ a later draft revision.
   historical claim or its latest supported state, lifecycle statements change no evaluation, so each
   record is evaluated as issued. Open: that choice, and what an open or upheld dispute does to a
   requirement's status (§11.3.7, P-36).
+- **P-54** A refusal or envelope whose signature fails still has `responder_trust` reported on the
+  key it names. The vectors read §7.2 literally, so the check runs and passes for a trusted key. No
+  section states whether that report is made, or is `NOT_CHECKED` as for lifecycle statements
+  (§11.2.5). The mapping is the same either way (§11.5).
+- **P-55** §8.1 row 1 applies to "an envelope" with `caller_invariance` `FAIL`, but the property
+  belongs to a set of envelopes. The vectors apply row 1 to every envelope in the compared set,
+  including the ones whose artifact matches the others (§11.4.8, §11.5).
+- **P-56** §3.3 step 5 gives two rules that both apply when an envelope names an identifier that
+  differs from the one sent and that the verifier does not implement: `FAIL` for the mismatch and
+  `NOT_CHECKED` for the unknown version. They map to different rows of §8.1 (2 and 4). A later
+  revision says which rule is applied first. The vectors exercise the mismatch only with a version
+  the verifier implements (§11.5).
+- **P-57** §7.2 and §8.1 say that `native_check`, and rows 5 and 6, apply only when "every envelope
+  property" passed, while rows 5 and 6 themselves say every *required* envelope property.
+  `responder_key_current` is not required, and it is `NOT_CHECKED` whenever the verifier is offline.
+  The vectors read "every required envelope property" (§11.5).
 
 ## References
 
