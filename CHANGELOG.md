@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- Spec: `spec/interop-profile-v0.md`, the Minimum Evidence Interoperability Profile v0
+  (`evidence-interop/0`). It is an Informational, pre-Internet-Draft profile that pins
+  `draft-mih-agent-evidence-request-00` and its conformance vectors, the Disclosure Envelope
+  digest rule, the settlement-records as-transmitted rule, and Evidence Result v0. It changes no
+  draft. It fixes:
+  - profile versions and unsupported-version behaviour;
+  - one name table shared by the CBOR and JSON encodings;
+  - canonical bytes, including the as-transmitted rule for foreign objects;
+  - the signed response envelope that binds a request digest to the caller-invariant Artifact
+    digest, responder and issuance time;
+  - the refusal and absence-record shapes;
+  - recipient-specific disclosures as definition-digest derivations with salted-digest
+    commitments;
+  - a five-value per-property verification status (`PASS`, `FAIL`, `NOT_PRESENT`,
+    `NOT_CHECKED`, `INCONCLUSIVE`);
+  - the mapping from outcome to status to Evidence Result;
+  - the refusal registry as the only error codes, kept apart from transport errors.
+
+  It includes a worked example with reproducible digests and Ed25519 signatures. The acceptance
+  record, lifecycle links, Evidence Contract prose, carriage and vectors are placeholder
+  headings for later revisions.
+
 - TypeScript: verification works without WebCrypto. `crypto.subtle` exists only in a secure
   context, so a report in a non-secure or opaque origin (some apps' attachment viewers, an http:
   or data: page) could not hash, and every digest, membership and range check failed on a valid
