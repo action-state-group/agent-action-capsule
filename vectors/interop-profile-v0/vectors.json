@@ -42,6 +42,10 @@
       "I2": {
         "seed_label": "evidence-interop/0 conformance vectors: key I2",
         "public": "5323c7f148ca12022e9fa49c1ed29caf619b21cd601e87b994903bde75d75b94"
+      },
+      "requester": {
+        "seed_label": "evidence-interop/0 conformance vectors: key requester",
+        "public": "1fdc3e56ad2204c8dc9ab5da9f96ca2239c13b7c3ee5ae6798dd8dfac3a325d0"
       }
     }
   },
@@ -130,7 +134,7 @@
     "producer_record": "members claim, issued_at, producer, sig; sig is Ed25519 by producer over UTF-8 of JCS of the other members; the producer is its issuer (§11.2.3)",
     "record_digest": "SHA-256 over UTF-8 of JCS of the whole object, sig included"
   },
-  "count": 49,
+  "count": 53,
   "cases": [
     {
       "id": "valid-exchange",
@@ -215,10 +219,10 @@
             "requirements": {
               "r-record": {
                 "row": "envelope-7",
-                "status": null,
-                "sufficiency": null,
-                "verdict": null,
-                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule."
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
               }
             },
             "claim": {
@@ -340,10 +344,10 @@
             "requirements": {
               "r-record": {
                 "row": "envelope-7",
-                "status": null,
-                "sufficiency": null,
-                "verdict": null,
-                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule."
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
               }
             },
             "claim": {
@@ -381,10 +385,10 @@
             "requirements": {
               "r-record": {
                 "row": "envelope-7",
-                "status": null,
-                "sufficiency": null,
-                "verdict": null,
-                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule."
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
               }
             },
             "claim": {
@@ -1697,6 +1701,287 @@
       }
     },
     {
+      "id": "missing-evidence-recorded-absence-signed",
+      "description": "The absence record of missing-evidence-recorded-absence, signed by the requester. The signing input is JCS of every member except sig, key_id included (§6.4). Conforming; the same UNKNOWN as the unsigned record.",
+      "cites": [
+        "§6.4",
+        "§7.3 Absence",
+        "§8.1 recorded absence",
+        "P-8"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:00:10Z/c\",\"profile\":\"evidence-interop/0\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [],
+        "absence_record": {
+          "media_type": "application/json",
+          "octets_text": "{\"key_id\":\"1fdc3e56ad2204c8dc9ab5da9f96ca2239c13b7c3ee5ae6798dd8dfac3a325d0\",\"outcome\":\"recorded_absence\",\"recorded_at\":\"2026-10-12T00:01:10Z\",\"request_digest\":\"3e68348cdf52d26447fff2ff47ec16b9539a93cee72497bf50a99f3d39c158cd\",\"route\":\"peer:example-responder\",\"sig\":\"2de55e76615eac95ae57e76532a093d8b94dba1261d260b933d0bec512d9a361db66840cca1075c285c534fb46c5ed35e36447e07196c5e74b9a647a6cbb8505\",\"window\":{\"closed\":\"2026-10-12T00:01:10Z\",\"opened\":\"2026-10-12T00:00:10Z\"}}"
+        }
+      },
+      "expected": {
+        "request_digest": "3e68348cdf52d26447fff2ff47ec16b9539a93cee72497bf50a99f3d39c158cd",
+        "replies": [],
+        "absence": {
+          "form": "conforming",
+          "requirements": {
+            "r-record": {
+              "row": "absence",
+              "status": "UNKNOWN",
+              "sufficiency": "UNKNOWN",
+              "verdict": "not_evaluable"
+            }
+          },
+          "claim": {
+            "evidence": [
+              {
+                "digest_alg": "SHA-256",
+                "digest": "d92f2255355c6ed0511065fd55805bf24692f7e9c6a4eeaa94c1b1a44e5af598"
+              }
+            ],
+            "proofs": []
+          },
+          "presentation_kind_recommended": "story"
+        }
+      }
+    },
+    {
+      "id": "missing-evidence-recorded-absence-key-id-unsigned",
+      "description": "The same absence record, signed over every member except key_id and sig: the refusal's signing input (§6.3), not the absence record's (§6.4). The signature does not verify, so the record is not a conforming absence and no claim is made from it.",
+      "cites": [
+        "§6.4",
+        "§7.3 Absence",
+        "§8.2 invariant 3",
+        "P-8"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:00:10Z/c\",\"profile\":\"evidence-interop/0\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [],
+        "absence_record": {
+          "media_type": "application/json",
+          "octets_text": "{\"key_id\":\"1fdc3e56ad2204c8dc9ab5da9f96ca2239c13b7c3ee5ae6798dd8dfac3a325d0\",\"outcome\":\"recorded_absence\",\"recorded_at\":\"2026-10-12T00:01:10Z\",\"request_digest\":\"3e68348cdf52d26447fff2ff47ec16b9539a93cee72497bf50a99f3d39c158cd\",\"route\":\"peer:example-responder\",\"sig\":\"c1eaf3b88058cfea933d9cfbfd3dc0dc3b0946d168b7620c15a05454625c40ec4c2ff6dd3af6d051f099e6723aacedd33ad19d0505edac07a8a82d108edef304\",\"window\":{\"closed\":\"2026-10-12T00:01:10Z\",\"opened\":\"2026-10-12T00:00:10Z\"}}"
+        }
+      },
+      "expected": {
+        "request_digest": "3e68348cdf52d26447fff2ff47ec16b9539a93cee72497bf50a99f3d39c158cd",
+        "replies": [],
+        "absence": {
+          "form": "not_conforming",
+          "requirements": {}
+        }
+      }
+    },
+    {
+      "id": "missing-evidence-recorded-absence-key-id-without-sig",
+      "description": "The same absence record with key_id and no sig. key_id and sig are both present or both absent (§6.4), so the record is not a conforming absence and no claim is made from it.",
+      "cites": [
+        "§6.4",
+        "§7.3 Absence",
+        "§8.2 invariant 3",
+        "P-8"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:00:10Z/c\",\"profile\":\"evidence-interop/0\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [],
+        "absence_record": {
+          "media_type": "application/json",
+          "octets_text": "{\"key_id\":\"1fdc3e56ad2204c8dc9ab5da9f96ca2239c13b7c3ee5ae6798dd8dfac3a325d0\",\"outcome\":\"recorded_absence\",\"recorded_at\":\"2026-10-12T00:01:10Z\",\"request_digest\":\"3e68348cdf52d26447fff2ff47ec16b9539a93cee72497bf50a99f3d39c158cd\",\"route\":\"peer:example-responder\",\"window\":{\"closed\":\"2026-10-12T00:01:10Z\",\"opened\":\"2026-10-12T00:00:10Z\"}}"
+        }
+      },
+      "expected": {
+        "request_digest": "3e68348cdf52d26447fff2ff47ec16b9539a93cee72497bf50a99f3d39c158cd",
+        "replies": [],
+        "absence": {
+          "form": "not_conforming",
+          "requirements": {}
+        }
+      }
+    },
+    {
+      "id": "missing-evidence-recorded-absence-sig-without-key-id",
+      "description": "The same absence record with the valid sig of missing-evidence-recorded-absence-signed and no key_id. key_id and sig are both present or both absent (§6.4), so the record is not a conforming absence and no claim is made from it.",
+      "cites": [
+        "§6.4",
+        "§7.3 Absence",
+        "§8.2 invariant 3",
+        "P-8"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:00:10Z/c\",\"profile\":\"evidence-interop/0\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [],
+        "absence_record": {
+          "media_type": "application/json",
+          "octets_text": "{\"outcome\":\"recorded_absence\",\"recorded_at\":\"2026-10-12T00:01:10Z\",\"request_digest\":\"3e68348cdf52d26447fff2ff47ec16b9539a93cee72497bf50a99f3d39c158cd\",\"route\":\"peer:example-responder\",\"sig\":\"2de55e76615eac95ae57e76532a093d8b94dba1261d260b933d0bec512d9a361db66840cca1075c285c534fb46c5ed35e36447e07196c5e74b9a647a6cbb8505\",\"window\":{\"closed\":\"2026-10-12T00:01:10Z\",\"opened\":\"2026-10-12T00:00:10Z\"}}"
+        }
+      },
+      "expected": {
+        "request_digest": "3e68348cdf52d26447fff2ff47ec16b9539a93cee72497bf50a99f3d39c158cd",
+        "replies": [],
+        "absence": {
+          "form": "not_conforming",
+          "requirements": {}
+        }
+      }
+    },
+    {
       "id": "unsupported-version-mismatch",
       "description": "Request C asks for evidence-interop/0; the envelope names evidence-interop/1. The verifier implements both, so only the mismatch rule of §3.3 step 5 applies: profile_version FAIL and every other envelope property NOT_CHECKED; §8.1 row 2.",
       "cites": [
@@ -2307,17 +2592,17 @@
             "requirements": {
               "r-carried-signature": {
                 "row": "envelope-7",
-                "status": null,
-                "sufficiency": null,
-                "verdict": null,
-                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule."
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
               },
               "r-authorized": {
                 "row": "envelope-7",
-                "status": null,
-                "sufficiency": null,
-                "verdict": null,
-                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule."
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
               }
             },
             "claim": {
@@ -4449,6 +4734,10 @@
         },
         "mcp": {
           "call": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {}
+            },
             "name": "evidence_request",
             "arguments": {
               "request": "pGVub25jZXYyMDI2LTEwLTEyVDAwOjAwOjEwWi9jZ3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8wZ3N1YmplY3ShZnJlY29yZHhAMmZiZGI5NWJkZWJhNjJmOTQ5YmNiNjAyNjA2MWZjZDY2YzAyMTUyM2EzOWU1OGZjMmRlMWNkNDRmZjYzMTI0NGhjb3ZlcmFnZaFsZXhwZWN0ZWRfcGlueEAxNmYxNWRkNTQ3NWQ1ZThlYzFmYjdhODQ0NzAzOTFlMTFkNzY2MzIzMjM2NWMxNzQ5YzYwY2E3NDg5Y2ZmZTk5",
@@ -4456,6 +4745,7 @@
             }
           },
           "result": {
+            "resultType": "complete",
             "content": [],
             "isError": false,
             "structuredContent": {
@@ -4487,6 +4777,7 @@
             }
           },
           "mcp_evidence_manifest": {
+            "resultType": "complete",
             "content": [],
             "isError": false,
             "structuredContent": {
@@ -4539,10 +4830,10 @@
             "requirements": {
               "r-record": {
                 "row": "envelope-7",
-                "status": null,
-                "sufficiency": null,
-                "verdict": null,
-                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule."
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
               }
             },
             "claim": {
@@ -4579,10 +4870,10 @@
             "requirements": {
               "r-record": {
                 "row": "envelope-7",
-                "status": null,
-                "sufficiency": null,
-                "verdict": null,
-                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule."
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
               }
             },
             "claim": {
@@ -4619,10 +4910,10 @@
             "requirements": {
               "r-record": {
                 "row": "envelope-7",
-                "status": null,
-                "sufficiency": null,
-                "verdict": null,
-                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule."
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
               }
             },
             "claim": {
@@ -4750,6 +5041,10 @@
         },
         "mcp": {
           "call": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {}
+            },
             "name": "evidence_request",
             "arguments": {
               "request": "pGVub25jZXYyMDI2LTEwLTEyVDAwOjAwOjEwWi9jZ3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8wZ3N1YmplY3ShZnJlY29yZHhAMmZiZGI5NWJkZWJhNjJmOTQ5YmNiNjAyNjA2MWZjZDY2YzAyMTUyM2EzOWU1OGZjMmRlMWNkNDRmZjYzMTI0NGhjb3ZlcmFnZaFsZXhwZWN0ZWRfcGlueEAxNmYxNWRkNTQ3NWQ1ZThlYzFmYjdhODQ0NzAzOTFlMTFkNzY2MzIzMjM2NWMxNzQ5YzYwY2E3NDg5Y2ZmZTk5",
@@ -4757,6 +5052,7 @@
             }
           },
           "result": {
+            "resultType": "complete",
             "content": [],
             "isError": false,
             "structuredContent": {
@@ -4797,10 +5093,10 @@
             "requirements": {
               "r-record": {
                 "row": "envelope-7",
-                "status": null,
-                "sufficiency": null,
-                "verdict": null,
-                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule."
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
               }
             },
             "claim": {
@@ -4837,10 +5133,10 @@
             "requirements": {
               "r-record": {
                 "row": "envelope-7",
-                "status": null,
-                "sufficiency": null,
-                "verdict": null,
-                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule."
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
               }
             },
             "claim": {
@@ -4998,6 +5294,10 @@
         },
         "mcp": {
           "call": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {}
+            },
             "name": "evidence_request",
             "arguments": {
               "request": "pGVub25jZXYyMDI2LTEwLTEyVDAwOjAwOjEwWi9jZ3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8wZ3N1YmplY3ShZnJlY29yZHhAMmZiZGI5NWJkZWJhNjJmOTQ5YmNiNjAyNjA2MWZjZDY2YzAyMTUyM2EzOWU1OGZjMmRlMWNkNDRmZjYzMTI0NGhjb3ZlcmFnZaFsZXhwZWN0ZWRfcGlueEAxNmYxNWRkNTQ3NWQ1ZThlYzFmYjdhODQ0NzAzOTFlMTFkNzY2MzIzMjM2NWMxNzQ5YzYwY2E3NDg5Y2ZmZTk5",
@@ -5005,6 +5305,7 @@
             }
           },
           "result": {
+            "resultType": "complete",
             "content": [],
             "isError": false,
             "structuredContent": {
@@ -5309,6 +5610,10 @@
         },
         "mcp": {
           "call": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {}
+            },
             "name": "evidence_request",
             "arguments": {
               "request": "pGVub25jZXYyMDI2LTEwLTEyVDAwOjAwOjEwWi9jZ3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8wZ3N1YmplY3ShZnJlY29yZHhAMmZiZGI5NWJkZWJhNjJmOTQ5YmNiNjAyNjA2MWZjZDY2YzAyMTUyM2EzOWU1OGZjMmRlMWNkNDRmZjYzMTI0NGhjb3ZlcmFnZaFsZXhwZWN0ZWRfcGlueEAxNmYxNWRkNTQ3NWQ1ZThlYzFmYjdhODQ0NzAzOTFlMTFkNzY2MzIzMjM2NWMxNzQ5YzYwY2E3NDg5Y2ZmZTk5",
@@ -5316,6 +5621,7 @@
             }
           },
           "result": {
+            "resultType": "complete",
             "content": [
               {
                 "type": "text",
@@ -5416,6 +5722,10 @@
         },
         "mcp": {
           "call": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {}
+            },
             "name": "evidence_request",
             "arguments": {
               "request": "pGVub25jZXYyMDI2LTEwLTEyVDAwOjAwOjEwWi9jZ3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8wZ3N1YmplY3ShZnJlY29yZHhAMmZiZGI5NWJkZWJhNjJmOTQ5YmNiNjAyNjA2MWZjZDY2YzAyMTUyM2EzOWU1OGZjMmRlMWNkNDRmZjYzMTI0NGhjb3ZlcmFnZaFsZXhwZWN0ZWRfcGlueEAxNmYxNWRkNTQ3NWQ1ZThlYzFmYjdhODQ0NzAzOTFlMTFkNzY2MzIzMjM2NWMxNzQ5YzYwY2E3NDg5Y2ZmZTk5",
@@ -5423,6 +5733,7 @@
             }
           },
           "result": {
+            "resultType": "complete",
             "content": [],
             "isError": true,
             "structuredContent": {
@@ -5459,10 +5770,10 @@
             "requirements": {
               "r-record": {
                 "row": "envelope-7",
-                "status": null,
-                "sufficiency": null,
-                "verdict": null,
-                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule."
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
               }
             },
             "claim": {
@@ -5751,6 +6062,7 @@
             }
           },
           "mcp_evidence_manifest": {
+            "resultType": "complete",
             "content": [],
             "isError": false,
             "structuredContent": {

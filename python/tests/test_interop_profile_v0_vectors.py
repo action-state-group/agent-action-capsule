@@ -497,11 +497,15 @@ class Verifier:
     # ---- an absence record (§6.4, §7.3) ----
     def absence(self, data: bytes, req_octets: bytes) -> dict:
         rec = strict_json(data.decode("utf-8"))
+        unsigned = ("sig", "key_id") if self.m == "absence-key-id-unsigned" else ("sig",)
         ok = (rec.get("outcome") == "recorded_absence" and rec["request_digest"] == shx(req_octets)
               and TIME.match(rec["recorded_at"]) and rec["recorded_at"] >= rec["window"]["closed"]
-              and "reason" not in rec and ("sig" not in rec or verifies(rec["key_id"], rec["sig"], jcs(
-                  {k: v for k, v in rec.items() if k != "sig"}))))
-        return {"form": "conforming" if ok else "not_conforming",
+              and "reason" not in rec and ("key_id" in rec) == ("sig" in rec)
+              and ("sig" not in rec or verifies(rec["key_id"], rec["sig"], jcs(
+                  {k: v for k, v in rec.items() if k not in unsigned}))))
+        if not ok:  # not an absence, so no claim (§6.4, §8.2 invariant 3)
+            return {"form": "not_conforming", "requirements": {}}
+        return {"form": "conforming",
                 "requirements": {"r-record": {"row": "absence"}},
                 "claim": {"evidence": [{"digest_alg": "SHA-256", "digest": shx(data)}], "proofs": []}}
 
@@ -916,6 +920,7 @@ MUTANTS = {
     "issuer-by-party": "treats a key mapped to the issuer's party as the issuer (§11.2.3)",
     "rejected-task-is-refusal": "reads TASK_STATE_REJECTED as a refusal (§11.4.4)",
     "is-error-is-transport": "classifies by MCP isError instead of the reply octets (§11.4.5)",
+    "absence-key-id-unsigned": "checks an absence record's sig over the refusal's signing input, key_id left out (§6.4)",
 }
 
 
@@ -951,8 +956,8 @@ def invariant_violations(corpus: dict) -> list[str]:
             bad.append(f"{where}: status {b['status']} does not project to {b['sufficiency']}")
         if b["sufficiency"] not in (None, "SATISFIED") and b["verdict"] != "not_evaluable":
             bad.append(f"{where}: sufficiency {b['sufficiency']} without not_evaluable")
-        if b["status"] is None and (b["sufficiency"], b["verdict"]) != (None, None):
-            bad.append(f"{where}: row 7 states a result the profile leaves to the contract")
+        if None in (b["status"], b["sufficiency"], b["verdict"]):
+            bad.append(f"{where}: an empty result; a requirement the verifier cannot apply is UNKNOWN (§11.3.7)")
         if b["status"] in ("WITHHELD", "NOT_COMMITTED") and "disclosure" in holder.get(
                 "presentation_kinds_allowed", ["disclosure"]):
             bad.append(f"{where}: {b['status']} may be shown as disclosure")
@@ -966,7 +971,7 @@ ROW_TRIPLES = {
     "envelope-4": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
     "envelope-5": ("SATISFIED", "SATISFIED", "not_met"),
     "envelope-6": ("INSUFFICIENT", "INSUFFICIENT", "not_evaluable"),
-    "envelope-7": (None, None, None),
+    "envelope-7": ("UNKNOWN", "UNKNOWN", "not_evaluable"),  # no content evaluator (§11.3.7)
     "refusal-no_such_subject": ("NOT_FOUND", "GAP", "not_evaluable"),
     "refusal-withheld": ("WITHHELD", "GAP", "not_evaluable"),
     "refusal-deadline_or_malformed": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
@@ -983,7 +988,8 @@ def test_no_vector_yields_met_or_not_met_unless_satisfied():
         assert (b["status"], b["sufficiency"], b["verdict"]) == ROW_TRIPLES[b["row"]], f"{cid}/{name}"
 
 
-@pytest.mark.parametrize("mutation", ["row-6-not-met", "row-2-met", "withheld-as-disclosure", "row-7-met"])
+@pytest.mark.parametrize("mutation", ["row-6-not-met", "row-2-met", "withheld-as-disclosure", "row-7-met",
+                                      "row-7-null"])
 def test_invariant_check_catches_its_mutant(mutation):
     corpus = copy.deepcopy(DATA)
     for _, _, b, holder in requirement_blocks(corpus):
@@ -995,6 +1001,8 @@ def test_invariant_check_catches_its_mutant(mutation):
             holder["presentation_kinds_allowed"] = ["analysis", "disclosure", "story"]
         elif mutation == "row-7-met" and b["row"] == "envelope-7":
             b["verdict"] = "met"
+        elif mutation == "row-7-null" and b["row"] == "envelope-7":
+            b["status"] = b["sufficiency"] = b["verdict"] = None
     assert invariant_violations(corpus), f"invariant check missed {mutation}"
 
 

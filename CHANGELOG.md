@@ -45,6 +45,15 @@
   `verify_settlements` refuse a caller-built `Value` nested deeper than 128 levels (the decoder's
   limit) before any recursive work, so deep input cannot overflow the stack: the Bundle is
   `bundle_malformed` on every claim, the record `invalid`, the leg `capsule_invalid`.
+- interop-profile-v0 vectors and reference verifier: a row 7 requirement with no content
+  evaluator is reported `UNKNOWN`, sufficiency `UNKNOWN`, verdict `not_evaluable`, as §11.3.7
+  requires, instead of three `null`s. The verifier does the same when no `content_evaluator` is
+  supplied or it gives no result. The profile text is unchanged.
+- interop-profile-v0 vectors: the corpus grows from 49 to 53 cases (§6.4). They are a
+  requester-signed absence record, one signed over the refusal's signing input instead of the
+  absence record's, and one each with `key_id` or `sig` alone. The MCP results and manifest
+  result carry `resultType` `complete`, and the MCP calls carry `_meta`, as MCP 2026-07-28
+  requires.
 
 ## 0.9.0 — 2026-10-16
 

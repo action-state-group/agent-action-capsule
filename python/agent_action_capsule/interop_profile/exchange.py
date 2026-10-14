@@ -99,7 +99,8 @@ _ROW_STATUS = {
 _MISSING_ROWS = frozenset({"envelope-3", "envelope-4", "refusal-no_such_subject", "refusal-retention_expired",
                            "refusal-coverage_unsatisfiable", "refusal-deadline_or_malformed", "absence"})
 _ROW_7_NOTE = ("§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives "
-               "SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule.")
+               "SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no "
+               "content evaluator the requirement is UNKNOWN (§11.3.7).")
 
 
 @dataclass(frozen=True)
@@ -798,7 +799,10 @@ class InteropVerifier:
                 if evaluator is not None and q in self._requirements:
                     outcome = evaluator(self._requirements[q], env.get("artifact") or b"", r.native_check)
                 if outcome is None:
-                    result = self._requirement(q, row, r.evidence, r.proofs, note=_ROW_7_NOTE)
+                    # The verifier cannot apply the requirement's conditions and nothing is
+                    # missing, so the requirement is UNKNOWN, never empty (§11.3.7, P-48).
+                    result = self._requirement(q, row, r.evidence, r.proofs, "UNKNOWN", "not_evaluable",
+                                               note=_ROW_7_NOTE)
                 else:
                     status, verdict = outcome
                     if status not in _EVIDENCE_STATUSES:

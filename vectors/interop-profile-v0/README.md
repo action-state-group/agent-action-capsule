@@ -52,7 +52,7 @@ over UTF-8 of JCS of the whole object, `sig` included.
 
 | Family | Cases | Profile |
 |---|---|---|
-| Exchange | `valid-exchange` (the §10.1 bytes, PASS through the CLL material); `invariance-two-nonces-two-transports`; `tampered-artifact`; `wrong-request-digest`; `envelope-bad-signature`; `envelope-untrusted-responder`; `envelope-subject-mismatch`; `envelope-anchor-not-the-pin`; `verification-material-tampered`; `inclusion-proof-forged-and-signed`; `forged-refusal-untrusted-key`; `forged-refusal-bad-signature`; `declined`; `missing-evidence-no-such-subject` (GAP); `missing-evidence-recorded-absence`; `unsupported-version-mismatch`, `-absent`, `-unimplemented`, `-refused` | §3.3, §6, §7, §8, §9, §10.1 |
+| Exchange | `valid-exchange` (the §10.1 bytes, PASS through the CLL material); `invariance-two-nonces-two-transports`; `tampered-artifact`; `wrong-request-digest`; `envelope-bad-signature`; `envelope-untrusted-responder`; `envelope-subject-mismatch`; `envelope-anchor-not-the-pin`; `verification-material-tampered`; `inclusion-proof-forged-and-signed`; `forged-refusal-untrusted-key`; `forged-refusal-bad-signature`; `declined`; `missing-evidence-no-such-subject` (GAP); `missing-evidence-recorded-absence`, `-signed`, `-key-id-unsigned`, `-key-id-without-sig` and `-sig-without-key-id` (§6.4's signing input); `unsupported-version-mismatch`, `-absent`, `-unimplemented`, `-refused` | §3.3, §6, §7, §8, §9, §10.1 |
 | Foreign object | `foreign-native-check-fails` (row 5 for the requirement that IS the check, row 6 for one it SUPPORTS); `foreign-native-check-passes`; `foreign-native-check-fails-envelope-fails` | §5.1, §7.2, §8.1 |
 | Acceptance | `acceptance-absent`; §11.1.9 variants A to G, and G under a policy requiring a time from another party | §11.1 |
 | Lifecycle | §11.2.7 variants A to I, and D in the other order of receipt | §11.2 |
@@ -62,8 +62,9 @@ over UTF-8 of JCS of the whole object, `sig` included.
 
 - `properties` are §7.1 statuses. `requirements` maps each requirement to its §8.1 row, with that
   row's status, sufficiency and verdict.
-- Row 7 (`envelope-7`) leaves all three `null`. The contract evaluates the Artifact's content, and
-  the profile fixes no content rule.
+- Row 7 (`envelope-7`) is `UNKNOWN`, `UNKNOWN`, `not_evaluable`. The contract evaluates the
+  Artifact's content, the profile fixes no content rule, and no case names a content evaluator, so
+  the verifier cannot apply the requirement and reports it `UNKNOWN` (§11.3.7). No field is `null`.
 - No case yields `met` or `not_met` unless sufficiency is `SATISFIED`. The test asserts this, and
   shows that the assertion catches a corpus mutated to break it.
 - `claim` gives `evidence[]` and `proofs[]` as §8.3 fills them.

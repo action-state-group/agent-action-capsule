@@ -101,6 +101,8 @@ def render_reply(r, with_native: bool) -> dict:
 
 
 def render_absence(a) -> dict:
+    if a.form != "conforming":  # not an absence, so no claim (§6.4, §8.2 invariant 3)
+        return {"form": a.form, "requirements": render_requirements(a.requirements)}
     return {"form": a.form, "requirements": render_requirements(a.requirements),
             "claim": {"evidence": a.evidence, "proofs": []},
             "presentation_kind_recommended": a.presentation_kind_recommended}
@@ -250,7 +252,7 @@ def comparable(expected: dict) -> dict:
 
 
 def test_corpus_size_and_contract_pin():
-    assert DATA["count"] == len(CASES) == 49
+    assert DATA["count"] == len(CASES) == 53
     verifier = InteropVerifier(TrustPolicy(), VerificationPolicy(), "2026-10-12T00:00:00Z", contract=CONTRACT)
     assert verifier.contract_digest == DATA["contract"]["contract_digest"]
     assert verifier.contract_ref == DATA["contract"]["contract_ref"]
@@ -276,7 +278,7 @@ def test_no_claim_from_the_verifier_breaks_the_met_rule():
                 seen += 1
                 if r["verdict"] in ("met", "not_met"):
                     assert r["sufficiency"] == "SATISFIED"
-    assert seen == 40  # the claims the corpus states
+    assert seen == 41  # the claims the corpus states
 
 
 # ---------------------------------------------------------------------------

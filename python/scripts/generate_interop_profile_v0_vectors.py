@@ -132,7 +132,7 @@ SEED_LABELS = {
     "responder": "draft-mih-agent-evidence-request-00 conformance vectors: primary responder key",
     "log": "evidence-interop/0 worked example: CLL log key",
 }
-for _name in ("impostor", "foreign-signer", "P", "Q", "I", "N", "I2"):
+for _name in ("impostor", "foreign-signer", "P", "Q", "I", "N", "I2", "requester"):
     SEED_LABELS[_name] = f"evidence-interop/0 conformance vectors: key {_name}"
 
 PRIV = {name: Ed25519PrivateKey.from_private_bytes(sha(label.encode())) for name, label in SEED_LABELS.items()}
@@ -428,7 +428,9 @@ ROW = {
     "envelope-4": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
     "envelope-5": ("SATISFIED", "SATISFIED", "not_met"),
     "envelope-6": ("INSUFFICIENT", "INSUFFICIENT", "not_evaluable"),
-    "envelope-7": (None, None, None),  # the contract evaluates the Artifact's content
+    # The contract evaluates the Artifact's content. No vector names a content evaluator, so the
+    # verifier cannot apply the requirement's conditions: UNKNOWN, never null (§11.3.7, P-48).
+    "envelope-7": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
     "refusal-no_such_subject": ("NOT_FOUND", "GAP", "not_evaluable"),
     "refusal-withheld": ("WITHHELD", "GAP", "not_evaluable"),
     "refusal-deadline_or_malformed": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
@@ -442,7 +444,8 @@ def mapped(row: str) -> dict:
     out = {"row": row, "status": status, "sufficiency": sufficiency, "verdict": verdict}
     if row == "envelope-7":
         out["note"] = ("§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only "
-                       "if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule.")
+                       "if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, "
+                       "so with no content evaluator the requirement is UNKNOWN (§11.3.7).")
     return out
 
 
@@ -644,9 +647,10 @@ def exchange_cases() -> list[dict]:
         ["§6.3", "§8.1 no_such_subject"],
         refusal(req_c, "no_such_subject", "2026-10-12T00:00:11Z"), ref_props(), "refusal-no_such_subject"))
 
-    absence = jcs({"outcome": "recorded_absence", "recorded_at": "2026-10-12T00:01:10Z",
-                   "request_digest": shx(req_c), "route": "peer:example-responder",
-                   "window": {"closed": "2026-10-12T00:01:10Z", "opened": "2026-10-12T00:00:10Z"}}).encode()
+    absence_body = {"outcome": "recorded_absence", "recorded_at": "2026-10-12T00:01:10Z",
+                    "request_digest": shx(req_c), "route": "peer:example-responder",
+                    "window": {"closed": "2026-10-12T00:01:10Z", "opened": "2026-10-12T00:00:10Z"}}
+    absence = jcs(absence_body).encode()
     out.append({
         "id": "missing-evidence-recorded-absence",
         "description": "Nothing arrived for request C within its one-minute window. The requester's "
@@ -662,6 +666,61 @@ def exchange_cases() -> list[dict]:
                         "presentation_kind_recommended": "story"},
         },
     })
+
+    # §6.4: the requester's signature is over every member except sig, so key_id is signed.
+    signed_absence = jcs(signed_record(dict(absence_body, key_id=PUB["requester"]), "requester")).encode()
+    out.append({
+        "id": "missing-evidence-recorded-absence-signed",
+        "description": "The absence record of missing-evidence-recorded-absence, signed by the requester. "
+                       "The signing input is JCS of every member except sig, key_id included (§6.4). "
+                       "Conforming; the same UNKNOWN as the unsigned record.",
+        "cites": ["§6.4", "§7.3 Absence", "§8.1 recorded absence", "P-8"],
+        "pins": pins(EVAL),
+        "inputs": {"request": octets(J, req_c), "replies": [], "absence_record": octets(J, signed_absence)},
+        "expected": {
+            "request_digest": shx(req_c),
+            "replies": [],
+            "absence": {"form": "conforming", "requirements": {"r-record": mapped("absence")},
+                        "claim": {"evidence": [ref(shx(signed_absence))], "proofs": []},
+                        "presentation_kind_recommended": "story"},
+        },
+    })
+    # The refusal's signing input (§6.3) leaves key_id out. Over an absence record it does not verify.
+    key_id_unsigned = dict(absence_body, key_id=PUB["requester"],
+                           sig=sign("requester", jcs(absence_body).encode()))
+    out.append({
+        "id": "missing-evidence-recorded-absence-key-id-unsigned",
+        "description": "The same absence record, signed over every member except key_id and sig: the "
+                       "refusal's signing input (§6.3), not the absence record's (§6.4). The signature "
+                       "does not verify, so the record is not a conforming absence and no claim is made "
+                       "from it.",
+        "cites": ["§6.4", "§7.3 Absence", "§8.2 invariant 3", "P-8"],
+        "pins": pins(EVAL),
+        "inputs": {"request": octets(J, req_c), "replies": [],
+                   "absence_record": octets(J, jcs(key_id_unsigned).encode())},
+        "expected": {
+            "request_digest": shx(req_c),
+            "replies": [],
+            "absence": {"form": "not_conforming", "requirements": {}},
+        },
+    })
+
+    # §6.4: key_id and sig are both present or both absent.
+    for suffix, half, what in (("key-id-without-sig", {"key_id": PUB["requester"]}, "key_id and no sig"),
+                               ("sig-without-key-id", {"sig": json.loads(signed_absence)["sig"]},
+                                "the valid sig of missing-evidence-recorded-absence-signed and no key_id")):
+        lone = jcs(dict(absence_body, **half)).encode()
+        out.append({
+            "id": f"missing-evidence-recorded-absence-{suffix}",
+            "description": f"The same absence record with {what}. key_id and sig are both present or both "
+                           "absent (§6.4), so the record is not a conforming absence and no claim is made "
+                           "from it.",
+            "cites": ["§6.4", "§7.3 Absence", "§8.2 invariant 3", "P-8"],
+            "pins": pins(EVAL),
+            "inputs": {"request": octets(J, req_c), "replies": [], "absence_record": octets(J, lone)},
+            "expected": {"request_digest": shx(req_c), "replies": [],
+                         "absence": {"form": "not_conforming", "requirements": {}}},
+        })
 
     env_v1 = envelope(req_c, ART, ANCHOR1, ARTIFACT, MATERIAL1, "2026-10-12T00:00:11Z", J,
                       profile="evidence-interop/1")
@@ -1083,12 +1142,18 @@ def a2a_task(state: str, replies: list[tuple[str, bytes]]) -> dict:
     return task
 
 
+# MCP 2026-07-28 requires _meta on every request and resultType on every result (§11.4.5).
+MCP_META = {"io.modelcontextprotocol/protocolVersion": "2026-07-28", "io.modelcontextprotocol/clientCapabilities": {}}
+
+
 def mcp_call(r: bytes) -> dict:
-    return {"name": "evidence_request", "arguments": {"request": b64u(r), "media_type": "application/cbor"}}
+    return {"_meta": MCP_META, "name": "evidence_request",
+            "arguments": {"request": b64u(r), "media_type": "application/cbor"}}
 
 
 def mcp_result(data: bytes | None, *, is_error: bool = False, text: str | None = None) -> dict:
-    res: dict[str, Any] = {"content": [{"type": "text", "text": text}] if text else [], "isError": is_error}
+    res: dict[str, Any] = {"resultType": "complete",
+                           "content": [{"type": "text", "text": text}] if text else [], "isError": is_error}
     if data is not None:
         res["structuredContent"] = {"reply": b64u(data), "media_type": "application/cbor"}
     return res
@@ -1108,7 +1173,7 @@ def carriage_cases() -> list[dict]:
                             request_digest=json_digest(req_obj))
     card_entry = {"uri": EXT_URI, "description": "Evidence request exchange, profile evidence-interop/0.",
                   "required": False, "params": MANIFEST}
-    mcp_manifest = {"content": [], "isError": False, "structuredContent": MANIFEST}
+    mcp_manifest = {"resultType": "complete", "content": [], "isError": False, "structuredContent": MANIFEST}
     cites = ["§11.4.1", "§11.4.4", "§11.4.5", "§11.4.7", "§11.4.8"]
     ok = {"message_type": "envelope", "properties": env_props(),
           "requirements": {"r-record": mapped("envelope-7")},

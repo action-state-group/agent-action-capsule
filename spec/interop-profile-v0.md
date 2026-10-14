@@ -2551,7 +2551,7 @@ that pin's SHA-256.
 | `valid-exchange` | the bytes of §10.1, every required envelope property `PASS`, row 7 | §6.2.1, §8.1, §10.1 |
 | `invariance-two-nonces-two-transports` | two nonces, JSON and CBOR: two envelopes, one Artifact digest, `caller_invariance` `PASS` | §6.2, §7.2 |
 | `tampered-artifact`, `wrong-request-digest`, `envelope-*`, `verification-material-tampered`, `inclusion-proof-forged-and-signed` | one required envelope property `FAIL`, row 2 | §6.2.1, §7.2, §8.1 |
-| `forged-refusal-*`, `declined`, `missing-evidence-*` | a refusal under an untrusted key or with a bad signature; `policy_declined` (`WITHHELD`); `no_such_subject` (`GAP`); a recorded absence (`UNKNOWN`) | §6.3, §6.4, §8.1 |
+| `forged-refusal-*`, `declined`, `missing-evidence-*` | a refusal under an untrusted key or with a bad signature; `policy_declined` (`WITHHELD`); `no_such_subject` (`GAP`); a recorded absence (`UNKNOWN`), unsigned and signed by the requester, one signed over the refusal's signing input, and one each with `key_id` or `sig` alone (none of the three an absence) | §6.3, §6.4, §8.1 |
 | `unsupported-version-*` | `profile_version` `FAIL`, `NOT_PRESENT` and `NOT_CHECKED`; a `request_malformed` refusal | §3.3, §8.1 |
 | `foreign-native-check-*` | a carried object failing its native check: row 5 for the requirement that is the check, row 6 for one it supports, row 2 when the envelope fails | §5.1, §8.1 |
 | `acceptance-*` | no acceptance; §11.1.9 variants A to G | §11.1 |
