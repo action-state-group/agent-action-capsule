@@ -241,6 +241,7 @@ type in both encodings (§5.2).
 | Canonical Artifact | the artifact octets exactly as carried | MUST be deterministic [ER §5]; its encoding is fixed by its own format; its digest is SHA-256 over those octets [P-10] |
 | Envelope signing input | UTF-8 of JCS (RFC 8785) of the signed-members object (§6.2) | [P-7]; same rule as the refusal |
 | Refusal signing input | UTF-8 of JCS of `{issued_at, reason, request_digest}` | ER leaves the format to the deployment [ER §4.2 item 4]; the vectors fix this one [ERV A7] |
+| Absence record signing input | UTF-8 of JCS of every member of the record except `sig`, `key_id` included | [P-8] (§6.4) |
 | Absence record digest | SHA-256 over UTF-8 of JCS of the record, `sig` included when present | [P-8] |
 | A JSON value whose digest a Disclosure Envelope commits to | SHA-256 over UTF-8 of JCS of the value | [DE §2, §5.1.3] |
 | A foreign signed object | the octets as the originating protocol delivered them | as-transmitted, below |
@@ -583,9 +584,14 @@ can consume it [P-8]:
 | `window` | REQUIRED | `{"opened": <time the request was transmitted>, "closed": <the request's deadline, or the requester's local timeout>}` |
 | `recorded_at` | REQUIRED | the time the record was written |
 | `retention` | OPTIONAL | the digest of a retention commitment the requester holds for the subject |
-| `key_id`, `sig` | OPTIONAL | the requester's own key and Ed25519 signature over UTF-8 of JCS of every other member, as in §6.3 |
+| `key_id`, `sig` | OPTIONAL | the requester's own key identifier (§5.2) and Ed25519 signature by that key over the signing input below. Both present or both absent |
 
-The record is a JSON object (or the same map in CBOR).
+The record is a JSON object (or the same map in CBOR). The **signing input** is UTF-8 of JCS over
+the object made of every member present except `sig`, so `key_id` is signed [P-8]. This is the
+rule of the profile's own signed records (§11.1.2), not the refusal's: the refusal leaves `key_id`
+unsigned only because the existing refusal vectors fix that object [ERV A7], and no existing
+vector fixes the absence record. The record digest (§5.1) is over the whole record, `sig`
+included.
 
 Rules:
 
@@ -2232,9 +2238,14 @@ So the `retention` resource MUST NOT be an enumerable index of commitments open 
 callers [ER §9; P-42]. Retention commitments name subjects, routes and principals, and a list of
 them is a history.
 
-A discovery object MUST be the same for every caller [P-42]. MCP 2026-07-28 already makes list
-results independent of the connection [MCP Key Changes, major change 1]. This profile also
-requires that of the two tool definitions, whoever calls `tools/list`.
+A discovery object MUST be the same for every caller [P-42]. MCP 2026-07-28 forbids a tool list
+that varies per connection, but lets it vary by the authorization presented on the request
+[MCP Tools §Capabilities; MCP Key Changes, major change 1]. This profile narrows that for the two
+tools of §11.4.5: a responder MUST list both, with the same definitions, to every caller of
+`tools/list`, authenticated or not [P-42]. A list that showed them to some callers only would
+tell each caller whether the responder counts it among its counterparties. Whether a caller is
+answered is decided per request (rule 5 of §11.4.1), never by hiding the tools. Other tools on the
+same server may vary as MCP allows.
 
 A responder MUST NOT make an A2A task that carries this exchange visible to any client other than
 the one that sent its request [P-42]. A2A already scopes `ListTasks` to tasks visible to the
@@ -2387,10 +2398,26 @@ request into an HTTP header that intermediaries see, and the request itself leak
 Changes, minor change 4], so intermediaries can see that an `evidence_request` call was made.
 Only transport confidentiality hides that [ER §12].
 
-**Reply.** Both an envelope and a refusal are returned as a result with `isError` false and
-`structuredContent` `{"reply": <the reply octets in base64url>, "media_type": <that of the request>}`
-[P-40]. A refusal is a successful exchange carrying a refusal answer [ER §10]. MCP requires a
-`content` array in every tool result [MCP schema `CallToolResult`]. It may be empty. MCP says a
+**Arguments that fail the input schema.** A `tools/call` of `evidence_request` whose `arguments`
+do not satisfy the input schema above (a member missing or extra, `request` not base64url,
+`media_type` outside the enum) carries no request octets the responder can digest. The responder
+MUST NOT answer it with an envelope or a refusal [P-40]. It SHOULD answer with a JSON-RPC error
+with code -32602 (invalid params). MCP gives both answers: its schema's example answers invalid
+tool arguments with -32602 [MCP schema `InvalidParamsError`], while its tool page lists input
+validation errors as tool execution errors, returned as a result with `isError` true [MCP Tools
+§Error Handling]. This profile picks the first. The requester treats either as a transport
+condition (below), so the choice changes nothing it records. This is the MCP form of the A2A
+rule for a `Message` with no `raw` request part (§11.4.4). Arguments that satisfy the schema but
+decode to octets that are not a well-formed request are a request: the responder digests them and
+refuses `request_malformed` (§6.1).
+
+**Reply.** Both an envelope and a refusal are returned as a result with `resultType` `complete`,
+`isError` false and `structuredContent`
+`{"reply": <the reply octets in base64url>, "media_type": <that of the request>}` [P-40].
+MCP 2026-07-28 requires `resultType` on every result [MCP schema `Result`], so the
+`evidence_manifest` result carries `resultType` `complete` too. A refusal is a successful
+exchange carrying a refusal answer [ER §10]. MCP requires a `content` array in every tool result
+[MCP schema `CallToolResult`]. It may be empty. MCP says a
 tool returning structured content should also return it as serialized JSON in a text block [MCP
 Tools §Structured Content], and a responder MAY do so. A requester reads only `structuredContent`,
 and never verifies `content` [P-40].
@@ -2408,10 +2435,15 @@ The requester classifies what comes back:
   from MCP's tasks extension, which this revision does not pin. It is never a refusal, even when
   its text says the caller is not authorized.
 
-**Example (informative).** The same request B, as a `tools/call`:
+**Example (informative).** The same request B, as a `tools/call`. MCP 2026-07-28 requires
+`_meta` with the protocol version and client capabilities on every request [MCP schema
+`RequestMetaObject`]. It is carriage (rule 4 of §11.4.1):
 
 ```
-{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "evidence_request",
+{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {
+ "_meta": {"io.modelcontextprotocol/protocolVersion": "2026-07-28",
+  "io.modelcontextprotocol/clientCapabilities": {}},
+ "name": "evidence_request",
  "arguments": {"media_type": "application/cbor",
   "request": "pGVub25jZXYyMDI2LTEwLTEyVDAwOjAwOjA1Wi9iZ3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8wZ3N1YmplY3ShZnJlY29yZHhAMmFiMzUwODk1Zjg2N2Q1NGE1Y2ZkYzFkZDFhYTIxNGNiYzcyM2M2NTk2NjM0NjBlNzUxMWRmZjE2YTVjY2M4NWhjb3ZlcmFnZaFsZXhwZWN0ZWRfcGlueEA2NDQxMzcwOTU1ZDJiNDA4ODg0NzkzOTYyYTY2NGRhZWM2YmIyNWUwNmQ3NmEyZjUzZDhhODBmNjZhNjc1MjAy"}}}
 ```
@@ -2539,8 +2571,11 @@ a later draft revision.
   material), signing input and signature profile (§6.2). ER §4.1 names the contents but no members
   (ERV A12). ER §4.1 does not state the binding of the request digest and issuance time into the
   artifact envelope.
-- **P-8** The absence record shape, `recorded_at`, the optional requester signature, and its digest
-  (§6.4).
+- **P-8** The absence record shape, `recorded_at`, the optional requester signature over every
+  member except `sig`, and its digest (§6.4). An earlier text of this revision described the
+  signing input both as every other member and as in §6.3, which leaves `key_id` out. This revision
+  fixes it as every member except `sig`, without changing the identifier `evidence-interop/0`
+  (P-1), because no revision of this profile has been published yet.
 - **P-9** Deterministic request encoding, and retention of the transmitted octets, both as MUSTs for
   a requester following this profile (§5.1, §6.1). ER has both as SHOULD.
 - **P-10** The artifact digest is SHA-256 over the octets as carried (§5.1).
@@ -2683,8 +2718,9 @@ a later draft revision.
 - **P-40** The MCP tools `evidence_manifest` and `evidence_request`, their schemas, base64url
   carriage of the request and reply octets, `isError` false for both envelope and refusal and
   ignored when a reply is present, `structuredContent` as the only carrier read, retries with the
-  same arguments, no `x-mcp-header` on `request`, the tasks extension left unpinned, and every
-  other result a transport condition (§11.4.5).
+  same arguments, no `x-mcp-header` on `request`, the tasks extension left unpinned, arguments that
+  fail the input schema never answered with a reply (a JSON-RPC error -32602 recommended), and
+  every other result a transport condition (§11.4.5).
 - **P-41** The manifest: its members; text-only values in sorted, duplicate-free arrays; one
   manifest served unchanged on every carriage and to every caller; no members or tokens beyond the
   listed profiles define; and the `refusal_policy` declaration as informative only (§11.4.2). ER's
@@ -2693,7 +2729,8 @@ a later draft revision.
 - **P-42** What discovery may and may not reveal: no counts, sizes, evidence digests, activity
   times, parties, routes, transaction references, recipient-specific derivations or conduct
   summaries; no unauthenticated enumerable index at the `retention` URI; the same discovery
-  objects for every caller; A2A tasks of this exchange visible only to their requester; and
+  objects for every caller, with the two MCP tools listed to every caller although MCP lets a
+  tool list vary by authorization; A2A tasks of this exchange visible only to their requester; and
   carriage identifiers that are unpredictable and encode no count or time (§11.4.2, §11.4.3).
 - **P-43** Carriage moves the request and reply octets unchanged. The request digest is over the
   decoded octets on every carriage. Deterministic CBOR SHOULD be used across carriages. The reply
