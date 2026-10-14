@@ -8,6 +8,8 @@ substrate's, by reference, and is not implemented here. Class 2 / manifest-aware
 verification is out of scope.
 """
 import warnings
+from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
+from importlib.metadata import version as _metadata_version
 
 from .anchor import DEFAULT_ANCHOR_ENDPOINT
 from .anchor import anchor as anchor_capsule
@@ -60,7 +62,12 @@ from .parse import Capsule, parse_capsule
 from .registries import REGISTRY_NAMES, load_registries
 from .verify import Finding, VerificationResult, verify, verify_store
 
-__version__ = "0.7.0"
+# pyproject.toml is the one version source (Release · Prepare bumps only it);
+# read it from the installed distribution instead of repeating it here.
+try:
+    __version__ = _metadata_version("agent-action-capsule")
+except _PackageNotFoundError:  # imported from a source tree that is not installed
+    __version__ = "0+unknown"
 
 
 def anchor(*args, **kwargs):
