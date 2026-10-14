@@ -45,10 +45,10 @@ No CLA is required — the DCO is the whole agreement.
    reference implementation, and conformance vectors — nothing product-specific,
    tenant-specific, or internal. PRs that import application/product internals
    will be declined.
-2. **Standards honesty.** The SCITT architecture and COSE Receipts documents are
-   Internet-Drafts (RFC Editor Queue), not published RFCs; never cite an
-   unassigned RFC number. The capsule's own status is an individual I-D, not a
-   WG document — don't claim WG adoption it does not have.
+2. **Standards honesty.** The SCITT Architecture and COSE Receipts are published
+   as RFC 9943 and RFC 9942; cite those numbers, and never cite an RFC number
+   that has not been assigned. The capsule's own status is an individual I-D,
+   not a WG document — don't claim WG adoption it does not have.
 3. **Conformance is external.** Correctness claims rest on agreement with
    independent references and on the frozen conformance vectors under
    `vectors/capsule/`. A wire-facing change comes with cross-checked evidence and
