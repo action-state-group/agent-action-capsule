@@ -93,6 +93,64 @@ binding). Initial contents:
 | `send_payment` | Seeded example value of the profile (Internet-Draft §5.2). |
 | `inference_completion` | An inference request to a model-serving runtime whose committed effect is producing a completion. `request_digest` is the JSON digest of the request body as received at the serving boundary; `response_digest` is the JSON digest of the completion body as returned. |
 
+### Provisional: commitment effect types
+
+**Held for ratification; not yet registered.** The values below are proposed
+for this registry and are not defined in a posted revision of the
+Internet-Draft. Each is registered once its definition is carried in the
+Internet-Draft's Effect Record section and IANA Considerations; until then
+it is an unregistered value, which a verifier handles under the never-reject
+invariant like any other: an informational finding, never a rejection.
+
+Each value names the effect an agent's action commits on behalf of the party
+it acts for, toward another party or a system that records the result (the
+counterparty below). Common to all four:
+
+- `request_digest` is the JSON digest of the request the agent dispatched to
+  the counterparty, as sent. `response_digest` is the JSON digest of the
+  counterparty's response as received. The confirmed-effect invariant
+  applies unchanged: `status: "confirmed"` requires a `response_digest` over
+  the response actually observed, and means the counterparty acknowledged
+  the act, nothing more.
+- An entry fixes no `irreversibility_class`. The producer declares the class
+  for each action from the terms that govern it.
+- A later act on the same commitment (a cancellation, say) is a new action
+  recorded by a new Capsule. It never changes the earlier Capsule; the two
+  join on `external_ref`.
+- One action carries one `effect.type`. When a signature is the means by
+  which the agent accepts, offers, or cancels, the action's type is
+  `accept_agreement`, `make_offer`, or `cancel_commitment`, not
+  `sign_document`.
+
+Proposed values:
+
+- `make_offer`: the agent proposes terms to a counterparty that would bind
+  the party it acts for if the counterparty accepts them. Its committed
+  effect is that the offer was delivered. A `confirmed` effect records the
+  counterparty's acknowledgement of receipt, never its acceptance; an
+  acceptance is a separate act, recorded by the accepting party.
+- `accept_agreement`: the agent accepts terms already proposed, or otherwise
+  enters an agreement, binding the party it acts for to the obligations
+  those terms state. Its committed effect is that the agreement was entered.
+  A `confirmed` effect records the counterparty's or recording system's
+  acknowledgement that the acceptance took effect.
+- `cancel_commitment`: the agent ends, under the terms that allow it, a
+  commitment the party it acts for made by an earlier act: an agreement it
+  entered, an order it placed, or a reservation it made. Its committed
+  effect is that the commitment no longer binds, or binds only as those
+  terms say for a cancellation. A `confirmed` effect records the
+  counterparty's acknowledgement of the cancellation. Withdrawing an offer
+  that was never accepted is not a cancellation of a commitment and is not
+  this value.
+- `sign_document`: the agent applies a signature, on behalf of the party it
+  acts for, to a specified document or record, producing a signature that
+  can be attributed to that party. Its committed effect is the signature
+  itself. `request_digest` is the JSON digest of the signing request,
+  including the digest of the document signed; `response_digest` is the
+  JSON digest of the signing system's response carrying or confirming the
+  signature. Used only when the signature is not the means of an act named
+  by one of the other three values.
+
 ## 4. `irreversibility_class`
 
 Defined in §5.2 of the Internet-Draft (Effect Record). An **ordered**
