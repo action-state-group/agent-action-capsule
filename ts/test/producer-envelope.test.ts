@@ -23,16 +23,24 @@ describe("upstream Producer Envelope corpus", () => {
       const directory = resolve(root, item.name);
       const expected = JSON.parse(
         readFileSync(resolve(directory, "expected.json"), "utf8"),
-      ) as { ok: boolean; findings?: Array<{ code: string }> };
+      ) as {
+        ok: boolean;
+        finding_codes: string[];
+        public_key_hex: string | null;
+      };
       const result = await verifyProducerEnvelope(
         readFileSync(resolve(directory, "capsule_id.txt"), "utf8").trim(),
         readFileSync(resolve(directory, "envelope.cose")),
       );
       expect(result.ok).toBe(expected.ok);
-      if (expected.findings !== undefined)
-        expect(result.findings.map((finding) => finding.code)).toEqual(
-          expected.findings.map((finding) => finding.code),
-        );
+      expect(result.findings.map((finding) => finding.code)).toEqual(
+        expected.finding_codes,
+      );
+      expect(
+        result.publicKey === undefined
+          ? null
+          : Buffer.from(result.publicKey).toString("hex"),
+      ).toBe(expected.public_key_hex);
     });
 });
 

@@ -2,6 +2,7 @@
 """Exercise the shared Evidence Bundle outcome matrix with real CLL proofs."""
 from __future__ import annotations
 
+import base64
 import json
 from pathlib import Path
 
@@ -199,6 +200,16 @@ def test_closure_reports_each_dangling_target_once():
     result = verify_bundle(_bundle([parent, root], root))
     assert result.graph_closure.status == "fail", result.graph_closure
     assert result.graph_closure.findings.count(f"citation_dangling:{absent}") == 1
+
+
+@pytest.mark.parametrize(
+    "text",
+    [b'{"a":"\\ud800"}', b'{"\\udc00":1}', b'[NaN]', b'{"a":-Infinity}'],
+)
+def test_fragment_refuses_what_the_other_decoders_refuse(text):
+    fragment = base64.urlsafe_b64encode(text).rstrip(b"=").decode()
+    with pytest.raises(ValueError, match="not UTF-8 JSON"):
+        decode_fragment(fragment)
 
 
 def test_fragment_refuses_non_canonical_base64url():

@@ -136,9 +136,35 @@ def decode_fragment(fragment: str) -> Any:
         raise ValueError("fragment must be unpadded base64url")
     try:
         raw = _b64url_decode(fragment)
-        return json.loads(raw.decode("utf-8"))
-    except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError) as err:
+        value = json.loads(raw.decode("utf-8"), parse_constant=_reject_constant)
+        _require_scalar_strings(value)
+    except (binascii.Error, UnicodeError, json.JSONDecodeError) as err:
         raise ValueError("fragment is not UTF-8 JSON") from err
+    return value
+
+
+def _reject_constant(name: str) -> Any:
+    # NaN, Infinity and -Infinity are not JSON (RFC 8259); json.loads takes them.
+    raise json.JSONDecodeError(f"{name} is not JSON", name, 0)
+
+
+def _require_scalar_strings(value: Any) -> None:
+    """Reject an unpaired surrogate escape, which json.loads keeps in a str.
+
+    Go, Rust and TypeScript refuse such a fragment; encoding each string (and
+    member name) as UTF-8 raises on exactly those code points.
+    """
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, str):
+            item.encode("utf-8")
+        elif isinstance(item, list):
+            stack.extend(item)
+        elif isinstance(item, dict):
+            for key, member in item.items():
+                key.encode("utf-8")
+                stack.append(member)
 
 
 def bundle_digest(bundle: Any) -> str:
