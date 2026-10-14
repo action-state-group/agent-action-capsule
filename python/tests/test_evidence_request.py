@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: BSD-3-Clause
+# SPDX-License-Identifier: Apache-2.0
 """The evidence-request responder (``agent_action_capsule.evidence_request``).
 
 ``answer()`` runs here against an in-memory :class:`EvidenceStore`, so these

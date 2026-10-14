@@ -12,8 +12,8 @@ version = "0.7.1"
 description = "Reference emit + verify library for the Agent Action Capsule SCITT profile (draft-mih-scitt-agent-action-capsule). Includes the rungs 1+2+6 CORE: emit, record, anchor client, self-attest."
 readme = "README.md"
 requires-python = ">=3.9"
-license = "BSD-3-Clause"
-license-files = ["LICENSE"]
+license = "BSD-3-Clause AND Apache-2.0"
+license-files = ["LICENSE", "LICENSE-APACHE-2.0"]
 authors = [{ name = "Action State Group" }]
 keywords = ["scitt", "cose", "agent", "capsule", "verification", "transparency"]
 classifiers = [

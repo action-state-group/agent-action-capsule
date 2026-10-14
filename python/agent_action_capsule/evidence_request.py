@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: BSD-3-Clause
+# SPDX-License-Identifier: Apache-2.0
 """The evidence-request responder: parse a request, decide the answer, sign refusals.
 
 ``answer()`` turns one request map into exactly one answer: an

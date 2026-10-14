@@ -75,6 +75,9 @@
   list-valued reason, a missing `issued_at`) cannot be built as a `Refusal`. They also check
   that `sign_refusal` reproduces each valid primary-key signature byte for byte. The python
   workflow now also runs on changes under `vectors/evidence-request/`.
+  The moved module and its tests keep their Apache-2.0 licence (SPDX header on each file). The
+  repository now carries the Apache-2.0 text as `LICENSE-APACHE-2.0`, and the Python package
+  declares `BSD-3-Clause AND Apache-2.0` and ships both licence files.
 - composed/v1 (`draft-mih-zhang-agent-disclosure-bundle-01`): an artifact member may carry
   `response`, the responder's signed response as received with the artifact bytes removed. A
   verifier requires its `request_digest` to equal the member's and its `artifact_digest` the
