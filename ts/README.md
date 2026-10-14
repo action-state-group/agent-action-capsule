@@ -59,7 +59,8 @@ that the commit is on `main`, runs `npm ci` and the complete package
 check/build, and performs `npm publish --dry-run` before uploading from the
 `npm` environment. Reruns skip a version npm already has, and registry errors
 other than E404 stop publication. Prerelease versions publish under the `next`
-dist-tag.
+dist-tag, and a stable version older than npm's current `latest` under
+`backport`, so `latest` never moves backward.
 
 Before a real release, the npm package owner must configure a
 [trusted publisher](https://docs.npmjs.com/trusted-publishers/) for
