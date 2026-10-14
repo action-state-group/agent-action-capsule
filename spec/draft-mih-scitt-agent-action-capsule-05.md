@@ -256,8 +256,8 @@ constrained. The outermost tag 18 is the only CBOR tag in a Producer
 Envelope. The unprotected header MUST be a map, and the payload and signature
 MUST be byte strings; `null` and `undefined` do not stand in for them. A
 verifier MUST reject an envelope that violates this paragraph, so a given
-protected header, payload, and signature have exactly one acceptable
-encoding.
+protected-header byte string, payload, and signature have exactly one
+acceptable encoding.
 
 A Capsule MAY have zero, one, or multiple Producer Envelopes. Each envelope
 is an independent object and MUST verify independently against the same
