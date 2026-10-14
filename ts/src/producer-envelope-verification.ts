@@ -62,8 +62,8 @@ class Reader {
   /**
    * One header value, typed only as far as the envelope checks need: integers,
    * text and byte strings keep their CBOR type, so a float or a boolean never
-   * compares equal to an integer label or algorithm. Anything else is skipped
-   * and kept as an opaque marker. Every item is held to the profile's encoding
+   * compares equal to an integer label or algorithm. Anything else is kept
+   * only as an opaque value identity, for map-key equality. Every item is held to the profile's encoding
    * rules: the shortest form of each argument and float, unique map keys, and
    * no tag, which only the outer COSE_Sign1 carries.
    */
@@ -77,6 +77,7 @@ class Reader {
       // then half, single and double floats. 28-30 are reserved and 31 is a
       // break, which a definite-length map never contains.
       if (add >= 28) throw new SyntaxError("reserved or break CBOR value");
+      const start = this.offset - 1;
       if (add === 24 && this.byte() < 32)
         throw new SyntaxError("non-preferred CBOR simple value");
       if (add > 24) {
@@ -90,7 +91,7 @@ class Reader {
         )
           throw new SyntaxError("CBOR float is not in its shortest form");
       }
-      return OPAQUE;
+      return { opaque: `s${this.data.subarray(start, this.offset).join()}` };
     }
     const argument = this.argument(add);
     if (major === 0 || major === 1)
@@ -98,22 +99,22 @@ class Reader {
     const length = Number(argument);
     if (major === 2) return this.take(length);
     if (major === 3) return utf8.decode(this.take(length));
-    if (major === 4) for (let i = 0; i < length; i += 1) this.item(depth + 1);
-    else if (major === 5) {
-      // Shortest-form encodings are unique per value, so equal keys have
-      // equal bytes.
-      const keys = new Set<string>();
-      for (let i = 0; i < length; i += 1) {
-        const start = this.offset;
-        this.item(depth + 1);
-        const key = Array.from(this.data.subarray(start, this.offset)).join();
-        if (keys.has(key)) throw new SyntaxError("duplicate CBOR map key");
-        keys.add(key);
-        this.item(depth + 1);
-      }
-    } else if (major === 6)
+    if (major === 6)
       throw new SyntaxError("only the outer COSE_Sign1 may carry a CBOR tag");
-    return OPAQUE;
+    const entries: string[] = [];
+    const keys = new Set<string>();
+    for (let i = 0; i < length; i += 1) {
+      const entry = identity(this.item(depth + 1));
+      if (major === 4) entries.push(entry);
+      else {
+        if (keys.has(entry)) throw new SyntaxError("duplicate CBOR map key");
+        keys.add(entry);
+        entries.push(JSON.stringify([entry, identity(this.item(depth + 1))]));
+      }
+    }
+    // Map identity ignores entry order, as CBOR map equality does.
+    if (major === 5) entries.sort();
+    return { opaque: JSON.stringify([major === 4 ? "a" : "m", entries]) };
   }
 }
 
@@ -142,8 +143,14 @@ type HeaderValue =
   | { readonly int: bigint }
   | string
   | Uint8Array
-  | typeof OPAQUE;
-const OPAQUE = Symbol("opaque CBOR value");
+  | { readonly opaque: string };
+
+/** A string equal for two items exactly when they are the same CBOR value. */
+function identity(value: HeaderValue): string {
+  if (typeof value === "string") return `t${value}`;
+  if (value instanceof Uint8Array) return `b${value.join()}`;
+  return "int" in value ? `i${value.int}` : value.opaque;
+}
 // ignoreBOM: a leading U+FEFF is part of the signed text, not a marker to drop.
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 

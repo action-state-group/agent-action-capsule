@@ -21,7 +21,11 @@ the shortest form of every argument and float (outside and inside the
 protected-header byte string), no tag but the outermost tag 18, a map as the
 unprotected header, and byte strings as payload and signature. Each violation
 is `envelope_malformed`. `protected-label-order` is positive: map-key order is
-not constrained. Verifiers may also bound nesting depth and container sizes;
+not constrained, and two maps with the same entries in different orders are
+the same key. Python's cbor2 also treats the nested keys `1`, `1.0` and `true`
+as equal, which the CBOR data model does not; such a key can only sit inside
+an envelope that is already invalid, so the finding code for it is not pinned.
+Verifiers may also bound nesting depth and container sizes;
 no conforming envelope approaches such a bound, and the finding code for input
 beyond one is implementation-defined, so no vector pins it.
 

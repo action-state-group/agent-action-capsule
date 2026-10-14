@@ -1,7 +1,7 @@
 {
   "format_version": "1",
   "profile": "draft-mih-scitt-agent-action-capsule-04#producer-envelope",
-  "count": 41,
+  "count": 47,
   "cases": [
     {
       "name": "valid",
@@ -166,6 +166,30 @@
     {
       "name": "protected-label-beyond-int64",
       "description": "an extra protected label -2^64, a CBOR integer outside int64"
+    },
+    {
+      "name": "protected-alg-float64",
+      "description": "protected alg is -8.0 in double precision, which half precision represents exactly"
+    },
+    {
+      "name": "protected-alg-float64-infinity",
+      "description": "protected alg is infinity in double precision, which belongs in half precision"
+    },
+    {
+      "name": "protected-alg-float32-half-subnormal",
+      "description": "protected alg is 2^-24 in single precision, the smallest half-precision subnormal"
+    },
+    {
+      "name": "protected-alg-float32-below-half",
+      "description": "protected alg is 2^-25 in single precision, its shortest form, so only the alg check fails"
+    },
+    {
+      "name": "protected-alg-float64-needed",
+      "description": "protected alg is 1.1 in double precision, its shortest form, so only the alg check fails"
+    },
+    {
+      "name": "protected-alg-map-duplicate-keys",
+      "description": "protected alg is a map whose two keys are one map with its entries in two orders"
     }
   ]
 }

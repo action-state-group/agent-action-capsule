@@ -244,7 +244,7 @@ fn decode_envelope(data: &[u8]) -> Result<Envelope, String> {
 /// The CBOR data items this profile distinguishes. Floats and simple values
 /// are only ever wrong here, so they collapse into `Other`, which keeps the
 /// encoded bytes for map-key equality.
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 enum Item {
     Int(i128),
     Bytes(Vec<u8>),
@@ -253,6 +253,25 @@ enum Item {
     Map(Vec<(Item, Item)>),
     Tag(u64, Box<Item>),
     Other(Vec<u8>),
+}
+
+/// CBOR value equality, for duplicate map keys. Map equality ignores entry
+/// order; keys are unique within each map, so equal lengths and a match for
+/// every entry make two maps equal.
+impl PartialEq for Item {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Item::Int(a), Item::Int(b)) => a == b,
+            (Item::Bytes(a), Item::Bytes(b)) | (Item::Other(a), Item::Other(b)) => a == b,
+            (Item::Text(a), Item::Text(b)) => a == b,
+            (Item::Array(a), Item::Array(b)) => a == b,
+            (Item::Tag(n, a), Item::Tag(m, b)) => n == m && a == b,
+            (Item::Map(a), Item::Map(b)) => {
+                a.len() == b.len() && a.iter().all(|entry| b.contains(entry))
+            }
+            _ => false,
+        }
+    }
 }
 
 fn decode_all(data: &[u8]) -> Result<Item, String> {

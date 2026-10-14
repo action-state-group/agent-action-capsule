@@ -142,8 +142,17 @@ func (i item) equal(other item) bool {
 			return false
 		}
 	}
-	for index := range i.pairs {
-		if !i.pairs[index].key.equal(other.pairs[index].key) || !i.pairs[index].value.equal(other.pairs[index].value) {
+	// Map equality ignores entry order. Keys are unique within each map, so
+	// equal lengths and a match for every entry make the maps equal.
+	for _, entry := range i.pairs {
+		matched := false
+		for _, candidate := range other.pairs {
+			if entry.key.equal(candidate.key) && entry.value.equal(candidate.value) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
 			return false
 		}
 	}

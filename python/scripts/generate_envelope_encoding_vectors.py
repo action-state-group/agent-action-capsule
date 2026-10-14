@@ -78,6 +78,12 @@ def _protected_map(head: bytes, *entries: bytes) -> bytes:
     return head + b"".join(entries)
 
 
+def _float_alg(fmt: str, value: float) -> bytes:
+    """A signed envelope whose protected alg is ``value`` packed with ``fmt``."""
+    head = b"\xfa" if fmt == ">f" else b"\xfb"
+    return _envelope(_protected_map(b"\xa3", b"\x01" + head + struct.pack(fmt, value), CT, KID))
+
+
 def producer_envelope_cases() -> list[dict]:
     out = VECTORS / "producer-envelope"
     malformed = "envelope_malformed"
@@ -217,13 +223,49 @@ def producer_envelope_cases() -> list[dict]:
         (
             "protected-alg-float32",
             "protected alg is -8.0 in single precision, which half precision represents exactly",
-            _envelope(_protected_map(b"\xa3", b"\x01\xfa" + struct.pack(">f", -8.0), CT, KID)),
+            _float_alg(">f", -8.0),
             malformed,
         ),
         (
             "protected-alg-float64-nan",
             "protected alg is a double-precision NaN, which belongs in half precision",
             _envelope(_protected_map(b"\xa3", b"\x01\xfb\x7f\xf8" + bytes(6), CT, KID)),
+            malformed,
+        ),
+        (
+            "protected-alg-float64",
+            "protected alg is -8.0 in double precision, which half precision represents exactly",
+            _float_alg(">d", -8.0),
+            malformed,
+        ),
+        (
+            "protected-alg-float64-infinity",
+            "protected alg is infinity in double precision, which belongs in half precision",
+            _float_alg(">d", float("inf")),
+            malformed,
+        ),
+        (
+            "protected-alg-float32-half-subnormal",
+            "protected alg is 2^-24 in single precision, the smallest half-precision subnormal",
+            _float_alg(">f", 2.0**-24),
+            malformed,
+        ),
+        (
+            "protected-alg-float32-below-half",
+            "protected alg is 2^-25 in single precision, its shortest form, so only the alg check fails",
+            _float_alg(">f", 2.0**-25),
+            "envelope_algorithm_mismatch",
+        ),
+        (
+            "protected-alg-float64-needed",
+            "protected alg is 1.1 in double precision, its shortest form, so only the alg check fails",
+            _float_alg(">d", 1.1),
+            "envelope_algorithm_mismatch",
+        ),
+        (
+            "protected-alg-map-duplicate-keys",
+            "protected alg is a map whose two keys are one map with its entries in two orders",
+            _envelope(_protected_map(b"\xa3", b"\x01\xa2\xa2\x01\x02\x03\x04\x00\xa2\x03\x04\x01\x02\x01", CT, KID)),
             malformed,
         ),
         (
