@@ -261,7 +261,7 @@ it("renders the verification page as the last page with the ten checks and the v
   expect(page!.textContent?.toLowerCase()).not.toContain("certificate");
   expect(page!.textContent?.toLowerCase()).not.toContain("proves");
   expect(page!.textContent).toContain(
-    "verify independently at verify.agentactioncapsule.org or with the CLI",
+    "verify independently at verify.agentactioncapsule.org or with a full verifier",
   );
   const checks = page!.querySelectorAll("[data-check-status]");
   expect(checks).toHaveLength(10);

@@ -37,6 +37,12 @@ same-commit files in CI.
   proposed and unratified;
   `python/scripts/generate_judgment_extension_vectors.py` regenerates them.
 
+- `presentation-resolution/`: shared presentation resolution vectors for
+  `spec/presentation-contract-v0.md` (ABI refusal, the descriptor, the match,
+  the tiers and the static ambiguity test), normative for the TypeScript
+  registry and the Go package `go/presentation`; the TypeScript registry
+  generates them (see its README).
+
 Reference-derived corpora and checksum manifests can be regenerated with:
 
 ```bash

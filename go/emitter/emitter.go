@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -52,6 +53,10 @@ type Module struct {
 	// module inserts at render time (the manifest's style_sha256). Each is
 	// added to the page's style-src.
 	StyleSHA256 []string
+	// Manifest is the module's presentation manifest as JSON, optional. The
+	// emitter does not read it; the offline builder (BuildOfflineHTML)
+	// checks that it pins this script and, as a set, these stylesheets.
+	Manifest json.RawMessage
 }
 
 // Options fills the shell's optional slots. The zero value reproduces the

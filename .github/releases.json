@@ -1,0 +1,21 @@
+{
+  "python": {
+    "kind": "python",
+    "manifest": "python/pyproject.toml",
+    "tag_prefix": "python/v",
+    "workflow": "publish-python.yml"
+  },
+  "ts": {
+    "kind": "npm",
+    "manifest": "ts/package.json",
+    "tag_prefix": "ts/v",
+    "workflow": "publish-ts.yml"
+  },
+  "crates/agent-action-capsule": {
+    "kind": "cargo",
+    "manifest": "rust/agent-action-capsule/Cargo.toml",
+    "lockfile": "rust/Cargo.lock",
+    "tag_prefix": "crates/agent-action-capsule-v",
+    "workflow": "publish-rust.yml"
+  }
+}

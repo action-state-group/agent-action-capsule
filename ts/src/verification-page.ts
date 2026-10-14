@@ -9,6 +9,7 @@ import {
   type PresentationRefusal,
   type PresentationRefusalReason,
 } from "./presentation-registry.js";
+import type { CountersignatureStamp } from "./countersignature-stamp.js";
 import type { VerificationResult } from "./verify.js";
 
 export type CheckStatus = "pass" | "withheld" | "fail" | "not_checked";
@@ -22,6 +23,17 @@ export interface CheckSummary {
 
 /** A receipt's grade WORD, read from the receipt header -- never a client-ladder word. */
 export type ReceiptGradeWord = "consistency-verified" | "existence-and-time";
+
+/**
+ * How the verification page shows a receipt's grade. This runtime does not
+ * check witness receipts, so the shown text says the grade is the receipt's
+ * claim and never calls it verified. The grade word itself is unchanged.
+ */
+export const RECEIPT_GRADE_DISPLAY: Readonly<Record<ReceiptGradeWord, string>> =
+  Object.freeze({
+    "consistency-verified": "consistency claimed (not checked here)",
+    "existence-and-time": "existence and time claimed (not checked here)",
+  });
 
 export interface ReceiptEntry {
   readonly witness: string;
@@ -195,6 +207,8 @@ export interface VerificationPageModel {
    * resolution order; empty when nothing was refused.
    */
   readonly presentationRefusals: readonly PresentationRefusalNotice[];
+  /** Which checks this page ran, which failed, and which it did not run. */
+  readonly checkLists: VerificationCheckLists;
   readonly verifyIndependentlyLine: string;
 }
 
@@ -304,8 +318,273 @@ function recordCoverage(
   );
 }
 
+/**
+ * The checks the verification page names in its derived lists (presentation
+ * contract section 6.1), in the order the lists draw them.
+ *
+ * - `record-digests`: each record's capsule ID recomputed from its contents
+ *   (Class 1 check 2);
+ * - `record-rules`: the other Class 1 checks on each record (required
+ *   fields, effects, verdict, chain parent, assurance claims);
+ * - `closure`: the graph closure from the root to the stated depth;
+ * - `range`: the completeness certificate's range over the log;
+ * - `membership`: each record's inclusion at its log position;
+ * - `checkpoint-signature`: the COSE signature on the log's checkpoint;
+ * - `disclosures`: each disclosed value against its committed digest;
+ * - `countersignatures`: each countersign/v1 signature over the bundle digest;
+ * - `composed`: a composed/v1 block, its member bundles and its digest;
+ * - `cited-signers`: the producer signature on the records a page module
+ *   cites as signers (a Close and the records that link to it);
+ * - `producer-signatures`: the producer signature on every record;
+ * - `witness-receipts`: the witness receipts the bundle carries;
+ * - `countersignature-types`: a countersignature of a type this runtime does
+ *   not check;
+ * - `countersignature-receipts`: a receipt carried with a countersignature.
+ */
+export const VERIFICATION_CHECK_IDS = Object.freeze([
+  "record-digests",
+  "record-rules",
+  "closure",
+  "range",
+  "membership",
+  "checkpoint-signature",
+  "disclosures",
+  "countersignatures",
+  "composed",
+  "cited-signers",
+  "producer-signatures",
+  "witness-receipts",
+  "countersignature-types",
+  "countersignature-receipts",
+] as const);
+export type VerificationCheckId = (typeof VERIFICATION_CHECK_IDS)[number];
+
+/**
+ * The page's own checks, split by what happened to each here. Every entry is
+ * read from this runtime's verification result, its countersignature
+ * classification and what its page module checked; none is read from a claim
+ * in the bundle. `page`: the check ran here and passed. `failed`: it ran here
+ * and did not pass, so it is never listed as checked. `notChecked`: the
+ * bundle carries what the check needs, and this runtime does not run it or
+ * could not complete it.
+ */
+export interface VerificationCheckLists {
+  readonly page: readonly VerificationCheckId[];
+  readonly failed: readonly VerificationCheckId[];
+  readonly notChecked: readonly VerificationCheckId[];
+  /**
+   * True when the checkpoint signature is not checked although the claims
+   * that rest on it passed (the verifier recorded `checkpoint_unverified`).
+   */
+  readonly passedWithoutCheckpoint: boolean;
+}
+
+/** What else this runtime checked, beyond the verification result. */
+export interface CheckListInputs {
+  /** The countersignature classification the page draws. */
+  readonly stamps?: readonly CountersignatureStamp[];
+  /** True when the rendered page module checked the signers it cites. */
+  readonly citedSigners?: boolean;
+}
+
+export const CHECKED_ON_THIS_PAGE = "Checked on this page";
+export const FAILED_ON_THIS_PAGE = "Failed on this page";
+export const NOT_CHECKED_ON_THIS_PAGE = "Not checked on this page";
+/** Drawn after the not-checked list; it names no product or command. */
+export const FULL_VERIFIER_LINE =
+  "To run these checks, verify the bundle with a full verifier.";
+/** Drawn after the lists, whatever they hold. */
+export const CHECKS_SCOPE_LINE =
+  "None of these checks says who produced the records, or that this file is the most recent copy.";
+
+/**
+ * One line per check, worded so it reads true under each heading: it names
+ * what was checked, never the outcome. A check this page did not run is
+ * never called verified.
+ */
+export const VERIFICATION_CHECK_WORDS: Readonly<
+  Record<VerificationCheckId, string>
+> = Object.freeze({
+  "record-digests":
+    "Each record's contents against the capsule ID it was sealed with.",
+  "record-rules":
+    "Each record's required fields, effects, verdict, chain parent and assurance claims.",
+  closure:
+    "That every record the root cites, to the stated depth, is in this file or listed as missing.",
+  range:
+    "That no record is missing from the stretch of the log this file covers.",
+  membership: "That each record bound to a log position sits at that position.",
+  "checkpoint-signature": "The signature on the log's checkpoint.",
+  disclosures:
+    "Each disclosed value against the digest its record committed to.",
+  countersignatures:
+    "Each countersignature's signature, over this bundle's digest, under the key it names.",
+  composed:
+    "Each bundle this file composes, and the digest over the composition.",
+  "cited-signers":
+    "The producer signature on the records this page cites as signers, each marked beside it as verified or not. Not the signature on every record.",
+  "producer-signatures": "The producer signature on every record.",
+  "witness-receipts": "Each witness receipt this file carries.",
+  "countersignature-types":
+    "A countersignature of a type this page does not check.",
+  "countersignature-receipts": "The receipt carried with a countersignature.",
+});
+
+/** Added to the checkpoint line when the page passed the bundle without it. */
+export const CHECKPOINT_NOT_CHECKED_NOTE =
+  "This page could not check it, and shows the bundle as passing without it.";
+
+/** The words a list item shows for `id` under `list`. */
+export function verificationCheckWords(
+  id: VerificationCheckId,
+  list: keyof Omit<VerificationCheckLists, "passedWithoutCheckpoint">,
+  lists: VerificationCheckLists,
+): string {
+  const words = VERIFICATION_CHECK_WORDS[id];
+  return id === "checkpoint-signature" &&
+    list === "notChecked" &&
+    lists.passedWithoutCheckpoint
+    ? `${words} ${CHECKPOINT_NOT_CHECKED_NOTE}`
+    : words;
+}
+
+// Findings that say the completeness evaluation stopped before it reached
+// the checkpoint signature, so neither it nor the memberships ran.
+const STOPPED_BEFORE_CHECKPOINT = new Set([
+  "bundle_malformed",
+  "completeness_certificate_invalid",
+  "range_proof_invalid",
+]);
+
+/**
+ * Derive the page's check lists from its own results. Nothing here reads a
+ * bundle claim as a result: the bundle is read only for what it carries
+ * (a checkpoint signature, record signatures, witness receipts), which
+ * decides whether a check is called for at all.
+ */
+export function verificationCheckLists(
+  bundle: unknown,
+  verified: BundleVerificationResult,
+  inputs: CheckListInputs = {},
+): VerificationCheckLists {
+  const top = object(bundle) ?? {};
+  const outcome = new Map<
+    VerificationCheckId,
+    "page" | "failed" | "notChecked"
+  >();
+  const ran = (id: VerificationCheckId, passed: boolean): void => {
+    outcome.set(id, passed ? "page" : "failed");
+  };
+
+  // Class 1, per record.
+  if (Object.keys(verified.capsuleResults).length > 0) {
+    ran(
+      "record-digests",
+      capsuleGroupStatus(verified.capsuleResults, [2]) === "pass",
+    );
+    ran(
+      "record-rules",
+      capsuleGroupStatus(verified.capsuleResults, [1, 3, 4, 5, 6, 7, 8]) ===
+        "pass",
+    );
+  }
+  // The graph closure always runs; a declared-incomplete bundle passes it
+  // with its missing records listed.
+  ran("closure", verified.graphClosure.status !== "fail");
+
+  // Range, membership and the checkpoint signature run only when the bundle
+  // carries a completeness certificate and a checkpoint.
+  const range = verified.intervalCoverage;
+  const signed =
+    typeof object(top.checkpoint)?.cose === "string" &&
+    object(top.checkpoint)!.cose !== "";
+  let passedWithoutCheckpoint = false;
+  if (range.status !== "withheld") {
+    const stopped = range.findings.some((f) =>
+      STOPPED_BEFORE_CHECKPOINT.has(f),
+    );
+    const checkpointInvalid = range.findings.includes(
+      "checkpoint_authentication_invalid",
+    );
+    ran("range", !stopped || range.status === "pass");
+    if (stopped || checkpointInvalid) {
+      outcome.set("membership", "notChecked");
+    } else {
+      ran("membership", coverageStatement(verified).status === "established");
+    }
+    if (checkpointInvalid) outcome.set("checkpoint-signature", "failed");
+    else if (signed) {
+      const unchecked = [range, verified.perRecordMembership].some((claim) =>
+        claim.findings.includes("checkpoint_unverified"),
+      );
+      if (stopped || unchecked) {
+        outcome.set("checkpoint-signature", "notChecked");
+        passedWithoutCheckpoint = !stopped && range.status === "pass";
+      } else outcome.set("checkpoint-signature", "page");
+    }
+  }
+
+  const disclosed = verified.disclosures.filter((d) => d.status !== "withheld");
+  if (disclosed.length > 0)
+    ran(
+      "disclosures",
+      disclosed.every((d) => d.status === "disclosure_match"),
+    );
+
+  const stamps = inputs.stamps ?? [];
+  const signedStamps = stamps.filter(
+    (s) =>
+      s.kind === "resolved" ||
+      s.kind === "not-independent" ||
+      s.kind === "unresolved-signer",
+  );
+  const invalidStamps = stamps.filter((s) => s.kind === "invalid");
+  if (signedStamps.length + invalidStamps.length > 0)
+    ran("countersignatures", invalidStamps.length === 0);
+
+  const composed = verified.extensions.flatMap((e) =>
+    e.composed === undefined ? [] : [e.composed],
+  );
+  if (composed.some((c) => c.status === "fail")) ran("composed", false);
+  else if (composed.some((c) => c.status === "withheld"))
+    outcome.set("composed", "notChecked");
+  else if (composed.length > 0) ran("composed", true);
+
+  if (inputs.citedSigners === true) ran("cited-signers", true);
+
+  // Called for by what the bundle carries; this runtime does not run them.
+  if (
+    Array.isArray(top.records) &&
+    top.records.some(
+      (record) =>
+        typeof object(record)?.signature === "string" &&
+        object(record)!.signature !== "",
+    )
+  )
+    outcome.set("producer-signatures", "notChecked");
+  if (Array.isArray(top.receipts) && top.receipts.length > 0)
+    outcome.set("witness-receipts", "notChecked");
+  if (stamps.some((s) => s.kind === "unverified"))
+    outcome.set("countersignature-types", "notChecked");
+  if (
+    signedStamps.some(
+      (s) => "statement" in s && s.statement.receipt === "unverified",
+    )
+  )
+    outcome.set("countersignature-receipts", "notChecked");
+
+  const pick = (which: "page" | "failed" | "notChecked") =>
+    VERIFICATION_CHECK_IDS.filter((id) => outcome.get(id) === which);
+  return {
+    page: pick("page"),
+    failed: pick("failed"),
+    notChecked: pick("notChecked"),
+    passedWithoutCheckpoint,
+  };
+}
+
 export const VERIFY_INDEPENDENTLY_LINE =
-  "verify independently at verify.agentactioncapsule.org or with the CLI";
+  "verify independently at verify.agentactioncapsule.org or with a full verifier";
 
 const FIVE_WORD_RESULT: Readonly<Record<CheckStatus, string>> = Object.freeze({
   pass: "passed with no errors found",
@@ -400,6 +679,7 @@ export function buildVerificationPageModel(
   verified: BundleVerificationResult,
   appliedInterpreters?: ReadonlySet<ExtensionInterpreterId>,
   refused: readonly PresentationRefusal[] = [],
+  checkInputs: CheckListInputs = {},
 ): VerificationPageModel {
   const top = object(bundle) ?? {};
   const checkpoint = object(top.checkpoint);
@@ -409,7 +689,7 @@ export function buildVerificationPageModel(
       capsuleGroupStatus(verified.capsuleResults, [1]),
     ),
     summarize(
-      "Capsule identity",
+      "Capsule ID matches contents",
       capsuleGroupStatus(verified.capsuleResults, [2]),
     ),
     summarize(
@@ -460,6 +740,7 @@ export function buildVerificationPageModel(
       refused,
     ),
     presentationRefusals: presentationRefusalNotices(refused),
+    checkLists: verificationCheckLists(bundle, verified, checkInputs),
     verifyIndependentlyLine: VERIFY_INDEPENDENTLY_LINE,
   };
 }

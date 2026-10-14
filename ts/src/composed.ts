@@ -52,6 +52,8 @@ export interface ComposedMemberResult {
   readonly bundle?: ComposedMemberClaims;
   /** Set for a carried refusal. */
   readonly refusalSignature?: "verified" | "invalid" | "signature_unverified";
+  /** Set for an artifact member that carries its signed response. */
+  readonly responseSignature?: "verified" | "invalid" | "signature_unverified";
 }
 
 export interface CompositionClosureResult extends ComposedClaim {
@@ -175,6 +177,8 @@ interface Member {
   readonly outcome: "artifact" | "refusal" | "absence";
   readonly digest: string;
   readonly body?: Obj;
+  /** An artifact member's signed response envelope, without the artifact. */
+  readonly response?: Obj;
 }
 interface Join {
   readonly members: readonly [string, string];
@@ -272,12 +276,25 @@ function parseMember(
   for (const other of Object.values(OUTCOME_BODY))
     if (other !== bodyKey && Object.hasOwn(raw, other))
       return bad("body_outcome_conflict");
+  let response: Obj | undefined;
+  if (Object.hasOwn(raw, "response")) {
+    const value = raw.response;
+    if (
+      outcome !== "artifact" ||
+      !object(value) ||
+      !isHex64(value.request_digest) ||
+      !isHex64(value.artifact_digest)
+    )
+      return bad("response");
+    response = value;
+  }
   const member = {
     id,
     observer,
     requestDigest,
     outcome: outcome as Member["outcome"],
     digest,
+    ...(response === undefined ? {} : { response }),
   };
   if (!Object.hasOwn(raw, bodyKey)) return ok(member);
   const body = raw[bodyKey];
@@ -673,6 +690,17 @@ async function verifyMember(
       intervalCoverage: verification.intervalCoverage,
       perRecordMembership: verification.perRecordMembership,
     };
+    // A carried response binds the artifact to the request it answered.
+    if (m.response !== undefined) {
+      if (m.response.request_digest !== m.requestDigest) {
+        findings.push("response_request_digest_mismatch");
+        failed.push(`member_response_request_digest_mismatch:${m.id}`);
+      }
+      if (m.response.artifact_digest !== m.digest) {
+        findings.push("response_artifact_digest_mismatch");
+        failed.push(`member_response_artifact_digest_mismatch:${m.id}`);
+      }
+    }
   } else {
     try {
       computed = await jsonDigest(m.body);
@@ -695,6 +723,12 @@ async function verifyMember(
     refusalSignature = "signature_unverified";
     withheld.push(`refusal_signature_unverified:${m.id}`);
   }
+  // No deployment signature profile here, as for a refusal.
+  let responseSignature: ComposedMemberResult["responseSignature"];
+  if (m.response !== undefined) {
+    responseSignature = "signature_unverified";
+    withheld.push(`response_signature_unverified:${m.id}`);
+  }
   return {
     member: {
       ...base,
@@ -703,6 +737,7 @@ async function verifyMember(
       findings,
       ...(bundle === undefined ? {} : { bundle }),
       ...(refusalSignature === undefined ? {} : { refusalSignature }),
+      ...(responseSignature === undefined ? {} : { responseSignature }),
     },
     closure,
     failed,

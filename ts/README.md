@@ -23,7 +23,7 @@ CLL or its storage drivers. To use `@action-state-group/agent-action-capsule/bun
 or the existing broad root entry, explicitly install the pinned compatible CLL:
 
 ```bash
-npm install @action-state-group/agent-action-capsule @action-state-group/cll@0.2.0
+npm install @action-state-group/agent-action-capsule @action-state-group/cll@0.2.1
 ```
 
 The existing root exports remain available with CLL installed. The separate
@@ -50,33 +50,34 @@ The tests consume the same-commit corpora under `../vectors/`.
 
 ## Release
 
-The manual [Publish TypeScript npm package](https://github.com/action-state-group/agent-action-capsule/actions/workflows/publish-ts.yml)
-workflow follows capsule-emit-ts's main-only trusted-publishing convention.
-
-1. Update the version in `ts/package.json` and both root version fields in
-   `ts/package-lock.json`, merge to `main`, and wait for CI to pass.
-2. Run `publish-ts.yml` on `main`, supplying that exact version. The workflow
-   checks the name/version/lockfile, runs `npm ci` and the complete package
-   check/build, and performs `npm publish --dry-run` before uploading.
-3. Verify the npm package and `ts/v<version>` GitHub tag/release. Reruns skip
-   existing npm versions and check the tag against npm's `gitHead`, which must
-   be in the selected main commit's history. Registry errors other than E404
-   stop publication. A mismatched existing tag fails instead of moving it.
+Releases follow the repository's [RELEASING.md](../RELEASING.md): run
+**Release · Prepare** for `ts`, and merging its pull request creates the
+`ts/v<version>` tag and dispatches
+[Release · Publish TypeScript](https://github.com/action-state-group/agent-action-capsule/actions/workflows/publish-ts.yml)
+on it. The workflow checks the tag against `ts/package.json`, the lockfile and
+that the commit is on `main`, runs `npm ci` and the complete package
+check/build, and performs `npm publish --dry-run` before uploading from the
+`npm` environment. Reruns skip a version npm already has, and registry errors
+other than E404 stop publication. Prerelease versions publish under the `next`
+dist-tag, and a stable version older than npm's current `latest` under
+`backport`, so `latest` never moves backward.
 
 Before a real release, the npm package owner must configure a
 [trusted publisher](https://docs.npmjs.com/trusted-publishers/) for
 `@action-state-group/agent-action-capsule`: GitHub owner `action-state-group`,
-repository `agent-action-capsule`, workflow filename `publish-ts.yml`, no
-environment name, and permission for direct `npm publish`. The package/scope
+repository `agent-action-capsule`, workflow filename `publish-ts.yml`, and
+permission for direct `npm publish`, with environment name `npm` (the job runs
+in that environment). The package/scope
 must be provisioned by its owner; this workflow does not bootstrap ownership.
 The workflow uses Node 22 (>=22.14) and installs npm 11.19.1; trusted
 publishing requires npm >=11.5.1. No long-lived npm token is used, and
 trusted publishing supplies provenance automatically. The package is public.
 
-The TS workflow has no push/tag/release trigger. Its `ts/v` releases are
-excluded from the Python/PyPI publish job; ordinary Python release behavior
-and vector release behavior remain separate. Running the TS workflow is an
-actual release operation, not a dry-run-only dispatch.
+The TS workflow publishes only for a `ts/v*` tag: when Release · Tag dispatches
+it on the tag, or when a GitHub Release for a `ts/v*` tag is published, so
+publishing such a release by hand uploads to npm. Dispatched on a branch, it
+does nothing. `ts/v` tags never start the Python/PyPI publish job, and vector
+releases stay separate.
 
 For a local upload-free preview, run from `ts/`:
 

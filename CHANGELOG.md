@@ -16,9 +16,9 @@
   - Producer Envelope protected headers: Python and TypeScript require integer labels, each
     once, and an integer `alg`; TypeScript checks `alg`, content type and `kid` before the label
     count, as Go and Python do. The TypeScript verifier no longer depends on `cborg`.
-  - Check 9 (`provenance_mode`) in Rust and TypeScript; `provenance_mode` and
+  - Check 9 (`provenance_mode`) in TypeScript; `provenance_mode` and
     `self_reported_reasoning` must be objects and `domain`/`provenance` strings in Go, Rust and
-    TypeScript, as in Python. Rust treats a null `effect_attestation` as absent.
+    TypeScript, as in Python.
   - TypeScript Disclosure Envelopes without a `capsule` member fail instead of verifying the
     envelope itself; Python requires a lowercase-hex committed digest (DE-2).
   - Go `DecodeCapsuleJSON` and `bundle.DecodeFragment` reject invalid UTF-8 and unpaired
@@ -30,6 +30,153 @@
     cases. Released cases are unchanged.
 - TypeScript evidence graph: `provenanceMode` is read from the `provenance_mode` block's `mode`,
   not from a string-valued member.
+- Rust: new crate `agent-action-capsule` (`rust/agent-action-capsule/`), the
+  Rust reference verifier: canonicalization and `capsule_id`, Class 1
+  verification with checks 1-9 and the store checks, the profile registries,
+  Producer Envelopes, and Evidence Bundle v2 behind the `bundle` feature. It
+  runs the capsule, provenance-mode, producer-envelope and bundle corpora, and
+  the interlock now seals and verifies in Rust as well. It replaces the
+  unpublished `aac-bundle` crate (`rust/bundle/`). Released from
+  `crates/agent-action-capsule-v*` tags through Release · Prepare.
+- Interlock: the injected canonicalization divergence is now checked per
+  consumer. Each of Python, Go, TypeScript and Rust must reject it as a
+  `capsule_id_mismatch`; previously the script stopped at Python's rejection.
+
+## 0.7.1 — 2026-10-14
+
+- Release: Python and TypeScript releases are now a merged version bump. Run
+  **Release · Prepare** with the package and `patch`, `minor` or `major`; merging the
+  pull request it links tags `python/v*` or `ts/v*` and publishes. TypeScript now
+  publishes from a `ts/v*` tag through the `npm` environment instead of a manual run on
+  `main`. See `RELEASING.md`.
+- Release: Python releases are now tagged `python/v<version>`, matching the
+  `go/v*`, `ts/v*` and `vectors/v*` tags of the other artifacts. The PyPI version
+  is unchanged (`0.8.0`, not `python/0.8.0`). Releases up to 0.7.0 keep their bare
+  `v<version>` tags.
+- composed/v1 (`draft-mih-zhang-agent-disclosure-bundle-01`): an artifact member may carry
+  `response`, the responder's signed response as received with the artifact bytes removed. A
+  verifier requires its `request_digest` to equal the member's and its `artifact_digest` the
+  member's digest (either mismatch fails the block). Its signature is checked under the
+  deployment profile, as a refusal's is, and otherwise reported `signature_unverified`. It is
+  outside the composed digest. Go: `Options.ResponseSignature` and
+  `ComposedMemberResult.ResponseSignature`. TypeScript mirrors the check without a signature
+  profile. Vectors: `artifact-response-bound` and `artifact-response-other-request`, and every
+  composed/v1 case now states the block's expected `status`.
+- Spec: `spec/interop-profile-v0.md`, the Minimum Evidence Interoperability Profile v0
+  (`evidence-interop/0`). It is an Informational, pre-Internet-Draft profile that pins
+  `draft-mih-agent-evidence-request-00` and its conformance vectors, the Disclosure Envelope
+  digest rule, the settlement-records as-transmitted rule, and Evidence Result v0. It changes no
+  draft. It fixes:
+  - profile versions and unsupported-version behaviour;
+  - one name table shared by the CBOR and JSON encodings;
+  - canonical bytes, including the as-transmitted rule for foreign objects;
+  - the signed response envelope that binds a request digest to the caller-invariant Artifact
+    digest, responder and issuance time;
+  - the refusal and absence-record shapes;
+  - recipient-specific disclosures as definition-digest derivations with salted-digest
+    commitments;
+  - a five-value per-property verification status (`PASS`, `FAIL`, `NOT_PRESENT`,
+    `NOT_CHECKED`, `INCONCLUSIVE`);
+  - the mapping from outcome to status to Evidence Result;
+  - the refusal registry as the only error codes, kept apart from transport errors.
+
+  It includes a worked example with reproducible digests and Ed25519 signatures. The acceptance
+  record, lifecycle links, Evidence Contract prose, carriage and vectors are placeholder
+  headings for later revisions.
+- Spec: `spec/interop-profile-v0.md` registers its first verification-material kinds:
+  `cll-checkpoint`, `cll-inclusion-proof` and `cll-consistency-proof`, for a Checkpointed Local
+  Log. They are pinned to the posted `draft-mih-scitt-checkpointed-local-log-01` and
+  `draft-bryce-cose-receipts-mmr-profile-02`, each by the SHA-256 of its archive `.txt`. The new
+  §6.2.1 gives their bytes and the step-by-step `anchor_inclusion` check. A `record` envelope can
+  now reach `PASS` on every required property: §10.1 does so with real bytes, a computed
+  seven-entry log, a signed checkpoint, and inclusion and consistency proofs. Open point P-13 is
+  narrowed, and P-31 is added.
+
+- Spec: `spec/interop-profile-v0.md` §11.1 now defines the acceptance record: one signed record
+  type (`proposed`, then `accepted`, `declined` or `countered`) naming the contract version
+  digest, a transaction reference and both parties, with an optional session scope. It also
+  defines the proposer's signed acceptance receipt, and two normative forms of ordering evidence:
+  a counterparty-signed receipt, and a transparency-service or witness receipt. Causal binding
+  is informative. A verifier reports "accepted before action" only with one of those forms, and
+  otherwise reports that the acceptance exists and execution cites it. An acknowledgment is a
+  receipt, never an acceptance, and acceptance is never authority. The section adds the
+  verification properties, five acceptance findings, and the backdated-acceptance case
+  described as a future vector. It pins `draft-mih-agent-bilateral-attestation-02` and
+  `draft-mih-agent-evidence-layer-00`.
+
+- Spec: `spec/interop-profile-v0.md` §11.2 now defines lifecycle links. A correction or
+  challenge is a new signed lifecycle statement naming the earlier record by digest, with one
+  link of five tokens. `supersedes` and `rebuts` are the Evidence Layer's registered tokens, and
+  contradiction is carried as `rebuts`. `amends`, `disputes` and `resolves` are the profile's own,
+  proposed for registration in `draft-mih-agent-evidence-layer` -01, and are not edited into
+  -00. Only the issuer of a record, the key that signed it, or a successor key that the trust
+  policy names, may amend or supersede it. A non-issuer `supersedes` is reported
+  `lifecycle_issuer` `FAIL` with the finding `lifecycle_not_issuer`, and changes nothing. Anyone
+  may dispute or rebut, and neither changes the record. A `disputes` statement names a resolving
+  process, and only that process's `resolves` statement, carrying the same process and an
+  outcome, closes it. A `supersedes` link in an Evidence Layer record header follows the same
+  issuer rule. A verifier always shows the historical claim beside the latest supported state,
+  shows forks without choosing a branch, and shows every dispute and rebuttal. The section adds the verification properties, four
+  lifecycle findings, and the non-issuer supersession described as a future vector.
+
+- Spec: `spec/interop-profile-v0.md` §11.4 now carries the exchange over A2A and MCP as two
+  more adapters of the same request, beside the native `evidence-request/1` stream. Every
+  carriage moves the request and reply octets unchanged, so the same request octets give the
+  same request digest and the same canonical Artifact on all three. A2A: an Agent Card extension
+  whose URI is the draft's Datatracker URL, one `raw` part for the request, and one reply
+  Artifact in a completed task. MCP: the tools `evidence_manifest` and `evidence_request`, with
+  the octets in base64url and the reply in `structuredContent`. A2A task states, MCP errors and
+  `TASK_STATE_REJECTED` are never refusals. The section fixes one manifest, served unchanged on
+  every carriage and to every caller, and states what discovery must not reveal: no counts,
+  sizes, evidence digests, activity times, parties or conduct summaries. It names a request on
+  the `exchange` subject an "exchange inquiry", adds the discovery properties `manifest_form`
+  and `manifest_consistency`, and describes the cross-carriage invariance case as a future
+  vector. It pins A2A v1.0.1 and MCP 2026-07-28.
+
+- Spec: `spec/interop-profile-v0.md` §11.3 now describes the Evidence Contract v0 schema, pinned
+  by commit and file SHA-256. It covers every member and allowed value, with its type and
+  presence: the root (`id`, `version`, `requirements` and four optional objects), the seven
+  requirement profiles and the nine shapes they take, evidence requirements (accepted epistemic
+  types, sources, independence, minimum assurance, freshness, coverage), and the native, abstract
+  and stub members. It describes the schema and does not extend it. It also says how a contract
+  feeds the profile: the acceptance record's `contract_digest` covers the whole contract object,
+  `contract_ref` is built and compared and never split, each requirement gives one claim, and a
+  requirement the verifier cannot apply is `UNKNOWN`. Requirement ids must be unique within a
+  contract version. Open points P-46 to P-53 list what the schema does not say, among them
+  whether evidence is needed before the action, which the schema has no member for.
+
+- TypeScript: verification works without WebCrypto. `crypto.subtle` exists only in a secure
+  context, so a report in a non-secure or opaque origin (some apps' attachment viewers, an http:
+  or data: page) could not hash, and every digest, membership and range check failed on a valid
+  bundle. `sha256Hex` now uses a plain
+  SHA-256 (`src/sha256.ts`, FIPS 180-4 examples and node:crypto cross-checks in
+  `test/sha256.test.ts`) when SubtleCrypto is absent, and `@action-state-group/cll` 0.2.1 does the
+  same for MMR proofs: the built browser runtime, run with no `crypto` global, passes the same ten
+  checks on a fixture as with WebCrypto (`test/no-webcrypto-iife.test.ts`). New:
+  `digestCapability()` ("webcrypto" | "fallback" | "none"), `probeEd25519()` and
+  `ed25519Available()`.
+- TypeScript: a runtime with no SHA-256 at all (only reachable with the fallback switched off by
+  `setSha256FallbackForTesting(false)`) is never reported as a failed verification:
+  `verifyBundle` and `buildVerifiedBundleContext` throw `Sha256UnavailableError`, and
+  `renderEvidenceGraph` draws the "unable to verify in this viewer" state
+  (`renderUnableToVerify`, `data-verify="unable"`) with `options.verifyCommand` when given.
+- TypeScript: without Ed25519 (no SubtleCrypto, or one that rejects Ed25519 as not supported), a
+  countersign/v1 entry is stamped `{ kind: "unverified", reason: "no-ed25519" }`, "not checked in
+  this viewer", instead of "invalid". The `unverified` stamp gains `reason` (`"type"` for a type
+  this viewer does not implement, as before).
+- TypeScript: without Ed25519 a record's Producer Envelope is not checked: its signer is a stated
+  key_id with `keyNotChecked: true`, the ignored-link reasons say this viewer cannot check it, and
+  a close claim's state is shown as asserted (`derivation: "producer-asserted"`) instead of being
+  recomputed from links it cannot check. Before, the claim was failed for a state mismatch.
+- Go: `go/presentation`, the presentation resolver of `spec/presentation-contract-v0.md` in Go
+  (manifest parsing and the registry's structural rules, the section 4.2 descriptor over a bundle
+  the Go verifier checked, the section 3.2 ABI refusal and its exact wording, the section 4.3
+  match and tiers, the section 4.5 static ambiguity test, and the six built-in page manifests and
+  the composition section manifest embedded byte for byte), so a Go command-line tool can list
+  and resolve presentations without its own copy. New shared vectors,
+  `vectors/presentation-resolution/` (the 1,536-case table, 53 registration and refusal cases,
+  377 descriptor cases over real bundles), are generated by the TypeScript registry and run by
+  both the TypeScript and the Go test suites.
 - TypeScript: `VerifiedBundleContext` (`buildVerifiedBundleContext`) verifies a bundle once and is
   what every builder reads. `buildReportRows`, `buildResultRoot`, `isResultRoot`,
   `buildEvidenceGraph` and `renderEvidenceGraph` take a context (new overload; the `(bundle)`
@@ -136,6 +283,23 @@
   `runtime_min` and the runtime's declaration. The builder's core runtime type is renamed
   `CoreRuntimeScript` (it was `PresentationRuntime`, now the name of the runtime's ABI
   declaration). Default output is unchanged byte for byte.
+- Presentation contract revision 1 (`spec/presentation-contract-v0.md`,
+  `schemas/presentation-manifest-v0.json`):
+  - A declarative field may name `member`: `agent_input` (the default) or `agent_output`, so a
+    declarative module can show rows a record keeps in `agent_output`. `source` points into that
+    member's verified payload; a member that is not `disclosed` makes `canRender` false. New
+    fixtures: `example-declarative-outcome.json` (with its wording pack) and
+    `neg-declarative-member.json`; the checker models the source rule, with a mutant.
+  - `module.title` is reserved in `aac.wording-pack/v0`: the presentation's own name for list and
+    choice UIs, distinct from `page.title` (the page's `<title>`, which the builder reads). Both
+    reserved keys are documented in one table; both example packs carry them.
+  - `canRender` returns `boolean | Promise<boolean>`, as the reference runtime already types it.
+  - **Pending ratification:** a `buildModel` failure on a verified bundle rejects the render and
+    draws nothing (the reference runtime's behaviour); only a `render` failure shows the refusal.
+    The contract previously required the refusal for both.
+  - Appendix C brought up to date: extension interpretation status is now reported (item 6);
+    the section registry, the unimplemented services and declarative renderer, and the single
+    depth element are recorded. Appendix A and the `TITLE_SLOT` row describe the code as it is.
 ### Emitter (Go and TypeScript)
 - The HTML shell has named slots: `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`,
   `MODULE_SLOT` (zero or more digest-pinned scripts) and `BOOTSTRAP_SLOT`, plus `CSP_SLOT` for the
@@ -149,6 +313,13 @@
   presentation contract's `style_sha256`. The emitter lists each, in base64 form, in `style-src`
   after the core runtime's, and refuses a malformed pin. Pages with no module stylesheets are
   unchanged.
+- The presentation builder passes each module's stylesheet pins through to the emitter
+  (`buildPresentation`, `offlineHtmlFromFragment`; Go `BuildOfflineHTML`,
+  `OfflineHTMLFromFragment`). A module given with its manifest (`PresentationModuleScript.manifest`;
+  Go: the new optional `Module.Manifest`) must declare the same stylesheets in
+  `executable.style_sha256`, compared as a set; on a mismatch no page is written and
+  `PresentationStylePinsError` (Go: `*StylePinsError`) names both lists. Default output is
+  unchanged byte for byte.
 - Every emitted page carries a Content-Security-Policy meta element: `default-src 'none'`,
   `script-src` and `style-src` as SHA-256 hashes of the inline elements actually written (plus the
   two stylesheets the reference runtime inserts at render time, listed in

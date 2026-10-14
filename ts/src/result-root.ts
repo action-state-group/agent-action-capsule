@@ -1,4 +1,4 @@
-import { isHex64, jsonDigest, sha256Hex } from "./json.js";
+import { isHex64, jsonDigest, probeEd25519, sha256Hex } from "./json.js";
 import {
   AGENT_INPUT_ORIGINALS_EXTENSION,
   BOOK_PAYLOADS_EXTENSION,
@@ -206,6 +206,12 @@ export interface CloseLink {
    * never satisfies the different-key condition.
    */
   readonly keyVerified?: boolean;
+  /**
+   * True when this runtime has no Ed25519 (no SubtleCrypto outside a secure
+   * context), so the envelope was not checked at all; `keyVerified` is then
+   * false. Absent otherwise.
+   */
+  readonly keyNotChecked?: true;
 }
 
 /** The label a view draws beside a key_id whose signature did not verify. */
@@ -228,6 +234,8 @@ export interface ResultClose {
   readonly keyId?: string;
   /** Present with `keyId`: whether the Close's own Producer Envelope verifies under it. When false, no link counts. */
   readonly keyVerified?: boolean;
+  /** True when this runtime could not check the Close's Producer Envelope at all (no Ed25519). */
+  readonly keyNotChecked?: true;
   readonly period?: { readonly start: string; readonly end: string };
   /** The state the Result wrote. Never drawn as the state when `derived` disagrees. */
   readonly asserted: CloseState;
@@ -823,11 +831,17 @@ async function inboundCloseLinks(
  * signature by another key, an envelope over another id, a runtime
  * without Ed25519 WebCrypto -- is a stated key_id, never a verified one.
  */
-async function signerOf(
-  record: RecordWithId,
-): Promise<{ readonly keyId?: string; readonly keyVerified?: boolean }> {
+async function signerOf(record: RecordWithId): Promise<{
+  readonly keyId?: string;
+  readonly keyVerified?: boolean;
+  readonly keyNotChecked?: true;
+}> {
   const keyId = record.key_id;
   if (typeof keyId !== "string" || !isHex64(keyId)) return {};
+  // A runtime with no Ed25519 checks no envelope: a stated key_id, said as
+  // not checked rather than as an envelope that does not verify.
+  if (!(await probeEd25519()))
+    return { keyId, keyVerified: false, keyNotChecked: true };
   return { keyId, keyVerified: await keyVerifies(record, keyId) };
 }
 
@@ -880,6 +894,7 @@ export function counterpartyLinks(
     readonly bookId?: string;
     readonly keyId?: string;
     readonly keyVerified?: boolean;
+    readonly keyNotChecked?: true;
   },
   peer: string | undefined,
   inbound: readonly CloseLink[],
@@ -893,7 +908,9 @@ export function counterpartyLinks(
         : close.keyId === undefined
           ? "the cited Close carries no key_id, so no signer can be shown to differ from its own"
           : close.keyVerified !== true
-            ? `the cited Close's key_id is a ${UNVERIFIED_KEY_LABEL}: its Producer Envelope does not verify under it, so no signer can be shown to differ from its own`
+            ? close.keyNotChecked === true
+              ? `the cited Close's key_id is a ${UNVERIFIED_KEY_LABEL}: this viewer cannot check its Producer Envelope, so no signer can be shown to differ from its own`
+              : `the cited Close's key_id is a ${UNVERIFIED_KEY_LABEL}: its Producer Envelope does not verify under it, so no signer can be shown to differ from its own`
             : link.bookId === undefined
               ? "the linking record names no book_id"
               : link.bookId === close.bookId
@@ -905,7 +922,9 @@ export function counterpartyLinks(
                   : link.keyId === undefined
                     ? "the linking record carries no key_id"
                     : link.keyVerified !== true
-                      ? `${UNVERIFIED_KEY_LABEL}: the linking record's Producer Envelope does not verify under its key_id`
+                      ? link.keyNotChecked === true
+                        ? `${UNVERIFIED_KEY_LABEL}: this viewer cannot check the linking record's Producer Envelope`
+                        : `${UNVERIFIED_KEY_LABEL}: the linking record's Producer Envelope does not verify under its key_id`
                       : link.keyId === close.keyId
                         ? "the linking record is signed under the Close's own key"
                         : undefined;
@@ -1402,7 +1421,13 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
         peer,
         inbound.get(closeRef) ?? [],
       );
-      const derived = supplied ? deriveCloseState(links) : undefined;
+      // A viewer that cannot check the signers (no Ed25519) cannot read the
+      // state from the links either: it shows the producer's assertion as
+      // such, never a state that would contradict it for that reason alone.
+      const derived =
+        supplied && closeSigner.keyNotChecked !== true
+          ? deriveCloseState(links)
+          : undefined;
       const peerCloseRef = isObject(body.peer_close_ref)
         ? asString(body.peer_close_ref.digest)
         : undefined;

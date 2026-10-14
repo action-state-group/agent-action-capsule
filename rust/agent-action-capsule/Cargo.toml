@@ -1,0 +1,47 @@
+[package]
+name = "agent-action-capsule"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "BSD-3-Clause"
+description = "Agent Action Capsule reference verification: RFC 8785 canonicalization and capsule_id, the Class 1 record checks, Producer Envelopes, and Evidence Bundles."
+repository = "https://github.com/action-state-group/agent-action-capsule"
+documentation = "https://docs.rs/agent-action-capsule"
+readme = "README.md"
+keywords = ["scitt", "agent-action-capsule", "jcs", "cose", "verification"]
+categories = ["cryptography"]
+# The library, its interlock example and the registry snapshots it embeds.
+# The tests read the shared conformance vectors from the repository root,
+# which does not ship.
+include = ["src/**/*.rs", "examples/**/*.rs", "data/REGISTRY.md", "data/cpb_provisional.json", "Cargo.toml", "README.md", "CHANGELOG.md", "LICENSE"]
+
+[lib]
+name = "agent_action_capsule"
+path = "src/lib.rs"
+
+[features]
+default = []
+# Evidence Bundle v2. Off by default: checkpointed-local-log also carries an
+# HTTP witness client, which record verification does not need.
+bundle = ["dep:cll", "dep:base64", "dep:serde"]
+
+[dependencies]
+# arbitrary_precision keeps each number's source text, so float and
+# unsafe-integer detection read the literal digits (as Go's json.Number does).
+serde_json = { version = "1", features = ["arbitrary_precision"] }
+serde = { version = "1", optional = true }
+sha2 = "0.10"
+hex = "0.4"
+ed25519-dalek = "2"
+cll = { package = "checkpointed-local-log", version = "0.3", optional = true }
+base64 = { version = "0.22", optional = true }
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[[test]]
+name = "bundle_vectors"
+required-features = ["bundle"]
+
+[[example]]
+name = "cross_language"

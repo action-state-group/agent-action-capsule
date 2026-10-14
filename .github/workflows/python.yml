@@ -1,4 +1,4 @@
-name: python
+name: Python CI
 on:
   push:
     paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**", "vectors/minimum-necessary/**", ".github/**"]
@@ -12,8 +12,8 @@ jobs:
       matrix:
         python-version: ["3.9", "3.12"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with: { python-version: "${{ matrix.python-version }}" }
       - name: install
         working-directory: python
@@ -40,3 +40,6 @@ jobs:
       # synthetic terms only, so this pull_request job needs no secret.
       - name: leak-lint tests
         run: python -m pytest -q .github/test_leak_lint.py
+
+      - name: release helper tests
+        run: python -m pytest -q .github/test_release.py

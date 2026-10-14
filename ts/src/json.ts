@@ -1,3 +1,6 @@
+import { hexToBytes, producerPublicKeySpki } from "./producer-envelope-wire.js";
+import { sha256 } from "./sha256.js";
+
 export type JsonPrimitive = null | boolean | string | number;
 export type JsonValue =
   | JsonPrimitive
@@ -281,15 +284,110 @@ export function jcs(value: unknown): Uint8Array {
   return encoder.encode(render(value, "$", new Set<object>(), 0));
 }
 
-/** SHA-256 using the platform WebCrypto implementation. */
+/**
+ * Where this runtime's SHA-256 comes from: "webcrypto" (SubtleCrypto, which
+ * a browser gives only a secure context), "fallback" (the plain
+ * implementation in sha256.ts, e.g. a page in a non-secure or opaque
+ * origin such as some apps' attachment viewers), or "none" (neither, which happens only when the
+ * fallback is switched off with {@link setSha256FallbackForTesting}).
+ */
+export type DigestCapability = "webcrypto" | "fallback" | "none";
+
+/**
+ * Thrown in place of a verification result when the runtime has no SHA-256:
+ * nothing could be checked, which is not a failed check.
+ */
+export class Sha256UnavailableError extends Error {
+  public constructor() {
+    super("no SHA-256 implementation is available in this runtime");
+    this.name = "Sha256UnavailableError";
+  }
+}
+
+let sha256Fallback = true;
+
+/**
+ * Switch the plain SHA-256 off (false) or back on (true). A test hook: it
+ * stands in for a runtime with neither WebCrypto nor the fallback, so the
+ * "unable to verify in this viewer" state can be exercised.
+ */
+export function setSha256FallbackForTesting(enabled: boolean): void {
+  sha256Fallback = enabled;
+}
+
+function webCrypto(): SubtleCrypto | undefined {
+  const subtle = (globalThis as { crypto?: { subtle?: SubtleCrypto } }).crypto
+    ?.subtle;
+  return typeof subtle?.digest === "function" ? subtle : undefined;
+}
+
+export function digestCapability(): DigestCapability {
+  if (webCrypto() !== undefined) return "webcrypto";
+  return sha256Fallback ? "fallback" : "none";
+}
+
+// RFC 8032 section 7.1, test 1: a valid Ed25519 public key to probe with.
+const PROBE_KEY =
+  "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a";
+const ed25519Probes = new WeakMap<SubtleCrypto, boolean>();
+
+/**
+ * Whether this runtime can check an Ed25519 signature: it has SubtleCrypto
+ * (the only Ed25519 verifier here) and that SubtleCrypto accepts an Ed25519
+ * key. The answer is cached per SubtleCrypto. A signature this runtime
+ * cannot check is not checked in this viewer, never failed.
+ */
+export async function probeEd25519(): Promise<boolean> {
+  const subtle = webCrypto();
+  if (subtle === undefined) return false;
+  let supported = ed25519Probes.get(subtle);
+  if (supported === undefined) {
+    try {
+      await subtle.importKey(
+        "spki",
+        producerPublicKeySpki(hexToBytes(PROBE_KEY)) as BufferSource,
+        { name: "Ed25519" },
+        false,
+        ["verify"],
+      );
+      supported = true;
+    } catch (error) {
+      supported =
+        (error as { name?: unknown } | null)?.name !== "NotSupportedError";
+    }
+    ed25519Probes.set(subtle, supported);
+  }
+  return supported;
+}
+
+/**
+ * The synchronous reading of {@link probeEd25519}: false without
+ * SubtleCrypto or once a probe found no Ed25519, true otherwise.
+ * `buildVerifiedBundleContext` runs the probe, so a reader of a built
+ * context gets the probed answer.
+ */
+export function ed25519Available(): boolean {
+  const subtle = webCrypto();
+  return subtle !== undefined && ed25519Probes.get(subtle) !== false;
+}
+
+/**
+ * SHA-256 with the platform WebCrypto implementation, or the plain one
+ * where the page has no SubtleCrypto. Throws {@link Sha256UnavailableError}
+ * when neither is available.
+ */
 export async function sha256Hex(value: Uint8Array): Promise<string> {
-  const digest = await globalThis.crypto.subtle.digest(
-    "SHA-256",
-    value as BufferSource,
+  const subtle = webCrypto();
+  let digest: Uint8Array;
+  if (subtle !== undefined)
+    digest = new Uint8Array(
+      await subtle.digest("SHA-256", value as BufferSource),
+    );
+  else if (sha256Fallback) digest = sha256(value);
+  else throw new Sha256UnavailableError();
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join(
+    "",
   );
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
 }
 
 export async function jsonDigest(value: unknown): Promise<string> {

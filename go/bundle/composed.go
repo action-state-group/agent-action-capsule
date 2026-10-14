@@ -32,9 +32,17 @@ const (
 // which is neither failed nor absent.
 type RefusalSignatureVerifier func(refusal map[string]interface{}) string
 
+// ResponseSignatureVerifier checks the signed response envelope an artifact
+// member carries (the envelope without its artifact bytes) under the
+// deployment's signature profile, and returns one of the refusal signature
+// states, read the same way: without a verifier every carried response is
+// signature-unverified.
+type ResponseSignatureVerifier func(response map[string]interface{}) string
+
 // Options configures VerifyBundleWithOptions.
 type Options struct {
-	RefusalSignature RefusalSignatureVerifier
+	RefusalSignature  RefusalSignatureVerifier
+	ResponseSignature ResponseSignatureVerifier
 }
 
 // ComposedDigestResult is the recomputed composed digest beside the declared one.
@@ -63,6 +71,9 @@ type ComposedMemberResult struct {
 	Bundle *VerificationResult
 	// RefusalSignature is set for a carried refusal.
 	RefusalSignature string
+	// ResponseSignature is set for an artifact member that carries its
+	// response, in the refusal signature states.
+	ResponseSignature string
 }
 
 // CompositionClosureResult is the fourth completeness claim.
@@ -145,6 +156,9 @@ var (
 type composedMember struct {
 	id, observer, requestDigest, outcome, digest string
 	body                                         map[string]interface{}
+	// response is an artifact member's signed response envelope without its
+	// artifact bytes, when carried: what binds the artifact to its request.
+	response map[string]interface{}
 }
 
 type composedObserver struct{ id, role, custody string }
@@ -278,6 +292,33 @@ func verifyMember(m composedMember, declaredMissing bool, opts Options) (Compose
 		computed, err = BundleDigest(m.body)
 		verification := VerifyBundleWithOptions(m.body, opts)
 		out.Bundle = &verification
+		// A carried response binds the artifact to the request it answered:
+		// the request digest it signs is the member's, and the artifact
+		// digest it signs is the member's bundle digest.
+		if m.response != nil {
+			if m.response["request_digest"] != m.requestDigest {
+				out.Findings = append(out.Findings, "response_request_digest_mismatch")
+				failed = append(failed, "member_response_request_digest_mismatch:"+m.id)
+			}
+			if m.response["artifact_digest"] != m.digest {
+				out.Findings = append(out.Findings, "response_artifact_digest_mismatch")
+				failed = append(failed, "member_response_artifact_digest_mismatch:"+m.id)
+			}
+			out.ResponseSignature = RefusalSignatureUnverified
+			if opts.ResponseSignature != nil {
+				switch state := opts.ResponseSignature(m.response); state {
+				case RefusalSignatureVerified, RefusalSignatureInvalid:
+					out.ResponseSignature = state
+				}
+			}
+			switch out.ResponseSignature {
+			case RefusalSignatureInvalid:
+				out.Findings = append(out.Findings, "response_signature_invalid")
+				failed = append(failed, "response_signature_invalid:"+m.id)
+			case RefusalSignatureUnverified:
+				withheld = append(withheld, "response_signature_unverified:"+m.id)
+			}
+		}
 	} else {
 		computed, err = canonical.JSONDigest(m.body)
 		if m.body["request_digest"] != m.requestDigest {
@@ -649,6 +690,13 @@ func parseMember(raw interface{}, observers map[string]bool) (composedMember, st
 		if _, present := value[other]; present && other != bodyKey {
 			return m, "body_outcome_conflict"
 		}
+	}
+	if rawResponse, present := value["response"]; present {
+		response, ok := rawResponse.(map[string]interface{})
+		if m.outcome != "artifact" || !ok || !isDigest(response["request_digest"]) || !isDigest(response["artifact_digest"]) {
+			return m, "response"
+		}
+		m.response = response
 	}
 	rawBody, present := value[bodyKey]
 	if !present {

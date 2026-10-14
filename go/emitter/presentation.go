@@ -108,9 +108,78 @@ func CheckWordingPack(w Wording) (map[string]string, error) {
 	return entries, nil
 }
 
+// StylePinsError is returned when a module's manifest pins other
+// stylesheets than the module carries (contract section 5.1). No page is
+// written; the error names both lists.
+type StylePinsError struct {
+	// Module is the manifest's id.
+	Module string
+	// ManifestStyleSHA256 is the manifest's executable.style_sha256, as given.
+	ManifestStyleSHA256 []string
+	// ModuleStyleSHA256 is the module's StyleSHA256, as given.
+	ModuleStyleSHA256 []string
+}
+
+func (e *StylePinsError) Error() string {
+	return fmt.Sprintf("module manifest %s style_sha256 [%s] does not equal the module's style pins [%s] as a set; no page is written",
+		e.Module, strings.Join(e.ManifestStyleSHA256, ", "), strings.Join(e.ModuleStyleSHA256, ", "))
+}
+
+// moduleManifest is the part of a presentation manifest the offline
+// builder checks against the module it inlines.
+type moduleManifest struct {
+	ID         string `json:"id"`
+	Executable *struct {
+		Carrier      string   `json:"carrier"`
+		ScriptSHA256 string   `json:"script_sha256"`
+		StyleSHA256  []string `json:"style_sha256"`
+	} `json:"executable"`
+}
+
+func pinSet(pins []string) map[string]bool {
+	set := make(map[string]bool, len(pins))
+	for _, pin := range pins {
+		set[pin] = true
+	}
+	return set
+}
+
+// checkModuleManifest checks a module given with its manifest: the
+// manifest pins this module-slot script, and its style_sha256 equals the
+// module's StyleSHA256 as a set (an absent list is empty).
+func checkModuleManifest(m Module) error {
+	if len(m.Manifest) == 0 {
+		return nil
+	}
+	var manifest moduleManifest
+	if err := json.Unmarshal(m.Manifest, &manifest); err != nil {
+		return fmt.Errorf("module manifest is not a presentation manifest: %w", err)
+	}
+	if manifest.Executable == nil || manifest.Executable.Carrier != "module-slot" ||
+		manifest.Executable.ScriptSHA256 != m.SHA256 {
+		return fmt.Errorf("module manifest %s does not pin this module-slot script (sha256 %s)", manifest.ID, m.SHA256)
+	}
+	declared, carried := pinSet(manifest.Executable.StyleSHA256), pinSet(m.StyleSHA256)
+	same := len(declared) == len(carried)
+	for pin := range declared {
+		same = same && carried[pin]
+	}
+	if !same {
+		return &StylePinsError{
+			Module:              manifest.ID,
+			ManifestStyleSHA256: append([]string{}, manifest.Executable.StyleSHA256...),
+			ModuleStyleSHA256:   append([]string{}, m.StyleSHA256...),
+		}
+	}
+	return nil
+}
+
 // BuildOfflineHTML packages a (scoped) bundle as one self-contained offline
 // file with its per-page CSP. The default settings (audience "*", nothing
-// else) write exactly EmitEvidenceGraphHTML's page.
+// else) write exactly EmitEvidenceGraphHTML's page. Each module's script
+// and stylesheet pins reach the CSP; a module given with its manifest is
+// checked against it first (checkModuleManifest), and on a mismatch no page
+// is written.
 func BuildOfflineHTML(value interface{}, runtime []byte, o OfflineOptions) (string, error) {
 	bundleObject, ok := value.(map[string]interface{})
 	if !ok {
@@ -123,6 +192,11 @@ func BuildOfflineHTML(value interface{}, runtime []byte, o OfflineOptions) (stri
 	case "", "L0", "L1", "L2":
 	default:
 		return "", fmt.Errorf("depth is not L0, L1 or L2")
+	}
+	for _, module := range o.Modules {
+		if err := checkModuleManifest(module); err != nil {
+			return "", err
+		}
 	}
 	title := o.Title
 	if o.Wording != nil {

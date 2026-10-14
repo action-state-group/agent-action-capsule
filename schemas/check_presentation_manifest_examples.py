@@ -12,13 +12,14 @@ rejection is load-bearing rather than a check that can never fire.
 What this enforces (spec/presentation-contract-v0.md is normative; this is the
 mechanical half):
 
-  1. POSITIVE: the six built-in manifests (appendix A) and the four example
+  1. POSITIVE: the six built-in manifests (appendix A) and the five example
      manifests (appendix B: a unilateral module that forbids composed/v1, a
      module that declares it understands a composition, a generic fallback,
-     a declarative rules module) validate against $defs/PresentationManifest.
-     The two halves of the ambiguous pair validate too: their defect is not
-     one a schema can see. example-wording-pack.json validates against
-     $defs/WordingPack.
+     a declarative rules module reading agent_input, a declarative module
+     reading rows from agent_output) validate against
+     $defs/PresentationManifest. The two halves of the ambiguous pair
+     validate too: their defect is not one a schema can see. Both example
+     wording packs validate against $defs/WordingPack.
   2. SCHEMA NEGATIVES, each a copy of a positive with one change, MUST fail:
        - neg-unknown-field.json: a `title` member (presentation words belong
          in a wording pack, and the manifest is closed).
@@ -31,15 +32,18 @@ mechanical half):
        - neg-hint-wording-source.json: a declarative module naming the
          `presentation/v1` block as a wording source; wording comes only
          from the pack `wording_sha256` binds (spec section 6).
+       - neg-declarative-member.json: a declarative field whose `member` is
+         neither agent_input nor agent_output (spec section 5.2).
      MUTANT CHECK: each rejection is re-tested with the one schema rule it
      depends on removed (in memory; the committed schema is never modified).
      The same fixture MUST then validate, and the restored schema MUST
      reject it again.
-  3. WORDING BINDING: the declarative example's `wording_sha256` equals the
-     SHA-256 of example-wording-pack.json's exact bytes, every `label_key`
-     names an entry in that pack, and every `value_key_prefix` prefixes at
-     least one entry. A one-character edit of the pack (in memory) MUST
-     change the digest.
+  3. WORDING BINDING: each declarative example's `wording_sha256` equals the
+     SHA-256 of its pack's exact bytes, every `label_key` names an entry in
+     that pack, and every `value_key_prefix` prefixes at least one entry.
+     Each pack carries both reserved keys (spec section 7.4), `page.title`
+     and `module.title`, with different strings. A one-character edit of a
+     pack (in memory) MUST change the digest.
   4. STATIC RESOLUTION TEST (section 4.5): within each registry (the six
      built-ins; the four examples), no two manifests of the same tier
      (specific or fallback) can match one descriptor. A manifest whose
@@ -74,6 +78,15 @@ mechanical half):
      a supported API and a too-high runtime_min is refused as
      runtime_too_old, with the section 3.2 line. MUTANT: a resolver that
      ignores presentation_api selects the unsupported module.
+  8. DECLARATIVE SOURCES (spec section 5.2): canRender for a declarative
+     module, modelled over a root whose members are given as (state,
+     payload). A field with no `member` reads agent_input; a field with
+     `member: agent_output` reads agent_output; a member that is not
+     `disclosed` resolves nothing. The agent_input example renders over a
+     root whose rows are in agent_input; the agent_output example renders
+     over a root whose rows are in agent_output and declines when that
+     member is withheld or mismatched. MUTANT: a renderer that ignores
+     `member` declines the agent_output example over the same root.
 
 Usage:
     python3 schemas/check_presentation_manifest_examples.py       # from repo root
@@ -89,8 +102,10 @@ NOT covered here (explicitly named, not silently skipped):
   - The digests in the example executable manifests are placeholders: no
     script is committed beside them. A builder checks a module-slot pin
     against the bytes it inlines (the emitter refuses a mismatch).
-  - JSON Pointer sources in the declarative example are not resolved against
-    a payload here; no rules-comparison payload is committed in this repo.
+  - The declarative renderer is not implemented in this repository; check 8
+    models only canRender's source rule (member, disclosure state, RFC 6901
+    resolution, the kind of the value) over in-memory roots, not a
+    committed bundle.
   - Whether a trusted-executable module's code reads a bundle-carried
     presentation setting for wording or depth: code is not visible to a
     schema. Spec section 6 gives the behavioural test a reviewer or a
@@ -130,6 +145,7 @@ EXAMPLES = [
     "example-composition-aware",
     "example-generic-fallback",
     "example-declarative-rules",
+    "example-declarative-outcome",
 ]
 AMBIGUOUS_PAIR = ["neg-ambiguous-pair/a", "neg-ambiguous-pair/b"]
 UNSUPPORTED_API = "neg-unsupported-presentation-api"
@@ -137,7 +153,13 @@ UNSUPPORTED_API = "neg-unsupported-presentation-api"
 # The reference runtime's declaration (spec section 3.2).
 RUNTIME_APIS = frozenset({"aac.presentation-api/v0"})
 RUNTIME_VERSION = "0.1.0"
-WORDING_PACK = "example-wording-pack"
+# Each declarative example, with the wording pack its wording_sha256 binds.
+WORDING_PACKS = {
+    "example-declarative-rules": "example-wording-pack",
+    "example-declarative-outcome": "example-wording-pack-outcome",
+}
+# The keys every aac.wording-pack/v0 pack reserves (spec section 7.4).
+RESERVED_WORDING_KEYS = ("page.title", "module.title")
 
 ID_ROWS = "aac.builtin.report-rows/v0"
 ID_OUTCOME = "aac.builtin.result-outcome-report/v0"
@@ -176,6 +198,10 @@ def _strip_declarative_additional(schema: dict) -> None:
     del schema["$defs"]["Declarative"]["additionalProperties"]
 
 
+def _strip_member_enum(schema: dict) -> None:
+    schema["$defs"]["DeclarativeField"]["properties"]["member"] = {"type": "string"}
+
+
 # (fixture, the rule it depends on, how to remove that rule in memory)
 SCHEMA_NEGATIVES = [
     ("neg-unknown-field", "additionalProperties: false", _strip_additional),
@@ -184,6 +210,7 @@ SCHEMA_NEGATIVES = [
     ("neg-presentation-v1-namespace", "spec_version const", _strip_namespace_const),
     ("neg-missing-presentation-api", "presentation_api required", _strip_presentation_api_required),
     ("neg-hint-wording-source", "declarative closed", _strip_declarative_additional),
+    ("neg-declarative-member", "member enum", _strip_member_enum),
 ]
 
 
@@ -441,6 +468,89 @@ def _drop_forbid(registry, module_id, field, token):
     return mutated
 
 
+# --- declarative sources (spec section 5.2) ---------------------------------
+DEFAULT_MEMBER = "agent_input"
+_MISSING = object()
+
+
+def _pointer(doc, pointer: str):
+    """RFC 6901 resolution; _MISSING when the pointer names nothing."""
+    if pointer == "":
+        return doc
+    for raw in pointer.split("/")[1:]:
+        token = raw.replace("~1", "/").replace("~0", "~")
+        if isinstance(doc, dict) and token in doc:
+            doc = doc[token]
+        elif isinstance(doc, list) and token.isdigit() and (token == "0" or token[0] != "0") \
+                and int(token) < len(doc):
+            doc = doc[int(token)]
+        else:
+            return _MISSING
+    return doc
+
+
+def _of_kind(value, item: dict) -> bool:
+    """The minimal shape of each kind; the renderer's code is the authority."""
+    kind = item["kind"]
+    if kind == "count":
+        return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+    if kind in ("enum", "digest"):
+        return isinstance(value, str) and value != ""
+    if kind == "identifier":
+        return (isinstance(value, str) and 0 < len(value) <= 128
+                and not any(c.isspace() for c in value))
+    if kind == "rows":
+        return isinstance(value, list) and all(
+            isinstance(row, dict)
+            and all(_of_kind(_pointer(row, c["source"]), c) for c in item["columns"])
+            for row in value
+        )
+    return False
+
+
+def declarative_can_render(m: dict, root: dict, honour_member: bool = True) -> bool:
+    """canRender for a declarative module. `root` maps a member name to
+    (state, payload). `honour_member=False` is the MUTANT only (check 8)."""
+    for field in m["declarative"]["fields"]:
+        member = field.get("member", DEFAULT_MEMBER) if honour_member else DEFAULT_MEMBER
+        state, payload = root.get(member, ("withheld", None))
+        if state != "disclosed":
+            return False
+        if not _of_kind(_pointer(payload, field["source"]), field):
+            return False
+    return True
+
+
+DIGEST = "sha256:" + "0" * 64
+RULES_ROOT = {
+    "agent_input": ("disclosed", {
+        "spec_version": "org.example.rules-comparison/v0",
+        "rule_count": 2,
+        "rules": [
+            {"rule_id": "r-1", "state": "controlled", "cites": DIGEST},
+            {"rule_id": "r-2", "state": "unknown", "cites": DIGEST},
+        ],
+    }),
+    "agent_output": ("withheld", None),
+}
+OUTCOME_INPUT = {"spec_version": "org.example.rules-run/v0", "run_id": "run-7"}
+OUTCOME_OUTPUT = {
+    "failed_count": 1,
+    "rules": [
+        {"rule_id": "r-1", "outcome": "pass", "evidence": DIGEST},
+        {"rule_id": "r-2", "outcome": "fail", "evidence": DIGEST},
+    ],
+}
+
+
+def _outcome_root(output_state: str) -> dict:
+    return {
+        "agent_input": ("disclosed", OUTCOME_INPUT),
+        "agent_output": (output_state,
+                         OUTCOME_OUTPUT if output_state == "disclosed" else None),
+    }
+
+
 def main() -> int:
     if not SCHEMA_PATH.exists():
         print(f"ERROR: schema not found at {SCHEMA_PATH}")
@@ -451,7 +561,10 @@ def main() -> int:
         examples = [_load(n) for n in EXAMPLES]
         pair = [_load(n) for n in AMBIGUOUS_PAIR]
         unsupported = _load(UNSUPPORTED_API)
-        pack_bytes = (EXAMPLES_DIR / f"{WORDING_PACK}.json").read_bytes()
+        pack_bytes = {
+            name: (EXAMPLES_DIR / f"{pack}.json").read_bytes()
+            for name, pack in WORDING_PACKS.items()
+        }
     except FileNotFoundError as exc:
         print(f"ERROR: fixture missing: {exc}")
         return 2
@@ -468,12 +581,13 @@ def main() -> int:
             findings.append(f"POSITIVE-REJECTED {name}: {errors[0].message}")
         else:
             print(f"OK  PresentationManifest {name}.json")
-    pack = json.loads(pack_bytes)
-    errors = list(_validator_for(schema, "WordingPack").iter_errors(pack))
-    if errors:
-        findings.append(f"POSITIVE-REJECTED {WORDING_PACK}: {errors[0].message}")
-    else:
-        print(f"OK  WordingPack          {WORDING_PACK}.json")
+    pack_validator = _validator_for(schema, "WordingPack")
+    for name, raw in pack_bytes.items():
+        errors = list(pack_validator.iter_errors(json.loads(raw)))
+        if errors:
+            findings.append(f"POSITIVE-REJECTED {WORDING_PACKS[name]}: {errors[0].message}")
+        else:
+            print(f"OK  WordingPack          {WORDING_PACKS[name]}.json")
 
     # --- 2. SCHEMA NEGATIVES + MUTANTS ---
     for name, rule, strip in SCHEMA_NEGATIVES:
@@ -498,28 +612,44 @@ def main() -> int:
             findings.append(f"MUTANT-RESTORE-FAILED {name}")
 
     # --- 3. WORDING BINDING ---
-    declarative = next(m for m in examples if m["trust_class"] == "declarative")
-    digest = hashlib.sha256(pack_bytes).hexdigest()
-    if declarative["declarative"]["wording_sha256"] != digest:
-        findings.append(
-            f"WORDING-DIGEST-MISMATCH {declarative['id']}: manifest says "
-            f"{declarative['declarative']['wording_sha256']}, pack bytes hash to {digest}"
-        )
-    else:
-        print(f"OK  wording_sha256 of {declarative['id']} = SHA-256 of the pack's exact bytes")
-    edited = pack_bytes.replace(b"Rules compared", b"Rules  compared")
-    if hashlib.sha256(edited).hexdigest() == digest:
-        findings.append("WORDING-EDIT-UNDETECTED: a one-character pack edit kept the digest")
-    else:
-        print("OK  a one-character pack edit changes wording_sha256")
-    entries = pack["entries"]
-    fields = declarative["declarative"]["fields"]
-    for item in fields + [c for f in fields for c in f.get("columns", [])]:
-        if item["label_key"] not in entries:
-            findings.append(f"WORDING-KEY-MISSING {item['label_key']}")
-        prefix = item.get("value_key_prefix")
-        if prefix is not None and not any(k.startswith(prefix) for k in entries):
-            findings.append(f"WORDING-PREFIX-EMPTY {prefix}")
+    declaratives = [m for m in examples if m["trust_class"] == "declarative"]
+    if sorted(m["id"] for m in declaratives) != sorted(
+        _load(name)["id"] for name in WORDING_PACKS
+    ):
+        findings.append("WORDING-HARNESS: every declarative example needs a pack in WORDING_PACKS")
+    for name in WORDING_PACKS:
+        declarative = _load(name)
+        raw = pack_bytes[name]
+        digest = hashlib.sha256(raw).hexdigest()
+        if declarative["declarative"]["wording_sha256"] != digest:
+            findings.append(
+                f"WORDING-DIGEST-MISMATCH {declarative['id']}: manifest says "
+                f"{declarative['declarative']['wording_sha256']}, pack bytes hash to {digest}"
+            )
+        else:
+            print(f"OK  wording_sha256 of {declarative['id']} = SHA-256 of the pack's exact bytes")
+        edited = raw.replace(b'"en"', b'"en "', 1)
+        if edited == raw or hashlib.sha256(edited).hexdigest() == digest:
+            findings.append(f"WORDING-EDIT-UNDETECTED {name}: a one-character pack edit kept the digest")
+        else:
+            print(f"OK  a one-character edit of {WORDING_PACKS[name]}.json changes wording_sha256")
+        entries = json.loads(raw)["entries"]
+        reserved = [entries.get(k) for k in RESERVED_WORDING_KEYS]
+        if None in reserved or reserved[0] == reserved[1]:
+            findings.append(
+                f"WORDING-RESERVED {WORDING_PACKS[name]}: page.title and module.title must "
+                f"both be present and differ, got {reserved}"
+            )
+        else:
+            print(f"OK  {WORDING_PACKS[name]}.json names the page ({reserved[0]!r}) and the "
+                  f"module ({reserved[1]!r}) separately")
+        fields = declarative["declarative"]["fields"]
+        for item in fields + [c for f in fields for c in f.get("columns", [])]:
+            if item["label_key"] not in entries:
+                findings.append(f"WORDING-KEY-MISSING {name} {item['label_key']}")
+            prefix = item.get("value_key_prefix")
+            if prefix is not None and not any(k.startswith(prefix) for k in entries):
+                findings.append(f"WORDING-PREFIX-EMPTY {name} {prefix}")
 
     # --- 4. STATIC RESOLUTION TEST ---
     for label, registry in (("built-ins", builtins), ("examples", examples)):
@@ -639,6 +769,36 @@ def main() -> int:
     else:
         findings.append(f"MUTANT-HARNESS-BROKEN: the API-blind resolver picked {mutant_got}")
 
+    # --- 8. DECLARATIVE SOURCES ---
+    rules = _load("example-declarative-rules")
+    outcome = _load("example-declarative-outcome")
+    if any("member" in f for f in rules["declarative"]["fields"]):
+        findings.append("DECLARATIVE-HARNESS: the rules example must leave member to its default")
+    if not any(f.get("member") == "agent_output" for f in outcome["declarative"]["fields"]):
+        findings.append("DECLARATIVE-HARNESS: the outcome example must read agent_output")
+    cases = [
+        (rules, RULES_ROOT, True, "agent_input rows, no member named"),
+        (outcome, _outcome_root("disclosed"), True, "agent_output rows, member agent_output"),
+        (outcome, _outcome_root("withheld"), False, "agent_output withheld"),
+        (outcome, _outcome_root("disclosure_mismatch"), False, "agent_output mismatched"),
+        # The rows exist, but in the member the field does not name.
+        (outcome, {"agent_input": ("disclosed", dict(OUTCOME_INPUT, **OUTCOME_OUTPUT)),
+                   "agent_output": ("withheld", None)}, False,
+         "rows only in agent_input, field names agent_output"),
+    ]
+    for m, root, want, label in cases:
+        got = declarative_can_render(m, root)
+        if got != want:
+            findings.append(f"DECLARATIVE-CANRENDER {m['id']} ({label}): got {got}, want {want}")
+        else:
+            print(f"OK  declarative   {m['id']}: canRender {got} ({label})")
+    if declarative_can_render(outcome, _outcome_root("disclosed"), honour_member=False):
+        findings.append("MUTANT-HARNESS-BROKEN: a member-blind renderer rendered the "
+                        "agent_output example")
+    else:
+        print("OK  MUTANT        a renderer that ignores member declines the agent_output "
+              "example over the same root: member is load-bearing")
+
     if findings:
         print("\nFAIL — findings:")
         for f in findings:
@@ -646,8 +806,8 @@ def main() -> int:
         return 1
     print(f"\nOK — {len(BUILTINS)} built-in and {len(EXAMPLES)} example manifests, "
           f"{len(SCHEMA_NEGATIVES)} schema negatives with mutants, the wording binding, "
-          "the static and runtime ambiguity tests, behaviour preservation and the "
-          "presentation ABI refusal all passed.")
+          "the static and runtime ambiguity tests, behaviour preservation, the "
+          "presentation ABI refusal and the declarative source rule all passed.")
     return 0
 
 

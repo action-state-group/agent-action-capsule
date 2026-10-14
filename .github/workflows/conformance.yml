@@ -1,4 +1,4 @@
-name: cross-language conformance
+name: Cross-language conformance
 
 on:
   push:
@@ -35,12 +35,12 @@ permissions:
 
 jobs:
   conformance:
-    name: Python reference, Go and TypeScript interlock
+    name: Python reference, Go, TypeScript and Rust interlock
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
@@ -53,9 +53,11 @@ jobs:
           python -m ruff check .
           python -m pytest -q
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.24"
+          # setup-go v6+ sets GOTOOLCHAIN=local, so the installed Go must
+          # satisfy go.mod itself rather than download a newer toolchain.
+          go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
       - name: Check Go conformance implementation
         working-directory: go
@@ -70,7 +72,7 @@ jobs:
           go test -race ./...
           go run ./cmd/vector_runner/
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
           cache: npm
@@ -81,49 +83,66 @@ jobs:
           npm ci
           npm run check
 
+      - name: Install the stable Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Build the Rust interlock adapter
+        working-directory: rust
+        run: cargo build --locked --example cross_language
+
       - name: Verify every producer in every consumer
         run: scripts/cross-language-interlock.sh
 
-      - name: Prove the interlock rejects a canonicalization divergence
-        run: |
-          if AAC_INTERLOCK_INJECT_CANONICALIZATION_DIVERGENCE=1 scripts/cross-language-interlock.sh; then
-            echo "interlock accepted an injected canonicalization divergence" >&2
-            exit 1
-          fi
-          echo "interlock rejected the injected canonicalization divergence"
+      - name: Prove every consumer rejects a canonicalization divergence
+        run: AAC_INTERLOCK_INJECT_CANONICALIZATION_DIVERGENCE=1 scripts/cross-language-interlock.sh
 
       - name: Assert zero unintentional divergence
         run: |
-          echo "Python, Go, and TypeScript passed the same committed vector tree."
+          echo "Python, Go, and TypeScript passed the same committed vector tree; Rust runs it in rust-conformance."
+          echo "Capsules sealed in Python, Go, TypeScript and Rust verified in all four."
           echo "Python- and Go-built Disclosure Envelopes passed DE-3 verification in all three runtimes."
 
   rust-conformance:
-    name: Rust bundle verifier runs the capsule corpus
+    name: Rust verifier runs the shared corpora
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: rust/bundle
+        working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install the stable toolchain
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt,clippy
           rustup default stable
 
-      - name: Check the Rust bundle verifier
+      - name: Check the Rust verifier
         run: |
           cargo fmt --check
+          cargo clippy --locked --all-targets --all-features -- -D warnings
           cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked --all-features
           cargo test --locked
+
+      # A consumer such as capsule-emit unifies serde_json's preserve_order
+      # into the build; results must not depend on map iteration order.
+      - name: Check the Rust verifier with serde_json preserve_order
+        run: cargo test --locked --all-features --features serde_json/preserve_order
+
+      - name: Check the crate packages for crates.io
+        run: |
+          python3 ../.github/scripts/check_crate_metadata.py agent-action-capsule/Cargo.toml
+          cargo package --locked -p agent-action-capsule
 
   browser-conformance:
     name: Built browser artifact conformance
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
           cache: npm
@@ -142,12 +161,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout frozen legacy verifier release
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: legacy-verify/v0.1.0
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
