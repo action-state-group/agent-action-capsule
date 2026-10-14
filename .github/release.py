@@ -141,14 +141,25 @@ def git(repo: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=repo, check=False, capture_output=True, text=True)
 
 
+def require_commit(repo: Path, commit: str) -> None:
+    # An unknown commit (an all-zero or unfetched push `before`, say) must not
+    # read as "no previous version": that would release every package again.
+    if git(repo, "cat-file", "-e", f"{commit}^{{commit}}").returncode != 0:
+        raise ValueError(f"unknown commit {commit!r}")
+
+
 def version_at(repo: Path, entry: dict, commit: str) -> str | None:
+    if git(repo, "cat-file", "-e", f"{commit}:{entry['manifest']}").returncode != 0:
+        return None  # the manifest does not exist at that (known) commit
     shown = git(repo, "show", f"{commit}:{entry['manifest']}")
     if shown.returncode != 0:
-        return None  # the manifest did not exist at that commit
+        raise ValueError(f"git show failed: {shown.stderr.strip()}")
     return read_version(entry["kind"], shown.stdout)
 
 
 def changed(repo: Path, config: dict, before: str, after: str) -> list[tuple[str, str, str, str]]:
+    require_commit(repo, before)
+    require_commit(repo, after)
     released = []
     for name, entry in config.items():
         new = version_at(repo, entry, after)

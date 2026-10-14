@@ -13,8 +13,10 @@ on:
 permissions:
   contents: read
 
+# One group per tag: a shared group keeps only one pending run and would
+# cancel a queued publish for another version.
 concurrency:
-  group: npm-publish-ts
+  group: npm-publish-${{ github.event.release.tag_name || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -109,7 +111,14 @@ jobs:
           package_version=$(node -p "require('./package.json').version")
           if npm view "$package_name@$package_version" version --json >"$RUNNER_TEMP/published-version.json" 2>"$RUNNER_TEMP/view-error.txt"; then
             test "$(node -p 'JSON.parse(require("fs").readFileSync(process.env.RUNNER_TEMP + "/published-version.json", "utf8"))')" = "$package_version"
-            echo "$package_name@$package_version is already published; skipping npm publish."
+            # A version npm already has must come from this tag's commit;
+            # otherwise the release would describe code npm does not serve.
+            published_head=$(npm view "$package_name@$package_version" gitHead)
+            if [ "$published_head" != "$(git rev-parse HEAD)" ]; then
+              echo "::error::$package_name@$package_version on npm was built from ${published_head:-an unknown commit}, not $(git rev-parse HEAD)" >&2
+              exit 1
+            fi
+            echo "$package_name@$package_version is already published from this commit; skipping npm publish."
           elif node -e 'const e = JSON.parse(require("fs").readFileSync(process.env.RUNNER_TEMP + "/published-version.json", "utf8")); process.exit(e.error?.code === "E404" ? 0 : 1)'; then
             npm publish --access public --tag "$DIST_TAG"
           else

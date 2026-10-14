@@ -148,9 +148,25 @@ def test_changed_reports_only_packages_whose_version_moved(repo: Path) -> None:
     assert release.changed(repo, CONFIG, after, after) == []
 
 
-def test_changed_treats_an_unknown_before_commit_as_no_previous_version(repo: Path) -> None:
+@pytest.mark.parametrize("before", ["0" * 40, "1234567890abcdef1234567890abcdef12345678"])
+def test_changed_refuses_an_unknown_commit(repo: Path, before: str) -> None:
     head = git(repo, "rev-parse", "HEAD")
-    assert len(release.changed(repo, CONFIG, "0" * 40, head)) == 3
+    with pytest.raises(ValueError, match="unknown commit"):
+        release.changed(repo, CONFIG, before, head)
+
+
+def test_changed_reports_a_newly_added_package(repo: Path) -> None:
+    before = git(repo, "rev-parse", "HEAD")
+    config = {**CONFIG, "extra": {**CONFIG["python"], "manifest": "extra/pyproject.toml",
+                                  "tag_prefix": "extra/v"}}
+    (repo / "extra").mkdir()
+    (repo / "extra/pyproject.toml").write_text(PYPROJECT)
+    git(repo, "add", ".")
+    git(repo, "commit", "-q", "-m", "add extra")
+    after = git(repo, "rev-parse", "HEAD")
+    assert release.changed(repo, config, before, after) == [
+        ("extra", "0.7.0", "extra/v0.7.0", "publish-python.yml"),
+    ]
 
 
 @pytest.mark.parametrize(

@@ -65,17 +65,18 @@ Before a real release, the npm package owner must configure a
 [trusted publisher](https://docs.npmjs.com/trusted-publishers/) for
 `@action-state-group/agent-action-capsule`: GitHub owner `action-state-group`,
 repository `agent-action-capsule`, workflow filename `publish-ts.yml`, and
-permission for direct `npm publish`. Leave the environment name empty or set it
-to `npm`. The package/scope
+permission for direct `npm publish`, with environment name `npm` (the job runs
+in that environment). The package/scope
 must be provisioned by its owner; this workflow does not bootstrap ownership.
 The workflow uses Node 22 (>=22.14) and installs npm 11.19.1; trusted
 publishing requires npm >=11.5.1. No long-lived npm token is used, and
 trusted publishing supplies provenance automatically. The package is public.
 
-The TS workflow has no push/tag/release trigger. Its `ts/v` releases are
-excluded from the Python/PyPI publish job; ordinary Python release behavior
-and vector release behavior remain separate. Running the TS workflow is an
-actual release operation, not a dry-run-only dispatch.
+The TS workflow publishes only for a `ts/v*` tag: when Tag release dispatches
+it on the tag, or when a GitHub Release for a `ts/v*` tag is published, so
+publishing such a release by hand uploads to npm. Dispatched on a branch, it
+does nothing. `ts/v` tags never start the Python/PyPI publish job, and vector
+releases stay separate.
 
 For a local upload-free preview, run from `ts/`:
 

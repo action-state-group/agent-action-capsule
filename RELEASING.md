@@ -35,9 +35,18 @@ The prefix is only on the Git tag. The registry version stays plain (`0.8.0`).
 Bumping a version by hand in any pull request releases it the same way when it
 merges.
 
-If a publish fails after the tag exists, fix the cause and re-run the
-publisher's failed run. `publish-ts.yml` skips a version npm already has, so a
-re-run after a successful upload is harmless.
+If a publish fails after the tag exists:
+
+- **A transient or configuration failure** (registry outage, trusted publisher
+  or environment settings): fix it and re-run the failed publisher run.
+  `publish-ts.yml` skips a version npm already has from the same commit, so a
+  re-run after a successful upload is harmless.
+- **A defect in the code or the workflow:** a re-run uses the tagged commit
+  again, so a fix merged to `main` does not reach it. Release the fix as a new
+  version.
+- **Tag release failed before dispatching** (no publisher run exists): re-run
+  the Tag release run. It accepts a tag and GitHub Release it already created on
+  the same commit and dispatches the publisher again.
 
 ## Safeguards
 

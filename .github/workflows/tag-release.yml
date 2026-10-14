@@ -19,9 +19,9 @@ permissions:
   contents: write  # create the tag and GitHub Release
   actions: write   # dispatch the publish workflow
 
-concurrency:
-  group: tag-release
-  cancel-in-progress: false
+# No concurrency group: GitHub keeps only one pending run per group, so a later
+# push would cancel a queued run carrying a version bump. Runs are independent,
+# since each looks only at its own push's before..after range.
 
 jobs:
   tag:
@@ -52,7 +52,10 @@ jobs:
               fi
             fi
             if ! gh release view "$tag" >/dev/null 2>&1; then
-              gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" \
+              prerelease=()
+              # Anything beyond major.minor.patch (0.8.0rc1, 0.8.0-rc.1).
+              case "$version" in *[!0-9.]*) prerelease=(--prerelease) ;; esac
+              gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" "${prerelease[@]}" \
                 --notes "$package $version. See CHANGELOG.md."
             fi
             gh workflow run "$workflow" --ref "$tag"
