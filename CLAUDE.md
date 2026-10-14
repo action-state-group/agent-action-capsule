@@ -51,7 +51,7 @@ scripts/cross-language-interlock.sh                 # Python, Go, TypeScript and
 
 Follow [RELEASING.md](RELEASING.md). In short: run **Release · Prepare**, merge
 its pull request, and the Release · Tag workflow tags and publishes. Never
-create `python/v*` or `ts/v*` tags by hand; `go/v*` tags are pushed by an
+create `python/v*`, `ts/v*` or `crates/*-v*` tags by hand; `go/v*` tags are pushed by an
 admin. Do not rename `publish-python.yml`, `publish-ts.yml` or `publish-rust.yml`: the registries'
 trusted publishers name them, so publishing breaks until the registry is
 updated first. `.github/release.py` is an identical copy shared with the other

@@ -247,10 +247,14 @@ fn store_ids(store: &[Value]) -> HashSet<&str> {
     ids
 }
 
-/// Decodes capsule JSON. Numbers keep their source text, so a float or an
-/// unsafe integer is reported by check 1 rather than lost in conversion.
-pub fn decode_capsule_json(data: &[u8]) -> Result<Value, serde_json::Error> {
-    serde_json::from_slice(data)
+pub use crate::json::DecodeError;
+
+/// Decodes capsule JSON strictly (RFC 8259). Numbers keep their source text,
+/// so a float or an unsafe integer is reported by check 1 rather than lost in
+/// conversion. Use this rather than `serde_json::from_slice`, which turns an
+/// object holding `serde_json`'s private number token into a number.
+pub fn decode_capsule_json(data: &[u8]) -> Result<Value, DecodeError> {
+    crate::json::decode(data)
 }
 
 /// Runs Class 1 verification (§6) over one Capsule against the authoritative
@@ -578,7 +582,10 @@ pub fn verify_with(
     }
 
     // ---- Check 5: Effect-attestation matrix ---------------------------------
-    let ea = effect.and_then(|e| e.get("effect_attestation"));
+    // JSON null counts as absent, as a nil map value does in Go.
+    let ea = effect
+        .and_then(|e| e.get("effect_attestation"))
+        .filter(|v| !v.is_null());
     if effect_mode == "confirmed" || effect_mode == "dispatched_unconfirmed" {
         if ea.is_none() {
             findings.push(mkf(

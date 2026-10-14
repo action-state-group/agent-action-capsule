@@ -85,7 +85,17 @@ permission for direct `npm publish`; crates.io: the crate's **Settings →
 Trusted Publishing**). crates.io offers Trusted Publishing only for a crate
 that exists, so a crate's first version is published by hand by one of its
 crates.io owners (`cargo publish -p <crate>` from `rust/` at the tagged
-commit); every later version goes through the flow above. Renaming a publisher workflow breaks
+commit); every later version goes through the flow above.
+
+For `agent-action-capsule` 0.1.0 that means: the pull request that adds the
+crate also adds its `releases.json` entry, so Release · Tag treats the new
+manifest as a version change on merge. It tags
+`crates/agent-action-capsule-v0.1.0` and dispatches `publish-rust.yml`, whose
+upload step fails because crates.io has no Trusted Publisher for a crate that
+does not exist yet. That failure is expected: an owner then runs
+`cargo publish -p agent-action-capsule` from `rust/` with that tag checked
+out, and configures the Trusted Publisher. Do not re-run the failed run after
+the manual publish; its check rejects a version crates.io already has. Renaming a publisher workflow breaks
 publishing until the registry is updated first. No registry token is stored in
 this repository: trusted publishing exchanges the workflow's OIDC identity for
 a short-lived upload credential, and npm adds provenance automatically.

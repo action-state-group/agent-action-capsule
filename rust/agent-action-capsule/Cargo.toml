@@ -10,9 +10,10 @@ documentation = "https://docs.rs/agent-action-capsule"
 readme = "README.md"
 keywords = ["scitt", "agent-action-capsule", "jcs", "cose", "verification"]
 categories = ["cryptography"]
-# The library and the registry snapshots it embeds. The tests read the shared
-# conformance vectors from the repository root, which does not ship.
-include = ["src/**/*.rs", "data/REGISTRY.md", "data/cpb_provisional.json", "Cargo.toml", "README.md", "CHANGELOG.md", "LICENSE"]
+# The library, its interlock example and the registry snapshots it embeds.
+# The tests read the shared conformance vectors from the repository root,
+# which does not ship.
+include = ["src/**/*.rs", "examples/**/*.rs", "data/REGISTRY.md", "data/cpb_provisional.json", "Cargo.toml", "README.md", "CHANGELOG.md", "LICENSE"]
 
 [lib]
 name = "agent_action_capsule"

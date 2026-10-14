@@ -24,10 +24,14 @@ if result.ok {
 }
 ```
 
-Numbers keep their source text (`serde_json`'s `arbitrary_precision`
-feature), so a float or an out-of-range integer is reported by check 1 instead
-of being rounded away. Cargo unifies features, so this applies to every
-`serde_json` user in a build that depends on this crate.
+Decode capsules with `decode_capsule_json`, a strict RFC 8259 decoder.
+Numbers are kept as written (`serde_json`'s `arbitrary_precision` feature), so
+a float or an out-of-range integer is reported by check 1 instead of being
+rounded away. `serde_json::from_slice` is not a substitute: with that feature
+it turns an object holding `serde_json`'s private number token into a number,
+which changes the Capsule ID. Cargo unifies features, so
+`arbitrary_precision` applies to every `serde_json` user in a build that
+depends on this crate.
 
 The `bundle` feature adds `checkpointed-local-log`, which also carries an HTTP
 witness client; record verification does not need it.

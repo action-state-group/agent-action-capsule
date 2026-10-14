@@ -5,9 +5,15 @@
 //! (-8), content type `application/agent-action-capsule-id` and a raw 32-byte
 //! Ed25519 public key as `kid`, an empty unprotected map, the attached
 //! Capsule ID as payload, and a 64-byte signature. The CBOR reader below
-//! accepts only definite lengths and rejects duplicate map keys, trailing
-//! bytes and deep nesting, as Go's decoder options do. Authorizing the key for
-//! an operator or developer is a separate policy, outside this module.
+//! accepts only definite lengths, no duplicate map keys, no trailing bytes,
+//! at most 16 array elements or map pairs and limited nesting, and takes
+//! every item at its face value: an untagged map, byte string or text where
+//! the profile names one, so a null, undefined or tagged header or payload is
+//! malformed. That accept/reject behavior is the Python reference's.
+//! Implementations differ on which finding code a malformed envelope gets;
+//! only the codes in `vectors/producer-envelope/` are shared. Authorizing the
+//! key for an operator or developer is a separate policy, outside this
+//! module.
 
 use crate::verify::is_hex64;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};

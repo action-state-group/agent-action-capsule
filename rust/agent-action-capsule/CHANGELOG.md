@@ -11,5 +11,8 @@
 - Replaces the unpublished `aac-bundle` crate (`rust/bundle`). Against it:
   checks 8 and 9 and `provenance_mode` typing are new, so findings now match
   Go and Python in full; negative zero canonicalizes as `0`; float and
-  unsafe-integer paths walk keys in byte order without recursion; and
+  unsafe-integer paths walk keys in byte order without recursion;
+  `effect_attestation: null` counts as absent, as in Python and Go; capsules
+  and bundle fragments decode through a strict RFC 8259 decoder that keeps an
+  object holding `serde_json`'s private number token an object; and
   `checkpointed-local-log` comes from crates.io (0.3).

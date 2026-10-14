@@ -12,14 +12,16 @@
 //! | [`envelope`] | Producer Envelope | `go/envelope` |
 //! | `bundle` (feature `bundle`) | Evidence Bundle v2 | `go/bundle` |
 //!
-//! Numbers keep their source text (`serde_json`'s `arbitrary_precision`), so
-//! decode capsules with [`verify::decode_capsule_json`] or `serde_json` and
-//! pass the [`serde_json::Value`] in.
+//! Decode capsules with [`verify::decode_capsule_json`], not `serde_json`'s
+//! own decoder: it keeps each number's source text (`arbitrary_precision`)
+//! without `serde_json`'s private number token turning an object into a
+//! number.
 //!
 //! [action-state-group/agent-action-capsule]: https://github.com/action-state-group/agent-action-capsule
 
 pub mod canonical;
 pub mod envelope;
+mod json;
 mod references;
 pub mod registries;
 pub mod verify;

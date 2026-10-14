@@ -164,19 +164,24 @@ fn section_header(line: &str) -> Option<&str> {
     let rest = strip_ordinal(rest)?;
     let rest = strip_required_ws(rest)?;
     let (token, tail) = backtick_token(rest)?;
-    tail.trim().is_empty().then_some(token)
+    tail.trim_matches(is_re2_space).is_empty().then_some(token)
 }
 
 /// `N. \`token\`` (an ordered-list item holding only a token) -> `token`.
 fn ordered_list_item(line: &str) -> Option<&str> {
-    let rest = strip_ordinal(line.trim_start())?;
+    let rest = strip_ordinal(line.trim_start_matches(is_re2_space))?;
     let rest = strip_required_ws(rest)?;
     let (token, tail) = backtick_token(rest)?;
-    tail.trim().is_empty().then_some(token)
+    tail.trim_matches(is_re2_space).is_empty().then_some(token)
+}
+
+/// RE2's `\s`: ASCII space, tab, newline, form feed and carriage return.
+fn is_re2_space(c: char) -> bool {
+    matches!(c, ' ' | '\t' | '\n' | '\x0c' | '\r')
 }
 
 fn strip_required_ws(s: &str) -> Option<&str> {
-    let trimmed = s.trim_start();
+    let trimmed = s.trim_start_matches(is_re2_space);
     (trimmed.len() < s.len()).then_some(trimmed)
 }
 

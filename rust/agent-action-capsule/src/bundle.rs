@@ -26,7 +26,6 @@ use crate::{disclosure, verify};
 use base64::Engine as _;
 use cll::mmr;
 use cll::range_proof::{self, RangeProof};
-use serde::de::Deserialize;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, HashSet};
 use std::fmt;
@@ -151,11 +150,7 @@ pub fn decode_fragment(fragment: &str) -> Result<Value, DecodeError> {
         return Err(DecodeError::NotBase64Url);
     }
     let raw = B64.decode(fragment).map_err(|_| DecodeError::NotUtf8Json)?;
-    let text = std::str::from_utf8(&raw).map_err(|_| DecodeError::NotUtf8Json)?;
-    let mut de = serde_json::Deserializer::from_str(text);
-    let value = Value::deserialize(&mut de).map_err(|_| DecodeError::NotUtf8Json)?;
-    de.end().map_err(|_| DecodeError::NotUtf8Json)?;
-    Ok(value)
+    crate::json::decode(&raw).map_err(|_| DecodeError::NotUtf8Json)
 }
 
 /// Returns the v2 bundle digest, omitting only `countersignatures`.
