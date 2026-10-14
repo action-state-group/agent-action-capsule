@@ -82,6 +82,8 @@ vectors/         authoritative language-agnostic conformance and interop vectors
 LICENSE          BCP 78/79 for the specification; Revised BSD for code components
 NOTICE           attribution + neutrality intent
 CONTRIBUTING.md  IETF process (BCP 78/79), DCO, scope gates
+RELEASING.md     how the Python and TypeScript packages are released
+CLAUDE.md        guidance for coding agents working in this repository
 SECURITY.md      private vulnerability reporting
 ```
 

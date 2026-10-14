@@ -13,6 +13,8 @@ pull request, and merging it tags and publishes. The packages are listed in
 | `ts` | `ts/package.json` and `ts/package-lock.json` | `ts/v<version>` | `publish-ts.yml` | `npm` (tag rule `ts/v*`) |
 
 The prefix is only on the Git tag. The registry version stays plain (`0.8.0`).
+Python releases up to 0.7.0 were tagged bare `v<version>` (`v0.0.3` to
+`v0.7.0`); those tags stay, but a new bare `v*` tag no longer publishes.
 
 ## Cutting a release
 
@@ -65,6 +67,19 @@ If a publish fails after the tag exists:
 - **Conformance vectors:** run `vectors-release.yml`, which creates
   `vectors/v<version>`.
 
-Registry configuration (trusted publishers and project owners) is described in
-[`python/RELEASING.md`](python/RELEASING.md) for PyPI and in the
-[TypeScript README](ts/README.md#release) for npm.
+## Registry configuration
+
+Each registry's trusted publisher names owner `action-state-group`, repository
+`agent-action-capsule`, the publisher workflow file and its environment:
+
+| Registry | Package | Workflow | Environment |
+|---|---|---|---|
+| PyPI | `agent-action-capsule` | `publish-python.yml` | `pypi` |
+| npm | `@action-state-group/agent-action-capsule` | `publish-ts.yml` | `npm` |
+
+A project owner configures it on the registry (PyPI: **Project → Settings →
+Publishing**; npm: the package's **Settings → Trusted Publisher**, with
+permission for direct `npm publish`). Renaming a publisher workflow breaks
+publishing until the registry is updated first. No registry token is stored in
+this repository: trusted publishing exchanges the workflow's OIDC identity for
+a short-lived upload credential, and npm adds provenance automatically.
