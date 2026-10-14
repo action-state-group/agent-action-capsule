@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Adapted from capsule-emit-ts publish.yml at ffdaf4dd817d0dc89e1fc95bde9da278523a7922.
-name: Publish TypeScript npm package
+name: Publish TypeScript package
 
 on:
   workflow_dispatch:

@@ -3,8 +3,8 @@
 # No API token lives in this repo — pypa/gh-action-pypi-publish exchanges a
 # short-lived GitHub Actions OIDC token for a PyPI upload token at publish time.
 # See RELEASING.md for the one-time PyPI Trusted-Publisher configuration this
-# depends on (Steven's side, not this workflow's).
-name: release
+# depends on (done by a PyPI project Owner, not by this workflow).
+name: Publish Python package
 
 on:
   release:
@@ -46,14 +46,29 @@ jobs:
   # Only a `release` (tag) event publishes. `workflow_dispatch` runs `build`
   # above as a dry run and stops — it never uploads, even run manually.
   publish:
-    # TypeScript releases have their own npm workflow and must not publish Python.
-    if: github.event_name == 'release' && !startsWith(github.event.release.tag_name, 'ts/v')
+    # Python releases use python/v<version> tags. Every other namespace
+    # (go/v*, ts/v*, vectors/v*, legacy-verify/*) belongs to another artifact
+    # and must not publish Python; the guard below refuses anything the prefix
+    # lets through.
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'python/v')
     needs: build
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
+      contents: read
       id-token: write  # OIDC — no token stored
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: require a matching tag on main
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: python .github/check_python_release.py "$RELEASE_TAG"
       - uses: actions/download-artifact@v4
         with:
           name: dist
