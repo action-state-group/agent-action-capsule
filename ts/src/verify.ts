@@ -223,6 +223,7 @@ export async function verifyClass1(
     "disposition",
     "chain",
     "cross_party",
+    "provenance_mode",
   ])
     if (field in top && object(top[field]) === undefined)
       add("block_not_object", `${field} MUST be a JSON object when present`, 1);

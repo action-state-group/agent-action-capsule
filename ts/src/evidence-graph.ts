@@ -22,8 +22,10 @@ export type DisclosureField = "agent_input" | "agent_output";
  * "Identity and parties"). `actionTime` is when the agent acted, read from
  * the record's `occurred_at` when the producer states one: a backfilled
  * record keeps its source's own time there, and the seal time never stands
- * in for it. `provenanceMode` is the record's `provenance_mode` as written
- * (for example `backfilled`).
+ * in for it. `provenanceMode` is the record's `provenance_mode.mode` as
+ * written (for example `backfilled`); the block is an object (AAC -05
+ * "Provenance mode and backfilled records"), and a record carrying any other
+ * shape states no mode here.
  */
 export interface RecordTimes {
   sealTime?: string;
@@ -232,7 +234,7 @@ const calendarDay = (date: string): number | undefined => {
 export const recordTimes = (record: RecordWithId): RecordTimes => {
   const sealTime = asString(record.timestamp);
   const actionTime = asString(record.occurred_at);
-  const provenanceMode = asString(record.provenance_mode);
+  const provenanceMode = asString(objectOrEmpty(record.provenance_mode).mode);
   return {
     ...(sealTime === undefined ? {} : { sealTime }),
     ...(actionTime === undefined ? {} : { actionTime }),

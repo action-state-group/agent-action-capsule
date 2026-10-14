@@ -109,6 +109,91 @@ describe("provenance_mode check-1 type cases", () => {
     });
 });
 
+// provenance_mode is an object when present (AAC -05 "Provenance mode and
+// backfilled records"); any other JSON type fails check 1 with the same
+// block_not_object finding, in the same position, as the Python and Go
+// verifiers. This verifier still does not run check 9 on the block's members.
+describe("provenance_mode block shape", () => {
+  const sealed = async (
+    edit: (capsule: Record<string, ParsedJson>) => void,
+  ): Promise<Record<string, ParsedJson>> => {
+    const capsule = decodeStrictJson(
+      readFileSync(resolve(root, "pos-executed-confirmed", "input.json")),
+    ) as Record<string, ParsedJson>;
+    edit(capsule);
+    delete capsule.capsule_id;
+    capsule.capsule_id = await computeCapsuleId(capsule);
+    return capsule;
+  };
+
+  for (const [label, raw] of [
+    ["a string", '"backfilled"'],
+    ["an array", '["backfilled"]'],
+    ["null", "null"],
+    ["a number", "1"],
+  ] as const)
+    it(`refuses ${label} with block_not_object (check 1)`, async () => {
+      const capsule = await sealed((c) => {
+        c.provenance_mode = decodeStrictJson(raw);
+      });
+      const result = await verifyClass1(capsule);
+      expect(result.ok).toBe(false);
+      expect(result.capsuleId).toBe(capsule.capsule_id);
+      expect(
+        result.findings.map(({ code, check, severity }) => ({
+          code,
+          check,
+          severity,
+        })),
+      ).toEqual([{ code: "block_not_object", check: 1, severity: "error" }]);
+    });
+
+  it("reports it after the other blocks and before constraints", async () => {
+    const capsule = await sealed((c) => {
+      c.cross_party = "x";
+      c.provenance_mode = "backfilled";
+      c.constraints = decodeStrictJson("{}");
+    });
+    expect(
+      (await verifyClass1(capsule)).findings.map(({ code, detail }) => [
+        code,
+        detail,
+      ]),
+    ).toEqual([
+      ["block_not_object", "cross_party MUST be a JSON object when present"],
+      [
+        "block_not_object",
+        "provenance_mode MUST be a JSON object when present",
+      ],
+      [
+        "constraints_not_array",
+        "constraints MUST be an array when present (§8.1)",
+      ],
+    ]);
+  });
+
+  it("accepts a well-formed backfilled block", async () => {
+    const capsule = await sealed((c) => {
+      c.provenance_mode = decodeStrictJson(
+        JSON.stringify({
+          mode: "backfilled",
+          source_ref: {
+            type: "x-external-ledger-entry",
+            digest_alg: "SHA-256",
+            digest: "5".repeat(64),
+          },
+          source_asserted_at: "2026-08-26T05:34:57.860343",
+          import_batch: "fixture-import-1",
+          imported_at: "2026-09-14T00:00:00Z",
+        }),
+      );
+    });
+    const result = await verifyClass1(capsule);
+    expect(result.ok).toBe(true);
+    expect(result.findings).toEqual([]);
+  });
+});
+
 describe("reference parity edge cases", () => {
   const fixture = (): Record<string, ParsedJson> =>
     decodeStrictJson(

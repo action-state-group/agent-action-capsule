@@ -5,7 +5,17 @@
     { "capsule_id": "act-live", "timestamp": "2026-09-14T00:00:00Z" },
     {
       "capsule_id": "act-backfilled",
-      "provenance_mode": "backfilled",
+      "provenance_mode": {
+        "mode": "backfilled",
+        "source_ref": {
+          "type": "x-external-ledger-entry",
+          "digest_alg": "SHA-256",
+          "digest": "5555555555555555555555555555555555555555555555555555555555555555"
+        },
+        "source_asserted_at": "2026-08-26T05:34:57.860343",
+        "import_batch": "fixture-import-1",
+        "imported_at": "2026-09-14T00:00:00Z"
+      },
       "occurred_at": "2026-08-26T05:34:57.860343",
       "timestamp": "2026-09-14T00:00:00Z"
     },
