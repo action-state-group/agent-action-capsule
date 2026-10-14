@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.1 — 2026-10-14
+
 - Release: Python and TypeScript releases are now a merged version bump. Run
   **Release · Prepare** with the package and `patch`, `minor` or `major`; merging the
   pull request it links tags `python/v*` or `ts/v*` and publishes. TypeScript now
