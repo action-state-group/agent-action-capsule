@@ -4,8 +4,10 @@
 This optional module requires ``agent-action-capsule[envelope]``. It reuses the
 public ``scitt-cose`` COSE_Sign1 verifier and adds the exact AAC profile checks:
 raw 32-byte Capsule-ID payload, EdDSA, the AAC Capsule-ID media type, raw
-Ed25519-public-key ``kid``, and an empty unprotected map. Signer authorization
-is deliberately outside this cryptographic self-attestation verdict.
+Ed25519-public-key ``kid``, an empty unprotected map, and the CBOR encoding
+rules (shortest-form, definite-length, no tag but the outer tag 18). Signer
+authorization is deliberately outside this cryptographic self-attestation
+verdict.
 """
 from __future__ import annotations
 
@@ -56,6 +58,32 @@ def _plain_map(value: object) -> dict:
     return dict(value.items())  # type: ignore[union-attr]
 
 
+def _untagged(data: bytes) -> bool:
+    """Whether no data item in ``data`` carries a CBOR tag.
+
+    ``data`` has already passed ``strict_decode``, so it is one well-formed,
+    definite-length item and only the heads need walking. cbor2 resolves some
+    tags into other types (tag 2 into an integer, tag 55799 into its content),
+    so a tag is visible only in the encoded bytes.
+    """
+    offset, pending = 0, 1
+    while pending:
+        pending -= 1
+        major, info = data[offset] >> 5, data[offset] & 31
+        width = {24: 1, 25: 2, 26: 4, 27: 8}.get(info, 0)
+        argument = int.from_bytes(data[offset + 1 : offset + 1 + width], "big") if width else info
+        offset += 1 + width
+        if major == 6:
+            return False
+        if major in (2, 3):
+            offset += argument
+        elif major == 4:
+            pending += argument
+        elif major == 5:
+            pending += 2 * argument
+    return True
+
+
 def verify_producer_envelope(capsule_id: str, data: bytes) -> VerificationResult:
     """Authenticate one producer envelope against ``capsule_id``.
 
@@ -81,9 +109,16 @@ def verify_producer_envelope(capsule_id: str, data: bytes) -> VerificationResult
         outer = strict_decode(data)
         if outer.tag != 18 or not isinstance(outer.value, (list, tuple)) or len(outer.value) != 4:
             raise CoseError("top-level value MUST be a four-element COSE_Sign1 tag 18")
+        # strict_decode has already required the shortest form of every
+        # argument and float, inside the protected header too. The draft also
+        # allows no tag but the single outer tag 18.
+        if data[0] != 0xD2 or not _untagged(data[1:]):
+            raise CoseError("only the outer COSE_Sign1 tag 18 may be a CBOR tag")
         protected_bytes, unprotected_value, payload_value, signature_value = outer.value
         if not isinstance(protected_bytes, bytes) or not protected_bytes:
             raise CoseError("protected header MUST be a non-empty byte string")
+        if not _untagged(protected_bytes):
+            raise CoseError("protected header MUST NOT contain a CBOR tag")
         protected = _plain_map(cbor2.loads(protected_bytes))
         # Labels are CBOR integers. Python treats True as 1 and -8.0 as -8, so
         # check types explicitly, as the Go decoder's int64 labels do.

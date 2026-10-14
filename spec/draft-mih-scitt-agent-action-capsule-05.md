@@ -246,6 +246,19 @@ signature MUST be a 64-byte Ed25519 signature over the COSE Sig_structure
 with context `Signature1`, the encoded protected map, an empty external AAD,
 and the attached payload.
 
+Every CBOR data item of a Producer Envelope, including each item inside the
+protected-header byte string, MUST have a definite length and use preferred
+serialization ({{Section 4.1 of RFC8949}}): each integer, length, and tag
+argument in its shortest form, and each floating-point value in the shortest
+of the half-, single-, and double-precision forms that represents it exactly,
+with any NaN in half precision. Map keys MUST be unique; their order is not
+constrained. The outermost tag 18 is the only CBOR tag in a Producer
+Envelope. The unprotected header MUST be a map, and the payload and signature
+MUST be byte strings; `null` and `undefined` do not stand in for them. A
+verifier MUST reject an envelope that violates this paragraph, so a given
+protected header, payload, and signature have exactly one acceptable
+encoding.
+
 A Capsule MAY have zero, one, or multiple Producer Envelopes. Each envelope
 is an independent object and MUST verify independently against the same
 Capsule ID. Envelopes are not embedded in the Capsule-ID preimage. Adding,

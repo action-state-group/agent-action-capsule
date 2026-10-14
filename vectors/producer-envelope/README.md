@@ -1,7 +1,7 @@
 # Producer Envelope conformance vectors
 
 Shared binary vectors for the AAC Producer Envelope profile in the current
-draft. Python, Go, and TypeScript read this exact corpus.
+draft. Python, Go, TypeScript, and Rust read this exact corpus.
 
 Each case contains:
 
@@ -16,11 +16,25 @@ unprotected map, and a protected map containing exactly `alg=-8`, content type
 a wrong content type, nonempty unprotected data, extra protected data, and an
 invalid key.
 
+The encoding cases pin the draft's CBOR encoding paragraph: definite lengths,
+the shortest form of every argument and float (outside and inside the
+protected-header byte string), no tag but the outermost tag 18, a map as the
+unprotected header, and byte strings as payload and signature. Each violation
+is `envelope_malformed`. `protected-label-order` is positive: map-key order is
+not constrained. Verifiers may also bound nesting depth and container sizes;
+no conforming envelope approaches such a bound, and the finding code for input
+beyond one is implementation-defined, so no vector pins it.
+
 Regenerate deterministically from the repository root:
 
 ```bash
 python/.venv-review/bin/python python/scripts/generate_all_vectors.py
 ```
+
+`generate_all_vectors.py` rewrites the original cases only. The later cases are
+appended by `generate_parity_hardening_vectors.py` and
+`generate_envelope_encoding_vectors.py`, which leave existing cases untouched
+and refresh `SHA256SUMS`.
 
 Vector generation uses a fixed test seed. The seed is public test material and
 must never be used as a production signing key.

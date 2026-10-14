@@ -1,7 +1,7 @@
 {
   "format_version": "1",
   "profile": "draft-mih-scitt-agent-action-capsule-04#producer-envelope",
-  "count": 14,
+  "count": 41,
   "cases": [
     {
       "name": "valid",
@@ -58,6 +58,114 @@
     {
       "name": "protected-reserved-simple-value",
       "description": "protected alg is CBOR additional information 28, which is reserved and malformed"
+    },
+    {
+      "name": "protected-label-order",
+      "description": "protected labels in the order kid, content type, alg: map-key order is not constrained"
+    },
+    {
+      "name": "unprotected-null",
+      "description": "unprotected header is CBOR null, not a map"
+    },
+    {
+      "name": "unprotected-undefined",
+      "description": "unprotected header is CBOR undefined, not a map"
+    },
+    {
+      "name": "unprotected-tagged",
+      "description": "unprotected header is an empty map under tag 6"
+    },
+    {
+      "name": "unprotected-length-nonshortest",
+      "description": "unprotected empty map with its length in a one-byte argument"
+    },
+    {
+      "name": "payload-tagged",
+      "description": "attached payload is the right byte string under tag 6"
+    },
+    {
+      "name": "payload-bignum",
+      "description": "attached payload is the right byte string under bignum tag 2"
+    },
+    {
+      "name": "payload-null",
+      "description": "attached payload is CBOR null"
+    },
+    {
+      "name": "signature-null",
+      "description": "signature is CBOR null"
+    },
+    {
+      "name": "doubly-tagged",
+      "description": "COSE_Sign1 tag 18 applied twice"
+    },
+    {
+      "name": "self-described",
+      "description": "COSE_Sign1 under the self-described CBOR tag 55799"
+    },
+    {
+      "name": "outer-tag-nonshortest",
+      "description": "tag 18 with its number in a one-byte argument"
+    },
+    {
+      "name": "outer-array-length-nonshortest",
+      "description": "COSE_Sign1 array with its length in a one-byte argument"
+    },
+    {
+      "name": "outer-payload-length-nonshortest",
+      "description": "attached payload with its length in a two-byte argument"
+    },
+    {
+      "name": "outer-protected-length-nonshortest",
+      "description": "protected-header byte string with its length in a two-byte argument"
+    },
+    {
+      "name": "protected-map-length-u8",
+      "description": "signed protected map with its length in a one-byte argument"
+    },
+    {
+      "name": "protected-map-length-u16",
+      "description": "signed protected map with its length in a two-byte argument"
+    },
+    {
+      "name": "protected-map-length-u32",
+      "description": "signed protected map with its length in a four-byte argument"
+    },
+    {
+      "name": "protected-map-length-u64",
+      "description": "signed protected map with its length in an eight-byte argument"
+    },
+    {
+      "name": "protected-label-nonshortest",
+      "description": "protected alg label 1 in a one-byte argument"
+    },
+    {
+      "name": "protected-alg-nonshortest",
+      "description": "protected alg -8 in a one-byte argument"
+    },
+    {
+      "name": "protected-kid-length-nonshortest",
+      "description": "protected kid with its length in a two-byte argument"
+    },
+    {
+      "name": "protected-alg-float32",
+      "description": "protected alg is -8.0 in single precision, which half precision represents exactly"
+    },
+    {
+      "name": "protected-alg-float64-nan",
+      "description": "protected alg is a double-precision NaN, which belongs in half precision"
+    },
+    {
+      "name": "protected-label-tagged",
+      "description": "protected alg label 1 under tag 6"
+    },
+    {
+      "name": "protected-kid-tagged",
+      "description": "protected kid is the right public key under tag 6"
+    },
+    {
+      "name": "protected-label-beyond-int64",
+      "description": "an extra protected label -2^64, a CBOR integer outside int64"
     }
   ]
 }

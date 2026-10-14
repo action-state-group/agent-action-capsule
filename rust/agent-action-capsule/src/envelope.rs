@@ -5,14 +5,14 @@
 //! (-8), content type `application/agent-action-capsule-id` and a raw 32-byte
 //! Ed25519 public key as `kid`, an empty unprotected map, the attached
 //! Capsule ID as payload, and a 64-byte signature. The CBOR reader below
-//! accepts only definite lengths, no duplicate map keys, no trailing bytes,
-//! at most 16 array elements or map pairs and limited nesting, and takes
-//! every item at its face value: an untagged map, byte string or text where
-//! the profile names one, so a null, undefined or tagged header or payload is
-//! malformed. That accept/reject behavior is the Python reference's.
-//! Implementations differ on which finding code a malformed envelope gets;
-//! only the codes in `vectors/producer-envelope/` are shared. Authorizing the
-//! key for an operator or developer is a separate policy, outside this
+//! applies the profile's encoding rules: definite lengths, the shortest form
+//! of every argument and float, unique map keys, no trailing bytes, and no tag
+//! but the outer tag 18. It takes every item at its face value: an untagged
+//! map or byte string where the profile names one, so a null, undefined or
+//! tagged header or payload is malformed. It also bounds nesting and
+//! container sizes, which a conforming envelope never approaches; the finding
+//! code for input past those bounds is implementation-defined. Authorizing
+//! the key for an operator or developer is a separate policy, outside this
 //! module.
 
 use crate::verify::is_hex64;
@@ -242,7 +242,8 @@ fn decode_envelope(data: &[u8]) -> Result<Envelope, String> {
 }
 
 /// The CBOR data items this profile distinguishes. Floats and simple values
-/// are only ever wrong here, so they collapse into `Other`.
+/// are only ever wrong here, so they collapse into `Other`, which keeps the
+/// encoded bytes for map-key equality.
 #[derive(Debug, PartialEq)]
 enum Item {
     Int(i128),
@@ -251,7 +252,7 @@ enum Item {
     Array(Vec<Item>),
     Map(Vec<(Item, Item)>),
     Tag(u64, Box<Item>),
-    Other,
+    Other(Vec<u8>),
 }
 
 fn decode_all(data: &[u8]) -> Result<Item, String> {
@@ -281,22 +282,45 @@ impl Reader<'_> {
         Ok(bytes)
     }
 
+    /// Reads one initial byte and its argument, rejecting any argument not in
+    /// its shortest form. For major type 7 it validates the simple value or
+    /// float and returns a zero argument.
     fn head(&mut self) -> Result<(u8, u64), String> {
         let first = self.take(1)?[0];
         let (major, info) = (first >> 5, first & 31);
-        let arg = match info {
-            0..=23 => u64::from(info),
-            24 => u64::from(self.take(1)?[0]),
-            25 => u64::from(u16::from_be_bytes(
-                self.take(2)?.try_into().unwrap_or_default(),
-            )),
-            26 => u64::from(u32::from_be_bytes(
-                self.take(4)?.try_into().unwrap_or_default(),
-            )),
-            27 => u64::from_be_bytes(self.take(8)?.try_into().unwrap_or_default()),
+        let width = match info {
+            0..=23 => return Ok((major, u64::from(info))),
+            24..=27 => 1usize << (info - 24),
             31 => return Err("indefinite-length CBOR is not allowed".into()),
             _ => return Err("reserved CBOR additional information".into()),
         };
+        let arg = self
+            .take(width as u64)?
+            .iter()
+            .fold(0u64, |arg, byte| arg << 8 | u64::from(*byte));
+        if major == 7 {
+            let shortest = match info {
+                24 if arg < 32 => {
+                    return Err("CBOR simple value below 32 in the two-byte form".into())
+                }
+                26 => {
+                    let value = f64::from(f32::from_bits(arg as u32));
+                    !value.is_nan() && !fits_half(value)
+                }
+                27 => {
+                    let value = f64::from_bits(arg);
+                    !value.is_nan() && f64::from(value as f32) != value
+                }
+                _ => true,
+            };
+            if !shortest {
+                return Err("CBOR float is not in its shortest form".into());
+            }
+            return Ok((major, 0));
+        }
+        if arg < [24, 1 << 8, 1 << 16, 1 << 32][usize::from(info - 24)] {
+            return Err("CBOR argument is not in its shortest form".into());
+        }
         Ok((major, arg))
     }
 
@@ -304,6 +328,7 @@ impl Reader<'_> {
         if depth > MAX_NESTED_LEVELS {
             return Err("CBOR nesting exceeds the limit".into());
         }
+        let start = self.offset;
         let (major, arg) = self.head()?;
         Ok(match major {
             0 => Item::Int(i128::from(arg)),
@@ -338,11 +363,34 @@ impl Reader<'_> {
                 }
                 Item::Map(pairs)
             }
+            6 if depth > 0 => return Err("only the outer COSE_Sign1 may carry a CBOR tag".into()),
             6 => Item::Tag(arg, Box::new(self.item(depth + 1)?)),
             // Simple values and floats: `head` already consumed their bytes.
-            _ => Item::Other,
+            _ => Item::Other(self.data[start..self.offset].to_vec()),
         })
     }
+}
+
+/// Whether `value` is exactly representable as an IEEE 754 half-precision
+/// float, so that a wider encoding of it is not the shortest.
+fn fits_half(value: f64) -> bool {
+    let magnitude = value.abs();
+    if value.is_infinite() || magnitude == 0.0 {
+        return true;
+    }
+    if magnitude > 65504.0 {
+        return false;
+    }
+    // Normal halves (at least 2^-14) carry 11 significant bits; subnormals are
+    // multiples of 2^-24. Every f32 is a normal f64, so its exponent field is
+    // exact.
+    let exponent = ((magnitude.to_bits() >> 52) & 0x7ff) as i32 - 1023;
+    let scaled = if exponent >= -14 {
+        magnitude * 2f64.powi(10 - exponent)
+    } else {
+        magnitude * 2f64.powi(24)
+    };
+    scaled == scaled.trunc()
 }
 
 #[cfg(test)]
@@ -354,6 +402,53 @@ mod tests {
         assert!(decode_all(&[0x9f, 0xff]).is_err());
         assert!(decode_all(&[0x01, 0x02]).is_err());
         assert!(decode_all(&[0xa2, 0x01, 0x01, 0x01, 0x02]).is_err());
+    }
+
+    #[test]
+    fn fits_half_matches_ieee_half_precision() {
+        let p = |e: i32| 2f64.powi(e);
+        for (value, want) in [
+            (0.0, true),
+            (-0.0, true),
+            (f64::INFINITY, true),
+            (-8.0, true),
+            (65504.0, true),
+            (65520.0, false),
+            (1.0 + p(-10), true),
+            (1.0 + p(-11), false),
+            (p(-14), true),
+            (p(-14) + p(-24), true),
+            (p(-24), true),
+            (p(-25), false),
+            (3.0 * p(-25), false),
+            (f64::from(1.1f32), false),
+            (-f64::from(f32::MAX), false),
+            (f64::from(f32::from_bits(1)), false),
+        ] {
+            assert_eq!(fits_half(value), want, "{value:e}");
+        }
+    }
+
+    #[test]
+    fn rejects_non_shortest_heads_and_nested_tags() {
+        for encoded in [
+            &[0x18, 0x17][..],
+            &[0x19, 0x00, 0xff],
+            &[0x5a, 0, 0, 0xff, 0xff],
+            &[0xfa, 0x3f, 0x80, 0, 0],
+            &[0xf8, 0x10],
+            &[0x81, 0xc6, 0x00],
+        ] {
+            assert!(decode_all(encoded).is_err(), "{encoded:02x?}");
+        }
+        for encoded in [
+            &[0x18, 0x18][..],
+            &[0xf9, 0x3c, 0x00],
+            &[0xfa, 0x3f, 0x8c, 0xcc, 0xcd],
+            &[0xc6, 0x00],
+        ] {
+            assert!(decode_all(encoded).is_ok(), "{encoded:02x?}");
+        }
     }
 
     #[test]

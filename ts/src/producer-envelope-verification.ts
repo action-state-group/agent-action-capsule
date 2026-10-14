@@ -30,11 +30,7 @@ class Reader {
   public length(major: number): number {
     const first = this.byte();
     if (first >>> 5 !== major) throw new SyntaxError("unexpected CBOR type");
-    const add = first & 31;
-    if (add < 24) return add;
-    if (add === 24) return this.byte();
-    if (add === 25) return (this.byte() << 8) | this.byte();
-    throw new SyntaxError("unsupported or indefinite CBOR length");
+    return Number(this.argument(first & 31));
   }
   public bytes(): Uint8Array {
     return this.take(this.length(2));
@@ -46,7 +42,10 @@ class Reader {
     this.offset = end;
     return value;
   }
-  /** A definite-length argument of any width, refusing indefinite lengths. */
+  /**
+   * A definite-length argument of any width in its shortest form, refusing
+   * indefinite lengths and an argument a narrower head could carry.
+   */
   private argument(add: number): bigint {
     if (add < 24) return BigInt(add);
     const width =
@@ -56,13 +55,17 @@ class Reader {
     let value = 0n;
     for (let i = 0; i < width; i += 1)
       value = (value << 8n) | BigInt(this.byte());
+    if (value < [24n, 1n << 8n, 1n << 16n, 1n << 32n][add - 24]!)
+      throw new SyntaxError("CBOR argument is not in its shortest form");
     return value;
   }
   /**
    * One header value, typed only as far as the envelope checks need: integers,
    * text and byte strings keep their CBOR type, so a float or a boolean never
    * compares equal to an integer label or algorithm. Anything else is skipped
-   * and kept as an opaque marker.
+   * and kept as an opaque marker. Every item is held to the profile's encoding
+   * rules: the shortest form of each argument and float, unique map keys, and
+   * no tag, which only the outer COSE_Sign1 carries.
    */
   public item(depth = 0): HeaderValue {
     if (depth > 8) throw new SyntaxError("CBOR nesting too deep");
@@ -76,7 +79,17 @@ class Reader {
       if (add >= 28) throw new SyntaxError("reserved or break CBOR value");
       if (add === 24 && this.byte() < 32)
         throw new SyntaxError("non-preferred CBOR simple value");
-      if (add > 24) this.take(add === 25 ? 2 : add === 26 ? 4 : 8);
+      if (add > 24) {
+        const raw = this.take(add === 25 ? 2 : add === 26 ? 4 : 8);
+        const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+        if (
+          add === 26
+            ? notShortest(view.getFloat32(0), fitsHalf)
+            : add === 27 &&
+              notShortest(view.getFloat64(0), (v) => Math.fround(v) === v)
+        )
+          throw new SyntaxError("CBOR float is not in its shortest form");
+      }
       return OPAQUE;
     }
     const argument = this.argument(add);
@@ -86,11 +99,43 @@ class Reader {
     if (major === 2) return this.take(length);
     if (major === 3) return utf8.decode(this.take(length));
     if (major === 4) for (let i = 0; i < length; i += 1) this.item(depth + 1);
-    else if (major === 5)
-      for (let i = 0; i < length * 2; i += 1) this.item(depth + 1);
-    else if (major === 6) this.item(depth + 1);
+    else if (major === 5) {
+      // Shortest-form encodings are unique per value, so equal keys have
+      // equal bytes.
+      const keys = new Set<string>();
+      for (let i = 0; i < length; i += 1) {
+        const start = this.offset;
+        this.item(depth + 1);
+        const key = Array.from(this.data.subarray(start, this.offset)).join();
+        if (keys.has(key)) throw new SyntaxError("duplicate CBOR map key");
+        keys.add(key);
+        this.item(depth + 1);
+      }
+    } else if (major === 6)
+      throw new SyntaxError("only the outer COSE_Sign1 may carry a CBOR tag");
     return OPAQUE;
   }
+}
+
+/** A NaN, or a value a narrower float encodes exactly, is not shortest. */
+function notShortest(value: number, fitsNarrower: (v: number) => boolean) {
+  return Number.isNaN(value) || fitsNarrower(value);
+}
+
+/** Whether a float is exactly representable in IEEE 754 half precision. */
+function fitsHalf(value: number): boolean {
+  const magnitude = Math.abs(value);
+  if (magnitude === 0 || magnitude === Infinity) return true;
+  if (magnitude > 65504) return false;
+  // Normal halves (at least 2^-14) carry 11 significant bits; subnormals are
+  // multiples of 2^-24. Every float32 is a normal float64, so its exponent
+  // field is exact.
+  const view = new DataView(new ArrayBuffer(8));
+  view.setFloat64(0, magnitude);
+  const exponent = ((view.getUint16(0) >>> 4) & 0x7ff) - 1023;
+  return Number.isInteger(
+    magnitude * 2 ** (exponent >= -14 ? 10 - exponent : 24),
+  );
 }
 
 type HeaderValue =
