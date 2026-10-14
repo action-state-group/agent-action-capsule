@@ -7,7 +7,7 @@
 # never exercised in CI. The checkers import agent_action_capsule.canonical
 # for the digests they recompute, so the Python reference is installed
 # alongside the jsonschema validator they need.
-name: schemas
+name: Schemas
 
 on:
   push:

@@ -4,7 +4,7 @@
 # short-lived GitHub Actions OIDC token for a PyPI upload token at publish time.
 # See RELEASING.md for the one-time PyPI Trusted-Publisher configuration this
 # depends on (done by a PyPI project Owner, not by this workflow).
-name: Publish Python package
+name: Release · Publish Python
 
 on:
   release:
@@ -76,6 +76,6 @@ jobs:
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: dist/

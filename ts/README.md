@@ -51,9 +51,9 @@ The tests consume the same-commit corpora under `../vectors/`.
 ## Release
 
 Releases follow the repository's [RELEASING.md](../RELEASING.md): run
-**Prepare release** for `ts`, and merging its pull request creates the
+**Release · Prepare** for `ts`, and merging its pull request creates the
 `ts/v<version>` tag and dispatches
-[Publish TypeScript package](https://github.com/action-state-group/agent-action-capsule/actions/workflows/publish-ts.yml)
+[Release · Publish TypeScript](https://github.com/action-state-group/agent-action-capsule/actions/workflows/publish-ts.yml)
 on it. The workflow checks the tag against `ts/package.json`, the lockfile and
 that the commit is on `main`, runs `npm ci` and the complete package
 check/build, and performs `npm publish --dry-run` before uploading from the
@@ -73,7 +73,7 @@ The workflow uses Node 22 (>=22.14) and installs npm 11.19.1; trusted
 publishing requires npm >=11.5.1. No long-lived npm token is used, and
 trusted publishing supplies provenance automatically. The package is public.
 
-The TS workflow publishes only for a `ts/v*` tag: when Tag release dispatches
+The TS workflow publishes only for a `ts/v*` tag: when Release · Tag dispatches
 it on the tag, or when a GitHub Release for a `ts/v*` tag is published, so
 publishing such a release by hand uploads to npm. Dispatched on a branch, it
 does nothing. `ts/v` tags never start the Python/PyPI publish job, and vector

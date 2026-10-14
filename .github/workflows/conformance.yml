@@ -1,4 +1,4 @@
-name: cross-language conformance
+name: Cross-language conformance
 
 on:
   push:

@@ -2,7 +2,7 @@
 # Adapted from capsule-emit-ts publish.yml at ffdaf4dd817d0dc89e1fc95bde9da278523a7922.
 # Publishes ts/ to npm via OIDC trusted publishing for a ts/v<version> tag,
 # which tag-release.yml creates when a version bump merges. See RELEASING.md.
-name: Publish TypeScript package
+name: Release · Publish TypeScript
 
 on:
   release:

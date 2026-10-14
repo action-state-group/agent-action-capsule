@@ -14,9 +14,9 @@
 # rewritten, which means a force-push and a fresh review of a branch whose
 # content nobody changed.
 #
-# Branch protection: require the "dco / dco" check (Settings → Branches →
+# Branch protection: require the "DCO / dco" check (Settings → Branches →
 # Require status checks → search "dco"). Drop the "DCO" probot app entry.
-name: dco
+name: DCO
 
 on:
   pull_request:

@@ -1,4 +1,4 @@
-name: release conformance vectors
+name: Release · Conformance vectors
 
 on:
   workflow_dispatch:
