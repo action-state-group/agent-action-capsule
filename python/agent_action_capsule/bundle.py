@@ -136,7 +136,11 @@ def decode_fragment(fragment: str) -> Any:
         raise ValueError("fragment must be unpadded base64url")
     try:
         raw = _b64url_decode(fragment)
-        value = json.loads(raw.decode("utf-8"), parse_constant=_reject_constant)
+        value = json.loads(
+            raw.decode("utf-8"),
+            parse_constant=_reject_constant,
+            object_pairs_hook=_checked_object,
+        )
         _require_scalar_strings(value)
     except (binascii.Error, UnicodeError, json.JSONDecodeError) as err:
         raise ValueError("fragment is not UTF-8 JSON") from err
@@ -146,6 +150,15 @@ def decode_fragment(fragment: str) -> Any:
 def _reject_constant(name: str) -> Any:
     # NaN, Infinity and -Infinity are not JSON (RFC 8259); json.loads takes them.
     raise json.JSONDecodeError(f"{name} is not JSON", name, 0)
+
+
+def _checked_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    # Check every member before a repeated name collapses to its last value,
+    # so an earlier, overwritten value cannot hide an unpaired surrogate.
+    for key, member in pairs:
+        key.encode("utf-8")
+        _require_scalar_strings(member)
+    return dict(pairs)
 
 
 def _require_scalar_strings(value: Any) -> None:

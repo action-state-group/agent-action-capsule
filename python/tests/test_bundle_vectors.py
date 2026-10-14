@@ -204,12 +204,24 @@ def test_closure_reports_each_dangling_target_once():
 
 @pytest.mark.parametrize(
     "text",
-    [b'{"a":"\\ud800"}', b'{"\\udc00":1}', b'[NaN]', b'{"a":-Infinity}'],
+    [
+        b'{"a":"\\ud800"}',
+        b'{"\\udc00":1}',
+        b'{"a":"\\ud800","a":1}',
+        b'{"a":[{"b":["\\udfff"]}]}',
+        b'[NaN]',
+        b'{"a":-Infinity}',
+    ],
 )
 def test_fragment_refuses_what_the_other_decoders_refuse(text):
     fragment = base64.urlsafe_b64encode(text).rstrip(b"=").decode()
     with pytest.raises(ValueError, match="not UTF-8 JSON"):
         decode_fragment(fragment)
+
+
+def test_fragment_keeps_the_last_of_a_repeated_name():
+    fragment = base64.urlsafe_b64encode(b'{"a":"x","a":1}').rstrip(b"=").decode()
+    assert decode_fragment(fragment) == {"a": 1}
 
 
 def test_fragment_refuses_non_canonical_base64url():
