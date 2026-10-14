@@ -9,11 +9,12 @@ name: Publish Python package
 on:
   release:
     types: [published]
+  # tag-release.yml dispatches this on the python/v<version> tag it creates.
+  # Dispatched on a branch, it builds and stops: a dry run.
   workflow_dispatch: {}
   # Path-scoped so every PR touching the package exercises the same build +
   # twine check the release will run — catches packaging regressions before
-  # a tag exists. `publish` below stays gated to `release: published` only,
-  # so this never uploads.
+  # a tag exists. `publish` below needs a python/v tag, so this never uploads.
   push:
     paths: ["python/**"]
   pull_request:
@@ -43,14 +44,16 @@ jobs:
           name: dist
           path: python/dist/
 
-  # Only a `release` (tag) event publishes. `workflow_dispatch` runs `build`
-  # above as a dry run and stops — it never uploads, even run manually.
+  # Only a python/v tag publishes: a published GitHub Release for it, or a
+  # dispatch on it (as tag-release.yml does). Anything else stops after build.
   publish:
     # Python releases use python/v<version> tags. Every other namespace
     # (go/v*, ts/v*, vectors/v*, legacy-verify/*) belongs to another artifact
     # and must not publish Python; the guard below refuses anything the prefix
     # lets through.
-    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'python/v')
+    if: >-
+      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'python/v')) ||
+      (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/python/v'))
     needs: build
     runs-on: ubuntu-latest
     environment: pypi
@@ -60,15 +63,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || github.ref_name }}
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: require a matching tag on main
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: python .github/check_python_release.py "$RELEASE_TAG"
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        run: python .github/release.py check python "$RELEASE_TAG"
       - uses: actions/download-artifact@v4
         with:
           name: dist

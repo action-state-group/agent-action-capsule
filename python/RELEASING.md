@@ -1,15 +1,19 @@
 <!-- SPDX-License-Identifier: BSD-3-Clause -->
 # Releasing `agent-action-capsule` to PyPI
 
+The release steps are in the repository's [RELEASING.md](../RELEASING.md).
+This page covers the PyPI side.
+
 Publishing is automated by `.github/workflows/publish-python.yml` via PyPI's **OIDC
 Trusted Publishing** — no API token is stored in this repo. The workflow:
 
 1. On any push to a `release` event, `workflow_dispatch`, or a pushed tag it
    builds the sdist + wheel from `python/` and runs `twine check` (the `build`
    job). This always runs and never uploads — it is the dry run.
-2. Only when the trigger is a **published GitHub Release** whose tag starts
-   with `python/v`, the `publish` job runs. Before uploading it runs
-   `.github/check_python_release.py`, which fails the job unless the tag is
+2. Only for a `python/v` tag does the `publish` job run: when
+   `tag-release.yml` dispatches the workflow on the tag it created, or when a
+   GitHub Release for such a tag is published. Before uploading it runs
+   `.github/release.py check python`, which fails the job unless the tag is
    exactly `python/v` + the `version` in `python/pyproject.toml` and the tagged
    commit is an ancestor of `origin/main`. It then requests a short-lived OIDC
    token via `id-token: write` and uploads through
@@ -58,11 +62,7 @@ the workflow's OIDC identity for a one-time upload credential at publish time.
 
 ## Cutting a release
 
-1. Bump `version` in `python/pyproject.toml` and merge it to `main`.
-2. Tag that `main` commit `python/v<version>` and publish a GitHub Release for the
-   tag. The `publish` job runs only for the `release: published` trigger, so a
-   plain tag push or a manually run `workflow_dispatch` build the package but
-   do not upload it. A tag that differs from the pyproject version, or a
-   commit not on `main`, fails the guard before anything uploads.
-3. Confirm the run's `publish` job succeeded and the new version is live at
-   <https://pypi.org/project/agent-action-capsule/>.
+Follow [RELEASING.md](../RELEASING.md): run **Prepare release** for `python`,
+merge the pull request it links, and confirm the dispatched
+`publish-python.yml` run and the new version at
+<https://pypi.org/project/agent-action-capsule/>.

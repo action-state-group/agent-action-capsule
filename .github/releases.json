@@ -1,0 +1,14 @@
+{
+  "python": {
+    "kind": "python",
+    "manifest": "python/pyproject.toml",
+    "tag_prefix": "python/v",
+    "workflow": "publish-python.yml"
+  },
+  "ts": {
+    "kind": "npm",
+    "manifest": "ts/package.json",
+    "tag_prefix": "ts/v",
+    "workflow": "publish-ts.yml"
+  }
+}

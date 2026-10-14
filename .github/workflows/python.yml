@@ -41,5 +41,5 @@ jobs:
       - name: leak-lint tests
         run: python -m pytest -q .github/test_leak_lint.py
 
-      - name: release guard tests
-        run: python -m pytest -q .github/test_check_python_release.py
+      - name: release helper tests
+        run: python -m pytest -q .github/test_release.py

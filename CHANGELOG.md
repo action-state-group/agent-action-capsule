@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release: Python and TypeScript releases are now a merged version bump. Run
+  **Prepare release** with the package and `patch`, `minor` or `major`; merging the
+  pull request it links tags `python/v*` or `ts/v*` and publishes. TypeScript now
+  publishes from a `ts/v*` tag through the `npm` environment instead of a manual run on
+  `main`. See `RELEASING.md`.
 - Release: Python releases are now tagged `python/v<version>`, matching the
   `go/v*`, `ts/v*` and `vectors/v*` tags of the other artifacts. The PyPI version
   is unchanged (`0.8.0`, not `python/0.8.0`). Releases up to 0.7.0 keep their bare
