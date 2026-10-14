@@ -12,9 +12,11 @@ and 3 and invalid format-4 canonicalization declarations fail closed.
 ## Expected-result provenance
 
 Reference-derived cases are frozen outputs from the reference verifier.
-Spec-derived cases are hand-derived from the draft and RFC 8785 and MUST NOT be
-regenerated from an implementation. Each newly derived SHA-256 value records
-the exact canonical string in `canonical_preimages`.
+Spec-derived cases are hand-derived from the draft and RFC 8785; the
+implementation never decides their expected results. The generators reproduce
+them byte for byte only to show the reference agrees: if the output differs,
+fix the generator or the reference, never the case. Each newly derived
+SHA-256 value records the exact canonical string in `canonical_preimages`.
 
 ## Expected result
 

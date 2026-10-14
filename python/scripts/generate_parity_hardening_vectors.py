@@ -37,6 +37,7 @@ ROOT = Path(__file__).resolve().parents[2]
 VECTORS = ROOT / "vectors"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from generate_disclosure_vectors import expected as disclosure_expected  # noqa: E402
+from vector_layout import append_cases  # noqa: E402
 
 SPEC_V05 = "draft-mih-scitt-agent-action-capsule-05"
 
@@ -58,14 +59,6 @@ def _base_capsule(action_id: str) -> dict:
         "spec_version": SPEC_V05,
         "timestamp": "2026-10-10T00:00:00Z",
     }
-
-
-def _append(manifest_path: Path, entries: list[dict]) -> None:
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    listed = {case["name"] for case in manifest["cases"]}
-    manifest["cases"].extend(entry for entry in entries if entry["name"] not in listed)
-    manifest["count"] = len(manifest["cases"])
-    _dump(manifest_path, manifest)
 
 
 def capsule_cases() -> list[dict]:
@@ -127,7 +120,7 @@ def capsule_cases() -> list[dict]:
             },
         )
         entries.append({"name": name, "kind": kind, "description": description, "provenance": "reference-derived"})
-    _append(out / "vectors.json", entries)
+    append_cases(out / "vectors.json", entries)
     return entries
 
 
@@ -176,6 +169,12 @@ def producer_envelope_cases() -> list[dict]:
             "envelope_algorithm_mismatch",
         ),
         (
+            "wrong-algorithm-extra-header",
+            "wrong alg and an extra label together: alg is checked first",
+            bytes([0xA4, 0x01, 0x26]) + ct + kid + bytes([0x18, 0x63]) + _text("extra"),
+            "envelope_algorithm_mismatch",
+        ),
+        (
             "protected-content-type-bom",
             "protected content type is the profile value preceded by U+FEFF, which a decoder must not strip",
             bytes([0xA3, 0x01, 0x27, 0x03]) + _text("\ufeff" + CONTENT_TYPE) + kid,
@@ -187,12 +186,6 @@ def producer_envelope_cases() -> list[dict]:
             bytes([0xA3, 0x01, 0xFC]) + ct + kid,
             "envelope_malformed",
         ),
-        (
-            "wrong-algorithm-extra-header",
-            "wrong alg and an extra label together: alg is checked first",
-            bytes([0xA4, 0x01, 0x26]) + ct + kid + bytes([0x18, 0x63]) + _text("extra"),
-            "envelope_algorithm_mismatch",
-        ),
     ]
     entries = []
     for name, description, protected, code in cases:
@@ -202,7 +195,7 @@ def producer_envelope_cases() -> list[dict]:
         (directory / "envelope.cose").write_bytes(_envelope(protected))
         _dump(directory / "expected.json", {"ok": False, "finding_codes": [code], "public_key_hex": None})
         entries.append({"name": name, "description": description})
-    _append(out / "vectors.json", entries)
+    append_cases(out / "vectors.json", entries)
     return entries
 
 
@@ -240,7 +233,7 @@ def disclosure_envelope_cases() -> list[dict]:
         record["provenance"] = "reference-derived"
         _dump(directory / "expected.json", record)
         entries.append({"name": name, "kind": "negative", "description": description, "provenance": "reference-derived"})
-    _append(out / "vectors.json", entries)
+    append_cases(out / "vectors.json", entries)
     return entries
 
 

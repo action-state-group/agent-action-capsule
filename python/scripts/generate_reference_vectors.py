@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
-"""Generate draft-04 references[] Capsule-ID and verification vectors."""
+"""Generate draft-04 references[] Capsule-ID and verification vectors.
+
+Manifest entries are appended in case-name order, the order they were first
+listed in.
+"""
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 from agent_action_capsule import compute_capsule_id, verify
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from vector_layout import append_cases  # noqa: E402
 
 OUT = Path(__file__).resolve().parents[2] / "vectors" / "capsule"
 PARENT = "a" * 64
@@ -14,7 +22,6 @@ REF = {"type": "agent-action-capsule", "digest_alg": "SHA-256", "digest": "b" * 
 CASES = [
     ("absent", {}, "format 4 commits an absent references member as absent"),
     ("empty", {"references": []}, "format 4 commits a present empty references array"),
-    ("vintage-extension", {"format_version": "2", "references": None}, "format 2 retains references as an extension"),
     ("unregistered-capsule-token", {"references": [REF | {"type": "capsule", "digest": PARENT}]}, "foreign artifact type remains open"),
     ("external-capsule", {"references": [REF | {"citation_purpose": "responds_to"}]}, "valid external Capsule citation"),
     ("unknown-type-algorithm", {"references": [{"type": "future-artifact", "digest_alg": "future-hash", "digest": "opaque-digest"}]}, "foreign digest contexts remain open"),
@@ -69,9 +76,6 @@ def main() -> None:
             "chain": {"parent_capsule_id": PARENT, "relation": "confirms"},
             "assurance": {"effect_mode": "not_applicable", "attestation_mode": "self_attested", "ledger_mode": "chained"},
         } | patch
-        if capsule["format_version"] == "2":
-            capsule["spec_version"] = "draft-mih-scitt-agent-action-capsule-02"
-            capsule.pop("canonicalization_id")
         capsule["capsule_id"] = compute_capsule_id(capsule)
         directory = OUT / f"reference-{name}"
         directory.mkdir(exist_ok=True)
@@ -91,6 +95,13 @@ def main() -> None:
     (directory / "expected.json").write_text(
         json.dumps(expected(verify(tampered), description), indent=2) + "\n", encoding="utf-8"
     )
+
+    names = sorted([f"reference-{name}" for name, _, _ in CASES] + ["reference-tampered-after-seal"])
+    entries = []
+    for name in names:
+        item = json.loads((OUT / name / "expected.json").read_text(encoding="utf-8"))
+        entries.append({"name": name, "kind": item["kind"], "description": item["description"]})
+    append_cases(OUT / "vectors.json", entries)
 
 
 if __name__ == "__main__":

@@ -54,8 +54,25 @@ Reference-derived corpora and checksum manifests can be regenerated with:
 python3 python/scripts/generate_all_vectors.py
 ```
 
-Do not overwrite `spec-derived` cases with generator output. Their recorded
-preimages and expected results are the implementation-independent authority.
+A full run must leave this directory unchanged;
+`.github/workflows/vectors.yml` enforces it, so a generator that drops or
+rewrites a case fails CI. Generators run in manifest order: a base generator
+writes its corpus manifest and later ones, including the append-only
+`generate_parity_hardening_vectors.py` and
+`generate_envelope_encoding_vectors.py`, append their cases.
+
+The `-04` capsule cases are a deliberate compatibility set, kept `-04`
+because a verifier must accept `-04` and `spec_version` is in the Capsule ID
+preimage; new cases default to `-05`. The four legacy-format negatives
+(`neg-format-version-unknown`, `neg-v2-canonicalization-absent`,
+`neg-v2-canonicalization-null`, `neg-v3-format-version-unsupported`) are
+frozen fixtures: the reference refuses to seal formats 1, 2 and 3, so the
+generators list them without rewriting them.
+
+`spec-derived` cases stay the implementation-independent authority: their
+recorded preimages and expected results come from the draft and RFC 8785. The
+generators reproduce them only to show the reference agrees. If a generator's
+output differs from one, fix the generator or the reference, never the case.
 
 The `vectors/vX.Y.Z` release workflow archives this directory directly. The
 release asset is a deterministic snapshot at the selected commit; consumers

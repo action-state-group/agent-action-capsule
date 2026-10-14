@@ -10,9 +10,11 @@ wrapper and result shape. Python, Go, and TypeScript consume both corpora.
 ## Expected-result provenance
 
 Reference-derived cases are frozen outputs from the reference verifier.
-Spec-derived cases are hand-derived from the companion profile and RFC 8785
-and MUST NOT be regenerated from an implementation. Newly derived hashes carry
-their exact strings in `canonical_preimages`.
+Spec-derived cases are hand-derived from the companion profile and RFC 8785;
+the implementation never decides their expected results. The generators
+reproduce them byte for byte only to show the reference agrees: if the output
+differs, fix the generator or the reference, never the case. Newly derived
+hashes carry their exact strings in `canonical_preimages`.
 
 ## Expected result
 

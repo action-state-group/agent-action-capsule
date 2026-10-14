@@ -31,7 +31,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from agent_action_capsule.producer_envelope import verify_producer_envelope
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from generate_parity_hardening_vectors import VECTORS, _append, _dump, update_checksums  # noqa: E402
+from generate_parity_hardening_vectors import VECTORS, _dump, update_checksums  # noqa: E402
+from vector_layout import append_cases  # noqa: E402
 
 CONTENT_TYPE = "application/agent-action-capsule-id"
 # Public test seed, never a production key.
@@ -235,6 +236,24 @@ def producer_envelope_cases() -> list[dict]:
             malformed,
         ),
         (
+            "protected-label-tagged",
+            "protected alg label 1 under tag 6",
+            _envelope(_protected_map(b"\xa3", b"\xc6\x01\x27", CT, KID)),
+            malformed,
+        ),
+        (
+            "protected-kid-tagged",
+            "protected kid is the right public key under tag 6",
+            _envelope(_protected_map(b"\xa3", ALG, CT, b"\x04\xc6" + cbor2.dumps(PUBLIC_KEY))),
+            malformed,
+        ),
+        (
+            "protected-label-beyond-int64",
+            "an extra protected label -2^64, a CBOR integer outside int64",
+            _envelope(_protected_map(b"\xa4", LABELS, b"\x3b" + b"\xff" * 8 + b"\x00")),
+            "envelope_protected_headers_invalid",
+        ),
+        (
             "protected-alg-float64",
             "protected alg is -8.0 in double precision, which half precision represents exactly",
             _float_alg(">d", -8.0),
@@ -270,24 +289,6 @@ def producer_envelope_cases() -> list[dict]:
             _envelope(_protected_map(b"\xa3", b"\x01\xa2\xa2\x01\x02\x03\x04\x00\xa2\x03\x04\x01\x02\x01", CT, KID)),
             malformed,
         ),
-        (
-            "protected-label-tagged",
-            "protected alg label 1 under tag 6",
-            _envelope(_protected_map(b"\xa3", b"\xc6\x01\x27", CT, KID)),
-            malformed,
-        ),
-        (
-            "protected-kid-tagged",
-            "protected kid is the right public key under tag 6",
-            _envelope(_protected_map(b"\xa3", ALG, CT, b"\x04\xc6" + cbor2.dumps(PUBLIC_KEY))),
-            malformed,
-        ),
-        (
-            "protected-label-beyond-int64",
-            "an extra protected label -2^64, a CBOR integer outside int64",
-            _envelope(_protected_map(b"\xa4", LABELS, b"\x3b" + b"\xff" * 8 + b"\x00")),
-            "envelope_protected_headers_invalid",
-        ),
     ]
     entries = []
     for name, description, encoded, code in cases:
@@ -308,7 +309,7 @@ def producer_envelope_cases() -> list[dict]:
             },
         )
         entries.append({"name": name, "description": description})
-    _append(out / "vectors.json", entries)
+    append_cases(out / "vectors.json", entries)
     return entries
 
 

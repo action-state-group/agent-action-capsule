@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate the 24 canonical differential vectors in ../../vectors/capsule/.
+"""Generate the canonical differential vectors in ../../vectors/capsule/.
 
-These exercise canonicalization paths that the 32 frozen capsule vectors do not
+These exercise canonicalization paths that the base capsule vectors do not
 reach. Source: Joel Hillier (Certisyn), DISCRIMINATING list from
 conformance/runners/run_aac_vectors.py (feat/revision-02-canonicalization).
 
@@ -9,16 +9,29 @@ Attribution: the discriminating input set is Joel Hillier's work.
 This script computes our independently-derived expected values and writes them
 in AAC vector-dir format.
 
-Run: cd python && python -m scripts.generate_canonical_differential
+Each value sits at ``extension.canonical_test_value`` of an otherwise fixed
+format-4 Capsule (spec_version -04, part of the released compatibility set),
+so the RFC 8785 path under test is inside the capsule_id preimage, which
+expected.json records. #99 dropped the original inputs that tested the
+withdrawn format-2 normalization or float and unsafe-integer refusal, and
+those whose string paths spec-derived-unicode-payload-digest now covers
+(generate_spec_derived_vectors.py).
+
+Run: cd python && python scripts/generate_canonical_differential.py
 """
 from __future__ import annotations
 
-import json
+import sys
 from pathlib import Path
 
-from agent_action_capsule import canonical
+from agent_action_capsule import compute_capsule_id, verify
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from vector_layout import append_cases, dumps, preimage, sort_members  # noqa: E402
 
 OUT = Path(__file__).resolve().parents[2] / "vectors/capsule"
+SPEC = "draft-mih-scitt-agent-action-capsule-04"
+PROVENANCE = "spec-derived"
 
 # Build tricky inputs with chr() to avoid encoding ambiguity in this source.
 # Notation used in comments: U+XXXX.
@@ -32,156 +45,104 @@ _TAB     = chr(0x09)      # tab        (\t)
 _LF      = chr(0x0A)      # newline    (\n)
 _FF      = chr(0x0C)      # form feed  (\f)
 _CR      = chr(0x0D)      # carriage return (\r)
-_SOH     = chr(0x01)      # U+0001 SOH (control char, not in named-shortcut set)
 
+# Manifest order. Each value keeps its member order: canonicalization, not
+# the input file, decides the order inside the preimage.
 DISCRIMINATING = [
-    ("canonical-null-member-removed",
-     {"a": "1", "b": None}),
-    ("canonical-empty-object-removed",
-     {"a": "1", "b": {}}),
-    ("canonical-empty-array-removed",
-     {"a": "1", "b": []}),
-    ("canonical-object-emptied-by-normalization",
-     {"a": "1", "b": {"c": None}}),
-    ("canonical-nested-two-deep-emptied",
-     {"a": "1", "b": {"c": {"d": None}}}),
-    ("canonical-array-of-objects-normalized",
-     {"a": [{"x": None, "y": "1"}, {"z": "2"}]}),
     ("canonical-array-preserved-not-sorted",
-     {"a": ["b", "a", "c"]}),
-    ("canonical-nested-member-named-capsule-id",
-     {"a": {"capsule_id": "inner"}}),
-    ("canonical-nested-member-named-chain",
-     {"a": {"chain": "inner"}}),
-    # UTF-16 key ordering: D83D (first surrogate of emoji) > FF3A (fullwidth Z)
-    # so emoji key sorts AFTER fullwidth Z.
-    ("canonical-key-sort-utf16-vs-codepoint",
-     {_EMOJI: "hi", _FWZED: "wide"}),
+     {"a": ["b", "a", "c"]},
+     "Array elements preserved in insertion order, not sorted (RFC 8785 S:3.2.2)"),
+    ("canonical-bool-and-deep-nesting",
+     {"a": True, "b": {"c": {"d": {"e": "f"}}}},
+     "Boolean true and deep object nesting: exercises bool branch and recursive dict serialization"),
+    ("canonical-integer-at-safe-max",
+     {"a": 9007199254740991},
+     "Integer at exactly Number.MAX_SAFE_INTEGER = 9007199254740991 accepted (S:5.1 boundary)"),
+    ("canonical-integer-at-safe-min",
+     {"a": -9007199254740991},
+     "Integer at exactly -Number.MAX_SAFE_INTEGER = -9007199254740991 accepted (S:5.1 boundary)"),
+    ("canonical-integer-negative",
+     {"a": -1},
+     "Negative integer -1 serialized as '-1'"),
+    ("canonical-integer-zero",
+     {"a": 0},
+     "Integer 0 serialized as '0' (int branch in _jcs_value, S:5.1)"),
     # JCS does not unicode-normalize. NFD key (A + combining ring) has first
     # UTF-16 code unit U+0041, so it sorts before B (U+0042). The precomposed
     # NFC form (U+00C5) would sort after B because 00C5 > 0042.
     ("canonical-key-nfc-vs-nfd",
-     {_NDC_A: "combining", "B": "plain"}),
+     {_NDC_A: "combining", "B": "plain"},
+     "JCS does not normalize Unicode; NFD key A+U+030A (first unit 0x0041) sorts before B (0x0042)"),
+    # UTF-16 key ordering: D83D (first surrogate of emoji) > FF3A (fullwidth Z)
+    # so emoji key sorts AFTER fullwidth Z.
+    ("canonical-key-sort-utf16-vs-codepoint",
+     {_EMOJI: "hi", _FWZED: "wide"},
+     "UTF-16 key ordering: U+1F600 emoji (first surrogate 0xD83D) sorts after U+FF3A (single unit)"),
+    ("canonical-nested-member-named-capsule-id",
+     {"a": {"capsule_id": "inner"}},
+     "Top-level capsule_id/chain exclusion does not apply to nested members with those names"),
+    ("canonical-nested-member-named-chain",
+     {"a": {"chain": "inner"}},
+     "Top-level capsule_id/chain exclusion does not apply to nested members with those names"),
     # All six mandatory JCS escape sequences in one string value.
     ("canonical-string-escapes",
-     {"a": "q" + _DQUOTE + "b" + _BSLASH + "s" + _BS + _TAB + _LF + _FF + _CR}),
-    # Control char U+0001 (not in named-shortcut set): serialized as .
-    ("canonical-control-char-below-0x20",
-     {"a": "x" + _SOH + "y"}),
-    ("canonical-non-bmp-value",
-     {"a": _EMOJI}),
-    ("canonical-solidus-not-escaped",
-     {"a": "a/b"}),
-    ("canonical-integer-zero",
-     {"a": 0}),
-    ("canonical-integer-negative",
-     {"a": -1}),
-    ("canonical-integer-at-safe-max",
-     {"a": 9007199254740991}),
-    ("canonical-integer-above-safe-max",
-     {"a": 9007199254740992}),
-    ("canonical-integer-at-safe-min",
-     {"a": -9007199254740991}),
-    ("canonical-float-in-value",
-     {"a": 1.5}),
-    ("canonical-float-integral-valued",
-     {"a": 2.0}),
-    ("canonical-bool-and-deep-nesting",
-     {"a": True, "b": {"c": {"d": {"e": "f"}}}}),
-    ("canonical-all-members-removed",
-     {"a": None, "b": [], "c": {}}),
+     {"a": "q" + _DQUOTE + "b" + _BSLASH + "s" + _BS + _TAB + _LF + _FF + _CR},
+     'JCS mandatory escapes: \\" \\\\ \\b \\t \\n \\f \\r in a single string value (RFC 8785 S:3.2.2.2)'),
 ]
 
-DESCRIPTIONS = {
-    "canonical-null-member-removed":
-        "normalize() removes a null-valued member (S:2 absent-field normalization)",
-    "canonical-empty-object-removed":
-        "normalize() removes an empty-object member (S:2 absent-field normalization)",
-    "canonical-empty-array-removed":
-        "normalize() removes an empty-array member (S:2 absent-field normalization)",
-    "canonical-object-emptied-by-normalization":
-        "normalize() bottom-up: object becomes empty after null member removed; parent removes it",
-    "canonical-nested-two-deep-emptied":
-        "normalize() bottom-up two levels: d->c->b all emptied and removed",
-    "canonical-array-of-objects-normalized":
-        "normalize() recurses into array elements; null member in nested object removed",
-    "canonical-array-preserved-not-sorted":
-        "Array elements preserved in insertion order, not sorted (RFC 8785 S:3.2.2)",
-    "canonical-nested-member-named-capsule-id":
-        "Top-level capsule_id/chain exclusion does not apply to nested members with those names",
-    "canonical-nested-member-named-chain":
-        "Top-level capsule_id/chain exclusion does not apply to nested members with those names",
-    "canonical-key-sort-utf16-vs-codepoint":
-        "UTF-16 key ordering: U+1F600 emoji (first surrogate 0xD83D) sorts after U+FF3A (single unit)",
-    "canonical-key-nfc-vs-nfd":
-        "JCS does not normalize Unicode; NFD key A+U+030A (first unit 0x0041) sorts before B (0x0042)",
-    "canonical-string-escapes":
-        "JCS mandatory escapes: \\\" \\\\ \\b \\t \\n \\f \\r in a single string value (RFC 8785 S:3.2.2.2)",
-    "canonical-control-char-below-0x20":
-        "Control char U+0001 not in named-shortcut set: serialized as \\u0001 (RFC 8785 S:3.2.2.2)",
-    "canonical-non-bmp-value":
-        "Non-BMP char U+1F600 in a string value passes through as UTF-8 (no \\uXXXX escaping needed)",
-    "canonical-solidus-not-escaped":
-        "Solidus / is NOT escaped in JCS (RFC 8785 S:3.2.2.2 forbids the \\/ escape)",
-    "canonical-integer-zero":
-        "Integer 0 serialized as '0' (int branch in _jcs_value, S:5.1)",
-    "canonical-integer-negative":
-        "Negative integer -1 serialized as '-1'",
-    "canonical-integer-at-safe-max":
-        "Integer at exactly Number.MAX_SAFE_INTEGER = 9007199254740991 accepted (S:5.1 boundary)",
-    "canonical-integer-above-safe-max":
-        "Integer one above Number.MAX_SAFE_INTEGER raises UnsafeIntegerError (S:5.1 guard)",
-    "canonical-integer-at-safe-min":
-        "Integer at exactly -Number.MAX_SAFE_INTEGER = -9007199254740991 accepted (S:5.1 boundary)",
-    "canonical-float-in-value":
-        "Float value raises FloatInDigestError (S:5.1 forbids floats in digest-bearing fields)",
-    "canonical-float-integral-valued":
-        "Integral-valued float 2.0 raises FloatInDigestError: the guard is a type check, not a value check",
-    "canonical-bool-and-deep-nesting":
-        "Boolean true and deep object nesting: exercises bool branch and recursive dict serialization",
-    "canonical-all-members-removed":
-        "After normalization all members removed; capsule_id = SHA-256(JCS({})) = SHA-256('{}')",
-}
+
+def capsule(name: str, value: dict) -> dict:
+    """The fixed format-4 Capsule carrying ``value``, members sorted around it."""
+    cap = sort_members({
+        "action_id": name,
+        "action_type": "decide",
+        "assurance": {"attestation_mode": "self_attested", "effect_mode": "not_applicable", "ledger_mode": "standalone"},
+        "canonicalization_id": "jcs",
+        "capsule_id": None,
+        "developer": "conformance-vector@v1",
+        "disposition": {"approver": "policy", "decision": "accept", "human_disposed": False, "verdict_class": "executed"},
+        "extension": None,
+        "format_version": "4",
+        "operator": "AAC-CONFORMANCE",
+        "spec_version": SPEC,
+        "timestamp": "2026-09-13T00:00:00Z",
+    })
+    cap["extension"] = {"canonical_test_value": value}
+    cap["capsule_id"] = compute_capsule_id(cap)
+    return cap
 
 
-def generate_expected(name: str, inp: dict) -> dict:
-    exc = None
-    cap_id = None
-    try:
-        cap_id = canonical.compute_capsule_id(inp)
-    except Exception as e:
-        exc = type(e).__name__
-    return {
-        "kind": "canonical",
-        "capsule_id_recomputed": cap_id,
-        "exception": exc,
-        "description": DESCRIPTIONS[name],
-    }
+def expected(cap: dict, description: str) -> dict:
+    result = verify(cap)
+    if not result.ok:
+        raise SystemExit(f"{cap['action_id']}: the reference verify() rejected a positive case")
+    return sort_members({
+        "canonical_preimages": {"capsule_id": preimage(cap)},
+        "capsule_id_recomputed": result.capsule_id,
+        "derived": result.assurance,
+        "description": description,
+        "findings": [
+            {"check": f.check, "code": f.code, "detail": f.detail, "severity": f.severity}
+            for f in result.findings
+        ],
+        "kind": "positive",
+        "ok": result.ok,
+        "provenance": PROVENANCE,
+    })
 
 
-def write_vector(name: str, inp: dict, exp: dict) -> None:
-    d = OUT / name
-    d.mkdir(exist_ok=True)
-    (d / "input.json").write_text(
-        json.dumps(inp, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
-    (d / "expected.json").write_text(
-        json.dumps(exp, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
-
-
-def main() -> list[dict]:
-    cases = []
-    for name, inp in DISCRIMINATING:
-        exp = generate_expected(name, inp)
-        write_vector(name, inp, exp)
-        cases.append({"name": name, "kind": "canonical",
-                       "description": DESCRIPTIONS[name]})
-        status = ("REFUSED:" + exp["exception"]) if exp["exception"] else exp["capsule_id_recomputed"][:20] + "..."
-        print(f"  {name:<50} {status}")
-
-    print(f"\n  {len(cases)} canonical vectors written to {OUT}")
-    return cases
+def main() -> None:
+    entries = []
+    for name, value, description in DISCRIMINATING:
+        description = f"{description} under explicit format-4 plain JCS."
+        cap = capsule(name, value)
+        directory = OUT / name
+        directory.mkdir(exist_ok=True)
+        (directory / "input.json").write_text(dumps(cap), encoding="utf-8")
+        (directory / "expected.json").write_text(dumps(expected(cap, description)), encoding="utf-8")
+        entries.append({"name": name, "kind": "positive", "description": description, "provenance": PROVENANCE})
+    append_cases(OUT / "vectors.json", entries)
+    print(f"wrote {len(entries)} canonical vectors to {OUT}")
 
 
 if __name__ == "__main__":

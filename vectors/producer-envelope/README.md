@@ -37,10 +37,11 @@ Regenerate deterministically from the repository root:
 python/.venv-review/bin/python python/scripts/generate_all_vectors.py
 ```
 
-`generate_all_vectors.py` rewrites the original cases only. The later cases are
-appended by `generate_parity_hardening_vectors.py` and
+`generate_producer_envelope_vectors.py` rewrites the original cases only. The
+later cases are appended by `generate_parity_hardening_vectors.py` and
 `generate_envelope_encoding_vectors.py`, which leave existing cases untouched
-and refresh `SHA256SUMS`.
+and refresh `SHA256SUMS`. `generate_all_vectors.py` runs all three in that
+order.
 
 Vector generation uses a fixed test seed. The seed is public test material and
 must never be used as a production signing key.

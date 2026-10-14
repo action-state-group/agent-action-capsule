@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Regenerate every Python-produced corpus and deterministic checksums."""
+"""Regenerate the reproducible vector corpora and their checksums."""
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import subprocess
 import sys
@@ -15,32 +14,31 @@ VECTORS = ROOT / "vectors"
 
 def checksums(directory: Path) -> None:
     lines = []
-    for path in sorted(p for p in directory.rglob("*") if p.is_file()):
+    # Sort by the relative path string, as the committed files are, not by
+    # Path, which compares component by component.
+    files = sorted(
+        (p.relative_to(directory).as_posix(), p) for p in directory.rglob("*") if p.is_file()
+    )
+    for relative, path in files:
         if path.name == "SHA256SUMS" or "__pycache__" in path.parts or path.suffix == ".pyc":
             continue
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        lines.append(f"{digest}  {path.relative_to(directory).as_posix()}")
+        lines.append(f"{digest}  {relative}")
     (directory / "SHA256SUMS").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def complete_capsule_manifest() -> None:
-    """Add generator-independent canonical cases without dropping any corpus case."""
-    path = VECTORS / "capsule" / "vectors.json"
-    manifest = json.loads(path.read_text(encoding="utf-8"))
-    listed = {case["name"] for case in manifest["cases"]}
-    for directory in sorted(p for p in path.parent.iterdir() if p.is_dir()):
-        if directory.name in listed:
-            continue
-        expected = json.loads((directory / "expected.json").read_text(encoding="utf-8"))
-        manifest["cases"].append(
-            {
-                "name": directory.name,
-                "kind": expected["kind"],
-                "description": expected["description"],
-            }
-        )
-    manifest["count"] = len(manifest["cases"])
-    path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+def refresh_checksums(directory: Path) -> None:
+    """Refresh the digests ``directory``'s SHA256SUMS lists, keeping its coverage.
+
+    The top-level file lists a chosen subset of vectors/, so it is not rebuilt.
+    """
+    sums = directory / "SHA256SUMS"
+    lines = []
+    for line in sums.read_text(encoding="utf-8").splitlines():
+        relative = line.split("  ", 1)[1]
+        digest = hashlib.sha256((directory / relative).read_bytes()).hexdigest()
+        lines.append(f"{digest}  {relative}")
+    sums.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def presentation_resolution() -> None:
@@ -57,24 +55,38 @@ def presentation_resolution() -> None:
     )
 
 
+# Run in this order: a base generator rewrites its corpus manifest with only its
+# own cases, and the generators after it append theirs, so every manifest keeps
+# its released order. A full run must leave vectors/ unchanged; the Vector
+# regeneration workflow checks it.
+GENERATORS = (
+    # vectors/capsule/ (and provenance-mode-vectors/), in manifest order.
+    "generate_vectors.py",
+    "generate_canonical_differential.py",
+    "generate_reference_vectors.py",
+    "generate_spec_derived_vectors.py",
+    "generate_v05_vectors.py",
+    "generate_typed_field_vectors.py",
+    "generate_disclosure_vectors.py",
+    "generate_producer_envelope_vectors.py",
+    "generate_evidence_request_vectors.py",
+    "generate_settlement_vectors.py",
+    "generate_min_necessary_vectors.py",
+    "generate_bundle_producer_key_vectors.py",
+    "generate_bundle_composed_vectors.py",
+    "generate_judgment_extension_vectors.py",
+    "generate_profile_vectors.py",
+    "generate_interop_profile_v0_vectors.py",
+    # Append to the capsule, disclosure-envelope and producer-envelope manifests.
+    "generate_parity_hardening_vectors.py",
+    "generate_envelope_encoding_vectors.py",
+)
+
+
 def main() -> None:
     python = sys.executable
-    for script in (
-        "generate_vectors.py",
-        "generate_canonical_differential.py",
-        "generate_reference_vectors.py",
-        "generate_disclosure_vectors.py",
-        "generate_producer_envelope_vectors.py",
-        "generate_evidence_request_vectors.py",
-        "generate_settlement_vectors.py",
-        "generate_min_necessary_vectors.py",
-        "generate_bundle_producer_key_vectors.py",
-        "generate_bundle_composed_vectors.py",
-        "generate_judgment_extension_vectors.py",
-        "generate_interop_profile_v0_vectors.py",
-    ):
+    for script in GENERATORS:
         subprocess.run([python, str(Path(__file__).with_name(script))], check=True, cwd=ROOT / "python")
-    complete_capsule_manifest()
     presentation_resolution()
     for corpus in (
         VECTORS / "capsule",
@@ -84,7 +96,7 @@ def main() -> None:
         VECTORS / "interop" / "ran_under",
     ):
         checksums(corpus)
-    checksums(VECTORS)
+    refresh_checksums(VECTORS)
 
 
 if __name__ == "__main__":
