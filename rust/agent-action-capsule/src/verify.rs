@@ -1,28 +1,22 @@
-//! Class 1 verifier (§6) -- the subset `bundle.rs` needs to gate per-record
-//! trust, ported from the Go/Python/TS siblings' `verify` module.
+//! Class 1 verifier (§6). Port of `go/verify`.
 //!
-//! **Scope note (deliberate, not a silent gap):** the siblings' check 8
-//! ("unknown registry value") looks up `verdict_class` / `disposition.decision`
-//! / `effect.type` / `irreversibility_class` / `effect_attestation` /
-//! `chain.relation` / `references[].citation_purpose` against the vocabulary
-//! tables generated from `spec/REGISTRY.md` (plus a vendored CPB provisional
-//! snapshot) and reports what it finds -- but every finding check 8 can ever
-//! produce is `info`-severity (`unknown_registry_value`,
-//! `known_provisional_registry_value`, `effect_attestation_graded_floor`).
-//! `info` never gates `ok`, and none of it is part of the recomputed
-//! `capsule_id`. Since this crate's only consumer of `Verify` is
-//! `bundle::records()`, which uses exactly `ok` and `capsule_id`, check 8 is
-//! omitted rather than embedding and re-parsing REGISTRY.md's Markdown tables
-//! for output nothing here observes. Every `error`-severity check (1-7) is
-//! ported in full, so `ok` and `capsule_id` are bit-exact with the siblings.
-//! A future consumer that needs check 8's informational findings should port
-//! it then, not stub it now.
+//! A verifier validates a Capsule from its own bytes without trusting the
+//! producer. It returns a structured result and never panics (§6). `ok` gates
+//! trust in every other reported field; findings are reported in a fixed
+//! order. Unknown registry values are informational, never a rejection (§4,
+//! §12).
+//!
+//! This is the Class 1 surface only. COSE_Sign1 signatures over the record,
+//! registration and Receipt inclusion proofs belong to the SCITT/COSE
+//! substrate (§6); the Producer Envelope is [`crate::envelope`].
 
 use crate::canonical::{compute_capsule_id, float_paths, unsafe_int_paths, CanonicalError};
 use crate::references::reference_findings;
+use crate::registries::{provisional_values, Registries};
 use serde_json::{Map, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 
+/// True if `s` is 64 lowercase hexadecimal characters.
 pub fn is_hex64(s: &str) -> bool {
     s.len() == 64
         && s.bytes()
@@ -97,6 +91,37 @@ fn cross_party_rung_rank(v: &str) -> Option<i32> {
     }
 }
 
+/// The closed enum for `provenance_mode.mode` (§5.3(bis)).
+fn provenance_mode_valid(v: &str) -> bool {
+    matches!(v, "contemporaneous" | "backfilled")
+}
+
+/// The closed enum for `provenance_mode.time_rung` (§5.3(bis)).
+fn time_rung_valid(v: &str) -> bool {
+    matches!(v, "self_attested" | "witnessed")
+}
+
+/// REQUIRED companions of `provenance_mode.mode = "backfilled"` (§5.3(bis)).
+const PROVENANCE_MODE_BACKFILLED_FIELDS: [&str; 4] = [
+    "source_ref",
+    "source_asserted_at",
+    "import_batch",
+    "imported_at",
+];
+
+/// `(registry, block, member)` in check-8 emission order.
+const REGISTRY_FIELDS: [(&str, &str, &str); 6] = [
+    ("verdict_class", "disposition", "verdict_class"),
+    ("disposition.decision", "disposition", "decision"),
+    ("effect.type", "effect", "type"),
+    ("irreversibility_class", "effect", "irreversibility_class"),
+    ("effect_attestation", "effect", "effect_attestation"),
+    ("chain.relation", "chain", "relation"),
+];
+
+/// One structured verification finding. `check` is `None` for a finding
+/// outside the numbered §6 checks. Severity `"error"` gates `ok`;
+/// `"warning"` and `"info"` do not.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Finding {
     pub code: String,
@@ -132,7 +157,7 @@ const STRING_MEMBERS: [(&str, &str); 16] = [
     ("provenance_mode", "imported_at"),
 ];
 
-pub fn mkf(code: &str, detail: &str, check: Option<i32>, severity: &str) -> Finding {
+pub(crate) fn mkf(code: &str, detail: &str, check: Option<i32>, severity: &str) -> Finding {
     Finding {
         code: code.to_string(),
         detail: detail.to_string(),
@@ -141,12 +166,27 @@ pub fn mkf(code: &str, detail: &str, check: Option<i32>, severity: &str) -> Find
     }
 }
 
-#[derive(Debug, Clone, Default)]
+/// The never-panicking result of [`verify`].
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct VerificationResult {
     pub ok: bool,
     pub findings: Vec<Finding>,
+    /// Derived assurance: `effect_mode`, `attestation_mode`, `ledger_mode`,
+    /// and when applicable `cross_party_rung`, `provenance_mode` and
+    /// `provenance_time_rung`.
     pub assurance: BTreeMap<String, String>,
+    /// The recomputed `capsule_id`; `None` if it could not be computed.
     pub capsule_id: Option<String>,
+}
+
+impl VerificationResult {
+    fn internal_error(detail: &str) -> Self {
+        VerificationResult {
+            ok: false,
+            findings: vec![mkf("verifier_internal_error", detail, None, "error")],
+            ..Default::default()
+        }
+    }
 }
 
 fn as_map(v: Option<&Value>) -> Option<&Map<String, Value>> {
@@ -188,17 +228,18 @@ fn derive_cross_party_rung(cross_party: Option<&Map<String, Value>>) -> Option<S
     Some("acknowledged_receipt".to_string())
 }
 
-fn store_ids(store: &[Value]) -> std::collections::HashSet<String> {
-    let mut ids = std::collections::HashSet::new();
+/// The `capsule_id`s of a store of capsule objects or bare id strings.
+fn store_ids(store: &[Value]) -> HashSet<&str> {
+    let mut ids = HashSet::new();
     for item in store {
         match item {
             Value::Object(m) => {
                 if let Some(Value::String(id)) = m.get("capsule_id") {
-                    ids.insert(id.clone());
+                    ids.insert(id.as_str());
                 }
             }
             Value::String(id) => {
-                ids.insert(id.clone());
+                ids.insert(id.as_str());
             }
             _ => {}
         }
@@ -206,11 +247,28 @@ fn store_ids(store: &[Value]) -> std::collections::HashSet<String> {
     ids
 }
 
-/// Runs Class 1 verification (§6) over a single Capsule. Never panics.
-/// `store` is the ledger of capsules for chain-level checks; `None` means
-/// store-level checks are skipped (as `bundle::records()` does, matching the
-/// Go/Python/TS siblings' `Verify(record, nil, nil)` call site).
+/// Decodes capsule JSON. Numbers keep their source text, so a float or an
+/// unsafe integer is reported by check 1 rather than lost in conversion.
+pub fn decode_capsule_json(data: &[u8]) -> Result<Value, serde_json::Error> {
+    serde_json::from_slice(data)
+}
+
+/// Runs Class 1 verification (§6) over one Capsule against the authoritative
+/// registries. `store` is the ledger for chain-level checks; `None` skips the
+/// store-level checks.
 pub fn verify(capsule: &Value, store: Option<&[Value]>) -> VerificationResult {
+    match Registries::authoritative() {
+        Ok(regs) => verify_with(capsule, store, regs),
+        Err(e) => VerificationResult::internal_error(&e.to_string()),
+    }
+}
+
+/// [`verify`] against a caller-supplied registry snapshot.
+pub fn verify_with(
+    capsule: &Value,
+    store: Option<&[Value]>,
+    regs: &Registries,
+) -> VerificationResult {
     let capsule_map = match capsule.as_object() {
         Some(m) => m,
         None => {
@@ -234,7 +292,7 @@ pub fn verify(capsule: &Value, store: Option<&[Value]>) -> VerificationResult {
     let cross_party = as_map(capsule_map.get("cross_party"));
 
     let mut reference_checks: BTreeMap<i32, Vec<Finding>> = BTreeMap::new();
-    for finding in reference_findings(capsule_map) {
+    for finding in reference_findings(capsule_map, regs) {
         if let Some(check) = finding.check {
             reference_checks.entry(check).or_default().push(finding);
         }
@@ -321,7 +379,14 @@ pub fn verify(capsule: &Value, store: Option<&[Value]>) -> VerificationResult {
         }
     }
 
-    for field in ["effect", "assurance", "disposition", "chain", "cross_party"] {
+    for field in [
+        "effect",
+        "assurance",
+        "disposition",
+        "chain",
+        "cross_party",
+        "provenance_mode",
+    ] {
         if let Some(v) = capsule_map.get(field) {
             if !v.is_object() {
                 findings.push(mkf(
@@ -562,7 +627,7 @@ pub fn verify(capsule: &Value, store: Option<&[Value]>) -> VerificationResult {
             Some(store) => {
                 let ids = store_ids(store);
                 if let Some(Value::String(parent_str)) = parent {
-                    if !ids.contains(parent_str) {
+                    if !ids.contains(parent_str.as_str()) {
                         findings.push(mkf(
                             "chain_parent_missing",
                             &format!("chain parent {parent_str} not found in the store (§6)"),
@@ -663,7 +728,69 @@ pub fn verify(capsule: &Value, store: Option<&[Value]>) -> VerificationResult {
     }
 
     // ---- Check 8: Unknown registry values -----------------------------------
-    // Deliberately omitted -- info-severity only, see module doc.
+    let provisional = match provisional_values() {
+        Ok(p) => Some(p),
+        Err(e) => {
+            findings.push(mkf(
+                "registry_snapshot_unavailable",
+                &e.to_string(),
+                Some(8),
+                "warning",
+            ));
+            None
+        }
+    };
+    for (registry, block, member) in REGISTRY_FIELDS {
+        // A non-string value is a type error, reported by check 1.
+        let Some(Value::String(value)) = as_map(capsule_map.get(block)).and_then(|b| b.get(member))
+        else {
+            continue;
+        };
+        if regs.contains(registry, value) {
+            continue;
+        }
+        if let Some(class) = provisional
+            .and_then(|p| p.get(registry))
+            .and_then(|values| values.get(value))
+        {
+            findings.push(mkf(
+                "known_provisional_registry_value",
+                &format!(
+                    "{block}.{member}={value:?} resolves known status 'provisional' via vendored \
+                     CPB registry (payload class {class:?}); informational, not rejected (§12)"
+                ),
+                Some(8),
+                "info",
+            ));
+            continue;
+        }
+        findings.push(mkf(
+            "unknown_registry_value",
+            &format!(
+                "{block}.{member}={value:?} is not a seeded {registry} value; informational, \
+                 not rejected (§12)"
+            ),
+            Some(8),
+            "info",
+        ));
+        if registry == "effect_attestation" {
+            findings.push(mkf(
+                "effect_attestation_graded_floor",
+                "unknown effect_attestation graded no stronger than 'runtime_claimed' (§5.2)",
+                Some(8),
+                "info",
+            ));
+        }
+    }
+
+    if let Some(fs) = reference_checks.get(&8) {
+        findings.extend(fs.clone());
+    }
+
+    // ---- Check 9: Provenance mode -------------------------------------------
+    if let Some(pm) = as_map(capsule_map.get("provenance_mode")) {
+        provenance_mode_findings(capsule_map, pm, &mut findings, &mut derived);
+    }
 
     let ok = !findings.iter().any(|f| f.severity == "error");
     VerificationResult {
@@ -672,4 +799,263 @@ pub fn verify(capsule: &Value, store: Option<&[Value]>) -> VerificationResult {
         assurance: derived,
         capsule_id: recomputed_id,
     }
+}
+
+/// Check 9 (§5.3(bis) Provenance mode). A backfilled record's occurrence-time
+/// claim is capped at self-attested unless a witnessed reference is cited.
+/// Unlike check 7's informational overclaims, a time-rung overclaim and the
+/// `imported_at == source_asserted_at` laundering shape gate `ok`: they are
+/// falsifiable dishonesty claims, not merely unverifiable ones.
+fn provenance_mode_findings(
+    capsule: &Map<String, Value>,
+    pm: &Map<String, Value>,
+    findings: &mut Vec<Finding>,
+    derived: &mut BTreeMap<String, String>,
+) {
+    let mode = pm.get("mode").and_then(Value::as_str);
+    match mode {
+        Some(m) if provenance_mode_valid(m) => {
+            derived.insert("provenance_mode".to_string(), m.to_string());
+        }
+        _ => findings.push(mkf(
+            "provenance_mode_invalid",
+            &format!(
+                "provenance_mode.mode MUST be one of backfilled|contemporaneous (§5.3(bis) \
+                 Provenance mode); got {}",
+                pm.get("mode")
+                    .map_or("nothing".to_string(), Value::to_string)
+            ),
+            Some(9),
+            "error",
+        )),
+    }
+
+    match mode {
+        Some("backfilled") => {
+            for field in PROVENANCE_MODE_BACKFILLED_FIELDS {
+                let missing = match pm.get(field) {
+                    None | Some(Value::Null) => true,
+                    Some(Value::String(s)) => s.is_empty(),
+                    Some(_) => false,
+                };
+                if missing {
+                    findings.push(mkf(
+                        "provenance_mode_missing_required_field",
+                        &format!(
+                            "provenance_mode.{field} is REQUIRED when mode='backfilled' \
+                             (§5.3(bis) Provenance mode)"
+                        ),
+                        Some(9),
+                        "error",
+                    ));
+                }
+            }
+
+            match pm.get("source_ref") {
+                Some(Value::Object(source_ref)) => {
+                    for field in ["type", "digest_alg", "digest"] {
+                        if !matches!(source_ref.get(field), Some(Value::String(s)) if !s.is_empty())
+                        {
+                            findings.push(mkf(
+                                "provenance_mode_source_ref_malformed",
+                                &format!(
+                                    "provenance_mode.source_ref.{field} MUST be a non-empty \
+                                     string (§5.3(bis) Provenance mode)"
+                                ),
+                                Some(9),
+                                "error",
+                            ));
+                        }
+                    }
+                }
+                Some(_) => findings.push(mkf(
+                    "provenance_mode_source_ref_malformed",
+                    "provenance_mode.source_ref MUST be a JSON object when present (§5.3(bis) \
+                     Provenance mode)",
+                    Some(9),
+                    "error",
+                )),
+                None => {}
+            }
+
+            // An equal imported_at/source_asserted_at is exactly the shape that
+            // makes a backfilled import look contemporaneous; never corroboration.
+            let imported_at = pm.get("imported_at").and_then(Value::as_str);
+            let source_asserted_at = pm.get("source_asserted_at").and_then(Value::as_str);
+            if imported_at.is_some() && imported_at == source_asserted_at {
+                findings.push(mkf(
+                    "provenance_time_laundering_shape",
+                    "provenance_mode.imported_at equals source_asserted_at on a backfilled \
+                     record; this is the shape a laundering producer would construct to make an \
+                     import look contemporaneous (§5.3(bis) Provenance mode)",
+                    Some(9),
+                    "error",
+                ));
+            }
+
+            let mut time_rung = None;
+            match pm.get("time_rung") {
+                None | Some(Value::Null) => {}
+                Some(Value::String(rung)) if time_rung_valid(rung) => {
+                    time_rung = Some(rung.as_str())
+                }
+                Some(other) => findings.push(mkf(
+                    "provenance_mode_invalid",
+                    &format!(
+                        "provenance_mode.time_rung MUST be one of self_attested|witnessed \
+                         (§5.3(bis) Provenance mode); got {other}"
+                    ),
+                    Some(9),
+                    "error",
+                )),
+            }
+
+            // time_rung="witnessed" REQUIRES a well-formed references[] entry
+            // citing corroborates_source_time; the derived rung comes from that
+            // evidence, never from the claim.
+            let corroborated = capsule
+                .get("references")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_object)
+                .any(|reference| {
+                    let text = |k: &str| reference.get(k).and_then(Value::as_str).unwrap_or("");
+                    text("citation_purpose") == "corroborates_source_time"
+                        && !text("type").is_empty()
+                        && !text("digest_alg").is_empty()
+                        && !text("digest").is_empty()
+                });
+            if time_rung == Some("witnessed") && !corroborated {
+                findings.push(mkf(
+                    "provenance_time_rung_overclaim",
+                    "provenance_mode.time_rung='witnessed' claimed without a well-formed \
+                     references[] entry citing citation_purpose='corroborates_source_time' \
+                     (§5.3(bis) Provenance mode)",
+                    Some(9),
+                    "error",
+                ));
+            }
+            derived.insert(
+                "provenance_time_rung".to_string(),
+                if corroborated {
+                    "witnessed"
+                } else {
+                    "self_attested"
+                }
+                .to_string(),
+            );
+        }
+        Some("contemporaneous") => {
+            let orphaned: Vec<&str> = PROVENANCE_MODE_BACKFILLED_FIELDS
+                .iter()
+                .copied()
+                .chain(["time_rung"])
+                .filter(|field| matches!(pm.get(*field), Some(v) if !v.is_null()))
+                .collect();
+            if !orphaned.is_empty() {
+                findings.push(mkf(
+                    "provenance_mode_invalid",
+                    &format!(
+                        "provenance_mode fields {orphaned:?} are meaningful only when \
+                         mode='backfilled' (§5.3(bis) Provenance mode)"
+                    ),
+                    Some(9),
+                    "error",
+                ));
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Verifies a ledger of Capsules in order against the authoritative
+/// registries, adding the store-level checks of §6 and §5.4.4: parent
+/// existence, concurrent supersedes, and duplicates collapse (§5.3(bis)).
+pub fn verify_store(capsules: &[Value]) -> Vec<VerificationResult> {
+    match Registries::authoritative() {
+        Ok(regs) => verify_store_with(capsules, regs),
+        Err(e) => vec![VerificationResult::internal_error(&e.to_string()); capsules.len()],
+    }
+}
+
+/// [`verify_store`] against a caller-supplied registry snapshot.
+pub fn verify_store_with(capsules: &[Value], regs: &Registries) -> Vec<VerificationResult> {
+    let mut results: Vec<VerificationResult> = capsules
+        .iter()
+        .map(|c| verify_with(c, Some(capsules), regs))
+        .collect();
+    let chained = |c: &Value, relation: &str| -> Option<String> {
+        let chain = as_map(c.as_object()?.get("chain"))?;
+        if chain.get("relation").and_then(Value::as_str) != Some(relation) {
+            return None;
+        }
+        chain
+            .get("parent_capsule_id")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+    };
+
+    // Concurrent supersedes (§5.4.4): the earliest supersedes over a parent is
+    // authoritative; each later one is reported.
+    let mut seen_parents = HashSet::new();
+    for (i, c) in capsules.iter().enumerate() {
+        let Some(parent) = chained(c, "supersedes").filter(|p| !p.is_empty()) else {
+            continue;
+        };
+        if seen_parents.contains(&parent) {
+            results[i].findings.push(mkf(
+                "concurrent_supersedes",
+                &format!("a later supersedes over parent {parent}; the earliest is authoritative (§5.4.4)"),
+                Some(6),
+                "info",
+            ));
+        } else {
+            seen_parents.insert(parent);
+        }
+    }
+
+    // Duplicates (§5.3(bis); REGISTRY.md §6): a duplicates-linked pair counts
+    // once, the contemporaneous parent governing. Parent existence is check
+    // 6's; this pass records the collapse and flags, informationally, a
+    // parent that is itself backfilled.
+    let by_id: HashMap<&str, &Map<String, Value>> = capsules
+        .iter()
+        .filter_map(Value::as_object)
+        .filter_map(|m| Some((m.get("capsule_id")?.as_str()?, m)))
+        .collect();
+    for (i, c) in capsules.iter().enumerate() {
+        let Some(parent_id) = chained(c, "duplicates") else {
+            continue;
+        };
+        results[i].findings.push(mkf(
+            "duplicate_collapsed",
+            &format!(
+                "chain.relation='duplicates' over parent {parent_id}; verifiers and downstream \
+                 evidence evaluators MUST count this pair once, the contemporaneous parent \
+                 governing (§5.3(bis) Provenance mode)"
+            ),
+            Some(9),
+            "info",
+        ));
+        let parent_backfilled = by_id
+            .get(parent_id.as_str())
+            .and_then(|parent| as_map(parent.get("provenance_mode")))
+            .and_then(|pm| pm.get("mode"))
+            .and_then(Value::as_str)
+            == Some("backfilled");
+        if parent_backfilled {
+            results[i].findings.push(mkf(
+                "duplicate_parent_not_contemporaneous",
+                &format!(
+                    "chain.relation='duplicates' parent {parent_id} is itself \
+                     provenance_mode.mode='backfilled'; 'duplicates' is defined to cite the \
+                     contemporaneous record (§5.3(bis) Provenance mode)"
+                ),
+                Some(9),
+                "info",
+            ));
+        }
+    }
+    results
 }

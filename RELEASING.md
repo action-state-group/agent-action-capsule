@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: BSD-3-Clause -->
 # Releasing
 
-The Python package (PyPI) and the TypeScript package (npm) release the same
-way. A release is a merged version bump: you choose the bump, review it as a
+The Python package (PyPI), the TypeScript package (npm) and the Rust crate
+(crates.io) release the same way. A release is a merged version bump: you choose the bump, review it as a
 pull request, and merging it tags and publishes. The packages are listed in
 [`.github/releases.json`](.github/releases.json), which
 [`.github/release.py`](.github/release.py) reads.
@@ -11,6 +11,7 @@ pull request, and merging it tags and publishes. The packages are listed in
 |---|---|---|---|---|
 | `python` | `python/pyproject.toml` | `python/v<version>` | `publish-python.yml` | `pypi` (tag rule `python/v*`) |
 | `ts` | `ts/package.json` and `ts/package-lock.json` | `ts/v<version>` | `publish-ts.yml` | `npm` (tag rule `ts/v*`) |
+| `crates/agent-action-capsule` | `rust/agent-action-capsule/Cargo.toml` and `rust/Cargo.lock` | `crates/agent-action-capsule-v<version>` | `publish-rust.yml` | `crates-io` (tag rule `crates/*-v*`) |
 
 The prefix is only on the Git tag. The registry version stays plain (`0.8.0`).
 Python releases up to 0.7.0 were tagged bare `v<version>` (`v0.0.3` to
@@ -54,7 +55,7 @@ If a publish fails after the tag exists:
 
 - **Guard.** `release.py check` refuses a tag from another package, a version
   that differs from the manifest, and a commit that is not on `main`.
-- **Environments.** `pypi` and `npm` accept deployments only from their tag
+- **Environments.** `pypi`, `npm` and `crates-io` accept deployments only from their tag
   pattern, so a job started from a branch or another tag cannot upload.
 - **Tags.** The `release tags` ruleset lets only admins move or delete tags.
   Creating `go/v*` tags is also admin-only, because a Go release is the pushed
@@ -76,10 +77,15 @@ Each registry's trusted publisher names owner `action-state-group`, repository
 |---|---|---|---|
 | PyPI | `agent-action-capsule` | `publish-python.yml` | `pypi` |
 | npm | `@action-state-group/agent-action-capsule` | `publish-ts.yml` | `npm` |
+| crates.io | `agent-action-capsule` | `publish-rust.yml` | `crates-io` |
 
 A project owner configures it on the registry (PyPI: **Project → Settings →
 Publishing**; npm: the package's **Settings → Trusted Publisher**, with
-permission for direct `npm publish`). Renaming a publisher workflow breaks
+permission for direct `npm publish`; crates.io: the crate's **Settings →
+Trusted Publishing**). crates.io offers Trusted Publishing only for a crate
+that exists, so a crate's first version is published by hand by one of its
+crates.io owners (`cargo publish -p <crate>` from `rust/` at the tagged
+commit); every later version goes through the flow above. Renaming a publisher workflow breaks
 publishing until the registry is updated first. No registry token is stored in
 this repository: trusted publishing exchanges the workflow's OIDC identity for
 a short-lived upload credential, and npm adds provenance automatically.

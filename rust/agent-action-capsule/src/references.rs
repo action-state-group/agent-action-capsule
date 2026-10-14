@@ -1,11 +1,10 @@
-//! draft-04 §5.5.5 reference-block structural checks, without resolving cited
-//! artifacts. Byte-for-byte port of the Go/Python/TS siblings' `references`
-//! finding logic, minus the `citation_purpose` "known in registry" lookup:
-//! that check is `info`-severity only (never gates `ok`) and depends on the
-//! REGISTRY.md-derived vocabulary tables, which this crate does not embed
-//! (see `verify.rs` module doc for the scope note). Every `error`-severity
-//! reference finding is ported in full.
+//! draft-04 §5.5.5 reference-block checks, without resolving cited artifacts.
+//! Port of `go/verify/references.go`. CPB owns digest representation and
+//! comparison context, so a foreign reference is not held to AAC's SHA-256
+//! hex encoding. Log coordinates are recorded claims only; Class 1 never
+//! authenticates their inclusion proofs.
 
+use crate::registries::Registries;
 use crate::verify::{is_hex64, mkf, Finding};
 use serde_json::{Map, Value};
 
@@ -54,7 +53,8 @@ fn retention_findings(raw: &Value, path: &str, findings: &mut Vec<Finding>) {
     }
 }
 
-pub fn reference_findings(capsule: &Map<String, Value>) -> Vec<Finding> {
+/// Findings for `references[]`, tagged with checks 1, 6 and 8.
+pub(crate) fn reference_findings(capsule: &Map<String, Value>, regs: &Registries) -> Vec<Finding> {
     if !matches!(capsule.get("format_version"), Some(Value::String(v)) if v == "4") {
         return Vec::new();
     }
@@ -134,19 +134,24 @@ pub fn reference_findings(capsule: &Map<String, Value>) -> Vec<Finding> {
                 }
             }
         }
-        // citation_purpose registry-membership ("known"/"unknown") is info-only
-        // and omitted here (see module doc); a present-but-empty/non-string
-        // citation_purpose is still a structural error.
-        if let Some(raw_purpose) = reference.get("citation_purpose") {
-            let ok = matches!(raw_purpose, Value::String(s) if !s.is_empty());
-            if !ok {
-                findings.push(mkf(
-                    "reference_malformed",
-                    &format!("{path}.citation_purpose MUST be a non-empty string (§5.5.5)"),
-                    Some(1),
-                    "error",
-                ));
+        match reference.get("citation_purpose") {
+            Some(Value::String(purpose)) if !purpose.is_empty() => {
+                if !regs.contains("citation_purpose", purpose) {
+                    findings.push(mkf(
+                        "unknown_registry_value",
+                        &format!("{path}.citation_purpose is not seeded; informational, not rejected (§12)"),
+                        Some(8),
+                        "info",
+                    ));
+                }
             }
+            Some(_) => findings.push(mkf(
+                "reference_malformed",
+                &format!("{path}.citation_purpose MUST be a non-empty string (§5.5.5)"),
+                Some(1),
+                "error",
+            )),
+            None => {}
         }
         if let Some(retention) = reference.get("retention") {
             retention_findings(retention, &format!("{path}.retention"), &mut findings);

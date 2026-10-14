@@ -1,6 +1,5 @@
-//! AAC Evidence Bundle v2 codec and verifier -- Rust sibling of `go/bundle`
-//! and `ts/bundle`, sharing their conformance vectors (`testdata/vectors.json`
-//! is a pinned copy of `vectors/bundle/vectors.json`).
+//! AAC Evidence Bundle v2 codec and verifier. Port of `go/bundle` and the
+//! TypeScript `/bundle` export, checked against `vectors/bundle/`.
 //!
 //! The verifier deliberately reports graph closure, interval coverage, and
 //! per-record membership separately. The CLL range proof used for interval
@@ -22,13 +21,9 @@
 //! implementing it. When that member is drafted, wire `scitt-cose-receipt`
 //! in as a second, additive authentication path here.
 
-pub mod canonical;
-pub mod disclosure;
-pub mod references;
-pub mod verify;
-
+use crate::canonical::{self, CanonicalError};
+use crate::{disclosure, verify};
 use base64::Engine as _;
-use canonical::CanonicalError;
 use cll::mmr;
 use cll::range_proof::{self, RangeProof};
 use serde::de::Deserialize;

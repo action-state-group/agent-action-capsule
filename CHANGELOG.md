@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Rust: new crate `agent-action-capsule` (`rust/agent-action-capsule/`), the
+  Rust reference verifier: canonicalization and `capsule_id`, Class 1
+  verification with checks 1-9 and the store checks, the profile registries,
+  Producer Envelopes, and Evidence Bundle v2 behind the `bundle` feature. It
+  runs the capsule, provenance-mode, producer-envelope and bundle corpora, and
+  the interlock now seals and verifies in Rust as well. It replaces the
+  unpublished `aac-bundle` crate (`rust/bundle/`). Released from
+  `crates/agent-action-capsule-v*` tags through Release · Prepare.
+- Interlock: the injected canonicalization divergence is now checked per
+  consumer. Each of Python, Go, TypeScript and Rust must reject it as a
+  `capsule_id_mismatch`; previously the script stopped at Python's rejection.
+
 ## 0.7.1 — 2026-10-14
 
 - Release: Python and TypeScript releases are now a merged version bump. Run

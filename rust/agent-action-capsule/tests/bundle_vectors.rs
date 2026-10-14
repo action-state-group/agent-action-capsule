@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BSD-3-Clause
-//! `testdata/vectors.json` is a pinned copy of `vectors/bundle/vectors.json`
-//! (identical to `go/bundle/testdata/vectors.json`). This test constructs its
+//! Runs the shared `vectors/bundle/vectors.json` corpus. This test constructs its
 //! portable proof material exactly as the Go/Python references do, using
 //! `cll`'s low-level MMR functions directly (the Rust `cll` crate has no
 //! stateful tree wrapper like Go's `cll-go/mmr.New()`).
 
-use aac_bundle::canonical;
-use aac_bundle::{decode_fragment, encode_fragment, verify_bundle, VerificationResult};
+use agent_action_capsule::bundle::{
+    bundle_digest, decode_fragment, encode_fragment, verify_bundle, VerificationResult,
+};
+use agent_action_capsule::canonical;
 use cll::mmr::{self, MemoryNodeStore, NodeReader};
 use cll::range_proof;
 use serde_json::{json, Map, Value};
@@ -349,9 +350,9 @@ struct Manifest {
 fn manifest() -> Manifest {
     let data = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/testdata/vectors.json"
+        "/../../vectors/bundle/vectors.json"
     ))
-    .expect("testdata/vectors.json");
+    .expect("vectors/bundle/vectors.json");
     serde_json::from_str(&data).expect("valid manifest JSON")
 }
 
@@ -433,7 +434,7 @@ fn fragment_codec_and_digest() {
     );
     let decoded = decode_fragment(&fragment).expect("decode");
     assert_eq!(bundle, decoded);
-    let digest = aac_bundle::bundle_digest(&bundle).expect("digest");
+    let digest = bundle_digest(&bundle).expect("digest");
     assert_eq!(
         digest,
         "04a0f2c6e056b32f5659fdec506f9f6d6a0b250227004b0fd7ed43d0b77035a5"

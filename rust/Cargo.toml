@@ -1,0 +1,3 @@
+[workspace]
+members = ["agent-action-capsule"]
+resolver = "2"

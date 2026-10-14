@@ -17,7 +17,7 @@ on:
         description: Package to release (.github/releases.json)
         required: true
         type: choice
-        options: [python, ts]
+        options: [python, ts, crates/agent-action-capsule]
       bump:
         description: Version part to raise
         required: true

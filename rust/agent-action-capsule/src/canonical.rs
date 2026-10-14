@@ -137,7 +137,10 @@ fn jcs_value(v: &Value, out: &mut String) -> Result<(), CanonicalError> {
             if is_unsafe_int(n) {
                 return Err(CanonicalError::UnsafeInt(String::new()));
             }
-            out.push_str(&n.to_string());
+            let text = n.to_string();
+            // RFC 8785 serializes negative zero as "0" (ECMAScript
+            // Number::toString), as go/canonical does.
+            out.push_str(if text == "-0" { "0" } else { &text });
             Ok(())
         }
         Value::Array(items) => {
@@ -211,53 +214,84 @@ pub fn compute_capsule_id(capsule: &Map<String, Value>) -> Result<String, Canoni
 }
 
 /// Every JSON path (dotted for objects, `[i]` for arrays) at which a
-/// floating-point number appears in `v`, walked in sorted-key order (a
-/// deterministic walk, matching the Go/Python siblings).
+/// floating-point number appears in `v`, object members in byte order of
+/// their keys (the Go and Python walk order). `path` prefixes every result.
 pub fn float_paths(v: &Value, path: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    walk_paths(v, path, &mut out, is_float);
-    out
+    walk_paths(v, path, is_float)
 }
 
 /// Every JSON path at which an integer exceeds ±`MAX_SAFE_INTEGER`.
 pub fn unsafe_int_paths(v: &Value, path: &str) -> Vec<String> {
+    walk_paths(v, path, |n| !is_float(n) && is_unsafe_int(n))
+}
+
+/// One open array or object of the walk: its remaining children, and the
+/// path they extend.
+struct Frame<'a> {
+    path: String,
+    children: Children<'a>,
+}
+
+enum Children<'a> {
+    Object(std::vec::IntoIter<(&'a String, &'a Value)>),
+    Array(std::iter::Enumerate<std::slice::Iter<'a, Value>>),
+}
+
+/// Depth-first, without recursion: memory grows with nesting depth, not with
+/// the input's size, and a path is built only for a number that matches.
+fn walk_paths(root: &Value, root_path: &str, matches: impl Fn(&Number) -> bool) -> Vec<String> {
     let mut out = Vec::new();
-    walk_paths(v, path, &mut out, |n| !is_float(n) && is_unsafe_int(n));
+    let mut stack: Vec<Frame<'_>> = Vec::new();
+    visit(root, root_path.to_string(), &mut stack, &mut out, &matches);
+    while let Some(frame) = stack.last_mut() {
+        let next = match &mut frame.children {
+            Children::Object(members) => members.next().map(|(key, child)| {
+                let path = if frame.path.is_empty() {
+                    key.clone()
+                } else {
+                    format!("{}.{key}", frame.path)
+                };
+                (child, path)
+            }),
+            Children::Array(items) => items
+                .next()
+                .map(|(i, child)| (child, format!("{}[{i}]", frame.path))),
+        };
+        match next {
+            Some((child, path)) => visit(child, path, &mut stack, &mut out, &matches),
+            None => {
+                stack.pop();
+            }
+        }
+    }
     out
 }
 
-fn walk_paths(
-    v: &Value,
-    path: &str,
+fn visit<'a>(
+    v: &'a Value,
+    path: String,
+    stack: &mut Vec<Frame<'a>>,
     out: &mut Vec<String>,
-    matches: impl Fn(&Number) -> bool + Copy,
+    matches: &impl Fn(&Number) -> bool,
 ) {
     match v {
-        Value::Number(n) => {
-            if matches(n) {
-                out.push(if path.is_empty() {
-                    "<root>".to_string()
-                } else {
-                    path.to_string()
-                });
-            }
-        }
+        Value::Number(n) if matches(n) => out.push(if path.is_empty() {
+            "<root>".to_string()
+        } else {
+            path
+        }),
         Value::Object(map) => {
-            for key in sorted_keys(map) {
-                let child = if path.is_empty() {
-                    key.clone()
-                } else {
-                    format!("{path}.{key}")
-                };
-                walk_paths(&map[key], &child, out, matches);
-            }
+            let mut members: Vec<(&String, &Value)> = map.iter().collect();
+            members.sort_by(|a, b| a.0.cmp(b.0));
+            stack.push(Frame {
+                path,
+                children: Children::Object(members.into_iter()),
+            });
         }
-        Value::Array(items) => {
-            for (i, item) in items.iter().enumerate() {
-                let child = format!("{path}[{i}]");
-                walk_paths(item, &child, out, matches);
-            }
-        }
+        Value::Array(items) => stack.push(Frame {
+            path,
+            children: Children::Array(items.iter().enumerate()),
+        }),
         _ => {}
     }
 }
@@ -282,6 +316,24 @@ mod tests {
             astral_pos < bmp_pos,
             "expected {out:?} to order the astral key first"
         );
+    }
+
+    #[test]
+    fn negative_zero_serializes_as_zero() {
+        let v: Value = serde_json::from_str(r#"{"a":-0}"#).expect("json");
+        assert_eq!(jcs(&v).expect("jcs"), br#"{"a":0}"#);
+    }
+
+    #[test]
+    fn number_paths_walk_keys_in_byte_order() {
+        let v: Value =
+            serde_json::from_str(r#"{"b":[1.5,{"\uffff":1,"\ud800\udc00":2.5}],"a":1e2}"#)
+                .expect("json");
+        assert_eq!(float_paths(&v, ""), ["a", "b[0]", "b[1].\u{10000}"]);
+        assert_eq!(float_paths(&Value::from(1.5), ""), ["<root>"]);
+        let big: Value =
+            serde_json::from_str("[9007199254740992,-9007199254740991]").expect("json");
+        assert_eq!(unsafe_int_paths(&big, ""), ["[0]"]);
     }
 
     #[test]
