@@ -55,7 +55,9 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.24"
+          # setup-go v6+ sets GOTOOLCHAIN=local, so the installed Go must
+          # satisfy go.mod itself rather than download a newer toolchain.
+          go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
       - name: Check Go conformance implementation
         working-directory: go
