@@ -436,7 +436,7 @@ it("still renders the evaluation-summary and report/v1 root families", async () 
 });
 
 // ---------------------------------------------------------------------------
-// The maintainer's adversarial review (2026-09-28): what the page draws is
+// Recomputed, never asserted (2026-09-28): what the page draws is
 // the recomputed value, with a marker where the producer disagreed -- never
 // the stated number, never silently; a Result that hides a verdict is
 // refused, never rendered; a close state comes from the cited Close's links.
@@ -595,7 +595,7 @@ it("(iv) a Close relabelled AGREED over a rebuts link draws CONTESTED with a sta
   expect(marker.textContent).toBe("state mismatch");
   expect(marker.dataset.asserted).toBe("AGREED");
   expect(marker.dataset.recomputed).toBe("CONTESTED");
-  // The mismatch FAILS the claim (2026-09-28, second pass): the row reads
+  // The mismatch FAILS the claim (2026-09-28): the row reads
   // `failed` on both axes -- never `met`, never SATISFIED -- with the
   // stated values on data attributes only; the drill-down says why.
   expect(row.className).toContain("claim-failed");
@@ -658,7 +658,7 @@ it("(iv) a Close relabelled AGREED over a rebuts link draws CONTESTED with a sta
   );
 });
 
-// Maintainer's third pass (2026-09-29): a self-acknowledged Close (the
+// The counterparty rule (2026-09-29): a self-acknowledged Close (the
 // acknowledger from the Close's own book) used to render as verified AGREED.
 // Now the link is not from the counterparty -- the named peer's book under a
 // different key -- so it makes no state: the row reads UNILATERAL with the
@@ -706,7 +706,7 @@ it("(iv) a self-acknowledged Close never renders as verified AGREED: UNILATERAL,
   );
 });
 
-// Maintainer's fourth pass (2026-09-29): a key_id whose Producer Envelope
+// Key verification (2026-09-29): a key_id whose Producer Envelope
 // does not verify under it is labelled "stated key_id (not verified)" and
 // never makes a state -- here the peer's record carries its key_id with no
 // signature at all.

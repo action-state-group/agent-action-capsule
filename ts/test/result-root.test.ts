@@ -452,7 +452,7 @@ describe("buildResultRoot", () => {
 });
 
 // ---------------------------------------------------------------------------
-// The maintainer's adversarial review (2026-09-28): "headline values,
+// Recomputed, never asserted (2026-09-28): "headline values,
 // especially the close state, are producer assertions nothing recomputes: a
 // contested close relabelled 'agreed' validates, and 'not met: none' can
 // hide a failure." Four fixes, each pinned here: the exact bucket partition,
@@ -752,7 +752,7 @@ describe("headline values are recomputed, never taken on the producer's word", (
       expect(claim.failed).toBe(true);
     });
 
-    it("a peer_close_ref that is not the record carrying the link is a peer-ref mismatch, the state still recomputed -- and the claim FAILS (third pass)", async () => {
+    it("a peer_close_ref that is not the record carrying the link is a peer-ref mismatch, the state still recomputed -- and the claim FAILS", async () => {
       const source = fixture("result-root-close-bundle.json");
       // cites the airline's own Close (in evidence[], so the evidence rule
       // passes) -- a record carrying no acknowledges link
@@ -766,7 +766,7 @@ describe("headline values are recomputed, never taken on the producer's word", (
         peerRefMismatch: true,
         peerCloseRef: ids["close-a"],
       });
-      // Maintainer's third pass (2026-09-29): a peer_close_ref mismatch
+      // The counterparty rule (2026-09-29): a peer_close_ref mismatch
       // fails the claim as #140's checker does -- the ref does not resolve
       // to the counterparty record actually found.
       expect(claim.failed).toBe(true);
@@ -805,7 +805,7 @@ describe("headline values are recomputed, never taken on the producer's word", (
       expect(claim.failed).toBe(false);
     });
 
-    // Maintainer's third pass (2026-09-29): "neither book_id nor signer
+    // The counterparty rule (2026-09-29): "neither book_id nor signer
     // alone is enough, since a producer can mint a second book or a second
     // key equally easily." A link makes a state only from the named peer's
     // book under a different key. Each case below is the honest AGREED
@@ -813,7 +813,7 @@ describe("headline values are recomputed, never taken on the producer's word", (
     // reads UNILATERAL (the acknowledgement made no state), carries the
     // state-mismatch marker, lists the ignored link with its reason, and
     // FAILS the claim -- never a verified AGREED.
-    describe("the counterparty is the named peer's book under a different key (third pass)", () => {
+    describe("the counterparty is the named peer's book under a different key", () => {
       function peerHeader(source: Obj): Obj {
         return ((source.disclosures as Obj)["close-b"] as Obj)
           .agent_input as Obj;
@@ -939,12 +939,12 @@ describe("headline values are recomputed, never taken on the producer's word", (
         expect(claim.close!.peer).toBeUndefined();
       });
 
-      // Fourth pass (2026-09-29): "verify the signature under key_id, or
+      // Key verification (2026-09-29): "verify the signature under key_id, or
       // label it 'stated key_id (not verified)' and don't let it pass the
       // check". The key_id is verified when the record's local Producer
       // Envelope verifies over its recomputed capsule id and its kid is the
       // key_id; a key_id that does not verify never satisfies part (3).
-      describe("(3) the key is VERIFIED under key_id, never taken as stated (fourth pass)", () => {
+      describe("(3) the key is VERIFIED under key_id, never taken as stated", () => {
         it("a verified envelope under a different key counts: the link makes AGREED", async () => {
           const { bundle, ids } = await sealEvidenceBundle(
             fixture("result-root-close-bundle.json"),
@@ -1067,11 +1067,11 @@ describe("headline values are recomputed, never taken on the producer's word", (
       });
     });
 
-    // Maintainer's third pass, the in-evidence[] rule from #140's checker:
+    // The in-evidence[] rule from #140's checker:
     // close_ref and peer_close_ref must be among the claim's own evidence
     // digests -- a claim reports only on a Close, and cites only a
     // state-making record, that it puts in evidence.
-    describe("close_ref and peer_close_ref resolve inside the claim's evidence[] (third pass)", () => {
+    describe("close_ref and peer_close_ref resolve inside the claim's evidence[]", () => {
       function evidenceOf(source: Obj): Obj[] {
         return (resultOf(source).claims as Obj[])[1]!.evidence as Obj[];
       }
