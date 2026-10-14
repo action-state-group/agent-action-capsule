@@ -78,6 +78,23 @@
   The moved module and its tests keep their Apache-2.0 licence (SPDX header on each file). The
   repository now carries the Apache-2.0 text as `LICENSE-APACHE-2.0`, and the Python package
   declares `BSD-3-Clause AND Apache-2.0` and ships both licence files.
+- Spec: `spec/personal-agent-history-profile-v0.md`, the Personal-Agent History Profile v0, an
+  Informational host profile written against `spec/interop-profile-v0.md` and changing neither it
+  nor any draft. It defines the Basic level: a holder's selection of their own deals for one
+  recipient, as an IP §6.5 recipient-specific derivation (`personal_history_basic/1`, identified
+  by its definition digest). It fixes:
+  - the definition document's members, including the signed selection, the recipient and the
+    declared field set;
+  - two record kinds (`step_completed`, `step_failed`) and nothing else per record beyond its
+    times;
+  - the artifact form of each deal's answer;
+  - one holder key and one anchor per History;
+  - seven History properties in IP's status vocabulary, and the acceptance rule
+    (`anchor_inclusion` is `NOT_CHECKED` for a derivation in IP v0, so the §8 mapping gives
+    `not_evaluable`);
+  - deals and records as separate units, with outcomes stated as not established;
+  - lifecycle statements by their own `exchange` request, and a one-file History container.
+
 - composed/v1 (`draft-mih-zhang-agent-disclosure-bundle-01`): an artifact member may carry
   `response`, the responder's signed response as received with the artifact bytes removed. A
   verifier requires its `request_digest` to equal the member's and its `artifact_digest` the
