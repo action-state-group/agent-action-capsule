@@ -2,13 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """Refuse a PyPI publish unless the release tag is the Python package's own.
 
-The Python package releases under bare ``v<version>`` tags (``v0.7.0``); the
-other namespaces in this repository (``go/v*``, ``ts/v*``, ``legacy-verify/*``)
-belong to other artifacts. A release passes only when its tag is exactly
-``v`` + the ``[project].version`` in ``python/pyproject.toml`` and the tagged
-commit is an ancestor of ``origin/main``. The workflow routes on the ``v``
-prefix too; this check is the authority, so a tag the prefix lets through
-still fails here.
+The Python package releases under ``python/v<version>`` tags
+(``python/v0.8.0``), like every other artifact in this repository has its own
+prefix (``go/v*``, ``ts/v*``, ``vectors/v*``, ``legacy-verify/*``). Bare
+``v<version>`` tags up to ``v0.7.0`` are historical Python releases and are no
+longer accepted. A release passes only when its tag is exactly ``python/v`` +
+the ``[project].version`` in ``python/pyproject.toml`` and the tagged commit is
+an ancestor of ``origin/main``. The workflow routes on the ``python/v`` prefix
+too; this check is the authority, so a tag the prefix lets through still fails
+here.
 """
 from __future__ import annotations
 
@@ -24,15 +26,15 @@ except ModuleNotFoundError:  # Python < 3.11; pytest depends on tomli there.
 
 SEMVER = r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
 # PEP 440 pre-releases in normalized form, as pyproject would declare them.
-TAG = re.compile(rf"v{SEMVER}(?:(?:a|b|rc)(?:0|[1-9][0-9]*))?")
+TAG = re.compile(rf"python/v{SEMVER}(?:(?:a|b|rc)(?:0|[1-9][0-9]*))?")
 
 
 def check_tag(tag: str, pyproject: Path) -> None:
     if TAG.fullmatch(tag) is None:
-        raise ValueError(f"{tag!r} is not a Python release tag (v<version>)")
+        raise ValueError(f"{tag!r} is not a Python release tag (python/v<version>)")
     with pyproject.open("rb") as stream:
         version = tomllib.load(stream)["project"]["version"]
-    if tag != f"v{version}":
+    if tag != f"python/v{version}":
         raise ValueError(f"release tag {tag!r} does not match pyproject version {version!r}")
 
 

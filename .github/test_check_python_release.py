@@ -45,13 +45,13 @@ def repo(tmp_path: Path) -> Path:
 
 
 def test_accepts_matching_tag(pyproject: Path) -> None:
-    guard.check_tag("v0.7.0", pyproject)
+    guard.check_tag("python/v0.7.0", pyproject)
 
 
 def test_accepts_matching_prerelease(tmp_path: Path) -> None:
     path = tmp_path / "pyproject.toml"
     path.write_text('[project]\nversion = "0.8.0rc1"\n')
-    guard.check_tag("v0.8.0rc1", path)
+    guard.check_tag("python/v0.8.0rc1", path)
 
 
 @pytest.mark.parametrize(
@@ -60,12 +60,14 @@ def test_accepts_matching_prerelease(tmp_path: Path) -> None:
         "go/v0.7.0",
         "ts/v0.7.0",
         "legacy-verify/v0.7.0",
-        "python/v0.7.0",
+        "v0.7.0",
+        "vectors/v0.7.0",
+        "python/0.7.0",
         "0.7.0",
-        "v0.7",
-        "v0.7.0-rc.1",
-        "v07.0.0",
-        "v0.7.0 ",
+        "python/v0.7",
+        "python/v0.7.0-rc.1",
+        "python/v07.0.0",
+        "python/v0.7.0 ",
     ],
 )
 def test_rejects_other_namespaces_and_malformed_tags(tag: str, pyproject: Path) -> None:
@@ -73,7 +75,7 @@ def test_rejects_other_namespaces_and_malformed_tags(tag: str, pyproject: Path) 
         guard.check_tag(tag, pyproject)
 
 
-@pytest.mark.parametrize("tag", ["v0.6.0", "v0.7.1", "v0.7.0rc1", "v1.7.0"])
+@pytest.mark.parametrize("tag", ["python/v0.6.0", "python/v0.7.1", "python/v0.7.0rc1", "python/v1.7.0"])
 def test_rejects_version_mismatch(tag: str, pyproject: Path) -> None:
     with pytest.raises(ValueError, match="does not match pyproject version"):
         guard.check_tag(tag, pyproject)
@@ -106,10 +108,10 @@ def run_cli(repo: Path, pyproject: Path, tag: str) -> subprocess.CompletedProces
 
 def test_cli_passes_matching_tag_on_main(repo: Path, pyproject: Path) -> None:
     git(repo, "checkout", "-q", "main")
-    assert run_cli(repo, pyproject, "v0.7.0").returncode == 0
+    assert run_cli(repo, pyproject, "python/v0.7.0").returncode == 0
 
 
-@pytest.mark.parametrize("tag", ["go/v0.7.0", "ts/v0.7.0", "legacy-verify/v0.1.0", "v0.6.0"])
+@pytest.mark.parametrize("tag", ["go/v0.7.0", "ts/v0.7.0", "legacy-verify/v0.1.0", "v0.7.0", "python/v0.6.0"])
 def test_cli_fails_bad_tag(repo: Path, pyproject: Path, tag: str) -> None:
     git(repo, "checkout", "-q", "main")
     result = run_cli(repo, pyproject, tag)
@@ -118,6 +120,6 @@ def test_cli_fails_bad_tag(repo: Path, pyproject: Path, tag: str) -> None:
 
 
 def test_cli_fails_matching_tag_off_main(repo: Path, pyproject: Path) -> None:
-    result = run_cli(repo, pyproject, "v0.7.0")  # repo is checked out on `side`
+    result = run_cli(repo, pyproject, "python/v0.7.0")  # repo is checked out on `side`
     assert result.returncode == 2
     assert "not an ancestor" in result.stderr

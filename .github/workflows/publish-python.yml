@@ -46,10 +46,11 @@ jobs:
   # Only a `release` (tag) event publishes. `workflow_dispatch` runs `build`
   # above as a dry run and stops — it never uploads, even run manually.
   publish:
-    # Python releases use bare v<version> tags. Every other namespace (go/v*,
-    # ts/v*, legacy-verify/*) belongs to another artifact and must not publish
-    # Python; the guard below refuses anything the prefix lets through.
-    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'v')
+    # Python releases use python/v<version> tags. Every other namespace
+    # (go/v*, ts/v*, vectors/v*, legacy-verify/*) belongs to another artifact
+    # and must not publish Python; the guard below refuses anything the prefix
+    # lets through.
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'python/v')
     needs: build
     runs-on: ubuntu-latest
     environment: pypi
