@@ -141,6 +141,26 @@ The walk also applies the CONTESTED-is-never-met rule to the **recomputed** stat
 read `CONTESTED` with `verdict: met` fails), so relabelling the asserted state cannot rescue `met`; the
 schema half of that rule is `neg-close-contested-verdict-met` above.
 
+## Extension members — `x-` (spec §8a)
+
+The document and each claim admit members named `x-...`. Every other member stays closed. The first three
+fixtures are derived from `pos-example-org-claims-result.json`. The positive adds two `x-` members and
+each negative adds one bare member. "Fails" below means the schema rejects the fixture. The
+TypeScript structural mirror closes only the top level, so it also rejects
+`neg-unprefixed-document-member` but accepts the two claim-level negatives (`ts/docs/result-root.md`).
+
+| File | Change | Result |
+|---|---|---|
+| `pos-example-org-extended-result.json` | `x-judge-pin` on `claim-2`, `x-judged-selection` on the document | Validates. With either level's slot removed it fails, and with its `x-` members stripped it is byte-identical to the claims positive |
+| `neg-unprefixed-document-member.json` | a bare `judged_selection` on the document | Fails: the member is neither an `EvidenceResult` member nor `x-`-prefixed. Mutant: the document's slot widened to any name accepts it |
+| `neg-unprefixed-claim-member.json` | a bare `rule_id` on `claim-2` | Fails: the member is neither a `Claim` member nor `x-`-prefixed. Mutant: the claim's slot widened to any name accepts it |
+| `neg-judge-producer-unprefixed-result.json` | a judging producer's Result as written, with three values replaced by neutral placeholders (`contract_ref`, the pin's `model_id`, the rationale text) and `judge_pin_digest` recomputed over the placeholder pin; every key is as written | Fails on its claims' `rule_id`, `judge_pin`, `judge_pin_digest` and `rationale`. Mutant: the claim's slot widened to any name accepts it |
+| `pos-judge-producer-x-judge-result.json` | the same output with those four renamed to `x-judge-rule-id`, `x-judge-pin`, `x-judge-pin-digest` and `x-judge-rationale`, plus the run's judged selection (which the producer writes to a sidecar) as `x-judged-selection` | Validates |
+
+The checker also confirms that the slot is additive: every other fixture here gets the same result
+from the schema with both slots removed. It confirms that the link walk ignores `x-` members: each
+close positive with an `x-` member on the document and on every claim gets the same findings.
+
 ## Reproducing the validation run
 
 ```

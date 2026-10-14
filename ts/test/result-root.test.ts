@@ -12,6 +12,7 @@ import {
   resolveCarriedInput,
   DISCLOSED_STATUSES,
   EVIDENCE_STATUSES,
+  EXTENSION_PREFIX,
   GRADES,
   isResultRoot,
   PROOF_KINDS,
@@ -399,6 +400,72 @@ describe("buildResultRoot", () => {
     expect(defs.EvidenceResult!.additionalProperties).toBe(false);
     expect(Object.keys(defs.EvidenceResult!.properties as Obj)).toEqual([
       ...RESULT_MEMBERS,
+    ]);
+    // spec section 8a: the document and a claim admit x- members, and only
+    // those two levels do
+    const slot = { [`^${EXTENSION_PREFIX}`]: { $ref: "#/$defs/Extension" } };
+    expect(defs.EvidenceResult!.patternProperties).toEqual(slot);
+    expect(defs.Claim!.additionalProperties).toBe(false);
+    expect(defs.Claim!.patternProperties).toEqual(slot);
+    for (const [name, def] of Object.entries(defs))
+      if (name !== "EvidenceResult" && name !== "Claim")
+        expect(def.patternProperties, name).toBeUndefined();
+  });
+
+  it("reads the section 8a slot vectors as the schema does at the top level, and stays open-world below it", () => {
+    const dir = new URL("../../vectors/evidence-result/", import.meta.url);
+    const read = (name: string): unknown =>
+      JSON.parse(readFileSync(new URL(name, dir), "utf8"));
+    // schema-valid: x- members on the document and on a claim
+    expect(
+      validateEvidenceResult(read("pos-example-org-extended-result.json")),
+    ).toEqual([]);
+    expect(
+      validateEvidenceResult(read("pos-judge-producer-x-judge-result.json")),
+    ).toEqual([]);
+    // schema-rejected at the top level: rejected here too, for the same member
+    expect(
+      validateEvidenceResult(read("neg-unprefixed-document-member.json")),
+    ).toEqual(["judged_selection: not a member of an Evidence Result v0"]);
+    // schema-rejected on a claim: the mirror is open-world below the top
+    // level (Q6), so it accepts both. The schema checker rejects them.
+    expect(
+      validateEvidenceResult(read("neg-unprefixed-claim-member.json")),
+    ).toEqual([]);
+    expect(
+      validateEvidenceResult(read("neg-judge-producer-unprefixed-result.json")),
+    ).toEqual([]);
+    // the prefix is case-sensitive, as the schema's ^x- pattern is
+    const source = read("pos-example-org-claims-result.json") as Obj;
+    expect(validateEvidenceResult({ ...source, "X-note": 1 })).toEqual([
+      "X-note: not a member of an Evidence Result v0",
+    ]);
+  });
+
+  it("ignores x- members: they change no headline, claim or verdict (spec section 8a)", async () => {
+    const plainSource = fixture("result-root-bundle.json");
+    const extendedSource = fixture("result-root-bundle.json");
+    const extended = resultOf(extendedSource);
+    // each x- member names a different outcome than the claim's own
+    extended["x-buckets"] = { met: ["claim-2", "claim-3"] };
+    for (const claim of extended.claims as Obj[]) {
+      claim["x-verdict"] = "met";
+      claim["x-sufficiency"] = "SATISFIED";
+    }
+    const plain = await buildResultRoot(
+      (await sealEvidenceBundle(plainSource)).bundle,
+    );
+    const withExtensions = await buildResultRoot(
+      (await sealEvidenceBundle(extendedSource)).bundle,
+    );
+    expect(withExtensions.coverage).toEqual(plain.coverage);
+    expect(withExtensions.buckets).toEqual(plain.buckets);
+    expect(withExtensions.claims).toEqual(plain.claims);
+    expect(withExtensions.bucketCounts).toEqual(plain.bucketCounts);
+    expect(withExtensions.countMismatches).toEqual(plain.countMismatches);
+    expect(withExtensions.statedCoverage).toEqual(plain.statedCoverage);
+    expect([...withExtensions.records.keys()]).toEqual([
+      ...plain.records.keys(),
     ]);
   });
 

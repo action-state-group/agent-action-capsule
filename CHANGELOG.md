@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Evidence Result v0 extension slot (`spec/evidence-result-v0.md` §8a). The document and each claim
+  admit members named `x-...` (`patternProperties` `^x-` in `schemas/evidence-result-v0.json`).
+  Verifiers ignore them, and an `x-` member never changes a claim's meaning or verdict. Every other
+  member stays closed. The change is additive: every existing vector gets the same result. The
+  TypeScript mirror (`validateEvidenceResult`) admits `x-` members at the top level. New vectors in
+  `vectors/evidence-result/`: `pos-example-org-extended-result`, `neg-unprefixed-document-member`,
+  `neg-unprefixed-claim-member`, plus a judging producer's output before
+  (`neg-judge-producer-unprefixed-result`) and after (`pos-judge-producer-x-judge-result`) its
+  members are renamed into the slot.
+
 ## 0.9.1 — 2026-10-16
 
 - Settlement, all four languages: the `wrapped_resigned` check reads an SD-JWT as the

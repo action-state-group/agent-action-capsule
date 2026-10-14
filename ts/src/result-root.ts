@@ -59,7 +59,8 @@ import {
  * mirrors the schema's required members, closed vocabularies and the
  * sufficiency/verdict if-then by hand; test/result-root.test.ts reads the
  * schema file and keeps the two in step. The mirror closes the document's
- * top level only. Every nested object is read open-world: members the schema
+ * top level only, less its `x-` extension members (spec section 8a), which
+ * it ignores. Every nested object is read open-world: members the schema
  * does not define are tolerated on a claim, a carrier, `aggregate`, its
  * coverage and buckets, and on digest and proof refs (a claim `type` this
  * module does not know renders as `unrecognized`, never dropped).
@@ -123,7 +124,15 @@ export const PROOF_KINDS = Object.freeze([
   "inclusion_proof",
   "receipt",
 ] as const);
-/** The document's members: the schema closes the top level to these. */
+/**
+ * The prefix of an extension member (spec section 8a): admitted on the
+ * document and on a claim, and ignored by every reader.
+ */
+export const EXTENSION_PREFIX = "x-";
+/**
+ * The document's members: the schema closes the top level to these and to
+ * `x-` extension members.
+ */
 export const RESULT_MEMBERS = Object.freeze([
   "result_version",
   "generated_at",
@@ -588,7 +597,8 @@ function claimFindings(path: string, value: unknown): string[] {
 /**
  * A structural mirror of schemas/evidence-result-v0.json, not a JSON Schema
  * validation. It checks: the document's top-level members (the schema closes
- * the document, so a key outside `RESULT_MEMBERS` is a finding); required
+ * the document, so a key outside `RESULT_MEMBERS` that does not begin with
+ * `EXTENSION_PREFIX` is a finding); required
  * members, closed vocabularies (enums, consts) and the sufficiency/verdict
  * if-then on the closed objects it mirrors -- claims, carriers, digest and
  * proof refs, `aggregate`, coverage and buckets; and the two cross-element
@@ -602,7 +612,10 @@ export function validateEvidenceResult(value: unknown): string[] {
   if (!isObject(value)) return ["result: not an object"];
   const findings: string[] = [];
   for (const key of Object.keys(value))
-    if (!RESULT_MEMBERS.includes(key as (typeof RESULT_MEMBERS)[number]))
+    if (
+      !key.startsWith(EXTENSION_PREFIX) &&
+      !RESULT_MEMBERS.includes(key as (typeof RESULT_MEMBERS)[number])
+    )
       findings.push(`${key}: not a member of an Evidence Result v0`);
   if (value.result_version !== RESULT_VERSION)
     findings.push(`result_version: not ${RESULT_VERSION}`);

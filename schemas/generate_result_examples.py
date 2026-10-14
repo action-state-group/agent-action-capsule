@@ -70,6 +70,7 @@ Regenerate with:
 Then check with:
     python3 schemas/check_evidence_result_examples.py
 """
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -725,6 +726,134 @@ neg_unrecognized_claim_type = _mutated(pos_example_org_claims_result)
 neg_unrecognized_claim_type["claims"][0]["type"] = "adjudication"
 
 
+# --- section 8a: the x- extension slot ------------------------------------
+#     The document and each claim admit members named `x-...`; everything
+#     else stays closed. One positive (two x- members added) and two
+#     negatives (one bare member added), all derived from
+#     pos-example-org-claims-result: strip the x- members from the positive
+#     and it is byte-identical to the claims positive.
+#
+#     pos-example-org-extended-result: `x-judge-pin` on claim-2 (the judged
+#     claim) and `x-judged-selection` on the document.
+x_judge_pin = {
+    "model_id": "example-judge-1",
+    "prompt_template_hash": json_digest({"note": "EXAMPLE-ORG judge prompt template, v0 placeholder"}),
+    "schema_hash": json_digest({"note": "EXAMPLE-ORG judge answer schema, v0 placeholder"}),
+    "input_refs": ["amount_minor", "currency"],
+    "model_hosting": "hosted",
+}
+# These three carry a member EvidenceResultDoc does not declare, so each is a
+# plain dict copy of the positive rather than an EvidenceResultDoc.
+def _untyped(base: EvidenceResultDoc) -> dict:
+    return json.loads(json.dumps(base))
+
+
+pos_example_org_extended_result = _untyped(pos_example_org_claims_result)
+pos_example_org_extended_result["claims"][1]["x-judge-pin"] = x_judge_pin
+pos_example_org_extended_result["x-judged-selection"] = {
+    "requirement_refs": ["req-claim-2"],
+    "out_of_scope": [],
+}
+
+# --- neg-unprefixed-document-member -- a bare `judged_selection` on the ---
+#     document: neither an EvidenceResult member nor x-prefixed.
+neg_unprefixed_document_member = _untyped(pos_example_org_claims_result)
+neg_unprefixed_document_member["judged_selection"] = {
+    "requirement_refs": ["req-claim-2"],
+    "out_of_scope": [],
+}
+
+# --- neg-unprefixed-claim-member -- a bare `rule_id` on claim-2: neither a -
+#     Claim member nor x-prefixed.
+neg_unprefixed_claim_member = _untyped(pos_example_org_claims_result)
+neg_unprefixed_claim_member["claims"][1]["rule_id"] = "9"
+
+# --- a judging producer's output, before and after the rename -------------
+#     neg-judge-producer-unprefixed-result is the Result document a judging
+#     producer wrote for two judged rows on a mock judge backend. Every key
+#     and every structure is as the producer wrote it. Three values are
+#     replaced with neutral placeholders: contract_ref, the pin's model_id,
+#     and the rationale text. judge_pin_digest is then recomputed over the
+#     placeholder pin the way the producer computes it (SHA-256 of the pin's
+#     sort_keys JSON), so the pin and its digest still agree. Its claims carry four members the
+#     schema does not define (rule_id, judge_pin, judge_pin_digest,
+#     rationale), so it fails. pos-judge-producer-x-judge-result renames each
+#     into the slot (JUDGE_PRODUCER_RENAMES) and adds the run's judged
+#     selection, which that commit writes to a sidecar, as
+#     `x-judged-selection`. Nothing else changes, and it validates.
+_producer_evidence = [{"digest": "a" * 64, "digest_alg": "SHA-256"}]
+_producer_pin = {
+    "input_refs": ["amount_minor", "currency", "recurrence"],
+    "model_hosting": "hosted",
+    "model_id": "example-judge-1 (mock backend, no model read the evidence)",
+    "prompt_template_hash": "8bce70a5b98a961af54f9889cb741976744854533b7c746a41ca440223784b65",
+    "schema_hash": "69fa84e81389a9544d456b189411048e32ab5b36071ef3d0136accd1db465434",
+}
+_producer_pin_digest = hashlib.sha256(json.dumps(_producer_pin, sort_keys=True).encode()).hexdigest()
+
+
+def _producer_claim(requirement_ref: str, rule_id: str, verdict: str) -> dict:
+    return {
+        "contract_ref": "example-org/everyday-rules@0.2.0",
+        "evidence": _producer_evidence,
+        "grade": "self-attested",
+        "id": requirement_ref,
+        "judge_pin": _producer_pin,
+        "judge_pin_digest": _producer_pin_digest,
+        "presentation": {"evidence": _producer_evidence, "kind": "disclosure", "status": "SATISFIED"},
+        "proofs": [],
+        "rationale": f"judge choice: {verdict} (mock backend)",
+        "requirement_ref": requirement_ref,
+        "rule_id": rule_id,
+        "sufficiency": "SATISFIED",
+        "tier": "judged",
+        "verdict": verdict,
+    }
+
+
+# The producer document is not an EvidenceResultDoc: its claims carry members
+# the schema rejects, which is the point of the fixture.
+neg_judge_producer_unprefixed_result: dict = {
+    "aggregate": {
+        "buckets": {
+            "met": ["transaction_scope.material_terms_changed"],
+            "not_evaluable": [],
+            "not_met": ["transaction_scope.materially_different_offer"],
+        },
+        "coverage": {"evaluated_population": 2, "excluded_not_applicable": 0, "unknown_count": 0},
+    },
+    "claims": [
+        _producer_claim("transaction_scope.material_terms_changed", "9", "met"),
+        _producer_claim("transaction_scope.materially_different_offer", "10", "not_met"),
+    ],
+    "generated_at": "2026-10-08T00:00:00Z",
+    "result_version": "evidence-result-v0",
+    "view": {"spec_version": "presentation/v1", "title": "Outcome result -- test-bundle-disclosed"},
+}
+_producer_judged_selection = {
+    "allow_out_of_scope": True,
+    "out_of_scope": [],
+    "requirement_refs": [
+        "transaction_scope.material_terms_changed",
+        "transaction_scope.materially_different_offer",
+    ],
+    "rule_ids": ["9", "10"],
+}
+
+JUDGE_PRODUCER_RENAMES = {
+    "rule_id": "x-judge-rule-id",
+    "judge_pin": "x-judge-pin",
+    "judge_pin_digest": "x-judge-pin-digest",
+    "rationale": "x-judge-rationale",
+}
+
+pos_judge_producer_x_judge_result: dict = json.loads(json.dumps(neg_judge_producer_unprefixed_result))
+for _claim in pos_judge_producer_x_judge_result["claims"]:
+    for _old, _new in JUDGE_PRODUCER_RENAMES.items():
+        _claim[_new] = _claim.pop(_old)
+pos_judge_producer_x_judge_result["x-judged-selection"] = _producer_judged_selection
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("pos-example-org-claims-result", pos_example_org_claims_result)
@@ -749,6 +878,11 @@ def main() -> int:
     write("neg-close-peer-ref-not-in-evidence", neg_close_peer_ref_not_in_evidence)
     write("neg-close-agreed-third-book", neg_close_agreed_third_book)
     write("neg-close-agreed-bookless-close", neg_close_agreed_bookless_close)
+    write("pos-example-org-extended-result", pos_example_org_extended_result)
+    write("neg-unprefixed-document-member", neg_unprefixed_document_member)
+    write("neg-unprefixed-claim-member", neg_unprefixed_claim_member)
+    write("pos-judge-producer-x-judge-result", pos_judge_producer_x_judge_result)
+    write("neg-judge-producer-unprefixed-result", neg_judge_producer_unprefixed_result)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)
     return 0

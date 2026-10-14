@@ -5,6 +5,9 @@
   "description": "Companion schema for spec/evidence-result-v0.md. Sections 1-3 of the companion document (result semantics, disclosure policy, aggregate/coverage) carry the 2026-09-22 ruling (quoted verbatim there); this schema encodes that ruling and is no longer DRAFT. The root schema validates an Evidence Result document.",
   "$ref": "#/$defs/EvidenceResult",
   "$defs": {
+    "Extension": {
+      "description": "spec/evidence-result-v0.md section 8a -- the value of an extension member: a member whose name begins with `x-` (case-sensitive), admitted on the document (EvidenceResult) and on a claim (Claim) and nowhere else. Any JSON value. A verifier MUST ignore every extension member, and an extension member MUST NOT change the meaning, sufficiency or verdict of any claim. Every other member stays closed: a member outside a level's `properties` whose name does not begin with `x-` fails validation (vectors/evidence-result/neg-unprefixed-document-member.json, neg-unprefixed-claim-member.json)."
+    },
     "HexDigest": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
@@ -200,6 +203,7 @@
     "Claim": {
       "type": "object",
       "additionalProperties": false,
+      "patternProperties": { "^x-": { "$ref": "#/$defs/Extension" } },
       "required": [
         "id", "contract_ref", "requirement_ref", "tier", "grade",
         "sufficiency", "verdict", "evidence", "proofs", "presentation"
@@ -294,6 +298,7 @@
     "EvidenceResult": {
       "type": "object",
       "additionalProperties": false,
+      "patternProperties": { "^x-": { "$ref": "#/$defs/Extension" } },
       "required": ["result_version", "generated_at", "claims", "aggregate"],
       "properties": {
         "result_version": { "const": "evidence-result-v0" },

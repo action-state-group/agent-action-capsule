@@ -92,12 +92,16 @@ Result v0, or names itself one and fails validation, raises
 `EvidenceGraphError` from `buildResultRoot`. Validation is a structural
 mirror of the schema, not a JSON Schema validation: the document's top
 level is closed to the schema's five members (`result_version`,
-`generated_at`, `claims`, `aggregate`, `view`); required members, closed
+`generated_at`, `claims`, `aggregate`, `view`) and `x-` extension members;
+required members, closed
 vocabularies and the sufficiency/verdict binding are checked on the objects
 it mirrors (claims, carriers, digest and proof refs, `aggregate`, coverage,
 buckets); plus the two cross-element rules spec section 4 assigns to a
 verifier: unique claim ids, and bucket entries naming claims with that
-verdict. Below the top level the mirror is open-world on additional keys;
+verdict. A top-level member that begins with `x-` is an extension member
+(spec section 8a), and the mirror ignores it. Below the top level the mirror
+is open-world on additional keys, so a claim's `x-` members are ignored too,
+and so is any other member the schema would reject there;
 `view` is not checked (nothing reads it; the page's chrome is the
 bundle-level `presentation/v1`); `generated_at` is checked as a string, not
 as a date-time. No JSON Schema validator is wired into `ts/`;

@@ -125,6 +125,33 @@ mechanical half):
          and (2) run against a missing book (`book != None` is true for any
          book, so the named peer's link counts).
 
+  8. THE x- EXTENSION SLOT (spec section 8a): the document and each claim
+     admit members named `x-...`, and everything else stays closed.
+       - POSITIVE: pos-example-org-extended-result (`x-judge-pin` on claim-2,
+         `x-judged-selection` on the document) and
+         pos-judge-producer-x-judge-result (a judging producer's output with
+         its judge members renamed into the slot) validate. Each has a
+         mutant per level that removes that level's slot, and the fixture
+         MUST then fail. This proves both levels are load-bearing.
+       - NEGATIVE: neg-unprefixed-document-member (a bare `judged_selection`
+         on the document), neg-unprefixed-claim-member (a bare `rule_id` on
+         claim-2) and neg-judge-producer-unprefixed-result (the producer's
+         output as written) MUST fail. Their mutant widens the slot at the
+         offending level to admit any name, and the fixture MUST then
+         validate.
+       - ADDITIVE: every other committed fixture gets the same verdict
+         (valid or rejected) from the schema with both slots removed. Those
+         fixtures carry no x- member, so this is a guard against a slot
+         written too wide (a pattern matching every name), not a proof
+         over documents in general. The proof is that patternProperties
+         `^x-` touches only `x-` names.
+       - EXTENSION SCOPE: x- members on every claim of the reconcile
+         positive validate. An x- member inside a typed body does not.
+       - IGNORED: stripping every x- member from
+         pos-example-org-extended-result gives exactly
+         pos-example-org-claims-result. Adding x- members to every close
+         positive leaves the link walk's findings unchanged.
+
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
     python3 check_evidence_result_examples.py                # from schemas/
@@ -378,6 +405,8 @@ POSITIVES = [
     "pos-example-org-close-unilateral-result",
     "pos-example-org-close-unilateral-named-peer-result",
     "pos-example-org-close-contested-result",
+    "pos-example-org-extended-result",
+    "pos-judge-producer-x-judge-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -393,7 +422,59 @@ NEGATIVES = [
     "neg-reconcile-tallies-missing-state",
     "neg-unrecognized-claim-type",
     "neg-close-contested-verdict-met",
+    "neg-unprefixed-document-member",
+    "neg-unprefixed-claim-member",
+    "neg-judge-producer-unprefixed-result",
 ]
+
+# Section 8a: the two levels that carry the x- slot, as $defs names.
+EXTENSION_LEVELS = ("EvidenceResult", "Claim")
+EXTENSION_PATTERN = "^x-"
+
+# Each slot positive and the levels where it carries an x- member. Removing
+# the slot at any one of those levels MUST make it fail.
+EXTENSION_POSITIVES = {
+    "pos-example-org-extended-result": ("EvidenceResult", "Claim"),
+    "pos-judge-producer-x-judge-result": ("EvidenceResult", "Claim"),
+}
+
+# Each slot negative and the one level whose closure rejects it. Widening the
+# slot at that level to any name MUST make it validate.
+EXTENSION_NEGATIVES = {
+    "neg-unprefixed-document-member": "EvidenceResult",
+    "neg-unprefixed-claim-member": "Claim",
+    "neg-judge-producer-unprefixed-result": "Claim",
+}
+
+
+def _without_slot(schema: dict, levels: tuple[str, ...] = EXTENSION_LEVELS) -> dict:
+    """The schema with the x- slot removed at `levels`: the pre-section-8a
+    schema when `levels` is both."""
+    mutant = copy.deepcopy(schema)
+    for level in levels:
+        del mutant["$defs"][level]["patternProperties"]
+    return mutant
+
+
+def _slot_open_to_any_name(schema: dict, level: str) -> dict:
+    """The schema with `level`'s slot widened to every member name. The
+    pattern `.*` matches any name, so nothing at that level is additional."""
+    mutant = copy.deepcopy(schema)
+    mutant["$defs"][level]["patternProperties"] = {".*": {}}
+    return mutant
+
+
+# `value` is any JSON value; the walk is shape-agnostic.
+def _strip_extensions(value: object) -> object:
+    """`value` with every x- member removed from the document and its claims,
+    the two levels that admit one."""
+    doc = json.loads(json.dumps(value))
+    for claim in doc.get("claims", []):
+        for key in [k for k in claim if k.startswith("x-")]:
+            del claim[key]
+    for key in [k for k in doc if k.startswith("x-")]:
+        del doc[key]
+    return doc
 
 
 def _load(name: str) -> EvidenceResultDoc:
@@ -598,6 +679,80 @@ def main() -> int:
             "Claim's CONTESTED-is-never-met if/then rule",
         )
 
+    # --- 8. THE x- EXTENSION SLOT (spec section 8a) ---------------------------
+    for level in EXTENSION_LEVELS:
+        properties = schema["$defs"][level].get("patternProperties")
+        if properties != {EXTENSION_PATTERN: {"$ref": "#/$defs/Extension"}}:
+            findings.append(
+                f"EXTENSION-SLOT-MISSING {level}: patternProperties is {properties!r}, "
+                f"expected exactly {EXTENSION_PATTERN!r} -> Extension"
+            )
+        if schema["$defs"][level].get("additionalProperties") is not False:
+            findings.append(f"EXTENSION-LEVEL-OPEN {level}: additionalProperties is not false")
+
+    for name, levels in EXTENSION_POSITIVES.items():
+        instance = _load(name)
+        for level in levels:
+            mutant_errors = list(_validator_for(_without_slot(schema, (level,))).iter_errors(instance))
+            if not mutant_errors:
+                findings.append(
+                    f"MUTANT-DID-NOT-FLIP {name}: with {level}'s x- slot removed the "
+                    "fixture still validates -- it carries no x- member at that level"
+                )
+            else:
+                print(f"OK  MUTANT        {name} -- with {level}'s x- slot removed, the "
+                      f"fixture FAILS ({mutant_errors[0].message!r})")
+
+    for name, level in EXTENSION_NEGATIVES.items():
+        if not negative_errors_by_name[name]:
+            continue
+        _mutant_check(name, _slot_open_to_any_name(schema, level), f"{level}'s restriction of the slot to x- names")
+
+    # x- members on every claim of the reconcile positive: still valid, and
+    # an x- member inside a claim's typed body (which stays closed) is not.
+    reconcile = _load("pos-example-org-reconcile-result")
+    for claim in reconcile["claims"]:
+        claim["x-note"] = "extension"
+    if list(validator.iter_errors(reconcile)):
+        findings.append("EXTENSION-REJECTED pos-example-org-reconcile-result: x- members on its claims fail the schema")
+    else:
+        print("OK  EXTENSION     pos-example-org-reconcile-result.json with x- members on every claim validates")
+    for claim in reconcile["claims"]:
+        if "reconcile" in claim:
+            claim["reconcile"]["x-note"] = "extension"
+    if not list(validator.iter_errors(reconcile)):
+        findings.append("EXTENSION-TOO-WIDE pos-example-org-reconcile-result: an x- member inside a reconcile body validates")
+    else:
+        print("OK  EXTENSION     an x- member inside a reconcile body is rejected (the slot is document + claim only)")
+
+    pre_slot = _validator_for(_without_slot(schema))
+    pre_slot_fixtures = [
+        name
+        for name in POSITIVES + NEGATIVES + [link[0] for link in LINK_NEGATIVES]
+        if name not in EXTENSION_POSITIVES and name not in EXTENSION_NEGATIVES
+    ]
+    for name in pre_slot_fixtures:
+        instance = _load(name)
+        before = not list(pre_slot.iter_errors(instance))
+        after = not list(validator.iter_errors(instance))
+        if before != after:
+            findings.append(
+                f"NOT-ADDITIVE {name}: {'valid' if before else 'rejected'} without the x- slot, "
+                f"{'valid' if after else 'rejected'} with it"
+            )
+    print(f"OK  ADDITIVE      {len(pre_slot_fixtures)} pre-slot fixture(s) get the same verdict "
+          "with and without the x- slot")
+
+    stripped = json.dumps(_strip_extensions(_load("pos-example-org-extended-result")), indent=2, sort_keys=True) + "\n"
+    if stripped.encode("utf-8") != (VECTORS_DIR / f"{POSITIVE_RESULT}.json").read_bytes():
+        findings.append(
+            "EXTENSION-NOT-ISOLATED pos-example-org-extended-result: with its x- members "
+            f"stripped it is not {POSITIVE_RESULT}.json"
+        )
+    else:
+        print(f"OK  IGNORED       pos-example-org-extended-result.json minus its x- members "
+              f"== {POSITIVE_RESULT}.json")
+
     # --- 5. CLOSE STATE IS DERIVABLE: the link walk ----------------------------
     #        Schema validation cannot see across records; this can. Every
     #        positive that carries a close claim must ship its records and
@@ -626,6 +781,23 @@ def main() -> int:
             ]
             print(f"OK  LINK-WALK     {name}.json -- close_state {', '.join(states)} recomputed "
                   f"from {len(records)} record(s), matches")
+        # Section 8a: the walk ignores x- members. The same document with an
+        # x- member on itself and on every claim (one that names a different
+        # state) gets the same findings.
+        extended = json.loads(json.dumps(instance))
+        extended["x-close-state"] = "AGREED"
+        for claim in extended["claims"]:
+            claim["x-close-state"] = "AGREED"
+        extended_errors = list(validator.iter_errors(extended))
+        if extended_errors:
+            findings.append(
+                f"EXTENSION-REJECTED {name}: with x- members on the document and every claim "
+                f"it fails the schema ({extended_errors[0].message!r})"
+            )
+        if close_state_findings(name, extended, records) != walk:
+            findings.append(f"EXTENSION-CHANGED-WALK {name}: an x- member changed the link walk's findings")
+        else:
+            print(f"OK  IGNORED       {name}.json -- x- members leave the link walk unchanged")
 
     for name, walk_mutant, mutation_label in LINK_NEGATIVES:
         instance = _load(name)

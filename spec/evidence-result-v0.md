@@ -217,6 +217,7 @@ claim:
   evidence: [digest-ref, ...]         # §5 — by digest only
   proofs: [proof-ref, ...]            # §5 — by digest only
   presentation: disclosure-carrier | analysis-carrier | story-carrier   # §2, §6
+  x-<name>: any                       # OPTIONAL, any number — §8a, ignored by every verifier
 ```
 
 **Normative, not schema-enforced in v0:** claim `id` uniqueness within a Result, and every
@@ -440,6 +441,47 @@ view:
   title: string                       # optional
 ```
 
+## 8a. Extension members — `x-`
+
+The document and each claim admit **extension members**: members whose name begins with `x-`
+(lowercase, case-sensitive). Any number MAY appear, and each MAY hold any JSON value. These two
+objects are the only places an extension member is admitted. Every other object this document defines
+(the aggregate, its coverage and buckets, `view`, the presentation carriers, digest and proof refs,
+and the `reconcile` and `close` bodies) stays closed. On the document and on a claim, a member that is
+neither defined above nor `x-`-prefixed fails validation. The closed world is kept, and the slot is
+the one exception to it.
+
+```
+result:
+  result_version: "evidence-result-v0"
+  generated_at: date-time
+  claims: [claim, ...]                # §4
+  aggregate: aggregate                # §7
+  view: view                          # OPTIONAL — §8
+  x-<name>: any                       # OPTIONAL, any number — this section
+```
+
+- A verifier MUST ignore every extension member. It MUST NOT read one to derive or adjust any
+  claim's `sufficiency`, `verdict`, `tier`, `grade` or support, a close claim's state (§4.1), or the
+  aggregate's coverage or buckets (§7). It MUST NOT reject a document because of the presence,
+  absence or content of an extension member.
+- An extension member MUST NOT change a claim's meaning or verdict. What a claim asserts is fixed
+  by its defined members alone, and a reader needs no extension member to know it. A producer that
+  needs to change what a claim says changes the claim's defined members.
+- An extension member is not a registered field and carries no interoperable semantics. Its name
+  and content belong to the producer that writes it. Two producers MAY use the same name for
+  different things. If a later version of this document defines an equivalent member, it does so
+  under a name without the `x-` prefix, and the `x-` form stays valid for documents already
+  written. This is the same convention as `x-evidence-links` (`spec/judge-record-family-v1.md`
+  §0a).
+- The slot is additive. A document that was valid before it existed contains no `x-` member, so it
+  validates unchanged.
+
+Example: a judging producer records the judged-instrument pin on each claim as `x-judge-pin`, and
+the rows it sent to the judge on the document as `x-judged-selection`. A verifier reads neither,
+and each claim's verdict stands on its defined members alone. The same producer writing a bare
+`rule_id` on a claim, or `judged_selection` on the document, emits an invalid document.
+
 ## 9. Field mapping — #102 evidence-graph model → Result v0
 
 PR #102's evidence-graph emitter model (`ts/src/evidence-graph.ts`, `agent-action-capsule`
@@ -500,3 +542,15 @@ mutant proof. One further schema negative
 `neg-close-ref-not-in-evidence` and `neg-close-peer-ref-not-in-evidence` (a cited digest missing from
 `evidence[]`). The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against these same
 fixtures, not here.
+
+§8a's extension slot adds three fixtures derived from `pos-example-org-claims-result.json`, plus a
+positive and negative pair taken from a real producer. `pos-example-org-extended-result.json` carries `x-judge-pin` on
+`claim-2` (the judged claim) and `x-judged-selection` on the document. With both removed it is byte-identical to the
+claims positive. `neg-unprefixed-document-member.json` adds a bare `judged_selection` to the document,
+and `neg-unprefixed-claim-member.json` adds a bare `rule_id` to `claim-2`. Each fails because the
+member is neither defined nor `x-`-prefixed. (The TypeScript reader's structural mirror,
+`ts/src/result-root.ts`, closes only the document's top level, so it rejects the first and accepts
+the second; see `ts/docs/result-root.md`.) `pos-judge-producer-x-judge-result.json` is a real
+judging producer's output with its judge members renamed into the slot, and it validates.
+`neg-judge-producer-unprefixed-result.json` is the same output as the producer wrote it, and it
+fails.
