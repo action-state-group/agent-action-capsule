@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: BSD-3-Clause -->
 # Releasing `agent-action-capsule` to PyPI
 
-Publishing is automated by `.github/workflows/release.yml` via PyPI's **OIDC
+Publishing is automated by `.github/workflows/publish-python.yml` via PyPI's **OIDC
 Trusted Publishing** — no API token is stored in this repo. The workflow:
 
 1. On any push to a `release` event, `workflow_dispatch`, or a pushed tag it
@@ -22,7 +22,7 @@ pre-release). Other artifacts in this repository use their own prefixes
 (`go/v*`, `ts/v*`, `legacy-verify/*`), and a GitHub Release for one of those
 tags never publishes to PyPI.
 
-## One-time PyPI configuration (Steven — not done by this workflow)
+## One-time PyPI configuration (a PyPI project Owner, not this workflow)
 
 Before the first real publish, configure a Trusted Publisher on PyPI:
 
@@ -39,7 +39,7 @@ Before the first real publish, configure a Trusted Publisher on PyPI:
    | PyPI project name | `agent-action-capsule` |
    | Owner | `action-state-group` |
    | Repository name | `agent-action-capsule` |
-   | Workflow filename | `release.yml` |
+   | Workflow filename | `publish-python.yml` |
    | Environment name | `pypi` |
 3. In the GitHub repo, create an Actions **environment** named `pypi`
    (Settings → Environments) so `environment: pypi` in the workflow resolves.

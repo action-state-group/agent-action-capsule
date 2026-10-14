@@ -3,7 +3,7 @@
 # No API token lives in this repo — pypa/gh-action-pypi-publish exchanges a
 # short-lived GitHub Actions OIDC token for a PyPI upload token at publish time.
 # See RELEASING.md for the one-time PyPI Trusted-Publisher configuration this
-# depends on (Steven's side, not this workflow's).
+# depends on (done by a PyPI project Owner, not by this workflow).
 name: Publish Python package
 
 on:
