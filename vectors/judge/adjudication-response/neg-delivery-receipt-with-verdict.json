@@ -1,8 +1,8 @@
 {
   "adjudication": {
-    "citation_purpose": "responds_to",
     "digest": "34f4af9c7015ad6a01ec739d0b757ce8b993d037c11390f89b0b8b7ed531e1c0",
     "digest_alg": "SHA-256",
+    "judge_purpose": "responds_to",
     "type": "adjudication"
   },
   "epistemic_type": "producer_claim",

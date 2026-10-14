@@ -21,15 +21,15 @@
   "margin_tau": "0.05",
   "parties": [
     {
-      "citation_purpose": "adjudicated_party",
       "digest": "de48e20b5c547e2830ed017901326c74314076e464bb5ced8c9b22814c2ba305",
       "digest_alg": "SHA-256",
+      "judge_purpose": "adjudicated_party",
       "type": "twin-half"
     },
     {
-      "citation_purpose": "adjudicated_party",
       "digest": "3732a046cd23de446eeec60901cd1247c8d8fb5b4d9c26ff2c6b1f27aa7021fb",
       "digest_alg": "SHA-256",
+      "judge_purpose": "adjudicated_party",
       "type": "twin-half"
     }
   ],

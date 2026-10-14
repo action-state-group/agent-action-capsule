@@ -21,18 +21,22 @@
     "Citation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "digest_alg", "digest", "citation_purpose"],
+      "required": ["type", "digest_alg", "digest", "judge_purpose"],
       "properties": {
         "type": { "type": "string", "minLength": 1 },
         "digest_alg": { "const": "SHA-256" },
         "digest": { "$ref": "#/$defs/HexDigest" },
-        "citation_purpose": { "type": "string", "minLength": 1 }
+        "judge_purpose": {
+          "description": "spec/judge-record-family-v1.md section 0 -- why this record cites the target, from the judge_purpose namespace that document owns. Not the Capsule citation_purpose field (REGISTRY.md section 11) and not an Evidence Layer link type (section 18); a citation_purpose member here is rejected.",
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "PolicyCitation": {
       "allOf": [
         { "$ref": "#/$defs/Citation" },
-        { "properties": { "citation_purpose": { "const": "sampling_policy" } } }
+        { "properties": { "judge_purpose": { "const": "sampling_policy" } } }
       ]
     },
     "SampleManifest": {

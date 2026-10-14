@@ -19,27 +19,31 @@
       }
     },
     "Citation": {
-      "description": "spec/judge-record-family-v1.md section 0 -- every record in this family cites what it read by digest, with a citation_purpose stating why.",
+      "description": "spec/judge-record-family-v1.md section 0 -- every record in this family cites what it read by digest, with a judge_purpose stating why.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "digest_alg", "digest", "citation_purpose"],
+      "required": ["type", "digest_alg", "digest", "judge_purpose"],
       "properties": {
         "type": { "type": "string", "minLength": 1 },
         "digest_alg": { "const": "SHA-256" },
         "digest": { "$ref": "#/$defs/HexDigest" },
-        "citation_purpose": { "type": "string", "minLength": 1 }
+        "judge_purpose": {
+          "description": "spec/judge-record-family-v1.md section 0 -- why this record cites the target, from the judge_purpose namespace that document owns. Not the Capsule citation_purpose field (REGISTRY.md section 11) and not an Evidence Layer link type (section 18); a citation_purpose member here is rejected.",
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "PartyCitation": {
       "allOf": [
         { "$ref": "#/$defs/Citation" },
-        { "properties": { "citation_purpose": { "const": "adjudicated_party" } } }
+        { "properties": { "judge_purpose": { "const": "adjudicated_party" } } }
       ]
     },
     "RefereeCitation": {
       "allOf": [
         { "$ref": "#/$defs/Citation" },
-        { "properties": { "citation_purpose": { "const": "referee" } } }
+        { "properties": { "judge_purpose": { "const": "referee" } } }
       ]
     },
     "SamplingParams": {
