@@ -12,6 +12,8 @@
  * claims and reports (compliance.ts), never from this block.
  */
 
+import { NOT_STATED } from "./outcome-report.js";
+
 function object(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -175,7 +177,10 @@ export function readCompliancePresentation(
   const extensions = object(top?.extensions);
   const block = object(extensions?.["eu-ai-act-compliance/v1"]);
   if (block === undefined || block.enabled !== true) return undefined;
-  const regulation = str(block.regulation) ?? "Regulation (EU) 2024/1689";
+  // Absent is never pass: an omitted regulation field is reported as
+  // NOT_STATED, never silently filled with the real citation this card
+  // happens to be about today -- the bundle itself never asserted it.
+  const regulation = str(block.regulation) ?? NOT_STATED;
   const obligations = Array.isArray(block.obligations)
     ? block.obligations.flatMap((o): ComplianceObligation[] => {
         const obligation = readObligation(o);

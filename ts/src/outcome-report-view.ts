@@ -483,7 +483,7 @@ function conversationBody(
     why.append(
       element(
         "li",
-        `Resolved: ${met} criteria met and ${na.length} not applicable. The rule bills a conversation only when all nine pass, and not applicable counts as passing.`,
+        `Resolved: ${met} criteria met and ${na.length} not applicable. The rule resolves a conversation only when all nine pass, and not applicable counts as passing.`,
       ),
     );
   } else {
