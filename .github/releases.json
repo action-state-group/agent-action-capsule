@@ -17,5 +17,12 @@
     "lockfile": "rust/Cargo.lock",
     "tag_prefix": "crates/agent-action-capsule-v",
     "workflow": "publish-rust.yml"
+  },
+  "crates/evidence-request": {
+    "kind": "cargo",
+    "manifest": "rust/evidence-request/Cargo.toml",
+    "lockfile": "rust/Cargo.lock",
+    "tag_prefix": "crates/evidence-request-v",
+    "workflow": "publish-rust.yml"
   }
 }

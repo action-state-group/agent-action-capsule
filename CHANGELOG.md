@@ -2,6 +2,96 @@
 
 ## Unreleased
 
+## 0.8.0 — 2026-10-15
+
+- Evidence Request (`draft-mih-agent-evidence-request-00`): every implementation now lives in
+  this repository next to the draft and its vectors, and passes `vectors/evidence-request/`
+  (124 cases) (#262).
+  - Python: `agent_action_capsule.evidence_request` implements -00: the six subject forms,
+    `coverage` with exactly one of `expected_pin` or `min_freshness` (a malformed member is
+    `request_malformed` before the both-or-neither check, A4), exact resolution only, the eight
+    registered refusal reasons, the request digest over the bytes as received in the JSON and
+    core-deterministic CBOR bindings, and signed refusals. The responder `answer()` runs over
+    a caller's `EvidenceStore`. This replaces the pre-00 responder moved from capsule-emit in
+    #244 (its `chain_segment` subject and `subject.kind` shape are gone); that module was never
+    released. The module and its tests are Apache-2.0 (SPDX header on each file); the package
+    declares `BSD-3-Clause AND Apache-2.0` and ships both licence files (#244, #266).
+  - Rust: the crate `evidence-request` 0.1.0 (lib `evidence_request`), moved here with its
+    history from capsule-emit, where it was `capsule-emit-evidence-request` through 0.0.4. The
+    default `answer` feature adds the artifact answer path and witness receipts over
+    checkpointed-local-log; without it the crate is the protocol core with no
+    checkpointed-local-log dependency (#264, #265).
+  - Go: the package `go/evidencerequest`, the protocol logic extracted from evidencebook
+    (request parsing and validation, encodings and digests, resolution rules, reply parsing,
+    refusal signing and verification) (#267).
+  - `scripts/evidence-request-interlock.sh`, run in CI: Python, Go and Rust classify every
+    request vector identically, sign byte-identical refusals and verify each other's (#268).
+  - `LICENSING.md` section 3 lists the Apache-2.0 paths.
+- Registry conformance, a producer-side check: `agent_action_capsule.registry_conformance`
+  (also `python -m agent_action_capsule.registry_conformance FILE...`, exit 1 on a
+  non-conformant value) and Go `registries.LoadAxes` / `CheckCapsule`. It classifies every
+  registry-governed Capsule field as `registered`, `legacy_alias` (§6), `cross_axis` (registered
+  on a different registry), `private` (`x-` domain) or `unregistered`, with the sets parsed from
+  `spec/REGISTRY.md`. It is not verification: `verify()` still never rejects an unregistered
+  value. No registered set changes. Vectors: `vectors/registry-conformance/` (26 sealed
+  Capsules).
+- Spec: `spec/personal-agent-history-profile-v0.md`, the Personal-Agent History Profile v0, an
+  Informational host profile written against `spec/interop-profile-v0.md` and changing neither it
+  nor any draft. It defines the Basic level: a holder's selection of their own deals for one
+  recipient, as an IP §6.5 recipient-specific derivation (`personal_history_basic/1`, identified
+  by its definition digest). It fixes:
+  - the definition document's members, including the signed selection, the recipient and the
+    declared field set;
+  - two record kinds (`step_completed`, `step_failed`) and nothing else per record beyond its
+    times;
+  - the artifact form of each deal's answer;
+  - one holder key and one anchor per History;
+  - seven History properties in IP's status vocabulary, and the acceptance rule
+    (`anchor_inclusion` is `NOT_CHECKED` for a derivation in IP v0, so the §8 mapping gives
+    `not_evaluable`);
+  - deals and records as separate units, with outcomes stated as not established;
+  - lifecycle statements by their own `exchange` request, and a one-file History container.
+- Vectors: `vectors/interop-profile-v0/` holds 49 conformance cases for
+  `spec/interop-profile-v0.md`, generated deterministically by
+  `python/scripts/generate_interop_profile_v0_vectors.py`. The cases cover:
+  - the §10.1 exchange and caller invariance;
+  - tampered, misbound, forged, declined, missing and unsupported-version responses, and each
+    required envelope property failing on its own;
+  - a carried foreign object failing its native check;
+  - the backdated acceptance (§11.1.9 A to G);
+  - the non-issuer supersession (§11.2.7 A to I);
+  - carriage over the native stream, A2A and MCP (§11.4.8).
+
+  Each case pins its trust policy (test keys only), verification policy, contract version and
+  evaluation time. `python/tests/test_interop_profile_v0_vectors.py` derives every status from
+  the inputs with code separate from the generator. It also asserts that no case yields `met` or
+  `not_met` unless sufficiency is `SATISFIED`. §11.5 now points to the corpus, and open points
+  P-54 to P-57 are added.
+- Python: `agent_action_capsule.interop_profile` is a reference verifier for
+  `spec/interop-profile-v0.md`. Its input is the requester's retained request octets, the
+  replies, a trust policy, a verification policy, an evaluation time and the contract version.
+  It reports:
+  - every §7.2 property of each reply as `PASS`, `FAIL`, `NOT_PRESENT`, `NOT_CHECKED` or
+    `INCONCLUSIVE`, with the method used, including the §6.2.1 Checkpointed Local Log
+    `anchor_inclusion` procedure;
+  - `caller_invariance` across every envelope held, and `native_check` of a carried JWS;
+  - the §8.1 row for each requirement evaluated, with the claim's `evidence[]` and `proofs[]`.
+    It also gives the row's status, sufficiency and verdict, except under row 7. There the
+    contract judges the Artifact's content, which the profile does not define, so the result
+    comes from an evaluator the caller supplies, or is left empty as the vectors leave it;
+  - the acceptance properties and finding (§11.1). Acceptance records are read as JSON. Cited
+    authority is labelled `agent_origin_assertion` and is not otherwise checked;
+  - the lifecycle properties and findings, with what a verifier shows (§11.2). Links in an
+    Evidence Layer record header are not evaluated;
+  - reply classification over A2A and MCP, and the manifest properties (§11.4).
+
+  It does not raise on malformed or hostile input; it reports it. It works offline and reads no
+  clock. Online checks are `NOT_CHECKED` unless the caller supplies
+  a resolver. Trust is checked as of each object's own time or as of the evaluation time, never
+  "now". It needs `cryptography` for Ed25519, and nothing from outside this repository.
+  `python/tests/test_interop_profile_verifier.py` runs it on all 49 cases and matches every
+  expected value. It also checks the §10, §10.1 and §11.4 worked examples and each step of
+  §6.2.1.
 - Cross-language parity hardening. Each change aligns the four verifiers on the stricter
   behaviour one of them already had, and new shared vectors pin it:
   - TypeScript: a JSON member named `__proto__` is kept as an ordinary member, so it stays
@@ -53,48 +143,6 @@
   `go/v*`, `ts/v*` and `vectors/v*` tags of the other artifacts. The PyPI version
   is unchanged (`0.8.0`, not `python/0.8.0`). Releases up to 0.7.0 keep their bare
   `v<version>` tags.
-- Registry conformance, a producer-side check: `agent_action_capsule.registry_conformance`
-  (also `python -m agent_action_capsule.registry_conformance FILE...`, exit 1 on a
-  non-conformant value) and Go `registries.LoadAxes` / `CheckCapsule`. It classifies every
-  registry-governed Capsule field as `registered`, `legacy_alias` (§6), `cross_axis` (registered
-  on a different registry), `private` (`x-` domain) or `unregistered`, with the sets parsed from
-  `spec/REGISTRY.md`. It is not verification: `verify()` still never rejects an unregistered
-  value. No registered set changes. Vectors: `vectors/registry-conformance/` (26 sealed
-  Capsules).
-- Python: `agent_action_capsule.evidence_request`, the Evidence Request responder, moved here
-  from capsule-emit so the implementation sits next to its draft and vectors.
-  `answer(request_bytes, *, store, signer, now=None, allow_forced_checkpoint=False)` returns
-  an `Artifact` or a signed `Refusal`. Where the evidence comes from is the caller's
-  `EvidenceStore` (`holds`, `bundle`, `select_range`, `records`, `chain_segment`,
-  `force_checkpoint`). A store raises `NotYetCovered` for a held subject that no checkpoint
-  covers yet. Also exported: `parse_request`, `request_digest`, `sign_refusal`,
-  `verify_refusal_offline`, `normalize_refusal_reason` and the refusal-reason tokens. The wire
-  behaviour is unchanged. The four open differences from -00 in
-  `vectors/evidence-request/DIFFS.md` still apply, and those vectors are unchanged. New tests
-  check `verify_refusal_offline` against 19 of the 21 `refusal.json` cases. The other two (a
-  list-valued reason, a missing `issued_at`) cannot be built as a `Refusal`. They also check
-  that `sign_refusal` reproduces each valid primary-key signature byte for byte. The python
-  workflow now also runs on changes under `vectors/evidence-request/`.
-  The moved module and its tests keep their Apache-2.0 licence (SPDX header on each file). The
-  repository now carries the Apache-2.0 text as `LICENSE-APACHE-2.0`, and the Python package
-  declares `BSD-3-Clause AND Apache-2.0` and ships both licence files.
-- Spec: `spec/personal-agent-history-profile-v0.md`, the Personal-Agent History Profile v0, an
-  Informational host profile written against `spec/interop-profile-v0.md` and changing neither it
-  nor any draft. It defines the Basic level: a holder's selection of their own deals for one
-  recipient, as an IP §6.5 recipient-specific derivation (`personal_history_basic/1`, identified
-  by its definition digest). It fixes:
-  - the definition document's members, including the signed selection, the recipient and the
-    declared field set;
-  - two record kinds (`step_completed`, `step_failed`) and nothing else per record beyond its
-    times;
-  - the artifact form of each deal's answer;
-  - one holder key and one anchor per History;
-  - seven History properties in IP's status vocabulary, and the acceptance rule
-    (`anchor_inclusion` is `NOT_CHECKED` for a derivation in IP v0, so the §8 mapping gives
-    `not_evaluable`);
-  - deals and records as separate units, with outcomes stated as not established;
-  - lifecycle statements by their own `exchange` request, and a one-file History container.
-
 - composed/v1 (`draft-mih-zhang-agent-disclosure-bundle-01`): an artifact member may carry
   `response`, the responder's signed response as received with the artifact bytes removed. A
   verifier requires its `request_digest` to equal the member's and its `artifact_digest` the
@@ -186,47 +234,6 @@
   requirement the verifier cannot apply is `UNKNOWN`. Requirement ids must be unique within a
   contract version. Open points P-46 to P-53 list what the schema does not say, among them
   whether evidence is needed before the action, which the schema has no member for.
-- Vectors: `vectors/interop-profile-v0/` holds 49 conformance cases for
-  `spec/interop-profile-v0.md`, generated deterministically by
-  `python/scripts/generate_interop_profile_v0_vectors.py`. The cases cover:
-  - the §10.1 exchange and caller invariance;
-  - tampered, misbound, forged, declined, missing and unsupported-version responses, and each
-    required envelope property failing on its own;
-  - a carried foreign object failing its native check;
-  - the backdated acceptance (§11.1.9 A to G);
-  - the non-issuer supersession (§11.2.7 A to I);
-  - carriage over the native stream, A2A and MCP (§11.4.8).
-
-  Each case pins its trust policy (test keys only), verification policy, contract version and
-  evaluation time. `python/tests/test_interop_profile_v0_vectors.py` derives every status from
-  the inputs with code separate from the generator. It also asserts that no case yields `met` or
-  `not_met` unless sufficiency is `SATISFIED`. §11.5 now points to the corpus, and open points
-  P-54 to P-57 are added.
-- Python: `agent_action_capsule.interop_profile` is a reference verifier for
-  `spec/interop-profile-v0.md`. Its input is the requester's retained request octets, the
-  replies, a trust policy, a verification policy, an evaluation time and the contract version.
-  It reports:
-  - every §7.2 property of each reply as `PASS`, `FAIL`, `NOT_PRESENT`, `NOT_CHECKED` or
-    `INCONCLUSIVE`, with the method used, including the §6.2.1 Checkpointed Local Log
-    `anchor_inclusion` procedure;
-  - `caller_invariance` across every envelope held, and `native_check` of a carried JWS;
-  - the §8.1 row for each requirement evaluated, with the claim's `evidence[]` and `proofs[]`.
-    It also gives the row's status, sufficiency and verdict, except under row 7. There the
-    contract judges the Artifact's content, which the profile does not define, so the result
-    comes from an evaluator the caller supplies, or is left empty as the vectors leave it;
-  - the acceptance properties and finding (§11.1). Acceptance records are read as JSON. Cited
-    authority is labelled `agent_origin_assertion` and is not otherwise checked;
-  - the lifecycle properties and findings, with what a verifier shows (§11.2). Links in an
-    Evidence Layer record header are not evaluated;
-  - reply classification over A2A and MCP, and the manifest properties (§11.4).
-
-  It does not raise on malformed or hostile input; it reports it. It works offline and reads no
-  clock. Online checks are `NOT_CHECKED` unless the caller supplies
-  a resolver. Trust is checked as of each object's own time or as of the evaluation time, never
-  "now". It needs `cryptography` for Ed25519, and nothing from outside this repository.
-  `python/tests/test_interop_profile_verifier.py` runs it on all 49 cases and matches every
-  expected value. It also checks the §10, §10.1 and §11.4 worked examples and each step of
-  §6.2.1.
 
 - TypeScript: verification works without WebCrypto. `crypto.subtle` exists only in a secure
   context, so a report in a non-secure or opaque origin (some apps' attachment viewers, an http:
