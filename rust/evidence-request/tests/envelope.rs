@@ -340,13 +340,14 @@ fn signed_members_are_never_byte_strings_or_empty_arrays() {
     ));
     // A byte string in a member no verification reads passes through, as in Go.
     let refusal = ciborium::Value::Map(vec![
-        (
-            ciborium::Value::Text("reason".into()),
-            ciborium::Value::Text("declined".into()),
-        ),
+        // "x" encodes shorter, so it comes first in deterministic order.
         (
             ciborium::Value::Text("x".into()),
             ciborium::Value::Bytes(vec![0]),
+        ),
+        (
+            ciborium::Value::Text("reason".into()),
+            ciborium::Value::Text("declined".into()),
         ),
     ]);
     let mut octets = Vec::new();
