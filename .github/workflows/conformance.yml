@@ -10,6 +10,7 @@ on:
       - "vectors/**"
       - "provenance-mode-vectors/**"
       - "scripts/cross-language-interlock.sh"
+      - "scripts/evidence-request-interlock.sh"
       - "scripts/browser-conformance.mjs"
       - "spec/draft-mih-scitt-agent-action-capsule-05.md"
       - "spec/draft-mih-agent-disclosure-envelope-00.md"
@@ -24,6 +25,7 @@ on:
       - "vectors/**"
       - "provenance-mode-vectors/**"
       - "scripts/cross-language-interlock.sh"
+      - "scripts/evidence-request-interlock.sh"
       - "scripts/browser-conformance.mjs"
       - "spec/draft-mih-scitt-agent-action-capsule-05.md"
       - "spec/draft-mih-agent-disclosure-envelope-00.md"
@@ -94,6 +96,9 @@ jobs:
 
       - name: Verify every producer in every consumer
         run: scripts/cross-language-interlock.sh
+
+      - name: Evidence Request, every implementation agrees
+        run: scripts/evidence-request-interlock.sh
 
       - name: Prove every consumer rejects a canonicalization divergence
         run: AAC_INTERLOCK_INJECT_CANONICALIZATION_DIVERGENCE=1 scripts/cross-language-interlock.sh
