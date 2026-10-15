@@ -497,7 +497,10 @@ pub fn parse_reply(octets: &[u8], binding: Binding) -> Result<Reply, ReplyError>
     match (get("artifact_digest").is_some(), get("reason").is_some()) {
         (true, true) => Err(ReplyError::Both),
         (false, false) => Err(ReplyError::Neither),
-        (false, true) => Ok(Reply::Refusal(Item::Map(members).to_json())),
+        (false, true) => Item::Map(members)
+            .to_plain_json()
+            .map(Reply::Refusal)
+            .ok_or(ReplyError::Encoding("a refusal carries a byte string")),
         (true, false) => read_envelope(&members, binding).map(|e| Reply::Envelope(Box::new(e))),
     }
 }
@@ -515,9 +518,11 @@ fn read_envelope(members: &[(String, Item)], binding: Binding) -> Result<Envelop
             _ => None,
         }
     };
+    // Signed members are text, maps, arrays and integers only (profile §5.1):
+    // a byte string there is refused, never read as its base64url text.
     let subject_json = get("subject")
-        .ok_or(ReplyError::Member("subject"))?
-        .to_json();
+        .and_then(Item::to_plain_json)
+        .ok_or(ReplyError::Member("subject"))?;
     let subject = crate::request::subject_from_value(&subject_json)
         .map_err(|_| ReplyError::Member("subject"))?;
     let derivation = match get("derivation") {
@@ -551,6 +556,11 @@ fn read_envelope(members: &[(String, Item)], binding: Binding) -> Result<Envelop
     };
     let verification = match get("verification") {
         None => Vec::new(),
+        // Present means there is material (profile §6.2): an empty array is
+        // not a conforming member, and would sign differently from absence.
+        Some(Item::Array(entries)) if entries.is_empty() => {
+            return Err(ReplyError::Member("verification"))
+        }
         Some(Item::Array(entries)) => entries
             .iter()
             .map(|entry| match entry {
@@ -682,8 +692,9 @@ impl Item {
             }
             fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Item, A::Error> {
                 let mut out: Vec<(String, Item)> = Vec::new();
+                let mut seen = std::collections::HashSet::new();
                 while let Some(key) = map.next_key::<String>()? {
-                    if out.iter().any(|(k, _)| *k == key) {
+                    if !seen.insert(key.clone()) {
                         return Err(serde::de::Error::custom("a duplicate member name"));
                     }
                     let value = map.next_value_seed(Seed)?;
@@ -729,6 +740,22 @@ impl Item {
                     .collect::<Option<_>>()?,
             ),
             _ => return None,
+        })
+    }
+
+    /// The JSON data model, or `None` when a byte string is anywhere inside.
+    fn to_plain_json(&self) -> Option<Value> {
+        Some(match self {
+            Item::Bytes(_) => return None,
+            Item::Array(a) => {
+                Value::Array(a.iter().map(Item::to_plain_json).collect::<Option<_>>()?)
+            }
+            Item::Map(m) => Value::Object(
+                m.iter()
+                    .map(|(k, v)| Some((k.clone(), v.to_plain_json()?)))
+                    .collect::<Option<_>>()?,
+            ),
+            other => other.to_json(),
         })
     }
 

@@ -16,6 +16,12 @@
   against `checkpointed-local-log` 0.3.1. Every envelope reply in
   `vectors/interop-profile-v0/` gets the `anchor_inclusion` status the corpus
   states.
+  `cll_material::encode_inclusion_proof` and `encode_consistency_proof` write
+  the two proof kinds from paths a log computed, as the Go package's encoders
+  do.
+- `envelope::parse_reply` refuses a byte string inside a signed member or a
+  refusal (never reading it as its base64url text), and a present empty
+  `verification`, which would sign differently from its absence.
 - **Breaking: the `answer` feature and module are removed.** Building an
   artifact from a log is the responder's business: the Checkpointed Local Log
   builder moves to the `evidencebook` crate (agent-action-capsule#270).

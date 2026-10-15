@@ -50,3 +50,7 @@ required-features = ["receipt"]
 [[test]]
 name = "cll_vectors"
 required-features = ["cll"]
+
+[[test]]
+name = "cll_material"
+required-features = ["cll"]

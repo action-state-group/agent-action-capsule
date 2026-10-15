@@ -306,17 +306,55 @@ fn one_item(bytes: &[u8]) -> Result<C, &'static str> {
     Ok(value)
 }
 
-/// A map's entries, refusing a duplicate key.
+/// A map's entries. Duplicate keys are refused for the whole item first
+/// ([`no_duplicate_keys`]).
 fn map_entries(value: &C) -> Result<&[(C, C)], &'static str> {
-    let C::Map(entries) = value else {
-        return Err("not a map");
-    };
-    for (i, (k, _)) in entries.iter().enumerate() {
-        if entries[..i].iter().any(|(other, _)| other == k) {
-            return Err("a map with a duplicate key");
-        }
+    match value {
+        C::Map(entries) => Ok(entries),
+        _ => Err("not a map"),
     }
-    Ok(entries)
+}
+
+/// The deepest nesting walked for duplicate keys; ciborium's own decoder
+/// stops well before this.
+const MAX_DEPTH: usize = 256;
+
+/// True when no map at any depth of `value` repeats a key. Keys compare by
+/// their encodings, sorted, so a map of n keys costs n log n.
+fn no_duplicate_keys(value: &C, depth: usize) -> bool {
+    if depth > MAX_DEPTH {
+        return false;
+    }
+    match value {
+        C::Map(entries) => {
+            let mut keys: Vec<Vec<u8>> = entries
+                .iter()
+                .map(|(k, _)| {
+                    let mut out = Vec::new();
+                    ciborium::into_writer(k, &mut out).expect("writing to a Vec never fails");
+                    out
+                })
+                .collect();
+            keys.sort_unstable();
+            keys.windows(2).all(|w| w[0] != w[1])
+                && entries.iter().all(|(k, v)| {
+                    no_duplicate_keys(k, depth + 1) && no_duplicate_keys(v, depth + 1)
+                })
+        }
+        C::Array(items) => items.iter().all(|v| no_duplicate_keys(v, depth + 1)),
+        C::Tag(_, inner) => no_duplicate_keys(inner, depth + 1),
+        _ => true,
+    }
+}
+
+/// One CBOR item with no duplicate map key at any depth.
+fn one_item_unique(bytes: &[u8]) -> Result<C, &'static str> {
+    let value = one_item(bytes)?;
+    if no_duplicate_keys(&value, 0) {
+        Ok(value)
+    } else {
+        Err("a map with a duplicate key")
+    }
 }
 
 fn int_key(entries: &[(C, C)], label: i128) -> Option<&C> {
@@ -343,7 +381,7 @@ fn uint(value: Option<&C>) -> Option<u64> {
 /// Step 7: decode a `cll-checkpoint` item, refusing every form the
 /// procedure calls `FAIL`.
 fn read_checkpoint(octets: &[u8]) -> Result<Checkpoint, &'static str> {
-    let C::Tag(18, inner) = one_item(octets)? else {
+    let C::Tag(18, inner) = one_item_unique(octets)? else {
         return Err("not a tag 18 COSE_Sign1");
     };
     let C::Array(parts) = *inner else {
@@ -358,7 +396,7 @@ fn read_checkpoint(octets: &[u8]) -> Result<Checkpoint, &'static str> {
     let C::Bytes(payload) = payload else {
         return Err("the payload is detached or not a byte string");
     };
-    let header = one_item(protected)?;
+    let header = one_item_unique(protected)?;
     let header = map_entries(&header)?;
     let alg = match int_key(header, 1) {
         Some(C::Integer(i)) => i128::from(*i),
@@ -373,14 +411,14 @@ fn read_checkpoint(octets: &[u8]) -> Result<Checkpoint, &'static str> {
     let (Some(C::Text(iss)), Some(C::Text(sub))) = (int_key(claims, 1), int_key(claims, 2)) else {
         return Err("CWT_Claims lacks iss or sub");
     };
-    let body = one_item(payload)?;
+    let body = one_item_unique(payload)?;
     let body = map_entries(&body)?;
     if !matches!(text_key(body, "kind"), Some(C::Text(k)) if k == KIND_CHECKPOINT) {
         return Err("the kind claim is not cll-checkpoint");
     }
-    let log_size = uint(text_key(body, "log_size")).ok_or("log_size is not an unsigned integer")?;
-    let prev_size =
-        uint(text_key(body, "prev_size")).ok_or("prev_size is not an unsigned integer")?;
+    let profile_int = |name: &str| uint(text_key(body, name)).filter(|n| *n <= MAX_INTEGER);
+    let log_size = profile_int("log_size").ok_or("log_size is not a profile integer")?;
+    let prev_size = profile_int("prev_size").ok_or("prev_size is not a profile integer")?;
     if prev_size > log_size {
         return Err("prev_size exceeds log_size");
     }
@@ -396,7 +434,7 @@ fn read_checkpoint(octets: &[u8]) -> Result<Checkpoint, &'static str> {
             return Ok(Vec::new());
         }
         match decode_commitment_object(raw) {
-            Ok(list) if !list.is_empty() => Ok(list),
+            Ok(list) if !list.is_empty() && list.len() <= MAX_PROOF_NODES => Ok(list),
             _ => Err("a commitment is not the deterministic CBOR of one or more 32-octet peaks"),
         }
     };
@@ -426,40 +464,72 @@ fn read_checkpoint(octets: &[u8]) -> Result<Checkpoint, &'static str> {
     })
 }
 
-/// An RFC 3339 date-time converted to UTC with any fraction dropped, in the
-/// profile's form (`YYYY-MM-DDTHH:MM:SSZ`), or `None` when it is not one.
+/// An RFC 3339 date-time (`date-time` of RFC 3339 §5.6, `T`/`Z` in either
+/// case) converted to UTC with any fraction dropped, in the profile's form
+/// (`YYYY-MM-DDTHH:MM:SSZ`), or `None` when it is not one. A leap second
+/// (`:60`) names the instant after second 59, as the Python reference reads
+/// it.
 fn utc_seconds(text: &str) -> Option<String> {
     let b = text.as_bytes();
-    if b.len() < 20 || !matches!(b[10], b'T' | b't') {
-        return None;
-    }
-    let base = format!("{}T{}", &text[..10], &text[11..19]);
-    let mut rest = &text[19..];
-    if let Some(after) = rest.strip_prefix('.') {
-        let digits = after.bytes().take_while(u8::is_ascii_digit).count();
-        if digits == 0 {
+    let digits = |range: std::ops::Range<usize>| -> Option<i64> {
+        let part = b.get(range)?;
+        if part.is_empty() || !part.iter().all(u8::is_ascii_digit) {
             return None;
         }
-        rest = &after[digits..];
+        part.iter()
+            .try_fold(0i64, |n, d| Some(n * 10 + i64::from(d - b'0')))
+    };
+    if b.len() < 20
+        || b[4] != b'-'
+        || b[7] != b'-'
+        || !matches!(b[10], b'T' | b't')
+        || b[13] != b':'
+        || b[16] != b':'
+    {
+        return None;
     }
-    let offset_seconds: i64 = match rest {
-        "Z" | "z" => 0,
-        _ => {
-            let o = rest.as_bytes();
-            if o.len() != 6 || !matches!(o[0], b'+' | b'-') || o[3] != b':' {
-                return None;
-            }
-            let hours: i64 = rest.get(1..3)?.parse().ok()?;
-            let minutes: i64 = rest.get(4..6)?.parse().ok()?;
+    let second = digits(17..19)?;
+    if second > 60 {
+        return None;
+    }
+    let mut at = 19;
+    if b.get(at) == Some(&b'.') {
+        let n = b[at + 1..]
+            .iter()
+            .take_while(|c| c.is_ascii_digit())
+            .count();
+        if n == 0 {
+            return None;
+        }
+        at += 1 + n;
+    }
+    let offset_seconds = match &b[at..] {
+        [b'Z' | b'z'] => 0,
+        [sign @ (b'+' | b'-'), _, _, b':', _, _] => {
+            let (hours, minutes) = (digits(at + 1..at + 3)?, digits(at + 4..at + 6)?);
             if hours > 23 || minutes > 59 {
                 return None;
             }
-            let sign = if o[0] == b'+' { 1 } else { -1 };
-            sign * (hours * 3600 + minutes * 60)
+            let magnitude = hours * 3600 + minutes * 60;
+            if *sign == b'+' {
+                magnitude
+            } else {
+                -magnitude
+            }
         }
+        _ => return None,
     };
-    let instant = crate::time::parse_utc(&format!("{base}Z"))?;
-    format_utc(instant.seconds - offset_seconds)
+    let base = format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+        digits(0..4)?,
+        digits(5..7)?,
+        digits(8..10)?,
+        digits(11..13)?,
+        digits(14..16)?,
+        second.min(59)
+    );
+    let instant = crate::time::parse_utc(&base)?;
+    format_utc(instant.seconds + i64::from(second == 60) - offset_seconds)
 }
 
 /// Seconds since the epoch in the profile's time form.
@@ -535,6 +605,75 @@ fn peak_indices(last: u64) -> Vec<u64> {
         size -= highest;
     }
     out
+}
+
+/// The zero-based MMR node index of zero-based leaf `leaf`.
+fn leaf_node_index(leaf: u64) -> u64 {
+    2 * leaf - u64::from(leaf.count_ones())
+}
+
+fn encode_cbor(value: &C) -> Vec<u8> {
+    let mut out = Vec::new();
+    ciborium::into_writer(value, &mut out).expect("writing to a Vec never fails");
+    out
+}
+
+fn hash_list(nodes: &[Hash]) -> C {
+    C::Array(nodes.iter().map(|n| C::Bytes(n.to_vec())).collect())
+}
+
+/// The `cll-inclusion-proof` octets for zero-based leaf `leaf` and its
+/// inclusion path (the siblings from the leaf up to its peak): deterministic
+/// CBOR of `[MMR node index, inclusion-path]` (profile §6.2.1). This encodes
+/// a path a log already computed; computing it is the log's.
+pub fn encode_inclusion_proof(leaf: u64, path: &[Hash]) -> Vec<u8> {
+    encode_cbor(&C::Array(vec![
+        C::Integer(leaf_node_index(leaf).into()),
+        hash_list(path),
+    ]))
+}
+
+/// The `cll-consistency-proof` octets proving that the MMR of `old_size`
+/// nodes, whose peaks are `old_peaks`, extends to the MMR of `new_size` nodes
+/// whose peaks are `new_peaks`, given each old peak's path into the new MMR:
+/// deterministic CBOR of `[tree-size-1, tree-size-2, consistency-paths,
+/// right-peaks]` (profile §6.2.1; MMR §6). `None` when the paths do not
+/// reach `new_peaks`, so no such proof exists.
+pub fn encode_consistency_proof(
+    old_size: u64,
+    new_size: u64,
+    old_peaks: &[Hash],
+    paths: &[Vec<Hash>],
+    new_peaks: &[Hash],
+) -> Option<Vec<u8>> {
+    if old_size == 0 || old_size > new_size || old_peaks.len() != paths.len() {
+        return None;
+    }
+    let mut roots: Vec<Hash> = Vec::new();
+    for ((index, path), peak) in peak_indices(old_size - 1)
+        .into_iter()
+        .zip(paths)
+        .zip(old_peaks)
+    {
+        if !path_fits(index, path.len()) {
+            return None;
+        }
+        let root = included_root(index, *peak, path);
+        if roots.last() != Some(&root) {
+            roots.push(root);
+        }
+    }
+    if roots.len() > new_peaks.len() || roots[..] != new_peaks[..roots.len()] {
+        return None;
+    }
+    let octets = encode_cbor(&C::Array(vec![
+        C::Integer(old_size.into()),
+        C::Integer(new_size.into()),
+        C::Array(paths.iter().map(|p| hash_list(p)).collect()),
+        hash_list(&new_peaks[roots.len()..]),
+    ]));
+    check_consistency(old_peaks, new_peaks, &octets).ok()?;
+    Some(octets)
 }
 
 /// A deterministic-CBOR proof's list of 32-octet byte strings.

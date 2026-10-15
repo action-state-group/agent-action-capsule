@@ -324,6 +324,8 @@ func TestParseReplyRefuses(t *testing.T) {
 		"bad verification":  `{"profile":"p","request_digest":"a","artifact_digest":"b","responder":"r","issued_at":"t","sig":"s","subject":{"checkpoints":null},"anchor":{"digest":"d"},"artifact":"","verification":[{"kind":"k"}]}`,
 		"envelope subject":  `{"profile":"p","request_digest":"a","artifact_digest":"b","responder":"r","issued_at":"t","sig":"s","subject":{"kind":"record"},"anchor":{"digest":"d"},"artifact":""}`,
 		"freshness invalid": `{"profile":"p","request_digest":"a","artifact_digest":"b","responder":"r","issued_at":"t","sig":"s","subject":{"checkpoints":null},"anchor":{"digest":"d","freshness":-1},"artifact":""}`,
+		// Present and empty: the signer would have covered it, SigningBody omits it.
+		"empty verification": `{"profile":"p","request_digest":"a","artifact_digest":"b","responder":"r","issued_at":"t","sig":"s","subject":{"checkpoints":null},"anchor":{"digest":"d"},"artifact":"","verification":[]}`,
 	} {
 		_, err := er.ParseReply(er.Message{Octets: []byte(octets), MediaType: er.MediaTypeJSON})
 		assert.ErrorIs(t, err, er.ErrInvalid, name)

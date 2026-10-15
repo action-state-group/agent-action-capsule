@@ -300,3 +300,53 @@ fn reproduces_the_corpus_envelopes_byte_for_byte() {
     }
     assert!(reproduced >= 3, "only {reproduced} envelopes reproduced");
 }
+
+#[test]
+fn signed_members_are_never_byte_strings_or_empty_arrays() {
+    let k = key("responder");
+    let mut p = parts();
+    p.subject = Subject::Correlation("YWJj".into());
+    let env = sign(REQUEST, p, &k).unwrap();
+    // CBOR: the signed subject's text replaced by the bytes its base64url
+    // names must not read as that text.
+    let mut frame: ciborium::Value =
+        ciborium::from_reader(env.encode(Binding::Cbor).as_slice()).unwrap();
+    if let ciborium::Value::Map(entries) = &mut frame {
+        for (k, v) in entries.iter_mut() {
+            if k.as_text() == Some("subject") {
+                *v = ciborium::Value::Map(vec![(
+                    ciborium::Value::Text("correlation".into()),
+                    ciborium::Value::Bytes(b"abc".to_vec()),
+                )]);
+            }
+        }
+    }
+    let mut octets = Vec::new();
+    ciborium::into_writer(&frame, &mut octets).unwrap();
+    assert_eq!(
+        parse_reply(&octets, Binding::Cbor),
+        Err(ReplyError::Member("subject"))
+    );
+    // A refusal carrying a byte string.
+    let refusal = ciborium::Value::Map(vec![(
+        ciborium::Value::Text("reason".into()),
+        ciborium::Value::Bytes(b"declined".to_vec()),
+    )]);
+    let mut octets = Vec::new();
+    ciborium::into_writer(&refusal, &mut octets).unwrap();
+    assert!(matches!(
+        parse_reply(&octets, Binding::Cbor),
+        Err(ReplyError::Encoding(_))
+    ));
+    // `verification: []` present: not absence, and not a conforming member.
+    let mut bare_parts = parts();
+    bare_parts.verification.clear();
+    let bare = sign(REQUEST, bare_parts, &k).unwrap();
+    let mut json: Value = serde_json::from_slice(&bare.encode(Binding::Json)).unwrap();
+    json["verification"] = Value::Array(vec![]);
+    let injected = serde_json::to_vec(&json).unwrap();
+    assert_eq!(
+        parse_reply(&injected, Binding::Json),
+        Err(ReplyError::Member("verification"))
+    );
+}

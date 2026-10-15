@@ -15,6 +15,9 @@
   `sign_envelope` refuses, before signing, any envelope the profile does not allow: a subject or
   derivation no request could carry, an empty artifact, or an `issued_at` or time `freshness`
   outside the §5.2 form.
+- Go: `evidencerequest.ParseReply` refuses an envelope whose `verification` is present and empty.
+  The signer would have covered the empty array, but `SigningBody` omits it, so such an envelope
+  verified under a signature over different members (#273).
 - Python: the interop profile's time check no longer accepts seconds above 60
   (`2026-10-15T00:00:99Z`); it used to clamp them to 59.
 
