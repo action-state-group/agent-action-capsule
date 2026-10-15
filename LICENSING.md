@@ -67,8 +67,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ================================================================================
 
 The following paths are licensed under the Apache License, Version 2.0 (see
-LICENSE-APACHE-2.0), not under section 2. The Python and .github files below
-carry `SPDX-License-Identifier: Apache-2.0`; the evidence-request crate's
+LICENSE-APACHE-2.0), not under section 2. The Python, Go and .github files
+below carry `SPDX-License-Identifier: Apache-2.0`; the evidence-request crate's
 files carry no per-file header and are licensed by its own LICENSE and NOTICE
 and by this listing. Any other file carrying that header is Apache-2.0 too.
 
@@ -78,6 +78,8 @@ and by this listing. Any other file carrying that header is Apache-2.0 too.
   notice.
 - python/agent_action_capsule/evidence_request.py and
   python/tests/test_evidence_request.py.
+- go/evidencerequest/ (the Go `evidencerequest` package, extracted from
+  action-state-group/evidencebook).
 - The shared repository tooling .github/release.py, .github/test_release.py,
   .github/leak_lint.py, .github/test_leak_lint.py and
   .github/workflows/leak-lint.yml.
