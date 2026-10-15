@@ -1,4 +1,4 @@
-# capsule-emit-evidence-request
+# evidence-request
 
 The evidence request protocol of **draft-mih-agent-evidence-request-00**, in
 Rust: a requester asks a responder for evidence about a subject, under a
@@ -18,7 +18,7 @@ refusal, or the requester's own record that nothing arrived.
 | `answer` (0.0.2; receipts checked from 0.0.3) | build the artifact response over a checkpointed local log (`cll`): records with inclusion proofs, a range or the full history with a range proof, the checkpoints, or the `history_card/1` derivation with consistency proofs; the artifact is deterministic and the same for every requester, the envelope is signed by the responder and binds the request digest and the anchor. `answer::verify` checks it all offline |
 
 ```rust
-use capsule_emit_evidence_request::{digest, request, resolve};
+use evidence_request::{digest, request, resolve};
 
 let digest = digest::request_digest(&bytes);         // over the bytes as received
 match request::parse_json(&bytes) {
@@ -33,7 +33,7 @@ match request::parse_json(&bytes) {
 Where -00 leaves a wire shape open (subject and coverage shapes, digest
 representation, the refusal's member names and signature profile), this crate
 follows the readings the draft's conformance vectors document; each module
-says which. The API is pre-stable (0.0.x) until a later draft fixes those
+says which. The API is pre-stable (0.x) until a later draft fixes those
 shapes.
 
 **0.0.2 adds the answer path** (`answer`). 0.0.1 parsed, digested and

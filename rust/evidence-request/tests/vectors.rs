@@ -3,14 +3,14 @@
 //! every corpus, every case. The pinned files are checked against the
 //! source's own `SHA256SUMS` before any case is read.
 
-use capsule_emit_evidence_request::digest::{identifies_request, request_digest};
-use capsule_emit_evidence_request::invariance::{compare, Observation};
-use capsule_emit_evidence_request::outcome::{record, Received, Window};
-use capsule_emit_evidence_request::refusal::{check, check_cbor, sign, verify_for, VerifyError};
-use capsule_emit_evidence_request::registry::{Reason, SubjectForm, SUBPROTOCOL};
-use capsule_emit_evidence_request::request::{parse_cbor, parse_json, Derivation};
-use capsule_emit_evidence_request::resolve::{resolve, Anchor, Resolution, Responder};
-use capsule_emit_evidence_request::retention::{
+use evidence_request::digest::{identifies_request, request_digest};
+use evidence_request::invariance::{compare, Observation};
+use evidence_request::outcome::{record, Received, Window};
+use evidence_request::refusal::{check, check_cbor, sign, verify_for, VerifyError};
+use evidence_request::registry::{Reason, SubjectForm, SUBPROTOCOL};
+use evidence_request::request::{parse_cbor, parse_json, Derivation};
+use evidence_request::resolve::{resolve, Anchor, Resolution, Responder};
+use evidence_request::retention::{
     classify_absence, classify_refusal, commitment_well_formed, Commitment,
 };
 use ed25519_dalek::SigningKey;
@@ -354,7 +354,7 @@ fn refusal_corpus() {
             assert_eq!(ours.sig, s(r, "sig"), "{id}: signature bytes");
             if let Some(body) = case["signing_body"].as_str() {
                 let object = ours.to_json();
-                let signed = capsule_emit_evidence_request::refusal::signing_body(
+                let signed = evidence_request::refusal::signing_body(
                     object.as_object().unwrap(),
                 )
                 .unwrap();

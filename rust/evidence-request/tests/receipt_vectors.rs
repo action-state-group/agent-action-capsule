@@ -1,6 +1,6 @@
 //! Byte-identical derivatives of the donated scitt-cose conformance corpus.
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use capsule_emit_evidence_request::receipt::{self, ReceiptError};
+use evidence_request::receipt::{self, ReceiptError};
 use ed25519_dalek::VerifyingKey;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0 (unreleased)
+
+- **Renamed and moved.** The crate is now `evidence-request` (lib
+  `evidence_request`), developed in
+  [agent-action-capsule](https://github.com/action-state-group/agent-action-capsule)
+  next to draft-mih-agent-evidence-request-00 and its vectors. It was
+  `capsule-emit-evidence-request` (lib `capsule_emit_evidence_request`) in
+  capsule-emit through 0.0.4; those releases stay published. The API is the
+  same as 0.0.4: replace `capsule_emit_evidence_request` with
+  `evidence_request` in `use` paths.
+
 ## 0.0.4
 
 - **`request::parse_cbor` accepts only core deterministic CBOR** (RFC 8949

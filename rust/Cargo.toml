@@ -1,3 +1,3 @@
 [workspace]
-members = ["agent-action-capsule"]
+members = ["agent-action-capsule", "evidence-request"]
 resolver = "2"
