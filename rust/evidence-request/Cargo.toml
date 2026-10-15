@@ -3,7 +3,7 @@ name = "evidence-request"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "The evidence request protocol (draft-mih-agent-evidence-request-00): parse, digest and resolve requests; sign and verify refusals; build and verify artifact answers over a checkpointed local log; classify outcomes, invariance and retention."
+description = "The evidence request protocol (draft-mih-agent-evidence-request-00): parse, digest and resolve requests; sign and verify refusals and the interop profile's artifact envelope; check Checkpointed Local Log material; classify outcomes, invariance and retention."
 repository = "https://github.com/action-state-group/agent-action-capsule"
 readme = "README.md"
 keywords = ["scitt", "evidence", "transparency", "protocol", "agents"]
@@ -15,38 +15,42 @@ name = "evidence_request"
 path = "src/lib.rs"
 
 [dependencies]
+serde = "1"
 serde_json = "1"
 sha2 = "0.10"
 hex = "0.4"
 ed25519-dalek = "2"
 ciborium = "0.2"
+# The JSON binding carries the envelope's byte strings as unpadded base64url.
+base64 = "0.22"
 # COSE_Sign1 parsing for witness receipts (`receipt`).
 coset = { version = "0.4", optional = true }
-# Witness receipts travel base64 in checkpoint JSON.
-base64 = { version = "0.22", optional = true }
 thiserror = "1"
-# The checkpointed local log: checkpoints, inclusion, range and consistency
-# proofs for the answer path.
-cll = { package = "checkpointed-local-log", version = "0.2.0", optional = true }
+# The Checkpointed Local Log's MMR hashing and commitment form, for checking
+# its verification material (`cll`). The same line evidencebook builds on.
+cll = { package = "checkpointed-local-log", version = "0.3.1", optional = true }
 
 [features]
-default = ["answer"]
+default = []
 # Witness receipt verification (`receipt`): RFC 9162 Ed25519 receipts.
 receipt = ["dep:coset"]
-# The artifact answer path (`answer`) over a checkpointed local log. Without
-# it (`default-features = false`) the crate is the protocol core: registry,
-# request parsing and digest, resolution, refusals, outcomes, invariance and
-# retention, with no checkpointed-local-log dependency.
-answer = ["receipt", "dep:cll", "dep:base64"]
+# Checking the interop profile's Checkpointed Local Log material
+# (`cll_material`). Without it the crate is the protocol core, with no
+# checkpointed-local-log dependency.
+cll = ["dep:cll"]
 
 [dev-dependencies]
-# receipt_vectors.rs decodes base64 fixtures with the `receipt` feature alone.
+# receipt_vectors.rs decodes base64 fixtures.
 base64 = "0.22"
-
-[[test]]
-name = "answer"
-required-features = ["answer"]
 
 [[test]]
 name = "receipt_vectors"
 required-features = ["receipt"]
+
+[[test]]
+name = "cll_vectors"
+required-features = ["cll"]
+
+[[test]]
+name = "cll_material"
+required-features = ["cll"]

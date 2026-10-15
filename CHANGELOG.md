@@ -25,9 +25,15 @@
   `verify_cll_consistency` check one proof against given peaks, as Go's `VerifyCLLInclusion` and
   `VerifyCLLConsistency` do. They reuse the profile verifier's MMR-02 code, so they need no
   `checkpointed-local-log`. Every envelope reply in `vectors/interop-profile-v0/` gets the
-  statuses the corpus states. In `scripts/evidence-request-interlock.sh`, Python and Go now verify
-  each other's envelopes, and a new step has both check the worked example's CLL proofs and
-  reject each one altered in a path node.
+  statuses the corpus states. Like Go and Rust, `parse_reply` refuses a present but empty
+  `verification`. The shared MMR path check now refuses a path that climbs past height 52, so a
+  long proof no longer raises `OverflowError` here or in the profile reference verifier. In
+  `scripts/evidence-request-interlock.sh`, Python, Go and Rust each verify all three languages'
+  envelopes, and a new step has Python and Go check the worked example's CLL proofs and reject
+  each one altered in a path node.
+- Go: `evidencerequest.ParseReply` refuses an envelope whose `verification` is present and empty.
+  The signer would have covered the empty array, but `SigningBody` omits it, so such an envelope
+  verified under a signature over different members (#273).
 - Python: the interop profile's time check no longer accepts seconds above 60
   (`2026-10-15T00:00:99Z`); it used to clamp them to 59.
 

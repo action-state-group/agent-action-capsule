@@ -25,7 +25,27 @@ const MAX_INTEGER: u64 = (1 << 53) - 1;
 /// Check that `bytes` is exactly one data item in core deterministic
 /// encoding, under the rules above. The error says which rule failed.
 pub(crate) fn check(bytes: &[u8]) -> Result<(), &'static str> {
-    let mut reader = Reader { bytes, at: 0 };
+    let mut reader = Reader {
+        bytes,
+        at: 0,
+        allow_bytes: false,
+    };
+    reader.item(0)?;
+    if reader.at != bytes.len() {
+        return Err("bytes after the request item");
+    }
+    Ok(())
+}
+
+/// [`check`] for a reply in the CBOR binding (profile §5.1): the same rules,
+/// except that byte strings are allowed, since the artifact and the
+/// verification items travel as byte strings.
+pub(crate) fn check_reply(bytes: &[u8]) -> Result<(), &'static str> {
+    let mut reader = Reader {
+        bytes,
+        at: 0,
+        allow_bytes: true,
+    };
     reader.item(0)?;
     if reader.at != bytes.len() {
         return Err("bytes after the request item");
@@ -36,6 +56,7 @@ pub(crate) fn check(bytes: &[u8]) -> Result<(), &'static str> {
 struct Reader<'a> {
     bytes: &'a [u8],
     at: usize,
+    allow_bytes: bool,
 }
 
 impl Reader<'_> {
@@ -92,6 +113,11 @@ impl Reader<'_> {
             0 if argument <= MAX_INTEGER => Ok(()),
             0 => Err("an integer above 2^53 - 1"),
             1 => Err("a negative integer"),
+            2 if self.allow_bytes => {
+                let n = self.length(argument)?;
+                self.take(n)?;
+                Ok(())
+            }
             2 => Err("a byte string"),
             3 => {
                 let n = self.length(argument)?;

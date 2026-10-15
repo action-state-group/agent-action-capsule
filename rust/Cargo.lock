@@ -13,7 +13,7 @@ name = "agent-action-capsule"
 version = "0.1.0"
 dependencies = [
  "base64",
- "checkpointed-local-log 0.3.0",
+ "checkpointed-local-log",
  "ed25519-dalek",
  "hex",
  "serde",
@@ -60,29 +60,15 @@ checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 
 [[package]]
 name = "checkpointed-local-log"
-version = "0.2.1"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e287b976d8caf55d31762c705e865f74ed313a06890694df3a5019ab2f32068b"
+checksum = "7e0849196938de287c059d1f53874c76cc6583051e4ab7327bedb0f658ffd9d2"
 dependencies = [
+ "base64",
  "coset",
  "ed25519-dalek",
  "hex",
- "serde",
- "serde_json",
- "sha2",
- "thiserror",
- "ureq",
-]
-
-[[package]]
-name = "checkpointed-local-log"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfdb1bfd9b71f14d1040f0dfbaf4c572eae414df023fa29ff395ae0f92b1ce21"
-dependencies = [
- "coset",
- "ed25519-dalek",
- "hex",
+ "libc",
  "serde",
  "serde_json",
  "sha2",
@@ -262,11 +248,12 @@ name = "evidence-request"
 version = "0.1.0"
 dependencies = [
  "base64",
- "checkpointed-local-log 0.2.1",
+ "checkpointed-local-log",
  "ciborium",
  "coset",
  "ed25519-dalek",
  "hex",
+ "serde",
  "serde_json",
  "sha2",
  "thiserror",

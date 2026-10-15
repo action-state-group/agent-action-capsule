@@ -387,6 +387,11 @@ func readEnvelope(fields map[string]any, mediaType string) (Envelope, error) {
 		if !ok {
 			return Envelope{}, fmt.Errorf("%w: verification is not an array", ErrInvalid)
 		}
+		// Present means there is material (profile §6.2): an empty array
+		// would be signed, but SigningBody omits it, so it is refused.
+		if len(entries) == 0 {
+			return Envelope{}, fmt.Errorf("%w: verification is present and empty", ErrInvalid)
+		}
 		for _, item := range entries {
 			entry, ok := item.(map[string]any)
 			kind, kindOK := entry["kind"].(string)

@@ -12,11 +12,10 @@
 #    Ed25519 seed; Ed25519 is deterministic, so the refusals are identical.
 # 3. verify: every language authenticates every other language's refusals,
 #    and rejects one whose signature was tampered with.
-# 4. envelope: Python and Go build the interop profile's artifact envelope
+# 4. envelope: every language builds the interop profile's artifact envelope
 #    (spec/interop-profile-v0.md §6.2) from the same inputs, byte-identical in
 #    both bindings. Each verifies every producer's envelopes and rejects one
-#    with an altered verification item for that item's digest. Rust joins
-#    with agent-action-capsule#273 (#270).
+#    with an altered verification item for that item's digest.
 # 5. cll: Python and Go check the profile's Checkpointed Local Log proofs
 #    (§6.2.1) on the worked example's real bytes, and reject each proof
 #    altered in a path node.
@@ -233,11 +232,8 @@ print(json.dumps({"seed_hex": sys.argv[1], "issued_at": sys.argv[2], "cases": [
     dict(id=i, binding=b, subject=s, request_hex=request(s, c, extra).hex(), anchor_digest=anchor,
          artifact_hex=artifact.hex(), **extra) for i, b, s, c, extra in specs]}))
 EOF
-# Rust joins both lists once evidence-request signs the profile envelope
-# (agent-action-capsule#273, #270): its adapter already has the envelope and
-# check-envelope commands there.
-envelope_languages=(python go)
-envelope_verifiers=(python go)
+envelope_languages=(python go rust)
+envelope_verifiers=(python go rust)
 for lang in "${envelope_languages[@]}"; do
   "er_$lang" envelope < "$work/envelope-in.json" > "$work/envelope-$lang.json"
 done
@@ -305,8 +301,9 @@ done
 # of the profile's worked example (§10.1, vectors/interop-profile-v0
 # valid-exchange). Every verifier accepts its inclusion and consistency
 # proofs, and rejects each one altered in a path node, which leaves the proof
-# well formed so only the proof check can catch it. Rust joins when its
-# interlock adapter gains check-cll.
+# well formed so only the proof check can catch it. Rust checks CLL material
+# per envelope (cll_material::check_anchor_inclusion, feature cll), so it
+# joins when its interlock adapter gains check-cll.
 cll_verifiers=(python go)
 "$python_bin" - "$repo/vectors/interop-profile-v0/vectors.json" "$work/cll-in.json" "$work/cll-expected.json" <<'EOF'
 import json, sys
@@ -358,4 +355,4 @@ if [ "$count" -eq 0 ]; then
   echo "evidence request: no requests were classified" >&2
   exit 1
 fi
-echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python and go build identical artifact envelopes, verify each other's and reject an altered verification item in either binding, and accept the worked example's CLL inclusion and consistency proofs and reject each altered."
+echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python, go and rust build identical artifact envelopes, each verifies all three and rejects an altered verification item in either binding; python and go accept the worked example's CLL inclusion and consistency proofs and reject each altered."

@@ -131,11 +131,12 @@ jobs:
           cargo test --locked --all-features
           cargo test --locked
 
-      # evidence-request without its default `answer` feature is the protocol
-      # core, which must build and pass with no checkpointed-local-log.
+      # evidence-request with no features is the protocol core, which must
+      # build and pass with no checkpointed-local-log; `cll` and `receipt`
+      # must each build alone.
       - name: Check evidence-request's feature combinations
         run: |
-          for features in "--no-default-features" "--no-default-features --features receipt"; do
+          for features in "--no-default-features" "--no-default-features --features receipt" "--no-default-features --features cll"; do
             cargo clippy --locked -p evidence-request --all-targets $features -- -D warnings
             cargo test --locked -p evidence-request $features
           done
