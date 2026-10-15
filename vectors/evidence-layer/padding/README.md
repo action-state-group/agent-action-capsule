@@ -11,23 +11,35 @@ A padding record has `record_type` `padding`, `epistemic_type`
 `producer_claim`, and as its only content a fresh random value in the member
 `store_nonce`: 32 bytes encoded as 64 lowercase hexadecimal characters. It
 carries no `payload_commitments`, no links, no `subject_ref` and no
-`principal_ref`. The cases use the JSON serialization the existing padding
-writers share:
+`principal_ref`.
+
+## The serialization these cases test
+
+The draft fixes the record's members but not its serialization or how a
+content-derived `record_id` is computed. These cases test the JSON
+serialization the existing padding writers share, the one an Agent Action
+Capsule ledger uses:
 
 ```json
 {"capsule_id": "<64 lowercase hex>", "record_type": "padding",
  "epistemic_type": "producer_claim", "store_nonce": "<64 lowercase hex>"}
 ```
 
-`capsule_id` is the record's content-derived `record_id`: the draft's Digest
-(lowercase-hex SHA-256 of `UTF8(JCS(value))`, RFC 8785) of the record without
-`capsule_id`. Each case records that preimage's literal JCS string in
-`capsule_id_preimage`. `seq` is the substrate's append position and is not
-part of the record bytes.
+In it, the record's `record_id` is carried in the member `capsule_id` and is
+the Digest (lowercase-hex SHA-256 of `UTF8(JCS(value))`, RFC 8785) of the
+record without `capsule_id`. Each case records that preimage's literal JCS
+string in `capsule_id_preimage`. A padding record in this serialization has
+exactly these four members: `seq` is the substrate's append position and is
+not stored in the record, and a padding record has no `links` member, not
+even an empty one.
 
-A store that keeps a local producer envelope beside a record outside its id
-preimage (for example the Agent Action Capsule local-only `signature` and
-`key_id`) removes those members before checking a record against these cases.
+A store that serializes records differently maps its own form onto this one
+before checking: it carries its record identifier as `capsule_id`, and it
+removes members kept beside the record outside its id preimage (for example
+the Agent Action Capsule local-only `signature` and `key_id`).
+
+Every case has `record_type` `padding`. A record with any other
+`record_type` is not a padding record, and these cases do not apply to it.
 
 ## Cases (`cases.json`)
 

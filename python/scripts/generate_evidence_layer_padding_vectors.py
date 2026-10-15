@@ -9,14 +9,16 @@ member ``store_nonce``, 32 bytes encoded as 64 lowercase hexadecimal
 characters. It carries no ``payload_commitments``, no links, no
 ``subject_ref`` and no ``principal_ref``.
 
-The cases use the JSON serialization the existing padding writers share::
+The draft does not fix a serialization. The cases use the JSON serialization
+the existing padding writers share, the one an Agent Action Capsule ledger
+uses, with exactly these four members::
 
     {"capsule_id": <id>, "record_type": "padding",
      "epistemic_type": "producer_claim", "store_nonce": <64 lowercase hex>}
 
-``capsule_id`` is the record's content-derived ``record_id``: the draft's
-Digest (lowercase-hex SHA-256 of ``UTF8(JCS(value))``, RFC 8785) of the record
-without ``capsule_id``. Every case records that preimage's literal JCS string.
+``capsule_id`` carries the record's ``record_id``: the draft's Digest
+(lowercase-hex SHA-256 of ``UTF8(JCS(value))``, RFC 8785) of the record without
+``capsule_id``. Every case records that preimage's literal JCS string.
 
 Every negative case carries a ``capsule_id`` that recomputes over its own
 members, so the only reason it fails is the padding shape named in
@@ -160,6 +162,8 @@ def build() -> dict[str, bytes]:
                 "record_type": "padding",
                 "epistemic_type": "producer_claim",
                 "store_nonce": "string of 64 lowercase hexadecimal characters (32 bytes)",
+                "serialization": "JSON object as an Agent Action Capsule ledger stores it; record_id is "
+                                 "carried as capsule_id; seq is not stored in the record",
                 "members": ["capsule_id", "record_type", "epistemic_type", "store_nonce"],
                 "capsule_id": "lowercase hex SHA-256 of UTF8(JCS(record without capsule_id)) (RFC 8785)",
             },
