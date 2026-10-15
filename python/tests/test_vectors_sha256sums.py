@@ -24,3 +24,16 @@ def test_top_level_sha256sums_cover_every_file():
     assert len(listed) == len(lines), "a path is listed twice"
     for name, digest in listed.items():
         assert hashlib.sha256((VECTORS / name).read_bytes()).hexdigest() == digest, name
+
+
+def test_full_regeneration_runs_every_generator():
+    # A generator left out of generate_all_vectors.py is never checked by the
+    # Vector regeneration workflow, so its corpus can go stale unnoticed.
+    import importlib.util
+
+    scripts = Path(__file__).resolve().parents[1] / "scripts"
+    spec = importlib.util.spec_from_file_location("generate_all_vectors", scripts / "generate_all_vectors.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    on_disk = {p.name for p in scripts.glob("generate_*.py")} - {"generate_all_vectors.py"}
+    assert set(module.GENERATORS) == on_disk
