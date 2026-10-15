@@ -72,6 +72,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -247,8 +248,17 @@ def _json_object(pairs: list) -> dict:
 def _json_int(text: str) -> Any:
     # Checking the text first keeps a huge literal from reaching int().
     if text.startswith("-") or len(text) > 16:
+        _json_float(text)  # still a number a double can hold, or malformed
         return _OUTSIDE
     return int(text)
+
+
+def _json_float(text: str) -> Any:
+    # A number beyond the range of a double (1e999) is not one JSON readers
+    # agree on: malformed, as in the reference implementations.
+    if math.isinf(float(text)):
+        raise ValueError(f"number {text[:20]} is out of range")
+    return _OUTSIDE
 
 
 def _reject_constant(text: str) -> Any:
@@ -261,34 +271,39 @@ def _decode_json(data: bytes) -> Any:
             data.decode("utf-8"),
             object_pairs_hook=_json_object,
             parse_int=_json_int,
+            parse_float=_json_float,
             parse_constant=_reject_constant,
         )
     except (UnicodeDecodeError, ValueError, RecursionError) as exc:
         raise RequestError(REASON_REQUEST_MALFORMED, f"not well-formed JSON: {exc}") from exc
 
 
-def _cbor_in_model(value: Any) -> bool:
+def _cbor_in_model(value: Any, request: bool) -> bool:
     if value is None or isinstance(value, (bool, str)):
         return True
     if type(value) is int:
-        return 0 <= value <= _MAX_UINT
+        return 0 <= value <= _MAX_UINT or not request
     if isinstance(value, list):
-        return all(_cbor_in_model(v) for v in value)
+        return all(_cbor_in_model(v, request) for v in value)
     if isinstance(value, dict):
-        return all(isinstance(k, str) and _cbor_in_model(v) for k, v in value.items())
+        return all(isinstance(k, str) and _cbor_in_model(v, request) for k, v in value.items())
     return False  # a tag, a byte string or a float
 
 
-def _decode_cbor(data: bytes, *, deterministic: bool) -> Any:
+def _decode_cbor(data: bytes, *, request: bool) -> Any:
+    """Decode one CBOR item with text map keys and no duplicates. A request
+    (``request=True``) must also be in core deterministic encoding with every
+    integer in 0 to 2^53 - 1; a refusal frame need not be, since its signature
+    covers the RFC 8785 body, not the frame."""
     try:
         decoded = _cbor.decode(data)
     except _cbor.CborError as exc:
         raise RequestError(REASON_REQUEST_MALFORMED, f"not well-formed CBOR: {exc}") from exc
     if decoded.duplicate_keys:
         raise RequestError(REASON_REQUEST_MALFORMED, "a duplicate map key")
-    if decoded.irregular or not _cbor_in_model(decoded.value):
+    if decoded.irregular or not _cbor_in_model(decoded.value, request):
         raise RequestError(REASON_REQUEST_MALFORMED, "a value outside the request data model")
-    if deterministic and not decoded.deterministic:
+    if request and not decoded.deterministic:
         raise RequestError(REASON_REQUEST_MALFORMED, "not in core deterministic encoding")
     return decoded.value
 
@@ -382,9 +397,7 @@ def _parse_derivation(value: Any) -> str:
 
 
 def _parse_coverage(value: Any) -> Coverage:
-    if value is None:
-        value = {}  # absent coverage carries neither member (A4)
-    elif not isinstance(value, dict):
+    if not isinstance(value, dict):
         raise _malformed("coverage is not a map")
     pin, freshness = value.get("expected_pin"), value.get("min_freshness")
     # Each member present is checked before the exactly-one rule (A4 ruling).
@@ -416,7 +429,7 @@ def parse_request(request_bytes: bytes, *, binding: str = "json") -> Request:
     if binding == "json":
         data = _decode_json(request_bytes)
     elif binding == "cbor":
-        data = _decode_cbor(request_bytes, deterministic=True)
+        data = _decode_cbor(request_bytes, request=True)
     else:
         raise ValueError(f"binding must be 'json' or 'cbor', not {binding!r}")
     if not isinstance(data, dict):
@@ -430,7 +443,9 @@ def parse_request(request_bytes: bytes, *, binding: str = "json") -> Request:
         raise _malformed("deadline is not an RFC 3339 UTC time")
     nonce = _optional_text(data, "nonce")
     route = _optional_text(data, "route")
-    coverage = _parse_coverage(data.get("coverage"))
+    # An absent coverage carries neither member (A4); a present one that is
+    # not a map, null included, is malformed.
+    coverage = _parse_coverage(data.get("coverage", {}))
     return Request(subject, coverage, derivation, deadline, nonce, route)
 
 
@@ -741,8 +756,26 @@ def sign_refusal(request_digest: str, reason: str, *, signer: Signer, issued_at:
     return Refusal(request_digest=request_digest, reason=reason, issued_at=issued_at, key_id=key_id, sig=sig)
 
 
+# The y coordinates (mod p) of the eight small-order points of edwards25519:
+# the identity (1), order 2 (p - 1), order 4 (0) and order 8 (Y8, p - Y8).
+# Either sign of x gives the same set.
+_P25519 = (1 << 255) - 19
+_Y8 = int.from_bytes(bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"), "little")
+_SMALL_ORDER_Y = frozenset({0, 1, _P25519 - 1, _Y8, _P25519 - _Y8})
+
+
+def _small_order(key: bytes) -> bool:
+    """True for a public key encoding a small-order point, canonically or not.
+    Such a key "verifies" signatures over any message, so it is refused, as
+    strict verification (RFC 8032 with a small-order check) does."""
+    y = int.from_bytes(key, "little") & ((1 << 255) - 1)
+    return y % _P25519 in _SMALL_ORDER_Y
+
+
 def _ed25519_verifies(key_hex: Any, sig_hex: Any, body: bytes) -> bool:
     if not _is_hex_of_len(key_hex, 32) or not _is_hex_of_len(sig_hex, 64):
+        return False
+    if _small_order(bytes.fromhex(key_hex)):
         return False
     from cryptography.exceptions import InvalidSignature
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -768,7 +801,7 @@ def verify_refusal_offline(refusal: Refusal) -> bool:
     """
     try:
         return _ed25519_verifies(refusal.key_id, refusal.sig, refusal.signing_body())
-    except (TypeError, ValueError):  # members that have no RFC 8785 form
+    except (TypeError, ValueError, RecursionError):  # members that have no RFC 8785 form
         return False
 
 
@@ -793,7 +826,7 @@ def check_refusal(obj: Any) -> RefusalCheck:
         return RefusalCheck(False, False, False)
     try:
         signature_valid = _ed25519_verifies(obj.get("key_id"), obj.get("sig"), _signing_body(obj))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, RecursionError):
         signature_valid = False
     reason = obj.get("reason")
     reason_registered = isinstance(reason, str) and reason in REFUSAL_REASONS
@@ -804,7 +837,7 @@ def check_refusal(obj: Any) -> RefusalCheck:
 def check_refusal_cbor(frame: bytes) -> RefusalCheck:
     """:func:`check_refusal` for a refusal frame in the CBOR binding."""
     try:
-        obj = _decode_cbor(frame, deterministic=False)
+        obj = _decode_cbor(frame, request=False)
     except RequestError:
         return RefusalCheck(False, False, False)
     return check_refusal(obj)
@@ -813,21 +846,17 @@ def check_refusal_cbor(frame: bytes) -> RefusalCheck:
 # --- outcomes, invariance, retention -------------------------------------------------
 
 
-def record_outcome(
-    received: str,
-    *,
-    window_open: bool,
-    artifact_verified: bool = False,
-    refusal_signature_valid: bool = False,
-    refusal_reason: Any = None,
-) -> str:
+def record_outcome(received: str, *, window_open: bool, artifact_verified: bool = False,
+                   refusal: RefusalCheck | None = None) -> str:
     """The one state a requester records an interaction as (§4, §4.5).
 
     ``received`` is ``"artifact"``, ``"refusal"``, ``"nothing"``,
-    ``"transport_error"`` or ``"subprotocol_not_offered"``. A signed refusal
-    is the responder's act and is never an absence, whatever the window
-    (``"refusal"``, or ``"refusal_nonconformant"`` for an unregistered
-    reason, A13); a refusal whose signature does not verify is not the
+    ``"transport_error"`` or ``"subprotocol_not_offered"``; for a refusal,
+    ``refusal`` is its :func:`check_refusal` result. A signed refusal is the
+    responder's act and is never an absence, whatever the window:
+    ``"refusal"`` when conforming, ``"refusal_nonconformant"`` when signed but
+    not conforming (an unregistered reason, A13, or a required member missing
+    or malformed). A refusal whose signature does not verify is not the
     responder's act (``"refusal_signature_invalid"``). Silence, a transport
     error or a peer not offering the subprotocol is never a refusal: it is
     ``"pending"`` while the waiting window is open (§4.3, A8) and
@@ -836,10 +865,9 @@ def record_outcome(
     if received == "artifact":
         return "artifact_verified" if artifact_verified else "artifact_verification_failed"
     if received == "refusal":
-        if not refusal_signature_valid:
+        if refusal is None or not refusal.signature_valid:
             return "refusal_signature_invalid"
-        registered = isinstance(refusal_reason, str) and refusal_reason in REFUSAL_REASONS
-        return "refusal" if registered else "refusal_nonconformant"
+        return "refusal" if refusal.conformant else "refusal_nonconformant"
     if received in ("nothing", "transport_error", "subprotocol_not_offered"):
         return "pending" if window_open else "recorded_absence"
     raise ValueError(f"unknown observation {received!r}")

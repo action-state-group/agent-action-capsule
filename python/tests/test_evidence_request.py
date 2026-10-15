@@ -272,12 +272,16 @@ def test_refusal_vector(case):
 @_params("outcomes")
 def test_outcome_vector(case):
     facts = case["facts"]
+    refusal = None
+    if facts["received"] == "refusal":
+        signed = facts["refusal_signature"] == "valid"
+        registered = facts["refusal_reason"] in er.REFUSAL_REASONS
+        refusal = er.RefusalCheck(signed, registered, signed and registered)
     state = er.record_outcome(
         facts["received"],
         window_open=facts["window"] == "open",
         artifact_verified=facts.get("artifact_verification") == "verified",
-        refusal_signature_valid=facts.get("refusal_signature") == "valid",
-        refusal_reason=facts.get("refusal_reason"),
+        refusal=refusal,
     )
     assert state == case["expect"]["state"]
     assert state not in case["expect"]["must_not_record_as"]
@@ -366,8 +370,22 @@ def test_a_defined_member_that_does_not_conform_is_malformed(bad):
 
 
 def test_unknown_members_may_hold_anything():
-    data = b'{"x":[-1,1.5,1e999,{"y":null}],"subject":{"checkpoints":null},"coverage":{"min_freshness":1}}'
-    assert parse_request(data).subject == Subject("checkpoints")
+    data = b'{"x":[-1,1.5,1e300,%s,{"y":null}],"subject":{"checkpoints":null},"coverage":{"min_freshness":1}}'
+    assert parse_request(data % (b"9" * 300)).subject == Subject("checkpoints")
+    for out_of_range in (b"1e999", b"-1e999", b"9" * 400):
+        with pytest.raises(RequestError) as exc:
+            parse_request(data % out_of_range)
+        assert exc.value.reason == REASON_REQUEST_MALFORMED
+
+
+@pytest.mark.parametrize("binding", ["json", "cbor"])
+def test_a_null_coverage_is_malformed_not_absent(binding):
+    data = b'{"coverage":null,"subject":{"checkpoints":null}}'
+    if binding == "cbor":
+        data = bytes.fromhex("a2677375626a656374a16b636865636b706f696e7473f668636f766572616765f6")
+    with pytest.raises(RequestError) as exc:
+        parse_request(data, binding=binding)
+    assert exc.value.reason == REASON_REQUEST_MALFORMED
 
 
 def test_a_cbor_frame_must_be_core_deterministic():
@@ -509,8 +527,41 @@ def test_parse_utc_orders_instants_and_refuses_other_forms():
 def test_record_outcome_rejects_unknown_observations():
     with pytest.raises(ValueError):
         er.record_outcome("silence", window_open=True)
-    assert er.record_outcome("refusal", window_open=False, refusal_reason="policy_declined") \
-        == "refusal_signature_invalid"
+    assert er.record_outcome("refusal", window_open=False) == "refusal_signature_invalid"
+
+
+def test_a_signed_refusal_missing_a_member_is_nonconformant_never_absence():
+    case = next(c for c in REFUSAL_CORPUS["cases"] if c["id"] == "neg-missing-issued_at")
+    checked = check_refusal(case["refusal"])
+    assert checked.signature_valid and checked.reason_registered and not checked.conformant
+    assert er.record_outcome("refusal", window_open=False, refusal=checked) == "refusal_nonconformant"
+
+
+def test_a_small_order_key_never_verifies():
+    # The identity point "verifies" any message under plain RFC 8032 checks.
+    for key in ("01" + "00" * 31, "00" * 32, "ec" + "ff" * 30 + "7f", "ee" + "ff" * 30 + "7f",
+                "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+                "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05"):
+        obj = {"request_digest": "ab" * 32, "reason": REASON_NO_SUCH_SUBJECT, "issued_at": NOW,
+               "key_id": key, "sig": "01" + "00" * 63}
+        assert check_refusal(obj) == er.RefusalCheck(False, True, False), key
+        assert not verify_refusal_offline(Refusal(**obj))
+    assert not er._small_order(bytes.fromhex(PRIMARY.key_id))
+
+
+def test_a_refusal_member_with_no_canonical_form_is_unsigned_not_a_crash():
+    deep = []
+    for _ in range(100_000):
+        deep = [deep]
+    obj = {"request_digest": "ab" * 32, "reason": deep, "issued_at": NOW, "key_id": PRIMARY.key_id, "sig": "00" * 64}
+    assert check_refusal(obj) == er.RefusalCheck(False, False, False)
+
+
+def test_a_refusal_frame_may_carry_any_integer_in_an_unknown_member():
+    refusal = sign_refusal("a" * 64, REASON_NO_SUCH_SUBJECT, signer=PRIMARY, issued_at=NOW)
+    frame = refusal.to_cbor()
+    extra = bytes([0xA6]) + frame[1:] + b"\x61x\x20"  # one more member: "x": -1
+    assert check_refusal_cbor(extra).conformant
 
 
 def test_issued_at_is_whole_second_utc():
