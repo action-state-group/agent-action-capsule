@@ -223,6 +223,7 @@ _DROP = object()
     (_json_envelope(anchor={"digest": ANCHOR, "freshness": 7}).replace(b'"freshness":7', b'"freshness":1.5'),
      "freshness"),
     (_json_envelope(verification={"kind": "x"}), "verification is not an array"),
+    (_json_envelope(verification=[]), "verification is present and empty"),
     (_json_envelope(verification=[{"kind": "x", "digest": ANCHOR, "more": 1}, {"kind": "y", "digest": ANCHOR}]),
      "not {kind, digest}"),
     (_json_envelope(verification_content=_DROP), "2 verification entries but 0 items"),
@@ -258,6 +259,19 @@ def test_parse_reply_refuses_cbor():
         er.parse_reply(bytes.fromhex("a1") + b"\x01" + b"\x61a", "cbor")
     with pytest.raises(ValueError, match="binding"):
         er.parse_reply(b"{}", "xml")
+
+
+def test_a_deeply_nested_unknown_member_is_ignored_not_a_crash():
+    deep = b"[" * 900 + b"]" * 900
+    wire = _json_envelope()
+    refusal = jcs(er.sign_refusal(er.request_digest(REQUEST), "no_such_subject", signer=SIGNER,
+                                  issued_at=ISSUED_AT).to_dict())
+    for octets in (wire, refusal):
+        nested = octets[:-1] + b',"zz":' + deep + b"}"
+        try:
+            er.parse_reply(nested)
+        except er.VerificationError:
+            pass  # too deep for the JSON reader: refused, never an uncaught error
 
 
 def test_a_cbor_frame_need_not_be_deterministic():
@@ -405,7 +419,9 @@ def test_cll_material_against_the_log_tree():
     _cbor.encode([0, [b"\x01"]]),              # short node
     bytes.fromhex("82f93c0080"),               # index a float
     bytes.fromhex("82180080"),                 # not deterministic: 0 in two octets
-    _cbor.encode([0, [b"\x00" * 32] * 65]),    # longer than any MMR path
+    _cbor.encode([0, [b"\x00" * 32] * 53]),    # longer than any MMR path
+    _cbor.encode([0, [b"\x00" * 32] * 64]),
+    _cbor.encode([0, [b"\x00" * 32] * 65]),
 ])
 def test_verify_cll_inclusion_refuses_malformed_proofs(octets):
     with pytest.raises(er.VerificationError):
@@ -415,6 +431,8 @@ def test_verify_cll_inclusion_refuses_malformed_proofs(octets):
 @pytest.mark.parametrize("octets", [
     _cbor.encode([0, 1, [], []]),              # size 0
     _cbor.encode([3, 1, [[]], []]),            # tree-size-1 beyond tree-size-2
+    _cbor.encode([1, 1, [[b"\x00" * 32] * 53], []]),
+    _cbor.encode([1, 1, [[b"\x00" * 32] * 64], []]),
     _cbor.encode([1, 1, [[b"\x00" * 32] * 65], []]),
     _cbor.encode([1, 1, [], []]),              # path count is not the old peak count
 ])

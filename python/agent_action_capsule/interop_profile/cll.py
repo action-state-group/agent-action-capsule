@@ -39,6 +39,14 @@ _BASE_METHOD = "§6.2.1 Checkpointed Local Log procedure"
 # inclusion path, consistency path list or peak list longer than 64 can be valid. Longer input is
 # refused before any hashing.
 _MAX_PATH = 64
+# The greatest node height in an MMR whose indices stay below 2^53. A path that would climb above
+# it names no node of such an MMR, and following it would take a position past the 8 octets the
+# interior hash writes it in. Go's evidencerequest uses the same bound.
+_MAX_HEIGHT = 52
+
+
+def _path_fits(index: int, length: int) -> bool:
+    return _mmr.index_height(index) + length <= _MAX_HEIGHT
 
 
 def _report(status: str, detail: str, method: str = _BASE_METHOD) -> PropertyReport:
@@ -265,6 +273,8 @@ def inclusion_failure(peaks: Sequence[bytes], entry: bytes, octets: bytes) -> st
     index, path = proof
     if _mmr.index_height(index) != 0:
         return "index is not a leaf"
+    if not _path_fits(index, len(path)):
+        return "the inclusion path is longer than any MMR can have"
     if _mmr.included_root(index, _mmr.leaf_value(entry), path) not in peaks:
         return "the inclusion path reaches no peak of commitment"
     return None
@@ -288,6 +298,8 @@ def consistency_failure(old_peaks: Sequence[bytes], new_peaks: Sequence[bytes], 
     old_indices = _mmr.peaks(size1 - 1)
     if not len(old_indices) == len(paths) == len(old_peaks):
         return "peak count, path count and prev_commitment length differ"
+    if not all(_path_fits(index, len(path)) for index, path in zip(old_indices, paths)):
+        return "a consistency path is longer than any MMR can have"
     roots = _mmr.consistent_roots(size1 - 1, list(old_peaks), paths)
     if len(right) != len(_mmr.peaks(size2 - 1)) - len(roots):
         return "right-peaks count does not complete the peaks of tree-size-2"

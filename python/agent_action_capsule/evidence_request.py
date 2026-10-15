@@ -890,17 +890,21 @@ def _reply_value(value: Any) -> Any:
 
 def _no_lone_surrogate(value: Any) -> bool:
     """True unless a text anywhere in ``value`` holds an unpaired surrogate
-    (a JSON escape such as ``\\ud800``), which has no UTF-8 form."""
-    if isinstance(value, str):
-        try:
-            value.encode("utf-8")
-        except UnicodeEncodeError:
-            return False
-        return True
-    if isinstance(value, list):
-        return all(_no_lone_surrogate(item) for item in value)
-    if isinstance(value, dict):
-        return all(_no_lone_surrogate(k) and _no_lone_surrogate(v) for k, v in value.items())
+    (a JSON escape such as ``\\ud800``), which has no UTF-8 form. Iterative,
+    so a deeply nested unknown member cannot exhaust the stack."""
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, str):
+            try:
+                item.encode("utf-8")
+            except UnicodeEncodeError:
+                return False
+        elif isinstance(item, list):
+            stack.extend(item)
+        elif isinstance(item, dict):
+            stack.extend(item)
+            stack.extend(item.values())
     return True
 
 
@@ -980,6 +984,10 @@ def _read_envelope(fields: Mapping[str, Any], binding: str) -> Envelope:
     if "verification" in fields:
         if not isinstance(fields["verification"], list):
             raise VerificationError("verification is not an array")
+        if not fields["verification"]:
+            # Present means there is material (profile §6.2): an empty array
+            # would be signed, but signed_members omits it, so it is refused.
+            raise VerificationError("verification is present and empty")
         for entry in fields["verification"]:
             if not (isinstance(entry, dict) and set(entry) == {"kind", "digest"}
                     and isinstance(entry["kind"], str) and isinstance(entry["digest"], str)):
