@@ -11,9 +11,12 @@
 //	envelope: {seed_hex, issued_at, cases: [{id, binding, request_hex, subject, anchor_digest,
 //	          artifact_hex, derivation?, freshness?, verification: [{kind, hex}]}]} -> [{id, reply_hex}]
 //	check-envelope: [{id, binding, reply_hex}] -> [{id}]
+//	check-cll: [{id, kind: "inclusion", peaks_hex, entry_hex, proof_hex} |
+//	          {id, kind: "consistency", old_peaks_hex, peaks_hex, proof_hex}] -> [{id, verified}]
 //
-// verify exits 1, listing each failure on stderr, if any refusal does not
-// authenticate.
+// verify and check-envelope exit 1, listing each failure on stderr, if any
+// refusal does not authenticate or any envelope does not verify. check-cll
+// never fails on a proof: it reports whether each one verifies.
 package main
 
 import (
@@ -37,7 +40,7 @@ func (s seedSigner) Sign(_ context.Context, message []byte) ([]byte, error) {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: evidencerequest_interlock classify|refuse|verify|envelope|check-envelope")
+		fmt.Fprintln(os.Stderr, "usage: evidencerequest_interlock classify|refuse|verify|envelope|check-envelope|check-cll")
 		os.Exit(2)
 	}
 	var out any
@@ -115,6 +118,11 @@ func main() {
 				err = errors.New(strings.Join(failures, "\n"))
 			}
 			out = checked
+		}
+	case "check-cll":
+		var proofs []cllProof
+		if err = json.NewDecoder(os.Stdin).Decode(&proofs); err == nil {
+			out, err = checkCLL(proofs)
 		}
 	default:
 		err = fmt.Errorf("unknown command %q", os.Args[1])
@@ -338,4 +346,52 @@ func checkEnvelope(binding, replyHex string) error {
 		return errors.New("the reply is not an envelope")
 	}
 	return reply.Envelope.Verify()
+}
+
+type cllProof struct {
+	ID          string   `json:"id"`
+	Kind        string   `json:"kind"`
+	OldPeaksHex []string `json:"old_peaks_hex"`
+	PeaksHex    []string `json:"peaks_hex"`
+	EntryHex    string   `json:"entry_hex"`
+	ProofHex    string   `json:"proof_hex"`
+}
+
+func hexList(items []string) ([][]byte, error) {
+	out := make([][]byte, len(items))
+	for i, item := range items {
+		b, err := hex.DecodeString(item)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = b
+	}
+	return out, nil
+}
+
+// checkCLL reports whether each item of Checkpointed Local Log material
+// verifies against the peaks it is given (interop profile §6.2.1 steps 12
+// and 13).
+func checkCLL(proofs []cllProof) ([]map[string]any, error) {
+	out := make([]map[string]any, 0, len(proofs))
+	for _, p := range proofs {
+		peaks, err1 := hexList(p.PeaksHex)
+		oldPeaks, err2 := hexList(p.OldPeaksHex)
+		entry, err3 := hex.DecodeString(p.EntryHex)
+		proof, err4 := hex.DecodeString(p.ProofHex)
+		if err := errors.Join(err1, err2, err3, err4); err != nil {
+			return nil, fmt.Errorf("%s: %w", p.ID, err)
+		}
+		var verr error
+		switch p.Kind {
+		case "inclusion":
+			verr = evidencerequest.VerifyCLLInclusion(peaks, entry, proof)
+		case "consistency":
+			verr = evidencerequest.VerifyCLLConsistency(oldPeaks, peaks, proof)
+		default:
+			return nil, fmt.Errorf("%s: unknown kind %q", p.ID, p.Kind)
+		}
+		out = append(out, map[string]any{"id": p.ID, "verified": verr == nil})
+	}
+	return out, nil
 }

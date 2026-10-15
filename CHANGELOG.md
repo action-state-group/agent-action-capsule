@@ -15,6 +15,19 @@
   `sign_envelope` refuses, before signing, any envelope the profile does not allow: a subject or
   derivation no request could carry, an empty artifact, or an `issued_at` or time `freshness`
   outside the §5.2 form.
+- Python: a requester can now read and verify the interop profile's artifact envelope (#272).
+  `evidence_request.parse_reply(octets, binding)` reads a reply, an `Envelope` or a `Refusal`,
+  in either binding, as the inverse of `Envelope.encode`. `Envelope.verify()` checks the strict
+  Ed25519 signature by `responder`, the artifact digest and each verification item's digest;
+  `Envelope.verify_for(request_bytes, responder)` also binds the profile, the pinned responder key
+  and the request as sent. `check_cll_material(envelope, trust)` reports `anchor_inclusion` for
+  the Checkpointed Local Log material (§6.2.1, steps 1 to 14), and `verify_cll_inclusion` and
+  `verify_cll_consistency` check one proof against given peaks, as Go's `VerifyCLLInclusion` and
+  `VerifyCLLConsistency` do. They reuse the profile verifier's MMR-02 code, so they need no
+  `checkpointed-local-log`. Every envelope reply in `vectors/interop-profile-v0/` gets the
+  statuses the corpus states. In `scripts/evidence-request-interlock.sh`, Python and Go now verify
+  each other's envelopes, and a new step has both check the worked example's CLL proofs and
+  reject each one altered in a path node.
 - Python: the interop profile's time check no longer accepts seconds above 60
   (`2026-10-15T00:00:99Z`); it used to clamp them to 59.
 

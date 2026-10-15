@@ -29,7 +29,8 @@ from ._common import (
     to_profile_time,
 )
 
-__all__ = ["check_anchor_inclusion", "CHECKPOINT", "INCLUSION", "CONSISTENCY"]
+__all__ = ["check_anchor_inclusion", "inclusion_failure", "consistency_failure", "CHECKPOINT", "INCLUSION",
+           "CONSISTENCY"]
 
 CHECKPOINT, INCLUSION, CONSISTENCY = CLL_KINDS
 _PROPERTY = "anchor_inclusion"
@@ -234,24 +235,17 @@ def check_anchor_inclusion(
         elif fresh != to_profile_time(parse_time(cp.claims["issued_at"])):
             return _report(FAIL, "step 11: anchor.freshness is not the checkpoint's issued_at")
     # Step 12.
-    try:
-        proof = _decode_proof(items[INCLUSION], "inclusion proof")
-        if not (isinstance(proof, list) and len(proof) == 2 and is_uint(proof[0]) and _bstr32_list(proof[1])):
-            raise _Malformed("inclusion proof is not [index, [32-octet byte strings]]")
-    except _Malformed as exc:
-        return _report(FAIL, f"step 12: {exc}")
-    index, path = proof
-    if _mmr.index_height(index) != 0:
-        return _report(FAIL, "step 12: index is not a leaf")
     if not is_digest(artifact_digest):
         return _report(FAIL, "step 12: artifact_digest is not a digest")
-    leaf = _mmr.leaf_value(bytes.fromhex(artifact_digest))
-    if _mmr.included_root(index, leaf, path) not in cp.commitment:
-        return _report(FAIL, "step 12: the inclusion path reaches no peak of commitment")
+    failure = inclusion_failure(cp.commitment, bytes.fromhex(artifact_digest), items[INCLUSION])
+    if failure:
+        return _report(FAIL, f"step 12: {failure}")
     method = "CLL-01 checkpoint (Ed25519) + MMR-02 inclusion"
     # Step 13.
     if CONSISTENCY in items:
-        failure = _consistency_failure(items[CONSISTENCY], cp)
+        failure = "prev_size is 0, so there is no earlier commitment to extend" \
+            if cp.claims["prev_size"] == 0 else \
+            consistency_failure(cp.prev_commitment, cp.commitment, items[CONSISTENCY])
         if failure:
             return _report(FAIL, f"step 13: {failure}")
         method += " + MMR-02 consistency"
@@ -259,7 +253,26 @@ def check_anchor_inclusion(
     return _report(PASS, "steps 1 to 14", method)
 
 
-def _consistency_failure(octets: bytes, cp: _Checkpoint) -> str | None:
+def inclusion_failure(peaks: Sequence[bytes], entry: bytes, octets: bytes) -> str | None:
+    """Why ``cll-inclusion-proof`` octets do not prove ``entry`` a leaf whose path reaches one of
+    ``peaks`` (§6.2.1 step 12), or None when they do."""
+    try:
+        proof = _decode_proof(octets, "inclusion proof")
+    except _Malformed as exc:
+        return str(exc)
+    if not (isinstance(proof, list) and len(proof) == 2 and is_uint(proof[0]) and _bstr32_list(proof[1])):
+        return "inclusion proof is not [index, [32-octet byte strings]]"
+    index, path = proof
+    if _mmr.index_height(index) != 0:
+        return "index is not a leaf"
+    if _mmr.included_root(index, _mmr.leaf_value(entry), path) not in peaks:
+        return "the inclusion path reaches no peak of commitment"
+    return None
+
+
+def consistency_failure(old_peaks: Sequence[bytes], new_peaks: Sequence[bytes], octets: bytes) -> str | None:
+    """Why ``cll-consistency-proof`` octets do not prove the commitment ``new_peaks`` extends
+    ``old_peaks`` (§6.2.1 step 13; MMR §7.1, §7.1.1), or None when they do."""
     try:
         proof = _decode_proof(octets, "consistency proof")
     except _Malformed as exc:
@@ -272,14 +285,12 @@ def _consistency_failure(octets: bytes, cp: _Checkpoint) -> str | None:
         return "consistency proof is malformed"
     if size1 > size2:
         return "tree-size-1 exceeds tree-size-2"
-    if cp.claims["prev_size"] == 0:
-        return "prev_size is 0, so there is no earlier commitment to extend"
-    old_peaks = _mmr.peaks(size1 - 1)
-    if not len(old_peaks) == len(paths) == len(cp.prev_commitment):
+    old_indices = _mmr.peaks(size1 - 1)
+    if not len(old_indices) == len(paths) == len(old_peaks):
         return "peak count, path count and prev_commitment length differ"
-    roots = _mmr.consistent_roots(size1 - 1, cp.prev_commitment, paths)
+    roots = _mmr.consistent_roots(size1 - 1, list(old_peaks), paths)
     if len(right) != len(_mmr.peaks(size2 - 1)) - len(roots):
         return "right-peaks count does not complete the peaks of tree-size-2"
-    if roots + right != cp.commitment:
+    if roots + right != list(new_peaks):
         return "roots and right-peaks are not the peak list of commitment"
     return None

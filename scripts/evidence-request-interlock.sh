@@ -14,8 +14,12 @@
 #    and rejects one whose signature was tampered with.
 # 4. envelope: Python and Go build the interop profile's artifact envelope
 #    (spec/interop-profile-v0.md §6.2) from the same inputs, byte-identical in
-#    both bindings, and Go verifies Python's. Rust signs a different envelope
-#    today (agent-action-capsule#270), so it is not in this step.
+#    both bindings. Each verifies every producer's envelopes and rejects one
+#    with an altered verification item for that item's digest. Rust joins
+#    with agent-action-capsule#273 (#270).
+# 5. cll: Python and Go check the profile's Checkpointed Local Log proofs
+#    (§6.2.1) on the worked example's real bytes, and reject each proof
+#    altered in a path node.
 set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
@@ -229,26 +233,35 @@ print(json.dumps({"seed_hex": sys.argv[1], "issued_at": sys.argv[2], "cases": [
     dict(id=i, binding=b, subject=s, request_hex=request(s, c, extra).hex(), anchor_digest=anchor,
          artifact_hex=artifact.hex(), **extra) for i, b, s, c, extra in specs]}))
 EOF
+# Rust joins both lists once evidence-request signs the profile envelope
+# (agent-action-capsule#273, #270): its adapter already has the envelope and
+# check-envelope commands there.
 envelope_languages=(python go)
+envelope_verifiers=(python go)
 for lang in "${envelope_languages[@]}"; do
   "er_$lang" envelope < "$work/envelope-in.json" > "$work/envelope-$lang.json"
 done
-if ! cmp -s "$work/envelope-python.json" "$work/envelope-go.json"; then
-  echo "evidence request: python and go build different artifact envelopes" >&2
-  diff <("$python_bin" -m json.tool "$work/envelope-python.json") \
-       <("$python_bin" -m json.tool "$work/envelope-go.json") >&2 || true
-  exit 1
-fi
-"$python_bin" - "$work/envelope-in.json" "$work/envelope-python.json" "$work/envelope-check.json" \
-  "$work/envelope-tampered.json" <<'EOF'
+for lang in "${envelope_languages[@]}"; do
+  if ! cmp -s "$work/envelope-python.json" "$work/envelope-$lang.json"; then
+    echo "evidence request: python and $lang build different artifact envelopes" >&2
+    diff <("$python_bin" -m json.tool "$work/envelope-python.json") \
+         <("$python_bin" -m json.tool "$work/envelope-$lang.json") >&2 || true
+    exit 1
+  fi
+done
+# Every verifier checks every producer's envelopes, and the same envelopes
+# with one verification item altered in each binding.
+for producer in "${envelope_languages[@]}"; do
+  "$python_bin" - "$work/envelope-in.json" "$work/envelope-$producer.json" \
+    "$work/envelope-check-$producer.json" "$work/envelope-tampered-$producer.json" <<'EOF'
 import base64, json, sys
 from agent_action_capsule.canonical import jcs
 from agent_action_capsule.interop_profile import _cbor
 bindings = {c["id"]: c["binding"] for c in json.load(open(sys.argv[1]))["cases"]}
 replies = {r["id"]: dict(r, binding=bindings[r["id"]]) for r in json.load(open(sys.argv[2]))}
 json.dump(list(replies.values()), open(sys.argv[3], "w"))
-# One verification item altered in each binding, the frame re-encoded so it
-# stays well formed: only the item's signed digest can catch it.
+# The frame is re-encoded so it stays well formed: only the item's signed
+# digest can catch the change.
 def b64(octets):
     return base64.urlsafe_b64encode(octets).rstrip(b"=").decode()
 def unb64(text):
@@ -268,18 +281,74 @@ for rid in ("record-json", "record-cbor"):
     tampered.append(dict(reply, reply_hex=octets.hex()))
 json.dump(tampered, open(sys.argv[4], "w"))
 EOF
-if ! er_go check-envelope < "$work/envelope-check.json" > /dev/null; then
-  echo "evidence request: go rejected an envelope python built" >&2
-  exit 1
-fi
-if er_go check-envelope < "$work/envelope-tampered.json" > /dev/null 2> "$work/envelope-tampered.err"; then
-  echo "evidence request: go accepted a tampered envelope" >&2
-  exit 1
-fi
-for rid in record-json record-cbor; do
-  if ! grep -q "^$rid: .*verification item 1 does not hash to its signed digest" "$work/envelope-tampered.err"; then
-    echo "evidence request: go rejected the tampered $rid envelope for another reason:" >&2
-    cat "$work/envelope-tampered.err" >&2
+  for lang in "${envelope_verifiers[@]}"; do
+    if ! "er_$lang" check-envelope < "$work/envelope-check-$producer.json" > /dev/null; then
+      echo "evidence request: $lang rejected an envelope $producer built" >&2
+      exit 1
+    fi
+    err="$work/envelope-tampered-$producer-$lang.err"
+    if "er_$lang" check-envelope < "$work/envelope-tampered-$producer.json" > /dev/null 2> "$err"; then
+      echo "evidence request: $lang accepted a tampered envelope from $producer" >&2
+      exit 1
+    fi
+    for rid in record-json record-cbor; do
+      if ! grep -q "^$rid: .*verification item 1 does not hash to its signed digest" "$err"; then
+        echo "evidence request: $lang rejected $producer's tampered $rid envelope for another reason:" >&2
+        cat "$err" >&2
+        exit 1
+      fi
+    done
+  done
+done
+
+# Step 5: the CLL material (profile §6.2.1 steps 12 and 13), on the real bytes
+# of the profile's worked example (§10.1, vectors/interop-profile-v0
+# valid-exchange). Every verifier accepts its inclusion and consistency
+# proofs, and rejects each one altered in a path node, which leaves the proof
+# well formed so only the proof check can catch it. Rust joins when its
+# interlock adapter gains check-cll.
+cll_verifiers=(python go)
+"$python_bin" - "$repo/vectors/interop-profile-v0/vectors.json" "$work/cll-in.json" "$work/cll-expected.json" <<'EOF'
+import json, sys
+from agent_action_capsule import evidence_request as er
+from agent_action_capsule.interop_profile import _cbor
+from agent_action_capsule.interop_profile.cll import _decode_checkpoint
+case = next(c for c in json.load(open(sys.argv[1]))["cases"] if c["id"] == "valid-exchange")
+envelope = er.parse_reply(case["inputs"]["replies"][0]["octets_text"].encode())
+envelope.verify()
+items = dict(envelope.verification)
+checkpoint = _decode_checkpoint(items["cll-checkpoint"])
+peaks = [p.hex() for p in checkpoint.commitment]
+old_peaks = [p.hex() for p in checkpoint.prev_commitment]
+entry = envelope.signed_members()["artifact_digest"]
+inclusion, consistency = items["cll-inclusion-proof"], items["cll-consistency-proof"]
+def altered(octets, path_of):
+    proof = _cbor.decode(octets).value
+    node = path_of(proof)
+    node[0] = node[0][:-1] + bytes([node[0][-1] ^ 1])
+    return _cbor.encode(proof)
+assert _cbor.decode(inclusion).value[1], "the example's inclusion path is empty"
+assert any(_cbor.decode(consistency).value[2]), "the example's consistency paths are empty"
+proofs = [
+    dict(id="inclusion", kind="inclusion", peaks_hex=peaks, entry_hex=entry, proof_hex=inclusion.hex()),
+    dict(id="inclusion-altered", kind="inclusion", peaks_hex=peaks, entry_hex=entry,
+         proof_hex=altered(inclusion, lambda p: p[1]).hex()),
+    dict(id="consistency", kind="consistency", old_peaks_hex=old_peaks, peaks_hex=peaks,
+         proof_hex=consistency.hex()),
+    dict(id="consistency-altered", kind="consistency", old_peaks_hex=old_peaks, peaks_hex=peaks,
+         proof_hex=altered(consistency, lambda p: next(path for path in p[2] if path)).hex()),
+]
+json.dump(proofs, open(sys.argv[2], "w"))
+expected = [{"id": p["id"], "verified": not p["id"].endswith("-altered")} for p in proofs]
+with open(sys.argv[3], "w") as out:
+    json.dump(expected, out, sort_keys=True, separators=(",", ":"))
+    out.write("\n")
+EOF
+for lang in "${cll_verifiers[@]}"; do
+  "er_$lang" check-cll < "$work/cll-in.json" > "$work/cll-$lang.json"
+  if ! cmp -s "$work/cll-expected.json" "$work/cll-$lang.json"; then
+    echo "evidence request: $lang does not accept exactly the unaltered CLL proofs" >&2
+    diff "$work/cll-expected.json" "$work/cll-$lang.json" >&2 || true
     exit 1
   fi
 done
@@ -289,4 +358,4 @@ if [ "$count" -eq 0 ]; then
   echo "evidence request: no requests were classified" >&2
   exit 1
 fi
-echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python and go build identical artifact envelopes, go verifies python's and rejects an altered verification item in either binding."
+echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python and go build identical artifact envelopes, verify each other's and reject an altered verification item in either binding, and accept the worked example's CLL inclusion and consistency proofs and reject each altered."

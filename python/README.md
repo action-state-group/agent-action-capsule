@@ -87,9 +87,12 @@ subject exactly, and returns an `Artifact` or a signed `Refusal`. Your `store`
 builds the artifact, so the responder works over any log. To send an
 `Artifact` in the interop profile's signed envelope, pass it to `sign_envelope`
 and encode the result in the request's binding. `check_refusal` and
-`verify_refusal_offline` check a signed refusal with no network. The module
-needs `cryptography` only to sign refusals and envelopes and to verify
-refusals, so install the `envelope` extra for that.
+`verify_refusal_offline` check a signed refusal with no network. A requester
+reads a reply with `parse_reply`, authenticates an envelope with
+`Envelope.verify_for(request_bytes, responder_key)`, and checks its
+Checkpointed Local Log material with `check_cll_material`. The module needs
+`cryptography` only to sign refusals and envelopes and to verify signatures,
+so install the `envelope` extra for that.
 
 To verify both layers of a SCITT **Signed Statement**, install the optional extra
 and pass `--transparent`:

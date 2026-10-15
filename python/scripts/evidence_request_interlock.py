@@ -16,6 +16,13 @@ document, so its output compares byte for byte with the Go and Rust adapters.
   subject, anchor_digest, artifact_hex, derivation?, freshness?,
   verification: [{kind, hex}]}]}`` to ``[{id, reply_hex}]``: the interop
   profile's artifact envelope (§6.2), signed.
+- ``check-envelope``: ``[{id, binding, reply_hex}]`` to ``[{id}]``: each reply
+  read as an envelope and verified offline; exits 1, listing each failure on
+  stderr, if any does not verify.
+- ``check-cll``: ``[{id, kind: "inclusion", peaks_hex, entry_hex, proof_hex}
+  | {id, kind: "consistency", old_peaks_hex, peaks_hex, proof_hex}]`` to
+  ``[{id, verified}]``: whether each item of Checkpointed Local Log material
+  verifies against the given peaks (§6.2.1 steps 12 and 13).
 """
 import json
 import sys
@@ -102,10 +109,47 @@ def envelope(doc):
     return out
 
 
+def check_envelope(replies):
+    out, failures = [], []
+    for reply in replies:
+        try:
+            parsed = er.parse_reply(bytes.fromhex(reply["reply_hex"]), reply["binding"])
+            if not isinstance(parsed, er.Envelope):
+                raise er.VerificationError("the reply is not an envelope")
+            parsed.verify()
+        except er.VerificationError as exc:
+            failures.append(f"{reply['id']}: {exc}")
+            continue
+        out.append({"id": reply["id"]})
+    if failures:
+        raise SystemExit("\n".join(failures))
+    return out
+
+
+def check_cll(proofs):
+    out = []
+    for p in proofs:
+        peaks = [bytes.fromhex(h) for h in p.get("peaks_hex") or []]
+        proof = bytes.fromhex(p["proof_hex"])
+        try:
+            if p["kind"] == "inclusion":
+                er.verify_cll_inclusion(peaks, bytes.fromhex(p["entry_hex"]), proof)
+            elif p["kind"] == "consistency":
+                er.verify_cll_consistency([bytes.fromhex(h) for h in p.get("old_peaks_hex") or []], peaks, proof)
+            else:
+                raise SystemExit(f"{p['id']}: unknown kind {p['kind']!r}")
+            verified = True
+        except er.VerificationError:
+            verified = False
+        out.append({"id": p["id"], "verified": verified})
+    return out
+
+
 def main() -> int:
-    commands = {"classify": classify, "refuse": refuse, "verify": verify, "envelope": envelope}
+    commands = {"classify": classify, "refuse": refuse, "verify": verify, "envelope": envelope,
+                "check-envelope": check_envelope, "check-cll": check_cll}
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
-        print("usage: evidence_request_interlock.py classify|refuse|verify|envelope", file=sys.stderr)
+        print("usage: evidence_request_interlock.py " + "|".join(commands), file=sys.stderr)
         return 2
     result = commands[sys.argv[1]](json.load(sys.stdin))
     json.dump(result, sys.stdout, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
