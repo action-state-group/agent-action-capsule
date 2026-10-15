@@ -95,7 +95,7 @@ expected_for() {
 import json, sys
 items = json.load(open(sys.argv[1]))["items"]
 expected = [{"id": i["id"], "reason": i["refusal"]["reason"]} for i in items]
-json.dump(expected, sys.stdout, sort_keys=True, separators=(",", ":"))
+json.dump(expected, sys.stdout, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 sys.stdout.write("\n")
 EOF
 }
