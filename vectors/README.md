@@ -55,7 +55,9 @@ python3 python/scripts/generate_all_vectors.py
 ```
 
 The top-level `SHA256SUMS` lists every file under this directory except the
-checksum files themselves; each corpus's own `SHA256SUMS` lists that corpus.
+checksum files themselves. A corpus with its own `SHA256SUMS` lists its files
+there as well; `judge/`, `profiles/` and `cross-language/` rely on the
+top-level list alone.
 The release workflow checks the top-level list before it archives the
 directory, so a file it does not list would ship unverified.
 
