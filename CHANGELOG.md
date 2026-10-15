@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.1 — 2026-10-15
+
 - Python: `agent_action_capsule.evidence_request.sign_envelope` builds and signs the artifact
   response in the interop profile's form (`spec/interop-profile-v0.md` §6.2, `PROFILE =
   "evidence-interop/0"`): `Envelope.signing_body()` is JCS over the signed members, and
@@ -10,8 +12,8 @@
   decoder). -00 fixes no envelope members (§4.1), so until now a Python responder had no artifact
   response to send. Tests compare it byte for byte with the generator of
   `vectors/interop-profile-v0/`, and `scripts/evidence-request-interlock.sh` gains a step where
-  Python and Go build identical envelopes in both bindings and Go verifies Python's. Rust signs a
-  different envelope (#270) and is not in that step.
+  Python and Go build identical envelopes in both bindings and Go verifies Python's (#271). Rust
+  joined that step when `evidence-request` 0.2.0 adopted the profile's envelope (#273, #270).
   `sign_envelope` refuses, before signing, any envelope the profile does not allow: a subject or
   derivation no request could carry, an empty artifact, or an `issued_at` or time `freshness`
   outside the §5.2 form.
