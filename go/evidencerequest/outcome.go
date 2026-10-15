@@ -33,9 +33,8 @@ type Observation struct {
 	Received Received
 	// ArtifactVerified: the artifact verified against its anchor.
 	ArtifactVerified bool
-	// RefusalSignatureValid and RefusalReason describe a refusal as received.
-	RefusalSignatureValid bool
-	RefusalReason         string
+	// Refusal is CheckRefusal's answer for a refusal as received.
+	Refusal RefusalCheck
 	// WindowOpen: the requester's waiting window has not closed (ER §4.3).
 	WindowOpen bool
 }
@@ -47,9 +46,10 @@ const (
 	StateArtifactVerificationFailed = "artifact_verification_failed"
 	// StateRefusal is a conforming signed refusal.
 	StateRefusal = "refusal"
-	// StateRefusalNonconformant is a correctly signed refusal whose reason
-	// is not one registered token (ERV A13): still the responder's signed
-	// answer, never an absence.
+	// StateRefusalNonconformant is a correctly signed refusal that does not
+	// conform: its reason is not one registered token (ERV A13), or a member
+	// ER §4.2 requires is missing or malformed. It is still the responder's
+	// signed answer, never an absence.
 	StateRefusalNonconformant = "refusal_nonconformant"
 	// StateRefusalSignatureInvalid is a refusal-shaped object whose
 	// signature does not verify: not the responder's act, and not an
@@ -74,9 +74,9 @@ func (o Observation) State() string {
 		return StateArtifactVerificationFailed
 	case ReceivedRefusal:
 		switch {
-		case !o.RefusalSignatureValid:
+		case !o.Refusal.SignatureValid:
 			return StateRefusalSignatureInvalid
-		case slices.Contains(RefusalReasons, o.RefusalReason):
+		case o.Refusal.Conformant:
 			return StateRefusal
 		}
 		return StateRefusalNonconformant

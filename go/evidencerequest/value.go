@@ -14,7 +14,6 @@ import (
 	"regexp"
 	"strconv"
 	"time"
-	"unicode/utf8"
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/fxamacker/cbor/v2"
@@ -105,11 +104,13 @@ func Decode(m Message) (any, error) {
 }
 
 // DecodeJSON decodes one JSON value. Unlike encoding/json it refuses a
-// duplicate member (§5.2), matches member names exactly (no case folding),
-// and keeps numbers as their token text (JSONNumber).
+// duplicate member (§5.2), invalid UTF-8 and an unpaired surrogate escape
+// (which encoding/json would silently replace with U+FFFD, so a subject
+// would match one the requester never named), matches member names exactly
+// (no case folding), and keeps numbers as their token text (JSONNumber).
 func DecodeJSON(data []byte) (any, error) {
-	if !utf8.Valid(data) {
-		return nil, fmt.Errorf("%w: invalid UTF-8", errNotWellFormed)
+	if err := canonical.CheckJSONText(data); err != nil {
+		return nil, fmt.Errorf("%w: %v", errNotWellFormed, err)
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()

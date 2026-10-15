@@ -42,7 +42,9 @@ func mmrHashPosPair(pos uint64, left, right []byte) []byte {
 	return h.Sum(nil)
 }
 
-// MMRIncludedRoot is the root reached from node at index i by proof.
+// MMRIncludedRoot is the root reached from node at index i by proof. The
+// node's height plus len(proof) must not exceed maxMMRHeight, or the
+// positions it computes overflow; the verifiers check this first.
 func MMRIncludedRoot(i uint64, node []byte, proof [][]byte) []byte {
 	root, g := node, MMRIndexHeight(i)
 	for _, sibling := range proof {
@@ -106,6 +108,17 @@ func CLLLeafValue(entry []byte) []byte {
 // can address has more peaks or a longer path.
 const maxProofNodes = 64
 
+// maxMMRHeight is the greatest node height in an MMR whose indices fit in a
+// profile integer (below 2^53). A path that would climb above it names no
+// node of such an MMR, and following it would overflow a position.
+const maxMMRHeight = 52
+
+// pathFits reports whether a path of n siblings from the node at index stays
+// within maxMMRHeight.
+func pathFits(index uint64, n int) bool {
+	return index <= MaxSafeInteger && MMRIndexHeight(index)+uint64(n) <= maxMMRHeight
+}
+
 // EncodeCLLInclusionProof is the cll-inclusion-proof octets for zero-based
 // leaf n: deterministic CBOR of [MMR index, inclusion path] (profile
 // §6.2.1).
@@ -154,6 +167,9 @@ func VerifyCLLInclusion(peaks [][]byte, entry, inclusion []byte) error {
 	if MMRIndexHeight(index) != 0 {
 		return fmt.Errorf("%w: inclusion index %d is not a leaf", ErrInvalid, index)
 	}
+	if !pathFits(index, len(path)) {
+		return fmt.Errorf("%w: inclusion path is longer than any MMR can have", ErrInvalid)
+	}
 	root := MMRIncludedRoot(index, CLLLeafValue(entry), path)
 	if !slices.ContainsFunc(peaks, func(peak []byte) bool { return bytes.Equal(peak, root) }) {
 		return fmt.Errorf("%w: the inclusion path reaches no peak of the checkpoint", ErrInvalid)
@@ -186,8 +202,14 @@ func VerifyCLLConsistency(oldPeaks, newPeaks [][]byte, consistency []byte) error
 			return fmt.Errorf("%w: consistency path %d is malformed", ErrInvalid, i)
 		}
 	}
-	if n := len(MMRPeaks(size1 - 1)); n != len(paths) || n != len(oldPeaks) {
+	peaks := MMRPeaks(size1 - 1)
+	if n := len(peaks); n != len(paths) || n != len(oldPeaks) {
 		return fmt.Errorf("%w: consistency proof does not match the earlier commitment", ErrInvalid)
+	}
+	for k, index := range peaks {
+		if !pathFits(index, len(paths[k])) {
+			return fmt.Errorf("%w: consistency path %d is longer than any MMR can have", ErrInvalid, k)
+		}
 	}
 	roots := MMRConsistentRoots(size1-1, oldPeaks, paths)
 	if len(right) != len(MMRPeaks(size2-1))-len(roots) {

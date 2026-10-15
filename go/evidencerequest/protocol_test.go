@@ -49,6 +49,9 @@ func TestParseRequestReasons(t *testing.T) {
 		{"range negative", `{"subject":{"range":[-1,2]},` + coverage + `}`, er.ReasonRequestMalformed},
 		{"empty correlation", `{"subject":{"correlation":""},` + coverage + `}`, er.ReasonRequestMalformed},
 		{"invalid UTF-8", "{\"subject\":{\"correlation\":\"\xff\"}," + coverage + "}", er.ReasonRequestMalformed},
+		{"unpaired surrogate in a value", `{"subject":{"correlation":"c-\ud800"},` + coverage + `}`, er.ReasonRequestMalformed},
+		{"unpaired surrogate in a key", `{` + subject + `,` + coverage + `,"x\udc00":1}`, er.ReasonRequestMalformed},
+		{"paired surrogates", `{"subject":{"correlation":"c-\ud83d\ude00"},` + coverage + `}`, ""},
 		{"both coverage members", `{` + subject + `,"coverage":{"expected_pin":"` + pin + `","min_freshness":1}}`, er.ReasonCoverageUnsatisfiable},
 		{"no coverage member", `{` + subject + `,"coverage":{}}`, er.ReasonCoverageUnsatisfiable},
 		{"coverage missing", `{` + subject + `}`, er.ReasonCoverageUnsatisfiable},
@@ -519,6 +522,27 @@ func TestCLLMaterialAgainstTheLogTree(t *testing.T) {
 		assert.ErrorIs(t, er.VerifyCLLInclusion(nil, entries[0], octets), er.ErrInvalid, name)
 	}
 	assert.ErrorIs(t, er.VerifyCLLConsistency(nil, nil, mustCBOR(t, []any{uint64(0), uint64(1), []any{}, []any{}})), er.ErrInvalid, "size 0")
+
+	// Paths too long for any MMR are refused before a position can overflow.
+	node := make([]byte, sha256.Size)
+	long := func(n int) []any { return byteStringList(slices.Repeat([][]byte{node}, n)) }
+	for _, n := range []int{53, 64} {
+		assert.ErrorIs(t, er.VerifyCLLInclusion(nil, entries[0], mustCBOR(t, []any{uint64(0), long(n)})), er.ErrInvalid, "%d siblings", n)
+		assert.ErrorIs(t, er.VerifyCLLConsistency([][]byte{node}, [][]byte{node}, mustCBOR(t, []any{uint64(1), uint64(1), []any{long(n)}, []any{}})), er.ErrInvalid, "%d siblings", n)
+	}
+	assert.ErrorIs(t, er.VerifyCLLInclusion(nil, entries[0], mustCBOR(t, []any{uint64(0), long(52)})), er.ErrInvalid, "a 52-sibling path is followed and reaches no peak")
+	tall := mustCBOR(t, []any{uint64(er.MaxSafeInteger), uint64(er.MaxSafeInteger), []any{long(52)}, []any{}})
+	assert.NotPanics(t, func() {
+		_ = er.VerifyCLLConsistency(slices.Repeat([][]byte{node}, len(er.MMRPeaks(er.MaxSafeInteger-1))), nil, tall)
+	})
+}
+
+func byteStringList(nodes [][]byte) []any {
+	out := make([]any, len(nodes))
+	for i, n := range nodes {
+		out[i] = n
+	}
+	return out
 }
 
 func mustCBOR(t *testing.T, v any) []byte {
@@ -555,11 +579,11 @@ func TestParseRetentionCommitment(t *testing.T) {
 // cases the vectors enumerate.
 func TestObservationState(t *testing.T) {
 	for _, open := range []bool{true, false} {
-		for _, reason := range append(slices.Clone(er.RefusalReasons), "no_such_record", "") {
-			state := er.Observation{Received: er.ReceivedRefusal, RefusalSignatureValid: true, RefusalReason: reason, WindowOpen: open}.State()
+		for _, conformant := range []bool{true, false} {
+			state := er.Observation{Received: er.ReceivedRefusal, Refusal: er.RefusalCheck{SignatureValid: true, ReasonRegistered: true, Conformant: conformant}, WindowOpen: open}.State()
 			assert.NotContains(t, []string{er.StateRecordedAbsence, er.StatePending}, state, "a signed refusal is never an absence")
 		}
-		state := er.Observation{Received: er.ReceivedRefusal, RefusalReason: er.ReasonPolicyDeclined, WindowOpen: open}.State()
+		state := er.Observation{Received: er.ReceivedRefusal, Refusal: er.RefusalCheck{ReasonRegistered: true}, WindowOpen: open}.State()
 		assert.Equal(t, er.StateRefusalSignatureInvalid, state)
 		for _, silence := range []er.Received{er.ReceivedNothing, er.ReceivedTransportError, er.ReceivedSubprotocolNotOffered} {
 			want := er.StateRecordedAbsence

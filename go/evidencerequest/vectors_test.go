@@ -272,6 +272,17 @@ func TestRefusalVectors(t *testing.T) {
 				assert.Equal(t, c.Expect.Signature == "valid", check.SignatureValid, "%s signature", m.MediaType)
 				assert.Equal(t, c.Expect.ReasonRegistered, check.ReasonRegistered, "%s reason_registered", m.MediaType)
 				assert.Equal(t, c.Expect.Conformant, check.Conformant, "%s conformant", m.MediaType)
+				// What a requester records for this refusal (ER §4.5).
+				want := er.StateRefusalSignatureInvalid
+				switch {
+				case c.Expect.Conformant:
+					want = er.StateRefusal
+				case c.Expect.Signature == "valid":
+					want = er.StateRefusalNonconformant
+				}
+				for _, open := range []bool{true, false} {
+					assert.Equal(t, want, er.Observation{Received: er.ReceivedRefusal, Refusal: check, WindowOpen: open}.State(), "%s state", m.MediaType)
+				}
 
 				reply, err := er.ParseReply(m)
 				if err != nil {
@@ -441,12 +452,14 @@ func TestOutcomeVectors(t *testing.T) {
 			kind, ok := received[c.Facts.Received]
 			require.True(t, ok, "received %q", c.Facts.Received)
 			require.Contains(t, []string{"open", "closed"}, c.Facts.Window)
+			// A refusal's facts state its signature and reason; its other
+			// members are well formed, so it conforms when both hold.
+			valid, registered := c.Facts.Signature == "valid", slices.Contains(er.RefusalReasons, c.Facts.Reason)
 			o := er.Observation{
-				Received:              kind,
-				ArtifactVerified:      c.Facts.Verification == "verified",
-				RefusalSignatureValid: c.Facts.Signature == "valid",
-				RefusalReason:         c.Facts.Reason,
-				WindowOpen:            c.Facts.Window == "open",
+				Received:         kind,
+				ArtifactVerified: c.Facts.Verification == "verified",
+				Refusal:          er.RefusalCheck{SignatureValid: valid, ReasonRegistered: registered, Conformant: valid && registered},
+				WindowOpen:       c.Facts.Window == "open",
 			}
 			state := o.State()
 			assert.Equal(t, c.Expect.State, state)
