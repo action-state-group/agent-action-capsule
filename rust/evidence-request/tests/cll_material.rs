@@ -96,7 +96,7 @@ impl Log {
     fn inclusion(&self, leaf: u64, leaves: u64) -> Vec<u8> {
         let proof = inclusion_proof(&self.store, leaf, node_count(leaves)).unwrap();
         let path: Vec<Hash> = proof.witness.iter().map(|h| unhex(h)).collect();
-        encode_inclusion_proof(leaf, &path)
+        encode_inclusion_proof(leaf, &path).unwrap()
     }
 
     fn consistency(&self, from: u64, to: u64) -> Vec<u8> {
@@ -539,4 +539,21 @@ fn encode_consistency_proof_refuses_paths_that_do_not_reach() {
     wrong[0][0] ^= 1;
     assert!(encode_consistency_proof(a, b, &log.peaks(a), &paths, &wrong).is_none());
     assert!(encode_consistency_proof(0, b, &[], &[], &log.peaks(b)).is_none());
+}
+
+#[test]
+fn encoders_refuse_sizes_outside_the_profile_without_panicking() {
+    assert!(encode_consistency_proof(u64::MAX, u64::MAX, &[], &[], &[]).is_none());
+    assert!(encode_consistency_proof(1, 1 << 53, &[[0; 32]], &[vec![]], &[[0; 32]]).is_none());
+    assert!(encode_inclusion_proof(1 << 63, &[]).is_none());
+    assert!(encode_inclusion_proof(u64::MAX, &[]).is_none());
+    // Leaf 2^52 is node 2^53 - 1, the last profile integer; the next leaf
+    // is node 2^53.
+    assert!(encode_inclusion_proof(1 << 52, &[]).is_some());
+    assert!(encode_inclusion_proof((1 << 52) + 1, &[]).is_none());
+    assert!(
+        encode_inclusion_proof(0, &vec![[0u8; 32]; 53]).is_none(),
+        "a path above height 52"
+    );
+    assert!(encode_inclusion_proof(0, &[]).is_some());
 }

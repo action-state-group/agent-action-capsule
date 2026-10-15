@@ -607,9 +607,11 @@ fn peak_indices(last: u64) -> Vec<u64> {
     out
 }
 
-/// The zero-based MMR node index of zero-based leaf `leaf`.
-fn leaf_node_index(leaf: u64) -> u64 {
-    2 * leaf - u64::from(leaf.count_ones())
+/// The zero-based MMR node index of zero-based leaf `leaf`, or `None` when it
+/// is not a profile integer.
+fn leaf_node_index(leaf: u64) -> Option<u64> {
+    let index = leaf.checked_mul(2)? - u64::from(leaf.count_ones());
+    (index <= MAX_INTEGER).then_some(index)
 }
 
 fn encode_cbor(value: &C) -> Vec<u8> {
@@ -625,12 +627,18 @@ fn hash_list(nodes: &[Hash]) -> C {
 /// The `cll-inclusion-proof` octets for zero-based leaf `leaf` and its
 /// inclusion path (the siblings from the leaf up to its peak): deterministic
 /// CBOR of `[MMR node index, inclusion-path]` (profile §6.2.1). This encodes
-/// a path a log already computed; computing it is the log's.
-pub fn encode_inclusion_proof(leaf: u64, path: &[Hash]) -> Vec<u8> {
-    encode_cbor(&C::Array(vec![
-        C::Integer(leaf_node_index(leaf).into()),
+/// a path a log already computed; computing it is the log's. `None` when the
+/// leaf's node index is not a profile integer or the path is longer than any
+/// MMR can have.
+pub fn encode_inclusion_proof(leaf: u64, path: &[Hash]) -> Option<Vec<u8>> {
+    let index = leaf_node_index(leaf)?;
+    if !path_fits(index, path.len()) {
+        return None;
+    }
+    Some(encode_cbor(&C::Array(vec![
+        C::Integer(index.into()),
         hash_list(path),
-    ]))
+    ])))
 }
 
 /// The `cll-consistency-proof` octets proving that the MMR of `old_size`
@@ -646,7 +654,13 @@ pub fn encode_consistency_proof(
     paths: &[Vec<Hash>],
     new_peaks: &[Hash],
 ) -> Option<Vec<u8>> {
-    if old_size == 0 || old_size > new_size || old_peaks.len() != paths.len() {
+    if old_size == 0
+        || old_size > new_size
+        || new_size > MAX_INTEGER
+        || old_peaks.len() != paths.len()
+        || paths.len() > MAX_PROOF_NODES
+        || new_peaks.len() > MAX_PROOF_NODES
+    {
         return None;
     }
     let mut roots: Vec<Hash> = Vec::new();
