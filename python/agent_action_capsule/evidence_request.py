@@ -872,9 +872,11 @@ class VerificationError(ValueError):
 
 def _reply_value(value: Any) -> Any:
     """A decoded CBOR reply in the profile's data model, byte strings
-    included. A value no member accepts (a tag, a float, a negative or too
-    large integer) becomes :data:`_OUTSIDE`, so an unknown member holding one
-    is still ignored; a map with a key that is not text becomes one too."""
+    included. A tag, or a negative or too large integer, becomes
+    :data:`_OUTSIDE`, so an unknown member holding one is still ignored; a
+    map with a key that is not text becomes one too. A float or an
+    indefinite length never gets here: the profile's decoder flags or
+    refuses them as outside the §5.2 data model, and the frame is refused."""
     if value is None or isinstance(value, (bool, str, bytes)):
         return value
     if type(value) is int:
@@ -920,7 +922,9 @@ def _decode_reply(octets: bytes, binding: str) -> dict:
             raise VerificationError("reply: a text holds an unpaired surrogate")
     elif binding == "cbor":
         # The signature covers RFC 8785 of the signed members whatever the
-        # frame (profile §5.1), so a frame need not be deterministic CBOR.
+        # frame (profile §5.1), so a frame need not be deterministic CBOR. It
+        # must stay in the §5.2 data model, as the profile's reference
+        # verifier reads it: a float or an indefinite length anywhere refuses it.
         try:
             decoded = _cbor.decode(octets)
         except _cbor.CborError as exc:
