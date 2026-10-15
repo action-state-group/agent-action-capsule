@@ -11,12 +11,14 @@ VECTORS = Path(__file__).resolve().parents[2] / "vectors"
 def test_top_level_sha256sums_cover_every_file():
     lines = (VECTORS / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
     listed = dict(reversed(line.split("  ", 1)) for line in lines)
-    # Checksum files are excluded at every depth: each corpus's own
-    # SHA256SUMS covers its files, and none can list itself.
+    # Excluded as generate_all_vectors.py excludes them: checksum files at
+    # every depth (each corpus's own SHA256SUMS covers its files, and none can
+    # list itself), and the bytecode Python writes when a test imports
+    # vectors/interop/ran_under/verify_ran_under.py.
     on_disk = {
         p.relative_to(VECTORS).as_posix()
         for p in VECTORS.rglob("*")
-        if p.is_file() and p.name != "SHA256SUMS"
+        if p.is_file() and p.name != "SHA256SUMS" and "__pycache__" not in p.parts and p.suffix != ".pyc"
     }
     assert set(listed) == on_disk
     assert len(listed) == len(lines), "a path is listed twice"
