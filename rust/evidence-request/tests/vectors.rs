@@ -3,6 +3,7 @@
 //! case. The files are checked against that directory's `SHA256SUMS` before
 //! any case is read.
 
+use ed25519_dalek::SigningKey;
 use evidence_request::digest::{identifies_request, request_digest};
 use evidence_request::invariance::{compare, Observation};
 use evidence_request::outcome::{record, Received, Window};
@@ -13,7 +14,6 @@ use evidence_request::resolve::{resolve, Anchor, Resolution, Responder};
 use evidence_request::retention::{
     classify_absence, classify_refusal, commitment_well_formed, Commitment,
 };
-use ed25519_dalek::SigningKey;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
@@ -354,10 +354,8 @@ fn refusal_corpus() {
             assert_eq!(ours.sig, s(r, "sig"), "{id}: signature bytes");
             if let Some(body) = case["signing_body"].as_str() {
                 let object = ours.to_json();
-                let signed = evidence_request::refusal::signing_body(
-                    object.as_object().unwrap(),
-                )
-                .unwrap();
+                let signed =
+                    evidence_request::refusal::signing_body(object.as_object().unwrap()).unwrap();
                 assert_eq!(signed, body, "{id}: signing body");
             }
         }

@@ -3,21 +3,19 @@
 //! caller-invariant, and every way a responder (or anyone in between) can
 //! get an answer wrong is caught by `answer::verify`.
 
-use evidence_request::answer::{
-    self, build, BuildError, EvidenceLog, Record, VerifyError, MAX_RECORDS,
-};
-use evidence_request::digest::request_digest;
-use evidence_request::registry::SubjectForm;
-use evidence_request::request::{parse_json, Derivation, Request};
-use evidence_request::resolve::{
-    resolve, Anchor, Resolution, ResolvedAnchor, Responder,
-};
 use cll::checkpoint::{sign_checkpoint_digest, CheckpointRecord};
 use cll::mmr::{
     add_leaf, leaf_count, leaf_hash, node_count, peaks, root_from_peaks, MemoryNodeStore,
     NodeReader,
 };
 use ed25519_dalek::SigningKey;
+use evidence_request::answer::{
+    self, build, BuildError, EvidenceLog, Record, VerifyError, MAX_RECORDS,
+};
+use evidence_request::digest::request_digest;
+use evidence_request::registry::SubjectForm;
+use evidence_request::request::{parse_json, Derivation, Request};
+use evidence_request::resolve::{resolve, Anchor, Resolution, ResolvedAnchor, Responder};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -508,9 +506,7 @@ fn a_responder_that_misstates_its_records_is_caught() {
     .unwrap();
     let mut art: Value = serde_json::from_slice(&a.artifact).unwrap();
     art["records"].as_array_mut().unwrap().remove(1);
-    let artifact = evidence_request::jcs::to_string(&art)
-        .unwrap()
-        .into_bytes();
+    let artifact = evidence_request::jcs::to_string(&art).unwrap().into_bytes();
     // The responder signs the shortened artifact: the signature is fine, the
     // range is not.
     let env = resign(&a.envelope, &artifact);
@@ -723,9 +719,7 @@ fn a_history_card_with_a_false_consistency_proof_is_caught() {
     let proof = &mut art["history"][2]["consistency_from_previous"];
     let peaks = proof["new_peaks"].as_array_mut().unwrap();
     peaks[0] = json!("3".repeat(64));
-    let artifact = evidence_request::jcs::to_string(&art)
-        .unwrap()
-        .into_bytes();
+    let artifact = evidence_request::jcs::to_string(&art).unwrap().into_bytes();
     let env = resign(&a.envelope, &artifact);
     assert_eq!(
         answer::verify(
@@ -812,9 +806,7 @@ fn hand_answer(
     art: Value,
     material: Value,
 ) -> answer::Answer {
-    let artifact = evidence_request::jcs::to_string(&art)
-        .unwrap()
-        .into_bytes();
+    let artifact = evidence_request::jcs::to_string(&art).unwrap().into_bytes();
     let material = evidence_request::jcs::to_string(&material)
         .unwrap()
         .into_bytes();
