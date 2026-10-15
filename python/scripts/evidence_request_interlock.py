@@ -16,6 +16,9 @@ document, so its output compares byte for byte with the Go and Rust adapters.
   subject, anchor_digest, artifact_hex, derivation?, freshness?,
   verification: [{kind, hex}]}]}`` to ``[{id, reply_hex}]``: the interop
   profile's artifact envelope (§6.2), signed.
+- ``check-envelope``: ``[{id, binding, reply_hex}]`` to ``[{id}]``; exits 1,
+  listing each failure on stderr as ``id: reason``, if any reply is not an
+  envelope that verifies under its own key.
 """
 import json
 import sys
@@ -102,10 +105,28 @@ def envelope(doc):
     return out
 
 
+def check_envelope(replies):
+    out, failures = [], []
+    for item in replies:
+        try:
+            reply = er.parse_reply(bytes.fromhex(item["reply_hex"]), item["binding"])
+            if not isinstance(reply, er.ReceivedEnvelope):
+                raise er.EnvelopeError("the reply is not an envelope")
+            reply.verify()
+            out.append({"id": item["id"]})
+        except er.EnvelopeError as exc:
+            failures.append(f"{item['id']}: {exc}")
+    if failures:
+        raise SystemExit("\n".join(failures))
+    return out
+
+
 def main() -> int:
-    commands = {"classify": classify, "refuse": refuse, "verify": verify, "envelope": envelope}
+    commands = {"classify": classify, "refuse": refuse, "verify": verify, "envelope": envelope,
+                "check-envelope": check_envelope}
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
-        print("usage: evidence_request_interlock.py classify|refuse|verify|envelope", file=sys.stderr)
+        print("usage: evidence_request_interlock.py classify|refuse|verify|envelope|check-envelope",
+              file=sys.stderr)
         return 2
     result = commands[sys.argv[1]](json.load(sys.stdin))
     json.dump(result, sys.stdout, sort_keys=True, separators=(",", ":"), ensure_ascii=False)

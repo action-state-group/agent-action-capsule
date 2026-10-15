@@ -18,6 +18,16 @@
 - Go: `evidencerequest.ParseReply` refuses an envelope whose `verification` is present and empty.
   The signer would have covered the empty array, but `SigningBody` omits it, so such an envelope
   verified under a signature over different members (#273).
+- Python: the reading side of the envelope (#272). `evidence_request.parse_reply` reads a reply as
+  carried in either binding: an envelope as a `ReceivedEnvelope`, which keeps the signed members
+  exactly as received, or a refusal as its map. `ReceivedEnvelope.verify` checks the signature,
+  the artifact digest and each verification item's digest, and `verify_for` also binds the
+  profile, the responder key the caller expected and the request digest.
+  `evidence_request.check_anchor_inclusion` checks the Checkpointed Local Log material (profile
+  §6.2.1) under a `TrustPolicy`'s log keys, through the profile's reference procedure. Every
+  envelope reply in `vectors/interop-profile-v0/` gets the stated `anchor_inclusion`, and in the
+  interlock Python verifies the envelopes every language builds. Like Go and Rust, it refuses a
+  present empty `verification`.
 - Python: the interop profile's time check no longer accepts seconds above 60
   (`2026-10-15T00:00:99Z`); it used to clamp them to 59.
 

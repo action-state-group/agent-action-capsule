@@ -86,7 +86,21 @@ from typing import Any, Protocol
 
 from .canonical import jcs
 from .interop_profile import _cbor
-from .interop_profile._common import is_profile_time
+from .interop_profile import cll as _cll
+from .interop_profile._common import (
+    CLL_KINDS,
+    FAIL,
+    NOT_CHECKED,
+    PASS,
+    PropertyReport,
+    TrustPolicy,
+    b64url_decode,
+    ed25519_verify_hex,
+    is_profile_time,
+    is_signature,
+    numbers_in_domain,
+    parse_json,
+)
 
 __all__ = [
     "DRAFT",
@@ -119,6 +133,10 @@ __all__ = [
     "PROFILE",
     "Envelope",
     "sign_envelope",
+    "EnvelopeError",
+    "ReceivedEnvelope",
+    "parse_reply",
+    "check_anchor_inclusion",
     "Refusal",
     "RefusalCheck",
     "is_digest",
@@ -783,6 +801,163 @@ def sign_envelope(
     if key_id != stub.responder:
         raise ValueError("the signer signed under a key other than its key_id")
     return replace(stub, sig=sig)
+
+
+#: The envelope members its signature covers, when present (profile §6.2).
+ENVELOPE_SIGNED_MEMBERS = ("profile", "request_digest", "subject", "derivation", "anchor",
+                           "artifact_digest", "verification", "responder", "issued_at")
+
+
+class EnvelopeError(ValueError):
+    """Reply octets that are not an envelope this module can read, or an envelope that does not
+    verify or is not the answer the caller asked for."""
+
+
+@dataclass(frozen=True)
+class ReceivedEnvelope:
+    """An envelope as received (profile §6.2): its signed members exactly as carried, in the JSON
+    data model, and the octets that travel beside them. Read one with :func:`parse_reply`.
+
+    Unlike :class:`Envelope`, which a responder builds and whose digests it computes, this keeps
+    the digests the responder signed, so :meth:`verify` can say which octets do not match them.
+    """
+
+    signed: Mapping[str, Any]
+    sig: str
+    artifact: bytes
+    verification_content: tuple[bytes, ...] = ()
+
+    def signing_body(self) -> bytes:
+        """The bytes the signature covers: RFC 8785 of the signed members (profile §5.1)."""
+        return jcs(dict(self.signed))
+
+    def verify(self) -> None:
+        """Check the envelope under its own ``responder`` key: the signature, that the artifact
+        hashes to ``artifact_digest``, and that each verification item hashes to the digest at
+        its position. It does not decide whether the key is the one you expected or whether the
+        envelope answers your request: :meth:`verify_for` does. Raises :class:`EnvelopeError`."""
+        if not is_signature(self.sig):
+            raise EnvelopeError("envelope signature is not 128 lowercase hex characters")
+        if not ed25519_verify_hex(self.signed.get("responder"), self.sig, self.signing_body()):
+            raise EnvelopeError("signature does not verify under the responder key")
+        if hashlib.sha256(self.artifact).hexdigest() != self.signed.get("artifact_digest"):
+            raise EnvelopeError("artifact does not hash to its signed digest")
+        entries = self.signed.get("verification", [])
+        if len(entries) != len(self.verification_content):
+            raise EnvelopeError(f"{len(entries)} verification entries but {len(self.verification_content)} items")
+        for i, (entry, octets) in enumerate(zip(entries, self.verification_content)):
+            if hashlib.sha256(octets).hexdigest() != entry["digest"]:
+                raise EnvelopeError(f"verification item {i} does not hash to its signed digest")
+
+    def verify_for(self, responder: str, request_bytes: bytes) -> None:
+        """Accept the envelope as the answer of the responder whose key is ``responder``
+        (lowercase hex) to the request whose octets as sent are ``request_bytes``: the profile,
+        the key and the request digest must be those, and :meth:`verify` must pass. Whether the
+        artifact is the answer you wanted is for you to judge from :attr:`signed`."""
+        if self.signed.get("profile") != PROFILE:
+            raise EnvelopeError(f"the envelope is not the profile's {PROFILE}")
+        if self.signed.get("responder") != responder:
+            raise EnvelopeError("the envelope is signed by another key than the responder's")
+        if self.signed.get("request_digest") != request_digest(request_bytes):
+            raise EnvelopeError("the envelope answers another request")
+        self.verify()
+
+
+def _text_member(fields: Mapping[str, Any], name: str) -> str:
+    value = fields.get(name)
+    if not isinstance(value, str):
+        raise EnvelopeError(f"{name} is missing or not a text string")
+    return value
+
+
+def _opaque(value: Any, binding: str) -> bytes | None:
+    """Opaque bytes: a byte string in CBOR, unpadded base64url in JSON (profile §4)."""
+    if binding == "cbor":
+        return value if isinstance(value, bytes) else None
+    return b64url_decode(value)
+
+
+def parse_reply(octets: bytes, binding: str = "json") -> ReceivedEnvelope | dict:
+    """Read reply octets as carried in ``binding`` (profile §1, "Message type"): a map carrying
+    ``artifact_digest`` is an envelope, returned as a :class:`ReceivedEnvelope`; one carrying
+    ``reason`` is a refusal, returned as its map for :func:`check_refusal` or
+    :func:`verify_refusal_offline`. A reply with a duplicate member, a number outside 0 to
+    2^53 - 1, CBOR outside core deterministic encoding, both or neither of those members, or an
+    envelope member of the wrong type raises :class:`EnvelopeError`."""
+    if binding == "json":
+        parsed = parse_json(octets)
+        if parsed is None or not parsed.well_formed:
+            raise EnvelopeError("the reply is not well-formed JSON in the profile's data model")
+        root = parsed.value
+    elif binding == "cbor":
+        try:
+            decoded = _cbor.decode(octets)
+        except ValueError as exc:
+            raise EnvelopeError(f"the reply is not well-formed CBOR: {exc}") from None
+        if not (decoded.well_formed and decoded.deterministic and numbers_in_domain(decoded.value)):
+            raise EnvelopeError("the reply is not core deterministic CBOR in the profile's data model")
+        root = decoded.value
+    else:
+        raise EnvelopeError(f"binding must be 'json' or 'cbor', not {binding!r}")
+    if not isinstance(root, dict):
+        raise EnvelopeError("the reply is not a map")
+    is_envelope, is_refusal = "artifact_digest" in root, "reason" in root
+    if is_envelope and is_refusal:
+        raise EnvelopeError("the reply carries both artifact_digest and reason")
+    if is_refusal:
+        return root
+    if not is_envelope:
+        raise EnvelopeError("the reply is neither an envelope nor a refusal; a transport condition")
+    for name in ("profile", "request_digest", "artifact_digest", "responder", "issued_at", "sig"):
+        _text_member(root, name)
+    if "derivation" in root and not (isinstance(root["derivation"], str) and root["derivation"]):
+        raise EnvelopeError("derivation is present and not non-empty text")
+    try:
+        _parse_subject(root.get("subject"))
+    except RequestError:
+        raise EnvelopeError("envelope subject is not one form with conforming content") from None
+    anchor = root.get("anchor")
+    if not isinstance(anchor, dict) or not isinstance(anchor.get("digest"), str) or set(anchor) - {"digest", "freshness"}:
+        raise EnvelopeError("anchor is not {digest, freshness?}")
+    if "freshness" in anchor and not (_is_uint(anchor["freshness"]) or isinstance(anchor["freshness"], str)):
+        raise EnvelopeError("anchor.freshness is neither a size nor a time")
+    if root.get("verification") == []:
+        # Present means there is material (profile §6.2); an empty array would sign differently
+        # from its absence, so the other implementations refuse it too.
+        raise EnvelopeError("verification is present and empty")
+    entries = root.get("verification", [])
+    if not isinstance(entries, list) or not all(
+            isinstance(e, dict) and set(e) == {"kind", "digest"} and all(isinstance(v, str) for v in e.values())
+            for e in entries):
+        raise EnvelopeError("verification is not an array of {kind, digest}")
+    artifact = _opaque(root.get("artifact"), binding)
+    if artifact is None:
+        raise EnvelopeError("artifact is not opaque bytes in this binding")
+    content = root.get("verification_content", [])
+    items = [_opaque(item, binding) for item in content] if isinstance(content, list) else [None]
+    if None in items:
+        raise EnvelopeError("verification_content is not an array of opaque bytes")
+    signed = {name: root[name] for name in ENVELOPE_SIGNED_MEMBERS if name in root}
+    return ReceivedEnvelope(signed=signed, sig=root["sig"], artifact=artifact, verification_content=tuple(items))
+
+
+def check_anchor_inclusion(envelope: ReceivedEnvelope, trust: TrustPolicy) -> PropertyReport:
+    """``anchor_inclusion`` for the Checkpointed Local Log material an envelope carries (profile
+    §6.2.1, steps 1 to 14), under ``trust``'s log keys. It runs the interop profile's reference
+    procedure (:mod:`agent_action_capsule.interop_profile.cll`). The material is checked only
+    when the envelope verifies (step 4); whether its responder is the one you expected is
+    :meth:`ReceivedEnvelope.verify_for`'s question."""
+    if envelope.signed.get("profile") != PROFILE:
+        return PropertyReport("anchor_inclusion", NOT_CHECKED, "§6.2.1",
+                              f"the envelope is not {PROFILE}")
+    try:
+        envelope.verify()
+        bound = PASS
+    except EnvelopeError:
+        bound = FAIL
+    prerequisites = dict.fromkeys(("envelope_signature", "artifact_digest", "verification_binding"), bound)
+    return _cll.check_anchor_inclusion(dict(envelope.signed), list(envelope.verification_content), prerequisites, trust,
+                     frozenset(CLL_KINDS))
 
 
 def _now_iso() -> str:

@@ -14,8 +14,8 @@
 #    and rejects one whose signature was tampered with.
 # 4. envelope: every language builds the interop profile's artifact envelope
 #    (spec/interop-profile-v0.md §6.2) from the same inputs, byte-identical in
-#    both bindings. Go and Rust verify it, and each rejects an envelope with
-#    an altered verification item for that item's digest.
+#    both bindings. Python, Go and Rust each verify it, and each rejects an
+#    envelope with an altered verification item for that item's digest.
 set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
@@ -230,7 +230,7 @@ print(json.dumps({"seed_hex": sys.argv[1], "issued_at": sys.argv[2], "cases": [
          artifact_hex=artifact.hex(), **extra) for i, b, s, c, extra in specs]}))
 EOF
 envelope_languages=(python go rust)
-envelope_verifiers=(go rust)
+envelope_verifiers=(python go rust)
 for lang in "${envelope_languages[@]}"; do
   "er_$lang" envelope < "$work/envelope-in.json" > "$work/envelope-$lang.json"
 done
@@ -294,4 +294,4 @@ if [ "$count" -eq 0 ]; then
   echo "evidence request: no requests were classified" >&2
   exit 1
 fi
-echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python, go and rust build identical artifact envelopes, and go and rust verify them and reject an altered verification item in either binding."
+echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python, go and rust build identical artifact envelopes, and each verifies them and rejects an altered verification item in either binding."
