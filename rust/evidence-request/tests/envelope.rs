@@ -338,6 +338,23 @@ fn signed_members_are_never_byte_strings_or_empty_arrays() {
         parse_reply(&octets, Binding::Cbor),
         Err(ReplyError::Encoding(_))
     ));
+    // A byte string in a member no verification reads passes through, as in Go.
+    let refusal = ciborium::Value::Map(vec![
+        (
+            ciborium::Value::Text("reason".into()),
+            ciborium::Value::Text("declined".into()),
+        ),
+        (
+            ciborium::Value::Text("x".into()),
+            ciborium::Value::Bytes(vec![0]),
+        ),
+    ]);
+    let mut octets = Vec::new();
+    ciborium::into_writer(&refusal, &mut octets).unwrap();
+    assert!(matches!(
+        parse_reply(&octets, Binding::Cbor),
+        Ok(Reply::Refusal(_))
+    ));
     // `verification: []` present: not absence, and not a conforming member.
     let mut bare_parts = parts();
     bare_parts.verification.clear();
