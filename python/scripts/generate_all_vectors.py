@@ -57,6 +57,7 @@ GENERATORS = (
     "generate_producer_envelope_vectors.py",
     "generate_evidence_request_vectors.py",
     "generate_settlement_vectors.py",
+    "generate_evidence_layer_padding_vectors.py",
     "generate_min_necessary_vectors.py",
     "generate_bundle_producer_key_vectors.py",
     "generate_bundle_composed_vectors.py",

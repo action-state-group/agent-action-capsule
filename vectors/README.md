@@ -25,6 +25,12 @@ same-commit files in CI.
   digest, exact amounts, delivered-content digests, derived states), derived
   from the draft text; `python/scripts/generate_settlement_vectors.py`
   regenerates them.
+- `evidence-layer/padding/`: draft-mih-agent-evidence-layer-00 padding
+  records ("What a Checkpoint Reveals"): valid records with their
+  `capsule_id`, and negatives for a missing or misencoded `store_nonce`, extra
+  members, links, payload commitments, `subject_ref`, `principal_ref`, a wrong
+  `epistemic_type` and a wrong `capsule_id`;
+  `python/scripts/generate_evidence_layer_padding_vectors.py` regenerates them.
 - `minimum-necessary/`: provisional registry entries held for ratification
   (`spec/REGISTRY.md` §10, §14, §16): SD-JWT (RFC 9901) presentations as a
   revealed `agent_input`, the `disclosure-policy-decisions/v1` and
