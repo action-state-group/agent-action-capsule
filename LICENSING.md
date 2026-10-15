@@ -1,6 +1,6 @@
-> **Licensing note:** the code in this repository is BSD-3-Clause (see LICENSE).
-> The specification text under `spec/` is governed by BCP 78/79 — see LICENSING.md
-> for the full two-regime statement.
+> **Licensing note:** the code in this repository is BSD-3-Clause (see LICENSE),
+> except the Apache-2.0 paths listed in section 3. The specification text under
+> `spec/` is governed by BCP 78/79. See LICENSING.md for the full statement.
 
 This repository contains an IETF Internet-Draft and related material. Two
 licensing regimes apply, by content type.
@@ -59,3 +59,27 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+================================================================================
+3. APACHE-2.0 CODE
+   (code brought in from other Action State Group repositories under its
+   original license; nothing was relicensed)
+================================================================================
+
+The following paths are licensed under the Apache License, Version 2.0 (see
+LICENSE-APACHE-2.0), not under section 2. Each source file carries
+`SPDX-License-Identifier: Apache-2.0`, and that header is authoritative for any
+file not listed here.
+
+- rust/evidence-request/ (the `evidence-request` crate, with its own LICENSE
+  and NOTICE). Its scitt-cose receipt vectors under
+  rust/evidence-request/tests/vectors/scitt-proof-array/ keep their Apache-2.0
+  notice.
+- python/agent_action_capsule/evidence_request.py and
+  python/tests/test_evidence_request.py.
+- The shared repository tooling .github/release.py, .github/test_release.py,
+  .github/leak_lint.py, .github/test_leak_lint.py and
+  .github/workflows/leak-lint.yml.
+
+The conformance vectors those implementations read (vectors/evidence-request/)
+remain BSD-3-Clause under section 2.

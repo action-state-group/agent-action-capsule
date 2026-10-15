@@ -133,8 +133,15 @@ jobs:
 
       - name: Check the crate packages for crates.io
         run: |
-          python3 ../.github/scripts/check_crate_metadata.py agent-action-capsule/Cargo.toml
+          python3 ../.github/scripts/check_crate_metadata.py agent-action-capsule/Cargo.toml evidence-request/Cargo.toml
           cargo package --locked -p agent-action-capsule
+          cargo package --locked --list -p evidence-request
+          cargo package --locked -p evidence-request
+
+      # evidence-request's dependencies are all on crates.io, so a dry run
+      # resolves them from the registry index, as a real upload would.
+      - name: Publish dry run, evidence-request (no upload)
+        run: cargo publish --locked --dry-run -p evidence-request
 
   browser-conformance:
     name: Built browser artifact conformance

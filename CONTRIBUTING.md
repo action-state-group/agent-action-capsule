@@ -26,7 +26,9 @@ the IETF Datatracker.
 
 Contributions to code (`python/`), build tooling (`spec/Makefile`, scripts), and
 test vectors (`vectors/capsule/`) are licensed under the **Revised BSD License**
-(BSD-3-Clause; see LICENSE).
+(BSD-3-Clause; see LICENSE). The Apache-2.0 paths listed in LICENSING.md
+section 3 stay Apache-2.0: a change to one of those files is contributed under
+Apache-2.0, and a new file there carries `SPDX-License-Identifier: Apache-2.0`.
 
 ### Developer Certificate of Origin (DCO)
 
