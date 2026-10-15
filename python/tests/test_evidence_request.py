@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
-"""The evidence-request responder (``agent_action_capsule.evidence_request``).
+"""``agent_action_capsule.evidence_request`` against draft-mih-agent-evidence-request-00.
 
-``answer()`` runs here against an in-memory :class:`EvidenceStore`, so these
-tests pin the decision logic without any log implementation. The refusal
-signing and verification are also checked against the signed refusals in
-``vectors/evidence-request/refusal.json``: Ed25519 is deterministic, so the
-responder must reproduce each vector signature byte for byte.
+The first part runs the module against every case of every file in
+``vectors/evidence-request/``; :func:`test_every_vector_case_is_asserted`
+checks that each file's cases are all run. The second part pins the responder's own behavior
+(:func:`answer` over an in-memory :class:`EvidenceStore`) where the vectors
+leave it to the implementation: the store interface, forced checkpoints,
+declines and caller invariance by construction.
 """
 from __future__ import annotations
 
 import hashlib
 import json
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -22,23 +22,46 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 import agent_action_capsule.evidence_request as er
 from agent_action_capsule.evidence_request import (
     REASON_COVERAGE_UNSATISFIABLE,
-    REASON_DERIVATION_UNSUPPORTED,
-    REASON_NO_SUCH_RECORD,
     REASON_NO_SUCH_SUBJECT,
+    REASON_POLICY_DECLINED,
     REASON_REQUEST_MALFORMED,
-    REFUSAL_REASONS,
+    Anchor,
     Artifact,
-    NotYetCovered,
+    Decline,
     Refusal,
+    RequestError,
+    Resolution,
+    Subject,
     answer,
-    normalize_refusal_reason,
+    check_refusal,
+    check_refusal_cbor,
     parse_request,
+    request_digest,
     sign_refusal,
     verify_refusal_offline,
 )
 
 VECTORS = Path(__file__).resolve().parents[2] / "vectors" / "evidence-request"
-NOW = "2026-10-01T12:00:00Z"
+NOW = "2026-09-28T00:00:00Z"
+
+
+def _load(name: str) -> dict:
+    return json.loads((VECTORS / name).read_text(encoding="utf-8"))
+
+
+MANIFEST = _load("manifest.json")
+REGISTRY = _load("registry.json")
+REFUSAL_CORPUS = _load("refusal.json")
+RESPONDER = _load("resolution.json")["responder"]
+
+
+def _cases(name: str) -> list[dict]:
+    return _load(f"{name}.json")["cases"]
+
+
+def _params(name: str):
+    cases = _cases(name)
+    return pytest.mark.parametrize("case", cases, ids=[c["id"] for c in cases])
 
 
 class _Signer:
@@ -50,374 +73,446 @@ class _Signer:
         return self._key.sign(body).hex(), self.key_id
 
 
-@dataclass(frozen=True)
-class _Checkpoint:
-    mmr_size: int
-    root: str
-    timestamp: str
-
-
-@dataclass(frozen=True)
-class _Bundle:
-    capsule_id: str
-    checkpoint: _Checkpoint
-
-    def to_dict(self) -> dict:
-        return {"capsule_id": self.capsule_id, "mmr_size": self.checkpoint.mmr_size}
+PRIMARY = _Signer(bytes.fromhex(REFUSAL_CORPUS["keys"]["primary"]["seed_hex"]))
 
 
 @dataclass
 class _Store:
-    """Records in append order; ``covered_by`` is the checkpoint covering
-    every record, or ``None`` before the first checkpoint."""
+    """An :class:`EvidenceStore` over the declared responder state of
+    ``resolution.json``. ``artifact`` returns its own arguments, so a test can
+    see exactly what the responder asked the store for."""
 
-    records_: list[dict] = field(default_factory=list)
-    covered_by: _Checkpoint | None = None
-    after_push: _Checkpoint | None = None
+    state: dict
+    after_push: list = field(default_factory=list)
     pushes: int = 0
-    pushed_by: str | None = None
-    segment_owner: str | None = None
+    decline: str | None = None
 
-    def holds(self, capsule_id: str) -> bool:
-        return any(r["capsule_id"] == capsule_id for r in self.records_)
+    def holds_record(self, digest: str) -> bool:
+        return digest in self.state["records"]
 
-    def bundle(self, capsule_id: str) -> _Bundle:
-        if self.covered_by is None:
-            raise NotYetCovered(capsule_id)
-        return _Bundle(capsule_id, self.covered_by)
+    def holds_correlation(self, correlation_id: str) -> bool:
+        return correlation_id in self.state["correlations"]
 
-    def select_range(self, selector: str) -> list[str] | None:
-        wanted = selector.split(",")
-        found = [r["capsule_id"] for r in self.records_ if r["capsule_id"] in wanted]
-        return found or None
+    def cites_exchange(self, half_digest: str) -> bool:
+        return half_digest in self.state["exchange_citations"]
 
-    def records(self) -> list[dict]:
-        return list(self.records_)
+    def positional_ordering(self) -> bool:
+        return self.state["positional_ordering"]
 
-    def chain_segment(self, subject: dict, *, self_owner_id: str) -> _Bundle | None:
-        if not self.records_:
-            return None
-        if self.covered_by is None:
-            raise NotYetCovered("no checkpoints")
-        self.segment_owner = self_owner_id
-        return _Bundle("segment", self.covered_by)
+    def anchors(self) -> list[Anchor]:
+        return [Anchor(**a) for a in self.state["anchors"]]
+
+    def derivation_forms(self, derivation: str):
+        return self.state["supported_derivations"].get(derivation)
+
+    def artifact(self, subject: Subject, derivation: str | None, resolution: Resolution):
+        if self.decline:
+            raise Decline(self.decline, "test")
+        return {"subject": subject, "derivation": derivation, "anchor": resolution.anchor_digest}
 
     def force_checkpoint(self, signer) -> None:
         self.pushes += 1
-        self.pushed_by = signer.key_id
-        self.covered_by = self.after_push
+        self.state["anchors"] = self.state["anchors"] + self.after_push
 
 
-CP_OLD = _Checkpoint(mmr_size=3, root="r" * 64, timestamp="2026-10-01T11:00:00Z")
-CP_NEW = _Checkpoint(mmr_size=5, root="s" * 64, timestamp="2026-10-01T11:59:50Z")
+def _store(**overrides) -> _Store:
+    return _Store(json.loads(json.dumps({**RESPONDER, **overrides})))
 
 
-def _ids(n: int) -> list[str]:
-    return [f"{i:064x}" for i in range(1, n + 1)]
+def _request_bytes(case: dict) -> list[tuple[str, bytes, str]]:
+    """Each binding a case gives the request in, with the digest it pins."""
+    out = []
+    if "request_json" in case:
+        out.append(("json", case["request_json"].encode("utf-8"), case.get("request_json_digest")))
+    if "request_cbor_hex" in case:
+        out.append(("cbor", bytes.fromhex(case["request_cbor_hex"]), case.get("request_cbor_digest")))
+    return out
 
 
-def _store(n: int = 3, covered_by: _Checkpoint | None = CP_OLD, **kw) -> _Store:
-    return _Store(records_=[{"capsule_id": cid} for cid in _ids(n)], covered_by=covered_by, **kw)
+# --- registry.json -----------------------------------------------------------------
+
+
+def test_registry_strings_are_the_modules():
+    assert er.DRAFT == REGISTRY["draft"]
+    assert er.SUBJECT_FORMS == tuple(REGISTRY["subject_forms"])
+    assert er.COVERAGE_MEMBERS == tuple(REGISTRY["coverage_members"])
+    assert er.REFUSAL_REASONS == frozenset(REGISTRY["refusal_reasons"])
+    assert len(REGISTRY["refusal_reasons"]) == 8
+    assert er.OUTCOMES == tuple(REGISTRY["outcomes"])
+    assert er.REQUEST_STATES == tuple(REGISTRY["request_states"])
+    assert er.SUBPROTOCOL == REGISTRY["subprotocol"]
+    assert set(REGISTRY["derivations"]) == {er.DERIVATION_HISTORY_CARD}
+    assert {k for k, v in REGISTRY["request_fields"].items() if v == "REQUIRED"} == {"subject", "coverage"}
+    for token in REGISTRY["not_registered_examples"]:
+        assert token not in er.REFUSAL_REASONS and token not in er.SUBJECT_FORMS
+
+
+# --- request.json ----------------------------------------------------------------------
+
+
+@_params("request")
+def test_request_vector(case):
+    bindings = _request_bytes(case)
+    assert {b for b, _, _ in bindings} == {"json", "cbor"}
+    for binding, data, pinned in bindings:
+        assert request_digest(data) == pinned
+        if case["expect"]["well_formed"]:
+            parse_request(data, binding=binding)
+        else:
+            with pytest.raises(RequestError) as exc:
+                parse_request(data, binding=binding)
+            assert exc.value.reason == case["expect"]["reason"], binding
+        result = answer(data, store=_store(), signer=PRIMARY, binding=binding, now=NOW)
+        if not case["expect"]["well_formed"]:
+            assert isinstance(result, Refusal)
+            assert result.reason == case["expect"]["reason"]
+            assert result.request_digest == pinned
+
+
+def test_both_bindings_parse_to_the_same_request():
+    for case in _cases("request"):
+        if case["expect"]["well_formed"]:
+            json_request = parse_request(case["request_json"].encode(), binding="json")
+            cbor_request = parse_request(bytes.fromhex(case["request_cbor_hex"]), binding="cbor")
+            assert json_request == cbor_request, case["id"]
+
+
+# --- resolution.json ------------------------------------------------------------------------
+
+
+@_params("resolution")
+def test_resolution_vector(case):
+    for binding, data, pinned in _request_bytes(case):
+        overrides = dict(case.get("responder_overrides", {}))
+        uniform = overrides.pop("uniform_policy_declined", False)
+        result = answer(
+            data, store=_store(**overrides), signer=PRIMARY, binding=binding, now=NOW,
+            uniform_policy_declined=uniform,
+        )
+        if case["expect"]["answer"] == "artifact":
+            assert isinstance(result, Artifact), (binding, result)
+            request = parse_request(data, binding=binding)
+            assert result.body["subject"] == request.subject
+            assert result.anchor == result.body["anchor"]
+            if request.coverage.expected_pin is not None:
+                assert result.anchor == request.coverage.expected_pin
+        else:
+            assert isinstance(result, Refusal), (binding, result)
+            assert result.reason == case["expect"]["reason"], binding
+            assert result.request_digest == pinned
+            assert check_refusal(result.to_dict()).conformant
+
+
+# --- digest.json -----------------------------------------------------------------------------
+
+
+@_params("digest")
+def test_digest_vector(case):
+    if "refusal_request_digest" in case:
+        sent = case["request_json"].encode("utf-8")
+        identifies = case["refusal_request_digest"] == request_digest(sent)
+        assert identifies is case["expect"]["identifies_request"]
+        if identifies:
+            assert answer(sent, store=_store(), signer=PRIMARY, now=NOW).anchor
+    else:
+        binding = case["encoding"]
+        data = case["request_json"].encode("utf-8") if binding == "json" else bytes.fromhex(case["request_cbor_hex"])
+        assert request_digest(data) == case["expect"]["request_digest"]
+        # Refused or not, a responder's refusal names the bytes as received.
+        result = answer(data, store=_store(), signer=PRIMARY, binding=binding, now=NOW)
+        if binding == "cbor" and not case["deterministic_encoding"]:
+            assert isinstance(result, Refusal) and result.reason == REASON_REQUEST_MALFORMED
+            assert result.request_digest == case["expect"]["request_digest"]
+        else:
+            assert isinstance(result, Artifact)
+
+
+# --- refusal.json and refusal-imported.json ------------------------------------------------------
+
+
+def _refusal_object(case: dict) -> dict:
+    if "file" in case:
+        raw = (VECTORS / case["file"]).read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == case["file_sha256"]
+        return json.loads(raw)
+    return case["refusal"]
+
+
+@_params("refusal")
+def test_refusal_vector(case):
+    obj = _refusal_object(case)
+    expect = case["expect"]
+    checked = check_refusal(obj)
+    assert checked.signature_valid is (expect["signature"] == "valid")
+    assert checked.reason_registered is expect["reason_registered"]
+    assert checked.conformant is expect["conformant"]
+    if "signing_body" in case:
+        assert er._signing_body(obj) == case["signing_body"].encode("utf-8")
+    if "refusal_cbor_hex" in case:
+        frame = bytes.fromhex(case["refusal_cbor_hex"])
+        assert hashlib.sha256(frame).hexdigest() == case["refusal_cbor_digest"]
+        assert check_refusal_cbor(frame) == checked
+        assert Refusal(**obj).to_cbor() == frame
+    if set(obj) == set(Refusal.__dataclass_fields__) and all(isinstance(v, str) for v in obj.values()):
+        assert verify_refusal_offline(Refusal(**obj)) is checked.signature_valid
+    # The responder reproduces every conforming primary-key refusal byte for
+    # byte (Ed25519 is deterministic), and refuses to sign anything else.
+    if obj.get("key_id") == PRIMARY.key_id and checked.signature_valid:
+        args = (obj.get("request_digest"), obj.get("reason"))
+        if checked.conformant:
+            assert sign_refusal(*args, signer=PRIMARY, issued_at=obj["issued_at"]).to_dict() == obj
+        else:
+            with pytest.raises((ValueError, TypeError)):
+                sign_refusal(*args, signer=PRIMARY, issued_at=obj.get("issued_at"))
+
+
+# --- outcomes.json ----------------------------------------------------------------------------
+
+
+@_params("outcomes")
+def test_outcome_vector(case):
+    facts = case["facts"]
+    state = er.record_outcome(
+        facts["received"],
+        window_open=facts["window"] == "open",
+        artifact_verified=facts.get("artifact_verification") == "verified",
+        refusal_signature_valid=facts.get("refusal_signature") == "valid",
+        refusal_reason=facts.get("refusal_reason"),
+    )
+    assert state == case["expect"]["state"]
+    assert state not in case["expect"]["must_not_record_as"]
+
+
+# --- invariance.json ---------------------------------------------------------------------------
+
+
+@_params("invariance")
+def test_invariance_vector(case):
+    observations = [(o["resolved_anchor"], bytes.fromhex(o["artifact_hex"])) for o in case["observations"]]
+    for o in case["observations"]:
+        assert hashlib.sha256(bytes.fromhex(o["artifact_hex"])).hexdigest() == o["artifact_digest"]
+    assert er.compare_observations(observations) == case["expect"]["invariance"]
+
+
+# --- retention.json -----------------------------------------------------------------------------
+
+
+@_params("retention")
+def test_retention_vector(case):
+    expect = case["expect"]
+    if "commitment" in case:
+        assert er.commitment_well_formed(case["commitment"]) is expect["well_formed"]
+    elif "refusal_reason" in case["facts"]:
+        facts = case["facts"]
+        assert er.classify_refusal(facts["commitment"], facts["refusal_reason"]) == expect["classification"]
+    else:
+        facts = case["facts"]
+        assert er.classify_absence(facts["commitment"]) == expect["classification"]
+        state = er.record_outcome(facts["received"], window_open=facts["window"] == "open")
+        assert state == expect["state"]
+
+
+def test_every_vector_case_is_parametrized():
+    """Each test above runs every case of its file, unfiltered, and asserts
+    on each with no skip path; the manifest's counts pin the total."""
+    counts = {f["path"]: f["count"] for f in MANIFEST["files"]}
+    for name in ("request", "resolution", "digest", "refusal", "outcomes", "invariance", "retention"):
+        assert len(_cases(name)) == counts[f"{name}.json"]
+    files = [c["file"] for c in _cases("refusal") if "file" in c]
+    assert files == ["refusal-imported.json"] and counts["refusal-imported.json"] == 1
+    assert set(counts) == {p.name for p in VECTORS.glob("*.json")} - {"manifest.json"}
+    assert sum(counts[f"{n}.json"] for n in ("request", "resolution", "digest", "refusal", "outcomes",
+                                               "invariance", "retention")) == 124
+
+
+# --- the responder beyond the vectors -------------------------------------------------------------
+
+PIN = RESPONDER["anchors"][1]["digest"]
+RECORD = RESPONDER["records"][0]
 
 
 def _req(**members) -> bytes:
     return json.dumps(members).encode()
 
 
-def _ask(store: _Store, request: bytes, **kw):
-    return answer(request, store=store, signer=_Signer(), now=NOW, **kw)
+def test_any_bytes_get_a_signed_refusal_over_the_bytes_received():
+    for data in (b"", b"\xff", b"[]", b"{}", b"null", b'{"subject": NaN}', b'{"a":1,"a":1}'):
+        result = answer(data, store=_store(), signer=_Signer(), now=NOW)
+        assert isinstance(result, Refusal) and result.reason == REASON_REQUEST_MALFORMED
+        assert result.request_digest == hashlib.sha256(data).hexdigest()
+        assert verify_refusal_offline(result) and check_refusal(result.to_dict()).conformant
 
 
-def _refused(result, reason: str) -> None:
-    assert isinstance(result, Refusal), result
-    assert result.reason == reason
-    assert verify_refusal_offline(result)
+def test_a_duplicate_json_member_is_malformed():
+    data = b'{"subject":{"record":"%s"},"subject":{"checkpoints":null},"coverage":{"expected_pin":"%s"}}' % (
+        RECORD.encode(), PIN.encode())
+    with pytest.raises(RequestError) as exc:
+        parse_request(data)
+    assert exc.value.reason == REASON_REQUEST_MALFORMED
 
 
-# --- refusals ---------------------------------------------------------------
+@pytest.mark.parametrize("bad", [
+    {"deadline": "tomorrow"}, {"deadline": "2026-09-28T00:00:00+00:00"}, {"nonce": 7}, {"route": ["a"]},
+    {"derivation": "history_card"}, {"derivation": "/1"}, {"subject": {"range": [0, 2 ** 53]}},
+    {"subject": {"range": [-1, 2]}}, {"subject": {"range": [0.0, 2]}}, {"subject": {"range": [True, 2]}},
+    {"subject": {"correlation": ""}}, {"subject": {"exchange": PIN.upper()}},
+    {"coverage": {"min_freshness": "2026-02-30T00:00:00Z"}}, {"coverage": {"min_freshness": 1.5}},
+])
+def test_a_defined_member_that_does_not_conform_is_malformed(bad):
+    members = {"subject": {"checkpoints": None}, "coverage": {"min_freshness": 1}, **bad}
+    with pytest.raises(RequestError) as exc:
+        parse_request(_req(**members))
+    assert exc.value.reason == REASON_REQUEST_MALFORMED
 
 
-@pytest.mark.parametrize(
-    "request_bytes",
-    [b"not json", b"[]", _req(subject={"kind": "nope"}), _req(subject={"kind": "record"}),
-     _req(subject={"kind": "chain_segment", "last": 2, "to_size": 3}),
-     _req(subject={"kind": "range", "selector": "a"}, page={"token": "x"})],
-)
-def test_malformed_request_is_a_signed_refusal_over_the_bytes_received(request_bytes):
-    result = _ask(_store(), request_bytes)
-    _refused(result, REASON_REQUEST_MALFORMED)
-    assert result.request_digest == hashlib.sha256(request_bytes).hexdigest()
-    assert result.issued_at == NOW
+def test_unknown_members_may_hold_anything():
+    data = b'{"x":[-1,1.5,1e999,{"y":null}],"subject":{"checkpoints":null},"coverage":{"min_freshness":1}}'
+    assert parse_request(data).subject == Subject("checkpoints")
 
 
-def test_any_derivation_is_refused_unsupported():
-    _refused(_ask(_store(), _req(subject={"kind": "record", "capsule_id": _ids(1)[0]}, derivation="x/1")),
-             REASON_DERIVATION_UNSUPPORTED)
+def test_a_cbor_frame_must_be_core_deterministic():
+    case = next(c for c in _cases("request") if c["id"] == "pos-subject-record")
+    frame = bytes.fromhex(case["request_cbor_hex"])
+    parse_request(frame, binding="cbor")
+    for bad in (
+        frame + b"\x00",  # trailing bytes
+        b"\xb9\x00\x03" + frame[1:],  # a map length not in its shortest form
+        b"\xbf" + frame[1:] + b"\xff",  # an indefinite-length map
+        b"\xc0" + frame,  # a tag
+    ):
+        with pytest.raises(RequestError) as exc:
+            parse_request(bad, binding="cbor")
+        assert exc.value.reason == REASON_REQUEST_MALFORMED
+    with pytest.raises(ValueError):
+        parse_request(frame, binding="xml")
 
 
-def test_record_not_held_is_no_such_subject():
-    _refused(_ask(_store(), _req(subject={"kind": "record", "capsule_id": "f" * 64})), REASON_NO_SUCH_SUBJECT)
+def test_the_store_never_sees_the_requester_nonce_route_or_deadline():
+    """Caller invariance by construction (§5): two requests differing only in
+    nonce, route and deadline produce the same artifact."""
+    base = {"subject": {"record": RECORD}, "coverage": {"expected_pin": PIN}}
+    a = answer(_req(**base, nonce="one"), store=_store(), signer=_Signer(), now=NOW)
+    b = answer(_req(**base, nonce="two", route="https://r.example", deadline="2027-01-01T00:00:00Z"),
+               store=_store(), signer=_Signer(b"\x01" * 32), now="2027-01-01T00:00:00Z")
+    assert a == b
 
 
-def test_record_held_but_uncovered_is_coverage_unsatisfiable():
-    _refused(_ask(_store(covered_by=None), _req(subject={"kind": "record", "capsule_id": _ids(1)[0]})),
-             REASON_COVERAGE_UNSATISFIABLE)
+def test_min_freshness_picks_the_largest_qualifying_anchor():
+    anchors = [Anchor("a" * 64, 40, "2026-09-26T00:00:00Z"), Anchor("b" * 64, 42, "2026-09-27T00:00:00Z")]
+    assert er._freshest(anchors, 40).digest == "b" * 64
+    assert er._freshest(anchors, "2026-09-26T00:00:00Z").digest == "b" * 64
+    assert er._freshest(anchors, 43) is None
 
 
-def test_tampered_refusal_does_not_verify():
-    result = _ask(_store(), b"not json")
-    forged = Refusal(result.request_digest, REASON_NO_SUCH_SUBJECT, result.issued_at, result.key_id, result.sig)
+def test_a_range_past_the_anchor_is_not_served_under_it():
+    for end, expected in ((41, Artifact), (42, Refusal)):
+        result = answer(_req(subject={"range": [0, end]}, coverage={"expected_pin": PIN}),
+                        store=_store(), signer=_Signer(), now=NOW)
+        assert isinstance(result, expected)
+        if expected is Refusal:
+            assert result.reason == REASON_COVERAGE_UNSATISFIABLE
+
+
+def test_an_exchange_pin_that_is_not_the_half_must_be_a_held_anchor():
+    half = next(iter(RESPONDER["exchange_citations"]))
+    result = answer(_req(subject={"exchange": half}, coverage={"expected_pin": PIN}),
+                    store=_store(), signer=_Signer(), now=NOW)
+    assert isinstance(result, Artifact) and result.anchor == PIN
+    result = answer(_req(subject={"exchange": half}, coverage={"expected_pin": "c" * 64}),
+                    store=_store(), signer=_Signer(), now=NOW)
+    assert result.reason == REASON_COVERAGE_UNSATISFIABLE
+
+
+def test_a_store_decline_is_a_signed_refusal():
+    store = _store()
+    store.decline = REASON_POLICY_DECLINED
+    result = answer(_req(subject={"full_history": None}, coverage={"expected_pin": PIN}),
+                    store=store, signer=_Signer(), now=NOW)
+    assert result.reason == REASON_POLICY_DECLINED and verify_refusal_offline(result)
+    with pytest.raises(ValueError):
+        Decline("no_such_record")
+
+
+FRESH = {"digest": "d" * 64, "size": 50, "issued_at": "2026-09-28T00:00:00Z"}
+STALE_ASK = {"subject": {"record": RECORD}, "coverage": {"min_freshness": 50}}
+
+
+@pytest.mark.parametrize("deadline, opt_in", [(None, False), (None, True), ("2026-09-29T00:00:00Z", False)])
+def test_unmet_freshness_is_refused_without_both_deadline_and_opt_in(deadline, opt_in):
+    store = _store()
+    store.after_push = [FRESH]
+    ask = {**STALE_ASK, **({"deadline": deadline} if deadline else {})}
+    result = answer(_req(**ask), store=store, signer=_Signer(), now=NOW, allow_forced_checkpoint=opt_in)
+    assert result.reason == REASON_COVERAGE_UNSATISFIABLE
+    assert store.pushes == 0
+
+
+def test_unmet_freshness_forces_one_checkpoint_with_deadline_and_opt_in():
+    store = _store()
+    store.after_push = [FRESH]
+    ask = {**STALE_ASK, "deadline": "2026-09-29T00:00:00Z"}
+    result = answer(_req(**ask), store=store, signer=_Signer(), now=NOW, allow_forced_checkpoint=True)
+    assert isinstance(result, Artifact) and result.anchor == FRESH["digest"]
+    assert store.pushes == 1
+
+
+def test_still_unmet_after_the_forced_checkpoint_is_refused():
+    store = _store()
+    ask = {**STALE_ASK, "deadline": "2026-09-29T00:00:00Z"}
+    result = answer(_req(**ask), store=store, signer=_Signer(), now=NOW, allow_forced_checkpoint=True)
+    assert result.reason == REASON_COVERAGE_UNSATISFIABLE
+    assert store.pushes == 1
+
+
+def test_an_expected_pin_never_forces_a_checkpoint():
+    store = _store()
+    ask = {"subject": {"record": RECORD}, "coverage": {"expected_pin": "e" * 64}, "deadline": "2026-09-29T00:00:00Z"}
+    result = answer(_req(**ask), store=store, signer=_Signer(), now=NOW, allow_forced_checkpoint=True)
+    assert result.reason == REASON_COVERAGE_UNSATISFIABLE and store.pushes == 0
+
+
+def test_not_held_is_no_such_subject_never_a_prefix_match():
+    result = answer(_req(subject={"correlation": "c-7d1e9a4"}, coverage={"expected_pin": PIN}),
+                    store=_store(), signer=_Signer(), now=NOW)
+    assert result.reason == REASON_NO_SUCH_SUBJECT
+
+
+def test_sign_refusal_refuses_non_conforming_members():
+    digest = "a" * 64
+    for args, issued_at in (((digest, "no_such_record"), NOW), (("abc", REASON_NO_SUCH_SUBJECT), NOW),
+                            ((digest, REASON_NO_SUCH_SUBJECT), "2026-09-28")):
+        with pytest.raises(ValueError):
+            sign_refusal(*args, signer=_Signer(), issued_at=issued_at)
+
+
+def test_tampered_or_garbage_refusals_do_not_verify():
+    good = sign_refusal("a" * 64, REASON_NO_SUCH_SUBJECT, signer=_Signer(), issued_at=NOW)
+    forged = Refusal(good.request_digest, REASON_POLICY_DECLINED, good.issued_at, good.key_id, good.sig)
     assert not verify_refusal_offline(forged)
     assert not verify_refusal_offline(Refusal("", "", "", "zz", "zz"))
+    assert check_refusal([]) == er.RefusalCheck(False, False, False)
+    assert check_refusal_cbor(b"\xa1") == er.RefusalCheck(False, False, False)
 
 
-# --- artifacts and paging ---------------------------------------------------
+def test_parse_utc_orders_instants_and_refuses_other_forms():
+    assert er.parse_utc("1970-01-01T00:00:00Z") == (0, 0)
+    assert er.parse_utc("2000-03-01T00:00:00Z") == (951_868_800, 0)
+    assert er.parse_utc("2024-02-29T23:59:59Z") == (1_709_251_199, 0)
+    assert er.parse_utc("0000-01-01T00:00:00Z") < er.parse_utc("1969-12-31T23:59:59.999999999Z") < (0, 0)
+    assert er.parse_utc("2026-09-27T12:00:00Z") < er.parse_utc("2026-09-27T12:00:00.5Z")
+    for bad in ("2026-09-27", "2026-09-27T00:00:00", "2026-09-27t00:00:00z", "2026-02-30T00:00:00Z",
+                "2026-09-27T24:00:00Z", "2026-09-27T00:00:00.Z", "2026-09-27T00:00:00.1234567890Z",
+                "2025-02-29T00:00:00Z", "\u0662026-09-27T00:00:00Z", None, 7):
+        assert er.parse_utc(bad) is None, bad
 
 
-def test_record_held_and_covered_is_an_artifact():
-    cid = _ids(2)[1]
-    result = _ask(_store(), _req(subject={"kind": "record", "capsule_id": cid}))
-    assert isinstance(result, Artifact)
-    assert result.to_dict() == {"v": 1, "subject_kind": "record", "bundles": [{"capsule_id": cid, "mmr_size": 3}]}
-
-
-def test_answer_does_not_depend_on_the_nonce():
-    cid = _ids(1)[0]
-    a = _ask(_store(), _req(subject={"kind": "record", "capsule_id": cid}, nonce="one"))
-    b = _ask(_store(), _req(subject={"kind": "record", "capsule_id": cid}, nonce="two"))
-    assert a.to_dict() == b.to_dict()
-
-
-def test_range_pages_through_the_selection(monkeypatch):
-    monkeypatch.setattr(er, "DEFAULT_PAGE_SIZE", 2)
-    ids = _ids(5)
-    seen, token = [], None
-    for _ in range(3):
-        page = {"token": token} if token else {}
-        result = _ask(_store(5), _req(subject={"kind": "range", "selector": ",".join(ids)}, page=page))
-        seen += [b.capsule_id for b in result.bundles]
-        token = result.next_page_token
-    assert seen == ids
-    assert token is None
-
-
-def test_page_size_is_capped(monkeypatch):
-    monkeypatch.setattr(er, "MAX_PAGE_SIZE", 3)
-    ids = _ids(5)
-    result = _ask(_store(5), _req(subject={"kind": "range", "selector": ",".join(ids)}, page={"size": 100}))
-    assert [b.capsule_id for b in result.bundles] == ids[:3]
-    assert result.next_page_token == "3"
-
-
-def test_a_token_past_the_end_is_an_empty_artifact():
-    ids = _ids(2)
-    result = _ask(_store(2), _req(subject={"kind": "range", "selector": ",".join(ids)}, page={"token": "9"}))
-    assert isinstance(result, Artifact)
-    assert result.bundles == ()
-    assert result.next_page_token is None
-
-
-def test_range_selecting_nothing_is_no_such_subject():
-    _refused(_ask(_store(), _req(subject={"kind": "range", "selector": "f" * 64})), REASON_NO_SUCH_SUBJECT)
-
-
-# --- correlation ------------------------------------------------------------
-
-
-def test_correlation_matches_a_correlator_at_any_depth_and_under_any_alias():
-    s = _store(0)
-    s.records_ = [
-        {"capsule_id": "a" * 64, "x": {"y": [{"client_nonce": "n1"}]}},
-        {"capsule_id": "b" * 64, "nonce": "n2"},
-        {"capsule_id": "c" * 64, "deep": {"nonce": "n1"}},
-    ]
-    result = _ask(s, _req(subject={"kind": "correlation", "by": "nonce", "value": "n1"}))
-    assert [b.capsule_id for b in result.bundles] == ["a" * 64, "c" * 64]
-
-
-def test_counterparty_matches_an_adjudication_naming_it():
-    s = _store(0)
-    s.records_ = [
-        {"capsule_id": "a" * 64, "m": {"adjudication": {"verdict": "contradicted:peer"}}},
-        {"capsule_id": "b" * 64, "m": {"adjudication": {"verdict": "corroborated"}}},
-        {"capsule_id": "c" * 64, "counterparty_ref": "peer"},
-    ]
-    result = _ask(s, _req(subject={"kind": "correlation", "by": "counterparty", "value": "peer"}))
-    assert [b.capsule_id for b in result.bundles] == ["a" * 64, "c" * 64]
-
-
-def test_correlation_matching_nothing_is_no_such_subject():
-    _refused(_ask(_store(), _req(subject={"kind": "correlation", "by": "deal_id", "value": "d"})),
-             REASON_NO_SUCH_SUBJECT)
-
-
-# --- chain_segment ----------------------------------------------------------
-
-
-def test_chain_segment_passes_the_signer_as_self_owner():
-    s = _store()
-    result = _ask(s, _req(subject={"kind": "chain_segment", "last": 2}))
-    assert isinstance(result, Artifact)
-    assert s.segment_owner == _Signer().key_id
-
-
-def test_chain_segment_on_an_empty_store_is_no_such_subject():
-    _refused(_ask(_store(0), _req(subject={"kind": "chain_segment", "last": 1})), REASON_NO_SUCH_SUBJECT)
-
-
-def test_chain_segment_not_available_is_coverage_unsatisfiable():
-    _refused(_ask(_store(covered_by=None), _req(subject={"kind": "chain_segment", "last": 1})),
-             REASON_COVERAGE_UNSATISFIABLE)
-
-
-# --- coverage ---------------------------------------------------------------
-
-
-def _record_req(**coverage_and_more) -> bytes:
-    return _req(subject={"kind": "record", "capsule_id": _ids(1)[0]}, **coverage_and_more)
-
-
-def test_expected_pin_must_match_the_covering_checkpoint():
-    pin = {"root": CP_OLD.root, "mmr_size": CP_OLD.mmr_size}
-    assert isinstance(_ask(_store(), _record_req(coverage={"expected_pin": pin})), Artifact)
-    pin["mmr_size"] = 4
-    _refused(_ask(_store(), _record_req(coverage={"expected_pin": pin})), REASON_COVERAGE_UNSATISFIABLE)
-
-
-@pytest.mark.parametrize(
-    "deadline, opt_in",
-    [(None, False), (None, True), ("2026-10-02T00:00:00Z", False)],
-)
-def test_stale_evidence_is_refused_without_both_deadline_and_opt_in(deadline, opt_in):
-    s = _store(after_push=CP_NEW)
-    request = _record_req(coverage={"min_freshness": {"max_age_seconds": 60}}, deadline=deadline)
-    _refused(_ask(s, request, allow_forced_checkpoint=opt_in), REASON_COVERAGE_UNSATISFIABLE)
-    assert s.pushes == 0
-
-
-def test_stale_evidence_forces_one_checkpoint_with_deadline_and_opt_in():
-    s = _store(after_push=CP_NEW)
-    request = _record_req(coverage={"min_freshness": {"max_age_seconds": 60}}, deadline="2026-10-02T00:00:00Z")
-    result = _ask(s, request, allow_forced_checkpoint=True)
-    assert isinstance(result, Artifact)
-    assert result.bundles[0].checkpoint == CP_NEW
-    assert s.pushes == 1
-    assert s.pushed_by == _Signer().key_id
-
-
-def test_uncovered_evidence_forces_one_checkpoint_with_deadline_and_opt_in():
-    s = _store(covered_by=None, after_push=CP_NEW)
-    request = _record_req(coverage={"min_freshness": {"max_age_seconds": 60}}, deadline="2026-10-02T00:00:00Z")
-    assert isinstance(_ask(s, request, allow_forced_checkpoint=True), Artifact)
-    assert s.pushes == 1
-
-
-def test_still_stale_after_the_forced_checkpoint_is_refused():
-    s = _store(after_push=CP_OLD)
-    request = _record_req(coverage={"min_freshness": {"max_age_seconds": 60}}, deadline="2026-10-02T00:00:00Z")
-    _refused(_ask(s, request, allow_forced_checkpoint=True), REASON_COVERAGE_UNSATISFIABLE)
-    assert s.pushes == 1
-
-
-def test_no_min_freshness_never_forces_a_checkpoint():
-    s = _store(covered_by=None, after_push=CP_NEW)
-    request = _record_req(coverage={}, deadline="2026-10-02T00:00:00Z")
-    _refused(_ask(s, request, allow_forced_checkpoint=True), REASON_COVERAGE_UNSATISFIABLE)
-    assert s.pushes == 0
-
-
-def test_expected_pin_takes_precedence_over_min_freshness():
-    """With both members present only the pin is checked: a matching pin
-    serves stale evidence and never forces a checkpoint."""
-    s = _store(after_push=CP_NEW)
-    pin = {"root": CP_OLD.root, "mmr_size": CP_OLD.mmr_size}
-    request = _record_req(
-        coverage={"expected_pin": pin, "min_freshness": {"max_age_seconds": 60}}, deadline="2026-10-02T00:00:00Z"
-    )
-    result = _ask(s, request, allow_forced_checkpoint=True)
-    assert isinstance(result, Artifact)
-    assert result.bundles[0].checkpoint == CP_OLD
-    assert s.pushes == 0
-
-
-def test_stale_evidence_that_vanishes_after_the_forced_checkpoint_is_refused():
-    s = _store(after_push=None)
-    request = _record_req(coverage={"min_freshness": {"max_age_seconds": 60}}, deadline="2026-10-02T00:00:00Z")
-    _refused(_ask(s, request, allow_forced_checkpoint=True), REASON_COVERAGE_UNSATISFIABLE)
-    assert s.pushes == 1
-
-
-# --- parsing, reasons, time -------------------------------------------------
-
-
-def test_parse_request_ignores_unknown_members():
-    req = parse_request(_req(subject={"kind": "record", "capsule_id": "a"}, extra=1, deadline=0))
-    assert req.has_deadline and req.coverage == {} and req.page == {}
-
-
-def test_normalize_refusal_reason_translates_only_the_legacy_spelling():
-    with pytest.warns(DeprecationWarning):
-        assert normalize_refusal_reason(REASON_NO_SUCH_RECORD) == REASON_NO_SUCH_SUBJECT
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        for reason in REFUSAL_REASONS:
-            assert normalize_refusal_reason(reason) == reason
+def test_record_outcome_rejects_unknown_observations():
+    with pytest.raises(ValueError):
+        er.record_outcome("silence", window_open=True)
+    assert er.record_outcome("refusal", window_open=False, refusal_reason="policy_declined") \
+        == "refusal_signature_invalid"
 
 
 def test_issued_at_is_whole_second_utc():
     now = er._now_iso()
-    assert now.endswith("Z") and "." not in now and len(now) == len("2026-10-01T12:00:00Z")
-
-
-# --- the -00 refusal vectors ------------------------------------------------
-
-
-def _refusal_cases() -> list[dict]:
-    corpus = json.loads((VECTORS / "refusal.json").read_text(encoding="utf-8"))
-    cases = []
-    for case in corpus["cases"]:
-        if "file" in case:
-            case = {**case, "refusal": json.loads((VECTORS / case["file"]).read_text(encoding="utf-8"))}
-        refusal = case["refusal"]
-        if set(refusal) == {"request_digest", "reason", "issued_at", "key_id", "sig"} and all(
-            isinstance(v, str) for v in refusal.values()
-        ):
-            cases.append(case)
-    return cases
-
-
-REFUSAL_CASES = _refusal_cases()
-PRIMARY_SEED = bytes.fromhex(
-    json.loads((VECTORS / "refusal.json").read_text(encoding="utf-8"))["keys"]["primary"]["seed_hex"]
-)
-
-
-def test_the_vector_corpus_is_covered():
-    """Every case is checked except the two that cannot be built as a
-    Refusal: a list-valued reason, and a refusal with no issued_at."""
-    corpus = json.loads((VECTORS / "refusal.json").read_text(encoding="utf-8"))
-    skipped = {c["id"] for c in corpus["cases"]} - {c["id"] for c in REFUSAL_CASES}
-    assert skipped == {"neg-two-reasons", "neg-missing-issued_at"}
-    assert {c["id"] for c in PRIMARY_VALID} == {
-        c["id"] for c in REFUSAL_CASES
-        if c["expect"]["signature"] == "valid" and "file" not in c
-    }
-
-
-@pytest.mark.parametrize("case", REFUSAL_CASES, ids=[c["id"] for c in REFUSAL_CASES])
-def test_verify_refusal_offline_agrees_with_every_signed_vector(case):
-    assert verify_refusal_offline(Refusal(**case["refusal"])) is (case["expect"]["signature"] == "valid")
-
-
-PRIMARY_VALID = [
-    c for c in REFUSAL_CASES
-    if c["expect"]["signature"] == "valid" and c["refusal"]["key_id"] == _Signer(PRIMARY_SEED).key_id
-]
-
-
-@pytest.mark.parametrize("case", PRIMARY_VALID, ids=[c["id"] for c in PRIMARY_VALID])
-def test_sign_refusal_reproduces_every_valid_primary_key_vector(case):
-    refusal = case["refusal"]
-    signer = _Signer(PRIMARY_SEED)
-    signed = sign_refusal(refusal["request_digest"], refusal["reason"], signer=signer, issued_at=refusal["issued_at"])
-    assert signed.to_dict() == refusal
+    assert er.parse_utc(now) is not None and "." not in now

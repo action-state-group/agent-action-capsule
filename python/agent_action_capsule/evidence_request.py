@@ -1,593 +1,631 @@
 # SPDX-License-Identifier: Apache-2.0
-"""The evidence-request responder: parse a request, decide the answer, sign refusals.
+"""The evidence request interaction of ``draft-mih-agent-evidence-request-00``.
 
-``answer()`` turns one request map into exactly one answer: an
-:class:`Artifact` or a signed :class:`Refusal`. It owns the responder's
-decision logic only. Where the evidence comes from is the caller's
-:class:`EvidenceStore`: the store resolves subjects to records, builds the
-offline-verifiable bundles, and (if the node allows it) forces a checkpoint.
-This module never invents an artifact format of its own.
+A requester asks a responder for evidence about a **subject**, under a
+**coverage** constraint. The interaction ends in exactly one of three
+outcomes: an artifact, a signed refusal, or the requester's own record that
+nothing arrived (a recorded absence). This module implements what both sides
+must agree on, and the responder's decision logic:
 
-**Wire shape and the draft.** The request map is a JSON object
-``{subject, coverage?, derivation?, deadline?, nonce?, page?}``. This is the
-shape the deployed responder speaks, which predates
-``draft-mih-agent-evidence-request-00`` in three places: the subject forms,
-whether coverage is required, and the coverage value shapes. How a subject
-id matches a record is the store's: -00 requires an exact match, and a
-store that also accepts a prefix differs from the draft there.
-``vectors/evidence-request/DIFFS.md`` lists these differences against the
-draft and the vectors that catch each one. The refusal reason tokens and the
-refusal signature profile already match the draft.
+* :func:`parse_request`: the request map in its JSON or CBOR binding, checked
+  against -00 (the six subject forms, exactly one coverage member, the
+  optional fields), raising :class:`RequestError` with the exact refusal
+  reason when it is not well formed.
+* :func:`request_digest`: SHA-256 over the request bytes as received.
+* :func:`resolve`: exact-match resolution against an :class:`EvidenceStore`,
+  giving the anchor to serve under or the most specific refusal reason.
+* :func:`answer`: one request in, one :class:`Artifact` or signed
+  :class:`Refusal` out.
+* :func:`sign_refusal`, :func:`check_refusal`, :func:`verify_refusal_offline`:
+  the signed refusal.
+* :func:`record_outcome`, :func:`compare_observations`,
+  :func:`classify_refusal`, :func:`classify_absence` and
+  :func:`commitment_well_formed`: the three-state discipline, caller
+  invariance and retention commitments, as a requester or auditor applies them.
 
-**Subject kinds.** :data:`SUBJECT_KINDS` names four. ``record``, ``range``
-and ``correlation`` share the draft's names and meanings. ``chain_segment``
-(``{last: N}`` or ``{from_size, to_size}``) answers the question the draft's
-``checkpoints`` form asks (commitments only, no records) under a different
-name. There is no ``full_history`` or ``exchange`` subject kind.
+**Wire shapes.** -00 leaves several shapes open; this module follows the
+readings the conformance vectors in ``vectors/evidence-request/`` document
+(their README lists them as A1 to A14):
 
-Every well-formed request gets exactly one of three answers, never a bare,
-unsigned absence:
+* A subject is a map with exactly one member, named by the form token:
+  ``{"full_history": null}``, ``{"checkpoints": null}``, ``{"record":
+  <digest>}``, ``{"range": [a, b]}`` (unsigned, ``a <= b``),
+  ``{"correlation": "<id>"}``, ``{"exchange": <digest>}`` (A1, A6).
+* A digest is SHA-256 as 64 lowercase hex characters, as text in both
+  bindings (A2). Nothing is ever matched by prefix or with case folding.
+* ``coverage`` is ``{"expected_pin": <digest>}`` or ``{"min_freshness":
+  <size or time>}``: an unsigned integer is a log size, text an RFC 3339 UTC
+  time (A3). Each member present is checked first, so a non-conforming value
+  is ``request_malformed`` even beside the other member; only then is both,
+  or neither (an absent ``coverage`` included), ``coverage_unsatisfiable``
+  (A4). A ``coverage`` that is not a map is ``request_malformed``.
+* ``deadline`` is an RFC 3339 UTC time; ``nonce`` and ``route`` are text
+  (A5). ``derivation`` is a registered token (``name/N``) or the digest of a
+  definition (A14). Members -00 does not define are ignored (§3).
+* A refusal is ``{request_digest, reason, issued_at, key_id, sig}``: Ed25519
+  over the RFC 8785 serialization of ``issued_at``, ``reason`` and
+  ``request_digest``, with ``key_id`` the raw public key and ``sig`` in
+  lowercase hex (A7).
 
-  * an :class:`Artifact`: one or more offline-verifiable bundles;
-  * a :class:`Refusal` with ``reason="request_malformed"`` or
-    ``reason="derivation_unsupported"``: a decline about the request itself;
-  * a :class:`Refusal` with ``reason="no_such_subject"`` or
-    ``reason="coverage_unsatisfiable"``: this node holds nothing (yet) for
-    the named subject at the requested coverage. The draft's status-mapping
-    table groups these two as "evidence not found, or not yet committed".
+**Bindings.** The JSON binding is UTF-8 JSON; a duplicate member name makes
+it not well formed. The CBOR binding is accepted only in core deterministic
+encoding (RFC 8949 §4.2.1, as -00 §10 requires of the stream binding's
+frames), so the same request has one encoding and one digest: shortest
+arguments, definite lengths, text map keys in bytewise order with no
+repeats, and no tags, floats, byte strings, negative integers or integers
+above 2^53 - 1, at any depth. In both bindings an integer a defined member
+reads must be in 0 to 2^53 - 1.
 
-``no_such_subject`` is the registry token for "I hold nothing for this
-subject". It is not the draft's *recorded absence* outcome, which is never a
-``reason`` or any other message field: absence is the requester's own record
-that no answer arrived by a deadline. This module always answers and signs
-what it sends, so it never produces an absence.
-
-Every refusal is the same signed object, ``{request_digest, reason,
-issued_at, key_id, sig}``. It verifies offline against the node's own key
-(:func:`verify_refusal_offline`), so "I asked and it was not there" is
-citable in a way an HTTP 404 is not.
-
-**Caller invariance by construction.** The answer is a function of
-``request_bytes`` and the store's contents only. There is no
-requester-identity parameter. Two requesters sending byte-identical
-``(subject, coverage, derivation, page)`` (their ``nonce`` may differ)
-against an unchanged store get a byte-identical :class:`Artifact`. Only a
-refusal's ``request_digest`` varies with the nonce.
-
-**Caps and paging.** A ``range`` or ``correlation`` subject can name an
-arbitrarily large selection. ``answer()`` never returns more than
-:data:`MAX_PAGE_SIZE` bundles for one request, and uses
-:data:`DEFAULT_PAGE_SIZE` when the request names no ``page.size``. When more
-of the selection remains, the :class:`Artifact` carries ``next_page_token``,
-which the requester echoes back as ``request.page.token``. Its absence means
-the selection ended. A ``record`` or ``chain_segment`` subject never produces
-more than one answer object, so ``page`` is accepted and ignored there.
-
-**Correlation subjects.** ``{kind: "correlation", by, value}`` asks about a
-correlator this node's own records carry, with ``by`` one of
-:data:`CORRELATION_BY_VALUES`. Correlator fields are free-form extension data
-inside a record, not a registered schema position, so matching walks the
-record for the correlator's key names at any depth
-(:func:`_entry_matches_correlation`). A ``counterparty`` correlation also
-matches an adjudication whose verdict names that counterparty.
+**Caller invariance by construction.** :func:`answer` asks the store for the
+artifact with the subject, the derivation and the resolved anchor only: the
+store never sees the requester, the nonce, the route, the deadline or the
+time. Two requesters asking for the same subject under the same anchor get
+the same artifact (§5); only a refusal's ``request_digest`` differs.
 
 **Checkpoint writes are pull-only by default.** A ``min_freshness`` request
-against a stale or uncovered subject makes ``answer()`` call
-:meth:`EvidenceStore.force_checkpoint` (a write) only when both the request
-carries a ``deadline`` and the node opted in with
-``allow_forced_checkpoint=True``. The node-side opt-in defaults to ``False``.
+that no held anchor satisfies makes :func:`answer` call
+:meth:`EvidenceStore.force_checkpoint` (a write, the work §3.2 permits) only
+when the request carries a ``deadline`` and the node opted in with
+``allow_forced_checkpoint=True``.
 """
 from __future__ import annotations
 
 import hashlib
 import json
-import warnings
-from collections.abc import Iterator
+import re
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
+from .canonical import jcs
+from .interop_profile import _cbor
+
 __all__ = [
-    "REASON_REQUEST_MALFORMED",
-    "REASON_COVERAGE_UNSATISFIABLE",
+    "DRAFT",
+    "SUBPROTOCOL",
+    "DERIVATION_HISTORY_CARD",
+    "SUBJECT_FORMS",
+    "COVERAGE_MEMBERS",
+    "REASON_NOT_AUTHORIZED",
     "REASON_NO_SUCH_SUBJECT",
+    "REASON_COVERAGE_UNSATISFIABLE",
     "REASON_DERIVATION_UNSUPPORTED",
-    "REASON_NO_SUCH_RECORD",
+    "REASON_POLICY_DECLINED",
+    "REASON_DEADLINE_UNMET",
+    "REASON_REQUEST_MALFORMED",
+    "REASON_RETENTION_EXPIRED",
     "REFUSAL_REASONS",
-    "LEGACY_REFUSAL_REASON_ALIASES",
-    "SUBJECT_KINDS",
-    "CORRELATION_BY_VALUES",
-    "DEFAULT_PAGE_SIZE",
-    "MAX_PAGE_SIZE",
-    "RequestMalformedError",
-    "NotYetCovered",
+    "OUTCOMES",
+    "REQUEST_STATES",
+    "SIGNED_MEMBERS",
+    "RequestError",
+    "Decline",
+    "Subject",
+    "Coverage",
+    "Request",
+    "Anchor",
+    "Resolution",
     "EvidenceStore",
     "Signer",
-    "RequestMap",
     "Artifact",
     "Refusal",
+    "RefusalCheck",
+    "is_digest",
+    "parse_utc",
     "parse_request",
-    "answer",
     "request_digest",
+    "resolve",
+    "answer",
     "sign_refusal",
+    "check_refusal",
+    "check_refusal_cbor",
     "verify_refusal_offline",
-    "normalize_refusal_reason",
+    "record_outcome",
+    "compare_observations",
+    "classify_refusal",
+    "classify_absence",
+    "commitment_well_formed",
 ]
 
-#: Refusal-reason tokens from the registry
-#: ``draft-mih-agent-evidence-request-00`` establishes. This responder never
-#: checks requester authorization or retention undertakings, so it has no
-#: occasion to emit ``not_authorized``, ``policy_declined``,
-#: ``deadline_unmet`` or ``retention_expired``: emitting one without the
-#: mechanism behind it would be fabrication.
-REASON_REQUEST_MALFORMED = "request_malformed"
-REASON_COVERAGE_UNSATISFIABLE = "coverage_unsatisfiable"
+DRAFT = "draft-mih-agent-evidence-request-00"
+
+#: The stream binding's subprotocol identifier (§10, §13).
+SUBPROTOCOL = "evidence-request/1"
+
+#: The one derivation -00 registers (§8.1, §13).
+DERIVATION_HISTORY_CARD = "history_card/1"
+
+#: The six subject forms (§3.1), in the draft's order.
+SUBJECT_FORMS = ("full_history", "checkpoints", "record", "range", "correlation", "exchange")
+
+#: The two coverage members (§3.2).
+COVERAGE_MEMBERS = ("expected_pin", "min_freshness")
+
+REASON_NOT_AUTHORIZED = "not_authorized"
 REASON_NO_SUCH_SUBJECT = "no_such_subject"
+REASON_COVERAGE_UNSATISFIABLE = "coverage_unsatisfiable"
 REASON_DERIVATION_UNSUPPORTED = "derivation_unsupported"
+REASON_POLICY_DECLINED = "policy_declined"
+REASON_DEADLINE_UNMET = "deadline_unmet"
+REASON_REQUEST_MALFORMED = "request_malformed"
+REASON_RETENTION_EXPIRED = "retention_expired"
+
+#: The eight registered refusal reasons (§4.2, §13). Matching is exact: a
+#: different case, or a token such as ``no_such_record``, is not registered.
 REFUSAL_REASONS = frozenset(
     {
-        REASON_REQUEST_MALFORMED,
-        REASON_COVERAGE_UNSATISFIABLE,
+        REASON_NOT_AUTHORIZED,
         REASON_NO_SUCH_SUBJECT,
+        REASON_COVERAGE_UNSATISFIABLE,
         REASON_DERIVATION_UNSUPPORTED,
+        REASON_POLICY_DECLINED,
+        REASON_DEADLINE_UNMET,
+        REASON_REQUEST_MALFORMED,
+        REASON_RETENTION_EXPIRED,
     }
 )
 
-#: Deprecated pre-registry spelling of ``no_such_subject``. ``answer()``
-#: never emits it. Kept so a caller can still recognize a peer running a
-#: pre-alignment responder; see :func:`normalize_refusal_reason`.
-REASON_NO_SUCH_RECORD = "no_such_record"
+#: The three outcomes (§4) and the one request state that is not an outcome
+#: (§4.3).
+OUTCOMES = ("artifact", "refusal", "recorded_absence")
+REQUEST_STATES = ("pending",)
 
-#: Pre-registry reason spellings mapped to their current registry token.
-#: Never consulted by :func:`answer`, which only emits
-#: :data:`REFUSAL_REASONS` members.
-LEGACY_REFUSAL_REASON_ALIASES: dict[str, str] = {REASON_NO_SUCH_RECORD: REASON_NO_SUCH_SUBJECT}
+#: The refusal members the signature covers (A7).
+SIGNED_MEMBERS = ("issued_at", "reason", "request_digest")
 
-SUBJECT_KINDS = frozenset({"record", "range", "chain_segment", "correlation"})
-
-#: A ``range``/``correlation`` answer never exceeds this many bundles absent
-#: an explicit ``page.size``.
-DEFAULT_PAGE_SIZE = 50
-
-#: The hard ceiling on ``page.size``: a requester cannot ask past it.
-MAX_PAGE_SIZE = 200
-
-#: ``subject.by`` values a ``correlation`` subject accepts.
-CORRELATION_BY_VALUES = frozenset({"nonce", "exchange_id", "counterparty", "deal_id"})
-
-#: The record key name(s) that carry each correlator. More than one name
-#: exists per correlator because correlators are free-form extension data,
-#: and different producers have named the same concept differently.
-_CORRELATION_KEY_ALIASES: dict[str, frozenset[str]] = {
-    "nonce": frozenset({"nonce", "client_nonce"}),
-    "exchange_id": frozenset({"exchange_id"}),
-    "deal_id": frozenset({"deal_id"}),
-    "counterparty": frozenset({"counterparty_ref"}),
-}
+_MAX_UINT = (1 << 53) - 1
+_HEX64 = re.compile(r"[0-9a-f]{64}\Z")
+_UTC = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,9}))?Z\Z")
+_DERIVATION_TOKEN = re.compile(r".+/[0-9]+\Z", re.DOTALL)
 
 
-class RequestMalformedError(RuntimeError):
-    """A request map failed to parse. :func:`answer` turns it into a signed
-    ``request_malformed`` refusal and never raises it."""
+# --- values ----------------------------------------------------------------
 
 
-class NotYetCovered(Exception):
-    """Raised by an :class:`EvidenceStore` when a record it holds is not yet
-    covered by any checkpoint, or a chain segment it was asked for is not
-    available. :func:`answer` turns it into ``coverage_unsatisfiable``."""
+def is_digest(value: Any) -> bool:
+    """True for a digest as the vectors read -00: SHA-256 as 64 lowercase hex (A2)."""
+    return isinstance(value, str) and _HEX64.match(value) is not None
+
+
+def _is_uint(value: Any) -> bool:
+    return type(value) is int and 0 <= value <= _MAX_UINT
+
+
+def _is_hex_of_len(value: Any, nbytes: int) -> bool:
+    return isinstance(value, str) and len(value) == 2 * nbytes and re.fullmatch(r"[0-9a-f]*", value) is not None
+
+
+def parse_utc(value: Any) -> tuple[int, int] | None:
+    """Parse ``YYYY-MM-DDTHH:MM:SS[.fraction]Z`` (upper-case ``T`` and ``Z``, UTC
+    only, at most nine fraction digits) to ``(epoch_seconds, nanoseconds)``,
+    which order as instants. Anything else, including an impossible date, is
+    ``None``."""
+    if not isinstance(value, str):
+        return None
+    m = _UTC.match(value)
+    if m is None:
+        return None
+    year, month, day, hour, minute, second = (int(g) for g in m.groups()[:6])
+    leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    days_in_month = (31, 29 if leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+    if not (1 <= month <= 12 and 1 <= day <= days_in_month[month - 1] and hour <= 23 and minute <= 59
+            and second <= 59):
+        return None
+    # Days since 1970-01-01 in the proleptic Gregorian calendar (Hinnant's
+    # days_from_civil), so years 0000 to 9999 all order correctly.
+    y = year - 1 if month <= 2 else year
+    era, yoe = divmod(y, 400)
+    doy = (153 * (month - 3 if month > 2 else month + 9) + 2) // 5 + day - 1
+    days = era * 146_097 + yoe * 365 + yoe // 4 - yoe // 100 + doy - 719_468
+    seconds = days * 86_400 + hour * 3_600 + minute * 60 + second
+    return seconds, int((m.group(7) or "").ljust(9, "0"))
+
+
+class _OutsideModel:
+    """A received JSON number no defined member accepts (negative, or too
+    large to be read exactly). Kept, so an unknown member holding one is
+    still ignored."""
+
+
+_OUTSIDE = _OutsideModel()
+
+
+class _DuplicateMember(ValueError):
+    pass
+
+
+def _json_object(pairs: list) -> dict:
+    out: dict = {}
+    for key, value in pairs:
+        if key in out:
+            raise _DuplicateMember(key)
+        out[key] = value
+    return out
+
+
+def _json_int(text: str) -> Any:
+    # Checking the text first keeps a huge literal from reaching int().
+    if text.startswith("-") or len(text) > 16:
+        return _OUTSIDE
+    return int(text)
+
+
+def _reject_constant(text: str) -> Any:
+    raise ValueError(f"{text} is not JSON")
+
+
+def _decode_json(data: bytes) -> Any:
+    try:
+        return json.loads(
+            data.decode("utf-8"),
+            object_pairs_hook=_json_object,
+            parse_int=_json_int,
+            parse_constant=_reject_constant,
+        )
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:
+        raise RequestError(REASON_REQUEST_MALFORMED, f"not well-formed JSON: {exc}") from exc
+
+
+def _cbor_in_model(value: Any) -> bool:
+    if value is None or isinstance(value, (bool, str)):
+        return True
+    if type(value) is int:
+        return 0 <= value <= _MAX_UINT
+    if isinstance(value, list):
+        return all(_cbor_in_model(v) for v in value)
+    if isinstance(value, dict):
+        return all(isinstance(k, str) and _cbor_in_model(v) for k, v in value.items())
+    return False  # a tag, a byte string or a float
+
+
+def _decode_cbor(data: bytes, *, deterministic: bool) -> Any:
+    try:
+        decoded = _cbor.decode(data)
+    except _cbor.CborError as exc:
+        raise RequestError(REASON_REQUEST_MALFORMED, f"not well-formed CBOR: {exc}") from exc
+    if decoded.duplicate_keys:
+        raise RequestError(REASON_REQUEST_MALFORMED, "a duplicate map key")
+    if decoded.irregular or not _cbor_in_model(decoded.value):
+        raise RequestError(REASON_REQUEST_MALFORMED, "a value outside the request data model")
+    if deterministic and not decoded.deterministic:
+        raise RequestError(REASON_REQUEST_MALFORMED, "not in core deterministic encoding")
+    return decoded.value
+
+
+# --- the request -------------------------------------------------------------
+
+
+class RequestError(ValueError):
+    """A request is not well formed. ``reason`` is the refusal reason to answer
+    with: ``request_malformed``, or ``coverage_unsatisfiable`` for a coverage
+    carrying both members or neither (§3.2)."""
+
+    def __init__(self, reason: str, message: str):
+        super().__init__(f"{reason}: {message}")
+        self.reason = reason
+
+
+def _malformed(message: str) -> RequestError:
+    return RequestError(REASON_REQUEST_MALFORMED, message)
+
+
+@dataclass(frozen=True)
+class Subject:
+    """What a request asks about (§3.1). ``content`` is ``None`` for
+    ``full_history`` and ``checkpoints``, a digest for ``record`` and
+    ``exchange``, ``(a, b)`` for ``range``, the identifier for ``correlation``."""
+
+    form: str
+    content: None | str | tuple[int, int] = None
+
+    def to_wire(self) -> dict:
+        content = list(self.content) if isinstance(self.content, tuple) else self.content
+        return {self.form: content}
+
+
+@dataclass(frozen=True)
+class Coverage:
+    """The coverage constraint (§3.2): exactly one member is set.
+    ``min_freshness`` is a log size (``int``) or an RFC 3339 UTC time (``str``)."""
+
+    expected_pin: str | None = None
+    min_freshness: None | int | str = None
+
+
+@dataclass(frozen=True)
+class Request:
+    """A well-formed request (§3)."""
+
+    subject: Subject
+    coverage: Coverage
+    derivation: str | None = None
+    deadline: str | None = None
+    nonce: str | None = None
+    route: str | None = None
+
+
+def _parse_subject(value: Any) -> Subject:
+    if not isinstance(value, dict):
+        raise _malformed("subject is not a map")
+    if len(value) != 1:
+        raise _malformed("subject must have exactly one member")
+    ((form, content),) = value.items()
+    if form not in SUBJECT_FORMS:
+        raise _malformed("subject form is not one of the six")
+    if form in ("full_history", "checkpoints"):
+        if content is not None:
+            raise _malformed("this subject form carries no content")
+        return Subject(form)
+    if form in ("record", "exchange"):
+        if not is_digest(content):
+            raise _malformed("subject digest is not 64 lowercase hex")
+        return Subject(form, content)
+    if form == "correlation":
+        if not isinstance(content, str) or not content:
+            raise _malformed("correlation is not non-empty text")
+        return Subject(form, content)
+    if not (isinstance(content, list) and len(content) == 2 and all(_is_uint(v) for v in content)):
+        raise _malformed("range is not two unsigned integers")
+    a, b = content
+    if a > b:
+        raise _malformed("range start is after its end")
+    return Subject(form, (a, b))
+
+
+def _parse_derivation(value: Any) -> str:
+    if not isinstance(value, str):
+        raise _malformed("derivation is not text")
+    if is_digest(value) or _DERIVATION_TOKEN.match(value):
+        return value
+    raise _malformed("derivation is neither a registered token nor a digest")
+
+
+def _parse_coverage(value: Any) -> Coverage:
+    if value is None:
+        value = {}  # absent coverage carries neither member (A4)
+    elif not isinstance(value, dict):
+        raise _malformed("coverage is not a map")
+    pin, freshness = value.get("expected_pin"), value.get("min_freshness")
+    # Each member present is checked before the exactly-one rule (A4 ruling).
+    if "expected_pin" in value and not is_digest(pin):
+        raise _malformed("expected_pin is not a digest")
+    if "min_freshness" in value and not (_is_uint(freshness) or parse_utc(freshness) is not None):
+        raise _malformed("min_freshness is neither a size nor an RFC 3339 UTC time")
+    if ("expected_pin" in value) == ("min_freshness" in value):
+        raise RequestError(
+            REASON_COVERAGE_UNSATISFIABLE, "coverage must carry exactly one of expected_pin, min_freshness"
+        )
+    return Coverage(expected_pin=pin, min_freshness=freshness)
+
+
+def _optional_text(data: dict, key: str) -> str | None:
+    value = data.get(key)
+    if key in data and not isinstance(value, str):
+        raise _malformed(f"{key} is not text")
+    return value
+
+
+def parse_request(request_bytes: bytes, *, binding: str = "json") -> Request:
+    """Parse and check a request from its bytes as received.
+
+    ``binding`` is ``"json"`` or ``"cbor"`` (core deterministic encoding only).
+    Raises :class:`RequestError` carrying the refusal reason when the request
+    is not well formed.
+    """
+    if binding == "json":
+        data = _decode_json(request_bytes)
+    elif binding == "cbor":
+        data = _decode_cbor(request_bytes, deterministic=True)
+    else:
+        raise ValueError(f"binding must be 'json' or 'cbor', not {binding!r}")
+    if not isinstance(data, dict):
+        raise _malformed("the request is not a map")
+    if "subject" not in data:
+        raise _malformed("subject is missing")
+    subject = _parse_subject(data["subject"])
+    derivation = _parse_derivation(data["derivation"]) if "derivation" in data else None
+    deadline = _optional_text(data, "deadline")
+    if deadline is not None and parse_utc(deadline) is None:
+        raise _malformed("deadline is not an RFC 3339 UTC time")
+    nonce = _optional_text(data, "nonce")
+    route = _optional_text(data, "route")
+    coverage = _parse_coverage(data.get("coverage"))
+    return Request(subject, coverage, derivation, deadline, nonce, route)
+
+
+def request_digest(request_bytes: bytes) -> str:
+    """The request digest (§4.2 item 1): SHA-256 of the request bytes **as
+    received**, never of a re-serialized form, as lowercase hex."""
+    return hashlib.sha256(request_bytes).hexdigest()
+
+
+# --- resolution --------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Anchor:
+    """A coverage anchor the responder holds: a commitment (for example a
+    checkpoint) over its log of ``size`` records, issued at ``issued_at``
+    (RFC 3339 UTC), identified by ``digest``."""
+
+    digest: str
+    size: int
+    issued_at: str
+
+
+@dataclass(frozen=True)
+class Resolution:
+    """The resolution of a well-formed request: refuse with ``reason``, or
+    serve under ``anchor`` (one the responder holds) or ``exchange_half`` (the
+    requester's own exchange half, pinned by its digest, §3.2)."""
+
+    reason: str | None = None
+    anchor: Anchor | None = None
+    exchange_half: str | None = None
+
+    @property
+    def anchor_digest(self) -> str | None:
+        """The digest of the anchor served under, as the response identifies it."""
+        return self.anchor.digest if self.anchor is not None else self.exchange_half
+
+
+class Decline(Exception):
+    """Raised by :meth:`EvidenceStore.artifact` to refuse instead of serving,
+    for example ``policy_declined`` for a subject larger than the node serves.
+    ``reason`` must be a registered token; :func:`answer` signs the refusal."""
+
+    def __init__(self, reason: str, message: str = ""):
+        if reason not in REFUSAL_REASONS:
+            raise ValueError(f"{reason!r} is not a registered refusal reason")
+        super().__init__(f"{reason}: {message}" if message else reason)
+        self.reason = reason
 
 
 class Signer(Protocol):
-    """The node key that signs refusals: the same identity the node's
-    records are signed with."""
+    """The node key that signs refusals."""
 
     key_id: str
 
     def sign(self, body: bytes) -> tuple[str, str]:
-        """Return ``(sig_hex, key_id)`` for ``body``."""
+        """Return ``(sig_hex, key_id)`` for ``body``: an Ed25519 signature and the
+        raw public key, both lowercase hex."""
         ...
 
 
 class EvidenceStore(Protocol):
-    """Where :func:`answer` gets evidence from.
+    """What :func:`resolve` and :func:`answer` read. Every lookup is exact: a
+    store never matches by prefix, case folding or any other approximation."""
 
-    Bundles are opaque to this module except for ``to_dict()`` and a
-    ``checkpoint`` with ``mmr_size``, ``root`` and ``timestamp`` (an RFC 3339
-    UTC string), which the coverage checks read.
-    """
-
-    def holds(self, capsule_id: str) -> bool:
-        """True when this store holds a record under ``capsule_id``."""
+    def holds_record(self, digest: str) -> bool:
+        """True when a record with exactly this digest is held."""
         ...
 
-    def bundle(self, capsule_id: str) -> Any:
-        """The offline-verifiable bundle for one held record. Raises
-        :class:`NotYetCovered` when no checkpoint covers it yet."""
+    def holds_correlation(self, correlation_id: str) -> bool:
+        """True when any held record carries exactly this correlation identifier."""
         ...
 
-    def select_range(self, selector: str) -> list[str] | None:
-        """Resolve a ``range`` selector to capsule ids in append order, or
-        ``None`` when it selects nothing this store holds."""
+    def cites_exchange(self, half_digest: str) -> bool:
+        """True when any held record cites exactly this exchange half."""
         ...
 
-    def records(self) -> list[dict]:
-        """Every capsule record this store holds, in append order. Read by
-        ``correlation`` subjects."""
+    def positional_ordering(self) -> bool:
+        """True when the coverage mechanism defines record positions (``range``)."""
         ...
 
-    def chain_segment(self, subject: dict, *, self_owner_id: str) -> Any | None:
-        """The checkpoint-chain answer for a ``chain_segment`` subject, or
-        ``None`` when the store holds nothing at all. Raises
-        :class:`NotYetCovered` when the requested segment is not available."""
+    def anchors(self) -> Sequence[Anchor]:
+        """The coverage anchors held."""
+        ...
+
+    def derivation_forms(self, derivation: str) -> Collection[str] | None:
+        """For a supported derivation (a token or a definition digest), the
+        subject forms it is supported for; ``None`` when it is not supported."""
+        ...
+
+    def artifact(self, subject: Subject, derivation: str | None, resolution: Resolution) -> Any:
+        """The artifact for ``subject`` (and ``derivation``) under the resolved
+        anchor, with its verification material: opaque to this module, and a
+        function of these arguments and the store's contents only (§5). Raises
+        :class:`Decline` to refuse instead."""
         ...
 
     def force_checkpoint(self, signer: Signer) -> None:
-        """Checkpoint the store now. Called only when the request carries a
+        """Issue a fresh commitment now. Called only when the request carries a
         deadline and the node passed ``allow_forced_checkpoint=True``."""
         ...
 
 
-@dataclass(frozen=True)
-class RequestMap:
-    """The parsed request; see the module docstring for the wire shape.
+def _freshest(anchors: Iterable[Anchor], floor: int | str) -> Anchor | None:
+    """Among the anchors meeting ``floor``, the one covering the largest log,
+    then the latest issued (the last such on a tie), so the choice depends
+    only on the anchors held, never on the caller."""
+    best, best_key = None, None
+    floor_time = parse_utc(floor) if isinstance(floor, str) else None
+    for anchor in anchors:
+        issued = parse_utc(anchor.issued_at)
+        meets = anchor.size >= floor if floor_time is None else issued is not None and issued >= floor_time
+        if not meets:
+            continue
+        key = (anchor.size, issued or (-(1 << 63), 0))
+        if best_key is None or key >= best_key:
+            best, best_key = anchor, key
+    return best
 
-    ``has_deadline`` records the deadline's presence, not its value: its
-    presence is one of the two conditions :func:`answer` requires before it
-    forces a checkpoint. How long the requester waits is a transport concern.
 
-    ``page`` is ``{token?: str, size?: int}``. Only ``range`` and
-    ``correlation`` subjects read it.
+def resolve(request: Request, store: EvidenceStore, *, uniform_policy_declined: bool = False) -> Resolution:
+    """Resolve a well-formed ``request`` against ``store`` exactly (§3.1-§3.3, §4.2).
+
+    The checks run in this order, each giving the most specific reason it can:
+
+    1. the derivation: not supported at all is ``derivation_unsupported``;
+       supported but not for this subject form is ``no_such_subject``;
+    2. the subject: not held is ``no_such_subject``; a ``range`` under a
+       mechanism with no positional ordering is ``coverage_unsatisfiable``;
+    3. the coverage: an ``expected_pin`` must be a held anchor, or for an
+       ``exchange`` subject the requester's own half; a ``min_freshness`` needs
+       an anchor at least that large, or issued no earlier than that time; a
+       ``range`` must end inside the anchor. Otherwise
+       ``coverage_unsatisfiable``: never an artifact under weaker coverage.
+
+    ``uniform_policy_declined`` is the responder posture of §4.2 and §12:
+    answer ``policy_declined`` wherever ``no_such_subject`` would disclose
+    whether a subject is held.
     """
+    subject = request.subject
+    not_held = Resolution(REASON_POLICY_DECLINED if uniform_policy_declined else REASON_NO_SUCH_SUBJECT)
 
-    subject: dict
-    coverage: dict
-    derivation: str | None
-    has_deadline: bool
-    nonce: str | None
-    page: dict
+    if request.derivation is not None:
+        forms = store.derivation_forms(request.derivation)
+        if forms is None:
+            return Resolution(REASON_DERIVATION_UNSUPPORTED)
+        if subject.form not in forms:
+            return not_held
 
+    if subject.form == "record":
+        held = store.holds_record(subject.content)
+    elif subject.form == "correlation":
+        held = store.holds_correlation(subject.content)
+    elif subject.form == "exchange":
+        held = store.cites_exchange(subject.content)
+    elif subject.form == "range":
+        if not store.positional_ordering():
+            return Resolution(REASON_COVERAGE_UNSATISFIABLE)
+        held = True
+    else:  # full_history, checkpoints
+        held = True
+    if not held:
+        return not_held
 
-def _require(cond: bool, message: str) -> None:
-    if not cond:
-        raise RequestMalformedError(message)
-
-
-def _is_size_int(v: Any) -> bool:
-    return isinstance(v, int) and not isinstance(v, bool) and v >= 0
-
-
-def _valid_chain_segment_subject(subject: dict) -> bool:
-    """``{last: <positive int>}`` XOR ``{from_size, to_size}`` (each a
-    non-negative int, ``to_size >= from_size``): never both, never neither.
-    A bad shape is caught here as ``request_malformed`` rather than inside
-    the store."""
-    has_last = "last" in subject
-    has_range = "from_size" in subject or "to_size" in subject
-    if has_last and has_range:
-        return False
-    if has_last:
-        last = subject["last"]
-        return isinstance(last, int) and not isinstance(last, bool) and last > 0
-    if has_range:
-        return (
-            "from_size" in subject
-            and "to_size" in subject
-            and _is_size_int(subject["from_size"])
-            and _is_size_int(subject["to_size"])
-            and subject["to_size"] >= subject["from_size"]
-        )
-    return False
+    pin = request.coverage.expected_pin
+    if pin is not None:
+        if subject.form == "exchange" and subject.content == pin:
+            return Resolution(exchange_half=pin)
+        anchor = next((a for a in store.anchors() if a.digest == pin), None)
+    else:
+        anchor = _freshest(store.anchors(), request.coverage.min_freshness)
+    if anchor is None:
+        return Resolution(REASON_COVERAGE_UNSATISFIABLE)
+    if subject.form == "range" and subject.content[1] >= anchor.size:
+        return Resolution(REASON_COVERAGE_UNSATISFIABLE)
+    return Resolution(anchor=anchor)
 
 
-def parse_request(request_bytes: bytes) -> RequestMap:
-    """Parse ``request_bytes`` into a :class:`RequestMap`.
-
-    Raises :class:`RequestMalformedError` for anything that is not a JSON
-    object shaped like ``{subject, coverage?, derivation?, deadline?,
-    nonce?, page?}``. Unknown fields are ignored.
-    """
-    try:
-        data = json.loads(request_bytes)
-    except Exception as exc:  # any parse failure is malformed
-        raise RequestMalformedError(f"request is not valid JSON: {exc}") from exc
-    _require(isinstance(data, dict), "request must be a JSON object")
-
-    subject = data.get("subject")
-    _require(isinstance(subject, dict), "subject is required and must be an object")
-    kind = subject.get("kind")
-    _require(isinstance(kind, str) and kind in SUBJECT_KINDS, f"subject.kind must be one of {sorted(SUBJECT_KINDS)}")
-    if kind == "record":
-        _require(isinstance(subject.get("capsule_id"), str) and subject["capsule_id"], "subject.kind='record' requires a non-empty subject.capsule_id")
-    elif kind == "range":
-        _require(isinstance(subject.get("selector"), str) and subject["selector"], "subject.kind='range' requires a non-empty subject.selector")
-    elif kind == "correlation":
-        by = subject.get("by")
-        _require(
-            isinstance(by, str) and by in CORRELATION_BY_VALUES,
-            f"subject.kind='correlation' requires subject.by to be one of {sorted(CORRELATION_BY_VALUES)}",
-        )
-        _require(isinstance(subject.get("value"), str) and subject["value"], "subject.kind='correlation' requires a non-empty subject.value")
-    else:  # "chain_segment"
-        _require(
-            _valid_chain_segment_subject(subject),
-            "subject.kind='chain_segment' requires either {last: <positive int>} or "
-            "{from_size: <non-negative int>, to_size: <int >= from_size>} — never both",
-        )
-
-    coverage = data.get("coverage") or {}
-    _require(isinstance(coverage, dict), "coverage must be an object")
-    if "expected_pin" in coverage:
-        pin = coverage["expected_pin"]
-        _require(
-            isinstance(pin, dict) and isinstance(pin.get("root"), str) and isinstance(pin.get("mmr_size"), int),
-            "coverage.expected_pin requires root (string) and mmr_size (int)",
-        )
-    if "min_freshness" in coverage:
-        mf = coverage["min_freshness"]
-        _require(
-            isinstance(mf, dict) and isinstance(mf.get("max_age_seconds"), (int, float)) and not isinstance(mf.get("max_age_seconds"), bool),
-            "coverage.min_freshness requires max_age_seconds (a number)",
-        )
-
-    derivation = data.get("derivation")
-    _require(derivation is None or isinstance(derivation, str), "derivation must be a string when present")
-
-    nonce = data.get("nonce")
-    _require(nonce is None or isinstance(nonce, str), "nonce must be a string when present")
-
-    page = data.get("page") or {}
-    _require(isinstance(page, dict), "page must be an object")
-    if "token" in page:
-        token = page["token"]
-        _require(
-            isinstance(token, str) and token.isdigit(),
-            "page.token must be a token this responder issued as a prior answer's next_page_token",
-        )
-    if "size" in page:
-        size = page["size"]
-        _require(
-            isinstance(size, int) and not isinstance(size, bool) and size > 0,
-            "page.size must be a positive int",
-        )
-
-    return RequestMap(
-        subject=subject,
-        coverage=coverage,
-        derivation=derivation,
-        has_deadline=data.get("deadline") is not None,
-        nonce=nonce,
-        page=page,
-    )
+# --- the answer ----------------------------------------------------------------
 
 
 @dataclass(frozen=True)
 class Artifact:
-    """One well-formed answer: one bundle for a ``record`` subject, one per
-    selected or matched record for ``range`` and ``correlation``, one chain
-    segment for ``chain_segment``. Digests only: a stranger and a trusted
-    counterparty receive the same object for the same request."""
+    """The granting outcome (§4.1): ``body`` is what the store built for
+    ``subject`` under the resolved anchor ``anchor`` (its digest)."""
 
-    v: int
-    subject_kind: str
-    bundles: tuple[Any, ...]
-    next_page_token: str | None = None
-
-    def to_dict(self) -> dict:
-        d: dict[str, Any] = {
-            "v": self.v,
-            "subject_kind": self.subject_kind,
-            "bundles": [b.to_dict() for b in self.bundles],
-        }
-        if self.next_page_token is not None:
-            d["next_page_token"] = self.next_page_token
-        return d
-
-
-@dataclass(frozen=True)
-class Refusal:
-    """A signed refusal that verifies offline. ``no_such_subject`` and
-    ``coverage_unsatisfiable`` say "I hold nothing (yet) for this subject at
-    this coverage"; ``request_malformed`` and ``derivation_unsupported`` are
-    declines about the request itself. Same object either way."""
-
-    request_digest: str
-    reason: str
-    issued_at: str
-    key_id: str
-    sig: str
-
-    def signing_body(self) -> bytes:
-        """The bytes the signature covers: the three signed fields as JSON
-        with sorted keys and no whitespace, so an offline verifier rebuilds
-        the body from the object alone."""
-        return json.dumps(
-            {"request_digest": self.request_digest, "reason": self.reason, "issued_at": self.issued_at},
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("ascii")
-
-    def to_dict(self) -> dict:
-        return {
-            "request_digest": self.request_digest,
-            "reason": self.reason,
-            "issued_at": self.issued_at,
-            "key_id": self.key_id,
-            "sig": self.sig,
-        }
-
-
-def verify_refusal_offline(refusal: Refusal) -> bool:
-    """Check offline that ``refusal.sig`` is an Ed25519 signature by the key
-    whose raw public bytes are ``refusal.key_id`` (hex) over this refusal's
-    own signing body. Never raises: malformed input is a verification
-    failure. Needs the ``cryptography`` package (pulled in by the
-    ``envelope`` extra)."""
-    try:
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-
-        public_key = Ed25519PublicKey.from_public_bytes(bytes.fromhex(refusal.key_id))
-        public_key.verify(bytes.fromhex(refusal.sig), refusal.signing_body())
-        return True
-    except Exception:  # a pure verifier never raises
-        return False
-
-
-def normalize_refusal_reason(reason: str) -> str:
-    """Translate a pre-registry refusal-reason spelling to its current
-    registry token; anything else passes through unchanged.
-
-    For a caller reading ``reason`` off a peer's :class:`Refusal` during a
-    mixed-version rollout. Apply it after :func:`verify_refusal_offline`,
-    never before: the signature covers the reason as sent.
-
-    Emits a :class:`DeprecationWarning` when it translates.
-    """
-    current = LEGACY_REFUSAL_REASON_ALIASES.get(reason)
-    if current is None:
-        return reason
-    warnings.warn(
-        f"refusal reason {reason!r} is the pre-registry spelling of {current!r} "
-        "(draft-mih-agent-evidence-request-00) -- update the caller to compare "
-        "against the new token; this alias is removed after one release",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return current
+    subject: Subject
+    anchor: str
+    body: Any
+    derivation: str | None = None
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def request_digest(request_bytes: bytes) -> str:
-    """The ``request_digest`` a refusal carries: SHA-256 of the request
-    bytes as received, lowercase hex."""
-    return hashlib.sha256(request_bytes).hexdigest()
-
-
-def sign_refusal(request_digest: str, reason: str, *, signer: Signer, issued_at: str) -> Refusal:
-    """Build and sign one :class:`Refusal` with ``signer``."""
-    stub = Refusal(request_digest=request_digest, reason=reason, issued_at=issued_at, key_id="", sig="")
-    sig, key_id = signer.sign(stub.signing_body())
-    return Refusal(request_digest=request_digest, reason=reason, issued_at=issued_at, key_id=key_id, sig=sig)
-
-
-def _iter_values_by_key(obj: Any, keys: frozenset[str]) -> Iterator[str]:
-    """Yield every string value found under a key in ``keys``, at any depth
-    of a JSON-decoded record."""
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            if k in keys and isinstance(v, str):
-                yield v
-            yield from _iter_values_by_key(v, keys)
-    elif isinstance(obj, list):
-        for item in obj:
-            yield from _iter_values_by_key(item, keys)
-
-
-def _iter_dicts_by_key(obj: Any, key: str) -> Iterator[dict]:
-    """Like :func:`_iter_values_by_key`, but yields dict values found under
-    ``key`` at any depth: used to find an ``adjudication`` block wherever a
-    producer nested it."""
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            if k == key and isinstance(v, dict):
-                yield v
-            yield from _iter_dicts_by_key(v, key)
-    elif isinstance(obj, list):
-        for item in obj:
-            yield from _iter_dicts_by_key(item, key)
-
-
-def _entry_names_counterparty_in_adjudication(entry: dict, value: str) -> bool:
-    """A ``counterparty`` correlation also matches an adjudication whose
-    verdict names ``value`` as the divergent owner
-    (``"contradicted:<owner_id>"``). ``corroborated`` and ``inconclusive``
-    verdicts name no owner."""
-    return any(
-        adjudication.get("verdict") == f"contradicted:{value}"
-        for adjudication in _iter_dicts_by_key(entry, "adjudication")
-    )
-
-
-def _entry_matches_correlation(entry: dict, by: str, value: str) -> bool:
-    if by == "counterparty" and _entry_names_counterparty_in_adjudication(entry, value):
-        return True
-    return any(v == value for v in _iter_values_by_key(entry, _CORRELATION_KEY_ALIASES[by]))
-
-
-def _correlation_capsule_ids(store: EvidenceStore, by: str, value: str) -> list[str] | None:
-    """Every capsule id in ``store`` carrying ``value`` under ``by``'s
-    correlator key(s), in append order so paging is stable, or ``None`` when
-    nothing matches."""
-    matched = [r["capsule_id"] for r in store.records() if _entry_matches_correlation(r, by, value)]
-    return matched or None
-
-
-def _page_slice(capsule_ids: list[str], page: dict) -> tuple[list[str], str | None]:
-    """Slice the resolved ``capsule_ids`` to the requested page.
-    ``page.token`` is the offset the previous answer stopped at;
-    ``page.size`` overrides :data:`DEFAULT_PAGE_SIZE`, capped at
-    :data:`MAX_PAGE_SIZE` either way. Returns ``(this_page_ids,
-    next_page_token)``; the token is ``None`` exactly when this page reaches
-    the end."""
-    offset = int(page["token"]) if "token" in page else 0
-    size = min(page.get("size", DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE)
-    offset = min(offset, len(capsule_ids))
-    page_ids = capsule_ids[offset : offset + size]
-    next_offset = offset + size
-    next_token = str(next_offset) if next_offset < len(capsule_ids) else None
-    return page_ids, next_token
-
-
-def _build_bundles(
-    store: EvidenceStore, req: RequestMap, *, self_owner_id: str
-) -> tuple[tuple[Any, ...] | None, str | None, str | None]:
-    """Build the bundles this request's subject names.
-
-    Returns ``(bundles, None, next_page_token)`` on success, or ``(None,
-    reason, None)``: ``no_such_subject`` when the subject names nothing this
-    store holds, ``coverage_unsatisfiable`` when it holds the subject but no
-    checkpoint covers it yet.
-    """
-    kind = req.subject["kind"]
-    if kind == "chain_segment":
-        try:
-            segment = store.chain_segment(req.subject, self_owner_id=self_owner_id)
-        except NotYetCovered:
-            return None, REASON_COVERAGE_UNSATISFIABLE, None
-        if segment is None:
-            return None, REASON_NO_SUCH_SUBJECT, None
-        return (segment,), None, None
-
-    next_page_token = None
-    if kind == "record":
-        capsule_ids = [req.subject["capsule_id"]]
-    elif kind == "range":
-        resolved = store.select_range(req.subject["selector"])
-        if not resolved:
-            return None, REASON_NO_SUCH_SUBJECT, None
-        capsule_ids, next_page_token = _page_slice(resolved, req.page)
-    else:  # "correlation"
-        resolved = _correlation_capsule_ids(store, req.subject["by"], req.subject["value"])
-        if not resolved:
-            return None, REASON_NO_SUCH_SUBJECT, None
-        capsule_ids, next_page_token = _page_slice(resolved, req.page)
-
-    if not all(store.holds(cid) for cid in capsule_ids):
-        return None, REASON_NO_SUCH_SUBJECT, None
-
-    try:
-        bundles = tuple(store.bundle(cid) for cid in capsule_ids)
-    except NotYetCovered:
-        return None, REASON_COVERAGE_UNSATISFIABLE, None
-    return bundles, None, next_page_token
-
-
-def _checkpoint_age_seconds(timestamp: str, issued_at: str) -> float:
-    ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-    now = datetime.fromisoformat(issued_at.replace("Z", "+00:00"))
-    return (now - ts).total_seconds()
 
 
 def answer(
@@ -595,25 +633,19 @@ def answer(
     *,
     store: EvidenceStore,
     signer: Signer,
+    binding: str = "json",
     now: str | None = None,
     allow_forced_checkpoint: bool = False,
+    uniform_policy_declined: bool = False,
 ) -> Artifact | Refusal:
-    """Answer one evidence request from ``store``.
+    """Answer one evidence request from ``store``: an :class:`Artifact`, or a
+    :class:`Refusal` signed by ``signer`` over the digest of ``request_bytes``
+    as received. Never raises for any request bytes.
 
-    A request naming a ``derivation`` is refused ``derivation_unsupported``:
-    this responder supports none itself, and a caller that supports one
-    intercepts the request before calling ``answer()``. Otherwise the
-    subject resolves through ``store`` and the coverage constraints are
-    checked against the bundles' checkpoints. Returns exactly one of:
-
-      * :class:`Artifact`: one or more offline-verifiable bundles or chain
-        segments;
-      * :class:`Refusal`: signed by ``signer``, one of
-        :data:`REFUSAL_REASONS`.
-
-    ``now`` overrides the wall clock (for deterministic tests).
-    ``allow_forced_checkpoint`` is the node's own opt-in to writing in
-    response to a read; see the module docstring.
+    ``now`` overrides the refusal's issuance time (for deterministic tests).
+    ``allow_forced_checkpoint`` is the node's opt-in to writing in response to
+    a read (see the module docstring); ``uniform_policy_declined`` is passed to
+    :func:`resolve`.
     """
     digest = request_digest(request_bytes)
     issued_at = now or _now_iso()
@@ -622,49 +654,253 @@ def answer(
         return sign_refusal(digest, reason, signer=signer, issued_at=issued_at)
 
     try:
-        req = parse_request(request_bytes)
-    except RequestMalformedError:
-        return refuse(REASON_REQUEST_MALFORMED)
+        request = parse_request(request_bytes, binding=binding)
+    except RequestError as exc:
+        return refuse(exc.reason)
 
-    if req.derivation is not None:
-        # Any derivation reaching here is one this responder cannot honor:
-        # refused, never silently served as a plain bundle.
-        return refuse(REASON_DERIVATION_UNSUPPORTED)
-
-    bundles, reason, next_page_token = _build_bundles(store, req, self_owner_id=signer.key_id)
-
-    min_freshness = req.coverage.get("min_freshness")
-    may_force_checkpoint = req.has_deadline and allow_forced_checkpoint
-    if bundles is None and reason == REASON_COVERAGE_UNSATISFIABLE and min_freshness and may_force_checkpoint:
+    resolution = resolve(request, store, uniform_policy_declined=uniform_policy_declined)
+    if (
+        resolution.reason == REASON_COVERAGE_UNSATISFIABLE
+        and request.coverage.min_freshness is not None
+        and request.deadline is not None
+        and allow_forced_checkpoint
+    ):
         # min_freshness under a deadline licenses the work, and this node
-        # opted in: checkpoint now and retry once.
+        # opted in: commit now and resolve once more.
         store.force_checkpoint(signer)
-        bundles, reason, next_page_token = _build_bundles(store, req, self_owner_id=signer.key_id)
+        resolution = resolve(request, store, uniform_policy_declined=uniform_policy_declined)
+    if resolution.reason is not None:
+        return refuse(resolution.reason)
 
-    if bundles is None:
-        return refuse(reason)
+    try:
+        body = store.artifact(request.subject, request.derivation, resolution)
+    except Decline as exc:
+        return refuse(exc.reason)
+    return Artifact(request.subject, resolution.anchor_digest, body, request.derivation)
 
-    expected_pin = req.coverage.get("expected_pin")
-    if expected_pin is not None:
-        pin_matches = all(
-            b.checkpoint.mmr_size == expected_pin["mmr_size"] and b.checkpoint.root == expected_pin["root"]
-            for b in bundles
-        )
-        if not pin_matches:
-            # The pinned checkpoint does not (or no longer) cover this
-            # subject: refuse rather than serve under a different anchor.
-            return refuse(REASON_COVERAGE_UNSATISFIABLE)
-    elif min_freshness is not None:
-        max_age = min_freshness["max_age_seconds"]
-        stale = any(_checkpoint_age_seconds(b.checkpoint.timestamp, issued_at) > max_age for b in bundles)
-        if stale:
-            if may_force_checkpoint:
-                store.force_checkpoint(signer)
-                bundles, reason, next_page_token = _build_bundles(store, req, self_owner_id=signer.key_id)
-                if bundles is None:
-                    return refuse(reason)
-                stale = any(_checkpoint_age_seconds(b.checkpoint.timestamp, issued_at) > max_age for b in bundles)
-            if stale:
-                return refuse(REASON_COVERAGE_UNSATISFIABLE)
 
-    return Artifact(v=1, subject_kind=req.subject["kind"], bundles=bundles, next_page_token=next_page_token)
+# --- the signed refusal -----------------------------------------------------------
+
+
+def _signing_body(members: Mapping[str, Any]) -> bytes:
+    return jcs({k: members[k] for k in SIGNED_MEMBERS if k in members})
+
+
+@dataclass(frozen=True)
+class Refusal:
+    """A signed refusal (§4.2) in the vectors' profile (A7)."""
+
+    request_digest: str
+    reason: str
+    issued_at: str
+    key_id: str
+    sig: str
+
+    def signing_body(self) -> bytes:
+        """The bytes the signature covers: RFC 8785 of ``issued_at``,
+        ``reason`` and ``request_digest``. For text members that are ASCII, as
+        every conforming refusal's are, this is the same bytes as sorted,
+        compact JSON."""
+        return _signing_body(self.to_dict())
+
+    def to_dict(self) -> dict:
+        """The refusal object in the JSON binding."""
+        return {
+            "request_digest": self.request_digest,
+            "reason": self.reason,
+            "issued_at": self.issued_at,
+            "key_id": self.key_id,
+            "sig": self.sig,
+        }
+
+    def to_cbor(self) -> bytes:
+        """The refusal map in the CBOR binding, in core deterministic encoding
+        (§10): keys in the bytewise order of their encodings. The signature is
+        still over the RFC 8785 body."""
+        entries = []
+        for key, value in self.to_dict().items():
+            k, v = key.encode("utf-8"), value.encode("utf-8")
+            entries.append((_cbor.encode_head(3, len(k)) + k, _cbor.encode_head(3, len(v)) + v))
+        entries.sort()
+        return _cbor.encode_head(5, len(entries)) + b"".join(k + v for k, v in entries)
+
+
+def sign_refusal(request_digest: str, reason: str, *, signer: Signer, issued_at: str) -> Refusal:
+    """Build and sign one :class:`Refusal`. Raises :class:`ValueError` unless
+    ``reason`` is a registered token, ``request_digest`` a digest and
+    ``issued_at`` an RFC 3339 UTC time: a responder never signs a
+    non-conforming refusal."""
+    if reason not in REFUSAL_REASONS:
+        raise ValueError(f"{reason!r} is not a registered refusal reason")
+    if not is_digest(request_digest):
+        raise ValueError("request_digest must be 64 lowercase hex")
+    if parse_utc(issued_at) is None:
+        raise ValueError("issued_at must be an RFC 3339 UTC time")
+    stub = Refusal(request_digest=request_digest, reason=reason, issued_at=issued_at, key_id="", sig="")
+    sig, key_id = signer.sign(stub.signing_body())
+    return Refusal(request_digest=request_digest, reason=reason, issued_at=issued_at, key_id=key_id, sig=sig)
+
+
+def _ed25519_verifies(key_hex: Any, sig_hex: Any, body: bytes) -> bool:
+    if not _is_hex_of_len(key_hex, 32) or not _is_hex_of_len(sig_hex, 64):
+        return False
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    try:
+        Ed25519PublicKey.from_public_bytes(bytes.fromhex(key_hex)).verify(bytes.fromhex(sig_hex), body)
+    except (InvalidSignature, ValueError):
+        return False
+    return True
+
+
+def verify_refusal_offline(refusal: Refusal) -> bool:
+    """True when ``refusal.sig`` is an Ed25519 signature by the key whose raw
+    public bytes are ``refusal.key_id`` over the refusal's signing body.
+    Malformed input is a verification failure, never an exception.
+
+    This is the signature alone, under the key the refusal names. To accept a
+    refusal as a responder's answer to your request, also require that
+    ``key_id`` is that responder's key, ``request_digest`` the digest of the
+    bytes you sent, and :func:`check_refusal` conformant. Needs the
+    ``cryptography`` package (the ``envelope`` extra); without it this raises
+    :class:`ImportError` rather than report a refusal as unsigned.
+    """
+    try:
+        return _ed25519_verifies(refusal.key_id, refusal.sig, refusal.signing_body())
+    except (TypeError, ValueError):  # members that have no RFC 8785 form
+        return False
+
+
+@dataclass(frozen=True)
+class RefusalCheck:
+    """Three separate answers about a received refusal object (§4.2, A13):
+    whether the signature verifies under the object's own ``key_id``, whether
+    ``reason`` is exactly one registered token, and both of these plus every
+    member §4.2 requires present and well formed. A valid signature over an
+    unregistered reason is not a conforming refusal, and is still the
+    responder's signed act."""
+
+    signature_valid: bool
+    reason_registered: bool
+    conformant: bool
+
+
+def check_refusal(obj: Any) -> RefusalCheck:
+    """Check a refusal object in the JSON binding (a decoded map): its shape
+    and self-consistency, not who signed it (see :func:`verify_refusal_offline`)."""
+    if not isinstance(obj, Mapping):
+        return RefusalCheck(False, False, False)
+    try:
+        signature_valid = _ed25519_verifies(obj.get("key_id"), obj.get("sig"), _signing_body(obj))
+    except (TypeError, ValueError):
+        signature_valid = False
+    reason = obj.get("reason")
+    reason_registered = isinstance(reason, str) and reason in REFUSAL_REASONS
+    well_formed = is_digest(obj.get("request_digest")) and parse_utc(obj.get("issued_at")) is not None
+    return RefusalCheck(signature_valid, reason_registered, signature_valid and reason_registered and well_formed)
+
+
+def check_refusal_cbor(frame: bytes) -> RefusalCheck:
+    """:func:`check_refusal` for a refusal frame in the CBOR binding."""
+    try:
+        obj = _decode_cbor(frame, deterministic=False)
+    except RequestError:
+        return RefusalCheck(False, False, False)
+    return check_refusal(obj)
+
+
+# --- outcomes, invariance, retention -------------------------------------------------
+
+
+def record_outcome(
+    received: str,
+    *,
+    window_open: bool,
+    artifact_verified: bool = False,
+    refusal_signature_valid: bool = False,
+    refusal_reason: Any = None,
+) -> str:
+    """The one state a requester records an interaction as (§4, §4.5).
+
+    ``received`` is ``"artifact"``, ``"refusal"``, ``"nothing"``,
+    ``"transport_error"`` or ``"subprotocol_not_offered"``. A signed refusal
+    is the responder's act and is never an absence, whatever the window
+    (``"refusal"``, or ``"refusal_nonconformant"`` for an unregistered
+    reason, A13); a refusal whose signature does not verify is not the
+    responder's act (``"refusal_signature_invalid"``). Silence, a transport
+    error or a peer not offering the subprotocol is never a refusal: it is
+    ``"pending"`` while the waiting window is open (§4.3, A8) and
+    ``"recorded_absence"`` once it closes.
+    """
+    if received == "artifact":
+        return "artifact_verified" if artifact_verified else "artifact_verification_failed"
+    if received == "refusal":
+        if not refusal_signature_valid:
+            return "refusal_signature_invalid"
+        registered = isinstance(refusal_reason, str) and refusal_reason in REFUSAL_REASONS
+        return "refusal" if registered else "refusal_nonconformant"
+    if received in ("nothing", "transport_error", "subprotocol_not_offered"):
+        return "pending" if window_open else "recorded_absence"
+    raise ValueError(f"unknown observation {received!r}")
+
+
+def compare_observations(observations: Iterable[tuple[str, bytes]]) -> str:
+    """Caller invariance (§5) over ``(resolved_anchor, artifact_bytes)`` pairs
+    for one subject: ``"holds"`` when every artifact is byte-identical,
+    ``"violated"`` when not, ``"not_comparable"`` when the anchors differ.
+    Verification material may differ and is not compared (A12)."""
+    pairs = list(observations)
+    if len({anchor for anchor, _ in pairs}) > 1:
+        return "not_comparable"
+    return "holds" if len({bytes(artifact) for _, artifact in pairs}) <= 1 else "violated"
+
+
+_ABOUT_THE_REQUEST = frozenset(
+    {REASON_NOT_AUTHORIZED, REASON_COVERAGE_UNSATISFIABLE, REASON_DERIVATION_UNSUPPORTED, REASON_REQUEST_MALFORMED}
+)
+
+
+def classify_refusal(commitment: str, reason: str) -> str:
+    """How a refusal with ``reason`` stands against a retention commitment (§9)
+    that is ``"in_force"``, ``"lapsed"`` or ``"none"``.
+
+    Inside ``until`` only the four reasons about the request or the
+    responder's capability keep the promise (``"no_breach"``); any other is a
+    ``"breach"`` (A9). After it, ``retention_expired`` is ``"correct"``,
+    ``no_such_subject`` the ``"wrong_token"`` (a lapsed promise must not read
+    as never held), and the rest ``"no_breach"`` (A10).
+    """
+    if commitment == "none":
+        return "no_commitment"
+    if commitment == "in_force":
+        return "no_breach" if reason in _ABOUT_THE_REQUEST else "breach"
+    if commitment == "lapsed":
+        if reason == REASON_RETENTION_EXPIRED:
+            return "correct"
+        return "wrong_token" if reason == REASON_NO_SUCH_SUBJECT else "no_breach"
+    raise ValueError(f"unknown commitment state {commitment!r}")
+
+
+def classify_absence(commitment: str) -> str:
+    """A recorded absence under a commitment in force is attributable to the
+    committed party; otherwise it records only the attempt (§4.4, §9). Either
+    way it stays a recorded absence, never a refusal."""
+    return "attributable_absence" if commitment == "in_force" else "attempt_only"
+
+
+def commitment_well_formed(commitment: Any) -> bool:
+    """A retention commitment (§9): non-empty ``evidence_stream`` text, an
+    ``until`` RFC 3339 UTC time, and a ``subject`` a digest or a position
+    under a checkpoint identifies: ``record``, ``exchange`` or ``range``
+    (A11)."""
+    if not isinstance(commitment, Mapping):
+        return False
+    stream = commitment.get("evidence_stream")
+    if not isinstance(stream, str) or not stream or parse_utc(commitment.get("until")) is None:
+        return False
+    try:
+        subject = _parse_subject(commitment.get("subject"))
+    except RequestError:
+        return False
+    return subject.form in ("record", "exchange", "range")

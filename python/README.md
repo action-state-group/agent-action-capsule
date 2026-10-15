@@ -79,14 +79,15 @@ mean the certificate is invalid.
 
 To answer an Evidence Request, call
 `agent_action_capsule.evidence_request.answer(request_bytes, store=..., signer=...)`.
-It parses the request, decides the answer and signs any refusal. Your `store`
-(an `EvidenceStore`) resolves subjects to records and builds the bundles, so the
-responder works over any log. `verify_refusal_offline` checks a signed refusal
-with no network. The module needs `cryptography` only to verify refusals, so
-install the `envelope` extra for that. The request shape predates
-`draft-mih-agent-evidence-request-00` in four places;
-[`vectors/evidence-request/DIFFS.md`](../vectors/evidence-request/DIFFS.md)
-lists them.
+It implements `draft-mih-agent-evidence-request-00` and passes every case in
+[`vectors/evidence-request/`](../vectors/evidence-request/): it parses the
+request (JSON, or deterministic CBOR with `binding="cbor"`), resolves the
+subject exactly, and returns an `Artifact` or a signed `Refusal`. Your `store`
+(an `EvidenceStore`) answers exact lookups, lists its coverage anchors and
+builds the artifact, so the responder works over any log. `check_refusal` and
+`verify_refusal_offline` check a signed refusal with no network. The module
+needs `cryptography` only to sign and verify refusals, so install the
+`envelope` extra for that.
 
 To verify both layers of a SCITT **Signed Statement**, install the optional extra
 and pass `--transparent`:
