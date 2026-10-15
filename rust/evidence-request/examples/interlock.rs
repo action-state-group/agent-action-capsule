@@ -20,6 +20,13 @@
 //! `check-envelope`: `[{id, binding, reply_hex}]` to `[{id}]`; any reply that
 //! is not an envelope verifying under its own key is reported on stderr, as
 //! `id: reason`, and the command exits 1.
+//! `check-cll` (feature `cll`): `{log_keys: [{iss, sub, kid}], cases: [{id,
+//! binding, reply_hex}]}` to `[{id, failed}]`: each reply verified as an
+//! envelope, then its Checkpointed Local Log material checked (profile
+//! §6.2.1) with only the listed log keys trusted. `failed` is null when both
+//! pass, else the first check that did not: `envelope`, `inclusion`,
+//! `consistency` or `other`. Each failure's reason goes to stderr as
+//! `id: reason`; the command still exits 0.
 
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use evidence_request::digest::request_digest;
@@ -53,7 +60,11 @@ fn main() -> ExitCode {
         "verify" => verify(&doc),
         "envelope" => envelope(&doc),
         "check-envelope" => check_envelope(&doc),
-        _ => Err("usage: interlock classify|refuse|verify|envelope|check-envelope".to_string()),
+        #[cfg(feature = "cll")]
+        "check-cll" => check_cll(&doc),
+        _ => Err(
+            "usage: interlock classify|refuse|verify|envelope|check-envelope|check-cll".to_string(),
+        ),
     };
     match result {
         Ok(out) => {
@@ -223,4 +234,74 @@ fn check_envelope(doc: &Value) -> Result<Value, String> {
     } else {
         Err(failures.join("\n"))
     }
+}
+
+/// Trusts exactly the listed (iss, sub, kid) log keys.
+#[cfg(feature = "cll")]
+struct ListedLogKeys(Vec<(String, String, Vec<u8>)>);
+
+#[cfg(feature = "cll")]
+impl evidence_request::cll_material::LogKeyPolicy for ListedLogKeys {
+    fn resolve(
+        &self,
+        iss: &str,
+        sub: &str,
+        kid: &[u8],
+        _issued_at: &str,
+    ) -> evidence_request::cll_material::KeyDecision {
+        use evidence_request::cll_material::KeyDecision;
+        let listed = self
+            .0
+            .iter()
+            .any(|(i, s, k)| i == iss && s == sub && k == kid);
+        match <[u8; 32]>::try_from(kid) {
+            Ok(raw) if listed => VerifyingKey::from_bytes(&raw)
+                .map(KeyDecision::Accept)
+                .unwrap_or(KeyDecision::Reject),
+            _ => KeyDecision::Reject,
+        }
+    }
+}
+
+#[cfg(feature = "cll")]
+fn check_cll(doc: &Value) -> Result<Value, String> {
+    use evidence_request::cll_material::{check_anchor_inclusion, Status};
+    let keys = array(&doc["log_keys"])?
+        .iter()
+        .map(|k| {
+            Ok((
+                text(k, "iss")?.to_string(),
+                text(k, "sub")?.to_string(),
+                bytes(k, "kid")?,
+            ))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let policy = ListedLogKeys(keys);
+    let mut out = Vec::new();
+    for case in array(&doc["cases"])? {
+        let id = text(case, "id")?;
+        let envelope = match parse_reply(&bytes(case, "reply_hex")?, binding(case)?) {
+            Ok(Reply::Envelope(e)) => e,
+            Ok(Reply::Refusal(_)) => return Err(format!("{id}: the reply is not an envelope")),
+            Err(e) => return Err(format!("{id}: {e}")),
+        };
+        let failed = if let Err(e) = envelope.verify() {
+            eprintln!("{id}: {e}");
+            Some("envelope")
+        } else {
+            let report = check_anchor_inclusion(&envelope, &policy);
+            if report.status == Status::Pass {
+                None
+            } else {
+                eprintln!("{id}: {:?}: {}", report.status, report.detail);
+                Some(match report.detail.split_once(": ") {
+                    Some(("inclusion", _)) if report.status == Status::Fail => "inclusion",
+                    Some(("consistency", _)) if report.status == Status::Fail => "consistency",
+                    _ => "other",
+                })
+            }
+        };
+        out.push(json!({"id": id, "failed": failed}));
+    }
+    Ok(Value::Array(out))
 }

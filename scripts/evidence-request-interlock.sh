@@ -16,9 +16,12 @@
 #    (spec/interop-profile-v0.md §6.2) from the same inputs, byte-identical in
 #    both bindings. Each verifies every producer's envelopes and rejects one
 #    with an altered verification item for that item's digest.
-# 5. cll: Python and Go check the profile's Checkpointed Local Log proofs
-#    (§6.2.1) on the worked example's real bytes, and reject each proof
-#    altered in a path node.
+# 5. cll: every language signs envelopes carrying the profile's Checkpointed
+#    Local Log material (§6.2.1) from the worked example's real bytes,
+#    byte-identical. Each checks every producer's envelopes: it accepts the
+#    real material, rejects a signed envelope whose inclusion or consistency
+#    proof is altered in a path node for that proof, and rejects an envelope
+#    whose material was altered after signing for that item's digest.
 set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
@@ -35,7 +38,7 @@ er_python() { "$python_bin" "$repo/python/scripts/evidence_request_interlock.py"
 er_go() { (cd "$repo/go" && GOWORK=off go run ./cmd/evidencerequest_interlock "$1"); }
 er_rust() {
   cargo run --quiet --locked --manifest-path "$repo/rust/Cargo.toml" \
-    -p evidence-request --no-default-features --example interlock -- "$1"
+    -p evidence-request --no-default-features --features cll --example interlock -- "$1"
 }
 
 languages=(python go rust)
@@ -297,57 +300,117 @@ EOF
   done
 done
 
-# Step 5: the CLL material (profile §6.2.1 steps 12 and 13), on the real bytes
-# of the profile's worked example (§10.1, vectors/interop-profile-v0
-# valid-exchange). Every verifier accepts its inclusion and consistency
-# proofs, and rejects each one altered in a path node, which leaves the proof
-# well formed so only the proof check can catch it. Rust checks CLL material
-# per envelope (cll_material::check_anchor_inclusion, feature cll), so it
-# joins when its interlock adapter gains check-cll.
-cll_verifiers=(python go)
-"$python_bin" - "$repo/vectors/interop-profile-v0/vectors.json" "$work/cll-in.json" "$work/cll-expected.json" <<'EOF'
+# Step 5: the CLL material (profile §6.2.1), on the real bytes of the
+# profile's worked example (§10.1, vectors/interop-profile-v0
+# valid-exchange): its request, artifact, anchor and three items, in an
+# envelope each producer signs with the interlock key. The altered proofs
+# change one path node, so they stay well formed and only the proof check
+# can catch them. Python and Rust read the checkpoint and trust only the
+# example's log keys; Go's library has no checkpoint reader, so it is given
+# the checkpoint's peaks and checks the proofs against them.
+"$python_bin" - "$repo/vectors/interop-profile-v0/vectors.json" "$seed" "$issued_at" \
+  "$work/cll-envelope-in.json" "$work/cll-check-base.json" <<'EOF'
 import json, sys
 from agent_action_capsule import evidence_request as er
 from agent_action_capsule.interop_profile import _cbor
 from agent_action_capsule.interop_profile.cll import _decode_checkpoint
 case = next(c for c in json.load(open(sys.argv[1]))["cases"] if c["id"] == "valid-exchange")
+request = case["inputs"]["request"]["octets_text"].encode()
 envelope = er.parse_reply(case["inputs"]["replies"][0]["octets_text"].encode())
 envelope.verify()
 items = dict(envelope.verification)
+assert list(items) == ["cll-checkpoint", "cll-inclusion-proof", "cll-consistency-proof"]
 checkpoint = _decode_checkpoint(items["cll-checkpoint"])
-peaks = [p.hex() for p in checkpoint.commitment]
-old_peaks = [p.hex() for p in checkpoint.prev_commitment]
-entry = envelope.signed_members()["artifact_digest"]
-inclusion, consistency = items["cll-inclusion-proof"], items["cll-consistency-proof"]
 def altered(octets, path_of):
     proof = _cbor.decode(octets).value
     node = path_of(proof)
     node[0] = node[0][:-1] + bytes([node[0][-1] ^ 1])
     return _cbor.encode(proof)
-assert _cbor.decode(inclusion).value[1], "the example's inclusion path is empty"
-assert any(_cbor.decode(consistency).value[2]), "the example's consistency paths are empty"
-proofs = [
-    dict(id="inclusion", kind="inclusion", peaks_hex=peaks, entry_hex=entry, proof_hex=inclusion.hex()),
-    dict(id="inclusion-altered", kind="inclusion", peaks_hex=peaks, entry_hex=entry,
-         proof_hex=altered(inclusion, lambda p: p[1]).hex()),
-    dict(id="consistency", kind="consistency", old_peaks_hex=old_peaks, peaks_hex=peaks,
-         proof_hex=consistency.hex()),
-    dict(id="consistency-altered", kind="consistency", old_peaks_hex=old_peaks, peaks_hex=peaks,
-         proof_hex=altered(consistency, lambda p: next(path for path in p[2] if path)).hex()),
-]
-json.dump(proofs, open(sys.argv[2], "w"))
-expected = [{"id": p["id"], "verified": not p["id"].endswith("-altered")} for p in proofs]
-with open(sys.argv[3], "w") as out:
-    json.dump(expected, out, sort_keys=True, separators=(",", ":"))
-    out.write("\n")
+assert _cbor.decode(items["cll-inclusion-proof"]).value[1], "the example's inclusion path is empty"
+assert any(_cbor.decode(items["cll-consistency-proof"]).value[2]), "the example's consistency paths are empty"
+variants = {
+    "inclusion-altered": ("cll-inclusion-proof", lambda p: p[1]),
+    "consistency-altered": ("cll-consistency-proof", lambda p: next(path for path in p[2] if path)),
+}
+signed = envelope.signed_members()
+def spec(cid, binding, material):
+    return {"id": cid, "binding": binding, "request_hex": request.hex(), "subject": signed["subject"],
+            "anchor_digest": signed["anchor"]["digest"], "artifact_hex": envelope.artifact.hex(),
+            "verification": [{"kind": k, "hex": v.hex()} for k, v in material.items()]}
+cases = [spec("cll-json", "json", items), spec("cll-cbor", "cbor", items)]
+for (cid, (kind, path_of)), binding in zip(variants.items(), ("json", "cbor")):
+    cases.append(spec(cid, binding, dict(items, **{kind: altered(items[kind], path_of)})))
+json.dump({"seed_hex": sys.argv[2], "issued_at": sys.argv[3], "cases": cases}, open(sys.argv[4], "w"))
+json.dump({"log_keys": case["pins"]["trust_policy"]["log_keys"],
+           "peaks_hex": [p.hex() for p in checkpoint.commitment],
+           "old_peaks_hex": [p.hex() for p in checkpoint.prev_commitment]}, open(sys.argv[5], "w"))
 EOF
-for lang in "${cll_verifiers[@]}"; do
-  "er_$lang" check-cll < "$work/cll-in.json" > "$work/cll-$lang.json"
-  if ! cmp -s "$work/cll-expected.json" "$work/cll-$lang.json"; then
-    echo "evidence request: $lang does not accept exactly the unaltered CLL proofs" >&2
-    diff "$work/cll-expected.json" "$work/cll-$lang.json" >&2 || true
+cll_languages=(python go rust)
+for lang in "${cll_languages[@]}"; do
+  "er_$lang" envelope < "$work/cll-envelope-in.json" > "$work/cll-envelope-$lang.json"
+done
+for lang in "${cll_languages[@]}"; do
+  if ! cmp -s "$work/cll-envelope-python.json" "$work/cll-envelope-$lang.json"; then
+    echo "evidence request: python and $lang sign different envelopes over the CLL material" >&2
     exit 1
   fi
+done
+for producer in "${cll_languages[@]}"; do
+  # The producer's envelopes, plus its two unaltered ones with one item
+  # changed after signing: the inclusion proof in JSON, the consistency
+  # proof in CBOR. The frame is re-encoded so it stays well formed.
+  "$python_bin" - "$work/cll-envelope-in.json" "$work/cll-envelope-$producer.json" \
+    "$work/cll-check-base.json" "$work/cll-check-$producer.json" "$work/cll-expected.json" <<'EOF'
+import base64, json, sys
+from agent_action_capsule.canonical import jcs
+from agent_action_capsule.interop_profile import _cbor
+bindings = {c["id"]: c["binding"] for c in json.load(open(sys.argv[1]))["cases"]}
+replies = [dict(r, binding=bindings[r["id"]]) for r in json.load(open(sys.argv[2]))]
+def b64(octets):
+    return base64.urlsafe_b64encode(octets).rstrip(b"=").decode()
+def unb64(text):
+    return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+def tampered(reply, cid, item):
+    octets = bytes.fromhex(reply["reply_hex"])
+    if reply["binding"] == "json":
+        frame = json.loads(octets)
+        frame["verification_content"][item] = b64(unb64(frame["verification_content"][item]) + b"\x00")
+        octets = jcs(frame)
+    else:
+        frame = _cbor.decode(octets).value
+        frame["verification_content"][item] += b"\x00"
+        octets = _cbor.encode(frame)
+    return dict(reply, id=cid, reply_hex=octets.hex())
+by_id = {r["id"]: r for r in replies}
+replies += [tampered(by_id["cll-json"], "inclusion-tampered", 1),
+            tampered(by_id["cll-cbor"], "consistency-tampered", 2)]
+base = json.load(open(sys.argv[3]))
+json.dump(dict(base, cases=[dict(r, peaks_hex=base["peaks_hex"], old_peaks_hex=base["old_peaks_hex"])
+                            for r in replies]), open(sys.argv[4], "w"))
+failed = {"inclusion-altered": "inclusion", "consistency-altered": "consistency",
+          "inclusion-tampered": "envelope", "consistency-tampered": "envelope"}
+with open(sys.argv[5], "w") as out:
+    json.dump([{"id": r["id"], "failed": failed.get(r["id"])} for r in replies], out,
+              sort_keys=True, separators=(",", ":"))
+    out.write("\n")
+EOF
+  for lang in "${cll_languages[@]}"; do
+    err="$work/cll-$producer-$lang.err"
+    "er_$lang" check-cll < "$work/cll-check-$producer.json" > "$work/cll-$producer-$lang.json" 2> "$err"
+    if ! cmp -s "$work/cll-expected.json" "$work/cll-$producer-$lang.json"; then
+      echo "evidence request: $lang does not accept exactly the unaltered CLL material $producer signed" >&2
+      diff "$work/cll-expected.json" "$work/cll-$producer-$lang.json" >&2 || true
+      cat "$err" >&2
+      exit 1
+    fi
+    for probe in "inclusion-tampered: .*verification item 1 " "consistency-tampered: .*verification item 2 "; do
+      if ! grep -q "^$probe""does not hash to its signed digest" "$err"; then
+        echo "evidence request: $lang rejected $producer's ${probe%%:*} envelope for another reason:" >&2
+        cat "$err" >&2
+        exit 1
+      fi
+    done
+  done
 done
 
 count=$("$python_bin" -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$work/classify-rust.json")
@@ -355,4 +418,4 @@ if [ "$count" -eq 0 ]; then
   echo "evidence request: no requests were classified" >&2
   exit 1
 fi
-echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python, go and rust build identical artifact envelopes, each verifies all three and rejects an altered verification item in either binding; python and go accept the worked example's CLL inclusion and consistency proofs and reject each altered."
+echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python, go and rust build identical artifact envelopes, each verifies all three and rejects an altered verification item in either binding; each signs the worked example's CLL material identically, accepts every producer's, and rejects an altered inclusion or consistency proof for the proof and material altered after signing for its digest."

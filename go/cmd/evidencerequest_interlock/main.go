@@ -11,12 +11,19 @@
 //	envelope: {seed_hex, issued_at, cases: [{id, binding, request_hex, subject, anchor_digest,
 //	          artifact_hex, derivation?, freshness?, verification: [{kind, hex}]}]} -> [{id, reply_hex}]
 //	check-envelope: [{id, binding, reply_hex}] -> [{id}]
-//	check-cll: [{id, kind: "inclusion", peaks_hex, entry_hex, proof_hex} |
-//	          {id, kind: "consistency", old_peaks_hex, peaks_hex, proof_hex}] -> [{id, verified}]
+//	check-cll: {log_keys, cases: [{id, binding, reply_hex, peaks_hex, old_peaks_hex}]} -> [{id, failed}]
 //
 // verify and check-envelope exit 1, listing each failure on stderr, if any
-// refusal does not authenticate or any envelope does not verify. check-cll
-// never fails on a proof: it reports whether each one verifies.
+// refusal does not authenticate or any envelope does not verify.
+//
+// check-cll verifies each reply as an envelope, then checks its Checkpointed
+// Local Log proofs (interop profile §6.2.1 steps 12 and 13) for the envelope's
+// artifact_digest. evidencerequest has no checkpoint reader (reading and
+// building checkpoints is evidencebook's), so it ignores log_keys and checks
+// the proofs against the checkpoint's peaks given in peaks_hex and
+// old_peaks_hex. failed is null when both pass, else the first check that did
+// not: envelope, inclusion or consistency. It never exits 1 on a failed check:
+// it reports each one, and its reason on stderr as id: reason.
 package main
 
 import (
@@ -120,9 +127,11 @@ func main() {
 			out = checked
 		}
 	case "check-cll":
-		var proofs []cllProof
-		if err = json.NewDecoder(os.Stdin).Decode(&proofs); err == nil {
-			out, err = checkCLL(proofs)
+		var doc struct {
+			Cases []cllCase `json:"cases"`
+		}
+		if err = json.NewDecoder(os.Stdin).Decode(&doc); err == nil {
+			out, err = checkCLL(doc.Cases)
 		}
 	default:
 		err = fmt.Errorf("unknown command %q", os.Args[1])
@@ -348,13 +357,12 @@ func checkEnvelope(binding, replyHex string) error {
 	return reply.Envelope.Verify()
 }
 
-type cllProof struct {
+type cllCase struct {
 	ID          string   `json:"id"`
-	Kind        string   `json:"kind"`
-	OldPeaksHex []string `json:"old_peaks_hex"`
+	Binding     string   `json:"binding"`
+	ReplyHex    string   `json:"reply_hex"`
 	PeaksHex    []string `json:"peaks_hex"`
-	EntryHex    string   `json:"entry_hex"`
-	ProofHex    string   `json:"proof_hex"`
+	OldPeaksHex []string `json:"old_peaks_hex"`
 }
 
 func hexList(items []string) ([][]byte, error) {
@@ -369,29 +377,67 @@ func hexList(items []string) ([][]byte, error) {
 	return out, nil
 }
 
-// checkCLL reports whether each item of Checkpointed Local Log material
-// verifies against the peaks it is given (interop profile §6.2.1 steps 12
-// and 13).
-func checkCLL(proofs []cllProof) ([]map[string]any, error) {
-	out := make([]map[string]any, 0, len(proofs))
-	for _, p := range proofs {
-		peaks, err1 := hexList(p.PeaksHex)
-		oldPeaks, err2 := hexList(p.OldPeaksHex)
-		entry, err3 := hex.DecodeString(p.EntryHex)
-		proof, err4 := hex.DecodeString(p.ProofHex)
-		if err := errors.Join(err1, err2, err3, err4); err != nil {
-			return nil, fmt.Errorf("%s: %w", p.ID, err)
+// checkCLL reports, for each reply, the first of its envelope, inclusion
+// proof and consistency proof that does not verify.
+func checkCLL(cases []cllCase) ([]map[string]any, error) {
+	out := make([]map[string]any, 0, len(cases))
+	for _, c := range cases {
+		media, err := mediaType(c.Binding)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", c.ID, err)
 		}
-		var verr error
-		switch p.Kind {
-		case "inclusion":
-			verr = evidencerequest.VerifyCLLInclusion(peaks, entry, proof)
-		case "consistency":
-			verr = evidencerequest.VerifyCLLConsistency(oldPeaks, peaks, proof)
-		default:
-			return nil, fmt.Errorf("%s: unknown kind %q", p.ID, p.Kind)
+		octets, err1 := hex.DecodeString(c.ReplyHex)
+		peaks, err2 := hexList(c.PeaksHex)
+		oldPeaks, err3 := hexList(c.OldPeaksHex)
+		if err := errors.Join(err1, err2, err3); err != nil {
+			return nil, fmt.Errorf("%s: %w", c.ID, err)
 		}
-		out = append(out, map[string]any{"id": p.ID, "verified": verr == nil})
+		reply, err := evidencerequest.ParseReply(evidencerequest.Message{Octets: octets, MediaType: media})
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", c.ID, err)
+		}
+		if reply.Envelope == nil {
+			return nil, fmt.Errorf("%s: the reply is not an envelope", c.ID)
+		}
+		failed, verr := cllFailure(*reply.Envelope, peaks, oldPeaks)
+		if verr != nil {
+			fmt.Fprintf(os.Stderr, "%s: %v\n", c.ID, verr)
+			out = append(out, map[string]any{"id": c.ID, "failed": failed})
+		} else {
+			out = append(out, map[string]any{"id": c.ID, "failed": nil})
+		}
 	}
 	return out, nil
+}
+
+// cllFailure names the first check of e that fails, and why.
+func cllFailure(e evidencerequest.Envelope, peaks, oldPeaks [][]byte) (string, error) {
+	if err := e.Verify(); err != nil {
+		return "envelope", err
+	}
+	entry, err := hex.DecodeString(e.ArtifactDigest)
+	if err != nil {
+		return "envelope", err
+	}
+	item := func(kind string) []byte {
+		for i, v := range e.Verification {
+			if v.Kind == kind {
+				return e.VerificationContent[i]
+			}
+		}
+		return nil
+	}
+	inclusion := item("cll-inclusion-proof")
+	if inclusion == nil {
+		return "inclusion", errors.New("no cll-inclusion-proof")
+	}
+	if err := evidencerequest.VerifyCLLInclusion(peaks, entry, inclusion); err != nil {
+		return "inclusion", err
+	}
+	if consistency := item("cll-consistency-proof"); consistency != nil {
+		if err := evidencerequest.VerifyCLLConsistency(oldPeaks, peaks, consistency); err != nil {
+			return "consistency", err
+		}
+	}
+	return "", nil
 }

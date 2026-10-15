@@ -19,10 +19,12 @@ document, so its output compares byte for byte with the Go and Rust adapters.
 - ``check-envelope``: ``[{id, binding, reply_hex}]`` to ``[{id}]``: each reply
   read as an envelope and verified offline; exits 1, listing each failure on
   stderr, if any does not verify.
-- ``check-cll``: ``[{id, kind: "inclusion", peaks_hex, entry_hex, proof_hex}
-  | {id, kind: "consistency", old_peaks_hex, peaks_hex, proof_hex}]`` to
-  ``[{id, verified}]``: whether each item of Checkpointed Local Log material
-  verifies against the given peaks (§6.2.1 steps 12 and 13).
+- ``check-cll``: ``{log_keys: [{iss, sub, kid}], cases: [{id, binding,
+  reply_hex}]}`` to ``[{id, failed}]``: each reply verified as an envelope,
+  then its Checkpointed Local Log material checked (§6.2.1) with only the
+  listed log keys trusted. ``failed`` is null when both pass, else the first
+  check that did not: ``envelope``, ``inclusion``, ``consistency`` or
+  ``other``. Each failure's reason goes to stderr as ``id: reason``.
 """
 import json
 import sys
@@ -31,6 +33,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from agent_action_capsule import evidence_request as er
+from agent_action_capsule.interop_profile import PASS, TrustPolicy
 
 
 class _SeedSigner:
@@ -126,22 +129,28 @@ def check_envelope(replies):
     return out
 
 
-def check_cll(proofs):
+def check_cll(doc):
+    trust = TrustPolicy(log_keys=frozenset((k["iss"], k["sub"], k["kid"]) for k in doc["log_keys"]))
+    # The procedure's own failure details name the step: 12 is the
+    # inclusion proof, 13 the consistency proof.
+    steps = {"step 12": "inclusion", "step 13": "consistency"}
     out = []
-    for p in proofs:
-        peaks = [bytes.fromhex(h) for h in p.get("peaks_hex") or []]
-        proof = bytes.fromhex(p["proof_hex"])
+    for case in doc["cases"]:
+        envelope = er.parse_reply(bytes.fromhex(case["reply_hex"]), case["binding"])
+        if not isinstance(envelope, er.Envelope):
+            raise SystemExit(f"{case['id']}: the reply is not an envelope")
+        failed = None
         try:
-            if p["kind"] == "inclusion":
-                er.verify_cll_inclusion(peaks, bytes.fromhex(p["entry_hex"]), proof)
-            elif p["kind"] == "consistency":
-                er.verify_cll_consistency([bytes.fromhex(h) for h in p.get("old_peaks_hex") or []], peaks, proof)
-            else:
-                raise SystemExit(f"{p['id']}: unknown kind {p['kind']!r}")
-            verified = True
-        except er.VerificationError:
-            verified = False
-        out.append({"id": p["id"], "verified": verified})
+            envelope.verify()
+        except er.VerificationError as exc:
+            print(f"{case['id']}: {exc}", file=sys.stderr)
+            failed = "envelope"
+        else:
+            report = er.check_cll_material(envelope, trust)
+            if report.status != PASS:
+                print(f"{case['id']}: {report.status}: {report.detail}", file=sys.stderr)
+                failed = steps.get((report.detail or "").split(":")[0], "other")
+        out.append({"id": case["id"], "failed": failed})
     return out
 
 
