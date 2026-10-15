@@ -21,8 +21,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf16"
+	"unicode/utf8"
 )
 
 // MaxSafeInteger is IEEE-754 double Number.MAX_SAFE_INTEGER = 2^53 − 1.
@@ -250,4 +252,66 @@ func ComputeCapsuleID(capsule map[string]interface{}) (string, error) {
 		canonical[k] = v
 	}
 	return digestJCS(canonical)
+}
+
+// CheckJSONText rejects JSON text whose strings encoding/json would silently
+// repair: invalid UTF-8 and unpaired UTF-16 surrogate escapes both decode to
+// U+FFFD there, so two different inputs could share one digest. The Rust and
+// TypeScript decoders reject both; this brings Go's decode paths in line.
+// It does not otherwise validate JSON syntax.
+func CheckJSONText(data []byte) error {
+	if !utf8.Valid(data) {
+		return fmt.Errorf("JSON text is not valid UTF-8")
+	}
+	inString := false
+	pendingHigh := false
+	for i := 0; i < len(data); i++ {
+		c := data[i]
+		if !inString {
+			inString = c == '"'
+			continue
+		}
+		if c == '"' {
+			if pendingHigh {
+				return fmt.Errorf("unpaired high surrogate escape at byte %d", i)
+			}
+			inString = false
+			continue
+		}
+		if c != '\\' || i+1 >= len(data) {
+			if pendingHigh {
+				return fmt.Errorf("unpaired high surrogate escape at byte %d", i)
+			}
+			continue
+		}
+		i++
+		if data[i] != 'u' || i+4 >= len(data) {
+			if pendingHigh {
+				return fmt.Errorf("unpaired high surrogate escape at byte %d", i)
+			}
+			continue
+		}
+		unit, err := strconv.ParseUint(string(data[i+1:i+5]), 16, 16)
+		if err != nil {
+			return fmt.Errorf("invalid \\u escape at byte %d", i)
+		}
+		i += 4
+		switch {
+		case unit >= 0xd800 && unit <= 0xdbff:
+			if pendingHigh {
+				return fmt.Errorf("unpaired high surrogate escape at byte %d", i)
+			}
+			pendingHigh = true
+		case unit >= 0xdc00 && unit <= 0xdfff:
+			if !pendingHigh {
+				return fmt.Errorf("unpaired low surrogate escape at byte %d", i)
+			}
+			pendingHigh = false
+		default:
+			if pendingHigh {
+				return fmt.Errorf("unpaired high surrogate escape at byte %d", i)
+			}
+		}
+	}
+	return nil
 }

@@ -1,0 +1,13 @@
+{
+  "capsule_id_recomputed": "e6a8e78f2cfbc36e9c96721de1c7c09500174ef32c9db07f5b0103f1d78fa9d1",
+  "derived": {
+    "effect_mode": "not_applicable",
+    "attestation_mode": "self_attested",
+    "ledger_mode": "standalone"
+  },
+  "description": "A nested member named __proto__ is an ordinary member: it stays in the canonical form and the capsule_id.",
+  "findings": [],
+  "kind": "positive",
+  "ok": true,
+  "provenance": "reference-derived"
+}

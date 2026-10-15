@@ -38,7 +38,7 @@ func TestBundleVectors(t *testing.T) {
 		} `json:"cases"`
 	}
 	require.NoError(t, json.Unmarshal(data, &manifest))
-	require.Equal(t, 12, manifest.Count)
+	require.Equal(t, 14, manifest.Count)
 	require.Len(t, manifest.Cases, manifest.Count)
 
 	for _, vector := range manifest.Cases {
@@ -179,6 +179,10 @@ func testCase(t *testing.T, name string) map[string]interface{} {
 	case "pos-default-completeness-values":
 		delete(bundle["completeness"].(map[string]interface{}), "closure_depth")
 		delete(bundle["completeness"].(map[string]interface{}), "missing")
+	case "pos-closure-depth-max-safe":
+		bundle["completeness"].(map[string]interface{})["closure_depth"] = int64(canonical.MaxSafeInteger)
+	case "neg-closure-depth-unsafe":
+		bundle["completeness"].(map[string]interface{})["closure_depth"] = int64(canonical.MaxSafeInteger + 1)
 	case "neg-portable-proof-version-kind":
 		proof := memberships(bundle)[middle["capsule_id"].(string)].(map[string]interface{})["inclusion_proof"].(map[string]interface{})
 		proof["v"] = 2
@@ -356,4 +360,56 @@ func TestIntervalRejectsSubTipRange(t *testing.T) {
 	result := VerifyBundle(bundle)
 	require.Equal(t, "fail", result.IntervalCoverage.Status)
 	require.Contains(t, result.IntervalCoverage.Findings, "range_proof_invalid")
+}
+
+func TestClosureReportsEachDanglingTargetOnce(t *testing.T) {
+	// One absent target reached from two records (the root's reference and its
+	// chain parent's chain) is one dangling citation, in every language.
+	absent := strings.Repeat("e", 64)
+	parent := testCapsule(t, 5, nil, nil, map[string]interface{}{"parent_capsule_id": absent, "relation": "derived_from"})
+	root := testCapsule(t, 6, nil, nil, map[string]interface{}{"parent_capsule_id": parent["capsule_id"], "relation": "derived_from"})
+	delete(root, "capsule_id")
+	root["references"] = []interface{}{map[string]interface{}{"type": "agent-action-capsule", "digest_alg": "SHA-256", "digest": absent, "citation_purpose": "acted_on"}}
+	id, err := canonical.ComputeCapsuleID(root)
+	require.NoError(t, err)
+	root["capsule_id"] = id
+	result := VerifyBundle(testBundle(t, []map[string]interface{}{parent, root}, root, nil, nil))
+	require.Equal(t, "fail", result.GraphClosure.Status)
+	count := 0
+	for _, finding := range result.GraphClosure.Findings {
+		if finding == "citation_dangling:"+absent {
+			count++
+		}
+	}
+	require.Equal(t, 1, count, result.GraphClosure.Findings)
+}
+
+func TestWithheldDisclosuresKeepRegistryOrder(t *testing.T) {
+	both := testCapsule(t, 7, nil, nil, nil)
+	delete(both, "capsule_id")
+	both["model_attestation"] = map[string]interface{}{"compute_attestation": map[string]interface{}{
+		"agent_input_digest":  strings.Repeat("a", 64),
+		"agent_output_digest": strings.Repeat("b", 64),
+	}}
+	id, err := canonical.ComputeCapsuleID(both)
+	require.NoError(t, err)
+	both["capsule_id"] = id
+	for i := 0; i < 20; i++ {
+		result := disclosures(map[string]interface{}{}, map[string]map[string]interface{}{id: both})
+		require.Equal(t, []DisclosureResult{
+			{CapsuleID: id, Member: "agent_input", Status: "withheld"},
+			{CapsuleID: id, Member: "agent_output", Status: "withheld"},
+		}, result)
+	}
+}
+
+func TestDecodeFragmentRefusesNonCanonicalBase64URL(t *testing.T) {
+	value, err := DecodeFragment("e30")
+	require.NoError(t, err)
+	require.Equal(t, map[string]interface{}{}, value)
+	// "e31" decodes to the same two bytes leniently; its trailing bits are not zero.
+	_, err = DecodeFragment("e31")
+	require.Error(t, err)
+	_, err = DecodeFragment(base64.RawURLEncoding.EncodeToString([]byte(`{"a":"\ud800"}`)))
+	require.Error(t, err)
 }

@@ -352,6 +352,7 @@ def case_agree() -> dict:
         "expect": {
             "composed_digest": digest,
             "canonical_preimage": preimage,
+            "status": "pass",
             "members": {
                 "responder-a": {"outcome": "artifact", "body": "carried", "digest": "reproduced",
                                 "claims": MEMBER_CLAIMS_DEPTH0},
@@ -384,6 +385,7 @@ def case_missing() -> dict:
             "composed_digest": digest,
             "composed_digest_equals_case": "agree",
             "canonical_preimage": preimage,
+            "status": "withheld",
             "members": {
                 "responder-a": {"outcome": "artifact", "body": "carried", "digest": "reproduced",
                                 "claims": MEMBER_CLAIMS_DEPTH0},
@@ -419,6 +421,7 @@ def case_same_custody() -> dict:
         "expect": {
             "composed_digest": digest,
             "canonical_preimage": preimage,
+            "status": "pass",
             "members": {
                 "boundary": {"outcome": "artifact", "body": "carried", "digest": "reproduced",
                              "claims": MEMBER_CLAIMS_DEPTH0},
@@ -435,8 +438,66 @@ def case_same_custody() -> dict:
     }
 
 
+S_RESPONSE = "composed/v1: Artifact Response"
+
+
+def case_response(case_id: str, request_digest_of: str) -> dict:
+    """The agree composition with responder-a carrying its response envelope.
+
+    The envelope's request digest is that of the request ``request_digest_of``
+    sent, so a member id other than responder-a's names another request.
+    """
+    members, observers = two_responders()
+    a = members[0]
+    a["response"] = {
+        "request_digest": sha256_hex(jcs(request(request_digest_of))),
+        "artifact_digest": a["digest"],
+    }
+    comp = block(members, observers, [join("responder-a", "responder-b", "agree")])
+    digest, preimage = composed_digest(comp)
+    bound = request_digest_of == "responder-a"
+    if bound:
+        description = ("The agree composition, with responder-a carrying its response envelope without the "
+                       "artifact bytes: its request_digest is the member's and its artifact_digest is the "
+                       "member's bundle digest. The envelope is outside the composed digest, so the digest is "
+                       "the agree case's. The envelope carries no signature in any deployment profile, so it "
+                       "is reported signature_unverified (withheld), as a refusal's signature would be.")
+    else:
+        description = ("As artifact-response-bound, but the envelope's request_digest is the digest of "
+                       "another request (the one responder-b answered): the artifact is bound to a request "
+                       "other than its member's, and the block fails.")
+    return {
+        "id": case_id,
+        "section": [S_MEMBERS, S_RESPONSE, S_DIGEST],
+        "description": description,
+        "container": container(comp),
+        "expect": {
+            "composed_digest": digest,
+            "composed_digest_equals_case": "agree",
+            "canonical_preimage": preimage,
+            "status": "withheld" if bound else "fail",
+            "members": {
+                "responder-a": {"outcome": "artifact", "body": "carried", "digest": "reproduced",
+                                "claims": MEMBER_CLAIMS_DEPTH0,
+                                "response": {"request_digest": "matches" if bound else "mismatch",
+                                             "artifact_digest": "matches",
+                                             "signature": "signature_unverified"}},
+                "responder-b": {"outcome": "artifact", "body": "carried", "digest": "reproduced",
+                                "claims": MEMBER_CLAIMS_DEPTH0},
+            },
+            "composition_closure": {"status": "pass", "missing": []},
+            "joins": [{"members": ["responder-a", "responder-b"], "declared": "agree", "derived": "agree",
+                       "result": "derived_matches"}],
+            "corroboration": [{"members": ["responder-a", "responder-b"], "result": "corroborating",
+                               "qualifier": "custody_declared"}],
+        },
+    }
+
+
 def cases() -> list[dict]:
-    return [case_agree(), case_missing(), case_same_custody()]
+    return [case_agree(), case_missing(), case_same_custody(),
+            case_response("artifact-response-bound", "responder-a"),
+            case_response("artifact-response-other-request", "responder-b")]
 
 
 # ---------------------------------------------------------------------------

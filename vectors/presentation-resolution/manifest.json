@@ -241,13 +241,13 @@
     },
     {
       "path": "registration.json",
-      "sha256": "8a825941aca4c81f7028afe7501a54ddc106c18d5b5cc5c291259ca881672083",
+      "sha256": "8d726325d073093985deaace70d941b723bdb1819d2d0edfb62e5be3e5096f57",
       "count": 53
     },
     {
       "path": "descriptors.json",
-      "sha256": "d654c66ed9090212503f389299c860192dfd68086adc76c2508f96781f0ceddf",
-      "count": 377
+      "sha256": "c5b109f42ba0e3066c5ce75b79cc17971b6095df661830063eea844aad7df448",
+      "count": 379
     }
   ]
 }

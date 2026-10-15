@@ -85,6 +85,10 @@ def verify_producer_envelope(capsule_id: str, data: bytes) -> VerificationResult
         if not isinstance(protected_bytes, bytes) or not protected_bytes:
             raise CoseError("protected header MUST be a non-empty byte string")
         protected = _plain_map(cbor2.loads(protected_bytes))
+        # Labels are CBOR integers. Python treats True as 1 and -8.0 as -8, so
+        # check types explicitly, as the Go decoder's int64 labels do.
+        if any(type(label) is not int for label in protected):
+            raise CoseError("protected header labels MUST be integers")
         unprotected = _plain_map(unprotected_value)
         if unprotected:
             raise CoseError("unprotected header MUST be an empty map")
@@ -95,9 +99,10 @@ def verify_producer_envelope(capsule_id: str, data: bytes) -> VerificationResult
     except Exception as exc:  # parser boundary: never raise
         return _failed(result, "envelope_malformed", str(exc))
 
-    if protected.get(1) != COSE_ALGORITHM_EDDSA:
+    algorithm = protected.get(1)
+    if type(algorithm) is not int or algorithm != COSE_ALGORITHM_EDDSA:
         return _failed(result, "envelope_algorithm_mismatch", "protected alg (label 1) MUST be EdDSA (-8)")
-    if protected.get(3) != CONTENT_TYPE:
+    if type(protected.get(3)) is not str or protected.get(3) != CONTENT_TYPE:
         return _failed(
             result,
             "envelope_content_type_mismatch",

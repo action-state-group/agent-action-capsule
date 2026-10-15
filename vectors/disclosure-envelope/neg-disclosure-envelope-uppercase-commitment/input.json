@@ -1,0 +1,44 @@
+{
+  "envelope": {
+    "capsule": {
+      "action_id": "po-001",
+      "action_type": "decide",
+      "assurance": {
+        "attestation_mode": "self_attested",
+        "effect_mode": "confirmed",
+        "ledger_mode": "standalone"
+      },
+      "capsule_id": "16b82775dbf884359ccf1cd5f2d5c0e3b1b2fa30faf601b12ef43eaa12ee4885",
+      "developer": "agent@v1",
+      "disposition": {
+        "approver": "human",
+        "decision": "accept",
+        "human_disposed": true
+      },
+      "effect": {
+        "effect_attestation": "gate_executed",
+        "irreversibility_class": "two_way",
+        "response_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "status": "confirmed",
+        "type": "write_order"
+      },
+      "format_version": "4",
+      "model_attestation": {
+        "compute_attestation": {
+          "agent_input_digest": "63120454D3E4A8D26FA52AAEE6FB33E7AA8E507A8651E41D8F49BB33D668CCE0",
+          "agent_output_digest": "f5291b9d34719f6be8430b0e9f23538d96a46d1b716c9d33b8912233f42e0e72"
+        }
+      },
+      "operator": "ACME-CO",
+      "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+      "timestamp": "2026-06-13T00:00:00Z",
+      "canonicalization_id": "jcs"
+    },
+    "disclosures": {
+      "agent_input": {
+        "amount": "500.00",
+        "sku": "PO-9981"
+      }
+    }
+  }
+}

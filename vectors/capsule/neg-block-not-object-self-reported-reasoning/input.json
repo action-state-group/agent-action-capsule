@@ -1,0 +1,23 @@
+{
+  "action_id": "neg-block-not-object-self-reported-reasoning",
+  "action_type": "decide",
+  "assurance": {
+    "attestation_mode": "self_attested",
+    "effect_mode": "not_applicable",
+    "ledger_mode": "standalone"
+  },
+  "canonicalization_id": "jcs",
+  "developer": "conformance-vector@v1",
+  "disposition": {
+    "approver": "policy",
+    "decision": "accept",
+    "human_disposed": false,
+    "verdict_class": "executed"
+  },
+  "format_version": "4",
+  "operator": "AAC-CONFORMANCE",
+  "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+  "timestamp": "2026-10-10T00:00:00Z",
+  "self_reported_reasoning": "digest",
+  "capsule_id": "15cb191b991d8e70a395c0c66d1e33fe0d8467fa34234dcec32509e5c3b7ab95"
+}

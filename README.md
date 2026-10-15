@@ -46,9 +46,9 @@ capsule bytes alone — no keys, no network, no clock.
 ```bash
 git clone https://github.com/action-state-group/agent-action-capsule
 cd agent-action-capsule
-pip install -e python            # or, once published: pip install agent-action-capsule
+pip install -e python            # or: pip install agent-action-capsule
 
-# a known-good conformance vector  ->  ok: True, findings: none
+# a known-good conformance vector  ->  ok: True (one info finding: chain checks need a store)
 agent-action-capsule verify vectors/capsule/pos-v4-jcs-chain-committed/input.json
 
 # a tampered capsule               ->  ok: False, capsule_id_mismatch
@@ -82,6 +82,8 @@ vectors/         authoritative language-agnostic conformance and interop vectors
 LICENSE          BCP 78/79 for the specification; Revised BSD for code components
 NOTICE           attribution + neutrality intent
 CONTRIBUTING.md  IETF process (BCP 78/79), DCO, scope gates
+RELEASING.md     how the Python and TypeScript packages are released
+CLAUDE.md        guidance for coding agents working in this repository
 SECURITY.md      private vulnerability reporting
 ```
 
@@ -162,8 +164,8 @@ The producer (`capsule-emit`) creates Capsules and Producer Envelopes. It has no
 opinion on VDS selection. Registration tooling creates the RFC 9943 statement. The
 Receipt's `vds` header is the Transparency Service's choice.
 
-**RFC9162_SHA256 (vds=1)** is the current default — the only VDS registered under
-draft-ietf-cose-merkle-tree-proofs today, and the profile implemented in
+**RFC9162_SHA256 (vds=1)** is the current default — the VDS that
+RFC 9942 itself registers, and the profile implemented in
 `scitt-cose` (both `build_receipt` and `verify_receipt`).
 
 **CCF (Microsoft Confidential Consortium Framework)** — tested against

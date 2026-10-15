@@ -13,10 +13,16 @@ import (
 	"github.com/action-state-group/agent-action-capsule/go/verify"
 )
 
+// Disclosure finding codes, shared with the Python and TypeScript verifiers.
 const (
-	Match             = "disclosure_match"
-	Mismatch          = "disclosure_mismatch"
-	Ineligible        = "disclosure_ineligible_field"
+	// Match: the disclosed preimage's JSON-DIGEST equals the committed digest.
+	Match = "disclosure_match"
+	// Mismatch: the digests differ, or the preimage cannot be digested.
+	Mismatch = "disclosure_mismatch"
+	// Ineligible: the member name is not in the disclosure-eligible registry (DE-1).
+	Ineligible = "disclosure_ineligible_field"
+	// NoCommittedDigest: the Capsule carries no 64-hex digest at the member's
+	// registered path (DE-2).
 	NoCommittedDigest = "disclosure_no_committed_digest"
 )
 

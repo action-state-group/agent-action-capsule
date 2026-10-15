@@ -45,9 +45,8 @@ LOCAL_ONLY_FIELDS = ("signature", "key_id")
 # ECMAScript-Number-based reader, so two conforming verifiers could derive
 # different digests from the same bytes. §5.1 already mandates exact decimal
 # STRINGS for monetary/quantity values; this bound additionally catches ANY
-# other integer outside the safe range in a digest-bearing position. (The -00
-# text forbids floats but does not yet state this integer bound; see the -01
-# flag in vectors/capsule/README.md.)
+# other integer outside the safe range in a digest-bearing position; the -05
+# text states this bound alongside the float prohibition (§5.1).
 MAX_SAFE_INTEGER = 2**53 - 1  # 9007199254740991
 
 
@@ -99,8 +98,6 @@ def _jcs_value(v: Any) -> str:
         return "false"
     if isinstance(v, str):
         return _jcs_string(v)
-    if isinstance(v, bool):  # pragma: no cover - handled above
-        return "true" if v else "false"
     if isinstance(v, int):
         # Canonical integers serialize as their decimal form. (bool is a subclass
         # of int but is handled above.) Guard the JS-safe range: a magnitude

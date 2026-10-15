@@ -1,0 +1,22 @@
+{
+  "description": "a valid bare Capsule passed as an envelope has no capsule member and fails Class 1; it is never read as its own Capsule",
+  "kind": "negative",
+  "ok": false,
+  "capsule": {
+    "ok": false,
+    "derived": {},
+    "capsule_id_recomputed": null,
+    "findings": [
+      {
+        "check": 1,
+        "severity": "error",
+        "code": "not_an_object",
+        "detail": "Capsule is not a JSON object"
+      }
+    ]
+  },
+  "disclosures_checked": 0,
+  "disclosures_matched": 0,
+  "disclosure_findings": [],
+  "provenance": "reference-derived"
+}

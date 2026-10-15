@@ -47,16 +47,46 @@ seal_go() { (cd "$repo/go" && GOWORK=off go run ./cmd/cross_language seal); }
 verify_go() { (cd "$repo/go" && GOWORK=off go run ./cmd/cross_language verify); }
 seal_ts() { node "$repo/ts/dist/cross-language.js" seal; }
 verify_ts() { node "$repo/ts/dist/cross-language.js" verify; }
+rust_example() { cargo run --quiet --locked --manifest-path "$repo/rust/Cargo.toml" --example cross_language -- "$1"; }
+seal_rust() { rust_example seal; }
+verify_rust() { rust_example verify; }
+
+languages=(python go ts rust)
+
+# With the injected divergence, Python seals a capsule whose capsule_id was
+# computed by a defective canonicalizer. Every consumer must reject it as a
+# capsule_id_mismatch, each asserted on its own, so one consumer that accepts
+# it fails the probe even when the others reject it.
+if test "${AAC_INTERLOCK_INJECT_CANONICALIZATION_DIVERGENCE:-}" = 1; then
+  accepted=()
+  for fixture in "${fixtures[@]}"; do
+    seal_python < "$fixture" > "$work/divergent.json"
+    for consumer in "${languages[@]}"; do
+      if "verify_$consumer" < "$work/divergent.json" > /dev/null 2> "$work/$consumer.err"; then
+        accepted+=("$consumer accepted $(basename "$fixture")")
+      elif grep -q capsule_id_mismatch "$work/$consumer.err"; then
+        printf '%s rejected the divergent %s: capsule_id_mismatch\n' "$consumer" "$(basename "$fixture")"
+      else
+        accepted+=("$consumer failed on $(basename "$fixture") without capsule_id_mismatch: $(cat "$work/$consumer.err")")
+      fi
+    done
+  done
+  if test "${#accepted[@]}" -gt 0; then
+    printf '%s\n' "${accepted[@]}" >&2
+    exit 1
+  fi
+  exit 0
+fi
 
 for fixture in "${fixtures[@]}"; do
   printf '%s\n' "$(basename "$fixture"):"
-  for producer in python go ts; do
+  for producer in "${languages[@]}"; do
     "seal_$producer" < "$fixture" > "$work/$producer.json"
   done
 
   python_id=$(verify_python < "$work/python.json")
-  for producer in python go ts; do
-    for consumer in python go ts; do
+  for producer in "${languages[@]}"; do
+    for consumer in "${languages[@]}"; do
       actual=$("verify_$consumer" < "$work/$producer.json")
       test "$actual" = "$python_id"
       printf '%s-sealed -> %s-verified: %s\n' "$producer" "$consumer" "$actual"

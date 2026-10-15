@@ -1,6 +1,6 @@
 {
   "name": "@action-state-group/agent-action-capsule",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript reference for Agent Action Capsule format 4",
   "license": "BSD-3-Clause",
   "type": "module",
@@ -44,9 +44,6 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "check:package": "node scripts/check-package.mjs"
-  },
-  "dependencies": {
-    "cborg": "6.1.2"
   },
   "devDependencies": {
     "@types/jsdom": "30.0.0",

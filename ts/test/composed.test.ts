@@ -183,6 +183,7 @@ describe("composed/v1 verification (port of go/bundle/composed.go)", () => {
       expect(await composedDigest(block)).toBe(expectation.composed_digest);
       const result = await tsComposed(c.container);
       if (result.malformed) throw new Error("malformed");
+      expect(result.status).toBe((c.expect as { status: string }).status);
       for (const m of result.members) {
         const want = expectation.members[m.id]!;
         expect([m.outcome, m.body, m.digest]).toEqual([
@@ -190,6 +191,24 @@ describe("composed/v1 verification (port of go/bundle/composed.go)", () => {
           want.body,
           want.digest,
         ]);
+        const response = want.response as Record<string, string> | undefined;
+        expect(
+          m.responseSignature === undefined
+            ? undefined
+            : {
+                request_digest: m.findings.includes(
+                  "response_request_digest_mismatch",
+                )
+                  ? "mismatch"
+                  : "matches",
+                artifact_digest: m.findings.includes(
+                  "response_artifact_digest_mismatch",
+                )
+                  ? "mismatch"
+                  : "matches",
+                signature: m.responseSignature,
+              },
+        ).toEqual(response);
         const claims = want.claims as Record<string, string> | null;
         expect(
           m.bundle === undefined

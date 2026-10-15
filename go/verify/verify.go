@@ -13,11 +13,12 @@
 package verify
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"regexp"
 	"sort"
-	"strings"
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/agent-action-capsule/go/registries"
@@ -313,7 +314,7 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 			Code: "not_an_object", Detail: "Capsule is not a JSON object",
 			Severity: "error", Check: mkCheck(1),
 		})
-		return VerificationResult{OK: false, Findings: findings}
+		return VerificationResult{OK: false, Findings: findings, Assurance: map[string]string{}}
 	}
 
 	effect := asMap(capsuleMap["effect"])
@@ -364,7 +365,7 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		if at != "fyi" && at != "decide" {
 			findings = append(findings, Finding{
 				Code:     "action_type_invalid",
-				Detail:   fmt.Sprintf("action_type MUST be 'fyi' or 'decide' (§5.1)"),
+				Detail:   "action_type MUST be 'fyi' or 'decide' (§5.1)",
 				Severity: "error", Check: mkCheck(1),
 			})
 		}
@@ -390,16 +391,26 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 
 	}
 
-	// Sub-block type checks (effect, assurance, disposition, chain, cross_party,
-	// provenance_mode). self_reported_reasoning and the domain/provenance (§-02)
-	// addendum are a separate, still-unported Python-only surface; only
-	// provenance_mode (check 9) is in scope here.
-	for _, fld := range []string{"effect", "assurance", "disposition", "chain", "cross_party", "provenance_mode"} {
+	// Sub-block type checks, in the Python reference's order. The §-02
+	// addendum's self_reported_reasoning block and its scalar domain and
+	// provenance members are typed the same way.
+	for _, fld := range []string{"effect", "assurance", "disposition", "chain", "cross_party", "self_reported_reasoning", "provenance_mode"} {
 		if v, ok := capsuleMap[fld]; ok {
 			if _, isMap := v.(map[string]interface{}); !isMap {
 				findings = append(findings, Finding{
 					Code:     "block_not_object",
 					Detail:   fmt.Sprintf("%s MUST be a JSON object when present", fld),
+					Severity: "error", Check: mkCheck(1),
+				})
+			}
+		}
+	}
+	for _, fld := range []string{"domain", "provenance"} {
+		if v, ok := capsuleMap[fld]; ok {
+			if _, isString := v.(string); !isString {
+				findings = append(findings, Finding{
+					Code:     fld + "_not_string",
+					Detail:   fld + " MUST be a string when present (§-02)",
 					Severity: "error", Check: mkCheck(1),
 				})
 			}
@@ -1061,14 +1072,22 @@ func FindingKey(f Finding) string {
 	return fmt.Sprintf("%s|%s|%s", check, f.Severity, f.Code)
 }
 
-// DecodeCapsuleJSON decodes a JSON byte slice into an interface{} with json.Number
-// for numbers (preserving integer/float distinction).
+// DecodeCapsuleJSON decodes one JSON value into an interface{} with json.Number
+// for numbers (preserving integer/float distinction). It rejects trailing data
+// after the value, invalid UTF-8 and unpaired surrogate escapes, which
+// encoding/json would otherwise ignore or replace with U+FFFD.
 func DecodeCapsuleJSON(data []byte) (interface{}, error) {
+	if err := canonical.CheckJSONText(data); err != nil {
+		return nil, err
+	}
 	var v interface{}
-	d := json.NewDecoder(strings.NewReader(string(data)))
+	d := json.NewDecoder(bytes.NewReader(data))
 	d.UseNumber()
 	if err := d.Decode(&v); err != nil {
 		return nil, err
+	}
+	if _, err := d.Token(); err != io.EOF {
+		return nil, fmt.Errorf("trailing data after JSON value")
 	}
 	return v, nil
 }

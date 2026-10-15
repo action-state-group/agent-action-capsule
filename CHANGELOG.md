@@ -2,6 +2,74 @@
 
 ## Unreleased
 
+- Cross-language parity hardening. Each change aligns the four verifiers on the stricter
+  behaviour one of them already had, and new shared vectors pin it:
+  - TypeScript: a JSON member named `__proto__` is kept as an ordinary member, so it stays
+    inside `capsule_id` (it previously set the object's prototype and dropped out of the
+    canonical form, letting its content change undetected). Disclosure names `constructor` and
+    `__proto__` are ineligible fields rather than prototype lookups.
+  - Evidence Bundle graph closure visits each record once and stops when no new record is
+    reached, in Go, Python, Rust and TypeScript, so its work is bounded by the records supplied
+    rather than by the declared `closure_depth`; a dangling target is reported once.
+  - TypeScript `decodeFragment` keeps a non-integer number's spelling, so `"closure_depth": 2.0`
+    fails as in Go, Python and Rust; it still keeps the last of a repeated name, like them.
+  - Producer Envelope protected headers: Python and TypeScript require integer labels, each
+    once, and an integer `alg`; TypeScript checks `alg`, content type and `kid` before the label
+    count, as Go and Python do. The TypeScript verifier no longer depends on `cborg`.
+  - Check 9 (`provenance_mode`) in TypeScript; `provenance_mode` and
+    `self_reported_reasoning` must be objects and `domain`/`provenance` strings in Go, Rust and
+    TypeScript, as in Python.
+  - TypeScript Disclosure Envelopes without a `capsule` member fail instead of verifying the
+    envelope itself; Python requires a lowercase-hex committed digest (DE-2).
+  - Go `DecodeCapsuleJSON` and `bundle.DecodeFragment` reject invalid UTF-8 and unpaired
+    surrogate escapes, and `DecodeCapsuleJSON` rejects trailing data. Python Bundle integers are
+    bounded to ±(2^53 − 1). Go, Python and TypeScript refuse base64url with non-zero trailing
+    bits, as Rust does. Go reports withheld disclosures in a fixed order.
+  - Vectors (`python/scripts/generate_parity_hardening_vectors.py`): five `capsule/` cases, six
+    `producer-envelope/` cases, two `disclosure-envelope/` cases and two `bundle/` closure-depth
+    cases. Released cases are unchanged.
+- TypeScript evidence graph: `provenanceMode` is read from the `provenance_mode` block's `mode`,
+  not from a string-valued member.
+- Rust: new crate `agent-action-capsule` (`rust/agent-action-capsule/`), the
+  Rust reference verifier: canonicalization and `capsule_id`, Class 1
+  verification with checks 1-9 and the store checks, the profile registries,
+  Producer Envelopes, and Evidence Bundle v2 behind the `bundle` feature. It
+  runs the capsule, provenance-mode, producer-envelope and bundle corpora, and
+  the interlock now seals and verifies in Rust as well. It replaces the
+  unpublished `aac-bundle` crate (`rust/bundle/`). Released from
+  `crates/agent-action-capsule-v*` tags through Release · Prepare.
+- Interlock: the injected canonicalization divergence is now checked per
+  consumer. Each of Python, Go, TypeScript and Rust must reject it as a
+  `capsule_id_mismatch`; previously the script stopped at Python's rejection.
+
+## 0.7.1 — 2026-10-14
+
+- Release: Python and TypeScript releases are now a merged version bump. Run
+  **Release · Prepare** with the package and `patch`, `minor` or `major`; merging the
+  pull request it links tags `python/v*` or `ts/v*` and publishes. TypeScript now
+  publishes from a `ts/v*` tag through the `npm` environment instead of a manual run on
+  `main`. See `RELEASING.md`.
+- Release: Python releases are now tagged `python/v<version>`, matching the
+  `go/v*`, `ts/v*` and `vectors/v*` tags of the other artifacts. The PyPI version
+  is unchanged (`0.8.0`, not `python/0.8.0`). Releases up to 0.7.0 keep their bare
+  `v<version>` tags.
+- Registry conformance, a producer-side check: `agent_action_capsule.registry_conformance`
+  (also `python -m agent_action_capsule.registry_conformance FILE...`, exit 1 on a
+  non-conformant value) and Go `registries.LoadAxes` / `CheckCapsule`. It classifies every
+  registry-governed Capsule field as `registered`, `legacy_alias` (§6), `cross_axis` (registered
+  on a different registry), `private` (`x-` domain) or `unregistered`, with the sets parsed from
+  `spec/REGISTRY.md`. It is not verification: `verify()` still never rejects an unregistered
+  value. No registered set changes. Vectors: `vectors/registry-conformance/` (26 sealed
+  Capsules).
+- composed/v1 (`draft-mih-zhang-agent-disclosure-bundle-01`): an artifact member may carry
+  `response`, the responder's signed response as received with the artifact bytes removed. A
+  verifier requires its `request_digest` to equal the member's and its `artifact_digest` the
+  member's digest (either mismatch fails the block). Its signature is checked under the
+  deployment profile, as a refusal's is, and otherwise reported `signature_unverified`. It is
+  outside the composed digest. Go: `Options.ResponseSignature` and
+  `ComposedMemberResult.ResponseSignature`. TypeScript mirrors the check without a signature
+  profile. Vectors: `artifact-response-bound` and `artifact-response-other-request`, and every
+  composed/v1 case now states the block's expected `status`.
 - Spec: `spec/interop-profile-v0.md`, the Minimum Evidence Interoperability Profile v0
   (`evidence-interop/0`). It is an Informational, pre-Internet-Draft profile that pins
   `draft-mih-agent-evidence-request-00` and its conformance vectors, the Disclosure Envelope

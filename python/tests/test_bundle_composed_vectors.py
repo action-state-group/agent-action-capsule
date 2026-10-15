@@ -148,9 +148,10 @@ def test_sha256sums_pin_every_file():
         assert top.get(f"bundle/composed/{name}") == _sha((VECTORS / name).read_bytes()), name
 
 
-def test_three_cases():
-    assert DATA["count"] == len(DATA["cases"]) == 3
-    assert set(CASES) == {"agree", "one-member-missing", "same-custody-redundant"}
+def test_five_cases():
+    assert DATA["count"] == len(DATA["cases"]) == 5
+    assert set(CASES) == {"agree", "one-member-missing", "same-custody-redundant",
+                          "artifact-response-bound", "artifact-response-other-request"}
 
 
 # ---------------------------------------------------------------------------
@@ -212,6 +213,17 @@ def test_members_and_composition_closure(case_id):
         assert want["body"] == "carried"
         assert _member_digest(member) == member["digest"], member["id"]
         assert want["digest"] == "reproduced"
+        # A carried response binds an artifact to its request: its digests
+        # are compared with the member's. No signature profile is read here.
+        response = member.get("response")
+        assert (response is None) == ("response" not in want)
+        if response is not None:
+            assert member["outcome"] == "artifact"
+            assert want["response"] == {
+                "request_digest": "matches" if response["request_digest"] == member["request_digest"] else "mismatch",
+                "artifact_digest": "matches" if response["artifact_digest"] == member["digest"] else "mismatch",
+                "signature": "signature_unverified",
+            }
     status = "withheld" if missing else "pass"
     assert case["expect"]["composition_closure"]["status"] == status
     assert sorted(missing) == case["expect"]["composition_closure"]["missing"]

@@ -1,0 +1,163 @@
+{
+  "spec": "draft-mih-scitt-agent-action-capsule-05",
+  "registry": "spec/REGISTRY.md",
+  "cases": [
+    {
+      "name": "pos-all-fields-registered",
+      "kind": "positive",
+      "description": "Every registry-governed Capsule field present, each with a registered value.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-verdict-class-unregistered",
+      "kind": "negative",
+      "description": "disposition.verdict_class = 'approved', registered on no axis.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-disposition-decision-registered",
+      "kind": "positive",
+      "description": "disposition.decision = 'reject', registered.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-disposition-decision-unregistered",
+      "kind": "negative",
+      "description": "disposition.decision = 'approve', registered on no axis.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-effect-type-registered",
+      "kind": "positive",
+      "description": "effect.type = 'send_payment', registered.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-effect-type-unregistered",
+      "kind": "negative",
+      "description": "effect.type = 'send_email', registered on no axis.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-irreversibility-class-registered",
+      "kind": "positive",
+      "description": "effect.irreversibility_class = 'one_way_terminal', registered.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-irreversibility-class-unregistered",
+      "kind": "negative",
+      "description": "effect.irreversibility_class = 'reversible', registered on no axis.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-effect-attestation-registered",
+      "kind": "positive",
+      "description": "effect.effect_attestation = 'runtime_claimed', registered.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-effect-attestation-unregistered",
+      "kind": "negative",
+      "description": "effect.effect_attestation = 'sensor_confirmed', registered on no axis.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-chain-relation-registered",
+      "kind": "positive",
+      "description": "chain.relation = 'supersedes', registered.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-chain-relation-unregistered",
+      "kind": "negative",
+      "description": "chain.relation = 'replaces', registered on no axis.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-citation-purpose-registered",
+      "kind": "positive",
+      "description": "references[].citation_purpose = 'responds_to', registered.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-citation-purpose-unregistered",
+      "kind": "negative",
+      "description": "references[].citation_purpose = 'mentions', registered on no axis.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-domain-registered",
+      "kind": "positive",
+      "description": "domain = 'memory', registered.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-domain-unregistered",
+      "kind": "negative",
+      "description": "domain = 'tool_call', registered on no axis.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-provenance-registered",
+      "kind": "positive",
+      "description": "provenance = 'runtime', registered.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-provenance-unregistered",
+      "kind": "negative",
+      "description": "provenance = 'sidecar', registered on no axis.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-provenance-mode-unregistered",
+      "kind": "negative",
+      "description": "provenance_mode.mode = 'imported', registered on no axis.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "pos-domain-private-extension",
+      "kind": "positive",
+      "description": "domain = 'x-acme-experiment': an x- value is private (§8), never registered, and not a conformance failure.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-disposition-decision-cross-axis-verdict-class",
+      "kind": "negative",
+      "description": "disposition.decision carries hitl_dispatched, a registered verdict_class value that is not a registered disposition.decision value. The registered pairing is decision needs_input with verdict_class hitl_dispatched.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-chain-relation-cross-axis-link-type",
+      "kind": "negative",
+      "description": "chain.relation carries cites, a registered Evidence Layer link type (§18) that is not a registered chain.relation value.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-citation-purpose-cross-axis-link-type",
+      "kind": "negative",
+      "description": "references[].citation_purpose carries cites, a registered Evidence Layer link type (§18) that is not a registered citation_purpose value.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-chain-relation-legacy-resolves",
+      "kind": "negative",
+      "description": "chain.relation carries resolves, a read-only legacy alias (§6): producers MUST emit supersedes, the registered value it maps to.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-chain-relation-legacy-sequence",
+      "kind": "negative",
+      "description": "chain.relation carries sequence, a deployed legacy alias (§6): producers emit follows.",
+      "provenance": "reference-derived"
+    },
+    {
+      "name": "neg-verdict-class-not-a-string",
+      "kind": "negative",
+      "description": "disposition.verdict_class carries a list holding a registered value: a present value that is not a string is unregistered, whatever it contains.",
+      "provenance": "reference-derived"
+    }
+  ],
+  "count": 26
+}

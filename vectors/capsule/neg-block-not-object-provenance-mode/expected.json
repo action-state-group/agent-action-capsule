@@ -1,0 +1,20 @@
+{
+  "capsule_id_recomputed": "81166bbd5134edd7af7a039d7add6c621fb0e868c723a6c1eaf9439afcdfa79c",
+  "derived": {
+    "effect_mode": "not_applicable",
+    "attestation_mode": "self_attested",
+    "ledger_mode": "standalone"
+  },
+  "description": "provenance_mode is a block; a string where the object belongs is a check-1 type error.",
+  "findings": [
+    {
+      "check": 1,
+      "code": "block_not_object",
+      "detail": "provenance_mode MUST be a JSON object when present",
+      "severity": "error"
+    }
+  ],
+  "kind": "negative",
+  "ok": false,
+  "provenance": "reference-derived"
+}

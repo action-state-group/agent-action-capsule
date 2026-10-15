@@ -1,0 +1,20 @@
+{
+  "capsule_id_recomputed": "af71c78d84ea3d9dc141704484d731170883c5ba975dd20f5d01d5e295a917b4",
+  "derived": {
+    "effect_mode": "not_applicable",
+    "attestation_mode": "self_attested",
+    "ledger_mode": "standalone"
+  },
+  "description": "The -02 addendum's provenance member is a string; a list is a check-1 type error.",
+  "findings": [
+    {
+      "check": 1,
+      "code": "provenance_not_string",
+      "detail": "provenance MUST be a string when present (§-02)",
+      "severity": "error"
+    }
+  ],
+  "kind": "negative",
+  "ok": false,
+  "provenance": "reference-derived"
+}

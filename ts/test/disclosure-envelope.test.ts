@@ -42,7 +42,7 @@ describe("authoritative Disclosure Envelope corpus", () => {
         capsule: {
           ok: boolean;
           derived: Record<string, string>;
-          capsule_id_recomputed: string;
+          capsule_id_recomputed: string | null;
           findings: Array<{ code: string }>;
         };
         disclosures_checked: number;
@@ -53,7 +53,8 @@ describe("authoritative Disclosure Envelope corpus", () => {
       expect(actual.ok).toBe(expected.ok);
       expect(actual.capsuleResult.ok).toBe(expected.capsule.ok);
       expect(actual.capsuleResult.assurance).toEqual(expected.capsule.derived);
-      expect(actual.capsuleResult.capsuleId).toBe(
+      // A missing capsule has no recomputed identity (null in the vector).
+      expect(actual.capsuleResult.capsuleId ?? null).toBe(
         expected.capsule.capsule_id_recomputed,
       );
       expect(
