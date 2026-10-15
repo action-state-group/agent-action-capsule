@@ -396,7 +396,11 @@ with open(sys.argv[5], "w") as out:
 EOF
   for lang in "${cll_languages[@]}"; do
     err="$work/cll-$producer-$lang.err"
-    "er_$lang" check-cll < "$work/cll-check-$producer.json" > "$work/cll-$producer-$lang.json" 2> "$err"
+    if ! "er_$lang" check-cll < "$work/cll-check-$producer.json" > "$work/cll-$producer-$lang.json" 2> "$err"; then
+      echo "evidence request: $lang check-cll failed on $producer's CLL material:" >&2
+      cat "$err" >&2
+      exit 1
+    fi
     if ! cmp -s "$work/cll-expected.json" "$work/cll-$producer-$lang.json"; then
       echo "evidence request: $lang does not accept exactly the unaltered CLL material $producer signed" >&2
       diff "$work/cll-expected.json" "$work/cll-$producer-$lang.json" >&2 || true

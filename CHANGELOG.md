@@ -29,8 +29,11 @@
   `verification`. The shared MMR path check now refuses a path that climbs past height 52, so a
   long proof no longer raises `OverflowError` here or in the profile reference verifier. In
   `scripts/evidence-request-interlock.sh`, Python, Go and Rust each verify all three languages'
-  envelopes, and a new step has Python and Go check the worked example's CLL proofs and reject
-  each one altered in a path node.
+  envelopes, and a new step checks the worked example's CLL material: Python, Go and Rust each
+  sign it in an envelope, byte-identical, and each accepts every producer's, rejects a signed
+  envelope whose inclusion or consistency proof is altered in a path node for that proof, and
+  rejects material altered after signing for its digest. Rust uses `evidence-request`'s
+  `check_anchor_inclusion` (feature `cll`); Go's adapter is given the checkpoint's peaks.
 - Go: `evidencerequest.ParseReply` refuses an envelope whose `verification` is present and empty.
   The signer would have covered the empty array, but `SigningBody` omits it, so such an envelope
   verified under a signature over different members (#273).
