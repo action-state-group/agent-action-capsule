@@ -161,6 +161,12 @@ def test_verify_names_what_was_altered(binding):
         altered(swap_responder).verify()
 
 
+def test_verify_refuses_digests_that_do_not_pair_with_items():
+    env = er.parse_reply(_envelope().encode())
+    with pytest.raises(er.VerificationError, match="3 verification entries but 2 items"):
+        dataclasses.replace(env, verification_digests=env.verification_digests + (ANCHOR,)).verify()
+
+
 def test_verify_refuses_a_small_order_responder_key():
     # The identity point "verifies" every signature under a lax verifier.
     identity = "01" + "00" * 31

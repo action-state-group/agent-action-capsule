@@ -775,6 +775,9 @@ class Envelope:
 
         This does not decide whether ``responder`` is a key you trust, nor
         whether the envelope answers your request: :meth:`verify_for` does."""
+        if self.verification_digests is not None and len(self.verification_digests) != len(self.verification):
+            raise VerificationError(
+                f"{len(self.verification_digests)} verification entries but {len(self.verification)} items")
         if not _is_hex_of_len(self.sig, 64):
             raise VerificationError("envelope signature is not 128 lowercase hex characters")
         if not _is_hex_of_len(self.responder, 32):
