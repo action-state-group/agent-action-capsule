@@ -1,8 +1,8 @@
-//! The stdin/stdout adapter for the Evidence Request part of
-//! `scripts/cross-language-interlock.sh`. Every command reads one JSON
-//! document on stdin and writes one compact, key-sorted JSON document on
-//! stdout, so the outputs of the Python, Go and Rust adapters compare byte for
-//! byte.
+//! The Rust stdin/stdout adapter for `scripts/evidence-request-interlock.sh`.
+//! Every command reads one JSON document on stdin and writes one compact,
+//! key-sorted JSON document on stdout (RFC 8785, so the key order does not
+//! depend on serde_json features), so the outputs of the Python, Go and Rust
+//! adapters compare byte for byte.
 //!
 //! `classify`: `[{id, binding: "json"|"cbor", request_hex}]` to
 //! `[{id, reason, request_digest, well_formed}]` (`reason` is null when the
@@ -45,10 +45,18 @@ fn main() -> ExitCode {
     };
     match result {
         Ok(out) => {
-            // serde_json's default map is ordered by key, so keys come out
-            // sorted and the output is compact.
-            println!("{out}");
-            ExitCode::SUCCESS
+            // RFC 8785: sorted keys and no whitespace, whatever map order
+            // serde_json was built with.
+            match evidence_request::jcs::to_string(&out) {
+                Ok(text) => {
+                    println!("{text}");
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("{e}");
+                    ExitCode::from(1)
+                }
+            }
         }
         Err(e) => {
             eprintln!("{e}");

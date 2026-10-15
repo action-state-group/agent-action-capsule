@@ -66,20 +66,21 @@ func main() {
 		var doc struct {
 			PublicKeyHex string `json:"public_key_hex"`
 			Items        []struct {
-				ID            string                  `json:"id"`
-				RequestDigest string                  `json:"request_digest"`
-				Refusal       evidencerequest.Refusal `json:"refusal"`
+				ID            string          `json:"id"`
+				RequestDigest string          `json:"request_digest"`
+				Refusal       json.RawMessage `json:"refusal"`
 			} `json:"items"`
 		}
 		if err = json.NewDecoder(os.Stdin).Decode(&doc); err == nil {
 			var failures []string
-			var verified []map[string]any
+			verified := []map[string]any{}
 			for _, item := range doc.Items {
-				if e := item.Refusal.VerifyFor(doc.PublicKeyHex, item.RequestDigest); e != nil {
+				reason, e := verifyDraft(item.Refusal, doc.PublicKeyHex, item.RequestDigest)
+				if e != nil {
 					failures = append(failures, item.ID+": "+e.Error())
 					continue
 				}
-				verified = append(verified, map[string]any{"id": item.ID, "reason": item.Refusal.Reason})
+				verified = append(verified, map[string]any{"id": item.ID, "reason": reason})
 			}
 			if len(failures) > 0 {
 				err = errors.New(strings.Join(failures, "\n"))
@@ -99,6 +100,30 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+// verifyDraft authenticates a refusal under the request draft's rule, the one
+// the Python and Rust adapters apply: the raw object conforms (CheckRefusal:
+// signature, registered reason, digest, any RFC 3339 UTC issued_at), names
+// the responder's key and the request's digest. Refusal.VerifyFor is not
+// used: it also requires the interop profile's seconds-only issued_at.
+func verifyDraft(raw json.RawMessage, responderKey, requestDigest string) (string, error) {
+	check := evidencerequest.CheckRefusal(evidencerequest.Message{Octets: raw, MediaType: evidencerequest.MediaTypeJSON})
+	if !check.Conformant {
+		return "", errors.New("not a conforming refusal")
+	}
+	var fields map[string]any
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return "", err
+	}
+	if fields["key_id"] != responderKey {
+		return "", errors.New("not signed by the responder key")
+	}
+	if fields["request_digest"] != requestDigest {
+		return "", errors.New("names a different request digest")
+	}
+	reason, _ := fields["reason"].(string)
+	return reason, nil
 }
 
 func classify(cases []struct {

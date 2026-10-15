@@ -80,7 +80,7 @@ def main() -> int:
         print("usage: evidence_request_interlock.py classify|refuse|verify", file=sys.stderr)
         return 2
     result = commands[sys.argv[1]](json.load(sys.stdin))
-    json.dump(result, sys.stdout, sort_keys=True, separators=(",", ":"))
+    json.dump(result, sys.stdout, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     sys.stdout.write("\n")
     return 0
 

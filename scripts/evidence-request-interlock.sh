@@ -33,9 +33,11 @@ er_rust() {
 
 languages=(python go rust)
 
-# RFC 8032 section 7.1 test 1: a published seed and its public key.
+# RFC 8032 section 7.1 test 1: a published seed and its public key. Test 2's
+# seed signs the wrong-key probe.
 seed=9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60
 public=d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a
+other_seed=4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb
 issued_at=2026-10-15T00:00:00Z
 
 "$python_bin" - "$repo/vectors/evidence-request/request.json" > "$work/classify-in.json" <<'EOF'
@@ -85,6 +87,46 @@ for lang in "${languages[@]}"; do
   fi
 done
 
+# What every consumer must report for a batch: every id, in order, with the
+# reason it was refused with. Written in the adapters' output format so it
+# compares byte for byte.
+expected_for() {
+  "$python_bin" - "$1" > "$2" <<'EOF'
+import json, sys
+items = json.load(open(sys.argv[1]))["items"]
+expected = [{"id": i["id"], "reason": i["refusal"]["reason"]} for i in items]
+json.dump(expected, sys.stdout, sort_keys=True, separators=(",", ":"))
+sys.stdout.write("\n")
+EOF
+}
+
+# A batch every consumer must accept in full.
+accept_all() {
+  local batch=$1 what=$2
+  expected_for "$batch" "$work/expected.json"
+  for consumer in "${languages[@]}"; do
+    if ! "er_$consumer" verify < "$batch" > "$work/verified.json"; then
+      echo "evidence request: $consumer rejected $what" >&2
+      exit 1
+    fi
+    if ! cmp -s "$work/expected.json" "$work/verified.json"; then
+      echo "evidence request: $consumer did not verify every refusal in $what" >&2
+      exit 1
+    fi
+  done
+}
+
+# A batch every consumer must reject.
+reject_all() {
+  local batch=$1 what=$2
+  for consumer in "${languages[@]}"; do
+    if "er_$consumer" verify < "$batch" > /dev/null 2>&1; then
+      echo "evidence request: $consumer accepted $what" >&2
+      exit 1
+    fi
+  done
+}
+
 for producer in "${languages[@]}"; do
   "$python_bin" - "$work/refuse-$producer.json" "$work/classify-rust.json" "$public" \
     > "$work/verify-$producer.json" <<'EOF'
@@ -102,17 +144,60 @@ doc["items"] = doc["items"][:1]
 doc["items"][0]["refusal"]["sig"] = "00" * 64
 print(json.dumps(doc))
 EOF
-  for consumer in "${languages[@]}"; do
-    if ! "er_$consumer" verify < "$work/verify-$producer.json" > "$work/verified.json"; then
-      echo "evidence request: $consumer rejected refusals signed by $producer" >&2
-      exit 1
-    fi
-    if "er_$consumer" verify < "$work/tampered-$producer.json" > /dev/null 2>&1; then
-      echo "evidence request: $consumer accepted a tampered refusal from $producer" >&2
-      exit 1
-    fi
-  done
+  accept_all "$work/verify-$producer.json" "refusals signed by $producer"
+  reject_all "$work/tampered-$producer.json" "a tampered refusal from $producer"
 done
 
-count=$("$python_bin" -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$work/classify-in.json")
-echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify each other's and reject a tampered one."
+# Edge probes on one refusal. The draft takes any RFC 3339 UTC issued_at, so a
+# fractional-second one must be accepted everywhere. Every consumer must
+# reject: a refusal whose reason member is spelled Reason (names match
+# exactly); one validly signed under another key (wrong responder); and a
+# correctly signed refusal checked against another request's digest.
+"$python_bin" - "$work/refuse-in.json" > "$work/fraction-in.json" <<'EOF'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+doc["issued_at"] = "2026-10-15T00:00:00.123Z"
+doc["cases"] = doc["cases"][:1]
+print(json.dumps(doc))
+EOF
+er_rust refuse < "$work/fraction-in.json" > "$work/fraction.json"
+"$python_bin" - "$work/fraction.json" "$work/classify-rust.json" "$public" \
+  "$work/fraction-verify.json" "$work/renamed-verify.json" <<'EOF'
+import json, sys
+refusal = json.load(open(sys.argv[1]))[0]
+digest = {c["id"]: c for c in json.load(open(sys.argv[2]))}[refusal["id"]]["request_digest"]
+item = {"id": refusal["id"], "request_digest": digest, "refusal": refusal["refusal"]}
+json.dump({"public_key_hex": sys.argv[3], "items": [item]}, open(sys.argv[4], "w"))
+renamed = dict(refusal["refusal"])
+renamed["Reason"] = renamed.pop("reason")
+json.dump({"public_key_hex": sys.argv[3], "items": [dict(item, refusal=renamed)]}, open(sys.argv[5], "w"))
+EOF
+accept_all "$work/fraction-verify.json" "a refusal with a fractional-second issued_at"
+reject_all "$work/renamed-verify.json" "a refusal whose reason member is spelled Reason"
+
+"$python_bin" - "$work/refuse-in.json" "$other_seed" > "$work/other-key-in.json" <<'EOF'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+doc["seed_hex"] = sys.argv[2]
+doc["cases"] = doc["cases"][:1]
+print(json.dumps(doc))
+EOF
+er_rust refuse < "$work/other-key-in.json" > "$work/other-key.json"
+"$python_bin" - "$work/other-key.json" "$work/verify-rust.json" \
+  "$work/other-key-verify.json" "$work/other-digest-verify.json" <<'EOF'
+import json, sys
+foreign = json.load(open(sys.argv[1]))[0]
+doc = json.load(open(sys.argv[2]))
+first, second = doc["items"][0], doc["items"][1]
+json.dump(dict(doc, items=[dict(first, refusal=foreign["refusal"])]), open(sys.argv[3], "w"))
+json.dump(dict(doc, items=[dict(first, request_digest=second["request_digest"])]), open(sys.argv[4], "w"))
+EOF
+reject_all "$work/other-key-verify.json" "a refusal signed under another key"
+reject_all "$work/other-digest-verify.json" "a refusal checked against another request's digest"
+
+count=$("$python_bin" -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$work/classify-rust.json")
+if [ "$count" -eq 0 ]; then
+  echo "evidence request: no requests were classified" >&2
+  exit 1
+fi
+echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest."
