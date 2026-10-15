@@ -110,8 +110,8 @@ def verify_producer_envelope(capsule_id: str, data: bytes) -> VerificationResult
         if outer.tag != 18 or not isinstance(outer.value, (list, tuple)) or len(outer.value) != 4:
             raise CoseError("top-level value MUST be a four-element COSE_Sign1 tag 18")
         # strict_decode has already required the shortest form of every
-        # argument and float, inside the protected header too. The draft also
-        # allows no tag but the single outer tag 18.
+        # argument and float, inside the protected header too. The profile
+        # also allows no tag but the single outer tag 18.
         if data[0] != 0xD2 or not _untagged(data[1:]):
             raise CoseError("only the outer COSE_Sign1 tag 18 may be a CBOR tag")
         protected_bytes, unprotected_value, payload_value, signature_value = outer.value

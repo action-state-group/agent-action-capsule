@@ -16,10 +16,12 @@ unprotected map, and a protected map containing exactly `alg=-8`, content type
 a wrong content type, nonempty unprotected data, extra protected data, and an
 invalid key.
 
-The encoding cases pin the draft's CBOR encoding paragraph: definite lengths,
-the shortest form of every argument and float (outside and inside the
+The encoding cases pin the Producer Envelope CBOR encoding rule: definite
+lengths, the shortest form of every argument and float (outside and inside the
 protected-header byte string), no tag but the outermost tag 18, a map as the
-unprotected header, and byte strings as payload and signature. Each violation
+unprotected header, and byte strings as payload and signature. The Python
+reference already enforced it; its normative draft text is held for -06
+(agent-action-capsule#258). Each violation
 is `envelope_malformed`. `protected-label-order` is positive: map-key order is
 not constrained, and two maps with the same entries in different orders are
 the same key. Python's cbor2 also treats the nested keys `1`, `1.0` and `true`

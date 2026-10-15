@@ -194,18 +194,6 @@ NOT be hexadecimal text or a JSON serialization.</t>
 signature MUST be a 64-byte Ed25519 signature over the COSE Sig_structure
 with context <tt>Signature1</tt>, the encoded protected map, an empty external AAD,
 and the attached payload.</t>
-        <t>Every CBOR data item of a Producer Envelope, including each item inside the
-protected-header byte string, MUST have a definite length and use preferred
-serialization (<xref section="4.1" sectionFormat="of" target="RFC8949"/>): each integer, length, and tag
-argument in its shortest form, and each floating-point value in the shortest
-of the half-, single-, and double-precision forms that represents it exactly,
-with any NaN in half precision. Map keys MUST be unique; their order is not
-constrained. The outermost tag 18 is the only CBOR tag in a Producer
-Envelope. The unprotected header MUST be a map, and the payload and signature
-MUST be byte strings; <tt>null</tt> and <tt>undefined</tt> do not stand in for them. A
-verifier MUST reject an envelope that violates this paragraph, so a given
-protected-header byte string, payload, and signature have exactly one
-acceptable encoding.</t>
         <t>A Capsule MAY have zero, one, or multiple Producer Envelopes. Each envelope
 is an independent object and MUST verify independently against the same
 Capsule ID. Envelopes are not embedded in the Capsule-ID preimage. Adding,
@@ -2976,7 +2964,7 @@ About This Document
         </reference>
       </references>
     </references>
-    <?line 1909?>
+    <?line 1896?>
 
 <section anchor="changes-from-04">
       <name>Changes from draft-mih-scitt-agent-action-capsule-04</name>

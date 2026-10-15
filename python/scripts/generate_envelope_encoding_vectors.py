@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Add the Producer Envelope CBOR-encoding cases to vectors/producer-envelope.
 
-The draft's Producer Envelope wire profile requires definite lengths, the
-preferred (shortest) serialization of every argument and float, unique map
-keys, no tag but the outermost tag 18, a map as the unprotected header, and
-byte strings as payload and signature. These cases pin that paragraph, on
-which the Go, Python, Rust and TypeScript verifiers once disagreed. Each
+The Producer Envelope encoding rule is definite lengths, the preferred
+(shortest) serialization of every argument and float, unique map keys, no tag
+but the outermost tag 18, a map as the unprotected header, and byte strings as
+payload and signature. The Python reference already enforced it; normative
+draft text for it is held for -06 (agent-action-capsule#258). These cases pin
+the rule, on which the Go, Python, Rust and TypeScript verifiers once
+disagreed. Each
 envelope is written byte by byte and, where the protected bytes change,
 signed honestly with the public test seed, so only the encoding under test
 can fail. Map-key order is not constrained, so one positive case reorders the
