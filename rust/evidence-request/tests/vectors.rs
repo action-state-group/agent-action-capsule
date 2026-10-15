@@ -1,7 +1,7 @@
-//! The draft-mih-agent-evidence-request-00 conformance vectors
-//! (`tests/vectors/evidence-request/`, pinned in `tests/vectors/SOURCES.md`),
-//! every corpus, every case. The pinned files are checked against the
-//! source's own `SHA256SUMS` before any case is read.
+//! The draft-mih-agent-evidence-request-00 conformance vectors, read in place
+//! from this repository's `vectors/evidence-request/`, every corpus, every
+//! case. The files are checked against that directory's `SHA256SUMS` before
+//! any case is read.
 
 use evidence_request::digest::{identifies_request, request_digest};
 use evidence_request::invariance::{compare, Observation};
@@ -19,11 +19,11 @@ use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 
 fn dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/vectors/evidence-request")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vectors/evidence-request")
 }
 
-/// Every corpus goes through here, and this checks every pinned file
-/// against the source's `SHA256SUMS` before returning anything.
+/// Every corpus goes through here, and this checks every vector file
+/// against the directory's `SHA256SUMS` before returning anything.
 fn load(name: &str) -> Value {
     verify_pinned_checksums();
     let bytes = std::fs::read(dir().join(name)).unwrap_or_else(|e| panic!("read {name}: {e}"));

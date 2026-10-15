@@ -25,7 +25,7 @@
 //! - [`invariance`]: caller invariance of artifacts.
 //! - [`retention`]: retention commitments and the breach table.
 //!
-//! The conformance vectors of the draft (pinned in `tests/vectors/`) are the
+//! The conformance vectors of the draft (the repository's `vectors/evidence-request/`) are the
 //! test suite. Where -00 leaves a wire shape open, this crate follows the
 //! reading the vectors document (their ambiguity notes A1-A14); the items a
 //! future revision may change are marked in each module.

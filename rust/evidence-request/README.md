@@ -72,13 +72,14 @@ guarantee.
 ## Tests
 
 `cargo test` runs the draft's conformance vectors (every corpus, every case)
-from a pinned copy in `tests/vectors/`, checked against the source's own
-`SHA256SUMS` first. The Apache-2.0 `scitt-proof-array/` copies also have their
+from this repository's `vectors/evidence-request/`, checked against that
+directory's `SHA256SUMS` first. The Apache-2.0 `scitt-proof-array/` copies also have their
 checksums validated before any test reads them; they cover proof ordering and
 malformed proof classification. See `tests/vectors/SOURCES.md`.
 
 ## License
 
-Apache-2.0. The vendored vectors under `tests/vectors/evidence-request/` are
-BSD-3-Clause; their license travels with them. The shared scitt-cose receipt
-vectors under `tests/vectors/scitt-proof-array/` are Apache-2.0.
+Apache-2.0. The conformance vectors it reads from `vectors/evidence-request/`
+are BSD-3-Clause, like the rest of the repository's vectors. The shared
+scitt-cose receipt vectors under `tests/vectors/scitt-proof-array/` are
+Apache-2.0.
