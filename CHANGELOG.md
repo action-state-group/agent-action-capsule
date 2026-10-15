@@ -35,7 +35,11 @@
   sign it in an envelope, byte-identical, and each accepts every producer's, rejects a signed
   envelope whose inclusion or consistency proof is altered in a path node for that proof, and
   rejects material altered after signing for its digest. Rust uses `evidence-request`'s
-  `check_anchor_inclusion` (feature `cll`); Go's adapter is given the checkpoint's peaks.
+  `check_anchor_inclusion` (feature `cll`); Go's adapter is given the checkpoint's peaks (#278).
+- Evidence Layer (`draft-mih-agent-evidence-layer-00`): a padding record carries its random value
+  in the member `store_nonce`, 32 bytes as 64 lowercase hex, as evidencebook and capsule-cli
+  already write it. `vectors/evidence-layer/padding/` adds conformance cases for the record, and
+  their generator runs in the full regeneration check. No library code changes (#277).
 - Go: `evidencerequest.ParseReply` refuses an envelope whose `verification` is present and empty.
   The signer would have covered the empty array, but `SigningBody` omits it, so such an envelope
   verified under a signature over different members (#273).
