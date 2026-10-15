@@ -67,9 +67,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ================================================================================
 
 The following paths are licensed under the Apache License, Version 2.0 (see
-LICENSE-APACHE-2.0), not under section 2. Each source file carries
-`SPDX-License-Identifier: Apache-2.0`, and that header is authoritative for any
-file not listed here.
+LICENSE-APACHE-2.0), not under section 2. The Python and .github files below
+carry `SPDX-License-Identifier: Apache-2.0`; the evidence-request crate's
+files carry no per-file header and are licensed by its own LICENSE and NOTICE
+and by this listing. Any other file carrying that header is Apache-2.0 too.
 
 - rust/evidence-request/ (the `evidence-request` crate, with its own LICENSE
   and NOTICE). Its scitt-cose receipt vectors under
