@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (0.2.0)
+## 0.2.0
 
 - **The artifact response is the interop profile's envelope** (`envelope`;
   `spec/interop-profile-v0.md` §6.2, `evidence-interop/0`), as in the Go and
