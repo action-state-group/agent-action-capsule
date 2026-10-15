@@ -163,7 +163,8 @@ def build() -> dict[str, bytes]:
                 "epistemic_type": "producer_claim",
                 "store_nonce": "string of 64 lowercase hexadecimal characters (32 bytes)",
                 "serialization": "JSON object as an Agent Action Capsule ledger stores it; record_id is "
-                                 "carried as capsule_id; seq is not stored in the record",
+                                 "carried as capsule_id and computed over this object; seq is not "
+                                 "stored in the record",
                 "members": ["capsule_id", "record_type", "epistemic_type", "store_nonce"],
                 "capsule_id": "lowercase hex SHA-256 of UTF8(JCS(record without capsule_id)) (RFC 8785)",
             },

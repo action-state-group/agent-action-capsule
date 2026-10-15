@@ -33,10 +33,12 @@ exactly these four members: `seq` is the substrate's append position and is
 not stored in the record, and a padding record has no `links` member, not
 even an empty one.
 
-A store that serializes records differently maps its own form onto this one
-before checking: it carries its record identifier as `capsule_id`, and it
-removes members kept beside the record outside its id preimage (for example
-the Agent Action Capsule local-only `signature` and `key_id`).
+A store that serializes records differently checks its padding records by
+building this JSON object from their members and computing `capsule_id` over
+it. A record identifier the store derives some other way, or assigns, is
+outside these cases. A store that uses this serialization removes members it
+keeps beside the record outside the id preimage (for example the Agent
+Action Capsule local-only `signature` and `key_id`) before checking.
 
 Every case has `record_type` `padding`. A record with any other
 `record_type` is not a padding record, and these cases do not apply to it.
