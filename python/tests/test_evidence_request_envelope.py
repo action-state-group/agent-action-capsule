@@ -96,8 +96,24 @@ def test_rejects_what_it_must_not_sign(gen):
     signer = _Signer(gen, "responder")
     with pytest.raises(ValueError, match="anchor_digest"):
         er.sign_envelope(REQUEST, er.Subject("record", RECORD), "AB" * 32, ARTIFACT, signer=signer, issued_at=ISSUED_AT)
-    with pytest.raises(ValueError, match="issued_at"):
-        er.sign_envelope(REQUEST, er.Subject("record", RECORD), ANCHOR, ARTIFACT, signer=signer, issued_at="yesterday")
+    for when in ("yesterday", "2026-10-15T00:00:00.5Z", "2026-10-15T00:00:00+00:00", "2026-02-30T00:00:00Z",
+                 "2026-10-15T00:00:61Z", "2026-10-15T00:00:99Z"):
+        with pytest.raises(ValueError, match="issued_at"):
+            er.sign_envelope(REQUEST, er.Subject("record", RECORD), ANCHOR, ARTIFACT, signer=signer, issued_at=when)
+    for fresh in (True, -1, 2**53, 1.5, "yesterday", "2026-10-14T00:00:00.5Z", "2026-10-14T00:00:99Z"):
+        with pytest.raises(ValueError, match="freshness"):
+            er.sign_envelope(REQUEST, er.Subject("checkpoints"), ANCHOR, ARTIFACT, signer=signer,
+                             issued_at=ISSUED_AT, freshness=fresh)
+    for subject in (er.Subject("bogus"), er.Subject("record", "XY"), er.Subject("record", "AB" * 32),
+                    er.Subject("range", (3, 0)), er.Subject("checkpoints", RECORD), er.Subject("correlation", "")):
+        with pytest.raises(ValueError, match="request could ask for"):
+            er.sign_envelope(REQUEST, subject, ANCHOR, ARTIFACT, signer=signer, issued_at=ISSUED_AT)
+    for derivation in ("", "history_card", "AB" * 32):
+        with pytest.raises(ValueError, match="request could ask for"):
+            er.sign_envelope(REQUEST, er.Subject("full_history"), ANCHOR, ARTIFACT, signer=signer,
+                             issued_at=ISSUED_AT, derivation=derivation)
+    with pytest.raises(ValueError, match="empty"):
+        er.sign_envelope(REQUEST, er.Subject("record", RECORD), ANCHOR, b"", signer=signer, issued_at=ISSUED_AT)
 
     class Liar(_Signer):
         def sign(self, body):
@@ -113,7 +129,8 @@ def test_rejects_what_it_must_not_sign(gen):
 
 
 def test_cbor_encoder_is_core_deterministic():
-    # Map keys sort by their encodings: a shorter key first, then bytewise.
+    # Map keys sort bytewise by their encoded form (RFC 8949 §4.2.1); for text
+    # keys the length in the head byte puts a shorter key first.
     assert _cbor.encode({"b": 1, "a": 2, "aa": 3}) == bytes.fromhex("a3616102616201626161" + "03")
     assert _cbor.encode([None, True, False, b"\x00", "x", 23, 24, 2**53 - 1]) == bytes.fromhex(
         "88f6f5f441006178171818" + "1b001fffffffffffff")

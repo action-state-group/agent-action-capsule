@@ -37,7 +37,7 @@ func (s seedSigner) Sign(_ context.Context, message []byte) ([]byte, error) {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: evidencerequest_interlock classify|refuse|verify")
+		fmt.Fprintln(os.Stderr, "usage: evidencerequest_interlock classify|refuse|verify|envelope|check-envelope")
 		os.Exit(2)
 	}
 	var out any

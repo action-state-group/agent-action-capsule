@@ -129,6 +129,8 @@ def parse_time(value: Any) -> datetime | None:
     if m is None:
         return None
     year, month, day, hour, minute, second = (int(m.group(k)) for k in range(1, 7))
+    if second > 60:
+        return None
     try:
         base = datetime(year, month, day, hour, minute, min(second, 59), tzinfo=timezone.utc)
     except ValueError:

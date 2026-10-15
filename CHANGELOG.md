@@ -12,6 +12,11 @@
   `vectors/interop-profile-v0/`, and `scripts/evidence-request-interlock.sh` gains a step where
   Python and Go build identical envelopes in both bindings and Go verifies Python's. Rust signs a
   different envelope (#270) and is not in that step.
+  `sign_envelope` refuses, before signing, any envelope the profile does not allow: a subject or
+  derivation no request could carry, an empty artifact, or an `issued_at` or time `freshness`
+  outside the §5.2 form.
+- Python: the interop profile's time check no longer accepts seconds above 60
+  (`2026-10-15T00:00:99Z`); it used to clamp them to 59.
 
 ## 0.8.0 — 2026-10-15
 

@@ -200,28 +200,34 @@ reject_all "$work/other-key-verify.json" "a refusal signed under another key"
 reject_all "$work/other-digest-verify.json" "a refusal checked against another request's digest"
 
 # Step 4: the artifact envelope.
-"$python_bin" - "$work/classify-in.json" "$work/classify-rust.json" "$seed" "$issued_at" \
-  > "$work/envelope-in.json" <<'EOF'
+# Each case answers its own request: the envelope's subject, derivation and
+# freshness are the request's (profile §6.2).
+"$python_bin" - "$seed" "$issued_at" > "$work/envelope-in.json" <<'EOF'
 import hashlib, json, sys
-cases = json.load(open(sys.argv[1]))
-classified = {c["id"]: c for c in json.load(open(sys.argv[2]))}
-request = next(c for c in cases if classified[c["id"]]["well_formed"] and c["binding"] == "json")
 anchor = hashlib.sha256(b"anchor checkpoint statement").hexdigest()
 record = hashlib.sha256(b"a record").hexdigest()
 artifact = b'{"anchor":"' + anchor.encode() + b'","records":[]}'
 material = [{"kind": "cll-checkpoint", "hex": b"checkpoint statement".hex()},
             {"kind": "cll-inclusion-proof", "hex": bytes([0x82, 0x01, 0x80]).hex()}]
-base = {"request_hex": request["request_hex"], "anchor_digest": anchor, "artifact_hex": artifact.hex()}
+pin = {"expected_pin": anchor}
 specs = [
-    ("record-json", "json", {"record": record}, {"verification": material}),
-    ("record-cbor", "cbor", {"record": record}, {"verification": material}),
-    ("checkpoints", "json", {"checkpoints": None}, {}),
-    ("history-card", "cbor", {"full_history": None}, {"derivation": "history_card/1", "freshness": 42}),
-    ("range-by-time", "json", {"range": [0, 3]}, {"freshness": "2026-10-14T00:00:00Z"}),
-    ("correlation", "cbor", {"correlation": "deal-7"}, {}),
+    ("record-json", "json", {"record": record}, pin, {"verification": material}),
+    ("record-cbor", "cbor", {"record": record}, pin, {"verification": material}),
+    ("checkpoints", "json", {"checkpoints": None}, pin, {}),
+    ("history-card", "cbor", {"full_history": None}, {"min_freshness": 40},
+     {"derivation": "history_card/1", "freshness": 42}),
+    ("range-by-time", "json", {"range": [0, 3]}, {"min_freshness": "2026-10-13T00:00:00Z"},
+     {"freshness": "2026-10-14T00:00:00Z"}),
+    ("correlation", "cbor", {"correlation": "deal-7"}, pin, {}),
 ]
-print(json.dumps({"seed_hex": sys.argv[3], "issued_at": sys.argv[4], "cases": [
-    dict(base, id=i, binding=b, subject=s, **extra) for i, b, s, extra in specs]}))
+def request(subject, coverage, extra):
+    body = {"subject": subject, "coverage": coverage, "nonce": "interlock"}
+    if "derivation" in extra:
+        body["derivation"] = extra["derivation"]
+    return json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+print(json.dumps({"seed_hex": sys.argv[1], "issued_at": sys.argv[2], "cases": [
+    dict(id=i, binding=b, subject=s, request_hex=request(s, c, extra).hex(), anchor_digest=anchor,
+         artifact_hex=artifact.hex(), **extra) for i, b, s, c, extra in specs]}))
 EOF
 envelope_languages=(python go)
 for lang in "${envelope_languages[@]}"; do
@@ -235,28 +241,52 @@ if ! cmp -s "$work/envelope-python.json" "$work/envelope-go.json"; then
 fi
 "$python_bin" - "$work/envelope-in.json" "$work/envelope-python.json" "$work/envelope-check.json" \
   "$work/envelope-tampered.json" <<'EOF'
-import json, sys
+import base64, json, sys
+from agent_action_capsule.canonical import jcs
+from agent_action_capsule.interop_profile import _cbor
 bindings = {c["id"]: c["binding"] for c in json.load(open(sys.argv[1]))["cases"]}
-replies = [dict(r, binding=bindings[r["id"]]) for r in json.load(open(sys.argv[2]))]
-json.dump(replies, open(sys.argv[3], "w"))
-tampered = dict(replies[0])
-octets = bytearray(bytes.fromhex(tampered["reply_hex"]))
-octets[-3] ^= 0x01  # inside verification_content, the last member: its signed digest no longer matches
-tampered["reply_hex"] = octets.hex()
-json.dump([tampered], open(sys.argv[4], "w"))
+replies = {r["id"]: dict(r, binding=bindings[r["id"]]) for r in json.load(open(sys.argv[2]))}
+json.dump(list(replies.values()), open(sys.argv[3], "w"))
+# One verification item altered in each binding, the frame re-encoded so it
+# stays well formed: only the item's signed digest can catch it.
+def b64(octets):
+    return base64.urlsafe_b64encode(octets).rstrip(b"=").decode()
+def unb64(text):
+    return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+tampered = []
+for rid in ("record-json", "record-cbor"):
+    reply = replies[rid]
+    octets = bytes.fromhex(reply["reply_hex"])
+    if reply["binding"] == "json":
+        frame = json.loads(octets)
+        frame["verification_content"][1] = b64(unb64(frame["verification_content"][1]) + b"\x00")
+        octets = jcs(frame)
+    else:
+        frame = _cbor.decode(octets).value
+        frame["verification_content"][1] += b"\x00"
+        octets = _cbor.encode(frame)
+    tampered.append(dict(reply, reply_hex=octets.hex()))
+json.dump(tampered, open(sys.argv[4], "w"))
 EOF
 if ! er_go check-envelope < "$work/envelope-check.json" > /dev/null; then
   echo "evidence request: go rejected an envelope python built" >&2
   exit 1
 fi
-if er_go check-envelope < "$work/envelope-tampered.json" > /dev/null 2>&1; then
+if er_go check-envelope < "$work/envelope-tampered.json" > /dev/null 2> "$work/envelope-tampered.err"; then
   echo "evidence request: go accepted a tampered envelope" >&2
   exit 1
 fi
+for rid in record-json record-cbor; do
+  if ! grep -q "^$rid: .*verification item 1 does not hash to its signed digest" "$work/envelope-tampered.err"; then
+    echo "evidence request: go rejected the tampered $rid envelope for another reason:" >&2
+    cat "$work/envelope-tampered.err" >&2
+    exit 1
+  fi
+done
 
 count=$("$python_bin" -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$work/classify-rust.json")
 if [ "$count" -eq 0 ]; then
   echo "evidence request: no requests were classified" >&2
   exit 1
 fi
-echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python and go build identical artifact envelopes and go verifies python's."
+echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python and go build identical artifact envelopes, go verifies python's and rejects an altered verification item in either binding."

@@ -18,6 +18,10 @@ must agree on, and the responder's decision logic:
   :class:`Refusal` out.
 * :func:`sign_refusal`, :func:`check_refusal`, :func:`verify_refusal_offline`:
   the signed refusal.
+* :func:`sign_envelope`: the signed :class:`Envelope` an artifact travels in
+  under the interop profile (:data:`PROFILE`). -00 fixes no members for the
+  artifact response, so the envelope is the profile's
+  (``spec/interop-profile-v0.md`` §6.2), not a reading of -00.
 * :func:`record_outcome`, :func:`compare_observations`,
   :func:`classify_refusal`, :func:`classify_absence` and
   :func:`commitment_well_formed`: the three-state discipline, caller
@@ -76,12 +80,13 @@ import json
 import math
 import re
 from collections.abc import Collection, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
 from .canonical import jcs
 from .interop_profile import _cbor
+from .interop_profile._common import is_profile_time
 
 __all__ = [
     "DRAFT",
@@ -744,12 +749,25 @@ def sign_envelope(
     """Build and sign the profile envelope (§6.2) for an artifact served under
     ``anchor_digest`` in answer to the request whose octets as received are
     ``request_bytes``. ``artifact`` is the canonical artifact's octets, the
-    same for every requester (ER §5). Raises :class:`ValueError` unless
-    ``anchor_digest`` is a digest and ``issued_at`` an RFC 3339 UTC time."""
+    same for every requester (ER §5). Raises :class:`ValueError`, before
+    anything is signed, for an envelope the profile does not allow: a subject
+    or derivation a request could not carry, an ``anchor_digest`` that is not
+    a digest, an empty ``artifact`` (§6.2), an ``issued_at`` not in the §5.2
+    time form, or a ``freshness`` that is neither a size nor a §5.2 time."""
+    try:
+        _parse_subject(subject.to_wire())
+        if derivation is not None:
+            _parse_derivation(derivation)
+    except RequestError as err:
+        raise ValueError(f"not an envelope a request could ask for: {err}") from None
     if not is_digest(anchor_digest):
         raise ValueError("anchor_digest must be 64 lowercase hex")
-    if parse_utc(issued_at) is None:
-        raise ValueError("issued_at must be an RFC 3339 UTC time")
+    if not artifact:
+        raise ValueError("artifact must not be empty (profile §6.2)")
+    if not is_profile_time(issued_at):
+        raise ValueError("issued_at must be YYYY-MM-DDTHH:MM:SSZ (profile §5.2)")
+    if freshness is not None and not (_is_uint(freshness) or is_profile_time(freshness)):
+        raise ValueError("freshness must be a size (0 to 2^53 - 1) or a YYYY-MM-DDTHH:MM:SSZ time")
     stub = Envelope(
         request_digest=request_digest(request_bytes),
         subject=subject,
@@ -764,7 +782,7 @@ def sign_envelope(
     sig, key_id = signer.sign(stub.signing_body())
     if key_id != stub.responder:
         raise ValueError("the signer signed under a key other than its key_id")
-    return Envelope(**{**stub.__dict__, "sig": sig})
+    return replace(stub, sig=sig)
 
 
 def _now_iso() -> str:
