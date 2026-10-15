@@ -17,6 +17,16 @@ refusal, or the requester's own record that nothing arrived.
 | `receipt` (0.0.3) | check RFC 9162 Ed25519 receipt form and authenticate any matching inclusion proof under a pinned service key |
 | `answer` (0.0.2; receipts checked from 0.0.3) | build the artifact response over a checkpointed local log (`cll`): records with inclusion proofs, a range or the full history with a range proof, the checkpoints, or the `history_card/1` derivation with consistency proofs; the artifact is deterministic and the same for every requester, the envelope is signed by the responder and binds the request digest and the anchor. `answer::verify` checks it all offline |
 
+**Features.** `answer` is a default feature: it enables the `answer` and
+`receipt` modules and the checkpointed-local-log dependency. `receipt` alone
+enables `receipt`. With `default-features = false` the crate is the protocol
+core (every module above except `receipt` and `answer`) and does not depend on
+checkpointed-local-log:
+
+```toml
+evidence-request = { version = "0.1", default-features = false }
+```
+
 ```rust
 use evidence_request::{digest, request, resolve};
 
