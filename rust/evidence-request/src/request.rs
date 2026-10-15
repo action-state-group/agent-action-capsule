@@ -121,7 +121,7 @@ pub fn parse_json(bytes: &[u8]) -> Result<Request, RequestError> {
 /// a request not in core deterministic encoding (§10; RFC 8949 §4.2.1),
 /// at any depth: a duplicate or out-of-order map key, a non-shortest
 /// argument, an indefinite length, a tag, a float, a byte string, or an
-/// integer outside 0 to 2^53 - 1 ([`crate::det_cbor`]).
+/// integer outside 0 to 2^53 - 1.
 pub fn parse_cbor(bytes: &[u8]) -> Result<Request, RequestError> {
     let mut reader = bytes;
     let value: ciborium::Value = ciborium::from_reader(&mut reader)
@@ -172,6 +172,18 @@ fn from_val(value: &Val) -> Result<Request, RequestError> {
         nonce,
         route,
     })
+}
+
+/// Read a subject from its wire map in the JSON data model (§3.1; A1, A6),
+/// as a request carries it and an envelope repeats it.
+pub fn subject_from_value(value: &serde_json::Value) -> Result<Subject, RequestError> {
+    parse_subject(&Val::from_json(value))
+}
+
+/// Read a `derivation` value: a registered token form (`name/N`) or the
+/// digest of a definition (§3.3, A14).
+pub fn derivation_from_text(text: &str) -> Result<Derivation, RequestError> {
+    parse_derivation(&Val::Text(text.to_string()))
 }
 
 fn parse_subject(value: &Val) -> Result<Subject, RequestError> {

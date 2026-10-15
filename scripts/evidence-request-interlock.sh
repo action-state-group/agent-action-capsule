@@ -12,10 +12,10 @@
 #    Ed25519 seed; Ed25519 is deterministic, so the refusals are identical.
 # 3. verify: every language authenticates every other language's refusals,
 #    and rejects one whose signature was tampered with.
-# 4. envelope: Python and Go build the interop profile's artifact envelope
+# 4. envelope: every language builds the interop profile's artifact envelope
 #    (spec/interop-profile-v0.md §6.2) from the same inputs, byte-identical in
-#    both bindings, and Go verifies Python's. Rust signs a different envelope
-#    today (agent-action-capsule#270), so it is not in this step.
+#    both bindings. Go and Rust verify it, and each rejects an envelope with
+#    an altered verification item for that item's digest.
 set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
@@ -229,16 +229,19 @@ print(json.dumps({"seed_hex": sys.argv[1], "issued_at": sys.argv[2], "cases": [
     dict(id=i, binding=b, subject=s, request_hex=request(s, c, extra).hex(), anchor_digest=anchor,
          artifact_hex=artifact.hex(), **extra) for i, b, s, c, extra in specs]}))
 EOF
-envelope_languages=(python go)
+envelope_languages=(python go rust)
+envelope_verifiers=(go rust)
 for lang in "${envelope_languages[@]}"; do
   "er_$lang" envelope < "$work/envelope-in.json" > "$work/envelope-$lang.json"
 done
-if ! cmp -s "$work/envelope-python.json" "$work/envelope-go.json"; then
-  echo "evidence request: python and go build different artifact envelopes" >&2
-  diff <("$python_bin" -m json.tool "$work/envelope-python.json") \
-       <("$python_bin" -m json.tool "$work/envelope-go.json") >&2 || true
-  exit 1
-fi
+for lang in go rust; do
+  if ! cmp -s "$work/envelope-python.json" "$work/envelope-$lang.json"; then
+    echo "evidence request: python and $lang build different artifact envelopes" >&2
+    diff <("$python_bin" -m json.tool "$work/envelope-python.json") \
+         <("$python_bin" -m json.tool "$work/envelope-$lang.json") >&2 || true
+    exit 1
+  fi
+done
 "$python_bin" - "$work/envelope-in.json" "$work/envelope-python.json" "$work/envelope-check.json" \
   "$work/envelope-tampered.json" <<'EOF'
 import base64, json, sys
@@ -268,20 +271,22 @@ for rid in ("record-json", "record-cbor"):
     tampered.append(dict(reply, reply_hex=octets.hex()))
 json.dump(tampered, open(sys.argv[4], "w"))
 EOF
-if ! er_go check-envelope < "$work/envelope-check.json" > /dev/null; then
-  echo "evidence request: go rejected an envelope python built" >&2
-  exit 1
-fi
-if er_go check-envelope < "$work/envelope-tampered.json" > /dev/null 2> "$work/envelope-tampered.err"; then
-  echo "evidence request: go accepted a tampered envelope" >&2
-  exit 1
-fi
-for rid in record-json record-cbor; do
-  if ! grep -q "^$rid: .*verification item 1 does not hash to its signed digest" "$work/envelope-tampered.err"; then
-    echo "evidence request: go rejected the tampered $rid envelope for another reason:" >&2
-    cat "$work/envelope-tampered.err" >&2
+for lang in "${envelope_verifiers[@]}"; do
+  if ! "er_$lang" check-envelope < "$work/envelope-check.json" > /dev/null; then
+    echo "evidence request: $lang rejected the envelopes every language built" >&2
     exit 1
   fi
+  if "er_$lang" check-envelope < "$work/envelope-tampered.json" > /dev/null 2> "$work/envelope-tampered-$lang.err"; then
+    echo "evidence request: $lang accepted a tampered envelope" >&2
+    exit 1
+  fi
+  for rid in record-json record-cbor; do
+    if ! grep -q "^$rid: .*verification item 1 does not hash to its signed digest" "$work/envelope-tampered-$lang.err"; then
+      echo "evidence request: $lang rejected the tampered $rid envelope for another reason:" >&2
+      cat "$work/envelope-tampered-$lang.err" >&2
+      exit 1
+    fi
+  done
 done
 
 count=$("$python_bin" -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$work/classify-rust.json")
@@ -289,4 +294,4 @@ if [ "$count" -eq 0 ]; then
   echo "evidence request: no requests were classified" >&2
   exit 1
 fi
-echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python and go build identical artifact envelopes, go verifies python's and rejects an altered verification item in either binding."
+echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python, go and rust build identical artifact envelopes, and go and rust verify them and reject an altered verification item in either binding."

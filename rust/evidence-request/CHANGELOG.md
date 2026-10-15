@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased (0.2.0)
+
+- **The artifact response is the interop profile's envelope** (`envelope`;
+  `spec/interop-profile-v0.md` §6.2, `evidence-interop/0`), as in the Go and
+  Python implementations. `envelope::sign` builds and signs it, refusing an
+  envelope the profile does not allow. `Envelope::encode` writes the reply in
+  either binding: RFC 8785 JSON with byte strings as unpadded base64url, or
+  core deterministic CBOR. `envelope::parse_reply` reads a reply as carried.
+  `Envelope::verify_for` accepts one as a responder's answer to a request.
+  Tests re-sign the profile corpus's envelopes byte for byte, and the
+  cross-language interlock builds identical envelopes in Python, Go and Rust.
+- **`cll` feature: checking Checkpointed Local Log material**
+  (`cll_material::check_anchor_inclusion`, profile §6.2.1 steps 1 to 14),
+  against `checkpointed-local-log` 0.3.1. Every envelope reply in
+  `vectors/interop-profile-v0/` gets the `anchor_inclusion` status the corpus
+  states.
+- **Breaking: the `answer` feature and module are removed.** Building an
+  artifact from a log is the responder's business: the Checkpointed Local Log
+  builder moves to the `evidencebook` crate (agent-action-capsule#270).
+  `answer::verify` checked the crate's own pre-profile envelope, which no
+  other implementation signs; use `Envelope::verify_for` and
+  `check_anchor_inclusion`. No feature is on by default.
+- `request::subject_from_value` and `request::derivation_from_text` read a
+  subject and a derivation as an envelope repeats them.
+
 ## 0.1.0
 
 - **Renamed and moved.** The crate is now `evidence-request` (lib

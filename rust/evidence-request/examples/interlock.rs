@@ -13,12 +13,22 @@
 //! `verify`: `{public_key_hex, items: [{id, request_digest, refusal}]}` to
 //! `[{id, reason}]`; any refusal that does not verify is reported on stderr
 //! and the command exits 1.
+//! `envelope`: `{seed_hex, issued_at, cases: [{id, binding, request_hex,
+//! subject, anchor_digest, artifact_hex, derivation?, freshness?,
+//! verification: [{kind, hex}]}]}` to `[{id, reply_hex}]`: the interop
+//! profile's envelope (§6.2), signed with the key from `seed_hex`.
+//! `check-envelope`: `[{id, binding, reply_hex}]` to `[{id}]`; any reply that
+//! is not an envelope verifying under its own key is reported on stderr, as
+//! `id: reason`, and the command exits 1.
 
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use evidence_request::digest::request_digest;
+use evidence_request::envelope::{
+    parse_reply, Anchor, AnchorFreshness, Binding, EnvelopeParts, Reply,
+};
 use evidence_request::refusal::{sign, verify_for};
 use evidence_request::registry::Reason;
-use evidence_request::request::{parse_cbor, parse_json};
+use evidence_request::request::{derivation_from_text, parse_cbor, parse_json, subject_from_value};
 use serde_json::{json, Value};
 use std::io::Read;
 use std::process::ExitCode;
@@ -41,7 +51,9 @@ fn main() -> ExitCode {
         "classify" => classify(&doc),
         "refuse" => refuse(&doc),
         "verify" => verify(&doc),
-        _ => Err("usage: interlock classify|refuse|verify".to_string()),
+        "envelope" => envelope(&doc),
+        "check-envelope" => check_envelope(&doc),
+        _ => Err("usage: interlock classify|refuse|verify|envelope|check-envelope".to_string()),
     };
     match result {
         Ok(out) => {
@@ -128,6 +140,81 @@ fn verify(doc: &Value) -> Result<Value, String> {
         let id = text(item, "id")?;
         match verify_for(&item["refusal"], &key, text(item, "request_digest")?) {
             Ok(reason) => out.push(json!({"id": id, "reason": reason.token()})),
+            Err(e) => failures.push(format!("{id}: {e}")),
+        }
+    }
+    if failures.is_empty() {
+        Ok(Value::Array(out))
+    } else {
+        Err(failures.join("\n"))
+    }
+}
+
+fn binding(v: &Value) -> Result<Binding, String> {
+    match text(v, "binding")? {
+        "json" => Ok(Binding::Json),
+        "cbor" => Ok(Binding::Cbor),
+        other => Err(format!("unknown binding {other}")),
+    }
+}
+
+fn envelope(doc: &Value) -> Result<Value, String> {
+    let seed: [u8; 32] = bytes(doc, "seed_hex")?
+        .try_into()
+        .map_err(|_| "seed_hex must be 32 bytes".to_string())?;
+    let key = SigningKey::from_bytes(&seed);
+    let mut out = Vec::new();
+    for case in array(&doc["cases"])? {
+        let id = text(case, "id")?;
+        let freshness = match &case["freshness"] {
+            Value::Null => None,
+            Value::Number(n) => Some(AnchorFreshness::Size(
+                n.as_u64().ok_or_else(|| format!("{id}: freshness"))?,
+            )),
+            Value::String(t) => Some(AnchorFreshness::Time(t.clone())),
+            other => return Err(format!("{id}: freshness {other}")),
+        };
+        let derivation = match case["derivation"].as_str() {
+            Some(d) => Some(derivation_from_text(d).map_err(|e| format!("{id}: {e}"))?),
+            None => None,
+        };
+        let verification = match case["verification"].as_array() {
+            Some(items) => items
+                .iter()
+                .map(|v| Ok((text(v, "kind")?.to_string(), bytes(v, "hex")?)))
+                .collect::<Result<Vec<_>, String>>()?,
+            None => Vec::new(),
+        };
+        let parts = EnvelopeParts {
+            subject: subject_from_value(&case["subject"]).map_err(|e| format!("{id}: {e}"))?,
+            derivation,
+            anchor: Anchor {
+                digest: text(case, "anchor_digest")?.to_string(),
+                freshness,
+            },
+            artifact: bytes(case, "artifact_hex")?,
+            verification,
+            issued_at: text(doc, "issued_at")?.to_string(),
+        };
+        let signed = evidence_request::envelope::sign(&bytes(case, "request_hex")?, parts, &key)
+            .map_err(|e| format!("{id}: {e}"))?;
+        out.push(json!({"id": id, "reply_hex": hex::encode(signed.encode(binding(case)?))}));
+    }
+    Ok(Value::Array(out))
+}
+
+fn check_envelope(doc: &Value) -> Result<Value, String> {
+    let mut out = Vec::new();
+    let mut failures = Vec::new();
+    for item in array(doc)? {
+        let id = text(item, "id")?;
+        let checked = match parse_reply(&bytes(item, "reply_hex")?, binding(item)?) {
+            Ok(Reply::Envelope(e)) => e.verify().map_err(|e| e.to_string()),
+            Ok(Reply::Refusal(_)) => Err("the reply is not an envelope".to_string()),
+            Err(e) => Err(e.to_string()),
+        };
+        match checked {
+            Ok(()) => out.push(json!({ "id": id })),
             Err(e) => failures.push(format!("{id}: {e}")),
         }
     }

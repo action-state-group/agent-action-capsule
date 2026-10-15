@@ -15,16 +15,17 @@ refusal, or the requester's own record that nothing arrived.
 | `invariance` | caller invariance: the same subject under the same anchor gives the same bytes |
 | `retention` | retention commitments and the breach table |
 | `receipt` (0.0.3) | check RFC 9162 Ed25519 receipt form and authenticate any matching inclusion proof under a pinned service key |
-| `answer` (0.0.2; receipts checked from 0.0.3) | build the artifact response over a checkpointed local log (`cll`): records with inclusion proofs, a range or the full history with a range proof, the checkpoints, or the `history_card/1` derivation with consistency proofs; the artifact is deterministic and the same for every requester, the envelope is signed by the responder and binds the request digest and the anchor. `answer::verify` checks it all offline |
+| `envelope` (0.2.0) | the interop profile's artifact envelope (`evidence-interop/0` §6.2): sign it, encode it in either binding, read a reply as carried, and accept it as a responder's answer to your request |
+| `cll_material` (0.2.0, feature `cll`) | check the Checkpointed Local Log verification material an envelope carries (profile §6.2.1, `anchor_inclusion`) |
 
-**Features.** `answer` is a default feature: it enables the `answer` and
-`receipt` modules and the checkpointed-local-log dependency. `receipt` alone
-enables `receipt`. With `default-features = false` the crate is the protocol
-core (every module above except `receipt` and `answer`) and does not depend on
-checkpointed-local-log:
+**Features.** None is on by default: with no features the crate is the
+protocol core (every module above except `receipt` and `cll_material`) and
+does not depend on checkpointed-local-log. `cll` enables `cll_material` and
+the checkpointed-local-log dependency; `receipt` enables `receipt`.
 
 ```toml
-evidence-request = { version = "0.1", default-features = false }
+evidence-request = "0.2"                                     # protocol core
+evidence-request = { version = "0.2", features = ["cll"] }  # and CLL material checks
 ```
 
 ```rust
@@ -46,46 +47,33 @@ follows the readings the draft's conformance vectors document; each module
 says which. The API is pre-stable (0.x) until a later draft fixes those
 shapes.
 
-**0.0.2 adds the answer path** (`answer`). 0.0.1 parsed, digested and
-resolved requests, signed and verified refusals, and classified outcomes.
-
 To accept a refusal as a responder's answer to your request, use
 `refusal::verify_for` (it binds the responder's key and your request
 digest); `refusal::check` reports shape and self-consistency only and is not
-authentication. To accept an artifact, use `answer::verify`: it checks the
-envelope signature and bindings, the artifact digest, the anchor checkpoint
-(the responder's; exactly the pinned one under `expected_pin`), the coverage
-constraint, every record against its digest (with your evidence format's
-digest function) and every proof. Which records a `correlation` or
-`exchange` subject should include is format-specific: `verify` proves each
-served record is in the log under the anchor, and you check its content (a
-responder can still leave a record out of those subjects; completeness is
-not provable from this answer alone).
+authentication. To accept an artifact, use `envelope::parse_reply` and then
+`Envelope::verify_for`: it binds the profile, the responder's key and your
+request digest, and checks the signature, the artifact digest and each
+verification item's digest. Whether the material proves the artifact under
+the anchor is `cll_material::check_anchor_inclusion` (feature `cll`), which
+takes your policy for the log's key.
 
-In 0.0.3, `answer::verify` also takes the caller's `witness_key(ts_url)`
-lookup as its final argument and checks every carried receipt.
-`VerifiedAnswer::receipts` distinguishes `Verified` (authenticated under that
-key), `NoKey` (well formed but not authenticated), and `Stub` (not registered).
-Only `Verified` counts as independent witnessing; the caller decides how many
-witnesses are required. Malformed tree/index/path shapes are refused with or
-without a key.
-
-An answer carries at most `answer::MAX_RECORDS` (10,000) records or
-checkpoints: `verify` refuses a larger one before parsing anything, and
-`build` takes a limit and returns `OverLimit`, which a responder answers
-with a `policy_declined` refusal. Checkpoint lists start at the stream's
-first checkpoint, so a prefix cannot be left out.
+Building an artifact from a store or a log is the responder's business. A
+Checkpointed Local Log responder is the `evidencebook` crate; 0.1.0's
+`answer` feature built and verified the crate's own pre-profile envelope,
+which no other implementation signs, and is removed in 0.2.0.
 
 Not in this crate: transport, storage, and any store-and-forward or delivery
 guarantee.
 
 ## Tests
 
-`cargo test` runs the draft's conformance vectors (every corpus, every case)
+`cargo test --all-features` runs the draft's conformance vectors (every corpus, every case)
 from this repository's `vectors/evidence-request/`, checked against that
 directory's `SHA256SUMS` first. The Apache-2.0 `scitt-proof-array/` copies also have their
 checksums validated before any test reads them; they cover proof ordering and
-malformed proof classification. See `tests/vectors/SOURCES.md`.
+malformed proof classification. See `tests/vectors/SOURCES.md`. The
+envelope and the CLL material checks run against the interop profile's
+corpus, `vectors/interop-profile-v0/`.
 
 ## License
 

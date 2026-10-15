@@ -30,29 +30,36 @@
 //! reading the vectors document (their ambiguity notes A1-A14); the items a
 //! future revision may change are marked in each module.
 //!
-//! - `answer` (since 0.0.2; feature `answer`): build the artifact response over a
-//!   checkpointed local log (records, a range or the full history with
-//!   inclusion or range proofs, the checkpoints, the `history_card/1`
-//!   derivation with consistency proofs), signed by the responder and bound
-//!   to the request; and verify one offline against the responder's key and
-//!   the request sent.
+//! - [`envelope`]: the artifact response in the interop profile's form
+//!   (`evidence-interop/0` §6.2): build and sign it ([`envelope::sign`]),
+//!   encode it in either binding, read a reply as carried
+//!   ([`envelope::parse_reply`]), and accept it as a responder's answer to a
+//!   request ([`envelope::Envelope::verify_for`]).
+//! - `cll_material` (feature `cll`): check the Checkpointed Local Log
+//!   verification material an envelope carries (profile §6.2.1,
+//!   `anchor_inclusion`).
 //!
 //! To accept a refusal as the answer to a request, use
 //! [`refusal::verify_for`]; [`refusal::check`] is not authentication. To
-//! accept an artifact, use `answer::verify`.
+//! accept an artifact, use [`envelope::Envelope::verify_for`], and then
+//! `cll_material::check_anchor_inclusion` for its material.
 //!
-//! Features: `answer` (default) enables `answer` and `receipt` and depends on
-//! checkpointed-local-log; `receipt` enables `receipt` alone. With
-//! `default-features = false` the crate is the protocol core above, with no
-//! checkpointed-local-log dependency.
+//! Building an artifact from a store or a log is the responder's business:
+//! a Checkpointed Local Log responder is the `evidencebook` crate.
+//!
+//! Features: `cll` enables `cll_material` and depends on
+//! checkpointed-local-log; `receipt` enables `receipt`. With no features the
+//! crate is the protocol core above, with no checkpointed-local-log
+//! dependency.
 //!
 //! Out of scope: transport, storage, and any store-and-forward or delivery
 //! guarantee.
 
-#[cfg(feature = "answer")]
-pub mod answer;
+#[cfg(feature = "cll")]
+pub mod cll_material;
 mod det_cbor;
 pub mod digest;
+pub mod envelope;
 pub mod invariance;
 pub mod jcs;
 pub mod outcome;
