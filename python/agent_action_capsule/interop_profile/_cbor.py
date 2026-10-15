@@ -163,3 +163,35 @@ def encode_head(major: int, arg: int) -> bytes:
         if arg < 1 << (8 * width):
             return bytes([major << 5 | info]) + arg.to_bytes(width, "big")
     raise ValueError("argument does not fit in a CBOR head")
+
+
+def encode(value: Any) -> bytes:
+    """Core deterministic CBOR (RFC 8949 §4.2.1) of the profile's data model:
+    ``None``, ``bool``, unsigned integers up to 2^53 - 1, text, byte strings,
+    lists, and maps with text keys in the bytewise order of their encodings."""
+    if value is None:
+        return b"\xf6"
+    if value is True:
+        return b"\xf5"
+    if value is False:
+        return b"\xf4"
+    if isinstance(value, int):
+        if value < 0 or value > (1 << 53) - 1:
+            raise ValueError("integer outside 0 to 2^53 - 1")
+        return encode_head(0, value)
+    if isinstance(value, (bytes, bytearray)):
+        return encode_head(2, len(value)) + bytes(value)
+    if isinstance(value, str):
+        raw = value.encode("utf-8")
+        return encode_head(3, len(raw)) + raw
+    if isinstance(value, (list, tuple)):
+        return encode_head(4, len(value)) + b"".join(encode(item) for item in value)
+    if isinstance(value, dict):
+        entries = []
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise ValueError("map keys are text")
+            entries.append((encode(key), encode(item)))
+        entries.sort(key=lambda kv: kv[0])
+        return encode_head(5, len(entries)) + b"".join(k + v for k, v in entries)
+    raise ValueError(f"{type(value).__name__} has no place in the profile's data model")

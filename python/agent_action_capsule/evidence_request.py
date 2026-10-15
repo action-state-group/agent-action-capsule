@@ -70,6 +70,7 @@ when the request carries a ``deadline`` and the node opted in with
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import math
@@ -110,6 +111,9 @@ __all__ = [
     "EvidenceStore",
     "Signer",
     "Artifact",
+    "PROFILE",
+    "Envelope",
+    "sign_envelope",
     "Refusal",
     "RefusalCheck",
     "is_digest",
@@ -133,6 +137,11 @@ DRAFT = "draft-mih-agent-evidence-request-00"
 
 #: The stream binding's subprotocol identifier (§10, §13).
 SUBPROTOCOL = "evidence-request/1"
+
+#: The interoperability profile whose artifact envelope :class:`Envelope`
+#: implements (``spec/interop-profile-v0.md`` §6.2). -00 says what an artifact
+#: response carries but fixes no wire members (§4.1); the profile does.
+PROFILE = "evidence-interop/0"
 
 #: The one derivation -00 registers (§8.1, §13).
 DERIVATION_HISTORY_CARD = "history_card/1"
@@ -637,6 +646,125 @@ class Artifact:
     anchor: str
     body: Any
     derivation: str | None = None
+
+
+def _json_model(value: Any) -> Any:
+    """The JSON binding of the profile's data model: byte strings as unpadded
+    base64url (profile §4)."""
+    if isinstance(value, (bytes, bytearray)):
+        return base64.urlsafe_b64encode(bytes(value)).rstrip(b"=").decode("ascii")
+    if isinstance(value, (list, tuple)):
+        return [_json_model(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _json_model(item) for key, item in value.items()}
+    return value
+
+
+@dataclass(frozen=True)
+class Envelope:
+    """The artifact response in the interop profile's form
+    (``spec/interop-profile-v0.md`` §6.2, profile :data:`PROFILE`): the
+    artifact octets and each item of verification material travel beside the
+    signed members, which carry their digests. ``sig`` is Ed25519 by
+    ``responder`` over the JCS of the signed members (:meth:`signing_body`).
+    Build one with :func:`sign_envelope`."""
+
+    request_digest: str
+    subject: Subject
+    anchor_digest: str
+    artifact: bytes
+    responder: str
+    issued_at: str
+    derivation: str | None = None
+    #: Under ``min_freshness``: the size or time the anchor attains, in the
+    #: type the request used.
+    freshness: int | str | None = None
+    #: ``(kind, octets)`` per item of verification material, in order.
+    verification: tuple[tuple[str, bytes], ...] = ()
+    profile: str = PROFILE
+    sig: str = ""
+
+    def signed_members(self) -> dict:
+        """The members the signature covers (§6.2), as a JSON-model map."""
+        anchor: dict[str, Any] = {"digest": self.anchor_digest}
+        if self.freshness is not None:
+            anchor["freshness"] = self.freshness
+        out: dict[str, Any] = {
+            "profile": self.profile,
+            "request_digest": self.request_digest,
+            "subject": self.subject.to_wire(),
+            "anchor": anchor,
+            "artifact_digest": hashlib.sha256(self.artifact).hexdigest(),
+            "responder": self.responder,
+            "issued_at": self.issued_at,
+        }
+        if self.derivation is not None:
+            out["derivation"] = self.derivation
+        if self.verification:
+            out["verification"] = [
+                {"kind": kind, "digest": hashlib.sha256(octets).hexdigest()} for kind, octets in self.verification
+            ]
+        return out
+
+    def signing_body(self) -> bytes:
+        """The bytes the signature covers: RFC 8785 of :meth:`signed_members`,
+        whatever the frame's encoding (profile §5.1)."""
+        return jcs(self.signed_members())
+
+    def to_value(self) -> dict:
+        """The whole envelope in the profile's data model (byte strings as
+        ``bytes``)."""
+        out = dict(self.signed_members(), sig=self.sig, artifact=bytes(self.artifact))
+        if self.verification:
+            out["verification_content"] = [bytes(octets) for _, octets in self.verification]
+        return out
+
+    def encode(self, binding: str = "json") -> bytes:
+        """The reply octets in ``binding``: JCS JSON with byte strings as
+        unpadded base64url, or core deterministic CBOR with byte strings."""
+        if binding == "json":
+            return jcs(_json_model(self.to_value()))
+        if binding == "cbor":
+            return _cbor.encode(self.to_value())
+        raise ValueError(f"binding must be 'json' or 'cbor', not {binding!r}")
+
+
+def sign_envelope(
+    request_bytes: bytes,
+    subject: Subject,
+    anchor_digest: str,
+    artifact: bytes,
+    *,
+    signer: Signer,
+    issued_at: str,
+    derivation: str | None = None,
+    freshness: int | str | None = None,
+    verification: Iterable[tuple[str, bytes]] = (),
+) -> Envelope:
+    """Build and sign the profile envelope (§6.2) for an artifact served under
+    ``anchor_digest`` in answer to the request whose octets as received are
+    ``request_bytes``. ``artifact`` is the canonical artifact's octets, the
+    same for every requester (ER §5). Raises :class:`ValueError` unless
+    ``anchor_digest`` is a digest and ``issued_at`` an RFC 3339 UTC time."""
+    if not is_digest(anchor_digest):
+        raise ValueError("anchor_digest must be 64 lowercase hex")
+    if parse_utc(issued_at) is None:
+        raise ValueError("issued_at must be an RFC 3339 UTC time")
+    stub = Envelope(
+        request_digest=request_digest(request_bytes),
+        subject=subject,
+        anchor_digest=anchor_digest,
+        artifact=bytes(artifact),
+        responder=signer.key_id,
+        issued_at=issued_at,
+        derivation=derivation,
+        freshness=freshness,
+        verification=tuple((kind, bytes(octets)) for kind, octets in verification),
+    )
+    sig, key_id = signer.sign(stub.signing_body())
+    if key_id != stub.responder:
+        raise ValueError("the signer signed under a key other than its key_id")
+    return Envelope(**{**stub.__dict__, "sig": sig})
 
 
 def _now_iso() -> str:

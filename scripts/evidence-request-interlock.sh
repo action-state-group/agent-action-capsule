@@ -12,6 +12,10 @@
 #    Ed25519 seed; Ed25519 is deterministic, so the refusals are identical.
 # 3. verify: every language authenticates every other language's refusals,
 #    and rejects one whose signature was tampered with.
+# 4. envelope: Python and Go build the interop profile's artifact envelope
+#    (spec/interop-profile-v0.md §6.2) from the same inputs, byte-identical in
+#    both bindings, and Go verifies Python's. Rust signs a different envelope
+#    today (agent-action-capsule#270), so it is not in this step.
 set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
@@ -195,9 +199,64 @@ EOF
 reject_all "$work/other-key-verify.json" "a refusal signed under another key"
 reject_all "$work/other-digest-verify.json" "a refusal checked against another request's digest"
 
+# Step 4: the artifact envelope.
+"$python_bin" - "$work/classify-in.json" "$work/classify-rust.json" "$seed" "$issued_at" \
+  > "$work/envelope-in.json" <<'EOF'
+import hashlib, json, sys
+cases = json.load(open(sys.argv[1]))
+classified = {c["id"]: c for c in json.load(open(sys.argv[2]))}
+request = next(c for c in cases if classified[c["id"]]["well_formed"] and c["binding"] == "json")
+anchor = hashlib.sha256(b"anchor checkpoint statement").hexdigest()
+record = hashlib.sha256(b"a record").hexdigest()
+artifact = b'{"anchor":"' + anchor.encode() + b'","records":[]}'
+material = [{"kind": "cll-checkpoint", "hex": b"checkpoint statement".hex()},
+            {"kind": "cll-inclusion-proof", "hex": bytes([0x82, 0x01, 0x80]).hex()}]
+base = {"request_hex": request["request_hex"], "anchor_digest": anchor, "artifact_hex": artifact.hex()}
+specs = [
+    ("record-json", "json", {"record": record}, {"verification": material}),
+    ("record-cbor", "cbor", {"record": record}, {"verification": material}),
+    ("checkpoints", "json", {"checkpoints": None}, {}),
+    ("history-card", "cbor", {"full_history": None}, {"derivation": "history_card/1", "freshness": 42}),
+    ("range-by-time", "json", {"range": [0, 3]}, {"freshness": "2026-10-14T00:00:00Z"}),
+    ("correlation", "cbor", {"correlation": "deal-7"}, {}),
+]
+print(json.dumps({"seed_hex": sys.argv[3], "issued_at": sys.argv[4], "cases": [
+    dict(base, id=i, binding=b, subject=s, **extra) for i, b, s, extra in specs]}))
+EOF
+envelope_languages=(python go)
+for lang in "${envelope_languages[@]}"; do
+  "er_$lang" envelope < "$work/envelope-in.json" > "$work/envelope-$lang.json"
+done
+if ! cmp -s "$work/envelope-python.json" "$work/envelope-go.json"; then
+  echo "evidence request: python and go build different artifact envelopes" >&2
+  diff <("$python_bin" -m json.tool "$work/envelope-python.json") \
+       <("$python_bin" -m json.tool "$work/envelope-go.json") >&2 || true
+  exit 1
+fi
+"$python_bin" - "$work/envelope-in.json" "$work/envelope-python.json" "$work/envelope-check.json" \
+  "$work/envelope-tampered.json" <<'EOF'
+import json, sys
+bindings = {c["id"]: c["binding"] for c in json.load(open(sys.argv[1]))["cases"]}
+replies = [dict(r, binding=bindings[r["id"]]) for r in json.load(open(sys.argv[2]))]
+json.dump(replies, open(sys.argv[3], "w"))
+tampered = dict(replies[0])
+octets = bytearray(bytes.fromhex(tampered["reply_hex"]))
+octets[-3] ^= 0x01  # inside verification_content, the last member: its signed digest no longer matches
+tampered["reply_hex"] = octets.hex()
+json.dump([tampered], open(sys.argv[4], "w"))
+EOF
+if ! er_go check-envelope < "$work/envelope-check.json" > /dev/null; then
+  echo "evidence request: go rejected an envelope python built" >&2
+  exit 1
+fi
+if er_go check-envelope < "$work/envelope-tampered.json" > /dev/null 2>&1; then
+  echo "evidence request: go accepted a tampered envelope" >&2
+  exit 1
+fi
+
 count=$("$python_bin" -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$work/classify-rust.json")
 if [ "$count" -eq 0 ]; then
   echo "evidence request: no requests were classified" >&2
   exit 1
 fi
-echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest."
+echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python and go build identical artifact envelopes and go verifies python's."

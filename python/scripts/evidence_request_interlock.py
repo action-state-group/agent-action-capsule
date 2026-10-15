@@ -12,6 +12,10 @@ document, so its output compares byte for byte with the Go and Rust adapters.
 - ``verify``: ``{public_key_hex, items: [{id, request_digest, refusal}]}`` to
   ``[{id, reason}]``; exits 1, listing each failure on stderr, if any refusal
   does not authenticate.
+- ``envelope``: ``{seed_hex, issued_at, cases: [{id, binding, request_hex,
+  subject, anchor_digest, artifact_hex, derivation?, freshness?,
+  verification: [{kind, hex}]}]}`` to ``[{id, reply_hex}]``: the interop
+  profile's artifact envelope (§6.2), signed.
 """
 import json
 import sys
@@ -74,10 +78,34 @@ def verify(doc):
     return out
 
 
+def _subject(wire):
+    ((form, content),) = wire.items()
+    return er.Subject(form, tuple(content) if isinstance(content, list) else content)
+
+
+def envelope(doc):
+    signer = _SeedSigner(bytes.fromhex(doc["seed_hex"]))
+    out = []
+    for case in doc["cases"]:
+        env = er.sign_envelope(
+            bytes.fromhex(case["request_hex"]),
+            _subject(case["subject"]),
+            case["anchor_digest"],
+            bytes.fromhex(case["artifact_hex"]),
+            signer=signer,
+            issued_at=doc["issued_at"],
+            derivation=case.get("derivation"),
+            freshness=case.get("freshness"),
+            verification=[(v["kind"], bytes.fromhex(v["hex"])) for v in case.get("verification", [])],
+        )
+        out.append({"id": case["id"], "reply_hex": env.encode(case["binding"]).hex()})
+    return out
+
+
 def main() -> int:
-    commands = {"classify": classify, "refuse": refuse, "verify": verify}
+    commands = {"classify": classify, "refuse": refuse, "verify": verify, "envelope": envelope}
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
-        print("usage: evidence_request_interlock.py classify|refuse|verify", file=sys.stderr)
+        print("usage: evidence_request_interlock.py classify|refuse|verify|envelope", file=sys.stderr)
         return 2
     result = commands[sys.argv[1]](json.load(sys.stdin))
     json.dump(result, sys.stdout, sort_keys=True, separators=(",", ":"), ensure_ascii=False)

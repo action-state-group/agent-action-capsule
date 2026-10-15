@@ -8,6 +8,9 @@
 //	classify: [{id, binding, request_hex}] -> [{id, reason, request_digest, well_formed}]
 //	refuse:   {seed_hex, issued_at, cases: [{id, request_hex, reason}]} -> [{id, refusal}]
 //	verify:   {public_key_hex, items: [{id, request_digest, refusal}]} -> [{id, reason}]
+//	envelope: {seed_hex, issued_at, cases: [{id, binding, request_hex, subject, anchor_digest,
+//	          artifact_hex, derivation?, freshness?, verification: [{kind, hex}]}]} -> [{id, reply_hex}]
+//	check-envelope: [{id, binding, reply_hex}] -> [{id}]
 //
 // verify exits 1, listing each failure on stderr, if any refusal does not
 // authenticate.
@@ -86,6 +89,32 @@ func main() {
 				err = errors.New(strings.Join(failures, "\n"))
 			}
 			out = verified
+		}
+	case "envelope":
+		var doc envelopeDoc
+		if err = json.NewDecoder(os.Stdin).Decode(&doc); err == nil {
+			out, err = envelopes(doc)
+		}
+	case "check-envelope":
+		var replies []struct {
+			ID       string `json:"id"`
+			Binding  string `json:"binding"`
+			ReplyHex string `json:"reply_hex"`
+		}
+		if err = json.NewDecoder(os.Stdin).Decode(&replies); err == nil {
+			checked := []map[string]any{}
+			var failures []string
+			for _, r := range replies {
+				if e := checkEnvelope(r.Binding, r.ReplyHex); e != nil {
+					failures = append(failures, r.ID+": "+e.Error())
+					continue
+				}
+				checked = append(checked, map[string]any{"id": r.ID})
+			}
+			if len(failures) > 0 {
+				err = errors.New(strings.Join(failures, "\n"))
+			}
+			out = checked
 		}
 	default:
 		err = fmt.Errorf("unknown command %q", os.Args[1])
@@ -189,4 +218,124 @@ func refuse(seedHex, issuedAt string, cases []struct {
 		out = append(out, map[string]any{"id": c.ID, "refusal": refusal.Value()})
 	}
 	return out, nil
+}
+
+type envelopeDoc struct {
+	SeedHex  string `json:"seed_hex"`
+	IssuedAt string `json:"issued_at"`
+	Cases    []struct {
+		ID           string          `json:"id"`
+		Binding      string          `json:"binding"`
+		RequestHex   string          `json:"request_hex"`
+		Subject      json.RawMessage `json:"subject"`
+		AnchorDigest string          `json:"anchor_digest"`
+		ArtifactHex  string          `json:"artifact_hex"`
+		Derivation   string          `json:"derivation"`
+		Freshness    json.RawMessage `json:"freshness"`
+		Verification []struct {
+			Kind string `json:"kind"`
+			Hex  string `json:"hex"`
+		} `json:"verification"`
+	} `json:"cases"`
+}
+
+func mediaType(binding string) (string, error) {
+	switch binding {
+	case "json":
+		return evidencerequest.MediaTypeJSON, nil
+	case "cbor":
+		return evidencerequest.MediaTypeCBOR, nil
+	}
+	return "", fmt.Errorf("unknown binding %q", binding)
+}
+
+// envelopes builds and signs the profile envelope (interop profile §6.2) for
+// each case and returns the reply octets.
+func envelopes(doc envelopeDoc) ([]map[string]any, error) {
+	seed, err := hex.DecodeString(doc.SeedHex)
+	if err != nil || len(seed) != ed25519.SeedSize {
+		return nil, errors.New("seed_hex must be 32 bytes of hex")
+	}
+	key := ed25519.NewKeyFromSeed(seed)
+	signer := seedSigner{key}
+	out := make([]map[string]any, 0, len(doc.Cases))
+	for _, c := range doc.Cases {
+		media, err := mediaType(c.Binding)
+		if err != nil {
+			return nil, err
+		}
+		request, err1 := hex.DecodeString(c.RequestHex)
+		artifact, err2 := hex.DecodeString(c.ArtifactHex)
+		model, err3 := evidencerequest.DecodeJSON(c.Subject)
+		if err := errors.Join(err1, err2, err3); err != nil {
+			return nil, fmt.Errorf("%s: %w", c.ID, err)
+		}
+		subject, ok := evidencerequest.ParseSubject(model)
+		if !ok {
+			return nil, fmt.Errorf("%s: subject is not a request draft subject", c.ID)
+		}
+		anchor := evidencerequest.Anchor{Digest: c.AnchorDigest}
+		if len(c.Freshness) > 0 {
+			var size uint64
+			var when string
+			switch {
+			case json.Unmarshal(c.Freshness, &size) == nil:
+				anchor.FreshnessSize = &size
+			case json.Unmarshal(c.Freshness, &when) == nil:
+				anchor.FreshnessTime = when
+			default:
+				return nil, fmt.Errorf("%s: freshness is neither a size nor a time", c.ID)
+			}
+		}
+		envelope := evidencerequest.Envelope{
+			Profile:        evidencerequest.ProfileID,
+			RequestDigest:  evidencerequest.Digest(request),
+			Subject:        subject,
+			Derivation:     c.Derivation,
+			Anchor:         anchor,
+			ArtifactDigest: evidencerequest.Digest(artifact),
+			Responder:      hex.EncodeToString(key.Public().(ed25519.PublicKey)),
+			IssuedAt:       doc.IssuedAt,
+			Artifact:       artifact,
+		}
+		for _, v := range c.Verification {
+			octets, err := hex.DecodeString(v.Hex)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", c.ID, err)
+			}
+			envelope.Verification = append(envelope.Verification, evidencerequest.VerificationEntry{Kind: v.Kind, Digest: evidencerequest.Digest(octets)})
+			envelope.VerificationContent = append(envelope.VerificationContent, octets)
+		}
+		if envelope, err = envelope.Sign(context.Background(), signer); err != nil {
+			return nil, fmt.Errorf("%s: %w", c.ID, err)
+		}
+		reply, err := evidencerequest.EncodeReply(media, &envelope, nil)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", c.ID, err)
+		}
+		out = append(out, map[string]any{"id": c.ID, "reply_hex": hex.EncodeToString(reply.Message.Octets)})
+	}
+	return out, nil
+}
+
+// checkEnvelope parses reply octets as an envelope and verifies it offline:
+// the signature under its responder key, the artifact and every item of
+// verification material against their signed digests.
+func checkEnvelope(binding, replyHex string) error {
+	media, err := mediaType(binding)
+	if err != nil {
+		return err
+	}
+	octets, err := hex.DecodeString(replyHex)
+	if err != nil {
+		return err
+	}
+	reply, err := evidencerequest.ParseReply(evidencerequest.Message{Octets: octets, MediaType: media})
+	if err != nil {
+		return err
+	}
+	if reply.Envelope == nil {
+		return errors.New("the reply is not an envelope")
+	}
+	return reply.Envelope.Verify()
 }
