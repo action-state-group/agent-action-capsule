@@ -497,12 +497,35 @@ pub fn parse_reply(octets: &[u8], binding: Binding) -> Result<Reply, ReplyError>
     match (get("artifact_digest").is_some(), get("reason").is_some()) {
         (true, true) => Err(ReplyError::Both),
         (false, false) => Err(ReplyError::Neither),
-        (false, true) => Item::Map(members)
-            .to_plain_json()
-            .map(Reply::Refusal)
-            .ok_or(ReplyError::Encoding("a refusal carries a byte string")),
+        (false, true) => read_refusal(members),
         (true, false) => read_envelope(&members, binding).map(|e| Reply::Envelope(Box::new(e))),
     }
+}
+
+/// The members a refusal's verification reads (-00 §4.2; A7). They are
+/// text, so a byte string there is refused, never read as its base64url
+/// text; other members are ignored by verification and pass through.
+const REFUSAL_MEMBERS: [&str; 6] = [
+    "request_digest",
+    "reason",
+    "issued_at",
+    "key_id",
+    "sig",
+    "detail",
+];
+
+fn read_refusal(members: Vec<(String, Item)>) -> Result<Reply, ReplyError> {
+    let mut out = Map::new();
+    for (k, v) in members {
+        let value = if REFUSAL_MEMBERS.contains(&k.as_str()) {
+            v.to_plain_json()
+                .ok_or(ReplyError::Encoding("a refusal member is a byte string"))?
+        } else {
+            v.to_json()
+        };
+        out.insert(k, value);
+    }
+    Ok(Reply::Refusal(Value::Object(out)))
 }
 
 fn read_envelope(members: &[(String, Item)], binding: Binding) -> Result<Envelope, ReplyError> {
