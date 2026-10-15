@@ -54,6 +54,11 @@ Reference-derived corpora and checksum manifests can be regenerated with:
 python3 python/scripts/generate_all_vectors.py
 ```
 
+The top-level `SHA256SUMS` lists every file under this directory except the
+checksum files themselves; each corpus's own `SHA256SUMS` lists that corpus.
+The release workflow checks the top-level list before it archives the
+directory, so a file it does not list would ship unverified.
+
 A full run must leave this directory unchanged;
 `.github/workflows/vectors.yml` enforces it, so a generator that drops or
 rewrites a case fails CI. Generators run in manifest order: a base generator
