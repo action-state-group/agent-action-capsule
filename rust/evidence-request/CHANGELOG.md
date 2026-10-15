@@ -10,6 +10,12 @@
   capsule-emit through 0.0.4; those releases stay published. The API is the
   same as 0.0.4: replace `capsule_emit_evidence_request` with
   `evidence_request` in `use` paths.
+- **Features.** `answer` (default) enables the `answer` and `receipt` modules
+  and the checkpointed-local-log dependency; `receipt` enables `receipt`
+  alone. With `default-features = false` the crate is the protocol core
+  (registry, request parsing and digest, resolution, refusals, outcomes,
+  invariance, retention) and does not depend on checkpointed-local-log, so a
+  crate on a different checkpointed-local-log line can use it.
 
 ## 0.0.4
 

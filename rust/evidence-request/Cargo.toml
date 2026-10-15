@@ -22,10 +22,32 @@ ed25519-dalek = "2"
 ciborium = "0.2"
 # COSE_Sign1 parsing for witness receipts (`receipt`); already in the tree
 # through `cll`.
-coset = "0.4"
+coset = { version = "0.4", optional = true }
 # Witness receipts travel base64 in checkpoint JSON.
-base64 = "0.22"
+base64 = { version = "0.22", optional = true }
 thiserror = "1"
 # The checkpointed local log: checkpoints, inclusion, range and consistency
 # proofs for the answer path.
-cll = { package = "checkpointed-local-log", version = "0.2.0" }
+cll = { package = "checkpointed-local-log", version = "0.2.0", optional = true }
+
+[features]
+default = ["answer"]
+# Witness receipt verification (`receipt`): RFC 9162 Ed25519 receipts.
+receipt = ["dep:coset"]
+# The artifact answer path (`answer`) over a checkpointed local log. Without
+# it (`default-features = false`) the crate is the protocol core: registry,
+# request parsing and digest, resolution, refusals, outcomes, invariance and
+# retention, with no checkpointed-local-log dependency.
+answer = ["receipt", "dep:cll", "dep:base64"]
+
+[dev-dependencies]
+# receipt_vectors.rs decodes base64 fixtures with the `receipt` feature alone.
+base64 = "0.22"
+
+[[test]]
+name = "answer"
+required-features = ["answer"]
+
+[[test]]
+name = "receipt_vectors"
+required-features = ["receipt"]

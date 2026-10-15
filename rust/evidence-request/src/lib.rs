@@ -30,7 +30,7 @@
 //! reading the vectors document (their ambiguity notes A1-A14); the items a
 //! future revision may change are marked in each module.
 //!
-//! - [`answer`] (since 0.0.2): build the artifact response over a
+//! - `answer` (since 0.0.2; feature `answer`): build the artifact response over a
 //!   checkpointed local log (records, a range or the full history with
 //!   inclusion or range proofs, the checkpoints, the `history_card/1`
 //!   derivation with consistency proofs), signed by the responder and bound
@@ -39,17 +39,24 @@
 //!
 //! To accept a refusal as the answer to a request, use
 //! [`refusal::verify_for`]; [`refusal::check`] is not authentication. To
-//! accept an artifact, use [`answer::verify`].
+//! accept an artifact, use `answer::verify`.
+//!
+//! Features: `answer` (default) enables `answer` and `receipt` and depends on
+//! checkpointed-local-log; `receipt` enables `receipt` alone. With
+//! `default-features = false` the crate is the protocol core above, with no
+//! checkpointed-local-log dependency.
 //!
 //! Out of scope: transport, storage, and any store-and-forward or delivery
 //! guarantee.
 
+#[cfg(feature = "answer")]
 pub mod answer;
 mod det_cbor;
 pub mod digest;
 pub mod invariance;
 pub mod jcs;
 pub mod outcome;
+#[cfg(feature = "receipt")]
 pub mod receipt;
 pub mod refusal;
 pub mod registry;

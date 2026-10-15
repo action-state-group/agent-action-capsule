@@ -126,6 +126,18 @@ jobs:
           cargo test --locked --all-features
           cargo test --locked
 
+      # evidence-request without its default `answer` feature is the protocol
+      # core, which must build and pass with no checkpointed-local-log.
+      - name: Check evidence-request's feature combinations
+        run: |
+          for features in "--no-default-features" "--no-default-features --features receipt"; do
+            cargo clippy --locked -p evidence-request --all-targets $features -- -D warnings
+            cargo test --locked -p evidence-request $features
+          done
+          if cargo tree --locked -p evidence-request --no-default-features -e normal | grep -q checkpointed-local-log; then
+            echo "evidence-request's core depends on checkpointed-local-log" >&2; exit 1
+          fi
+
       # A consumer such as capsule-emit unifies serde_json's preserve_order
       # into the build; results must not depend on map iteration order.
       - name: Check the Rust verifier with serde_json preserve_order
