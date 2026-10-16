@@ -52,6 +52,9 @@ __all__ = [
     "endpoint_of",
     "row_for",
     "row_public_keys_pem",
+    "verify_receipt",
+    "verify_rekor_receipt",
+    "verify_scrapi_receipt",
     "verify_witness_receipts",
 ]
 
@@ -241,9 +244,16 @@ def _ed25519_spki_pem(raw: bytes) -> bytes:
     return Ed25519PublicKey.from_public_bytes(raw).public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
 
 
-def _verify_rekor(receipt: Any, cose: bytes, checkpoint_key_id: str, pem: bytes) -> tuple[bool, str]:
-    """A Rekor ``dsse`` entry for this checkpoint's COSE statement, signed by
-    the Rekor key ``pem`` and logged under the checkpoint's own key."""
+def verify_rekor_receipt(
+    receipt: Any, *, checkpoint_cose: bytes, checkpoint_key_id: str, rekor_public_key_pem: bytes
+) -> tuple[bool, str]:
+    """Offline check of one Rekor ``dsse`` entry (a parsed log entry) against
+    the checkpoint it claims: the Signed Entry Timestamp verifies under
+    ``rekor_public_key_pem`` and ``logID`` is that key's, the entry's
+    ``payloadHash`` is SHA-256 of ``checkpoint_cose``, and its only verifier
+    key is the Ed25519 key ``checkpoint_key_id`` names. Returns ``(ok,
+    reason)``; never raises."""
+    cose, pem = checkpoint_cose, rekor_public_key_pem
     try:
         from cryptography.exceptions import InvalidSignature
         from cryptography.hazmat.primitives import hashes
@@ -285,8 +295,15 @@ def _verify_rekor(receipt: Any, cose: bytes, checkpoint_key_id: str, pem: bytes)
         return False, f"unreadable receipt: {exc}"
 
 
-def _verify_scrapi(receipt: bytes, cose: bytes, pem: bytes) -> tuple[bool, str, str | None]:
-    """A SCITT COSE Receipt (RFC 9162) over the leaf SHA-256(checkpoint COSE)."""
+def verify_scrapi_receipt(
+    receipt: bytes, *, checkpoint_cose: bytes, service_public_key_pem: bytes | str | None
+) -> tuple[bool, str, str | None]:
+    """Offline check of a SCRAPI receipt: a SCITT COSE Receipt (RFC 9162) over
+    the leaf SHA-256(``checkpoint_cose``), signed under the pinned key.
+    Without a key nothing is checked. Returns ``(ok, reason, grade)``."""
+    cose, pem = checkpoint_cose, service_public_key_pem
+    if pem is None:
+        return False, "not checked: no key pinned for this service", None
     try:
         from scitt_cose import verify_receipt
     except ImportError:
@@ -306,22 +323,33 @@ def _verify_scrapi(receipt: bytes, cose: bytes, pem: bytes) -> tuple[bool, str, 
     return True, "ok (unknown grade label ignored)", GRADE_OBSERVED_ONLY
 
 
-def _verify_one(signed: Mapping[str, Any], record: Mapping[str, Any], pem: bytes, cose: bytes) -> tuple[bool, str, str | None]:
+def verify_receipt(
+    signed: Mapping[str, Any], record: Mapping[str, Any], key_pem: bytes, checkpoint_cose: bytes | None
+) -> tuple[bool, str, str | None]:
+    """One receipt (a ``WitnessRecord`` mapping) under one key, for the
+    checkpoint whose signed fields are ``signed`` and whose COSE statement is
+    ``checkpoint_cose``. The binding comes from ``record["ts_url"]``. Returns
+    ``(ok, reason, grade)``; never raises on a malformed receipt."""
+    pem, cose = key_pem, checkpoint_cose
     binding = binding_of(record["ts_url"])
     if binding == BINDING_CLL:
         return _verify_cll(signed, record, pem)
+    if cose is None:
+        return False, "not checked: checkpoint COSE statement not available", None
     if binding == BINDING_REKOR:
         try:
             receipt = json.loads(base64.b64decode(record["receipt_b64"]))
         except (ValueError, TypeError) as exc:
             return False, f"unreadable receipt: {exc}", None
-        ok, reason = _verify_rekor(receipt, cose, signed["key_id"], pem)
+        ok, reason = verify_rekor_receipt(
+            receipt, checkpoint_cose=cose, checkpoint_key_id=signed["key_id"], rekor_public_key_pem=pem
+        )
         return ok, reason, GRADE_OBSERVED_ONLY if ok else None
     try:
         receipt_bytes = base64.b64decode(record["receipt_b64"])
     except (ValueError, TypeError) as exc:
         return False, f"unreadable receipt: {exc}", None
-    return _verify_scrapi(receipt_bytes, cose, pem)
+    return verify_scrapi_receipt(receipt_bytes, checkpoint_cose=cose, service_public_key_pem=pem)
 
 
 def _is_record(entry: Any) -> bool:
@@ -367,7 +395,7 @@ def verify_witness_receipts(
             except Exception as exc:  # noqa: BLE001 -- an unusable row key is "not checked"
                 pems, reason = [], f"not checked: unusable key in directory row ({exc})"
             for pem in pems:
-                ok, reason, grade = _verify_one(signed, record, pem, checkpoint_cose)
+                ok, reason, grade = verify_receipt(signed, record, pem, checkpoint_cose)
                 if ok:
                     break
         if ok:
