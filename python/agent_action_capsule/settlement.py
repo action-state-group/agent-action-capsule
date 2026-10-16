@@ -139,6 +139,25 @@ _RFC3339_UTC = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2
 
 
 
+def _utc_time_ok(value: Any) -> bool:
+    """An RFC 3339 UTC time that names a real instant: the pattern, a month
+    of 1-12, a day that exists in that month (leap years included), hour
+    0-23, minute 0-59 and second 0-59 (no leap second)."""
+    if not isinstance(value, str) or not _RFC3339_UTC.fullmatch(value):
+        return False
+    import calendar
+
+    year, month, day = int(value[0:4]), int(value[5:7]), int(value[8:10])
+    hour, minute, second = int(value[11:13]), int(value[14:16]), int(value[17:19])
+    return (
+        1 <= month <= 12
+        and 1 <= day <= calendar.monthrange(year, month)[1]
+        and hour <= 23
+        and minute <= 59
+        and second <= 59
+    )
+
+
 def amount_ok(a: Any) -> bool:
     return (isinstance(a, dict) and set(a) == {"value", "assetCode", "assetScale"}
             and isinstance(a["value"], str) and _VALUE.fullmatch(a["value"]) is not None
@@ -185,7 +204,7 @@ def structure_failures(member: Any) -> list[str]:
         out.append("settlement_malformed")
     if "terms_ref" in s and not (isinstance(s["terms_ref"], str) and _HEX64.fullmatch(s["terms_ref"])):
         out.append("settlement_malformed")
-    if "observed_at" in s and not (isinstance(s["observed_at"], str) and _RFC3339_UTC.fullmatch(s["observed_at"])):
+    if "observed_at" in s and not (_utc_time_ok(s["observed_at"])):
         out.append("settlement_malformed")
     if leg == "delivered":
         d = s.get("delivery")
@@ -197,10 +216,10 @@ def structure_failures(member: Any) -> list[str]:
                        for m in ("content_digest", "tracking_digest", "address_digest"))
                 or ("carrier" in d and not isinstance(d["carrier"], str))
                 or ("status" in d and d["status"] not in _DELIVERY_STATUSES)
-                or any(m in d and not (isinstance(d[m], str) and _RFC3339_UTC.fullmatch(d[m]))
+                or any(m in d and not (_utc_time_ok(d[m]))
                        for m in ("shipped_at", "delivered_at"))):
             out.append("settlement_malformed")
-    if "valid_until" in s and not (isinstance(s["valid_until"], str) and _RFC3339_UTC.fullmatch(s["valid_until"])):
+    if "valid_until" in s and not (_utc_time_ok(s["valid_until"])):
         out.append("settlement_malformed")
     if leg == "terms" and "deliverable" in s:
         dv = s["deliverable"]

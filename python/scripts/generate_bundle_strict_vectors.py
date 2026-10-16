@@ -368,6 +368,8 @@ DIRECTORY = {
         {"name": "Keyless witness", "endpoint": "https://keyless-witness.example", "since": "2026-01-01", "key_ids": []},
         {"name": "Off-curve witness", "endpoint": "https://off-curve-witness.example", "since": "2026-01-01",
          "key_ids": ["ff" * 32]},
+        {"name": "Null binding witness", "endpoint": "https://null-binding-witness.example", "since": "2026-01-01",
+         "binding": None, "key_ids": [raw_public(CLL_WITNESS).hex()]},
         {"name": "P-256 witness", "endpoint": "https://p256-witness.example", "since": "2026-01-01",
          "key_ids": [hashlib.sha256(spki_der(P256_WITNESS)).hexdigest()], "public_keys": [b64(spki_der(P256_WITNESS))]},
         {"name": "Rekor", "endpoint": "https://rekor.example", "since": "2026-01-01", "binding": "rekor",
@@ -376,6 +378,8 @@ DIRECTORY = {
          "binding": "rekor", "key_ids": [REKOR_LOG_ID]},
         {"name": "SCITT service", "endpoint": "https://scitt.example", "since": "2026-01-01", "binding": "scrapi",
          "key_ids": [raw_public(SCRAPI_KEY).hex()]},
+        {"name": "Two-key witness", "endpoint": "https://two-key-witness.example", "since": "2026-01-01",
+         "key_ids": [raw_public(OTHER).hex(), raw_public(CLL_WITNESS).hex()]},
     ],
 }
 
@@ -803,6 +807,22 @@ def build_cases() -> list[dict]:
                  witnessed(cll_receipt(leaf, ts_url=off_curve)),
                  {"status": "fail", "findings": [f"witness_receipt_invalid:{off_curve}"],
                   "receipts": [receipt_expect(off_curve, "cll", "fail")]}, verdict="INVALID")
+    two_key = "https://two-key-witness.example"
+    witness_case("pos-witness-cll-second-key", "The row's first key does not verify the receipt; its second does.",
+                 witnessed(cll_receipt(leaf, ts_url=two_key)),
+                 {"status": "pass", "findings": [], "receipts": [receipt_expect(two_key, "cll", "pass", "mmr-verified")]})
+    null_binding = "https://null-binding-witness.example"
+    witness_case("pos-witness-row-binding-null",
+                 "The only row for this endpoint says binding null: it is no cll row, so the receipt is not checked.",
+                 witnessed(cll_receipt(leaf, ts_url=null_binding)),
+                 {"status": "withheld", "findings": [f"witness_unverified:{null_binding}"],
+                  "receipts": [receipt_expect(null_binding, "cll", "withheld")]})
+    not_a_stub = {**cll_receipt(leaf), "receipt_b64": b64(b"not a receipt"), "is_stub": 1}
+    witness_case("neg-witness-stub-not-boolean",
+                 "is_stub is 1, not JSON true: the entry is checked as a receipt, and its bytes are not one.",
+                 witnessed(not_a_stub),
+                 {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
+                  "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
     no_size = cll_receipt(leaf)
     del no_size["tree_size"]
     witness_case("neg-witness-malformed", "A receipt entry without tree_size, beside a good one.",
@@ -920,6 +940,8 @@ def record_cases() -> list[dict]:
         {"id": "invalid-half-claim", "description": "key_id without signature.", "record": half, "expect": "invalid"},
         {"id": "invalid-other-key", "description": "Signed by another key than key_id.", "record": other,
          "expect": "invalid"},
+        {"id": "invalid-null-members", "description": "signature and key_id are present as JSON null.",
+         "record": {**capsule("record-null"), "signature": None, "key_id": None}, "expect": "invalid"},
         {"id": "invalid-not-hex", "description": "signature is not hex.", "record": not_hex, "expect": "invalid"},
         {"id": "invalid-unknown-canonicalization", "description": "A canonicalization_id the Capsule ID cannot be "
          "recomputed under.", "record": unknown, "expect": "invalid"},

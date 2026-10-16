@@ -61,7 +61,8 @@ least one record and every record's identity holds. Otherwise it fails with
 **`signatures`.** A record's producer signature is its local-only `signature`
 (the hex Producer Envelope) and `key_id` (hex raw Ed25519 key):
 
-- `unclaimed`: neither member is present.
+- `unclaimed`: neither member is present. A member present as JSON `null`
+  is present (`invalid-null-members`).
 - `invalid`: only one of them is present, either is not a string of hex digit
   pairs (upper or lower case, no whitespace), or the envelope does not verify
   under `key_id` over the Capsule ID recomputed from the record's own content.
@@ -149,9 +150,13 @@ checkpoint's `key_id`. It is reported and never gates. Otherwise it is
 Each other entry gets one result `{ts_url, binding, status, grade}`, worked
 out in this order:
 
-1. A receipt with `is_stub` set to JSON `true` is `withheld`.
+1. A receipt with `is_stub` set to JSON `true` is `withheld`. Any other
+   `is_stub` value (`1`, `"true"`) does not make it a stub
+   (`neg-witness-stub-not-boolean`).
 2. Its directory row is the first row, in directory order, whose `binding`
-   (default `cll`) is the receipt's binding and whose `endpoint`, with every
+   (default `cll` when the member is absent; a row whose `binding` is present
+   but not a string, `null` included, matches no receipt:
+   `pos-witness-row-binding-null`) is the receipt's binding and whose `endpoint`, with every
    trailing `/` removed, is the receipt's endpoint, compared as exact,
    case-sensitive strings. The binding is `rekor` for a `rekor+` URL scheme,
    `scrapi` for a `scrapi+` scheme (the scheme compared without case), and
@@ -164,7 +169,8 @@ out in this order:
    key, one under which nothing verifies, so the receipt fails:
    `neg-witness-cll-key-not-a-point`), except in a `rekor` row, where it makes the row unusable
    (`withheld`). A row with no keys is `withheld`.
-4. The receipt is `pass` under the first key it verifies under. If none
+4. The receipt is `pass` under the first key it verifies under, in
+   `key_ids` order (`pos-witness-cll-second-key`). If none
    verifies, it is `fail`.
 
 A verifier that cannot run a receipt check at all (for example, no COSE
@@ -302,6 +308,9 @@ checkpoint is signed by another, the log key.
 | `pos-witness-cll-es256` | a `cll` receipt signed ES256 under the row's P-256 key | VALID |
 | `neg-witness-cll-es256-other-curve` | a receipt declaring ES256 under the row's secp256k1 key | INVALID |
 | `neg-witness-cll-key-not-a-point` | the row's key id is 32 bytes that are not an Ed25519 point | INVALID |
+| `pos-witness-cll-second-key` | the row's first key does not verify; its second does | VALID |
+| `pos-witness-row-binding-null` | the only row for the endpoint has `binding: null` | VALID, witnesses withheld |
+| `neg-witness-stub-not-boolean` | `is_stub: 1` on bytes that are not a receipt | INVALID |
 | `neg-witness-malformed` | an entry without `tree_size`, beside a good receipt | INVALID |
 | `pos-witness-scrapi` | a `scrapi` receipt, no grade label | VALID, grade `observed-only` |
 | `pos-witness-scrapi-unknown-grade` | an unknown grade label | VALID, grade `observed-only` |
@@ -324,6 +333,7 @@ checkpoint is signed by another, the log key.
 | `unclaimed` | `unclaimed` |
 | `invalid-half-claim` | `invalid`: `key_id` without `signature` |
 | `invalid-other-key` | `invalid` |
+| `invalid-null-members` | `invalid`: `signature` and `key_id` are JSON `null` |
 | `invalid-not-hex` | `invalid` |
 | `invalid-unknown-canonicalization` | `invalid`: `as-transmitted` cannot be recomputed |
 

@@ -59,6 +59,33 @@ Every observed leg in the other cases carries explicit fee members:
 the legs stay valid Capsules (the base profile's never-reject invariant) and a
 verifier reports `unjoined` instead of `agreed`.
 
+## Verifier details the cases do not reach
+
+The library verifiers (`agent_action_capsule.settlement.verify_settlements`
+and its Go, TypeScript and Rust ports) also agree on these readings of the
+draft, which no case above exercises:
+
+- Patterns match the whole string with ASCII digits only. An RFC 3339 UTC time
+  (`observed_at`, `valid_until`, `shipped_at`, `delivered_at`) must also name a
+  real instant: month 1-12, a day that exists in that month, hour 0-23, minute
+  0-59, second 0-59 (no leap second).
+- Amounts are compared as decimal digit strings at the largest scale, so any
+  length is exact. Two heads on one side compare by value, not by spelling.
+- `payment_ref: null`, a qualifier that is not a string, a non-string
+  `delivery.direction` or `wrapped[].type` or `wrapped[].content`, and an
+  optional delivery member of the wrong type (`carrier` a string,
+  `tracking_digest` and `address_digest` 64 lowercase hex, `status` one of
+  `pending`, `in_transit`, `delivered`, `failed`, `returned`) are
+  `settlement_malformed`.
+- `wrapped[].content` is canonical unpadded base64url; content that does not
+  decode is `wrapped_digest_mismatch`.
+- A leg's envelope `signature` must be hex digit pairs (no whitespace) or the
+  leg is `envelope_invalid`. A `capsule_id` that is not a string is reported
+  as `null`.
+- The state comes from the first payer head and payee head, in input order,
+  under distinct keys; `unjoined` takes precedence over a mismatch between two
+  heads of one side.
+
 ## How to consume them
 
 For each case, a verifier:

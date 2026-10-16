@@ -219,3 +219,15 @@ def test_deeply_nested_wrapped_octets_never_raise():
     octets = b"[" * 100000 + b"]" * 100000
     leg = {"wrapped": [{"type": "x402.payment-payload", "digest": hashlib.sha256(octets).hexdigest()}]}
     assert _x402_scheme([leg], {hashlib.sha256(octets).hexdigest(): octets}) is None
+
+
+@pytest.mark.parametrize("when", [
+    "2026-02-30T00:00:00Z", "2026-02-29T00:00:00Z", "2026-13-01T00:00:00Z", "2026-00-10T00:00:00Z",
+    "2026-01-00T00:00:00Z", "2026-01-01T24:00:00Z", "2026-01-01T00:60:00Z", "2026-12-31T23:59:60Z",
+])
+def test_times_must_name_a_real_instant(when):
+    assert structure_failures(_observed(observed_at=when)) == ["settlement_malformed"]
+
+
+def test_a_leap_day_is_a_real_instant():
+    assert structure_failures(_observed(observed_at="2024-02-29T12:00:00.25Z")) == []

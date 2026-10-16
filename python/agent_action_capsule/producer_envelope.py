@@ -194,8 +194,6 @@ AUTHORED = "authored"
 UNCLAIMED = "unclaimed"
 INVALID = "invalid"
 
-# The local-only producer-envelope fields; never part of a Capsule ID preimage.
-_LOCAL_ONLY_FIELDS = ("signature", "key_id")
 
 
 def _record_capsule_id(record: dict) -> str:
@@ -209,11 +207,11 @@ def _record_capsule_id(record: dict) -> str:
     """
     import hashlib
 
-    from .canonical import jcs, normalize
+    from .canonical import LOCAL_ONLY_FIELDS, jcs, normalize
 
     declared = record.get("canonicalization_id")
     algorithm = "jcs-n" if declared is None else declared
-    canonical = {k: v for k, v in record.items() if k != "capsule_id" and k not in _LOCAL_ONLY_FIELDS}
+    canonical = {k: v for k, v in record.items() if k != "capsule_id" and k not in LOCAL_ONLY_FIELDS}
     if algorithm == "jcs-n":
         canonical.pop("chain", None)
         return hashlib.sha256(jcs(normalize(canonical))).hexdigest()
