@@ -10,7 +10,9 @@
 //! | [`registries`] | profile registries (§12) | `go/registries` |
 //! | [`verify`] | Class 1 verification, checks 1-9 and the store checks (§6) | `go/verify` |
 //! | [`envelope`] | Producer Envelope | `go/envelope` |
-//! | `bundle` (feature `bundle`) | Evidence Bundle v2 | `go/bundle` |
+//! | `bundle` (feature `bundle`) | Evidence Bundle v2; strict verification with feature `strict` | `go/bundle` |
+//! | `witness` (feature `strict`) | witness receipts in `checkpoint.witnesses` | (Python `witness`) |
+//! | `settlement` (feature `settlement`) | two-party settlement records (`draft-mih-agent-settlement-records-00`) | (Python `settlement`) |
 //!
 //! Decode capsules with [`verify::decode_capsule_json`], not `serde_json`'s
 //! own decoder: it keeps each number's source text (`arbitrary_precision`)
@@ -30,3 +32,7 @@ pub mod verify;
 pub mod bundle;
 #[cfg(feature = "bundle")]
 mod disclosure;
+#[cfg(feature = "settlement")]
+pub mod settlement;
+#[cfg(feature = "strict")]
+pub mod witness;

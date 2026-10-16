@@ -144,6 +144,15 @@ jobs:
             echo "evidence-request's core depends on checkpointed-local-log" >&2; exit 1
           fi
 
+      # agent-action-capsule's features must each build and pass alone;
+      # `settlement` alone also runs without serde_json's preserve_order.
+      - name: Check agent-action-capsule's feature combinations
+        run: |
+          for features in "--no-default-features --features bundle" "--no-default-features --features strict" "--no-default-features --features settlement"; do
+            cargo clippy --locked -p agent-action-capsule --all-targets $features -- -D warnings
+            cargo test --locked -p agent-action-capsule $features
+          done
+
       # A consumer such as capsule-emit unifies serde_json's preserve_order
       # into the build; results must not depend on map iteration order.
       - name: Check the Rust verifier with serde_json preserve_order

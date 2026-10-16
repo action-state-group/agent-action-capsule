@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Strict Evidence Bundle verification (feature `strict`):
+  `bundle::verify_bundle_strict` and the `witness` module, as the Python
+  reference's `verify_bundle(..., strict=True)` (#280).
+  `envelope::verify_record_signature` and `canonical::normalize` are new.
+- The two-party settlement verifier (feature `settlement`):
+  `settlement::verify_settlements` (#280).
+
 ## 0.1.0
 
 - First release. Canonicalization and `capsule_id`, Class 1 verification

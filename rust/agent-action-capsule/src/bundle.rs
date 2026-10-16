@@ -10,16 +10,25 @@
 //! necessary: embedding a proof in a Capsule would change the Capsule ID,
 //! which is itself the MMR leaf.
 //!
-//! **Scope note (deliberate, not a silent gap):** this crate does not depend
-//! on `scitt-cose-receipt`. The only checkpoint-authentication member the
-//! Go/Python/TS siblings implement -- and the only one the AAC Evidence
-//! Bundle draft (-00) defines a wire shape for -- is `checkpoint.cose`, a
-//! self-signed CLL COSE checkpoint (see `authenticate_checkpoint`). No
-//! Evidence Bundle member for an external SCITT witness receipt is drafted
-//! yet, so there is no call site for a receipt verifier here; adding one
-//! ahead of a defined wire shape would be inventing spec text, not
-//! implementing it. When that member is drafted, wire `scitt-cose-receipt`
-//! in as a second, additive authentication path here.
+//! [`verify_bundle`] reads only what the Bundle draft defines; the one
+//! checkpoint-authentication member it checks is `checkpoint.cose`, a
+//! self-signed CLL COSE checkpoint (see `authenticate_checkpoint`). With the
+//! `strict` feature, [`verify_bundle_strict`] adds the checks a verifier
+//! needs before it tells a person a Bundle is VALID: each record's producer
+//! signature, the checkpoint read only from its signed COSE form,
+//! producer-selected Bundles, the `disclosures` overlay as one claim, and
+//! the witness receipts in `checkpoint.witnesses` ([`crate::witness`]), with
+//! a verdict. `completeness.selection` and `checkpoint.witnesses` are not
+//! defined by the Bundle draft, so strict mode reads them as verifier
+//! extensions (`vectors/bundle/strict/README.md`).
+
+#[cfg(feature = "strict")]
+mod strict;
+#[cfg(feature = "strict")]
+pub use strict::{
+    verify_bundle_strict, RecordResult, StrictOptions, StrictVerificationResult,
+    SELECTION_PRODUCER_SELECTED,
+};
 
 use crate::canonical::{self, CanonicalError};
 use crate::{disclosure, verify};

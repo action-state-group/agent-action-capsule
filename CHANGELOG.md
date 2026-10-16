@@ -18,6 +18,16 @@
   both parties' leg records (`draft-mih-agent-settlement-records-00`), as capsule-emit did, and
   passes every case in `vectors/settlement/` (#280). Building and sealing legs stays with
   producers.
+- Rust: `agent-action-capsule` ports both (#280). With the new `strict` feature,
+  `bundle::verify_bundle_strict(&bundle, &StrictOptions { require_signature, witness_directory })`
+  returns a `StrictVerificationResult` with `verdict()`, the claims in report order, per-record
+  and per-receipt results, and the plain `VerificationResult` unchanged as `base`; the `witness`
+  module holds the `cll`, `rekor` and `scrapi` receipt checks, using `scitt-cose-receipt` for RFC
+  9162 receipts and `p256` for Rekor's Signed Entry Timestamp. `envelope::verify_record_signature`
+  grades one record's signature and `canonical::normalize` is the vintage `jcs-n` normalization.
+  The new `settlement` feature adds `settlement::verify_settlements`, which compares amounts exactly
+  as decimal digit strings. Every case in `vectors/bundle/strict/` and `vectors/settlement/`
+  passes.
 - CI: the Python job installs the released `checkpointed-local-log` (0.6) instead of a pinned
   commit, since strict mode needs its COSE checkpoint verifier.
 - Python: `evidence_request.encode_cll_inclusion_proof(leaf, path)` and

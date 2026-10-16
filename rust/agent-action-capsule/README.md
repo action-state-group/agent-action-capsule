@@ -11,8 +11,10 @@ Go-, TypeScript- and Rust-sealed capsules in every implementation.
 | `canonical` | RFC 8785 JCS, JSON-DIGEST and `capsule_id` | `go/canonical` |
 | `registries` | the profile registries, from an embedded `spec/REGISTRY.md` | `go/registries` |
 | `verify` | Class 1 verification (checks 1-9) and the store checks | `go/verify` |
-| `envelope` | Producer Envelope (COSE_Sign1 over the Capsule ID) | `go/envelope` |
-| `bundle` (feature `bundle`) | Evidence Bundle v2 codec and verifier | `go/bundle` |
+| `envelope` | Producer Envelope (COSE_Sign1 over the Capsule ID), a record's producer signature | `go/envelope` |
+| `bundle` (feature `bundle`) | Evidence Bundle v2 codec and verifier; `verify_bundle_strict` with feature `strict` | `go/bundle` |
+| `witness` (feature `strict`) | witness receipts (`cll`, `rekor`, `scrapi`) in `checkpoint.witnesses` | Python `witness` |
+| `settlement` (feature `settlement`) | two-party settlement records (`draft-mih-agent-settlement-records-00`) | Python `settlement` |
 
 ```rust
 use agent_action_capsule::verify::{decode_capsule_json, verify};
@@ -35,6 +37,30 @@ depends on this crate.
 
 The `bundle` feature adds `checkpointed-local-log`, which also carries an HTTP
 witness client; record verification does not need it.
+
+The `strict` feature (which includes `bundle`) adds
+`bundle::verify_bundle_strict`, the checks a verifier needs before it tells a
+person that a Bundle is VALID: each record's producer signature, the
+checkpoint read only from its signed COSE form, producer-selected Bundles, the
+`disclosures` overlay as one claim, and the witness receipts in
+`checkpoint.witnesses` under a witness directory the caller supplies (none is
+trusted by default). Its result carries a `VALID`, `INCOMPLETE` or `INVALID`
+verdict; the plain `verify_bundle` is unchanged. It adds
+`scitt-cose-receipt`, `coset` and `p256`. `vectors/bundle/strict/README.md`
+describes every rule.
+
+```rust
+use agent_action_capsule::bundle::{verify_bundle_strict, StrictOptions};
+
+let result = verify_bundle_strict(&bundle, &StrictOptions {
+    require_signature: true,
+    witness_directory: Some(&directory),
+});
+println!("{}", result.verdict());
+```
+
+The `settlement` feature adds `settlement::verify_settlements`, which derives
+payment and delivery states from both parties' leg records.
 
 Not yet in Rust: Disclosure Envelopes, composed bundles, and the emitter and
 presentation layers.
