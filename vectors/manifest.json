@@ -14,6 +14,7 @@
     "judgment": "judgment/manifest.json",
     "presentation_resolution": "presentation-resolution/manifest.json",
     "interop_profile_v0": "interop-profile-v0/manifest.json",
-    "evidence_layer_padding": "evidence-layer/padding/manifest.json"
+    "evidence_layer_padding": "evidence-layer/padding/manifest.json",
+    "cll_material": "cll-material/manifest.json"
   }
 }

@@ -1,0 +1,12 @@
+{
+  "spec": "spec/interop-profile-v0.md",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_cll_material_vectors.py",
+  "files": [
+    {
+      "path": "cases.json",
+      "sha256": "e32671dadc1e8cf81487e15a5055b3da4c6a280983f8ea00b2026e43d09a4608",
+      "count": 184
+    }
+  ]
+}

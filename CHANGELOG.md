@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Python: `evidence_request.encode_cll_inclusion_proof(leaf, path)` and
+  `encode_cll_consistency_proof(old_size, new_size, old_peaks, paths, new_peaks)` write the
+  `cll-inclusion-proof` and `cll-consistency-proof` octets (`spec/interop-profile-v0.md` §6.2.1)
+  for proofs a log has computed, as Go's `EncodeCLLInclusionProof` / `EncodeCLLConsistencyProof`
+  and Rust's `encode_inclusion_proof` / `encode_consistency_proof` do. A Python responder serving a
+  Checkpointed Local Log can now send the material `check_cll_material` reads. The consistency
+  encoder computes the right peaks itself and refuses paths that do not reach the new peaks, as
+  Rust's does. New corpus `vectors/cll-material/` (184 cases, including the §10.1 worked example's
+  two proofs) gives each encoder's inputs and the exact octets; Python, Go and Rust check their
+  encoders against it.
+
 ## 0.8.1 — 2026-10-15
 
 - Python: `agent_action_capsule.evidence_request.sign_envelope` builds and signs the artifact
