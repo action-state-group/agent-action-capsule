@@ -109,7 +109,8 @@ verifier's claims, with two changes:
     `range_root` is not the signed `root`;
   - for each record, in order: `membership_record_unbound:<id>` when it has no
     `log_coordinates`; `membership_coordinates_invalid:<id>` when its `log_id`
-    is not the signed one, `seq` or `leaf_index` is not a safe integer, `seq`
+    is not the signed one, `seq` or `leaf_index` is not a safe integer (a JSON
+    integer, not a boolean, within ±(2^53 − 1)), `seq`
     is below 1, `leaf_index` is not `seq - 1`, or the `seq` repeats;
     `membership_proof_invalid:<id>` when the inclusion proof is malformed, its
     `size` is not the signed `mmr_size`, or it does not verify;
@@ -144,13 +145,13 @@ Each other entry gets one result `{ts_url, binding, status, grade}`, worked
 out in this order:
 
 1. A receipt with `is_stub` set to JSON `true` is `withheld`.
-2. Its directory row is the row whose `binding` (default `cll`) is the
-   receipt's binding and whose `endpoint`, with every trailing `/` removed,
-   is the receipt's endpoint. The binding is `rekor` for a `rekor+` URL
-   scheme, `scrapi` for a `scrapi+` scheme (the scheme compared without
-   case), and otherwise `cll`. The endpoint is the URL with any `rekor+` or
-   `scrapi+` prefix removed and every trailing `/` removed. No
-   row means `withheld`.
+2. Its directory row is the first row, in directory order, whose `binding`
+   (default `cll`) is the receipt's binding and whose `endpoint`, with every
+   trailing `/` removed, is the receipt's endpoint, compared as exact,
+   case-sensitive strings. The binding is `rekor` for a `rekor+` URL scheme,
+   `scrapi` for a `scrapi+` scheme (the scheme compared without case), and
+   otherwise `cll`. The endpoint is the URL with any `rekor+` or `scrapi+`
+   prefix removed and every trailing `/` removed. No row means `withheld`.
 3. The row's keys, in `key_ids` order: a `key_id` that names a `public_keys`
    entry (base64 DER SubjectPublicKeyInfo) by the SHA-256 of its DER, or an
    Ed25519 entry by its raw key, is that key. Any other `key_id` is read as a
@@ -194,7 +195,8 @@ The three bindings check a receipt as follows.
      verifies over `{"body","integratedTime","logID","logIndex"}` as JSON with
      sorted keys and no whitespace.
   3. `body` decodes (base64 JSON) to a `dsse` entry whose
-     `spec.payloadHash.value` is the SHA-256 of the checkpoint's COSE bytes.
+     `spec.payloadHash` has `algorithm` `sha256` and a `value` that is the
+     SHA-256 of the checkpoint's COSE bytes.
   4. The verifier keys of `spec.signatures` (base64 PEM, compared without
      `\r` and surrounding whitespace) are exactly the signed checkpoint's
      `key_id`, as an Ed25519 SubjectPublicKeyInfo PEM.
@@ -273,6 +275,8 @@ checkpoint is signed by another, the log key.
 | `neg-witness-cll-other-checkpoint` | a genuine receipt for another checkpoint | INVALID |
 | `neg-witness-cll-wrong-key` | a receipt signed by a key the row does not list | INVALID |
 | `neg-witness-cll-attached-payload` | a receipt with an attached payload signed by the listed key | INVALID |
+| `neg-witness-cll-vds-ccf` | a receipt signed over the right root that declares `vds` 2 | INVALID |
+| `neg-witness-cll-alg-unsupported` | a receipt signed over the right root that declares `alg` -257 | INVALID |
 | `neg-witness-malformed` | an entry without `tree_size`, beside a good receipt | INVALID |
 | `pos-witness-scrapi` | a `scrapi` receipt, no grade label | VALID, grade `observed-only` |
 | `pos-witness-scrapi-unknown-grade` | an unknown grade label | VALID, grade `observed-only` |

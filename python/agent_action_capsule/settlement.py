@@ -529,8 +529,11 @@ def _settlement(terms_cid: str, terms: dict, legs: dict[str, dict], records: dic
 def _pair(terms_cid: str, terms: dict, payer: list[tuple[str, dict]], payee: list[tuple[str, dict]], report: SettlementReport,
           objects: dict[str, bytes]) -> dict:
     out: dict[str, Any] = {}
-    # The pair the state is derived from: one payer head and one payee head under
-    # distinct keys. If every combination shares a key, the pair is conflated.
+    # The pair the state is derived from: the first payer head and payee head,
+    # in input order, under distinct keys. If every combination shares a key,
+    # the pair is conflated. The join and fee checks below read only this pair
+    # and return unjoined before the heads of one side are compared, so unjoined
+    # takes precedence over a mismatch between heads (as capsule-emit did).
     pairs = [(p, q) for p in payer for q in payee if report.keys.get(p[0]) != report.keys.get(q[0])]
     conflated = not pairs
     (_, a), (b_rid, b) = pairs[0] if pairs else (payer[0], payee[0])

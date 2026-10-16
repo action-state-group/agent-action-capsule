@@ -91,3 +91,26 @@ def test_record_signature_hex_has_no_whitespace():
 
     verdict, _ = verify_record_signature({"capsule_id": "00" * 32, "signature": "d2 84", "key_id": "11" * 32})
     assert verdict == "invalid"
+
+
+def test_a_rekor_payload_hash_must_say_sha256():
+    import base64
+    import json
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import generate_bundle_strict_vectors as g
+
+    from agent_action_capsule.witness import verify_rekor_receipt
+
+    cose = b"checkpoint statement"
+    good = json.loads(base64.b64decode(g.rekor_receipt(cose)["receipt_b64"]))
+    pem = g.spki_pem(g.REKOR_KEY)
+    key_id = g.raw_public(g.LOG_KEY).hex()
+    assert verify_rekor_receipt(good, checkpoint_cose=cose, checkpoint_key_id=key_id, rekor_public_key_pem=pem)[0]
+    body = json.loads(base64.b64decode(good["body"]))
+    body["spec"]["payloadHash"]["algorithm"] = "sha512"
+    relabeled = {**good, "body": base64.b64encode(g._sorted_json(body)).decode()}
+    ok, _ = verify_rekor_receipt(relabeled, checkpoint_cose=cose, checkpoint_key_id=key_id, rekor_public_key_pem=pem)
+    assert not ok

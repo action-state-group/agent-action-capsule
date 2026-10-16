@@ -319,7 +319,8 @@ def verify_rekor_receipt(
         if entry.get("kind") != "dsse":
             return False, f"entry kind {entry.get('kind')!r}, expected 'dsse'"
         spec = entry.get("spec") or {}
-        if (spec.get("payloadHash") or {}).get("value") != hashlib.sha256(cose).hexdigest():
+        payload_hash = spec.get("payloadHash") or {}
+        if payload_hash.get("algorithm") != "sha256" or payload_hash.get("value") != hashlib.sha256(cose).hexdigest():
             return False, "entry payloadHash is not this checkpoint's bytes"
         verifiers = {
             base64.b64decode(s.get("verifier", ""), validate=True).replace(b"\r", b"").strip()

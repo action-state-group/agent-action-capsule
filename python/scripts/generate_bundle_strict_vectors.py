@@ -279,6 +279,22 @@ def attached_payload_receipt(leaf: str) -> dict:
     return {**genuine, "receipt_b64": b64(forged)}
 
 
+def resigned_receipt(leaf: str, protected_overrides: dict[int, Any]) -> dict:
+    """A ``cll`` receipt for ``leaf`` signed over the right root by the listed
+    key, but with protected-header values the profile refuses (``vds``,
+    ``alg``). Built by hand: the COSE library would not write them."""
+    import cbor2
+
+    genuine = cll_receipt(leaf)
+    outer = cbor2.loads(base64.b64decode(genuine["receipt_b64"]))
+    protected = {**cbor2.loads(outer.value[0]), **protected_overrides}
+    protected_bstr = cbor2.dumps(protected, canonical=True)
+    root = hashlib.sha256(b"\x00" + bytes.fromhex(leaf)).digest()  # RFC 9162 leaf hash of a one-leaf tree
+    signature = CLL_WITNESS.sign(cbor2.dumps(["Signature1", protected_bstr, b"", root]))
+    forged = cbor2.dumps(cbor2.CBORTag(18, [protected_bstr, outer.value[1], None, signature]))
+    return {**genuine, "receipt_b64": b64(forged)}
+
+
 def scrapi_receipt(cose: bytes, *, grade: str | None = None) -> dict:
     leaf = hashlib.sha256(cose).hexdigest()
     receipt = build_receipt(
@@ -712,6 +728,14 @@ def build_cases() -> list[dict]:
                  witnessed(attached_payload_receipt(leaf)),
                  {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
                   "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
+    for case_id, description, overrides in (
+        ("neg-witness-cll-vds-ccf", "A receipt signed over the right root that declares vds 2 (CCF).", {395: 2}),
+        ("neg-witness-cll-alg-unsupported", "A receipt signed over the right root that declares alg -257.",
+         {1: -257}),
+    ):
+        witness_case(case_id, description, witnessed(resigned_receipt(leaf, overrides)),
+                     {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
+                      "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
     no_size = cll_receipt(leaf)
     del no_size["tree_size"]
     witness_case("neg-witness-malformed", "A receipt entry without tree_size, beside a good one.",
