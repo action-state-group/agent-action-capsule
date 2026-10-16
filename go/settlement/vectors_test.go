@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/action-state-group/agent-action-capsule/go/settlement"
@@ -48,8 +49,8 @@ type vectorCase struct {
 // run maps a case to a Verify call the way python/tests/test_settlement_library.py
 // does: each leg carries its envelope as signature/key_id, and capsule IDs in
 // the report are mapped back to the case's labels. iso20022 is not carried by
-// the vectors.
-func run(t *testing.T, c vectorCase) map[string]interface{} {
+// the vectors. mutate, when set, edits the capsule list before the call.
+func run(t *testing.T, c vectorCase, mutate func([]interface{}) []interface{}) map[string]interface{} {
 	labels := map[string]string{}
 	input := settlement.Input{WrappedObjects: map[string][]byte{}}
 	if c.KeyPolicy != nil {
@@ -84,6 +85,9 @@ func run(t *testing.T, c vectorCase) map[string]interface{} {
 		octets, err := base64.RawURLEncoding.DecodeString(w.OctetsB64U)
 		require.NoError(t, err)
 		input.WrappedObjects[w.Digest] = octets
+	}
+	if mutate != nil {
+		input.Capsules = mutate(input.Capsules)
 	}
 	report := settlement.Verify(input)
 	relabel := func(entries []settlement.Entry) []settlement.Entry {
@@ -136,9 +140,40 @@ func TestSettlementVectors(t *testing.T) {
 		t.Run(c.ID, func(t *testing.T) {
 			var expect map[string]interface{}
 			require.NoError(t, json.Unmarshal(c.Expect, &expect))
-			require.Equal(t, expect, run(t, c))
+			require.Equal(t, expect, run(t, c, nil))
 		})
 	}
+}
+
+// A leg nested far deeper than any JSON text, built in Go, is capsule_invalid
+// and takes no part: the legs before and after it are read as before.
+func TestLegNestedTooDeeplyIsRefused(t *testing.T) {
+	var file struct {
+		Cases []vectorCase `json:"cases"`
+	}
+	decode(t, filepath.Join(vectorDir(), "cases.json"), &file)
+	c := file.Cases[0]
+	require.Equal(t, "pos-x402-two-sided-agreed", c.ID)
+
+	var deep interface{} = "leaf"
+	for range 2_000_000 {
+		deep = []interface{}{deep}
+	}
+	deepID := strings.Repeat("d", 64)
+	observed := run(t, c, func(capsules []interface{}) []interface{} {
+		out := append([]interface{}{map[string]interface{}{"capsule_id": deepID, "action_id": deep}}, capsules[:1]...)
+		out = append(out, map[string]interface{}{"capsule_id": json.Number("1"), "action_id": deep})
+		return append(out, capsules[1:]...)
+	})
+
+	var expect map[string]interface{}
+	require.NoError(t, json.Unmarshal(c.Expect, &expect))
+	expect["conforming"] = false
+	expect["failures"] = []interface{}{
+		map[string]interface{}{"records": []interface{}{deepID}, "code": "capsule_invalid"},
+		map[string]interface{}{"records": []interface{}{nil}, "code": "capsule_invalid"},
+	}
+	require.Equal(t, expect, observed)
 }
 
 func TestTablesMatchTheDraftRegistry(t *testing.T) {

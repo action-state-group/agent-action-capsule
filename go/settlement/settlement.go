@@ -31,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/agent-action-capsule/go/envelope"
 	"github.com/action-state-group/agent-action-capsule/go/verify"
 )
@@ -237,6 +238,13 @@ func Verify(in Input) Result {
 		var cid *string
 		if text, isString := capsule["capsule_id"].(string); isString {
 			cid = &text
+		}
+		// A leg nested deeper than any JSON text decodes to (only a value
+		// built in Go can be) is refused before the recursive Capsule checks
+		// can exhaust the stack; it takes no part in any state.
+		if canonical.TooDeep(capsule) {
+			report.Failures = append(report.Failures, Entry{Records: []*string{cid}, Code: "capsule_invalid"})
+			continue
 		}
 		var own []string
 		kid := ""
