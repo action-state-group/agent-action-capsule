@@ -54,3 +54,7 @@ required-features = ["cll"]
 [[test]]
 name = "cll_material"
 required-features = ["cll"]
+
+[[test]]
+name = "cll_material_vectors"
+required-features = ["cll"]

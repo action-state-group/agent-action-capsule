@@ -31,6 +31,10 @@ same-commit files in CI.
   members, links, payload commitments, `subject_ref`, `principal_ref`, a wrong
   `epistemic_type` and a wrong `capsule_id`;
   `python/scripts/generate_evidence_layer_padding_vectors.py` regenerates them.
+- `cll-material/`: profile `evidence-interop/0` §6.2.1 CLL proof encodings: a
+  responder's inputs and the exact `cll-inclusion-proof` and
+  `cll-consistency-proof` octets, including the §10.1 worked example's;
+  `python/scripts/generate_cll_material_vectors.py` regenerates them.
 - `minimum-necessary/`: provisional registry entries held for ratification
   (`spec/REGISTRY.md` §10, §14, §16): SD-JWT (RFC 9901) presentations as a
   revealed `agent_input`, the `disclosure-policy-decisions/v1` and

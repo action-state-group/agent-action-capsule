@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from . import _mmr
-from ._cbor import CborError, Tag, decode, encode_head
+from ._cbor import CborError, Tag, decode, encode, encode_head
 from ._common import (
     CLL_KINDS,
     FAIL,
@@ -29,8 +29,8 @@ from ._common import (
     to_profile_time,
 )
 
-__all__ = ["check_anchor_inclusion", "inclusion_failure", "consistency_failure", "CHECKPOINT", "INCLUSION",
-           "CONSISTENCY"]
+__all__ = ["check_anchor_inclusion", "inclusion_failure", "consistency_failure", "encode_inclusion",
+           "encode_consistency", "CHECKPOINT", "INCLUSION", "CONSISTENCY"]
 
 CHECKPOINT, INCLUSION, CONSISTENCY = CLL_KINDS
 _PROPERTY = "anchor_inclusion"
@@ -43,6 +43,10 @@ _MAX_PATH = 64
 # it names no node of such an MMR, and following it would take a position past the 8 octets the
 # interior hash writes it in. Go's evidencerequest uses the same bound.
 _MAX_HEIGHT = 52
+
+
+# The largest profile integer (§5.2).
+_MAX_INTEGER = (1 << 53) - 1
 
 
 def _path_fits(index: int, length: int) -> bool:
@@ -306,3 +310,62 @@ def consistency_failure(old_peaks: Sequence[bytes], new_peaks: Sequence[bytes], 
     if roots + right != list(new_peaks):
         return "roots and right-peaks are not the peak list of commitment"
     return None
+
+
+# --- Encoding (the responder side) ---------------------------------------------------------------
+#
+# These encode proofs a log has already computed; computing them is the log's. Go's
+# evidencerequest (EncodeCLLInclusionProof, EncodeCLLConsistencyProof) and Rust's
+# evidence_request::cll_material (encode_inclusion_proof, encode_consistency_proof) write the same
+# octets.
+
+
+def _hash_list(nodes: Sequence[bytes], label: str) -> list[bytes]:
+    # Checked before any conversion: bytes(32) would be a fabricated node, and a bare byte string
+    # would read as a list of integers.
+    if isinstance(nodes, (bytes, bytearray, str)) or len(nodes) > _MAX_PATH or \
+            not all(isinstance(n, (bytes, bytearray)) and len(n) == 32 for n in nodes):
+        raise ValueError(f"{label} is not a list of at most {_MAX_PATH} 32-octet nodes")
+    return [bytes(n) for n in nodes]
+
+
+def encode_inclusion(leaf: int, path: Sequence[bytes]) -> bytes:
+    """``cll-inclusion-proof`` octets for zero-based leaf ``leaf`` and its inclusion path (the
+    siblings from the leaf up to its peak): deterministic CBOR of ``[MMR node index, path]``.
+    Raises ValueError when the leaf's node index is not a profile integer or the path is longer
+    than any MMR can have."""
+    if not is_uint(leaf):
+        raise ValueError("leaf is not an unsigned integer")
+    index = 2 * leaf - bin(leaf).count("1")
+    nodes = _hash_list(path, "inclusion path")
+    if index > _MAX_INTEGER:
+        raise ValueError("the leaf's node index is not a profile integer")
+    if not _path_fits(index, len(nodes)):
+        raise ValueError("the inclusion path is longer than any MMR can have")
+    return encode([index, nodes])
+
+
+def encode_consistency(old_size: int, new_size: int, old_peaks: Sequence[bytes], paths: Sequence[Sequence[bytes]],
+                       new_peaks: Sequence[bytes]) -> bytes:
+    """``cll-consistency-proof`` octets proving the MMR of ``old_size`` nodes, whose peaks are
+    ``old_peaks``, extends to the MMR of ``new_size`` nodes, whose peaks are ``new_peaks``, given
+    each old peak's path into the new MMR: deterministic CBOR of ``[tree-size-1, tree-size-2,
+    consistency-paths, right-peaks]`` (MMR §7.1). Raises ValueError when the paths do not reach
+    ``new_peaks``, so no such proof exists."""
+    if not (is_uint(old_size) and is_uint(new_size) and 1 <= old_size <= new_size <= _MAX_INTEGER):
+        raise ValueError("sizes are not 1 <= tree-size-1 <= tree-size-2 below 2^53")
+    old = _hash_list(old_peaks, "old peaks")
+    new = _hash_list(new_peaks, "new peaks")
+    path_lists = [_hash_list(p, "consistency path") for p in paths]
+    if len(path_lists) > _MAX_PATH or len(path_lists) != len(old) or len(old) != len(_mmr.peaks(old_size - 1)):
+        raise ValueError("old peaks and consistency paths do not match tree-size-1")
+    if not all(_path_fits(i, len(p)) for i, p in zip(_mmr.peaks(old_size - 1), path_lists)):
+        raise ValueError("a consistency path is longer than any MMR can have")
+    roots = _mmr.consistent_roots(old_size - 1, old, path_lists)
+    if new[:len(roots)] != roots:
+        raise ValueError("the consistency paths do not reach the new peaks")
+    octets = encode([old_size, new_size, path_lists, new[len(roots):]])
+    failure = consistency_failure(old, new, octets)
+    if failure:
+        raise ValueError(failure)
+    return octets

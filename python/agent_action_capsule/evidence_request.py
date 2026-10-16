@@ -140,6 +140,8 @@ __all__ = [
     "check_cll_material",
     "verify_cll_inclusion",
     "verify_cll_consistency",
+    "encode_cll_inclusion_proof",
+    "encode_cll_consistency_proof",
     "Refusal",
     "RefusalCheck",
     "is_digest",
@@ -1070,6 +1072,31 @@ def verify_cll_consistency(old_peaks: Sequence[bytes], new_peaks: Sequence[bytes
     failure = _cll.consistency_failure(old_peaks, new_peaks, consistency)
     if failure:
         raise VerificationError(failure)
+
+
+def encode_cll_inclusion_proof(leaf: int, path: Sequence[bytes]) -> bytes:
+    """The ``cll-inclusion-proof`` octets for zero-based leaf ``leaf`` and its
+    inclusion path, the siblings from the leaf up to its peak: deterministic
+    CBOR of ``[MMR node index, path]`` (profile §6.2.1). The log computes the
+    path; this only encodes it, as Go's ``EncodeCLLInclusionProof`` and Rust's
+    ``encode_inclusion_proof`` do. Raises ``ValueError`` when the leaf's node
+    index is not a profile integer or the path is longer than any MMR can
+    have."""
+    return _cll.encode_inclusion(leaf, path)
+
+
+def encode_cll_consistency_proof(old_size: int, new_size: int, old_peaks: Sequence[bytes],
+                                 paths: Sequence[Sequence[bytes]], new_peaks: Sequence[bytes]) -> bytes:
+    """The ``cll-consistency-proof`` octets proving that the MMR of
+    ``old_size`` nodes, whose peaks are ``old_peaks``, extends to the MMR of
+    ``new_size`` nodes, whose peaks are ``new_peaks``, given each old peak's
+    path into the new MMR: deterministic CBOR of ``[tree-size-1,
+    tree-size-2, consistency-paths, right-peaks]`` (profile §6.2.1; MMR
+    §7.1). The right peaks are the new peaks no old peak's path reaches.
+    Same octets as Rust's ``encode_consistency_proof`` and Go's
+    ``EncodeCLLConsistencyProof``. Raises ``ValueError`` when the paths do
+    not reach ``new_peaks``, so no such proof exists."""
+    return _cll.encode_consistency(old_size, new_size, old_peaks, paths, new_peaks)
 
 
 def check_cll_material(envelope: Envelope, trust: TrustPolicy) -> PropertyReport:
