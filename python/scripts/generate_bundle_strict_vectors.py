@@ -177,25 +177,36 @@ def proof_dict(p: Any) -> dict:
     }
 
 
-def bundle_over(records: list[dict], *, log_key: Ed25519PrivateKey = LOG_KEY, cose: bool = True) -> dict:
-    """A Bundle over a whole log of ``records`` (seq 1..n), checkpoint signed by ``log_key``."""
+def bundle_over(
+    records: list[dict], *, log_key: Ed25519PrivateKey = LOG_KEY, cose: bool = True, prior_after: int | None = None
+) -> dict:
+    """A Bundle over a whole log of ``records`` (seq 1..n), checkpoint signed by
+    ``log_key``. With ``prior_after``, the checkpoint follows a prior one taken
+    after that many records and carries the consistency proof between them."""
     store = MemoryNodeStore()
-    for record in records:
+    prev_size, prev_root, prev_peaks = 0, "", None
+    for index, record in enumerate(records):
+        if prior_after is not None and index == prior_after:
+            prev_size = store.size()
+            prev_peaks = [store.node(p) for p in peaks(prev_size)]
+            prev_root = root_from_peaks(prev_peaks).hex()
         add_leaf(store, leaf_hash(bytes.fromhex(record["capsule_id"])))
     size = store.size()
     peak_hashes = [store.node(p) for p in peaks(size)]
     root = root_from_peaks(peak_hashes).hex()
     signer = _StatementSigner(log_key)
     cp = CheckpointRecord(
-        v=1, kind="mmr_checkpoint", log_id=LOG_ID, mmr_size=size, root=root, prev_size=0, prev_root="",
+        v=1, kind="mmr_checkpoint", log_id=LOG_ID, mmr_size=size, root=root, prev_size=prev_size, prev_root=prev_root,
         key_id=signer.key_id, timestamp=TIMESTAMP, signature="",
     )
     checkpoint = {
-        "log_id": LOG_ID, "mmr_size": size, "root": root, "prev_size": 0, "prev_root": "",
+        "log_id": LOG_ID, "mmr_size": size, "root": root, "prev_size": prev_size, "prev_root": prev_root,
         "key_id": signer.key_id, "timestamp": TIMESTAMP,
     }
     if cose:
-        checkpoint["cose"] = b64u(checkpoint_to_cose(cp, signer, peak_hashes))
+        proof = core.consistency_proof(store, prev_size, size) if prev_size else None
+        checkpoint["cose"] = b64u(checkpoint_to_cose(
+            cp, signer, peak_hashes, prev_peak_hashes=prev_peaks, consistency_proof=proof))
     n = len(records)
     rp = core.range_proof(store, 0, n - 1, size)
     ids = [r["capsule_id"] for r in records]
@@ -346,7 +357,8 @@ UNANCHORED = claim("withheld", "checkpoint_unverified")
 
 
 def records_expect(bundle: dict, signature: dict[int, str] | None = None, identity: dict[int, bool] | None = None) -> list[dict]:
-    seqs = {cid: m["log_coordinates"]["seq"] for cid, m in bundle["completeness_certificate"]["memberships"].items()}
+    seqs = {cid: m["log_coordinates"]["seq"] for cid, m in bundle["completeness_certificate"]["memberships"].items()
+            if "log_coordinates" in m}
     out = []
     for i, r in enumerate(bundle["records"]):
         out.append({
@@ -549,6 +561,61 @@ def build_cases() -> list[dict]:
             per_record_membership=claim("fail", f"membership_proof_invalid:{ids[2]}")),
          "witnesses": ABSENT, "records": records_expect(selected_bad),
          "checkpoint_authenticated": True, "signer_matches_checkpoint": False},
+    ))
+
+    def selected_with(case_id: str, description: str, edit: Any, findings: list[str]) -> None:
+        bundle = copy.deepcopy(selected)
+        edit(bundle["completeness_certificate"]["memberships"])
+        cases.append(case(case_id, description, bundle, {
+            "verdict": "INVALID", "claims": claims(
+                interval_coverage=claim("withheld", "selection_not_checkable"),
+                per_record_membership=claim("fail", *findings)),
+            "witnesses": ABSENT, "records": records_expect(bundle),
+            "checkpoint_authenticated": True, "signer_matches_checkpoint": False,
+        }))
+
+    def wrong_log_and_seq(members: dict) -> None:
+        members[ids[0]]["log_coordinates"]["log_id"] = "log:other"
+        members[ids[2]]["log_coordinates"].update(seq=0, leaf_index=-1)
+
+    def leaf_index_off(members: dict) -> None:
+        members[ids[2]]["log_coordinates"]["leaf_index"] = 3
+
+    def repeated_seq(members: dict) -> None:
+        members[ids[2]]["log_coordinates"].update(seq=1, leaf_index=0)
+
+    def unbound(members: dict) -> None:
+        del members[ids[0]]["log_coordinates"]
+
+    selected_with("neg-producer-selected-coordinates-log-and-seq",
+                  "Producer-selected: one membership names another log, another has seq 0.", wrong_log_and_seq,
+                  [f"membership_coordinates_invalid:{ids[0]}", f"membership_coordinates_invalid:{ids[2]}"])
+    selected_with("neg-producer-selected-leaf-index", "Producer-selected: leaf_index is not seq - 1.",
+                  leaf_index_off, [f"membership_coordinates_invalid:{ids[2]}"])
+    selected_with("neg-producer-selected-repeated-seq", "Producer-selected: two memberships claim seq 1.",
+                  repeated_seq, [f"membership_coordinates_invalid:{ids[2]}"])
+    selected_with("neg-producer-selected-unbound", "Producer-selected: a record's membership has no coordinates.",
+                  unbound, [f"membership_record_unbound:{ids[0]}"])
+
+    continued = bundle_over(base_records, prior_after=2)
+    cases.append(case(
+        "pos-checkpoint-with-prior",
+        "The checkpoint follows a prior one after two records and carries the consistency proof (prev_size > 0).",
+        continued,
+        {"verdict": "VALID", "claims": claims(), "witnesses": ABSENT, "records": records_expect(continued),
+         "checkpoint_authenticated": True, "signer_matches_checkpoint": False},
+    ))
+    prior_null = copy.deepcopy(base)
+    prior_null["checkpoint"]["prev_root"] = None
+    cases.append(case(
+        "neg-checkpoint-prev-root-null",
+        "The first checkpoint's JSON copy says prev_root null where the signed statement says \"\".",
+        prior_null,
+        {"verdict": "INVALID", "claims": claims(
+            checkpoint=claim("fail", "checkpoint_field_mismatch:prev_root"),
+            interval_coverage=UNANCHORED, per_record_membership=UNANCHORED),
+         "witnesses": ABSENT, "records": records_expect(prior_null),
+         "checkpoint_authenticated": False, "signer_matches_checkpoint": None},
     ))
 
     payload = {"question": "strict"}

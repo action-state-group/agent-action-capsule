@@ -246,7 +246,7 @@ def _verify_cll(signed: Mapping[str, Any], record: Mapping[str, Any], pem: bytes
     try:
         from scitt_cose import verify_receipt
     except ImportError:
-        return False, "scitt-cose is not installed; run: pip install 'agent-action-capsule[envelope]'", None
+        return False, "not checked: scitt-cose is not installed (agent-action-capsule[envelope])", None
     shape = _receipt_shape_error(receipt)
     if shape is not None:
         return False, shape, None

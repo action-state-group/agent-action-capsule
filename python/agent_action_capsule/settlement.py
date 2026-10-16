@@ -562,7 +562,9 @@ def _pair(terms_cid: str, terms: dict, payer: list[tuple[str, dict]], payee: lis
         first = side[0][1]
         for _, other in side[1:]:
             for name in ("amount", "routing_fee", "received", "receive_fee"):
-                if first.get(name) != other.get(name):
+                x, y = first.get(name), other.get(name)
+                # The same amount at another scale is the same amount (section 6).
+                if (x is None) != (y is None) or (x is not None and not _amounts_equal(x, y)):
                     differs.append("amount")
             if first["status"] != other["status"]:
                 differs.append("status")

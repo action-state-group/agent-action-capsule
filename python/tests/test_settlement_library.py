@@ -129,3 +129,19 @@ def test_unhashable_members_are_malformed_not_a_crash():
                                                   "digest": "0" * 64}])) == ["settlement_malformed"]
     assert structure_failures(_observed(wrapped=[{"type": "x402.offer", "digest_alg": "SHA-256",
                                                   "digest": "0" * 64, "content": 7}])) == ["settlement_malformed"]
+
+
+def test_two_heads_stating_one_amount_at_two_scales_agree():
+    case = next(c for c in CASES["cases"] if c["id"] == "pos-x402-two-sided-agreed")
+    payer = next(r for r in case["records"] if r["capsule"]["settlement"]["leg"] == "payer_observed")
+    from agent_action_capsule.settlement import SettlementReport, _pair  # noqa: PLC0415
+
+    leg = payer["capsule"]["settlement"]
+    rescaled = {**leg, "amount": {**leg["amount"], "value": leg["amount"]["value"] + "00",
+                                  "assetScale": leg["amount"]["assetScale"] + 2}}
+    payee = next(r for r in case["records"] if r["capsule"]["settlement"]["leg"] == "payee_observed")
+    terms = next(r for r in case["records"] if r["capsule"]["settlement"]["leg"] == "terms")
+    report = SettlementReport(conforming=True, keys={"a:k1": "k1", "b:k1": "k1", "c:k2": "k2"})
+    out = _pair(terms["capsule_id"], terms["capsule"]["settlement"], [("a:k1", leg), ("b:k1", rescaled)],
+                [("c:k2", payee["capsule"]["settlement"])], report, {})
+    assert out["payment_state"] == "agreed", out

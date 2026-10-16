@@ -88,7 +88,11 @@ record is unclaimed and the caller passed `require_signature`. It is
 - Otherwise, the JSON copy is held to the signed statement. Each of `log_id`,
   `mmr_size`, `root`, `key_id`, `timestamp`, `prev_size` and `prev_root` that
   the copy carries must equal the signed value, with JSON types kept apart, or
-  the claim gets `checkpoint_field_mismatch:<name>`. Each of `log_id`,
+  the claim gets `checkpoint_field_mismatch:<name>`. The signed values, as CLL
+  decodes them, are strings for `log_id`, `root` (lowercase hex), `key_id`
+  (lowercase hex), `timestamp` (the statement's `issued_at` text as signed)
+  and `prev_root` (`""` for a first checkpoint, never `null`), and integers
+  for `mmr_size` and `prev_size` (`1.0` and `true` are not `1`). Each of `log_id`,
   `mmr_size` and `root` that the copy lacks gets
   `checkpoint_field_missing:<name>`. Any such finding fails the claim.
 - Otherwise the claim passes, and the checkpoint is authenticated.
@@ -152,6 +156,9 @@ out in this order:
    (`withheld`). A row with no keys is `withheld`.
 4. The receipt is `pass` under the first key it verifies under. If none
    verifies, it is `fail`.
+
+A verifier that cannot run a receipt check at all (for example, no COSE
+library) reports the receipt `withheld`, never `fail`.
 
 A `withheld` receipt adds `witness_unverified:<ts_url>`; a `fail` adds
 `witness_receipt_invalid:<ts_url>`. Overall, `witnesses` fails when an entry
@@ -243,6 +250,12 @@ checkpoint is signed by another, the log key.
 | `neg-record-edited` | a record edited after signing | INVALID |
 | `incomplete-producer-selected` | records 1 and 3 of 3, producer-selected | INCOMPLETE |
 | `neg-producer-selected-proof-invalid` | the same with one inclusion proof edited | INVALID |
+| `neg-producer-selected-coordinates-log-and-seq` | producer-selected: one membership names another log, another has `seq` 0 | INVALID |
+| `neg-producer-selected-leaf-index` | producer-selected: `leaf_index` is not `seq - 1` | INVALID |
+| `neg-producer-selected-repeated-seq` | producer-selected: two memberships claim `seq` 1 | INVALID |
+| `neg-producer-selected-unbound` | producer-selected: a membership without `log_coordinates` | INVALID |
+| `pos-checkpoint-with-prior` | a checkpoint with `prev_size > 0` and its consistency proof | VALID |
+| `neg-checkpoint-prev-root-null` | the JSON copy says `prev_root: null` for a first checkpoint | INVALID |
 | `pos-disclosure-matches` | a disclosed member that matches its committed digest | VALID |
 | `neg-disclosure-mismatch` | a disclosed member that does not | INVALID |
 | `neg-not-an-evidence-bundle-v2` | `bundle_kind` is `evidence-bundle/v1` | INVALID |

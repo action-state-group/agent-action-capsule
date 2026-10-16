@@ -454,6 +454,9 @@ def _strict_checkpoint(stated: Mapping[str, Any]) -> tuple[ClaimResult, dict[str
             raise ValueError("checkpoint.cose is not unpadded base64url")
         cose = _b64url_decode(encoded)
         verified = verify_checkpoint_cose_offline(cose)
+    except ImportError:
+        # cll imports its COSE dependencies lazily.
+        return ClaimResult("withheld", ("checkpoint_verifier_unavailable",)), {}, None
     except (ValueError, TypeError, binascii.Error):
         return ClaimResult("fail", ("checkpoint_signature_malformed",)), {}, None
     if not verified.ok or verified.decoded is None:
