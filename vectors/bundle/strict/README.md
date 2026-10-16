@@ -250,8 +250,13 @@ Every base64 field a receipt check reads (`receipt_b64`, the Rekor `body`,
 `signedEntryTimestamp` and `verifier`) is canonical standard base64 with
 padding: a character outside the alphabet, missing padding, or non-zero
 trailing bits in the last symbol make the receipt fail. A directory
-`public_keys` entry that is not canonical base64, or that decodes to something
-other than a DER SubjectPublicKeyInfo, is skipped. A row
+`public_keys` entry counts only when it is canonical base64 of a DER
+SubjectPublicKeyInfo holding an Ed25519 key or an EC public key that loads
+(a named curve and a point on it). Any other entry is skipped: not base64, not
+a SubjectPublicKeyInfo, an RSA key, an unknown algorithm OID, or a key that
+does not load. In a `rekor` row whose log ID names only a skipped entry, the
+row has no key and is unusable (`pos-witness-rekor-row-rsa-key`,
+`pos-witness-rekor-row-unknown-key`). A row
 whose `key_ids` or `public_keys` is not a list, or with a key id that is not 64
 lowercase hex characters, is unusable (`withheld`).
 
@@ -316,6 +321,8 @@ checkpoint is signed by another, the log key.
 | `pos-witness-scrapi-unknown-grade` | an unknown grade label | VALID, grade `observed-only` |
 | `neg-witness-scrapi-other-statement` | a `scrapi` receipt over other bytes | INVALID |
 | `pos-witness-rekor` | a Rekor `dsse` entry under the checkpoint's key | VALID |
+| `pos-witness-rekor-row-rsa-key` | the `rekor` row's only public key is RSA, so it is skipped | VALID, witnesses withheld |
+| `pos-witness-rekor-row-unknown-key` | the `rekor` row's only public key has an unknown algorithm OID | VALID, witnesses withheld |
 | `neg-witness-rekor-other-payload` | `payloadHash` of other bytes | INVALID |
 | `neg-witness-rekor-other-signer` | logged under another key | INVALID |
 | `neg-witness-rekor-string-integer` | `integratedTime` is the signed value as a JSON string | INVALID |

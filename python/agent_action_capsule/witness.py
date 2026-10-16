@@ -179,6 +179,7 @@ def row_public_keys_pem(row: Mapping[str, Any]) -> list[bytes]:
     or an Ed25519 key by its raw bytes) when there is one, else the key id read
     as a raw Ed25519 key. In a ``rekor`` row a key id is an RFC 6962 log ID,
     so one with no ``public_keys`` entry raises ``ValueError``."""
+    from cryptography.hazmat.primitives.asymmetric import ec
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
     from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_der_public_key
 
@@ -189,10 +190,13 @@ def row_public_keys_pem(row: Mapping[str, Any]) -> list[bytes]:
     for b64 in public_keys:
         der = _der(b64)
         try:
-            # An entry that is not a SubjectPublicKeyInfo is skipped, like one
-            # that is not base64.
-            if der is not None:
-                load_der_public_key(der)
+            # Only an Ed25519 or EC public key counts. An entry that is not a
+            # SubjectPublicKeyInfo, holds another algorithm (RSA, an unknown
+            # OID) or does not load is skipped, like one that is not base64.
+            if der is not None and not isinstance(
+                load_der_public_key(der), (Ed25519PublicKey, ec.EllipticCurvePublicKey)
+            ):
+                der = None
         except Exception:  # noqa: BLE001
             der = None
         if der is not None:

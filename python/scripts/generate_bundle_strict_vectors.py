@@ -40,7 +40,7 @@ from cll.checkpoint import (
     root_from_peaks,
 )
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from scitt_cose import build_receipt
 from scitt_cose.cose_sign1 import sign_sign1
@@ -105,6 +105,22 @@ REKOR_LOG_ID = hashlib.sha256(spki_der(REKOR_KEY)).hexdigest()
 P256_WITNESS = ec.derive_private_key(int.from_bytes(bytes([0x34]) * 32, "big") % (2**255), ec.SECP256R1())
 K1_WITNESS = ec.derive_private_key(int.from_bytes(bytes([0x35]) * 32, "big") % (2**255), ec.SECP256K1())
 P256_URL = "https://p256-witness.example"
+
+
+def _tlv(tag: int, body: bytes) -> bytes:
+    n = len(body)
+    length = bytes([n]) if n < 128 else bytes([0x81, n]) if n < 256 else bytes([0x82, n >> 8, n & 0xFF])
+    return bytes([tag]) + length + body
+
+
+# Two well-formed SubjectPublicKeyInfo values that are not usable directory
+# keys: an RSA key (a fixed public modulus, never used to sign) and a key under
+# an unknown algorithm OID (1.3.6.1.4.1.32473.1, the documentation arc).
+RSA_SPKI = rsa.RSAPublicNumbers(65537, (1 << 2047) | 0x1D).public_key().public_bytes(
+    serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+)
+UNKNOWN_SPKI = _tlv(0x30, _tlv(0x30, _tlv(0x06, bytes([0x2B, 6, 1, 4, 1, 0x81, 0xFE, 0x59, 1])))
+                    + _tlv(0x03, b"\x00" + bytes(32)))
 K1_URL = "https://k1-witness.example"
 
 
@@ -374,6 +390,11 @@ DIRECTORY = {
          "key_ids": [hashlib.sha256(spki_der(P256_WITNESS)).hexdigest()], "public_keys": [b64(spki_der(P256_WITNESS))]},
         {"name": "Rekor", "endpoint": "https://rekor.example", "since": "2026-01-01", "binding": "rekor",
          "key_ids": [REKOR_LOG_ID], "public_keys": [b64(spki_der(REKOR_KEY))]},
+        {"name": "Rekor with an RSA key", "endpoint": "https://rekor-rsa.example", "since": "2026-01-01",
+         "binding": "rekor", "key_ids": [hashlib.sha256(RSA_SPKI).hexdigest()], "public_keys": [b64(RSA_SPKI)]},
+        {"name": "Rekor with an unknown key", "endpoint": "https://rekor-unknown.example", "since": "2026-01-01",
+         "binding": "rekor", "key_ids": [hashlib.sha256(UNKNOWN_SPKI).hexdigest()],
+         "public_keys": [b64(UNKNOWN_SPKI)]},
         {"name": "Rekor without key", "endpoint": "https://rekor-nokey.example", "since": "2026-01-01",
          "binding": "rekor", "key_ids": [REKOR_LOG_ID]},
         {"name": "SCITT service", "endpoint": "https://scitt.example", "since": "2026-01-01", "binding": "scrapi",
@@ -861,6 +882,16 @@ def build_cases() -> list[dict]:
                  witnessed(nokey_receipt),
                  {"status": "withheld", "findings": [f"witness_unverified:{nokey}"],
                   "receipts": [receipt_expect(nokey, "rekor", "withheld")]})
+    for case_id, url, what in (
+        ("pos-witness-rekor-row-rsa-key", "rekor+https://rekor-rsa.example", "an RSA key"),
+        ("pos-witness-rekor-row-unknown-key", "rekor+https://rekor-unknown.example",
+         "a well-formed key under an unknown algorithm"),
+    ):
+        unusable = {**rekor_receipt(cose), "ts_url": url}
+        witness_case(case_id, f"The rekor row's only public key is {what}: it is skipped, so the row has no key "
+                     "for its log ID and the receipt is not checked.", witnessed(unusable),
+                     {"status": "withheld", "findings": [f"witness_unverified:{url}"],
+                      "receipts": [receipt_expect(url, "rekor", "withheld")]})
     witness_case("pos-witness-three-bindings", "One receipt of each binding, all verifying.",
                  witnessed(cll_receipt(leaf), rekor_receipt(cose), scrapi_receipt(cose)),
                  {"status": "pass", "findings": [], "receipts": [

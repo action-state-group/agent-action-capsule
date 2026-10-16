@@ -167,3 +167,23 @@ def test_a_public_key_that_is_not_spki_is_skipped():
 
     row = {"key_ids": ["22" * 32], "public_keys": [base64.b64encode(b"not a key").decode()]}
     assert len(row_public_keys_pem(row)) == 1
+
+
+def test_only_ed25519_and_ec_public_keys_count():
+    import base64
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import generate_bundle_strict_vectors as g
+
+    for spki in (g.RSA_SPKI, g.UNKNOWN_SPKI):
+        import hashlib
+
+        key_id = hashlib.sha256(spki).hexdigest()
+        with pytest.raises(ValueError):  # a rekor row left without its key
+            row_public_keys_pem({"binding": "rekor", "key_ids": [key_id], "public_keys": [base64.b64encode(spki).decode()]})
+    p256 = g.spki_der(g.P256_WITNESS)
+    row = {"binding": "rekor", "key_ids": [__import__("hashlib").sha256(p256).hexdigest()],
+           "public_keys": [base64.b64encode(p256).decode()]}
+    assert len(row_public_keys_pem(row)) == 1
