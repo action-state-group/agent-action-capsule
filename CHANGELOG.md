@@ -18,6 +18,16 @@
   both parties' leg records (`draft-mih-agent-settlement-records-00`), as capsule-emit did, and
   passes every case in `vectors/settlement/` (#280). Building and sealing legs stays with
   producers.
+- Go: `bundle.VerifyStrict(value, StrictOptions{RequireSignature, WitnessDirectory})` is the
+  strict `verify_bundle`, with `KindOK`, ordered `Claims`, `Records`, `Witnesses`,
+  `WitnessReceipts`, `SignedCheckpoint`, `SignerMatchesCheckpoint` and `Verdict`; it passes every
+  case in `vectors/bundle/strict/` (#280). `envelope.VerifyRecordSignature` grades one record's
+  signature. The new package `witness` holds the witness directory (`ParseDirectory`, `RowFor`,
+  `Row.Keys`), `BindingOf`, `EndpointOf`, `ParseSignedCheckpoint`, `CheckpointDigest`, a COSE
+  Receipt check over any leaf (`VerifyCOSEReceipt`), the Rekor check (`VerifyRekorEntry`), the
+  per-receipt `VerifyReceipt` and `VerifyReceipts`. The new package `settlement` holds `Verify`,
+  which passes every case in `vectors/settlement/`. `VerifyBundle` is unchanged, and
+  `veraison/go-cose` becomes a direct dependency.
 - CI: the Python job installs the released `checkpointed-local-log` (0.6) instead of a pinned
   commit, since strict mode needs its COSE checkpoint verifier.
 - Python: `evidence_request.encode_cll_inclusion_proof(leaf, path)` and
