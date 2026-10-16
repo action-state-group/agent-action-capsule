@@ -35,8 +35,17 @@ import {
   verifyComposed,
   type ComposedResult,
 } from "./composed.js";
+import {
+  verifyRecordSignature,
+  type RecordSignatureVerdict,
+} from "./producer-envelope-verification.js";
 import { disclosureEligibleFields } from "./registries.js";
 import { verifyClass1, type VerificationResult } from "./verify.js";
+import {
+  verifyWitnessReceipts,
+  type SignedCheckpointFields,
+  type WitnessReceiptResult,
+} from "./witness.js";
 import type { CountersignerSource } from "./countersignature-stamp.js";
 import type {
   DisclosureField,
@@ -91,6 +100,12 @@ export type ExtensionResult =
       readonly composed?: ComposedResult;
     };
 export type { ExtensionInterpreterId } from "./extension-interpreters.js";
+export type {
+  SignedCheckpointFields,
+  WitnessBinding,
+  WitnessGrade,
+  WitnessReceiptResult,
+} from "./witness.js";
 export interface CountersignatureResult {
   readonly value: unknown;
   readonly status: "unverified";
@@ -99,6 +114,12 @@ export interface ProducerSelfReport {
   readonly value: unknown;
   readonly status: "producer_self_report";
 }
+/**
+ * The result of {@link verifyBundle}. With `strict`, `intervalCoverage` and
+ * `perRecordMembership` are the strict readings (with no signed checkpoint, a
+ * claim that did not fail is `withheld`, `checkpoint_unverified`), and
+ * `strict` carries the strict claims and the verdict.
+ */
 export interface BundleVerificationResult {
   readonly bundleDigest?: string;
   readonly graphClosure: ClaimResult;
@@ -109,6 +130,96 @@ export interface BundleVerificationResult {
   readonly countersignatures: readonly CountersignatureResult[];
   readonly verification?: ProducerSelfReport;
   readonly capsuleResults: Readonly<Record<string, VerificationResult>>;
+  /** Only with `strict`. */
+  readonly strict?: StrictBundleResult;
+}
+export interface VerifyBundleOptions {
+  /**
+   * Add the checks a verifier handing a verdict to a person needs
+   * (vectors/bundle/strict/README.md): each record's producer signature, the
+   * checkpoint read only from its signed COSE form, producer-selected
+   * Bundles, the `disclosures` overlay as one claim, the witness receipts in
+   * `checkpoint.witnesses`, and a verdict.
+   */
+  readonly strict?: boolean;
+  /** Strict only: an unsigned record fails the `signatures` claim. */
+  readonly requireSignature?: boolean;
+  /**
+   * Strict only: the witness directory (a parsed `witnesses.json`, or its
+   * row list) whose keys witness receipts are checked under. Without one no
+   * witness is trusted and every receipt is `withheld`.
+   */
+  readonly witnessDirectory?: unknown;
+}
+/** The gating claims of a strict verification, in report order. */
+export type StrictClaimName =
+  | "records"
+  | "signatures"
+  | "graph_closure"
+  | "checkpoint"
+  | "interval_coverage"
+  | "per_record_membership"
+  | "disclosures";
+export interface StrictClaim extends ClaimResult {
+  readonly name: StrictClaimName;
+}
+/** One object of the Bundle's `records` list, in order. */
+export interface StrictRecordResult {
+  readonly capsuleId: string;
+  /** The plain verifier verified the record under its carried capsule_id. */
+  readonly identityOk: boolean;
+  readonly signature: RecordSignatureVerdict;
+  readonly keyId: string | null;
+  /** `log_coordinates.seq` as the record's membership states it. */
+  readonly seq: number | null;
+  readonly messages: readonly string[];
+}
+export interface StrictWitnessesResult extends ClaimResult {
+  readonly receipts: readonly WitnessReceiptResult[];
+}
+export interface StrictBundleResult {
+  /**
+   * `VALID` when every claim passed, `INVALID` when one failed or the
+   * witnesses failed, `INCOMPLETE` otherwise.
+   */
+  readonly verdict: "VALID" | "INCOMPLETE" | "INVALID";
+  /** `bundle_kind` is `evidence-bundle/v2` and `bundle_version` is `"2"`. */
+  readonly kindOk: boolean;
+  readonly claims: readonly StrictClaim[];
+  /**
+   * Reported beside the claims, never one of them: only a failing receipt
+   * changes the verdict. Null for a Bundle refused by its kind.
+   */
+  readonly witnesses: StrictWitnessesResult | null;
+  readonly records: readonly StrictRecordResult[];
+  /** The `checkpoint` claim passed. */
+  readonly checkpointAuthenticated: boolean;
+  /**
+   * The signed checkpoint's own fields (from `checkpoint.cose`) and the
+   * Bundle's `witnesses` list, when it authenticated.
+   */
+  readonly signedCheckpoint?: SignedCheckpointFields & {
+    readonly witnesses: readonly unknown[];
+  };
+  /**
+   * Whether every record's `key_id` is the signed checkpoint's `key_id`, when
+   * the checkpoint authenticated and there is a record. Reported, never gates.
+   */
+  readonly signerMatchesCheckpoint: boolean | null;
+}
+export type StrictBundleVerificationResult = BundleVerificationResult & {
+  readonly strict: StrictBundleResult;
+};
+/**
+ * Thrown by strict {@link verifyBundle} where this runtime has no Ed25519
+ * verifier (no SubtleCrypto, or one without Ed25519): no strict verdict can
+ * be reached, which is not a failed verification.
+ */
+export class Ed25519UnavailableError extends Error {
+  public constructor() {
+    super("strict Bundle verification needs Ed25519, which this runtime lacks");
+    this.name = "Ed25519UnavailableError";
+  }
 }
 type Bundle = Record<string, unknown>;
 type Proof = MmrInclusionProof;
@@ -192,13 +303,34 @@ export async function bundleDigest(bundle: Bundle): Promise<string> {
     ),
   );
 }
-/** Verify independent Evidence Bundle claims and the disclosure overlay. */
+/**
+ * Verify independent Evidence Bundle claims and the disclosure overlay.
+ * `{ strict: true }` adds the strict checks and a verdict
+ * ({@link VerifyBundleOptions}).
+ */
 export async function verifyBundle(
   bundle: unknown,
+  options: VerifyBundleOptions & { readonly strict: true },
+): Promise<StrictBundleVerificationResult>;
+export async function verifyBundle(
+  bundle: unknown,
+  options?: VerifyBundleOptions,
+): Promise<BundleVerificationResult>;
+export async function verifyBundle(
+  bundle: unknown,
+  options: VerifyBundleOptions = {},
 ): Promise<BundleVerificationResult> {
   // Every check below hashes. With no SHA-256 nothing can be checked, and a
   // result here would read as a failed check, so there is none.
   if (digestCapability() === "none") throw new Sha256UnavailableError();
+  if (options.strict === true && !(await probeEd25519()))
+    throw new Ed25519UnavailableError();
+  const plain = await verifyPlain(bundle);
+  return options.strict === true
+    ? strict(plain, object(bundle) ? bundle : undefined, options)
+    : plain;
+}
+async function verifyPlain(bundle: unknown): Promise<BundleVerificationResult> {
   const invalid = fail("bundle_malformed");
   if (!object(bundle))
     return {
@@ -247,6 +379,349 @@ export async function verifyBundle(
       : {}),
     capsuleResults: collected.results,
   };
+}
+// The checkpoint fields a signed COSE checkpoint states; in strict mode the
+// Bundle's JSON copy must match every one it carries.
+const SIGNED_CHECKPOINT_FIELDS = [
+  "log_id",
+  "mmr_size",
+  "root",
+  "key_id",
+  "timestamp",
+  "prev_size",
+  "prev_root",
+] as const;
+/**
+ * `completeness.selection` of a producer-selected Bundle: records the
+ * producer picked from its log, with no claim about the records between them.
+ * Not defined by the Bundle draft; read only in strict mode.
+ */
+export const SELECTION_PRODUCER_SELECTED = "producer-selected";
+
+async function strict(
+  plain: BundleVerificationResult,
+  bundle: Bundle | undefined,
+  options: VerifyBundleOptions,
+): Promise<StrictBundleVerificationResult> {
+  if (
+    bundle === undefined ||
+    bundle.bundle_kind !== "evidence-bundle/v2" ||
+    bundle.bundle_version !== "2"
+  )
+    return {
+      ...plain,
+      strict: {
+        verdict: "INVALID",
+        kindOk: false,
+        claims: [{ name: "records", ...fail("not_an_evidence_bundle_v2") }],
+        witnesses: null,
+        records: [],
+        checkpointAuthenticated: false,
+        signerMatchesCheckpoint: null,
+      },
+    };
+  const seqs = membershipSeqs(bundle);
+  const records: StrictRecordResult[] = [];
+  const seen = new Set<string>();
+  for (const record of Array.isArray(bundle.records) ? bundle.records : []) {
+    if (!object(record)) continue;
+    const id = capsuleIdOf(record);
+    const { verdict, messages } = await verifyRecordSignature(record);
+    // A repeated capsule_id is a second record the plain verifier skipped.
+    const result =
+      !seen.has(id) && Object.hasOwn(plain.capsuleResults, id)
+        ? plain.capsuleResults[id]
+        : undefined;
+    seen.add(id);
+    records.push({
+      capsuleId: id,
+      identityOk: result?.ok === true && result.capsuleId === id,
+      signature: verdict,
+      keyId: typeof record.key_id === "string" ? record.key_id : null,
+      seq: seqs.get(id) ?? null,
+      messages,
+    });
+  }
+  const identityFindings = records
+    .filter((r) => !r.identityOk)
+    .map((r) => `record_identity_invalid:${r.capsuleId}`);
+  const identity: ClaimResult =
+    records.length && !identityFindings.length
+      ? pass()
+      : records.length
+        ? fail(...identityFindings)
+        : fail("no_records");
+
+  const invalidSignatures = records.filter((r) => r.signature === "invalid"),
+    unclaimed = records.filter((r) => r.signature === "unclaimed");
+  const signatureFindings = [
+    ...invalidSignatures.map(
+      (r) => `producer_signature_invalid:${r.capsuleId}`,
+    ),
+    ...unclaimed.map((r) => `producer_signature_unclaimed:${r.capsuleId}`),
+  ];
+  const signatures: ClaimResult =
+    invalidSignatures.length ||
+    (unclaimed.length && options.requireSignature === true) ||
+    !records.length
+      ? fail(...signatureFindings)
+      : {
+          status: unclaimed.length ? "withheld" : "pass",
+          findings: signatureFindings,
+        };
+
+  const stated = object(bundle.checkpoint) ? bundle.checkpoint : {};
+  const checkpoint = await strictCheckpoint(stated);
+  const authenticated = checkpoint.signed !== undefined;
+
+  let intervalCoverage = plain.intervalCoverage,
+    perRecordMembership = plain.perRecordMembership;
+  if (
+    object(bundle.completeness) &&
+    bundle.completeness.selection === SELECTION_PRODUCER_SELECTED
+  ) {
+    // The certificate binds the producer's selection, not an interval: the
+    // interval proof cannot be read, each record's own proof still can.
+    intervalCoverage = {
+      status: "withheld",
+      findings: ["selection_not_checkable"],
+    };
+    perRecordMembership = await selectedMembership(bundle, checkpoint.signed);
+  }
+  if (!authenticated) {
+    intervalCoverage = unanchored(intervalCoverage);
+    perRecordMembership = unanchored(perRecordMembership);
+  }
+
+  const claims: StrictClaim[] = [
+    { name: "records", ...identity },
+    { name: "signatures", ...signatures },
+    { name: "graph_closure", ...plain.graphClosure },
+    { name: "checkpoint", ...checkpoint.claim },
+    { name: "interval_coverage", ...intervalCoverage },
+    { name: "per_record_membership", ...perRecordMembership },
+  ];
+  if (Object.hasOwn(bundle, "disclosures")) {
+    const failed = plain.disclosures
+      .filter((d) => d.status !== DISCLOSURE_MATCH && d.status !== "withheld")
+      .map((d) => `${d.status}:${d.capsuleId}:${d.member}`);
+    claims.push({
+      name: "disclosures",
+      ...(failed.length ? fail(...failed) : pass()),
+    });
+  }
+
+  const witnesses = await verifyWitnessReceipts(
+    stated.witnesses,
+    checkpoint.signed,
+    checkpoint.cose,
+    options.witnessDirectory,
+  );
+  const checkpointKey = checkpoint.signed?.key_id;
+  const failed =
+    claims.some((claim) => claim.status === "fail") ||
+    witnesses.status === "fail";
+  return {
+    ...plain,
+    intervalCoverage,
+    perRecordMembership,
+    strict: {
+      verdict: failed
+        ? "INVALID"
+        : claims.every((claim) => claim.status === "pass")
+          ? "VALID"
+          : "INCOMPLETE",
+      kindOk: true,
+      claims,
+      witnesses: {
+        status: witnesses.status,
+        findings: witnesses.findings,
+        receipts: witnesses.receipts,
+      },
+      records,
+      checkpointAuthenticated: authenticated,
+      ...(checkpoint.signed === undefined
+        ? {}
+        : {
+            signedCheckpoint: {
+              ...checkpoint.signed,
+              witnesses: Array.isArray(stated.witnesses)
+                ? stated.witnesses
+                : [],
+            },
+          }),
+      signerMatchesCheckpoint:
+        checkpointKey && records.length
+          ? records.every((r) => r.keyId === checkpointKey)
+          : null,
+    },
+  };
+}
+
+/** A record's `capsule_id`, or "" when it is not a string. */
+const capsuleIdOf = (record: Bundle): string =>
+  typeof record.capsule_id === "string" ? record.capsule_id : "";
+
+/** Python's `sorted()` order of strings: by code point, not UTF-16 unit. */
+function byCodePoint(a: string, b: string): number {
+  const left = Array.from(a, (c) => c.codePointAt(0)!),
+    right = Array.from(b, (c) => c.codePointAt(0)!);
+  for (let i = 0; i < Math.min(left.length, right.length); i += 1)
+    if (left[i] !== right[i]) return left[i]! - right[i]!;
+  return left.length - right.length;
+}
+
+/** JSON equality that keeps types apart (`1` is not `true` or `1.0`). */
+const sameJson = (stated: unknown, signed: string | number): boolean =>
+  typeof stated === typeof signed && stated === signed;
+
+/**
+ * Verify `checkpoint.cose` and hold the JSON copy to it. The signed fields
+ * and the COSE bytes are returned only when the claim passed.
+ */
+async function strictCheckpoint(stated: Bundle): Promise<{
+  claim: ClaimResult;
+  signed?: SignedCheckpointFields;
+  cose?: Uint8Array;
+}> {
+  const encoded = stated.cose;
+  if (encoded === undefined || encoded === null)
+    return {
+      claim: { status: "withheld", findings: ["checkpoint_signature_absent"] },
+    };
+  const checkpointMetadata = await loadCheckpointMetadata();
+  if (!checkpointMetadata)
+    return {
+      claim: {
+        status: "withheld",
+        findings: ["checkpoint_verifier_unavailable"],
+      },
+    };
+  let cose: Uint8Array;
+  try {
+    if (typeof encoded !== "string" || !/^[A-Za-z0-9_-]*$/u.test(encoded))
+      throw new TypeError("checkpoint.cose is not unpadded base64url");
+    cose = base64UrlDecode(encoded);
+  } catch {
+    return { claim: fail("checkpoint_signature_malformed") };
+  }
+  let metadata: Awaited<ReturnType<CheckpointMetadata>>;
+  try {
+    metadata = await checkpointMetadata(cose);
+  } catch {
+    metadata = undefined;
+  }
+  if (metadata === undefined)
+    return { claim: fail("checkpoint_signature_invalid") };
+  const signed: SignedCheckpointFields = {
+    log_id: metadata.logId,
+    mmr_size: Number(metadata.size),
+    root: metadata.root,
+    key_id: metadata.keyId,
+    timestamp: metadata.timestamp,
+    prev_size: Number(metadata.previousSize),
+    prev_root: metadata.previousRoot,
+  };
+  const findings = [
+    ...SIGNED_CHECKPOINT_FIELDS.filter(
+      (name) =>
+        Object.hasOwn(stated, name) && !sameJson(stated[name], signed[name]),
+    ).map((name) => `checkpoint_field_mismatch:${name}`),
+    ...(["log_id", "mmr_size", "root"] as const)
+      .filter((name) => !Object.hasOwn(stated, name))
+      .map((name) => `checkpoint_field_missing:${name}`),
+  ];
+  if (findings.length) return { claim: fail(...findings) };
+  return { claim: pass(), signed, cose };
+}
+
+/**
+ * A proof claim with no signed checkpoint behind it: a failure stays a
+ * failure; anything else is not shown.
+ */
+function unanchored(claim: ClaimResult): ClaimResult {
+  if (claim.status === "fail") return claim;
+  return {
+    status: "withheld",
+    findings: [...new Set([...claim.findings, "checkpoint_unverified"])],
+  };
+}
+
+/**
+ * Each record's inclusion proof against the signed checkpoint's root and
+ * size, for a producer-selected Bundle. With no signed checkpoint nothing is
+ * shown (the caller withholds it).
+ */
+async function selectedMembership(
+  bundle: Bundle,
+  signed: SignedCheckpointFields | undefined,
+): Promise<ClaimResult> {
+  if (signed === undefined)
+    return { status: "withheld", findings: ["checkpoint_unverified"] };
+  const certificate = bundle.completeness_certificate;
+  const members = object(certificate) ? certificate.memberships : undefined;
+  if (
+    !object(certificate) ||
+    !object(members) ||
+    certificate.range_root !== signed.root
+  )
+    return fail("completeness_certificate_invalid");
+  const root = hex(signed.root);
+  const ids = (Array.isArray(bundle.records) ? bundle.records : [])
+    .filter(object)
+    .map(capsuleIdOf);
+  const findings: string[] = [],
+    seen = new Set<number>();
+  for (const id of ids) {
+    const member = Object.hasOwn(members, id) ? members[id] : undefined;
+    const coordinates = object(member) ? member.log_coordinates : undefined;
+    if (!object(coordinates)) {
+      findings.push(`membership_record_unbound:${id}`);
+      continue;
+    }
+    const seq = coordinates.seq,
+      index = coordinates.leaf_index;
+    if (
+      coordinates.log_id !== signed.log_id ||
+      !integer(seq) ||
+      !integer(index) ||
+      seq < 1 ||
+      index !== seq - 1 ||
+      seen.has(seq)
+    ) {
+      findings.push(`membership_coordinates_invalid:${id}`);
+      continue;
+    }
+    seen.add(seq);
+    const proof = object(member)
+      ? parseProof(member.inclusion_proof)
+      : undefined;
+    if (
+      !proof ||
+      !isHex64(id) ||
+      proof.size !== signed.mmr_size ||
+      proof.leaf_index !== index ||
+      !(await verifyProof(root, id, proof, index))
+    )
+      findings.push(`membership_proof_invalid:${id}`);
+  }
+  for (const id of Object.keys(members).sort(byCodePoint))
+    if (!ids.includes(id)) findings.push(`membership_record_unknown:${id}`);
+  return findings.length ? fail(...findings) : pass();
+}
+
+/** Each record's `seq` as its membership's `log_coordinates` state it. */
+function membershipSeqs(bundle: Bundle): Map<string, number> {
+  const certificate = bundle.completeness_certificate;
+  const members = object(certificate) ? certificate.memberships : undefined;
+  const out = new Map<string, number>();
+  if (object(members))
+    for (const [id, member] of Object.entries(members)) {
+      const coordinates = object(member) ? member.log_coordinates : undefined;
+      const seq = object(coordinates) ? coordinates.seq : undefined;
+      if (integer(seq)) out.set(id, seq);
+    }
+  return out;
 }
 async function collectRecords(raw: unknown): Promise<{
   records: Map<string, Bundle>;
@@ -412,9 +887,18 @@ async function completeness(
 // Load cll's COSE checkpoint authenticator through a dynamic import so the
 // browser build (whose cll substrate omits it) resolves to undefined at runtime
 // instead of failing to bundle on a missing named export.
-type CheckpointMetadata = (
-  cose: Uint8Array,
-) => Promise<{ logId: string; size: bigint; root: string } | undefined>;
+type CheckpointMetadata = (cose: Uint8Array) => Promise<
+  | {
+      logId: string;
+      size: bigint;
+      root: string;
+      keyId: string;
+      timestamp: string;
+      previousSize: bigint;
+      previousRoot: string;
+    }
+  | undefined
+>;
 async function loadCheckpointMetadata(): Promise<
   CheckpointMetadata | undefined
 > {

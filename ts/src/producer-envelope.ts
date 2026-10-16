@@ -15,7 +15,11 @@ import {
 } from "./producer-envelope-wire.js";
 import type { SigningIdentity } from "./types.js";
 
-export { verifyProducerEnvelope } from "./producer-envelope-verification.js";
+export {
+  verifyProducerEnvelope,
+  verifyRecordSignature,
+  type RecordSignatureVerdict,
+} from "./producer-envelope-verification.js";
 
 const pkcs8Prefix = hexToBytes("302e020100300506032b657004220420");
 

@@ -18,6 +18,29 @@
   both parties' leg records (`draft-mih-agent-settlement-records-00`), as capsule-emit did, and
   passes every case in `vectors/settlement/` (#280). Building and sealing legs stays with
   producers.
+- TypeScript: `verifyBundle(bundle, { strict: true, requireSignature, witnessDirectory })` is
+  the Python strict mode, and its result's `strict` member carries `verdict`, `claims`, per-record
+  and per-receipt results (#280). It passes every case in `vectors/bundle/strict/`. It checks
+  `cll` and `scrapi` receipts with a COSE Receipt verifier (tag-18 COSE_Sign1 with a detached
+  payload, `vds` 1, EdDSA under an Ed25519 key or ES256 under a P-256 key, RFC 9162 inclusion)
+  and `rekor` entries with WebCrypto, so the browser entries keep working. A Rekor key must be
+  ECDSA P-256, and `integratedTime` and `logIndex` must be JSON integers. Every base64 field a
+  receipt check reads is canonical padded base64, and a receipt check that cannot run is
+  `withheld`, never `fail`; a key of the wrong type, including one WebCrypto cannot import, is
+  `fail`. A directory `public_keys` entry counts only when it holds an Ed25519 key or an ECDSA
+  P-256 key with its point on the curve, checked without WebCrypto. Without the Node-only CLL checkpoint verifier the `checkpoint` claim is `withheld`
+  (`checkpoint_verifier_unavailable`); without Ed25519 strict mode throws
+  `Ed25519UnavailableError` rather than return a verdict. The plain verifier is
+  unchanged. `verifyRecordSignature` grades one record's producer signature (`jcs`, or `jcs-n`
+  declared or implied). The new `@action-state-group/agent-action-capsule/witness` entry (also
+  on the root entry) exports the receipt checks for reuse: `verifyCoseReceipt` (receipt, leaf
+  bytes, public key), `verifyReceipt`, `verifyRekorReceipt`, `verifyScrapiReceipt`, and the
+  directory and key helpers `witnessRowFor` and `witnessRowKeys`.
+- TypeScript: `verifySettlements` (`@action-state-group/agent-action-capsule/settlement`, and the
+  root entry) is the Python settlement verifier, amounts compared exactly as decimal digit strings, and passes
+  every case in `vectors/settlement/` (#280). Wrapped `content` is read only as canonical
+  unpadded base64url (`base64UrlCanonical`), and content that does not decode is
+  `wrapped_digest_mismatch`.
 - CI: the Python job installs the released `checkpointed-local-log` (0.6) instead of a pinned
   commit, since strict mode needs its COSE checkpoint verifier.
 - Python: `evidence_request.encode_cll_inclusion_proof(leaf, path)` and

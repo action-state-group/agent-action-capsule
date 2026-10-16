@@ -26,6 +26,26 @@ or the existing broad root entry, explicitly install the pinned compatible CLL:
 npm install @action-state-group/agent-action-capsule @action-state-group/cll@0.2.1
 ```
 
+`verifyBundle(bundle, { strict: true })` adds the strict checks of
+[`vectors/bundle/strict/README.md`](../vectors/bundle/strict/README.md) and a
+verdict (`result.strict.verdict`: `VALID`, `INCOMPLETE` or `INVALID`). Pass
+`requireSignature` to fail unsigned records and `witnessDirectory` (a parsed
+`witnesses.json`) to check the witness receipts in `checkpoint.witnesses`; none
+is trusted without it. The signed checkpoint is verified only in Node, where
+CLL's COSE checkpoint verifier exists; elsewhere the `checkpoint` claim is
+`withheld` and the verdict is never `VALID`.
+
+`@action-state-group/agent-action-capsule/settlement` exports
+`verifySettlements`, which derives the states of
+`draft-mih-agent-settlement-records-00` from both parties' leg records. It
+needs no CLL.
+
+`@action-state-group/agent-action-capsule/witness` exports the witness receipt
+checks strict mode uses, for callers outside a Bundle: `verifyCoseReceipt`
+(a COSE Receipt over leaf bytes under one DER public key), `verifyReceipt`,
+`verifyRekorReceipt`, `verifyScrapiReceipt`, and the directory helpers
+`witnessRowFor` and `witnessRowKeys`. It needs no CLL.
+
 The existing root exports remain available with CLL installed. The separate
 Bundle entry reuses AAC's existing verifier and CLL proof operations; it does
 not introduce another implementation. Development installs include CLL so the

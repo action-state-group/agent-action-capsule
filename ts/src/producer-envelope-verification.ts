@@ -1,3 +1,4 @@
+import { jcs, JsonNumber, sha256Hex } from "./json.js";
 import {
   CONTENT_TYPE,
   equalBytes,
@@ -276,4 +277,134 @@ export async function verifyProducerEnvelope(
   } catch (error) {
     return fail("envelope_malformed", String(error));
   }
+}
+
+/**
+ * A record's producer signature: `authored` (its envelope verifies), `unclaimed`
+ * (neither `signature` nor `key_id`: an unsigned record, not a forgery) or
+ * `invalid`.
+ */
+export type RecordSignatureVerdict = "authored" | "unclaimed" | "invalid";
+
+const plainObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null &&
+  typeof value === "object" &&
+  !Array.isArray(value) &&
+  !(value instanceof JsonNumber);
+
+/**
+ * Remove null, empty-array and empty-object members bottom-up: the vintage
+ * `jcs-n` absent-field normalization.
+ */
+function normalized(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(normalized);
+  if (!plainObject(value)) return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, member] of Object.entries(value)) {
+    const next = normalized(member);
+    if (
+      next === null ||
+      (Array.isArray(next) && next.length === 0) ||
+      (plainObject(next) && Object.keys(next).length === 0)
+    )
+      continue;
+    Object.defineProperty(out, key, {
+      value: next,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  }
+  return out;
+}
+
+/**
+ * The Capsule ID a record declares by its `canonicalization_id`: `jcs`
+ * commits every member but `capsule_id` and the local-only `signature` and
+ * `key_id`; `jcs-n`, declared or implied by a record without the member (or
+ * with JSON null), is the vintage reading, which also drops `chain` and
+ * normalizes absent fields. Any other value throws.
+ */
+async function recordCapsuleId(
+  record: Record<string, unknown>,
+): Promise<string> {
+  const algorithm = record.canonicalization_id ?? "jcs-n";
+  if (algorithm !== "jcs-n" && algorithm !== "jcs")
+    throw new TypeError("cannot recompute this canonicalization_id");
+  const vintage = algorithm === "jcs-n";
+  const canonical: Record<string, unknown> = {};
+  for (const [key, member] of Object.entries(record))
+    if (
+      key !== "capsule_id" &&
+      key !== "signature" &&
+      key !== "key_id" &&
+      !(vintage && key === "chain")
+    )
+      Object.defineProperty(canonical, key, {
+        value: member,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+  return sha256Hex(jcs(vintage ? normalized(canonical) : canonical));
+}
+
+/** One or more hex digit pairs, in either case, with no whitespace. */
+function digitPairs(value: unknown, member: string): Uint8Array {
+  if (typeof value !== "string" || !/^(?:[0-9A-Fa-f]{2})+$/u.test(value))
+    throw new TypeError(`${member} is not hex`);
+  return hexToBytes(value.toLowerCase());
+}
+
+/**
+ * Grade a record's producer signature. `record.signature` is the hex Producer
+ * Envelope and `record.key_id` the hex raw Ed25519 public key; the envelope
+ * must verify under `key_id` over the Capsule ID recomputed from the record's
+ * own content (`jcs`, or vintage `jcs-n`). The carried `capsule_id` is not
+ * read. `messages` is empty unless `invalid`. Never throws.
+ */
+export async function verifyRecordSignature(record: unknown): Promise<{
+  readonly verdict: RecordSignatureVerdict;
+  readonly messages: readonly string[];
+}> {
+  if (!plainObject(record))
+    return { verdict: "invalid", messages: ["not a JSON object"] };
+  const id = String(record.capsule_id ?? "<none>");
+  const hasSignature = Object.hasOwn(record, "signature"),
+    hasKeyId = Object.hasOwn(record, "key_id");
+  if (!hasSignature && !hasKeyId) return { verdict: "unclaimed", messages: [] };
+  if (hasSignature !== hasKeyId)
+    return {
+      verdict: "invalid",
+      messages: [
+        `capsule_id=${id}: only one of signature/key_id present -- malformed producer envelope`,
+      ],
+    };
+  try {
+    const signature = digitPairs(record.signature, "signature"),
+      keyId = digitPairs(record.key_id, "key_id");
+    const result = await verifyProducerEnvelope(
+      await recordCapsuleId(record),
+      signature,
+    );
+    if (
+      result.ok &&
+      result.publicKey !== undefined &&
+      equalBytes(result.publicKey, keyId)
+    )
+      return { verdict: "authored", messages: [] };
+  } catch (error) {
+    return {
+      verdict: "invalid",
+      messages: [
+        `capsule_id=${id}: producer envelope malformed: ${String(error)}`,
+      ],
+    };
+  }
+  return {
+    verdict: "invalid",
+    messages: [
+      `capsule_id=${id}: self-attested Ed25519 signature does not verify against key_id`,
+    ],
+  };
 }

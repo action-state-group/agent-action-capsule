@@ -29,6 +29,14 @@
     "./bundle": {
       "types": "./dist/bundle.d.ts",
       "import": "./dist/bundle.js"
+    },
+    "./settlement": {
+      "types": "./dist/settlement.d.ts",
+      "import": "./dist/settlement.js"
+    },
+    "./witness": {
+      "types": "./dist/witness.d.ts",
+      "import": "./dist/witness.js"
     }
   },
   "engines": {

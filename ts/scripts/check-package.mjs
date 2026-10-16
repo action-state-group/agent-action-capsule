@@ -68,12 +68,18 @@ try {
     assert.equal(typeof core.verifyProducerEnvelope, "function");
     assert.equal("verifyBundle" in core, false);
     assert.equal("createEd25519Identity" in core, !process.execArgv.includes("--conditions=browser"));
+    const settlement = await import("@action-state-group/agent-action-capsule/settlement");
+    assert.equal((await settlement.verifySettlements([null])).conforming, false);
+    const witness = await import("@action-state-group/agent-action-capsule/witness");
+    assert.equal((await witness.verifyCoseReceipt(new Uint8Array(), new Uint8Array(), new Uint8Array())).ok, false);
+    for (const name of ["verifyReceipt", "verifyRekorReceipt", "verifyScrapiReceipt", "witnessRowFor", "witnessRowKeys"])
+      assert.equal(typeof witness[name], "function");
   `,
   );
   run(process.execPath, [join(temporary, "core.mjs")]);
   run(process.execPath, ["--conditions=browser", join(temporary, "core.mjs")]);
   console.log(
-    "Packed core: Node/browser imports, async verification and installation without CLL/storage PASS",
+    "Packed core, settlement and witness: Node/browser imports, async verification and installation without CLL/storage PASS",
   );
 
   const metadata = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -100,11 +106,16 @@ try {
       assert.equal(result.bundleDigest, await bundleDigest(testCase.bundle));
     }
     assert.equal(legacy.verifyBundle, verifyBundle);
+    const strictVectors = JSON.parse(readFileSync(${JSON.stringify(join(root, "..", "vectors", "bundle", "strict", "vectors.json"))}, "utf8"));
+    for (const testCase of strictVectors.cases.slice(0, 3)) {
+      const result = await verifyBundle(testCase.bundle, { strict: true });
+      assert.equal(result.strict.verdict, testCase.expect.verdict);
+    }
   `,
   );
   run(process.execPath, [join(temporary, "bundle.mjs")]);
   console.log(
-    "Packed Bundle and existing root with explicitly installed CLL PASS",
+    "Packed Bundle (plain and strict) and existing root with explicitly installed CLL PASS",
   );
 } finally {
   rmSync(temporary, { recursive: true, force: true });
