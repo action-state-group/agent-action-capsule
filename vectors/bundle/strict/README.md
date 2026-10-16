@@ -182,9 +182,10 @@ The three bindings check a receipt as follows.
     and `\f` as those short escapes; every other character below U+0020, DEL
     (U+007F) and every non-ASCII character as `\uXXXX` with lowercase hex,
     a character above U+FFFF as its UTF-16 surrogate pair; everything else,
-    `/`, `<`, `>` and `&` included, as itself
-    (`pos-witness-cll-escaped-log-id`). The receipt's `entry_hash` must equal
-    the SHA-256 of that digest's 32 bytes.
+    `/`, `<`, `>` and `&` included, as itself. (CLL restricts a log
+    identifier to `[A-Za-z0-9._:/-]`, and some CLL verifiers refuse any
+    other, so no vector carries a value that needs escaping.) The receipt's
+    `entry_hash` must equal the SHA-256 of that digest's 32 bytes.
   - `receipt_b64` (canonical base64, below) must be a COSE Receipt over the
     leaf `entry_hash`, signed under the key (see "COSE Receipts" below).
   - `grade` is the receipt's protected-header label -65537:
@@ -289,7 +290,6 @@ checkpoint is signed by another, the log key.
 | `neg-witness-cll-attached-payload` | a receipt with an attached payload signed by the listed key | INVALID |
 | `neg-witness-cll-vds-ccf` | a receipt signed over the right root that declares `vds` 2 | INVALID |
 | `neg-witness-cll-alg-unsupported` | a receipt signed over the right root that declares `alg` -257 | INVALID |
-| `pos-witness-cll-escaped-log-id` | a `cll` receipt for a checkpoint whose `log_id` needs escaping in the digest | VALID |
 | `neg-witness-malformed` | an entry without `tree_size`, beside a good receipt | INVALID |
 | `pos-witness-scrapi` | a `scrapi` receipt, no grade label | VALID, grade `observed-only` |
 | `pos-witness-scrapi-unknown-grade` | an unknown grade label | VALID, grade `observed-only` |

@@ -790,15 +790,6 @@ def build_cases() -> list[dict]:
                      receipt_expect(REKOR_URL, "rekor", "pass", "observed-only"),
                      receipt_expect(SCRAPI_URL, "scrapi", "pass", "observed-only")]})
 
-    # A log_id the checkpoint digest must escape exactly as the README says:
-    # "&<>" raw, DEL and non-ASCII as \u escapes, an astral character as a
-    # surrogate pair, "/" raw.
-    escaped = bundle_over(base_records, log_id="log:a&b<c>/\x7f\u00e9\U0001f600")
-    witness_case("pos-witness-cll-escaped-log-id",
-                 "A cll receipt for a checkpoint whose log_id needs JSON escaping in the checkpoint digest.",
-                 _with_witnesses(escaped, cll_receipt(entry_hash(escaped["checkpoint"]))),
-                 {"status": "pass", "findings": [], "receipts": [receipt_expect(CLL_URL, "cll", "pass", "mmr-verified")]})
-
     cose_null = copy.deepcopy(base)
     cose_null["checkpoint"]["cose"] = None
     cases.append(case(
