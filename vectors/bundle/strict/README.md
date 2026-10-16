@@ -80,8 +80,11 @@ record is unclaimed and the caller passed `require_signature`. It is
 
 **`checkpoint`.**
 
-- With no `checkpoint.cose`, the claim is `withheld`
-  (`checkpoint_signature_absent`).
+- With no `checkpoint.cose`, or `cose` JSON `null`, the claim is `withheld`
+  (`checkpoint_signature_absent`). (The plain verifier's interval and
+  membership claims still read a `null` `cose` as present and not a string,
+  and fail with `checkpoint_authentication_invalid`; see
+  `neg-checkpoint-cose-null`.)
 - When `cose` is not unpadded canonical base64url, the claim fails
   (`checkpoint_signature_malformed`).
 - When the bytes are not a CLL COSE checkpoint that verifies under its own key,
@@ -173,10 +176,16 @@ The three bindings check a receipt as follows.
 - **`cll`.**
   - The checkpoint digest is the SHA-256 of
     `{"v":1,"kind":"mmr_checkpoint",log_id,mmr_size,root,prev_size,prev_root,key_id,timestamp}`
-    as JSON with sorted keys and no whitespace, non-ASCII escaped as
-    `\uXXXX`, taking each value from the signed statement. The receipt's
-    `entry_hash` must equal the SHA-256 of that digest's 32 bytes.
-  - `receipt_b64` (strict standard base64) must be a COSE Receipt over the
+    as JSON with sorted keys and no whitespace, taking each value from the
+    signed statement. Strings are written as Python's `json.dumps` writes
+    them by default: `"` and `\` as `\"` and `\\`; `\n`, `\r`, `\t`, `\b`
+    and `\f` as those short escapes; every other character below U+0020, DEL
+    (U+007F) and every non-ASCII character as `\uXXXX` with lowercase hex,
+    a character above U+FFFF as its UTF-16 surrogate pair; everything else,
+    `/`, `<`, `>` and `&` included, as itself
+    (`pos-witness-cll-escaped-log-id`). The receipt's `entry_hash` must equal
+    the SHA-256 of that digest's 32 bytes.
+  - `receipt_b64` (canonical base64, below) must be a COSE Receipt over the
     leaf `entry_hash`, signed under the key (see "COSE Receipts" below).
   - `grade` is the receipt's protected-header label -65537:
     `observed-only`, `mmr-verified`, or `countersigned-observed` read as
@@ -188,7 +197,8 @@ The three bindings check a receipt as follows.
     `observed-only`.
 - **`rekor`.** `receipt_b64` is base64 of a Rekor log entry, and four checks
   must all hold:
-  1. Its `logID` is the SHA-256 of the key's DER SubjectPublicKeyInfo.
+  1. The key is an ECDSA P-256 key (any other key fails the receipt), and
+     the entry's `logID` is the SHA-256 of its DER SubjectPublicKeyInfo.
   2. `integratedTime` and `logIndex` are JSON integers (not strings or
      booleans), `body` is a string, and
      `verification.signedEntryTimestamp` (base64 DER ECDSA P-256 SHA-256)
@@ -223,9 +233,10 @@ Decoding follows the scitt-cose verifiers (Python `scitt_cose.verify_receipt`,
 the Rust crate `scitt-cose-receipt`), including their `crit` handling.
 
 Every base64 field a receipt check reads (`receipt_b64`, the Rekor `body`,
-`signedEntryTimestamp` and `verifier`) is strict standard base64 with padding:
-a character outside the alphabet, or missing padding, makes the receipt fail.
-A directory `public_keys` entry that is not strict base64 DER is skipped. A row
+`signedEntryTimestamp` and `verifier`) is canonical standard base64 with
+padding: a character outside the alphabet, missing padding, or non-zero
+trailing bits in the last symbol make the receipt fail. A directory
+`public_keys` entry that is not canonical base64 DER is skipped. A row
 whose `key_ids` or `public_keys` is not a list, or with a key id that is not 64
 lowercase hex characters, is unusable (`withheld`).
 
@@ -261,6 +272,7 @@ checkpoint is signed by another, the log key.
 | `neg-producer-selected-repeated-seq` | producer-selected: two memberships claim `seq` 1 | INVALID |
 | `neg-producer-selected-unbound` | producer-selected: a membership without `log_coordinates` | INVALID |
 | `pos-checkpoint-with-prior` | a checkpoint with `prev_size > 0` and its consistency proof | VALID |
+| `neg-checkpoint-cose-null` | `checkpoint.cose` is JSON `null` | INVALID |
 | `neg-checkpoint-prev-root-null` | the JSON copy says `prev_root: null` for a first checkpoint | INVALID |
 | `pos-disclosure-matches` | a disclosed member that matches its committed digest | VALID |
 | `neg-disclosure-mismatch` | a disclosed member that does not | INVALID |
@@ -277,6 +289,7 @@ checkpoint is signed by another, the log key.
 | `neg-witness-cll-attached-payload` | a receipt with an attached payload signed by the listed key | INVALID |
 | `neg-witness-cll-vds-ccf` | a receipt signed over the right root that declares `vds` 2 | INVALID |
 | `neg-witness-cll-alg-unsupported` | a receipt signed over the right root that declares `alg` -257 | INVALID |
+| `pos-witness-cll-escaped-log-id` | a `cll` receipt for a checkpoint whose `log_id` needs escaping in the digest | VALID |
 | `neg-witness-malformed` | an entry without `tree_size`, beside a good receipt | INVALID |
 | `pos-witness-scrapi` | a `scrapi` receipt, no grade label | VALID, grade `observed-only` |
 | `pos-witness-scrapi-unknown-grade` | an unknown grade label | VALID, grade `observed-only` |

@@ -178,7 +178,12 @@ def proof_dict(p: Any) -> dict:
 
 
 def bundle_over(
-    records: list[dict], *, log_key: Ed25519PrivateKey = LOG_KEY, cose: bool = True, prior_after: int | None = None
+    records: list[dict],
+    *,
+    log_key: Ed25519PrivateKey = LOG_KEY,
+    cose: bool = True,
+    prior_after: int | None = None,
+    log_id: str = LOG_ID,
 ) -> dict:
     """A Bundle over a whole log of ``records`` (seq 1..n), checkpoint signed by
     ``log_key``. With ``prior_after``, the checkpoint follows a prior one taken
@@ -196,11 +201,11 @@ def bundle_over(
     root = root_from_peaks(peak_hashes).hex()
     signer = _StatementSigner(log_key)
     cp = CheckpointRecord(
-        v=1, kind="mmr_checkpoint", log_id=LOG_ID, mmr_size=size, root=root, prev_size=prev_size, prev_root=prev_root,
+        v=1, kind="mmr_checkpoint", log_id=log_id, mmr_size=size, root=root, prev_size=prev_size, prev_root=prev_root,
         key_id=signer.key_id, timestamp=TIMESTAMP, signature="",
     )
     checkpoint = {
-        "log_id": LOG_ID, "mmr_size": size, "root": root, "prev_size": prev_size, "prev_root": prev_root,
+        "log_id": log_id, "mmr_size": size, "root": root, "prev_size": prev_size, "prev_root": prev_root,
         "key_id": signer.key_id, "timestamp": TIMESTAMP,
     }
     if cose:
@@ -220,14 +225,14 @@ def bundle_over(
             "missing": [],
         },
         "completeness_certificate": {
-            "log_id": LOG_ID, "range_root": root, "first_seq": 1, "last_seq": n, "body_digests": ids,
+            "log_id": log_id, "range_root": root, "first_seq": 1, "last_seq": n, "body_digests": ids,
             "range_proof": {
                 "from_seq": 1, "to_seq": n, "size": rp.size, "from_index": rp.from_index,
                 "to_index": rp.to_index, "witness": list(rp.witness),
             },
             "memberships": {
                 cid: {
-                    "log_coordinates": {"log_id": LOG_ID, "seq": i + 1, "leaf_index": i},
+                    "log_coordinates": {"log_id": log_id, "seq": i + 1, "leaf_index": i},
                     "inclusion_proof": proof_dict(core.inclusion_proof(store, i, size)),
                 }
                 for i, cid in enumerate(ids)
@@ -392,6 +397,12 @@ def case(case_id: str, description: str, bundle: dict, expect: dict, **options: 
         "require_signature": options.get("require_signature", False),
         "witness_directory": options.get("witness_directory", False),
     }, "bundle": bundle, "expect": expect}
+
+
+def _with_witnesses(bundle: dict, *receipts: dict) -> dict:
+    out = copy.deepcopy(bundle)
+    out["checkpoint"]["witnesses"] = list(receipts)
+    return out
 
 
 def build_cases() -> list[dict]:
@@ -675,9 +686,7 @@ def build_cases() -> list[dict]:
     leaf = entry_hash(base["checkpoint"])
 
     def witnessed(*receipts: dict) -> dict:
-        out = copy.deepcopy(base)
-        out["checkpoint"]["witnesses"] = list(receipts)
-        return out
+        return _with_witnesses(base, *receipts)
 
     def receipt_expect(ts_url: str, binding: str, status: str, grade: str | None = None) -> dict:
         return {"ts_url": ts_url, "binding": binding, "status": status, "grade": grade}
@@ -780,6 +789,30 @@ def build_cases() -> list[dict]:
                      receipt_expect(CLL_URL, "cll", "pass", "mmr-verified"),
                      receipt_expect(REKOR_URL, "rekor", "pass", "observed-only"),
                      receipt_expect(SCRAPI_URL, "scrapi", "pass", "observed-only")]})
+
+    # A log_id the checkpoint digest must escape exactly as the README says:
+    # "&<>" raw, DEL and non-ASCII as \u escapes, an astral character as a
+    # surrogate pair, "/" raw.
+    escaped = bundle_over(base_records, log_id="log:a&b<c>/\x7f\u00e9\U0001f600")
+    witness_case("pos-witness-cll-escaped-log-id",
+                 "A cll receipt for a checkpoint whose log_id needs JSON escaping in the checkpoint digest.",
+                 _with_witnesses(escaped, cll_receipt(entry_hash(escaped["checkpoint"]))),
+                 {"status": "pass", "findings": [], "receipts": [receipt_expect(CLL_URL, "cll", "pass", "mmr-verified")]})
+
+    cose_null = copy.deepcopy(base)
+    cose_null["checkpoint"]["cose"] = None
+    cases.append(case(
+        "neg-checkpoint-cose-null",
+        "checkpoint.cose is JSON null: the strict checkpoint claim reads it as absent; the plain verifier's "
+        "proof claims refuse it as an authenticator that is present but not a string.",
+        cose_null,
+        {"verdict": "INVALID", "claims": claims(
+            checkpoint=claim("withheld", "checkpoint_signature_absent"),
+            interval_coverage=claim("fail", "checkpoint_authentication_invalid"),
+            per_record_membership=claim("fail", "checkpoint_authentication_invalid")),
+         "witnesses": ABSENT, "records": records_expect(cose_null),
+         "checkpoint_authenticated": False, "signer_matches_checkpoint": None},
+    ))
 
     unanchored = copy.deepcopy(no_cose)
     unanchored["checkpoint"]["witnesses"] = [cll_receipt(leaf)]

@@ -141,9 +141,21 @@ def row_for(directory: Any, ts_url: str) -> Mapping[str, Any] | None:
     return None
 
 
+def _b64_canonical(text: Any) -> bytes:
+    """Strict standard base64 with padding, in its one canonical spelling:
+    ``validate=True`` still ignores non-zero trailing bits, which other
+    languages' decoders refuse, so the bytes must re-encode to ``text``."""
+    if not isinstance(text, str):
+        raise TypeError("base64 member is not a string")
+    raw = base64.b64decode(text, validate=True)
+    if base64.b64encode(raw).decode("ascii") != text:
+        raise binascii.Error("non-canonical base64")
+    return raw
+
+
 def _der(b64: Any) -> bytes | None:
     try:
-        return base64.b64decode(b64, validate=True) if isinstance(b64, str) else None
+        return _b64_canonical(b64) if isinstance(b64, str) else None
     except (binascii.Error, ValueError):
         return None
 
@@ -247,7 +259,7 @@ def _verify_cll(signed: Mapping[str, Any], record: Mapping[str, Any], pem: bytes
             "witness.entry_hash does not match this checkpoint's digest -- stamp is not bound to this checkpoint"
         ), None
     try:
-        receipt = base64.b64decode(record["receipt_b64"], validate=True)
+        receipt = _b64_canonical(record["receipt_b64"])
     except Exception as exc:  # noqa: BLE001
         return False, f"receipt_b64 is not valid base64: {exc}", None
     try:
@@ -297,6 +309,8 @@ def verify_rekor_receipt(
         from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_pem_public_key
 
         rekor_key = load_pem_public_key(pem)
+        if not isinstance(rekor_key, ec.EllipticCurvePublicKey) or not isinstance(rekor_key.curve, ec.SECP256R1):
+            return False, "the Rekor key is not an ECDSA P-256 key"
         log_id = hashlib.sha256(rekor_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)).hexdigest()
         if receipt.get("logID") != log_id:
             return False, "logID is not the pinned Rekor key"
@@ -312,10 +326,10 @@ def verify_rekor_receipt(
             {"body": receipt["body"], "integratedTime": integrated, "logID": receipt["logID"], "logIndex": index}
         )
         try:
-            rekor_key.verify(base64.b64decode(set_b64, validate=True), signed, ec.ECDSA(hashes.SHA256()))
+            rekor_key.verify(_b64_canonical(set_b64), signed, ec.ECDSA(hashes.SHA256()))
         except InvalidSignature:
             return False, "signedEntryTimestamp does not verify under the pinned Rekor key"
-        entry = json.loads(base64.b64decode(receipt["body"], validate=True))
+        entry = json.loads(_b64_canonical(receipt["body"]))
         if entry.get("kind") != "dsse":
             return False, f"entry kind {entry.get('kind')!r}, expected 'dsse'"
         spec = entry.get("spec") or {}
@@ -323,7 +337,7 @@ def verify_rekor_receipt(
         if payload_hash.get("algorithm") != "sha256" or payload_hash.get("value") != hashlib.sha256(cose).hexdigest():
             return False, "entry payloadHash is not this checkpoint's bytes"
         verifiers = {
-            base64.b64decode(s.get("verifier", ""), validate=True).replace(b"\r", b"").strip()
+            _b64_canonical(s.get("verifier", "")).replace(b"\r", b"").strip()
             for s in spec.get("signatures") or []
         }
         if verifiers != {_ed25519_spki_pem(bytes.fromhex(checkpoint_key_id)).strip()}:
@@ -379,7 +393,7 @@ def verify_receipt(
         return False, "not checked: checkpoint COSE statement not available", None
     if binding == BINDING_REKOR:
         try:
-            receipt = json.loads(base64.b64decode(record["receipt_b64"], validate=True))
+            receipt = json.loads(_b64_canonical(record["receipt_b64"]))
         except (ValueError, TypeError) as exc:
             return False, f"unreadable receipt: {exc}", None
         ok, reason = verify_rekor_receipt(
@@ -387,7 +401,7 @@ def verify_receipt(
         )
         return ok, reason, GRADE_OBSERVED_ONLY if ok else None
     try:
-        receipt_bytes = base64.b64decode(record["receipt_b64"], validate=True)
+        receipt_bytes = _b64_canonical(record["receipt_b64"])
     except (ValueError, TypeError) as exc:
         return False, f"unreadable receipt: {exc}", None
     return verify_scrapi_receipt(receipt_bytes, checkpoint_cose=cose, service_public_key_pem=pem)

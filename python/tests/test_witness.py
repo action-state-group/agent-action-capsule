@@ -114,3 +114,40 @@ def test_a_rekor_payload_hash_must_say_sha256():
     relabeled = {**good, "body": base64.b64encode(g._sorted_json(body)).decode()}
     ok, _ = verify_rekor_receipt(relabeled, checkpoint_cose=cose, checkpoint_key_id=key_id, rekor_public_key_pem=pem)
     assert not ok
+
+
+def test_a_rekor_key_must_be_p256():
+    import base64
+    import json
+    import sys
+    from pathlib import Path
+
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import generate_bundle_strict_vectors as g
+
+    from agent_action_capsule.witness import verify_rekor_receipt
+
+    cose = b"checkpoint statement"
+    entry = json.loads(base64.b64decode(g.rekor_receipt(cose)["receipt_b64"]))
+    p384 = ec.derive_private_key(7, ec.SECP384R1())
+    der = p384.public_key().public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
+    entry["logID"] = __import__("hashlib").sha256(der).hexdigest()
+    signed = {k: entry[k] for k in ("body", "integratedTime", "logID", "logIndex")}
+    signature = p384.sign(g._sorted_json(signed), ec.ECDSA(hashes.SHA256()))
+    entry["verification"] = {"signedEntryTimestamp": base64.b64encode(signature).decode()}
+    pem = p384.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+    ok, reason = verify_rekor_receipt(entry, checkpoint_cose=cose, checkpoint_key_id=g.raw_public(g.LOG_KEY).hex(),
+                                      rekor_public_key_pem=pem)
+    assert not ok and "P-256" in reason
+
+
+def test_base64_with_non_zero_trailing_bits_is_refused():
+    from agent_action_capsule.witness import _b64_canonical
+
+    assert _b64_canonical("QQ==") == b"A"
+    for text in ("QR==", "QQ", "Q Q==", "QQ==\n"):
+        with pytest.raises(ValueError):
+            _b64_canonical(text)
