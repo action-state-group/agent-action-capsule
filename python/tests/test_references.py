@@ -4,7 +4,7 @@
 Two surfaces:
   - the CONSUMER path (verify.py): the shared `reference-*` cases in the root
     Capsule corpus are replayed by Python, Go, and TypeScript.
-  - the PRODUCER path (contracts.py/parse.py/emit.py): the typed builder,
+  - the PRODUCER path (contracts.py/parse.py): the typed builder,
     Capsule.to_dict()/seal(), and the strict parse_capsule round-trip, with
     absent vs. empty vs. populated ``references`` kept as three DISTINCT wire
     forms (and therefore three distinct capsule_id digests).
@@ -22,7 +22,6 @@ from agent_action_capsule import (
     InvariantError,
     LogCoordinates,
     ReferenceEntry,
-    emit,
     load_registries,
     parse_capsule,
     verify,
@@ -215,20 +214,15 @@ def test_capsule_allows_reference_matching_parent_digest_under_a_different_type(
     assert sealed["references"][0]["digest"] == HEX_A
 
 
-# ---- emit() convenience builder ---------------------------------------------
-def test_emit_omits_references_by_default():
-    cap = emit(action_id="emit-ref-1", operator="op", developer="dev@v1")
-    assert "references" not in cap
-    assert verify(cap).ok
+# ---- sealed capsules verify -----------------------------------------------
+@pytest.mark.parametrize("references", [None, ()])
+def test_sealed_without_citations_verifies(references):
+    assert verify(_sealed(references=references)).ok
 
 
-def test_emit_with_references():
-    cap = emit(
-        action_id="emit-ref-2", operator="op", developer="dev@v1",
+def test_sealed_with_references_verifies():
+    capsule = _sealed(
         references=(ReferenceEntry(type="agent-action-capsule", digest_alg="SHA-256", digest=HEX_B, citation_purpose="responds_to"),),
     )
-    assert cap["references"] == [
-        {"type": "agent-action-capsule", "digest_alg": "SHA-256", "digest": HEX_B, "citation_purpose": "responds_to"}
-    ]
-    result = verify(cap)
-    assert result.ok
+    result = verify(capsule)
+    assert result.ok, [f.code for f in result.findings]

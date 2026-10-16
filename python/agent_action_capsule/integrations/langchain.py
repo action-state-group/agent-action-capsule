@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """LangChain emit-tier adapter — observe tool calls, emit capsules.
 
+.. deprecated:: 0.9.0
+   Use ``capsule_emit.adapters.langchain.LangChainCapsuleEmitter``
+   (capsule-emit); this module is removed in the next minor release.
+
 Drop this handler onto any LangChain agent/chain. On every completed tool call
 it builds and seals an Agent Action Capsule (§5.1) recording the event. No
 constraints run, no action is blocked — this is the emit-only on-ramp.
@@ -25,7 +29,8 @@ from __future__ import annotations
 from typing import Any
 
 from agent_action_capsule.contracts import Disposition
-from agent_action_capsule.emit import emit
+from agent_action_capsule.emit import _emit as emit
+from agent_action_capsule.integrations import _warn_deprecated
 
 try:
     from langchain_core.callbacks import BaseCallbackHandler
@@ -60,6 +65,7 @@ class LangChainCapsuleEmitter(BaseCallbackHandler):
         chain_capsules: bool = True,
         emit_on_error: bool = False,
     ) -> None:
+        _warn_deprecated(2)
         super().__init__()
         self._operator = operator
         self._developer = developer

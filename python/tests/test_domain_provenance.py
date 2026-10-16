@@ -2,8 +2,8 @@
 """Tests for §-02 domain / provenance / self_reported_reasoning fields.
 
 Acceptance criteria:
-- Round-trip: emit with domain/provenance/self_reported_reasoning_digest →
-  verify → ok, fields present in sealed dict.
+- Round-trip: a Capsule sealed with domain/provenance/self_reported_reasoning
+  → verify → ok.
 - Backward-compat: a -01 capsule (no domain/provenance) still verifies ok.
 - Unknown value is info, not error.
 - Type violation (non-string domain/provenance) is an error.
@@ -13,8 +13,9 @@ Acceptance criteria:
 import hashlib
 
 import pytest
+from _capsules import sealed
 
-from agent_action_capsule import emit, verify
+from agent_action_capsule import ModelAttestation, verify
 from agent_action_capsule.contracts import (
     DOMAIN_VALUES,
     PROVENANCE_RANK,
@@ -33,12 +34,12 @@ _BASE = dict(
     action_type="decide",
     operator="test-org",
     developer="test-agent@1.0",
-    model_id="claude-sonnet-4-6",
-    provider="anthropic",
+    model_attestation=ModelAttestation(model_id="claude-sonnet-4-6", provider="anthropic"),
 )
 
 _COT = b"I decided to call the tool because the user asked for it."
 _COT_DIGEST = hashlib.sha256(_COT).hexdigest()
+_SRR = SelfReportedReasoning(digest=_COT_DIGEST)
 
 
 # ---------------------------------------------------------------------------
@@ -59,67 +60,24 @@ def test_provenance_rank_order():
 
 
 # ---------------------------------------------------------------------------
-# emit() round-trips
+# Sealed round-trips
 # ---------------------------------------------------------------------------
 
 
-def test_emit_domain_action():
-    c = emit(**_BASE, domain="action")
-    assert c["domain"] == "action"
-    r = verify(c)
-    assert r.ok
-
-
-def test_emit_domain_memory():
-    c = emit(**_BASE, domain="memory")
-    assert c["domain"] == "memory"
-    assert verify(c).ok
-
-
-def test_emit_domain_reasoning():
-    base_fyi = {k: v for k, v in _BASE.items() if k != "action_type"}
-    c = emit(**base_fyi, domain="reasoning", action_type="fyi")
-    assert c["domain"] == "reasoning"
-    assert verify(c).ok
-
-
-def test_emit_provenance_gate():
-    c = emit(**_BASE, provenance="gate")
-    assert c["provenance"] == "gate"
-    assert verify(c).ok
-
-
-def test_emit_provenance_runtime():
-    c = emit(**_BASE, provenance="runtime")
-    assert c["provenance"] == "runtime"
-    assert verify(c).ok
-
-
-def test_emit_provenance_collector():
-    c = emit(**_BASE, provenance="collector")
-    assert c["provenance"] == "collector"
-    assert verify(c).ok
-
-
-def test_emit_domain_and_provenance():
-    c = emit(**_BASE, domain="action", provenance="gate")
-    assert c["domain"] == "action"
-    assert c["provenance"] == "gate"
-    assert verify(c).ok
-
-
-def test_emit_self_reported_reasoning():
-    c = emit(**_BASE, self_reported_reasoning_digest=_COT_DIGEST)
-    assert c["self_reported_reasoning"]["digest"] == _COT_DIGEST
-    assert verify(c).ok
-
-
-def test_emit_all_new_fields():
-    c = emit(**_BASE, domain="action", provenance="runtime", self_reported_reasoning_digest=_COT_DIGEST)
-    assert c["domain"] == "action"
-    assert c["provenance"] == "runtime"
-    assert c["self_reported_reasoning"]["digest"] == _COT_DIGEST
-    assert verify(c).ok
+@pytest.mark.parametrize("fields", [
+    {"domain": "action"},
+    {"domain": "memory"},
+    {"domain": "reasoning", "action_type": "fyi"},
+    {"provenance": "gate"},
+    {"provenance": "runtime"},
+    {"provenance": "collector"},
+    {"domain": "action", "provenance": "gate"},
+    {"self_reported_reasoning": _SRR},
+    {"domain": "action", "provenance": "runtime", "self_reported_reasoning": _SRR},
+])
+def test_sealed_domain_provenance_reasoning_verifies(fields):
+    r = verify(sealed(**{**_BASE, **fields}))
+    assert r.ok, [f.code for f in r.findings]
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +86,7 @@ def test_emit_all_new_fields():
 
 
 def test_domain_committed_to_capsule_id():
-    c = emit(**_BASE, domain="action")
+    c = sealed(**_BASE, domain="action")
     tampered = dict(c)
     tampered["domain"] = "memory"
     r = verify(tampered)
@@ -138,7 +96,7 @@ def test_domain_committed_to_capsule_id():
 
 
 def test_provenance_committed_to_capsule_id():
-    c = emit(**_BASE, provenance="gate")
+    c = sealed(**_BASE, provenance="gate")
     tampered = dict(c)
     tampered["provenance"] = "collector"
     r = verify(tampered)
@@ -147,7 +105,7 @@ def test_provenance_committed_to_capsule_id():
 
 
 def test_self_reported_reasoning_committed_to_capsule_id():
-    c = emit(**_BASE, self_reported_reasoning_digest=_COT_DIGEST)
+    c = sealed(**_BASE, self_reported_reasoning=_SRR)
     tampered = dict(c)
     tampered["self_reported_reasoning"] = {"digest": "a" * 64}
     r = verify(tampered)
@@ -161,10 +119,7 @@ def test_self_reported_reasoning_committed_to_capsule_id():
 
 
 def test_minus_01_capsule_verifies():
-    c = emit(
-        **_BASE,
-        spec_version="draft-mih-scitt-agent-action-capsule-01",
-    )
+    c = sealed(**_BASE, spec_version="draft-mih-scitt-agent-action-capsule-01")
     assert "domain" not in c
     assert "provenance" not in c
     r = verify(c)
@@ -177,7 +132,7 @@ def test_minus_01_capsule_verifies():
 
 
 def test_unknown_domain_value_is_info():
-    c = emit(**_BASE, domain="workflow")
+    c = sealed(**_BASE, domain="workflow")
     r = verify(c)
     assert r.ok
     info_codes = [f.code for f in r.findings if f.severity == "info"]
@@ -185,7 +140,7 @@ def test_unknown_domain_value_is_info():
 
 
 def test_unknown_provenance_value_is_info():
-    c = emit(**_BASE, provenance="hardware_tee")
+    c = sealed(**_BASE, provenance="hardware_tee")
     r = verify(c)
     assert r.ok
     info_codes = [f.code for f in r.findings if f.severity == "info"]
@@ -193,14 +148,14 @@ def test_unknown_provenance_value_is_info():
 
 
 def test_x_prefixed_domain_no_info():
-    c = emit(**_BASE, domain="x-custom-domain")
+    c = sealed(**_BASE, domain="x-custom-domain")
     r = verify(c)
     assert r.ok
     assert not any(f.code == "domain_unknown_value" for f in r.findings)
 
 
 def test_x_prefixed_provenance_no_info():
-    c = emit(**_BASE, provenance="x-hardware-tee")
+    c = sealed(**_BASE, provenance="x-hardware-tee")
     r = verify(c)
     assert r.ok
     assert not any(f.code == "provenance_unknown_value" for f in r.findings)
@@ -212,7 +167,7 @@ def test_x_prefixed_provenance_no_info():
 
 
 def test_non_string_domain_is_error():
-    c = emit(**_BASE)
+    c = sealed(**_BASE)
     tampered = dict(c)
     tampered["domain"] = 42
     r = verify(tampered)
@@ -221,7 +176,7 @@ def test_non_string_domain_is_error():
 
 
 def test_non_string_provenance_is_error():
-    c = emit(**_BASE)
+    c = sealed(**_BASE)
     tampered = dict(c)
     tampered["provenance"] = ["gate"]
     r = verify(tampered)
@@ -244,32 +199,27 @@ def test_self_reported_reasoning_ok():
     assert srr.digest == _COT_DIGEST
 
 
-def test_self_reported_reasoning_bad_emit_digest():
-    with pytest.raises(InvariantError):
-        emit(**_BASE, self_reported_reasoning_digest="short")
-
-
 # ---------------------------------------------------------------------------
 # parse_capsule round-trip
 # ---------------------------------------------------------------------------
 
 
 def test_parse_capsule_domain_provenance():
-    c = emit(**_BASE, domain="memory", provenance="collector")
+    c = sealed(**_BASE, domain="memory", provenance="collector")
     parsed = parse_capsule(c)
     assert parsed.domain == "memory"
     assert parsed.provenance == "collector"
 
 
 def test_parse_capsule_self_reported_reasoning():
-    c = emit(**_BASE, self_reported_reasoning_digest=_COT_DIGEST)
+    c = sealed(**_BASE, self_reported_reasoning=_SRR)
     parsed = parse_capsule(c)
     assert parsed.self_reported_reasoning is not None
     assert parsed.self_reported_reasoning.digest == _COT_DIGEST
 
 
 def test_parse_capsule_none_when_absent():
-    c = emit(**_BASE)
+    c = sealed(**_BASE)
     parsed = parse_capsule(c)
     assert parsed.domain is None
     assert parsed.provenance is None

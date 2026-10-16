@@ -14,9 +14,15 @@
 //! code for input past those bounds is implementation-defined. Authorizing
 //! the key for an operator or developer is a separate policy, outside this
 //! module.
+//!
+//! [`verify_record_signature`] grades a record's own producer signature (its
+//! local-only `signature` and `key_id` members) as authored, unclaimed or
+//! invalid, as the strict Evidence Bundle verifier reads it.
 
+use crate::canonical::{is_local_only_field, json_digest, normalize};
 use crate::verify::is_hex64;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+use serde_json::{Map, Value};
 
 /// Media type of the envelope's raw 32-byte payload.
 pub const CONTENT_TYPE: &str = "application/agent-action-capsule-id";
@@ -412,6 +418,132 @@ fn fits_half(value: f64) -> bool {
     scaled == scaled.trunc()
 }
 
+// ---- a record's producer signature -------------------------------------------
+
+/// [`verify_record_signature`]: the envelope verifies under `key_id`.
+pub const AUTHORED: &str = "authored";
+/// [`verify_record_signature`]: neither `signature` nor `key_id` is present.
+pub const UNCLAIMED: &str = "unclaimed";
+/// [`verify_record_signature`]: a half claim, or an envelope that does not
+/// verify.
+pub const INVALID: &str = "invalid";
+
+/// Decodes hex digit pairs, either case, with no whitespace
+/// (`(?:[0-9a-fA-F]{2})+`): the form of a record's `signature` and `key_id`.
+pub(crate) fn hex_pairs(text: &str) -> Option<Vec<u8>> {
+    if text.is_empty() || !text.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return None;
+    }
+    hex::decode(text).ok()
+}
+
+/// The Capsule ID a record declares by its `canonicalization_id`. `jcs`
+/// commits every member but `capsule_id` and the local-only envelope fields.
+/// `jcs-n`, declared or implied by an absent or null `canonicalization_id`,
+/// is the vintage reading: it also drops `chain` and normalizes
+/// ([`crate::canonical::normalize`]) before JCS. Any other value cannot be
+/// recomputed.
+fn record_capsule_id(record: &Map<String, Value>) -> Result<String, String> {
+    let algorithm = match record.get("canonicalization_id") {
+        None | Some(Value::Null) => "jcs-n",
+        Some(Value::String(s)) if s == "jcs" || s == "jcs-n" => s.as_str(),
+        Some(other) => {
+            return Err(format!(
+                "cannot compute capsule_id with canonicalization_id {other}"
+            ))
+        }
+    };
+    let mut canonical = Map::with_capacity(record.len());
+    for (key, value) in record {
+        if key == "capsule_id"
+            || is_local_only_field(key)
+            || (algorithm == "jcs-n" && key == "chain")
+        {
+            continue;
+        }
+        canonical.insert(key.clone(), value.clone());
+    }
+    let canonical = Value::Object(canonical);
+    let digest = if algorithm == "jcs-n" {
+        json_digest(&normalize(&canonical))
+    } else {
+        json_digest(&canonical)
+    };
+    digest.map_err(|e| e.to_string())
+}
+
+/// Grades a record's producer signature: [`AUTHORED`], [`UNCLAIMED`] or
+/// [`INVALID`] (Python `verify_record_signature`).
+///
+/// `signature` is the hex Producer Envelope and `key_id` the hex raw Ed25519
+/// public key. Neither present is unclaimed (an unsigned record, not a
+/// forgery). One without the other, or an envelope that does not verify under
+/// `key_id` over the Capsule ID recomputed from the record's own content
+/// (`jcs`, or the vintage `jcs-n`), is invalid. The carried `capsule_id` is
+/// not read. The messages are empty unless the verdict is invalid; their text
+/// is not part of any contract. A record that nests arrays and objects
+/// deeper than 128 levels is invalid. Never panics.
+pub fn verify_record_signature(record: &Value) -> (&'static str, Vec<String>) {
+    // Before any recursive work (clone, normalize, JCS) on caller input.
+    if crate::json::exceeds_max_depth(record) {
+        return (
+            INVALID,
+            vec!["record nests arrays and objects deeper than 128 levels".to_string()],
+        );
+    }
+    let record = match record.as_object() {
+        Some(r) => r,
+        None => return (INVALID, vec!["not a mapping".to_string()]),
+    };
+    let cid = match record.get("capsule_id") {
+        Some(Value::String(s)) => s.clone(),
+        Some(other) => other.to_string(),
+        None => "<none>".to_string(),
+    };
+    let has_signature = record.contains_key("signature");
+    let has_key_id = record.contains_key("key_id");
+    if !has_signature && !has_key_id {
+        return (UNCLAIMED, Vec::new());
+    }
+    if has_signature != has_key_id {
+        return (
+            INVALID,
+            vec![format!(
+                "capsule_id={cid}: only one of signature/key_id present -- malformed producer envelope"
+            )],
+        );
+    }
+    let malformed = |detail: &str| {
+        (
+            INVALID,
+            vec![format!(
+                "capsule_id={cid}: producer envelope malformed: {detail}"
+            )],
+        )
+    };
+    let hex_member = |name: &str| record.get(name)?.as_str().and_then(hex_pairs);
+    let (envelope, key) = match (hex_member("signature"), hex_member("key_id")) {
+        (Some(envelope), Some(key)) => (envelope, key),
+        (None, _) => return malformed("signature is not hex"),
+        (_, None) => return malformed("key_id is not hex"),
+    };
+    let capsule_id = match record_capsule_id(record) {
+        Ok(id) => id,
+        Err(e) => return malformed(&e),
+    };
+    let result = verify(&capsule_id, &envelope);
+    if result.ok && key == result.public_key {
+        return (AUTHORED, Vec::new());
+    }
+    (
+        INVALID,
+        vec![format!(
+            "capsule_id={cid}: self-attested Ed25519 signature does not verify against key_id -- \
+             content, signature, or key_id was tampered or forged"
+        )],
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -467,6 +599,61 @@ mod tests {
             &[0xc6, 0x00],
         ] {
             assert!(decode_all(encoded).is_ok(), "{encoded:02x?}");
+        }
+    }
+
+    #[test]
+    fn a_deeply_nested_record_is_invalid_without_recursing() {
+        use crate::json::deep;
+        for (signed, nested) in [
+            (true, deep::array(1_000_000)),
+            (false, deep::object(1_000_000)),
+            (true, deep::array(129)),
+        ] {
+            let mut record = Map::new();
+            if signed {
+                record.insert("signature".into(), Value::String("00".into()));
+                record.insert("key_id".into(), Value::String("00".into()));
+            }
+            record.insert("deep".into(), nested);
+            let record = Value::Object(record);
+            let (verdict, messages) = verify_record_signature(&record);
+            assert_eq!(verdict, INVALID);
+            assert!(messages[0].contains("deeper than 128"), "{messages:?}");
+            deep::dismantle(record);
+        }
+        // 128 levels are read as usual.
+        let mut record = Map::new();
+        record.insert("deep".into(), deep::array(127));
+        let record = Value::Object(record);
+        assert_eq!(verify_record_signature(&record).0, UNCLAIMED);
+        deep::dismantle(record);
+    }
+
+    #[test]
+    fn record_signature_edges() {
+        use serde_json::json;
+        assert_eq!(verify_record_signature(&json!([1])).0, INVALID);
+        assert_eq!(
+            verify_record_signature(&json!({"capsule_id": "x"})),
+            (UNCLAIMED, vec![])
+        );
+        let half = verify_record_signature(&json!({"key_id": "00"}));
+        assert_eq!(half.0, INVALID);
+        assert!(!half.1.is_empty());
+        for record in [
+            json!({"canonicalization_id": "as-transmitted", "signature": "d2", "key_id": "00"}),
+            json!({"canonicalization_id": 4, "signature": "d2", "key_id": "00"}),
+            json!({"canonicalization_id": "jcs", "x": 1.5, "signature": "d2", "key_id": "00"}),
+            json!({"canonicalization_id": "jcs", "signature": 7, "key_id": "00"}),
+            json!({"canonicalization_id": "jcs", "signature": "zz", "key_id": "00"}),
+            json!({"canonicalization_id": "jcs", "signature": "d2 84", "key_id": "11"}),
+            json!({"canonicalization_id": "jcs", "signature": "", "key_id": "11"}),
+            json!({"canonicalization_id": "jcs", "signature": "d2", "key_id": "1"}),
+        ] {
+            let (verdict, messages) = verify_record_signature(&record);
+            assert_eq!(verdict, INVALID, "{record}");
+            assert!(!messages.is_empty(), "{record}");
         }
     }
 

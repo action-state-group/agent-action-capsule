@@ -71,7 +71,7 @@ def _read_jsonl(ledger_path: str) -> list[dict]:
 def _parse_rfc3339(ts: str) -> float | None:
     """Parse an RFC 3339 / ISO-8601 UTC string to a POSIX timestamp.
 
-    Accepts the common forms produced by ``emit()``'s ``_utc_now()``:
+    Accepts the common UTC forms producers write:
     ``2024-01-15T12:00:00Z`` and ``2024-01-15T12:00:00.123456Z``.
     Returns ``None`` when the string cannot be parsed rather than raising.
     """
@@ -94,7 +94,7 @@ def _parse_rfc3339(ts: str) -> float | None:
 def _capsule_epoch_id(capsule: dict) -> str | None:
     """Extract epoch_id from a capsule, checking both top-level and
     compute_attestation (the interim location before the identity-epochs work
-    lands in emit())."""
+    makes it a Capsule field)."""
     if "epoch_id" in capsule:
         return capsule["epoch_id"]
     ma = capsule.get("model_attestation")

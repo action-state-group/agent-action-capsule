@@ -6,8 +6,9 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from _capsules import sealed
 
-from agent_action_capsule import emit, verify
+from agent_action_capsule import verify
 
 _REQUIRE_GO = os.environ.get("AAC_REQUIRE_GO") == "1"
 
@@ -64,7 +65,7 @@ def test_go_vectors_all_pass(go_binary):
 
 
 def test_go_accepts_fresh_capsule(go_binary, tmp_path):
-    cap = emit(
+    cap = sealed(
         action_id="crosslang-go-pos-1",
         action_type="fyi",
         operator="test-op",
@@ -108,7 +109,7 @@ def test_go_accepts_fresh_capsule(go_binary, tmp_path):
 
 
 def test_go_rejects_tampered_capsule(go_binary, tmp_path):
-    cap = emit(
+    cap = sealed(
         action_id="crosslang-go-neg-1",
         action_type="fyi",
         operator="test-op",

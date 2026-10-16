@@ -3,10 +3,11 @@
 import re
 
 import pytest
+from _capsules import sealed
 from conftest import base_executed
 
 from agent_action_capsule import verify
-from agent_action_capsule.emit import DEFAULT_FORMAT_VERSION, emit
+from agent_action_capsule.versions import DEFAULT_FORMAT_VERSION
 
 # ---------------------------------------------------------------------------
 # 1. v2 is the canonical declared version
@@ -15,13 +16,6 @@ from agent_action_capsule.emit import DEFAULT_FORMAT_VERSION, emit
 def test_default_format_version_is_v4():
     """New emission uses the declared-JCS format."""
     assert DEFAULT_FORMAT_VERSION == "4"
-
-
-def test_emit_produces_v4_declared_jcs():
-    """emit() stamps the current format and declaration."""
-    capsule = emit("test/fv", "fyi", "OP", "DEV")
-    assert capsule["format_version"] == "4"
-    assert capsule["canonicalization_id"] == "jcs"
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +126,7 @@ def _cleanroom_check(capsule: dict) -> bool:
 
 def test_cleanroom_accepts_what_library_accepts():
     """Clean-room and library verifier must agree on a well-formed capsule."""
-    capsule = emit("test/cleanroom", "fyi", "OP", "DEV")
+    capsule = sealed(action_id="test/cleanroom", action_type="fyi")
     lib_ok = verify(capsule).ok
     cr_ok = _cleanroom_check(capsule)
     assert lib_ok is True

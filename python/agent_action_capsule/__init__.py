@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Reference implementation of draft-mih-scitt-agent-action-capsule.
 
-Class 1 verifier (§6) + the typed producer carriers (§5) + the high-level
-emit/anchor surface (rungs 1+2+6) + emit-tier framework adapters. Substrate
-verification (COSE_Sign1 signature, registration, Receipts) is the SCITT/COSE
-substrate's, by reference, and is not implemented here. Class 2 / manifest-aware
-verification is out of scope.
+Class 1 verifier (§6) + the typed producer carriers (§5) with their sealing
+boundary ``Capsule.seal()`` + the anchor client (rung 6). ``emit()`` and the
+emit-tier framework adapters are deprecated in favour of capsule-emit and are
+removed in the next minor release. Substrate verification (COSE_Sign1
+signature, registration, Receipts) is the SCITT/COSE substrate's, by reference,
+and is not implemented here. Class 2 / manifest-aware verification is out of
+scope.
 """
 import warnings
 from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
@@ -50,17 +52,17 @@ from .disclosure_envelope import (
     build_disclosure_envelope,
     verify_disclosure_envelope,
 )
-from .emit import (
+from .emit import emit  # deprecated: warns when called; see emit.DEPRECATION_MESSAGE
+from .parse import Capsule, parse_capsule
+from .registries import REGISTRY_NAMES, load_registries
+from .verify import Finding, VerificationResult, verify, verify_store
+from .versions import (
     ACCEPTED_SPEC_VERSIONS,
     DEFAULT_FORMAT_VERSION,
     DEFAULT_SPEC_VERSION,
     FORMAT_VERSION,
     SPEC_VERSION,
-    emit,
 )
-from .parse import Capsule, parse_capsule
-from .registries import REGISTRY_NAMES, load_registries
-from .verify import Finding, VerificationResult, verify, verify_store
 
 # pyproject.toml is the one version source (Release · Prepare bumps only it);
 # read it from the installed distribution instead of repeating it here.
@@ -94,12 +96,13 @@ def anchor(*args, **kwargs):
 
 __all__ = [
     "__version__",
-    # rung 1: emit
+    # rung 1: emit (deprecated; use capsule-emit's capsule_emit.seal)
     "emit",
+    # versions (agent_action_capsule.versions)
     "DEFAULT_SPEC_VERSION",
     "DEFAULT_FORMAT_VERSION",
     "ACCEPTED_SPEC_VERSIONS",
-    # Aliases used by the emit-tier adapter surface.
+    # Aliases kept for the former emit-tier adapter surface.
     "SPEC_VERSION",
     "FORMAT_VERSION",
     # rung 6: anchor client

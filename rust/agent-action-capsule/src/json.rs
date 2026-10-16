@@ -17,6 +17,27 @@ use std::fmt;
 
 const MAX_DEPTH: usize = 128;
 
+/// Whether `value` nests arrays and objects deeper than the decoder accepts
+/// (128 levels). The verifier entry points that take a caller-built
+/// [`Value`] check this first: cloning, canonicalizing or normalizing a
+/// `Value` recurses once per level, so unbounded nesting would overflow the
+/// stack. The walk itself is iterative.
+pub(crate) fn exceeds_max_depth(value: &Value) -> bool {
+    let mut stack: Vec<(&Value, usize)> = vec![(value, 0)];
+    while let Some((value, depth)) = stack.pop() {
+        let children: Box<dyn Iterator<Item = &Value>> = match value {
+            Value::Array(items) => Box::new(items.iter()),
+            Value::Object(members) => Box::new(members.values()),
+            _ => continue,
+        };
+        if depth + 1 > MAX_DEPTH {
+            return true;
+        }
+        stack.extend(children.map(|child| (child, depth + 1)));
+    }
+    false
+}
+
 /// Why bytes are not a JSON value this crate accepts.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DecodeError {
@@ -277,9 +298,69 @@ impl Parser<'_> {
     }
 }
 
+/// Test support for deeply nested values, built and taken apart without
+/// recursion: `serde_json::Value`'s own `Drop` recurses once per level.
+#[cfg(test)]
+pub(crate) mod deep {
+    use serde_json::{Map, Value};
+
+    /// `depth` nested arrays around `null`.
+    pub(crate) fn array(depth: usize) -> Value {
+        let mut value = Value::Null;
+        for _ in 0..depth {
+            value = Value::Array(vec![value]);
+        }
+        value
+    }
+
+    /// `depth` nested objects `{"a": ...}` around `null`.
+    pub(crate) fn object(depth: usize) -> Value {
+        let mut value = Value::Null;
+        for _ in 0..depth {
+            let mut map = Map::new();
+            map.insert("a".to_string(), value);
+            value = Value::Object(map);
+        }
+        value
+    }
+
+    /// Drops `value` one level at a time.
+    pub(crate) fn dismantle(value: Value) {
+        let mut stack = vec![value];
+        while let Some(value) = stack.pop() {
+            match value {
+                Value::Array(items) => stack.extend(items),
+                Value::Object(members) => stack.extend(members.into_iter().map(|(_, v)| v)),
+                _ => {}
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn exceeds_max_depth_counts_levels_iteratively() {
+        for (depth, too_deep) in [(0, false), (1, false), (128, false), (129, true)] {
+            for value in [deep::array(depth), deep::object(depth)] {
+                assert_eq!(exceeds_max_depth(&value), too_deep, "{depth}");
+                deep::dismantle(value);
+            }
+        }
+        // Far past any stack: the walk and the teardown stay iterative.
+        let value = deep::array(1_000_000);
+        assert!(exceeds_max_depth(&value));
+        deep::dismantle(value);
+        // Width is not depth.
+        let wide = Value::Array(vec![Value::Array(vec![]); 100_000]);
+        assert!(!exceeds_max_depth(&wide));
+        // The decoder and the walk agree on the limit.
+        let text = |n: usize| format!("{}{}", "[".repeat(n), "]".repeat(n));
+        assert!(decode(text(128).as_bytes()).is_ok_and(|v| !exceeds_max_depth(&v)));
+        assert!(decode(text(129).as_bytes()).is_err());
+    }
 
     #[test]
     fn serde_json_number_token_stays_an_object() {
