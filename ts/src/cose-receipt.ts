@@ -79,12 +79,12 @@ export function decodeStrictCbor(data: Uint8Array): CborValue {
 }
 
 /**
- * Decode one CBOR item, with the shortest-form rule only when `shortest`.
- * The lenient reading is for an inclusion-proof blob, which both scitt-cose
- * verifiers decode with a plain decoder (Python's `_decode_inclusion_proof`
- * uses cbor2, Rust uses ciborium): a non-shortest argument or float is
- * accepted there. Definite lengths, unique map keys and no trailing bytes
- * hold either way.
+ * Decode one CBOR item. With `shortest`, every length is definite and every
+ * argument and float in its shortest form. Without it (an inclusion-proof
+ * blob, which both scitt-cose verifiers decode with a plain decoder:
+ * Python's `_decode_inclusion_proof` uses cbor2, Rust uses ciborium), a
+ * non-shortest argument or float and indefinite-length strings, arrays and
+ * maps are accepted. Unique map keys and no trailing bytes hold either way.
  */
 function decodeCbor(data: Uint8Array, shortest: boolean): CborValue {
   let offset = 0;
@@ -140,6 +140,50 @@ function decodeCbor(data: Uint8Array, shortest: boolean): CborValue {
       )
         throw new SyntaxError("CBOR float is not in its shortest form");
       return value;
+    }
+    // Lenient mode reads indefinite-length strings, arrays and maps, as
+    // cbor2 and ciborium do: items until the 0xff break.
+    if (!shortest && add === 31 && major >= 2 && major <= 5) {
+      const atBreak = (): boolean => {
+        if (data[offset] !== 0xff) return false;
+        offset += 1;
+        return true;
+      };
+      if (major === 2 || major === 3) {
+        // Each chunk is a definite-length string of the same major type.
+        const chunks: Uint8Array[] = [];
+        while (!atBreak()) {
+          const head = byte();
+          if (head >>> 5 !== major || (head & 31) === 31)
+            throw new SyntaxError("invalid indefinite-length string chunk");
+          chunks.push(take(argument(head & 31)));
+        }
+        const joined = new Uint8Array(
+          chunks.reduce((sum, chunk) => sum + chunk.length, 0),
+        );
+        let at = 0;
+        for (const chunk of chunks) {
+          if (major === 3) utf8.decode(chunk); // each chunk is valid UTF-8
+          joined.set(chunk, at);
+          at += chunk.length;
+        }
+        return major === 2 ? joined : utf8.decode(joined);
+      }
+      if (major === 4) {
+        const out: CborValue[] = [];
+        while (!atBreak()) out.push(item(depth + 1));
+        return out;
+      }
+      const entries: [CborValue, CborValue][] = [],
+        keys = new Set<string>();
+      while (!atBreak()) {
+        const key = item(depth + 1),
+          identity = identityOf(key);
+        if (keys.has(identity)) throw new SyntaxError("duplicate CBOR map key");
+        keys.add(identity);
+        entries.push([key, item(depth + 1)]);
+      }
+      return new CborMap(entries);
     }
     const length = argument(add);
     if (major === 0) return length;

@@ -186,10 +186,10 @@ describe("strict Evidence Bundle vectors", () => {
     );
   });
 
-  it("reads an inclusion-proof blob with non-shortest integer heads, as scitt-cose does", async () => {
-    // pos-witness-cll with its unprotected proof blob [1, 0, []] re-encoded
-    // from 83 01 00 80 to 83 18 01 18 00 80: unsigned, so the receipt still
-    // verifies, and Python's cbor2 and Rust's ciborium both read it.
+  // pos-witness-cll with its unprotected proof blob [1, 0, []] (83 01 00 80)
+  // re-encoded: unsigned, so the receipt still verifies when the blob reads
+  // as the same proof, as Python's cbor2 and Rust's ciborium read it.
+  const withProofBlob = async (blobHex: string) => {
     const testCase = vectors.cases.find((c) => c.id === "pos-witness-cll")!;
     const bundle = structuredClone(testCase.bundle) as {
       checkpoint: { witnesses: { receipt_b64: string }[] };
@@ -197,8 +197,14 @@ describe("strict Evidence Bundle vectors", () => {
     const receipt = bundle.checkpoint.witnesses[0]!;
     const original = Buffer.from(receipt.receipt_b64, "base64").toString("hex");
     expect(original.split("4483010080")).toHaveLength(2);
+    // A byte string of fewer than 24 octets: its length is in the head.
+    const octets = blobHex.length / 2;
+    expect(octets).toBeLessThan(24);
     receipt.receipt_b64 = Buffer.from(
-      original.replace("4483010080", "46831801180080"),
+      original.replace(
+        "4483010080",
+        `${(0x40 + octets).toString(16)}${blobHex}`,
+      ),
       "hex",
     ).toString("base64");
     const { strict } = await verifyBundle(bundle, {
@@ -206,22 +212,34 @@ describe("strict Evidence Bundle vectors", () => {
       requireSignature: testCase.options.require_signature,
       witnessDirectory: vectors.witness_directory,
     });
-    expect(strict.witnesses).toMatchObject({
-      status: "pass",
-      receipts: [{ status: "pass", grade: "mmr-verified" }],
-    });
-    expect(strict.verdict).toBe(testCase.expect.verdict);
-    // Trailing bytes after the proof array are still refused.
-    receipt.receipt_b64 = Buffer.from(
-      original.replace("4483010080", "4583010080ff"),
-      "hex",
-    ).toString("base64");
-    const trailing = await verifyBundle(bundle, {
-      strict: true,
-      requireSignature: testCase.options.require_signature,
-      witnessDirectory: vectors.witness_directory,
-    });
-    expect(trailing.strict.witnesses).toMatchObject({ status: "fail" });
+    return { strict, expected: testCase.expect.verdict };
+  };
+
+  it.each([
+    ["non-shortest integer heads", "831801180080"],
+    ["an indefinite-length outer array", "9f010080ff"],
+    ["an indefinite-length path", "8301009fff"],
+    ["both indefinite", "9f01009fffff"],
+  ])(
+    "reads an inclusion-proof blob with %s, as scitt-cose does",
+    async (_name, blobHex) => {
+      const { strict, expected } = await withProofBlob(blobHex);
+      expect(strict.witnesses).toMatchObject({
+        status: "pass",
+        receipts: [{ status: "pass", grade: "mmr-verified" }],
+      });
+      expect(strict.verdict).toBe(expected);
+    },
+  );
+
+  it.each([
+    ["trailing bytes after the array", "83010080ff"],
+    ["an unterminated indefinite array", "9f010080"],
+    ["a break inside a definite array", "830100ff"],
+    ["a path of a non-byte-string", "8301009f01ff"],
+  ])("refuses an inclusion-proof blob with %s", async (_name, blobHex) => {
+    const { strict } = await withProofBlob(blobHex);
+    expect(strict.witnesses).toMatchObject({ status: "fail" });
   });
 
   it("leaves the plain result unchanged", async () => {
