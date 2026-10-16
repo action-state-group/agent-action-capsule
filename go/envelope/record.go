@@ -35,6 +35,11 @@ func VerifyRecordSignature(value interface{}) (string, []string) {
 	if !isObject {
 		return Invalid, []string{"not a mapping"}
 	}
+	// Recomputing the Capsule ID recurses; a record nested deeper than any
+	// JSON text decodes to is refused before it can exhaust the stack.
+	if canonical.TooDeep(record) {
+		return Invalid, []string{"record is nested too deeply"}
+	}
 	carried := "<none>"
 	if id, present := record["capsule_id"]; present {
 		carried = fmt.Sprint(id)

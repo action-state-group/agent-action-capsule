@@ -113,6 +113,18 @@ func (r StrictResult) Claim(name string) *ClaimResult {
 //   - the witness receipts in checkpoint.witnesses under the keys of
 //     WitnessDirectory.
 func VerifyStrict(value interface{}, opts StrictOptions) StrictResult {
+	// A value nested deeper than any JSON text decodes to (only a value built
+	// in Go can be) is refused before any recursive check can exhaust the
+	// stack: bundle_malformed on every claim, as the plain verifier reports a
+	// value that is not a Bundle.
+	if canonical.TooDeep(value) {
+		malformed := ClaimResult{Status: "fail", Findings: []string{"bundle_malformed"}}
+		return StrictResult{
+			VerificationResult: VerificationResult{GraphClosure: malformed, IntervalCoverage: malformed, PerRecordMembership: malformed},
+			Claims:             []NamedClaim{{"records", malformed}},
+			Verdict:            VerdictInvalid,
+		}
+	}
 	result := StrictResult{VerificationResult: VerifyBundleWithOptions(value, opts.Options)}
 	bundle, isObject := value.(map[string]interface{})
 	if !isObject || bundle["bundle_kind"] != bundleKind || bundle["bundle_version"] != "2" {
@@ -329,15 +341,21 @@ func sameString(want string) func(interface{}) bool {
 }
 
 // sameInteger holds JSON types apart: only an integer equals the signed
-// integer, never a boolean, a float or a string.
+// integer, never a boolean, a float or a string. A json.Number with a
+// fraction or an exponent ("0.0", "0e0") is a float, and so is any Go float:
+// encoding/json without UseNumber decodes every number, 0 and 0.0 alike, to
+// float64, which cannot tell them apart, so such a copy never matches.
 func sameInteger(want uint64) func(interface{}) bool {
 	return func(value interface{}) bool {
-		if number, isNumber := value.(json.Number); isNumber {
+		switch number := value.(type) {
+		case json.Number:
 			if canonical.IsFloat(number) {
 				return false
 			}
 			parsed, ok := new(big.Int).SetString(number.String(), 10)
 			return ok && parsed.Cmp(new(big.Int).SetUint64(want)) == 0
+		case float32, float64:
+			return false
 		}
 		parsed, ok := integer(value)
 		return ok && parsed >= 0 && uint64(parsed) == want

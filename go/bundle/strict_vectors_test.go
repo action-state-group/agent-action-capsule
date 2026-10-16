@@ -158,3 +158,81 @@ func TestStrictKeepsThePlainResult(t *testing.T) {
 	require.Nil(t, strict.Claim("disclosures"))
 	require.NotNil(t, strict.SignedCheckpoint)
 }
+
+// checkpointClaimWith runs the base VALID case with checkpoint.prev_size
+// replaced by raw JSON text, decoded with or without UseNumber.
+func checkpointClaimWith(t *testing.T, prevSize string, useNumber bool) *bundle.ClaimResult {
+	t.Helper()
+	vectors := loadStrictVectors(t)
+	data, err := json.Marshal(vectors.Cases[0].Bundle)
+	require.NoError(t, err)
+	var value map[string]interface{}
+	if useNumber {
+		decoder := json.NewDecoder(bytes.NewReader(data))
+		decoder.UseNumber()
+		require.NoError(t, decoder.Decode(&value))
+	} else {
+		require.NoError(t, json.Unmarshal(data, &value))
+	}
+	var replacement interface{}
+	decoder := json.NewDecoder(bytes.NewReader([]byte(prevSize)))
+	if useNumber {
+		decoder.UseNumber()
+	}
+	require.NoError(t, decoder.Decode(&replacement))
+	value["checkpoint"].(map[string]interface{})["prev_size"] = replacement
+	return bundle.VerifyStrict(value, bundle.StrictOptions{}).Claim("checkpoint")
+}
+
+func TestCheckpointIntegerFieldsRefuseFloats(t *testing.T) {
+	require.Equal(t, "pass", checkpointClaimWith(t, "0", true).Status)
+	for _, text := range []string{"0.0", "0e0", "0E0", "-0.0", "false", `"0"`} {
+		claim := checkpointClaimWith(t, text, true)
+		require.Equal(t, "fail", claim.Status, text)
+		require.Contains(t, claim.Findings, "checkpoint_field_mismatch:prev_size", text)
+	}
+	// Standard encoding/json decodes 0.0 and 0 alike to float64, so a float
+	// never matches the signed integer; strict callers decode with UseNumber.
+	claim := checkpointClaimWith(t, "0.0", false)
+	require.Equal(t, "fail", claim.Status)
+	require.Contains(t, claim.Findings, "checkpoint_field_mismatch:prev_size")
+	require.Contains(t, claim.Findings, "checkpoint_field_mismatch:mmr_size")
+}
+
+// nested builds a value n arrays deep around a string.
+func nested(n int) interface{} {
+	var value interface{} = "leaf"
+	for range n {
+		value = []interface{}{value}
+	}
+	return value
+}
+
+func TestStrictRefusesValuesNestedTooDeeply(t *testing.T) {
+	vectors := loadStrictVectors(t)
+	data, err := json.Marshal(vectors.Cases[0].Bundle)
+	require.NoError(t, err)
+	var value map[string]interface{}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&value))
+
+	// Far beyond any JSON text, built in Go: refused, not a stack overflow.
+	value["extensions"] = map[string]interface{}{"x": nested(2_000_000)}
+	result := bundle.VerifyStrict(value, bundle.StrictOptions{})
+	require.Equal(t, bundle.VerdictInvalid, result.Verdict)
+	require.False(t, result.KindOK)
+	malformed := bundle.ClaimResult{Status: "fail", Findings: []string{"bundle_malformed"}}
+	require.Equal(t, []bundle.NamedClaim{{Name: "records", ClaimResult: malformed}}, result.Claims)
+	require.Equal(t, malformed, result.GraphClosure)
+
+	record := vectors.RecordSignatures[0].Record.(map[string]interface{})
+	deep := map[string]interface{}{}
+	for name, member := range record {
+		deep[name] = member
+	}
+	deep["action_id"] = nested(2_000_000)
+	verdict, messages := envelope.VerifyRecordSignature(deep)
+	require.Equal(t, envelope.Invalid, verdict)
+	require.NotEmpty(t, messages)
+}
