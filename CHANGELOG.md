@@ -21,6 +21,17 @@
   bytes, public key), `verifyReceipt`, `verifyRekorReceipt`, `verifyScrapiReceipt`, and the
   directory and key helpers `witnessRowFor` and `witnessRowKeys`.
 
+- Go: `bundle.VerifyStrict(value, StrictOptions{RequireSignature, WitnessDirectory})` is the
+  strict `verify_bundle`, with `KindOK`, ordered `Claims`, `Records`, `Witnesses`,
+  `WitnessReceipts`, `SignedCheckpoint`, `SignerMatchesCheckpoint` and `Verdict`; it passes every
+  case in `vectors/bundle/strict/` (#280). `envelope.VerifyRecordSignature` grades one record's
+  signature. The new package `witness` holds the witness directory (`ParseDirectory`, `RowFor`,
+  `Row.Keys`), `BindingOf`, `EndpointOf`, `ParseSignedCheckpoint`, `CheckpointDigest`, a COSE
+  Receipt check over any leaf (`VerifyCOSEReceipt`), the Rekor check (`VerifyRekorEntry`), the
+  per-receipt `VerifyReceipt` and `VerifyReceipts`. The new package `settlement` holds `Verify`,
+  which passes every case in `vectors/settlement/`. `VerifyBundle` is unchanged, and
+  `veraison/go-cose` becomes a direct dependency.
+
 - Rust: `agent-action-capsule` ports both (#280). With the new `strict` feature,
   `bundle::verify_bundle_strict(&bundle, &StrictOptions { require_signature, witness_directory })`
   returns a `StrictVerificationResult` with `verdict()`, the claims in report order, per-record
