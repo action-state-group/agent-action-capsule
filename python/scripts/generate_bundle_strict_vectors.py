@@ -366,6 +366,8 @@ DIRECTORY = {
         {"name": "K1 witness", "endpoint": "https://k1-witness.example", "since": "2026-01-01",
          "key_ids": [hashlib.sha256(spki_der(K1_WITNESS)).hexdigest()], "public_keys": [b64(spki_der(K1_WITNESS))]},
         {"name": "Keyless witness", "endpoint": "https://keyless-witness.example", "since": "2026-01-01", "key_ids": []},
+        {"name": "Off-curve witness", "endpoint": "https://off-curve-witness.example", "since": "2026-01-01",
+         "key_ids": ["ff" * 32]},
         {"name": "P-256 witness", "endpoint": "https://p256-witness.example", "since": "2026-01-01",
          "key_ids": [hashlib.sha256(spki_der(P256_WITNESS)).hexdigest()], "public_keys": [b64(spki_der(P256_WITNESS))]},
         {"name": "Rekor", "endpoint": "https://rekor.example", "since": "2026-01-01", "binding": "rekor",
@@ -698,6 +700,21 @@ def build_cases() -> list[dict]:
          "checkpoint_authenticated": True, "signer_matches_checkpoint": False},
     ))
 
+    duplicate = copy.deepcopy(base)
+    duplicate["records"].append(copy.deepcopy(base["records"][2]))
+    dup_records = records_expect(duplicate)
+    dup_records[3]["identity_ok"] = False
+    cases.append(case(
+        "neg-record-duplicate",
+        "The third record appears twice: the second copy is a record the plain verifier skipped.",
+        duplicate,
+        {"verdict": "INVALID", "claims": claims(
+            records=claim("fail", f"record_identity_invalid:{ids[2]}"),
+            graph_closure=claim("fail", f"record_duplicate:{ids[2]}")),
+         "witnesses": ABSENT, "records": dup_records,
+         "checkpoint_authenticated": True, "signer_matches_checkpoint": False},
+    ))
+
     not_bundle = copy.deepcopy(base)
     not_bundle["bundle_kind"] = "evidence-bundle/v1"
     cases.append(case(
@@ -780,6 +797,12 @@ def build_cases() -> list[dict]:
                  witnessed(es256_receipt(leaf, K1_WITNESS, K1_URL)),
                  {"status": "fail", "findings": [f"witness_receipt_invalid:{K1_URL}"],
                   "receipts": [receipt_expect(K1_URL, "cll", "fail")]}, verdict="INVALID")
+    off_curve = "https://off-curve-witness.example"
+    witness_case("neg-witness-cll-key-not-a-point",
+                 "The row's key id is 32 bytes that are not an Ed25519 public key: nothing verifies under it.",
+                 witnessed(cll_receipt(leaf, ts_url=off_curve)),
+                 {"status": "fail", "findings": [f"witness_receipt_invalid:{off_curve}"],
+                  "receipts": [receipt_expect(off_curve, "cll", "fail")]}, verdict="INVALID")
     no_size = cll_receipt(leaf)
     del no_size["tree_size"]
     witness_case("neg-witness-malformed", "A receipt entry without tree_size, beside a good one.",

@@ -362,12 +362,15 @@ def _apply_strict(result: BundleVerificationResult, bundle: Mapping[str, Any], r
     raw_records = bundle.get("records") if isinstance(bundle.get("records"), list) else []
     seqs = _membership_seqs(bundle)
     records: list[RecordResult] = []
+    seen: set[str] = set()
     for record in raw_records:
         if not isinstance(record, Mapping):
             continue
         cid = record.get("capsule_id") if isinstance(record.get("capsule_id"), str) else ""
         verdict, messages = verify_record_signature(dict(record))
-        aac = result.capsule_results.get(cid)
+        # A repeated capsule_id is a second record the plain verifier skipped.
+        aac = result.capsule_results.get(cid) if cid not in seen else None
+        seen.add(cid)
         key_id = record.get("key_id")
         records.append(
             RecordResult(

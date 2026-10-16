@@ -209,3 +209,13 @@ def test_amounts_longer_than_the_int_conversion_limit_compare_exactly():
     payee = {"received": {"value": big, "assetCode": "X", "assetScale": 0}}
     assert _amount_rule_holds(payer, payee, {"value": "1", "assetCode": "X", "assetScale": 0})
     assert not _amount_rule_holds(payer, payee, {"value": "2", "assetCode": "X", "assetScale": 0})
+
+
+def test_deeply_nested_wrapped_octets_never_raise():
+    import hashlib
+
+    from agent_action_capsule.settlement import _x402_scheme
+
+    octets = b"[" * 100000 + b"]" * 100000
+    leg = {"wrapped": [{"type": "x402.payment-payload", "digest": hashlib.sha256(octets).hexdigest()}]}
+    assert _x402_scheme([leg], {hashlib.sha256(octets).hexdigest(): octets}) is None

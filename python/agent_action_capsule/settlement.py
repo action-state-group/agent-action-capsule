@@ -325,7 +325,7 @@ def _x402_scheme(legs: list[dict], objects: dict[str, bytes]) -> str | None:
                 if w["type"] == "x402.payment-payload":
                     accepted = json.loads(octets).get("accepted", {})
                     return accepted.get("scheme") if isinstance(accepted, dict) else None
-            except (ValueError, AttributeError, UnicodeDecodeError):
+            except (ValueError, AttributeError, UnicodeDecodeError, RecursionError):
                 continue
     return None
 

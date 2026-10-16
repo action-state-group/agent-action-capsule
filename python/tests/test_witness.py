@@ -151,3 +151,19 @@ def test_base64_with_non_zero_trailing_bits_is_refused():
     for text in ("QR==", "QQ", "Q Q==", "QQ==\n"):
         with pytest.raises(ValueError):
             _b64_canonical(text)
+
+
+def test_deeply_nested_receipt_json_fails_and_never_raises():
+    import base64
+
+    record = {"ts_url": "rekor+https://r.example", "entry_hash": "", "leaf_index": 0, "tree_size": 1,
+              "receipt_b64": base64.b64encode(b"[" * 100000 + b"]" * 100000).decode()}
+    ok, reason, _ = verify_receipt(SIGNED, record, b"", b"cose")
+    assert not ok and reason.startswith("unreadable receipt")
+
+
+def test_a_public_key_that_is_not_spki_is_skipped():
+    import base64
+
+    row = {"key_ids": ["22" * 32], "public_keys": [base64.b64encode(b"not a key").decode()]}
+    assert len(row_public_keys_pem(row)) == 1

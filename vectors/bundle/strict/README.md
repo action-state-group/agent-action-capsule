@@ -51,7 +51,9 @@ beside the claims and is never one of them.
 
 **`records`.** One entry per object in `records`, in order. `identity_ok`
 holds when the plain verifier verified that record (Class 1, recomputed
-Capsule ID) under its carried `capsule_id`. The claim passes when there is at
+Capsule ID) under its carried `capsule_id`; a record whose `capsule_id`
+repeats an earlier record's is one the plain verifier skipped, so its
+identity does not hold (`neg-record-duplicate`). The claim passes when there is at
 least one record and every record's identity holds. Otherwise it fails with
 `record_identity_invalid:<capsule_id>` per failing record, or `no_records`.
 `seq` is the record's `log_coordinates.seq` from its membership, or `null`.
@@ -158,7 +160,9 @@ out in this order:
 3. The row's keys, in `key_ids` order: a `key_id` that names a `public_keys`
    entry (base64 DER SubjectPublicKeyInfo) by the SHA-256 of its DER, or an
    Ed25519 entry by its raw key, is that key. Any other `key_id` is read as a
-   raw Ed25519 key, except in a `rekor` row, where it makes the row unusable
+   raw Ed25519 key (32 bytes that are not a valid Ed25519 point are still a
+   key, one under which nothing verifies, so the receipt fails:
+   `neg-witness-cll-key-not-a-point`), except in a `rekor` row, where it makes the row unusable
    (`withheld`). A row with no keys is `withheld`.
 4. The receipt is `pass` under the first key it verifies under. If none
    verifies, it is `fail`.
@@ -240,7 +244,8 @@ Every base64 field a receipt check reads (`receipt_b64`, the Rekor `body`,
 `signedEntryTimestamp` and `verifier`) is canonical standard base64 with
 padding: a character outside the alphabet, missing padding, or non-zero
 trailing bits in the last symbol make the receipt fail. A directory
-`public_keys` entry that is not canonical base64 DER is skipped. A row
+`public_keys` entry that is not canonical base64, or that decodes to something
+other than a DER SubjectPublicKeyInfo, is skipped. A row
 whose `key_ids` or `public_keys` is not a list, or with a key id that is not 64
 lowercase hex characters, is unusable (`withheld`).
 
@@ -269,6 +274,7 @@ checkpoint is signed by another, the log key.
 | `neg-unsigned-record-signature-required` | the same with `require_signature` | INVALID |
 | `neg-record-signature-wrong-key` | an envelope signed by another key than `key_id` | INVALID |
 | `neg-record-edited` | a record edited after signing | INVALID |
+| `neg-record-duplicate` | the third record appears twice | INVALID |
 | `incomplete-producer-selected` | records 1 and 3 of 3, producer-selected | INCOMPLETE |
 | `neg-producer-selected-proof-invalid` | the same with one inclusion proof edited | INVALID |
 | `neg-producer-selected-coordinates-log-and-seq` | producer-selected: one membership names another log, another has `seq` 0 | INVALID |
@@ -295,6 +301,7 @@ checkpoint is signed by another, the log key.
 | `neg-witness-cll-alg-unsupported` | a receipt signed over the right root that declares `alg` -257 | INVALID |
 | `pos-witness-cll-es256` | a `cll` receipt signed ES256 under the row's P-256 key | VALID |
 | `neg-witness-cll-es256-other-curve` | a receipt declaring ES256 under the row's secp256k1 key | INVALID |
+| `neg-witness-cll-key-not-a-point` | the row's key id is 32 bytes that are not an Ed25519 point | INVALID |
 | `neg-witness-malformed` | an entry without `tree_size`, beside a good receipt | INVALID |
 | `pos-witness-scrapi` | a `scrapi` receipt, no grade label | VALID, grade `observed-only` |
 | `pos-witness-scrapi-unknown-grade` | an unknown grade label | VALID, grade `observed-only` |

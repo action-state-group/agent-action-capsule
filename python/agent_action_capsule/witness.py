@@ -188,6 +188,13 @@ def row_public_keys_pem(row: Mapping[str, Any]) -> list[bytes]:
         raise ValueError("key_ids and public_keys must be lists")
     for b64 in public_keys:
         der = _der(b64)
+        try:
+            # An entry that is not a SubjectPublicKeyInfo is skipped, like one
+            # that is not base64.
+            if der is not None:
+                load_der_public_key(der)
+        except Exception:  # noqa: BLE001
+            der = None
         if der is not None:
             by_id[hashlib.sha256(der).hexdigest()] = der
             raw = _raw_ed25519(der)
@@ -409,7 +416,7 @@ def verify_receipt(
     if binding == BINDING_REKOR:
         try:
             receipt = json.loads(_b64_canonical(record["receipt_b64"]))
-        except (ValueError, TypeError) as exc:
+        except (ValueError, TypeError, RecursionError) as exc:
             return False, f"unreadable receipt: {exc}", None
         ok, reason = verify_rekor_receipt(
             receipt, checkpoint_cose=cose, checkpoint_key_id=signed["key_id"], rekor_public_key_pem=pem
