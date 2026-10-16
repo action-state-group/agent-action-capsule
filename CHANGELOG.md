@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0 — 2026-10-16
+
 - Python: `emit()` (`agent_action_capsule.emit.emit`, exported from the root as
   `agent_action_capsule.emit`) and the emit-tier adapters in `agent_action_capsule.integrations`
   (`LangChainCapsuleEmitter`, `CrewAICapsuleEmitter`, `emit_tool`, with the `langchain` and `crewai`
