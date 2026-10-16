@@ -16,6 +16,19 @@ from agent_action_capsule.witness import (  # noqa: E402
     verify_witness_receipts,
 )
 
+
+def _generator():
+    """The strict-vector generator, which builds real receipts; it needs cll."""
+    import sys
+    from pathlib import Path
+
+    pytest.importorskip("cll.checkpoint")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import generate_bundle_strict_vectors
+
+    return generate_bundle_strict_vectors
+
+
 SIGNED = {"log_id": "l", "mmr_size": 1, "root": "00" * 32, "prev_size": 0, "prev_root": "",
           "key_id": "11" * 32, "timestamp": "2026-10-15T00:00:00Z"}
 
@@ -96,11 +109,8 @@ def test_record_signature_hex_has_no_whitespace():
 def test_a_rekor_payload_hash_must_say_sha256():
     import base64
     import json
-    import sys
-    from pathlib import Path
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-    import generate_bundle_strict_vectors as g
+    g = _generator()
 
     from agent_action_capsule.witness import verify_rekor_receipt
 
@@ -119,14 +129,11 @@ def test_a_rekor_payload_hash_must_say_sha256():
 def test_a_rekor_key_must_be_p256():
     import base64
     import json
-    import sys
-    from pathlib import Path
 
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import ec
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-    import generate_bundle_strict_vectors as g
+    g = _generator()
 
     from agent_action_capsule.witness import verify_rekor_receipt
 
@@ -171,11 +178,8 @@ def test_a_public_key_that_is_not_spki_is_skipped():
 
 def test_only_ed25519_and_ec_public_keys_count():
     import base64
-    import sys
-    from pathlib import Path
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-    import generate_bundle_strict_vectors as g
+    g = _generator()
 
     for spki in (g.RSA_SPKI, g.UNKNOWN_SPKI):
         import hashlib
