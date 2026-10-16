@@ -145,3 +145,19 @@ def test_two_heads_stating_one_amount_at_two_scales_agree():
     out = _pair(terms["capsule_id"], terms["capsule"]["settlement"], [("a:k1", leg), ("b:k1", rescaled)],
                 [("c:k2", payee["capsule"]["settlement"])], report, {})
     assert out["payment_state"] == "agreed", out
+
+
+@pytest.mark.parametrize("network", [True, 1, None, ["eip155:8453"], {"id": 1}])
+def test_payment_ref_qualifiers_are_strings(network):
+    ref = {"type": "x402.transaction", "value": "0xabc", "network": network}
+    assert structure_failures(_observed(payment_ref=ref)) == ["settlement_malformed"]
+
+
+def test_wrapped_content_that_does_not_decode_is_a_digest_mismatch():
+    import hashlib
+
+    from agent_action_capsule.settlement import _wrapped_failures
+
+    leg = _observed(wrapped=[{"type": "x402.offer", "digest_alg": "SHA-256",
+                              "digest": hashlib.sha256(b"").hexdigest(), "content": "!"}])
+    assert _wrapped_failures(leg, None, {}) == ["wrapped_digest_mismatch"]

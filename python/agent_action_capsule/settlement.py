@@ -203,8 +203,9 @@ def structure_failures(member: Any) -> list[str]:
         ref = s["payment_ref"]
         if not isinstance(ref, dict) or not isinstance(ref.get("type"), str) or not isinstance(ref.get("value"), str):
             out.append("settlement_malformed")
-        elif ref["type"] in PAYMENT_REF_TYPES and set(ref) != {
-                "type", "value", *PAYMENT_REF_TYPES[ref["type"]]["qualifiers"]}:
+        elif ref["type"] in PAYMENT_REF_TYPES and (
+                set(ref) != {"type", "value", *PAYMENT_REF_TYPES[ref["type"]]["qualifiers"]}
+                or not all(isinstance(ref[q], str) for q in PAYMENT_REF_TYPES[ref["type"]]["qualifiers"])):
             out.append("settlement_malformed")
     for w in s.get("wrapped", []) if isinstance(s.get("wrapped", []), list) else [None]:
         if (not isinstance(w, dict) or w.get("digest_alg") != "SHA-256"
@@ -283,7 +284,9 @@ def _wrapped_failures(s: dict, kid: str | None, objects: dict[str, bytes]) -> li
             try:
                 content = _b64u_decode(w["content"])
             except (ValueError, TypeError):
-                content = b""
+                # Content that does not decode matches no digest, the empty one included.
+                out.append("wrapped_digest_mismatch")
+                continue
             if hashlib.sha256(content).hexdigest() != w["digest"]:
                 out.append("wrapped_digest_mismatch")
                 continue
