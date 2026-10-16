@@ -223,7 +223,10 @@ A receipt verifies over a leaf when all of these hold:
   (`neg-witness-cll-attached-payload`);
 - its protected header has `vds` (395) equal to the integer 1
   (RFC9162_SHA256) and an `alg` (1) of the integer -8 (EdDSA) or -7 (ES256).
-  No other `vds` or `alg` is accepted, nor `true` or a float;
+  No other `vds` or `alg` is accepted, nor `true` or a float. The `alg`
+  fixes the key type: ES256 verifies only under an ECDSA P-256 key and EdDSA
+  only under an Ed25519 key, so a receipt checked under any other key fails
+  (`neg-witness-cll-es256-other-curve`);
 - its unprotected `vdp` (396) map carries a non-empty array of inclusion
   proofs under -1, each a byte string holding CBOR
   `[tree_size, leaf_index, [audit_path...]]`. Every entry must decode;
@@ -290,6 +293,8 @@ checkpoint is signed by another, the log key.
 | `neg-witness-cll-attached-payload` | a receipt with an attached payload signed by the listed key | INVALID |
 | `neg-witness-cll-vds-ccf` | a receipt signed over the right root that declares `vds` 2 | INVALID |
 | `neg-witness-cll-alg-unsupported` | a receipt signed over the right root that declares `alg` -257 | INVALID |
+| `pos-witness-cll-es256` | a `cll` receipt signed ES256 under the row's P-256 key | VALID |
+| `neg-witness-cll-es256-other-curve` | a receipt declaring ES256 under the row's secp256k1 key | INVALID |
 | `neg-witness-malformed` | an entry without `tree_size`, beside a good receipt | INVALID |
 | `pos-witness-scrapi` | a `scrapi` receipt, no grade label | VALID, grade `observed-only` |
 | `pos-witness-scrapi-unknown-grade` | an unknown grade label | VALID, grade `observed-only` |

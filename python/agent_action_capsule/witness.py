@@ -215,7 +215,7 @@ def checkpoint_digest(signed: Mapping[str, Any]) -> str:
     return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def _receipt_shape_error(receipt: bytes) -> str | None:
+def _receipt_shape_error(receipt: bytes, key_pem: bytes | str | None = None) -> str | None:
     """Refuse what ``scitt_cose.verify_receipt`` would read differently from
     this profile: a receipt must be a tag-18 COSE_Sign1 with a detached
     (``nil``) payload, so its signature covers the rebuilt Merkle root, and its
@@ -239,6 +239,21 @@ def _receipt_shape_error(receipt: bytes) -> str | None:
         return "receipt vds is not RFC9162_SHA256 (1)"
     if type(alg) is not int or alg not in (-8, -7):
         return "receipt alg is not EdDSA (-8) or ES256 (-7)"
+    if key_pem is not None:
+        # The algorithm fixes the key type: ES256 is ECDSA over P-256 only and
+        # EdDSA is Ed25519 here. scitt_cose checks neither curve nor type.
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+        from cryptography.hazmat.primitives.serialization import load_pem_public_key
+
+        try:
+            key = load_pem_public_key(key_pem.encode() if isinstance(key_pem, str) else key_pem)
+        except Exception:  # noqa: BLE001
+            return "the key is not a usable public key"
+        if alg == -7 and not (isinstance(key, ec.EllipticCurvePublicKey) and isinstance(key.curve, ec.SECP256R1)):
+            return "receipt alg ES256 needs an ECDSA P-256 key"
+        if alg == -8 and not isinstance(key, Ed25519PublicKey):
+            return "receipt alg EdDSA needs an Ed25519 key"
     return None
 
 
@@ -266,7 +281,7 @@ def _verify_cll(signed: Mapping[str, Any], record: Mapping[str, Any], pem: bytes
         from scitt_cose import verify_receipt
     except ImportError:
         return False, "not checked: scitt-cose is not installed (agent-action-capsule[envelope])", None
-    shape = _receipt_shape_error(receipt)
+    shape = _receipt_shape_error(receipt, pem)
     if shape is not None:
         return False, shape, None
     try:
@@ -360,7 +375,7 @@ def verify_scrapi_receipt(
         from scitt_cose import verify_receipt
     except ImportError:
         return False, "not checked: scitt_cose not installed", None
-    shape = _receipt_shape_error(receipt)
+    shape = _receipt_shape_error(receipt, pem)
     if shape is not None:
         return False, f"unreadable receipt: {shape}", None
     try:

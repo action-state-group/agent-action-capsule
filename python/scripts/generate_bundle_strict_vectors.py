@@ -102,6 +102,10 @@ CLL_WITNESS = ed25519(CLL_WITNESS_SEED)
 SCRAPI_KEY = ed25519(SCRAPI_SEED)
 REKOR_KEY = ec.derive_private_key(REKOR_SCALAR, ec.SECP256R1())
 REKOR_LOG_ID = hashlib.sha256(spki_der(REKOR_KEY)).hexdigest()
+P256_WITNESS = ec.derive_private_key(int.from_bytes(bytes([0x34]) * 32, "big") % (2**255), ec.SECP256R1())
+K1_WITNESS = ec.derive_private_key(int.from_bytes(bytes([0x35]) * 32, "big") % (2**255), ec.SECP256K1())
+P256_URL = "https://p256-witness.example"
+K1_URL = "https://k1-witness.example"
 
 
 # -- records ------------------------------------------------------------------
@@ -300,6 +304,25 @@ def resigned_receipt(leaf: str, protected_overrides: dict[int, Any]) -> dict:
     return {**genuine, "receipt_b64": b64(forged)}
 
 
+def es256_receipt(leaf: str, key: Any, ts_url: str) -> dict:
+    """A ``cll`` receipt signed ES256 by ``key``, built by hand with RFC 6979
+    deterministic ECDSA so the vectors stay reproducible (the COSE library's
+    ES256 signatures are randomized)."""
+    import cbor2
+    from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+
+    genuine = cll_receipt(leaf, ts_url=ts_url)
+    outer = cbor2.loads(base64.b64decode(genuine["receipt_b64"]))
+    protected_bstr = cbor2.dumps({1: -7, 395: 1, -65537: "mmr-verified"}, canonical=True)
+    root = hashlib.sha256(b"\x00" + bytes.fromhex(leaf)).digest()  # RFC 9162 leaf hash of a one-leaf tree
+    der = key.sign(cbor2.dumps(["Signature1", protected_bstr, b"", root]),
+                   ec.ECDSA(hashes.SHA256(), deterministic_signing=True))
+    r, s_ = decode_dss_signature(der)
+    signature = r.to_bytes(32, "big") + s_.to_bytes(32, "big")
+    forged = cbor2.dumps(cbor2.CBORTag(18, [protected_bstr, outer.value[1], None, signature]))
+    return {**genuine, "receipt_b64": b64(forged)}
+
+
 def scrapi_receipt(cose: bytes, *, grade: str | None = None) -> dict:
     leaf = hashlib.sha256(cose).hexdigest()
     receipt = build_receipt(
@@ -340,7 +363,11 @@ DIRECTORY = {
     "witnesses": [
         {"name": "CLL witness", "endpoint": "https://cll-witness.example", "since": "2026-01-01",
          "key_ids": [raw_public(CLL_WITNESS).hex()]},
+        {"name": "K1 witness", "endpoint": "https://k1-witness.example", "since": "2026-01-01",
+         "key_ids": [hashlib.sha256(spki_der(K1_WITNESS)).hexdigest()], "public_keys": [b64(spki_der(K1_WITNESS))]},
         {"name": "Keyless witness", "endpoint": "https://keyless-witness.example", "since": "2026-01-01", "key_ids": []},
+        {"name": "P-256 witness", "endpoint": "https://p256-witness.example", "since": "2026-01-01",
+         "key_ids": [hashlib.sha256(spki_der(P256_WITNESS)).hexdigest()], "public_keys": [b64(spki_der(P256_WITNESS))]},
         {"name": "Rekor", "endpoint": "https://rekor.example", "since": "2026-01-01", "binding": "rekor",
          "key_ids": [REKOR_LOG_ID], "public_keys": [b64(spki_der(REKOR_KEY))]},
         {"name": "Rekor without key", "endpoint": "https://rekor-nokey.example", "since": "2026-01-01",
@@ -745,6 +772,14 @@ def build_cases() -> list[dict]:
         witness_case(case_id, description, witnessed(resigned_receipt(leaf, overrides)),
                      {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
                       "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
+    witness_case("pos-witness-cll-es256", "A cll receipt signed ES256 under the row's P-256 key.",
+                 witnessed(es256_receipt(leaf, P256_WITNESS, P256_URL)),
+                 {"status": "pass", "findings": [], "receipts": [receipt_expect(P256_URL, "cll", "pass", "mmr-verified")]})
+    witness_case("neg-witness-cll-es256-other-curve",
+                 "A receipt declaring ES256, signed under the row's secp256k1 key: ES256 is P-256 only.",
+                 witnessed(es256_receipt(leaf, K1_WITNESS, K1_URL)),
+                 {"status": "fail", "findings": [f"witness_receipt_invalid:{K1_URL}"],
+                  "receipts": [receipt_expect(K1_URL, "cll", "fail")]}, verdict="INVALID")
     no_size = cll_receipt(leaf)
     del no_size["tree_size"]
     witness_case("neg-witness-malformed", "A receipt entry without tree_size, beside a good one.",
