@@ -64,7 +64,9 @@ pub struct StrictVerificationResult {
     /// The plain verifier's result ([`verify_bundle`]), unchanged.
     pub base: VerificationResult,
     /// The Bundle is a JSON object of kind `evidence-bundle/v2`, version
-    /// `"2"`. When it is not, `records` is the only claim.
+    /// `"2"`. When it is not, `records` is the only claim. It is also false
+    /// for a Bundle nested deeper than 128 levels, whose claims all fail with
+    /// `bundle_malformed`.
     pub kind_ok: bool,
     /// The gating claims, in report order: `records`, `signatures`,
     /// `graph_closure`, `checkpoint`, `interval_coverage`,
@@ -144,6 +146,31 @@ fn not_v2(base: VerificationResult) -> StrictVerificationResult {
     }
 }
 
+/// A Bundle nested too deeply to read: `bundle_malformed` on every claim.
+fn too_deep(base: VerificationResult) -> StrictVerificationResult {
+    let malformed = || ClaimResult::fail(vec!["bundle_malformed".to_string()]);
+    StrictVerificationResult {
+        base,
+        kind_ok: false,
+        claims: [
+            "records",
+            "signatures",
+            "graph_closure",
+            "checkpoint",
+            "interval_coverage",
+            "per_record_membership",
+        ]
+        .into_iter()
+        .map(|name| (name, malformed()))
+        .collect(),
+        witnesses: None,
+        witness_receipts: Vec::new(),
+        records: Vec::new(),
+        signed_checkpoint: None,
+        signer_matches_checkpoint: None,
+    }
+}
+
 /// Verifies an Evidence Bundle in strict mode: the plain verifier's results
 /// ([`verify_bundle`]) plus each record's producer signature, the checkpoint
 /// read only from its signed COSE form, producer-selected Bundles, the
@@ -153,7 +180,14 @@ fn not_v2(base: VerificationResult) -> StrictVerificationResult {
 /// `completeness.selection: "producer-selected"` and `checkpoint.witnesses`
 /// are not defined by the Bundle draft; strict mode reads them as verifier
 /// extensions. See `vectors/bundle/strict/README.md`.
+///
+/// A Bundle that nests arrays and objects deeper than 128 levels is refused
+/// before any recursive work: every claim fails with `bundle_malformed`
+/// (`INVALID`).
 pub fn verify_bundle_strict(value: &Value, options: &StrictOptions) -> StrictVerificationResult {
+    if crate::json::exceeds_max_depth(value) {
+        return too_deep(verify_bundle(value));
+    }
     let base = verify_bundle(value);
     let bundle = match value.as_object() {
         Some(b)
@@ -561,6 +595,57 @@ mod tests {
         assert_eq!(result.verdict(), "INVALID");
         assert_eq!(result.claims.len(), 1);
         assert_eq!(result.witnesses, None);
+    }
+
+    #[test]
+    fn a_deeply_nested_bundle_is_malformed_on_every_claim() {
+        use crate::json::deep;
+        // Deep in a record (with a claimed signature) and deep in the
+        // checkpoint's witnesses.
+        for (member, nested) in [
+            ("records", deep::array(1_000_000)),
+            ("checkpoint", deep::object(1_000_000)),
+            ("records", deep::object(129)),
+        ] {
+            let mut bundle = Map::new();
+            bundle.insert("bundle_kind".into(), json!("evidence-bundle/v2"));
+            bundle.insert("bundle_version".into(), json!("2"));
+            let holder = if member == "records" {
+                let mut record = Map::new();
+                record.insert("signature".into(), json!("00"));
+                record.insert("key_id".into(), json!("00"));
+                record.insert("deep".into(), nested);
+                Value::Array(vec![Value::Object(record)])
+            } else {
+                let mut checkpoint = Map::new();
+                checkpoint.insert("witnesses".into(), Value::Array(vec![nested]));
+                Value::Object(checkpoint)
+            };
+            bundle.insert(member.into(), holder);
+            let bundle = Value::Object(bundle);
+            let result = verify_bundle_strict(&bundle, &StrictOptions::default());
+            assert_eq!(result.verdict(), "INVALID");
+            assert!(!result.kind_ok);
+            let names: Vec<&str> = result.claims.iter().map(|(n, _)| *n).collect();
+            assert_eq!(
+                names,
+                [
+                    "records",
+                    "signatures",
+                    "graph_closure",
+                    "checkpoint",
+                    "interval_coverage",
+                    "per_record_membership"
+                ]
+            );
+            for (_, claim) in &result.claims {
+                assert_eq!(claim.findings, ["bundle_malformed"]);
+                assert_eq!(claim.status, "fail");
+            }
+            assert!(result.records.is_empty());
+            assert_eq!(result.witnesses, None);
+            deep::dismantle(bundle);
+        }
     }
 
     #[test]

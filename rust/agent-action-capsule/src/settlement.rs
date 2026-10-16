@@ -940,6 +940,9 @@ fn receive_fee_not_applicable(
 /// scheme. Receive fees are read as zero only for x402 `exact`, established
 /// from such octets; otherwise an absent `receive_fee` leaves the pair
 /// `unjoined` (`fee_unstated`).
+///
+/// A leg record that nests arrays and objects deeper than 128 levels is
+/// `capsule_invalid` and takes no part, checked before any recursive work.
 pub fn verify_settlements(capsules: &[Value], options: &SettlementOptions) -> SettlementReport {
     let objects = &options.wrapped_objects;
     let policy: Option<HashMap<&str, HashSet<&str>>> = options.key_policy.as_ref().map(|p| {
@@ -967,6 +970,14 @@ pub fn verify_settlements(capsules: &[Value], options: &SettlementOptions) -> Se
             .get("capsule_id")
             .and_then(Value::as_str)
             .map(String::from);
+        // A leg nested deeper than 128 levels is refused before any recursive
+        // work (the Capsule checks, cloning its member): it takes no part.
+        if crate::json::exceeds_max_depth(item) {
+            report
+                .failures
+                .push(Failure::new(vec![cid], "capsule_invalid"));
+            continue;
+        }
         let mut own: Vec<&str> = Vec::new();
         let mut kid = None;
         match &cid {
@@ -1490,6 +1501,32 @@ mod tests {
             structure_failures(&observed(json!({"wrapped": null}))),
             ["settlement_malformed"]
         );
+    }
+
+    #[test]
+    fn a_deeply_nested_leg_is_capsule_invalid_without_recursing() {
+        use crate::json::deep;
+        for nested in [deep::array(1_000_000), deep::object(129)] {
+            let mut leg = observed(json!({}));
+            leg["wrapped"] = Value::Array(vec![nested]);
+            let mut capsule = Map::new();
+            capsule.insert("capsule_id".into(), json!("c1"));
+            capsule.insert("signature".into(), json!("00"));
+            capsule.insert(SETTLEMENT_MEMBER.into(), leg);
+            let capsules = vec![Value::Object(capsule), json!({"capsule_id": 5})];
+            let report = verify_settlements(&capsules, &SettlementOptions::default());
+            assert!(!report.conforming);
+            assert_eq!(
+                report.failures[0],
+                Failure::new(vec![Some("c1".to_string())], "capsule_invalid")
+            );
+            // The deep leg takes no part; the next record is still read.
+            assert_eq!(report.failures[1].records, [None]);
+            assert!(report.settlements.is_empty());
+            for capsule in capsules {
+                deep::dismantle(capsule);
+            }
+        }
     }
 
     #[test]

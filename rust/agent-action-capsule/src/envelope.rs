@@ -481,8 +481,16 @@ fn record_capsule_id(record: &Map<String, Value>) -> Result<String, String> {
 /// `key_id` over the Capsule ID recomputed from the record's own content
 /// (`jcs`, or the vintage `jcs-n`), is invalid. The carried `capsule_id` is
 /// not read. The messages are empty unless the verdict is invalid; their text
-/// is not part of any contract. Never panics.
+/// is not part of any contract. A record that nests arrays and objects
+/// deeper than 128 levels is invalid. Never panics.
 pub fn verify_record_signature(record: &Value) -> (&'static str, Vec<String>) {
+    // Before any recursive work (clone, normalize, JCS) on caller input.
+    if crate::json::exceeds_max_depth(record) {
+        return (
+            INVALID,
+            vec!["record nests arrays and objects deeper than 128 levels".to_string()],
+        );
+    }
     let record = match record.as_object() {
         Some(r) => r,
         None => return (INVALID, vec!["not a mapping".to_string()]),
@@ -592,6 +600,34 @@ mod tests {
         ] {
             assert!(decode_all(encoded).is_ok(), "{encoded:02x?}");
         }
+    }
+
+    #[test]
+    fn a_deeply_nested_record_is_invalid_without_recursing() {
+        use crate::json::deep;
+        for (signed, nested) in [
+            (true, deep::array(1_000_000)),
+            (false, deep::object(1_000_000)),
+            (true, deep::array(129)),
+        ] {
+            let mut record = Map::new();
+            if signed {
+                record.insert("signature".into(), Value::String("00".into()));
+                record.insert("key_id".into(), Value::String("00".into()));
+            }
+            record.insert("deep".into(), nested);
+            let record = Value::Object(record);
+            let (verdict, messages) = verify_record_signature(&record);
+            assert_eq!(verdict, INVALID);
+            assert!(messages[0].contains("deeper than 128"), "{messages:?}");
+            deep::dismantle(record);
+        }
+        // 128 levels are read as usual.
+        let mut record = Map::new();
+        record.insert("deep".into(), deep::array(127));
+        let record = Value::Object(record);
+        assert_eq!(verify_record_signature(&record).0, UNCLAIMED);
+        deep::dismantle(record);
     }
 
     #[test]

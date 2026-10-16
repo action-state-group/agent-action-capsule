@@ -27,7 +27,10 @@
   grades one record's signature and `canonical::normalize` is the vintage `jcs-n` normalization.
   The new `settlement` feature adds `settlement::verify_settlements`, which compares amounts exactly
   as decimal digit strings. Every case in `vectors/bundle/strict/` and `vectors/settlement/`
-  passes.
+  passes. `verify_bundle`, `verify_bundle_strict`, `verify_record_signature` and
+  `verify_settlements` refuse a caller-built `Value` nested deeper than 128 levels (the decoder's
+  limit) before any recursive work, so deep input cannot overflow the stack: the Bundle is
+  `bundle_malformed` on every claim, the record `invalid`, the leg `capsule_invalid`.
 - CI: the Python job installs the released `checkpointed-local-log` (0.6) instead of a pinned
   commit, since strict mode needs its COSE checkpoint verifier.
 - Python: `evidence_request.encode_cll_inclusion_proof(leaf, path)` and

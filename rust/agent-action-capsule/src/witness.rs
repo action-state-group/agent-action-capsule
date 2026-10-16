@@ -478,6 +478,10 @@ fn rekor_entry(
     rekor_key_der: &[u8],
 ) -> Result<(), String> {
     let unreadable = |what: &str| format!("unreadable receipt: {what}");
+    // A caller-built entry is walked iteratively before anything clones it.
+    if crate::json::exceeds_max_depth(receipt) {
+        return Err(unreadable("nests deeper than 128 levels"));
+    }
     let key = p256::ecdsa::VerifyingKey::from_public_key_der(rekor_key_der)
         .map_err(|_| unreadable("the Rekor key is not an ECDSA P-256 key"))?;
     let key_der = key
