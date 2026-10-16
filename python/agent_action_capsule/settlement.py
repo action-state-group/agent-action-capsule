@@ -252,7 +252,8 @@ def _envelope_key(capsule: dict) -> str | None:
     from .producer_envelope import verify_producer_envelope
 
     sig = capsule.get("signature")
-    if not isinstance(sig, str):
+    # Hex digit pairs only: bytes.fromhex would also take whitespace.
+    if not isinstance(sig, str) or not re.fullmatch(r"(?:[0-9a-fA-F]{2})+", sig):
         return None
     try:
         env = verify_producer_envelope(capsule["capsule_id"], bytes.fromhex(sig))

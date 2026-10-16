@@ -161,3 +161,13 @@ def test_wrapped_content_that_does_not_decode_is_a_digest_mismatch():
     leg = _observed(wrapped=[{"type": "x402.offer", "digest_alg": "SHA-256",
                               "digest": hashlib.sha256(b"").hexdigest(), "content": "!"}])
     assert _wrapped_failures(leg, None, {}) == ["wrapped_digest_mismatch"]
+
+
+def test_an_envelope_with_whitespace_in_its_hex_is_not_authenticated():
+    from agent_action_capsule.settlement import _envelope_key
+
+    case = CASES["cases"][0]
+    record = next(r for r in case["records"] if r.get("envelope_hex"))
+    capsule = {**record["capsule"], "signature": record["envelope_hex"]}
+    assert _envelope_key(capsule) is not None
+    assert _envelope_key({**capsule, "signature": " " + record["envelope_hex"]}) is None

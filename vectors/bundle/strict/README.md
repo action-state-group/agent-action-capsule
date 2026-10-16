@@ -145,10 +145,11 @@ out in this order:
 
 1. A receipt with `is_stub` set to JSON `true` is `withheld`.
 2. Its directory row is the row whose `binding` (default `cll`) is the
-   receipt's binding and whose `endpoint`, without a trailing slash, is the
-   receipt's endpoint. The binding is `rekor` for a `rekor+` URL scheme,
-   `scrapi` for a `scrapi+` scheme, and otherwise `cll`. The endpoint is the
-   URL with any `rekor+` or `scrapi+` prefix removed and no trailing slash. No
+   receipt's binding and whose `endpoint`, with every trailing `/` removed,
+   is the receipt's endpoint. The binding is `rekor` for a `rekor+` URL
+   scheme, `scrapi` for a `scrapi+` scheme (the scheme compared without
+   case), and otherwise `cll`. The endpoint is the URL with any `rekor+` or
+   `scrapi+` prefix removed and every trailing `/` removed. No
    row means `withheld`.
 3. The row's keys, in `key_ids` order: a `key_id` that names a `public_keys`
    entry (base64 DER SubjectPublicKeyInfo) by the SHA-256 of its DER, or an
