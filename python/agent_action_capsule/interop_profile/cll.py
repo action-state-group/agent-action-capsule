@@ -321,10 +321,12 @@ def consistency_failure(old_peaks: Sequence[bytes], new_peaks: Sequence[bytes], 
 
 
 def _hash_list(nodes: Sequence[bytes], label: str) -> list[bytes]:
-    out = [bytes(n) for n in nodes]
-    if len(out) > _MAX_PATH or not all(len(n) == 32 for n in out):
+    # Checked before any conversion: bytes(32) would be a fabricated node, and a bare byte string
+    # would read as a list of integers.
+    if isinstance(nodes, (bytes, bytearray, str)) or len(nodes) > _MAX_PATH or \
+            not all(isinstance(n, (bytes, bytearray)) and len(n) == 32 for n in nodes):
         raise ValueError(f"{label} is not a list of at most {_MAX_PATH} 32-octet nodes")
-    return out
+    return [bytes(n) for n in nodes]
 
 
 def encode_inclusion(leaf: int, path: Sequence[bytes]) -> bytes:

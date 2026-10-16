@@ -79,10 +79,19 @@ NODE = b"\x11" * 32
     (0, [NODE] * 53),              # longer than any MMR path
     (0, [NODE] * 65),
     (0, [b"\x11" * 31]),           # short node
+    (0, [32]),                     # an integer is not a node
+    (0, NODE),                     # a bare byte string is not a path
+    ((1 << 52) + 1, []),           # node index 2^53, past the largest profile integer
 ])
 def test_inclusion_encoder_refuses(leaf, path):
     with pytest.raises(ValueError):
         er.encode_cll_inclusion_proof(leaf, path)
+
+
+def test_inclusion_encoder_bounds():
+    # Leaf 2^52 is node index 2^53 - 1, the largest profile integer.
+    assert er.encode_cll_inclusion_proof(1 << 52, []) == bytes.fromhex("82") + bytes.fromhex("1b001fffffffffffff80")
+    assert er.encode_cll_inclusion_proof(0, [NODE] * 52)  # a leaf's longest path
 
 
 def _consistency_inputs(case_id):
@@ -100,6 +109,24 @@ def test_consistency_encoder_refuses_paths_that_do_not_reach():
         er.encode_cll_consistency_proof(old, new, [NODE] + old_peaks[1:], paths, new_peaks)
     with pytest.raises(ValueError):  # the right peaks do not complete the new peak list
         er.encode_cll_consistency_proof(old, new, old_peaks, paths, new_peaks + [NODE])
+
+
+def test_consistency_encoder_path_height_bound():
+    # tree-size-1 3 has one peak, at index 2 and height 1: its path may have 51 nodes, not 52.
+    with pytest.raises(ValueError, match="longer than any MMR"):
+        er.encode_cll_consistency_proof(3, 4, [NODE], [[NODE] * 52], [NODE])
+    with pytest.raises(ValueError, match="do not reach"):
+        er.encode_cll_consistency_proof(3, 4, [NODE], [[NODE] * 51], [NODE])
+
+
+def test_consistency_encoder_refuses_malformed_nodes():
+    old, new, old_peaks, paths, new_peaks = _consistency_inputs("consistency-n3-n7")
+    with pytest.raises(ValueError):
+        er.encode_cll_consistency_proof(old, new, old_peaks, [[b"\x11" * 31]] + paths[1:], new_peaks)
+    with pytest.raises(ValueError):
+        er.encode_cll_consistency_proof(old, new, [32] + old_peaks[1:], paths, new_peaks)
+    with pytest.raises(ValueError):
+        er.encode_cll_consistency_proof(old, new, old_peaks, paths, NODE)
 
 
 @pytest.mark.parametrize("old_size, new_size", [(0, 4), (7, 4), (4, 1 << 53)])
