@@ -260,6 +260,9 @@ func checkCritical(protected map[interface{}]interface{}) error {
 }
 
 // decodeInclusionProof decodes CBOR [tree_size, leaf_index, [audit_path]].
+// Like the scitt-cose verifiers it reads the blob leniently (a non-shortest
+// head is accepted) and refuses only trailing bytes; the envelope and the
+// protected header around it are decoded strictly.
 func decodeInclusionProof(blob []byte) (int64, int64, [][]byte, error) {
 	var value interface{}
 	if err := lenientDecoding.Unmarshal(blob, &value); err != nil {

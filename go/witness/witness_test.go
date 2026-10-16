@@ -595,3 +595,38 @@ func TestRekorKeyMustBeP256(t *testing.T) {
 	require.NoError(t, VerifyRekorEntry(entry, cose, keyID, &p256.PublicKey))
 	require.ErrorContains(t, VerifyRekorEntry(entry, cose, keyID, checkpointKey), "P-256")
 }
+
+// singleLeafReceipt signs a COSE Receipt for a one-leaf tree whose vdp
+// carries proof as given, byte for byte.
+func singleLeafReceipt(t *testing.T, private ed25519.PrivateKey, leaf, proof []byte) []byte {
+	t.Helper()
+	protected, err := deterministicEncoding.Marshal(map[interface{}]interface{}{int64(1): int64(algEdDSA), int64(395): 1})
+	require.NoError(t, err)
+	root := sha256.Sum256(append([]byte{0}, leaf...))
+	data, err := deterministicEncoding.Marshal(cbor.Tag{Number: 18, Content: []interface{}{
+		protected, map[interface{}]interface{}{int64(396): map[interface{}]interface{}{int64(-1): []interface{}{proof}}},
+		nil, ed25519.Sign(private, sigStructure(protected, root[:])),
+	}})
+	require.NoError(t, err)
+	return data
+}
+
+func TestInclusionProofBlobIsDecodedLeniently(t *testing.T) {
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	leaf := []byte("leaf")
+	// [1, 0, []] in shortest form, then with one-byte heads for 1 and 0: the
+	// scitt-cose verifiers accept both, refusing only trailing bytes.
+	for _, blob := range []string{"83010080", "831801180080"} {
+		checked, err := VerifyCOSEReceipt(singleLeafReceipt(t, private, leaf, mustHex(t, blob)), leaf, public)
+		require.NoError(t, err, blob)
+		require.Equal(t, int64(1), checked.TreeSize, blob)
+	}
+	_, err = VerifyCOSEReceipt(singleLeafReceipt(t, private, leaf, mustHex(t, "8301008000")), leaf, public)
+	require.Error(t, err, "trailing bytes after the proof")
+	// The envelope itself stays strict: a widened head there is refused.
+	receipt := singleLeafReceipt(t, private, leaf, mustHex(t, "83010080"))
+	require.Equal(t, byte(0x84), receipt[1])
+	_, err = VerifyCOSEReceipt(append([]byte{0xd2, 0x98, 0x04}, receipt[2:]...), leaf, public)
+	require.Error(t, err)
+}
