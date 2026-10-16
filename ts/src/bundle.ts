@@ -325,23 +325,48 @@ export async function verifyBundle(
   if (digestCapability() === "none") throw new Sha256UnavailableError();
   if (options.strict === true && !(await probeEd25519()))
     throw new Ed25519UnavailableError();
-  const plain = await verifyPlain(bundle);
-  return options.strict === true
-    ? strict(plain, object(bundle) ? bundle : undefined, options)
-    : plain;
+  try {
+    const plain = await verifyPlain(bundle);
+    return options.strict === true
+      ? await strict(plain, object(bundle) ? bundle : undefined, options)
+      : plain;
+  } catch (error) {
+    // A Bundle nested beyond what this implementation can read overflows
+    // the stack (a RangeError). It is refused, never raised: every claim is
+    // bundle_malformed and, in strict mode, the verdict is INVALID.
+    if (!(error instanceof RangeError)) throw error;
+    const plain = malformedBundle();
+    return options.strict === true
+      ? {
+          ...plain,
+          strict: {
+            verdict: "INVALID",
+            kindOk: false,
+            claims: [{ name: "records", ...fail("bundle_malformed") }],
+            witnesses: null,
+            records: [],
+            checkpointAuthenticated: false,
+            signerMatchesCheckpoint: null,
+          },
+        }
+      : plain;
+  }
+}
+/** The result for input that is not a readable Bundle. */
+function malformedBundle(): BundleVerificationResult {
+  const invalid = fail("bundle_malformed");
+  return {
+    graphClosure: invalid,
+    intervalCoverage: invalid,
+    perRecordMembership: invalid,
+    disclosures: [],
+    extensions: [],
+    countersignatures: [],
+    capsuleResults: {},
+  };
 }
 async function verifyPlain(bundle: unknown): Promise<BundleVerificationResult> {
-  const invalid = fail("bundle_malformed");
-  if (!object(bundle))
-    return {
-      graphClosure: invalid,
-      intervalCoverage: invalid,
-      perRecordMembership: invalid,
-      disclosures: [],
-      extensions: [],
-      countersignatures: [],
-      capsuleResults: {},
-    };
+  if (!object(bundle)) return malformedBundle();
   let digest: string | undefined;
   try {
     digest = await bundleDigest(bundle);

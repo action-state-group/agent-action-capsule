@@ -367,9 +367,40 @@ export async function verifyRecordSignature(record: unknown): Promise<{
   readonly verdict: RecordSignatureVerdict;
   readonly messages: readonly string[];
 }> {
+  try {
+    return await gradeRecordSignature(record);
+  } catch (error) {
+    // Input this verifier cannot read at all (nested beyond the stack, say)
+    // is an invalid claim, never a rejected promise.
+    return {
+      verdict: "invalid",
+      messages: [`unreadable record: ${errorText(error)}`],
+    };
+  }
+}
+
+/** An error's text, never throwing (for an error that is not an Error). */
+function errorText(error: unknown): string {
+  return error instanceof Error
+    ? `${error.name}: ${error.message}`
+    : typeof error;
+}
+
+/** A record's `capsule_id` for a message: the string, or its JSON type. */
+function idText(record: Record<string, unknown>): string {
+  const id = record.capsule_id;
+  if (typeof id === "string") return id;
+  if (id === undefined) return "<none>";
+  return `<${id === null ? "null" : Array.isArray(id) ? "array" : typeof id}>`;
+}
+
+async function gradeRecordSignature(record: unknown): Promise<{
+  readonly verdict: RecordSignatureVerdict;
+  readonly messages: readonly string[];
+}> {
   if (!plainObject(record))
     return { verdict: "invalid", messages: ["not a JSON object"] };
-  const id = String(record.capsule_id ?? "<none>");
+  const id = idText(record);
   const hasSignature = Object.hasOwn(record, "signature"),
     hasKeyId = Object.hasOwn(record, "key_id");
   if (!hasSignature && !hasKeyId) return { verdict: "unclaimed", messages: [] };
@@ -397,7 +428,7 @@ export async function verifyRecordSignature(record: unknown): Promise<{
     return {
       verdict: "invalid",
       messages: [
-        `capsule_id=${id}: producer envelope malformed: ${String(error)}`,
+        `capsule_id=${id}: producer envelope malformed: ${errorText(error)}`,
       ],
     };
   }

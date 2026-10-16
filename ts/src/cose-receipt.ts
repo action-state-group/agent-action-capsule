@@ -75,6 +75,18 @@ const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
  * not checked.
  */
 export function decodeStrictCbor(data: Uint8Array): CborValue {
+  return decodeCbor(data, true);
+}
+
+/**
+ * Decode one CBOR item, with the shortest-form rule only when `shortest`.
+ * The lenient reading is for an inclusion-proof blob, which both scitt-cose
+ * verifiers decode with a plain decoder (Python's `_decode_inclusion_proof`
+ * uses cbor2, Rust uses ciborium): a non-shortest argument or float is
+ * accepted there. Definite lengths, unique map keys and no trailing bytes
+ * hold either way.
+ */
+function decodeCbor(data: Uint8Array, shortest: boolean): CborValue {
   let offset = 0;
   const byte = (): number => {
     const value = data[offset++];
@@ -95,7 +107,7 @@ export function decodeStrictCbor(data: Uint8Array): CborValue {
       throw new SyntaxError("indefinite or reserved CBOR length");
     let value = 0n;
     for (let i = 0; i < width; i += 1) value = (value << 8n) | BigInt(byte());
-    if (value < [24n, 1n << 8n, 1n << 16n, 1n << 32n][add - 24]!)
+    if (shortest && value < [24n, 1n << 8n, 1n << 16n, 1n << 32n][add - 24]!)
       throw new SyntaxError("CBOR argument is not in its shortest form");
     return value;
   };
@@ -121,9 +133,10 @@ export function decodeStrictCbor(data: Uint8Array): CborValue {
       if (add === 25) return halfFloat(view.getUint16(0));
       const value = add === 26 ? view.getFloat32(0) : view.getFloat64(0);
       if (
-        Number.isNaN(value) ||
-        fitsHalf(value) ||
-        (add === 27 && Math.fround(value) === value)
+        shortest &&
+        (Number.isNaN(value) ||
+          fitsHalf(value) ||
+          (add === 27 && Math.fround(value) === value))
       )
         throw new SyntaxError("CBOR float is not in its shortest form");
       return value;
@@ -243,7 +256,7 @@ function inclusionProof(blob: Uint8Array): {
   index: bigint;
   path: Uint8Array[];
 } {
-  const value = decodeStrictCbor(blob);
+  const value = decodeCbor(blob, false);
   if (!Array.isArray(value) || value.length !== 3)
     throw new SyntaxError(
       "inclusion proof must be [tree_size, leaf_index, [path]]",

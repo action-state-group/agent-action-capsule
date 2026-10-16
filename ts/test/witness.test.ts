@@ -258,6 +258,61 @@ describe("receipt checks", () => {
     rekorPublicKeySpki: rekorSpki,
   };
 
+  it("reads the Signed Entry Timestamp only as strict DER", async () => {
+    /** DER TLV with a short-form length (every value here is short). */
+    const tlv = (tag: number, body: number[]) => [tag, body.length, ...body];
+    /** The INTEGERs of a DER ECDSA-Sig-Value, as their content octets. */
+    const integers = (der: Buffer): [number[], number[]] => {
+      const rLength = der[3]!;
+      const r = [...der.subarray(4, 4 + rLength)];
+      const s = [...der.subarray(6 + rLength, 6 + rLength + der[5 + rLength]!)];
+      return [r, s];
+    };
+    const withSet = async (encode: (r: number[], s: number[]) => number[]) => {
+      // Sign until r needs its leading zero (high bit set), so one variant
+      // can drop it and read as negative.
+      for (;;) {
+        const entry = JSON.parse(entryText()) as {
+          verification: { signedEntryTimestamp: string };
+        };
+        const der = Buffer.from(
+          entry.verification.signedEntryTimestamp,
+          "base64",
+        );
+        const [r, s] = integers(der);
+        if (r[0] !== 0) continue;
+        entry.verification.signedEntryTimestamp = Buffer.from(
+          encode(r, s),
+        ).toString("base64");
+        return verifyRekorReceipt(
+          decodeStrictJson(JSON.stringify(entry)),
+          options,
+        );
+      }
+    };
+    const sequence = (...parts: number[][]) => tlv(0x30, parts.flat());
+    // The signature as signed verifies.
+    expect((await withSet((r, s) => sequence(tlv(2, r), tlv(2, s)))).ok).toBe(
+      true,
+    );
+    for (const encode of [
+      // r without its sign octet: a negative INTEGER with r's magnitude.
+      (r: number[], s: number[]) => sequence(tlv(2, r.slice(1)), tlv(2, s)),
+      // A redundant leading zero on r, and on s.
+      (r: number[], s: number[]) => sequence(tlv(2, [0, ...r]), tlv(2, s)),
+      (r: number[], s: number[]) => sequence(tlv(2, r), tlv(2, [0, ...s])),
+      // Trailing data inside and after the SEQUENCE.
+      (r: number[], s: number[]) => sequence(tlv(2, r), tlv(2, s), [0x05, 0]),
+      (r: number[], s: number[]) => [...sequence(tlv(2, r), tlv(2, s)), 0],
+      // An r of 33 octets that does not start with the sign zero.
+      (r: number[], s: number[]) =>
+        sequence(tlv(2, [1, ...r.slice(1)]), tlv(2, s)),
+      // A zero r.
+      (_r: number[], s: number[]) => sequence(tlv(2, [0]), tlv(2, s)),
+    ])
+      expect(await withSet(encode)).toMatchObject({ ok: false });
+  });
+
   it("refuses a Rekor key that is not ECDSA P-256", async () => {
     const p384 = generateKeyPairSync("ec", { namedCurve: "P-384" });
     for (const other of [spki(p384.publicKey), spki(ed25519.publicKey)])

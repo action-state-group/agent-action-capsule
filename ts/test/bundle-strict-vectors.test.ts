@@ -186,6 +186,44 @@ describe("strict Evidence Bundle vectors", () => {
     );
   });
 
+  it("reads an inclusion-proof blob with non-shortest integer heads, as scitt-cose does", async () => {
+    // pos-witness-cll with its unprotected proof blob [1, 0, []] re-encoded
+    // from 83 01 00 80 to 83 18 01 18 00 80: unsigned, so the receipt still
+    // verifies, and Python's cbor2 and Rust's ciborium both read it.
+    const testCase = vectors.cases.find((c) => c.id === "pos-witness-cll")!;
+    const bundle = structuredClone(testCase.bundle) as {
+      checkpoint: { witnesses: { receipt_b64: string }[] };
+    };
+    const receipt = bundle.checkpoint.witnesses[0]!;
+    const original = Buffer.from(receipt.receipt_b64, "base64").toString("hex");
+    expect(original.split("4483010080")).toHaveLength(2);
+    receipt.receipt_b64 = Buffer.from(
+      original.replace("4483010080", "46831801180080"),
+      "hex",
+    ).toString("base64");
+    const { strict } = await verifyBundle(bundle, {
+      strict: true,
+      requireSignature: testCase.options.require_signature,
+      witnessDirectory: vectors.witness_directory,
+    });
+    expect(strict.witnesses).toMatchObject({
+      status: "pass",
+      receipts: [{ status: "pass", grade: "mmr-verified" }],
+    });
+    expect(strict.verdict).toBe(testCase.expect.verdict);
+    // Trailing bytes after the proof array are still refused.
+    receipt.receipt_b64 = Buffer.from(
+      original.replace("4483010080", "4583010080ff"),
+      "hex",
+    ).toString("base64");
+    const trailing = await verifyBundle(bundle, {
+      strict: true,
+      requireSignature: testCase.options.require_signature,
+      witnessDirectory: vectors.witness_directory,
+    });
+    expect(trailing.strict.witnesses).toMatchObject({ status: "fail" });
+  });
+
   it("leaves the plain result unchanged", async () => {
     const bundle = vectors.cases[0]!.bundle;
     const plain = await verifyBundle(bundle);

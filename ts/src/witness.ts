@@ -358,17 +358,32 @@ function jsonInteger(value: unknown): string | undefined {
     : undefined;
 }
 
-/** A DER ECDSA signature as the IEEE P1363 `r || s` WebCrypto verifies. */
+/**
+ * A DER ECDSA-Sig-Value as the IEEE P1363 `r || s` WebCrypto verifies. Only
+ * strict DER is read: a SEQUENCE spanning every byte of two INTEGERs, each
+ * positive and minimally encoded (no negative value, no redundant leading
+ * zero) and fitting in 32 bytes. Anything else throws, so a re-encoded
+ * signature does not verify.
+ */
 function p1363(der: Uint8Array): Uint8Array {
+  const malformed = () => new TypeError("malformed ECDSA signature");
   const integer = (at: number): [Uint8Array, number] => {
     const length = der[at + 1];
     if (der[at] !== 0x02 || length === undefined || length > 33 || length < 1)
-      throw new TypeError("malformed ECDSA signature");
+      throw malformed();
     let value = der.subarray(at + 2, at + 2 + length);
-    if (value.length !== length)
-      throw new TypeError("malformed ECDSA signature");
-    if (value.length === 33 && value[0] === 0) value = value.subarray(1);
-    if (value.length > 32) throw new TypeError("malformed ECDSA signature");
+    if (value.length !== length) throw malformed();
+    // The high bit of the first octet is the sign: a negative value.
+    if (value[0]! & 0x80) throw malformed();
+    // A leading zero only where the next octet would read as negative.
+    if (value.length > 1 && value[0] === 0 && !(value[1]! & 0x80))
+      throw malformed();
+    // 33 octets only as a zero then a 32-octet value with its high bit set.
+    if (value.length === 33) {
+      if (value[0] !== 0) throw malformed();
+      value = value.subarray(1);
+    }
+    if (value.every((byte) => byte === 0)) throw malformed();
     const out = new Uint8Array(32);
     out.set(value, 32 - value.length);
     return [out, at + 2 + length];
