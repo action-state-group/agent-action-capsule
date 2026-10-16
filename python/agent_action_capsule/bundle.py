@@ -315,6 +315,19 @@ def verify_bundle(
     ``log_coordinates`` (``log_id``, ``seq``, ``leaf_index``) and an
     ``inclusion_proof`` — an independent per-record membership check.
     """
+    try:
+        return _verify_bundle(bundle, strict, require_signature, witness_directory)
+    except RecursionError:
+        # Nested deeper than the interpreter reads: refused, never raised.
+        invalid = ClaimResult("fail", ("bundle_malformed",))
+        result = BundleVerificationResult(None, invalid, invalid, invalid)
+        if strict:
+            result.kind_ok = False
+            result.record_identity = invalid
+        return result
+
+
+def _verify_bundle(bundle: Any, strict: bool, require_signature: bool, witness_directory: Any) -> BundleVerificationResult:
     invalid = ClaimResult("fail", ("bundle_malformed",))
     if not isinstance(bundle, Mapping):
         result = BundleVerificationResult(None, invalid, invalid, invalid)

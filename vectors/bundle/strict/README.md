@@ -261,7 +261,13 @@ whose `key_ids` or `public_keys` is not a list, or with a key id that is not 64
 lowercase hex characters, is unusable (`withheld`).
 
 The `reason` text a verifier reports for a receipt is not part of these
-vectors. A record or settlement leg whose `capsule_id` is not a string is
+vectors.
+
+A verifier never raises on its input. A Bundle or record nested more deeply
+than an implementation can read (Python's limit is its recursion limit) is
+refused: the Bundle with `bundle_malformed` on every claim (INVALID), a record
+signature as `invalid`. The depth limit differs between languages, so no
+vector reaches it. A record or settlement leg whose `capsule_id` is not a string is
 reported with `""` in strict `records` and with `null` in settlement
 `failures`. `membership_record_unknown` findings come in sorted Capsule ID
 order.

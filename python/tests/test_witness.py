@@ -187,3 +187,24 @@ def test_only_ed25519_and_ec_public_keys_count():
     row = {"binding": "rekor", "key_ids": [__import__("hashlib").sha256(p256).hexdigest()],
            "public_keys": [base64.b64encode(p256).decode()]}
     assert len(row_public_keys_pem(row)) == 1
+
+
+def test_input_nested_beyond_the_interpreter_is_refused_not_raised():
+    import copy
+    import json
+    from pathlib import Path
+
+    from agent_action_capsule.bundle import verify_bundle
+    from agent_action_capsule.producer_envelope import verify_record_signature
+
+    vectors = json.loads((Path(__file__).resolve().parents[2] / "vectors" / "bundle" / "strict" / "vectors.json").read_text())
+    bundle = copy.deepcopy(vectors["cases"][0]["bundle"])
+    deep: list = []
+    cursor = deep
+    for _ in range(5000):
+        cursor.append([])
+        cursor = cursor[0]
+    bundle["records"][0]["x_deep"] = deep
+    assert verify_record_signature(bundle["records"][0])[0] == "invalid"
+    assert verify_bundle(bundle).graph_closure.findings == ("bundle_malformed",)
+    assert verify_bundle(bundle, strict=True).verdict == "INVALID"

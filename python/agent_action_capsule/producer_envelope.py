@@ -246,8 +246,8 @@ def verify_record_signature(record: object) -> tuple[str, list[str]]:
                 raise ValueError(f"{member} is not hex")
         result = verify_producer_envelope(_record_capsule_id(record), bytes.fromhex(record["signature"]))
         ok = result.ok and result.public_key == bytes.fromhex(record["key_id"])
-    except (KeyError, ValueError, TypeError) as exc:
-        return INVALID, [f"capsule_id={cid}: producer envelope malformed: {exc}"]
+    except (KeyError, ValueError, TypeError, RecursionError) as exc:
+        return INVALID, [f"capsule_id={cid}: producer envelope malformed: {type(exc).__name__}: {exc}"]
     if ok:
         return AUTHORED, []
     return INVALID, [
