@@ -361,7 +361,7 @@ def _apply_strict(result: BundleVerificationResult, bundle: Mapping[str, Any], r
     for record in raw_records:
         if not isinstance(record, Mapping):
             continue
-        cid = str(record.get("capsule_id", ""))
+        cid = record.get("capsule_id") if isinstance(record.get("capsule_id"), str) else ""
         verdict, messages = verify_record_signature(dict(record))
         aac = result.capsule_results.get(cid)
         key_id = record.get("key_id")
@@ -495,7 +495,7 @@ def _selected_membership(bundle: Mapping[str, Any], signed: Mapping[str, Any]) -
         return ClaimResult("fail", ("completeness_certificate_invalid",))
     root, size, log_id = bytes.fromhex(signed["root"]), signed["mmr_size"], signed["log_id"]
     raw_records = bundle.get("records") if isinstance(bundle.get("records"), list) else []
-    ids = [str(r.get("capsule_id", "")) for r in raw_records if isinstance(r, Mapping)]
+    ids = [r["capsule_id"] if isinstance(r.get("capsule_id"), str) else "" for r in raw_records if isinstance(r, Mapping)]
     findings: list[str] = []
     seen: set[int] = set()
     for cid in ids:
@@ -522,7 +522,7 @@ def _selected_membership(bundle: Mapping[str, Any], signed: Mapping[str, Any]) -
                 findings.append(f"membership_proof_invalid:{cid}")
         except (TypeError, ValueError, KeyError, AttributeError):
             findings.append(f"membership_proof_invalid:{cid}")
-    findings += [f"membership_record_unknown:{cid}" for cid in members if cid not in ids]
+    findings += [f"membership_record_unknown:{cid}" for cid in sorted(members) if cid not in ids]
     return ClaimResult("fail" if findings else "pass", tuple(findings))
 
 

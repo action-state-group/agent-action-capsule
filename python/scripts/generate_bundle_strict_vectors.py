@@ -249,6 +249,25 @@ def cll_receipt(leaf: str, key: Ed25519PrivateKey = CLL_WITNESS, *, ts_url: str 
     return {"ts_url": ts_url, "entry_hash": leaf, "receipt_b64": b64(receipt), "leaf_index": 0, "tree_size": 1}
 
 
+def attached_payload_receipt(leaf: str) -> dict:
+    """A genuine-looking ``cll`` receipt whose payload is attached and signed:
+    the signature covers that payload, not the rebuilt root, so it binds
+    nothing. A verifier must refuse it, not verify the attached bytes."""
+    import cbor2
+
+    genuine = cll_receipt(leaf)
+    outer = cbor2.loads(base64.b64decode(genuine["receipt_b64"]))
+    protected = cbor2.loads(outer.value[0])
+    forged = sign_sign1(
+        b"any payload the witness key signed",
+        alg="EdDSA",
+        private_key_pem=private_pem(CLL_WITNESS),
+        protected={k: v for k, v in protected.items() if k != 1},
+        unprotected=dict(outer.value[1]),
+    )
+    return {**genuine, "receipt_b64": b64(forged)}
+
+
 def scrapi_receipt(cose: bytes, *, grade: str | None = None) -> dict:
     leaf = hashlib.sha256(cose).hexdigest()
     receipt = build_receipt(
@@ -262,7 +281,9 @@ def _sorted_json(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
-def rekor_receipt(cose: bytes, checkpoint_key: Ed25519PrivateKey = LOG_KEY, *, payload: bytes | None = None) -> dict:
+def rekor_receipt(
+    cose: bytes, checkpoint_key: Ed25519PrivateKey = LOG_KEY, *, payload: bytes | None = None, string_time: bool = False
+) -> dict:
     """A Rekor ``dsse`` log entry (``GET /api/v1/log/entries`` shape, one entry)."""
     body = {
         "apiVersion": "0.0.1",
@@ -276,6 +297,8 @@ def rekor_receipt(cose: bytes, checkpoint_key: Ed25519PrivateKey = LOG_KEY, *, p
     entry = {"body": b64(_sorted_json(body)), "integratedTime": 1792022400, "logID": REKOR_LOG_ID, "logIndex": 7}
     set_signature = REKOR_KEY.sign(_sorted_json(entry), ec.ECDSA(hashes.SHA256(), deterministic_signing=True))
     receipt = {**entry, "verification": {"signedEntryTimestamp": b64(set_signature)}}
+    if string_time:
+        receipt["integratedTime"] = "1792022400"  # the signed value, as a JSON string
     return {"ts_url": REKOR_URL, "entry_hash": hashlib.sha256(cose).hexdigest(),
             "receipt_b64": b64(_sorted_json(receipt)), "leaf_index": 7, "tree_size": 8}
 
@@ -617,6 +640,11 @@ def build_cases() -> list[dict]:
                  witnessed(cll_receipt(leaf, OTHER)),
                  {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
                   "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
+    witness_case("neg-witness-cll-attached-payload",
+                 "A receipt whose payload is attached and signed by the listed key: not bound to the root.",
+                 witnessed(attached_payload_receipt(leaf)),
+                 {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
+                  "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
     no_size = cll_receipt(leaf)
     del no_size["tree_size"]
     witness_case("neg-witness-malformed", "A receipt entry without tree_size, beside a good one.",
@@ -642,6 +670,10 @@ def build_cases() -> list[dict]:
                   "receipts": [receipt_expect(REKOR_URL, "rekor", "fail")]}, verdict="INVALID")
     witness_case("neg-witness-rekor-other-signer", "A Rekor entry for these bytes logged under another key.",
                  witnessed(rekor_receipt(cose, OTHER)),
+                 {"status": "fail", "findings": [f"witness_receipt_invalid:{REKOR_URL}"],
+                  "receipts": [receipt_expect(REKOR_URL, "rekor", "fail")]}, verdict="INVALID")
+    witness_case("neg-witness-rekor-string-integer", "integratedTime is the signed value as a JSON string.",
+                 witnessed(rekor_receipt(cose, string_time=True)),
                  {"status": "fail", "findings": [f"witness_receipt_invalid:{REKOR_URL}"],
                   "receipts": [receipt_expect(REKOR_URL, "rekor", "fail")]}, verdict="INVALID")
     nokey = "rekor+https://rekor-nokey.example"

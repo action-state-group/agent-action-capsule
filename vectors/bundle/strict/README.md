@@ -166,20 +166,22 @@ The three bindings check a receipt as follows.
     as JSON with sorted keys and no whitespace, non-ASCII escaped as
     `\uXXXX`, taking each value from the signed statement. The receipt's
     `entry_hash` must equal the SHA-256 of that digest's 32 bytes.
-  - `receipt_b64` (strict standard base64) must be a COSE Receipt (RFC 9162
-    SHA-256 inclusion) over the leaf `entry_hash`, signed under the key.
+  - `receipt_b64` (strict standard base64) must be a COSE Receipt over the
+    leaf `entry_hash`, signed under the key (see "COSE Receipts" below).
   - `grade` is the receipt's protected-header label -65537:
     `observed-only`, `mmr-verified`, or `countersigned-observed` read as
     `observed-only`. Any other value or no label is `null`.
 - **`scrapi`.**
-  - `receipt_b64` must be a COSE Receipt over the leaf SHA-256 of the
-    checkpoint's COSE bytes, signed under the key.
+  - `receipt_b64` (standard base64) must be a COSE Receipt over the leaf
+    SHA-256 of the checkpoint's COSE bytes, signed under the key.
   - `grade` is label -65537 as above. With no label, or an unknown one, it is
     `observed-only`.
 - **`rekor`.** `receipt_b64` is base64 of a Rekor log entry, and four checks
   must all hold:
   1. Its `logID` is the SHA-256 of the key's DER SubjectPublicKeyInfo.
-  2. `verification.signedEntryTimestamp` (base64 DER ECDSA P-256 SHA-256)
+  2. `integratedTime` and `logIndex` are JSON integers (not strings or
+     booleans), `body` is a string, and
+     `verification.signedEntryTimestamp` (base64 DER ECDSA P-256 SHA-256)
      verifies over `{"body","integratedTime","logID","logIndex"}` as JSON with
      sorted keys and no whitespace.
   3. `body` decodes (base64 JSON) to a `dsse` entry whose
@@ -190,8 +192,29 @@ The three bindings check a receipt as follows.
 
   `grade` is `observed-only`.
 
+**COSE Receipts** (`cll` and `scrapi`; draft-ietf-cose-merkle-tree-proofs).
+A receipt verifies over a leaf when all of these hold:
+
+- it is a CBOR tag-18 COSE_Sign1 whose payload is detached (`nil`), so the
+  signature covers the rebuilt Merkle root. An attached payload is refused
+  even when its signature verifies: it binds nothing
+  (`neg-witness-cll-attached-payload`);
+- its protected header has `vds` (395) equal to 1 (RFC9162_SHA256) and an
+  `alg` (1) of EdDSA (-8) or ES256 (-7). No other `vds` is accepted;
+- its unprotected `vdp` (396) map carries a non-empty array of inclusion
+  proofs under -1, each a byte string holding CBOR
+  `[tree_size, leaf_index, [audit_path...]]`. Every entry must decode;
+- for some proof, the RFC 9162 root rebuilt from the leaf and that proof
+  verifies the signature under the key.
+
+Decoding follows the scitt-cose verifiers (Python `scitt_cose.verify_receipt`,
+the Rust crate `scitt-cose-receipt`), including their `crit` handling.
+
 The `reason` text a verifier reports for a receipt is not part of these
-vectors.
+vectors. A record or settlement leg whose `capsule_id` is not a string is
+reported with `""` in strict `records` and with `null` in settlement
+`failures`. `membership_record_unknown` findings come in sorted Capsule ID
+order.
 
 ## Cases (`cases`)
 
@@ -226,6 +249,7 @@ checkpoint is signed by another, the log key.
 | `pos-witness-stub` | `is_stub: true` | VALID, witnesses withheld |
 | `neg-witness-cll-other-checkpoint` | a genuine receipt for another checkpoint | INVALID |
 | `neg-witness-cll-wrong-key` | a receipt signed by a key the row does not list | INVALID |
+| `neg-witness-cll-attached-payload` | a receipt with an attached payload signed by the listed key | INVALID |
 | `neg-witness-malformed` | an entry without `tree_size`, beside a good receipt | INVALID |
 | `pos-witness-scrapi` | a `scrapi` receipt, no grade label | VALID, grade `observed-only` |
 | `pos-witness-scrapi-unknown-grade` | an unknown grade label | VALID, grade `observed-only` |
@@ -233,6 +257,7 @@ checkpoint is signed by another, the log key.
 | `pos-witness-rekor` | a Rekor `dsse` entry under the checkpoint's key | VALID |
 | `neg-witness-rekor-other-payload` | `payloadHash` of other bytes | INVALID |
 | `neg-witness-rekor-other-signer` | logged under another key | INVALID |
+| `neg-witness-rekor-string-integer` | `integratedTime` is the signed value as a JSON string | INVALID |
 | `pos-witness-rekor-row-without-key` | a `rekor` row with a log ID and no public key | VALID, witnesses withheld |
 | `pos-witness-three-bindings` | one receipt of each binding | VALID |
 | `incomplete-witness-on-unsigned-checkpoint` | a receipt on a checkpoint with no `cose` | INCOMPLETE, witnesses withheld |

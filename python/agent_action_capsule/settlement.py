@@ -375,7 +375,7 @@ def verify_settlements(
         if not isinstance(capsule, dict):
             report.failures.append({"records": [None], "code": "capsule_invalid"})
             continue
-        cid = capsule.get("capsule_id")
+        cid = capsule.get("capsule_id") if isinstance(capsule.get("capsule_id"), str) else None
         own: list[str] = []
         kid = None
         try:

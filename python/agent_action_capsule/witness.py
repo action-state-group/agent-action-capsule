@@ -197,6 +197,30 @@ def checkpoint_digest(signed: Mapping[str, Any]) -> str:
     return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def _receipt_shape_error(receipt: bytes) -> str | None:
+    """Refuse what ``scitt_cose.verify_receipt`` would read differently from
+    this profile: a receipt must be a tag-18 COSE_Sign1 with a detached
+    (``nil``) payload, so its signature covers the rebuilt Merkle root, and its
+    protected ``vds`` (label 395) must be 1, RFC9162_SHA256."""
+    import cbor2
+
+    try:
+        outer = cbor2.loads(receipt)
+        if not isinstance(outer, cbor2.CBORTag) or outer.tag != 18:
+            return "receipt is not a COSE_Sign1 message"
+        value = outer.value
+        if not isinstance(value, (list, tuple)) or len(value) != 4 or not isinstance(value[0], bytes):
+            return "receipt is not a COSE_Sign1 message"
+        if value[2] is not None:
+            return "receipt payload is attached; a receipt's payload must be detached"
+        protected = cbor2.loads(value[0]) if value[0] else {}
+    except Exception as exc:  # noqa: BLE001
+        return f"receipt could not be decoded: {type(exc).__name__}"
+    if not isinstance(protected, dict) or protected.get(395) != 1:
+        return "receipt vds is not RFC9162_SHA256 (1)"
+    return None
+
+
 def _grade(result: Any) -> str | None:
     label = (getattr(result, "protected_header_ext", None) or {}).get(_GRADE_LABEL)
     return _GRADES.get(label) if isinstance(label, str) else None
@@ -221,6 +245,9 @@ def _verify_cll(signed: Mapping[str, Any], record: Mapping[str, Any], pem: bytes
         from scitt_cose import verify_receipt
     except ImportError:
         return False, "scitt-cose is not installed; run: pip install 'agent-action-capsule[envelope]'", None
+    shape = _receipt_shape_error(receipt)
+    if shape is not None:
+        return False, shape, None
     try:
         result = verify_receipt(receipt, leaf_entry_hex=record["entry_hash"], log_public_key_pem=pem)
     except Exception as exc:  # noqa: BLE001
@@ -267,13 +294,13 @@ def verify_rekor_receipt(
         set_b64 = (receipt.get("verification") or {}).get("signedEntryTimestamp")
         if not set_b64:
             return False, "no signedEntryTimestamp"
+        integrated, index = receipt["integratedTime"], receipt["logIndex"]
+        if not all(isinstance(v, int) and not isinstance(v, bool) for v in (integrated, index)):
+            return False, "integratedTime and logIndex must be JSON integers"
+        if not isinstance(receipt["body"], str):
+            return False, "body must be a string"
         signed = _sorted_json(
-            {
-                "body": receipt["body"],
-                "integratedTime": int(receipt["integratedTime"]),
-                "logID": receipt["logID"],
-                "logIndex": int(receipt["logIndex"]),
-            }
+            {"body": receipt["body"], "integratedTime": integrated, "logID": receipt["logID"], "logIndex": index}
         )
         try:
             rekor_key.verify(base64.b64decode(set_b64), signed, ec.ECDSA(hashes.SHA256()))
@@ -308,6 +335,9 @@ def verify_scrapi_receipt(
         from scitt_cose import verify_receipt
     except ImportError:
         return False, "not checked: scitt_cose not installed", None
+    shape = _receipt_shape_error(receipt)
+    if shape is not None:
+        return False, f"unreadable receipt: {shape}", None
     try:
         result = verify_receipt(receipt, leaf_entry_hex=hashlib.sha256(cose).hexdigest(), log_public_key_pem=pem)
     except Exception as exc:  # noqa: BLE001
