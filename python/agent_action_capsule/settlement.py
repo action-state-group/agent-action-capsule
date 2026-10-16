@@ -129,6 +129,8 @@ ISO20022_STATUS = {
 _AMOUNT_MEMBERS = ("amount", "routing_fee", "received", "receive_fee")
 _DELIVERY_MEMBERS = ("direction", "content_digest", "carrier", "tracking_digest", "status", "shipped_at",
                      "delivered_at", "address_digest")
+# delivery.status for physical goods (the draft's "Delivered" section).
+_DELIVERY_STATUSES = ("pending", "in_transit", "delivered", "failed", "returned")
 _VALUE = re.compile(r"0|[1-9][0-9]*")
 _HEX64 = re.compile(r"[0-9a-f]{64}")
 # Patterns are matched against the whole string (fullmatch), ASCII digits only.
@@ -191,9 +193,15 @@ def structure_failures(member: Any) -> list[str]:
                 or DELIVERY_DIRECTIONS.get(d["direction"]) != role
                 or not set(d) <= set(_DELIVERY_MEMBERS)
                 or ("content_digest" not in d and "carrier" not in d)
-                or ("content_digest" in d and not (isinstance(d["content_digest"], str)
-                                                   and _HEX64.fullmatch(d["content_digest"])))):
+                or any(m in d and not (isinstance(d[m], str) and _HEX64.fullmatch(d[m]))
+                       for m in ("content_digest", "tracking_digest", "address_digest"))
+                or ("carrier" in d and not isinstance(d["carrier"], str))
+                or ("status" in d and d["status"] not in _DELIVERY_STATUSES)
+                or any(m in d and not (isinstance(d[m], str) and _RFC3339_UTC.fullmatch(d[m]))
+                       for m in ("shipped_at", "delivered_at"))):
             out.append("settlement_malformed")
+    if "valid_until" in s and not (isinstance(s["valid_until"], str) and _RFC3339_UTC.fullmatch(s["valid_until"])):
+        out.append("settlement_malformed")
     if leg == "terms" and "deliverable" in s:
         dv = s["deliverable"]
         if (not isinstance(dv, dict) or not dv or not set(dv) <= {"content_digest", "description_digest"}
@@ -328,8 +336,24 @@ def _receive_fee_not_applicable(ref_type: str, terms: dict, payer: dict, objects
     return ref_type != "x402.transaction" or _x402_scheme([terms, payer], objects) == "exact"
 
 
-def _scaled(a: dict, scale: int) -> int:
-    return int(a["value"]) * 10 ** (scale - a["assetScale"])
+def _scaled(a: dict, scale: int) -> str:
+    """``a`` as a count of units at ``scale``, a decimal digit string with no
+    leading zeros. Kept as text: an amount may have more digits than Python's
+    int() conversion limit, and every port compares the same digits."""
+    digits = (a["value"] + "0" * (scale - a["assetScale"])).lstrip("0")
+    return digits or "0"
+
+
+def _add(x: str, y: str) -> str:
+    """The sum of two decimal digit strings."""
+    width = max(len(x), len(y))
+    out, carry = [], 0
+    for dx, dy in zip(reversed(x.zfill(width)), reversed(y.zfill(width))):
+        carry, digit = divmod(int(dx) + int(dy) + carry, 10)
+        out.append(str(digit))
+    if carry:
+        out.append(str(carry))
+    return "".join(reversed(out)).lstrip("0") or "0"
 
 
 def _amounts_equal(a: dict, b: dict) -> bool:
@@ -344,7 +368,7 @@ def _amount_rule_holds(payer: dict, payee: dict, receive_fee: dict) -> bool:
     if not payer["amount"]["assetCode"] == payee["received"]["assetCode"] == receive_fee["assetCode"]:
         return False
     scale = max(payer["amount"]["assetScale"], payee["received"]["assetScale"], receive_fee["assetScale"])
-    return _scaled(payer["amount"], scale) == _scaled(payee["received"], scale) + _scaled(receive_fee, scale)
+    return _scaled(payer["amount"], scale) == _add(_scaled(payee["received"], scale), _scaled(receive_fee, scale))
 
 
 def verify_settlements(

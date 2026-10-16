@@ -171,3 +171,41 @@ def test_an_envelope_with_whitespace_in_its_hex_is_not_authenticated():
     capsule = {**record["capsule"], "signature": record["envelope_hex"]}
     assert _envelope_key(capsule) is not None
     assert _envelope_key({**capsule, "signature": " " + record["envelope_hex"]}) is None
+
+
+def _delivered(**delivery):
+    return {"version": "0", "leg": "delivered", "sealer_role": "payee", "terms_ref": "0" * 64,
+            "observed_at": "2026-10-15T00:00:00Z", "delivery": {"direction": "sent", **delivery}}
+
+
+@pytest.mark.parametrize("delivery", [
+    {"carrier": None}, {"carrier": "UPS", "tracking_digest": "AB"}, {"carrier": "UPS", "address_digest": 1},
+    {"carrier": "UPS", "status": "lost"}, {"carrier": "UPS", "shipped_at": "yesterday"},
+    {"carrier": "UPS", "delivered_at": None},
+])
+def test_optional_delivery_members_keep_their_types(delivery):
+    assert structure_failures(_delivered(**delivery)) == ["settlement_malformed"]
+
+
+def test_a_well_formed_physical_delivery_passes():
+    assert structure_failures(_delivered(carrier="UPS", tracking_digest="ab" * 32, status="in_transit",
+                                         shipped_at="2026-10-15T00:00:00Z")) == []
+
+
+def test_valid_until_is_an_rfc3339_utc_time():
+    terms = {"version": "0", "leg": "terms", "sealer_role": "payee",
+             "amount": {"value": "1", "assetCode": "USD", "assetScale": 2}, "valid_until": 7}
+    assert structure_failures(terms) == ["settlement_malformed"]
+    assert structure_failures({**terms, "valid_until": "2026-10-16T00:00:00Z"}) == []
+
+
+def test_amounts_longer_than_the_int_conversion_limit_compare_exactly():
+    from agent_action_capsule.settlement import _amount_rule_holds, _amounts_equal
+
+    big = "9" * 5000
+    assert _amounts_equal({"value": big, "assetCode": "X", "assetScale": 0},
+                          {"value": big + "00", "assetCode": "X", "assetScale": 2})
+    payer = {"amount": {"value": "1" + "0" * 5000, "assetCode": "X", "assetScale": 0}}
+    payee = {"received": {"value": big, "assetCode": "X", "assetScale": 0}}
+    assert _amount_rule_holds(payer, payee, {"value": "1", "assetCode": "X", "assetScale": 0})
+    assert not _amount_rule_holds(payer, payee, {"value": "2", "assetCode": "X", "assetScale": 0})
