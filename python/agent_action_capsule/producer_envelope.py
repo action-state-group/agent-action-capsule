@@ -242,6 +242,10 @@ def verify_record_signature(record: object) -> tuple[str, list[str]]:
     if has_signature != has_key_id:
         return INVALID, [f"capsule_id={cid}: only one of signature/key_id present -- malformed producer envelope"]
     try:
+        for member in ("signature", "key_id"):
+            # bytes.fromhex would also take whitespace; every port reads hex digits only.
+            if not isinstance(record[member], str) or not re.fullmatch(r"(?:[0-9a-fA-F]{2})+", record[member]):
+                raise ValueError(f"{member} is not hex")
         result = verify_producer_envelope(_record_capsule_id(record), bytes.fromhex(record["signature"]))
         ok = result.ok and result.public_key == bytes.fromhex(record["key_id"])
     except (KeyError, ValueError, TypeError) as exc:

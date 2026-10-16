@@ -67,3 +67,27 @@ def test_a_non_object_bundle_is_invalid_in_strict_mode():
     result = verify_bundle([1], strict=True)
     assert result.verdict == "INVALID" and result.kind_ok is False
     assert verify_bundle([1]).verdict is None
+
+
+def test_row_key_lists_and_ids_are_typed():
+    with pytest.raises(ValueError):
+        row_public_keys_pem({"key_ids": {"22" * 32: 1}})
+    with pytest.raises(ValueError):
+        row_public_keys_pem({"key_ids": [" " + "22" * 32]})
+    assert len(row_public_keys_pem({"key_ids": ["22" * 32], "public_keys": ["not base64!"]})) == 1
+
+
+@pytest.mark.parametrize("protected", [{1: -8, 395: True}, {1: -8, 395: 1.0}, {1: -35, 395: 1}, {1: True, 395: 1}])
+def test_receipt_vds_and_alg_are_integers(protected):
+    import cbor2
+
+    from agent_action_capsule.witness import _receipt_shape_error
+
+    assert _receipt_shape_error(cbor2.dumps(cbor2.CBORTag(18, [cbor2.dumps(protected), {}, None, b""]))) is not None
+
+
+def test_record_signature_hex_has_no_whitespace():
+    from agent_action_capsule.producer_envelope import verify_record_signature
+
+    verdict, _ = verify_record_signature({"capsule_id": "00" * 32, "signature": "d2 84", "key_id": "11" * 32})
+    assert verdict == "invalid"

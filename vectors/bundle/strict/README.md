@@ -60,7 +60,8 @@ least one record and every record's identity holds. Otherwise it fails with
 (the hex Producer Envelope) and `key_id` (hex raw Ed25519 key):
 
 - `unclaimed`: neither member is present.
-- `invalid`: only one of them is present, or the envelope does not verify
+- `invalid`: only one of them is present, either is not a string of hex digit
+  pairs (upper or lower case, no whitespace), or the envelope does not verify
   under `key_id` over the Capsule ID recomputed from the record's own content.
 - `authored`: otherwise.
 
@@ -206,9 +207,9 @@ A receipt verifies over a leaf when all of these hold:
   signature covers the rebuilt Merkle root. An attached payload is refused
   even when its signature verifies: it binds nothing
   (`neg-witness-cll-attached-payload`);
-- its protected header has `vds` (395) equal to 1 (RFC9162_SHA256) and an
-  `alg` (1) of EdDSA (-8) or ES256 (-7). No other `vds` or `alg` is
-  accepted;
+- its protected header has `vds` (395) equal to the integer 1
+  (RFC9162_SHA256) and an `alg` (1) of the integer -8 (EdDSA) or -7 (ES256).
+  No other `vds` or `alg` is accepted, nor `true` or a float;
 - its unprotected `vdp` (396) map carries a non-empty array of inclusion
   proofs under -1, each a byte string holding CBOR
   `[tree_size, leaf_index, [audit_path...]]`. Every entry must decode;
@@ -219,9 +220,11 @@ Decoding follows the scitt-cose verifiers (Python `scitt_cose.verify_receipt`,
 the Rust crate `scitt-cose-receipt`), including their `crit` handling.
 
 Every base64 field a receipt check reads (`receipt_b64`, the Rekor `body`,
-`signedEntryTimestamp` and `verifier`, and directory `public_keys`) is strict
-standard base64 with padding: a character outside the alphabet, or missing
-padding, makes the receipt fail (or, for a directory key, makes it unusable).
+`signedEntryTimestamp` and `verifier`) is strict standard base64 with padding:
+a character outside the alphabet, or missing padding, makes the receipt fail.
+A directory `public_keys` entry that is not strict base64 DER is skipped. A row
+whose `key_ids` or `public_keys` is not a list, or with a key id that is not 64
+lowercase hex characters, is unusable (`withheld`).
 
 The `reason` text a verifier reports for a receipt is not part of these
 vectors. A record or settlement leg whose `capsule_id` is not a string is

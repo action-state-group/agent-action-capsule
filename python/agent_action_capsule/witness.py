@@ -36,6 +36,7 @@ import base64
 import binascii
 import hashlib
 import json
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -170,7 +171,10 @@ def row_public_keys_pem(row: Mapping[str, Any]) -> list[bytes]:
     from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_der_public_key
 
     by_id: dict[str, bytes] = {}
-    for b64 in row.get("public_keys", []) or []:
+    public_keys, key_ids = row.get("public_keys", []), row.get("key_ids", [])
+    if not isinstance(public_keys, list) or not isinstance(key_ids, list):
+        raise ValueError("key_ids and public_keys must be lists")
+    for b64 in public_keys:
         der = _der(b64)
         if der is not None:
             by_id[hashlib.sha256(der).hexdigest()] = der
@@ -178,7 +182,9 @@ def row_public_keys_pem(row: Mapping[str, Any]) -> list[bytes]:
             if raw is not None:
                 by_id[raw] = der
     pems = []
-    for key_id in row.get("key_ids", []) or []:
+    for key_id in key_ids:
+        if not isinstance(key_id, str) or not re.fullmatch(r"[0-9a-f]{64}", key_id):
+            raise ValueError("a key id is not 64 lowercase hex characters")
         if key_id in by_id:
             key = load_der_public_key(by_id[key_id])
         elif row.get("binding") == BINDING_REKOR:
@@ -216,9 +222,10 @@ def _receipt_shape_error(receipt: bytes) -> str | None:
         protected = cbor2.loads(value[0]) if value[0] else {}
     except Exception as exc:  # noqa: BLE001
         return f"receipt could not be decoded: {type(exc).__name__}"
-    if not isinstance(protected, dict) or protected.get(395) != 1:
+    vds, alg = (protected.get(395), protected.get(1)) if isinstance(protected, dict) else (None, None)
+    if type(vds) is not int or vds != 1:
         return "receipt vds is not RFC9162_SHA256 (1)"
-    if protected.get(1) not in (-8, -7):
+    if type(alg) is not int or alg not in (-8, -7):
         return "receipt alg is not EdDSA (-8) or ES256 (-7)"
     return None
 
