@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 import pytest
+from _capsules import sealed
 
 from agent_action_capsule import verify, verify_store
 
@@ -169,8 +170,7 @@ def test_cli_invalid_capsule_exits_nonzero(tmp_path):
 
 
 def test_cli_valid_capsule_exits_zero(tmp_path):
-    from agent_action_capsule.emit import emit
-    capsule = emit("test/cli", "fyi", "OP", "DEV")
+    capsule = sealed(action_id="test/cli", action_type="fyi")
     cap = tmp_path / "cap.json"
     cap.write_text(json.dumps(capsule))
     result = _cli("verify", str(cap))
@@ -178,8 +178,7 @@ def test_cli_valid_capsule_exits_zero(tmp_path):
 
 
 def test_cli_tampered_capsule_exits_one(tmp_path):
-    from agent_action_capsule.emit import emit
-    capsule = emit("test/cli-tamper", "fyi", "OP", "DEV")
+    capsule = sealed(action_id="test/cli-tamper", action_type="fyi")
     capsule["operator"] = "HACKER"  # tamper without resealing
     cap = tmp_path / "tampered.json"
     cap.write_text(json.dumps(capsule))

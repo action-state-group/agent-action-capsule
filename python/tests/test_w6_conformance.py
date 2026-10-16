@@ -1,26 +1,28 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """W6 round-trip conformance tests.
 
-Exercises emit() → verify() round-trips for every legal capsule shape, plus
+Exercises Capsule.seal() → verify() round-trips for every legal capsule shape, plus
 negative conformance tests for tampered capsules. Also exercises verify_store()
 at the store level.
 """
 import pytest
+from _capsules import sealed
 from conftest import HEX_A
 
 from agent_action_capsule import (
+    Chain,
     Disposition,
     EffectRecord,
+    ModelAttestation,
     verify,
     verify_store,
 )
 from agent_action_capsule.contracts import (
     NEVER_DISPATCH_VERDICT_CLASSES,
 )
-from agent_action_capsule.emit import emit
 
 # ---------------------------------------------------------------------------
-# 1. Round-trip: every emitted capsule verifies
+# 1. Round-trip: every sealed capsule shape verifies
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("action_type,verdict_class,approver,human_disposed", [
@@ -32,15 +34,15 @@ from agent_action_capsule.emit import emit
     ("decide", "errored", "policy", False),
     ("decide", "resolved", "policy", False),
 ])
-def test_round_trip_emit_verifies(action_type, verdict_class, approver, human_disposed):
-    """emit() with various shapes → verify() returns ok=True."""
+def test_round_trip_sealed_verifies(action_type, verdict_class, approver, human_disposed):
+    """Sealed capsules of various shapes → verify() returns ok=True."""
     disp = Disposition(
         decision="accept" if verdict_class not in NEVER_DISPATCH_VERDICT_CLASSES else "reject",
         approver=approver,
         human_disposed=human_disposed,
         verdict_class=verdict_class,
     )
-    capsule = emit(
+    capsule = sealed(
         action_id=f"test/{verdict_class}",
         action_type=action_type,
         operator="test-op",
@@ -59,7 +61,7 @@ def test_round_trip_with_confirmed_effect():
     """Confirmed effect → verifies correctly and reports effect_mode=confirmed."""
     effect = EffectRecord(status="confirmed", response_digest=HEX_A, effect_attestation="gate_executed")
     disp = Disposition(decision="accept", approver="human", human_disposed=True, verdict_class="executed")
-    capsule = emit(
+    capsule = sealed(
         action_id="test/confirmed",
         action_type="decide",
         operator="OP",
@@ -78,16 +80,8 @@ def test_round_trip_with_confirmed_effect():
 
 def test_chained_capsules_verify_in_store():
     """Parent + child chain verifies cleanly in a verify_store() run."""
-    parent = emit(action_id="parent", action_type="decide", operator="OP", developer="DEV")
-    pid = parent["capsule_id"]
-    child = emit(
-        action_id="child",
-        action_type="decide",
-        operator="OP",
-        developer="DEV",
-        prior_capsule_id=pid,
-        chain_relation="confirms",
-    )
+    parent = sealed(action_id="parent")
+    child = sealed(action_id="child", chain=Chain(parent_capsule_id=parent["capsule_id"], relation="confirms"))
     results = verify_store([parent, child])
     assert all(r.ok for r in results)
 
@@ -98,14 +92,12 @@ def test_chained_capsules_verify_in_store():
 
 def test_round_trip_with_model_attestation():
     """Model attestation block is included and capsule still verifies."""
-    capsule = emit(
+    capsule = sealed(
         action_id="test/model",
         action_type="fyi",
-        operator="OP",
-        developer="DEV",
-        model_id="claude-sonnet-4-6",
-        provider="anthropic",
-        compute_attestation={"chip": "A100"},
+        model_attestation=ModelAttestation(
+            model_id="claude-sonnet-4-6", provider="anthropic", compute_attestation={"chip": "A100"}
+        ),
     )
     res = verify(capsule)
     assert res.ok
@@ -124,7 +116,7 @@ def test_round_trip_with_model_attestation():
     ("reverted", None, "runtime_claimed"),
 ])
 def test_effect_status_all_shapes_round_trip(status, response_digest, attestation):
-    """Every legal effect.status emits and verifies cleanly."""
+    """Every legal effect.status seals and verifies cleanly."""
     kw: dict = {"status": status}
     if response_digest:
         kw["response_digest"] = response_digest
@@ -132,14 +124,7 @@ def test_effect_status_all_shapes_round_trip(status, response_digest, attestatio
         kw["effect_attestation"] = attestation
     effect = EffectRecord(**kw)
     disp = Disposition(decision="accept", approver="policy", human_disposed=False, verdict_class="executed")
-    capsule = emit(
-        action_id=f"test-{status}",
-        action_type="decide",
-        operator="OP",
-        developer="DEV",
-        effect=effect,
-        disposition=disp,
-    )
+    capsule = sealed(action_id=f"test-{status}", effect=effect, disposition=disp)
     res = verify(capsule)
     assert res.ok, [f.code for f in res.findings]
 
@@ -152,7 +137,7 @@ def test_forged_confirmed_effect_fails():
     """Tampering response_digest after sealing causes capsule_id_mismatch."""
     effect = EffectRecord(status="confirmed", response_digest=HEX_A, effect_attestation="gate_executed")
     disp = Disposition(decision="accept", approver="human", human_disposed=True, verdict_class="executed")
-    capsule = emit("test/forged", "decide", "OP", "DEV", effect=effect, disposition=disp)
+    capsule = sealed(action_id="test/forged", effect=effect, disposition=disp)
     # Tamper: change the response_digest in-place (capsule_id becomes stale → mismatch)
     capsule["effect"]["response_digest"] = "b" * 64
     res = verify(capsule)
@@ -169,7 +154,7 @@ def test_tampered_capsule_id_fails():
     """Directly setting a wrong capsule_id is detected as a mismatch."""
     effect = EffectRecord(status="confirmed", response_digest=HEX_A, effect_attestation="gate_executed")
     disp = Disposition(decision="accept", approver="policy", human_disposed=False, verdict_class="executed")
-    capsule = emit("test/tamper", "decide", "OP", "DEV", effect=effect, disposition=disp)
+    capsule = sealed(action_id="test/tamper", effect=effect, disposition=disp)
     capsule["capsule_id"] = "c" * 64  # wrong id
     res = verify(capsule)
     assert not res.ok
@@ -182,7 +167,7 @@ def test_tampered_capsule_id_fails():
 
 def test_field_mutation_causes_id_mismatch():
     """Mutating any top-level field without resealing produces capsule_id_mismatch."""
-    capsule = emit("test/mutate", "fyi", "OP", "DEV")
+    capsule = sealed(action_id="test/mutate", action_type="fyi")
     capsule["operator"] = "HACKER"  # mutate without resealing
     res = verify(capsule)
     assert not res.ok
@@ -206,7 +191,7 @@ def test_store_level_all_shapes_verify():
             human_disposed=False,
             verdict_class=vc,
         )
-        capsules.append(emit(f"test/{vc}", "decide", "OP", "DEV", effect=eff, disposition=disp))
+        capsules.append(sealed(action_id=f"test/{vc}", effect=eff, disposition=disp))
     results = verify_store(capsules)
     assert all(r.ok for r in results), [
         (i, [f.code for f in r.findings]) for i, r in enumerate(results) if not r.ok

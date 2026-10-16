@@ -1,5 +1,13 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Rung 1 — emit: sealed-Capsule builder with self-attestation.
+"""Rung 1 — emit: sealed-Capsule builder with self-attestation (deprecated).
+
+.. deprecated:: 0.9.0
+   ``emit()`` is deprecated and will be removed in the next minor release.
+   Producing Capsules belongs to capsule-emit: use ``capsule_emit.seal``, or
+   build a :class:`~agent_action_capsule.parse.Capsule` and call its
+   ``seal()``, which stays this package's public sealing boundary. The version
+   constants this module re-exports live in
+   :mod:`agent_action_capsule.versions` and stay.
 
 ``emit()`` is the single-call path from "an AI action just occurred" to a
 sealed, verifiable Agent Action Capsule. It handles:
@@ -23,7 +31,9 @@ sealed, verifiable Agent Action Capsule. It handles:
 from __future__ import annotations
 
 import dataclasses
+import functools
 import uuid
+import warnings
 from datetime import datetime, timezone
 from typing import Any
 
@@ -43,6 +53,16 @@ from .contracts import (
 )
 from .parse import Capsule
 
+# Re-exported unchanged, with no warning: the constants stay in
+# agent_action_capsule.versions after this module is removed.
+from .versions import (
+    ACCEPTED_SPEC_VERSIONS,
+    DEFAULT_FORMAT_VERSION,
+    DEFAULT_SPEC_VERSION,
+    FORMAT_VERSION,
+    SPEC_VERSION,
+)
+
 __all__ = [
     "emit",
     "DEFAULT_SPEC_VERSION",
@@ -53,21 +73,11 @@ __all__ = [
     "FORMAT_VERSION",
 ]
 
-# A producer conforming to draft -05 emits -05; a verifier accepts -04 and -05,
-# the revisions that define format 4 (draft -05, "Identity and parties").
-# spec_version never selects a digest or verification algorithm, and an
-# unrecognized value is never by itself a rejection, so verify() never
-# branches on it.
-DEFAULT_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-05"
-ACCEPTED_SPEC_VERSIONS = (
-    "draft-mih-scitt-agent-action-capsule-04",
-    DEFAULT_SPEC_VERSION,
+DEPRECATION_MESSAGE = (
+    "agent_action_capsule.emit() is deprecated and will be removed in the next "
+    "minor release; seal Capsules with capsule-emit (capsule_emit.seal), or "
+    "build an agent_action_capsule.Capsule and call its seal()"
 )
-DEFAULT_FORMAT_VERSION = "4"
-
-# Aliases used by the adapter tier (framework adapters import these names).
-SPEC_VERSION = DEFAULT_SPEC_VERSION
-FORMAT_VERSION = DEFAULT_FORMAT_VERSION
 
 
 def _utc_now() -> str:
@@ -75,7 +85,7 @@ def _utc_now() -> str:
     return now.isoformat().replace("+00:00", "Z")
 
 
-def emit(
+def _emit(
     action_id: str | None = None,
     action_type: str = "fyi",
     operator: str = "",
@@ -103,6 +113,10 @@ def emit(
     tool_output: Any = None,  # noqa: ARG001 — carried for future traceability
 ) -> dict:
     """Build and seal a Capsule with self-attestation (§5.3).
+
+    .. deprecated:: 0.9.0
+       Use ``capsule_emit.seal`` (capsule-emit); removed in the next minor
+       release.
 
     Returns the sealed dict with ``capsule_id`` computed over the canonical
     capsule form (§5.1). When ``model_id`` and ``provider`` are supplied, the
@@ -250,3 +264,12 @@ def emit(
         references=references,
     )
     return capsule.seal()
+
+
+@functools.wraps(_emit)
+def emit(*args: Any, **kwargs: Any) -> dict:
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
+    return _emit(*args, **kwargs)
+
+
+emit.__name__ = emit.__qualname__ = "emit"

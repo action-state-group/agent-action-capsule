@@ -155,6 +155,17 @@ smallest honest round trip: construct a capsule with the typed builders, `seal()
 it (compute `capsule_id`), then `verify()` it — an executed action and a blocked
 one, in ~40 lines.
 
+`Capsule.seal()` is this package's sealing boundary. Recording an agent's
+actions as they happen (default dispositions, chaining, framework adapters) is
+[capsule-emit](https://github.com/action-state-group/capsule-emit)'s job: use
+its `capsule_emit.seal` and its LangChain and CrewAI adapters
+(`capsule_emit.adapters.langchain`, `capsule_emit.adapters.crewai`).
+`agent_action_capsule.emit()` and `agent_action_capsule.integrations` (with the
+`langchain` and `crewai` extras) are deprecated since 0.9.0: they still work but
+raise a `DeprecationWarning`, and are removed in the next minor release. The
+version constants (`DEFAULT_SPEC_VERSION`, `ACCEPTED_SPEC_VERSIONS`, ...) live
+in `agent_action_capsule.versions` and stay exported from the package root.
+
 ### Conformance vectors
 
 [`../vectors/capsule/`](../vectors/capsule/) is the frozen conformance suite a second

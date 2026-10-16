@@ -2,8 +2,10 @@
 """Tests for agent_action_capsule.bilateral — pair-verify."""
 from __future__ import annotations
 
+from _capsules import sealed
+
+from agent_action_capsule import Chain, ModelAttestation
 from agent_action_capsule.bilateral import verify_pair
-from agent_action_capsule.emit import emit as _emit
 
 
 def _make_capsule(
@@ -15,13 +17,16 @@ def _make_capsule(
     chain_relation: str | None = None,
 ) -> dict:
     digest_key = "subject_digest" if use_subject_digest else "action_digest"
-    return _emit(
-        action_type="decide",
+    chain = None
+    if prior_capsule_id is not None:
+        chain = Chain(parent_capsule_id=prior_capsule_id, relation=chain_relation or "follows")
+    return sealed(
         operator=operator,
         developer=developer,
-        compute_attestation={digest_key: action_digest, "role": "requester"},
-        prior_capsule_id=prior_capsule_id,
-        chain_relation=chain_relation,
+        model_attestation=ModelAttestation(
+            compute_attestation={digest_key: action_digest, "role": "requester"}
+        ),
+        chain=chain,
     )
 
 
@@ -70,8 +75,8 @@ def test_verify_pair_digest_mismatch():
 
 def test_verify_pair_no_digest_is_warning_not_error():
     """Missing digest on both sides is a warning, not an error."""
-    cap_a = _emit(action_type="decide", operator="org-a", developer="agent@v1")
-    cap_b = _emit(action_type="decide", operator="org-b", developer="agent@v1")
+    cap_a = sealed(operator="org-a", developer="agent@v1")
+    cap_b = sealed(operator="org-b", developer="agent@v1")
     pvr = verify_pair(cap_a, cap_b)
     assert pvr.ok  # warnings don't fail
     warnings = [f for f in pvr.findings if f.severity == "warning"]

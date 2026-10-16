@@ -3,8 +3,8 @@
 distinct record type (draft -05, "Provenance mode and backfilled records").
 
 Acceptance criteria:
-- Round-trip: emit with provenance_mode=ProvenanceMode(mode="backfilled", ...)
-  -> verify -> ok, block present in sealed dict.
+- Round-trip: a Capsule sealed with
+  provenance_mode=ProvenanceMode(mode="backfilled", ...) -> verify -> ok.
 - Absent provenance_mode still verifies ok (implies "contemporaneous").
 - mode="backfilled" REQUIRES source_ref/source_asserted_at/import_batch/
   imported_at; missing any is a structural failure (check 9), both at
@@ -26,8 +26,9 @@ Acceptance criteria:
 - capsule_id commits provenance_mode (tamper = mismatch).
 """
 import pytest
+from _capsules import sealed
 
-from agent_action_capsule import emit, verify, verify_store
+from agent_action_capsule import Chain, verify, verify_store
 from agent_action_capsule.contracts import (
     PROVENANCE_MODES,
     TIME_RUNG_RANK,
@@ -82,32 +83,25 @@ def test_time_rung_rank_order():
 
 
 # ---------------------------------------------------------------------------
-# emit() round-trips
+# Sealed round-trips
 # ---------------------------------------------------------------------------
 
 
-def test_emit_backfilled():
-    c = emit(**_BASE, provenance_mode=_backfilled())
-    assert c["provenance_mode"]["mode"] == "backfilled"
-    assert c["provenance_mode"]["source_ref"]["digest"] == "5" * 64
-    r = verify(c)
+def test_sealed_backfilled_verifies():
+    r = verify(sealed(**_BASE, provenance_mode=_backfilled()))
     assert r.ok
     assert r.assurance["provenance_mode"] == "backfilled"
     assert r.assurance["provenance_time_rung"] == "self_attested"
 
 
-def test_emit_without_provenance_mode_implies_contemporaneous():
-    c = emit(**_BASE)
-    assert "provenance_mode" not in c
-    r = verify(c)
+def test_sealed_without_provenance_mode_implies_contemporaneous():
+    r = verify(sealed(**_BASE))
     assert r.ok
     assert "provenance_mode" not in r.assurance
 
 
-def test_emit_explicit_contemporaneous():
-    c = emit(**_BASE, provenance_mode=ProvenanceMode(mode="contemporaneous"))
-    assert c["provenance_mode"] == {"mode": "contemporaneous"}
-    r = verify(c)
+def test_sealed_explicit_contemporaneous_verifies():
+    r = verify(sealed(**_BASE, provenance_mode=ProvenanceMode(mode="contemporaneous")))
     assert r.ok
     assert r.assurance["provenance_mode"] == "contemporaneous"
     assert "provenance_time_rung" not in r.assurance
@@ -119,7 +113,7 @@ def test_emit_explicit_contemporaneous():
 
 
 def test_provenance_mode_committed_to_capsule_id():
-    c = emit(**_BASE, provenance_mode=_backfilled())
+    c = sealed(**_BASE, provenance_mode=_backfilled())
     tampered = dict(c)
     tampered["provenance_mode"] = dict(tampered["provenance_mode"])
     tampered["provenance_mode"]["import_batch"] = "tampered-batch"
@@ -177,7 +171,7 @@ def test_well_formed_backfilled_with_time_rung_witnessed_constructs():
 
 
 def _sealed_with_pm(pm_dict):
-    c = emit(**_BASE)
+    c = sealed(**_BASE)
     c = dict(c)
     c["provenance_mode"] = pm_dict
     # verify() recomputes capsule_id independently of what's carried, so a
@@ -227,7 +221,7 @@ def test_verify_contemporaneous_orphan_field_is_error():
 
 def test_laundering_shape_is_gating_error():
     pm = _backfilled(source_asserted_at="2026-09-22T00:00:00Z", imported_at="2026-09-22T00:00:00Z")
-    c = emit(**_BASE, provenance_mode=pm)
+    c = sealed(**_BASE, provenance_mode=pm)
     r = verify(c)
     assert not r.ok
     f = next(f for f in r.findings if f.code == "provenance_time_laundering_shape")
@@ -237,7 +231,7 @@ def test_laundering_shape_is_gating_error():
 
 def test_close_but_unequal_timestamps_are_not_laundering():
     pm = _backfilled(source_asserted_at="2026-09-22T00:00:00Z", imported_at="2026-09-22T00:00:01Z")
-    c = emit(**_BASE, provenance_mode=pm)
+    c = sealed(**_BASE, provenance_mode=pm)
     r = verify(c)
     assert r.ok
     assert not any(f.code == "provenance_time_laundering_shape" for f in r.findings)
@@ -245,7 +239,7 @@ def test_close_but_unequal_timestamps_are_not_laundering():
 
 def test_time_rung_witnessed_without_reference_is_overclaim():
     pm = _backfilled(time_rung="witnessed")
-    c = emit(**_BASE, provenance_mode=pm)
+    c = sealed(**_BASE, provenance_mode=pm)
     r = verify(c)
     assert not r.ok
     f = next(f for f in r.findings if f.code == "provenance_time_rung_overclaim")
@@ -261,7 +255,7 @@ def test_time_rung_witnessed_with_well_formed_reference_verifies_clean():
         type="x-witnessed-timestamp", digest_alg="SHA-256", digest="7" * 64,
         citation_purpose="corroborates_source_time",
     )
-    c = emit(**_BASE, provenance_mode=pm, references=(witness_ref,))
+    c = sealed(**_BASE, provenance_mode=pm, references=(witness_ref,))
     r = verify(c)
     assert r.ok
     assert not any(f.code == "provenance_time_rung_overclaim" for f in r.findings)
@@ -274,7 +268,7 @@ def test_time_rung_witnessed_with_wrong_purpose_reference_still_overclaims():
         type="x-witnessed-timestamp", digest_alg="SHA-256", digest="7" * 64,
         citation_purpose="acted_on",
     )
-    c = emit(**_BASE, provenance_mode=pm, references=(wrong_purpose_ref,))
+    c = sealed(**_BASE, provenance_mode=pm, references=(wrong_purpose_ref,))
     r = verify(c)
     assert not r.ok
     assert any(f.code == "provenance_time_rung_overclaim" for f in r.findings)
@@ -286,11 +280,11 @@ def test_time_rung_witnessed_with_wrong_purpose_reference_still_overclaims():
 
 
 def test_duplicates_collapsed_once():
-    contemporaneous = emit(action_id="act-parent", operator="test-org", developer="test-agent@1.0")
-    backfilled = emit(
+    contemporaneous = sealed(action_id="act-parent", operator="test-org", developer="test-agent@1.0")
+    backfilled = sealed(
         action_id="act-duplicate", operator="test-org", developer="test-agent@1.0",
-        provenance_mode=_backfilled(), prior_capsule_id=contemporaneous["capsule_id"],
-        chain_relation="duplicates",
+        provenance_mode=_backfilled(),
+        chain=Chain(parent_capsule_id=contemporaneous["capsule_id"], relation="duplicates"),
     )
     results = verify_store([contemporaneous, backfilled])
     assert all(r.ok for r in results)
@@ -300,14 +294,14 @@ def test_duplicates_collapsed_once():
 
 
 def test_duplicate_parent_itself_backfilled_flagged():
-    parent = emit(
+    parent = sealed(
         action_id="act-parent-2", operator="test-org", developer="test-agent@1.0",
         provenance_mode=_backfilled(import_batch="parent-batch"),
     )
-    child = emit(
+    child = sealed(
         action_id="act-duplicate-2", operator="test-org", developer="test-agent@1.0",
         provenance_mode=_backfilled(import_batch="child-batch"),
-        prior_capsule_id=parent["capsule_id"], chain_relation="duplicates",
+        chain=Chain(parent_capsule_id=parent["capsule_id"], relation="duplicates"),
     )
     results = verify_store([parent, child])
     assert any(f.code == "duplicate_parent_not_contemporaneous" for f in results[1].findings)
@@ -319,7 +313,7 @@ def test_duplicate_parent_itself_backfilled_flagged():
 
 
 def test_parse_capsule_provenance_mode_backfilled():
-    c = emit(**_BASE, provenance_mode=_backfilled())
+    c = sealed(**_BASE, provenance_mode=_backfilled())
     parsed = parse_capsule(c)
     assert parsed.provenance_mode is not None
     assert parsed.provenance_mode.mode == "backfilled"
@@ -328,7 +322,7 @@ def test_parse_capsule_provenance_mode_backfilled():
 
 
 def test_parse_capsule_none_when_absent():
-    c = emit(**_BASE)
+    c = sealed(**_BASE)
     parsed = parse_capsule(c)
     assert parsed.provenance_mode is None
 

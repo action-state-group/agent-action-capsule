@@ -20,7 +20,7 @@ boundaries — key rotations, operator changes, or policy resets. Capsules that
 share an `epoch_id` were produced under the same configuration; a change in
 `epoch_id` signals a new context.
 
-> **Dependency note.** `epoch_id` as a first-class field in `emit()` is
+> **Dependency note.** `epoch_id` as a first-class Capsule field is
 > scheduled for the identity-epochs work and has not yet been merged into this
 > library. Until that work lands, `epoch_id` can be carried inside
 > `compute_attestation` as a best-effort label. The `history` API reads both

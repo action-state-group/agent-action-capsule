@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Python: `emit()` (`agent_action_capsule.emit.emit`, exported from the root as
+  `agent_action_capsule.emit`) and the emit-tier adapters in `agent_action_capsule.integrations`
+  (`LangChainCapsuleEmitter`, `CrewAICapsuleEmitter`, `emit_tool`, with the `langchain` and `crewai`
+  extras) are deprecated (#281). Producing Capsules belongs to capsule-emit: use `capsule_emit.seal`
+  in place of `emit()`, and capsule-emit's adapters
+  (`capsule_emit.adapters.langchain.LangChainCapsuleEmitter`,
+  `capsule_emit.adapters.crewai.CrewAICapsuleEmitter`, whose `wrap()` replaces `emit_tool`) in place
+  of the integrations. Both keep working in this release: calling `emit()` raises a
+  `DeprecationWarning` naming `capsule_emit.seal`, and importing the integrations or constructing an
+  emitter raises one naming capsule-emit's adapters. They, and the `langchain` and `crewai` extras,
+  are removed in the next minor release. The version constants (`DEFAULT_SPEC_VERSION`,
+  `DEFAULT_FORMAT_VERSION`, `ACCEPTED_SPEC_VERSIONS`, `SPEC_VERSION`, `FORMAT_VERSION`) now live in
+  `agent_action_capsule.versions`; the root exports and `agent_action_capsule.emit`'s re-exports
+  keep working with no warning. `Capsule.seal()` stays this package's public sealing boundary, and
+  `build_disclosure_envelope` stays, both unchanged. AAC's tests are now verifier-only: they seal
+  test data with `Capsule.seal()`, and the emitter-behaviour tests move to capsule-emit.
 - Python: `verify_bundle(bundle, strict=True, require_signature=..., witness_directory=...)`
   adds the checks capsule-emit ran on top of `verify_bundle`, so verification of Evidence Bundles
   lives in one place (#280). Strict mode checks each record's producer signature (vintage `jcs-n`
