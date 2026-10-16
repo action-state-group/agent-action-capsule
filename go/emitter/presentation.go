@@ -57,7 +57,10 @@ type OfflineOptions struct {
 	// Title wins over the wording pack's page.title.
 	Title    string
 	ThemeCSS string
-	Wording  *Wording
+	// NoscriptText is the plain text shown when the browser runs no
+	// script; empty uses DefaultNoscriptText.
+	NoscriptText string
+	Wording      *Wording
 	// CoreRuntimeSHA256 is the runtime's pin; checked when set.
 	CoreRuntimeSHA256 string
 	Modules           []Module
@@ -230,6 +233,7 @@ func BuildOfflineHTML(value interface{}, runtime []byte, o OfflineOptions) (stri
 		CoreRuntimeSHA256: o.CoreRuntimeSHA256,
 		Modules:           o.Modules,
 		Bootstrap:         bootstrap,
+		NoscriptText:      o.NoscriptText,
 	})
 }
 
@@ -240,6 +244,7 @@ type PresentationFragment struct {
 	Depth             string
 	Title             string
 	ThemeCSS          string
+	NoscriptText      string
 	Wording           *Wording
 	CoreRuntimeSHA256 string
 	ModuleSHA256      []string
@@ -269,7 +274,7 @@ func DecodePresentationFragment(token string, maxLength int) (*PresentationFragm
 		return nil, fmt.Errorf("presentation fragment: %s", why)
 	}
 	known := map[string]bool{"fragment_version": true, "audience": true, "presentation": true, "depth": true,
-		"title": true, "theme_css": true, "wording": true, "core_runtime_sha256": true, "module_sha256": true, "bundle": true}
+		"title": true, "theme_css": true, "noscript_text": true, "wording": true, "core_runtime_sha256": true, "module_sha256": true, "bundle": true}
 	keys := make([]string, 0, len(object))
 	for key := range object {
 		keys = append(keys, key)
@@ -310,6 +315,9 @@ func DecodePresentationFragment(token string, maxLength int) (*PresentationFragm
 	}
 	if out.ThemeCSS, okAll = str("theme_css"); !okAll {
 		return fail("theme_css is not a string")
+	}
+	if out.NoscriptText, okAll = str("noscript_text"); !okAll {
+		return fail("noscript_text is not a string")
 	}
 	if raw, present := object["wording"]; present {
 		w, ok := raw.(map[string]interface{})
@@ -368,6 +376,7 @@ func OfflineHTMLFromFragment(token string, runtime []byte, modules []Module) (st
 		Depth:             payload.Depth,
 		Title:             payload.Title,
 		ThemeCSS:          payload.ThemeCSS,
+		NoscriptText:      payload.NoscriptText,
 		Wording:           payload.Wording,
 		CoreRuntimeSHA256: runtimePin,
 		Modules:           modules,

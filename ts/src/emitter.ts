@@ -6,6 +6,7 @@ import { OUTCOME_REPORT_CSS } from "./outcome-report-styles.js";
 
 const cspSlot = "__CSP_SLOT__";
 const titleSlot = "__TITLE_SLOT__";
+const noscriptSlot = "__NOSCRIPT_SLOT__";
 const themeSlot = "__THEME_SLOT__";
 const bundleSlot = "__BUNDLE_SLOT__";
 const coreRuntimeSlot = "__CORE_RUNTIME_SLOT__";
@@ -14,6 +15,7 @@ const bootstrapSlot = "__BOOTSTRAP_SLOT__";
 const slots = [
   cspSlot,
   titleSlot,
+  noscriptSlot,
   themeSlot,
   bundleSlot,
   coreRuntimeSlot,
@@ -26,6 +28,12 @@ export const DEFAULT_EVIDENCE_GRAPH_TITLE = "Evidence Graph";
 /** The bootstrap script used when the caller supplies none. */
 export const DEFAULT_EVIDENCE_GRAPH_BOOTSTRAP =
   'renderEvidenceGraph(window.__BUNDLE__, document.getElementById("app"));';
+/**
+ * The plain text shown, in place of the page, to a reader whose browser runs
+ * no script, when the caller supplies none.
+ */
+export const DEFAULT_EVIDENCE_GRAPH_NOSCRIPT_TEXT =
+  "This page needs JavaScript to show and check its contents. To check it without JavaScript, verify the bundle with a full verifier.";
 
 /**
  * The stylesheets the reference core runtime inserts as `<style>` elements
@@ -68,6 +76,13 @@ export interface EmitterOptions {
   readonly modules?: readonly EmitterModule[];
   /** Bootstrap script; empty or absent uses the renderEvidenceGraph call. */
   readonly bootstrap?: string;
+  /**
+   * Plain text for the `<noscript>` element before the app root, shown when
+   * the browser runs no script; HTML-escaped. Empty or absent uses
+   * {@link DEFAULT_EVIDENCE_GRAPH_NOSCRIPT_TEXT}. The host supplies its own
+   * words (for example how to verify the file without a browser).
+   */
+  readonly noscriptText?: string;
 }
 
 function replaceSingle(
@@ -172,11 +187,16 @@ export function emitEvidenceGraphHtml(
     options.bootstrap === undefined || options.bootstrap === ""
       ? DEFAULT_EVIDENCE_GRAPH_BOOTSTRAP
       : options.bootstrap;
+  const noscriptText =
+    options.noscriptText === undefined || options.noscriptText === ""
+      ? DEFAULT_EVIDENCE_GRAPH_NOSCRIPT_TEXT
+      : options.noscriptText;
 
   const inputs: [string, string][] = [
     ["bundle JSON", bundleJson],
     ["browser IIFE", browserIIFE],
     ["title", title],
+    ["noscript text", noscriptText],
     ["theme CSS", themeCss],
     ["bootstrap", bootstrap],
     ...modules.map((module, index): [string, string] => [
@@ -218,6 +238,7 @@ export function emitEvidenceGraphHtml(
 
   const embeddedBundleJson = escapeJsonForHtmlScript(bundleJson);
   let html = replaceSingle(shell, titleSlot, escapeHtmlText(title));
+  html = replaceSingle(html, noscriptSlot, escapeHtmlText(noscriptText));
   html = replaceSingle(html, themeSlot, themeCss);
   html = replaceSingle(html, bundleSlot, embeddedBundleJson);
   html = replaceSingle(html, coreRuntimeSlot, browserIIFE);

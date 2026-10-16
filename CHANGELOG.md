@@ -562,6 +562,13 @@
   `executable.style_sha256`, compared as a set; on a mismatch no page is written and
   `PresentationStylePinsError` (Go: `*StylePinsError`) names both lists. Default output is
   unchanged byte for byte.
+- The shell has a `NOSCRIPT_SLOT`: one `<noscript>` element before `#app`, holding plain text
+  the host supplies (`Options.NoscriptText` in Go, `noscriptText` in TypeScript, and the
+  builder's `noscriptText` setting, carried in a fragment as `noscript_text`), HTML-escaped. With
+  none, a neutral default says the page needs JavaScript to show and check its contents and
+  points to verifying the bundle with a full verifier. With scripts disabled the page shows that
+  text and nothing else. The policy is unchanged. Every emitted page gains this one line; the
+  static page has no `<noscript>` element. Presentation contract section 6.2.
 - Every emitted page carries a Content-Security-Policy meta element: `default-src 'none'`,
   `script-src` and `style-src` as SHA-256 hashes of the inline elements actually written (plus the
   two stylesheets the reference runtime inserts at render time, listed in

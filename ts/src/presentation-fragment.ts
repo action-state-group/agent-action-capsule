@@ -134,6 +134,7 @@ export interface PresentationFragment {
   readonly depth?: PresentationDepth;
   readonly title?: string;
   readonly theme_css?: string;
+  readonly noscript_text?: string;
   readonly wording?: WordingPackInput;
   readonly core_runtime_sha256: string;
   readonly module_sha256: readonly string[];
@@ -148,6 +149,7 @@ const FRAGMENT_MEMBERS = new Set([
   "depth",
   "title",
   "theme_css",
+  "noscript_text",
   "wording",
   "core_runtime_sha256",
   "module_sha256",
@@ -184,6 +186,8 @@ export function checkPresentationFragment(
     fail("title is not a string");
   if (v.theme_css !== undefined && typeof v.theme_css !== "string")
     fail("theme_css is not a string");
+  if (v.noscript_text !== undefined && typeof v.noscript_text !== "string")
+    fail("noscript_text is not a string");
   if (v.wording !== undefined) {
     const w = v.wording;
     if (
