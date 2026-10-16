@@ -154,8 +154,8 @@ fn run(case: &Value) -> Value {
 fn every_case_matches_its_expect() {
     let cases = load("cases.json");
     let list = cases["cases"].as_array().unwrap();
-    assert_eq!(list.len(), 19);
-    assert_eq!(cases["count"], json!(19));
+    assert_eq!(list.len(), 21);
+    assert_eq!(cases["count"], json!(21));
     let mut failures = Vec::new();
     for case in list {
         let got = run(case);

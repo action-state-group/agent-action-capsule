@@ -499,14 +499,14 @@ const ascii = (bytes: Uint8Array): string => {
 };
 
 /** Whether `octets` is a JWS compact object whose Ed25519 signature
- * verifies under `publicHex`. */
+ * verifies under `publicHex`. An SD-JWT is the issuer-signed JWS, then "~"
+ * and any disclosures: only the part before the first "~" is signed. */
 async function jwsVerifies(
   octets: Uint8Array,
   publicHex: string,
 ): Promise<boolean> {
-  let end = octets.length;
-  while (end > 0 && octets[end - 1] === 0x7e) end -= 1;
-  const text = octets.subarray(0, end);
+  const tilde = octets.indexOf(0x7e);
+  const text = tilde === -1 ? octets : octets.subarray(0, tilde);
   const dots = [...text.keys()].filter((i) => text[i] === 0x2e);
   if (dots.length !== 2) return false;
   try {

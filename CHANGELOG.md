@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Settlement, all four languages: the `wrapped_resigned` check reads an SD-JWT as the
+  issuer-signed JWS before the first `~`. It stripped only trailing `~`, so an SD-JWT with a
+  disclosure (`JWT~disclosure~`) re-signed with the wrapping leg's key was not reported. New
+  vectors `neg-wrapped-sd-jwt-resigned-with-disclosure` and
+  `neg-wrapped-sd-jwt-resigned-no-disclosure` pin both forms (#280).
+
 - TypeScript: `verifyBundle(bundle, { strict: true, requireSignature, witnessDirectory })` is
   the Python strict mode, and its result's `strict` member carries `verdict`, `claims`, per-record
   and per-receipt results (#280). It passes every case in `vectors/bundle/strict/`. It checks

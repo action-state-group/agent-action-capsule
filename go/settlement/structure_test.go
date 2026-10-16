@@ -145,6 +145,14 @@ func TestWrappedResigned(t *testing.T) {
 	objects := map[string][]byte{digest: jws}
 	require.Equal(t, []string{"wrapped_resigned"}, wrappedFailures(s, hex.EncodeToString(public), objects))
 	require.Empty(t, wrappedFailures(s, hex64("a"), objects), "another key")
+	// An SD-JWT with a disclosure: only the issuer JWS before the first ~ is signed.
+	withDisclosure := append(append([]byte(nil), jws...), "WyJzYWx0IiwiYSIsMV0~"...)
+	withSum := sha256.Sum256(withDisclosure)
+	withDigest := hex.EncodeToString(withSum[:])
+	withS := map[string]interface{}{"sealer_role": "payer", "wrapped": []interface{}{
+		map[string]interface{}{"type": "x402.offer", "digest_alg": "SHA-256", "digest": withDigest},
+	}}
+	require.Equal(t, []string{"wrapped_resigned"}, wrappedFailures(withS, hex.EncodeToString(public), map[string][]byte{withDigest: withDisclosure}))
 	require.Equal(t, "exact", x402Scheme([]map[string]interface{}{s}, objects), "a JWS offer's payload")
 	require.Nil(t, x402Scheme([]map[string]interface{}{s}, map[string][]byte{digest: jws[:len(jws)-1]}), "octets of another digest")
 }

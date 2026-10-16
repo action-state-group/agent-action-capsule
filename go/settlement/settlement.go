@@ -635,10 +635,12 @@ func b64urlDecode(value interface{}) ([]byte, error) {
 
 var errNotBase64URL = errors.New("not unpadded base64url")
 
-// jwsVerifies reports whether octets are a compact JWS (a trailing ~ of an
-// SD-JWT ignored) whose Ed25519 signature verifies under the hex key.
+// jwsVerifies reports whether octets are a compact JWS whose Ed25519
+// signature verifies under the hex key. An SD-JWT is the issuer-signed JWS,
+// then "~" and any disclosures: only the part before the first "~" is signed.
 func jwsVerifies(octets []byte, publicHex string) bool {
-	parts := bytes.Split(bytes.TrimRight(octets, "~"), []byte("."))
+	issuer, _, _ := bytes.Cut(octets, []byte("~"))
+	parts := bytes.Split(issuer, []byte("."))
 	if len(parts) != 3 {
 		return false
 	}

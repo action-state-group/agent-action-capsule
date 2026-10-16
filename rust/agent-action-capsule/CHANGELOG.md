@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `settlement`: the `wrapped_resigned` check reads an SD-JWT as the
+  issuer-signed JWS before the first `~`, so a re-signed SD-JWT with a
+  disclosure (`JWT~disclosure~`) is reported (#280).
+
 ## 0.2.0
 
 - Strict Evidence Bundle verification (feature `strict`):

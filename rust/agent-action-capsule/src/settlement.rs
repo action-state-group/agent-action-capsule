@@ -758,13 +758,11 @@ fn envelope_key(capsule: &Map<String, Value>, cid: &str) -> Option<String> {
 }
 
 /// Whether `octets` are a JWS in compact form whose EdDSA signature verifies
-/// under the raw Ed25519 key `public_hex`.
+/// under the raw Ed25519 key `public_hex`. An SD-JWT is the issuer-signed JWS,
+/// then `~` and any disclosures: only the part before the first `~` is signed.
 fn jws_verifies(octets: &[u8], public_hex: &str) -> bool {
-    let mut end = octets.len();
-    while end > 0 && octets[end - 1] == b'~' {
-        end -= 1;
-    }
-    let parts: Vec<&[u8]> = octets[..end].split(|b| *b == b'.').collect();
+    let issuer = octets.split(|b| *b == b'~').next().unwrap_or_default();
+    let parts: Vec<&[u8]> = issuer.split(|b| *b == b'.').collect();
     if parts.len() != 3 {
         return false;
     }
@@ -1912,6 +1910,11 @@ mod tests {
         let jws = format!("{input}.{signature}~");
         let public = hex::encode(key.verifying_key().to_bytes());
         assert!(jws_verifies(jws.as_bytes(), &public));
+        // An SD-JWT with a disclosure: only the issuer JWS before the first ~ is signed.
+        assert!(jws_verifies(
+            format!("{jws}WyJzYWx0IiwiYSIsMV0~").as_bytes(),
+            &public
+        ));
         assert!(!jws_verifies(input.as_bytes(), &public));
         let other = hex::encode(SigningKey::from_bytes(&[8; 32]).verifying_key().to_bytes());
         assert!(!jws_verifies(jws.as_bytes(), &other));

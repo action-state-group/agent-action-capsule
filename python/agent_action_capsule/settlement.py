@@ -293,7 +293,9 @@ def _jws_verifies(octets: bytes, public_hex: str) -> bool:
     from cryptography.exceptions import InvalidSignature
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-    parts = octets.rstrip(b"~").split(b".")
+    # An SD-JWT is the issuer-signed JWS, then "~" and any disclosures: only
+    # the part before the first "~" is signed.
+    parts = octets.split(b"~", 1)[0].split(b".")
     if len(parts) != 3:
         return False
     try:

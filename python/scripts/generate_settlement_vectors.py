@@ -203,6 +203,22 @@ def ap2_payment_mandate() -> bytes:
     return token + b"~"
 
 
+def ap2_payment_mandate_sd(signer: Key, *, disclosed: bool) -> bytes:
+    """The Payment Mandate as an SD-JWT signed by ``signer``: ``JWT~disclosure~`` when ``disclosed``
+    (the payee name selectively disclosable), else ``JWT~``."""
+    claims: dict[str, Any] = {"vct": "mandate.payment.1", "transaction_id": "txn_" + label_hex("ap2 transaction", 8),
+                              "amount": {"value": "4200", "currency": "USD"}}
+    disclosure = b""
+    if disclosed:
+        disclosure = b64u(json.dumps([label_hex("ap2 disclosure salt", 16), "payee", "merchant.example"],
+                                     separators=(",", ":")).encode()).encode("ascii") + b"~"
+        claims["_sd"] = [b64u(hashlib.sha256(disclosure[:-1]).digest())]
+        claims["_sd_alg"] = "sha-256"
+    else:
+        claims["payee"] = "merchant.example"
+    return jws({"alg": "EdDSA", "typ": "dc+sd-jwt"}, claims, signer) + b"~" + disclosure
+
+
 def ap2_payment_receipt(signer: Key) -> bytes:
     return jws({"alg": "EdDSA", "typ": "JWT"},
                {"status": "Success", "iss": "https://processor.example", "iat": 1790000100,
@@ -516,6 +532,24 @@ def cases() -> list[dict]:
         [ap2_objects[0], wobj("ap2.payment-receipt", resigned, "the same receipt claims, signed by the payee leg key")],
         expect(conforming=False, payment_state="terms_only", delivery_state="none", terms="ap2-terms",
                failures=[{"records": ["ap2-payee-observed"], "code": "wrapped_resigned"}])))
+
+    # 8, continued. The same check on an SD-JWT: the issuer JWS before the first "~" is what is
+    # signed, with or without disclosures after it.
+    for suffix, disclosed, form in (("with-disclosure", True, "JWT~disclosure~"), ("no-disclosure", False, "JWT~")):
+        sd = ap2_payment_mandate_sd(PAYEE, disclosed=disclosed)
+        spayee = observed_leg("ap2-payee-observed", "payee", PAYEE, aterms, pay_ref, usd,
+                              [wrapped("ap2.payment-receipt", receipt, include_content=False),
+                               wrapped("ap2.payment-mandate", sd, include_content=True)], minute=2)
+        out.append(case(
+            f"neg-wrapped-sd-jwt-resigned-{suffix}", [S_WRAP, S_FAILURES],
+            f"The payee's leg wraps the AP2 Payment Mandate as an SD-JWT in the {form} form, re-signed with "
+            "the payee's own leg key. The mandate's issuer is the payer, and the signature covers the issuer "
+            "JWS before the first '~', so the leg fails and does not contribute.",
+            [aterms, spayee],
+            [*ap2_objects, wobj("ap2.payment-mandate", sd, f"the mandate claims as an SD-JWT ({form}), "
+                                                           "signed by the payee leg key")],
+            expect(conforming=False, payment_state="terms_only", delivery_state="none", terms="ap2-terms",
+                   failures=[{"records": ["ap2-payee-observed"], "code": "wrapped_resigned"}])))
 
     # 9. Negative: wrapped content does not hash to its digest.
     altered = x402_settle_response(TX, amount="1400000")

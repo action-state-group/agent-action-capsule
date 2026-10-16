@@ -252,7 +252,7 @@ def _structure_failures(s: Any) -> list[str]:  # §4.2, §3 item 4, §5.4, §6
 
 
 def _jws_verifies(octets: bytes, public_hex: str) -> bool:
-    parts = octets.rstrip(b"~").split(b".")
+    parts = octets.split(b"~", 1)[0].split(b".")
     if len(parts) != 3:
         return False
     try:
