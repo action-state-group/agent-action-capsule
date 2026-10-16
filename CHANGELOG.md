@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.1 — 2026-10-16
+
 - Settlement, all four languages: the `wrapped_resigned` check reads an SD-JWT as the
   issuer-signed JWS before the first `~`. It stripped only trailing `~`, so an SD-JWT with a
   disclosure (`JWT~disclosure~`) re-signed with the wrapping leg's key was not reported. New
