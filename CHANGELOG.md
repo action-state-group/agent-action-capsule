@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+- Go: `bundle.VerifyStrict(value, StrictOptions{RequireSignature, WitnessDirectory})` is the
+  strict `verify_bundle`, with `KindOK`, ordered `Claims`, `Records`, `Witnesses`,
+  `WitnessReceipts`, `SignedCheckpoint`, `SignerMatchesCheckpoint` and `Verdict`; it passes every
+  case in `vectors/bundle/strict/` (#280). `envelope.VerifyRecordSignature` grades one record's
+  signature. The new package `witness` holds the witness directory (`ParseDirectory`, `RowFor`,
+  `Row.Keys`), `BindingOf`, `EndpointOf`, `ParseSignedCheckpoint`, `CheckpointDigest`, a COSE
+  Receipt check over any leaf (`VerifyCOSEReceipt`), the Rekor check (`VerifyRekorEntry`), the
+  per-receipt `VerifyReceipt` and `VerifyReceipts`. The new package `settlement` holds `Verify`,
+  which passes every case in `vectors/settlement/`. `VerifyBundle` is unchanged, and
+  `veraison/go-cose` becomes a direct dependency.
+
+## 0.9.0 — 2026-10-16
+
+- Python: `emit()` (`agent_action_capsule.emit.emit`, exported from the root as
+  `agent_action_capsule.emit`) and the emit-tier adapters in `agent_action_capsule.integrations`
+  (`LangChainCapsuleEmitter`, `CrewAICapsuleEmitter`, `emit_tool`, with the `langchain` and `crewai`
+  extras) are deprecated (#281). Producing Capsules belongs to capsule-emit: use `capsule_emit.seal`
+  in place of `emit()`, and capsule-emit's adapters
+  (`capsule_emit.adapters.langchain.LangChainCapsuleEmitter`,
+  `capsule_emit.adapters.crewai.CrewAICapsuleEmitter`, whose `wrap()` replaces `emit_tool`) in place
+  of the integrations. Both keep working in this release: calling `emit()` raises a
+  `DeprecationWarning` naming `capsule_emit.seal`, and importing the integrations or constructing an
+  emitter raises one naming capsule-emit's adapters. They, and the `langchain` and `crewai` extras,
+  are removed in the next minor release. The version constants (`DEFAULT_SPEC_VERSION`,
+  `DEFAULT_FORMAT_VERSION`, `ACCEPTED_SPEC_VERSIONS`, `SPEC_VERSION`, `FORMAT_VERSION`) now live in
+  `agent_action_capsule.versions`; the root exports and `agent_action_capsule.emit`'s re-exports
+  keep working with no warning. `Capsule.seal()` stays this package's public sealing boundary, and
+  `build_disclosure_envelope` stays, both unchanged. AAC's tests are now verifier-only: they seal
+  test data with `Capsule.seal()`, and the emitter-behaviour tests move to capsule-emit.
 - Python: `verify_bundle(bundle, strict=True, require_signature=..., witness_directory=...)`
   adds the checks capsule-emit ran on top of `verify_bundle`, so verification of Evidence Bundles
   lives in one place (#280). Strict mode checks each record's producer signature (vintage `jcs-n`
@@ -18,16 +47,19 @@
   both parties' leg records (`draft-mih-agent-settlement-records-00`), as capsule-emit did, and
   passes every case in `vectors/settlement/` (#280). Building and sealing legs stays with
   producers.
-- Go: `bundle.VerifyStrict(value, StrictOptions{RequireSignature, WitnessDirectory})` is the
-  strict `verify_bundle`, with `KindOK`, ordered `Claims`, `Records`, `Witnesses`,
-  `WitnessReceipts`, `SignedCheckpoint`, `SignerMatchesCheckpoint` and `Verdict`; it passes every
-  case in `vectors/bundle/strict/` (#280). `envelope.VerifyRecordSignature` grades one record's
-  signature. The new package `witness` holds the witness directory (`ParseDirectory`, `RowFor`,
-  `Row.Keys`), `BindingOf`, `EndpointOf`, `ParseSignedCheckpoint`, `CheckpointDigest`, a COSE
-  Receipt check over any leaf (`VerifyCOSEReceipt`), the Rekor check (`VerifyRekorEntry`), the
-  per-receipt `VerifyReceipt` and `VerifyReceipts`. The new package `settlement` holds `Verify`,
-  which passes every case in `vectors/settlement/`. `VerifyBundle` is unchanged, and
-  `veraison/go-cose` becomes a direct dependency.
+- Rust: `agent-action-capsule` ports both (#280). With the new `strict` feature,
+  `bundle::verify_bundle_strict(&bundle, &StrictOptions { require_signature, witness_directory })`
+  returns a `StrictVerificationResult` with `verdict()`, the claims in report order, per-record
+  and per-receipt results, and the plain `VerificationResult` unchanged as `base`; the `witness`
+  module holds the `cll`, `rekor` and `scrapi` receipt checks, using `scitt-cose-receipt` for RFC
+  9162 receipts and `p256` for Rekor's Signed Entry Timestamp. `envelope::verify_record_signature`
+  grades one record's signature and `canonical::normalize` is the vintage `jcs-n` normalization.
+  The new `settlement` feature adds `settlement::verify_settlements`, which compares amounts exactly
+  as decimal digit strings. Every case in `vectors/bundle/strict/` and `vectors/settlement/`
+  passes. `verify_bundle`, `verify_bundle_strict`, `verify_record_signature` and
+  `verify_settlements` refuse a caller-built `Value` nested deeper than 128 levels (the decoder's
+  limit) before any recursive work, so deep input cannot overflow the stack: the Bundle is
+  `bundle_malformed` on every claim, the record `invalid`, the leg `capsule_invalid`.
 - CI: the Python job installs the released `checkpointed-local-log` (0.6) instead of a pinned
   commit, since strict mode needs its COSE checkpoint verifier.
 - Python: `evidence_request.encode_cll_inclusion_proof(leaf, path)` and

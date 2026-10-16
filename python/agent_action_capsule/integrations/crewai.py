@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """CrewAI emit-tier adapter — wrap a tool so each call emits a capsule.
 
+.. deprecated:: 0.9.0
+   Use ``capsule_emit.adapters.crewai.CrewAICapsuleEmitter`` (capsule-emit);
+   this module is removed in the next minor release.
+
 Two entry points:
 
 * :func:`emit_tool` — a decorator for a plain tool function. Framework-free;
@@ -32,7 +36,8 @@ import functools
 from typing import Any, Callable
 
 from agent_action_capsule.contracts import Disposition
-from agent_action_capsule.emit import emit as _emit_capsule
+from agent_action_capsule.emit import _emit as _emit_capsule
+from agent_action_capsule.integrations import _warn_deprecated
 
 __all__ = ["CrewAICapsuleEmitter", "emit_tool"]
 
@@ -60,6 +65,7 @@ class CrewAICapsuleEmitter:
         developer: str,
         chain_capsules: bool = True,
     ) -> None:
+        _warn_deprecated(2)
         self._operator = operator
         self._developer = developer
         self._chain = chain_capsules

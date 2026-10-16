@@ -1,6 +1,14 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Emit-tier framework adapters — the thin "just record it happened" on-ramp.
 
+.. deprecated:: 0.9.0
+   These adapters are deprecated and will be removed in the next minor
+   release. Use capsule-emit's adapters instead:
+   ``capsule_emit.adapters.langchain.LangChainCapsuleEmitter`` and
+   ``capsule_emit.adapters.crewai.CrewAICapsuleEmitter`` (whose ``wrap()``
+   replaces ``emit_tool``). Importing this package or constructing an
+   emitter raises a :class:`DeprecationWarning`.
+
 These adapters hook into a framework's callback or tool-wrap interface and emit a
 signed Agent Action Capsule for every tool call. They depend only on CORE A
 (this package); they run NO constraints and carry NO engine logic.
@@ -14,7 +22,24 @@ LangChain or CrewAI to be installed.
 from __future__ import annotations
 
 import importlib
+import warnings
 from typing import TYPE_CHECKING
+
+DEPRECATION_MESSAGE = (
+    "agent_action_capsule.integrations is deprecated and will be removed in the "
+    "next minor release; use capsule-emit's adapters instead "
+    "(capsule_emit.adapters.langchain.LangChainCapsuleEmitter, "
+    "capsule_emit.adapters.crewai.CrewAICapsuleEmitter)"
+)
+
+
+def _warn_deprecated(stacklevel: int) -> None:
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=stacklevel + 1)
+
+
+# Importing any adapter imports this package first, so this one warning covers
+# every import route; the emitters' constructors warn again on use.
+_warn_deprecated(2)
 
 _LAZY_EXPORTS = {
     "LangChainCapsuleEmitter": "agent_action_capsule.integrations.langchain",

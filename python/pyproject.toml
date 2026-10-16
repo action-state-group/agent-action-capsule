@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-action-capsule"
-version = "0.8.1"
+version = "0.9.0"
 description = "Reference emit + verify library for the Agent Action Capsule SCITT profile (draft-mih-scitt-agent-action-capsule). Includes the rungs 1+2+6 CORE: emit, record, anchor client, self-attest."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -54,7 +54,9 @@ anchor = ["scitt-cose>=0.1.1"]
 # dependency: checkpointed-local-log itself depends on this package.
 bundle = ["checkpointed-local-log>=0.4.0"]
 # Emit-tier framework adapters: observe tool calls and emit capsules.
-# No engine dependency; CORE A only.
+# No engine dependency; CORE A only. Deprecated since 0.9.0 with
+# agent_action_capsule.integrations (use capsule-emit's adapters); this extra
+# and the crewai one are removed in the next minor release.
 langchain = ["langchain-core>=0.1"]
 # crewai extra: .as_crewai_tool() only; emit_tool decorator + CrewAICapsuleEmitter.wrap()
 # are framework-free and work without installing crewai.

@@ -10,7 +10,6 @@ from agent_action_capsule import (
     ACCEPTED_SPEC_VERSIONS,
     DEFAULT_SPEC_VERSION,
     InvariantError,
-    emit,
     parse_capsule,
     verify,
     verify_store,
@@ -328,9 +327,8 @@ def _load_vector(name):
     return json.loads((_CAPSULE_VECTORS / name / "input.json").read_text())
 
 
-def test_emit_defaults_to_spec_version_05():
+def test_default_spec_version_is_05():
     assert DEFAULT_SPEC_VERSION == "draft-mih-scitt-agent-action-capsule-05"
-    assert emit(operator="ACME-CO", developer="agent@v1")["spec_version"] == DEFAULT_SPEC_VERSION
 
 
 def test_spec_version_selects_no_algorithm_04_and_05_twins_verify():

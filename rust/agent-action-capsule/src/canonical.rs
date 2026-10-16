@@ -185,6 +185,34 @@ pub fn json_digest(v: &Value) -> Result<String, CanonicalError> {
     Ok(hex::encode(hash))
 }
 
+/// Absent-field normalization (§2) of the vintage `jcs-n` canonicalization:
+/// removes object members whose value is null, an empty array or an empty
+/// object, bottom-up, so an object emptied by the removal is itself removed
+/// by its parent. Array elements are kept. Format-4 `jcs` does not normalize;
+/// this is for reading pre-format-4 `jcs-n` records (Python `normalize`).
+pub fn normalize(v: &Value) -> Value {
+    match v {
+        Value::Object(map) => {
+            let mut out = Map::with_capacity(map.len());
+            for (key, value) in map {
+                let normalized = normalize(value);
+                let empty = match &normalized {
+                    Value::Null => true,
+                    Value::Array(items) => items.is_empty(),
+                    Value::Object(members) => members.is_empty(),
+                    _ => false,
+                };
+                if !empty {
+                    out.insert(key.clone(), normalized);
+                }
+            }
+            Value::Object(out)
+        }
+        Value::Array(items) => Value::Array(items.iter().map(normalize).collect()),
+        other => other.clone(),
+    }
+}
+
 /// Recomputes a format-4 Capsule ID with plain RFC 8785 JCS. Excludes
 /// `capsule_id` and the local-only producer-envelope fields; `chain`,
 /// `references`, and `canonicalization_id` all participate in the preimage.
@@ -300,6 +328,19 @@ fn visit<'a>(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn normalize_removes_absent_members_bottom_up() {
+        let raw = json!({
+            "a": null, "b": [], "c": {}, "d": {"e": null, "f": {"g": []}},
+            "h": [null, {}, []], "i": 0, "j": "", "k": false,
+        });
+        assert_eq!(
+            normalize(&raw),
+            json!({"h": [null, {}, []], "i": 0, "j": "", "k": false})
+        );
+        assert_eq!(normalize(&json!(null)), json!(null));
+    }
 
     /// RFC 8785 §3.2.3: key ordering compares UTF-16 CODE UNIT sequences, not
     /// Unicode scalar values. An astral character (U+10000, encoded as the

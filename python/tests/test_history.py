@@ -8,7 +8,9 @@ import os
 import tempfile
 from pathlib import Path
 
-from agent_action_capsule.emit import emit
+from _capsules import sealed
+
+from agent_action_capsule import Chain, ModelAttestation
 from agent_action_capsule.history import (
     RUNGS,
     ChainReport,
@@ -33,15 +35,15 @@ def _write_ledger(capsules: list[dict]) -> str:
 
 
 def _make_chain(operator: str = "op1", n: int = 3, **extra) -> list[dict]:
-    """Emit a chain of *n* capsules for *operator* with sequential linkage."""
+    """Seal a chain of *n* capsules for *operator* with sequential linkage."""
     caps: list[dict] = []
     prior: str | None = None
-    for _ in range(n):
-        cap = emit(
+    for i in range(n):
+        cap = sealed(
+            action_id=f"act-{i}",
             operator=operator,
             developer="dev/1.0",
-            prior_capsule_id=prior,
-            chain_relation="follows" if prior is not None else None,
+            chain=Chain(parent_capsule_id=prior, relation="follows") if prior is not None else None,
             **extra,
         )
         caps.append(cap)
@@ -55,8 +57,8 @@ def _make_chain(operator: str = "op1", n: int = 3, **extra) -> list[dict]:
 
 def test_list_capsules_filters_by_operator():
     """Two operators in ledger; list_capsules returns only the target one."""
-    cap_a = emit(operator="alice", developer="dev/1.0")
-    cap_b = emit(operator="bob", developer="dev/1.0")
+    cap_a = sealed(operator="alice", developer="dev/1.0")
+    cap_b = sealed(operator="bob", developer="dev/1.0")
     path = _write_ledger([cap_a, cap_b])
     try:
         results = list_capsules(
@@ -74,8 +76,8 @@ def test_list_capsules_filters_by_operator():
 def test_list_capsules_timestamp_window():
     """Capsules with created_at outside the window are excluded."""
     # Use explicit timestamp to control placement.
-    inside = emit(operator="op1", developer="dev/1.0", timestamp="2024-06-15T12:00:00Z")
-    outside = emit(operator="op1", developer="dev/1.0", timestamp="2023-01-01T00:00:00Z")
+    inside = sealed(operator="op1", developer="dev/1.0", timestamp="2024-06-15T12:00:00Z")
+    outside = sealed(operator="op1", developer="dev/1.0", timestamp="2023-01-01T00:00:00Z")
     path = _write_ledger([inside, outside])
     try:
         results = list_capsules(
@@ -92,7 +94,7 @@ def test_list_capsules_timestamp_window():
 
 def test_list_capsules_no_timestamp_includes_all():
     """Capsules that lack a timestamp field are included conservatively."""
-    cap = emit(operator="op1", developer="dev/1.0")
+    cap = sealed(operator="op1", developer="dev/1.0")
     # Strip the timestamp field to simulate a capsule without one.
     cap_no_ts = {k: v for k, v in cap.items() if k != "timestamp"}
     path = _write_ledger([cap_no_ts])
@@ -144,15 +146,14 @@ def test_verify_chain_gap():
 def test_verify_chain_epoch_opens_not_a_gap():
     """A capsule with chain.relation == 'epoch_opens' is a legal chain-start, not a gap."""
     # Craft a capsule that claims to open an epoch (its parent won't be in the window).
-    cap_a = emit(operator="op1", developer="dev/1.0")
+    cap_a = sealed(operator="op1", developer="dev/1.0")
     # Build a second capsule that follows from some external parent (not in window)
     # and marks itself as epoch_opens.
     external_parent = "a" * 64   # a valid-looking hex64 not in the window
-    cap_epoch = emit(
+    cap_epoch = sealed(
         operator="op1",
         developer="dev/1.0",
-        prior_capsule_id=external_parent,
-        chain_relation="epoch_opens",
+        chain=Chain(parent_capsule_id=external_parent, relation="epoch_opens"),
     )
 
     report = verify_chain_completeness([cap_a, cap_epoch])
@@ -164,18 +165,17 @@ def test_verify_chain_epoch_opens_not_a_gap():
 def test_verify_chain_epoch_scoped():
     """Two epoch_ids in one ledger; filtering to one epoch returns only those capsules."""
     # Caps for epoch "e1" with compute_attestation carrying epoch_id.
-    def _emit_with_epoch(epoch: str, prior: str | None = None) -> dict:
-        return emit(
+    def _seal_with_epoch(epoch: str, prior: str | None = None) -> dict:
+        return sealed(
             operator="op1",
             developer="dev/1.0",
-            compute_attestation={"epoch_id": epoch},
-            prior_capsule_id=prior,
-            chain_relation="follows" if prior else None,
+            model_attestation=ModelAttestation(compute_attestation={"epoch_id": epoch}),
+            chain=Chain(parent_capsule_id=prior, relation="follows") if prior else None,
         )
 
-    e1_a = _emit_with_epoch("e1")
-    e1_b = _emit_with_epoch("e1", prior=e1_a["capsule_id"])
-    e2_a = _emit_with_epoch("e2")
+    e1_a = _seal_with_epoch("e1")
+    e1_b = _seal_with_epoch("e1", prior=e1_a["capsule_id"])
+    e2_a = _seal_with_epoch("e2")
 
     all_caps = [e1_a, e1_b, e2_a]
 
@@ -237,7 +237,7 @@ def test_rung_default_is_standalone():
 
 def test_rung_never_higher_than_evidence_supports_missing_capsule_id():
     """A capsule with no capsule_id can never earn credit from evidence."""
-    cap = emit(operator="op1", developer="dev/1.0")
+    cap = sealed(operator="op1", developer="dev/1.0")
     cap_no_id = {k: v for k, v in cap.items() if k != "capsule_id"}
     proofs = [{"capsule_id": "anything", "visibility": "public"}]
     report = verify_chain_completeness([cap_no_id], inclusion_proofs=proofs)
