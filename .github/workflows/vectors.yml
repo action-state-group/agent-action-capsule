@@ -26,7 +26,7 @@ jobs:
           cache-dependency-path: ts/package-lock.json
       - name: install
         run: |
-          pip install -e "python[dev]"
+          pip install -e "python[dev,bundle]"
           npm ci --prefix ts
       - name: regenerate
         run: python python/scripts/generate_all_vectors.py

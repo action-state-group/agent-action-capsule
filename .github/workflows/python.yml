@@ -19,11 +19,11 @@ jobs:
         working-directory: python
         run: pip install -e ".[dev,transparent,anchor]"
       - name: install cll reference (bundle completeness proofs)
-        # The evidence-bundle vectors verify against real CLL MMR proofs. Install
-        # the public checkpointed-local-log reference (import package `cll`) pinned
-        # to the merged range-proof API (#13) so the 12 bundle vectors, incl. both
-        # interior-tamper negatives, actually run instead of importorskip-skipping.
-        run: pip install "checkpointed-local-log @ git+https://github.com/action-state-group/checkpointed-local-log@deb7617497820f03d876e3a776f7a25e135fd423"
+        # The evidence-bundle vectors verify against real CLL MMR proofs, and the
+        # strict-mode vectors against its COSE checkpoint verifier (0.5.0+). Install
+        # the released checkpointed-local-log reference (import package `cll`) so
+        # they actually run instead of importorskip-skipping.
+        run: pip install "checkpointed-local-log>=0.6,<0.7"
       - name: require cll importable (the bundle vectors use importorskip; fail loud in CI)
         # test_bundle_vectors.py importorskips cll so local dev without it still runs the
         # rest of the suite; here cll MUST be present, so a broken/empty install fails the

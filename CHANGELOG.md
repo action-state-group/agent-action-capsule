@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- Python: `verify_bundle(bundle, strict=True, require_signature=..., witness_directory=...)`
+  adds the checks capsule-emit ran on top of `verify_bundle`, so verification of Evidence Bundles
+  lives in one place (#280). Strict mode checks each record's producer signature (vintage `jcs-n`
+  records included), reads the checkpoint only from its signed COSE form, and refuses a plain
+  VALID without one. It also reads producer-selected Bundles, reports the `disclosures` overlay as
+  one claim, and checks witness receipts (`cll`, `rekor`, `scrapi`) in `checkpoint.witnesses`
+  under a supplied witness directory, trusting none by default. The result carries `verdict`,
+  `claims`, per-record results and per-receipt results. The plain verifier is unchanged.
+  `producer_envelope.verify_record_signature` grades one record's signature, and
+  `agent_action_capsule.witness` holds the receipt checks. `completeness.selection` and
+  `checkpoint.witnesses` are not defined by the Bundle draft, so strict mode reads them as
+  verifier extensions. New vectors: `vectors/bundle/strict/`.
+- Python: `agent_action_capsule.settlement.verify_settlements` derives settlement states from
+  both parties' leg records (`draft-mih-agent-settlement-records-00`), as capsule-emit did, and
+  passes every case in `vectors/settlement/` (#280). Building and sealing legs stays with
+  producers.
+- CI: the Python job installs the released `checkpointed-local-log` (0.6) instead of a pinned
+  commit, since strict mode needs its COSE checkpoint verifier.
+
 ## 0.8.1 — 2026-10-15
 
 - Python: `agent_action_capsule.evidence_request.sign_envelope` builds and signs the artifact

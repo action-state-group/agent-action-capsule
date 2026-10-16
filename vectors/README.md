@@ -37,6 +37,12 @@ same-commit files in CI.
   `sd-jwt-issuers/v1` Bundle extensions, and the `minimum_necessary_report/1`
   result shape, over one worked example;
   `python/scripts/generate_min_necessary_vectors.py` regenerates them.
+- `bundle/strict/`: strict Evidence Bundle verification
+  (`verify_bundle(..., strict=True)`): producer signatures, including vintage
+  `jcs-n` records, the checkpoint read from its signed COSE form,
+  producer-selected Bundles, the `disclosures` claim and witness receipts of the
+  `cll`, `rekor` and `scrapi` bindings under a supplied witness directory;
+  `python/scripts/generate_bundle_strict_vectors.py` regenerates them.
 - `judgment/`: PROVISIONAL judgment extension cases (the `x-judgment-v1`
   Capsule member: `rubric_digest`, `rubric_version`, `judge_parameters_digest`,
   schema `schemas/judgment/judgment-extension-v1.json`). The digest rules are

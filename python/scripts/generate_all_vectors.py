@@ -61,6 +61,7 @@ GENERATORS = (
     "generate_min_necessary_vectors.py",
     "generate_bundle_producer_key_vectors.py",
     "generate_bundle_composed_vectors.py",
+    "generate_bundle_strict_vectors.py",
     "generate_judgment_extension_vectors.py",
     "generate_profile_vectors.py",
     "generate_interop_profile_v0_vectors.py",

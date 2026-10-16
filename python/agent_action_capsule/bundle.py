@@ -30,6 +30,7 @@ from .disclosure_envelope import (
 )
 from .registries import DISCLOSURE_ELIGIBLE_FIELDS
 from .verify import verify
+from .witness import WitnessReceiptResult
 
 __all__ = [
     "ClaimResult",
@@ -43,6 +44,9 @@ __all__ = [
     "decode_fragment",
     "verify_bundle",
     "COMPLETENESS_VERIFIER_UNAVAILABLE",
+    "RecordResult",
+    "SELECTION_PRODUCER_SELECTED",
+    "WitnessReceiptResult",
 ]
 
 # Finding for a well-formed completeness certificate that this installation
@@ -50,6 +54,19 @@ __all__ = [
 # 'agent-action-capsule[bundle]'``) is absent. Distinct from
 # ``completeness_certificate_invalid``, which means the certificate is wrong.
 COMPLETENESS_VERIFIER_UNAVAILABLE = "completeness_verifier_unavailable"
+
+# ``completeness.selection`` of a producer-selected Bundle: records the producer
+# picked from its log, with no claim about the records between them. Not
+# defined by the Bundle draft; read only in strict mode. Deliberately not named
+# ``PRODUCER_SELECTED``: capsule-emit 0.10 and earlier take that name as a sign
+# that the non-strict verifier reads such Bundles, which it does not.
+SELECTION_PRODUCER_SELECTED = "producer-selected"
+
+BUNDLE_KIND = "evidence-bundle/v2"
+
+# The checkpoint fields a signed COSE checkpoint states; in strict mode the
+# Bundle's JSON copy must match every one it carries.
+_SIGNED_CHECKPOINT_FIELDS = ("log_id", "mmr_size", "root", "key_id", "timestamp", "prev_size", "prev_root")
 
 _B64URL = re.compile(r"^[A-Za-z0-9_-]*$")
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -94,9 +111,33 @@ class ProducerSelfReport:
     status: str = "producer_self_report"
 
 
+@dataclass(frozen=True)
+class RecordResult:
+    """Strict mode: one record of the Bundle's ``records`` list.
+
+    ``signature`` is ``authored``, ``unclaimed`` or ``invalid``
+    (:func:`agent_action_capsule.producer_envelope.verify_record_signature`);
+    ``seq`` is the record's log position as its membership states it.
+    """
+
+    capsule_id: str
+    identity_ok: bool
+    signature: str
+    key_id: str | None
+    seq: int | None
+    messages: tuple[str, ...] = ()
+
+
 @dataclass
 class BundleVerificationResult:
-    """Structured result for a bundle without collapsing completeness claims."""
+    """Structured result for a bundle without collapsing completeness claims.
+
+    The fields after ``capsule_results`` are filled only by
+    ``verify_bundle(..., strict=True)`` and stay ``None`` or empty otherwise.
+    In strict mode ``interval_coverage`` and ``per_record_membership`` are the
+    strict readings: with no signed checkpoint, a claim that did not fail is
+    ``withheld`` (``checkpoint_unverified``).
+    """
 
     bundle_digest: str | None
     graph_closure: ClaimResult
@@ -107,6 +148,58 @@ class BundleVerificationResult:
     countersignatures: tuple[CountersignatureResult, ...] = ()
     verification: ProducerSelfReport | None = None
     capsule_results: dict[str, Any] = field(default_factory=dict)
+    kind_ok: bool | None = None
+    record_identity: ClaimResult | None = None
+    signatures: ClaimResult | None = None
+    checkpoint: ClaimResult | None = None
+    disclosure_claim: ClaimResult | None = None
+    witnesses: ClaimResult | None = None
+    records: tuple[RecordResult, ...] = ()
+    witness_receipts: tuple[WitnessReceiptResult, ...] = ()
+    signed_checkpoint: dict[str, Any] = field(default_factory=dict)
+    """The signed checkpoint's own fields (from ``checkpoint.cose``) plus the
+    Bundle's ``witnesses`` list, when it verified; else empty."""
+    signer_matches_checkpoint: bool | None = None
+
+    @property
+    def claims(self) -> tuple[tuple[str, ClaimResult], ...]:
+        """Strict mode: the gating claims, in report order. ``witnesses`` is
+        not one: only a failing receipt gates (see :attr:`ok`)."""
+        if self.record_identity is None:
+            return ()
+        named = [("records", self.record_identity)]
+        if self.signatures is not None and self.checkpoint is not None:
+            named += [
+                ("signatures", self.signatures),
+                ("graph_closure", self.graph_closure),
+                ("checkpoint", self.checkpoint),
+                ("interval_coverage", self.interval_coverage),
+                ("per_record_membership", self.per_record_membership),
+            ]
+        if self.disclosure_claim is not None:
+            named.append(("disclosures", self.disclosure_claim))
+        return tuple(named)
+
+    @property
+    def ok(self) -> bool | None:
+        """Strict mode: nothing failed (``withheld`` is not a failure)."""
+        if self.kind_ok is None:
+            return None
+        return (
+            self.kind_ok
+            and all(claim.status != "fail" for _, claim in self.claims)
+            and (self.witnesses is None or self.witnesses.status != "fail")
+        )
+
+    @property
+    def verdict(self) -> str | None:
+        """Strict mode: ``VALID`` (every claim passed), ``INCOMPLETE`` (nothing
+        failed, something is not shown) or ``INVALID``; ``None`` otherwise."""
+        if self.kind_ok is None:
+            return None
+        if not self.ok:
+            return "INVALID"
+        return "VALID" if all(claim.status == "pass" for _, claim in self.claims) else "INCOMPLETE"
 
 
 def encode_fragment(bundle: Any) -> str:
@@ -188,8 +281,31 @@ def bundle_digest(bundle: Any) -> str:
     return hashlib.sha256(jcs(canonical)).hexdigest()
 
 
-def verify_bundle(bundle: Any) -> BundleVerificationResult:
+def verify_bundle(
+    bundle: Any,
+    *,
+    strict: bool = False,
+    require_signature: bool = False,
+    witness_directory: Any = None,
+) -> BundleVerificationResult:
     """Verify an AAC Evidence Bundle using only its supplied evidence.
+
+    ``strict=True`` adds the checks a verifier handing a verdict to a person
+    needs, and fills :attr:`BundleVerificationResult.verdict`:
+
+    * each record's producer signature (``signatures``; an unsigned record is
+      ``withheld`` unless ``require_signature``);
+    * the checkpoint read only from its signed COSE form (``checkpoint``):
+      ``withheld`` without one, ``fail`` when it does not verify or the JSON
+      copy differs from it. Without a signed checkpoint the interval and
+      membership claims are not shown, so the Bundle is never ``VALID``;
+    * a producer-selected Bundle (``completeness.selection``
+      ``producer-selected``, outside the Bundle draft): interval coverage is
+      ``withheld`` and each record's own inclusion proof is checked;
+    * the ``disclosures`` overlay as one claim, when the Bundle carries one;
+    * the witness receipts in ``checkpoint.witnesses`` under the keys of
+      ``witness_directory`` (:mod:`agent_action_capsule.witness`); ``None``
+      trusts no witness.
 
     ``completeness_certificate`` uses the portable CLL-shaped form below.  The
     ``range_proof`` is checked with CLL #13's ``verify_range``, which binds
@@ -214,7 +330,7 @@ def verify_bundle(bundle: Any) -> BundleVerificationResult:
     disclosures = _verify_disclosures(bundle["disclosures"] if "disclosures" in bundle else {}, records)
     extensions = _extensions(bundle.get("extensions"))
     countersignatures = bundle.get("countersignatures")
-    return BundleVerificationResult(
+    result = BundleVerificationResult(
         digest,
         graph,
         interval,
@@ -225,6 +341,203 @@ def verify_bundle(bundle: Any) -> BundleVerificationResult:
         ProducerSelfReport(bundle["verification"]) if "verification" in bundle else None,
         capsule_results,
     )
+    if strict:
+        _apply_strict(result, bundle, require_signature, witness_directory)
+    return result
+
+
+def _apply_strict(result: BundleVerificationResult, bundle: Mapping[str, Any], require_signature: bool, directory: Any) -> None:
+    from .producer_envelope import INVALID, UNCLAIMED, verify_record_signature
+    from .witness import verify_witness_receipts
+
+    if bundle.get("bundle_kind") != BUNDLE_KIND or bundle.get("bundle_version") != "2":
+        result.kind_ok = False
+        result.record_identity = ClaimResult("fail", ("not_an_evidence_bundle_v2",))
+        return
+    result.kind_ok = True
+    raw_records = bundle.get("records") if isinstance(bundle.get("records"), list) else []
+    seqs = _membership_seqs(bundle)
+    records: list[RecordResult] = []
+    for record in raw_records:
+        if not isinstance(record, Mapping):
+            continue
+        cid = str(record.get("capsule_id", ""))
+        verdict, messages = verify_record_signature(dict(record))
+        aac = result.capsule_results.get(cid)
+        key_id = record.get("key_id")
+        records.append(
+            RecordResult(
+                capsule_id=cid,
+                identity_ok=bool(aac is not None and aac.ok and aac.capsule_id == cid),
+                signature=verdict,
+                key_id=key_id if isinstance(key_id, str) else None,
+                seq=seqs.get(cid),
+                messages=tuple(messages),
+            )
+        )
+    result.records = tuple(records)
+    result.record_identity = ClaimResult(
+        "pass" if records and all(r.identity_ok for r in records) else "fail",
+        tuple(f"record_identity_invalid:{r.capsule_id}" for r in records if not r.identity_ok)
+        or (() if records else ("no_records",)),
+    )
+
+    invalid = [r for r in records if r.signature == INVALID]
+    unclaimed = [r for r in records if r.signature == UNCLAIMED]
+    signature_findings = tuple(
+        [f"producer_signature_invalid:{r.capsule_id}" for r in invalid]
+        + [f"producer_signature_unclaimed:{r.capsule_id}" for r in unclaimed]
+    )
+    if invalid or (unclaimed and require_signature) or not records:
+        result.signatures = ClaimResult("fail", signature_findings)
+    else:
+        result.signatures = ClaimResult("withheld" if unclaimed else "pass", signature_findings)
+
+    stated = bundle.get("checkpoint") if isinstance(bundle.get("checkpoint"), Mapping) else {}
+    result.checkpoint, signed, cose = _strict_checkpoint(stated)
+    authenticated = result.checkpoint.status == "pass"
+
+    if _producer_selected(bundle):
+        # The certificate binds the producer's selection, not an interval: the
+        # interval proof cannot be read, each record's own proof still can.
+        result.interval_coverage = ClaimResult("withheld", ("selection_not_checkable",))
+        result.per_record_membership = _selected_membership(bundle, signed if authenticated else {})
+    if not authenticated:
+        result.interval_coverage = _unanchored(result.interval_coverage)
+        result.per_record_membership = _unanchored(result.per_record_membership)
+
+    if "disclosures" in bundle:
+        failed = tuple(
+            f"{d.status}:{d.capsule_id}:{d.member}"
+            for d in result.disclosures
+            if d.status not in (MATCH, "withheld")
+        )
+        result.disclosure_claim = ClaimResult("fail" if failed else "pass", failed)
+
+    status, findings, receipts = verify_witness_receipts(
+        stated.get("witnesses"), signed if authenticated else None, cose if authenticated else None, directory
+    )
+    result.witnesses = ClaimResult(status, findings)
+    result.witness_receipts = receipts
+    if authenticated:
+        result.signed_checkpoint = {**signed, "witnesses": stated.get("witnesses") if isinstance(stated.get("witnesses"), list) else []}
+        checkpoint_key = signed.get("key_id")
+        if checkpoint_key and records:
+            result.signer_matches_checkpoint = all(r.key_id == checkpoint_key for r in records)
+
+
+def _same_json(a: Any, b: Any) -> bool:
+    """JSON equality that keeps types apart (``1`` is not ``true`` or ``1.0``)."""
+    if isinstance(a, bool) or isinstance(b, bool):
+        return isinstance(a, bool) and isinstance(b, bool) and a == b
+    if isinstance(a, int) and isinstance(b, int):
+        return a == b
+    return type(a) is type(b) and a == b
+
+
+def _strict_checkpoint(stated: Mapping[str, Any]) -> tuple[ClaimResult, dict[str, Any], bytes | None]:
+    """Verify ``checkpoint.cose`` and hold the JSON copy to it. Returns the
+    claim and, when it passed, the signed fields and the COSE bytes."""
+    encoded = stated.get("cose")
+    if encoded is None:
+        return ClaimResult("withheld", ("checkpoint_signature_absent",)), {}, None
+    try:
+        from cll.checkpoint import verify_checkpoint_cose_offline
+    except ImportError:
+        return ClaimResult("withheld", ("checkpoint_verifier_unavailable",)), {}, None
+    try:
+        if not isinstance(encoded, str) or not _B64URL.fullmatch(encoded):
+            raise ValueError("checkpoint.cose is not unpadded base64url")
+        cose = _b64url_decode(encoded)
+        verified = verify_checkpoint_cose_offline(cose)
+    except (ValueError, TypeError, binascii.Error):
+        return ClaimResult("fail", ("checkpoint_signature_malformed",)), {}, None
+    if not verified.ok or verified.decoded is None:
+        return ClaimResult("fail", ("checkpoint_signature_invalid",)), {}, None
+    signed = {name: getattr(verified.decoded, name) for name in _SIGNED_CHECKPOINT_FIELDS}
+    mismatched = tuple(
+        f"checkpoint_field_mismatch:{name}"
+        for name in _SIGNED_CHECKPOINT_FIELDS
+        if name in stated and not _same_json(stated[name], signed[name])
+    )
+    missing = tuple(f"checkpoint_field_missing:{name}" for name in ("log_id", "mmr_size", "root") if name not in stated)
+    if mismatched or missing:
+        return ClaimResult("fail", mismatched + missing), {}, None
+    return ClaimResult("pass"), signed, cose
+
+
+def _unanchored(claim: ClaimResult) -> ClaimResult:
+    """A proof claim with no signed checkpoint behind it: a failure stays a
+    failure; anything else is not shown."""
+    if claim.status == "fail":
+        return claim
+    return ClaimResult("withheld", tuple(dict.fromkeys((*claim.findings, "checkpoint_unverified"))))
+
+
+def _producer_selected(bundle: Mapping[str, Any]) -> bool:
+    completeness = bundle.get("completeness")
+    return isinstance(completeness, Mapping) and completeness.get("selection") == SELECTION_PRODUCER_SELECTED
+
+
+def _selected_membership(bundle: Mapping[str, Any], signed: Mapping[str, Any]) -> ClaimResult:
+    """Each record's inclusion proof against the signed checkpoint's root and
+    size, for a producer-selected Bundle. With no signed checkpoint nothing is
+    shown (the caller withholds it)."""
+    if not signed:
+        return ClaimResult("withheld", ("checkpoint_unverified",))
+    if not _cll_available():
+        return ClaimResult("withheld", ("membership_verifier_unavailable",))
+    from cll.checkpoint import verify_inclusion
+
+    certificate = bundle.get("completeness_certificate")
+    members = certificate.get("memberships") if isinstance(certificate, Mapping) else None
+    if not isinstance(members, Mapping) or certificate.get("range_root") != signed.get("root"):
+        return ClaimResult("fail", ("completeness_certificate_invalid",))
+    root, size, log_id = bytes.fromhex(signed["root"]), signed["mmr_size"], signed["log_id"]
+    raw_records = bundle.get("records") if isinstance(bundle.get("records"), list) else []
+    ids = [str(r.get("capsule_id", "")) for r in raw_records if isinstance(r, Mapping)]
+    findings: list[str] = []
+    seen: set[int] = set()
+    for cid in ids:
+        member = members.get(cid)
+        coords = member.get("log_coordinates") if isinstance(member, Mapping) else None
+        if not isinstance(coords, Mapping):
+            findings.append(f"membership_record_unbound:{cid}")
+            continue
+        seq, index = coords.get("seq"), coords.get("leaf_index")
+        if (
+            coords.get("log_id") != log_id
+            or not _safe_int(seq)
+            or not _safe_int(index)
+            or seq < 1
+            or index != seq - 1
+            or seq in seen
+        ):
+            findings.append(f"membership_coordinates_invalid:{cid}")
+            continue
+        seen.add(seq)
+        try:
+            proof = _inclusion_proof(member.get("inclusion_proof"))
+            if proof.size != size or not verify_inclusion(root, size, index, bytes.fromhex(cid), proof):
+                findings.append(f"membership_proof_invalid:{cid}")
+        except (TypeError, ValueError, KeyError, AttributeError):
+            findings.append(f"membership_proof_invalid:{cid}")
+    findings += [f"membership_record_unknown:{cid}" for cid in members if cid not in ids]
+    return ClaimResult("fail" if findings else "pass", tuple(findings))
+
+
+def _membership_seqs(bundle: Mapping[str, Any]) -> dict[str, int]:
+    """Each record's ``seq`` as its membership's ``log_coordinates`` state it."""
+    certificate = bundle.get("completeness_certificate")
+    members = certificate.get("memberships") if isinstance(certificate, Mapping) else None
+    out: dict[str, int] = {}
+    if isinstance(members, Mapping):
+        for cid, member in members.items():
+            coords = member.get("log_coordinates") if isinstance(member, Mapping) else None
+            seq = coords.get("seq") if isinstance(coords, Mapping) else None
+            if _safe_int(seq):
+                out[str(cid)] = seq
+    return out
 
 
 def _records(raw: Any) -> tuple[dict[str, Mapping[str, Any]], dict[str, Any], list[str]]:

@@ -77,6 +77,31 @@ Without it those two claims fail closed as `completeness_verifier_unavailable`.
 That finding means this installation could not check the proofs. It does not
 mean the certificate is invalid.
 
+`verify_bundle(bundle, strict=True)` adds the checks a verifier needs before it
+calls a Bundle VALID, and sets `result.verdict` to `VALID`, `INCOMPLETE` or
+`INVALID`:
+
+- each record's producer signature (`signatures`), including vintage `jcs-n`
+  records; an unsigned record is not shown unless you pass
+  `require_signature=True`;
+- the checkpoint, read only from its signed COSE form (`checkpoint`); without
+  one, interval coverage and membership are not shown, so the Bundle is never
+  VALID;
+- producer-selected Bundles, the `disclosures` overlay as one claim, and
+  whether every record names the checkpoint's key;
+- witness receipts in `checkpoint.witnesses` (`cll`, `rekor` and `scrapi`
+  bindings) under the keys of the `witness_directory` you pass, a parsed
+  `witnesses.json`. Without one, no witness is trusted.
+
+Strict mode needs `agent-action-capsule[bundle,envelope]`.
+[`vectors/bundle/strict/`](../vectors/bundle/strict/) states the rules.
+
+`agent_action_capsule.settlement.verify_settlements(capsules, key_policy=...,
+wrapped_objects=...)` derives the payment and delivery states of
+`draft-mih-agent-settlement-records-00` from both parties' leg records. It
+passes every case in [`vectors/settlement/`](../vectors/settlement/). It needs
+the `envelope` extra.
+
 To answer an Evidence Request, call
 `agent_action_capsule.evidence_request.answer(request_bytes, store=..., signer=...)`.
 It implements `draft-mih-agent-evidence-request-00` and passes every case in
