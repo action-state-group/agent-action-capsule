@@ -88,6 +88,13 @@ def test_inclusion_encoder_refuses(leaf, path):
         er.encode_cll_inclusion_proof(leaf, path)
 
 
+def test_inclusion_encoder_names_what_is_out_of_range():
+    with pytest.raises(ValueError, match="node index is not a profile integer"):
+        er.encode_cll_inclusion_proof((1 << 52) + 1, [])
+    with pytest.raises(ValueError, match="longer than any MMR"):
+        er.encode_cll_inclusion_proof(0, [NODE] * 53)
+
+
 def test_inclusion_encoder_bounds():
     # Leaf 2^52 is node index 2^53 - 1, the largest profile integer.
     assert er.encode_cll_inclusion_proof(1 << 52, []) == bytes.fromhex("82") + bytes.fromhex("1b001fffffffffffff80")

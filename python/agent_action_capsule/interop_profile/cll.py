@@ -338,7 +338,9 @@ def encode_inclusion(leaf: int, path: Sequence[bytes]) -> bytes:
         raise ValueError("leaf is not an unsigned integer")
     index = 2 * leaf - bin(leaf).count("1")
     nodes = _hash_list(path, "inclusion path")
-    if index > _MAX_INTEGER or not _path_fits(index, len(nodes)):
+    if index > _MAX_INTEGER:
+        raise ValueError("the leaf's node index is not a profile integer")
+    if not _path_fits(index, len(nodes)):
         raise ValueError("the inclusion path is longer than any MMR can have")
     return encode([index, nodes])
 
