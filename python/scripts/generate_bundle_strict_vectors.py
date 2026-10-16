@@ -724,6 +724,9 @@ def record_cases() -> list[dict]:
     preimage = {k: v for k, v in vintage.items() if k != "chain"}
     vintage["capsule_id"] = hashlib.sha256(jcs(normalize(preimage))).hexdigest()
     vintage_signed = signed(vintage)
+    declared = signed({**vintage, "canonicalization_id": "jcs-n"},
+                      capsule_id=hashlib.sha256(jcs(normalize({**preimage, "canonicalization_id": "jcs-n"}))).hexdigest())
+    declared["capsule_id"] = hashlib.sha256(jcs(normalize({**preimage, "canonicalization_id": "jcs-n"}))).hexdigest()
     half = dict(jcs_record)
     del half["signature"]
     unknown = signed({**capsule("record-other"), "canonicalization_id": "as-transmitted"},
@@ -737,6 +740,8 @@ def record_cases() -> list[dict]:
          "expect": "authored"},
         {"id": "authored-jcs-n", "description": "A vintage record with no canonicalization_id: jcs-n drops chain and "
          "null or empty members.", "record": vintage_signed, "expect": "authored"},
+        {"id": "authored-jcs-n-declared", "description": "A vintage record declaring canonicalization_id jcs-n.",
+         "record": declared, "expect": "authored"},
         {"id": "unclaimed", "description": "No signature and no key_id.", "record": capsule("record-unsigned"),
          "expect": "unclaimed"},
         {"id": "invalid-half-claim", "description": "key_id without signature.", "record": half, "expect": "invalid"},

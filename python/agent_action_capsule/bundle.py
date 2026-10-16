@@ -317,7 +317,11 @@ def verify_bundle(
     """
     invalid = ClaimResult("fail", ("bundle_malformed",))
     if not isinstance(bundle, Mapping):
-        return BundleVerificationResult(None, invalid, invalid, invalid)
+        result = BundleVerificationResult(None, invalid, invalid, invalid)
+        if strict:
+            result.kind_ok = False
+            result.record_identity = ClaimResult("fail", ("not_an_evidence_bundle_v2",))
+        return result
 
     try:
         digest = bundle_digest(bundle)

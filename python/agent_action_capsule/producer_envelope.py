@@ -202,8 +202,8 @@ def _record_capsule_id(record: dict) -> str:
     """The Capsule ID ``record`` declares by its ``canonicalization_id``.
 
     ``jcs`` (format 4) commits every member but ``capsule_id`` and the
-    local-only envelope fields. A record without the slot (or with JSON
-    ``null``) predates it and keeps the vintage ``jcs-n`` reading, which also
+    local-only envelope fields. ``jcs-n``, declared or implied by a record
+    without the slot (or with JSON ``null``), is the vintage reading, which also
     drops ``chain`` and removes null and empty members before JCS. Any other
     algorithm raises ``ValueError``.
     """

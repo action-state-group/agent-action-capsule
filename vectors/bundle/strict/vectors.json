@@ -9905,6 +9905,30 @@
       "expect": "authored"
     },
     {
+      "id": "authored-jcs-n-declared",
+      "description": "A vintage record declaring canonicalization_id jcs-n.",
+      "record": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-03",
+        "format_version": "3",
+        "action_id": "record-vintage",
+        "action_type": "fyi",
+        "operator": "ACME-CO",
+        "developer": "agent@v1",
+        "timestamp": "2026-10-15T00:00:00Z",
+        "chain": {
+          "parent_capsule_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "relation": "follows"
+        },
+        "constraints": [],
+        "effect": null,
+        "capsule_id": "9a1d1a1f50ebae789b58bfd79a44b34b3f247b2c6a5f59db39af46bb1a4bee62",
+        "canonicalization_id": "jcs-n",
+        "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a058209a1d1a1f50ebae789b58bfd79a44b34b3f247b2c6a5f59db39af46bb1a4bee6258403ead98fea26c66a197f3afb8c62e9d69e79a62e665fb688d91bcb29e6dd1bc50bd8c1cf4dd54f2288dce09fd11f3c9380c895029c68fbbe82aaad0a36923e60a",
+        "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+      },
+      "expect": "authored"
+    },
+    {
       "id": "unclaimed",
       "description": "No signature and no key_id.",
       "record": {

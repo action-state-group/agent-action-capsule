@@ -96,3 +96,36 @@ def test_structure_failures_names_the_draft_codes():
            "payment_ref": {"type": "acp.order_id", "value": "o-1"}, "status": "settled",
            "observed_at": "2026-10-15T00:00:00Z"}
     assert structure_failures(leg) == ["leg_role_mismatch", "amount_not_exact"]
+
+
+def _observed(**overrides):
+    leg = {"version": "0", "leg": "payer_observed", "sealer_role": "payer", "terms_ref": "0" * 64,
+           "amount": {"value": "15", "assetCode": "USD", "assetScale": 2},
+           "payment_ref": {"type": "acp.order_id", "value": "o-1"}, "status": "settled",
+           "observed_at": "2026-10-15T00:00:00Z"}
+    leg.update(overrides)
+    return leg
+
+
+@pytest.mark.parametrize("overrides", [
+    {"amount": {"value": "15\n", "assetCode": "USD", "assetScale": 2}},
+    {"terms_ref": "0" * 64 + "\n"},
+    {"observed_at": "2026-10-15T00:00:00Z\n"},
+    {"observed_at": "２０２6-10-15T00:00:00Z"},
+])
+def test_patterns_match_the_whole_string_in_ascii(overrides):
+    assert structure_failures(_observed(**overrides))
+
+
+def test_a_null_payment_ref_is_malformed_not_a_crash():
+    assert structure_failures(_observed(payment_ref=None)) == ["settlement_malformed"]
+
+
+def test_unhashable_members_are_malformed_not_a_crash():
+    leg = {"version": "0", "leg": "delivered", "sealer_role": "payer", "terms_ref": "0" * 64,
+           "observed_at": "2026-10-15T00:00:00Z", "delivery": {"direction": ["received"]}}
+    assert structure_failures(leg) == ["settlement_malformed"]
+    assert structure_failures(_observed(wrapped=[{"type": ["x402.offer"], "digest_alg": "SHA-256",
+                                                  "digest": "0" * 64}])) == ["settlement_malformed"]
+    assert structure_failures(_observed(wrapped=[{"type": "x402.offer", "digest_alg": "SHA-256",
+                                                  "digest": "0" * 64, "content": 7}])) == ["settlement_malformed"]

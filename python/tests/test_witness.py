@@ -59,3 +59,11 @@ def test_unreadable_receipts_fail_and_never_raise():
               "tree_size": 1}
     status, findings, receipts = verify_witness_receipts([record], SIGNED, b"cose", directory)
     assert status == "withheld" and receipts[0].reason.startswith("not checked: unusable key")
+
+
+def test_a_non_object_bundle_is_invalid_in_strict_mode():
+    from agent_action_capsule.bundle import verify_bundle
+
+    result = verify_bundle([1], strict=True)
+    assert result.verdict == "INVALID" and result.kind_ok is False
+    assert verify_bundle([1]).verdict is None

@@ -36,7 +36,7 @@ the Rekor key. None of these keys is a production key.
 
 ## The rules
 
-**Kind.** A Bundle whose `bundle_kind` is not `evidence-bundle/v2`, or whose
+**Kind.** A Bundle that is not a JSON object, or whose `bundle_kind` is not `evidence-bundle/v2`, or whose
 `bundle_version` is not `"2"`, is refused before any other strict check. Its
 only claim is `records`, which fails with `not_an_evidence_bundle_v2`, and
 `witnesses` is absent (`null`).
@@ -66,8 +66,8 @@ least one record and every record's identity holds. Otherwise it fails with
 
 The Capsule ID is recomputed as the record's `canonicalization_id` declares.
 Under `jcs`, every member except `capsule_id`, `signature` and `key_id` is
-committed. When the member is absent or `null`, the record keeps the vintage
-`jcs-n` reading: `chain` is also removed, then null, empty-array and
+committed. Under `jcs-n`, declared or implied by an absent or `null` member
+(the vintage reading), `chain` is also removed, then null, empty-array and
 empty-object members are removed bottom-up before JCS. Any other value is
 `invalid`. The carried `capsule_id` is not read.
 
@@ -200,7 +200,8 @@ A receipt verifies over a leaf when all of these hold:
   even when its signature verifies: it binds nothing
   (`neg-witness-cll-attached-payload`);
 - its protected header has `vds` (395) equal to 1 (RFC9162_SHA256) and an
-  `alg` (1) of EdDSA (-8) or ES256 (-7). No other `vds` is accepted;
+  `alg` (1) of EdDSA (-8) or ES256 (-7). No other `vds` or `alg` is
+  accepted;
 - its unprotected `vdp` (396) map carries a non-empty array of inclusion
   proofs under -1, each a byte string holding CBOR
   `[tree_size, leaf_index, [audit_path...]]`. Every entry must decode;
@@ -209,6 +210,11 @@ A receipt verifies over a leaf when all of these hold:
 
 Decoding follows the scitt-cose verifiers (Python `scitt_cose.verify_receipt`,
 the Rust crate `scitt-cose-receipt`), including their `crit` handling.
+
+Every base64 field a receipt check reads (`receipt_b64`, the Rekor `body`,
+`signedEntryTimestamp` and `verifier`, and directory `public_keys`) is strict
+standard base64 with padding: a character outside the alphabet, or missing
+padding, makes the receipt fail (or, for a directory key, makes it unusable).
 
 The `reason` text a verifier reports for a receipt is not part of these
 vectors. A record or settlement leg whose `capsule_id` is not a string is
@@ -268,6 +274,7 @@ checkpoint is signed by another, the log key.
 |---|---|
 | `authored-jcs` | `authored` |
 | `authored-jcs-n` | `authored`: no `canonicalization_id`, so `chain` and null or empty members are dropped |
+| `authored-jcs-n-declared` | `authored`: `canonicalization_id` is `jcs-n` |
 | `unclaimed` | `unclaimed` |
 | `invalid-half-claim` | `invalid`: `key_id` without `signature` |
 | `invalid-other-key` | `invalid` |

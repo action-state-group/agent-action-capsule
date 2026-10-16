@@ -129,15 +129,17 @@ ISO20022_STATUS = {
 _AMOUNT_MEMBERS = ("amount", "routing_fee", "received", "receive_fee")
 _DELIVERY_MEMBERS = ("direction", "content_digest", "carrier", "tracking_digest", "status", "shipped_at",
                      "delivered_at", "address_digest")
-_VALUE = re.compile(r"^(0|[1-9][0-9]*)$")
-_HEX64 = re.compile(r"^[0-9a-f]{64}$")
-_RFC3339_UTC = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$")
+_VALUE = re.compile(r"0|[1-9][0-9]*")
+_HEX64 = re.compile(r"[0-9a-f]{64}")
+# Patterns are matched against the whole string (fullmatch), ASCII digits only.
+_B64URL = re.compile(r"[A-Za-z0-9_-]*")
+_RFC3339_UTC = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?Z")
 
 
 
 def amount_ok(a: Any) -> bool:
     return (isinstance(a, dict) and set(a) == {"value", "assetCode", "assetScale"}
-            and isinstance(a["value"], str) and _VALUE.match(a["value"]) is not None
+            and isinstance(a["value"], str) and _VALUE.fullmatch(a["value"]) is not None
             and isinstance(a["assetCode"], str) and a["assetCode"] != ""
             and isinstance(a["assetScale"], int) and not isinstance(a["assetScale"], bool)
             and 0 <= a["assetScale"] <= 255)
@@ -145,7 +147,13 @@ def amount_ok(a: Any) -> bool:
 
 
 def _b64u_decode(text: str) -> bytes:
-    return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+    """Unpadded canonical base64url; anything else raises ``ValueError``."""
+    if not isinstance(text, str) or not _B64URL.fullmatch(text):
+        raise ValueError("not unpadded base64url")
+    raw = base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+    if base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != text:
+        raise ValueError("non-canonical base64url")
+    return raw
 
 
 
@@ -173,33 +181,36 @@ def structure_failures(member: Any) -> list[str]:
         out.append("amount_not_exact")
     if leg.endswith("_observed") and s.get("status") not in STATUSES:
         out.append("settlement_malformed")
-    if "terms_ref" in s and not (isinstance(s["terms_ref"], str) and _HEX64.match(s["terms_ref"])):
+    if "terms_ref" in s and not (isinstance(s["terms_ref"], str) and _HEX64.fullmatch(s["terms_ref"])):
         out.append("settlement_malformed")
-    if "observed_at" in s and not (isinstance(s["observed_at"], str) and _RFC3339_UTC.match(s["observed_at"])):
+    if "observed_at" in s and not (isinstance(s["observed_at"], str) and _RFC3339_UTC.fullmatch(s["observed_at"])):
         out.append("settlement_malformed")
     if leg == "delivered":
         d = s.get("delivery")
-        if (not isinstance(d, dict) or DELIVERY_DIRECTIONS.get(d.get("direction")) != role
+        if (not isinstance(d, dict) or not isinstance(d.get("direction"), str)
+                or DELIVERY_DIRECTIONS.get(d["direction"]) != role
                 or not set(d) <= set(_DELIVERY_MEMBERS)
                 or ("content_digest" not in d and "carrier" not in d)
                 or ("content_digest" in d and not (isinstance(d["content_digest"], str)
-                                                   and _HEX64.match(d["content_digest"])))):
+                                                   and _HEX64.fullmatch(d["content_digest"])))):
             out.append("settlement_malformed")
     if leg == "terms" and "deliverable" in s:
         dv = s["deliverable"]
         if (not isinstance(dv, dict) or not dv or not set(dv) <= {"content_digest", "description_digest"}
-                or not all(isinstance(v, str) and _HEX64.match(v) for v in dv.values())):
+                or not all(isinstance(v, str) and _HEX64.fullmatch(v) for v in dv.values())):
             out.append("settlement_malformed")
-    ref = s.get("payment_ref")
-    if ref is not None:
+    if "payment_ref" in s:
+        ref = s["payment_ref"]
         if not isinstance(ref, dict) or not isinstance(ref.get("type"), str) or not isinstance(ref.get("value"), str):
             out.append("settlement_malformed")
         elif ref["type"] in PAYMENT_REF_TYPES and set(ref) != {
                 "type", "value", *PAYMENT_REF_TYPES[ref["type"]]["qualifiers"]}:
             out.append("settlement_malformed")
     for w in s.get("wrapped", []) if isinstance(s.get("wrapped", []), list) else [None]:
-        if (not isinstance(w, dict) or w.get("digest_alg") != "SHA-256" or w.get("type") not in WRAPPED_TYPES
-                or not isinstance(w.get("digest"), str) or not _HEX64.match(w["digest"])
+        if (not isinstance(w, dict) or w.get("digest_alg") != "SHA-256"
+                or not isinstance(w.get("type"), str) or w["type"] not in WRAPPED_TYPES
+                or not isinstance(w.get("digest"), str) or not _HEX64.fullmatch(w["digest"])
+                or ("content" in w and not isinstance(w["content"], str))
                 or not set(w) <= {"type", "digest_alg", "digest", "content"}):
             out.append("settlement_malformed")
             break
@@ -287,7 +298,10 @@ def _x402_scheme(legs: list[dict], objects: dict[str, bytes]) -> str | None:
     """The x402 scheme, from a wrapped offer or payment payload whose octets are held."""
     for s in legs:
         for w in s.get("wrapped", []):
-            octets = _b64u_decode(w["content"]) if "content" in w else objects.get(w["digest"])
+            try:
+                octets = _b64u_decode(w["content"]) if "content" in w else objects.get(w["digest"])
+            except ValueError:
+                continue
             if octets is None or hashlib.sha256(octets).hexdigest() != w["digest"]:
                 continue
             try:

@@ -218,6 +218,8 @@ def _receipt_shape_error(receipt: bytes) -> str | None:
         return f"receipt could not be decoded: {type(exc).__name__}"
     if not isinstance(protected, dict) or protected.get(395) != 1:
         return "receipt vds is not RFC9162_SHA256 (1)"
+    if protected.get(1) not in (-8, -7):
+        return "receipt alg is not EdDSA (-8) or ES256 (-7)"
     return None
 
 
@@ -303,17 +305,18 @@ def verify_rekor_receipt(
             {"body": receipt["body"], "integratedTime": integrated, "logID": receipt["logID"], "logIndex": index}
         )
         try:
-            rekor_key.verify(base64.b64decode(set_b64), signed, ec.ECDSA(hashes.SHA256()))
+            rekor_key.verify(base64.b64decode(set_b64, validate=True), signed, ec.ECDSA(hashes.SHA256()))
         except InvalidSignature:
             return False, "signedEntryTimestamp does not verify under the pinned Rekor key"
-        entry = json.loads(base64.b64decode(receipt["body"]))
+        entry = json.loads(base64.b64decode(receipt["body"], validate=True))
         if entry.get("kind") != "dsse":
             return False, f"entry kind {entry.get('kind')!r}, expected 'dsse'"
         spec = entry.get("spec") or {}
         if (spec.get("payloadHash") or {}).get("value") != hashlib.sha256(cose).hexdigest():
             return False, "entry payloadHash is not this checkpoint's bytes"
         verifiers = {
-            base64.b64decode(s.get("verifier", "")).replace(b"\r", b"").strip() for s in spec.get("signatures") or []
+            base64.b64decode(s.get("verifier", ""), validate=True).replace(b"\r", b"").strip()
+            for s in spec.get("signatures") or []
         }
         if verifiers != {_ed25519_spki_pem(bytes.fromhex(checkpoint_key_id)).strip()}:
             return False, "entry is not signed by the checkpoint's key"
@@ -368,7 +371,7 @@ def verify_receipt(
         return False, "not checked: checkpoint COSE statement not available", None
     if binding == BINDING_REKOR:
         try:
-            receipt = json.loads(base64.b64decode(record["receipt_b64"]))
+            receipt = json.loads(base64.b64decode(record["receipt_b64"], validate=True))
         except (ValueError, TypeError) as exc:
             return False, f"unreadable receipt: {exc}", None
         ok, reason = verify_rekor_receipt(
@@ -376,7 +379,7 @@ def verify_receipt(
         )
         return ok, reason, GRADE_OBSERVED_ONLY if ok else None
     try:
-        receipt_bytes = base64.b64decode(record["receipt_b64"])
+        receipt_bytes = base64.b64decode(record["receipt_b64"], validate=True)
     except (ValueError, TypeError) as exc:
         return False, f"unreadable receipt: {exc}", None
     return verify_scrapi_receipt(receipt_bytes, checkpoint_cose=cose, service_public_key_pem=pem)
