@@ -54,6 +54,15 @@
   absence record's, and one each with `key_id` or `sig` alone. The MCP results and manifest
   result carry `resultType` `complete`, and the MCP calls carry `_meta`, as MCP 2026-07-28
   requires.
+- personal-history-basic-v0 vectors: `vectors/personal-history-basic-v0/` publishes the Basic level
+  acceptance run of `spec/personal-agent-history-profile-v0.md` §6.4 (PA-11) as 12 cases: one
+  History of three selected deals, the nine mutants of the §6.4 table, a second reading of the
+  other-anchor mutant, and a refusal to a requester other than the recipient. The positive run is
+  an IP responder's own octets (evidencebook `Book.Respond` at
+  `43f3cb1b955d647bc92cb4da0d823973d1981cad`, reproduced by the corpus's `producer/main.go`);
+  `python/scripts/generate_personal_history_basic_v0_vectors.py` builds the cases from it. The
+  interop profile reference verifier gives every case's stated envelope statuses, and every
+  accepted envelope maps to row 4, `UNKNOWN`/`not_evaluable`.
 
 ## 0.9.0 — 2026-10-16
 

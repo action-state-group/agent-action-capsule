@@ -66,6 +66,7 @@ GENERATORS = (
     "generate_judgment_extension_vectors.py",
     "generate_profile_vectors.py",
     "generate_interop_profile_v0_vectors.py",
+    "generate_personal_history_basic_v0_vectors.py",
     "generate_registry_conformance_vectors.py",
     # Append to the capsule, disclosure-envelope and producer-envelope manifests.
     "generate_parity_hardening_vectors.py",

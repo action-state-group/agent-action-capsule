@@ -1,0 +1,21 @@
+{
+  "set": "aac-personal-history-basic-v0",
+  "status": "Conformance vectors for the informational Personal-Agent History Profile v0, Basic level, over evidence-interop/0. Every key is a test key derived from a public seed; never use one for anything else.",
+  "provenance": "responder-run",
+  "spec": "spec/personal-agent-history-profile-v0.md",
+  "generator": "python/scripts/generate_personal_history_basic_v0_vectors.py",
+  "responder": {
+    "repository": "https://github.com/action-state-group/evidencebook",
+    "commit": "43f3cb1b955d647bc92cb4da0d823973d1981cad",
+    "entry_point": "Book.Respond, driven by producer/main.go from the repository's test/interop/ directory",
+    "run": "responder-run.json",
+    "run_sha256": "f7d77d56d81ca187cb9a8118f8a15aae5407f5a96aca1c5525a5f5d2e827b848"
+  },
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "8369998d0fb0f118a1f4d6c5469cd93d83885fa6ae2c3b39e1267955001cbccc",
+      "count": 12
+    }
+  ]
+}

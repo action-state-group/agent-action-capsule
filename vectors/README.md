@@ -57,6 +57,11 @@ same-commit files in CI.
   record, lifecycle links and carriage over A2A and MCP, each pinning its trust
   policy, verification policy, contract version and evaluation time;
   `python/scripts/generate_interop_profile_v0_vectors.py` regenerates them.
+- `personal-history-basic-v0/`: the acceptance run of
+  `spec/personal-agent-history-profile-v0.md` §6.4 (Basic level): one History answered by an
+  IP responder at a pinned commit (`responder-run.json`, reproduced by `producer/main.go`), the
+  nine mutants of the §6.4 table and a refusal to another requester;
+  `python/scripts/generate_personal_history_basic_v0_vectors.py` regenerates them from the run.
 
 - `presentation-resolution/`: shared presentation resolution vectors for
   `spec/presentation-contract-v0.md` (ABI refusal, the descriptor, the match,

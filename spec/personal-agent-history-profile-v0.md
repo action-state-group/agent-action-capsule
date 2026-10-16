@@ -277,7 +277,8 @@ requirement was `UNKNOWN`/`not_evaluable`. Each of these mutants failed the prop
 | a definition whose `reads` adds `statement` and `counterparty_ref` | `definition_form` |
 
 A request under the definition from any requester other than its `recipient` was refused
-`not_authorized` [ER §4.2]. Publishing these as conformance vectors beside IP §11.5 is PA-11.
+`not_authorized` [ER §4.2]. Publishing these as conformance vectors beside IP §11.5 is PA-11. They
+are published in `vectors/personal-history-basic-v0/`.
 
 ## 7. Lifecycle links
 
