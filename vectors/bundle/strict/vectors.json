@@ -9375,7 +9375,7 @@
     },
     {
       "id": "neg-witness-cll-es256-other-curve",
-      "description": "A receipt declaring ES256, signed under the row's secp256k1 key: ES256 is P-256 only.",
+      "description": "A receipt declaring ES256, signed with the secp256k1 key the row lists: that key does not count, so the row's key id is read as a raw Ed25519 key and nothing verifies.",
       "options": {
         "require_signature": false,
         "witness_directory": true

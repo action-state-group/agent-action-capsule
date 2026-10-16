@@ -190,11 +190,15 @@ def row_public_keys_pem(row: Mapping[str, Any]) -> list[bytes]:
     for b64 in public_keys:
         der = _der(b64)
         try:
-            # Only an Ed25519 or EC public key counts. An entry that is not a
-            # SubjectPublicKeyInfo, holds another algorithm (RSA, an unknown
-            # OID) or does not load is skipped, like one that is not base64.
-            if der is not None and not isinstance(
-                load_der_public_key(der), (Ed25519PublicKey, ec.EllipticCurvePublicKey)
+            # Only an Ed25519 or an ECDSA P-256 public key counts: the only
+            # keys any receipt verifies under. An entry that is not a
+            # SubjectPublicKeyInfo, holds another algorithm or curve (RSA,
+            # secp256k1, an unknown OID) or does not load is skipped, like one
+            # that is not base64.
+            key = load_der_public_key(der) if der is not None else None
+            if not (
+                isinstance(key, Ed25519PublicKey)
+                or (isinstance(key, ec.EllipticCurvePublicKey) and isinstance(key.curve, ec.SECP256R1))
             ):
                 der = None
         except Exception:  # noqa: BLE001

@@ -251,10 +251,10 @@ Every base64 field a receipt check reads (`receipt_b64`, the Rekor `body`,
 padding: a character outside the alphabet, missing padding, or non-zero
 trailing bits in the last symbol make the receipt fail. A directory
 `public_keys` entry counts only when it is canonical base64 of a DER
-SubjectPublicKeyInfo holding an Ed25519 key or an EC public key that loads
-(a named curve and a point on it). Any other entry is skipped: not base64, not
-a SubjectPublicKeyInfo, an RSA key, an unknown algorithm OID, or a key that
-does not load. In a `rekor` row whose log ID names only a skipped entry, the
+SubjectPublicKeyInfo holding an Ed25519 key or an ECDSA P-256 key (a point on
+the curve), the only keys a receipt verifies under. Any other entry is
+skipped: not base64, not a SubjectPublicKeyInfo, an RSA key, another curve
+(secp256k1, P-384), an unknown algorithm OID, or a key that does not load. In a `rekor` row whose log ID names only a skipped entry, the
 row has no key and is unusable (`pos-witness-rekor-row-rsa-key`,
 `pos-witness-rekor-row-unknown-key`). A row
 whose `key_ids` or `public_keys` is not a list, or with a key id that is not 64
@@ -311,7 +311,7 @@ checkpoint is signed by another, the log key.
 | `neg-witness-cll-vds-ccf` | a receipt signed over the right root that declares `vds` 2 | INVALID |
 | `neg-witness-cll-alg-unsupported` | a receipt signed over the right root that declares `alg` -257 | INVALID |
 | `pos-witness-cll-es256` | a `cll` receipt signed ES256 under the row's P-256 key | VALID |
-| `neg-witness-cll-es256-other-curve` | a receipt declaring ES256 under the row's secp256k1 key | INVALID |
+| `neg-witness-cll-es256-other-curve` | a receipt declaring ES256, signed with the secp256k1 key the row lists (skipped) | INVALID |
 | `neg-witness-cll-key-not-a-point` | the row's key id is 32 bytes that are not an Ed25519 point | INVALID |
 | `pos-witness-cll-second-key` | the row's first key does not verify; its second does | VALID |
 | `pos-witness-row-binding-null` | the only row for the endpoint has `binding: null` | VALID, witnesses withheld |

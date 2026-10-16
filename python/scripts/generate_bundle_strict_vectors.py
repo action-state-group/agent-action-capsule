@@ -818,7 +818,8 @@ def build_cases() -> list[dict]:
                  witnessed(es256_receipt(leaf, P256_WITNESS, P256_URL)),
                  {"status": "pass", "findings": [], "receipts": [receipt_expect(P256_URL, "cll", "pass", "mmr-verified")]})
     witness_case("neg-witness-cll-es256-other-curve",
-                 "A receipt declaring ES256, signed under the row's secp256k1 key: ES256 is P-256 only.",
+                 "A receipt declaring ES256, signed with the secp256k1 key the row lists: that key does not count, "
+                 "so the row's key id is read as a raw Ed25519 key and nothing verifies.",
                  witnessed(es256_receipt(leaf, K1_WITNESS, K1_URL)),
                  {"status": "fail", "findings": [f"witness_receipt_invalid:{K1_URL}"],
                   "receipts": [receipt_expect(K1_URL, "cll", "fail")]}, verdict="INVALID")
