@@ -69,6 +69,7 @@ GENERATORS = (
     "generate_personal_history_basic_v0_vectors.py",
     "generate_registry_conformance_vectors.py",
     "generate_adapter_x402_vectors.py",
+    "generate_ucp_adapter_vectors.py",
     # Append to the capsule, disclosure-envelope and producer-envelope manifests.
     "generate_parity_hardening_vectors.py",
     "generate_envelope_encoding_vectors.py",

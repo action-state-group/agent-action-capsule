@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- UCP adapter declaration and vectors: `spec/adapters/ucp-v0.md` declares the five FR-19 items
+  for UCP v2026-08-25 (`cd78fb38e819de77d9b527d110476eccb876f1bd`). The checkout carrying
+  `ap2.merchant_authorization` (AP2 Mandates Extension) is the one merchant-signed object and gets
+  a native check. The order object and a checkout without AP2 are possession-only. New vectors in
+  `vectors/adapters/ucp/`: `positive` and `native-check-fails`, signed with the RFC 7515 Appendix
+  A.3 example key and validated with `ucp-schema` 1.4.1 against UCP's published schema;
+  `python/scripts/generate_ucp_adapter_vectors.py` regenerates them. The `ucp.checkout` wrapped
+  object type is proposed, not registered.
+
 ## 0.10.0 — 2026-10-17
 
 - **Breaking**, Python: `agent_action_capsule.emit` (the module and the root `emit` export) and
