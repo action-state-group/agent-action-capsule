@@ -266,12 +266,16 @@ adds one of the items in §4.
 
 ## 7. Open points
 
-- **A-1.** IP §8.1 rows 5 and 6 cover a `native_check` `FAIL`, and no row covers `NOT_PRESENT` or
-  `NOT_CHECKED`. With every envelope property passing, such an Artifact falls to row 7, where the
-  contract evaluates the content. The `uncertainty.on_missing` hook applies only to the missing
-  rows IP §8 lists, and `native_check` is not one of them. Consider a requirement whose predicate
-  is "the merchant issued this session, order or token". Whether IP should add a row for it is
-  for IP to decide, not this declaration.
+- **A-1 (closed).** IP §8.1 rows 5 and 6 cover a `native_check` `FAIL`, and no row covers
+  `NOT_PRESENT` or `NOT_CHECKED`. Until a profile revision adds rows, a `native_check`
+  `NOT_PRESENT` or `NOT_CHECKED` is mapped as profile §8.1 rows 3-4 pending a profile row:
+  - `NOT_PRESENT` gives `INSUFFICIENT` / `INSUFFICIENT` / `not_evaluable` when the requirement is,
+    or rests on, that check;
+  - `NOT_CHECKED` gives `UNKNOWN` / `UNKNOWN` / `not_evaluable`;
+  - neither gives `met` or `not_met` (RES §1).
+
+  Every ACP object declared here has no native signature. So its `NOT_PRESENT` never counts
+  against a requirement that does not rest on that check.
 - **A-2.** An MCP `result` (§2.1 (a)) has as-transmitted octets that depend on how the JSON-RPC
   response is serialized, and ACP does not fix that. So two parties may not compute the same
   digest for the same session.
