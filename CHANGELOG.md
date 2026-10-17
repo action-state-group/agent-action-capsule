@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- ACP adapter declaration v0 (`spec/adapters/acp-v0.md`), informational. ACP 2026-04-17 signs no
+  object that an outside verifier can check. The checkout session, the order and the delegated
+  payment token are unsigned, and the order webhook's HMAC is under a secret the two parties share.
+  So the native check is `NOT_PRESENT` or `NOT_CHECKED`, mapped as interop profile §8.1 rows 3-4,
+  and the declaration names what ACP would need to add. No vectors, by design.
+
 ## 0.10.0 — 2026-10-17
 
 - **Breaking**, Python: `agent_action_capsule.emit` (the module and the root `emit` export) and
