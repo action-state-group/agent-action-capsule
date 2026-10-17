@@ -59,7 +59,18 @@ For each object, this document declares:
 
 **Octets of an unsigned object.** IP §5.1 states the as-transmitted rule for a foreign *signed*
 object. None of the objects below is signed. This declaration still digests them the same way, as
-its own choice: SHA-256 over the octets as delivered, never parsed and re-serialized.
+its own choice: SHA-256 over the octets as delivered, never parsed and re-serialized. Every byte
+counts, and no normalization is applied. A trailing newline, for example, is part of the octets
+and of the digest.
+
+**The carried digest.** ACP itself carries no digest, so the carried digest is never an ACP
+property. It comes from one of two places:
+
+- a settlement-records wrapper: the digest that the wrapping record states for the wrapped octets
+  (SR §8);
+- with no wrapper (a standalone adapt), a relying-party pin, `acp.carried_digest`.
+
+The digest row's `method` says which of the two it is.
 
 ### 2.1 Checkout session
 
@@ -110,20 +121,28 @@ holds those octets, and that is all its own envelope says (SR §8 rule 3).
 
 | Property | Status | Method |
 |---|---|---|
-| digest of carried octets | `PASS` or `FAIL` | `SHA-256 over the octets as delivered`, compared with the carried digest |
+| digest of carried octets | `PASS` or `FAIL` | `SHA-256 over the octets as delivered`, compared with the carried digest from the wrapper or from the `acp.carried_digest` pin, naming which |
 | `native_check` | `NOT_PRESENT` | `none: ACP 2026-04-17 defines no issuer signature over CheckoutSession` |
 
 ### 2.2 Order
 
-**(a) Object and format.** An `Order` object (JS-CHK `$defs/Order`; required `id`,
-`checkout_session_id`, `permalink_url`). It is produced in two places:
+**(a) Object and format.** An `Order` object. It is produced in two places, and its schema
+depends on which:
 
 1. the `order` member of the `CheckoutSessionWithOrder` that `completeCheckoutSession` returns
-   (RFC-CHK §4.4 "Complete Session"). Its octets are those of §2.1 (a). The order is a member
-   inside them, not separately delivered octets.
+   (RFC-CHK §4.4 "Complete Session").
+   - It validates against JS-CHK `$defs/Order`, which requires `id`, `checkout_session_id` and
+     `permalink_url`.
+   - Its octets are those of §2.1 (a). The order is a member inside them, not separately
+     delivered octets.
+   - Such a response therefore gives two `native_check` results, one for the session and one for
+     the order. Each names its object in `detail`. It gives one digest, over the single octet
+     string.
 2. the `data` member of an order event that the merchant POSTs to the agent platform's receiver
-   by `postOrderEvents` (`POST /agentic_checkout/webhooks/order_events`, OAS-WH). Its octets
-   are the request body as received, the `raw_body` of OAS-WH's signing rule.
+   by `postOrderEvents` (`POST /agentic_checkout/webhooks/order_events`, OAS-WH).
+   - It validates against OAS-WH's `EventDataOrder`. That is the checkout `Order` with `type`,
+     `checkout_session_id`, `permalink_url` and `status` also required.
+   - Its octets are the request body as received, the `raw_body` of OAS-WH's signing rule.
 
 **(b) Issuer.** The merchant. In path 1 the attribution is as for §2.1 (b). In path 2 the request
 carries a `Merchant-Signature` header (§3.3). Its key is a secret shared by the merchant and the
@@ -145,7 +164,8 @@ it.
 |---|---|---|
 | digest of carried octets | `PASS` or `FAIL` | as §2.1 (e) |
 | `native_check` (path 1) | `NOT_PRESENT` | `none: ACP 2026-04-17 defines no issuer signature over Order` |
-| `native_check` (path 2) | `NOT_CHECKED` | `not run: HMAC-SHA256 under a shared secret (OAS-WH Merchant-Signature)`, with the reason in `detail` (§3.3) |
+| `native_check` (path 2, `Merchant-Signature` present) | `NOT_CHECKED` | `not run: HMAC-SHA256 under a shared secret (OAS-WH Merchant-Signature)`, with the reason in `detail` (§3.3) |
+| `native_check` (path 2, `Merchant-Signature` absent) | `NOT_PRESENT` | `none: no Merchant-Signature header was received with the order event body` |
 
 ### 2.3 Delegated payment token
 
@@ -225,7 +245,9 @@ OAS-WH defines the header as `t=<unix_seconds>,v1=<64_hex>`, where `v1` is HMAC-
 secret and cannot run the check. A secret holder that runs it and gets `PASS` learns only that
 one of the two holders produced the value. This adapter does not run the check, because its
 result cannot attribute the order to the merchant alone. It reports `NOT_CHECKED`, the IP §7.1
-status for a check the verifier did not run. The reason goes in `detail`.
+status for a check the verifier did not run. The reason goes in `detail`. When an order event
+body arrives without the header, the input the check needs is absent, and the status is
+`NOT_PRESENT`.
 
 ## 4. What ACP would need for a native check
 
@@ -264,6 +286,33 @@ that ACP 2026-04-17 has none for these objects. A later revision adds vectors un
 example bodies that validate against JS-CHK and JS-DP. Any native-check vector waits until ACP
 adds one of the items in §4.
 
+**Upstream examples and schema, at the commit read.** An adapter validates against ACP's schema,
+not against ACP's examples. Some of those examples fail the schema, and one schema cannot be
+satisfied. The check behind each fact below:
+
+- tool: Python `jsonschema` 4.10.3, Draft 2020-12;
+- schemas: OAS-CHK and OAS-WH `components/schemas`, with OAS-WH's `$ref` to OAS-CHK resolved
+  across the two files;
+- examples: `examples/2026-04-17/`.
+
+The facts:
+
+- `webhook_order_create_event` and `webhook_order_update_event` in
+  `examples.agentic_checkout.json` fail OAS-WH `WebhookEvent`. Each `data` carries `refunds`,
+  which the schema does not allow, and lacks the required `id`.
+- Every checkout response `result` in `examples.mcp.agentic_checkout.json` fails OAS-CHK:
+  - `create_checkout_session_response` carries a `links[].type` of `terms_of_service`, which is
+    not in the enum;
+  - the `get`, `update`, `complete` and `cancel` responses lack the required
+    `fulfillment_options`.
+- `CheckoutSessionWithOrder` cannot be satisfied when its schema is applied strictly. In OAS-CHK
+  and JS-CHK alike, it is `allOf` of `CheckoutSessionBase` and an object adding `order`.
+  `CheckoutSessionBase` sets `additionalProperties: false`, which rejects `order`. So no
+  completed session validates as written. A validator for path 1 of §2.2 has to treat this case
+  specially, and this declaration does not choose how (open point A-4).
+
+These facts are recorded here only, not reported upstream.
+
 ## 7. Open points
 
 - **A-1 (closed).** IP §8.1 rows 5 and 6 cover a `native_check` `FAIL`, and no row covers
@@ -283,3 +332,7 @@ adds one of the items in §4.
   `acp.delegate-payment-response` in SR "Wrapped Object Types" (Specification Required), using the
   issuers and octets of §2. A settlement leg that needs to cite an ACP object meanwhile carries
   its digest as an opaque reference.
+- **A-4.** How to validate a `CheckoutSessionWithOrder` against a schema that, applied
+  strictly, cannot accept one (§6). One option validates `order` against `$defs/Order` and the
+  rest against `CheckoutSessionBase`. The other evaluates `additionalProperties` across the
+  `allOf`.
