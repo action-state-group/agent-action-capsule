@@ -305,11 +305,13 @@ The facts:
     not in the enum;
   - the `get`, `update`, `complete` and `cancel` responses lack the required
     `fulfillment_options`.
-- `CheckoutSessionWithOrder` cannot be satisfied when its schema is applied strictly. In OAS-CHK
-  and JS-CHK alike, it is `allOf` of `CheckoutSessionBase` and an object adding `order`.
-  `CheckoutSessionBase` sets `additionalProperties: false`, which rejects `order`. So no
-  completed session validates as written. A validator for path 1 of §2.2 has to treat this case
-  specially, and this declaration does not choose how (open point A-4).
+- In OAS-CHK, `CheckoutSessionWithOrder` cannot be satisfied when its schema is applied strictly.
+  It is `allOf` of `CheckoutSessionBase` and an object adding `order`, and OAS-CHK's
+  `CheckoutSessionBase` sets `additionalProperties: false` without listing `order`, so it rejects
+  `order`. No completed session validates against OAS-CHK as written. JS-CHK does not have this
+  defect: its `$defs/CheckoutSessionBase` lists `order` among its properties, so a completed session
+  validates against JS-CHK as a whole object. A validator for path 1 of §2.2 that uses OAS-CHK has
+  to treat this case specially, and this declaration does not choose how (open point A-4).
 
 These facts are recorded here only, not reported upstream.
 
@@ -332,7 +334,7 @@ These facts are recorded here only, not reported upstream.
   `acp.delegate-payment-response` in SR "Wrapped Object Types" (Specification Required), using the
   issuers and octets of §2. A settlement leg that needs to cite an ACP object meanwhile carries
   its digest as an opaque reference.
-- **A-4.** How to validate a `CheckoutSessionWithOrder` against a schema that, applied
-  strictly, cannot accept one (§6). One option validates `order` against `$defs/Order` and the
+- **A-4.** How to validate a `CheckoutSessionWithOrder` against OAS-CHK, which, applied
+  strictly, cannot accept one (§6). JS-CHK accepts it as a whole object. One option validates `order` against `$defs/Order` and the
   rest against `CheckoutSessionBase`. The other evaluates `additionalProperties` across the
   `allOf`.
