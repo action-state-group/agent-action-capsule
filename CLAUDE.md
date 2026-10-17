@@ -35,6 +35,10 @@ scripts/cross-language-interlock.sh                 # Python, Go, TypeScript and
 
 ## Rules
 
+- PRs that modify `spec/` or `vectors/`, or are used to cut a release tag,
+  must receive at least one review before merge. This requirement is
+  additional to all existing CI, review and principal approval gates; it
+  neither replaces nor lowers them and grants no release or tag authority.
 - The draft is the source of truth. When an implementation and the draft
   disagree, fix the implementation or raise an erratum; never let them
   silently diverge.
