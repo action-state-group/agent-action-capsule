@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Evidence Result v0 `coverage_report` (`spec/evidence-result-v0.md` §7.1, PROPOSED). An optional
+  top-level member that reports, per requirement, which evidence exists, what is missing and which
+  source would close each gap. A Result without it is unchanged and still valid, and coverage is never
+  a verdict. New vectors in `vectors/evidence-result/`: `pos-example-org-coverage-result` and seven
+  `neg-coverage-*` negatives. The TypeScript mirror (`validateEvidenceResult`) admits the member and
+  does not check it.
+
 - Evidence Result v0 extension slot (`spec/evidence-result-v0.md` §8a). The document and each claim
   admit members named `x-...` (`patternProperties` `^x-` in `schemas/evidence-result-v0.json`).
   Verifiers ignore them, and an `x-` member never changes a claim's meaning or verdict. Every other
