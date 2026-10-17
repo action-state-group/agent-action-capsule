@@ -826,3 +826,11 @@ it("(iv) a close whose cited Close is not in this bundle draws the asserted stat
     `${ABSENT_ID} · not in this bundle`,
   );
 });
+
+it("the committed sealed Result-root bundle is the seal of the readable fixture", async () => {
+  // The presentation-resolution vectors read the sealed file as an input.
+  const { bundle } = await sealEvidenceBundle(
+    fixture("result-root-bundle.json"),
+  );
+  expect(bundle).toEqual(fixture("result-root-bundle.sealed.json"));
+});

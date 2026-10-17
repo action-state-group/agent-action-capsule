@@ -2,10 +2,10 @@
 package bundle
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,7 +17,7 @@ import (
 func TestFragmentCodecMatchesFragmentPyVectors(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "..", "ts", "test", "testdata", "presentation-fragment-vectors.json"))
 	require.NoError(t, err)
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	var doc struct {
 		Cases []struct {
