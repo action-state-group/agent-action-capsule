@@ -369,6 +369,5 @@ section itself carries none.
 Verify-before-render; the disclosure rules (a supplied value that does not
 hash to its committed digest is never shown; withheld renders with the
 digest); `uncheckpointed` status per record; times printed as given, zone
-marked when not stated; the verification banner and page; the Go emitter,
-which embeds bytes and knows no root family (`go/emitter` parity is pinned
-on the committed sealed fixture from both sides).
+marked when not stated; the verification banner and page; the Go emitter
+(now in capsule-viewer), which embeds bytes and knows no root family.

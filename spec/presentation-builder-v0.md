@@ -4,9 +4,10 @@
 the one builder that turns a verified Evidence Bundle into a page for one audience, and the four
 ways it packages that page: one offline `.html` file, a fragment permalink, an element in a host
 page, and a static page that runs no script. It also defines how the builder reports that a
-packaging is unavailable for a bundle. The reference is `ts/src/presentation-builder.ts` (with
-`ts/src/presentation-fragment.ts` and `ts/src/presentation-mount.ts`); the Go twin of the offline
-packaging is `go/emitter/presentation.go`. The static packaging is TypeScript only (section 2.4).
+packaging is unavailable for a bundle. The reference builder lives in capsule-viewer
+(`ts/src/presentation-builder.ts` there, with this repository's `ts/src/presentation-fragment.ts`
+and `ts/src/presentation-mount.ts`); the Go twin of the offline packaging is capsule-viewer's
+`go/emitter/presentation.go`. The static packaging is TypeScript only (section 2.4).
 
 The key words MUST, MUST NOT, SHOULD and MAY are to be interpreted as described in BCP 14
 (RFC 2119, RFC 8174) when, and only when, they appear in all capitals.
@@ -21,8 +22,8 @@ fragment to the offline file; the one wording key the builder reads (`page.title
 **Depends on, and does not redefine:** bundle verification and `VerifiedBundleContext`
 (`ts/src/bundle.ts`); the registry, the manifest, the formats `html` / `fragment` / `embedded`,
 the invariants I1 to I6 and the wording pack (`spec/presentation-contract-v0.md`); the emitter
-shell, its slots and its per-page Content-Security-Policy (`ts/src/emitter.ts`,
-`go/emitter/emitter.go`); the Evidence Bundle permalink codec (the "Fragment Codec" section of
+shell, its slots and its per-page Content-Security-Policy (capsule-viewer's `ts/src/emitter.ts`
+and `go/emitter/emitter.go`); the Evidence Bundle permalink codec (the "Fragment Codec" section of
 `draft-mih-zhang-agent-disclosure-bundle`).
 
 **Out of scope:** hosting a viewer, caching, delivery, and any server. Nothing here needs a host
@@ -262,7 +263,7 @@ the same evidence identifiers. A packaging that is unavailable is reported, neve
 The rendered markup is compared as HTML parsing reads it: a static page is parsed, and parsing
 adds the elements HTML implies (a table row's `tbody`), which a page drawn by script may omit.
 
-`ts/test/presentation-builder.test.ts` checks this over the fixtures for each built-in page shape
+capsule-viewer's `ts/test/presentation-builder.test.ts` checks this over the fixtures for each built-in page shape
 and a bundle that does not verify, for three audiences, in all four targets, by rendering each
 packaging and comparing what it shows, and checks that `availablePackagings` reports exactly the
 targets that built; the only unavailability the fixtures meet is a fragment over its budget. Two
@@ -272,12 +273,12 @@ fixture (`ts/test/helpers/monthly-fixtures.ts`: 40 sessions, about 490 KB, and 8
 budget and, for the larger, at the ceiling, while the other three targets show the same thing.
 Every static page in the table is checked for no script, its CSP and its statement. The same file
 checks that theme, wording, locale and depth leave every evidence identifier unchanged, and
-`ts/test/presentation-builder-browser.test.ts` opens the offline file, the fragment URL and the
+its `ts/test/presentation-builder-browser.test.ts` opens the offline file, the fragment URL and the
 static page in a CSP-enforcing browser and finds no request beyond the document itself, no CSP
 violation, and the static page showing what the offline file shows.
 
 The Go and TypeScript offline outputs match byte for byte for the same inputs
-(`go/emitter/testdata/expected-offline.html` and `offline-fragment.txt`).
+(capsule-viewer's `go/emitter/testdata/expected-offline.html` and `offline-fragment.txt`).
 
 ## 5. Known gaps
 

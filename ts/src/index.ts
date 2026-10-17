@@ -18,6 +18,4 @@ export * from "./settlement.js";
 export * from "./witness.js";
 export * from "./verify.js";
 export * from "./verification-page.js";
-export * from "./emitter.js";
 export * from "./presentation-fragment.js";
-export * from "./presentation-builder.js";

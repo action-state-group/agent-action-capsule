@@ -34,7 +34,8 @@ text-binding rule; the wording pack shape (`aac.wording-pack/v0`) and the meanin
 - `VerifiedBundleContext` (`ts/src/bundle.ts`): the one object built from one verification run.
   A module reads verified content only through it, and cannot change it (section 3.1).
 - The bundle kind and extension kind registries (`spec/REGISTRY.md` sections 13 and 14).
-- The emitter shell and its named slots (`go/emitter/shell.html`, `ts/src/emitter-shell.html`):
+- The emitter shell and its named slots (capsule-viewer's `go/emitter/shell.html` and
+  `ts/src/emitter-shell.html`):
   `CSP_SLOT`, `TITLE_SLOT`, `THEME_SLOT`, `BUNDLE_SLOT`, `CORE_RUNTIME_SLOT`, `MODULE_SLOT`,
   `BOOTSTRAP_SLOT`, and the per-page Content-Security-Policy the emitter computes.
 - The `presentation/v1` bundle extension and the Result `view` block

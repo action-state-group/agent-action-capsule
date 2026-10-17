@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Breaking**, Go: the `go/emitter` package is removed. It moved unchanged to capsule-viewer
+  (`github.com/action-state-group/capsule-viewer/go/emitter`, from `go/v0.1.0`), which renders
+  the page and keeps the Go/TypeScript byte-parity goldens (#281). `go/presentation` stays.
+- **Breaking**, TypeScript: `emitter.ts` and `presentation-builder.ts` are removed, along with
+  their root-entry exports (`emitEvidenceGraphHtml`, `emitStaticEvidenceGraphHtml`,
+  `escapeJsonForHtmlScript`, `cspHashSourceFromHex`, `buildPresentation`, `availablePackagings`,
+  `offlineHtmlFromFragment`, `buildFragmentViewerHtml`, `checkWordingPack`, the
+  `PresentationBuildError` family and their constants and types) and `dist/emitter-shell.html`.
+  They moved to `@action-state-group/capsule-viewer` 0.1.0 (#281). The presentation contract,
+  `presentation-fragment.ts`, `presentation-mount.ts`, the registry and the browser IIFE stay.
+
 - x402 adapter declaration v0 (`spec/adapters/x402-v0.md`), informational. It declares the five
   foreign-object items for an x402 v2 `exact`/`eip3009` payment. The `PaymentPayload` is
   payer-signed, and its native check is EIP-712 recovery with the domain taken from the relying
