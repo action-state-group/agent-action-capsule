@@ -288,7 +288,7 @@ def reports(failing: str | None = None) -> list[dict]:
             "property": "native_check",
             "status": "FAIL" if name == failing else "PASS",
             "method": method,
-            "detail": name,
+            "detail": {"check": name, "object": "ucp.checkout"},
         }
         for name, method in CHECKS
     ]

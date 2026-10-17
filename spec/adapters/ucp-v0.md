@@ -180,7 +180,8 @@ The adapter does **not** support, from this object alone:
 
 Each row is one named check, with a status in the [IP] §7.1 vocabulary. In v0 each check except
 the last is reported as a `native_check` property report ([IP] §7.2), with the check's name in
-`detail`: `{"property": "native_check", "status": …, "method": …, "detail": "<name>"}`. Property
+`detail`, together with the object's wrapped type, as the other adapters do:
+`{"property": "native_check", "status": …, "method": …, "detail": {"check": "<name>", "object": "ucp.checkout"}}`. Property
 names of their own for these checks are left to the next profile revision. The object's native
 check passes when each of those reports is `PASS`. The last row, `ucp.business_trust`, is reported
 separately, as `responder_trust` is reported beside the envelope signature in [IP] §7.2.

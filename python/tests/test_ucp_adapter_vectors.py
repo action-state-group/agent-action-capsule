@@ -179,7 +179,8 @@ def test_native_check_statuses_match_expected_reports(name):
     case = CASES[name]
     checkout = _load(case["checkout"])
     computed = _native_checks(checkout, _load(case["key_set"]))
-    expected = {r["detail"]: r["status"] for r in case["expected"]["reports"]}
+    expected = {r["detail"]["check"]: r["status"] for r in case["expected"]["reports"]}
+    assert {r["detail"]["object"] for r in case["expected"]["reports"]} == {"ucp.checkout"}
     assert {r["property"] for r in case["expected"]["reports"]} == {"native_check"}
     assert expected.pop("ucp.checkout.schema") == "PASS"
     assert computed == expected
