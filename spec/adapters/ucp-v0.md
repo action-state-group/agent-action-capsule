@@ -187,13 +187,13 @@ separately, as `responder_trust` is reported beside the envelope signature in [I
 
 | Property | `PASS` when | Other statuses | `method` |
 |---|---|---|---|
-| `ucp.checkout.schema` | the object validates against `payment_ap2_mandate.json#/$defs/dev.ucp.shopping.checkout` at the pinned UCP version | `FAIL` on a schema violation | `ucp-schema validate --response, UCP v2026-08-25` |
+| `ucp.checkout.schema` | the object validates against `payment_ap2_mandate.json#/$defs/dev.ucp.shopping.checkout` at the pinned UCP version | `FAIL` on a schema violation | `ucp-schema validate --response --op <operation>, UCP v2026-08-25` (for example `--op complete`) |
 | `ucp.merchant_authorization.present` | `ap2.merchant_authorization` is present | `NOT_PRESENT` when absent. UCP names this case `merchant_authorization_missing` | `UCP AP2 Mandates §Business Authorization` |
 | `ucp.merchant_authorization.form` | the value matches the detached-JWS pattern, and the header decodes to JSON with `alg` and `kid` | `FAIL` otherwise | `RFC 7515 Appendix F detached JWS` |
 | `ucp.merchant_authorization.alg` | `alg` is accepted by AP2 and supported by the verifier | `NOT_CHECKED` when AP2 accepts it and the verifier does not support it; `FAIL` when AP2 does not accept it | `AP2 v0.2 algorithm rule` |
-| `ucp.merchant_authorization.key` | `kid` resolves to a usable key in the key set used | `NOT_CHECKED` when no key set was retained and the verifier is offline; `FAIL` when the key set used does not list `kid` | `UCP profile keys[] lookup by kid, live` or `retained keys[] as of <time>` |
+| `ucp.merchant_authorization.key` | `kid` resolves to a usable key in the key set used | `NOT_CHECKED` when no key set was retained and the verifier is offline; `FAIL` when the key set used does not list `kid` | `UCP profile keys[] lookup by kid, live` or `retained keys[] (<key-set source>)`, with ` as of <time>` when the retention time is known |
 | `ucp.merchant_authorization.signature` | the signature verifies over the §3(c) signing input | `FAIL` when it does not. UCP names this case `merchant_authorization_invalid` | `<alg> over JWS signing input of JCS(checkout − ap2)` |
-| `ucp.business_trust` | the relying party's trust policy accepts the business origin | `INCONCLUSIVE` when the policy cannot decide; `NOT_CHECKED` when no policy was supplied | relying-party policy identifier |
+| `ucp.business_trust` | the relying party's trust policy accepts the business origin | `FAIL` when the policy rejects the origin; `INCONCLUSIVE` when the policy does not list it or cannot decide; `NOT_CHECKED` when no policy was supplied | relying-party policy identifier |
 
 A check that does not pass is reported with its own status. A `FAIL` of
 `ucp.merchant_authorization.signature` maps to a result by [IP] §8.1. It is decisive only for a
