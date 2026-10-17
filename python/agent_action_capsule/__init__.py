@@ -2,9 +2,9 @@
 """Reference implementation of draft-mih-scitt-agent-action-capsule.
 
 Class 1 verifier (§6) + the typed producer carriers (§5) with their sealing
-boundary ``Capsule.seal()`` + the anchor client (rung 6). ``emit()`` and the
-emit-tier framework adapters are deprecated in favour of capsule-emit and are
-removed in the next minor release. Substrate verification (COSE_Sign1
+boundary ``Capsule.seal()`` + the anchor client (rung 6). Producing capsules
+as an agent acts (``emit()`` and the framework adapters) is capsule-emit's job;
+this package removed its own in 0.10.0. Substrate verification (COSE_Sign1
 signature, registration, Receipts) is the SCITT/COSE substrate's, by reference,
 and is not implemented here. Class 2 / manifest-aware verification is out of
 scope.
@@ -52,7 +52,6 @@ from .disclosure_envelope import (
     build_disclosure_envelope,
     verify_disclosure_envelope,
 )
-from .emit import emit  # deprecated: warns when called; see emit.DEPRECATION_MESSAGE
 from .parse import Capsule, parse_capsule
 from .registries import REGISTRY_NAMES, load_registries
 from .verify import Finding, VerificationResult, verify, verify_store
@@ -96,8 +95,6 @@ def anchor(*args, **kwargs):
 
 __all__ = [
     "__version__",
-    # rung 1: emit (deprecated; use capsule-emit's capsule_emit.seal)
-    "emit",
     # versions (agent_action_capsule.versions)
     "DEFAULT_SPEC_VERSION",
     "DEFAULT_FORMAT_VERSION",

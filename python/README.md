@@ -161,8 +161,7 @@ actions as they happen (default dispositions, chaining, framework adapters) is
 its `capsule_emit.seal` and its LangChain and CrewAI adapters
 (`capsule_emit.adapters.langchain`, `capsule_emit.adapters.crewai`).
 `agent_action_capsule.emit()` and `agent_action_capsule.integrations` (with the
-`langchain` and `crewai` extras) are deprecated since 0.9.0: they still work but
-raise a `DeprecationWarning`, and are removed in the next minor release. The
+`langchain` and `crewai` extras), deprecated in 0.9.0, are removed in 0.10.0. The
 version constants (`DEFAULT_SPEC_VERSION`, `ACCEPTED_SPEC_VERSIONS`, ...) live
 in `agent_action_capsule.versions` and stay exported from the package root.
 
