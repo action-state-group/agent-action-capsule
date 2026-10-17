@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.10.0 — 2026-10-17
+
 - **Breaking**, Python: `agent_action_capsule.emit` (the module and the root `emit` export) and
   `agent_action_capsule.integrations` (`crewai`, `langchain`) are removed, with the `langchain`
   and `crewai` extras. They were deprecated in 0.9.0 (#287). Use capsule-emit 0.11.0 or later:
