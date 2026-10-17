@@ -178,16 +178,16 @@ The adapter does **not** support, from this object alone:
 
 ### (e) Per-property results
 
-Each row is one property report `{property, status, method}` in the [IP] §7.1 vocabulary. Their
-conjunction, without the last row, is the single `native_check` report for the object ([IP]
-§7.2). `native_check` is `PASS` only when each of those rows is `PASS`. It is `FAIL` when any is
-`FAIL`. Otherwise it takes the first status that is not `PASS`, in row order. The last row,
-`ucp.business_trust`, is reported separately, as `responder_trust` is beside the envelope
-signature in [IP] §7.2.
+Each row is one named check, with a status in the [IP] §7.1 vocabulary. In v0 each check except
+the last is reported as a `native_check` property report ([IP] §7.2), with the check's name in
+`detail`: `{"property": "native_check", "status": …, "method": …, "detail": "<name>"}`. Property
+names of their own for these checks are left to the next profile revision. The object's native
+check passes when each of those reports is `PASS`. The last row, `ucp.business_trust`, is reported
+separately, as `responder_trust` is reported beside the envelope signature in [IP] §7.2.
 
 | Property | `PASS` when | Other statuses | `method` |
 |---|---|---|---|
-| `ucp.checkout.schema` | the object validates against `payment_ap2_mandate.json#/$defs/dev.ucp.shopping.checkout` at the pinned UCP version | `FAIL` on a schema violation | `JSON Schema 2020-12, UCP v2026-08-25` |
+| `ucp.checkout.schema` | the object validates against `payment_ap2_mandate.json#/$defs/dev.ucp.shopping.checkout` at the pinned UCP version | `FAIL` on a schema violation | `ucp-schema validate --response, UCP v2026-08-25` |
 | `ucp.merchant_authorization.present` | `ap2.merchant_authorization` is present | `NOT_PRESENT` when absent. UCP names this case `merchant_authorization_missing` | `UCP AP2 Mandates §Business Authorization` |
 | `ucp.merchant_authorization.form` | the value matches the detached-JWS pattern, and the header decodes to JSON with `alg` and `kid` | `FAIL` otherwise | `RFC 7515 Appendix F detached JWS` |
 | `ucp.merchant_authorization.alg` | `alg` is accepted by AP2 and supported by the verifier | `NOT_CHECKED` when AP2 accepts it and the verifier does not support it; `FAIL` when AP2 does not accept it | `AP2 v0.2 algorithm rule` |
@@ -195,9 +195,19 @@ signature in [IP] §7.2.
 | `ucp.merchant_authorization.signature` | the signature verifies over the §3(c) signing input | `FAIL` when it does not. UCP names this case `merchant_authorization_invalid` | `<alg> over JWS signing input of JCS(checkout − ap2)` |
 | `ucp.business_trust` | the relying party's trust policy accepts the business origin | `INCONCLUSIVE` when the policy cannot decide; `NOT_CHECKED` when no policy was supplied | relying-party policy identifier |
 
-A row that does not pass is reported with its own status. A `FAIL` of `ucp.merchant_authorization.signature` maps to a result
-by [IP] §8.1. It is decisive only for a requirement that *is* this check (row 5). For a
-requirement the check only supports, such as "the order was placed", it is `INSUFFICIENT` (row 6).
+A check that does not pass is reported with its own status. A `FAIL` of
+`ucp.merchant_authorization.signature` maps to a result by [IP] §8.1. It is decisive only for a
+requirement that *is* this check (row 5). For a requirement the check only supports, such as
+"the order was placed", it is `INSUFFICIENT` (row 6).
+
+[IP] §8.1 has no row for a `native_check` that is neither `PASS` nor `FAIL`. Such a status is
+**mapped as profile §8.1 rows 3-4 pending a profile row**, when the requirement is, or rests on,
+that check:
+
+- `NOT_PRESENT`: `INSUFFICIENT` / `INSUFFICIENT` / `not_evaluable`, as row 3;
+- `NOT_CHECKED` or `INCONCLUSIVE`: `UNKNOWN` / `UNKNOWN` / `not_evaluable`, as row 4.
+
+Neither gives `met` or `not_met`.
 
 ## 4. Object 2: Order Event Webhook (RFC 9421 message signature)
 
@@ -284,7 +294,8 @@ message arrived) is the wrapping party's claim about how it received the bytes. 
 do not evidence it. The adapter reports `native_check` as `NOT_PRESENT`, with `method` set to
 `none: UCP defines no object signature for this object`. It reports nothing about the object's
 signature or meaning ([IP] §5.1, P-11). Possession is shown by [SR]'s `wrapped_digest_mismatch`
-check and the digest itself.
+check and the digest itself. That `NOT_PRESENT` is mapped as in §3(e). It never counts against a
+requirement that does not rest on the object's signature.
 
 ### What UCP would need to add for a native check of the order
 
@@ -322,11 +333,18 @@ not register them.
   or of the `get_order` response, as received. Native check: none at the object level (§5).
   Reference: UCP v2026-08-25, Order Capability.
 
-## 7. Stage 2 (not in this revision)
+## 7. Vectors
 
-`vectors/adapters/ucp/` would hold one positive and one native-check-fails case for §3: a
-checkout object that validates against UCP's published `checkout.json` with the AP2 extension,
-signed with `ES256` under a test key generated for these vectors (UCP publishes no test key, §5
-item 5); and the same object with one signed member changed, so that
-`ucp.merchant_authorization.signature` is `FAIL` and the schema still validates. No vector is
-written for §4 or §5 before this declaration is reviewed.
+`vectors/adapters/ucp/` holds two cases for §3, written by
+`python/scripts/generate_ucp_adapter_vectors.py`. Each case's checkout validates against UCP's
+published schema at the commit read. The README records the schema path and the validator.
+
+- `positive`: a `complete_checkout` response (`status` `completed`, with `order`) carrying
+  `ap2.merchant_authorization`. Every check in §3(e) is `PASS`.
+- `native-check-fails`: the same checkout with one signed member changed after signing (the
+  `total` amount). The schema still validates. `ucp.merchant_authorization.signature` is `FAIL`.
+
+UCP publishes no test key (§5 item 5). The signing key is therefore the ES256 example key of
+RFC 7515, Appendix A.3, a published example key. Its source is named in the vectors' README.
+There are no vectors for §4 or §5. Those objects have no native check that a vector could
+exercise.

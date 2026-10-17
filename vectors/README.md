@@ -73,6 +73,10 @@ same-commit files in CI.
   the tiers and the static ambiguity test), normative for the TypeScript
   registry and the Go package `go/presentation`; the TypeScript registry
   generates them (see its README).
+- `adapters/ucp/`: the UCP adapter cases of `spec/adapters/ucp-v0.md` §3, a
+  checkout carrying `ap2.merchant_authorization`: a positive and a
+  native-check-fails case, signed with the RFC 7515 Appendix A.3 example key;
+  `python/scripts/generate_ucp_adapter_vectors.py` regenerates them.
 
 Reference-derived corpora and checksum manifests can be regenerated with:
 

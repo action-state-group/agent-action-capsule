@@ -18,6 +18,7 @@
     "evidence_layer_padding": "evidence-layer/padding/manifest.json",
     "bundle_strict": "bundle/strict/manifest.json",
     "cll_material": "cll-material/manifest.json",
-    "adapter_x402": "adapters/x402/manifest.json"
+    "adapter_x402": "adapters/x402/manifest.json",
+    "adapter_ucp": "adapters/ucp/manifest.json"
   }
 }

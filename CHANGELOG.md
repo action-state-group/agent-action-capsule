@@ -41,6 +41,7 @@
   payload version 1 and both open version 2 proposals. New vectors in `vectors/adapters/x402/`:
   `positive` and `native-check-fails`, constructed (not recorded) and signed with a published
   development key; `python/scripts/generate_adapter_x402_vectors.py` regenerates them.
+
 - Evidence Result v0 `coverage_report` (`spec/evidence-result-v0.md` §7.1, PROPOSED). An optional
   top-level member that reports, per requirement, which evidence exists, what is missing and which
   source would close each gap. A Result without it is unchanged and still valid, and coverage is never
@@ -66,6 +67,15 @@
   `neg-unprefixed-claim-member`, plus a judging producer's output before
   (`neg-judge-producer-unprefixed-result`) and after (`pos-judge-producer-x-judge-result`) its
   members are renamed into the slot.
+
+- UCP adapter declaration and vectors: `spec/adapters/ucp-v0.md` declares the five FR-19 items
+  for UCP v2026-08-25 (`cd78fb38e819de77d9b527d110476eccb876f1bd`). The checkout carrying
+  `ap2.merchant_authorization` (AP2 Mandates Extension) is the one merchant-signed object and gets
+  a native check. The order object and a checkout without AP2 are possession-only. New vectors in
+  `vectors/adapters/ucp/`: `positive` and `native-check-fails`, signed with the RFC 7515 Appendix
+  A.3 example key and validated with `ucp-schema` 1.4.1 against UCP's published schema;
+  `python/scripts/generate_ucp_adapter_vectors.py` regenerates them. The `ucp.checkout` wrapped
+  object type is proposed, not registered.
 
 ## 0.9.1 — 2026-10-16
 
