@@ -268,7 +268,7 @@ and a bundle that does not verify, for three audiences, in all four targets, by 
 packaging and comparing what it shows, and checks that `availablePackagings` reports exactly the
 targets that built; the only unavailability the fixtures meet is a fragment over its budget. Two
 monthly-scale compliance bundles, derived deterministically from the committed two-session
-fixture (`ts/test/helpers/monthly-fixtures.ts`: 40 sessions, about 490 KB, and 80 sessions, about
+fixture (capsule-viewer's `ts/test/helpers/monthly-fixtures.ts`: 40 sessions, about 490 KB, and 80 sessions, about
 1 MB), assert that the fragment is reported unavailable with its length and limit, at the default
 budget and, for the larger, at the ceiling, while the other three targets show the same thing.
 Every static page in the table is checked for no script, its CSP and its statement. The same file

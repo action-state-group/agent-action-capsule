@@ -1,8 +1,7 @@
 import { readFileSync } from "node:fs";
 import { sign as edSign } from "node:crypto";
 import { resolve } from "node:path";
-// Imported by module (not via src/index.js) so this helper also loads under
-// the jsdom test environment, where the emitter's node:fs shell read cannot.
+// Imported by module, not via src/index.js.
 import { bundleDigest } from "../../src/bundle.js";
 import { countersignV1SigningInput } from "../../src/countersignature-stamp.js";
 import { createEd25519Identity } from "../../src/producer-envelope.js";

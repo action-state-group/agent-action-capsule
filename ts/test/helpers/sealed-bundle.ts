@@ -1,6 +1,5 @@
 import { MmrTree, inclusionProof, rangeProof } from "@action-state-group/cll";
-// Imported directly (not via src/index.js) so this helper also loads under
-// the jsdom test environment, where the emitter's node:fs shell read cannot.
+// Imported directly, not via src/index.js.
 import { jsonDigest } from "../../src/json.js";
 import { computeCapsuleId } from "../../src/verify.js";
 import {

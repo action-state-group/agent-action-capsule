@@ -621,7 +621,7 @@ it("tamper demo: tampering the checkpoint itself also hides the card, same as an
 
 // ---------------------------------------------------------------------------
 // this card never changes the generic Result-page/report/v1/evaluation-summary
-// goldens: the emitter's other tests already pin those; this is a belt-and-
+// goldens: capsule-viewer's emitter tests pin those; this is a belt-and-
 // braces check that a non-outcome-report bundle is completely unaffected.
 // ---------------------------------------------------------------------------
 
