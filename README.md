@@ -67,7 +67,7 @@ agent-action-capsule anchor --help     # submit a capsule_id digest to a SCITT T
 ```
 
 For the SCITT receipt + anchor paths: `pip install -e "python[transparent,anchor]"`. Full
-reference-library detail — the producer/emit side, `--transparent` Signed-Statement verification, and
+reference-library detail — the producer side, `--transparent` Signed-Statement verification, and
 every option — is in [`python/README.md`](python/README.md).
 
 ## Repository layout

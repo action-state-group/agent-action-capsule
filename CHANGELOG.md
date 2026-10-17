@@ -5,7 +5,7 @@
 - **Breaking**, Python: `agent_action_capsule.emit` (the module and the root `emit` export) and
   `agent_action_capsule.integrations` (`crewai`, `langchain`) are removed, with the `langchain`
   and `crewai` extras. They were deprecated in 0.9.0 (#287). Use capsule-emit 0.11.0 or later:
-  `capsule_emit.builder` holds the former `emit()` unchanged, and `capsule_emit.adapters.crewai`
+  `capsule_emit.builder.build_capsule` is the former `emit()`, unchanged, and `capsule_emit.adapters.crewai`
   and `capsule_emit.adapters.langchain` replace the integrations (#281). `Capsule.seal()`,
   `build_disclosure_envelope` and the version constants in `agent_action_capsule.versions` stay.
 - **Breaking**, Go: the `go/emitter` package is removed. It moved unchanged to capsule-viewer

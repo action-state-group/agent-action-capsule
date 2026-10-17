@@ -141,7 +141,7 @@ def test_anchor_verify_offline(ts_stub, tmp_path):
     from agent_action_capsule.anchor import AnchorResult, submit_anchor
     from agent_action_capsule.transparent import verify_transparent
 
-    # Use a stable test capsule_id (no emit.py needed — anchor is digest-only)
+    # Use a stable test capsule_id (no Capsule needed — anchor is digest-only)
     capsule_id = hashlib.sha256(b"aac-offline-anchor-test").hexdigest()
 
     result = submit_anchor(capsule_id, ts_url=ts_stub.url)

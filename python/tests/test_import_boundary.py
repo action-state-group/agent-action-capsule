@@ -26,8 +26,7 @@ _FORBIDDEN = (_E, _E_DASH, _V, _E + "_pro", "action_state_authority")
 
 def _all_aac_sources() -> list[Path]:
     """Every Python source file of agent_action_capsule, read from disk so that
-    optional (extras-only) and deprecated modules are scanned without being
-    imported."""
+    optional (extras-only) modules are scanned without being imported."""
     import agent_action_capsule
 
     return sorted(Path(agent_action_capsule.__file__).parent.rglob("*.py"))
