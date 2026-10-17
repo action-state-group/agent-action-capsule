@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- x402 adapter declaration v0 (`spec/adapters/x402-v0.md`), informational. It declares the five
+  foreign-object items for an x402 v2 `exact`/`eip3009` payment. The `PaymentPayload` is
+  payer-signed, and its native check is EIP-712 recovery with the domain taken from the relying
+  party's policy. The `SettlementResponse` is unsigned: possession and transport-level provenance
+  only, with settlement checked by a recorded transaction lookup. The payee receipt is declared for
+  payload version 1 and both open version 2 proposals. New vectors in `vectors/adapters/x402/`:
+  `positive` and `native-check-fails`, constructed (not recorded) and signed with a published
+  development key; `python/scripts/generate_adapter_x402_vectors.py` regenerates them.
 - Evidence Result v0 `coverage_report` (`spec/evidence-result-v0.md` §7.1, PROPOSED). An optional
   top-level member that reports, per requirement, which evidence exists, what is missing and which
   source would close each gap. A Result without it is unchanged and still valid, and coverage is never

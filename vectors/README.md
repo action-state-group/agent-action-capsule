@@ -62,6 +62,11 @@ same-commit files in CI.
   IP responder at a pinned commit (`responder-run.json`, reproduced by `producer/main.go`), the
   nine mutants of the §6.4 table and a refusal to another requester;
   `python/scripts/generate_personal_history_basic_v0_vectors.py` regenerates them from the run.
+- `adapters/x402/`: the x402 adapter declaration `spec/adapters/x402-v0.md`: a positive and a
+  native-check-fails case for an `exact`/`eip3009` payment, with the wrapped objects' octets, the
+  relying party's policy and recorded lookup, and the expected `native_check` reports. Constructed,
+  not recorded, and signed with a published development key;
+  `python/scripts/generate_adapter_x402_vectors.py` regenerates them.
 
 - `presentation-resolution/`: shared presentation resolution vectors for
   `spec/presentation-contract-v0.md` (ABI refusal, the descriptor, the match,
