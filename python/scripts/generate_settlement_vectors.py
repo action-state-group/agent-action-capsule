@@ -670,7 +670,7 @@ def cases() -> list[dict]:
         expect(conforming=True, payment_state="unjoined", delivery_state="none", terms="ln-terms-1",
                findings=[{"records": ["ln-payee-observed-1"], "code": "fee_unstated"}])))
 
-    # A fee in another asset than its amount: the pair is unjoined, and fee_asset_differs names the leg
+    # 18-20. A fee in another asset than its amount: the pair is unjoined, and fee_asset_differs names the leg
     # or legs whose fee differs (payer first), never a leg whose fee is in its amount's asset.
     usd_5 = {"value": "5", "assetCode": "USD", "assetScale": 2}
     out.append(case(
@@ -696,7 +696,7 @@ def cases() -> list[dict]:
                findings=[{"records": ["ln-payer-observed-1", "ln-payee-observed-1"],
                           "code": "fee_asset_differs"}])))
 
-    # 18-19. Non-trivial decimals at mixed scales, compared exactly at the largest scale.
+    # 21-22. Non-trivial decimals at mixed scales, compared exactly at the largest scale.
     def uuid4_like(label: str) -> str:
         h = list(label_hex(label, 16))
         h[12] = "4"

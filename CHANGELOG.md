@@ -8,7 +8,8 @@
   the pair selection to find the leg at fault. The code and the `unjoined` state are unchanged; a
   consumer reading `records` sees the payer leg where only the routing fee differs. New vectors
   `neg-ln-receive-fee-asset-differs`, `neg-ln-routing-fee-asset-differs` and
-  `neg-ln-both-fee-assets-differ` in `vectors/settlement/` (#281).
+  `neg-ln-both-fee-assets-differ` in `vectors/settlement/`. This retires capsule-cli's own
+  mapping (the known limitation in capsule-cli#233; #281).
 
 - x402 adapter declaration v0 (`spec/adapters/x402-v0.md`), informational. It declares the five
   foreign-object items for an x402 v2 `exact`/`eip3009` payment. The `PaymentPayload` is

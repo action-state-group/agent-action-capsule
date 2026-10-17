@@ -382,12 +382,10 @@ def _settlement(terms_label: str, terms_s: dict, legs: dict[str, dict], conflate
         elif receive_fee is None:
             findings.append({"records": [b_label], "code": "fee_unstated"})
             result["payment_state"] = "unjoined"
-        elif receive_fee["assetCode"] != b["received"]["assetCode"] or (
-                "routing_fee" in a and a["routing_fee"]["assetCode"] != a["amount"]["assetCode"]):
+        elif differ := [label for label, off in (
+                (a_label, "routing_fee" in a and a["routing_fee"]["assetCode"] != a["amount"]["assetCode"]),
+                (b_label, receive_fee["assetCode"] != b["received"]["assetCode"])) if off]:
             # The leg or legs whose fee is in another asset, payer first.
-            differ = [a_label] if "routing_fee" in a and a["routing_fee"]["assetCode"] != a["amount"]["assetCode"] else []
-            if receive_fee["assetCode"] != b["received"]["assetCode"]:
-                differ.append(b_label)
             findings.append({"records": differ, "code": "fee_asset_differs"})
             result["payment_state"] = "unjoined"
         else:
