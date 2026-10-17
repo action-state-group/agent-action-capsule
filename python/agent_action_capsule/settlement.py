@@ -581,7 +581,7 @@ def _pair(terms_cid: str, terms: dict, payer: list[tuple[str, dict]], payee: lis
     # takes precedence over a mismatch between heads (as capsule-emit did).
     pairs = [(p, q) for p in payer for q in payee if report.keys.get(p[0]) != report.keys.get(q[0])]
     conflated = not pairs
-    (_, a), (b_rid, b) = pairs[0] if pairs else (payer[0], payee[0])
+    (a_rid, a), (b_rid, b) = pairs[0] if pairs else (payer[0], payee[0])
     b_id = _cid(b_rid)
     ref_type = b["payment_ref"]["type"]
     receive_fee = b.get("receive_fee")
@@ -596,9 +596,13 @@ def _pair(terms_cid: str, terms: dict, payer: list[tuple[str, dict]], payee: lis
         report.findings.append({"records": [b_id], "code": "fee_unstated"})
         out["payment_state"] = "unjoined"
         return out
-    if receive_fee["assetCode"] != b["received"]["assetCode"] or (
-            "routing_fee" in a and a["routing_fee"]["assetCode"] != a["amount"]["assetCode"]):
-        report.findings.append({"records": [b_id], "code": "fee_asset_differs"})
+    # fee_asset_differs names the leg or legs whose fee is in another asset:
+    # the payer leg for routing_fee, the payee leg for receive_fee, payer first.
+    differ = [rid for rid, off in (
+        (_cid(a_rid), "routing_fee" in a and a["routing_fee"]["assetCode"] != a["amount"]["assetCode"]),
+        (b_id, receive_fee["assetCode"] != b["received"]["assetCode"])) if off]
+    if differ:
+        report.findings.append({"records": differ, "code": "fee_asset_differs"})
         out["payment_state"] = "unjoined"
         return out
     differs: list[str] = []

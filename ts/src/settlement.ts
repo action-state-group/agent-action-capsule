@@ -1057,7 +1057,7 @@ async function pair(
       .map((q) => [p, q] as const),
   );
   const conflated = pairs.length === 0;
-  const [[, a], [bRid, b]] = pairs[0] ?? [payer[0]!, payee[0]!];
+  const [[aRid, a], [bRid, b]] = pairs[0] ?? [payer[0]!, payee[0]!];
   const bId = cidOf(bRid);
   const aRef = a.payment_ref as Json,
     bRef = b.payment_ref as Json;
@@ -1085,12 +1085,17 @@ async function pair(
     context.findings.push({ records: [bId], code: "fee_unstated" });
     return { paymentState: "unjoined" };
   }
+  // fee_asset_differs names the leg or legs whose fee is in another asset:
+  // the payer leg for routing_fee, the payee leg for receive_fee, payer first.
+  const differ: (string | null)[] = [];
   if (
-    receiveFee.assetCode !== received.assetCode ||
-    (has(a, "routing_fee") &&
-      (a.routing_fee as Amount).assetCode !== (a.amount as Amount).assetCode)
-  ) {
-    context.findings.push({ records: [bId], code: "fee_asset_differs" });
+    has(a, "routing_fee") &&
+    (a.routing_fee as Amount).assetCode !== (a.amount as Amount).assetCode
+  )
+    differ.push(cidOf(aRid));
+  if (receiveFee.assetCode !== received.assetCode) differ.push(bId);
+  if (differ.length > 0) {
+    context.findings.push({ records: differ, code: "fee_asset_differs" });
     return { paymentState: "unjoined" };
   }
   const differs: ("amount" | "status" | "payment_ref")[] = [];

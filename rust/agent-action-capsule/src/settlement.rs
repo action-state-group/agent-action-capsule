@@ -1340,10 +1340,19 @@ fn pair(
     };
     let amount = Amount::read(a.s.get("amount")).expect("validated payer_observed leg");
     let routing_fee = Amount::read(a.s.get("routing_fee"));
-    if receive_fee.code != received.code || routing_fee.is_some_and(|fee| fee.code != amount.code) {
+    // fee_asset_differs names the leg or legs whose fee is in another asset:
+    // the payer leg for routing_fee, the payee leg for receive_fee, payer first.
+    let mut differ = Vec::new();
+    if routing_fee.is_some_and(|fee| fee.code != amount.code) {
+        differ.push(Some(a.cid_text()));
+    }
+    if receive_fee.code != received.code {
+        differ.push(b_id);
+    }
+    if !differ.is_empty() {
         report
             .findings
-            .push(Failure::new(vec![b_id], "fee_asset_differs"));
+            .push(Failure::new(differ, "fee_asset_differs"));
         result.payment_state = Some("unjoined".to_string());
         return;
     }
