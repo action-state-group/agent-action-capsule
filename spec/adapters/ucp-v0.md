@@ -298,6 +298,28 @@ signature or meaning ([IP] §5.1, P-11). Possession is shown by [SR]'s `wrapped_
 check and the digest itself. That `NOT_PRESENT` is mapped as in §3(e). It never counts against a
 requirement that does not rest on the object's signature.
 
+**A signed response is not the order's signature.** A `GET` of an order, or any checkout
+response, may carry an RFC 9421 response signature over named components (for example
+`@status`, `content-digest` and `content-type`; Checkout Capability - REST Binding, §Response
+Signing). That signature is message-level provenance: the holder of the business's HTTP signing
+key sent these response bytes. It is not the issuer's signature over the order or checkout
+object. It covers one HTTP message, and its signer is the business's HTTP key, which is not the
+same as a signature that travels with the object. So the object's `native_check` stays
+`NOT_PRESENT` whether or not a response signature verified.
+
+When the holder kept the full signed response (the covered components, `Signature-Input`,
+`Signature` and the raw body), the adapter reports the response signature as a property of its
+own, beside the object's checks and outside their conjunction, as `ucp.business_trust` is
+(§3(e)):
+
+| Property | `PASS` when | Other statuses | `method` |
+|---|---|---|---|
+| `ucp.response_signature` | `Content-Digest` equals the SHA-256 of the raw body, and the signature verifies over the rebuilt signature base under a key from the business profile's `keys[]` | `FAIL` when either check fails; `NOT_PRESENT` when the response carried no signature or the covered components were not kept; `NOT_CHECKED` when no key set was retained and the verifier is offline | `RFC 9421 <alg> over <covered components>` |
+
+Its `detail` is `{"check": "ucp.response_signature", "object": <wrapped type>}`. A `PASS` supports
+a requirement about where the bytes came from. It never makes the object's `native_check` `PASS`,
+and a requirement that rests on an issuer signature over the order is not met by it.
+
 ### What UCP would need to add for a native check of the order
 
 1. **An object-level business signature on the order.** For example, the
