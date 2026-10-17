@@ -2,7 +2,7 @@
 title: "Bilateral Attestation of Cross-Organization Agent Actions"
 abbrev: "Bilateral Agent Attestation"
 docname: draft-mih-agent-bilateral-attestation-03
-date: 2026-10-13
+date: 2026-10-17
 category: info
 submissiontype: IETF
 ipr: trust200902
