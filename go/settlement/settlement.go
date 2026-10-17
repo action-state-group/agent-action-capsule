@@ -979,8 +979,17 @@ func pair(termsCID string, terms map[string]interface{}, payer, payee []leg, rep
 		return
 	}
 	routingFee, hasRouting := a.s["routing_fee"].(map[string]interface{})
-	if receiveFee["assetCode"] != received["assetCode"] || (hasRouting && routingFee["assetCode"] != object(a.s["amount"])["assetCode"]) {
-		report.Findings = append(report.Findings, Entry{Records: []*string{b.cid}, Code: "fee_asset_differs"})
+	// fee_asset_differs names the leg or legs whose fee is in another asset:
+	// the payer leg for routing_fee, the payee leg for receive_fee, payer first.
+	var differ []*string
+	if hasRouting && routingFee["assetCode"] != object(a.s["amount"])["assetCode"] {
+		differ = append(differ, a.cid)
+	}
+	if receiveFee["assetCode"] != received["assetCode"] {
+		differ = append(differ, b.cid)
+	}
+	if len(differ) > 0 {
+		report.Findings = append(report.Findings, Entry{Records: differ, Code: "fee_asset_differs"})
 		out.PaymentState = state("unjoined")
 		return
 	}

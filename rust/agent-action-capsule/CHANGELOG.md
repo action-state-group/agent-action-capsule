@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `settlement`: a `fee_asset_differs` finding names the leg or legs whose
+  fee is in another asset (the payer leg for `routing_fee`, the payee leg
+  for `receive_fee`, payer first), not always the payee leg
+  (capsule-cli#233, #281).
+
 ## 0.2.1
 
 - `settlement`: the `wrapped_resigned` check reads an SD-JWT as the

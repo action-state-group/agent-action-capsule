@@ -636,10 +636,10 @@ def cases() -> list[dict]:
     msat_995 = {"value": "995", "assetCode": "BTC", "assetScale": 11}
     msat_5 = {"value": "5", "assetCode": "BTC", "assetScale": 11}
 
-    def ln_settlement(n: int, receive_fee: Any) -> list[dict]:
+    def ln_settlement(n: int, receive_fee: Any, routing_fee: Any = ZERO) -> list[dict]:
         ref = {"type": "ln.payment_hash", "value": label_hex(f"lightning payment hash {n}")}
         lterms = terms_leg(f"ln-terms-{n}", "payee", PAYEE, msat_1000, [], payment_ref=ref)
-        lpayer = observed_leg(f"ln-payer-observed-{n}", "payer", PAYER, lterms, ref, msat_1000, [])
+        lpayer = observed_leg(f"ln-payer-observed-{n}", "payer", PAYER, lterms, ref, msat_1000, [], fee=routing_fee)
         lpayee = observed_leg(f"ln-payee-observed-{n}", "payee", PAYEE, lterms, ref, msat_995, [],
                               fee=receive_fee, minute=2, references=[cite(lpayer)])
         return [lterms, lpayer, lpayee]
@@ -670,7 +670,33 @@ def cases() -> list[dict]:
         expect(conforming=True, payment_state="unjoined", delivery_state="none", terms="ln-terms-1",
                findings=[{"records": ["ln-payee-observed-1"], "code": "fee_unstated"}])))
 
-    # 18-19. Non-trivial decimals at mixed scales, compared exactly at the largest scale.
+    # 18-20. A fee in another asset than its amount: the pair is unjoined, and fee_asset_differs names the leg
+    # or legs whose fee differs (payer first), never a leg whose fee is in its amount's asset.
+    usd_5 = {"value": "5", "assetCode": "USD", "assetScale": 2}
+    out.append(case(
+        "neg-ln-receive-fee-asset-differs", [S_FEES, S_PAYMENT, S_FAILURES],
+        "The payee reports 995 msat received with a receive_fee of 0.05 USD. A fee in another asset cannot be "
+        "combined with its amount: the pair is unjoined, and fee_asset_differs names the payee leg.",
+        ln_settlement(1, usd_5), [],
+        expect(conforming=True, payment_state="unjoined", delivery_state="none", terms="ln-terms-1",
+               findings=[{"records": ["ln-payee-observed-1"], "code": "fee_asset_differs"}])))
+    out.append(case(
+        "neg-ln-routing-fee-asset-differs", [S_FEES, S_PAYMENT, S_FAILURES],
+        "The payer reports 1000 msat sent with a routing_fee of 0.05 USD; the payee's 995 msat plus 5 msat fee "
+        "is in its amount's asset. The pair is unjoined, and fee_asset_differs names the payer leg only.",
+        ln_settlement(1, msat_5, routing_fee=usd_5), [],
+        expect(conforming=True, payment_state="unjoined", delivery_state="none", terms="ln-terms-1",
+               findings=[{"records": ["ln-payer-observed-1"], "code": "fee_asset_differs"}])))
+    out.append(case(
+        "neg-ln-both-fee-assets-differ", [S_FEES, S_PAYMENT, S_FAILURES],
+        "Both fees are in USD while both amounts are in BTC. The pair is unjoined, and one fee_asset_differs "
+        "finding names both legs, the payer leg first.",
+        ln_settlement(1, usd_5, routing_fee=usd_5), [],
+        expect(conforming=True, payment_state="unjoined", delivery_state="none", terms="ln-terms-1",
+               findings=[{"records": ["ln-payer-observed-1", "ln-payee-observed-1"],
+                          "code": "fee_asset_differs"}])))
+
+    # 21-22. Non-trivial decimals at mixed scales, compared exactly at the largest scale.
     def uuid4_like(label: str) -> str:
         h = list(label_hex(label, 16))
         h[12] = "4"
