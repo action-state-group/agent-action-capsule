@@ -1,7 +1,8 @@
 //! The draft-mih-agent-evidence-request-00 conformance vectors, read in place
 //! from this repository's `vectors/evidence-request/`: every case of every
-//! corpus except `carries.json`, which no test here reads yet. The files are
-//! checked against that directory's `SHA256SUMS` before any case is read.
+//! -00 corpus. The -01 corpora (`carries.json`, `categories.json`,
+//! `carriage.json`) no test here reads yet. The files are checked against
+//! that directory's `SHA256SUMS` before any case is read.
 
 use ed25519_dalek::SigningKey;
 use evidence_request::digest::{identifies_request, request_digest};

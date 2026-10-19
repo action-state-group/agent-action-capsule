@@ -14,7 +14,7 @@ appears in -01, and name -01; every other corpus names -00, and every -00 case
 also holds under -01. Section numbers below are those of the revision the
 corpus names.
 
-**Derived from the -00 text, not from any implementation.** Every expected
+**Derived from the draft text, not from any implementation.** Every expected
 result is written by hand in the generator from the section it cites. The
 generator only encodes inputs, hashes them and signs the refusal cases; it runs
 no responder or verifier. Every case is marked `"provenance": "spec-derived"`.
@@ -180,20 +180,20 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 |---|---|---|---|
 | `cat-two-names` | 3.9 | well formed |  |
 | `cat-one-name` | 3.9 | well formed |  |
-| `cat-names-any-order` | 3.9 | well formed |  |
-| `neg-cat-not-a-map` | 3.9 | refuse `request_malformed` |  |
-| `neg-cat-missing-set` | 3.9 | refuse `request_malformed` |  |
-| `neg-cat-missing-names` | 3.9 | refuse `request_malformed` |  |
-| `neg-cat-names-empty` | 3.9 | refuse `request_malformed` |  |
-| `neg-cat-names-duplicate` | 3.9 | refuse `request_malformed` |  |
-| `neg-cat-names-not-array` | 3.9 | refuse `request_malformed` |  |
-| `neg-cat-set-not-text` | 3.9 | refuse `request_malformed` |  |
-| `neg-cat-name-not-text` | 3.9 | refuse `request_malformed` |  |
+| `cat-names-any-order` | 3.9 | well formed | B2 |
+| `neg-cat-not-a-map` | 3.9 | refuse `request_malformed` | B1 |
+| `neg-cat-missing-set` | 3.9 | refuse `request_malformed` | B1 |
+| `neg-cat-missing-names` | 3.9 | refuse `request_malformed` | B1 |
+| `neg-cat-names-empty` | 3.9 | refuse `request_malformed` | B1 |
+| `neg-cat-names-duplicate` | 3.9 | refuse `request_malformed` | B1 |
+| `neg-cat-names-not-array` | 3.9 | refuse `request_malformed` | B1 |
+| `neg-cat-set-not-text` | 3.9 | refuse `request_malformed` | B1 |
+| `neg-cat-name-not-text` | 3.9 | refuse `request_malformed` | B1 |
 | `cat-inv-same-categories` | 5, 3.9 | holds |  |
 | `cat-inv-different-categories-not-comparable` | 5, 3.9 | not_comparable |  |
 | `neg-cat-inv-same-categories-divergent` | 5, 3.9 | violated |  |
 
-### `carriage.json` (15 cases)
+### `carriage.json` (21 cases)
 
 | Case | § | Expect | Ambiguity |
 |---|---|---|---|
@@ -208,9 +208,15 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `neg-media-parameter` | 10.1 | not accepted |  |
 | `neg-media-case` | 10.1 | not accepted |  |
 | `classify-a2a-completed-with-reply` | 10.2 | reply |  |
+| `neg-classify-a2a-reply-two-parts` | 10.2 | no_reply |  |
+| `neg-classify-a2a-reply-other-media-type` | 10.2, 10.1 | no_reply |  |
+| `neg-classify-a2a-reply-text-part` | 10.2 | no_reply |  |
 | `neg-classify-a2a-rejected-no-reply` | 10.2, 10.1 | no_reply |  |
 | `classify-a2a-working-no-reply` | 10.2, 4.3 | pending |  |
+| `classify-a2a-unspecified-no-reply` | 10.2, 4.3 | pending |  |
 | `classify-mcp-error-flag-with-reply` | 10.3, 10.1 | reply |  |
+| `neg-classify-mcp-reply-other-media-type` | 10.3 | no_reply |  |
+| `neg-classify-mcp-reply-not-base64url` | 10.3 | no_reply |  |
 | `neg-classify-mcp-error-text-no-reply` | 10.3, 10.1 | no_reply |  |
 
 ### `digest.json` (7 cases)
@@ -310,6 +316,14 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `ret-commitment-subject-full_history` | 9, 3.1 | malformed | A1, A11 |
 | `ret-commitment-subject-checkpoints` | 9, 3.1 | malformed | A1, A11 |
 | `ret-commitment-missing-until` | 9 | malformed | A1 |
+
+## Readings in the -01 corpora
+
+`categories.json` carries these in its `notes` member.
+
+- **B1** §3.9: the request cases apply to a responder that implements categories. A responder that does not implement it ignores the field, malformed or not, and answers as if it were absent.
+- **B2** §3.9 leaves open whether the order of names carries meaning. No case compares two requests whose names differ only in order.
+- **B3** §3.9 does not say whether a member other than set and names is malformed. No case has one.
 
 ## Ambiguities in -00 (for -01)
 

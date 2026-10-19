@@ -1221,13 +1221,14 @@ Tags: `go/v0.11.0`, `python/v0.11.0`, `ts/v0.4.0`, `crates/agent-action-capsule-
   and `spec/Makefile` `EVREQ` builds -01. New in -01 besides §3.1.1 below: the artifact response
   envelope carries the request digest, an issuance time and a signature over both, the artifact
   digest and the resolved anchor (§4.1); the OPTIONAL `categories` request field, a category set
-  identifier and category names, an input of the artifact when honored, with `coverage`
-  unchanged (§3.9, §5); carriage rules and A2A and MCP bindings (§10.1-§10.3). Vectors: new
-  `vectors/evidence-request/categories.json` (14 cases) and `carriage.json` (15 cases), both
+  identifier and category names, OPTIONAL to implement, an input of the artifact when honored
+  and honored alike for every requester, with `coverage` unchanged (§3.9, §5); carriage rules
+  and A2A and MCP bindings (§10.1-§10.3); RFC 4648 normative. Vectors: new
+  `vectors/evidence-request/categories.json` (14 cases) and `carriage.json` (21 cases), both
   naming -01; `carries.json` now names -01, its cases unchanged. The -00 corpora are unchanged.
   `python/tests/test_evidence_request_vectors.py` checks each corpus's cited sections against the
   revision it names.
-- Evidence Request (`spec/draft-mih-agent-evidence-request-00.md`, -01 text): new §3.1.1 "What
+- Evidence Request (source then named `-00.md`, now `spec/draft-mih-agent-evidence-request-01.md`): new §3.1.1 "What
   a Record Carries" defines which record members carry a `correlation` identifier and what makes
   a record cite an `exchange` half. The record's format fixes it. For Evidence Layer records that
   is the header's `subject_ref` and any field a profile adds as an equivalent correlation field
