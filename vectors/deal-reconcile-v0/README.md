@@ -16,19 +16,25 @@ cover:
 | Case | Expected |
 |---|---|
 | `pair-matched` | both requirements `MATCHED`; tallies `matched` 1; `SATISFIED`, `met`; deal `reconciled` |
+| `amount-conflicting` | amount `CONFLICTING`, `SATISFIED`, `not_met`; currency `MATCHED` |
 | `amount-opening-fails` | amount `UNRESOLVED` (not `MATCHED`, not `CONFLICTING`), `UNKNOWN`, `not_evaluable`; currency `MATCHED`; deal `not_reconciled` |
+| `amount-opening-missing` | amount `INSUFFICIENT`, `GAP`; currency `MATCHED` |
 | `currency-texts-empty` | currency `INSUFFICIENT` (two empty texts are not `MATCHED`), `GAP`, `not_evaluable`; amount `MATCHED`; deal `not_reconciled` |
+| `currency-one-text-empty` | currency `INSUFFICIENT`; amount `MATCHED` |
 | `a-only-peer-complete` | side B holds no half, its `source_authoritative` set `COMPLETE`: both `A_ONLY`; `SATISFIED`, `not_met` |
+| `b-only-side-a-complete` | side A holds no half, its set `COMPLETE`: both `B_ONLY` |
 | `a-only-peer-commitment-not-checked` | side B's `stream_interval` set `UNDECIDED` (commitment `NOT_CHECKED`): both `UNRESOLVED`; `UNKNOWN`, `not_evaluable` |
 | `a-only-peer-not-declared` | side B holds no half, no coverage given: both `INSUFFICIENT`; `GAP`, `not_evaluable` |
 | `a-only-peer-holder-selected` | side B's coverage `holder_selected`: both `INSUFFICIENT` |
 | `a-only-peer-coverage-fails` | side B's coverage fails `coverage_declaration_population`: both `INSUFFICIENT` |
+| `a-only-peer-property-not-reported` | side B's report leaves out `coverage_declaration_source`: both `INSUFFICIENT` |
+| `a-only-peer-other-period` | side B's coverage is given for another period: both `INSUFFICIENT` |
 
 Every case carries the six tallies per requirement and cites the sections its expected values
 come from. `vectors.json` also carries the contract document (`contract.document`,
 `contract.document_jcs`), its `contract_ref`, its digest, the SHA-256 of the Evidence Contract v0
 schema it validates against, and the example half mapping (`half_mapping_example`). The half
-layout and the profile name `example-half/0` are for these vectors only. Side B's coverage
+layout and the profile name `example-half/0` are for these vectors only. Coverage
 properties are given as a verifier reports them under `spec/interop-profile-v0.md` §6.7.3; the
 coverage declaration vectors check how they are computed.
 

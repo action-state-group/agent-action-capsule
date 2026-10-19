@@ -135,12 +135,15 @@ JSON object with exactly two members:
 - `members`: an object with exactly the six members of §4.1, each a JSON Pointer (RFC 6901) into
   the half.
 
-An abstract member's value is the value its pointer resolves to in the half. A pointer that
-resolves to nothing leaves the member absent. A verifier reads each half through the mapping of
-the profile that half is held under; two books may use different profiles and so different
-mappings. When `deal_id`, `book_id` or `recorded_at` is absent or not of its §4.1 form, the half is
-malformed and a verifier MUST fail the claim. When `commit_alg` or a commitment is absent or not of
-its form, the half is read as carrying none (§6 rule 3).
+An abstract member's value is the value its pointer resolves to in the half, JSON `null`
+included. A pointer that resolves to nothing leaves the member absent.
+
+A reconcile is given each half together with the book it comes from, and, for each book, the half
+mapping of the profile that book's halves are held under. Two books may use different profiles and
+so different mappings. A verifier reads each half through its book's mapping. The half is
+malformed when `deal_id`, `book_id` or `recorded_at` is absent or not of its §4.1 form, or when
+`book_id` is not the book the half comes from; a verifier MUST fail the claim. A `commit_alg` or
+commitment that is absent or not of its §4.1 form is read as absent (§6 rule 3).
 
 Example: a profile whose half is
 `{"book": …, "deal_ref": …, "recorded_at": …, "terms": {"alg": …, "amount": …, "currency": …}}`
@@ -217,8 +220,13 @@ period, and by the verifier's own IP §6.7.2 report of that declaration's covera
 | Status | When |
 |---|---|
 | `COMPLETE` | the kind is `stream_interval` with `rule` `all_records`, or `source_authoritative`, and every coverage property that applies to the kind is `PASS` |
-| `UNDECIDED` | the kind is one of those two, no property is `FAIL` or `NOT_PRESENT`, and one is `NOT_CHECKED` or `INCONCLUSIVE` |
-| `NOT_SHOWN` | no declaration is given; the kind is `holder_selected`; a `stream_interval` declaration's `rule` is not `all_records`; or a property is `FAIL` or `NOT_PRESENT` |
+| `UNDECIDED` | the kind is `stream_interval` with `rule` `all_records`, or `source_authoritative`; no property that applies is `FAIL` or `NOT_PRESENT`; and one is `NOT_CHECKED` or `INCONCLUSIVE` |
+| `NOT_SHOWN` | every other case: no declaration is given, or it is given for another period; the kind is `holder_selected`; a `stream_interval` declaration's `rule` is not `all_records`; or a property that applies is `FAIL` or `NOT_PRESENT` |
+
+The properties that apply are those IP §6.7.2 lists for the kind: `coverage_declaration_form`,
+`_anchor`, `_population` and `_commitment` for `stream_interval`, and `coverage_declaration_form`,
+`_population` and `_source` for `source_authoritative`. A property that applies and is not reported
+counts as `NOT_PRESENT`.
 
 This is IP §6.7.3 item 4 carried to the pairing. RES §4.1 derives a reconcile claim's sufficiency
 from the `insufficient` and `unresolved` tallies only, so a set that IP would leave a
@@ -228,7 +236,8 @@ is always `NOT_CHECKED` (IP §6.7.2), so a `stream_interval` set is at best `UND
 `A_ONLY` or `B_ONLY` comes only from a `source_authoritative` set (DR-5).
 
 A verifier shows, beside every `A_ONLY` or `B_ONLY` deal, the declared kind and what its
-completeness is relative to (IP §6.7.1, last column).
+completeness is relative to (IP §6.7.1, last column). The vectors (§8) carry each side's status and
+declared kind.
 
 The declaration travels as IP §6.7 says, in the definition of the set it declares. It is given to
 the reconcile beside the halves and the field openings, keyed by `book_id`, with the period it is
@@ -287,22 +296,29 @@ with the deal. It is not a claim and it changes no tally.
 ## 8. Vectors
 
 `vectors/deal-reconcile-v0/` holds the contract document (as `contract.document` and
-`contract.document_jcs`), its `contract_ref` and digest, the example half mapping of §4.2, and eight
-cases over one deal. Each case carries its halves in the example layout, the half mapping of each
-book, the field openings, side B's coverage where one is given, the expected opening statuses,
-each side's §6.1 status, the per-pairing states, the six tallies per
-requirement, the deal state and the expected Evidence Result:
+`contract.document_jcs`), its `contract_ref` and digest, the example half mapping of §4.2, and
+fourteen cases over one deal. Each case carries its halves in the example layout, each with the
+book it comes from; the half mapping of each book; the field openings; the coverage given for a
+book, where one is; and the expected opening statuses, each side's §6.1 status and declared kind,
+the per-pairing states, the six tallies per requirement, the deal state and the expected Evidence
+Result:
 
 | Case | What it shows | Sections |
 |---|---|---|
 | `pair-matched` | both halves commit to the same amount and currency, every field opening opens: both requirements `MATCHED`, tallies `matched` 1, sufficiency `SATISFIED`, verdict `met`, deal `reconciled` | §4.2, §5, §6 rule 6, §7 |
+| `amount-conflicting` | the amount openings open to different texts: amount `CONFLICTING`, sufficiency `SATISFIED`, verdict `not_met`; currency `MATCHED` | §5, §6 rule 6, §7 |
 | `amount-opening-fails` | side B's amount opening carries other text: amount `UNRESOLVED`, not `MATCHED` and not `CONFLICTING`; sufficiency `UNKNOWN`, verdict `not_evaluable`; currency still `MATCHED`; deal `not_reconciled` | §5, §6 rules 4 and 6, §7 |
-| `currency-texts-empty` | both currency openings open to empty text: currency `INSUFFICIENT`, not `MATCHED`; sufficiency `GAP`, verdict `not_evaluable`; amount `MATCHED`; deal `not_reconciled` | §6 rules 5 and 6, §7 |
+| `amount-opening-missing` | no amount opening is carried for side B: amount `INSUFFICIENT`, sufficiency `GAP` | §5, §6 rules 3 and 6, §7 |
+| `currency-texts-empty` | both currency openings open to empty text: currency `INSUFFICIENT`, not `MATCHED`; sufficiency `GAP`, verdict `not_evaluable`; amount `MATCHED`; deal `not_reconciled` | §5, §6 rules 5 and 6, §7 |
+| `currency-one-text-empty` | side B's currency opening opens to empty text: currency `INSUFFICIENT` | §5, §6 rules 5 and 6, §7 |
 | `a-only-peer-complete` | side B holds no half; its `source_authoritative` coverage is `PASS` on every property, so its set is `COMPLETE`: both requirements `A_ONLY`, sufficiency `SATISFIED`, verdict `not_met` | §6 rule 2, §6.1, §7 |
+| `b-only-side-a-complete` | the same with the sides swapped: both requirements `B_ONLY` | §6 rule 2, §6.1, §7 |
 | `a-only-peer-commitment-not-checked` | side B holds no half; its `stream_interval` coverage is `PASS` but for `coverage_declaration_commitment` `NOT_CHECKED`, so its set is `UNDECIDED`: both requirements `UNRESOLVED`, sufficiency `UNKNOWN`, verdict `not_evaluable` | §6 rule 2, §6.1, §7 |
 | `a-only-peer-not-declared` | side B holds no half and no coverage is given: both requirements `INSUFFICIENT`, sufficiency `GAP`, verdict `not_evaluable` | §6 rule 2, §6.1, §7 |
 | `a-only-peer-holder-selected` | as above, with side B's coverage `holder_selected`: `INSUFFICIENT` | §6 rule 2, §6.1, §7 |
 | `a-only-peer-coverage-fails` | as above, with side B's `stream_interval` coverage failing `coverage_declaration_population`: `INSUFFICIENT` | §6 rule 2, §6.1, §7 |
+| `a-only-peer-property-not-reported` | as above, with side B's `source_authoritative` report leaving out `coverage_declaration_source`: `INSUFFICIENT` | §6 rule 2, §6.1, §7 |
+| `a-only-peer-other-period` | as above, with side B's complete coverage given for another period: `INSUFFICIENT` | §6 rule 2, §6.1, §7 |
 
 `python/scripts/generate_deal_reconcile_v0_vectors.py` regenerates them. The amount and currency
 texts are placeholders; the currency is the code reserved for testing. The coverage properties are
