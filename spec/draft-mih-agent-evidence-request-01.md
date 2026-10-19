@@ -412,7 +412,11 @@ the coverage anchor like any other.
 
 The `coverage` field carries **exactly one** of the following two members.
 A request carrying both, or neither, is malformed, and the responder MUST
-refuse it with reason `coverage_unsatisfiable`.
+refuse it with reason `coverage_unsatisfiable`. A responder first checks
+that each member present in `coverage` has a conforming value, and
+refuses a non-conforming value with reason `request_malformed`, whether
+or not the other member is present; only then does it apply the
+both-or-neither rule.
 
 **`expected_pin` (digest):** the requester already holds, obtained out of
 band, a specific coverage anchor — for example a published checkpoint — and
@@ -1021,7 +1025,9 @@ parameter or is implied by the resource, and caller invariance is
 trivially auditable because the resource is the same bytes for every
 client. Parameterized requests (ranges, correlations, exchanges,
 derivations, `min_freshness`) map onto POST with the request map as the
-body. A responder SHOULD publish a manifest — its evidence stream
+body. A GET returns the static resource, which is not an artifact
+response and carries no envelope; a requester that needs the binding of
+{{artifact}} items 4 to 6 sends the request, pinned or not, as a POST. A responder SHOULD publish a manifest — its evidence stream
 identifiers, the subject forms and derivations it supports, and where
 retention commitments ({{retention}}) can be fetched — so a requester can form a
 well-formed request without a prior round trip. A refusal is an HTTP
@@ -1491,7 +1497,11 @@ that the two can cite each other without either defining the other.
   records and Capsules.
 - {{artifact}}: the artifact response envelope now carries the request
   digest, an issuance time, and a signature covering both, the artifact
-  digest, and the resolved anchor.
+  digest, and the resolved anchor. {{transports}}: a GET of a static
+  resource is not an artifact response; the envelope binding needs a
+  POST.
+- {{coverage}}: a non-conforming member value is refused
+  `request_malformed` before the both-or-neither rule applies.
 - New {{categories}}: the OPTIONAL `categories` request field, a category
   set identifier and category names, OPTIONAL for a responder to
   implement. {{invariance}} adds it to the inputs of the artifact when
