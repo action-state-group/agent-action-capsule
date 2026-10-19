@@ -38,6 +38,45 @@
   `mutant-multi-stream-mixed-anchor` (fails `single_anchor`). The existing twelve cases are
   unchanged. Changed released files: `vectors/personal-history-basic-v0/vectors.json`,
   `manifest.json`, `README.md` and `SHA256SUMS`, and `vectors/SHA256SUMS`.
+- Coverage declaration (`spec/interop-profile-v0.md` §6.7, new open points P-58 to P-60). A set of
+  answers under one derivation, such as a History, declares exactly one coverage kind:
+  `holder_selected`, `stream_interval` (every record of the live set the holder opens at one
+  anchor, under a rule, in an interval) or `source_authoritative` (the units a named external
+  source lists, checked by its own method). A valid signature never implies completeness.
+  - New coverage properties (§6.7.2). A completeness-dependent requirement is never `SATISFIED`
+    unless every applicable property is `PASS` (§6.7.3).
+  - `coverage_declaration_commitment` is `NOT_CHECKED` in v0, so no completeness-dependent
+    requirement reaches `SATISFIED` from a `stream_interval` set yet.
+  - `issuer_independence` (§6.7.4): one key gives `FAIL`, "redundant, not corroborating". Two keys
+    with no evidence about their controllers give `NOT_CHECKED`, "not corroborating". No `PASS` in
+    this revision.
+- Personal-Agent History Profile v0: the Basic level's `completeness` `not_asserted` is the coverage
+  kind `holder_selected` (§2, §4.1, §6.3, §9, new PA-15). The `personal_history_basic/1` bytes and
+  its vectors are unchanged.
+- Evidence Result v0: OPTIONAL `aggregate.coverage_declaration` `{"kind"}`, PROPOSED (§7.2).
+  - The kind is never stronger than the evidence the claims rest on.
+  - **A strict validator using the previous `schemas/evidence-result-v0.json` rejects an aggregate
+    that carries the member**, because `Aggregate` is closed. Producers that omit it are unaffected,
+    and every existing fixture is byte-identical.
+  - New fixtures: `pos-example-org-coverage-declaration-result.json` and
+    `neg-coverage-declaration-unknown-kind.json`.
+- New corpus `vectors/coverage-declaration-v0/` (thirteen cases, built from the personal-history run):
+  - one positive per kind;
+  - `cherry-picked`, `stream-interval-record-missing`, `-anchor-mismatch` and `-unknown-rule`;
+  - `aggregate-stronger-than-evidence`;
+  - three source negatives;
+  - `same-controller-halves-same-key` and `same-controller-halves-unbound-keys`.
+
+  `python/scripts/generate_coverage_declaration_v0_vectors.py` regenerates it, and
+  `python/tests/test_coverage_declaration_v0_vectors.py` checks it. Its example
+  definition `coverage_declaration_example/0` and its population object are fixed for the vectors
+  only and are not registered (IP §6.7.6).
+- Changed released files: `spec/interop-profile-v0.md`,
+  `spec/personal-agent-history-profile-v0.md`, `spec/evidence-result-v0.md`,
+  `schemas/evidence-result-v0.json`, `schemas/_result_types.py`,
+  `schemas/generate_result_examples.py`, `schemas/check_evidence_result_examples.py`,
+  `vectors/evidence-result/README.md` and `SHA256SUMS`, `vectors/README.md`,
+  `vectors/manifest.json`, `vectors/SHA256SUMS` and `python/scripts/generate_all_vectors.py`.
 
 ## 0.10.0 — 2026-10-17
 

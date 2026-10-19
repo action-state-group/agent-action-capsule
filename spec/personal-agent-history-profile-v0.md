@@ -79,7 +79,12 @@ holder's own statement and is never checked by this profile.
   does not register (PA-13, PA-14). Both are among the checks a verifier shows as not run
   (§6.3 item 4).
 - One anchor over several streams says nothing about which of their records a History includes.
-  That is a coverage declaration, which this level does not make (`completeness` `not_asserted`).
+  That is the History's coverage declaration [IP §6.7]. A History at the Basic level declares
+  `holder_selected`: its definition's `completeness` `not_asserted` (§4.1) is that declaration, and
+  the definition carries no `coverage_declaration` member [PA-15]. A History of the other two kinds,
+  `stream_interval` (every record of the opened live set at the anchor) and `source_authoritative`
+  (every deal a named external source lists), needs a definition that carries one. That is a later
+  level (PA-9), not `/1`.
 - The holder key answering is not evidence that the key's holder made the deals. The records'
   own signatures sit outside what the Basic level reveals (§9).
 
@@ -123,7 +128,7 @@ its derivation [PA-3]:
 | `subject_form` | `"correlation"`: each request names one deal [ER §3.1] |
 | `selection` | the deal references the holder picked: a non-empty array of non-empty text strings, sorted by code point, without duplicates |
 | `reads` | exactly `["committed_at", "epistemic_type", "event_time_claim", "record_type"]`: the declared field set [ER §8] |
-| `completeness` | `"not_asserted"` |
+| `completeness` | `"not_asserted"`: the coverage kind `holder_selected` [IP §6.7.1; PA-15] |
 | `recipient` | the recipient's principal reference [ER §3.7; IP §6.5 item 1] |
 
 No other member is allowed in `/1`. Any change to a member, to `reads` or to the record kinds of
@@ -240,7 +245,9 @@ octets. An envelope answering at the Basic level is accepted when:
   turns this into `PASS` without changing this profile;
 - `verification_binding` is not required, because `verification` is absent [IP §7.2].
 
-The IP §8 mapping applies unchanged. With `anchor_inclusion` `NOT_CHECKED`, every requirement a
+The IP §8 mapping applies unchanged, and IP §6.7.3 item 4 after it: a requirement whose condition
+needs the History to be complete is never `SATISFIED` from a Basic level History, which declares
+`holder_selected` (§2). With `anchor_inclusion` `NOT_CHECKED`, every requirement a
 Basic level answer is the only evidence for maps to row 4: status `UNKNOWN`, sufficiency
 `UNKNOWN`, verdict `not_evaluable` [IP §8.1; RES]. The Basic level never yields `met` or `not_met`.
 That is correct for this level: it makes no outcome claim for a requirement to meet.
@@ -267,7 +274,8 @@ A History property never changes an envelope property or an IP §8 status.
 
 A verifier showing an accepted History at the Basic level shows, in this order:
 
-1. that outcomes are not established (§5), before any count;
+1. that outcomes are not established (§5), and that the coverage kind is `holder_selected`, with
+   completeness not asserted [IP §6.7.3], before any count;
 2. the number of selected deals, and the count of each deal state of §5, each in its own unit;
 3. per deal, its records' committed and claimed times as two separate values, and their kinds;
 4. which checks ran and which did not, including `anchor_inclusion` `NOT_CHECKED`;
@@ -353,7 +361,9 @@ checked. Everything else in §6 is the same.
   key's holder made the deals, because a record's identifier does not cover the signature it was
   sealed with, and the Basic level does not reveal those signatures.
 - **Selection is not completeness.** A holder can leave out any deal. `completeness`
-  `not_asserted` says so, and a verifier shows it.
+  `not_asserted` says so, and a verifier shows it. Every envelope verifying under the holder key
+  does not change that: a valid signature never implies completeness [IP §6.7]. A requirement that
+  relies on completeness is never `SATISFIED` from a Basic level History [IP §6.7.3 item 4].
 - **Claimed times.** `event_time_claim` is the holder's agent's claim. `committed_at` is the time
   the holder's own stream assigned. Neither is a witnessed time; both are shown, separately.
 - **No ordering.** This profile defines no figure that orders or grades deals, holders or
@@ -377,3 +387,4 @@ checked. Everything else in §6 is the same.
 | PA-12 | The one-file History container (§8.2). |
 | PA-13 | Record-level inclusion for a derivation's artifact: needs an IP verification-material kind (IP P-13); until then `anchor_inclusion` is `NOT_CHECKED`. |
 | PA-14 | A History over several streams at one witnessed checkpoint tick (§2). Showing that the tick is witnessed and commits to each stream an artifact names needs verification material from the tick to the stream's checkpoint, which IP does not register (IP P-13); until then a verifier checks only that every envelope names the same anchor. |
+| PA-15 | The Basic level's coverage kind (§2, §4.1). `completeness` `not_asserted` is read as IP §6.7's `holder_selected`, so `/1` keeps its bytes. A level that declares `stream_interval` or `source_authoritative` carries `coverage_declaration` in its definition instead. The IP vectors use an example definition for both, which is not registered (IP §6.7.6). |

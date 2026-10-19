@@ -62,6 +62,11 @@ same-commit files in CI.
   IP responder at a pinned commit (`responder-run.json`, reproduced by `producer/main.go`), the
   nine mutants of the §6.4 table and a refusal to another requester;
   `python/scripts/generate_personal_history_basic_v0_vectors.py` regenerates them from the run.
+- `coverage-declaration-v0/`: the coverage declaration of `spec/interop-profile-v0.md` §6.7: one
+  positive per coverage kind, the cherry-picked and record-missing negatives, an aggregate
+  declaring more than its evidence, two source negatives, and two pairs of agreeing halves for
+  issuer independence. Built from the personal-history run;
+  `python/scripts/generate_coverage_declaration_v0_vectors.py` regenerates them.
 - `adapters/x402/`: the x402 adapter declaration `spec/adapters/x402-v0.md`: a positive and a
   native-check-fails case for an `exact`/`eip3009` payment, with the wrapped objects' octets, the
   relying party's policy and recorded lookup, and the expected `native_check` reports. Constructed,

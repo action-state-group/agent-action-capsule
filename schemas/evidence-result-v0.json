@@ -280,8 +280,21 @@
       "required": ["coverage", "buckets"],
       "properties": {
         "coverage": { "$ref": "#/$defs/Coverage" },
+        "coverage_declaration": { "$ref": "#/$defs/CoverageDeclaration" },
         "buckets": { "$ref": "#/$defs/Buckets" }
       }
+    },
+    "CoverageDeclaration": {
+      "description": "PROPOSED (spec section 7.2). OPTIONAL. The population the aggregate's evidence claims to be, one kind of interop profile section 6.7.1. Never stronger than the evidence (section 7.2); that rule needs the evidence sets and is not schema-enforced.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/CoverageKind" }
+      }
+    },
+    "CoverageKind": {
+      "enum": ["holder_selected", "stream_interval", "source_authoritative"]
     },
     "CoverageStatus": {
       "description": "PROPOSED (spec section 7.1). The per-requirement coverage status: the subset of EvidenceStatus a coverage computation over ledger records can produce. Coverage says whether evidence is there to evaluate; it is never a verdict.",

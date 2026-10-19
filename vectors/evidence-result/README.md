@@ -195,6 +195,17 @@ The cross-element check cannot catch a hand edit that moves counts from `correla
 identities. Spec section 7.1 says so, and a relying party that needs the count recomputes it from the
 records.
 
+## PROPOSED coverage kind — `aggregate.coverage_declaration` (spec section 7.2)
+
+| File | What it shows |
+|---|---|
+| `pos-example-org-coverage-declaration-result.json` | the claims positive with `aggregate.coverage_declaration` `{"kind": "holder_selected"}`. With the member removed it is byte-identical to the claims positive, which the checker confirms |
+| `neg-coverage-declaration-unknown-kind.json` | the same with `kind` `complete`, which is outside the three kinds. `CoverageKind` is a closed enum. Mutant: widening it to any string accepts the fixture |
+
+The never-stronger-than-the-evidence rule of spec section 7.2 needs the evidence sets the claims rest
+on, so no fixture here can show it. Its vector is `aggregate-stronger-than-evidence` in
+`vectors/coverage-declaration-v0/`.
+
 ## Reproducing the validation run
 
 ```

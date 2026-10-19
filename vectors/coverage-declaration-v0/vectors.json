@@ -1,0 +1,3385 @@
+{
+  "set": "aac-coverage-declaration-v0",
+  "status": "Conformance vectors for the coverage declaration of the informational Minimum Evidence Interoperability Profile v0 (evidence-interop/0, §6.7). Every key is a test key derived from a public seed; never use one for anything else.",
+  "profile": "evidence-interop/0",
+  "spec": "spec/interop-profile-v0.md",
+  "example_definition": "coverage_declaration_example/0",
+  "run": {
+    "path": "personal-history-basic-v0/responder-run.json",
+    "sha256": "f7d77d56d81ca187cb9a8118f8a15aae5407f5a96aca1c5525a5f5d2e827b848"
+  },
+  "test_keys": {
+    "note": "TEST-ONLY. Each private key is the 32-byte Ed25519 seed SHA-256(seed_label).",
+    "keys": {
+      "holder": {
+        "seed_label": "personal-agent-history-profile-v0 conformance vectors: holder key",
+        "public": "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+      },
+      "second-holder": {
+        "seed_label": "personal-agent-history-profile-v0 conformance vectors: second holder key",
+        "public": "020126b36be66edbb505b7c18f5164055d99e457f0cdf42b0430ea0c93c00a1b"
+      },
+      "source": {
+        "seed_label": "interop-profile-v0 coverage declaration vectors: population source key",
+        "public": "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618"
+      },
+      "other-source": {
+        "seed_label": "interop-profile-v0 coverage declaration vectors: key that is not the source",
+        "public": "8a0c01d12231aadd8ade9099e4ffa772e78bb59805ebafab461504cd5932cc1c"
+      },
+      "producer-a": {
+        "seed_label": "interop-profile-v0 coverage declaration vectors: first producer key",
+        "public": "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f"
+      },
+      "producer-b": {
+        "seed_label": "interop-profile-v0 coverage declaration vectors: second producer key",
+        "public": "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+      }
+    }
+  },
+  "contract": {
+    "document": {
+      "id": "C",
+      "version": "1",
+      "requirements": [
+        {
+          "id": "r-deal-steps",
+          "profile": "outcome",
+          "statement": "The recorded steps of each selected deal are served under a verified envelope.",
+          "evidence_requirements": {
+            "accepted_epistemic_types": [
+              "producer_claim"
+            ]
+          }
+        },
+        {
+          "id": "r-complete",
+          "profile": "outcome",
+          "statement": "The deals shown are every deal of the holder's in the period.",
+          "evidence_requirements": {
+            "coverage": "every deal in the period"
+          }
+        },
+        {
+          "id": "r-corroborated",
+          "profile": "outcome",
+          "statement": "The step is stated by two parties.",
+          "evidence_requirements": {
+            "independence": "two distinct issuers"
+          }
+        }
+      ]
+    },
+    "document_jcs": "{\"id\":\"C\",\"requirements\":[{\"evidence_requirements\":{\"accepted_epistemic_types\":[\"producer_claim\"]},\"id\":\"r-deal-steps\",\"profile\":\"outcome\",\"statement\":\"The recorded steps of each selected deal are served under a verified envelope.\"},{\"evidence_requirements\":{\"coverage\":\"every deal in the period\"},\"id\":\"r-complete\",\"profile\":\"outcome\",\"statement\":\"The deals shown are every deal of the holder's in the period.\"},{\"evidence_requirements\":{\"independence\":\"two distinct issuers\"},\"id\":\"r-corroborated\",\"profile\":\"outcome\",\"statement\":\"The step is stated by two parties.\"}],\"version\":\"1\"}",
+    "contract_ref": "C@1",
+    "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+    "schema": {
+      "name": "evidence-contract-v0.json",
+      "sha256": "6d10d5eb97e15421db0ab922b5f6d1f0a2e9f453fb64e52fb45306ba029ad480"
+    }
+  },
+  "tick": "08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c",
+  "coverage_properties": [
+    "coverage_declaration_form",
+    "coverage_declaration_anchor",
+    "coverage_declaration_population",
+    "coverage_declaration_commitment",
+    "coverage_declaration_source",
+    "coverage_declaration_aggregate"
+  ],
+  "count": 13,
+  "cases": [
+    {
+      "id": "holder-selected",
+      "title": "The Basic level History: three deals the holder chose, read as holder_selected",
+      "cites": [
+        "§6.7.1",
+        "§6.7.3",
+        "§6.7.5"
+      ],
+      "source": "responder",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "history": "personal_history_basic/1",
+        "definition": {
+          "completeness": "not_asserted",
+          "kind": "projection",
+          "name": "personal_history_basic/1",
+          "reads": [
+            "committed_at",
+            "epistemic_type",
+            "event_time_claim",
+            "record_type"
+          ],
+          "recipient": "recipient-1",
+          "selection": [
+            "50c896dcc67b046d2e960466df3d7ce4",
+            "6d443544e41e7d4878ff95318777cc05",
+            "a34e091973f2480c793ad9b9bc5aa118"
+          ],
+          "subject_form": "correlation"
+        },
+        "exchanges": [
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"68c06bd846ae2a0238b6e65b5f10cdf0325a6a9e58b11ed54e0c3da6d6b92192\",\"nonce\":\"recipient-1/history-1\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjY4YzA2YmQ4NDZhZTJhMDIzOGI2ZTY1YjVmMTBjZGYwMzI1YTZhOWU1OGIxMWVkNTRlMGMzZGE2ZDZiOTIxOTIiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjAyWiIsImRpZ2VzdCI6IjcwNGQ5YWFlNzJlZDRiMjZiMDVmMWE4ZDIwOGQyMDg4MzEzZmQ4Y2QwYTVkMDVkZDU1ZDY0OTExMWZiZTRkNWYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjU6MDJaIiwibGVhZl9pbmRleCI6MSwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDoxMFoiLCJkaWdlc3QiOiJhNzVmZjE2YzA0OTRmOTFmMTM0NzFhNDFjOGEwNjczYzE2MTlmMGNkMDNmYzkzMTg5Y2Y3YzUxNThjODY5ODFmIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjUwOjEwWiIsImxlYWZfaW5kZXgiOjgsInJlY29yZF90eXBlIjoic3RlcF9mYWlsZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiI1MGM4OTZkY2M2N2IwNDZkMmU5NjA0NjZkZjNkN2NlNCJ9fQ\",\"artifact_digest\":\"0c3f0235eba4c1aa01d43b628929bcd7af1f722f6a8ed0a6729c334ae45fb871\",\"derivation\":\"68c06bd846ae2a0238b6e65b5f10cdf0325a6a9e58b11ed54e0c3da6d6b92192\",\"issued_at\":\"2026-10-15T00:00:15Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"18c39773727e84510e0d0cba14e6f2031fec7911990b1fe58d4627f6706aea9b\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"abf944c0f03c9414c68894d8de38e1b52eebb932a06f5255e590c32edffc7a7f60f079270ed6e38d278939fee52b7222ff28db5abab671502677647ac92f9b0b\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"68c06bd846ae2a0238b6e65b5f10cdf0325a6a9e58b11ed54e0c3da6d6b92192\",\"nonce\":\"recipient-1/history-2\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjY4YzA2YmQ4NDZhZTJhMDIzOGI2ZTY1YjVmMTBjZGYwMzI1YTZhOWU1OGIxMWVkNTRlMGMzZGE2ZDZiOTIxOTIiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjA1WiIsImRpZ2VzdCI6ImY5Njk3YjNmMWI4ZTMyNDkwMzA3ZWE0NjUyMTgyMTA4MzQxNzM2NjIxNzViNmFhNTg3YzQyYmFmNGI4YzIzNTYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6NDA6MDVaIiwibGVhZl9pbmRleCI6NCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9XSwic3ViamVjdCI6eyJjb3JyZWxhdGlvbiI6IjZkNDQzNTQ0ZTQxZTdkNDg3OGZmOTUzMTg3NzdjYzA1In19\",\"artifact_digest\":\"4003756e5dba2dedfc9e26858fb37b4c02150be855c0028a80c367c554270e72\",\"derivation\":\"68c06bd846ae2a0238b6e65b5f10cdf0325a6a9e58b11ed54e0c3da6d6b92192\",\"issued_at\":\"2026-10-15T00:00:17Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"cf9d36f3cd238e842ec1a1b7647ad253689148b6e54a40536d54f68f85b1ac15\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"c1a60ec5e7b132c8d8dd98eeecb37cb765f0c4cf642991edd031f72eb51c1e3d6ac10a5bab54797c7daa17e66abb4ad2e004986399cdabb2e4ddac780a2c2101\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"68c06bd846ae2a0238b6e65b5f10cdf0325a6a9e58b11ed54e0c3da6d6b92192\",\"nonce\":\"recipient-1/history-3\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjY4YzA2YmQ4NDZhZTJhMDIzOGI2ZTY1YjVmMTBjZGYwMzI1YTZhOWU1OGIxMWVkNTRlMGMzZGE2ZDZiOTIxOTIiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjAxWiIsImRpZ2VzdCI6IjA1MzA3NWVmZDBmYWE2N2JiMmU0YTI2ZWIwMTc4NjIyYjViYjcxYzQ0MmU1YTkyZDdhZDVlOTI2YmJhZTdmMWEiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjA6MDFaIiwibGVhZl9pbmRleCI6MCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowNFoiLCJkaWdlc3QiOiIwNzVkY2FlZWJhZjgyNjBiNDk4ZmQxYjRmOTgwNGE3NDRmZGZhODAxMWZiZTMzNjYzZGE5ZTY5YzllOWY0NjRlIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjM1OjA0WiIsImxlYWZfaW5kZXgiOjMsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiJhMzRlMDkxOTczZjI0ODBjNzkzYWQ5YjliYzVhYTExOCJ9fQ\",\"artifact_digest\":\"fa87093a211adb0caf2695f0f3c310a45cdf42e46ae12823ac84be8b8b68d3bc\",\"derivation\":\"68c06bd846ae2a0238b6e65b5f10cdf0325a6a9e58b11ed54e0c3da6d6b92192\",\"issued_at\":\"2026-10-15T00:00:19Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"516f5ebc83c117ca120849d54e50ddbbea413f386ff5f008de814d4260732e7d\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"69a9979b30e5efcb08c101d0dc73c705e1724356ff5e1430e7818f0e341610d52e42e42769fc5a14f366d8041184b12f732e24908f9d4ada3a8aca11cae7ca0b\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            }
+          }
+        ],
+        "aggregate": {
+          "coverage_declaration": {
+            "kind": "holder_selected"
+          }
+        }
+      },
+      "expected": {
+        "exchanges": [
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "50c896dcc67b046d2e960466df3d7ce4"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "0c3f0235eba4c1aa01d43b628929bcd7af1f722f6a8ed0a6729c334ae45fb871"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "6d443544e41e7d4878ff95318777cc05"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "4003756e5dba2dedfc9e26858fb37b4c02150be855c0028a80c367c554270e72"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "a34e091973f2480c793ad9b9bc5aa118"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "fa87093a211adb0caf2695f0f3c310a45cdf42e46ae12823ac84be8b8b68d3bc"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "history_properties": {
+          "definition_form": "PASS",
+          "definition_binding": "PASS",
+          "selection_coverage": "PASS",
+          "single_signer": "PASS",
+          "single_anchor": "PASS",
+          "artifact_form": "PASS",
+          "record_kinds": "PASS"
+        },
+        "coverage": {
+          "declared_kind": "holder_selected",
+          "declared_by": "completeness",
+          "properties": {
+            "coverage_declaration_form": "PASS"
+          },
+          "relative_to": "not asserted",
+          "accepted_as_declared": true,
+          "satisfied_becomes": {
+            "r-complete": "INSUFFICIENT"
+          },
+          "aggregate": {
+            "declared": "holder_selected",
+            "derived": "holder_selected",
+            "coverage_declaration_aggregate": "PASS"
+          }
+        },
+        "accepted": true,
+        "fails": []
+      }
+    },
+    {
+      "id": "stream-interval",
+      "title": "Four deals in four streams at one tick, every record of the live set answered",
+      "cites": [
+        "§6.7.1",
+        "§6.7.2",
+        "§6.7.3",
+        "§6.7.5"
+      ],
+      "source": "derived: each of the holder's four deals moved to a stream of its own, asked under the example definition at the tick and re-signed by the holder key",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "history": "coverage_declaration_example/0",
+        "definition": {
+          "kind": "projection",
+          "name": "coverage_declaration_example/0",
+          "reads": [
+            "committed_at",
+            "epistemic_type",
+            "event_time_claim",
+            "record_type"
+          ],
+          "recipient": "recipient-1",
+          "selection": [
+            "3a2ca4012a9984fe9674c80534c6544d",
+            "50c896dcc67b046d2e960466df3d7ce4",
+            "6d443544e41e7d4878ff95318777cc05",
+            "a34e091973f2480c793ad9b9bc5aa118"
+          ],
+          "subject_form": "correlation",
+          "coverage_declaration": {
+            "kind": "stream_interval",
+            "rule": "all_records",
+            "interval": {
+              "from": null,
+              "to": "08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c"
+            },
+            "live_set": [
+              {
+                "stream": "deal/3a2ca4012a9984fe9674c80534c6544d",
+                "checkpoint": "3461a8e1c4dec1a98c8f73753002e6b69706118669ddf37e599413e011b41ee7",
+                "start": 0,
+                "count": 3
+              },
+              {
+                "stream": "deal/50c896dcc67b046d2e960466df3d7ce4",
+                "checkpoint": "6170d1ad7a80e6654ff9633ffe43bb271ac1166798c4a10c270e444a13014bbe",
+                "start": 0,
+                "count": 2
+              },
+              {
+                "stream": "deal/6d443544e41e7d4878ff95318777cc05",
+                "checkpoint": "7a9e22a5daa653b9ae57c3aa89bbdcbacc8d8fcf3f7e73a7f5db40b528e85c0a",
+                "start": 0,
+                "count": 1
+              },
+              {
+                "stream": "deal/a34e091973f2480c793ad9b9bc5aa118",
+                "checkpoint": "6f27117bde6db50d6f1800687c220d7bd02d21e7e342ab456da031dc0066ded2",
+                "start": 0,
+                "count": 2
+              }
+            ]
+          }
+        },
+        "exchanges": [
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"nonce\":\"recipient-1/stream-interval-1\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6Ijg1NTc0Nzg0ZDQyZDU0ZmZjY2UxMmUzNGI5NzAxZGVkOTY1OTQ5YjI2NWQ3YzIyZGRkNDMwMmY5ZGNhMWJjN2UiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzUwYzg5NmRjYzY3YjA0NmQyZTk2MDQ2NmRmM2Q3Y2U0IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowMloiLCJkaWdlc3QiOiI3MDRkOWFhZTcyZWQ0YjI2YjA1ZjFhOGQyMDhkMjA4ODMxM2ZkOGNkMGE1ZDA1ZGQ1NWQ2NDkxMTFmYmU0ZDVmIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjI1OjAyWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MTBaIiwiZGlnZXN0IjoiYTc1ZmYxNmMwNDk0ZjkxZjEzNDcxYTQxYzhhMDY3M2MxNjE5ZjBjZDAzZmM5MzE4OWNmN2M1MTU4Yzg2OTgxZiIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzo1MDoxMFoiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfZmFpbGVkIn1dLCJzdWJqZWN0Ijp7ImNvcnJlbGF0aW9uIjoiNTBjODk2ZGNjNjdiMDQ2ZDJlOTYwNDY2ZGYzZDdjZTQifX0\",\"artifact_digest\":\"fa13ef9cc3885208f3ca0879078da9e4e3fa228defe879be328308e13978d7bd\",\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"issued_at\":\"2026-10-15T00:00:15Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"41e75e23f1cf366abb63e5166e0ea5fd496e2b1bb6c76de9ee5f6ac4b3efbe14\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"ea19e3e9dd9c07ae104f7623ef0f929b08b0f8099e67611b03541123580600121d94dca14c982a4c993a274ed7476c3046468e6c91857645431d71fe27f67705\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"nonce\":\"recipient-1/stream-interval-2\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6Ijg1NTc0Nzg0ZDQyZDU0ZmZjY2UxMmUzNGI5NzAxZGVkOTY1OTQ5YjI2NWQ3YzIyZGRkNDMwMmY5ZGNhMWJjN2UiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzZkNDQzNTQ0ZTQxZTdkNDg3OGZmOTUzMTg3NzdjYzA1IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowNVoiLCJkaWdlc3QiOiJmOTY5N2IzZjFiOGUzMjQ5MDMwN2VhNDY1MjE4MjEwODM0MTczNjYyMTc1YjZhYTU4N2M0MmJhZjRiOGMyMzU2IiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjQwOjA1WiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiI2ZDQ0MzU0NGU0MWU3ZDQ4NzhmZjk1MzE4Nzc3Y2MwNSJ9fQ\",\"artifact_digest\":\"82432a3ff742c65eede5de9a2fd1c1094fb433fcd42219151e821823d690b3d7\",\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"issued_at\":\"2026-10-15T00:00:17Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"e4705778f2ae93faa1dd0caea64206d2c44ca9d94f84af1f1d77f9e0c8b1bed2\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"6642307d5c0f226242d82459f80a730bb35e92e5be8cb59d9596e6866b275efa441b6a3177bd3dccf088fc303758e681c6ae85c48062980a3a9819f089ba5006\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"nonce\":\"recipient-1/stream-interval-3\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6Ijg1NTc0Nzg0ZDQyZDU0ZmZjY2UxMmUzNGI5NzAxZGVkOTY1OTQ5YjI2NWQ3YzIyZGRkNDMwMmY5ZGNhMWJjN2UiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsL2EzNGUwOTE5NzNmMjQ4MGM3OTNhZDliOWJjNWFhMTE4IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowMVoiLCJkaWdlc3QiOiIwNTMwNzVlZmQwZmFhNjdiYjJlNGEyNmViMDE3ODYyMmI1YmI3MWM0NDJlNWE5MmQ3YWQ1ZTkyNmJiYWU3ZjFhIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjIwOjAxWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MDRaIiwiZGlnZXN0IjoiMDc1ZGNhZWViYWY4MjYwYjQ5OGZkMWI0Zjk4MDRhNzQ0ZmRmYTgwMTFmYmUzMzY2M2RhOWU2OWM5ZTlmNDY0ZSIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzozNTowNFoiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfY29tcGxldGVkIn1dLCJzdWJqZWN0Ijp7ImNvcnJlbGF0aW9uIjoiYTM0ZTA5MTk3M2YyNDgwYzc5M2FkOWI5YmM1YWExMTgifX0\",\"artifact_digest\":\"e36049da2f95e5dfeca922fe8f3b45c398b50515cc6a606041fba75c17d74e26\",\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"issued_at\":\"2026-10-15T00:00:19Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"b3c5b545c69702751af1eba886f71d736e9c2ab31b236d053ab071228effd1b9\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"342e2350e94e67616b9a32378f24c6eac7ed545ac8207937a5713461797c7a2e5d6ea16b9eb0815a0a0922118354540237b55b6e6663fa52244de2899495c00b\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"nonce\":\"recipient-1/stream-interval-4\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"3a2ca4012a9984fe9674c80534c6544d\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6Ijg1NTc0Nzg0ZDQyZDU0ZmZjY2UxMmUzNGI5NzAxZGVkOTY1OTQ5YjI2NWQ3YzIyZGRkNDMwMmY5ZGNhMWJjN2UiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzNhMmNhNDAxMmE5OTg0ZmU5Njc0YzgwNTM0YzY1NDRkIiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowM1oiLCJkaWdlc3QiOiI3MWU3YTk2MDhhNGJlOTNkMjI0NzRlMTJjOTZiM2NmYTI2NDg3NjQzM2RkZjI4N2YwZThkYTI4ZjdiZGZiZWRkIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjMwOjAzWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MDZaIiwiZGlnZXN0IjoiMmMyNmM3ZDE1ZjQyZjNmZDRmYmQ1M2NhZTNkMzg4NWYyYTEyOTFhYjFkMGY3MTQ3ZjZkNjUwZmFmNjIzOWM5MiIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzo0NTowNloiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfZmFpbGVkIn0seyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjExWiIsImRpZ2VzdCI6IjI3MzQwMjA2MTBhOGZjOWExMzJjOWIzN2M2ZTczMjIzMDk2MzI3NTUyOGE0NmNjYTYyMDQ5MTkwODRhMWM3M2QiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6NTU6MTFaIiwibGVhZl9pbmRleCI6MiwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9XSwic3ViamVjdCI6eyJjb3JyZWxhdGlvbiI6IjNhMmNhNDAxMmE5OTg0ZmU5Njc0YzgwNTM0YzY1NDRkIn19\",\"artifact_digest\":\"0aceab1949e8449d1182ce46cde3d17f084412f02d5bc8302648344e5e427138\",\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"94974c75f0948cc009ab147a851560c5c7120d05f95449fa07205b5fc25e64aa\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"b03919fd9118fcaad622834525060e67c3765550d16eb21b9349364e934ced7081c10376908499f6f9ad3d5a66e950b38b534f906376d752d0671dc321e67701\",\"subject\":{\"correlation\":\"3a2ca4012a9984fe9674c80534c6544d\"}}"
+            }
+          }
+        ],
+        "aggregate": {
+          "coverage_declaration": {
+            "kind": "stream_interval"
+          }
+        }
+      },
+      "expected": {
+        "exchanges": [
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "50c896dcc67b046d2e960466df3d7ce4"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "fa13ef9cc3885208f3ca0879078da9e4e3fa228defe879be328308e13978d7bd"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "6d443544e41e7d4878ff95318777cc05"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "82432a3ff742c65eede5de9a2fd1c1094fb433fcd42219151e821823d690b3d7"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "a34e091973f2480c793ad9b9bc5aa118"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "e36049da2f95e5dfeca922fe8f3b45c398b50515cc6a606041fba75c17d74e26"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "3a2ca4012a9984fe9674c80534c6544d"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "0aceab1949e8449d1182ce46cde3d17f084412f02d5bc8302648344e5e427138"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "history_properties": {
+          "definition_form": "PASS",
+          "definition_binding": "PASS",
+          "selection_coverage": "PASS",
+          "single_signer": "PASS",
+          "single_anchor": "PASS",
+          "artifact_form": "PASS",
+          "record_kinds": "PASS"
+        },
+        "coverage": {
+          "declared_kind": "stream_interval",
+          "declared_by": "coverage_declaration",
+          "properties": {
+            "coverage_declaration_form": "PASS",
+            "coverage_declaration_anchor": "PASS",
+            "coverage_declaration_population": "PASS",
+            "coverage_declaration_commitment": "NOT_CHECKED"
+          },
+          "relative_to": "the live set the holder opened, under the rule and in the interval; not checked against the anchor",
+          "accepted_as_declared": true,
+          "satisfied_becomes": {
+            "r-complete": "UNKNOWN"
+          },
+          "aggregate": {
+            "declared": "stream_interval",
+            "derived": "stream_interval",
+            "coverage_declaration_aggregate": "PASS"
+          }
+        },
+        "accepted": true,
+        "fails": []
+      }
+    },
+    {
+      "id": "cherry-picked",
+      "title": "Holder-selected deals declared stream_interval: three of the live set's four streams",
+      "cites": [
+        "§6.7.2",
+        "§6.7.3 item 2",
+        "§6.7.5"
+      ],
+      "source": "derived: the stream-interval case with the not-selected deal left out of the selection and the answers",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "history": "coverage_declaration_example/0",
+        "definition": {
+          "kind": "projection",
+          "name": "coverage_declaration_example/0",
+          "reads": [
+            "committed_at",
+            "epistemic_type",
+            "event_time_claim",
+            "record_type"
+          ],
+          "recipient": "recipient-1",
+          "selection": [
+            "50c896dcc67b046d2e960466df3d7ce4",
+            "6d443544e41e7d4878ff95318777cc05",
+            "a34e091973f2480c793ad9b9bc5aa118"
+          ],
+          "subject_form": "correlation",
+          "coverage_declaration": {
+            "kind": "stream_interval",
+            "rule": "all_records",
+            "interval": {
+              "from": null,
+              "to": "08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c"
+            },
+            "live_set": [
+              {
+                "stream": "deal/3a2ca4012a9984fe9674c80534c6544d",
+                "checkpoint": "3461a8e1c4dec1a98c8f73753002e6b69706118669ddf37e599413e011b41ee7",
+                "start": 0,
+                "count": 3
+              },
+              {
+                "stream": "deal/50c896dcc67b046d2e960466df3d7ce4",
+                "checkpoint": "6170d1ad7a80e6654ff9633ffe43bb271ac1166798c4a10c270e444a13014bbe",
+                "start": 0,
+                "count": 2
+              },
+              {
+                "stream": "deal/6d443544e41e7d4878ff95318777cc05",
+                "checkpoint": "7a9e22a5daa653b9ae57c3aa89bbdcbacc8d8fcf3f7e73a7f5db40b528e85c0a",
+                "start": 0,
+                "count": 1
+              },
+              {
+                "stream": "deal/a34e091973f2480c793ad9b9bc5aa118",
+                "checkpoint": "6f27117bde6db50d6f1800687c220d7bd02d21e7e342ab456da031dc0066ded2",
+                "start": 0,
+                "count": 2
+              }
+            ]
+          }
+        },
+        "exchanges": [
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"819d214a45f5d6ac302930cb1554dd50f8f08538ca06ccfc5d764c82eb769491\",\"nonce\":\"recipient-1/cherry-picked-1\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6IjgxOWQyMTRhNDVmNWQ2YWMzMDI5MzBjYjE1NTRkZDUwZjhmMDg1MzhjYTA2Y2NmYzVkNzY0YzgyZWI3Njk0OTEiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzUwYzg5NmRjYzY3YjA0NmQyZTk2MDQ2NmRmM2Q3Y2U0IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowMloiLCJkaWdlc3QiOiI3MDRkOWFhZTcyZWQ0YjI2YjA1ZjFhOGQyMDhkMjA4ODMxM2ZkOGNkMGE1ZDA1ZGQ1NWQ2NDkxMTFmYmU0ZDVmIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjI1OjAyWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MTBaIiwiZGlnZXN0IjoiYTc1ZmYxNmMwNDk0ZjkxZjEzNDcxYTQxYzhhMDY3M2MxNjE5ZjBjZDAzZmM5MzE4OWNmN2M1MTU4Yzg2OTgxZiIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzo1MDoxMFoiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfZmFpbGVkIn1dLCJzdWJqZWN0Ijp7ImNvcnJlbGF0aW9uIjoiNTBjODk2ZGNjNjdiMDQ2ZDJlOTYwNDY2ZGYzZDdjZTQifX0\",\"artifact_digest\":\"0fd6dff4c138dc583f453ecf74444770c943938fbb4fd6db3d31658bf7398a9d\",\"derivation\":\"819d214a45f5d6ac302930cb1554dd50f8f08538ca06ccfc5d764c82eb769491\",\"issued_at\":\"2026-10-15T00:00:15Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"9007181beb8dd257665a965ec67dd774976fd6ecf21357090ecf7088f9d4889f\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"75da6e40587d82d1478d4bc9a76500ebf93800bae672ed7295a0e80a445b6df0ecea7220277040c239437a2663ae2c51e1831264ea60f8a4e6e2fd0c47f6ab01\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"819d214a45f5d6ac302930cb1554dd50f8f08538ca06ccfc5d764c82eb769491\",\"nonce\":\"recipient-1/cherry-picked-2\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6IjgxOWQyMTRhNDVmNWQ2YWMzMDI5MzBjYjE1NTRkZDUwZjhmMDg1MzhjYTA2Y2NmYzVkNzY0YzgyZWI3Njk0OTEiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzZkNDQzNTQ0ZTQxZTdkNDg3OGZmOTUzMTg3NzdjYzA1IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowNVoiLCJkaWdlc3QiOiJmOTY5N2IzZjFiOGUzMjQ5MDMwN2VhNDY1MjE4MjEwODM0MTczNjYyMTc1YjZhYTU4N2M0MmJhZjRiOGMyMzU2IiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjQwOjA1WiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiI2ZDQ0MzU0NGU0MWU3ZDQ4NzhmZjk1MzE4Nzc3Y2MwNSJ9fQ\",\"artifact_digest\":\"213eb61d5b2ba9c6cc2a24a0b5e50ea0ad78d5ecc1a81db841f152fea46b4fc1\",\"derivation\":\"819d214a45f5d6ac302930cb1554dd50f8f08538ca06ccfc5d764c82eb769491\",\"issued_at\":\"2026-10-15T00:00:17Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"fea07bc9e530e6c90da58200504d8e9b3d15e86dcb255a06036d5aa286b78c65\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"4943a93999ce511e60e36c1cbdd65e9d0b93a907e1471312e971f9777acfc9ea6f7d2e4b3a22beecd5a9aa56e7b81a88205393bbbf051f10fb697961a7adc70a\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"819d214a45f5d6ac302930cb1554dd50f8f08538ca06ccfc5d764c82eb769491\",\"nonce\":\"recipient-1/cherry-picked-3\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6IjgxOWQyMTRhNDVmNWQ2YWMzMDI5MzBjYjE1NTRkZDUwZjhmMDg1MzhjYTA2Y2NmYzVkNzY0YzgyZWI3Njk0OTEiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsL2EzNGUwOTE5NzNmMjQ4MGM3OTNhZDliOWJjNWFhMTE4IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowMVoiLCJkaWdlc3QiOiIwNTMwNzVlZmQwZmFhNjdiYjJlNGEyNmViMDE3ODYyMmI1YmI3MWM0NDJlNWE5MmQ3YWQ1ZTkyNmJiYWU3ZjFhIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjIwOjAxWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MDRaIiwiZGlnZXN0IjoiMDc1ZGNhZWViYWY4MjYwYjQ5OGZkMWI0Zjk4MDRhNzQ0ZmRmYTgwMTFmYmUzMzY2M2RhOWU2OWM5ZTlmNDY0ZSIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzozNTowNFoiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfY29tcGxldGVkIn1dLCJzdWJqZWN0Ijp7ImNvcnJlbGF0aW9uIjoiYTM0ZTA5MTk3M2YyNDgwYzc5M2FkOWI5YmM1YWExMTgifX0\",\"artifact_digest\":\"836b0a0af83f9ea6a2dbfb7ea5fb423ad16999c99a79bdd2403e052e2ccb12c3\",\"derivation\":\"819d214a45f5d6ac302930cb1554dd50f8f08538ca06ccfc5d764c82eb769491\",\"issued_at\":\"2026-10-15T00:00:19Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"11eb25ff4d01e9a88dd96836954a34db0d30366f5f68dbcf14780925d0c5508c\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"d5901070567ebd1efeb32d5ea9f3868ce92c053b14542812e6c41c75014a99162afdf09aef245174e6af0c997edaaebef317c9d065132499c9fc4e18ac562903\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            }
+          }
+        ],
+        "aggregate": {
+          "coverage_declaration": {
+            "kind": "holder_selected"
+          }
+        }
+      },
+      "expected": {
+        "exchanges": [
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "50c896dcc67b046d2e960466df3d7ce4"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "0fd6dff4c138dc583f453ecf74444770c943938fbb4fd6db3d31658bf7398a9d"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "6d443544e41e7d4878ff95318777cc05"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "213eb61d5b2ba9c6cc2a24a0b5e50ea0ad78d5ecc1a81db841f152fea46b4fc1"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "a34e091973f2480c793ad9b9bc5aa118"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "836b0a0af83f9ea6a2dbfb7ea5fb423ad16999c99a79bdd2403e052e2ccb12c3"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "history_properties": {
+          "definition_form": "PASS",
+          "definition_binding": "PASS",
+          "selection_coverage": "PASS",
+          "single_signer": "PASS",
+          "single_anchor": "PASS",
+          "artifact_form": "PASS",
+          "record_kinds": "PASS"
+        },
+        "coverage": {
+          "declared_kind": "stream_interval",
+          "declared_by": "coverage_declaration",
+          "properties": {
+            "coverage_declaration_form": "PASS",
+            "coverage_declaration_anchor": "PASS",
+            "coverage_declaration_population": "FAIL",
+            "coverage_declaration_commitment": "NOT_CHECKED"
+          },
+          "relative_to": "the live set the holder opened, under the rule and in the interval; not checked against the anchor",
+          "accepted_as_declared": false,
+          "satisfied_becomes": {
+            "r-complete": "INSUFFICIENT"
+          },
+          "aggregate": {
+            "declared": "holder_selected",
+            "derived": "holder_selected",
+            "coverage_declaration_aggregate": "PASS"
+          }
+        },
+        "accepted": false,
+        "fails": [
+          "coverage_declaration_population"
+        ]
+      }
+    },
+    {
+      "id": "stream-interval-record-missing",
+      "title": "Four deals at one tick, one record of one stream left out",
+      "cites": [
+        "§6.7.2",
+        "§6.7.3 item 2"
+      ],
+      "source": "derived: the stream-interval case with the second record of deal/3a2ca4012a9984fe9674c80534c6544d left out of its artifact, re-signed by the holder key",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "history": "coverage_declaration_example/0",
+        "definition": {
+          "kind": "projection",
+          "name": "coverage_declaration_example/0",
+          "reads": [
+            "committed_at",
+            "epistemic_type",
+            "event_time_claim",
+            "record_type"
+          ],
+          "recipient": "recipient-1",
+          "selection": [
+            "3a2ca4012a9984fe9674c80534c6544d",
+            "50c896dcc67b046d2e960466df3d7ce4",
+            "6d443544e41e7d4878ff95318777cc05",
+            "a34e091973f2480c793ad9b9bc5aa118"
+          ],
+          "subject_form": "correlation",
+          "coverage_declaration": {
+            "kind": "stream_interval",
+            "rule": "all_records",
+            "interval": {
+              "from": null,
+              "to": "08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c"
+            },
+            "live_set": [
+              {
+                "stream": "deal/3a2ca4012a9984fe9674c80534c6544d",
+                "checkpoint": "3461a8e1c4dec1a98c8f73753002e6b69706118669ddf37e599413e011b41ee7",
+                "start": 0,
+                "count": 3
+              },
+              {
+                "stream": "deal/50c896dcc67b046d2e960466df3d7ce4",
+                "checkpoint": "6170d1ad7a80e6654ff9633ffe43bb271ac1166798c4a10c270e444a13014bbe",
+                "start": 0,
+                "count": 2
+              },
+              {
+                "stream": "deal/6d443544e41e7d4878ff95318777cc05",
+                "checkpoint": "7a9e22a5daa653b9ae57c3aa89bbdcbacc8d8fcf3f7e73a7f5db40b528e85c0a",
+                "start": 0,
+                "count": 1
+              },
+              {
+                "stream": "deal/a34e091973f2480c793ad9b9bc5aa118",
+                "checkpoint": "6f27117bde6db50d6f1800687c220d7bd02d21e7e342ab456da031dc0066ded2",
+                "start": 0,
+                "count": 2
+              }
+            ]
+          }
+        },
+        "exchanges": [
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"nonce\":\"recipient-1/record-missing-1\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6Ijg1NTc0Nzg0ZDQyZDU0ZmZjY2UxMmUzNGI5NzAxZGVkOTY1OTQ5YjI2NWQ3YzIyZGRkNDMwMmY5ZGNhMWJjN2UiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzUwYzg5NmRjYzY3YjA0NmQyZTk2MDQ2NmRmM2Q3Y2U0IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowMloiLCJkaWdlc3QiOiI3MDRkOWFhZTcyZWQ0YjI2YjA1ZjFhOGQyMDhkMjA4ODMxM2ZkOGNkMGE1ZDA1ZGQ1NWQ2NDkxMTFmYmU0ZDVmIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjI1OjAyWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MTBaIiwiZGlnZXN0IjoiYTc1ZmYxNmMwNDk0ZjkxZjEzNDcxYTQxYzhhMDY3M2MxNjE5ZjBjZDAzZmM5MzE4OWNmN2M1MTU4Yzg2OTgxZiIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzo1MDoxMFoiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfZmFpbGVkIn1dLCJzdWJqZWN0Ijp7ImNvcnJlbGF0aW9uIjoiNTBjODk2ZGNjNjdiMDQ2ZDJlOTYwNDY2ZGYzZDdjZTQifX0\",\"artifact_digest\":\"fa13ef9cc3885208f3ca0879078da9e4e3fa228defe879be328308e13978d7bd\",\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"issued_at\":\"2026-10-15T00:00:15Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"1b309cbd9d2d34be7952f0b7ab378ec6ff16e07767b141111751eff965b6c607\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"dcaebf0ca2ce65dd353ed5a6fedcf7c06da67b0a3a79e9654ad5118ea459dd7f93f0b824683813d52cee46953fa75792fad75eedce9a6e39b0778b205f34c40c\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"nonce\":\"recipient-1/record-missing-2\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6Ijg1NTc0Nzg0ZDQyZDU0ZmZjY2UxMmUzNGI5NzAxZGVkOTY1OTQ5YjI2NWQ3YzIyZGRkNDMwMmY5ZGNhMWJjN2UiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzZkNDQzNTQ0ZTQxZTdkNDg3OGZmOTUzMTg3NzdjYzA1IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowNVoiLCJkaWdlc3QiOiJmOTY5N2IzZjFiOGUzMjQ5MDMwN2VhNDY1MjE4MjEwODM0MTczNjYyMTc1YjZhYTU4N2M0MmJhZjRiOGMyMzU2IiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjQwOjA1WiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiI2ZDQ0MzU0NGU0MWU3ZDQ4NzhmZjk1MzE4Nzc3Y2MwNSJ9fQ\",\"artifact_digest\":\"82432a3ff742c65eede5de9a2fd1c1094fb433fcd42219151e821823d690b3d7\",\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"issued_at\":\"2026-10-15T00:00:17Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"aba85fde8b1956c313ffd790325b1383464aa857d5b96423c84234a5e3b00105\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"fa6846eb511b8c7cab1a37f601ef33502cb7a466ba4c7e19d1d71862bd7ef5f6c45cfb49496fb1af1c87ba6876d4cb1a8ea2e3ddef2b8a46150bfe2d8f98e00b\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"nonce\":\"recipient-1/record-missing-3\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6Ijg1NTc0Nzg0ZDQyZDU0ZmZjY2UxMmUzNGI5NzAxZGVkOTY1OTQ5YjI2NWQ3YzIyZGRkNDMwMmY5ZGNhMWJjN2UiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsL2EzNGUwOTE5NzNmMjQ4MGM3OTNhZDliOWJjNWFhMTE4IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowMVoiLCJkaWdlc3QiOiIwNTMwNzVlZmQwZmFhNjdiYjJlNGEyNmViMDE3ODYyMmI1YmI3MWM0NDJlNWE5MmQ3YWQ1ZTkyNmJiYWU3ZjFhIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjIwOjAxWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MDRaIiwiZGlnZXN0IjoiMDc1ZGNhZWViYWY4MjYwYjQ5OGZkMWI0Zjk4MDRhNzQ0ZmRmYTgwMTFmYmUzMzY2M2RhOWU2OWM5ZTlmNDY0ZSIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzozNTowNFoiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfY29tcGxldGVkIn1dLCJzdWJqZWN0Ijp7ImNvcnJlbGF0aW9uIjoiYTM0ZTA5MTk3M2YyNDgwYzc5M2FkOWI5YmM1YWExMTgifX0\",\"artifact_digest\":\"e36049da2f95e5dfeca922fe8f3b45c398b50515cc6a606041fba75c17d74e26\",\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"issued_at\":\"2026-10-15T00:00:19Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"37c29608acd99033452c5eaab07b68da18f11a46a80ba4d5abf633128d5226c5\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"78daf64822948a4d2ceecd0ba2a1ac03e04a04960bfa36e677338520f8344656daf14b4143bc0afbf983557b8940c81c64071c905b35ffa5f8782f32950ea802\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"nonce\":\"recipient-1/record-missing-4\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"3a2ca4012a9984fe9674c80534c6544d\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6Ijg1NTc0Nzg0ZDQyZDU0ZmZjY2UxMmUzNGI5NzAxZGVkOTY1OTQ5YjI2NWQ3YzIyZGRkNDMwMmY5ZGNhMWJjN2UiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzNhMmNhNDAxMmE5OTg0ZmU5Njc0YzgwNTM0YzY1NDRkIiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowM1oiLCJkaWdlc3QiOiI3MWU3YTk2MDhhNGJlOTNkMjI0NzRlMTJjOTZiM2NmYTI2NDg3NjQzM2RkZjI4N2YwZThkYTI4ZjdiZGZiZWRkIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjMwOjAzWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MTFaIiwiZGlnZXN0IjoiMjczNDAyMDYxMGE4ZmM5YTEzMmM5YjM3YzZlNzMyMjMwOTYzMjc1NTI4YTQ2Y2NhNjIwNDkxOTA4NGExYzczZCIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzo1NToxMVoiLCJsZWFmX2luZGV4IjoyLCJyZWNvcmRfdHlwZSI6InN0ZXBfY29tcGxldGVkIn1dLCJzdWJqZWN0Ijp7ImNvcnJlbGF0aW9uIjoiM2EyY2E0MDEyYTk5ODRmZTk2NzRjODA1MzRjNjU0NGQifX0\",\"artifact_digest\":\"f91789a6a9df5187b140cc0c18fffa88d0f6766dfe7299367dd0c7277b191599\",\"derivation\":\"85574784d42d54ffcce12e34b9701ded965949b265d7c22ddd4302f9dca1bc7e\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"e1fae7daf1e6af1e64fb0d649b8ee7e4381e3ca2f951923b21fedd551db91521\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"09f2a7e4c989c8478fef48849c425451601b65fc9203c29967c8246c172c5e84ad39a16175fef0d32ed84d515740f7d8b923098b0ce5fd0833ff05cb65bc680c\",\"subject\":{\"correlation\":\"3a2ca4012a9984fe9674c80534c6544d\"}}"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "exchanges": [
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "50c896dcc67b046d2e960466df3d7ce4"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "fa13ef9cc3885208f3ca0879078da9e4e3fa228defe879be328308e13978d7bd"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "6d443544e41e7d4878ff95318777cc05"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "82432a3ff742c65eede5de9a2fd1c1094fb433fcd42219151e821823d690b3d7"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "a34e091973f2480c793ad9b9bc5aa118"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "e36049da2f95e5dfeca922fe8f3b45c398b50515cc6a606041fba75c17d74e26"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "3a2ca4012a9984fe9674c80534c6544d"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "f91789a6a9df5187b140cc0c18fffa88d0f6766dfe7299367dd0c7277b191599"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "history_properties": {
+          "definition_form": "PASS",
+          "definition_binding": "PASS",
+          "selection_coverage": "PASS",
+          "single_signer": "PASS",
+          "single_anchor": "PASS",
+          "artifact_form": "PASS",
+          "record_kinds": "PASS"
+        },
+        "coverage": {
+          "declared_kind": "stream_interval",
+          "declared_by": "coverage_declaration",
+          "properties": {
+            "coverage_declaration_form": "PASS",
+            "coverage_declaration_anchor": "PASS",
+            "coverage_declaration_population": "FAIL",
+            "coverage_declaration_commitment": "NOT_CHECKED"
+          },
+          "relative_to": "the live set the holder opened, under the rule and in the interval; not checked against the anchor",
+          "accepted_as_declared": false,
+          "satisfied_becomes": {
+            "r-complete": "INSUFFICIENT"
+          }
+        },
+        "accepted": false,
+        "fails": [
+          "coverage_declaration_population"
+        ]
+      }
+    },
+    {
+      "id": "stream-interval-anchor-mismatch",
+      "title": "Four deals answered at the tick, under a declaration ending at another anchor",
+      "cites": [
+        "§6.7.2",
+        "§6.7.3 item 2"
+      ],
+      "source": "derived: the stream-interval case with interval.to set to another anchor, re-signed by the holder key",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "history": "coverage_declaration_example/0",
+        "definition": {
+          "kind": "projection",
+          "name": "coverage_declaration_example/0",
+          "reads": [
+            "committed_at",
+            "epistemic_type",
+            "event_time_claim",
+            "record_type"
+          ],
+          "recipient": "recipient-1",
+          "selection": [
+            "3a2ca4012a9984fe9674c80534c6544d",
+            "50c896dcc67b046d2e960466df3d7ce4",
+            "6d443544e41e7d4878ff95318777cc05",
+            "a34e091973f2480c793ad9b9bc5aa118"
+          ],
+          "subject_form": "correlation",
+          "coverage_declaration": {
+            "kind": "stream_interval",
+            "rule": "all_records",
+            "interval": {
+              "from": null,
+              "to": "b5b22c9e6b1c35ef164251881b38cd1e624414a60de8ee3d3e4a925c48f76ec2"
+            },
+            "live_set": [
+              {
+                "stream": "deal/3a2ca4012a9984fe9674c80534c6544d",
+                "checkpoint": "3461a8e1c4dec1a98c8f73753002e6b69706118669ddf37e599413e011b41ee7",
+                "start": 0,
+                "count": 3
+              },
+              {
+                "stream": "deal/50c896dcc67b046d2e960466df3d7ce4",
+                "checkpoint": "6170d1ad7a80e6654ff9633ffe43bb271ac1166798c4a10c270e444a13014bbe",
+                "start": 0,
+                "count": 2
+              },
+              {
+                "stream": "deal/6d443544e41e7d4878ff95318777cc05",
+                "checkpoint": "7a9e22a5daa653b9ae57c3aa89bbdcbacc8d8fcf3f7e73a7f5db40b528e85c0a",
+                "start": 0,
+                "count": 1
+              },
+              {
+                "stream": "deal/a34e091973f2480c793ad9b9bc5aa118",
+                "checkpoint": "6f27117bde6db50d6f1800687c220d7bd02d21e7e342ab456da031dc0066ded2",
+                "start": 0,
+                "count": 2
+              }
+            ]
+          }
+        },
+        "exchanges": [
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"dbda349612eb9b89b2c5d94092e8a6870dabb0e7ef21217408dc0c32bf954470\",\"nonce\":\"recipient-1/anchor-mismatch-1\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6ImRiZGEzNDk2MTJlYjliODliMmM1ZDk0MDkyZThhNjg3MGRhYmIwZTdlZjIxMjE3NDA4ZGMwYzMyYmY5NTQ0NzAiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzUwYzg5NmRjYzY3YjA0NmQyZTk2MDQ2NmRmM2Q3Y2U0IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowMloiLCJkaWdlc3QiOiI3MDRkOWFhZTcyZWQ0YjI2YjA1ZjFhOGQyMDhkMjA4ODMxM2ZkOGNkMGE1ZDA1ZGQ1NWQ2NDkxMTFmYmU0ZDVmIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjI1OjAyWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MTBaIiwiZGlnZXN0IjoiYTc1ZmYxNmMwNDk0ZjkxZjEzNDcxYTQxYzhhMDY3M2MxNjE5ZjBjZDAzZmM5MzE4OWNmN2M1MTU4Yzg2OTgxZiIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzo1MDoxMFoiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfZmFpbGVkIn1dLCJzdWJqZWN0Ijp7ImNvcnJlbGF0aW9uIjoiNTBjODk2ZGNjNjdiMDQ2ZDJlOTYwNDY2ZGYzZDdjZTQifX0\",\"artifact_digest\":\"c317f01273bb5777cf3833bd92e736c2cfc6dc7c9240ab94b0d5171022510d54\",\"derivation\":\"dbda349612eb9b89b2c5d94092e8a6870dabb0e7ef21217408dc0c32bf954470\",\"issued_at\":\"2026-10-15T00:00:15Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"0d5c05f1b0178ccd72e3380d29be6c9a655712aa183f4186925f66a1f036fe46\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"674b46b7fff6d18059c4ae2bb3103b07d4d79b92216041977faed35d05e3dcd6a21e89cfdfa90845ae8f0cd270ccde9ff0abc65456c033a26155352647c3b505\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"dbda349612eb9b89b2c5d94092e8a6870dabb0e7ef21217408dc0c32bf954470\",\"nonce\":\"recipient-1/anchor-mismatch-2\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6ImRiZGEzNDk2MTJlYjliODliMmM1ZDk0MDkyZThhNjg3MGRhYmIwZTdlZjIxMjE3NDA4ZGMwYzMyYmY5NTQ0NzAiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzZkNDQzNTQ0ZTQxZTdkNDg3OGZmOTUzMTg3NzdjYzA1IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowNVoiLCJkaWdlc3QiOiJmOTY5N2IzZjFiOGUzMjQ5MDMwN2VhNDY1MjE4MjEwODM0MTczNjYyMTc1YjZhYTU4N2M0MmJhZjRiOGMyMzU2IiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjQwOjA1WiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiI2ZDQ0MzU0NGU0MWU3ZDQ4NzhmZjk1MzE4Nzc3Y2MwNSJ9fQ\",\"artifact_digest\":\"624c28c76cb272212d6143e39257c7aeda28092d04f4ee68667f81116af9ddea\",\"derivation\":\"dbda349612eb9b89b2c5d94092e8a6870dabb0e7ef21217408dc0c32bf954470\",\"issued_at\":\"2026-10-15T00:00:17Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"fe03569d75f9b34cd16595c683dc813f73c3106554f3693eb85e3a210794f445\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"2f420cb244eec3a30b3950d74de4d53015c6b0884dd1124b35aade7f4658dbd62b93126273c57fd2a2d2a1a0fd4c2eab26e357bb65b2db59270083e8ced5f50d\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"dbda349612eb9b89b2c5d94092e8a6870dabb0e7ef21217408dc0c32bf954470\",\"nonce\":\"recipient-1/anchor-mismatch-3\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6ImRiZGEzNDk2MTJlYjliODliMmM1ZDk0MDkyZThhNjg3MGRhYmIwZTdlZjIxMjE3NDA4ZGMwYzMyYmY5NTQ0NzAiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsL2EzNGUwOTE5NzNmMjQ4MGM3OTNhZDliOWJjNWFhMTE4IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowMVoiLCJkaWdlc3QiOiIwNTMwNzVlZmQwZmFhNjdiYjJlNGEyNmViMDE3ODYyMmI1YmI3MWM0NDJlNWE5MmQ3YWQ1ZTkyNmJiYWU3ZjFhIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjIwOjAxWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MDRaIiwiZGlnZXN0IjoiMDc1ZGNhZWViYWY4MjYwYjQ5OGZkMWI0Zjk4MDRhNzQ0ZmRmYTgwMTFmYmUzMzY2M2RhOWU2OWM5ZTlmNDY0ZSIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzozNTowNFoiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfY29tcGxldGVkIn1dLCJzdWJqZWN0Ijp7ImNvcnJlbGF0aW9uIjoiYTM0ZTA5MTk3M2YyNDgwYzc5M2FkOWI5YmM1YWExMTgifX0\",\"artifact_digest\":\"ad4209ec730b2cc5cede2c3f5091a328f06b70727a5371037906bea08fe5fe5b\",\"derivation\":\"dbda349612eb9b89b2c5d94092e8a6870dabb0e7ef21217408dc0c32bf954470\",\"issued_at\":\"2026-10-15T00:00:19Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"59d2846097b3963c141224f5b44ed2b0da7880c8f2b6618ea9c8d008b8ab5ac1\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"60ddf9acf2c4f022a607b1e424b143bfb1ea64da1a27575392eb6eb7fe795021c5380a31ac02ad34dbb0ebc0f3c8879d692aa7554e7cb26daf34e41eb23d4a0e\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"dbda349612eb9b89b2c5d94092e8a6870dabb0e7ef21217408dc0c32bf954470\",\"nonce\":\"recipient-1/anchor-mismatch-4\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"3a2ca4012a9984fe9674c80534c6544d\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6ImRiZGEzNDk2MTJlYjliODliMmM1ZDk0MDkyZThhNjg3MGRhYmIwZTdlZjIxMjE3NDA4ZGMwYzMyYmY5NTQ0NzAiLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzNhMmNhNDAxMmE5OTg0ZmU5Njc0YzgwNTM0YzY1NDRkIiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowM1oiLCJkaWdlc3QiOiI3MWU3YTk2MDhhNGJlOTNkMjI0NzRlMTJjOTZiM2NmYTI2NDg3NjQzM2RkZjI4N2YwZThkYTI4ZjdiZGZiZWRkIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjMwOjAzWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MDZaIiwiZGlnZXN0IjoiMmMyNmM3ZDE1ZjQyZjNmZDRmYmQ1M2NhZTNkMzg4NWYyYTEyOTFhYjFkMGY3MTQ3ZjZkNjUwZmFmNjIzOWM5MiIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzo0NTowNloiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfZmFpbGVkIn0seyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjExWiIsImRpZ2VzdCI6IjI3MzQwMjA2MTBhOGZjOWExMzJjOWIzN2M2ZTczMjIzMDk2MzI3NTUyOGE0NmNjYTYyMDQ5MTkwODRhMWM3M2QiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6NTU6MTFaIiwibGVhZl9pbmRleCI6MiwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9XSwic3ViamVjdCI6eyJjb3JyZWxhdGlvbiI6IjNhMmNhNDAxMmE5OTg0ZmU5Njc0YzgwNTM0YzY1NDRkIn19\",\"artifact_digest\":\"f1dfbe530bcc726fa208cf922ec3d2663ae74a95a7ab6810fd8d67ff8067268e\",\"derivation\":\"dbda349612eb9b89b2c5d94092e8a6870dabb0e7ef21217408dc0c32bf954470\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"c223fdbda843667830d77418d38e3480128648549cad5eb54219ee6804028ef1\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"1054af0b704aaf34341bebc668c274a63bac8323e7893fa2159f69b84987d5df39e583b0c2a2cfbd1b6fa90599c36dce1a485228a675da94cbc2ff708072390c\",\"subject\":{\"correlation\":\"3a2ca4012a9984fe9674c80534c6544d\"}}"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "exchanges": [
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "50c896dcc67b046d2e960466df3d7ce4"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "c317f01273bb5777cf3833bd92e736c2cfc6dc7c9240ab94b0d5171022510d54"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "6d443544e41e7d4878ff95318777cc05"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "624c28c76cb272212d6143e39257c7aeda28092d04f4ee68667f81116af9ddea"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "a34e091973f2480c793ad9b9bc5aa118"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "ad4209ec730b2cc5cede2c3f5091a328f06b70727a5371037906bea08fe5fe5b"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "3a2ca4012a9984fe9674c80534c6544d"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "f1dfbe530bcc726fa208cf922ec3d2663ae74a95a7ab6810fd8d67ff8067268e"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "history_properties": {
+          "definition_form": "PASS",
+          "definition_binding": "PASS",
+          "selection_coverage": "PASS",
+          "single_signer": "PASS",
+          "single_anchor": "PASS",
+          "artifact_form": "PASS",
+          "record_kinds": "PASS"
+        },
+        "coverage": {
+          "declared_kind": "stream_interval",
+          "declared_by": "coverage_declaration",
+          "properties": {
+            "coverage_declaration_form": "PASS",
+            "coverage_declaration_anchor": "FAIL",
+            "coverage_declaration_population": "PASS",
+            "coverage_declaration_commitment": "NOT_CHECKED"
+          },
+          "relative_to": "the live set the holder opened, under the rule and in the interval; not checked against the anchor",
+          "accepted_as_declared": false,
+          "satisfied_becomes": {
+            "r-complete": "INSUFFICIENT"
+          }
+        },
+        "accepted": false,
+        "fails": [
+          "coverage_declaration_anchor"
+        ]
+      }
+    },
+    {
+      "id": "stream-interval-unknown-rule",
+      "title": "Four deals at the tick, under a stream_interval rule this revision does not define",
+      "cites": [
+        "§6.7.1",
+        "§6.7.2"
+      ],
+      "source": "derived: the stream-interval case with an undefined rule, re-signed by the holder key",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "history": "coverage_declaration_example/0",
+        "definition": {
+          "kind": "projection",
+          "name": "coverage_declaration_example/0",
+          "reads": [
+            "committed_at",
+            "epistemic_type",
+            "event_time_claim",
+            "record_type"
+          ],
+          "recipient": "recipient-1",
+          "selection": [
+            "3a2ca4012a9984fe9674c80534c6544d",
+            "50c896dcc67b046d2e960466df3d7ce4",
+            "6d443544e41e7d4878ff95318777cc05",
+            "a34e091973f2480c793ad9b9bc5aa118"
+          ],
+          "subject_form": "correlation",
+          "coverage_declaration": {
+            "kind": "stream_interval",
+            "rule": "records_of_completed_deals",
+            "interval": {
+              "from": null,
+              "to": "08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c"
+            },
+            "live_set": [
+              {
+                "stream": "deal/3a2ca4012a9984fe9674c80534c6544d",
+                "checkpoint": "3461a8e1c4dec1a98c8f73753002e6b69706118669ddf37e599413e011b41ee7",
+                "start": 0,
+                "count": 3
+              },
+              {
+                "stream": "deal/50c896dcc67b046d2e960466df3d7ce4",
+                "checkpoint": "6170d1ad7a80e6654ff9633ffe43bb271ac1166798c4a10c270e444a13014bbe",
+                "start": 0,
+                "count": 2
+              },
+              {
+                "stream": "deal/6d443544e41e7d4878ff95318777cc05",
+                "checkpoint": "7a9e22a5daa653b9ae57c3aa89bbdcbacc8d8fcf3f7e73a7f5db40b528e85c0a",
+                "start": 0,
+                "count": 1
+              },
+              {
+                "stream": "deal/a34e091973f2480c793ad9b9bc5aa118",
+                "checkpoint": "6f27117bde6db50d6f1800687c220d7bd02d21e7e342ab456da031dc0066ded2",
+                "start": 0,
+                "count": 2
+              }
+            ]
+          }
+        },
+        "exchanges": [
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"64113e3d30047f8031ca8b337ebfed94d0044bb23a9fdec6f848686cc5989cb7\",\"nonce\":\"recipient-1/unknown-rule-1\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6IjY0MTEzZTNkMzAwNDdmODAzMWNhOGIzMzdlYmZlZDk0ZDAwNDRiYjIzYTlmZGVjNmY4NDg2ODZjYzU5ODljYjciLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzUwYzg5NmRjYzY3YjA0NmQyZTk2MDQ2NmRmM2Q3Y2U0IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowMloiLCJkaWdlc3QiOiI3MDRkOWFhZTcyZWQ0YjI2YjA1ZjFhOGQyMDhkMjA4ODMxM2ZkOGNkMGE1ZDA1ZGQ1NWQ2NDkxMTFmYmU0ZDVmIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjI1OjAyWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MTBaIiwiZGlnZXN0IjoiYTc1ZmYxNmMwNDk0ZjkxZjEzNDcxYTQxYzhhMDY3M2MxNjE5ZjBjZDAzZmM5MzE4OWNmN2M1MTU4Yzg2OTgxZiIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzo1MDoxMFoiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfZmFpbGVkIn1dLCJzdWJqZWN0Ijp7ImNvcnJlbGF0aW9uIjoiNTBjODk2ZGNjNjdiMDQ2ZDJlOTYwNDY2ZGYzZDdjZTQifX0\",\"artifact_digest\":\"110a2808b2d7f0320917c8c69a4a8837673c5aac64c1f8e70e2799af22b942ec\",\"derivation\":\"64113e3d30047f8031ca8b337ebfed94d0044bb23a9fdec6f848686cc5989cb7\",\"issued_at\":\"2026-10-15T00:00:15Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"0ba36fe1cdee121ad9c29e743e472a0b16d7b0b78236905a7d6aa8b4be50aea9\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"7227afb9b7382127e504be448c760a90aa698ba776219fcd8a81bb97b66c4c3c1eaf8f0dabb8a2f217a0439d003fb26e2c9e7077cb404e16598115bfc2493a01\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"64113e3d30047f8031ca8b337ebfed94d0044bb23a9fdec6f848686cc5989cb7\",\"nonce\":\"recipient-1/unknown-rule-2\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6IjY0MTEzZTNkMzAwNDdmODAzMWNhOGIzMzdlYmZlZDk0ZDAwNDRiYjIzYTlmZGVjNmY4NDg2ODZjYzU5ODljYjciLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzZkNDQzNTQ0ZTQxZTdkNDg3OGZmOTUzMTg3NzdjYzA1IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowNVoiLCJkaWdlc3QiOiJmOTY5N2IzZjFiOGUzMjQ5MDMwN2VhNDY1MjE4MjEwODM0MTczNjYyMTc1YjZhYTU4N2M0MmJhZjRiOGMyMzU2IiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjQwOjA1WiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiI2ZDQ0MzU0NGU0MWU3ZDQ4NzhmZjk1MzE4Nzc3Y2MwNSJ9fQ\",\"artifact_digest\":\"10c147b91f68aaed31da24299828d83d683cb5c8f37f20c672d64ab3b29846ff\",\"derivation\":\"64113e3d30047f8031ca8b337ebfed94d0044bb23a9fdec6f848686cc5989cb7\",\"issued_at\":\"2026-10-15T00:00:17Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"b73fd30f6e671c2497275719dcb4e516955ffd75d088acfd44c2a54a433c68c7\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"0a7b7f66e8830b8b3c0f02b0ec375b6f372eee1ff5bb760ea467a320a067a67ba137cda7d85a7274221cc66c5bcfdb5b33876cd433d2583990c978468b3e640f\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"64113e3d30047f8031ca8b337ebfed94d0044bb23a9fdec6f848686cc5989cb7\",\"nonce\":\"recipient-1/unknown-rule-3\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6IjY0MTEzZTNkMzAwNDdmODAzMWNhOGIzMzdlYmZlZDk0ZDAwNDRiYjIzYTlmZGVjNmY4NDg2ODZjYzU5ODljYjciLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsL2EzNGUwOTE5NzNmMjQ4MGM3OTNhZDliOWJjNWFhMTE4IiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowMVoiLCJkaWdlc3QiOiIwNTMwNzVlZmQwZmFhNjdiYjJlNGEyNmViMDE3ODYyMmI1YmI3MWM0NDJlNWE5MmQ3YWQ1ZTkyNmJiYWU3ZjFhIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjIwOjAxWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MDRaIiwiZGlnZXN0IjoiMDc1ZGNhZWViYWY4MjYwYjQ5OGZkMWI0Zjk4MDRhNzQ0ZmRmYTgwMTFmYmUzMzY2M2RhOWU2OWM5ZTlmNDY0ZSIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzozNTowNFoiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfY29tcGxldGVkIn1dLCJzdWJqZWN0Ijp7ImNvcnJlbGF0aW9uIjoiYTM0ZTA5MTk3M2YyNDgwYzc5M2FkOWI5YmM1YWExMTgifX0\",\"artifact_digest\":\"73bf2156ed43e1a7399abf9033fd17d8264c0bdfabcbdea5473d3d0b5157d52d\",\"derivation\":\"64113e3d30047f8031ca8b337ebfed94d0044bb23a9fdec6f848686cc5989cb7\",\"issued_at\":\"2026-10-15T00:00:19Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"5d80c309a61e711a0a97a195ac7a6334042fb4ff80dd29087c500cbfd22f97a9\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"d20810b6b4d1b1b9b41069e8d1ca4c49f6524226139d7189d8c7f2d50e3a14863083ae1e489fcd0afa50ef7b53e414b06167b32beef8efd70aa8789f870ee100\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"derivation\":\"64113e3d30047f8031ca8b337ebfed94d0044bb23a9fdec6f848686cc5989cb7\",\"nonce\":\"recipient-1/unknown-rule-4\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"3a2ca4012a9984fe9674c80534c6544d\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"08881d33724f81177bff795eb7edc22ae9fabbc8e7edc2821c9e832ad489372c\"},\"artifact\":\"eyJhbmNob3IiOiIwODg4MWQzMzcyNGY4MTE3N2JmZjc5NWViN2VkYzIyYWU5ZmFiYmM4ZTdlZGMyODIxYzllODMyYWQ0ODkzNzJjIiwiZGVyaXZhdGlvbiI6IjY0MTEzZTNkMzAwNDdmODAzMWNhOGIzMzdlYmZlZDk0ZDAwNDRiYjIzYTlmZGVjNmY4NDg2ODZjYzU5ODljYjciLCJldmlkZW5jZV9zdHJlYW0iOiJkZWFsLzNhMmNhNDAxMmE5OTg0ZmU5Njc0YzgwNTM0YzY1NDRkIiwicmVjb3JkcyI6W3siY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowM1oiLCJkaWdlc3QiOiI3MWU3YTk2MDhhNGJlOTNkMjI0NzRlMTJjOTZiM2NmYTI2NDg3NjQzM2RkZjI4N2YwZThkYTI4ZjdiZGZiZWRkIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjMwOjAzWiIsImxlYWZfaW5kZXgiOjAsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MDZaIiwiZGlnZXN0IjoiMmMyNmM3ZDE1ZjQyZjNmZDRmYmQ1M2NhZTNkMzg4NWYyYTEyOTFhYjFkMGY3MTQ3ZjZkNjUwZmFmNjIzOWM5MiIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNFQyMzo0NTowNloiLCJsZWFmX2luZGV4IjoxLCJyZWNvcmRfdHlwZSI6InN0ZXBfZmFpbGVkIn0seyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjExWiIsImRpZ2VzdCI6IjI3MzQwMjA2MTBhOGZjOWExMzJjOWIzN2M2ZTczMjIzMDk2MzI3NTUyOGE0NmNjYTYyMDQ5MTkwODRhMWM3M2QiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6NTU6MTFaIiwibGVhZl9pbmRleCI6MiwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9XSwic3ViamVjdCI6eyJjb3JyZWxhdGlvbiI6IjNhMmNhNDAxMmE5OTg0ZmU5Njc0YzgwNTM0YzY1NDRkIn19\",\"artifact_digest\":\"7c7c768f2cb82d61a5cd5e71f99a692503a462f2e4547aa8d763b87fda5bea16\",\"derivation\":\"64113e3d30047f8031ca8b337ebfed94d0044bb23a9fdec6f848686cc5989cb7\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"3647fca5dcaf9de7c82b82ec38f66f6b474c2402a7509fb8fdc8ea823eeaceff\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"d1e765640c6604cf77d1af90ec66951cbfc3802d6c3498df590eeb7d692a1c17b65a5dd5cbff78bf95f2fb0bec11d235a37a2a5dee4a7666cada3b7c7a4b340f\",\"subject\":{\"correlation\":\"3a2ca4012a9984fe9674c80534c6544d\"}}"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "exchanges": [
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "50c896dcc67b046d2e960466df3d7ce4"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "110a2808b2d7f0320917c8c69a4a8837673c5aac64c1f8e70e2799af22b942ec"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "6d443544e41e7d4878ff95318777cc05"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "10c147b91f68aaed31da24299828d83d683cb5c8f37f20c672d64ab3b29846ff"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "a34e091973f2480c793ad9b9bc5aa118"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "73bf2156ed43e1a7399abf9033fd17d8264c0bdfabcbdea5473d3d0b5157d52d"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "3a2ca4012a9984fe9674c80534c6544d"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "7c7c768f2cb82d61a5cd5e71f99a692503a462f2e4547aa8d763b87fda5bea16"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "history_properties": {
+          "definition_form": "PASS",
+          "definition_binding": "PASS",
+          "selection_coverage": "PASS",
+          "single_signer": "PASS",
+          "single_anchor": "PASS",
+          "artifact_form": "PASS",
+          "record_kinds": "PASS"
+        },
+        "coverage": {
+          "declared_kind": "stream_interval",
+          "declared_by": "coverage_declaration",
+          "properties": {
+            "coverage_declaration_form": "FAIL"
+          },
+          "relative_to": "the live set the holder opened, under the rule and in the interval; not checked against the anchor",
+          "accepted_as_declared": false,
+          "satisfied_becomes": {
+            "r-complete": "INSUFFICIENT"
+          }
+        },
+        "accepted": false,
+        "fails": [
+          "coverage_declaration_form"
+        ]
+      }
+    },
+    {
+      "id": "aggregate-stronger-than-evidence",
+      "title": "The Basic level History under an aggregate declaring stream_interval",
+      "cites": [
+        "§6.7.5",
+        "RES §7.2"
+      ],
+      "source": "responder",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "history": "personal_history_basic/1",
+        "definition": {
+          "completeness": "not_asserted",
+          "kind": "projection",
+          "name": "personal_history_basic/1",
+          "reads": [
+            "committed_at",
+            "epistemic_type",
+            "event_time_claim",
+            "record_type"
+          ],
+          "recipient": "recipient-1",
+          "selection": [
+            "50c896dcc67b046d2e960466df3d7ce4",
+            "6d443544e41e7d4878ff95318777cc05",
+            "a34e091973f2480c793ad9b9bc5aa118"
+          ],
+          "subject_form": "correlation"
+        },
+        "exchanges": [
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"68c06bd846ae2a0238b6e65b5f10cdf0325a6a9e58b11ed54e0c3da6d6b92192\",\"nonce\":\"recipient-1/history-1\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjY4YzA2YmQ4NDZhZTJhMDIzOGI2ZTY1YjVmMTBjZGYwMzI1YTZhOWU1OGIxMWVkNTRlMGMzZGE2ZDZiOTIxOTIiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjAyWiIsImRpZ2VzdCI6IjcwNGQ5YWFlNzJlZDRiMjZiMDVmMWE4ZDIwOGQyMDg4MzEzZmQ4Y2QwYTVkMDVkZDU1ZDY0OTExMWZiZTRkNWYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjU6MDJaIiwibGVhZl9pbmRleCI6MSwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDoxMFoiLCJkaWdlc3QiOiJhNzVmZjE2YzA0OTRmOTFmMTM0NzFhNDFjOGEwNjczYzE2MTlmMGNkMDNmYzkzMTg5Y2Y3YzUxNThjODY5ODFmIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjUwOjEwWiIsImxlYWZfaW5kZXgiOjgsInJlY29yZF90eXBlIjoic3RlcF9mYWlsZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiI1MGM4OTZkY2M2N2IwNDZkMmU5NjA0NjZkZjNkN2NlNCJ9fQ\",\"artifact_digest\":\"0c3f0235eba4c1aa01d43b628929bcd7af1f722f6a8ed0a6729c334ae45fb871\",\"derivation\":\"68c06bd846ae2a0238b6e65b5f10cdf0325a6a9e58b11ed54e0c3da6d6b92192\",\"issued_at\":\"2026-10-15T00:00:15Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"18c39773727e84510e0d0cba14e6f2031fec7911990b1fe58d4627f6706aea9b\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"abf944c0f03c9414c68894d8de38e1b52eebb932a06f5255e590c32edffc7a7f60f079270ed6e38d278939fee52b7222ff28db5abab671502677647ac92f9b0b\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"68c06bd846ae2a0238b6e65b5f10cdf0325a6a9e58b11ed54e0c3da6d6b92192\",\"nonce\":\"recipient-1/history-2\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjY4YzA2YmQ4NDZhZTJhMDIzOGI2ZTY1YjVmMTBjZGYwMzI1YTZhOWU1OGIxMWVkNTRlMGMzZGE2ZDZiOTIxOTIiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjA1WiIsImRpZ2VzdCI6ImY5Njk3YjNmMWI4ZTMyNDkwMzA3ZWE0NjUyMTgyMTA4MzQxNzM2NjIxNzViNmFhNTg3YzQyYmFmNGI4YzIzNTYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6NDA6MDVaIiwibGVhZl9pbmRleCI6NCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9XSwic3ViamVjdCI6eyJjb3JyZWxhdGlvbiI6IjZkNDQzNTQ0ZTQxZTdkNDg3OGZmOTUzMTg3NzdjYzA1In19\",\"artifact_digest\":\"4003756e5dba2dedfc9e26858fb37b4c02150be855c0028a80c367c554270e72\",\"derivation\":\"68c06bd846ae2a0238b6e65b5f10cdf0325a6a9e58b11ed54e0c3da6d6b92192\",\"issued_at\":\"2026-10-15T00:00:17Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"cf9d36f3cd238e842ec1a1b7647ad253689148b6e54a40536d54f68f85b1ac15\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"c1a60ec5e7b132c8d8dd98eeecb37cb765f0c4cf642991edd031f72eb51c1e3d6ac10a5bab54797c7daa17e66abb4ad2e004986399cdabb2e4ddac780a2c2101\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"68c06bd846ae2a0238b6e65b5f10cdf0325a6a9e58b11ed54e0c3da6d6b92192\",\"nonce\":\"recipient-1/history-3\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjY4YzA2YmQ4NDZhZTJhMDIzOGI2ZTY1YjVmMTBjZGYwMzI1YTZhOWU1OGIxMWVkNTRlMGMzZGE2ZDZiOTIxOTIiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjAxWiIsImRpZ2VzdCI6IjA1MzA3NWVmZDBmYWE2N2JiMmU0YTI2ZWIwMTc4NjIyYjViYjcxYzQ0MmU1YTkyZDdhZDVlOTI2YmJhZTdmMWEiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjA6MDFaIiwibGVhZl9pbmRleCI6MCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowNFoiLCJkaWdlc3QiOiIwNzVkY2FlZWJhZjgyNjBiNDk4ZmQxYjRmOTgwNGE3NDRmZGZhODAxMWZiZTMzNjYzZGE5ZTY5YzllOWY0NjRlIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjM1OjA0WiIsImxlYWZfaW5kZXgiOjMsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiJhMzRlMDkxOTczZjI0ODBjNzkzYWQ5YjliYzVhYTExOCJ9fQ\",\"artifact_digest\":\"fa87093a211adb0caf2695f0f3c310a45cdf42e46ae12823ac84be8b8b68d3bc\",\"derivation\":\"68c06bd846ae2a0238b6e65b5f10cdf0325a6a9e58b11ed54e0c3da6d6b92192\",\"issued_at\":\"2026-10-15T00:00:19Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"516f5ebc83c117ca120849d54e50ddbbea413f386ff5f008de814d4260732e7d\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"69a9979b30e5efcb08c101d0dc73c705e1724356ff5e1430e7818f0e341610d52e42e42769fc5a14f366d8041184b12f732e24908f9d4ada3a8aca11cae7ca0b\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            }
+          }
+        ],
+        "aggregate": {
+          "coverage_declaration": {
+            "kind": "stream_interval"
+          }
+        }
+      },
+      "expected": {
+        "exchanges": [
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "50c896dcc67b046d2e960466df3d7ce4"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "0c3f0235eba4c1aa01d43b628929bcd7af1f722f6a8ed0a6729c334ae45fb871"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "6d443544e41e7d4878ff95318777cc05"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "4003756e5dba2dedfc9e26858fb37b4c02150be855c0028a80c367c554270e72"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "a34e091973f2480c793ad9b9bc5aa118"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "fa87093a211adb0caf2695f0f3c310a45cdf42e46ae12823ac84be8b8b68d3bc"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "history_properties": {
+          "definition_form": "PASS",
+          "definition_binding": "PASS",
+          "selection_coverage": "PASS",
+          "single_signer": "PASS",
+          "single_anchor": "PASS",
+          "artifact_form": "PASS",
+          "record_kinds": "PASS"
+        },
+        "coverage": {
+          "declared_kind": "holder_selected",
+          "declared_by": "completeness",
+          "properties": {
+            "coverage_declaration_form": "PASS"
+          },
+          "relative_to": "not asserted",
+          "accepted_as_declared": true,
+          "satisfied_becomes": {
+            "r-complete": "INSUFFICIENT"
+          },
+          "aggregate": {
+            "declared": "stream_interval",
+            "derived": "holder_selected",
+            "coverage_declaration_aggregate": "FAIL"
+          }
+        },
+        "accepted": false,
+        "fails": [
+          "coverage_declaration_aggregate"
+        ]
+      }
+    },
+    {
+      "id": "source-authoritative",
+      "title": "Three deals listed by a source's population object, all answered",
+      "cites": [
+        "§6.7.1",
+        "§6.7.2",
+        "§6.7.3"
+      ],
+      "source": "derived: history-1 to history-3 asked under the example definition and re-signed by the holder key; the population object signed by the source key",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "history": "coverage_declaration_example/0",
+        "definition": {
+          "kind": "projection",
+          "name": "coverage_declaration_example/0",
+          "reads": [
+            "committed_at",
+            "epistemic_type",
+            "event_time_claim",
+            "record_type"
+          ],
+          "recipient": "recipient-1",
+          "selection": [
+            "50c896dcc67b046d2e960466df3d7ce4",
+            "6d443544e41e7d4878ff95318777cc05",
+            "a34e091973f2480c793ad9b9bc5aa118"
+          ],
+          "subject_form": "correlation",
+          "coverage_declaration": {
+            "kind": "source_authoritative",
+            "source": "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "method": "Ed25519 over UTF-8 of JCS of the population object's other members (IP §6.7.6, vectors only)",
+            "population": "68809ee76aca00555f759627feecdf9a8d32c5e8c96fee4432c547ca30ea927e"
+          }
+        },
+        "exchanges": [
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"7078edc476cad0a05979d1d826265ba2d8c7a9c750f451b8dd676b402016aefc\",\"nonce\":\"recipient-1/source-authoritative-1\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjcwNzhlZGM0NzZjYWQwYTA1OTc5ZDFkODI2MjY1YmEyZDhjN2E5Yzc1MGY0NTFiOGRkNjc2YjQwMjAxNmFlZmMiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjAyWiIsImRpZ2VzdCI6IjcwNGQ5YWFlNzJlZDRiMjZiMDVmMWE4ZDIwOGQyMDg4MzEzZmQ4Y2QwYTVkMDVkZDU1ZDY0OTExMWZiZTRkNWYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjU6MDJaIiwibGVhZl9pbmRleCI6MSwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDoxMFoiLCJkaWdlc3QiOiJhNzVmZjE2YzA0OTRmOTFmMTM0NzFhNDFjOGEwNjczYzE2MTlmMGNkMDNmYzkzMTg5Y2Y3YzUxNThjODY5ODFmIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjUwOjEwWiIsImxlYWZfaW5kZXgiOjgsInJlY29yZF90eXBlIjoic3RlcF9mYWlsZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiI1MGM4OTZkY2M2N2IwNDZkMmU5NjA0NjZkZjNkN2NlNCJ9fQ\",\"artifact_digest\":\"67126eebd4dbd2f0845f7856474d060639cb45ed1b2242ce02ed81e41a0b195a\",\"derivation\":\"7078edc476cad0a05979d1d826265ba2d8c7a9c750f451b8dd676b402016aefc\",\"issued_at\":\"2026-10-15T00:00:15Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"9930d95b41a97f51e62eb745a3d2449605f1406b3f5de18c04be355fbe7bf15a\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"b9d65ad43a1f6eac4fff3db6766bc0a29d8f5102ef42da7d455174d3d36a88b8e403bfb833b4ecdb3393c35a071500339c4b089faa01d64713faf75068e25004\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"7078edc476cad0a05979d1d826265ba2d8c7a9c750f451b8dd676b402016aefc\",\"nonce\":\"recipient-1/source-authoritative-2\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjcwNzhlZGM0NzZjYWQwYTA1OTc5ZDFkODI2MjY1YmEyZDhjN2E5Yzc1MGY0NTFiOGRkNjc2YjQwMjAxNmFlZmMiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjA1WiIsImRpZ2VzdCI6ImY5Njk3YjNmMWI4ZTMyNDkwMzA3ZWE0NjUyMTgyMTA4MzQxNzM2NjIxNzViNmFhNTg3YzQyYmFmNGI4YzIzNTYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6NDA6MDVaIiwibGVhZl9pbmRleCI6NCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9XSwic3ViamVjdCI6eyJjb3JyZWxhdGlvbiI6IjZkNDQzNTQ0ZTQxZTdkNDg3OGZmOTUzMTg3NzdjYzA1In19\",\"artifact_digest\":\"c1073818cc46a5b3a5d6df0da6bf2937b6464be285e78de3af2fcfec9fe9129a\",\"derivation\":\"7078edc476cad0a05979d1d826265ba2d8c7a9c750f451b8dd676b402016aefc\",\"issued_at\":\"2026-10-15T00:00:17Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"3a456f84f16f035b494fcb6a6d2c059fb938969570215f0c5b38d81e4a34ec3d\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"413ce45e3e65f254b1f1d13b3a3817f809f2d641849236834b826e64fe613d3cefa69fa1ce9792724500f484ed139181a0674ddfc52ba85f1eefa95a2c15ca09\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"7078edc476cad0a05979d1d826265ba2d8c7a9c750f451b8dd676b402016aefc\",\"nonce\":\"recipient-1/source-authoritative-3\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjcwNzhlZGM0NzZjYWQwYTA1OTc5ZDFkODI2MjY1YmEyZDhjN2E5Yzc1MGY0NTFiOGRkNjc2YjQwMjAxNmFlZmMiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjAxWiIsImRpZ2VzdCI6IjA1MzA3NWVmZDBmYWE2N2JiMmU0YTI2ZWIwMTc4NjIyYjViYjcxYzQ0MmU1YTkyZDdhZDVlOTI2YmJhZTdmMWEiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjA6MDFaIiwibGVhZl9pbmRleCI6MCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowNFoiLCJkaWdlc3QiOiIwNzVkY2FlZWJhZjgyNjBiNDk4ZmQxYjRmOTgwNGE3NDRmZGZhODAxMWZiZTMzNjYzZGE5ZTY5YzllOWY0NjRlIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjM1OjA0WiIsImxlYWZfaW5kZXgiOjMsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiJhMzRlMDkxOTczZjI0ODBjNzkzYWQ5YjliYzVhYTExOCJ9fQ\",\"artifact_digest\":\"b90d60ae72faaaad008e2a8836f214d6eb7809c1e8a202cd7d2494324d383203\",\"derivation\":\"7078edc476cad0a05979d1d826265ba2d8c7a9c750f451b8dd676b402016aefc\",\"issued_at\":\"2026-10-15T00:00:19Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"3739997514f9542fab4d50c4f030d0aff5c070cb9a65a645affeb10f23590bdf\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"34519f03012c7222877fb49d64d4c9440ff48efd8c1c394f87ce8eb48acb6b1f35cc00947ac17b8ff6ed935dee946ad927b9723a1e28eca437011fd7de5bf50c\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            }
+          }
+        ],
+        "population": {
+          "media_type": "application/json",
+          "octets_text": "{\"issued_at\":\"2026-10-18T00:00:00Z\",\"issuer\":\"13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618\",\"items\":[\"50c896dcc67b046d2e960466df3d7ce4\",\"6d443544e41e7d4878ff95318777cc05\",\"a34e091973f2480c793ad9b9bc5aa118\"],\"sig\":\"3bc0bd1cdf7e9d890386bcd674a8866a08acf8d5df15ac039cb1deb33b45632643144016b6bc906d8b56c1228c0be63ed1fb4a20322b0ea2f5669bef6024e30d\",\"subject\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\"}"
+        }
+      },
+      "expected": {
+        "exchanges": [
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "50c896dcc67b046d2e960466df3d7ce4"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "67126eebd4dbd2f0845f7856474d060639cb45ed1b2242ce02ed81e41a0b195a"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "6d443544e41e7d4878ff95318777cc05"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "c1073818cc46a5b3a5d6df0da6bf2937b6464be285e78de3af2fcfec9fe9129a"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "a34e091973f2480c793ad9b9bc5aa118"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "b90d60ae72faaaad008e2a8836f214d6eb7809c1e8a202cd7d2494324d383203"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "history_properties": {
+          "definition_form": "PASS",
+          "definition_binding": "PASS",
+          "selection_coverage": "PASS",
+          "single_signer": "PASS",
+          "single_anchor": "PASS",
+          "artifact_form": "PASS",
+          "record_kinds": "PASS"
+        },
+        "coverage": {
+          "declared_kind": "source_authoritative",
+          "declared_by": "coverage_declaration",
+          "properties": {
+            "coverage_declaration_form": "PASS",
+            "coverage_declaration_population": "PASS",
+            "coverage_declaration_source": "PASS"
+          },
+          "relative_to": "the source's list",
+          "accepted_as_declared": true,
+          "satisfied_becomes": {
+            "r-complete": null
+          }
+        },
+        "accepted": true,
+        "fails": []
+      }
+    },
+    {
+      "id": "source-authoritative-deal-unlisted",
+      "title": "Three deals answered, two listed by the source",
+      "cites": [
+        "§6.7.2",
+        "§6.7.3 item 2"
+      ],
+      "source": "derived: the source-authoritative case with one deal left out of the population object, re-signed by the source key",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "history": "coverage_declaration_example/0",
+        "definition": {
+          "kind": "projection",
+          "name": "coverage_declaration_example/0",
+          "reads": [
+            "committed_at",
+            "epistemic_type",
+            "event_time_claim",
+            "record_type"
+          ],
+          "recipient": "recipient-1",
+          "selection": [
+            "50c896dcc67b046d2e960466df3d7ce4",
+            "6d443544e41e7d4878ff95318777cc05",
+            "a34e091973f2480c793ad9b9bc5aa118"
+          ],
+          "subject_form": "correlation",
+          "coverage_declaration": {
+            "kind": "source_authoritative",
+            "source": "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "method": "Ed25519 over UTF-8 of JCS of the population object's other members (IP §6.7.6, vectors only)",
+            "population": "e1820e00ded3b24f4fce0aad305d37eab67441b7c8999ed5d31b9fe006edf480"
+          }
+        },
+        "exchanges": [
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"5aa63c5ede11baf5663bd84958318f4f3db72fd20f3cc357a7ae54ff000f52ec\",\"nonce\":\"recipient-1/source-unlisted-1\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjVhYTYzYzVlZGUxMWJhZjU2NjNiZDg0OTU4MzE4ZjRmM2RiNzJmZDIwZjNjYzM1N2E3YWU1NGZmMDAwZjUyZWMiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjAyWiIsImRpZ2VzdCI6IjcwNGQ5YWFlNzJlZDRiMjZiMDVmMWE4ZDIwOGQyMDg4MzEzZmQ4Y2QwYTVkMDVkZDU1ZDY0OTExMWZiZTRkNWYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjU6MDJaIiwibGVhZl9pbmRleCI6MSwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDoxMFoiLCJkaWdlc3QiOiJhNzVmZjE2YzA0OTRmOTFmMTM0NzFhNDFjOGEwNjczYzE2MTlmMGNkMDNmYzkzMTg5Y2Y3YzUxNThjODY5ODFmIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjUwOjEwWiIsImxlYWZfaW5kZXgiOjgsInJlY29yZF90eXBlIjoic3RlcF9mYWlsZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiI1MGM4OTZkY2M2N2IwNDZkMmU5NjA0NjZkZjNkN2NlNCJ9fQ\",\"artifact_digest\":\"fa02a4ece37811dc35f086a0b484d0413fe7c42416f45c817c643146b18d8815\",\"derivation\":\"5aa63c5ede11baf5663bd84958318f4f3db72fd20f3cc357a7ae54ff000f52ec\",\"issued_at\":\"2026-10-15T00:00:15Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"f47a8130eccfeac59133cd767677aabcb68ce3c4c1d8f4a800b4f7a9afc9edd0\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"8a6bb0b210938d82955457c2e94b6663a3fdfb206023fe605a9f19d7219c408f5cf546c7ef4db7e2c4c2d9865962b0a037d680f345cc1348a2b9ba1ba85bb900\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"5aa63c5ede11baf5663bd84958318f4f3db72fd20f3cc357a7ae54ff000f52ec\",\"nonce\":\"recipient-1/source-unlisted-2\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjVhYTYzYzVlZGUxMWJhZjU2NjNiZDg0OTU4MzE4ZjRmM2RiNzJmZDIwZjNjYzM1N2E3YWU1NGZmMDAwZjUyZWMiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjA1WiIsImRpZ2VzdCI6ImY5Njk3YjNmMWI4ZTMyNDkwMzA3ZWE0NjUyMTgyMTA4MzQxNzM2NjIxNzViNmFhNTg3YzQyYmFmNGI4YzIzNTYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6NDA6MDVaIiwibGVhZl9pbmRleCI6NCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9XSwic3ViamVjdCI6eyJjb3JyZWxhdGlvbiI6IjZkNDQzNTQ0ZTQxZTdkNDg3OGZmOTUzMTg3NzdjYzA1In19\",\"artifact_digest\":\"b8a32d57d6c800d69876d6abf9383442863407362222052d39c12b8e4c56ac92\",\"derivation\":\"5aa63c5ede11baf5663bd84958318f4f3db72fd20f3cc357a7ae54ff000f52ec\",\"issued_at\":\"2026-10-15T00:00:17Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"d5b368201445f45b6cee32e5f6a7f5f32e54357543311a5697ccefc68175c700\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"d14ce6dfd4ddc2845e671863a36e178c9b36d844f7e5770398ed5f6967114abfe443cd6db15e0e9aaef5f0664eab7ac37d16591b68ecc1f8d058db45327e270b\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"5aa63c5ede11baf5663bd84958318f4f3db72fd20f3cc357a7ae54ff000f52ec\",\"nonce\":\"recipient-1/source-unlisted-3\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjVhYTYzYzVlZGUxMWJhZjU2NjNiZDg0OTU4MzE4ZjRmM2RiNzJmZDIwZjNjYzM1N2E3YWU1NGZmMDAwZjUyZWMiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjAxWiIsImRpZ2VzdCI6IjA1MzA3NWVmZDBmYWE2N2JiMmU0YTI2ZWIwMTc4NjIyYjViYjcxYzQ0MmU1YTkyZDdhZDVlOTI2YmJhZTdmMWEiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjA6MDFaIiwibGVhZl9pbmRleCI6MCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowNFoiLCJkaWdlc3QiOiIwNzVkY2FlZWJhZjgyNjBiNDk4ZmQxYjRmOTgwNGE3NDRmZGZhODAxMWZiZTMzNjYzZGE5ZTY5YzllOWY0NjRlIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjM1OjA0WiIsImxlYWZfaW5kZXgiOjMsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiJhMzRlMDkxOTczZjI0ODBjNzkzYWQ5YjliYzVhYTExOCJ9fQ\",\"artifact_digest\":\"81b045c3e00cd168e4c7e8d53fd76c2c10c5aba8cf39a8b372b26ab01dc2fd84\",\"derivation\":\"5aa63c5ede11baf5663bd84958318f4f3db72fd20f3cc357a7ae54ff000f52ec\",\"issued_at\":\"2026-10-15T00:00:19Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"479f9ccba5de222eb42053235c67ca809b885174ebc56c8bedbe574cb378067d\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"15381f6f7518906203c65e6c4a0a1da13873b2065ae5cfa5f05279434125401b05a78520b4e9361597a2bc443fb9fda7a3f41c99a16b23ae72664a92ff1c7d0e\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            }
+          }
+        ],
+        "population": {
+          "media_type": "application/json",
+          "octets_text": "{\"issued_at\":\"2026-10-18T00:00:00Z\",\"issuer\":\"13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618\",\"items\":[\"50c896dcc67b046d2e960466df3d7ce4\",\"6d443544e41e7d4878ff95318777cc05\"],\"sig\":\"cea5d83a9ed29bc79a1e4c1ed7f2ead634e11e8d338f2c1a33ff58924136effec98bd4af17e41d3b80c74131250903ac3c8fd6b6b4e7be30aafaf0ebbedbc90a\",\"subject\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\"}"
+        }
+      },
+      "expected": {
+        "exchanges": [
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "50c896dcc67b046d2e960466df3d7ce4"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "fa02a4ece37811dc35f086a0b484d0413fe7c42416f45c817c643146b18d8815"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "6d443544e41e7d4878ff95318777cc05"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "b8a32d57d6c800d69876d6abf9383442863407362222052d39c12b8e4c56ac92"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "a34e091973f2480c793ad9b9bc5aa118"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "81b045c3e00cd168e4c7e8d53fd76c2c10c5aba8cf39a8b372b26ab01dc2fd84"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "history_properties": {
+          "definition_form": "PASS",
+          "definition_binding": "PASS",
+          "selection_coverage": "PASS",
+          "single_signer": "PASS",
+          "single_anchor": "PASS",
+          "artifact_form": "PASS",
+          "record_kinds": "PASS"
+        },
+        "coverage": {
+          "declared_kind": "source_authoritative",
+          "declared_by": "coverage_declaration",
+          "properties": {
+            "coverage_declaration_form": "PASS",
+            "coverage_declaration_population": "FAIL",
+            "coverage_declaration_source": "PASS"
+          },
+          "relative_to": "the source's list",
+          "accepted_as_declared": false,
+          "satisfied_becomes": {
+            "r-complete": "INSUFFICIENT"
+          }
+        },
+        "accepted": false,
+        "fails": [
+          "coverage_declaration_population"
+        ]
+      }
+    },
+    {
+      "id": "source-authoritative-other-subject",
+      "title": "The three deals listed by the source, for another holder key",
+      "cites": [
+        "§6.7.2",
+        "§6.7.3 item 2"
+      ],
+      "source": "derived: the source-authoritative case with the population object's subject set to the second holder key, re-signed by the source key",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "history": "coverage_declaration_example/0",
+        "definition": {
+          "kind": "projection",
+          "name": "coverage_declaration_example/0",
+          "reads": [
+            "committed_at",
+            "epistemic_type",
+            "event_time_claim",
+            "record_type"
+          ],
+          "recipient": "recipient-1",
+          "selection": [
+            "50c896dcc67b046d2e960466df3d7ce4",
+            "6d443544e41e7d4878ff95318777cc05",
+            "a34e091973f2480c793ad9b9bc5aa118"
+          ],
+          "subject_form": "correlation",
+          "coverage_declaration": {
+            "kind": "source_authoritative",
+            "source": "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "method": "Ed25519 over UTF-8 of JCS of the population object's other members (IP §6.7.6, vectors only)",
+            "population": "190fde606a884b9951515ff5bb89a6ac3da0d3233ac97ee7b752bb45bf969915"
+          }
+        },
+        "exchanges": [
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"7462f02f3e12d358c8df79c58a02f261e22cd626daf0974918652b2341da24f4\",\"nonce\":\"recipient-1/source-other-subject-1\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6Ijc0NjJmMDJmM2UxMmQzNThjOGRmNzljNThhMDJmMjYxZTIyY2Q2MjZkYWYwOTc0OTE4NjUyYjIzNDFkYTI0ZjQiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjAyWiIsImRpZ2VzdCI6IjcwNGQ5YWFlNzJlZDRiMjZiMDVmMWE4ZDIwOGQyMDg4MzEzZmQ4Y2QwYTVkMDVkZDU1ZDY0OTExMWZiZTRkNWYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjU6MDJaIiwibGVhZl9pbmRleCI6MSwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDoxMFoiLCJkaWdlc3QiOiJhNzVmZjE2YzA0OTRmOTFmMTM0NzFhNDFjOGEwNjczYzE2MTlmMGNkMDNmYzkzMTg5Y2Y3YzUxNThjODY5ODFmIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjUwOjEwWiIsImxlYWZfaW5kZXgiOjgsInJlY29yZF90eXBlIjoic3RlcF9mYWlsZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiI1MGM4OTZkY2M2N2IwNDZkMmU5NjA0NjZkZjNkN2NlNCJ9fQ\",\"artifact_digest\":\"cfb0d813dfd43edbeb1d0579505a86501471b0a6a5f60d4d98a673290ca13d2e\",\"derivation\":\"7462f02f3e12d358c8df79c58a02f261e22cd626daf0974918652b2341da24f4\",\"issued_at\":\"2026-10-15T00:00:15Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"b1bb3ffabf42de9aefcdc1c5a0c40fd8821302860688e96d1de651b33955ef5a\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"cc193e841ac6eca1f32edfded04768f6219e06c468e8400534fb6a0516e14cd94dc4799924590a449fbca508636eeb48da0a89b4077f93514aa3d8ca8d976504\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"7462f02f3e12d358c8df79c58a02f261e22cd626daf0974918652b2341da24f4\",\"nonce\":\"recipient-1/source-other-subject-2\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6Ijc0NjJmMDJmM2UxMmQzNThjOGRmNzljNThhMDJmMjYxZTIyY2Q2MjZkYWYwOTc0OTE4NjUyYjIzNDFkYTI0ZjQiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjA1WiIsImRpZ2VzdCI6ImY5Njk3YjNmMWI4ZTMyNDkwMzA3ZWE0NjUyMTgyMTA4MzQxNzM2NjIxNzViNmFhNTg3YzQyYmFmNGI4YzIzNTYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6NDA6MDVaIiwibGVhZl9pbmRleCI6NCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9XSwic3ViamVjdCI6eyJjb3JyZWxhdGlvbiI6IjZkNDQzNTQ0ZTQxZTdkNDg3OGZmOTUzMTg3NzdjYzA1In19\",\"artifact_digest\":\"3edcea3e240bb4aaa0979c4ca49a9cbf34cbfc331b3aba3e81a2ab8ff77a1799\",\"derivation\":\"7462f02f3e12d358c8df79c58a02f261e22cd626daf0974918652b2341da24f4\",\"issued_at\":\"2026-10-15T00:00:17Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"1cab72ea5ed6fe5242f432eb2931b7257c4e483b904bfbad5b01d9754a413c06\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"33856ff8850adb5519d2403e9d2dca45be2b9f56cb29ca94bf2d6fafc2c52c91220baad5bade9a17df6f65742b0f15b704f3a040434bbbb1df31f5da1b9ea70b\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"7462f02f3e12d358c8df79c58a02f261e22cd626daf0974918652b2341da24f4\",\"nonce\":\"recipient-1/source-other-subject-3\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6Ijc0NjJmMDJmM2UxMmQzNThjOGRmNzljNThhMDJmMjYxZTIyY2Q2MjZkYWYwOTc0OTE4NjUyYjIzNDFkYTI0ZjQiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjAxWiIsImRpZ2VzdCI6IjA1MzA3NWVmZDBmYWE2N2JiMmU0YTI2ZWIwMTc4NjIyYjViYjcxYzQ0MmU1YTkyZDdhZDVlOTI2YmJhZTdmMWEiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjA6MDFaIiwibGVhZl9pbmRleCI6MCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowNFoiLCJkaWdlc3QiOiIwNzVkY2FlZWJhZjgyNjBiNDk4ZmQxYjRmOTgwNGE3NDRmZGZhODAxMWZiZTMzNjYzZGE5ZTY5YzllOWY0NjRlIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjM1OjA0WiIsImxlYWZfaW5kZXgiOjMsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiJhMzRlMDkxOTczZjI0ODBjNzkzYWQ5YjliYzVhYTExOCJ9fQ\",\"artifact_digest\":\"41acbbc869b477cda29db25a95b09314829aeefe8977bb467730baf65a71d120\",\"derivation\":\"7462f02f3e12d358c8df79c58a02f261e22cd626daf0974918652b2341da24f4\",\"issued_at\":\"2026-10-15T00:00:19Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"7345eb52354c73dcd46dbe6fb07907a204232d839828796a04c45a21d7ce5280\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"282a1cfded821e012d34fb8120d7a286b42abc5da5300f12e00d6621d1dc27dc10b6542778901485af521b19157264591d75ef90f86581eb9e270b74308fcc01\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            }
+          }
+        ],
+        "population": {
+          "media_type": "application/json",
+          "octets_text": "{\"issued_at\":\"2026-10-18T00:00:00Z\",\"issuer\":\"13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618\",\"items\":[\"50c896dcc67b046d2e960466df3d7ce4\",\"6d443544e41e7d4878ff95318777cc05\",\"a34e091973f2480c793ad9b9bc5aa118\"],\"sig\":\"9a51c6050ccbcd067d4a017b630bc159279a1616be0787bd035fe68de6972208b447af648a74d405ae5b34409f6d0453c8be01a243e3cafef678839ab2e55700\",\"subject\":\"020126b36be66edbb505b7c18f5164055d99e457f0cdf42b0430ea0c93c00a1b\"}"
+        }
+      },
+      "expected": {
+        "exchanges": [
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "50c896dcc67b046d2e960466df3d7ce4"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "cfb0d813dfd43edbeb1d0579505a86501471b0a6a5f60d4d98a673290ca13d2e"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "6d443544e41e7d4878ff95318777cc05"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "3edcea3e240bb4aaa0979c4ca49a9cbf34cbfc331b3aba3e81a2ab8ff77a1799"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "a34e091973f2480c793ad9b9bc5aa118"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "41acbbc869b477cda29db25a95b09314829aeefe8977bb467730baf65a71d120"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "history_properties": {
+          "definition_form": "PASS",
+          "definition_binding": "PASS",
+          "selection_coverage": "PASS",
+          "single_signer": "PASS",
+          "single_anchor": "PASS",
+          "artifact_form": "PASS",
+          "record_kinds": "PASS"
+        },
+        "coverage": {
+          "declared_kind": "source_authoritative",
+          "declared_by": "coverage_declaration",
+          "properties": {
+            "coverage_declaration_form": "PASS",
+            "coverage_declaration_population": "FAIL",
+            "coverage_declaration_source": "PASS"
+          },
+          "relative_to": "the source's list",
+          "accepted_as_declared": false,
+          "satisfied_becomes": {
+            "r-complete": "INSUFFICIENT"
+          }
+        },
+        "accepted": false,
+        "fails": [
+          "coverage_declaration_population"
+        ]
+      }
+    },
+    {
+      "id": "source-authoritative-forged-population",
+      "title": "A population object naming the source, signed by another key",
+      "cites": [
+        "§6.7.2",
+        "§6.7.3 item 2"
+      ],
+      "source": "derived: the source-authoritative case with the population object signed by a key that is not the source's",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "history": "coverage_declaration_example/0",
+        "definition": {
+          "kind": "projection",
+          "name": "coverage_declaration_example/0",
+          "reads": [
+            "committed_at",
+            "epistemic_type",
+            "event_time_claim",
+            "record_type"
+          ],
+          "recipient": "recipient-1",
+          "selection": [
+            "50c896dcc67b046d2e960466df3d7ce4",
+            "6d443544e41e7d4878ff95318777cc05",
+            "a34e091973f2480c793ad9b9bc5aa118"
+          ],
+          "subject_form": "correlation",
+          "coverage_declaration": {
+            "kind": "source_authoritative",
+            "source": "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "method": "Ed25519 over UTF-8 of JCS of the population object's other members (IP §6.7.6, vectors only)",
+            "population": "9bb68bf9ba01878c399c16fe4c2f5882d5c90847b35eb84a97e0f76e261f9673"
+          }
+        },
+        "exchanges": [
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"4f85c2b80b323ba87120fe83952cc5be5a467e407c9ebc0dc2b59733705c1825\",\"nonce\":\"recipient-1/source-forged-1\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjRmODVjMmI4MGIzMjNiYTg3MTIwZmU4Mzk1MmNjNWJlNWE0NjdlNDA3YzllYmMwZGMyYjU5NzMzNzA1YzE4MjUiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjAyWiIsImRpZ2VzdCI6IjcwNGQ5YWFlNzJlZDRiMjZiMDVmMWE4ZDIwOGQyMDg4MzEzZmQ4Y2QwYTVkMDVkZDU1ZDY0OTExMWZiZTRkNWYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjU6MDJaIiwibGVhZl9pbmRleCI6MSwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDoxMFoiLCJkaWdlc3QiOiJhNzVmZjE2YzA0OTRmOTFmMTM0NzFhNDFjOGEwNjczYzE2MTlmMGNkMDNmYzkzMTg5Y2Y3YzUxNThjODY5ODFmIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjUwOjEwWiIsImxlYWZfaW5kZXgiOjgsInJlY29yZF90eXBlIjoic3RlcF9mYWlsZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiI1MGM4OTZkY2M2N2IwNDZkMmU5NjA0NjZkZjNkN2NlNCJ9fQ\",\"artifact_digest\":\"dd4f63693edbcfe4a1e80094cb32b8f2b1b33e78af15bd1301e2c0a0c809d271\",\"derivation\":\"4f85c2b80b323ba87120fe83952cc5be5a467e407c9ebc0dc2b59733705c1825\",\"issued_at\":\"2026-10-15T00:00:15Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"324adba2428c5c80bba50bc1d7485ea07aed71fd0685e0c8bdafa1113ea72802\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"1550f86299959398acca2b7222436ad48874f546ad48eda38783b9110167f93ded082ffa20afcd9f28849fc39f74ca54a53c842273a87261cd4963d6a908b507\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"4f85c2b80b323ba87120fe83952cc5be5a467e407c9ebc0dc2b59733705c1825\",\"nonce\":\"recipient-1/source-forged-2\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjRmODVjMmI4MGIzMjNiYTg3MTIwZmU4Mzk1MmNjNWJlNWE0NjdlNDA3YzllYmMwZGMyYjU5NzMzNzA1YzE4MjUiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjA1WiIsImRpZ2VzdCI6ImY5Njk3YjNmMWI4ZTMyNDkwMzA3ZWE0NjUyMTgyMTA4MzQxNzM2NjIxNzViNmFhNTg3YzQyYmFmNGI4YzIzNTYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6NDA6MDVaIiwibGVhZl9pbmRleCI6NCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9XSwic3ViamVjdCI6eyJjb3JyZWxhdGlvbiI6IjZkNDQzNTQ0ZTQxZTdkNDg3OGZmOTUzMTg3NzdjYzA1In19\",\"artifact_digest\":\"bdfa616a7baae4c227be21f297e7299d3e580655c7dc87b2d059fce8a47d1f05\",\"derivation\":\"4f85c2b80b323ba87120fe83952cc5be5a467e407c9ebc0dc2b59733705c1825\",\"issued_at\":\"2026-10-15T00:00:17Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"de3693ce721c14eb82eff710c72ec207f973b8cf39a7dc1c78264854cc7458f4\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"306bba15750294784b72fcc19d414703bfaa8c2aed0b19e2f9124b6fd2b8d44e67b3d620e5ac676be97a10a0ec02f5ee5a588a05858b8d376f447b985e1cb701\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"4f85c2b80b323ba87120fe83952cc5be5a467e407c9ebc0dc2b59733705c1825\",\"nonce\":\"recipient-1/source-forged-3\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6IjRmODVjMmI4MGIzMjNiYTg3MTIwZmU4Mzk1MmNjNWJlNWE0NjdlNDA3YzllYmMwZGMyYjU5NzMzNzA1YzE4MjUiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXR0ZWRfYXQiOiIyMDI2LTEwLTE1VDAwOjAwOjAxWiIsImRpZ2VzdCI6IjA1MzA3NWVmZDBmYWE2N2JiMmU0YTI2ZWIwMTc4NjIyYjViYjcxYzQ0MmU1YTkyZDdhZDVlOTI2YmJhZTdmMWEiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjA6MDFaIiwibGVhZl9pbmRleCI6MCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowNFoiLCJkaWdlc3QiOiIwNzVkY2FlZWJhZjgyNjBiNDk4ZmQxYjRmOTgwNGE3NDRmZGZhODAxMWZiZTMzNjYzZGE5ZTY5YzllOWY0NjRlIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjM1OjA0WiIsImxlYWZfaW5kZXgiOjMsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiJhMzRlMDkxOTczZjI0ODBjNzkzYWQ5YjliYzVhYTExOCJ9fQ\",\"artifact_digest\":\"5efa5c2827de48e393ef966970d0eab6fb6048678759a6ac66b74f2e50f0a642\",\"derivation\":\"4f85c2b80b323ba87120fe83952cc5be5a467e407c9ebc0dc2b59733705c1825\",\"issued_at\":\"2026-10-15T00:00:19Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"d356deca5e78835005d022fa7d45d7dd63a0737a2910d70f4f24362a5d021a5c\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"d6f14d6355267462dcea365adf718467653f61961e18c49555d67d9908f7928add5b97f9a24e9be8b3f3b6dc6e7b26060fe7c522d1f5891d8ac8d5022e01e409\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            }
+          }
+        ],
+        "population": {
+          "media_type": "application/json",
+          "octets_text": "{\"issued_at\":\"2026-10-18T00:00:00Z\",\"issuer\":\"13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618\",\"items\":[\"50c896dcc67b046d2e960466df3d7ce4\",\"6d443544e41e7d4878ff95318777cc05\",\"a34e091973f2480c793ad9b9bc5aa118\"],\"sig\":\"51366900fa90d96774505d290f086d3684d8d5f69e2bcffbbebd3b0b689899a5c107d68b562e478c3d2888091bccb22601f4fec479ac7a3a707877c8e5b74b0c\",\"subject\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\"}"
+        }
+      },
+      "expected": {
+        "exchanges": [
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "50c896dcc67b046d2e960466df3d7ce4"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "dd4f63693edbcfe4a1e80094cb32b8f2b1b33e78af15bd1301e2c0a0c809d271"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "6d443544e41e7d4878ff95318777cc05"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "bdfa616a7baae4c227be21f297e7299d3e580655c7dc87b2d059fce8a47d1f05"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "a34e091973f2480c793ad9b9bc5aa118"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "5efa5c2827de48e393ef966970d0eab6fb6048678759a6ac66b74f2e50f0a642"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "history_properties": {
+          "definition_form": "PASS",
+          "definition_binding": "PASS",
+          "selection_coverage": "PASS",
+          "single_signer": "PASS",
+          "single_anchor": "PASS",
+          "artifact_form": "PASS",
+          "record_kinds": "PASS"
+        },
+        "coverage": {
+          "declared_kind": "source_authoritative",
+          "declared_by": "coverage_declaration",
+          "properties": {
+            "coverage_declaration_form": "PASS",
+            "coverage_declaration_population": "PASS",
+            "coverage_declaration_source": "FAIL"
+          },
+          "relative_to": "the source's list",
+          "accepted_as_declared": false,
+          "satisfied_becomes": {
+            "r-complete": "INSUFFICIENT"
+          }
+        },
+        "accepted": false,
+        "fails": [
+          "coverage_declaration_source"
+        ]
+      }
+    },
+    {
+      "id": "same-controller-halves-same-key",
+      "title": "Two agreeing halves signed by one key",
+      "cites": [
+        "§6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5)",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"083b67b6b3574c364567537bd3e97d375557fbf95c210be07718f7d56135910d1e7eeb21925afa41f207617415ef8bdefbb16ae94105531c56b3abf4f2633109\"}"
+          }
+        ]
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true,
+          "issuer_independence": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": [
+          "issuer_independence"
+        ]
+      }
+    },
+    {
+      "id": "same-controller-halves-unbound-keys",
+      "title": "Two agreeing halves under two keys, no evidence about their controllers",
+      "cites": [
+        "§6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5)",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "13ecbfc77d6658bf9a1731e2284403faf82974e62d72dfe39718a31825ac0618",
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ]
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true,
+          "issuer_independence": "NOT_CHECKED",
+          "shown_as": "not corroborating",
+          "satisfied_becomes": {
+            "r-corroborated": "UNKNOWN"
+          }
+        },
+        "fails": []
+      }
+    }
+  ]
+}

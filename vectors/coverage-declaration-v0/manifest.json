@@ -1,0 +1,17 @@
+{
+  "set": "aac-coverage-declaration-v0",
+  "status": "Conformance vectors for the coverage declaration of the informational Minimum Evidence Interoperability Profile v0 (evidence-interop/0, §6.7). Every key is a test key derived from a public seed; never use one for anything else.",
+  "spec": "spec/interop-profile-v0.md",
+  "generator": "python/scripts/generate_coverage_declaration_v0_vectors.py",
+  "run": {
+    "path": "personal-history-basic-v0/responder-run.json",
+    "sha256": "f7d77d56d81ca187cb9a8118f8a15aae5407f5a96aca1c5525a5f5d2e827b848"
+  },
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "0c013cb55f204a2485b4ce0ef9f610e7996e2da00a46d49f4e0722bba6a444ce",
+      "count": 13
+    }
+  ]
+}

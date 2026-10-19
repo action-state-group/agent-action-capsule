@@ -131,7 +131,15 @@ class BucketsDoc(TypedDict):
     not_evaluable: List[str]
 
 
-class AggregateDoc(TypedDict):
+class CoverageDeclarationDoc(TypedDict):
+    kind: Literal["holder_selected", "stream_interval", "source_authoritative"]
+
+
+class _AggregateOptionalDoc(TypedDict, total=False):
+    coverage_declaration: CoverageDeclarationDoc  # PROPOSED, spec section 7.2
+
+
+class AggregateDoc(_AggregateOptionalDoc):
     coverage: CoverageDoc
     buckets: BucketsDoc
 

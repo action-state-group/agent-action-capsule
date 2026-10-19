@@ -425,6 +425,8 @@ aggregate:
     evaluated_population: integer     # requirements actually evaluated
     excluded_not_applicable: integer  # requirements excluded as NOT_APPLICABLE — an EvidenceStatus value (§2), not §1's Sufficiency
     unknown_count: integer            # evaluated requirements whose sufficiency resolved UNKNOWN (§1)
+  coverage_declaration:               # OPTIONAL, PROPOSED — §7.2
+    kind: holder_selected | stream_interval | source_authoritative
   buckets:
     met: [claim-id, ...]
     not_met: [claim-id, ...]
@@ -580,6 +582,27 @@ same amount, or that lowers `required_producers`, passes every rule above. Detec
 recompute from the records and the contract version that `contract_ref` names. A relying party that
 needs the independence count to hold MUST recompute it, not read it.
 
+### 7.2 Coverage kind — `aggregate.coverage_declaration` (PROPOSED)
+
+**Status: PROPOSED.** Not ruled. `aggregate.coverage_declaration` is OPTIONAL. A Result without it
+is unchanged and still valid. It carries one member, `kind`, which names the population the
+aggregate's evidence claims to be. The kinds, and what completeness is relative to under each, are
+the interop profile's (`spec/interop-profile-v0.md` §6.7.1).
+
+**Never stronger than the evidence (normative).** The kind is the declared kind of every set of
+answers the aggregate's claims rest on, when all of them declare one kind and none has a coverage
+property that is `FAIL`. Otherwise it is `holder_selected` (interop profile §6.7.5). A producer
+MUST NOT write any other kind. Checking this needs the sets themselves, so a verifier of the
+document alone cannot catch a stronger kind. A verifier following the interop profile derives the
+kind (its §6.7.5) and reports `coverage_declaration_aggregate` `FAIL` when the aggregate carries
+another one. An
+aggregate whose claims rest on no declared set carries no `coverage_declaration`.
+
+It is not `aggregate.coverage` (§3), which counts requirements. It is not `coverage_report` (§7.1),
+which reports evidence per requirement. A valid signature on any of the evidence never implies
+completeness (interop profile §6.7). A Result rendering `kind` shows it beside the coverage
+statement and never as a grade.
+
 ## 8. View
 
 Presentation hints only — **never data**. The `presentation/v1` header fields: producer
@@ -718,3 +741,11 @@ whose gap names a remedy), five schema negatives (`neg-coverage-satisfied-with-g
 negatives that validate against the schema and are rejected by the checker's cross-element
 coverage check (`neg-coverage-correlated-counted-as-met`, `neg-coverage-summary-does-not-recompute`).
 Each negative has its own mutant proof.
+
+§7.2's PROPOSED `aggregate.coverage_declaration` adds one positive,
+`pos-example-org-coverage-declaration-result.json`. It is the claims positive with
+`coverage_declaration` `{"kind": "holder_selected"}`, and with the member removed it is
+byte-identical to the claims positive. It also adds one schema negative,
+`neg-coverage-declaration-unknown-kind.json`, whose kind is outside the three, with its own mutant
+proof. The never-stronger rule needs the evidence sets. Its vector is the interop profile's
+`aggregate-stronger-than-evidence` (`vectors/coverage-declaration-v0/`).
