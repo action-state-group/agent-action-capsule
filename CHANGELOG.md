@@ -77,6 +77,48 @@
   `schemas/generate_result_examples.py`, `schemas/check_evidence_result_examples.py`,
   `vectors/evidence-result/README.md` and `SHA256SUMS`, `vectors/README.md`,
   `vectors/manifest.json`, `vectors/SHA256SUMS` and `python/scripts/generate_all_vectors.py`.
+- Controller Binding v0 (`spec/controller-binding-v0.md`, new open points CB-1 to CB-6). It defines
+  a binding record between two keys, for example a node key and a personal agent's holder key.
+  - **Claim types.** There are three, each with its verification method: `same_controller_asserted`
+    and `delegated_by` (`dual_signature/0`), and `same_organization_credentialed`
+    (`dual_signature_credential/0`, with a credential named by digest).
+  - **Signatures.** Both keys sign the same bytes: JCS of the record without `sigs`. A record that
+    one key signed alone is not a binding. The binding digest is SHA-256 of those bytes, so a
+    revocation names every copy of the record, whatever signatures it carries.
+  - **Validity.** The record has a validity window. Either key can revoke it with a signed
+    statement. No revocation source is registered, so revocation is `FAIL` or `NOT_CHECKED`.
+  - **What a binding proves.** A verifier reports control of each key when it signed the record,
+    and never an identity. A failed credential is reported, but it does not stop a binding from
+    applying: both keys' signatures already state the claim.
+- `spec/interop-profile-v0.md` §6.7.4 changes. A controller binding that applies to a pair now gives
+  `issuer_independence` `FAIL`, "redundant, not corroborating". Before, that pair was `NOT_CHECKED`.
+  - It never gives `PASS`: a binding shows common control, the opposite of independence. A binding
+    that does not apply leaves the pair where it would be with no binding.
+  - **This reverses P-60's earlier text**, which named a signed binding between two keys as the
+    expected route to `PASS`. P-60 now says a binding gives `FAIL`, and that `PASS` needs evidence
+    of distinct controllers, which is still open.
+  - The binding is pinned as CB, and the catalogue has a new row for the controller binding
+    properties.
+- `spec/REGISTRY.md`: new provisional value `controller_binding` under "Provisional: composed/v1
+  join basis values". It is held for ratification and not registered.
+  - The Evidence Bundle `-01` `join-basis` list is closed and is not edited.
+  - A producer MUST NOT carry the value in a `composed/v1` block until a posted Bundle revision lists
+    it.
+  - The Python, Go and Rust `data/REGISTRY.md` mirrors are updated to match.
+- New corpus `vectors/controller-binding-v0/` (fourteen cases over pairs of agreeing halves):
+  - one valid binding per claim type;
+  - `credential-method-unimplemented`, `credential-forged`, `revoked-after-the-pair` and
+    `revocation-by-other-key`, which still apply;
+  - `expired`, `revoked`, `one-key-signed`, `same-key-halves`, `other-keys`, `unknown-method` and
+    `delegator-not-bound`.
+
+  `python/scripts/generate_controller_binding_v0_vectors.py` regenerates it, and
+  `python/tests/test_controller_binding_v0_vectors.py` checks it. Existing vector bytes are
+  unchanged.
+- Changed released files: `spec/interop-profile-v0.md`, `spec/REGISTRY.md`,
+  `python/agent_action_capsule/data/REGISTRY.md`, `go/registries/data/REGISTRY.md`,
+  `rust/agent-action-capsule/data/REGISTRY.md`, `vectors/README.md`, `vectors/manifest.json`,
+  `vectors/SHA256SUMS` and `python/scripts/generate_all_vectors.py`.
 
 ## 0.10.0 — 2026-10-17
 

@@ -59,6 +59,7 @@ and the discovery properties (§11.4).
 | DE | `draft-mih-agent-disclosure-envelope` | -00 (`spec/draft-mih-agent-disclosure-envelope-00.md`) | the JSON value digest rule |
 | SR | `draft-mih-agent-settlement-records` | -00 (`spec/draft-mih-agent-settlement-records-00.md`) | the as-transmitted rule for wrapped foreign objects |
 | RES | Evidence Result v0 | `spec/evidence-result-v0.md` | the claim, sufficiency, verdict and presentation carrier rules |
+| CB | Controller Binding v0 | `spec/controller-binding-v0.md` | the binding record, its properties, and when a binding applies to a pair (§6.7.4) |
 | BA | `draft-mih-agent-bilateral-attestation` | -02 (`spec/draft-mih-agent-bilateral-attestation-02.md`) | the requesting and performing parties, and acknowledgment as receipt without agreement |
 | EL | `draft-mih-agent-evidence-layer` | -00 (`spec/draft-mih-agent-evidence-layer-00.md`) | what a Receipt proves, witnesses, the link shape and its closed vocabulary, and the `cites`, `acknowledges`, `supersedes` and `rebuts` links |
 | EC | Evidence Contract v0 schema | `capsule_engine/schemas/evidence-contract-v0.json` in the capsule-engine repository at commit `fd43d4329ea31d69e9bdd0a79f23f013c3615219`, SHA-256 of the file `6d10d5eb97e15421db0ab922b5f6d1f0a2e9f453fb64e52fb45306ba029ad480` | the contract and every member and value of it (§11.3); the eight-value status, its four-value projection, and per-requirement handling of missing and conflicting evidence |
@@ -783,13 +784,22 @@ example two agreeing halves of one exchange, it reports `issuer_independence` fo
 
 | Status | When | The pair is shown as |
 |---|---|---|
-| `FAIL` | both members are signed by the same key | "redundant, not corroborating", with the reason |
-| `NOT_CHECKED` | the keys differ, and the verifier examined no evidence that their controllers are distinct | "not corroborating" |
+| `FAIL` | both members are signed by the same key, or the keys differ and a controller binding applies to the pair [CB §6.2] | "redundant, not corroborating", with the reason: same key, or the binding's claim type and digest |
+| `NOT_CHECKED` | the keys differ, and no controller binding applies to the pair | "not corroborating" |
 | `PASS` | only with evidence that the issuers are distinct controllers, in a form this revision does not register | corroborating, with the evidence named |
 
 Two signatures never show two parties. Distinct keys alone never give `PASS`, and a verifier built
 from this revision alone never reports `PASS`. A `NOT_CHECKED` pair is not shown as redundant,
 because that would assert one controller, which nothing examined showed.
+
+A controller binding [CB] is a record that both keys sign, stating that one controller holds them,
+that one delegated to the other, or that both sit in one organization. Each of these says the two
+issuers are not independent. A binding that applies therefore turns `NOT_CHECKED` into `FAIL`,
+never into `PASS` [CB §7]. A binding that does not apply (expired, revoked, signed by one key,
+under a method the verifier does not implement, malformed, or naming other keys) leaves the pair
+`NOT_CHECKED`, as with no binding. No path through a binding gives a pair more than it has without
+one [CB §6.2]. The verifier reports the binding's
+properties beside the pair [CB §6.1].
 
 A requirement whose condition needs corroboration is never `SATISFIED` from a pair whose
 `issuer_independence` is not `PASS`. Where the evaluation would otherwise give it `SATISFIED`, its
@@ -888,6 +898,7 @@ that can give a status; §6.7.3 item 4 and §6.7.4 can only turn a `SATISFIED` i
 | `manifest_consistency` | two or more manifests from one responder | §11.4.7 [P-45] | no; reported separately, never a status of §8 |
 | coverage properties | a set of answers under one derivation; an Evidence Result aggregate | §6.7.2 [P-58] | decide whether the set is accepted as its declared kind (§6.7.3); enter §8 only through §6.7.3 |
 | `issuer_independence` | each pair of members presented as corroborating | §6.7.4 [P-60] | enters §8 only through §6.7.4 |
+| controller binding properties | a controller binding delivered with a pair | [CB §6.1] | decide whether the binding applies to the pair (§6.7.4), never a status of §8 |
 
 When `profile_version` is not `PASS`, every other envelope property is `NOT_CHECKED` [P-4].
 `native_check` is not an envelope property: it applies to foreign objects inside an Artifact
@@ -3040,9 +3051,10 @@ a later draft revision.
   `coverage_declaration_commitment` stays `NOT_CHECKED` until a material kind shows what an anchor
   commits to (P-13). Until then, a live set that leaves out a stream passes every property that is
   checked (§6.7.3 item 3).
-- **P-60** `issuer_independence` (§6.7.4). Open: the evidence that gives `PASS`, for example a
-  signed binding between two keys stating its claim type. Until a revision registers such
-  evidence, a verifier reports `FAIL` or `NOT_CHECKED` only.
+- **P-60** `issuer_independence` (§6.7.4). Open: the evidence that gives `PASS`, which has to show
+  that two keys have distinct controllers. A controller binding [CB] cannot give it, because it
+  shows the opposite: a binding that applies gives `FAIL`. Until a revision registers evidence of
+  distinct controllers, a verifier reports `FAIL` or `NOT_CHECKED` only.
 
 ## References
 
@@ -3074,5 +3086,6 @@ a later draft revision.
 - Model Context Protocol specification, revision 2026-07-28,
   <https://modelcontextprotocol.io/specification/2026-07-28>.
 - Evidence Result v0, `spec/evidence-result-v0.md`.
+- Controller Binding v0, `spec/controller-binding-v0.md`.
 - Evidence Contract v0 schema, `evidence-contract-v0.json`.
 - RFC 2119, RFC 8174 (BCP 14); RFC 3339; RFC 4648; RFC 8032; RFC 8259; RFC 8785; RFC 8949; RFC 9052; RFC 9597.

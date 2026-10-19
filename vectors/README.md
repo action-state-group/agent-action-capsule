@@ -67,6 +67,11 @@ same-commit files in CI.
   declaring more than its evidence, two source negatives, and two pairs of agreeing halves for
   issuer independence. Built from the personal-history run;
   `python/scripts/generate_coverage_declaration_v0_vectors.py` regenerates them.
+- `controller-binding-v0/`: the controller binding record of `spec/controller-binding-v0.md` and
+  its use in issuer independence (`spec/interop-profile-v0.md` §6.7.4): one valid binding per claim
+  type, and expired, revoked, one-key-signed, same-key, other-keys, forged-credential,
+  unknown-method, unbound-delegator and revocation cases, each over a pair of agreeing halves;
+  `python/scripts/generate_controller_binding_v0_vectors.py` regenerates them.
 - `adapters/x402/`: the x402 adapter declaration `spec/adapters/x402-v0.md`: a positive and a
   native-check-fails case for an `exact`/`eip3009` payment, with the wrapped objects' octets, the
   relying party's policy and recorded lookup, and the expected `native_check` reports. Constructed,

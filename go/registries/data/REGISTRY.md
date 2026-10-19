@@ -445,6 +445,23 @@ below). Example, with the producer's reverse-DNS prefix:
 `n/a` when no decision applied. `blocking: true` records that the action would
 not have run had the check failed.
 
+### Provisional: composed/v1 join basis values
+
+**Held for ratification; not yet registered.** The Evidence Bundle draft
+(`-01`), "Joins", defines the `composed/v1` join basis as a closed list:
+`pre_agreed_identifier` and `shared_artifact_digest`, each with a derivation, and
+`issued_receipt` and `same_interval`, reserved for a later specification. The value
+below is proposed for a later Bundle revision. It is not part of `-01`. A `-01`
+verifier reads a block that carries it as malformed, so a producer MUST NOT put it
+in a `composed/v1` block until a posted Bundle revision lists it. Until then, the
+binding is used beside the composition, under issuer independence
+(`spec/interop-profile-v0.md` §6.7.4). Conformance vectors:
+`vectors/controller-binding-v0/`.
+
+| Value | Semantics |
+|---|---|
+| `controller_binding` | `identifier_digest` is the digest of a controller binding record (`spec/controller-binding-v0.md` §4) delivered beside the block, and `pointer` selects each member root record's `key_id`. `identifier_digest` is SHA-256 of the record's signing input (the record without `sigs`). The two members are linked when the delivered record's digest equals `identifier_digest`, the two selected values are its two keys, and it applies to them (§6.2 of that document): it is well formed, both keys signed it under a method the verifier implements, it is in its window at each root record's time, and no received revocation applies. A `controller_binding` join that derives `agree` is redundant, not corroborating. The binding proves control of both keys at its ceremony, never who holds them. |
+
 ## 15. Evidence Bundle countersignature type
 
 Defined in `draft-mih-zhang-agent-disclosure-bundle`,
