@@ -1,13 +1,15 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""The draft-mih-agent-evidence-request-00 vectors are reproducible and self-consistent.
+"""The draft-mih-agent-evidence-request vectors are reproducible and self-consistent.
 
 These checks do not implement the interaction. They re-run the generator and
 require byte-identical output, check every hash the vectors pin, decode each
 CBOR frame with an independent encoder, verify each signed refusal against its
-stated expectation, and confirm every cited section exists in the draft.
+stated expectation, and confirm every cited section exists in the revision the
+corpus names.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import re
@@ -25,9 +27,10 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 ROOT = Path(__file__).resolve().parents[2]
 VECTORS = ROOT / "vectors" / "evidence-request"
 GENERATOR = ROOT / "python" / "scripts" / "generate_evidence_request_vectors.py"
-DRAFT_TXT = ROOT / "spec" / "draft-mih-agent-evidence-request-00.txt"
+SPEC = ROOT / "spec"
 HAND_WRITTEN = ("README.md", "DIFFS.md")
-CORPORA = ("request", "resolution", "carries", "digest", "refusal", "outcomes", "invariance", "retention")
+CORPORA = ("request", "resolution", "carries", "categories", "carriage", "digest", "refusal", "outcomes",
+           "invariance", "retention")
 
 
 def _sha(data: bytes) -> str:
@@ -97,9 +100,9 @@ def test_case_structure_ids_and_counts():
             assert case["section"] and all(s.startswith("§") for s in case["section"])
 
 
-def _draft_headings() -> dict[str, str]:
+def _draft_headings(draft: str) -> dict[str, str]:
     headings = {}
-    for line in DRAFT_TXT.read_text(encoding="utf-8").splitlines():
+    for line in (SPEC / f"{draft}.txt").read_text(encoding="utf-8").splitlines():
         m = re.match(r"^(\d+(?:\.\d+)*)\.  (\S.*?)\s*$", line)
         if m:
             headings[m.group(1)] = m.group(2)
@@ -107,14 +110,17 @@ def _draft_headings() -> dict[str, str]:
 
 
 def test_every_cited_section_exists_in_the_draft():
-    headings = _draft_headings()
-    cited = set(REGISTRY["section"])
-    for _, case in _all_cases():
-        cited.update(case["section"])
-    for ref in cited:
+    cited = {(REGISTRY["draft"], ref) for ref in REGISTRY["section"]}
+    for name in CORPORA:
+        corpus = _load(name)
+        cited.update((corpus["draft"], ref) for case in corpus["cases"] for ref in case["section"])
+    drafts = {draft for draft, _ in cited}
+    assert drafts == {"draft-mih-agent-evidence-request-00", "draft-mih-agent-evidence-request-01"}
+    headings = {draft: _draft_headings(draft) for draft in drafts}
+    for draft, ref in cited:
         m = re.match(r"^§(\d+(?:\.\d+)*) (.+)$", ref)
         assert m, ref
-        assert headings.get(m.group(1)) == m.group(2), ref
+        assert headings[draft].get(m.group(1)) == m.group(2), (draft, ref)
 
 
 def test_readme_lists_every_case_and_ambiguity():
@@ -150,10 +156,12 @@ def _json_value(text: str):
         return False, None
 
 
-@pytest.mark.parametrize("corpus", ["request", "resolution"])
+@pytest.mark.parametrize("corpus", ["request", "resolution", "categories"])
 def test_request_digests_and_cbor_frames(corpus):
     rfc8785 = pytest.importorskip("rfc8785")
     for case in _load(corpus)["cases"]:
+        if "request_json" not in case:
+            continue
         text = case["request_json"]
         assert _sha(text.encode("utf-8")) == case["request_json_digest"], case["id"]
         ok_json, value = _json_value(text)
@@ -304,3 +312,95 @@ def test_retention_table_covers_every_reason_both_sides():
         assert f"ret-inside-{reason}" in cases and f"ret-after-{reason}" in cases
     for form in REGISTRY["subject_forms"]:
         assert f"ret-commitment-subject-{form}" in cases
+
+
+def _categories_well_formed(value) -> bool:
+    """-01 §3.9: a map with a text set and a non-empty array of distinct text names."""
+    if not isinstance(value, dict) or not {"set", "names"} <= set(value):
+        return False
+    names = value["names"]
+    return (isinstance(value["set"], str) and isinstance(names, list) and bool(names)
+            and all(isinstance(n, str) for n in names) and len(set(names)) == len(names))
+
+
+def test_categories_expectations_follow_from_the_text():
+    kinds = {"request": 0, "invariance": 0}
+    for case in _load("categories")["cases"]:
+        kinds[case["kind"]] += 1
+        if case["kind"] == "request":
+            value = json.loads(case["request_json"])
+            want = ({"well_formed": True} if _categories_well_formed(value["categories"])
+                    else {"well_formed": False, "reason": "request_malformed"})
+            assert case["expect"] == want, case["id"]
+            continue
+        obs = case["observations"]
+        for o in obs:
+            assert _sha(bytes.fromhex(o["artifact_hex"])) == o["artifact_digest"], case["id"]
+        # -01 §5: the artifact is a function of subject, anchor, derivation and categories.
+        inputs = {json.dumps([o["request"]["subject"], o["resolved_anchor"], o["request"].get("derivation"),
+                              o["request"].get("categories")], sort_keys=True) for o in obs}
+        artifacts = {o["artifact_hex"] for o in obs}
+        if len(inputs) > 1:
+            expected = "not_comparable"
+        else:
+            expected = "holds" if len(artifacts) == 1 else "violated"
+        assert case["expect"]["invariance"] == expected, case["id"]
+    assert kinds["request"] >= 2 and kinds["invariance"] >= 2
+
+
+def _decode_carried(carriage: str, text: str) -> bytes:
+    """-01 §10.2: A2A JSON writes raw parts as base64; §10.3: MCP as base64url without padding."""
+    if carriage == "a2a":
+        return base64.b64decode(text, validate=True)
+    assert carriage == "mcp" and "=" not in text
+    return base64.b64decode(text.translate(str.maketrans("-_", "+/")) + "=" * (-len(text) % 4),
+                            validate=True)
+
+
+def _strict_decodes(carriage: str, text: str) -> bool:
+    try:
+        _decode_carried(carriage, text)
+    except (ValueError, AssertionError):
+        return False
+    return True
+
+
+def test_carriage_expectations_follow_from_the_text():
+    seen = set()
+    digests = set()
+    for case in _load("carriage")["cases"]:
+        kind, expect = case["kind"], case["expect"]
+        if kind == "digest":
+            # The vector's request is chosen so that each carriage's text fails the other's decoder.
+            other = {"a2a": "mcp", "mcp": "a2a"}[case["carriage"]]
+            assert not _strict_decodes(other, case["carried_text"]), case["id"]
+            raw = _decode_carried(case["carriage"], case["carried_text"])
+            got = case["candidate_digest"] == _sha(raw)
+            assert expect == {"is_request_digest": got}, case["id"]
+            if got:
+                digests.add(case["candidate_digest"])
+        elif kind == "binding":
+            got = case["envelope_request_digest"] == _sha(bytes.fromhex(case["retained_request_hex"]))
+            assert expect == {"answers": got}, case["id"]
+        elif kind == "media_type":
+            got = case["media_type"] in ("application/cbor", "application/json")
+            assert expect == {"accepted": got}, case["id"]
+        else:
+            assert kind == "classify", case["id"]
+            r = case["received"]
+            if r["carriage"] == "a2a":
+                pending = {"TASK_STATE_SUBMITTED", "TASK_STATE_WORKING", "TASK_STATE_INPUT_REQUIRED",
+                           "TASK_STATE_AUTH_REQUIRED"}
+                state = "reply" if r["reply_artifact"] else (
+                    "pending" if r["task_state"] in pending else "no_reply")
+            else:
+                state = "reply" if r["structured_reply"] else "no_reply"
+            assert expect["classified_as"] == state, case["id"]
+            assert "refusal" not in (expect["classified_as"],), case["id"]
+            if state != "reply":
+                assert expect["must_not_classify_as"] == ["refusal"], case["id"]
+            got = state == "reply"
+        seen.add((kind, got))
+    # The A2A and MCP texts of one request give one digest.
+    assert len(digests) == 1
+    assert seen == {(k, b) for k in ("digest", "binding", "media_type", "classify") for b in (True, False)}

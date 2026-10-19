@@ -21,10 +21,11 @@ same-commit files in CI.
   reports for one record (at most 64 per code, paths cut to 256 characters);
   `python/scripts/generate_verify_number_findings_fixture.py` regenerates it.
 - `interop/`: established composition and run-under interoperability suites.
-- `evidence-request/`: draft-mih-agent-evidence-request-00 cases (request map,
-  subject forms, which record members carry a correlation identifier or cite
-  an exchange half, request digest, signed refusal, outcomes, caller
-  invariance, retention), derived from the draft text;
+- `evidence-request/`: draft-mih-agent-evidence-request-00 and -01 cases
+  (request map, subject forms, which record members carry a correlation
+  identifier or cite an exchange half, request digest, signed refusal,
+  outcomes, caller invariance, retention, the `categories` field, A2A and MCP
+  carriage), derived from the draft text;
   `python/scripts/generate_evidence_request_vectors.py` regenerates them.
 - `settlement/`: draft-mih-agent-settlement-records-00 cases (two-party
   payer/payee leg records, the payment reference join, wrapped objects by

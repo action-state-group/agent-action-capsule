@@ -20,9 +20,19 @@
   },
   "files": [
     {
+      "path": "carriage.json",
+      "sha256": "cf0110b6eeec2afa204d32bfce41ff031870ec8b2b94c8382700ec94cb450f49",
+      "count": 15
+    },
+    {
       "path": "carries.json",
-      "sha256": "ceb8912e33294acc4fbf9d3fa674c395e0a6edeaba591897034a4799c622f444",
+      "sha256": "e23e6bf4c054bf794369a389cef0b85d2536121132a9547b7c9b72e065498267",
       "count": 5
+    },
+    {
+      "path": "categories.json",
+      "sha256": "11f3320d2be105b5699934bc4b2e77f086359ade1b80b20654510683c592184a",
+      "count": 14
     },
     {
       "path": "digest.json",

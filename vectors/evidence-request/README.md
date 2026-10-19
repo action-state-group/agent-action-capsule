@@ -1,13 +1,18 @@
-# Evidence request conformance vectors (draft-mih-agent-evidence-request-00)
+# Evidence request conformance vectors (draft-mih-agent-evidence-request-00 and -01)
 
 Conformance vectors for the evidence request interaction defined in
-`spec/draft-mih-agent-evidence-request-00.md`: the request map, the six subject
+`spec/draft-mih-agent-evidence-request-00.md` and
+`spec/draft-mih-agent-evidence-request-01.md`: the request map, the six subject
 forms, which record members carry a correlation identifier or cite an exchange
 half, coverage, the request digest, the signed refusal, the three outcomes and
-the pending state, caller invariance, and retention commitments.
+the pending state, caller invariance, retention commitments, the `categories`
+request field, and A2A and MCP carriage.
 
-`carries.json` follows §3.1.1, text added to the draft source for -01; the file
-name of the source stays `-00` until the revision is cut.
+Each corpus names the revision it is written from in its `draft` member.
+`carries.json`, `categories.json` and `carriage.json` follow text that first
+appears in -01, and name -01; every other corpus names -00, and every -00 case
+also holds under -01. Section numbers below are those of the revision the
+corpus names.
 
 **Derived from the -00 text, not from any implementation.** Every expected
 result is written by hand in the generator from the section it cites. The
@@ -23,6 +28,8 @@ section and the reading used (the most literal one); the list is below, for -01.
 | `registry.json` | The exact strings -00 fixes: request fields and their presence, the six subject forms, the two coverage members, the eight refusal reasons, the `history_card/1` derivation, the three outcomes, the pending state, the `evidence-request/1` subprotocol identifier. |
 | `request.json` | Request map validation. Each case gives the request as JSON (RFC 8785 text, `request_json`) and, where it is a CBOR value, as a deterministic CBOR frame (`request_cbor_hex`), with the SHA-256 of each. Expect `well_formed: true`, or `false` with the exact refusal reason. |
 | `resolution.json` | Exact-match resolution against one declared responder state (`responder`, with per-case `responder_overrides`). Expect `artifact` or a refusal with the most specific reason (§4.2). |
+| `categories.json` | The OPTIONAL `categories` request field (-01 §3.9). `kind` `request` cases are request maps as in `request.json`; expect `well_formed: true`, or `false` with `request_malformed`. `kind` `invariance` cases are observations as in `invariance.json`, with `categories` in each request: categories is an input of the artifact when honored (-01 §5). |
+| `carriage.json` | A2A and MCP carriage (-01 §10.1-§10.3) and the envelope's request digest (-01 §4.1). `kind` `digest`: decode `carried_text` as the `carriage` writes bytes (A2A: base64 with padding; MCP: base64url without padding); `candidate_digest` is the request digest only if it is SHA-256 over the decoded octets. `kind` `binding`: an envelope answers the request only if `envelope_request_digest` is SHA-256 of `retained_request_hex`. `kind` `media_type`: exact-string comparison. `kind` `classify`: what the requester received, classified by the reply alone. |
 | `carries.json` | Which members of a record carry a correlation identifier or cite an exchange half (§3.1.1): a positive and a negative case per subject form, plus a `counterparty_half` entry naming another half. Each case gives `record_format`, the `record` reduced to the members the designation reads, and the `subject`. Expect `carries` (correlation) or `cites` (exchange), true or false. |
 | `digest.json` | The request digest is over the bytes as received (§4.2 item 1): JSON and CBOR, deterministic and not, and a refusal carrying the digest of a re-canonicalized form. |
 | `refusal.json` | Signed refusals: one per registered reason, a CBOR response frame, tampering, and objects that are signed but not conforming. Carries the signature profile and both fixed keys (seed and public key). |
@@ -80,6 +87,11 @@ section and the reading used (the most literal one); the list is below, for -01.
    allowed. Different anchors are `not_comparable`.
 8. `retention.json`: classify each `facts` pair, and check each `commitment` for
    well-formedness.
+9. `categories.json`: feed `request` cases as in step 2, and check
+   `invariance` cases as in step 7.
+10. `carriage.json`: check each case by its `kind` (table above). A
+   `classify` result must equal `expect.classified_as` and must not be any of
+   `expect.must_not_classify_as`.
 
 Regenerate from the repository root with
 `python3 python/scripts/generate_evidence_request_vectors.py`. The output is a
@@ -161,6 +173,45 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `cites-exchange-counterparty-half` | 3.1.1 | cites |  |
 | `cites-exchange-responds-to` | 3.1.1 | does not cite |  |
 | `cites-exchange-counterparty-half-other-digest` | 3.1.1 | does not cite |  |
+
+### `categories.json` (14 cases)
+
+| Case | § | Expect | Ambiguity |
+|---|---|---|---|
+| `cat-two-names` | 3.9 | well formed |  |
+| `cat-one-name` | 3.9 | well formed |  |
+| `cat-names-any-order` | 3.9 | well formed |  |
+| `neg-cat-not-a-map` | 3.9 | refuse `request_malformed` |  |
+| `neg-cat-missing-set` | 3.9 | refuse `request_malformed` |  |
+| `neg-cat-missing-names` | 3.9 | refuse `request_malformed` |  |
+| `neg-cat-names-empty` | 3.9 | refuse `request_malformed` |  |
+| `neg-cat-names-duplicate` | 3.9 | refuse `request_malformed` |  |
+| `neg-cat-names-not-array` | 3.9 | refuse `request_malformed` |  |
+| `neg-cat-set-not-text` | 3.9 | refuse `request_malformed` |  |
+| `neg-cat-name-not-text` | 3.9 | refuse `request_malformed` |  |
+| `cat-inv-same-categories` | 5, 3.9 | holds |  |
+| `cat-inv-different-categories-not-comparable` | 5, 3.9 | not_comparable |  |
+| `neg-cat-inv-same-categories-divergent` | 5, 3.9 | violated |  |
+
+### `carriage.json` (15 cases)
+
+| Case | § | Expect | Ambiguity |
+|---|---|---|---|
+| `carry-a2a-raw-part` | 10.1, 10.2 | is the request digest |  |
+| `carry-mcp-request-argument` | 10.1, 10.3 | is the request digest |  |
+| `neg-carry-digest-over-text` | 10.1 | is not the request digest |  |
+| `neg-carry-digest-over-reencoding` | 10.1 | is not the request digest |  |
+| `bind-envelope-answers-own-request` | 4.1 | answers |  |
+| `neg-bind-envelope-other-request` | 4.1 | does not answer |  |
+| `media-cbor` | 10.1 | accepted |  |
+| `media-json` | 10.1 | accepted |  |
+| `neg-media-parameter` | 10.1 | not accepted |  |
+| `neg-media-case` | 10.1 | not accepted |  |
+| `classify-a2a-completed-with-reply` | 10.2 | reply |  |
+| `neg-classify-a2a-rejected-no-reply` | 10.2, 10.1 | no_reply |  |
+| `classify-a2a-working-no-reply` | 10.2, 4.3 | pending |  |
+| `classify-mcp-error-flag-with-reply` | 10.3, 10.1 | reply |  |
+| `neg-classify-mcp-error-text-no-reply` | 10.3, 10.1 | no_reply |  |
 
 ### `digest.json` (7 cases)
 
