@@ -27,7 +27,7 @@ VECTORS = ROOT / "vectors" / "evidence-request"
 GENERATOR = ROOT / "python" / "scripts" / "generate_evidence_request_vectors.py"
 DRAFT_TXT = ROOT / "spec" / "draft-mih-agent-evidence-request-00.txt"
 HAND_WRITTEN = ("README.md", "DIFFS.md")
-CORPORA = ("request", "resolution", "digest", "refusal", "outcomes", "invariance", "retention")
+CORPORA = ("request", "resolution", "carries", "digest", "refusal", "outcomes", "invariance", "retention")
 
 
 def _sha(data: bytes) -> str:
@@ -264,6 +264,38 @@ def test_invariance_expectations_follow_from_the_bytes():
         else:
             expected = "holds" if len(artifacts) == 1 else "violated"
         assert case["expect"]["invariance"] == expected, case["id"]
+
+
+def _layer_correlation_members(record: dict) -> list:
+    """§3.1.1, Evidence Layer: subject_ref and each text member of a profile-added correlation map."""
+    correlation = record.get("correlation")
+    members = list(correlation.values()) if isinstance(correlation, dict) else []
+    return [v for v in [record.get("subject_ref"), *members] if isinstance(v, str)]
+
+
+def _capsule_half_citations(record: dict) -> list:
+    """§3.1.1, Capsule: references entries whose citation_purpose is counterparty_half."""
+    return [r.get("digest") for r in record.get("references", [])
+            if r.get("citation_purpose") == "counterparty_half"]
+
+
+def test_carries_expectations_follow_from_the_designations():
+    # Re-reads the two designations the vectors exercise (Evidence Layer correlation members,
+    # Capsule half citation); a vector for any other pairing fails here until this reading grows.
+    seen = set()
+    for case in _load("carries")["cases"]:
+        (form, value), = case["subject"].items()
+        record = case["record"]
+        if form == "correlation":
+            assert case["record_format"] == "evidence-layer", case["id"]
+            got = {"carries": value in _layer_correlation_members(record)}
+        else:
+            assert (form, case["record_format"]) == ("exchange", "capsule"), case["id"]
+            got = {"cites": value in _capsule_half_citations(record)}
+        assert case["expect"] == got, case["id"]
+        seen.add((form, next(iter(got.values()))))
+    # One positive and one negative per subject form.
+    assert seen == {("correlation", True), ("correlation", False), ("exchange", True), ("exchange", False)}
 
 
 def test_retention_table_covers_every_reason_both_sides():
