@@ -699,6 +699,13 @@ an <tt>acknowledges</tt> link to this Close.</t>
           <t><strong>UNILATERAL:</strong> neither.</t>
         </li>
       </ul>
+      <t><strong>AGREED is not acceptance.</strong> An <tt>acknowledges</tt> link establishes receipt,
+not agreement (<xref target="links"/>). An automatic acknowledgement of receipt and a
+reviewed acceptance of the Close's population therefore both make a Close
+AGREED: AGREED states that the counterparty acknowledged the Close and does
+not contest it, and it does not establish that the counterparty accepted
+the Close's contents. Whether, and how, a counterparty records acceptance
+is profile-defined.</t>
       <t>Close status is read from <tt>rebuts</tt> and <tt>acknowledges</tt> links only. A
 <tt>disputes</tt> or <tt>resolves</tt> link to a Close does not change its status; a
 counterparty that contests a Close carries <tt>rebuts</tt>.</t>
@@ -1209,7 +1216,7 @@ whether a payload resolves to bytes, not what a Capsule records.</t>
         </reference>
       </references>
     </references>
-    <?line 865?>
+    <?line 873?>
 
 <section anchor="acknowledgments">
       <name>Acknowledgments</name>
@@ -1241,6 +1248,10 @@ the producer's asserted absence, and that <tt>UNDISCLOSED</tt> there is not
           <t>Typed links: added and registered <tt>amends</tt>, <tt>disputes</tt>, and <tt>resolves</tt>;
 stated that contradiction is carried as <tt>rebuts</tt>, and that <tt>disputes</tt> and
 <tt>resolves</tt> links do not change a Close's status.</t>
+        </li>
+        <li>
+          <t>Reconcile and Close: stated that AGREED establishes acknowledgement
+without contest, not acceptance of the Close's contents.</t>
         </li>
       </ul>
     </section>
