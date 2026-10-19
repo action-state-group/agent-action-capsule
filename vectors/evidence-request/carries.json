@@ -1,5 +1,5 @@
 {
-  "draft": "draft-mih-agent-evidence-request-00",
+  "draft": "draft-mih-agent-evidence-request-01",
   "provenance": "spec-derived",
   "corpus": "carries",
   "description": "Which record members carry a correlation identifier or cite an exchange half, per record format. Each record is reduced to the members the designation reads.",

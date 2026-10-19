@@ -1215,6 +1215,18 @@ Tags: `go/v0.11.0`, `python/v0.11.0`, `ts/v0.4.0`, `crates/agent-action-capsule-
   unchanged, the Basic level corpus included.
 - Changed released files: `spec/personal-agent-history-profile-v0.md`, `vectors/README.md`,
   `vectors/manifest.json`, `vectors/SHA256SUMS` and `python/scripts/generate_all_vectors.py`.
+- Evidence Request -01 (`spec/draft-mih-agent-evidence-request-01.md`, dated 2026-10-29, not
+  posted). The source edited in place above is now the -01 file. `spec/draft-mih-agent-evidence-request-00.{md,xml,txt}`
+  are restored to the posted -00 (commit `bab723f`; xml and txt byte-equal to the IETF archive),
+  and `spec/Makefile` `EVREQ` builds -01. New in -01 besides §3.1.1 below: the artifact response
+  envelope carries the request digest, an issuance time and a signature over both, the artifact
+  digest and the resolved anchor (§4.1); the OPTIONAL `categories` request field, a category set
+  identifier and category names, an input of the artifact when honored, with `coverage`
+  unchanged (§3.9, §5); carriage rules and A2A and MCP bindings (§10.1-§10.3). Vectors: new
+  `vectors/evidence-request/categories.json` (14 cases) and `carriage.json` (15 cases), both
+  naming -01; `carries.json` now names -01, its cases unchanged. The -00 corpora are unchanged.
+  `python/tests/test_evidence_request_vectors.py` checks each corpus's cited sections against the
+  revision it names.
 - Evidence Request (`spec/draft-mih-agent-evidence-request-00.md`, -01 text): new §3.1.1 "What
   a Record Carries" defines which record members carry a `correlation` identifier and what makes
   a record cite an `exchange` half. The record's format fixes it. For Evidence Layer records that

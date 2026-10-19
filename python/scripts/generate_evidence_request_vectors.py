@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate the draft-mih-agent-evidence-request-00 conformance vectors.
+"""Generate the draft-mih-agent-evidence-request conformance vectors.
 
 Every expected result below is written by hand from the text of
-``spec/draft-mih-agent-evidence-request-00.md`` and cites the section it comes
+``spec/draft-mih-agent-evidence-request-00.md``, or of -01 for the corpora
+that name -01 in their ``draft`` member, and cites the section it comes
 from. Nothing here imports or runs an implementation of the interaction: the
 script only encodes the literal inputs (JSON per RFC 8785, CBOR per RFC 8949
 section 4.2.1), hashes them, and signs the refusal cases with a fixed Ed25519
@@ -20,6 +21,7 @@ Dependencies: the standard library and ``cryptography`` (Ed25519 only).
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 from pathlib import Path
@@ -31,6 +33,9 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "evidence-request"
 DRAFT = "draft-mih-agent-evidence-request-00"
+# Corpora written from text that first appears in -01 name that revision. The
+# -00 corpora keep DRAFT, which also seeds the refusal keys.
+DRAFT_01 = "draft-mih-agent-evidence-request-01"
 
 # ---------------------------------------------------------------------------
 # Encodings
@@ -315,6 +320,7 @@ S_DEADLINE = "§3.4 Deadline"
 S_NONCE = "§3.5 Nonce"
 S_ROUTE = "§3.6 Route"
 S_RECREQ = "§3.8 Recording the Request"
+S_CAT = "§3.9 Categories"
 S_OUT = "§4 Interaction Outcomes"
 S_ART = "§4.1 The Artifact Response"
 S_REF = "§4.2 The Signed Refusal"
@@ -325,6 +331,9 @@ S_INV = "§5 Caller Invariance"
 S_HC = "§8.1 The History Card"
 S_RET = "§9 Retention Commitments"
 S_BIND = "§10 Transport Bindings"
+S_CARRY = "§10.1 Carriage Rules"
+S_A2A = "§10.2 A2A Binding"
+S_MCP = "§10.3 MCP Binding"
 S_PRIV = "§12 Privacy Considerations"
 S_IANA = "§13 IANA Considerations"
 
@@ -935,6 +944,181 @@ def invariance_cases() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# categories.json: the OPTIONAL categories request field (-01)
+# ---------------------------------------------------------------------------
+
+# An x- set: well-formedness does not depend on a set being registered, and
+# no category-set registry exists yet (§3.9 leaves it to a companion document).
+CAT_SET = "x-example-set"
+CATS = {"set": CAT_SET, "names": ["alpha", "beta"]}
+
+
+def categories_cases() -> list[dict]:
+    def c(case_id: str, description: str, categories: Any, expect: dict,
+          section: list[str] | None = None) -> dict:
+        case = request_case(case_id, section or [S_CAT], description,
+                            _req({"record": R1}, PIN_42, categories=categories), expect)
+        case["kind"] = "request"
+        return case
+
+    content = {"anchor": ANCHOR_42, "category_declaration": {"set": CAT_SET, "alpha": "available",
+                                                              "beta": "withheld"}, "records": [R1]}
+    declared = jcs(content).encode()
+    declared_alpha = jcs({"anchor": ANCHOR_42, "category_declaration": {"set": CAT_SET, "alpha": "available"},
+                          "records": [R1]}).encode()
+
+    def obs(requester: str, request: dict, art: bytes) -> dict:
+        return {"requester": requester, "request": request, "resolved_anchor": ANCHOR_42,
+                "artifact_hex": art.hex(), "artifact_digest": sha256_hex(art)}
+
+    def inv(case_id: str, description: str, observations: list[dict], verdict: str) -> dict:
+        return {"id": case_id, "kind": "invariance", "section": [S_INV, S_CAT],
+                "description": description, "observations": observations,
+                "expect": {"invariance": verdict}}
+
+    subj = {"record": R1}
+    return [
+        c("cat-two-names", "A set identifier and two distinct names: well formed.", CATS, WELL_FORMED),
+        c("cat-one-name", "One name is enough: names is non-empty.", {"set": CAT_SET, "names": ["alpha"]},
+          WELL_FORMED),
+        c("cat-names-any-order", "Names in descending order: well formed. §3.9 leaves open whether the order "
+          "carries meaning, and does not make it a well-formedness rule.",
+          {"set": CAT_SET, "names": ["beta", "alpha"]}, WELL_FORMED),
+        c("neg-cat-not-a-map", "categories is a text string, not a map.", "alpha",
+          MALFORMED("request_malformed")),
+        c("neg-cat-missing-set", "categories lacks set.", {"names": ["alpha"]},
+          MALFORMED("request_malformed")),
+        c("neg-cat-missing-names", "categories lacks names.", {"set": CAT_SET},
+          MALFORMED("request_malformed")),
+        c("neg-cat-names-empty", "names is an empty array.", {"set": CAT_SET, "names": []},
+          MALFORMED("request_malformed")),
+        c("neg-cat-names-duplicate", "names repeats a name.", {"set": CAT_SET, "names": ["alpha", "alpha"]},
+          MALFORMED("request_malformed")),
+        c("neg-cat-names-not-array", "names is a text string, not an array.", {"set": CAT_SET, "names": "alpha"},
+          MALFORMED("request_malformed")),
+        c("neg-cat-set-not-text", "set is an integer, not a text string.", {"set": 7, "names": ["alpha"]},
+          MALFORMED("request_malformed")),
+        c("neg-cat-name-not-text", "A name is an integer, not a text string.", {"set": CAT_SET, "names": [1]},
+          MALFORMED("request_malformed")),
+        inv("cat-inv-same-categories",
+            "Same subject, pin and categories from two requesters: the same bytes, declaration included.",
+            [obs("requester-a", _req(subj, PIN_42, nonce="n-0901", categories=CATS), declared),
+             obs("requester-b", _req(subj, PIN_42, nonce="n-0902", categories=CATS), declared)],
+            "holds"),
+        inv("cat-inv-different-categories-not-comparable",
+            "Same subject and pin, different categories: categories is an input of the artifact when "
+            "honored (§5), so different bytes are expected and no invariance claim applies.",
+            [obs("requester-a", _req(subj, PIN_42, nonce="n-0903", categories=CATS), declared),
+             obs("requester-b", _req(subj, PIN_42, nonce="n-0904",
+                                     categories={"set": CAT_SET, "names": ["alpha"]}), declared_alpha)],
+            "not_comparable"),
+        inv("neg-cat-inv-same-categories-divergent",
+            "Same subject, pin and categories, different declarations for different requesters: a violation.",
+            [obs("requester-a", _req(subj, PIN_42, nonce="n-0905", categories=CATS), declared),
+             obs("requester-b", _req(subj, PIN_42, nonce="n-0906", categories=CATS), declared_alpha)],
+            "violated"),
+    ]
+
+
+# ---------------------------------------------------------------------------
+# carriage.json: A2A and MCP carriage and the envelope's request digest (-01)
+# ---------------------------------------------------------------------------
+
+
+def _b64(raw: bytes) -> str:
+    return base64.b64encode(raw).decode("ascii")
+
+
+def _b64url(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def _carriage_request() -> tuple[dict, bytes]:
+    """A request whose CBOR needs padding and holds '+' or '/' in base64, so the
+    A2A text and the MCP text differ and a decoder for the wrong one fails."""
+    for i in range(1, 64):
+        value = _req({"record": R1}, PIN_42, nonce="n-carriage-" + "~" * i)
+        raw = cbor(value)
+        text = _b64(raw)
+        if len(raw) % 3 and ("+" in text or "/" in text):
+            return value, raw
+    raise SystemExit("no carriage request found")
+
+
+def carriage_cases() -> list[dict]:
+    value, raw = _carriage_request()
+    digest = sha256_hex(raw)
+    other_raw = cbor(_req({"record": R1}, PIN_42, nonce="n-carriage-other"))
+    a2a_text, mcp_text = _b64(raw), _b64url(raw)
+    assert a2a_text != mcp_text and a2a_text.endswith("=")
+
+    def dig(case_id: str, section: list[str], description: str, carriage: str, text: str,
+            digest_over: str, candidate: str, matches: bool) -> dict:
+        return {"id": case_id, "kind": "digest", "section": section, "description": description,
+                "carriage": carriage, "carried_text": text, "digest_over": digest_over,
+                "candidate_digest": candidate, "expect": {"is_request_digest": matches}}
+
+    def bind(case_id: str, description: str, envelope_digest: str, answers: bool) -> dict:
+        return {"id": case_id, "kind": "binding", "section": [S_ART], "description": description,
+                "retained_request_hex": raw.hex(), "envelope_request_digest": envelope_digest,
+                "expect": {"answers": answers}}
+
+    def media(case_id: str, media_type: str, ok: bool, description: str) -> dict:
+        return {"id": case_id, "kind": "media_type", "section": [S_CARRY], "description": description,
+                "media_type": media_type, "expect": {"accepted": ok}}
+
+    def cls(case_id: str, section: list[str], description: str, received: dict, state: str) -> dict:
+        expect: dict[str, Any] = {"classified_as": state}
+        if state != "reply":
+            expect["must_not_classify_as"] = ["refusal"]
+        return {"id": case_id, "kind": "classify", "section": section, "description": description,
+                "received": received, "expect": expect}
+
+    return [
+        dig("carry-a2a-raw-part", [S_CARRY, S_A2A],
+            "A2A JSON writes the raw part as base64 with padding. The digest is over the decoded octets.",
+            "a2a", a2a_text, "decoded", digest, True),
+        dig("carry-mcp-request-argument", [S_CARRY, S_MCP],
+            "MCP writes the request argument as base64url without padding. The digest is over the decoded "
+            "octets, and equals the A2A one.", "mcp", mcp_text, "decoded", digest, True),
+        dig("neg-carry-digest-over-text", [S_CARRY],
+            "A digest over the base64 text instead of the decoded octets is not the request digest.",
+            "a2a", a2a_text, "text", sha256_hex(a2a_text.encode("ascii")), False),
+        dig("neg-carry-digest-over-reencoding", [S_CARRY],
+            "A digest over a JSON re-encoding of the decoded request is not the request digest.",
+            "mcp", mcp_text, "reencoded_json", sha256_hex(jcs(value).encode("utf-8")), False),
+        bind("bind-envelope-answers-own-request",
+             "The envelope's request digest is the digest of the requester's retained bytes: it answers.",
+             digest, True),
+        bind("neg-bind-envelope-other-request",
+             "The envelope's request digest is that of another request (a different nonce): it does not "
+             "answer this one, however well it verifies otherwise.", sha256_hex(other_raw), False),
+        media("media-cbor", "application/cbor", True, "Deterministic CBOR."),
+        media("media-json", "application/json", True, "JCS."),
+        media("neg-media-parameter", "application/cbor; charset=binary", False,
+              "Compared as an exact string with no parameters."),
+        media("neg-media-case", "Application/CBOR", False, "Compared as an exact string."),
+        cls("classify-a2a-completed-with-reply", [S_A2A],
+            "A completed task with one reply Artifact carrying a raw part of the request's media type.",
+            {"carriage": "a2a", "task_state": "TASK_STATE_COMPLETED", "reply_artifact": True}, "reply"),
+        cls("neg-classify-a2a-rejected-no-reply", [S_A2A, S_CARRY],
+            "A rejected task with no reply Artifact is the responder sending no reply, never a refusal. "
+            "The request stays pending until the window closes, then is a recorded absence.",
+            {"carriage": "a2a", "task_state": "TASK_STATE_REJECTED", "reply_artifact": False}, "no_reply"),
+        cls("classify-a2a-working-no-reply", [S_A2A, S_PEND],
+            "A working task with no reply Artifact yet: pending.",
+            {"carriage": "a2a", "task_state": "TASK_STATE_WORKING", "reply_artifact": False}, "pending"),
+        cls("classify-mcp-error-flag-with-reply", [S_MCP, S_CARRY],
+            "The error flag is set but structuredContent.reply is present: it is the reply.",
+            {"carriage": "mcp", "is_error": True, "structured_reply": True}, "reply"),
+        cls("neg-classify-mcp-error-text-no-reply", [S_MCP, S_CARRY],
+            "The error flag is set, no structuredContent.reply, text saying the caller is not authorized: "
+            "not a reply, and never a refusal. The request stays pending until the window closes.",
+            {"carriage": "mcp", "is_error": True, "structured_reply": False}, "no_reply"),
+    ]
+
+
+# ---------------------------------------------------------------------------
 # retention.json
 # ---------------------------------------------------------------------------
 
@@ -1042,9 +1226,9 @@ def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
-def _corpus(name: str, description: str, cases: list[dict], **extra: Any) -> dict:
+def _corpus(name: str, description: str, cases: list[dict], *, draft: str = DRAFT, **extra: Any) -> dict:
     out: dict[str, Any] = {
-        "draft": DRAFT,
+        "draft": draft,
         "provenance": "spec-derived",
         "corpus": name,
         "description": description,
@@ -1067,7 +1251,15 @@ def build() -> dict[str, bytes]:
         "carries.json": _dump(_corpus(
             "carries", "Which record members carry a correlation identifier or cite an exchange half, "
             "per record format. Each record is reduced to the members the designation reads.",
-            carries_cases())),
+            carries_cases(), draft=DRAFT_01)),
+        "categories.json": _dump(_corpus(
+            "categories", "The OPTIONAL categories request field: well formed or request_malformed, and "
+            "categories as an input of the artifact for caller invariance.", categories_cases(),
+            draft=DRAFT_01)),
+        "carriage.json": _dump(_corpus(
+            "carriage", "A2A and MCP carriage: the request digest over decoded octets, the envelope's "
+            "request digest, media types, and classification by the reply alone.", carriage_cases(),
+            draft=DRAFT_01)),
         "digest.json": _dump(_corpus(
             "digest", "The request digest: SHA-256 over the request bytes as received.", digest_cases())),
         "refusal.json": _dump(_corpus(
