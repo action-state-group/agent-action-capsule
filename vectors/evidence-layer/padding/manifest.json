@@ -1,11 +1,11 @@
 {
-  "draft": "draft-mih-agent-evidence-layer-00",
+  "draft": "draft-mih-agent-evidence-layer-01",
   "provenance": "spec-derived",
   "generator": "python/scripts/generate_evidence_layer_padding_vectors.py",
   "files": [
     {
       "path": "cases.json",
-      "sha256": "d9162c3f8b4b6771d2c705f5b5db2402d6369dc27d04641e9ebed7a36a812de7",
+      "sha256": "07a08371524a35b7b306b523c6433a77d6f058d7af374f24e10bdc423f1282d9",
       "count": 17
     }
   ]

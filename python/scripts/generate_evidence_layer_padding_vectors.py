@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Generate the Evidence Layer padding record vectors.
 
-draft-mih-agent-evidence-layer-00, "What a Checkpoint Reveals", defines a
+draft-mih-agent-evidence-layer-01, "What a Checkpoint Reveals", defines a
 padding record: ``record_type`` ``padding``, ``epistemic_type``
 ``producer_claim``, and as its only content a fresh random value in the
 member ``store_nonce``, 32 bytes encoded as 64 lowercase hexadecimal
@@ -44,7 +44,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "evidence-layer" / "padding"
-DRAFT = "draft-mih-agent-evidence-layer-00"
+DRAFT = "draft-mih-agent-evidence-layer-01"
 SECTION = "Privacy Considerations, What a Checkpoint Reveals"
 
 

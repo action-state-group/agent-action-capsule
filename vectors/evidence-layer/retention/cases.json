@@ -1,0 +1,212 @@
+{
+  "draft": "draft-mih-agent-evidence-layer-01",
+  "section": "Record/Payload Separation, Retention, and Disclosure, UNDISCLOSED and policy_uri",
+  "provenance": "spec-derived",
+  "rules": {
+    "UNDISCLOSED": "policy_uri is REQUIRED",
+    "policy_uri": "a URI (RFC 3986, Section 3), not a relative reference; these cases check only a string that is a scheme, then ':', with no whitespace, not full RFC 3986 syntax",
+    "other_states": "policy_uri is OPTIONAL",
+    "serialization": "JSON object of the header members these rules read; other header members are left out"
+  },
+  "reasons": {
+    "missing_policy_uri": "retention_state is UNDISCLOSED and the record has no policy_uri",
+    "policy_uri_form": "retention_state is UNDISCLOSED and policy_uri is not a URI"
+  },
+  "count": 12,
+  "cases": [
+    {
+      "id": "pos-undisclosed-https",
+      "kind": "positive",
+      "description": "UNDISCLOSED with an https policy_uri.",
+      "record": {
+        "retention_state": "UNDISCLOSED",
+        "payload_commitments": [
+          "f8ebe09f3eaf2a766bd89e39c38daccd6fb7fc26c0eec26796bff7f229728fba"
+        ],
+        "policy_uri": "https://example.com/policies/retention"
+      },
+      "expected": {
+        "valid": true
+      }
+    },
+    {
+      "id": "pos-undisclosed-urn",
+      "kind": "positive",
+      "description": "UNDISCLOSED with a urn policy_uri: any URI with a scheme qualifies.",
+      "record": {
+        "retention_state": "UNDISCLOSED",
+        "payload_commitments": [
+          "97e1b4265d4286250445c93f0f3109cfccdd1c136763ce89e2b01dfe468355f5"
+        ],
+        "policy_uri": "urn:example:policy:retention:7"
+      },
+      "expected": {
+        "valid": true
+      }
+    },
+    {
+      "id": "pos-undisclosed-fragment",
+      "kind": "positive",
+      "description": "UNDISCLOSED with a policy_uri carrying a fragment: still a URI, not a relative reference.",
+      "record": {
+        "retention_state": "UNDISCLOSED",
+        "payload_commitments": [
+          "ba4dfd2d13e159982227d9b136da8ea934090e5771585ee3fdaa62649eadc038"
+        ],
+        "policy_uri": "https://example.com/policies#retention"
+      },
+      "expected": {
+        "valid": true
+      }
+    },
+    {
+      "id": "pos-withheld-no-policy-uri",
+      "kind": "positive",
+      "description": "WITHHELD without policy_uri: only UNDISCLOSED requires it.",
+      "record": {
+        "retention_state": "WITHHELD",
+        "payload_commitments": [
+          "a3245743b022a629208d12fa87c8377201c05b3a48c9ae53e56cadca9b392e74"
+        ]
+      },
+      "expected": {
+        "valid": true
+      }
+    },
+    {
+      "id": "pos-withheld-with-policy-uri",
+      "kind": "positive",
+      "description": "WITHHELD with policy_uri: policy_uri MAY accompany any other state.",
+      "record": {
+        "retention_state": "WITHHELD",
+        "payload_commitments": [
+          "80decd3ed4991a341c577f8698ba52ea9ec1db8d8eac6470e5c9cf20ff87b2b4"
+        ],
+        "policy_uri": "https://example.com/policies/access"
+      },
+      "expected": {
+        "valid": true
+      }
+    },
+    {
+      "id": "neg-undisclosed-missing-policy-uri",
+      "kind": "negative",
+      "description": "UNDISCLOSED with no policy_uri.",
+      "record": {
+        "retention_state": "UNDISCLOSED",
+        "payload_commitments": [
+          "68e15d5720acec0ca34a50f2465f817454841bc6bcb707d16493e56699eb057e"
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "missing_policy_uri",
+        "member": "policy_uri"
+      }
+    },
+    {
+      "id": "neg-undisclosed-policy-uri-empty",
+      "kind": "negative",
+      "description": "UNDISCLOSED with an empty policy_uri.",
+      "record": {
+        "retention_state": "UNDISCLOSED",
+        "payload_commitments": [
+          "3777ed8272174a19c4aadabb2dfa57497b7d542528c24f38234a1810a6837bf1"
+        ],
+        "policy_uri": ""
+      },
+      "expected": {
+        "valid": false,
+        "reason": "policy_uri_form",
+        "member": "policy_uri"
+      }
+    },
+    {
+      "id": "neg-undisclosed-policy-uri-relative-path",
+      "kind": "negative",
+      "description": "UNDISCLOSED with a relative reference (a path) as policy_uri.",
+      "record": {
+        "retention_state": "UNDISCLOSED",
+        "payload_commitments": [
+          "4288afbefee3bc9925b9718a32da4a1d00e256c21f7c17c487ba30e46ac59289"
+        ],
+        "policy_uri": "/policies/retention"
+      },
+      "expected": {
+        "valid": false,
+        "reason": "policy_uri_form",
+        "member": "policy_uri"
+      }
+    },
+    {
+      "id": "neg-undisclosed-policy-uri-network-path",
+      "kind": "negative",
+      "description": "UNDISCLOSED with a network-path relative reference (no scheme) as policy_uri.",
+      "record": {
+        "retention_state": "UNDISCLOSED",
+        "payload_commitments": [
+          "076ca4318d3f72c9a7a3346f74ae5dceeec63e8c65eaddedb479bd67f981beae"
+        ],
+        "policy_uri": "//example.com/policies/retention"
+      },
+      "expected": {
+        "valid": false,
+        "reason": "policy_uri_form",
+        "member": "policy_uri"
+      }
+    },
+    {
+      "id": "neg-undisclosed-policy-uri-whitespace",
+      "kind": "negative",
+      "description": "UNDISCLOSED with a policy_uri containing a space, which no URI contains.",
+      "record": {
+        "retention_state": "UNDISCLOSED",
+        "payload_commitments": [
+          "8305acea3fb815fa1bd7692665b74186b8206ab6f1d40f2bbecf2c125f7e5857"
+        ],
+        "policy_uri": "https://example.com/retention policy"
+      },
+      "expected": {
+        "valid": false,
+        "reason": "policy_uri_form",
+        "member": "policy_uri"
+      }
+    },
+    {
+      "id": "neg-undisclosed-policy-uri-not-string",
+      "kind": "negative",
+      "description": "UNDISCLOSED with a non-string policy_uri.",
+      "record": {
+        "retention_state": "UNDISCLOSED",
+        "payload_commitments": [
+          "1145cd992cc9fb281acff54d372bb637142cbd76a1c8d33ecffa2c5e823070e2"
+        ],
+        "policy_uri": [
+          "https://example.com/policies/retention"
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "policy_uri_form",
+        "member": "policy_uri"
+      }
+    },
+    {
+      "id": "neg-undisclosed-policy-uri-null",
+      "kind": "negative",
+      "description": "UNDISCLOSED with a null policy_uri: present but not a URI.",
+      "record": {
+        "retention_state": "UNDISCLOSED",
+        "payload_commitments": [
+          "f567c93bd81bf1d5bf1af90876524e15a4ed55404cabdb7259afe1ff570972e6"
+        ],
+        "policy_uri": null
+      },
+      "expected": {
+        "valid": false,
+        "reason": "policy_uri_form",
+        "member": "policy_uri"
+      }
+    }
+  ]
+}

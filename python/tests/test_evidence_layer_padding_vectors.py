@@ -2,7 +2,7 @@
 """The Evidence Layer padding vectors check from the files alone.
 
 The shape rules below are an independent reading of the padding paragraph in
-``spec/draft-mih-agent-evidence-layer-00.md`` and of
+``spec/draft-mih-agent-evidence-layer-01.md`` and of
 ``vectors/evidence-layer/padding/README.md``. Nothing is imported from the
 generator.
 """
@@ -21,7 +21,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 VECTORS = ROOT / "vectors" / "evidence-layer" / "padding"
-DRAFT = ROOT / "spec" / "draft-mih-agent-evidence-layer-00.md"
+DRAFT = ROOT / "spec" / "draft-mih-agent-evidence-layer-01.md"
 GENERATOR = ROOT / "python" / "scripts" / "generate_evidence_layer_padding_vectors.py"
 HAND_WRITTEN = ("README.md",)
 
