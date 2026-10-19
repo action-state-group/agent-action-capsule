@@ -650,6 +650,14 @@ neither.
   an `acknowledges` link to this Close.
 - **UNILATERAL:** neither.
 
+**AGREED is not acceptance.** An `acknowledges` link establishes receipt,
+not agreement ({{links}}). An automatic acknowledgement of receipt and a
+reviewed acceptance of the Close's population therefore both make a Close
+AGREED: AGREED states that the counterparty acknowledged the Close and does
+not contest it, and it does not establish that the counterparty accepted
+the Close's contents. Whether, and how, a counterparty records acceptance
+is profile-defined.
+
 Close status is read from `rebuts` and `acknowledges` links only. A
 `disputes` or `resolves` link to a Close does not change its status; a
 counterparty that contests a Close carries `rebuts`.
@@ -870,3 +878,5 @@ Since -00:
 - Typed links: added and registered `amends`, `disputes`, and `resolves`;
   stated that contradiction is carried as `rebuts`, and that `disputes` and
   `resolves` links do not change a Close's status.
+- Reconcile and Close: stated that AGREED establishes acknowledgement
+  without contest, not acceptance of the Close's contents.

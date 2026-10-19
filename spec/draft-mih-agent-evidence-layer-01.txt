@@ -907,6 +907,14 @@ Internet-Draft               Evidence Layer                 October 2026
 
    *  *UNILATERAL:* neither.
 
+   *AGREED is not acceptance.* An acknowledges link establishes receipt,
+   not agreement (Section 5).  An automatic acknowledgement of receipt
+   and a reviewed acceptance of the Close's population therefore both
+   make a Close AGREED: AGREED states that the counterparty acknowledged
+   the Close and does not contest it, and it does not establish that the
+   counterparty accepted the Close's contents.  Whether, and how, a
+   counterparty records acceptance is profile-defined.
+
    Close status is read from rebuts and acknowledges links only.  A
    disputes or resolves link to a Close does not change its status; a
    counterparty that contests a Close carries rebuts.
@@ -934,6 +942,18 @@ Internet-Draft               Evidence Layer                 October 2026
    once a checkpoint has left the store's control; they do nothing for
    one that has not.
 
+
+
+
+
+
+
+
+Mih                        Expires 2 May 2027                  [Page 17]
+
+Internet-Draft               Evidence Layer                 October 2026
+
+
    *Key control is not authority.* That a signature over a record
    verifies against the key named by principal_ref establishes only that
    the signer controlled that key at signing time.  It establishes
@@ -946,13 +966,6 @@ Internet-Draft               Evidence Layer                 October 2026
    fabricated "no evidence" with no way to check it.  Recording which of
    the three kinds of "no" a store actually returned matters as much as
    recording the digest of whatever it did return.
-
-
-
-Mih                        Expires 2 May 2027                  [Page 17]
-
-Internet-Draft               Evidence Layer                 October 2026
-
 
    *epistemic_type is assigned once and is load-bearing.* A record
    misclassified at commit — a producer_claim recorded as an
@@ -988,6 +1001,15 @@ Internet-Draft               Evidence Layer                 October 2026
    proof.  A checkpoint carries no record content, but it is not free of
    information.
 
+
+
+
+
+Mih                        Expires 2 May 2027                  [Page 18]
+
+Internet-Draft               Evidence Layer                 October 2026
+
+
    *What a checkpoint reveals.* Every checkpoint states the size of the
    store's committed history: the number of records appended since the
    store's first record, not since the previous checkpoint (in a
@@ -1002,14 +1024,6 @@ Internet-Draft               Evidence Layer                 October 2026
    *What a checkpoint does not reveal.* A checkpoint and an inclusion
    proof reveal no record content.  The sibling values in an inclusion
    proof are digests over other records; they reveal nothing about those
-
-
-
-Mih                        Expires 2 May 2027                  [Page 18]
-
-Internet-Draft               Evidence Layer                 October 2026
-
-
    records only if those records cannot be guessed and confirmed by
    recomputing a digest.  To make that hold, every record MUST include,
    within the bytes from which its commitment-substrate entry is
@@ -1043,6 +1057,15 @@ Internet-Draft               Evidence Layer                 October 2026
    store MAY keep finer-grained times in local state that is neither
    committed nor disclosed.
 
+
+
+
+
+Mih                        Expires 2 May 2027                  [Page 19]
+
+Internet-Draft               Evidence Layer                 October 2026
+
+
    A store operator MAY keep separate stores, each with its own
    commitment substrate and checkpoints, for separate scopes (for
    example, per counterparty), so that a checkpoint shown within one
@@ -1054,17 +1077,6 @@ Internet-Draft               Evidence Layer                 October 2026
    reader that counts, lists, or summarizes records MUST NOT count a
    padding record as a record, and a store MUST NOT return one as
    responsive to a record, correlation, or exchange subject (Section 9).
-
-
-
-
-
-
-
-Mih                        Expires 2 May 2027                  [Page 19]
-
-Internet-Draft               Evidence Layer                 October 2026
-
 
 13.  IANA Considerations
 
@@ -1094,18 +1106,6 @@ Internet-Draft               Evidence Layer                 October 2026
 13.1.  Evidence Layer Epistemic Types
 
    Initial contents, from Section 4.1:
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1406,15 +1406,15 @@ Internet-Draft               Evidence Layer                 October 2026
       stated that contradiction is carried as rebuts, and that disputes
       and resolves links do not change a Close's status.
 
+   *  Reconcile and Close: stated that AGREED establishes
+      acknowledgement without contest, not acceptance of the Close's
+      contents.
+
 Author's Address
 
    Steven Mih
    Action State Group, Inc.
    Email: spec@actionstate.ai
-
-
-
-
 
 
 
