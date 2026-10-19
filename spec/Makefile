@@ -86,10 +86,13 @@ $(CPB).xml: $(CPB).md
 	$(XML2RFC) --v2v3 .$(CPB).v2.xml -o $(CPB).xml
 	@rm -f .$(CPB).v2.xml
 
+# The committed bundle .xml omits kramdown-rfc's embedded gzipped source copy,
+# as the evidence-request .xml does.
 $(BUNDLE).xml: $(BUNDLE).md
 	$(KDRFC) $(BUNDLE).md > .$(BUNDLE).v2.xml
-	$(XML2RFC) --v2v3 .$(BUNDLE).v2.xml -o $(BUNDLE).xml
-	@rm -f .$(BUNDLE).v2.xml
+	$(XML2RFC) --v2v3 .$(BUNDLE).v2.xml -o .$(BUNDLE).v3.xml
+	sed '/<!-- ##markdown-source:/,/-->/d' .$(BUNDLE).v3.xml > $(BUNDLE).xml
+	@rm -f .$(BUNDLE).v2.xml .$(BUNDLE).v3.xml
 
 # The committed evidence-request .xml omits kramdown-rfc's embedded gzipped
 # source copy (build metadata, not draft content).
