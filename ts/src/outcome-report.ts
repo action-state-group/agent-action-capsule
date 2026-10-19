@@ -140,6 +140,16 @@ export interface ConversationCriterion {
   readonly reportRecordId?: string;
   /** The case record the report says it judged (`source_capsule_id`), as the sealed report states it. */
   readonly sourceCapsuleId?: string;
+  /** The judge pin digest the cited report states, when it is disclosed: a judge ran on this criterion. */
+  readonly judgePinDigest?: string;
+  /**
+   * What the bundle shows of the cited report (see `ReportState`); present
+   * whenever `claim` is. Whether a judge ran on this criterion is then
+   * known only for a disclosed report (yes when it states a judge pin, no
+   * when it does not); for a withheld, mismatched or unreadable report it
+   * is unknown, and a view says so rather than guess.
+   */
+  readonly reportState?: ReportState;
   /**
    * The criterion's wording exactly as the cited report sealed it
    * (`evaluation-report/v1.clause_claim`: the text the judge was given), read
@@ -185,7 +195,10 @@ export function parseJudgeProbabilities(rationale: string | undefined): {
       /'([a-z_]+)':\s*([0-9]+(?:\.[0-9]+)?(?:[eE]-?[0-9]+)?)/gu,
     )) {
       const value = Number(match[2]);
-      if (Number.isFinite(value)) probabilities[match[1]!] = value;
+      // A probability is in [0, 1]; anything else (an exponent that reads
+      // 1.2e2) is not one, and is not shown as one.
+      if (Number.isFinite(value) && value >= 0 && value <= 1)
+        probabilities[match[1]!] = value;
     }
     if (Object.keys(probabilities).length > 0)
       out.probabilities = probabilities;
@@ -193,7 +206,8 @@ export function parseJudgeProbabilities(rationale: string | undefined): {
   const confidence = /confidence=([0-9]+(?:\.[0-9]+)?)/u.exec(rationale);
   if (confidence !== null) {
     const value = Number(confidence[1]);
-    if (Number.isFinite(value)) out.confidence = value;
+    if (Number.isFinite(value) && value >= 0 && value <= 1)
+      out.confidence = value;
   }
   return out;
 }
@@ -256,8 +270,10 @@ export interface ConversationDate {
 export interface Conversation {
   readonly conversationId: string;
   readonly transcript: ConversationTranscript;
-  /** The case record every cited report of this conversation names (`source_capsule_id`), only when they all agree. */
+  /** The case record every cited report of this conversation names (`source_capsule_id`), only when they all agree; when every report is withheld, the one case capsule every claim cites (`caseFrom: "claims"`). */
   readonly sourceCapsuleId?: string;
+  /** Where `sourceCapsuleId` was read: the disclosed reports, or the claims' own citations when the reports are withheld. */
+  readonly caseFrom?: "reports" | "claims";
   /** The date this conversation is counted under (`dated.date`), see `ConversationDate`. */
   readonly day: string;
   readonly dated: ConversationDate;
@@ -325,6 +341,14 @@ export interface OutcomeReportRunInfo {
   readonly judgePinRecomputes?: boolean;
   /** False when the cited reports disagree on contract or judge pin; `contract`/`judgePinDigest` are then omitted entirely, never drawn from an arbitrary one of the disagreeing values. */
   readonly pinned: boolean;
+  /** Claims whose cited report the bundle carries but does not disclose (`reportState` withheld), of `reportsCited`: the judge pin and rationale live in those reports, so a view says "withheld", never "not stated". */
+  readonly reportsWithheld?: number;
+  /** Claims whose cited report is supplied but does not match its commitment (`reportState` mismatch): never read, and never counted as withheld. */
+  readonly reportsMismatched?: number;
+  /** Claims whose cited report is disclosed but is not an object (`reportState` unreadable): never counted as withheld. */
+  readonly reportsUnreadable?: number;
+  /** Claims citing a report the bundle carries; present whenever any of the three counts above is. */
+  readonly reportsCited?: number;
 }
 
 export interface CalibrationSample {
@@ -354,6 +378,8 @@ export interface MissedReasonGroup {
 
 export interface OutcomeReportOptions {
   readonly percentages: boolean;
+  /** Word results on the grade ladder -- see `OutcomeReportPresentation.resultWords`. */
+  readonly resultWords?: "ladder";
   /** Producer's plain-text note, labelled not evidence -- see `OutcomeReportPresentation`. */
   readonly producerNote?: {
     readonly title: string;
@@ -454,6 +480,136 @@ function dayOf(payload: ObjectValue | undefined): string {
 const STATED_DAY = /^(\d{4}-\d{2}-\d{2})/u;
 
 /**
+ * The day a claim's report was sealed. The report's own `period` when the
+ * report is disclosed; otherwise the `timestamp` its capsule states, read
+ * only when the bundle carries that capsule and it checks out (`stated`,
+ * see result-root.ts). A bundle that withholds the reports (no transcripts
+ * attached) still carries the report capsules, so its period is no longer
+ * "unknown". Undefined when neither is in the bundle.
+ */
+export function reportSealedDay(
+  records: ReadonlyMap<string, CitedRecord>,
+  claim: ResultClaim,
+): string | undefined {
+  const period = asString(reportPayload(records, claim)?.period);
+  if (period !== undefined) {
+    const colon = period.indexOf(":");
+    return colon === -1 ? period : period.slice(colon + 1);
+  }
+  const digest = claim.evidence[0]?.digest;
+  const timestamp =
+    digest === undefined ? undefined : records.get(digest)?.stated?.timestamp;
+  return timestamp === undefined ? undefined : STATED_DAY.exec(timestamp)?.[1];
+}
+
+/**
+ * What this bundle lets a reader see of one claim's cited report:
+ *
+ * - `disclosed`: the report is disclosed, checks against its commitment and
+ *   is a JSON object;
+ * - `withheld`: the bundle carries the report capsule but not its original
+ *   (a bundle built without transcripts);
+ * - `mismatch`: an original is supplied but does not match the commitment
+ *   (`disclosure_mismatch`), so it is not read;
+ * - `unreadable`: disclosed, but not an object a report could be;
+ * - `not_carried`: the claim cites no report the bundle carries.
+ *
+ * Only `withheld` means "the reports are withheld": a mismatched or
+ * unreadable report is a different statement, and a view says so.
+ */
+export type ReportState =
+  | "disclosed"
+  | "withheld"
+  | "mismatch"
+  | "unreadable"
+  | "not_carried";
+
+export function reportState(
+  records: ReadonlyMap<string, CitedRecord>,
+  claim: ResultClaim,
+): ReportState {
+  const digest = claim.evidence[0]?.digest;
+  const record = digest === undefined ? undefined : records.get(digest);
+  if (record === undefined) return "not_carried";
+  const input = record.carriedInput ?? record.agentInput;
+  switch (input.state) {
+    case "disclosed":
+      return isObject(input.payload) ? "disclosed" : "unreadable";
+    case "withheld":
+      return "withheld";
+    case "disclosure_mismatch":
+      return "mismatch";
+    default:
+      return "unreadable";
+  }
+}
+
+/**
+ * The case capsule every claim of one conversation cites beside its report
+ * (`evidence[1..]`), when they all cite exactly one and the bundle carries it.
+ * Read only when EVERY claim's report is withheld (see `reportState`): the
+ * Result's own signed claims then say which case they were judged on. A
+ * conversation whose reports are disclosed but name no case (an older
+ * pipeline without `source_capsule_id`), or whose reports are mismatched or
+ * unreadable, gets nothing here: its case stays unresolved, and its
+ * transcript is never tied to a case the reports did not name.
+ */
+export function claimsCitedCase(
+  records: ReadonlyMap<string, CitedRecord>,
+  claims: readonly ResultClaim[],
+): string | undefined {
+  if (
+    claims.length === 0 ||
+    !claims.every((claim) => reportState(records, claim) === "withheld")
+  )
+    return undefined;
+  let common: Set<string> | undefined;
+  for (const claim of claims) {
+    const cited = new Set(claim.evidence.slice(1).map((e) => e.digest));
+    common =
+      common === undefined
+        ? cited
+        : new Set([...common].filter((d) => cited.has(d)));
+  }
+  if (common === undefined || common.size !== 1) return undefined;
+  const record = records.get([...common][0]!);
+  if (record?.stated === undefined) return undefined;
+  // The case capsule's own id: for a book record, the capsule it carries.
+  return record.carriedCapsuleId ?? record.capsuleId;
+}
+
+/**
+ * Of these claims' cited reports (`total`: the claims citing a report the
+ * bundle carries): how many are withheld, and how many the bundle supplies
+ * but cannot be read (`mismatched`: the original does not match its
+ * commitment; `unreadable`: disclosed but not an object). Only `withheld`
+ * counts as withheld. See `reportState`.
+ */
+export function withheldReports(
+  records: ReadonlyMap<string, CitedRecord>,
+  claims: readonly ResultClaim[],
+): {
+  withheld: number;
+  mismatched: number;
+  unreadable: number;
+  total: number;
+} {
+  let withheld = 0;
+  let mismatched = 0;
+  let unreadable = 0;
+  let total = 0;
+  for (const claim of claims) {
+    const state = reportState(records, claim);
+    if (state === "not_carried") continue;
+    total += 1;
+    if (state === "withheld") withheld += 1;
+    else if (state === "mismatch") mismatched += 1;
+    else if (state === "unreadable") unreadable += 1;
+  }
+  return { withheld, mismatched, unreadable, total };
+}
+
+/**
  * The case record the reports name, when this bundle cites it and its
  * capsule checks out: a book record carrying it (`carriedCapsuleId`) or the
  * plain record itself. Only its `stated` times are read.
@@ -547,14 +703,27 @@ function rollUp(
   return "met";
 }
 
-function sealedCaseId(payload: ObjectValue): string | undefined {
+/**
+ * The conversation ids a sealed case payload answers to. A case that names
+ * the agent model (`case.agent_model`, the four-model backfills) is
+ * `benchmark:domain:<model>:task-N:trial-T`; the older form without the model
+ * is still accepted, so earlier bundles keep matching. The id only picks the
+ * candidate: the transcript is tied to the judged case by digest either way.
+ */
+function sealedCaseIds(payload: ObjectValue): string[] {
   const c = isObject(payload.case) ? payload.case : undefined;
-  if (c === undefined) return undefined;
+  if (c === undefined) return [];
   const parts = [c.benchmark, c.domain, c.task_id, c.trial].map((v) =>
     typeof v === "string" || typeof v === "number" ? String(v) : undefined,
   );
-  if (parts.some((v) => v === undefined)) return undefined;
-  return `${parts[0]}:${parts[1]}:task-${parts[2]}:trial-${parts[3]}`;
+  if (parts.some((v) => v === undefined)) return [];
+  const ids = [`${parts[0]}:${parts[1]}:task-${parts[2]}:trial-${parts[3]}`];
+  const model = asString(c.agent_model);
+  if (model !== undefined && model.length > 0)
+    ids.unshift(
+      `${parts[0]}:${parts[1]}:${model}:task-${parts[2]}:trial-${parts[3]}`,
+    );
+  return ids;
 }
 
 function transcriptTurns(payload: ObjectValue): TranscriptTurn[] | undefined {
@@ -631,7 +800,7 @@ export function findTranscript(
     if (payload === undefined) continue;
     if (
       carrier.carriedInputDigest === caseRecord.carriedInputDigest &&
-      sealedCaseId(payload) === conversationId
+      sealedCaseIds(payload).includes(conversationId)
     )
       return {
         state: "verified",
@@ -708,6 +877,9 @@ function groupClaims(
         const sourceCapsuleId = judgment
           ? asString(judgment.source_capsule_id)
           : undefined;
+        const judgePinDigest = judgment
+          ? asString(judgment.judge_pin_digest)
+          : undefined;
         const clauseClaim =
           judgment !== undefined &&
           asString(judgment.clause_id) === `${check.id}.${criterion.id}`
@@ -732,6 +904,8 @@ function groupClaims(
             ? {}
             : { reportRecordId: record.bookRecordId }),
           ...(sourceCapsuleId === undefined ? {} : { sourceCapsuleId }),
+          ...(judgePinDigest === undefined ? {} : { judgePinDigest }),
+          reportState: reportState(result.records, claim),
           ...(clauseClaim === undefined || clauseClaim.trim() === ""
             ? {}
             : { clauseClaim }),
@@ -739,11 +913,10 @@ function groupClaims(
       }
     }
     const firstClaim = criteria.find((c) => c.claim !== undefined)?.claim;
-    const judgedDay = dayOf(
-      firstClaim === undefined
+    const judgedDay =
+      (firstClaim === undefined
         ? undefined
-        : reportPayload(result.records, firstClaim),
-    );
+        : reportSealedDay(result.records, firstClaim)) ?? dayOf(undefined);
     const checkVerdicts = new Map<string, ConversationVerdict>();
     for (const check of terms.checks) {
       const forCheck = criteria.filter((c) => c.checkId === check.id);
@@ -754,6 +927,19 @@ function groupClaims(
         c.sourceCapsuleId === undefined ? [] : [c.sourceCapsuleId],
       ),
     );
+    // No report names the case because every report is withheld: take the
+    // one case capsule the claims themselves cite, when they agree on one.
+    // claimsCitedCase refuses otherwise (disclosed reports that name no
+    // case, mismatched reports), so the case then stays unresolved and the
+    // transcript is never verified against a case no report named.
+    let caseFrom: Conversation["caseFrom"] = "reports";
+    if (sources.size === 0) {
+      const cited = claimsCitedCase(result.records, claims);
+      if (cited !== undefined) {
+        sources.add(cited);
+        caseFrom = "claims";
+      }
+    }
     const dated = conversationDate(
       caseRecord(
         result,
@@ -771,7 +957,9 @@ function groupClaims(
         claims,
         sources.size === 1 ? [...sources][0]! : undefined,
       ),
-      ...(sources.size === 1 ? { sourceCapsuleId: [...sources][0]! } : {}),
+      ...(sources.size === 1
+        ? { sourceCapsuleId: [...sources][0]!, caseFrom }
+        : {}),
       day: date,
       dated,
       judgedDay,
@@ -881,7 +1069,23 @@ function buildRunInfo(
   // Vacuously pinned on zero conversations, same as v1's every()-on-empty
   // rule: "no cited runs disagree" is true when there are none to disagree.
   const pinned = contracts.size <= 1 && pins.size <= 1 && components.size <= 1;
+  const counted = withheldReports(
+    result.records,
+    conversations.flatMap((c) =>
+      c.criteria.flatMap((cr) => (cr.claim === undefined ? [] : [cr.claim])),
+    ),
+  );
   return {
+    ...(counted.withheld > 0 ? { reportsWithheld: counted.withheld } : {}),
+    ...(counted.mismatched > 0
+      ? { reportsMismatched: counted.mismatched }
+      : {}),
+    ...(counted.unreadable > 0
+      ? { reportsUnreadable: counted.unreadable }
+      : {}),
+    ...(counted.withheld + counted.mismatched + counted.unreadable > 0
+      ? { reportsCited: counted.total }
+      : {}),
     ...(contracts.size === 1 ? { contract: [...contracts][0]! } : {}),
     ...(pins.size === 1 ? { judgePinDigest: [...pins][0]! } : {}),
     ...(pins.size === 1 && components.size === 1

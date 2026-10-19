@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Outcome report model, TypeScript: a case that names its agent model (`case.agent_model`) now
+  matches the conversation id `benchmark:domain:<model>:task-N:trial-T`; the id without the model
+  still matches, and the transcript is still tied to the judged case by digest. New `reportState`
+  says what the bundle shows of each cited report: disclosed, withheld, mismatch (the original does
+  not match its commitment), unreadable (not an object) or not carried; each criterion carries it.
+  Only when every report of a conversation is withheld is its case the one case capsule every claim
+  cites (`caseFrom: "claims"`); disclosed reports that name no case, or mismatched ones, leave the
+  case unresolved and the transcript unverified. A withheld report's judged day is its capsule's
+  own stated timestamp. `runInfo.reportsWithheld` counts only withheld reports;
+  `reportsMismatched` and `reportsUnreadable` are counted apart, all of `reportsCited`. Each
+  criterion carries the judge pin digest its disclosed report states. `parseJudgeProbabilities`
+  drops any value outside [0, 1]. New exports `reportState`, `reportSealedDay`, `claimsCitedCase`
+  and `withheldReports`. `outcome-report/v1` admits `result_words: "ladder"` (display only, off by
+  default).
+
 ## 0.11.0 — 2026-10-20
 
 - TypeScript: outcome-report and bundle-page fixes. A resolved conversation's summary and
