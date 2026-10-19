@@ -1,0 +1,39 @@
+# Deal reconcile contract v0: conformance vectors
+
+These vectors exercise `spec/deal-reconcile-contract-v0.md` (cited as DR): the Evidence Contract
+`ec:deal-reconcile@1` that a `type: reconcile` claim of an Evidence Result
+(`spec/evidence-result-v0.md` §4.1) cites when two books reconcile the two halves of a deal. They
+cover:
+
+- the field commitments and their openings (DR §4, §5), built as the deal commitment of
+  `spec/personal-agent-history-outcome-v0.md` §7;
+- the per-pairing states (DR §6);
+- the six tallies, sufficiency, verdict and deal state, and the Evidence Result that carries them
+  with no field opening and no cited Close (DR §7).
+
+| Case | Expected |
+|---|---|
+| `pair-matched` | both requirements `MATCHED`; tallies `matched` 1; `SATISFIED`, `met`; deal `reconciled` |
+| `amount-opening-fails` | amount `UNRESOLVED` (not `MATCHED`, not `CONFLICTING`), `UNKNOWN`, `not_evaluable`; currency `MATCHED`; deal `not_reconciled` |
+
+Every case cites the sections its expected values come from. `vectors.json` also carries the
+contract document (`contract.document`, `contract.document_jcs`), its `contract_ref`, its digest
+and the SHA-256 of the Evidence Contract v0 schema it validates against.
+
+## Derivation
+
+`python/scripts/generate_deal_reconcile_v0_vectors.py` writes every file except this README. It
+uses no repository implementation. It states each per-pairing state by hand from DR §6 and derives
+the tallies, sufficiency, verdict and Result from them by DR §7. Every nonce is a label digest for
+these vectors only. The amounts and currency are placeholders; `XTS` is the code reserved for
+testing.
+
+`python/tests/test_deal_reconcile_v0_vectors.py` checks the corpus from the case inputs alone, with
+an evaluator written from DR §4 to §7:
+
+- It compares the evaluator's result with the case's whole `expected` block.
+- It runs defective evaluators, each of which must disagree with at least one case.
+- It validates each expected Result against `schemas/evidence-result-v0.json` where `jsonschema`
+  is installed.
+- It regenerates the directory twice and requires both runs to be byte-identical to the committed
+  files.

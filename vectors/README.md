@@ -72,6 +72,10 @@ same-commit files in CI.
   type, and expired, revoked, one-key-signed, same-key, other-keys, forged-credential,
   unknown-method, unbound-delegator and revocation cases, each over a pair of agreeing halves;
   `python/scripts/generate_controller_binding_v0_vectors.py` regenerates them.
+- `deal-reconcile-v0/`: the Evidence Contract `ec:deal-reconcile@1` of
+  `spec/deal-reconcile-contract-v0.md`: a deal whose two halves' amount and currency commitments
+  open and match, and one whose amount opening fails, with the six tallies and the Evidence Result
+  of each; `python/scripts/generate_deal_reconcile_v0_vectors.py` regenerates them.
 - `personal-history-outcome-v0/`: the Outcome level of the personal-agent History profile
   (`spec/personal-agent-history-outcome-v0.md`): one positive per outcome source (the holder's
   record, the other party's half, an x402 native object, a judge's verdict under consent), a
