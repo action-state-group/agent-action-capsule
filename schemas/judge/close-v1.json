@@ -19,8 +19,8 @@
       }
     },
     "EvidenceLinkType": {
-      "description": "The Evidence Layer's closed link-type vocabulary (draft-mih-agent-evidence-layer-00, section 'Typed Links'; REGISTRY.md section 18), mirrored here, never redefined. Distinct from Capsule `chain.relation` (section 6) and `citation_purpose` (section 11).",
-      "enum": ["cites", "adjudicates", "supersedes", "acknowledges", "rebuts", "closes"]
+      "description": "The Evidence Layer's closed link-type vocabulary (draft-mih-agent-evidence-layer-01, section 'Typed Links'; REGISTRY.md section 18), mirrored here, never redefined. Distinct from Capsule `chain.relation` (section 6) and `citation_purpose` (section 11).",
+      "enum": ["cites", "adjudicates", "supersedes", "amends", "acknowledges", "rebuts", "disputes", "resolves", "closes"]
     },
     "EvidenceLink": {
       "description": "One Evidence Layer typed link, shaped as the draft's record-header `links` entry ({type, target}): a typed, directed reference to the target record by its digest (lowercase-hex SHA-256 of the target's JCS bytes). A link never mutates its target.",

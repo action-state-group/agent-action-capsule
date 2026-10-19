@@ -121,8 +121,11 @@ class ReconcileDoc(TypedDict):
 
 
 class EvidenceLinkDoc(TypedDict):
-    # draft-mih-agent-evidence-layer-00 "Typed Links" entry: {type, target}.
-    type: Literal["cites", "adjudicates", "supersedes", "acknowledges", "rebuts", "closes"]
+    # draft-mih-agent-evidence-layer-01 "Typed Links" entry: {type, target}.
+    type: Literal[
+        "cites", "adjudicates", "supersedes", "amends", "acknowledges", "rebuts", "disputes",
+        "resolves", "closes",
+    ]
     target: str
 
 

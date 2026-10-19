@@ -216,7 +216,7 @@ that to every object it defines.
 | Acceptance findings | `not_accepted`, `accepted_after_action`, `accepted_not_cited`, `accepted_before_action`, `accepted_execution_cites` | P-30 |
 | Lifecycle statement members | `profile`, `issuer`, `link`, `basis`, `scope`, `content`, `process`, `outcome`, `issued_at`, `sig` | P-32 |
 | Link members | `type`, `target` | EL §5 |
-| Lifecycle link tokens | `supersedes`, `rebuts` (EL's registered tokens); `amends`, `disputes`, `resolves` (this profile's, proposed for EL -01) | EL §5; P-32 |
+| Lifecycle link tokens | `supersedes`, `rebuts` (EL's registered tokens); `amends`, `disputes`, `resolves` (this profile's, registered by EL -01) | EL §5; P-32 |
 | Process reference members | `scheme`, `id` | P-32 |
 | Resolution outcomes | `upheld`, `dismissed` | P-34 |
 | Dispute statuses | `open`, `upheld`, `dismissed`, `conflicting` | P-36 |
@@ -1720,11 +1720,12 @@ lifecycle tokens [P-32]:
   submission is the relationship `rebuts` does not name, so the profile carries it as a new token
   rather than overloading `rebuts` [EL §5]. A statement that both contests and submits is two
   statements.
-- **Three tokens wait for EL -01.** `amends`, `disputes` and `resolves` are this profile's own
-  tokens. Registration is proposed for `draft-mih-agent-evidence-layer` -01, under EL's
-  Specification Required policy [EL §13]. Until they are registered, they are not EL link types
-  [EL §5]. An EL store therefore MUST NOT put them in a record's `links` header, and carries the
-  lifecycle statement as a record payload instead [P-32].
+- **Three tokens registered by EL -01.** `amends`, `disputes` and `resolves` are this profile's own
+  tokens, and `draft-mih-agent-evidence-layer` -01 registers them as EL link types with these
+  meanings. They are not link types of EL -00 [EL §5]. A lifecycle statement carrying one of them
+  needs members a header link cannot carry (`content`, `process`, `outcome`), so a store carries it
+  as a record payload [P-32]. Only `supersedes` and `rebuts` header links are evaluated under this
+  profile (§11.2.2). An `amends`, `disputes` or `resolves` link in a record's `links` header is not.
 - **A Close.** EL reads a Close's status from `rebuts` and `acknowledges` links only [EL §10]. A
   `disputes` statement therefore never makes a Close CONTESTED. A counterparty that contests a
   Close issues `rebuts`. This section does not change EL §10.
@@ -1769,7 +1770,8 @@ link. Its statement digest is the digest of the EL record. Each header link of a
 evaluated on its own. A record whose header link and payload statement carry the same `link`
 counts once [P-32]. So a header `supersedes` from a non-issuer gets `lifecycle_not_issuer`, exactly as a
 statement does [P-32]. EL -00 itself states no issuer rule for `supersedes`, so a reader of EL
-alone can show a different current state. P-32 proposes the rule for EL -01.
+alone can show a different current state. EL -01 leaves the issuer rule to the profile, and this
+is the profile's rule [P-32].
 
 #### 11.2.3 The issuer of a record
 

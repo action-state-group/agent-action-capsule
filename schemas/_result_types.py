@@ -76,9 +76,12 @@ class CloseClaimDoc(TypedDict, total=False):
 
 
 class LinkDoc(TypedDict):
-    # draft-mih-agent-evidence-layer-00 "Typed Links": a typed, directed
+    # draft-mih-agent-evidence-layer-01 "Typed Links": a typed, directed
     # reference to a target record by digest.
-    type: Literal["cites", "adjudicates", "supersedes", "acknowledges", "rebuts", "closes"]
+    type: Literal[
+        "cites", "adjudicates", "supersedes", "amends", "acknowledges", "rebuts", "disputes",
+        "resolves", "closes",
+    ]
     target: str
 
 
