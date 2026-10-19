@@ -22,6 +22,7 @@
     "deal_reconcile_v0": "deal-reconcile-v0/manifest.json",
     "personal_history_outcome_v0": "personal-history-outcome-v0/manifest.json",
     "evidence_layer_padding": "evidence-layer/padding/manifest.json",
+    "evidence_layer_retention": "evidence-layer/retention/manifest.json",
     "bundle_strict": "bundle/strict/manifest.json",
     "cll_material": "cll-material/manifest.json",
     "adapter_x402": "adapters/x402/manifest.json",

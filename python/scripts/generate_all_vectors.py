@@ -68,6 +68,7 @@ GENERATORS = (
     "generate_evidence_request_vectors.py",
     "generate_settlement_vectors.py",
     "generate_evidence_layer_padding_vectors.py",
+    "generate_evidence_layer_retention_vectors.py",
     "generate_cll_material_vectors.py",
     "generate_min_necessary_vectors.py",
     "generate_bundle_producer_key_vectors.py",

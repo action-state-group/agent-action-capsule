@@ -183,7 +183,10 @@ never-reject invariant like any unregistered value — an informational finding,
 never a rejection — and MAY report it as the registered value it meant:
 
 - `resolves` → `supersedes`. An approval or denial closing a blocked capsule's
-  open state; terminal. That producer now emits `supersedes` (#276).
+  open state; terminal. That producer now emits `supersedes` (#276). This
+  legacy `chain.relation` spelling is unrelated to the `resolves` link type in
+  the Evidence Layer link type registry (§18); the §18 registration does not
+  make `resolves` a registered `chain.relation` value.
 - `escalates` → `supersedes`. An escalation closing or replacing the parent's
   open state; terminal, as listed under `supersedes` above. Now emitted as
   `supersedes` (#277).
@@ -532,16 +535,43 @@ evidence-store record to another, identified by the target's digest, and
 never mutates its target. This registry is distinct from `chain.relation`
 (§6) and `citation_purpose` (§11), which govern fields inside a Capsule; the
 token `supersedes` is registered in both this registry and §6, and neither
-registration defines the other.
+registration defines the other. `amends` and `resolves` (added by
+`draft-mih-agent-evidence-layer-01`) are likewise not `chain.relation` values:
+§6 anticipates `amends` as a possible future `chain.relation` registration,
+which would be a separate registration, and lists `resolves` only as a legacy
+spelling. Contradiction is carried as `rebuts`; there is no `contradicts` link
+type.
 
 | Token | Semantics |
 |---|---|
 | `cites` | The carrying record depends on the target's committed content. |
 | `adjudicates` | The carrying record renders a judgment about the target's claim. Its `epistemic_type` is `adjudication`. |
 | `supersedes` | The carrying record replaces the target's content for current use, without mutating it. |
+| `amends` | The carrying record changes part of the target's content for current use, without mutating it; the rest stands. Added in `-01`. |
 | `acknowledges` | The carrying record states its author has seen and holds the target: receipt, not agreement. |
 | `rebuts` | The carrying record disputes the target's claim. |
+| `disputes` | The carrying record submits the target's claim, for decision, to a resolving process it names. Not `rebuts`; does not change a Close's status. Added in `-01`. |
+| `resolves` | The carrying record is a resolving process's decision on one record carrying `disputes`, naming the same process. Added in `-01`. |
 | `closes` | The carrying record binds a range or set of records as reconciled. |
+
+## 19. Evidence Layer retention state
+
+Defined in `draft-mih-agent-evidence-layer-01`, "Retention States" and IANA
+Considerations ("Evidence Layer Retention States"). This is a
+**Specification Required** registry. A token is uppercase ASCII,
+underscore-separated. It states whether, and how, a record's payload can
+currently be resolved to bytes. `UNDISCLOSED` requires `policy_uri`, a URI
+(not a relative reference) naming the policy under which the state is not
+disclosed; an `UNDISCLOSED` state without one is malformed.
+
+| Token | Semantics |
+|---|---|
+| `AVAILABLE` | The payload can be resolved under current policy. |
+| `PARTIAL` | Only some fields or preimages of the payload remain. |
+| `WITHHELD` | The payload may exist but the requester is not authorized. A policy refusal, not a claim the payload is gone. |
+| `DELETED` | The payload was intentionally destroyed or has expired. |
+| `LEGAL_HOLD` | Deletion of the payload is suspended by policy or legal requirement. |
+| `UNDISCLOSED` | The store does not state the payload's retention state, under the policy `policy_uri` names. Neither a claim that the payload exists nor that it does not. Requires `policy_uri`. Added in `-01`. |
 
 ## No registry
 

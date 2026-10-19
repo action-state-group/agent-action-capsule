@@ -1,0 +1,12 @@
+{
+  "draft": "draft-mih-agent-evidence-layer-01",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_evidence_layer_retention_vectors.py",
+  "files": [
+    {
+      "path": "cases.json",
+      "sha256": "3c09c8740bcb5751a7dd186635196771a031878cec89535c7cf049b78a2e7913",
+      "count": 12
+    }
+  ]
+}

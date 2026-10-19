@@ -30,12 +30,18 @@ same-commit files in CI.
   digest, exact amounts, delivered-content digests, derived states), derived
   from the draft text; `python/scripts/generate_settlement_vectors.py`
   regenerates them.
-- `evidence-layer/padding/`: draft-mih-agent-evidence-layer-00 padding
+- `evidence-layer/padding/`: draft-mih-agent-evidence-layer-01 padding
   records ("What a Checkpoint Reveals"): valid records with their
   `capsule_id`, and negatives for a missing or misencoded `store_nonce`, extra
   members, links, payload commitments, `subject_ref`, `principal_ref`, a wrong
   `epistemic_type` and a wrong `capsule_id`;
   `python/scripts/generate_evidence_layer_padding_vectors.py` regenerates them.
+- `evidence-layer/retention/`: draft-mih-agent-evidence-layer-01 `UNDISCLOSED`
+  retention state ("UNDISCLOSED and policy_uri"): valid headers with a
+  `policy_uri`, and negatives for a missing `policy_uri` and for one that is
+  not a URI;
+  `python/scripts/generate_evidence_layer_retention_vectors.py` regenerates
+  them.
 - `cll-material/`: profile `evidence-interop/0` §6.2.1 CLL proof encodings: a
   responder's inputs and the exact `cll-inclusion-proof` and
   `cll-consistency-proof` octets, including the §10.1 worked example's;

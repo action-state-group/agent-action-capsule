@@ -708,10 +708,9 @@ such checkpoints then reveal the count between them only to within the
 bucket size. This document reserves the <tt>record_type</tt> value <tt>padding</tt> for
 this purpose. A padding record has <tt>epistemic_type</tt> <tt>producer_claim</tt>; its
 only content is a freshly generated random value meeting the requirement
-above, carried in the member <tt>store_nonce</tt> as 32 bytes encoded as 64
-lowercase hexadecimal characters; and it carries no <tt>payload_commitments</tt>,
-no links, no <tt>subject_ref</tt>, and no <tt>principal_ref</tt>. A padding record
-<bcp14>MUST NOT</bcp14> be the target of any link. It is appended like any other record and changes none of the
+above; and it carries no <tt>payload_commitments</tt>, no links, no <tt>subject_ref</tt>,
+and no <tt>principal_ref</tt>. A padding record <bcp14>MUST NOT</bcp14> be the target of any
+link. It is appended like any other record and changes none of the
 properties of <xref target="substrate"/>.</t>
         <t>A store <bcp14>SHOULD</bcp14> coarsen every time value that leaves its control inside
 signed or committed bytes, such as a checkpoint's time or a disclosed
@@ -1045,7 +1044,7 @@ its content came to be known.</t>
         </reference>
       </references>
     </references>
-    <?line 764?>
+    <?line 763?>
 
 <section anchor="acknowledgments">
       <name>Acknowledgments</name>
