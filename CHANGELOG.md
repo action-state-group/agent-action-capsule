@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Vectors `capsule/canonical-integer-negative-zero` and
+  `capsule/canonical-integer-negative-zero-as-zero` (spec-derived): `-0` as a direct member,
+  nested in an object and inside an array, beside `0`, must serialize as `0` (RFC 8785), and
+  the same input written with `0` must give the same `capsule_id`. Python, Go, TypeScript and
+  Rust now also check each case's JCS bytes against its literal `canonical_preimages.capsule_id`,
+  and a `same_capsule_id_as` twin against the case it names.
+  `python/scripts/generate_negative_zero_vectors.py` regenerates them. First reviewed in #190,
+  which merged into the already-merged #188 branch and so never reached main. Existing vector
+  files are unchanged; `capsule/vectors.json` and the two `SHA256SUMS` files gained entries.
 - UCP adapter declaration and vectors: `spec/adapters/ucp-v0.md` declares the five FR-19 items
   for UCP v2026-08-25 (`cd78fb38e819de77d9b527d110476eccb876f1bd`). The checkout carrying
   `ap2.merchant_authorization` (AP2 Mandates Extension) is the one merchant-signed object and gets

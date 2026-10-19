@@ -73,6 +73,8 @@ GENERATORS = (
     # Append to the capsule, disclosure-envelope and producer-envelope manifests.
     "generate_parity_hardening_vectors.py",
     "generate_envelope_encoding_vectors.py",
+    # Appends to the capsule manifest.
+    "generate_negative_zero_vectors.py",
 )
 
 

@@ -3,9 +3,13 @@
 //! comparing what `go/verify`'s corpus tests compare: `ok`, the derived
 //! assurance, the recomputed `capsule_id`, and the ordered
 //! `(check, severity, code)` of every finding. Detail strings are not
-//! compared; Go and Python already word some of them differently.
+//! compared; Go and Python already word some of them differently. Like the
+//! other corpus tests, it also checks a case's literal
+//! `canonical_preimages.capsule_id` and a `same_capsule_id_as` twin.
 
-use agent_action_capsule::canonical::{compute_capsule_id, CanonicalError};
+use agent_action_capsule::canonical::{
+    compute_capsule_id, is_local_only_field, jcs, CanonicalError,
+};
 use agent_action_capsule::registries::Registries;
 use agent_action_capsule::verify::{
     decode_capsule_json, verify_store_with, verify_with, VerificationResult,
@@ -96,6 +100,38 @@ fn canonical_case(input: &Value, expected: &Value) -> Option<String> {
     (got != want).then(|| format!("{got:?} (want {want:?})"))
 }
 
+/// JCS of the Capsule without `capsule_id` and the local-only fields must be
+/// the spec-derived literal RFC 8785 preimage, not only digest to it.
+fn preimage_case(input: &Value, expected: &Value) -> Option<String> {
+    let preimage = expected["canonical_preimages"]["capsule_id"].as_str()?;
+    let capsule = input.as_object()?;
+    if capsule.contains_key("ledger") {
+        return None;
+    }
+    let body: serde_json::Map<String, Value> = capsule
+        .iter()
+        .filter(|(k, _)| k.as_str() != "capsule_id" && !is_local_only_field(k))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    let got = match jcs(&Value::Object(body)) {
+        Ok(bytes) => String::from_utf8(bytes).expect("JCS is UTF-8"),
+        Err(e) => return Some(format!("preimage: {e:?}")),
+    };
+    (got != preimage).then(|| format!("preimage {got:?} (want {preimage:?})"))
+}
+
+/// A twin case (e.g. -0 written 0) pins the same capsule_id as the case it names.
+fn same_capsule_id_case(root: &Path, expected: &Value) -> Option<String> {
+    let twin = expected["same_capsule_id_as"].as_str()?;
+    let other = read(&root.join(twin).join("expected.json"));
+    (expected["capsule_id_recomputed"] != other["capsule_id_recomputed"]).then(|| {
+        format!(
+            "capsule_id {} differs from {twin}'s {}",
+            expected["capsule_id_recomputed"], other["capsule_id_recomputed"]
+        )
+    })
+}
+
 fn run_corpus(root: PathBuf) {
     let regs = registries();
     let manifest = read(&root.join("vectors.json"));
@@ -106,24 +142,9 @@ fn run_corpus(root: PathBuf) {
         let name = case["name"].as_str().expect("name");
         let input = read(&root.join(name).join("input.json"));
         let expected = read(&root.join(name).join("expected.json"));
-        let failure = if case["kind"] == "canonical" {
-            canonical_case(&input, &expected)
-        } else if let Some(ledger) = input.get("ledger") {
-            let ledger = ledger.as_array().expect("ledger is an array");
-            let want = expected["results"].as_array().expect("results");
-            let results = verify_store_with(ledger, &regs);
-            if results.len() != want.len() {
-                Some(format!("{} results (want {})", results.len(), want.len()))
-            } else {
-                results
-                    .iter()
-                    .zip(want)
-                    .enumerate()
-                    .find_map(|(i, (r, w))| compare(r, w).map(|m| format!("[{i}] {m}")))
-            }
-        } else {
-            compare(&verify_with(&input, None, &regs), &expected)
-        };
+        let failure = preimage_case(&input, &expected)
+            .or_else(|| same_capsule_id_case(&root, &expected))
+            .or_else(|| corpus_case(case, &input, &expected, &regs));
         if let Some(message) = failure {
             failures.push(format!("{name}: {message}"));
         }
@@ -135,6 +156,28 @@ fn run_corpus(root: PathBuf) {
         cases.len(),
         failures.join("\n")
     );
+}
+
+/// Runs one case's verification and compares it with its expected record.
+fn corpus_case(case: &Value, input: &Value, expected: &Value, regs: &Registries) -> Option<String> {
+    if case["kind"] == "canonical" {
+        canonical_case(input, expected)
+    } else if let Some(ledger) = input.get("ledger") {
+        let ledger = ledger.as_array().expect("ledger is an array");
+        let want = expected["results"].as_array().expect("results");
+        let results = verify_store_with(ledger, regs);
+        if results.len() != want.len() {
+            Some(format!("{} results (want {})", results.len(), want.len()))
+        } else {
+            results
+                .iter()
+                .zip(want)
+                .enumerate()
+                .find_map(|(i, (r, w))| compare(r, w).map(|m| format!("[{i}] {m}")))
+        }
+    } else {
+        compare(&verify_with(input, None, regs), expected)
+    }
 }
 
 #[test]
