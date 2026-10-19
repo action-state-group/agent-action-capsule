@@ -194,6 +194,7 @@ R3 = label_digest("record 3")
 R_UNKNOWN = label_digest("record never written")
 HALF = label_digest("requester's own exchange half")
 HALF_UNKNOWN = label_digest("an exchange half nobody cites")
+HALF_OTHER = label_digest("another exchange's half")
 ANCHOR_40 = label_digest("checkpoint at size 40")
 ANCHOR_42 = label_digest("checkpoint at size 42")
 ANCHOR_UNKNOWN = label_digest("a checkpoint this responder never issued")
@@ -559,6 +560,61 @@ def resolution_cases() -> list[dict]:
           "no_such_subject.",
           _req({"record": R_UNKNOWN}, PIN_42, nonce="n-0119"), ref("policy_declined"),
           overrides={"uniform_policy_declined": True}),
+    ]
+
+
+# ---------------------------------------------------------------------------
+# carries.json: which record members carry a correlation id or cite a half
+# ---------------------------------------------------------------------------
+
+S_CARRIES = "§3.1.1 What a Record Carries"
+
+
+def _layer_record(**header: Any) -> dict:
+    """An Evidence Layer record header: seq, record_id, record_type, epistemic_type and links, plus ``header``."""
+    return {"seq": 7, "record_id": R1, "record_type": "observation",
+            "epistemic_type": "observed_event", "links": [], **header}
+
+
+def _capsule_reference(citation_purpose: str, digest: str = HALF) -> dict:
+    """A Capsule's ``references`` member holding one entry (by default, the half's digest)."""
+    return {"references": [{"type": "agent-action-capsule", "digest_alg": "SHA-256",
+                            "digest": digest, "citation_purpose": citation_purpose}]}
+
+
+def carries_cases() -> list[dict]:
+    def c(case_id: str, description: str, record_format: str, record: dict, subject: dict,
+          expect: dict) -> dict:
+        return {"id": case_id, "section": [S_CARRIES], "description": description,
+                "record_format": record_format, "record": record, "subject": subject,
+                "expect": expect}
+
+    return [
+        c("carries-correlation-subject-ref",
+          "the identifier is the whole value of the header's subject_ref: the record carries it.",
+          "evidence-layer", _layer_record(subject_ref=CORRELATION),
+          {"correlation": CORRELATION}, {"carries": True}),
+        c("carries-correlation-undesignated-member",
+          "the identifier is the whole value of principal_ref, which the format defines as a party "
+          "reference and not a correlation field, while subject_ref holds another identifier: the "
+          "record does not carry it.",
+          "evidence-layer", _layer_record(subject_ref="c-0b44f2e1", principal_ref=CORRELATION),
+          {"correlation": CORRELATION}, {"carries": False}),
+        c("cites-exchange-counterparty-half",
+          "a references entry with citation_purpose counterparty_half whose digest is the half's: "
+          "the record cites the half.",
+          "capsule", _capsule_reference("counterparty_half"),
+          {"exchange": HALF}, {"cites": True}),
+        c("cites-exchange-responds-to",
+          "a references entry whose digest is the half's, with citation_purpose responds_to: the "
+          "record does not cite the half.",
+          "capsule", _capsule_reference("responds_to"),
+          {"exchange": HALF}, {"cites": False}),
+        c("cites-exchange-counterparty-half-other-digest",
+          "a references entry with citation_purpose counterparty_half whose digest is another "
+          "half's: the record does not cite this half.",
+          "capsule", _capsule_reference("counterparty_half", HALF_OTHER),
+          {"exchange": HALF}, {"cites": False}),
     ]
 
 
@@ -995,6 +1051,10 @@ def build() -> dict[str, bytes]:
         "resolution.json": _dump(_corpus(
             "resolution", "Exact-match subject resolution and the most specific refusal reason, against "
             "one declared responder state.", resolution_cases(), responder=RESPONDER)),
+        "carries.json": _dump(_corpus(
+            "carries", "Which record members carry a correlation identifier or cite an exchange half, "
+            "per record format. Each record is reduced to the members the designation reads.",
+            carries_cases())),
         "digest.json": _dump(_corpus(
             "digest", "The request digest: SHA-256 over the request bytes as received.", digest_cases())),
         "refusal.json": _dump(_corpus(

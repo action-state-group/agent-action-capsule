@@ -2,8 +2,12 @@
 
 Conformance vectors for the evidence request interaction defined in
 `spec/draft-mih-agent-evidence-request-00.md`: the request map, the six subject
-forms, coverage, the request digest, the signed refusal, the three outcomes and
+forms, which record members carry a correlation identifier or cite an exchange
+half, coverage, the request digest, the signed refusal, the three outcomes and
 the pending state, caller invariance, and retention commitments.
+
+`carries.json` follows §3.1.1, text added to the draft source for -01; the file
+name of the source stays `-00` until the revision is cut.
 
 **Derived from the -00 text, not from any implementation.** Every expected
 result is written by hand in the generator from the section it cites. The
@@ -19,6 +23,7 @@ section and the reading used (the most literal one); the list is below, for -01.
 | `registry.json` | The exact strings -00 fixes: request fields and their presence, the six subject forms, the two coverage members, the eight refusal reasons, the `history_card/1` derivation, the three outcomes, the pending state, the `evidence-request/1` subprotocol identifier. |
 | `request.json` | Request map validation. Each case gives the request as JSON (RFC 8785 text, `request_json`) and, where it is a CBOR value, as a deterministic CBOR frame (`request_cbor_hex`), with the SHA-256 of each. Expect `well_formed: true`, or `false` with the exact refusal reason. |
 | `resolution.json` | Exact-match resolution against one declared responder state (`responder`, with per-case `responder_overrides`). Expect `artifact` or a refusal with the most specific reason (§4.2). |
+| `carries.json` | Which members of a record carry a correlation identifier or cite an exchange half (§3.1.1): a positive and a negative case per subject form, plus a `counterparty_half` entry naming another half. Each case gives `record_format`, the `record` reduced to the members the designation reads, and the `subject`. Expect `carries` (correlation) or `cites` (exchange), true or false. |
 | `digest.json` | The request digest is over the bytes as received (§4.2 item 1): JSON and CBOR, deterministic and not, and a refusal carrying the digest of a re-canonicalized form. |
 | `refusal.json` | Signed refusals: one per registered reason, a CBOR response frame, tampering, and objects that are signed but not conforming. Carries the signature profile and both fixed keys (seed and public key). |
 | `refusal-imported.json` | An existing cross-implementation refusal vector, byte for byte (SHA-256 `885d7981…a66e`). It conforms to -00: a request digest, a registered reason, an issuance time, and a signature over all three. |
@@ -58,17 +63,22 @@ section and the reading used (the most literal one); the list is below, for -01.
    `request_json_digest` / `request_cbor_digest`.
 3. `resolution.json`: load `responder` (plus any `responder_overrides`) as the
    responder's holdings, and check the answer's form and reason.
-4. `refusal.json`: verify each `refusal` object (or the `file`) offline.
+4. `carries.json`: read `record` under the designation §3.1.1 gives its
+   `record_format`, and check whether it carries the `correlation` identifier,
+   or cites the `exchange` half. The answer must equal `expect`. A requester
+   that does not implement the format treats the record as unchecked, never as
+   not carrying (§3.1.1).
+5. `refusal.json`: verify each `refusal` object (or the `file`) offline.
    `expect.signature` is the signature check alone, `expect.reason_registered`
    the registry check alone, and `expect.conformant` both plus the presence and
    form of every member §4.2 requires. Keep the two checks separate: a valid
    signature over an unregistered token is still the responder's signed act.
-5. `outcomes.json`: map `facts` to a state; it must equal `expect.state` and
+6. `outcomes.json`: map `facts` to a state; it must equal `expect.state` and
    must not be any of `expect.must_not_record_as`.
-6. `invariance.json`: for observations with the same `resolved_anchor`, the
+7. `invariance.json`: for observations with the same `resolved_anchor`, the
    `artifact_hex` values must be identical. Differing verification material is
    allowed. Different anchors are `not_comparable`.
-7. `retention.json`: classify each `facts` pair, and check each `commitment` for
+8. `retention.json`: classify each `facts` pair, and check each `commitment` for
    well-formedness.
 
 Regenerate from the repository root with
@@ -141,6 +151,16 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `res-derivation-not-for-subject` | 3.3 | refuse `no_such_subject` |  |
 | `res-derivation-history-card` | 3.3, 8.1 | artifact |  |
 | `res-uniform-policy-declined` | 4.2, 12 | refuse `policy_declined` |  |
+
+### `carries.json` (5 cases)
+
+| Case | § | Expect | Ambiguity |
+|---|---|---|---|
+| `carries-correlation-subject-ref` | 3.1.1 | carries |  |
+| `carries-correlation-undesignated-member` | 3.1.1 | does not carry |  |
+| `cites-exchange-counterparty-half` | 3.1.1 | cites |  |
+| `cites-exchange-responds-to` | 3.1.1 | does not cite |  |
+| `cites-exchange-counterparty-half-other-digest` | 3.1.1 | does not cite |  |
 
 ### `digest.json` (7 cases)
 

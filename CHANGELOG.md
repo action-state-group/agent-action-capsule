@@ -15,6 +15,18 @@
   payment token are unsigned, and the order webhook's HMAC is under a secret the two parties share.
   So the native check is `NOT_PRESENT` or `NOT_CHECKED`, mapped as interop profile §8.1 rows 3-4,
   and the declaration names what ACP would need to add. No vectors, by design.
+- Evidence Request (`spec/draft-mih-agent-evidence-request-00.md`, -01 text): new §3.1.1 "What
+  a Record Carries" defines which record members carry a `correlation` identifier and what makes
+  a record cite an `exchange` half. The record's format fixes it. For Evidence Layer records that
+  is the header's `subject_ref` and any field a profile adds as an equivalent correlation field
+  (such as a `correlation` map), and a `links` entry of type `cites`. For Capsules it is the
+  correlation fields the Capsule draft names (§3.4 there), and a `references` entry with `citation_purpose` `counterparty_half`
+  (`responds_to` does not cite a half). A requester that does not implement a record's format
+  treats the record as unchecked, never as not carrying. Vectors: new
+  `vectors/evidence-request/carries.json` (5 cases: a positive and a negative per subject form,
+  plus a `counterparty_half` entry naming another half). Changed released files: `vectors/evidence-request/manifest.json`,
+  `vectors/evidence-request/SHA256SUMS` and `vectors/evidence-request/README.md`, plus
+  `vectors/SHA256SUMS` and `vectors/README.md`. No existing case file changed.
 
 ## 0.10.0 — 2026-10-17
 
