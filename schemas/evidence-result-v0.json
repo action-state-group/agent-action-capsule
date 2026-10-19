@@ -125,7 +125,7 @@
       }
     },
     "ReconcileState": {
-      "description": "The six reconcile states over one join key between two books (evidencebook-skills-design 2026-09-25, section 4). A = this Result's own book; B = the peer named by ReconcileClaim.peer. MATCHED: present on both sides, equal. A_ONLY: this book has the row, the peer does not. B_ONLY: the peer has the row, this book does not. CONFLICTING: present on both sides, values differ. INSUFFICIENT: the evidence needed to compare was missing (e.g. a connector gap). UNRESOLVED: compared but not resolvable to any other state within the period. Ruled 2026-09-25: 'one side missing isn't a finding; both sides disagreeing is' -- A_ONLY and B_ONLY MUST never render like CONFLICTING.",
+      "description": "The six reconcile states over one join key between two books (spec/evidence-result-v0.md section 4.1). A = this Result's own book; B = the peer named by ReconcileClaim.peer. MATCHED: present on both sides, equal. A_ONLY: this book has the row, the peer does not. B_ONLY: the peer has the row, this book does not. CONFLICTING: present on both sides, values differ. INSUFFICIENT: the evidence needed to compare was missing (e.g. a connector gap). UNRESOLVED: compared but not resolvable to any other state within the period. Ruled 2026-09-25: 'one side missing isn't a finding; both sides disagreeing is' -- A_ONLY and B_ONLY MUST never render like CONFLICTING.",
       "enum": ["MATCHED", "A_ONLY", "B_ONLY", "CONFLICTING", "INSUFFICIENT", "UNRESOLVED"]
     },
     "ReconcileTallies": {

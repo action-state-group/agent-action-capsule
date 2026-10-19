@@ -173,6 +173,26 @@ export const REQUIREMENT_CLAIM = "requirement";
  * `counterpartyLinks` and `signerOf`).
  */
 export const CLOSE_CLAIM = "close";
+/**
+ * The claim type whose `reconcile` body this module reads
+ * (spec/evidence-result-v0.md section 4.1, normative): the six-state tally
+ * of one join between this book and one peer over one period. The tallies
+ * are carried as written; this module does not recompute sufficiency from
+ * them.
+ */
+export const RECONCILE_CLAIM = "reconcile";
+/** The six tally keys, keyed as schemas/judge/close-v1.json keys them. */
+export const RECONCILE_TALLY_KEYS = Object.freeze([
+  "matched",
+  "a_only",
+  "b_only",
+  "conflicting",
+  "insufficient",
+  "unresolved",
+] as const);
+export type ReconcileTallyKey = (typeof RECONCILE_TALLY_KEYS)[number];
+export const STATES_OF_RECORD = Object.freeze(["A", "B", "none"] as const);
+export type StateOfRecord = (typeof STATES_OF_RECORD)[number];
 export const CLOSE_STATES = Object.freeze([
   "UNILATERAL",
   "AGREED",
@@ -280,6 +300,14 @@ export interface ResultClose {
 }
 
 /** Which rule failed a claim, for the row's `data-failed` attribute. */
+export interface ResultReconcile {
+  readonly joinKey: string;
+  readonly peer: string;
+  readonly period: { readonly start: string; readonly end: string };
+  readonly tallies: Readonly<Record<ReconcileTallyKey, number>>;
+  readonly stateOfRecord: StateOfRecord;
+}
+
 export type ClaimFailure = "close_state" | "evidence" | "peer_close_ref";
 
 /**
@@ -331,6 +359,8 @@ export interface ResultClaim {
   readonly presentation: ClaimPresentation;
   /** Present on a recognized `close` claim. */
   readonly close?: ResultClose;
+  /** Present on a recognized `reconcile` claim. */
+  readonly reconcile?: ResultReconcile;
   /**
    * The claim FAILED verification (maintainer's second and third passes,
    * 2026-09-28 / 2026-09-29): its close state, recomputed from this
@@ -776,6 +806,36 @@ export function deriveCloseState(links: readonly CloseLink[]): CloseState {
   if (links.some((link) => link.type === "rebuts")) return "CONTESTED";
   if (links.some((link) => link.type === "acknowledges")) return "AGREED";
   return "UNILATERAL";
+}
+
+/**
+ * A `reconcile` body this module can read: every member present, the six
+ * tallies integers >= 0, and `state_of_record` in its vocabulary.
+ */
+function reconcileBody(raw: ObjectValue): ResultReconcile | undefined {
+  const body = raw.reconcile;
+  if (!isObject(body)) return undefined;
+  const { join_key, peer, period, tallies, state_of_record } = body;
+  if (
+    !nonEmptyString(join_key) ||
+    !nonEmptyString(peer) ||
+    !isObject(period) ||
+    typeof period.start !== "string" ||
+    typeof period.end !== "string" ||
+    !isObject(tallies) ||
+    !RECONCILE_TALLY_KEYS.every((key) => nonNegativeInteger(tallies[key])) ||
+    !oneOf(STATES_OF_RECORD, state_of_record)
+  )
+    return undefined;
+  return {
+    joinKey: join_key,
+    peer,
+    period: { start: period.start, end: period.end },
+    tallies: Object.fromEntries(
+      RECONCILE_TALLY_KEYS.map((key) => [key, tallies[key] as number]),
+    ) as Record<ReconcileTallyKey, number>,
+    stateOfRecord: state_of_record,
+  };
 }
 
 /** A `close` body this module can read: a state in the vocabulary and a Close cited by digest. */
@@ -1409,6 +1469,7 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
       : REQUIREMENT_CLAIM;
     const presentation = raw.presentation as ObjectValue;
     const body = type === CLOSE_CLAIM ? closeBody(raw) : undefined;
+    const reconcile = type === RECONCILE_CLAIM ? reconcileBody(raw) : undefined;
     let close: ResultClose | undefined;
     if (body !== undefined) {
       const closeRef = body.close_ref.digest as string;
@@ -1527,7 +1588,10 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
     claims.push({
       id: raw.id as string,
       type,
-      recognized: type === REQUIREMENT_CLAIM || body !== undefined,
+      recognized:
+        type === REQUIREMENT_CLAIM ||
+        body !== undefined ||
+        reconcile !== undefined,
       contractRef: raw.contract_ref as string,
       requirementRef: raw.requirement_ref as string,
       tier: raw.tier as Tier,
@@ -1562,6 +1626,7 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
           : {}),
       },
       ...(close === undefined ? {} : { close }),
+      ...(reconcile === undefined ? {} : { reconcile }),
       failed: failure !== undefined,
       ...(failure === undefined ? {} : { failure }),
       ...(failedOn === undefined ? {} : { failedOn }),
