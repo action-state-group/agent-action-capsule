@@ -119,6 +119,41 @@
   `python/agent_action_capsule/data/REGISTRY.md`, `go/registries/data/REGISTRY.md`,
   `rust/agent-action-capsule/data/REGISTRY.md`, `vectors/README.md`, `vectors/manifest.json`,
   `vectors/SHA256SUMS` and `python/scripts/generate_all_vectors.py`.
+- Personal-Agent History Profile v0, Outcome level (`spec/personal-agent-history-outcome-v0.md`,
+  new open points PO-1 to PO-8), informational. It is the level PA-9 named, with its own definition
+  `personal_history_outcome/1`.
+  - Each outcome claim names one source of four: the holder's own record, the other party's half,
+    a native object read through an adapter declaration, or a judge's verdict given after the
+    holder's consent. A verifier checks each claim against its source and shows the claims side by
+    side, never combined.
+  - Five shared predicates (`completed`, `delivered`, `paid`, `disputed`, `cancelled`) are one
+    table, `outcome_predicates/1`, with digest
+    `b5c7fe64bd1b4978aeef89cbc3bd9ecc23c2a57a48202a3d8d29e713ef4abfdc`. Every definition carries
+    it. The table says which sources and adapter predicates count for each predicate. Evidence
+    answers only its own question: payment evidence never establishes delivery.
+  - `disputed` rests only on an IP §11.2 `disputes` statement, never on an outcome claim. Its EL
+    link-type registration is still proposed for the Evidence Layer -01 (PO-4).
+  - A deal's terms are committed as `sha256-jcs-nonce256`. The opening travels in the History or a
+    bundle, never in an envelope.
+  - The definition carries `coverage_declaration`, so the three coverage kinds of IP §6.7 become
+    available to a History. `stream_interval` takes only the rule `all_records`.
+  - A seller's and a buyer's History are two selection and requirement sets over this one level.
+    Neither defines a figure across deals.
+- Personal-Agent History Profile v0: the Status paragraph, §2, PA-9 and PA-15 now point to the
+  Outcome level. No Basic level rule changes.
+- New corpus `vectors/personal-history-outcome-v0/` (twenty-four cases, derived from the
+  personal-history run and re-signed by the holder key):
+  - one positive per source, and a `not_evaluable` delivery beside a `met` payment requirement;
+  - the deal commitment unopened and wrongly opened;
+  - a mutant for every level property that can be `FAIL`, except `native_check`.
+
+  Its native object is the x402 adapter corpus's `positive` case, with the lookup stating `final`,
+  so it holds under the released x402 adapter text and its pending revision.
+  `python/scripts/generate_personal_history_outcome_v0_vectors.py` regenerates it, and
+  `python/tests/test_personal_history_outcome_v0_vectors.py` checks it. Existing vector bytes are
+  unchanged, the Basic level corpus included.
+- Changed released files: `spec/personal-agent-history-profile-v0.md`, `vectors/README.md`,
+  `vectors/manifest.json`, `vectors/SHA256SUMS` and `python/scripts/generate_all_vectors.py`.
 
 ## 0.10.0 — 2026-10-17
 

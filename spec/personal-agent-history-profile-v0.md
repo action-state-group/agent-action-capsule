@@ -10,7 +10,8 @@ under [Open points](#10-open-points) (PA-1, PA-2, …).
 This revision defines one History level, the **Basic level**: a holder's selection of their own
 deals, answered under one signing key, that shows which deals were selected, when each recorded
 step was committed, and whether each recorded step completed or failed. It establishes no outcome
-of any deal. Outcome claims with source labels are a later revision (§10, PA-9).
+of any deal. Outcome claims with source labels are the Outcome level,
+`personal_history_outcome/1`, defined in `spec/personal-agent-history-outcome-v0.md` (PA-9).
 
 A sibling host profile covers inference-service histories (IP §6.5 is the common mechanism). The
 two compose only by an explicit, evidence-backed link, never by being shown together.
@@ -83,8 +84,8 @@ holder's own statement and is never checked by this profile.
   `holder_selected`: its definition's `completeness` `not_asserted` (§4.1) is that declaration, and
   the definition carries no `coverage_declaration` member [PA-15]. A History of the other two kinds,
   `stream_interval` (every record of the opened live set at the anchor) and `source_authoritative`
-  (every deal a named external source lists), needs a definition that carries one. That is a later
-  level (PA-9), not `/1`.
+  (every deal a named external source lists), needs a definition that carries one. That is the
+  Outcome level (`spec/personal-agent-history-outcome-v0.md` §3), not `/1`.
 - The holder key answering is not evidence that the key's holder made the deals. The records'
   own signatures sit outside what the Basic level reveals (§9).
 
@@ -381,10 +382,10 @@ checked. Everything else in §6 is the same.
 | PA-6 | Deal references not derived from counterparty, item, amount or message text. |
 | PA-7 | Per-share handles that would stop two recipients joining a deal through its reference. Records' digests would still link it. |
 | PA-8 | Units (§5). |
-| PA-9 | Outcome claims with source labels (the holder's agent's own outcome record, a third party's signed message, an adjudicator's statement, the other party's own record), each shown side by side and never combined. A later level, with its own definition name. |
+| PA-9 | Outcome claims with source labels (the holder's agent's own outcome record, a third party's signed message, an adjudicator's statement, the other party's own record), each shown side by side and never combined. Defined as the Outcome level, `personal_history_outcome/1`, in `spec/personal-agent-history-outcome-v0.md`. |
 | PA-10 | The History properties (§6.2) as properties in IP's vocabulary that are not IP §7.2 envelope properties and never enter the IP §8 mapping. |
 | PA-11 | Publishing the §6.4 run as conformance vectors beside IP §11.5. |
 | PA-12 | The one-file History container (§8.2). |
 | PA-13 | Record-level inclusion for a derivation's artifact: needs an IP verification-material kind (IP P-13); until then `anchor_inclusion` is `NOT_CHECKED`. |
 | PA-14 | A History over several streams at one witnessed checkpoint tick (§2). Showing that the tick is witnessed and commits to each stream an artifact names needs verification material from the tick to the stream's checkpoint, which IP does not register (IP P-13); until then a verifier checks only that every envelope names the same anchor. |
-| PA-15 | The Basic level's coverage kind (§2, §4.1). `completeness` `not_asserted` is read as IP §6.7's `holder_selected`, so `/1` keeps its bytes. A level that declares `stream_interval` or `source_authoritative` carries `coverage_declaration` in its definition instead. The IP vectors use an example definition for both, which is not registered (IP §6.7.6). |
+| PA-15 | The Basic level's coverage kind (§2, §4.1). `completeness` `not_asserted` is read as IP §6.7's `holder_selected`, so `/1` keeps its bytes. A level that declares `stream_interval` or `source_authoritative` carries `coverage_declaration` in its definition instead. The IP vectors use an example definition for both, which is not registered (IP §6.7.6). The Outcome level (`spec/personal-agent-history-outcome-v0.md` §3) is that level. |

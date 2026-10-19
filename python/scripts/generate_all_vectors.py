@@ -72,6 +72,8 @@ GENERATORS = (
     "generate_registry_conformance_vectors.py",
     "generate_adapter_x402_vectors.py",
     "generate_ucp_adapter_vectors.py",
+    # Reads the x402 adapter corpus, so it runs after it.
+    "generate_personal_history_outcome_v0_vectors.py",
     # Append to the capsule, disclosure-envelope and producer-envelope manifests.
     "generate_parity_hardening_vectors.py",
     "generate_envelope_encoding_vectors.py",

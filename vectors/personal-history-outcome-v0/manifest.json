@@ -1,0 +1,22 @@
+{
+  "set": "aac-personal-history-outcome-v0",
+  "status": "Conformance vectors for the informational Personal-Agent History Profile v0, Outcome level, over evidence-interop/0. Every key is a test key derived from a public seed; never use one for anything else.",
+  "spec": "spec/personal-agent-history-outcome-v0.md",
+  "generator": "python/scripts/generate_personal_history_outcome_v0_vectors.py",
+  "run": {
+    "path": "personal-history-basic-v0/responder-run.json",
+    "sha256": "f7d77d56d81ca187cb9a8118f8a15aae5407f5a96aca1c5525a5f5d2e827b848"
+  },
+  "native_objects": {
+    "corpus": "adapters/x402/cases.json",
+    "case": "positive",
+    "note": "the payment payload and settlement response octets unchanged; the lookup with final set to true"
+  },
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "483effbd8a4f4c62cbef8fa8a8c3e037e02dc11ac6143b410b93f95a1ad744bf",
+      "count": 24
+    }
+  ]
+}

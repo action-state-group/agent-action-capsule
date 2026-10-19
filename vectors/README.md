@@ -72,6 +72,13 @@ same-commit files in CI.
   type, and expired, revoked, one-key-signed, same-key, other-keys, forged-credential,
   unknown-method, unbound-delegator and revocation cases, each over a pair of agreeing halves;
   `python/scripts/generate_controller_binding_v0_vectors.py` regenerates them.
+- `personal-history-outcome-v0/`: the Outcome level of the personal-agent History profile
+  (`spec/personal-agent-history-outcome-v0.md`): one positive per outcome source (the holder's
+  record, the other party's half, an x402 native object, a judge's verdict under consent), a
+  `not_evaluable` delivery beside an established payment, the deal commitment unopened and
+  wrongly opened, and one mutant per property the level adds. Derived from the personal-history run
+  and the x402 adapter corpus;
+  `python/scripts/generate_personal_history_outcome_v0_vectors.py` regenerates them.
 - `adapters/x402/`: the x402 adapter declaration `spec/adapters/x402-v0.md`: a positive and a
   native-check-fails case for an `exact`/`eip3009` payment, with the wrapped objects' octets, the
   relying party's policy and recorded lookup, and the expected `native_check` reports. Constructed,
