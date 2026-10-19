@@ -111,7 +111,7 @@
       ]
     },
     "ClaimType": {
-      "description": "PROPOSED discriminator, encoding the 2026-09-25 ruling: 'close + reconcile as claim types in result v0, so they feed the same result.' Absent means `requirement` -- the pre-existing one-requirement-evaluated-once claim (spec section 1) -- so every Result that validated before this field existed validates unchanged. Closed-world: a value outside this enum fails validation here. A viewer that meets a type it does not recognize MUST render the row labelled 'unrecognized' with the raw type and the claim's contract_ref, never drop it (ruled 2026-09-25); that behaviour and its fixture are owned by capsule-viewer, not by this schema.",
+      "description": "Discriminator (spec section 4.1): `requirement` and `reconcile` are normative, `close` is PROPOSED. Encodes the 2026-09-25 ruling: 'close + reconcile as claim types in result v0, so they feed the same result.' Absent means `requirement` -- the pre-existing one-requirement-evaluated-once claim (spec section 1) -- so every Result that validated before this field existed validates unchanged. Closed-world: a value outside this enum fails validation here. A viewer that meets a type it does not recognize MUST render the row labelled 'unrecognized' with the raw type and the claim's contract_ref, never drop it (ruled 2026-09-25); that behaviour and its fixture are owned by capsule-viewer, not by this schema.",
       "enum": ["requirement", "reconcile", "close"]
     },
     "Period": {

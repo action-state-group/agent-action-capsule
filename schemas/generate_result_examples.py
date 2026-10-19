@@ -17,7 +17,8 @@ negative fixtures, each a byte-for-byte copy of the positive with exactly one
 field changed, each spec/evidence-result-v0.md rule this document requires
 MUST reject.
 
-PROPOSED claim types (the 2026-09-25 ruling): five more positives --
+Claim types (the 2026-09-25 ruling; reconcile normative, close PROPOSED):
+five more positives --
 one reconcile Result, one AGREED close, one UNILATERAL close (no peer
 named), one UNILATERAL close that names the peer it closed against, one
 CONTESTED close (the Evidence Layer's third Close state, draft-mih-agent-
@@ -243,8 +244,9 @@ neg_disclosure_carrier_under_withheld["claims"][2]["presentation"] = {
 }
 
 # ===========================================================================
-# PROPOSED claim types (the 2026-09-25 ruling: "close + reconcile as
-# claim types in result v0, so they feed the same result"). Each positive
+# Claim types, reconcile normative and close PROPOSED (the 2026-09-25
+# ruling: "close + reconcile as claim types in result v0, so they feed
+# the same result"). Each positive
 # below keeps the untouched requirement claim-1 beside its typed claims, so
 # the pre-existing shape is proven to coexist with each type in the same
 # claims[] array: the three close positives pair claim-1 with ONE typed

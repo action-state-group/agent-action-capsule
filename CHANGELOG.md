@@ -11,6 +11,9 @@
   `python/scripts/generate_negative_zero_vectors.py` regenerates them. First reviewed in #190,
   which merged into the already-merged #188 branch and so never reached main. Existing vector
   files are unchanged; `capsule/vectors.json` and the two `SHA256SUMS` files gained entries.
+- Evidence Result v0 §4.1: `type: reconcile` is normative (`join_key`, `peer`, `period`, the six
+  tallies, `state_of_record`). `type: close` stays PROPOSED. No schema structure, vector or
+  rendering rule changes; the `ClaimType` description now states each type's status.
 - UCP adapter declaration and vectors: `spec/adapters/ucp-v0.md` declares the five FR-19 items
   for UCP v2026-08-25 (`cd78fb38e819de77d9b527d110476eccb876f1bd`). The checkout carrying
   `ap2.merchant_authorization` (AP2 Mandates Extension) is the one merchant-signed object and gets

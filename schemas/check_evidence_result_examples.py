@@ -29,7 +29,8 @@ mechanical half):
      above can actually fail, not just report green by construction. The
      rule is then restored in memory (the committed schema file is never
      modified) and re-verified red.
-  4. PROPOSED CLAIM TYPES (the 2026-09-25 ruling -- "close +
+  4. CLAIM TYPES, reconcile normative, close PROPOSED (the 2026-09-25
+     ruling -- "close +
      reconcile as claim types in result v0"): five more positives
      (pos-example-org-reconcile-result, pos-example-org-close-agreed-result,
      pos-example-org-close-unilateral-result, pos-example-org-close-unilateral-named-peer-
@@ -417,7 +418,8 @@ def close_state_findings(
 
 POSITIVE_RESULT = "pos-example-org-claims-result"
 
-# PROPOSED claim types (2026-09-25 ruling): every positive keeps the
+# Claim types (2026-09-25 ruling; reconcile normative, close PROPOSED):
+# every positive keeps the
 # untouched requirement claim-1 beside its typed claims -- one typed claim
 # on each close positive, two on the reconcile positive (reconcile-1
 # SATISFIED, reconcile-2 GAP).
@@ -730,7 +732,7 @@ def main() -> int:
             "DisclosureCarrier.status's restriction to DisclosedStatus",
         )
 
-    # --- PROPOSED claim types (2026-09-25 ruling) ---------------------------
+    # --- Claim types (2026-09-25 ruling) -----------------------------------
 
     if negative_errors_by_name["neg-close-agreed-without-peer"]:
         mutant = copy.deepcopy(schema)

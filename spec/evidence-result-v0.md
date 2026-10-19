@@ -6,7 +6,8 @@ requirement, what was judged and with what assurance, over an Evidence Contract.
 (result semantics, disclosure policy, aggregate/coverage) carry **the 2026-09-22 ruling, quoted verbatim
 below** — the gate required before this schema could freeze. The gate is
 satisfied; the schema, validator, and fixtures below are encoded to the ruled text and are no
-longer DRAFT.
+longer DRAFT. §4.1's `type: reconcile` claim is normative; its `type: close` claim and §7.1's
+`coverage_report` are PROPOSED.
 
 **Companion schema.** `schemas/evidence-result-v0.json` — a JSON Schema (2020-12) encoding of
 every object model defined below. The schema is descriptive of the semantics fixed here; where
@@ -226,9 +227,16 @@ are cross-element constraints over the `claims` array plain JSON Schema cannot e
 class of gap `evidence-plan-ir-v0.md` §3.1 documents for node `id` uniqueness and DAG order. A
 conforming verifier MUST check both in addition to schema validation.
 
-### 4.1 Claim types — `reconcile` and `close` (PROPOSED)
+### 4.1 Claim types — `reconcile` (normative) and `close` (PROPOSED)
 
-**Status: PROPOSED against the 2026-09-25 ruling, quoted verbatim:**
+**Status: `type: reconcile` is normative; `type: close` stays PROPOSED.** Normative for v0: the
+`type` member and its absent-means-`requirement` default; the `reconcile` body (`join_key`, `peer`,
+`period`, the six tallies, `state_of_record`); the reconcile sufficiency derivation; and, in the
+rendering paragraph, the `A_ONLY` / `B_ONLY` versus `CONFLICTING` rule and the `unrecognized`-row
+rule. Still PROPOSED: the `close` body, everything about `close_state` (its derivation and the three
+further bindings, whose "(normative)" labels give the force they take once `close` is ruled), and
+the `UNILATERAL` / `CONTESTED` rendering rules. Both types were staged against the 2026-09-25
+ruling, quoted verbatim:
 
 > close + reconcile as claim types in result v0, so they feed the same result. the constraint i
 > care about more than the vocabulary: A_ONLY / B_ONLY must never render like CONFLICTING, and
@@ -670,7 +678,8 @@ field, each failing at exactly one documented rule. See that directory's `README
 cases and `schemas/check_evidence_result_examples.py` for the validation run, including the
 mutant/load-bearing proof for each negative.
 
-§4.1's PROPOSED claim types add five positives (`pos-example-org-reconcile-result.json`,
+§4.1's claim types (`reconcile` normative, `close` PROPOSED) add five positives
+(`pos-example-org-reconcile-result.json`,
 `pos-example-org-close-agreed-result.json`, `pos-example-org-close-unilateral-result.json`,
 `pos-example-org-close-unilateral-named-peer-result.json`, `pos-example-org-close-contested-result.json` — each the
 untouched requirement `claim-1` beside its typed claims: one on each close positive, two on the

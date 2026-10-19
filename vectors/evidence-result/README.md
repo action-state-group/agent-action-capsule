@@ -52,7 +52,7 @@ each MUST fail `$defs/EvidenceResult` validation for exactly one documented reas
 rejection is load-bearing (not vacuous) by removing the specific schema rule it depends on in
 memory, confirming that SAME fixture then validates clean, and restoring the rule.
 
-## PROPOSED claim types — `reconcile` and `close` (the 2026-09-25 ruling)
+## Claim types — `reconcile` (normative) and `close` (PROPOSED) (the 2026-09-25 ruling)
 
 > close + reconcile as claim types in result v0, so they feed the same result. … A_ONLY / B_ONLY
 > must never render like CONFLICTING, and UNILATERAL never like AGREED. one side missing isn't a
