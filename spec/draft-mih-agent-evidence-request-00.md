@@ -29,6 +29,24 @@ normative:
 informative:
   RFC9942:
   RFC9943:
+  I-D.mih-agent-evidence-layer:
+    title: "Evidence Layer"
+    seriesinfo:
+      Internet-Draft: draft-mih-agent-evidence-layer-00
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+    date: 2026-10
+    refcontent: Work in Progress
+  I-D.mih-scitt-agent-action-capsule:
+    title: "An Agent Action Capsule Profile for SCITT"
+    seriesinfo:
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-05
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+    date: 2026-10
+    refcontent: Work in Progress
   I-D.mih-scitt-checkpointed-local-log:
     title: "The Checkpointed Local Log"
     author:
@@ -273,8 +291,8 @@ The `subject` names what is asked for, in one of six forms:
 | `checkpoints` | (none) | the responder's checkpoints and their receipts for this stream; no records |
 | `record` | digest | the single record identified by this digest |
 | `range` | (a, b) | the records at positions a through b inclusive, under the coverage anchor's ordering |
-| `correlation` | identifier | all records the responder holds that carry this correlation identifier |
-| `exchange` | digest of the requester's own half | every record the responder holds that cites this exchange half ({{symmetric}}) |
+| `correlation` | identifier | all records the responder holds that carry this correlation identifier ({{carries}}) |
+| `exchange` | digest of the requester's own half | every record the responder holds that cites this exchange half ({{carries}}, {{symmetric}}) |
 
 Subjects are digests, positions, and opaque identifiers — never display
 names. Names drift; digests do not. A requester that holds only a name has
@@ -297,8 +315,78 @@ interaction. A responder that recorded its side of that interaction holds a
 record citing that half by digest; the subject resolves to exactly those
 records. A responder holding no record citing the half answers
 `no_such_subject` — which, when the requester holds a signed reply from
-that responder citing the same half, is itself a contradiction the
+that responder citing the same half ({{carries}}), is itself a contradiction the
 requester can cite ({{symmetric}}).
+
+### What a Record Carries {#carries}
+
+The `correlation` and `exchange` forms resolve to the records that carry
+an identifier or cite a half. Which members of a record count is fixed by
+the record's evidence format. The requester does not fix it, and the
+responder does not choose it per request.
+
+- A record **carries a correlation identifier** when the identifier is,
+  octet for octet, the whole value of one of the record's correlation
+  members: the members its evidence format designates as holding a
+  correlation identifier. The identifier appearing anywhere else does not
+  make the record carry it: in content the format does not designate, in
+  free text, as part of a longer value, or under a member of the same
+  name that the format does not designate.
+
+- A record **cites an exchange half** when it holds a typed reference,
+  with the relation its evidence format designates for citing a
+  counterparty's half of an exchange, whose digest is the half's digest.
+  The same digest in any other member, or in a reference with any other
+  relation, does not make the record cite the half.
+
+For two record formats that define these subjects' members, the
+designations are:
+
+- Evidence Layer records ({{I-D.mih-agent-evidence-layer}}):
+
+  - Correlation members: the header's `subject_ref`
+    ({{Section 4 of I-D.mih-agent-evidence-layer}}), and any header field
+    a profile adds under that section's provision for profile-added
+    header fields and designates as an equivalent correlation field
+    ({{Section 9 of I-D.mih-agent-evidence-layer}}), for example each
+    text-valued member of a `correlation` map added by a profile.
+
+  - Half citation: an entry of the header's `links` whose `type` is
+    `cites` and whose `target` is the half's digest
+    ({{Section 5 of I-D.mih-agent-evidence-layer}}).
+
+- Capsules ({{I-D.mih-scitt-agent-action-capsule}}):
+
+  - Correlation members: the correlation fields that document names
+    ({{Section 3.4 of I-D.mih-scitt-agent-action-capsule}}: currently
+    `action_id`, `decision_id`, `external_ref`, and `chain`), cited here
+    and not redefined.
+
+  - Half citation: an entry of `references` whose `citation_purpose` is
+    `counterparty_half` and whose `digest` is the half's digest
+    ({{Section 5.5.6 of I-D.mih-scitt-agent-action-capsule}}). An entry
+    with any other `citation_purpose`, `responds_to` included, does not
+    cite a half.
+
+A responder resolves these subjects under the designations of the
+records it holds, and MUST NOT serve a record for a `correlation` or
+`exchange` subject unless, under its format's designation, the record
+carries the identifier or cites the half. A served record that, under
+its format's designation, does not carry the identifier or cite the half
+is not responsive to the subject, and an artifact that includes one does
+not answer it.
+
+A requester checking a served record against the subject applies the
+designation of that record's format, not the layout of its own records.
+A record that carries the identifier, or cites the half, under its own
+format's designation conforms, wherever the requester's own records
+would have held it. A requester that cannot identify the record's
+format, does not implement it, or receives a record whose format
+designates no correlation members or no half citation, MUST treat the
+record's carriage as unchecked: it MUST NOT treat the record as not
+carrying the identifier or not citing the half, and MUST NOT reject the
+artifact on that ground. An unchecked record is still checked against
+the coverage anchor like any other.
 
 ## Coverage {#coverage}
 
@@ -688,8 +776,8 @@ The consequence is the one property no single-responder interaction can
 otherwise provide. A responder's log, however well witnessed, proves only
 the integrity of what the responder chose to write. A counterparty that
 sealed its own half of every exchange can prove an *omission* by
-arithmetic: it holds a signed reply citing a half the responder now claims
-not to have. Coverage is a property of the counterparty's record, not of
+arithmetic: it holds a signed reply citing ({{carries}}) a half the
+responder now claims not to have. Coverage is a property of the counterparty's record, not of
 the log, and the symmetric ask is how that record is exercised.
 
 Deployments MAY condition interaction on evidence — for example, a policy

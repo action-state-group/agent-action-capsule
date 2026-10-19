@@ -445,6 +445,18 @@ in TypeScript 0.5.0.
   unchanged, the Basic level corpus included.
 - Changed released files: `spec/personal-agent-history-profile-v0.md`, `vectors/README.md`,
   `vectors/manifest.json`, `vectors/SHA256SUMS` and `python/scripts/generate_all_vectors.py`.
+- Evidence Request (`spec/draft-mih-agent-evidence-request-00.md`, -01 text): new §3.1.1 "What
+  a Record Carries" defines which record members carry a `correlation` identifier and what makes
+  a record cite an `exchange` half. The record's format fixes it. For Evidence Layer records that
+  is the header's `subject_ref` and any field a profile adds as an equivalent correlation field
+  (such as a `correlation` map), and a `links` entry of type `cites`. For Capsules it is the
+  correlation fields the Capsule draft names (§3.4 there), and a `references` entry with `citation_purpose` `counterparty_half`
+  (`responds_to` does not cite a half). A requester that does not implement a record's format
+  treats the record as unchecked, never as not carrying. Vectors: new
+  `vectors/evidence-request/carries.json` (4 cases, one positive and one negative per subject
+  form). Changed released files: `vectors/evidence-request/manifest.json`,
+  `vectors/evidence-request/SHA256SUMS` and `vectors/evidence-request/README.md`, plus
+  `vectors/SHA256SUMS` and `vectors/README.md`. No existing case file changed.
 
 ## 0.10.0 — 2026-10-17
 
