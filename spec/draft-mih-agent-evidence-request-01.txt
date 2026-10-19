@@ -83,11 +83,11 @@ Table of Contents
    3.  The Request . . . . . . . . . . . . . . . . . . . . . . . . .   7
      3.1.  Subject . . . . . . . . . . . . . . . . . . . . . . . . .   8
        3.1.1.  What a Record Carries . . . . . . . . . . . . . . . .   9
-     3.2.  Coverage  . . . . . . . . . . . . . . . . . . . . . . . .  10
-     3.3.  Derivation  . . . . . . . . . . . . . . . . . . . . . . .  11
+     3.2.  Coverage  . . . . . . . . . . . . . . . . . . . . . . . .  11
+     3.3.  Derivation  . . . . . . . . . . . . . . . . . . . . . . .  12
      3.4.  Deadline  . . . . . . . . . . . . . . . . . . . . . . . .  12
      3.5.  Nonce . . . . . . . . . . . . . . . . . . . . . . . . . .  12
-     3.6.  Route . . . . . . . . . . . . . . . . . . . . . . . . . .  12
+     3.6.  Route . . . . . . . . . . . . . . . . . . . . . . . . . .  13
      3.7.  Principal Reference . . . . . . . . . . . . . . . . . . .  13
      3.8.  Recording the Request . . . . . . . . . . . . . . . . . .  13
      3.9.  Categories  . . . . . . . . . . . . . . . . . . . . . . .  14
@@ -96,7 +96,7 @@ Table of Contents
      4.2.  The Signed Refusal  . . . . . . . . . . . . . . . . . . .  17
      4.3.  Pending . . . . . . . . . . . . . . . . . . . . . . . . .  18
      4.4.  Recorded Absence  . . . . . . . . . . . . . . . . . . . .  18
-     4.5.  The Three-State Discipline  . . . . . . . . . . . . . . .  19
+     4.5.  The Three-State Discipline  . . . . . . . . . . . . . . .  18
      4.6.  Mapping to a Requirement-Satisfaction Status  . . . . . .  19
    5.  Caller Invariance . . . . . . . . . . . . . . . . . . . . . .  20
    6.  The Symmetric Ask . . . . . . . . . . . . . . . . . . . . . .  22
@@ -125,7 +125,7 @@ Internet-Draft              Evidence Request                October 2026
    Appendix A.  Example Deployments  . . . . . . . . . . . . . . . .  37
    Appendix B.  Reference Blocks and This Interaction  . . . . . . .  38
    Changes from -00  . . . . . . . . . . . . . . . . . . . . . . . .  39
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  39
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  40
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  40
 
 1.  Introduction
@@ -547,11 +547,11 @@ Internet-Draft              Evidence Request                October 2026
    MUST NOT reject the artifact on that ground.  An unchecked record is
    still checked against the coverage anchor like any other.
 
-3.2.  Coverage
 
-   The coverage field carries *exactly one* of the following two
-   members.  A request carrying both, or neither, is malformed, and the
-   responder MUST refuse it with reason coverage_unsatisfiable.
+
+
+
+
 
 
 
@@ -561,6 +561,16 @@ Mih                        Expires 2 May 2027                  [Page 10]
 
 Internet-Draft              Evidence Request                October 2026
 
+
+3.2.  Coverage
+
+   The coverage field carries *exactly one* of the following two
+   members.  A request carrying both, or neither, is malformed, and the
+   responder MUST refuse it with reason coverage_unsatisfiable.  A
+   responder first checks that each member present in coverage has a
+   conforming value, and refuses a non-conforming value with reason
+   request_malformed, whether or not the other member is present; only
+   then does it apply the both-or-neither rule.
 
    *expected_pin (digest):* the requester already holds, obtained out of
    band, a specific coverage anchor — for example a published checkpoint
@@ -596,6 +606,18 @@ Internet-Draft              Evidence Request                October 2026
    degraded success; it is a different answer to a different question,
    and this document forbids it.
 
+
+
+
+
+
+
+
+Mih                        Expires 2 May 2027                  [Page 11]
+
+Internet-Draft              Evidence Request                October 2026
+
+
 3.3.  Derivation
 
    The derivation field, when present, names a computation over the
@@ -610,14 +632,6 @@ Internet-Draft              Evidence Request                October 2026
    Derivation is also the disclosure mechanism of this document: the
    declared field set of the named computation bounds what the responder
    reveals (Section 8).  A responder that supports a derivation MUST
-
-
-
-Mih                        Expires 2 May 2027                  [Page 11]
-
-Internet-Draft              Evidence Request                October 2026
-
-
    evaluate it over exactly the subject as anchored by coverage — a
    derivation is a view of the anchored evidence, not an independent
    report — and the result MUST be accompanied by whatever the requester
@@ -648,20 +662,6 @@ Internet-Draft              Evidence Request                October 2026
    replayable against a fresh one.  Covered by the request digest, it
    MUST NOT influence the artifact (Section 5).
 
-3.6.  Route
-
-   The route field carries the requester's belief about where the
-   responder can be reached — a resolver name, a URL, a peer endpoint
-   identifier.  It is a hint for the transport binding and nothing more:
-   it MUST NOT influence the artifact (Section 5), it is not a subject,
-   and it is not identity.  A responder reached through a route is
-   authenticated by its signature on the response, never by the route
-   (Section 11).  The field exists so that the route actually attempted
-   is part of the requester's record of asking, and so a failed route is
-   part of any absence recorded (Section 4.4).
-
-
-
 
 
 
@@ -673,6 +673,18 @@ Mih                        Expires 2 May 2027                  [Page 12]
 
 Internet-Draft              Evidence Request                October 2026
 
+
+3.6.  Route
+
+   The route field carries the requester's belief about where the
+   responder can be reached — a resolver name, a URL, a peer endpoint
+   identifier.  It is a hint for the transport binding and nothing more:
+   it MUST NOT influence the artifact (Section 5), it is not a subject,
+   and it is not identity.  A responder reached through a route is
+   authenticated by its signature on the response, never by the route
+   (Section 11).  The field exists so that the route actually attempted
+   is part of the requester's record of asking, and so a failed route is
+   part of any absence recorded (Section 4.4).
 
 3.7.  Principal Reference
 
@@ -710,6 +722,14 @@ Internet-Draft              Evidence Request                October 2026
    recorded or their digests exchanged, deterministic encoding SHOULD be
    used: CBOR Core Deterministic Encoding (Section 4.2 of [RFC8949]) for
    CBOR, JCS [RFC8785] for JSON, so that the recorded bytes and the
+
+
+
+Mih                        Expires 2 May 2027                  [Page 13]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    transmitted bytes are the same bytes.  A requester that retains
    neither the transmitted request bytes nor their digest cannot
    correlate a refusal — identified only by digest — with its own record
@@ -718,17 +738,6 @@ Internet-Draft              Evidence Request                October 2026
    Request recording is a SHOULD, not a MUST: Section 7's "I asked; they
    refused" property is empty without it, but this document does not
    require a requester to keep records it has no use for.
-
-
-
-
-
-
-
-Mih                        Expires 2 May 2027                  [Page 13]
-
-Internet-Draft              Evidence Request                October 2026
-
 
 3.9.  Categories
 
@@ -770,21 +779,18 @@ Internet-Draft              Evidence Request                October 2026
    duplicated names as malformed, and refuses the request with reason
    request_malformed.  Names are compared as exact strings.
 
-   The field asks for a declaration, nothing else.  It does not change
-   the subject, it does not change coverage (Section 3.2), and it does
-   not change which records are served.  A declaration states what the
-   responder says it offers.  It is not a proof that the responder
-   offers all of it (Section 11).
-
-
-
-
 
 
 Mih                        Expires 2 May 2027                  [Page 14]
 
 Internet-Draft              Evidence Request                October 2026
 
+
+   The field asks for a declaration, nothing else.  It does not change
+   the subject, it does not change coverage (Section 3.2), and it does
+   not change which records are served.  A declaration states what the
+   responder says it offers.  It is not a proof that the responder
+   offers all of it (Section 11).
 
    A responder that does not implement categories ignores it, as it
    ignores any field it does not understand (Section 3), malformed or
@@ -824,16 +830,10 @@ Internet-Draft              Evidence Request                October 2026
        of the pinned anchor; under min_freshness, the anchor the
        responder selected, which MUST satisfy the requested freshness.
 
-
-
-
-
-
-
-
-
-
-
+   3.  *Verification material:* whatever proofs let the requester verify
+       the artifact against the anchor *offline* — inclusion proofs,
+       consistency proofs, countersignatures, receipts [RFC9942].  An
+       anchor MAY carry receipts from more than one transparency
 
 
 
@@ -842,10 +842,6 @@ Mih                        Expires 2 May 2027                  [Page 15]
 Internet-Draft              Evidence Request                October 2026
 
 
-   3.  *Verification material:* whatever proofs let the requester verify
-       the artifact against the anchor *offline* — inclusion proofs,
-       consistency proofs, countersignatures, receipts [RFC9942].  An
-       anchor MAY carry receipts from more than one transparency
        service; each receipt is verified on its own terms, and how many
        independent services a requester requires is requester policy,
        not a property of this interaction.  The formats are evidence-
@@ -888,7 +884,11 @@ Internet-Draft              Evidence Request                October 2026
    An artifact response MAY be accompanied by a retention commitment
    (Section 9) covering the subject served.
 
-
+   An artifact response that cannot be verified against the anchor is,
+   to the requester, not evidence but an unverifiable story, and
+   requesters SHOULD treat a verification failure as adverse —
+   equivalent to discovering the exchange was not what it claimed —
+   rather than as a retryable transport fault.
 
 
 
@@ -897,12 +897,6 @@ Mih                        Expires 2 May 2027                  [Page 16]
 
 Internet-Draft              Evidence Request                October 2026
 
-
-   An artifact response that cannot be verified against the anchor is,
-   to the requester, not evidence but an unverifiable story, and
-   requesters SHOULD treat a verification failure as adverse —
-   equivalent to discovering the exchange was not what it claimed —
-   rather than as a retryable transport fault.
 
 4.2.  The Signed Refusal
 
@@ -943,6 +937,12 @@ Internet-Draft              Evidence Request                October 2026
    to select tokens per-requester in a way that leaks by differentiation
    (Section 12).
 
+   A refusal refuses the request, once.  It creates no standing
+   obligation and no standing prohibition; the same request MAY be made
+   again and MAY be answered differently as the responder's policy or
+   evidence changes.
+
+
 
 
 
@@ -953,11 +953,6 @@ Mih                        Expires 2 May 2027                  [Page 17]
 
 Internet-Draft              Evidence Request                October 2026
 
-
-   A refusal refuses the request, once.  It creates no standing
-   obligation and no standing prohibition; the same request MAY be made
-   again and MAY be answered differently as the responder's policy or
-   evidence changes.
 
 4.3.  Pending
 
@@ -1001,6 +996,11 @@ Internet-Draft              Evidence Request                October 2026
    _against_; it does not change what the absence _is_, and the
    requester still MUST NOT infer intent.
 
+4.5.  The Three-State Discipline
+
+   The three outcomes are mutually exclusive and are never synthesized
+   into one another:
+
 
 
 
@@ -1009,11 +1009,6 @@ Mih                        Expires 2 May 2027                  [Page 18]
 
 Internet-Draft              Evidence Request                October 2026
 
-
-4.5.  The Three-State Discipline
-
-   The three outcomes are mutually exclusive and are never synthesized
-   into one another:
 
    *  *Absence is NEVER synthesized into refusal.* No party — not the
       requester, not a transport intermediary, not a recording system —
@@ -1054,6 +1049,11 @@ Internet-Draft              Evidence Request                October 2026
    deployment composing this interaction with an evidence-contract or
    evidence-bundle layer typically derives one from the three outcomes
    above.  The mapping shape — not a specific registry — is informative:
+
+
+
+
+
 
 
 
@@ -1391,9 +1391,9 @@ Internet-Draft              Evidence Request                October 2026
    trivially auditable because the resource is the same bytes for every
    client.  Parameterized requests (ranges, correlations, exchanges,
    derivations, min_freshness) map onto POST with the request map as the
-   body.  A responder SHOULD publish a manifest — its evidence stream
-   identifiers, the subject forms and derivations it supports, and where
-   retention commitments (Section 9) can be fetched — so a requester can
+   body.  A GET returns the static resource, which is not an artifact
+   response and carries no envelope; a requester that needs the binding
+   of Section 4.1 items 4 to 6 sends the request, pinned or not, as a
 
 
 
@@ -1402,6 +1402,9 @@ Mih                        Expires 2 May 2027                  [Page 25]
 Internet-Draft              Evidence Request                October 2026
 
 
+   POST.  A responder SHOULD publish a manifest — its evidence stream
+   identifiers, the subject forms and derivations it supports, and where
+   retention commitments (Section 9) can be fetched — so a requester can
    form a well-formed request without a prior round trip.  A refusal is
    an HTTP response carrying the signed refusal object: a successful
    transport exchange carrying a refusal answer.  Bindings MUST NOT
@@ -1442,12 +1445,9 @@ Internet-Draft              Evidence Request                October 2026
        not a request.  A responder writes the reply in the encoding of
        the request and labels it with the request's media type.
 
-   4.  *Carriage is not request.* Nothing a carriage adds is part of the
-       request: message and task identifiers, context identifiers,
-       metadata, protocol-version and extension headers, follow-up
-       messages in an interrupted task, and any client identification.
-       None of it is covered by a signature this document defines, and
-       none of it may influence the artifact (Section 5).
+
+
+
 
 
 
@@ -1457,6 +1457,13 @@ Mih                        Expires 2 May 2027                  [Page 26]
 
 Internet-Draft              Evidence Request                October 2026
 
+
+   4.  *Carriage is not request.* Nothing a carriage adds is part of the
+       request: message and task identifiers, context identifiers,
+       metadata, protocol-version and extension headers, follow-up
+       messages in an interrupted task, and any client identification.
+       None of it is covered by a signature this document defines, and
+       none of it may influence the artifact (Section 5).
 
    5.  *Errors are not refusals.* Authentication or authorization in the
        carriage decides whether a responder answers, never what a given
@@ -1494,18 +1501,11 @@ Internet-Draft              Evidence Request                October 2026
    binding under any other URI.  The Agent Card SHOULD list application/
    cbor and application/json among its default input and output modes.
 
-
-
-
-
-
-
-
-
-
-
-
-
+   *Request.* The request is one Message with role user, whose parts
+   hold exactly one Part whose raw is the request bytes and whose
+   mediaType is one of the two media types of Section 10.1, and whose
+   extensions contain the extension URI.  The requester MUST send A2A
+   version 1.0 and list the extension URI in A2A's extensions service
 
 
 
@@ -1514,11 +1514,6 @@ Mih                        Expires 2 May 2027                  [Page 27]
 Internet-Draft              Evidence Request                October 2026
 
 
-   *Request.* The request is one Message with role user, whose parts
-   hold exactly one Part whose raw is the request bytes and whose
-   mediaType is one of the two media types of Section 10.1, and whose
-   extensions contain the extension URI.  The requester MUST send A2A
-   version 1.0 and list the extension URI in A2A's extensions service
    parameter; without a version, A2A reads the request as an earlier
    protocol version.  The Message MUST NOT carry a taskId, so that each
    request starts its own task.  If the requester sets accepted output
@@ -1560,6 +1555,11 @@ Internet-Draft              Evidence Request                October 2026
    This binding uses MCP revision 2026-07-28 ([MCP]).  Field names are
    MCP's.
 
+   *Listing.* A responder that carries this interaction over MCP lists
+   two tools under exactly these names: evidence_manifest, which takes
+   no arguments and whose structuredContent is the responder's manifest
+   (Section 10), and evidence_request.
+
 
 
 
@@ -1569,11 +1569,6 @@ Mih                        Expires 2 May 2027                  [Page 28]
 
 Internet-Draft              Evidence Request                October 2026
 
-
-   *Listing.* A responder that carries this interaction over MCP lists
-   two tools under exactly these names: evidence_manifest, which takes
-   no arguments and whose structuredContent is the responder's manifest
-   (Section 10), and evidence_request.
 
    *Request.* The arguments of evidence_request are exactly two members:
    request, the request bytes in base64url without padding (Section 5 of
@@ -1618,6 +1613,11 @@ Internet-Draft              Evidence Request                October 2026
    invariance binds the artifact to (subject, anchor), not the anchor to
    a single history: a responder that maintains divergent histories and
    steers each requester to an anchor on "its" fork — a split-view
+   (equivocation) attack — serves individually verifiable, per-anchor-
+   invariant answers while defeating invariance in substance.  The
+   anchor-consistency rule of Section 5 makes any fork a provable
+   violation once two served anchors are compared; but detection
+   ultimately requires that comparison — anchor gossip among requesters,
 
 
 
@@ -1626,11 +1626,6 @@ Mih                        Expires 2 May 2027                  [Page 29]
 Internet-Draft              Evidence Request                October 2026
 
 
-   (equivocation) attack — serves individually verifiable, per-anchor-
-   invariant answers while defeating invariance in substance.  The
-   anchor-consistency rule of Section 5 makes any fork a provable
-   violation once two served anchors are compared; but detection
-   ultimately requires that comparison — anchor gossip among requesters,
    or external witnessing of anchors — infrastructure outside this
    protocol.  This protocol constrains the attack but cannot alone close
    it.
@@ -1673,6 +1668,11 @@ Internet-Draft              Evidence Request                October 2026
    no more complete than anything else the responder chose to record.  A
    requester SHOULD NOT treat a declared "absent" as proof that nothing
    of that category exists.
+
+
+
+
+
 
 
 
@@ -2146,7 +2146,12 @@ Changes from -00
 
    *  Section 4.1: the artifact response envelope now carries the
       request digest, an issuance time, and a signature covering both,
-      the artifact digest, and the resolved anchor.
+      the artifact digest, and the resolved anchor.  Section 10: a GET
+      of a static resource is not an artifact response; the envelope
+      binding needs a POST.
+
+   *  Section 3.2: a non-conforming member value is refused
+      request_malformed before the both-or-neither rule applies.
 
    *  New Section 3.9: the OPTIONAL categories request field, a category
       set identifier and category names, OPTIONAL for a responder to
@@ -2171,11 +2176,6 @@ Changes from -00
       Layer and Agent Action Capsule references, cited by the text added
       in Section 3.1.1, are new.
 
-Acknowledgments
-
-   The author thanks the participants in early discussions that helped
-   shape this model.
-
 
 
 
@@ -2185,6 +2185,11 @@ Mih                        Expires 2 May 2027                  [Page 39]
 
 Internet-Draft              Evidence Request                October 2026
 
+
+Acknowledgments
+
+   The author thanks the participants in early discussions that helped
+   shape this model.
 
    The evidence formats this interaction carries, and the transparency
    mechanisms its anchors lean on, are the work of the SCITT and COSE
@@ -2196,11 +2201,6 @@ Author's Address
    Steven Mih
    Action State Group, Inc.
    Email: spec@actionstate.ai
-
-
-
-
-
 
 
 

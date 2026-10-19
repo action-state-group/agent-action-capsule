@@ -449,7 +449,11 @@ the coverage anchor like any other.</t>
         <name>Coverage</name>
         <t>The <tt>coverage</tt> field carries <strong>exactly one</strong> of the following two members.
 A request carrying both, or neither, is malformed, and the responder <bcp14>MUST</bcp14>
-refuse it with reason <tt>coverage_unsatisfiable</tt>.</t>
+refuse it with reason <tt>coverage_unsatisfiable</tt>. A responder first checks
+that each member present in <tt>coverage</tt> has a conforming value, and
+refuses a non-conforming value with reason <tt>request_malformed</tt>, whether
+or not the other member is present; only then does it apply the
+both-or-neither rule.</t>
         <t><strong><tt>expected_pin</tt> (digest):</strong> the requester already holds, obtained out of
 band, a specific coverage anchor — for example a published checkpoint — and
 requires the response to verify against exactly that anchor. This is the
@@ -1114,7 +1118,9 @@ parameter or is implied by the resource, and caller invariance is
 trivially auditable because the resource is the same bytes for every
 client. Parameterized requests (ranges, correlations, exchanges,
 derivations, <tt>min_freshness</tt>) map onto POST with the request map as the
-body. A responder <bcp14>SHOULD</bcp14> publish a manifest — its evidence stream
+body. A GET returns the static resource, which is not an artifact
+response and carries no envelope; a requester that needs the binding of
+<xref target="artifact"/> items 4 to 6 sends the request, pinned or not, as a POST. A responder <bcp14>SHOULD</bcp14> publish a manifest — its evidence stream
 identifiers, the subject forms and derivations it supports, and where
 retention commitments (<xref target="retention"/>) can be fetched — so a requester can form a
 well-formed request without a prior round trip. A refusal is an HTTP
@@ -1720,7 +1726,7 @@ set or a reference to it, and a reference. The initial contents are:</t>
         </reference>
       </references>
     </references>
-    <?line 1418?>
+    <?line 1424?>
 
 <section anchor="field-evidence">
       <name>Example Deployments</name>
@@ -1841,7 +1847,13 @@ records and Capsules.</t>
         <li>
           <t><xref target="artifact"/>: the artifact response envelope now carries the request
 digest, an issuance time, and a signature covering both, the artifact
-digest, and the resolved anchor.</t>
+digest, and the resolved anchor. <xref target="transports"/>: a GET of a static
+resource is not an artifact response; the envelope binding needs a
+POST.</t>
+        </li>
+        <li>
+          <t><xref target="coverage"/>: a non-conforming member value is refused
+<tt>request_malformed</tt> before the both-or-neither rule applies.</t>
         </li>
         <li>
           <t>New <xref target="categories"/>: the <bcp14>OPTIONAL</bcp14> <tt>categories</tt> request field, a category
