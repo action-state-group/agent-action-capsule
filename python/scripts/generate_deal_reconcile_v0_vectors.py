@@ -2,17 +2,26 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Generate the deal reconcile contract vectors (``spec/deal-reconcile-contract-v0.md``, cited as DR).
 
-Each case is one deal with one half in each of two books, every field committed with
-``sha256-jcs-nonce256`` and every field opening carried. DR §8 lists the cases:
+Each case is one deal with a half in one or both of two books, every field committed with
+``sha256-jcs-nonce256``, read through the example half mapping (DR §4.2). DR §8 lists the cases:
 
 - ``pair-matched``: both halves commit to the same amount and currency and every opening opens:
   both requirements ``MATCHED``, deal ``reconciled``;
 - ``amount-opening-fails``: side B's amount opening carries other text: amount ``UNRESOLVED``,
-  never ``MATCHED`` or ``CONFLICTING``; currency still ``MATCHED``; deal ``not_reconciled``.
+  never ``MATCHED`` or ``CONFLICTING``; currency still ``MATCHED``; deal ``not_reconciled``;
+- ``currency-texts-empty``: both currency openings open to empty text: currency ``INSUFFICIENT``,
+  never ``MATCHED``;
+- ``a-only-peer-complete``: side B holds no half and its set is complete: ``A_ONLY``;
+- ``a-only-peer-commitment-not-checked``: side B holds no half and its set's completeness is
+  undecided: ``UNRESOLVED``;
+- ``a-only-peer-not-declared``, ``a-only-peer-holder-selected``, ``a-only-peer-coverage-fails``:
+  side B holds no half and its set is not shown complete: ``INSUFFICIENT``.
 
 It states every per-pairing state by hand from DR §6 and derives from them the six tallies,
 sufficiency and verdict of DR §7, and the expected Evidence Result. Each case cites the sections
-it comes from. Nothing here imports or runs a verifier.
+it comes from. The coverage properties of side B's declaration are given as a verifier reports
+them under IP §6.7.3; computing them is IP's, and its vectors check that. Nothing here imports or
+runs a verifier.
 
 Output: ``vectors/deal-reconcile-v0/`` (or ``--out DIR``). Deterministic: no clock, no randomness;
 each nonce is a label digest, never a nonce to use. ``README.md`` is never rewritten; every file in
@@ -67,6 +76,15 @@ GENERATED_AT = "2026-10-19T00:00:00Z"
 TERMS = {"amount": "100.00", "currency": "XTS"}
 
 
+# DR §4.2: the example half mapping. Its half layout and profile name are for these vectors only.
+MAPPING = {
+    "profile": "example-half/0",
+    "members": {"deal_id": "/deal_ref", "book_id": "/book", "recorded_at": "/recorded_at",
+                "commit_alg": "/terms/alg", "amount_commitment": "/terms/amount",
+                "currency_commitment": "/terms/currency"},
+}
+
+
 def label(text: str) -> str:
     return shx(f"deal-reconcile-v0 vectors: {text}".encode())
 
@@ -80,13 +98,36 @@ def commitment(o: dict) -> str:
     return json_digest({"nonce": o["nonce"], "text": o["text"]})
 
 
-def half(book: str) -> tuple[dict, dict]:
-    """One book's half (DR §4) and its field openings (DR §5), as committed."""
-    openings = {field: opening(book, field, text) for field, text in TERMS.items()}
-    record = {"deal_id": DEAL, "book_id": book, "recorded_at": RECORDED[book], "commit_alg": COMMIT_ALG,
-              "amount_commitment": commitment(openings["amount"]),
-              "currency_commitment": commitment(openings["currency"])}
+def half(book: str, terms: dict[str, str] = TERMS) -> tuple[dict, dict]:
+    """One book's half in the example layout (DR §4.2) and its field openings (DR §5), as committed."""
+    openings = {field: opening(book, field, text) for field, text in terms.items()}
+    record = {"deal_ref": DEAL, "book": book, "recorded_at": RECORDED[book],
+              "terms": {"alg": COMMIT_ALG, "amount": commitment(openings["amount"]),
+                        "currency": commitment(openings["currency"])}}
     return record, openings
+
+
+# DR §6.1: side B's coverage, as carried, with its IP §6.7.2 properties as a verifier reports them.
+B_STREAM = {"kind": "stream_interval", "rule": "all_records",
+            "interval": {"from": None, "to": label(f"anchor of {BOOK_B}'s stream")},
+            "live_set": [{"stream": BOOK_B, "checkpoint": label(f"checkpoint of {BOOK_B}'s stream"),
+                          "start": 0, "count": 0}]}
+STREAM_PROPS = {"coverage_declaration_form": "PASS", "coverage_declaration_anchor": "PASS",
+                "coverage_declaration_population": "PASS", "coverage_declaration_commitment": "NOT_CHECKED"}
+B_SOURCE = {"kind": "source_authoritative", "source": label(f"key of the source listing {BOOK_B}'s halves"),
+            "method": "an example native check (vectors only)",
+            "population": label(f"the source's list of {BOOK_B}'s halves")}
+COVERAGE = {
+    "complete": {"declaration": B_SOURCE,
+                 "properties": {"coverage_declaration_form": "PASS", "coverage_declaration_population": "PASS",
+                                "coverage_declaration_source": "PASS"}},
+    "undecided": {"declaration": B_STREAM, "properties": STREAM_PROPS},
+    "holder_selected": {"declaration": {"kind": "holder_selected"},
+                        "properties": {"coverage_declaration_form": "PASS"}},
+    "population_fails": {"declaration": B_STREAM,
+                         "properties": dict(STREAM_PROPS, coverage_declaration_population="FAIL")},
+}
+SET_STATUS = {"complete": "COMPLETE", "undecided": "UNDECIDED"}
 
 
 def digest_ref(digest: str) -> dict:
@@ -112,6 +153,10 @@ def verdict(t: dict) -> str:
     return "met" if t["matched"] and not (t["a_only"] or t["b_only"] or t["conflicting"]) else "not_met"
 
 
+# DR §7.3: the disclosure carrier's status for each sufficiency.
+CARRIER_STATUS = {"SATISFIED": "SATISFIED", "UNKNOWN": "UNKNOWN", "GAP": "INSUFFICIENT"}
+
+
 def result(states: dict, evidence: list[str]) -> dict:
     """The Evidence Result a side-A builder emits (DR §7): one reconcile claim per requirement, the
     halves by digest only, no field opening and no Close."""
@@ -124,7 +169,7 @@ def result(states: dict, evidence: list[str]) -> dict:
             "id": claim_id, "type": "reconcile", "contract_ref": CONTRACT_REF, "requirement_ref": requirement,
             "tier": "recomputed", "grade": "self-attested", "sufficiency": sufficiency(t), "verdict": verdict(t),
             "evidence": refs, "proofs": [],
-            "presentation": {"kind": "disclosure", "status": sufficiency(t), "evidence": refs},
+            "presentation": {"kind": "disclosure", "status": CARRIER_STATUS[sufficiency(t)], "evidence": refs},
             "reconcile": {"join_key": "deal_id", "peer": BOOK_B, "period": PERIOD, "tallies": t,
                           "state_of_record": "none"},
         })
@@ -136,17 +181,19 @@ def result(states: dict, evidence: list[str]) -> dict:
                           "buckets": buckets}}
 
 
-def case(case_id: str, title: str, *, b_openings: dict | None = None, states: dict[str, str],
+def case(case_id: str, title: str, *, books: tuple[str, ...] = (BOOK_A, BOOK_B), terms: dict[str, str] = TERMS,
+         b_openings: dict | None = None, b_coverage: str | None = None, states: dict[str, str],
          openings_expected: dict[str, dict[str, str]], sections: list[str]) -> dict:
     halves, carried = {}, {}
-    for book in (BOOK_A, BOOK_B):
-        record, openings = half(book)
+    for book in books:
+        record, openings = half(book, terms)
         if book == BOOK_B and b_openings is not None:
             openings = b_openings
         text = jcs(record)
         digest = shx(text.encode())
         halves[book] = {"media_type": J, "octets_text": text, "digest": digest}
         carried[digest] = openings
+    coverage = {} if b_coverage is None else {BOOK_B: dict(COVERAGE[b_coverage], period=PERIOD)}
     evidence = sorted(h["digest"] for h in halves.values())
     reconciled = all(s == "MATCHED" for s in states.values())
     return {
@@ -158,11 +205,14 @@ def case(case_id: str, title: str, *, b_openings: dict | None = None, states: di
             "side_a": BOOK_A,
             "peer": BOOK_B,
             "period": PERIOD,
-            "halves": [halves[BOOK_A], halves[BOOK_B]],
+            "half_mappings": {book: MAPPING for book in (BOOK_A, BOOK_B)},
+            "halves": [halves[book] for book in books],
             "field_openings": carried,
+            "coverage": coverage,
         },
         "expected": {
-            "field_openings": {halves[book]["digest"]: openings_expected[book] for book in (BOOK_A, BOOK_B)},
+            "field_openings": {halves[book]["digest"]: openings_expected[book] for book in books},
+            "set_completeness": {BOOK_A: "NOT_SHOWN", BOOK_B: SET_STATUS.get(b_coverage, "NOT_SHOWN")},
             "pairings": {requirement: {DEAL: state} for requirement, state in states.items()},
             "tallies": {requirement: tallies(state) for requirement, state in states.items()},
             "sufficiency": {requirement: sufficiency(tallies(state)) for requirement, state in states.items()},
@@ -185,13 +235,49 @@ def cases() -> list[dict]:
              "Both halves commit to the same amount and currency; every field opening opens",
              states={"amount-commitment-matched": "MATCHED", "currency-commitment-matched": "MATCHED"},
              openings_expected={BOOK_A: OPENS, BOOK_B: OPENS},
-             sections=["DR §5", "DR §6 rule 5", "DR §7", "RES §4.1"]),
+             sections=["DR §5", "DR §6 rule 6", "DR §7", "RES §4.1"]),
         case("amount-opening-fails",
              "Side B's amount opening carries other text than its commitment",
              b_openings=wrong,
              states={"amount-commitment-matched": "UNRESOLVED", "currency-commitment-matched": "MATCHED"},
              openings_expected={BOOK_A: OPENS, BOOK_B: dict(OPENS, amount="FAIL")},
-             sections=["DR §5", "DR §6 rules 4 and 5", "DR §7", "RES §4.1"]),
+             sections=["DR §5", "DR §6 rules 4 and 6", "DR §7", "RES §4.1"]),
+        case("currency-texts-empty",
+             "Both currency openings open, and both open to empty text",
+             terms=dict(TERMS, currency=""),
+             states={"amount-commitment-matched": "MATCHED", "currency-commitment-matched": "INSUFFICIENT"},
+             openings_expected={BOOK_A: OPENS, BOOK_B: OPENS},
+             sections=["DR §5", "DR §6 rules 5 and 6", "DR §7", "RES §4.1"]),
+        case("a-only-peer-complete",
+             "Side B holds no half, and its source_authoritative coverage passes every property",
+             books=(BOOK_A,), b_coverage="complete",
+             states={"amount-commitment-matched": "A_ONLY", "currency-commitment-matched": "A_ONLY"},
+             openings_expected={BOOK_A: OPENS},
+             sections=["DR §6 rule 2", "DR §6.1", "DR §7", "IP §6.7.1", "RES §4.1"]),
+        case("a-only-peer-commitment-not-checked",
+             "Side B holds no half; its stream_interval coverage passes but for the NOT_CHECKED commitment",
+             books=(BOOK_A,), b_coverage="undecided",
+             states={"amount-commitment-matched": "UNRESOLVED", "currency-commitment-matched": "UNRESOLVED"},
+             openings_expected={BOOK_A: OPENS},
+             sections=["DR §6 rule 2", "DR §6.1", "DR §7", "IP §6.7.3", "RES §4.1"]),
+        case("a-only-peer-not-declared",
+             "Side B holds no half, and no coverage is carried for it",
+             books=(BOOK_A,),
+             states={"amount-commitment-matched": "INSUFFICIENT", "currency-commitment-matched": "INSUFFICIENT"},
+             openings_expected={BOOK_A: OPENS},
+             sections=["DR §6 rule 2", "DR §6.1", "DR §7", "RES §4.1"]),
+        case("a-only-peer-holder-selected",
+             "Side B holds no half, and its coverage declares holder_selected",
+             books=(BOOK_A,), b_coverage="holder_selected",
+             states={"amount-commitment-matched": "INSUFFICIENT", "currency-commitment-matched": "INSUFFICIENT"},
+             openings_expected={BOOK_A: OPENS},
+             sections=["DR §6 rule 2", "DR §6.1", "DR §7", "IP §6.7.1", "RES §4.1"]),
+        case("a-only-peer-coverage-fails",
+             "Side B holds no half, and its stream_interval coverage fails coverage_declaration_population",
+             books=(BOOK_A,), b_coverage="population_fails",
+             states={"amount-commitment-matched": "INSUFFICIENT", "currency-commitment-matched": "INSUFFICIENT"},
+             openings_expected={BOOK_A: OPENS},
+             sections=["DR §6 rule 2", "DR §6.1", "DR §7", "IP §6.7.3", "RES §4.1"]),
     ]
 
 
@@ -211,6 +297,7 @@ def build() -> dict[str, bytes]:
                      "contract_digest": CONTRACT_DIGEST, "schema": EC_SCHEMA},
         "fields": FIELDS,
         "commit_alg": COMMIT_ALG,
+        "half_mapping_example": MAPPING,
         "count": len(all_cases),
         "cases": all_cases,
     }

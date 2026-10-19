@@ -4,7 +4,9 @@
 Every case is run from its inputs alone, by an evaluator written here from
 ``spec/deal-reconcile-contract-v0.md`` (DR) §4 to §7:
 
+- each half read through its book's half mapping (DR §4.2);
 - whether each field opening opens its half (DR §5);
+- whether each side's set is complete for the period (DR §6.1);
 - the per-pairing state of the deal under each requirement (DR §6);
 - the six tallies, sufficiency, verdict and deal state (DR §7);
 - the Evidence Result a side-A builder emits (DR §7.1 to §7.4).
@@ -45,6 +47,8 @@ FIELDS = {"amount-commitment-matched": "amount", "currency-commitment-matched": 
 COMMIT_ALG = "sha256-jcs-nonce256"
 STATES = ("matched", "a_only", "b_only", "conflicting", "insufficient", "unresolved")
 HEX64 = re.compile(r"[0-9a-f]{64}")
+# DR §7.3.
+CARRIER_STATUS = {"SATISFIED": "SATISFIED", "UNKNOWN": "UNKNOWN", "GAP": "INSUFFICIENT"}
 
 
 def sha(data: bytes) -> str:
@@ -59,9 +63,14 @@ def in_period(t: str, period: dict) -> bool:
 @dataclass(frozen=True)
 class Rules:
     """Each field is one rule of DR; a defective evaluator replaces one."""
+    mapping_applied: bool = True               # §4.2: abstract members are read through the mapping
     opening_checked: bool = True               # §5: an opening must recompute the commitment
     failed_opening_state: str = "UNRESOLVED"   # §6 rule 4
-    one_side_state: str | None = None          # §6 rule 2: None = A_ONLY / B_ONLY
+    completeness_checked: bool = True          # §6 rule 2: A_ONLY / B_ONLY only over a complete set
+    holder_selected_complete: bool = False     # §6.1: holder_selected never makes a set complete
+    coverage_properties_checked: bool = True   # §6.1: every property PASS for COMPLETE
+    undecided_state: str = "UNRESOLVED"        # §6 rule 2: NOT_CHECKED / INCONCLUSIVE
+    empty_text_state: str = "INSUFFICIENT"     # §6 rule 5
     unresolved_is_gap: bool = False            # §7.2: unresolved > 0 => UNKNOWN, not GAP
     reconciled_needs_both: bool = True         # §7.5
     result_carries_openings: bool = False      # §7.3
@@ -69,6 +78,55 @@ class Rules:
 
 
 SPEC = Rules()
+
+
+def pointer(doc: object, ptr: str) -> object:
+    """RFC 6901; None when the pointer resolves to nothing."""
+    if ptr == "":
+        return doc
+    for token in ptr.split("/")[1:]:
+        token = token.replace("~1", "/").replace("~0", "~")
+        if isinstance(doc, dict) and token in doc:
+            doc = doc[token]
+        elif isinstance(doc, list) and token.isdigit() and int(token) < len(doc):
+            doc = doc[int(token)]
+        else:
+            return None
+    return doc
+
+
+def read_half(record: dict, mapping: dict, rules: Rules) -> dict:
+    """DR §4.2: the abstract members of §4.1, an absent one left out."""
+    if not rules.mapping_applied:
+        return record
+    values = {member: pointer(record, ptr) for member, ptr in mapping["members"].items()}
+    return {member: v for member, v in values.items() if v is not None}
+
+
+def completeness(coverage: dict | None, period: dict, rules: Rules) -> str:
+    """DR §6.1: COMPLETE, UNDECIDED or NOT_SHOWN."""
+    if coverage is None or coverage["period"] != period:
+        return "NOT_SHOWN"
+    declaration, props = coverage["declaration"], coverage["properties"]
+    kind = declaration["kind"]
+    if kind == "holder_selected":
+        return "COMPLETE" if rules.holder_selected_complete else "NOT_SHOWN"
+    if kind not in ("stream_interval", "source_authoritative") or (
+            kind == "stream_interval" and declaration.get("rule") != "all_records"):
+        return "NOT_SHOWN"
+    if not rules.coverage_properties_checked:
+        return "COMPLETE"
+    statuses = set(props.values())
+    if not statuses or statuses & {"FAIL", "NOT_PRESENT"}:
+        return "NOT_SHOWN"
+    return "COMPLETE" if statuses == {"PASS"} else "UNDECIDED"
+
+
+def one_side(status: str, found: str, rules: Rules) -> str:
+    """DR §6 rule 2, given the absent side's DR §6.1 status."""
+    if status == "COMPLETE" or not rules.completeness_checked:
+        return found
+    return rules.undecided_state if status == "UNDECIDED" else "INSUFFICIENT"
 
 
 def opens(half: dict, field: str, o: dict | None, rules: Rules) -> str:
@@ -83,14 +141,15 @@ def opens(half: dict, field: str, o: dict | None, rules: Rules) -> str:
     return "PASS" if ok else "FAIL"
 
 
-def pairing(a: list[dict], b: list[dict], field: str, openings: dict, rules: Rules) -> str:
-    """DR §6: the first rule that applies."""
+def pairing(a: list[dict], b: list[dict], field: str, openings: dict, set_status: dict[str, str],
+            rules: Rules) -> str:
+    """DR §6: the first rule that applies. ``set_status`` is keyed by side, "a" and "b"."""
     if len(a) > 1 or len(b) > 1:
         return "UNRESOLVED"
-    if not b or not a:
-        if rules.one_side_state:
-            return rules.one_side_state
-        return "A_ONLY" if a else "B_ONLY"
+    if not b:
+        return one_side(set_status["b"], "A_ONLY", rules)
+    if not a:
+        return one_side(set_status["a"], "B_ONLY", rules)
     (ha, da), (hb, db) = a[0], b[0]
     oa, ob = openings.get(da, {}).get(field), openings.get(db, {}).get(field)
     for h, o in ((ha, oa), (hb, ob)):
@@ -98,6 +157,8 @@ def pairing(a: list[dict], b: list[dict], field: str, openings: dict, rules: Rul
             return "INSUFFICIENT"
     if "FAIL" in (opens(ha, field, oa, rules), opens(hb, field, ob, rules)):
         return rules.failed_opening_state
+    if "" in (oa["text"], ob["text"]):
+        return rules.empty_text_state
     return "MATCHED" if oa["text"] == ob["text"] else "CONFLICTING"
 
 
@@ -115,14 +176,20 @@ def verdict(t: dict, rules: Rules) -> str:
 
 def evaluate(case: dict, rules: Rules = SPEC) -> dict:
     inp = case["inputs"]
+    sides = (inp["side_a"], inp["peer"])
     halves = []
     for h in inp["halves"]:
         raw = h["octets_text"].encode("utf-8")
-        halves.append((json.loads(raw), sha(raw)))
+        record = json.loads(raw)
+        # Every case holds halves of its own two books; the book picks the mapping.
+        book = next(b for b in sides if read_half(record, inp["half_mappings"][b], SPEC).get("book_id") == b)
+        halves.append((read_half(record, inp["half_mappings"][book], rules), sha(raw)))
     halves = [(h, d) for h, d in halves
-              if in_period(h["recorded_at"], inp["period"]) and h["book_id"] in (inp["side_a"], inp["peer"])]
+              if in_period(h.get("recorded_at", ""), inp["period"]) and h.get("book_id") in sides]
     openings = inp["field_openings"]
     deals = sorted({h["deal_id"] for h, _ in halves})
+    set_completeness = {book: completeness(inp["coverage"].get(book), inp["period"], rules) for book in sides}
+    by_side = {"a": set_completeness[inp["side_a"]], "b": set_completeness[inp["peer"]]}
 
     opened = {d: {f: opens(h, f, openings.get(d, {}).get(f), rules) for f in FIELDS.values()
                   if f in openings.get(d, {})} for h, d in halves}
@@ -132,7 +199,7 @@ def evaluate(case: dict, rules: Rules = SPEC) -> dict:
         for deal in deals:
             a = [(h, d) for h, d in halves if h["deal_id"] == deal and h["book_id"] == inp["side_a"]]
             b = [(h, d) for h, d in halves if h["deal_id"] == deal and h["book_id"] == inp["peer"]]
-            pairings[requirement][deal] = pairing(a, b, field, openings, rules)
+            pairings[requirement][deal] = pairing(a, b, field, openings, by_side, rules)
         tallies[requirement] = {s: sum(1 for v in pairings[requirement].values() if v.lower() == s) for s in STATES}
     suff = {r: sufficiency(t, rules) for r, t in tallies.items()}
     verd = {r: verdict(t, rules) for r, t in tallies.items()}
@@ -150,7 +217,8 @@ def evaluate(case: dict, rules: Rules = SPEC) -> dict:
         claim = {"id": claim_id, "type": "reconcile", "contract_ref": CONTRACT_REF, "requirement_ref": requirement,
                  "tier": "recomputed", "grade": "self-attested", "sufficiency": suff[requirement],
                  "verdict": verd[requirement], "evidence": refs, "proofs": [],
-                 "presentation": {"kind": "disclosure", "status": suff[requirement], "evidence": refs},
+                 "presentation": {"kind": "disclosure", "status": CARRIER_STATUS[suff[requirement]],
+                                  "evidence": refs},
                  "reconcile": {"join_key": "deal_id", "peer": inp["peer"], "period": inp["period"],
                                "tallies": tallies[requirement], "state_of_record": "none"}}
         if rules.result_carries_openings:
@@ -164,7 +232,8 @@ def evaluate(case: dict, rules: Rules = SPEC) -> dict:
               "aggregate": {"coverage": {"evaluated_population": len(claims), "excluded_not_applicable": 0,
                                          "unknown_count": sum(1 for v in suff.values() if v == "UNKNOWN")},
                             "buckets": buckets}}
-    return {"field_openings": opened, "pairings": pairings, "tallies": tallies, "sufficiency": suff,
+    return {"field_openings": opened, "set_completeness": set_completeness, "pairings": pairings,
+            "tallies": tallies, "sufficiency": suff,
             "verdict": verd, "deal_state": deal_state, "cites_close": rules.result_cites_close, "result": result}
 
 
@@ -174,7 +243,7 @@ def evaluate(case: dict, rules: Rules = SPEC) -> dict:
 
 
 def test_corpus_shape_and_contract():
-    assert DATA["set"] == "aac-deal-reconcile-v0" and DATA["count"] == len(CASES) == 2
+    assert DATA["set"] == "aac-deal-reconcile-v0" and DATA["count"] == len(CASES) == 8
     c = DATA["contract"]
     assert c["document_jcs"].encode() == jcs(c["document"])
     assert c["contract_digest"] == sha(c["document_jcs"].encode())
@@ -204,6 +273,29 @@ def test_required_cases_are_present():
     assert failed["pairings"]["amount-commitment-matched"] == {"deal-1": "UNRESOLVED"}
     assert failed["deal_state"] == {"deal-1": "not_reconciled"}
     assert "FAIL" in [s for o in failed["field_openings"].values() for s in o.values()]
+    empty = by_id["currency-texts-empty"]
+    assert empty["pairings"]["currency-commitment-matched"] == {"deal-1": "INSUFFICIENT"}
+    complete_peer = by_id["a-only-peer-complete"]
+    assert all(p == {"deal-1": "A_ONLY"} for p in complete_peer["pairings"].values())
+    assert complete_peer["set_completeness"]["book-b"] == "COMPLETE"
+    undecided = by_id["a-only-peer-commitment-not-checked"]
+    assert all(p == {"deal-1": "UNRESOLVED"} for p in undecided["pairings"].values())
+    assert undecided["set_completeness"]["book-b"] == "UNDECIDED"
+    for case_id in ("a-only-peer-not-declared", "a-only-peer-holder-selected", "a-only-peer-coverage-fails"):
+        assert all(p == {"deal-1": "INSUFFICIENT"} for p in by_id[case_id]["pairings"].values()), case_id
+        assert by_id[case_id]["set_completeness"]["book-b"] == "NOT_SHOWN", case_id
+
+
+def test_spec_states_the_example_mapping():
+    """DR §4.2's JSON block is the mapping every case reads its halves through."""
+    section = SPEC_TEXT.split("### 4.2 Half mapping", 1)[1].split("\n## 5.", 1)[0]
+    block = section.split("```json\n", 1)[1].split("```", 1)[0]
+    assert json.loads(block) == DATA["half_mapping_example"]
+    for case in CASES:
+        assert all(m == DATA["half_mapping_example"] for m in case["inputs"]["half_mappings"].values())
+        for h in case["inputs"]["halves"]:
+            record = json.loads(h["octets_text"])
+            assert not set(record) & set(DATA["half_mapping_example"]["members"]) - {"recorded_at"}, case["id"]
 
 
 def test_every_case_carries_six_tallies_per_requirement():
@@ -251,6 +343,14 @@ def test_result_validates_against_the_schema():
 # ---------------------------------------------------------------------------
 
 DEFECTS = {
+    "the half mapping is not applied": replace(SPEC, mapping_applied=False),
+    "a one-sided pair is A_ONLY without a complete set": replace(SPEC, completeness_checked=False),
+    "holder_selected makes a set complete": replace(SPEC, holder_selected_complete=True),
+    "coverage properties are not checked": replace(SPEC, coverage_properties_checked=False),
+    "an undecided set gives INSUFFICIENT": replace(SPEC, undecided_state="INSUFFICIENT"),
+    "an undecided set gives A_ONLY": replace(SPEC, undecided_state="A_ONLY"),
+    "two empty texts are MATCHED": replace(SPEC, empty_text_state="MATCHED"),
+    "an empty text is UNRESOLVED": replace(SPEC, empty_text_state="UNRESOLVED"),
     "openings not checked": replace(SPEC, opening_checked=False),
     "a failed opening is CONFLICTING": replace(SPEC, failed_opening_state="CONFLICTING"),
     "a failed opening is MATCHED": replace(SPEC, failed_opening_state="MATCHED"),

@@ -42,14 +42,25 @@
     "currency-commitment-matched": "currency"
   },
   "commit_alg": "sha256-jcs-nonce256",
-  "count": 2,
+  "half_mapping_example": {
+    "profile": "example-half/0",
+    "members": {
+      "deal_id": "/deal_ref",
+      "book_id": "/book",
+      "recorded_at": "/recorded_at",
+      "commit_alg": "/terms/alg",
+      "amount_commitment": "/terms/amount",
+      "currency_commitment": "/terms/currency"
+    }
+  },
+  "count": 8,
   "cases": [
     {
       "id": "pair-matched",
       "title": "Both halves commit to the same amount and currency; every field opening opens",
       "sections": [
         "DR §5",
-        "DR §6 rule 5",
+        "DR §6 rule 6",
         "DR §7",
         "RES §4.1"
       ],
@@ -61,20 +72,44 @@
           "start": "2026-10-01T00:00:00Z",
           "end": "2026-11-01T00:00:00Z"
         },
+        "half_mappings": {
+          "book-a": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          },
+          "book-b": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          }
+        },
         "halves": [
           {
             "media_type": "application/json",
-            "octets_text": "{\"amount_commitment\":\"40dc14ae3906f202076f903bae5c32318a275cbf5d2236dc420ba51d19dbccc3\",\"book_id\":\"book-a\",\"commit_alg\":\"sha256-jcs-nonce256\",\"currency_commitment\":\"0094cb965b6f3e8ec5b4262ccf085c8cc443053651f70b67c3c14545249c04cc\",\"deal_id\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:00Z\"}",
-            "digest": "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091"
+            "octets_text": "{\"book\":\"book-a\",\"deal_ref\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:00Z\",\"terms\":{\"alg\":\"sha256-jcs-nonce256\",\"amount\":\"40dc14ae3906f202076f903bae5c32318a275cbf5d2236dc420ba51d19dbccc3\",\"currency\":\"0094cb965b6f3e8ec5b4262ccf085c8cc443053651f70b67c3c14545249c04cc\"}}",
+            "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af"
           },
           {
             "media_type": "application/json",
-            "octets_text": "{\"amount_commitment\":\"56a671612e93eb26eddf624c61727996b66db1fbff7659dd45331fd5fdf04aca\",\"book_id\":\"book-b\",\"commit_alg\":\"sha256-jcs-nonce256\",\"currency_commitment\":\"356090740f67ce45fa73251a9c08b67baefbcf5762823bfe4bc6a77c212fbb74\",\"deal_id\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:01Z\"}",
-            "digest": "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762"
+            "octets_text": "{\"book\":\"book-b\",\"deal_ref\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:01Z\",\"terms\":{\"alg\":\"sha256-jcs-nonce256\",\"amount\":\"56a671612e93eb26eddf624c61727996b66db1fbff7659dd45331fd5fdf04aca\",\"currency\":\"356090740f67ce45fa73251a9c08b67baefbcf5762823bfe4bc6a77c212fbb74\"}}",
+            "digest": "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9"
           }
         ],
         "field_openings": {
-          "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
             "amount": {
               "nonce": "edf749876f08f934fabe859346348a6080779eb217f513823be3219193f97feb",
               "text": "100.00"
@@ -84,7 +119,7 @@
               "text": "XTS"
             }
           },
-          "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762": {
+          "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9": {
             "amount": {
               "nonce": "fc9c14591f04f3e63e4ca673dbfb05166f77631e26d86381b0e1ee1ea60791fb",
               "text": "100.00"
@@ -94,18 +129,23 @@
               "text": "XTS"
             }
           }
-        }
+        },
+        "coverage": {}
       },
       "expected": {
         "field_openings": {
-          "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
             "amount": "PASS",
             "currency": "PASS"
           },
-          "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762": {
+          "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9": {
             "amount": "PASS",
             "currency": "PASS"
           }
+        },
+        "set_completeness": {
+          "book-a": "NOT_SHOWN",
+          "book-b": "NOT_SHOWN"
         },
         "pairings": {
           "amount-commitment-matched": {
@@ -160,11 +200,11 @@
               "verdict": "met",
               "evidence": [
                 {
-                  "digest": "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762",
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
                   "digest_alg": "SHA-256"
                 },
                 {
-                  "digest": "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091",
+                  "digest": "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9",
                   "digest_alg": "SHA-256"
                 }
               ],
@@ -174,11 +214,11 @@
                 "status": "SATISFIED",
                 "evidence": [
                   {
-                    "digest": "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762",
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
                     "digest_alg": "SHA-256"
                   },
                   {
-                    "digest": "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091",
+                    "digest": "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9",
                     "digest_alg": "SHA-256"
                   }
                 ]
@@ -212,11 +252,11 @@
               "verdict": "met",
               "evidence": [
                 {
-                  "digest": "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762",
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
                   "digest_alg": "SHA-256"
                 },
                 {
-                  "digest": "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091",
+                  "digest": "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9",
                   "digest_alg": "SHA-256"
                 }
               ],
@@ -226,11 +266,11 @@
                 "status": "SATISFIED",
                 "evidence": [
                   {
-                    "digest": "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762",
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
                     "digest_alg": "SHA-256"
                   },
                   {
-                    "digest": "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091",
+                    "digest": "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9",
                     "digest_alg": "SHA-256"
                   }
                 ]
@@ -277,7 +317,7 @@
       "title": "Side B's amount opening carries other text than its commitment",
       "sections": [
         "DR §5",
-        "DR §6 rules 4 and 5",
+        "DR §6 rules 4 and 6",
         "DR §7",
         "RES §4.1"
       ],
@@ -289,20 +329,44 @@
           "start": "2026-10-01T00:00:00Z",
           "end": "2026-11-01T00:00:00Z"
         },
+        "half_mappings": {
+          "book-a": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          },
+          "book-b": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          }
+        },
         "halves": [
           {
             "media_type": "application/json",
-            "octets_text": "{\"amount_commitment\":\"40dc14ae3906f202076f903bae5c32318a275cbf5d2236dc420ba51d19dbccc3\",\"book_id\":\"book-a\",\"commit_alg\":\"sha256-jcs-nonce256\",\"currency_commitment\":\"0094cb965b6f3e8ec5b4262ccf085c8cc443053651f70b67c3c14545249c04cc\",\"deal_id\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:00Z\"}",
-            "digest": "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091"
+            "octets_text": "{\"book\":\"book-a\",\"deal_ref\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:00Z\",\"terms\":{\"alg\":\"sha256-jcs-nonce256\",\"amount\":\"40dc14ae3906f202076f903bae5c32318a275cbf5d2236dc420ba51d19dbccc3\",\"currency\":\"0094cb965b6f3e8ec5b4262ccf085c8cc443053651f70b67c3c14545249c04cc\"}}",
+            "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af"
           },
           {
             "media_type": "application/json",
-            "octets_text": "{\"amount_commitment\":\"56a671612e93eb26eddf624c61727996b66db1fbff7659dd45331fd5fdf04aca\",\"book_id\":\"book-b\",\"commit_alg\":\"sha256-jcs-nonce256\",\"currency_commitment\":\"356090740f67ce45fa73251a9c08b67baefbcf5762823bfe4bc6a77c212fbb74\",\"deal_id\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:01Z\"}",
-            "digest": "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762"
+            "octets_text": "{\"book\":\"book-b\",\"deal_ref\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:01Z\",\"terms\":{\"alg\":\"sha256-jcs-nonce256\",\"amount\":\"56a671612e93eb26eddf624c61727996b66db1fbff7659dd45331fd5fdf04aca\",\"currency\":\"356090740f67ce45fa73251a9c08b67baefbcf5762823bfe4bc6a77c212fbb74\"}}",
+            "digest": "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9"
           }
         ],
         "field_openings": {
-          "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
             "amount": {
               "nonce": "edf749876f08f934fabe859346348a6080779eb217f513823be3219193f97feb",
               "text": "100.00"
@@ -312,7 +376,7 @@
               "text": "XTS"
             }
           },
-          "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762": {
+          "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9": {
             "amount": {
               "nonce": "fc9c14591f04f3e63e4ca673dbfb05166f77631e26d86381b0e1ee1ea60791fb",
               "text": "90.00"
@@ -322,18 +386,23 @@
               "text": "XTS"
             }
           }
-        }
+        },
+        "coverage": {}
       },
       "expected": {
         "field_openings": {
-          "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
             "amount": "PASS",
             "currency": "PASS"
           },
-          "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762": {
+          "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9": {
             "amount": "FAIL",
             "currency": "PASS"
           }
+        },
+        "set_completeness": {
+          "book-a": "NOT_SHOWN",
+          "book-b": "NOT_SHOWN"
         },
         "pairings": {
           "amount-commitment-matched": {
@@ -388,11 +457,11 @@
               "verdict": "not_evaluable",
               "evidence": [
                 {
-                  "digest": "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762",
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
                   "digest_alg": "SHA-256"
                 },
                 {
-                  "digest": "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091",
+                  "digest": "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9",
                   "digest_alg": "SHA-256"
                 }
               ],
@@ -402,11 +471,11 @@
                 "status": "UNKNOWN",
                 "evidence": [
                   {
-                    "digest": "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762",
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
                     "digest_alg": "SHA-256"
                   },
                   {
-                    "digest": "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091",
+                    "digest": "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9",
                     "digest_alg": "SHA-256"
                   }
                 ]
@@ -440,11 +509,11 @@
               "verdict": "met",
               "evidence": [
                 {
-                  "digest": "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762",
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
                   "digest_alg": "SHA-256"
                 },
                 {
-                  "digest": "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091",
+                  "digest": "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9",
                   "digest_alg": "SHA-256"
                 }
               ],
@@ -454,11 +523,11 @@
                 "status": "SATISFIED",
                 "evidence": [
                   {
-                    "digest": "2d7455ab92951e2afba35d9dd0e068d845b6f8143b667c95931fc03200868762",
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
                     "digest_alg": "SHA-256"
                   },
                   {
-                    "digest": "4d1ff12725621740310fe4ff0f3ef91167119d62eff25f1f55041c76d4c99091",
+                    "digest": "b8bad193a655581803df5c65d75262b9e07dfd3dc90a630da5d5ef72836230e9",
                     "digest_alg": "SHA-256"
                   }
                 ]
@@ -495,6 +564,1467 @@
               "not_met": [],
               "not_evaluable": [
                 "reconcile-amount"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "currency-texts-empty",
+      "title": "Both currency openings open, and both open to empty text",
+      "sections": [
+        "DR §5",
+        "DR §6 rules 5 and 6",
+        "DR §7",
+        "RES §4.1"
+      ],
+      "inputs": {
+        "contract_ref": "ec:deal-reconcile@1",
+        "side_a": "book-a",
+        "peer": "book-b",
+        "period": {
+          "start": "2026-10-01T00:00:00Z",
+          "end": "2026-11-01T00:00:00Z"
+        },
+        "half_mappings": {
+          "book-a": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          },
+          "book-b": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          }
+        },
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"book\":\"book-a\",\"deal_ref\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:00Z\",\"terms\":{\"alg\":\"sha256-jcs-nonce256\",\"amount\":\"40dc14ae3906f202076f903bae5c32318a275cbf5d2236dc420ba51d19dbccc3\",\"currency\":\"6cee02472818d792bc053e251bdcbac436443731c98aa22c420e914e4f8f5756\"}}",
+            "digest": "6e9b22b86604a549282d44748e7c39bf7bf5f7e588cfde0a7863e2f75036eb9f"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"book\":\"book-b\",\"deal_ref\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:01Z\",\"terms\":{\"alg\":\"sha256-jcs-nonce256\",\"amount\":\"56a671612e93eb26eddf624c61727996b66db1fbff7659dd45331fd5fdf04aca\",\"currency\":\"9923188e859c36667ae1e3c0f6ab523234b5fe08b02eee4698a3db458e687830\"}}",
+            "digest": "856381edbaf98d99f82071592beb0b060269e8e789b64147c768d3bc5697b863"
+          }
+        ],
+        "field_openings": {
+          "6e9b22b86604a549282d44748e7c39bf7bf5f7e588cfde0a7863e2f75036eb9f": {
+            "amount": {
+              "nonce": "edf749876f08f934fabe859346348a6080779eb217f513823be3219193f97feb",
+              "text": "100.00"
+            },
+            "currency": {
+              "nonce": "f7a39229ee09a8550492f0ffc78d3b59fb4703de77e99284d2b61c632f704b82",
+              "text": ""
+            }
+          },
+          "856381edbaf98d99f82071592beb0b060269e8e789b64147c768d3bc5697b863": {
+            "amount": {
+              "nonce": "fc9c14591f04f3e63e4ca673dbfb05166f77631e26d86381b0e1ee1ea60791fb",
+              "text": "100.00"
+            },
+            "currency": {
+              "nonce": "32a0444029f5e0c2412ee11e5ec116915510247b7347a6cc53104a4dc4ca8e6e",
+              "text": ""
+            }
+          }
+        },
+        "coverage": {}
+      },
+      "expected": {
+        "field_openings": {
+          "6e9b22b86604a549282d44748e7c39bf7bf5f7e588cfde0a7863e2f75036eb9f": {
+            "amount": "PASS",
+            "currency": "PASS"
+          },
+          "856381edbaf98d99f82071592beb0b060269e8e789b64147c768d3bc5697b863": {
+            "amount": "PASS",
+            "currency": "PASS"
+          }
+        },
+        "set_completeness": {
+          "book-a": "NOT_SHOWN",
+          "book-b": "NOT_SHOWN"
+        },
+        "pairings": {
+          "amount-commitment-matched": {
+            "deal-1": "MATCHED"
+          },
+          "currency-commitment-matched": {
+            "deal-1": "INSUFFICIENT"
+          }
+        },
+        "tallies": {
+          "amount-commitment-matched": {
+            "matched": 1,
+            "a_only": 0,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 0,
+            "unresolved": 0
+          },
+          "currency-commitment-matched": {
+            "matched": 0,
+            "a_only": 0,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 1,
+            "unresolved": 0
+          }
+        },
+        "sufficiency": {
+          "amount-commitment-matched": "SATISFIED",
+          "currency-commitment-matched": "GAP"
+        },
+        "verdict": {
+          "amount-commitment-matched": "met",
+          "currency-commitment-matched": "not_evaluable"
+        },
+        "deal_state": {
+          "deal-1": "not_reconciled"
+        },
+        "cites_close": false,
+        "result": {
+          "result_version": "evidence-result-v0",
+          "generated_at": "2026-10-19T00:00:00Z",
+          "claims": [
+            {
+              "id": "reconcile-amount",
+              "type": "reconcile",
+              "contract_ref": "ec:deal-reconcile@1",
+              "requirement_ref": "amount-commitment-matched",
+              "tier": "recomputed",
+              "grade": "self-attested",
+              "sufficiency": "SATISFIED",
+              "verdict": "met",
+              "evidence": [
+                {
+                  "digest": "6e9b22b86604a549282d44748e7c39bf7bf5f7e588cfde0a7863e2f75036eb9f",
+                  "digest_alg": "SHA-256"
+                },
+                {
+                  "digest": "856381edbaf98d99f82071592beb0b060269e8e789b64147c768d3bc5697b863",
+                  "digest_alg": "SHA-256"
+                }
+              ],
+              "proofs": [],
+              "presentation": {
+                "kind": "disclosure",
+                "status": "SATISFIED",
+                "evidence": [
+                  {
+                    "digest": "6e9b22b86604a549282d44748e7c39bf7bf5f7e588cfde0a7863e2f75036eb9f",
+                    "digest_alg": "SHA-256"
+                  },
+                  {
+                    "digest": "856381edbaf98d99f82071592beb0b060269e8e789b64147c768d3bc5697b863",
+                    "digest_alg": "SHA-256"
+                  }
+                ]
+              },
+              "reconcile": {
+                "join_key": "deal_id",
+                "peer": "book-b",
+                "period": {
+                  "start": "2026-10-01T00:00:00Z",
+                  "end": "2026-11-01T00:00:00Z"
+                },
+                "tallies": {
+                  "matched": 1,
+                  "a_only": 0,
+                  "b_only": 0,
+                  "conflicting": 0,
+                  "insufficient": 0,
+                  "unresolved": 0
+                },
+                "state_of_record": "none"
+              }
+            },
+            {
+              "id": "reconcile-currency",
+              "type": "reconcile",
+              "contract_ref": "ec:deal-reconcile@1",
+              "requirement_ref": "currency-commitment-matched",
+              "tier": "recomputed",
+              "grade": "self-attested",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable",
+              "evidence": [
+                {
+                  "digest": "6e9b22b86604a549282d44748e7c39bf7bf5f7e588cfde0a7863e2f75036eb9f",
+                  "digest_alg": "SHA-256"
+                },
+                {
+                  "digest": "856381edbaf98d99f82071592beb0b060269e8e789b64147c768d3bc5697b863",
+                  "digest_alg": "SHA-256"
+                }
+              ],
+              "proofs": [],
+              "presentation": {
+                "kind": "disclosure",
+                "status": "INSUFFICIENT",
+                "evidence": [
+                  {
+                    "digest": "6e9b22b86604a549282d44748e7c39bf7bf5f7e588cfde0a7863e2f75036eb9f",
+                    "digest_alg": "SHA-256"
+                  },
+                  {
+                    "digest": "856381edbaf98d99f82071592beb0b060269e8e789b64147c768d3bc5697b863",
+                    "digest_alg": "SHA-256"
+                  }
+                ]
+              },
+              "reconcile": {
+                "join_key": "deal_id",
+                "peer": "book-b",
+                "period": {
+                  "start": "2026-10-01T00:00:00Z",
+                  "end": "2026-11-01T00:00:00Z"
+                },
+                "tallies": {
+                  "matched": 0,
+                  "a_only": 0,
+                  "b_only": 0,
+                  "conflicting": 0,
+                  "insufficient": 1,
+                  "unresolved": 0
+                },
+                "state_of_record": "none"
+              }
+            }
+          ],
+          "aggregate": {
+            "coverage": {
+              "evaluated_population": 2,
+              "excluded_not_applicable": 0,
+              "unknown_count": 0
+            },
+            "buckets": {
+              "met": [
+                "reconcile-amount"
+              ],
+              "not_met": [],
+              "not_evaluable": [
+                "reconcile-currency"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "a-only-peer-complete",
+      "title": "Side B holds no half, and its source_authoritative coverage passes every property",
+      "sections": [
+        "DR §6 rule 2",
+        "DR §6.1",
+        "DR §7",
+        "IP §6.7.1",
+        "RES §4.1"
+      ],
+      "inputs": {
+        "contract_ref": "ec:deal-reconcile@1",
+        "side_a": "book-a",
+        "peer": "book-b",
+        "period": {
+          "start": "2026-10-01T00:00:00Z",
+          "end": "2026-11-01T00:00:00Z"
+        },
+        "half_mappings": {
+          "book-a": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          },
+          "book-b": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          }
+        },
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"book\":\"book-a\",\"deal_ref\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:00Z\",\"terms\":{\"alg\":\"sha256-jcs-nonce256\",\"amount\":\"40dc14ae3906f202076f903bae5c32318a275cbf5d2236dc420ba51d19dbccc3\",\"currency\":\"0094cb965b6f3e8ec5b4262ccf085c8cc443053651f70b67c3c14545249c04cc\"}}",
+            "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af"
+          }
+        ],
+        "field_openings": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
+            "amount": {
+              "nonce": "edf749876f08f934fabe859346348a6080779eb217f513823be3219193f97feb",
+              "text": "100.00"
+            },
+            "currency": {
+              "nonce": "f7a39229ee09a8550492f0ffc78d3b59fb4703de77e99284d2b61c632f704b82",
+              "text": "XTS"
+            }
+          }
+        },
+        "coverage": {
+          "book-b": {
+            "declaration": {
+              "kind": "source_authoritative",
+              "source": "7cef4cc4b29f07f7214cbb66c9e2a8abcb3c074fad836ad66e4ad3de28384b60",
+              "method": "an example native check (vectors only)",
+              "population": "c0d3f5e3f8595e9cb267af3646834336c653a51f280b89a4e188e50a6cb89b80"
+            },
+            "properties": {
+              "coverage_declaration_form": "PASS",
+              "coverage_declaration_population": "PASS",
+              "coverage_declaration_source": "PASS"
+            },
+            "period": {
+              "start": "2026-10-01T00:00:00Z",
+              "end": "2026-11-01T00:00:00Z"
+            }
+          }
+        }
+      },
+      "expected": {
+        "field_openings": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
+            "amount": "PASS",
+            "currency": "PASS"
+          }
+        },
+        "set_completeness": {
+          "book-a": "NOT_SHOWN",
+          "book-b": "COMPLETE"
+        },
+        "pairings": {
+          "amount-commitment-matched": {
+            "deal-1": "A_ONLY"
+          },
+          "currency-commitment-matched": {
+            "deal-1": "A_ONLY"
+          }
+        },
+        "tallies": {
+          "amount-commitment-matched": {
+            "matched": 0,
+            "a_only": 1,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 0,
+            "unresolved": 0
+          },
+          "currency-commitment-matched": {
+            "matched": 0,
+            "a_only": 1,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 0,
+            "unresolved": 0
+          }
+        },
+        "sufficiency": {
+          "amount-commitment-matched": "SATISFIED",
+          "currency-commitment-matched": "SATISFIED"
+        },
+        "verdict": {
+          "amount-commitment-matched": "not_met",
+          "currency-commitment-matched": "not_met"
+        },
+        "deal_state": {
+          "deal-1": "not_reconciled"
+        },
+        "cites_close": false,
+        "result": {
+          "result_version": "evidence-result-v0",
+          "generated_at": "2026-10-19T00:00:00Z",
+          "claims": [
+            {
+              "id": "reconcile-amount",
+              "type": "reconcile",
+              "contract_ref": "ec:deal-reconcile@1",
+              "requirement_ref": "amount-commitment-matched",
+              "tier": "recomputed",
+              "grade": "self-attested",
+              "sufficiency": "SATISFIED",
+              "verdict": "not_met",
+              "evidence": [
+                {
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                  "digest_alg": "SHA-256"
+                }
+              ],
+              "proofs": [],
+              "presentation": {
+                "kind": "disclosure",
+                "status": "SATISFIED",
+                "evidence": [
+                  {
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                    "digest_alg": "SHA-256"
+                  }
+                ]
+              },
+              "reconcile": {
+                "join_key": "deal_id",
+                "peer": "book-b",
+                "period": {
+                  "start": "2026-10-01T00:00:00Z",
+                  "end": "2026-11-01T00:00:00Z"
+                },
+                "tallies": {
+                  "matched": 0,
+                  "a_only": 1,
+                  "b_only": 0,
+                  "conflicting": 0,
+                  "insufficient": 0,
+                  "unresolved": 0
+                },
+                "state_of_record": "none"
+              }
+            },
+            {
+              "id": "reconcile-currency",
+              "type": "reconcile",
+              "contract_ref": "ec:deal-reconcile@1",
+              "requirement_ref": "currency-commitment-matched",
+              "tier": "recomputed",
+              "grade": "self-attested",
+              "sufficiency": "SATISFIED",
+              "verdict": "not_met",
+              "evidence": [
+                {
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                  "digest_alg": "SHA-256"
+                }
+              ],
+              "proofs": [],
+              "presentation": {
+                "kind": "disclosure",
+                "status": "SATISFIED",
+                "evidence": [
+                  {
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                    "digest_alg": "SHA-256"
+                  }
+                ]
+              },
+              "reconcile": {
+                "join_key": "deal_id",
+                "peer": "book-b",
+                "period": {
+                  "start": "2026-10-01T00:00:00Z",
+                  "end": "2026-11-01T00:00:00Z"
+                },
+                "tallies": {
+                  "matched": 0,
+                  "a_only": 1,
+                  "b_only": 0,
+                  "conflicting": 0,
+                  "insufficient": 0,
+                  "unresolved": 0
+                },
+                "state_of_record": "none"
+              }
+            }
+          ],
+          "aggregate": {
+            "coverage": {
+              "evaluated_population": 2,
+              "excluded_not_applicable": 0,
+              "unknown_count": 0
+            },
+            "buckets": {
+              "met": [],
+              "not_met": [
+                "reconcile-amount",
+                "reconcile-currency"
+              ],
+              "not_evaluable": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "a-only-peer-commitment-not-checked",
+      "title": "Side B holds no half; its stream_interval coverage passes but for the NOT_CHECKED commitment",
+      "sections": [
+        "DR §6 rule 2",
+        "DR §6.1",
+        "DR §7",
+        "IP §6.7.3",
+        "RES §4.1"
+      ],
+      "inputs": {
+        "contract_ref": "ec:deal-reconcile@1",
+        "side_a": "book-a",
+        "peer": "book-b",
+        "period": {
+          "start": "2026-10-01T00:00:00Z",
+          "end": "2026-11-01T00:00:00Z"
+        },
+        "half_mappings": {
+          "book-a": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          },
+          "book-b": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          }
+        },
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"book\":\"book-a\",\"deal_ref\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:00Z\",\"terms\":{\"alg\":\"sha256-jcs-nonce256\",\"amount\":\"40dc14ae3906f202076f903bae5c32318a275cbf5d2236dc420ba51d19dbccc3\",\"currency\":\"0094cb965b6f3e8ec5b4262ccf085c8cc443053651f70b67c3c14545249c04cc\"}}",
+            "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af"
+          }
+        ],
+        "field_openings": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
+            "amount": {
+              "nonce": "edf749876f08f934fabe859346348a6080779eb217f513823be3219193f97feb",
+              "text": "100.00"
+            },
+            "currency": {
+              "nonce": "f7a39229ee09a8550492f0ffc78d3b59fb4703de77e99284d2b61c632f704b82",
+              "text": "XTS"
+            }
+          }
+        },
+        "coverage": {
+          "book-b": {
+            "declaration": {
+              "kind": "stream_interval",
+              "rule": "all_records",
+              "interval": {
+                "from": null,
+                "to": "6c0b872c870ba434190a1fbfa59b856acf92c782c599c9d39f8f8a4bb1b6b6c6"
+              },
+              "live_set": [
+                {
+                  "stream": "book-b",
+                  "checkpoint": "b957c5525e287f79dab0b012bb2e26a14a0ea424d8721f08e6a43300ee39521f",
+                  "start": 0,
+                  "count": 0
+                }
+              ]
+            },
+            "properties": {
+              "coverage_declaration_form": "PASS",
+              "coverage_declaration_anchor": "PASS",
+              "coverage_declaration_population": "PASS",
+              "coverage_declaration_commitment": "NOT_CHECKED"
+            },
+            "period": {
+              "start": "2026-10-01T00:00:00Z",
+              "end": "2026-11-01T00:00:00Z"
+            }
+          }
+        }
+      },
+      "expected": {
+        "field_openings": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
+            "amount": "PASS",
+            "currency": "PASS"
+          }
+        },
+        "set_completeness": {
+          "book-a": "NOT_SHOWN",
+          "book-b": "UNDECIDED"
+        },
+        "pairings": {
+          "amount-commitment-matched": {
+            "deal-1": "UNRESOLVED"
+          },
+          "currency-commitment-matched": {
+            "deal-1": "UNRESOLVED"
+          }
+        },
+        "tallies": {
+          "amount-commitment-matched": {
+            "matched": 0,
+            "a_only": 0,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 0,
+            "unresolved": 1
+          },
+          "currency-commitment-matched": {
+            "matched": 0,
+            "a_only": 0,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 0,
+            "unresolved": 1
+          }
+        },
+        "sufficiency": {
+          "amount-commitment-matched": "UNKNOWN",
+          "currency-commitment-matched": "UNKNOWN"
+        },
+        "verdict": {
+          "amount-commitment-matched": "not_evaluable",
+          "currency-commitment-matched": "not_evaluable"
+        },
+        "deal_state": {
+          "deal-1": "not_reconciled"
+        },
+        "cites_close": false,
+        "result": {
+          "result_version": "evidence-result-v0",
+          "generated_at": "2026-10-19T00:00:00Z",
+          "claims": [
+            {
+              "id": "reconcile-amount",
+              "type": "reconcile",
+              "contract_ref": "ec:deal-reconcile@1",
+              "requirement_ref": "amount-commitment-matched",
+              "tier": "recomputed",
+              "grade": "self-attested",
+              "sufficiency": "UNKNOWN",
+              "verdict": "not_evaluable",
+              "evidence": [
+                {
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                  "digest_alg": "SHA-256"
+                }
+              ],
+              "proofs": [],
+              "presentation": {
+                "kind": "disclosure",
+                "status": "UNKNOWN",
+                "evidence": [
+                  {
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                    "digest_alg": "SHA-256"
+                  }
+                ]
+              },
+              "reconcile": {
+                "join_key": "deal_id",
+                "peer": "book-b",
+                "period": {
+                  "start": "2026-10-01T00:00:00Z",
+                  "end": "2026-11-01T00:00:00Z"
+                },
+                "tallies": {
+                  "matched": 0,
+                  "a_only": 0,
+                  "b_only": 0,
+                  "conflicting": 0,
+                  "insufficient": 0,
+                  "unresolved": 1
+                },
+                "state_of_record": "none"
+              }
+            },
+            {
+              "id": "reconcile-currency",
+              "type": "reconcile",
+              "contract_ref": "ec:deal-reconcile@1",
+              "requirement_ref": "currency-commitment-matched",
+              "tier": "recomputed",
+              "grade": "self-attested",
+              "sufficiency": "UNKNOWN",
+              "verdict": "not_evaluable",
+              "evidence": [
+                {
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                  "digest_alg": "SHA-256"
+                }
+              ],
+              "proofs": [],
+              "presentation": {
+                "kind": "disclosure",
+                "status": "UNKNOWN",
+                "evidence": [
+                  {
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                    "digest_alg": "SHA-256"
+                  }
+                ]
+              },
+              "reconcile": {
+                "join_key": "deal_id",
+                "peer": "book-b",
+                "period": {
+                  "start": "2026-10-01T00:00:00Z",
+                  "end": "2026-11-01T00:00:00Z"
+                },
+                "tallies": {
+                  "matched": 0,
+                  "a_only": 0,
+                  "b_only": 0,
+                  "conflicting": 0,
+                  "insufficient": 0,
+                  "unresolved": 1
+                },
+                "state_of_record": "none"
+              }
+            }
+          ],
+          "aggregate": {
+            "coverage": {
+              "evaluated_population": 2,
+              "excluded_not_applicable": 0,
+              "unknown_count": 2
+            },
+            "buckets": {
+              "met": [],
+              "not_met": [],
+              "not_evaluable": [
+                "reconcile-amount",
+                "reconcile-currency"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "a-only-peer-not-declared",
+      "title": "Side B holds no half, and no coverage is carried for it",
+      "sections": [
+        "DR §6 rule 2",
+        "DR §6.1",
+        "DR §7",
+        "RES §4.1"
+      ],
+      "inputs": {
+        "contract_ref": "ec:deal-reconcile@1",
+        "side_a": "book-a",
+        "peer": "book-b",
+        "period": {
+          "start": "2026-10-01T00:00:00Z",
+          "end": "2026-11-01T00:00:00Z"
+        },
+        "half_mappings": {
+          "book-a": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          },
+          "book-b": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          }
+        },
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"book\":\"book-a\",\"deal_ref\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:00Z\",\"terms\":{\"alg\":\"sha256-jcs-nonce256\",\"amount\":\"40dc14ae3906f202076f903bae5c32318a275cbf5d2236dc420ba51d19dbccc3\",\"currency\":\"0094cb965b6f3e8ec5b4262ccf085c8cc443053651f70b67c3c14545249c04cc\"}}",
+            "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af"
+          }
+        ],
+        "field_openings": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
+            "amount": {
+              "nonce": "edf749876f08f934fabe859346348a6080779eb217f513823be3219193f97feb",
+              "text": "100.00"
+            },
+            "currency": {
+              "nonce": "f7a39229ee09a8550492f0ffc78d3b59fb4703de77e99284d2b61c632f704b82",
+              "text": "XTS"
+            }
+          }
+        },
+        "coverage": {}
+      },
+      "expected": {
+        "field_openings": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
+            "amount": "PASS",
+            "currency": "PASS"
+          }
+        },
+        "set_completeness": {
+          "book-a": "NOT_SHOWN",
+          "book-b": "NOT_SHOWN"
+        },
+        "pairings": {
+          "amount-commitment-matched": {
+            "deal-1": "INSUFFICIENT"
+          },
+          "currency-commitment-matched": {
+            "deal-1": "INSUFFICIENT"
+          }
+        },
+        "tallies": {
+          "amount-commitment-matched": {
+            "matched": 0,
+            "a_only": 0,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 1,
+            "unresolved": 0
+          },
+          "currency-commitment-matched": {
+            "matched": 0,
+            "a_only": 0,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 1,
+            "unresolved": 0
+          }
+        },
+        "sufficiency": {
+          "amount-commitment-matched": "GAP",
+          "currency-commitment-matched": "GAP"
+        },
+        "verdict": {
+          "amount-commitment-matched": "not_evaluable",
+          "currency-commitment-matched": "not_evaluable"
+        },
+        "deal_state": {
+          "deal-1": "not_reconciled"
+        },
+        "cites_close": false,
+        "result": {
+          "result_version": "evidence-result-v0",
+          "generated_at": "2026-10-19T00:00:00Z",
+          "claims": [
+            {
+              "id": "reconcile-amount",
+              "type": "reconcile",
+              "contract_ref": "ec:deal-reconcile@1",
+              "requirement_ref": "amount-commitment-matched",
+              "tier": "recomputed",
+              "grade": "self-attested",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable",
+              "evidence": [
+                {
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                  "digest_alg": "SHA-256"
+                }
+              ],
+              "proofs": [],
+              "presentation": {
+                "kind": "disclosure",
+                "status": "INSUFFICIENT",
+                "evidence": [
+                  {
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                    "digest_alg": "SHA-256"
+                  }
+                ]
+              },
+              "reconcile": {
+                "join_key": "deal_id",
+                "peer": "book-b",
+                "period": {
+                  "start": "2026-10-01T00:00:00Z",
+                  "end": "2026-11-01T00:00:00Z"
+                },
+                "tallies": {
+                  "matched": 0,
+                  "a_only": 0,
+                  "b_only": 0,
+                  "conflicting": 0,
+                  "insufficient": 1,
+                  "unresolved": 0
+                },
+                "state_of_record": "none"
+              }
+            },
+            {
+              "id": "reconcile-currency",
+              "type": "reconcile",
+              "contract_ref": "ec:deal-reconcile@1",
+              "requirement_ref": "currency-commitment-matched",
+              "tier": "recomputed",
+              "grade": "self-attested",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable",
+              "evidence": [
+                {
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                  "digest_alg": "SHA-256"
+                }
+              ],
+              "proofs": [],
+              "presentation": {
+                "kind": "disclosure",
+                "status": "INSUFFICIENT",
+                "evidence": [
+                  {
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                    "digest_alg": "SHA-256"
+                  }
+                ]
+              },
+              "reconcile": {
+                "join_key": "deal_id",
+                "peer": "book-b",
+                "period": {
+                  "start": "2026-10-01T00:00:00Z",
+                  "end": "2026-11-01T00:00:00Z"
+                },
+                "tallies": {
+                  "matched": 0,
+                  "a_only": 0,
+                  "b_only": 0,
+                  "conflicting": 0,
+                  "insufficient": 1,
+                  "unresolved": 0
+                },
+                "state_of_record": "none"
+              }
+            }
+          ],
+          "aggregate": {
+            "coverage": {
+              "evaluated_population": 2,
+              "excluded_not_applicable": 0,
+              "unknown_count": 0
+            },
+            "buckets": {
+              "met": [],
+              "not_met": [],
+              "not_evaluable": [
+                "reconcile-amount",
+                "reconcile-currency"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "a-only-peer-holder-selected",
+      "title": "Side B holds no half, and its coverage declares holder_selected",
+      "sections": [
+        "DR §6 rule 2",
+        "DR §6.1",
+        "DR §7",
+        "IP §6.7.1",
+        "RES §4.1"
+      ],
+      "inputs": {
+        "contract_ref": "ec:deal-reconcile@1",
+        "side_a": "book-a",
+        "peer": "book-b",
+        "period": {
+          "start": "2026-10-01T00:00:00Z",
+          "end": "2026-11-01T00:00:00Z"
+        },
+        "half_mappings": {
+          "book-a": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          },
+          "book-b": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          }
+        },
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"book\":\"book-a\",\"deal_ref\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:00Z\",\"terms\":{\"alg\":\"sha256-jcs-nonce256\",\"amount\":\"40dc14ae3906f202076f903bae5c32318a275cbf5d2236dc420ba51d19dbccc3\",\"currency\":\"0094cb965b6f3e8ec5b4262ccf085c8cc443053651f70b67c3c14545249c04cc\"}}",
+            "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af"
+          }
+        ],
+        "field_openings": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
+            "amount": {
+              "nonce": "edf749876f08f934fabe859346348a6080779eb217f513823be3219193f97feb",
+              "text": "100.00"
+            },
+            "currency": {
+              "nonce": "f7a39229ee09a8550492f0ffc78d3b59fb4703de77e99284d2b61c632f704b82",
+              "text": "XTS"
+            }
+          }
+        },
+        "coverage": {
+          "book-b": {
+            "declaration": {
+              "kind": "holder_selected"
+            },
+            "properties": {
+              "coverage_declaration_form": "PASS"
+            },
+            "period": {
+              "start": "2026-10-01T00:00:00Z",
+              "end": "2026-11-01T00:00:00Z"
+            }
+          }
+        }
+      },
+      "expected": {
+        "field_openings": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
+            "amount": "PASS",
+            "currency": "PASS"
+          }
+        },
+        "set_completeness": {
+          "book-a": "NOT_SHOWN",
+          "book-b": "NOT_SHOWN"
+        },
+        "pairings": {
+          "amount-commitment-matched": {
+            "deal-1": "INSUFFICIENT"
+          },
+          "currency-commitment-matched": {
+            "deal-1": "INSUFFICIENT"
+          }
+        },
+        "tallies": {
+          "amount-commitment-matched": {
+            "matched": 0,
+            "a_only": 0,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 1,
+            "unresolved": 0
+          },
+          "currency-commitment-matched": {
+            "matched": 0,
+            "a_only": 0,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 1,
+            "unresolved": 0
+          }
+        },
+        "sufficiency": {
+          "amount-commitment-matched": "GAP",
+          "currency-commitment-matched": "GAP"
+        },
+        "verdict": {
+          "amount-commitment-matched": "not_evaluable",
+          "currency-commitment-matched": "not_evaluable"
+        },
+        "deal_state": {
+          "deal-1": "not_reconciled"
+        },
+        "cites_close": false,
+        "result": {
+          "result_version": "evidence-result-v0",
+          "generated_at": "2026-10-19T00:00:00Z",
+          "claims": [
+            {
+              "id": "reconcile-amount",
+              "type": "reconcile",
+              "contract_ref": "ec:deal-reconcile@1",
+              "requirement_ref": "amount-commitment-matched",
+              "tier": "recomputed",
+              "grade": "self-attested",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable",
+              "evidence": [
+                {
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                  "digest_alg": "SHA-256"
+                }
+              ],
+              "proofs": [],
+              "presentation": {
+                "kind": "disclosure",
+                "status": "INSUFFICIENT",
+                "evidence": [
+                  {
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                    "digest_alg": "SHA-256"
+                  }
+                ]
+              },
+              "reconcile": {
+                "join_key": "deal_id",
+                "peer": "book-b",
+                "period": {
+                  "start": "2026-10-01T00:00:00Z",
+                  "end": "2026-11-01T00:00:00Z"
+                },
+                "tallies": {
+                  "matched": 0,
+                  "a_only": 0,
+                  "b_only": 0,
+                  "conflicting": 0,
+                  "insufficient": 1,
+                  "unresolved": 0
+                },
+                "state_of_record": "none"
+              }
+            },
+            {
+              "id": "reconcile-currency",
+              "type": "reconcile",
+              "contract_ref": "ec:deal-reconcile@1",
+              "requirement_ref": "currency-commitment-matched",
+              "tier": "recomputed",
+              "grade": "self-attested",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable",
+              "evidence": [
+                {
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                  "digest_alg": "SHA-256"
+                }
+              ],
+              "proofs": [],
+              "presentation": {
+                "kind": "disclosure",
+                "status": "INSUFFICIENT",
+                "evidence": [
+                  {
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                    "digest_alg": "SHA-256"
+                  }
+                ]
+              },
+              "reconcile": {
+                "join_key": "deal_id",
+                "peer": "book-b",
+                "period": {
+                  "start": "2026-10-01T00:00:00Z",
+                  "end": "2026-11-01T00:00:00Z"
+                },
+                "tallies": {
+                  "matched": 0,
+                  "a_only": 0,
+                  "b_only": 0,
+                  "conflicting": 0,
+                  "insufficient": 1,
+                  "unresolved": 0
+                },
+                "state_of_record": "none"
+              }
+            }
+          ],
+          "aggregate": {
+            "coverage": {
+              "evaluated_population": 2,
+              "excluded_not_applicable": 0,
+              "unknown_count": 0
+            },
+            "buckets": {
+              "met": [],
+              "not_met": [],
+              "not_evaluable": [
+                "reconcile-amount",
+                "reconcile-currency"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "a-only-peer-coverage-fails",
+      "title": "Side B holds no half, and its stream_interval coverage fails coverage_declaration_population",
+      "sections": [
+        "DR §6 rule 2",
+        "DR §6.1",
+        "DR §7",
+        "IP §6.7.3",
+        "RES §4.1"
+      ],
+      "inputs": {
+        "contract_ref": "ec:deal-reconcile@1",
+        "side_a": "book-a",
+        "peer": "book-b",
+        "period": {
+          "start": "2026-10-01T00:00:00Z",
+          "end": "2026-11-01T00:00:00Z"
+        },
+        "half_mappings": {
+          "book-a": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          },
+          "book-b": {
+            "profile": "example-half/0",
+            "members": {
+              "deal_id": "/deal_ref",
+              "book_id": "/book",
+              "recorded_at": "/recorded_at",
+              "commit_alg": "/terms/alg",
+              "amount_commitment": "/terms/amount",
+              "currency_commitment": "/terms/currency"
+            }
+          }
+        },
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"book\":\"book-a\",\"deal_ref\":\"deal-1\",\"recorded_at\":\"2026-10-15T00:00:00Z\",\"terms\":{\"alg\":\"sha256-jcs-nonce256\",\"amount\":\"40dc14ae3906f202076f903bae5c32318a275cbf5d2236dc420ba51d19dbccc3\",\"currency\":\"0094cb965b6f3e8ec5b4262ccf085c8cc443053651f70b67c3c14545249c04cc\"}}",
+            "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af"
+          }
+        ],
+        "field_openings": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
+            "amount": {
+              "nonce": "edf749876f08f934fabe859346348a6080779eb217f513823be3219193f97feb",
+              "text": "100.00"
+            },
+            "currency": {
+              "nonce": "f7a39229ee09a8550492f0ffc78d3b59fb4703de77e99284d2b61c632f704b82",
+              "text": "XTS"
+            }
+          }
+        },
+        "coverage": {
+          "book-b": {
+            "declaration": {
+              "kind": "stream_interval",
+              "rule": "all_records",
+              "interval": {
+                "from": null,
+                "to": "6c0b872c870ba434190a1fbfa59b856acf92c782c599c9d39f8f8a4bb1b6b6c6"
+              },
+              "live_set": [
+                {
+                  "stream": "book-b",
+                  "checkpoint": "b957c5525e287f79dab0b012bb2e26a14a0ea424d8721f08e6a43300ee39521f",
+                  "start": 0,
+                  "count": 0
+                }
+              ]
+            },
+            "properties": {
+              "coverage_declaration_form": "PASS",
+              "coverage_declaration_anchor": "PASS",
+              "coverage_declaration_population": "FAIL",
+              "coverage_declaration_commitment": "NOT_CHECKED"
+            },
+            "period": {
+              "start": "2026-10-01T00:00:00Z",
+              "end": "2026-11-01T00:00:00Z"
+            }
+          }
+        }
+      },
+      "expected": {
+        "field_openings": {
+          "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af": {
+            "amount": "PASS",
+            "currency": "PASS"
+          }
+        },
+        "set_completeness": {
+          "book-a": "NOT_SHOWN",
+          "book-b": "NOT_SHOWN"
+        },
+        "pairings": {
+          "amount-commitment-matched": {
+            "deal-1": "INSUFFICIENT"
+          },
+          "currency-commitment-matched": {
+            "deal-1": "INSUFFICIENT"
+          }
+        },
+        "tallies": {
+          "amount-commitment-matched": {
+            "matched": 0,
+            "a_only": 0,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 1,
+            "unresolved": 0
+          },
+          "currency-commitment-matched": {
+            "matched": 0,
+            "a_only": 0,
+            "b_only": 0,
+            "conflicting": 0,
+            "insufficient": 1,
+            "unresolved": 0
+          }
+        },
+        "sufficiency": {
+          "amount-commitment-matched": "GAP",
+          "currency-commitment-matched": "GAP"
+        },
+        "verdict": {
+          "amount-commitment-matched": "not_evaluable",
+          "currency-commitment-matched": "not_evaluable"
+        },
+        "deal_state": {
+          "deal-1": "not_reconciled"
+        },
+        "cites_close": false,
+        "result": {
+          "result_version": "evidence-result-v0",
+          "generated_at": "2026-10-19T00:00:00Z",
+          "claims": [
+            {
+              "id": "reconcile-amount",
+              "type": "reconcile",
+              "contract_ref": "ec:deal-reconcile@1",
+              "requirement_ref": "amount-commitment-matched",
+              "tier": "recomputed",
+              "grade": "self-attested",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable",
+              "evidence": [
+                {
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                  "digest_alg": "SHA-256"
+                }
+              ],
+              "proofs": [],
+              "presentation": {
+                "kind": "disclosure",
+                "status": "INSUFFICIENT",
+                "evidence": [
+                  {
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                    "digest_alg": "SHA-256"
+                  }
+                ]
+              },
+              "reconcile": {
+                "join_key": "deal_id",
+                "peer": "book-b",
+                "period": {
+                  "start": "2026-10-01T00:00:00Z",
+                  "end": "2026-11-01T00:00:00Z"
+                },
+                "tallies": {
+                  "matched": 0,
+                  "a_only": 0,
+                  "b_only": 0,
+                  "conflicting": 0,
+                  "insufficient": 1,
+                  "unresolved": 0
+                },
+                "state_of_record": "none"
+              }
+            },
+            {
+              "id": "reconcile-currency",
+              "type": "reconcile",
+              "contract_ref": "ec:deal-reconcile@1",
+              "requirement_ref": "currency-commitment-matched",
+              "tier": "recomputed",
+              "grade": "self-attested",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable",
+              "evidence": [
+                {
+                  "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                  "digest_alg": "SHA-256"
+                }
+              ],
+              "proofs": [],
+              "presentation": {
+                "kind": "disclosure",
+                "status": "INSUFFICIENT",
+                "evidence": [
+                  {
+                    "digest": "57b848231a7d25cbbba0a76ff4e5bc448562b087a84b1c5b9ee0291962ded0af",
+                    "digest_alg": "SHA-256"
+                  }
+                ]
+              },
+              "reconcile": {
+                "join_key": "deal_id",
+                "peer": "book-b",
+                "period": {
+                  "start": "2026-10-01T00:00:00Z",
+                  "end": "2026-11-01T00:00:00Z"
+                },
+                "tallies": {
+                  "matched": 0,
+                  "a_only": 0,
+                  "b_only": 0,
+                  "conflicting": 0,
+                  "insufficient": 1,
+                  "unresolved": 0
+                },
+                "state_of_record": "none"
+              }
+            }
+          ],
+          "aggregate": {
+            "coverage": {
+              "evaluated_population": 2,
+              "excluded_not_applicable": 0,
+              "unknown_count": 0
+            },
+            "buckets": {
+              "met": [],
+              "not_met": [],
+              "not_evaluable": [
+                "reconcile-amount",
+                "reconcile-currency"
               ]
             }
           }
