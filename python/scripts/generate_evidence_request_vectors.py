@@ -198,6 +198,7 @@ R3 = label_digest("record 3")
 R_UNKNOWN = label_digest("record never written")
 HALF = label_digest("requester's own exchange half")
 HALF_UNKNOWN = label_digest("an exchange half nobody cites")
+HALF_OTHER = label_digest("another exchange's half")
 ANCHOR_40 = label_digest("checkpoint at size 40")
 ANCHOR_42 = label_digest("checkpoint at size 42")
 ANCHOR_UNKNOWN = label_digest("a checkpoint this responder never issued")
@@ -579,10 +580,10 @@ def _layer_record(**header: Any) -> dict:
             "epistemic_type": "observed_event", "links": [], **header}
 
 
-def _capsule_reference(citation_purpose: str) -> dict:
-    """A Capsule's ``references`` member holding one entry whose digest is the half's."""
+def _capsule_reference(citation_purpose: str, digest: str = HALF) -> dict:
+    """A Capsule's ``references`` member holding one entry (by default, the half's digest)."""
     return {"references": [{"type": "agent-action-capsule", "digest_alg": "SHA-256",
-                            "digest": HALF, "citation_purpose": citation_purpose}]}
+                            "digest": digest, "citation_purpose": citation_purpose}]}
 
 
 def carries_cases() -> list[dict]:
@@ -612,6 +613,11 @@ def carries_cases() -> list[dict]:
           "a references entry whose digest is the half's, with citation_purpose responds_to: the "
           "record does not cite the half.",
           "capsule", _capsule_reference("responds_to"),
+          {"exchange": HALF}, {"cites": False}),
+        c("cites-exchange-counterparty-half-other-digest",
+          "a references entry with citation_purpose counterparty_half whose digest is another "
+          "half's: the record does not cite this half.",
+          "capsule", _capsule_reference("counterparty_half", HALF_OTHER),
           {"exchange": HALF}, {"cites": False}),
     ]
 

@@ -23,7 +23,7 @@ section and the reading used (the most literal one); the list is below, for -01.
 | `registry.json` | The exact strings -00 fixes: request fields and their presence, the six subject forms, the two coverage members, the eight refusal reasons, the `history_card/1` derivation, the three outcomes, the pending state, the `evidence-request/1` subprotocol identifier. |
 | `request.json` | Request map validation. Each case gives the request as JSON (RFC 8785 text, `request_json`) and, where it is a CBOR value, as a deterministic CBOR frame (`request_cbor_hex`), with the SHA-256 of each. Expect `well_formed: true`, or `false` with the exact refusal reason. |
 | `resolution.json` | Exact-match resolution against one declared responder state (`responder`, with per-case `responder_overrides`). Expect `artifact` or a refusal with the most specific reason (§4.2). |
-| `carries.json` | Which members of a record carry a correlation identifier or cite an exchange half (§3.1.1), one positive and one negative per subject form. Each case gives `record_format`, the `record` reduced to the members the designation reads, and the `subject`. Expect `carries` (correlation) or `cites` (exchange), true or false. |
+| `carries.json` | Which members of a record carry a correlation identifier or cite an exchange half (§3.1.1): a positive and a negative case per subject form, plus a `counterparty_half` entry naming another half. Each case gives `record_format`, the `record` reduced to the members the designation reads, and the `subject`. Expect `carries` (correlation) or `cites` (exchange), true or false. |
 | `digest.json` | The request digest is over the bytes as received (§4.2 item 1): JSON and CBOR, deterministic and not, and a refusal carrying the digest of a re-canonicalized form. |
 | `refusal.json` | Signed refusals: one per registered reason, a CBOR response frame, tampering, and objects that are signed but not conforming. Carries the signature profile and both fixed keys (seed and public key). |
 | `refusal-imported.json` | An existing cross-implementation refusal vector, byte for byte (SHA-256 `885d7981…a66e`). It conforms to -00: a request digest, a registered reason, an issuance time, and a signature over all three. |
@@ -152,7 +152,7 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `res-derivation-history-card` | 3.3, 8.1 | artifact |  |
 | `res-uniform-policy-declined` | 4.2, 12 | refuse `policy_declined` |  |
 
-### `carries.json` (4 cases)
+### `carries.json` (5 cases)
 
 | Case | § | Expect | Ambiguity |
 |---|---|---|---|
@@ -160,6 +160,7 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `carries-correlation-undesignated-member` | 3.1.1 | does not carry |  |
 | `cites-exchange-counterparty-half` | 3.1.1 | cites |  |
 | `cites-exchange-responds-to` | 3.1.1 | does not cite |  |
+| `cites-exchange-counterparty-half-other-digest` | 3.1.1 | does not cite |  |
 
 ### `digest.json` (7 cases)
 

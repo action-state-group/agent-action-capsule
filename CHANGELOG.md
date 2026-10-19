@@ -1223,8 +1223,8 @@ Tags: `go/v0.11.0`, `python/v0.11.0`, `ts/v0.4.0`, `crates/agent-action-capsule-
   correlation fields the Capsule draft names (§3.4 there), and a `references` entry with `citation_purpose` `counterparty_half`
   (`responds_to` does not cite a half). A requester that does not implement a record's format
   treats the record as unchecked, never as not carrying. Vectors: new
-  `vectors/evidence-request/carries.json` (4 cases, one positive and one negative per subject
-  form). Changed released files: `vectors/evidence-request/manifest.json`,
+  `vectors/evidence-request/carries.json` (5 cases: a positive and a negative per subject form,
+  plus a `counterparty_half` entry naming another half). Changed released files: `vectors/evidence-request/manifest.json`,
   `vectors/evidence-request/SHA256SUMS` and `vectors/evidence-request/README.md`, plus
   `vectors/SHA256SUMS` and `vectors/README.md`. No existing case file changed.
 
