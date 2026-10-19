@@ -2,7 +2,12 @@
   "draft": "draft-mih-agent-evidence-request-01",
   "provenance": "spec-derived",
   "corpus": "categories",
-  "description": "The OPTIONAL categories request field: well formed or request_malformed, and categories as an input of the artifact for caller invariance.",
+  "description": "The OPTIONAL categories request field, for a responder that implements it (one that does not ignores the field, §3.9): well formed or request_malformed, and categories as an input of the artifact for caller invariance.",
+  "notes": {
+    "B1": "§3.9: the request cases apply to a responder that implements categories. A responder that does not implement it ignores the field, malformed or not, and answers as if it were absent.",
+    "B2": "§3.9 leaves open whether the order of names carries meaning. No case compares two requests whose names differ only in order.",
+    "B3": "§3.9 does not say whether a member other than set and names is malformed. No case has one."
+  },
   "count": 14,
   "cases": [
     {

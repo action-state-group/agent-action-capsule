@@ -159,9 +159,10 @@ def _json_value(text: str):
 @pytest.mark.parametrize("corpus", ["request", "resolution", "categories"])
 def test_request_digests_and_cbor_frames(corpus):
     rfc8785 = pytest.importorskip("rfc8785")
-    for case in _load(corpus)["cases"]:
-        if "request_json" not in case:
-            continue
+    cases = [case for case in _load(corpus)["cases"] if "request_json" in case]
+    # categories.json also holds invariance cases; only its request cases are frames.
+    assert len(cases) >= 10, corpus
+    for case in cases:
         text = case["request_json"]
         assert _sha(text.encode("utf-8")) == case["request_json_digest"], case["id"]
         ok_json, value = _json_value(text)
@@ -336,7 +337,8 @@ def test_categories_expectations_follow_from_the_text():
         obs = case["observations"]
         for o in obs:
             assert _sha(bytes.fromhex(o["artifact_hex"])) == o["artifact_digest"], case["id"]
-        # -01 §5: the artifact is a function of subject, anchor, derivation and categories.
+        # -01 §5: the artifact is a function of subject, anchor, derivation and categories. names are
+        # compared as sent; no case differs in order only (note B2).
         inputs = {json.dumps([o["request"]["subject"], o["resolved_anchor"], o["request"].get("derivation"),
                               o["request"].get("categories")], sort_keys=True) for o in obs}
         artifacts = {o["artifact_hex"] for o in obs}
@@ -349,7 +351,7 @@ def test_categories_expectations_follow_from_the_text():
 
 
 def _decode_carried(carriage: str, text: str) -> bytes:
-    """-01 §10.2: A2A JSON writes raw parts as base64; §10.3: MCP as base64url without padding."""
+    """-01 §10.2: A2A JSON writes raw parts as base64 with padding; §10.3: MCP as base64url without padding."""
     if carriage == "a2a":
         return base64.b64decode(text, validate=True)
     assert carriage == "mcp" and "=" not in text
@@ -390,13 +392,21 @@ def test_carriage_expectations_follow_from_the_text():
             r = case["received"]
             if r["carriage"] == "a2a":
                 pending = {"TASK_STATE_SUBMITTED", "TASK_STATE_WORKING", "TASK_STATE_INPUT_REQUIRED",
-                           "TASK_STATE_AUTH_REQUIRED"}
-                state = "reply" if r["reply_artifact"] else (
-                    "pending" if r["task_state"] in pending else "no_reply")
+                           "TASK_STATE_AUTH_REQUIRED", "TASK_STATE_UNSPECIFIED"}
+                art = r["reply_artifact"]
+                if art is None:
+                    state = "pending" if r["task_state"] in pending else "no_reply"
+                else:
+                    parts = art["parts"]
+                    is_reply = (len(parts) == 1 and parts[0]["kind"] == "raw"
+                                and parts[0]["media_type"] == r["request_media_type"])
+                    state = "reply" if is_reply else "no_reply"
             else:
-                state = "reply" if r["structured_reply"] else "no_reply"
+                sc = r["structured_content"]
+                is_reply = (sc is not None and sc.get("media_type") == r["request_media_type"]
+                            and re.fullmatch(r"[A-Za-z0-9_-]+", sc.get("reply", "")) is not None)
+                state = "reply" if is_reply else "no_reply"
             assert expect["classified_as"] == state, case["id"]
-            assert "refusal" not in (expect["classified_as"],), case["id"]
             if state != "reply":
                 assert expect["must_not_classify_as"] == ["refusal"], case["id"]
             got = state == "reply"
