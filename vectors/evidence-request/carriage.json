@@ -3,7 +3,7 @@
   "provenance": "spec-derived",
   "corpus": "carriage",
   "description": "A2A and MCP carriage: the request digest over decoded octets, the envelope's request digest, media types, and classification by the reply alone.",
-  "count": 15,
+  "count": 21,
   "cases": [
     {
       "id": "carry-a2a-raw-part",
@@ -147,14 +147,108 @@
       "section": [
         "§10.2 A2A Binding"
       ],
-      "description": "A completed task with one reply Artifact carrying a raw part of the request's media type.",
+      "description": "A completed task with one reply Artifact carrying one raw part of the request's media type.",
       "received": {
         "carriage": "a2a",
+        "request_media_type": "application/cbor",
         "task_state": "TASK_STATE_COMPLETED",
-        "reply_artifact": true
+        "reply_artifact": {
+          "parts": [
+            {
+              "kind": "raw",
+              "media_type": "application/cbor"
+            }
+          ]
+        }
       },
       "expect": {
         "classified_as": "reply"
+      }
+    },
+    {
+      "id": "neg-classify-a2a-reply-two-parts",
+      "kind": "classify",
+      "section": [
+        "§10.2 A2A Binding"
+      ],
+      "description": "A reply Artifact with two parts is not of the reply's form: not a reply.",
+      "received": {
+        "carriage": "a2a",
+        "request_media_type": "application/cbor",
+        "task_state": "TASK_STATE_COMPLETED",
+        "reply_artifact": {
+          "parts": [
+            {
+              "kind": "raw",
+              "media_type": "application/cbor"
+            },
+            {
+              "kind": "raw",
+              "media_type": "application/cbor"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "classified_as": "no_reply",
+        "must_not_classify_as": [
+          "refusal"
+        ]
+      }
+    },
+    {
+      "id": "neg-classify-a2a-reply-other-media-type",
+      "kind": "classify",
+      "section": [
+        "§10.2 A2A Binding",
+        "§10.1 Carriage Rules"
+      ],
+      "description": "A reply Artifact whose raw part has a media type other than the request's: not a reply.",
+      "received": {
+        "carriage": "a2a",
+        "request_media_type": "application/cbor",
+        "task_state": "TASK_STATE_COMPLETED",
+        "reply_artifact": {
+          "parts": [
+            {
+              "kind": "raw",
+              "media_type": "application/json"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "classified_as": "no_reply",
+        "must_not_classify_as": [
+          "refusal"
+        ]
+      }
+    },
+    {
+      "id": "neg-classify-a2a-reply-text-part",
+      "kind": "classify",
+      "section": [
+        "§10.2 A2A Binding"
+      ],
+      "description": "A reply Artifact whose one part is text, not raw: not a reply.",
+      "received": {
+        "carriage": "a2a",
+        "request_media_type": "application/cbor",
+        "task_state": "TASK_STATE_COMPLETED",
+        "reply_artifact": {
+          "parts": [
+            {
+              "kind": "text",
+              "media_type": "text/plain"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "classified_as": "no_reply",
+        "must_not_classify_as": [
+          "refusal"
+        ]
       }
     },
     {
@@ -167,8 +261,9 @@
       "description": "A rejected task with no reply Artifact is the responder sending no reply, never a refusal. The request stays pending until the window closes, then is a recorded absence.",
       "received": {
         "carriage": "a2a",
+        "request_media_type": "application/cbor",
         "task_state": "TASK_STATE_REJECTED",
-        "reply_artifact": false
+        "reply_artifact": null
       },
       "expect": {
         "classified_as": "no_reply",
@@ -187,8 +282,30 @@
       "description": "A working task with no reply Artifact yet: pending.",
       "received": {
         "carriage": "a2a",
+        "request_media_type": "application/cbor",
         "task_state": "TASK_STATE_WORKING",
-        "reply_artifact": false
+        "reply_artifact": null
+      },
+      "expect": {
+        "classified_as": "pending",
+        "must_not_classify_as": [
+          "refusal"
+        ]
+      }
+    },
+    {
+      "id": "classify-a2a-unspecified-no-reply",
+      "kind": "classify",
+      "section": [
+        "§10.2 A2A Binding",
+        "§4.3 Pending"
+      ],
+      "description": "A task in an unspecified state with no reply Artifact: pending.",
+      "received": {
+        "carriage": "a2a",
+        "request_media_type": "application/cbor",
+        "task_state": "TASK_STATE_UNSPECIFIED",
+        "reply_artifact": null
       },
       "expect": {
         "classified_as": "pending",
@@ -204,14 +321,64 @@
         "§10.3 MCP Binding",
         "§10.1 Carriage Rules"
       ],
-      "description": "The error flag is set but structuredContent.reply is present: it is the reply.",
+      "description": "The error flag is set but structuredContent carries a reply with the request's media type: it is the reply.",
       "received": {
         "carriage": "mcp",
+        "request_media_type": "application/cbor",
         "is_error": true,
-        "structured_reply": true
+        "structured_content": {
+          "reply": "AA",
+          "media_type": "application/cbor"
+        }
       },
       "expect": {
         "classified_as": "reply"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-reply-other-media-type",
+      "kind": "classify",
+      "section": [
+        "§10.3 MCP Binding"
+      ],
+      "description": "structuredContent carries a reply labeled with a media type other than the request's: not a reply.",
+      "received": {
+        "carriage": "mcp",
+        "request_media_type": "application/cbor",
+        "is_error": false,
+        "structured_content": {
+          "reply": "AA",
+          "media_type": "application/json"
+        }
+      },
+      "expect": {
+        "classified_as": "no_reply",
+        "must_not_classify_as": [
+          "refusal"
+        ]
+      }
+    },
+    {
+      "id": "neg-classify-mcp-reply-not-base64url",
+      "kind": "classify",
+      "section": [
+        "§10.3 MCP Binding"
+      ],
+      "description": "structuredContent.reply is padded base64, not base64url without padding: not a reply.",
+      "received": {
+        "carriage": "mcp",
+        "request_media_type": "application/cbor",
+        "is_error": false,
+        "structured_content": {
+          "reply": "AA==",
+          "media_type": "application/cbor"
+        }
+      },
+      "expect": {
+        "classified_as": "no_reply",
+        "must_not_classify_as": [
+          "refusal"
+        ]
       }
     },
     {
@@ -221,11 +388,12 @@
         "§10.3 MCP Binding",
         "§10.1 Carriage Rules"
       ],
-      "description": "The error flag is set, no structuredContent.reply, text saying the caller is not authorized: not a reply, and never a refusal. The request stays pending until the window closes.",
+      "description": "The error flag is set, no structuredContent, text saying the caller is not authorized: not a reply, and never a refusal. The request stays pending until the window closes.",
       "received": {
         "carriage": "mcp",
+        "request_media_type": "application/cbor",
         "is_error": true,
-        "structured_reply": false
+        "structured_content": null
       },
       "expect": {
         "classified_as": "no_reply",

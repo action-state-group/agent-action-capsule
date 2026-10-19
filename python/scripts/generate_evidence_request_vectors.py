@@ -938,6 +938,13 @@ def invariance_cases() -> list[dict]:
 # no category-set registry exists yet (§3.9 leaves it to a companion document).
 CAT_SET = "x-example-set"
 CATS = {"set": CAT_SET, "names": ["alpha", "beta"]}
+CATEGORIES_NOTES = {
+    "B1": "§3.9: the request cases apply to a responder that implements categories. A responder that "
+    "does not implement it ignores the field, malformed or not, and answers as if it were absent.",
+    "B2": "§3.9 leaves open whether the order of names carries meaning. No case compares two requests "
+    "whose names differ only in order.",
+    "B3": "§3.9 does not say whether a member other than set and names is malformed. No case has one.",
+}
 
 
 def categories_cases() -> list[dict]:
@@ -1054,6 +1061,17 @@ def carriage_cases() -> list[dict]:
         return {"id": case_id, "kind": "media_type", "section": [S_CARRY], "description": description,
                 "media_type": media_type, "expect": {"accepted": ok}}
 
+    def raw_part(media_type: str = "application/cbor") -> dict:
+        return {"kind": "raw", "media_type": media_type}
+
+    def a2a(task_state: str, parts: list[dict] | None) -> dict:
+        return {"carriage": "a2a", "request_media_type": "application/cbor", "task_state": task_state,
+                "reply_artifact": None if parts is None else {"parts": parts}}
+
+    def mcp(is_error: bool, structured: dict | None) -> dict:
+        return {"carriage": "mcp", "request_media_type": "application/cbor", "is_error": is_error,
+                "structured_content": structured}
+
     def cls(case_id: str, section: list[str], description: str, received: dict, state: str) -> dict:
         expect: dict[str, Any] = {"classified_as": state}
         if state != "reply":
@@ -1086,22 +1104,40 @@ def carriage_cases() -> list[dict]:
               "Compared as an exact string with no parameters."),
         media("neg-media-case", "Application/CBOR", False, "Compared as an exact string."),
         cls("classify-a2a-completed-with-reply", [S_A2A],
-            "A completed task with one reply Artifact carrying a raw part of the request's media type.",
-            {"carriage": "a2a", "task_state": "TASK_STATE_COMPLETED", "reply_artifact": True}, "reply"),
+            "A completed task with one reply Artifact carrying one raw part of the request's media type.",
+            a2a("TASK_STATE_COMPLETED", [raw_part()]), "reply"),
+        cls("neg-classify-a2a-reply-two-parts", [S_A2A],
+            "A reply Artifact with two parts is not of the reply's form: not a reply.",
+            a2a("TASK_STATE_COMPLETED", [raw_part(), raw_part()]), "no_reply"),
+        cls("neg-classify-a2a-reply-other-media-type", [S_A2A, S_CARRY],
+            "A reply Artifact whose raw part has a media type other than the request's: not a reply.",
+            a2a("TASK_STATE_COMPLETED", [raw_part("application/json")]), "no_reply"),
+        cls("neg-classify-a2a-reply-text-part", [S_A2A],
+            "A reply Artifact whose one part is text, not raw: not a reply.",
+            a2a("TASK_STATE_COMPLETED", [{"kind": "text", "media_type": "text/plain"}]), "no_reply"),
         cls("neg-classify-a2a-rejected-no-reply", [S_A2A, S_CARRY],
             "A rejected task with no reply Artifact is the responder sending no reply, never a refusal. "
             "The request stays pending until the window closes, then is a recorded absence.",
-            {"carriage": "a2a", "task_state": "TASK_STATE_REJECTED", "reply_artifact": False}, "no_reply"),
+            a2a("TASK_STATE_REJECTED", None), "no_reply"),
         cls("classify-a2a-working-no-reply", [S_A2A, S_PEND],
             "A working task with no reply Artifact yet: pending.",
-            {"carriage": "a2a", "task_state": "TASK_STATE_WORKING", "reply_artifact": False}, "pending"),
+            a2a("TASK_STATE_WORKING", None), "pending"),
+        cls("classify-a2a-unspecified-no-reply", [S_A2A, S_PEND],
+            "A task in an unspecified state with no reply Artifact: pending.",
+            a2a("TASK_STATE_UNSPECIFIED", None), "pending"),
         cls("classify-mcp-error-flag-with-reply", [S_MCP, S_CARRY],
-            "The error flag is set but structuredContent.reply is present: it is the reply.",
-            {"carriage": "mcp", "is_error": True, "structured_reply": True}, "reply"),
+            "The error flag is set but structuredContent carries a reply with the request's media type: "
+            "it is the reply.", mcp(True, {"reply": "AA", "media_type": "application/cbor"}), "reply"),
+        cls("neg-classify-mcp-reply-other-media-type", [S_MCP],
+            "structuredContent carries a reply labeled with a media type other than the request's: not a "
+            "reply.", mcp(False, {"reply": "AA", "media_type": "application/json"}), "no_reply"),
+        cls("neg-classify-mcp-reply-not-base64url", [S_MCP],
+            "structuredContent.reply is padded base64, not base64url without padding: not a reply.",
+            mcp(False, {"reply": "AA==", "media_type": "application/cbor"}), "no_reply"),
         cls("neg-classify-mcp-error-text-no-reply", [S_MCP, S_CARRY],
-            "The error flag is set, no structuredContent.reply, text saying the caller is not authorized: "
+            "The error flag is set, no structuredContent, text saying the caller is not authorized: "
             "not a reply, and never a refusal. The request stays pending until the window closes.",
-            {"carriage": "mcp", "is_error": True, "structured_reply": False}, "no_reply"),
+            mcp(True, None), "no_reply"),
     ]
 
 
@@ -1240,9 +1276,10 @@ def build() -> dict[str, bytes]:
             "per record format. Each record is reduced to the members the designation reads.",
             carries_cases(), draft=DRAFT_01)),
         "categories.json": _dump(_corpus(
-            "categories", "The OPTIONAL categories request field: well formed or request_malformed, and "
+            "categories", "The OPTIONAL categories request field, for a responder that implements it "
+            "(one that does not ignores the field, §3.9): well formed or request_malformed, and "
             "categories as an input of the artifact for caller invariance.", categories_cases(),
-            draft=DRAFT_01)),
+            draft=DRAFT_01, notes=CATEGORIES_NOTES)),
         "carriage.json": _dump(_corpus(
             "carriage", "A2A and MCP carriage: the request digest over decoded octets, the envelope's "
             "request digest, media types, and classification by the reply alone.", carriage_cases(),

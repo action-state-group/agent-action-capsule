@@ -21,8 +21,8 @@
   "files": [
     {
       "path": "carriage.json",
-      "sha256": "cf0110b6eeec2afa204d32bfce41ff031870ec8b2b94c8382700ec94cb450f49",
-      "count": 15
+      "sha256": "e2b88c36ef24a243d3a55ddc6b5c5917320b212c3d23e8569ddda740151f847e",
+      "count": 21
     },
     {
       "path": "carries.json",
@@ -31,7 +31,7 @@
     },
     {
       "path": "categories.json",
-      "sha256": "11f3320d2be105b5699934bc4b2e77f086359ade1b80b20654510683c592184a",
+      "sha256": "cfa98aa49c455cb4046613b3fe1bc01de45a48e4c31a1cae4b86912fe340df53",
       "count": 14
     },
     {

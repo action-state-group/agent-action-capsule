@@ -612,18 +612,21 @@ sets and registers none.</t>
         <t>[[EDITOR: open for a later revision: the registry that defines category
 sets and their names; what a responder declares for a set or a name it
 does not recognize; and whether the order of <tt>names</tt> carries meaning.]]</t>
-        <t>A <tt>categories</tt> value that is not a map, lacks either member, has a member
-of the wrong type, or has an empty or duplicated <tt>names</tt> is malformed,
-and the request is refused with reason <tt>request_malformed</tt>.</t>
+        <t>Implementing <tt>categories</tt> is <bcp14>OPTIONAL</bcp14> for a responder. A responder that
+implements it treats a <tt>categories</tt> value that is not a map, lacks either
+member, has a member of the wrong type, or has an empty or duplicated
+<tt>names</tt> as malformed, and refuses the request with reason
+<tt>request_malformed</tt>. Names are compared as exact strings.</t>
         <t>The field asks for a declaration, nothing else. It does not change the
 <tt>subject</tt>, it does not change <tt>coverage</tt> (<xref target="coverage"/>), and it does not
 change which records are served. A declaration states what the responder
 says it offers. It is not a proof that the responder offers all of it
 (<xref target="security"/>).</t>
         <t>A responder that does not implement <tt>categories</tt> ignores it, as it
-ignores any field it does not understand (<xref target="request"/>). Its artifact then
-carries no declaration. A requester <bcp14>MUST NOT</bcp14> read the missing declaration
-as a statement about any category.</t>
+ignores any field it does not understand (<xref target="request"/>), malformed or not.
+Its artifact then carries no declaration. A requester <bcp14>MUST NOT</bcp14> rely on
+<tt>categories</tt> being understood, and <bcp14>MUST NOT</bcp14> read a missing declaration as
+a statement about any category.</t>
       </section>
     </section>
     <section anchor="response">
@@ -682,9 +685,10 @@ deployment's evidence mechanism already uses, covering at least items
 anchor.</t>
           </li>
         </ol>
-        <t>Items 4 to 6 <bcp14>MUST</bcp14> be present. They bind one answer to one instance of asking. Two envelopes for
-the same subject under the same anchor differ in the request digest and
-the issuance time, and name the same artifact digest. The artifact is
+        <t>Items 4 to 6 <bcp14>MUST</bcp14> be present. They bind one answer to one instance of
+asking. Two envelopes for the same subject under the same anchor name the
+same artifact digest; envelopes answering requests with different bytes,
+for example different nonces (<xref target="nonce"/>), differ in the request digest. The artifact is
 caller-invariant (<xref target="invariance"/>); the envelope is not, and is not meant
 to be. A requester that holds the bytes it sent, or their digest
 (<xref target="request-recording"/>), can check that an envelope answers its request
@@ -885,7 +889,13 @@ requester's identity, the transport binding used, or any other property of
 the request. Formally: the artifact <bcp14>MUST</bcp14> be a deterministic function of
 (subject, resolved coverage anchor, derivation if present, categories if
 present and honored (<xref target="categories"/>)), and <bcp14>MUST NOT</bcp14> be a function of the
-requester, its principal reference (<xref target="principal"/>), or the channel.</t>
+requester, its principal reference (<xref target="principal"/>), or the channel. Two
+requests that differ in <tt>derivation</tt>, or in a <tt>categories</tt> value the
+responder honors, ask different questions, and their artifacts are not
+compared. A responder that honors <tt>categories</tt> <bcp14>MUST</bcp14> honor it alike for
+every requester that sends the same value; honoring it for some
+requesters and not others makes the artifact a function of the
+requester.</t>
       <t>Under <tt>expected_pin</tt> the resolved anchor is fixed by the requester, so two
 requesters pinning the same anchor and naming the same subject <bcp14>MUST</bcp14> receive
 identical bytes. Under <tt>min_freshness</tt> the responder selects the anchor;
@@ -1020,9 +1030,9 @@ to verify — a consistency proof that does not chain, a receipt that does
 not cover its checkpoint — is treated as an unverifiable artifact
 (<xref target="discipline"/>).</t>
         <t>The derivation registry and definition format for other computations are
-expected to grow in a subsequent version. [[EDITOR: whether a second
-derivation, the result of a sampled recomputation of a subject by a third
-party, is registered is open.]]</t>
+expected to grow in a subsequent version. [[EDITOR: open: whether to register a
+second derivation, the result of a sampled recomputation of a subject by
+a third party.]]</t>
       </section>
     </section>
     <section anchor="retention">
@@ -1140,10 +1150,12 @@ CBOR (<xref section="4.2" sectionFormat="of" target="RFC8949"/>) everywhere, as 
 stream binding requires.</t>
           </li>
           <li>
-            <t><strong>Same encoding back.</strong> A responder writes the reply in the encoding
-of the request and labels it with the request's media type:
-<tt>application/cbor</tt> for deterministic CBOR or <tt>application/json</tt> for
-JCS <xref target="RFC8785"/>, compared as exact strings with no parameters.</t>
+            <t><strong>Two media types, same encoding back.</strong> A request is labeled with
+one of two media types: <tt>application/cbor</tt> for deterministic CBOR or
+<tt>application/json</tt> for JCS <xref target="RFC8785"/>, compared as exact strings with
+no parameters. Bytes labeled with any other media type are not a
+request. A responder writes the reply in the encoding of the request
+and labels it with the request's media type.</t>
           </li>
           <li>
             <t><strong>Carriage is not request.</strong> Nothing a carriage adds is part of the
@@ -1172,7 +1184,8 @@ in the carriage's reply position leaves the request pending
           </li>
           <li>
             <t><strong>Each reply on its own.</strong> Each distinct reply is classified and
-verified on its own. Two replies to one request digest, over one
+verified on its own; a reply delivered more than once under the same
+carriage identifier is one reply. Two replies to one request digest, over one
 carriage or several, are compared as any two artifacts are
 (<xref target="invariance"/>).</t>
           </li>
@@ -1180,7 +1193,9 @@ carriage or several, are compared as any two artifacts are
       </section>
       <section anchor="a2a-binding">
         <name>A2A Binding</name>
-        <t>This binding uses A2A version 1.0.1 (<xref target="A2A"/>). Field names are A2A's.</t>
+        <t>This binding uses A2A version 1.0.1 (<xref target="A2A"/>). Field names are A2A's.
+A2A's JSON bindings write the bytes of a <tt>raw</tt> part as base64 with
+padding (<xref section="4" sectionFormat="of" target="RFC4648"/>).</t>
         <t><strong>Declaration.</strong> A responder that carries this interaction over A2A
 lists one extension in its Agent Card's <tt>capabilities.extensions</tt>, with
 <tt>uri</tt> exactly
@@ -1191,23 +1206,47 @@ URI. The Agent Card <bcp14>SHOULD</bcp14> list <tt>application/cbor</tt> and
 <tt>application/json</tt> among its default input and output modes.</t>
         <t><strong>Request.</strong> The request is one <tt>Message</tt> with role user, whose <tt>parts</tt>
 hold exactly one <tt>Part</tt> whose <tt>raw</tt> is the request bytes and whose
-<tt>mediaType</tt> is the request's media type, and whose <tt>extensions</tt> contain
-the extension URI. The <tt>Message</tt> <bcp14>MUST NOT</bcp14> carry a <tt>taskId</tt>, so that each
-request starts its own task. A <tt>Message</tt> that holds the request in any
-other form (a <tt>data</tt> or <tt>text</tt> part, metadata, or a <tt>raw</tt> part of any
-other media type) carries no request bytes to digest. It is not a
-request under this binding, and the responder <bcp14>MUST NOT</bcp14> answer it with an
-artifact response or a refusal.</t>
-        <t><strong>Reply.</strong> The responder returns a <tt>Task</tt>. Its reply is one A2A
-<tt>Artifact</tt> whose <tt>extensions</tt> contain the extension URI, with exactly
-one <tt>Part</tt> whose <tt>raw</tt> is the reply bytes and whose <tt>mediaType</tt> is that
-of the request. An A2A <tt>Artifact</tt> is a container in A2A's task model;
-it is not the evidence artifact, and none of its own fields is signed
-or verified. Both an artifact response and a refusal leave the task
-completed. A task that is rejected, fails, or is canceled without a
-reply <tt>Artifact</tt> is the responder sending no reply; it is never a
-refusal. A task still submitted, working, or waiting for input or
-authorization with no reply <tt>Artifact</tt> is pending.</t>
+<tt>mediaType</tt> is one of the two media types of <xref target="carriage"/>, and whose
+<tt>extensions</tt> contain the extension URI. The requester <bcp14>MUST</bcp14> send A2A
+version <tt>1.0</tt> and list the extension URI in A2A's extensions service
+parameter; without a version, A2A reads the request as an earlier
+protocol version. The <tt>Message</tt> <bcp14>MUST NOT</bcp14> carry a <tt>taskId</tt>, so that each
+request starts its own task. If the requester sets accepted output
+modes, they <bcp14>MUST</bcp14> include the request's media type. A <tt>Message</tt> that
+holds the request in any other form (a <tt>data</tt> or <tt>text</tt> part, metadata,
+or a <tt>raw</tt> part of another media type) carries no request bytes to
+digest. It is not a request under this binding, and the responder <bcp14>MUST
+NOT</bcp14> answer it with an artifact response or a refusal.</t>
+        <t><strong>Reply.</strong> The responder <bcp14>MUST</bcp14> return a <tt>Task</tt>, not a direct <tt>Message</tt>.
+Its reply is one A2A <tt>Artifact</tt> whose <tt>extensions</tt> contain the extension
+URI, with exactly one <tt>Part</tt> whose <tt>raw</tt> is the reply bytes and whose
+<tt>mediaType</tt> is that of the request. When the responder streams, it <bcp14>MUST</bcp14>
+send that <tt>Artifact</tt> whole, in one update that neither appends to an
+earlier one nor is followed by another chunk. Artifacts with the same
+<tt>artifactId</tt> are one reply. An A2A <tt>Artifact</tt> is a container in A2A's
+task model; it is not the evidence artifact, and none of its own fields
+is signed or verified. Both an artifact response and a refusal leave the
+task completed. A follow-up <tt>Message</tt> that continues an interrupted task
+carries no request bytes and is carriage (<xref target="carriage"/> rule 4).</t>
+        <t>The requester classifies a task by its reply <tt>Artifact</tt>, whatever the
+task state:</t>
+        <ul spacing="normal">
+          <li>
+            <t>a reply <tt>Artifact</tt> of the form above is a reply;</t>
+          </li>
+          <li>
+            <t>a reply <tt>Artifact</tt> of any other form is not a reply;</t>
+          </li>
+          <li>
+            <t>with no reply <tt>Artifact</tt>, a task that is submitted, working, waiting
+for input or authorization, or in an unspecified state is pending;</t>
+          </li>
+          <li>
+            <t>with no reply <tt>Artifact</tt>, a task that is completed, rejected, failed,
+or canceled, an A2A error, and a direct <tt>Message</tt> are the responder
+sending no reply. None of them is a refusal.</t>
+          </li>
+        </ul>
       </section>
       <section anchor="mcp-binding">
         <name>MCP Binding</name>
@@ -1217,19 +1256,29 @@ MCP's.</t>
 tools under exactly these names: <tt>evidence_manifest</tt>, which takes no
 arguments and whose <tt>structuredContent</tt> is the responder's manifest
 (<xref target="transports"/>), and <tt>evidence_request</tt>.</t>
-        <t><strong>Request.</strong> The arguments of <tt>evidence_request</tt> are <tt>request</tt>, the
-request bytes in base64url without padding (<xref section="5" sectionFormat="of" target="RFC4648"/>),
-and <tt>media_type</tt>, the request's media type. Arguments that do not have
-this form carry no request bytes to digest, and the responder <bcp14>MUST NOT</bcp14>
-answer them with an artifact response or a refusal. Arguments that have
-this form but decode to bytes that are not a well-formed request are a
-request, and are refused with reason <tt>request_malformed</tt>.</t>
-        <t><strong>Reply.</strong> Both an artifact response and a refusal are returned as a tool
-result whose <tt>structuredContent</tt> is a map with <tt>reply</tt>, the reply bytes
-in base64url without padding, and <tt>media_type</tt>, that of the request. A
-requester reads only <tt>structuredContent.reply</tt>, whatever the result's
-error flag says. A result without one, a protocol error, and an unknown
-tool are not a reply.</t>
+        <t><strong>Request.</strong> The arguments of <tt>evidence_request</tt> are exactly two members:
+<tt>request</tt>, the request bytes in base64url without padding
+(<xref section="5" sectionFormat="of" target="RFC4648"/>), and <tt>media_type</tt>, one of the two media types
+of <xref target="carriage"/>. The tool's input schema admits no other member. The
+<tt>request</tt> member <bcp14>MUST NOT</bcp14> be annotated to be copied into an HTTP header,
+since that would expose the request to intermediaries (<xref target="privacy"/>).
+Arguments that do not have this form (a member missing or extra,
+<tt>request</tt> not base64url, another <tt>media_type</tt>) carry no request bytes to
+digest, and the responder <bcp14>MUST NOT</bcp14> answer them with an artifact response
+or a refusal. Arguments that have this form but decode to bytes that are
+not a well-formed request are a request, and are refused with reason
+<tt>request_malformed</tt>.</t>
+        <t><strong>Reply.</strong> Both an artifact response and a refusal are returned as a
+complete tool result, with the error flag false, whose
+<tt>structuredContent</tt> is a map with <tt>reply</tt>, the reply bytes in base64url
+without padding, and <tt>media_type</tt>, that of the request. A requester
+reads only <tt>structuredContent</tt>: a <tt>reply</tt> in base64url with the
+request's <tt>media_type</tt> is the reply, whatever the error flag says. A
+result asking for further input, with no reply yet, leaves the request
+pending, and a retry <bcp14>MUST</bcp14> carry the same <tt>request</tt> and <tt>media_type</tt>;
+different bytes are a different request. Anything else (a result without
+such a <tt>reply</tt>, a protocol error, an unknown tool) is not a reply, and
+is never a refusal, whatever its text says.</t>
       </section>
     </section>
     <section anchor="security">
@@ -1557,6 +1606,18 @@ set or a reference to it, and a reference. The initial contents are:</t>
           <seriesInfo name="RFC" value="8949"/>
           <seriesInfo name="DOI" value="10.17487/RFC8949"/>
         </reference>
+        <reference anchor="RFC4648">
+          <front>
+            <title>The Base16, Base32, and Base64 Data Encodings</title>
+            <author fullname="S. Josefsson" initials="S." surname="Josefsson"/>
+            <date month="October" year="2006"/>
+            <abstract>
+              <t>This document describes the commonly used base 64, base 32, and base 16 encoding schemes. It also discusses the use of line-feeds in encoded data, use of padding in encoded data, use of non-alphabet characters in encoded data, use of different encoding alphabets, and canonical encodings. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4648"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4648"/>
+        </reference>
       </references>
       <references anchor="sec-informative-references">
         <name>Informative References</name>
@@ -1643,18 +1704,6 @@ set or a reference to it, and a reference. The initial contents are:</t>
             <date year="2026" month="July" day="28"/>
           </front>
         </reference>
-        <reference anchor="RFC4648">
-          <front>
-            <title>The Base16, Base32, and Base64 Data Encodings</title>
-            <author fullname="S. Josefsson" initials="S." surname="Josefsson"/>
-            <date month="October" year="2006"/>
-            <abstract>
-              <t>This document describes the commonly used base 64, base 32, and base 16 encoding schemes. It also discusses the use of line-feeds in encoded data, use of padding in encoded data, use of non-alphabet characters in encoded data, use of different encoding alphabets, and canonical encodings. [STANDARDS-TRACK]</t>
-            </abstract>
-          </front>
-          <seriesInfo name="RFC" value="4648"/>
-          <seriesInfo name="DOI" value="10.17487/RFC4648"/>
-        </reference>
         <reference anchor="I-D.mih-zhang-agent-disclosure-bundle">
           <front>
             <title>AAC Evidence Bundle</title>
@@ -1671,7 +1720,7 @@ set or a reference to it, and a reference. The initial contents are:</t>
         </reference>
       </references>
     </references>
-    <?line 1377?>
+    <?line 1418?>
 
 <section anchor="field-evidence">
       <name>Example Deployments</name>
@@ -1796,21 +1845,29 @@ digest, and the resolved anchor.</t>
         </li>
         <li>
           <t>New <xref target="categories"/>: the <bcp14>OPTIONAL</bcp14> <tt>categories</tt> request field, a category
-set identifier and category names. <xref target="invariance"/> adds it to the inputs
-of the artifact when honored. <tt>coverage</tt> is unchanged.</t>
+set identifier and category names, <bcp14>OPTIONAL</bcp14> for a responder to
+implement. <xref target="invariance"/> adds it to the inputs of the artifact when
+honored, and requires a responder to honor it alike for every
+requester. <tt>coverage</tt> is unchanged.</t>
         </li>
         <li>
           <t><xref target="transports"/>: new carriage rules (<xref target="carriage"/>) and two bindings, A2A
-(<xref target="a2a-binding"/>) and MCP (<xref target="mcp-binding"/>).</t>
+(<xref target="a2a-binding"/>) and MCP (<xref target="mcp-binding"/>). The peer-to-peer stream
+binding's message-oriented sentence now maps only the outcomes that
+have a reply to reply types; -00 said "the three outcomes as three
+reply types", but absence has no reply.</t>
         </li>
         <li>
           <t>Security and Privacy Considerations: a category declaration declares
 and does not prove; carriage metadata reveals the ask.</t>
         </li>
         <li>
-          <t>References: A2A, MCP, and RFC 4648 added as informative; the
-Checkpointed Local Log and Evidence Bundle references name their
-current revisions.</t>
+          <t>References: RFC 4648 added as normative, A2A and MCP as informative.
+The Checkpointed Local Log and Evidence Bundle references name their
+posted revisions; the Evidence Bundle is cited under its current name,
+draft-mih-zhang-agent-disclosure-bundle (posted -00 cited it under an
+earlier anchor). Evidence Layer and Agent Action Capsule references,
+cited by the text added in <xref target="carries"/>, are new.</t>
         </li>
       </ul>
     </section>

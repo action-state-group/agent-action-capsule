@@ -26,6 +26,7 @@ normative:
   RFC8174:
   RFC8785:
   RFC8949:
+  RFC4648:
 
 informative:
   RFC9942:
@@ -70,7 +71,6 @@ informative:
     author:
       - org: Model Context Protocol
     date: 2026-07-28
-  RFC4648:
   I-D.mih-zhang-agent-disclosure-bundle:
     title: "AAC Evidence Bundle"
     seriesinfo:
@@ -566,9 +566,11 @@ sets and registers none.
 sets and their names; what a responder declares for a set or a name it
 does not recognize; and whether the order of `names` carries meaning.]]
 
-A `categories` value that is not a map, lacks either member, has a member
-of the wrong type, or has an empty or duplicated `names` is malformed,
-and the request is refused with reason `request_malformed`.
+Implementing `categories` is OPTIONAL for a responder. A responder that
+implements it treats a `categories` value that is not a map, lacks either
+member, has a member of the wrong type, or has an empty or duplicated
+`names` as malformed, and refuses the request with reason
+`request_malformed`. Names are compared as exact strings.
 
 The field asks for a declaration, nothing else. It does not change the
 `subject`, it does not change `coverage` ({{coverage}}), and it does not
@@ -577,9 +579,10 @@ says it offers. It is not a proof that the responder offers all of it
 ({{security}}).
 
 A responder that does not implement `categories` ignores it, as it
-ignores any field it does not understand ({{request}}). Its artifact then
-carries no declaration. A requester MUST NOT read the missing declaration
-as a statement about any category.
+ignores any field it does not understand ({{request}}), malformed or not.
+Its artifact then carries no declaration. A requester MUST NOT rely on
+`categories` being understood, and MUST NOT read a missing declaration as
+a statement about any category.
 
 # Interaction Outcomes {#response}
 
@@ -628,9 +631,10 @@ The envelope carries:
    4 and 5, the artifact's digest, and the identification of the resolved
    anchor.
 
-Items 4 to 6 MUST be present. They bind one answer to one instance of asking. Two envelopes for
-the same subject under the same anchor differ in the request digest and
-the issuance time, and name the same artifact digest. The artifact is
+Items 4 to 6 MUST be present. They bind one answer to one instance of
+asking. Two envelopes for the same subject under the same anchor name the
+same artifact digest; envelopes answering requests with different bytes,
+for example different nonces ({{nonce}}), differ in the request digest. The artifact is
 caller-invariant ({{invariance}}); the envelope is not, and is not meant
 to be. A requester that holds the bytes it sent, or their digest
 ({{request-recording}}), can check that an envelope answers its request
@@ -794,7 +798,13 @@ requester's identity, the transport binding used, or any other property of
 the request. Formally: the artifact MUST be a deterministic function of
 (subject, resolved coverage anchor, derivation if present, categories if
 present and honored ({{categories}})), and MUST NOT be a function of the
-requester, its principal reference ({{principal}}), or the channel.
+requester, its principal reference ({{principal}}), or the channel. Two
+requests that differ in `derivation`, or in a `categories` value the
+responder honors, ask different questions, and their artifacts are not
+compared. A responder that honors `categories` MUST honor it alike for
+every requester that sends the same value; honoring it for some
+requesters and not others makes the artifact a function of the
+requester.
 
 Under `expected_pin` the resolved anchor is fixed by the requester, so two
 requesters pinning the same anchor and naming the same subject MUST receive
@@ -930,9 +940,9 @@ not cover its checkpoint — is treated as an unverifiable artifact
 ({{discipline}}).
 
 The derivation registry and definition format for other computations are
-expected to grow in a subsequent version. [[EDITOR: whether a second
-derivation, the result of a sampled recomputation of a subject by a third
-party, is registered is open.]]
+expected to grow in a subsequent version. [[EDITOR: open: whether to register a
+second derivation, the result of a sampled recomputation of a subject by
+a third party.]]
 
 # Retention Commitments {#retention}
 
@@ -1045,10 +1055,12 @@ other message-oriented binding.
    request over more than one carriage SHOULD encode it in deterministic
    CBOR ({{Section 4.2 of RFC8949}}) everywhere, as the peer-to-peer
    stream binding requires.
-3. **Same encoding back.** A responder writes the reply in the encoding
-   of the request and labels it with the request's media type:
-   `application/cbor` for deterministic CBOR or `application/json` for
-   JCS {{RFC8785}}, compared as exact strings with no parameters.
+3. **Two media types, same encoding back.** A request is labeled with
+   one of two media types: `application/cbor` for deterministic CBOR or
+   `application/json` for JCS {{RFC8785}}, compared as exact strings with
+   no parameters. Bytes labeled with any other media type are not a
+   request. A responder writes the reply in the encoding of the request
+   and labels it with the request's media type.
 4. **Carriage is not request.** Nothing a carriage adds is part of the
    request: message and task identifiers, context identifiers, metadata,
    protocol-version and extension headers, follow-up messages in an
@@ -1069,13 +1081,16 @@ other message-oriented binding.
    ({{pending}}) and, once the window closes, is recorded as absence
    ({{absence}}).
 7. **Each reply on its own.** Each distinct reply is classified and
-   verified on its own. Two replies to one request digest, over one
+   verified on its own; a reply delivered more than once under the same
+   carriage identifier is one reply. Two replies to one request digest, over one
    carriage or several, are compared as any two artifacts are
    ({{invariance}}).
 
 ## A2A Binding {#a2a-binding}
 
 This binding uses A2A version 1.0.1 ({{A2A}}). Field names are A2A's.
+A2A's JSON bindings write the bytes of a `raw` part as base64 with
+padding ({{Section 4 of RFC4648}}).
 
 **Declaration.** A responder that carries this interaction over A2A
 lists one extension in its Agent Card's `capabilities.extensions`, with
@@ -1088,24 +1103,40 @@ URI. The Agent Card SHOULD list `application/cbor` and
 
 **Request.** The request is one `Message` with role user, whose `parts`
 hold exactly one `Part` whose `raw` is the request bytes and whose
-`mediaType` is the request's media type, and whose `extensions` contain
-the extension URI. The `Message` MUST NOT carry a `taskId`, so that each
-request starts its own task. A `Message` that holds the request in any
-other form (a `data` or `text` part, metadata, or a `raw` part of any
-other media type) carries no request bytes to digest. It is not a
-request under this binding, and the responder MUST NOT answer it with an
-artifact response or a refusal.
+`mediaType` is one of the two media types of {{carriage}}, and whose
+`extensions` contain the extension URI. The requester MUST send A2A
+version `1.0` and list the extension URI in A2A's extensions service
+parameter; without a version, A2A reads the request as an earlier
+protocol version. The `Message` MUST NOT carry a `taskId`, so that each
+request starts its own task. If the requester sets accepted output
+modes, they MUST include the request's media type. A `Message` that
+holds the request in any other form (a `data` or `text` part, metadata,
+or a `raw` part of another media type) carries no request bytes to
+digest. It is not a request under this binding, and the responder MUST
+NOT answer it with an artifact response or a refusal.
 
-**Reply.** The responder returns a `Task`. Its reply is one A2A
-`Artifact` whose `extensions` contain the extension URI, with exactly
-one `Part` whose `raw` is the reply bytes and whose `mediaType` is that
-of the request. An A2A `Artifact` is a container in A2A's task model;
-it is not the evidence artifact, and none of its own fields is signed
-or verified. Both an artifact response and a refusal leave the task
-completed. A task that is rejected, fails, or is canceled without a
-reply `Artifact` is the responder sending no reply; it is never a
-refusal. A task still submitted, working, or waiting for input or
-authorization with no reply `Artifact` is pending.
+**Reply.** The responder MUST return a `Task`, not a direct `Message`.
+Its reply is one A2A `Artifact` whose `extensions` contain the extension
+URI, with exactly one `Part` whose `raw` is the reply bytes and whose
+`mediaType` is that of the request. When the responder streams, it MUST
+send that `Artifact` whole, in one update that neither appends to an
+earlier one nor is followed by another chunk. Artifacts with the same
+`artifactId` are one reply. An A2A `Artifact` is a container in A2A's
+task model; it is not the evidence artifact, and none of its own fields
+is signed or verified. Both an artifact response and a refusal leave the
+task completed. A follow-up `Message` that continues an interrupted task
+carries no request bytes and is carriage ({{carriage}} rule 4).
+
+The requester classifies a task by its reply `Artifact`, whatever the
+task state:
+
+- a reply `Artifact` of the form above is a reply;
+- a reply `Artifact` of any other form is not a reply;
+- with no reply `Artifact`, a task that is submitted, working, waiting
+  for input or authorization, or in an unspecified state is pending;
+- with no reply `Artifact`, a task that is completed, rejected, failed,
+  or canceled, an A2A error, and a direct `Message` are the responder
+  sending no reply. None of them is a refusal.
 
 ## MCP Binding {#mcp-binding}
 
@@ -1117,20 +1148,30 @@ tools under exactly these names: `evidence_manifest`, which takes no
 arguments and whose `structuredContent` is the responder's manifest
 ({{transports}}), and `evidence_request`.
 
-**Request.** The arguments of `evidence_request` are `request`, the
-request bytes in base64url without padding ({{Section 5 of RFC4648}}),
-and `media_type`, the request's media type. Arguments that do not have
-this form carry no request bytes to digest, and the responder MUST NOT
-answer them with an artifact response or a refusal. Arguments that have
-this form but decode to bytes that are not a well-formed request are a
-request, and are refused with reason `request_malformed`.
+**Request.** The arguments of `evidence_request` are exactly two members:
+`request`, the request bytes in base64url without padding
+({{Section 5 of RFC4648}}), and `media_type`, one of the two media types
+of {{carriage}}. The tool's input schema admits no other member. The
+`request` member MUST NOT be annotated to be copied into an HTTP header,
+since that would expose the request to intermediaries ({{privacy}}).
+Arguments that do not have this form (a member missing or extra,
+`request` not base64url, another `media_type`) carry no request bytes to
+digest, and the responder MUST NOT answer them with an artifact response
+or a refusal. Arguments that have this form but decode to bytes that are
+not a well-formed request are a request, and are refused with reason
+`request_malformed`.
 
-**Reply.** Both an artifact response and a refusal are returned as a tool
-result whose `structuredContent` is a map with `reply`, the reply bytes
-in base64url without padding, and `media_type`, that of the request. A
-requester reads only `structuredContent.reply`, whatever the result's
-error flag says. A result without one, a protocol error, and an unknown
-tool are not a reply.
+**Reply.** Both an artifact response and a refusal are returned as a
+complete tool result, with the error flag false, whose
+`structuredContent` is a map with `reply`, the reply bytes in base64url
+without padding, and `media_type`, that of the request. A requester
+reads only `structuredContent`: a `reply` in base64url with the
+request's `media_type` is the reply, whatever the error flag says. A
+result asking for further input, with no reply yet, leaves the request
+pending, and a retry MUST carry the same `request` and `media_type`;
+different bytes are a different request. Anything else (a result without
+such a `reply`, a protocol error, an unknown tool) is not a reply, and
+is never a refusal, whatever its text says.
 
 # Security Considerations {#security}
 
@@ -1452,15 +1493,23 @@ that the two can cite each other without either defining the other.
   digest, an issuance time, and a signature covering both, the artifact
   digest, and the resolved anchor.
 - New {{categories}}: the OPTIONAL `categories` request field, a category
-  set identifier and category names. {{invariance}} adds it to the inputs
-  of the artifact when honored. `coverage` is unchanged.
+  set identifier and category names, OPTIONAL for a responder to
+  implement. {{invariance}} adds it to the inputs of the artifact when
+  honored, and requires a responder to honor it alike for every
+  requester. `coverage` is unchanged.
 - {{transports}}: new carriage rules ({{carriage}}) and two bindings, A2A
-  ({{a2a-binding}}) and MCP ({{mcp-binding}}).
+  ({{a2a-binding}}) and MCP ({{mcp-binding}}). The peer-to-peer stream
+  binding's message-oriented sentence now maps only the outcomes that
+  have a reply to reply types; -00 said "the three outcomes as three
+  reply types", but absence has no reply.
 - Security and Privacy Considerations: a category declaration declares
   and does not prove; carriage metadata reveals the ask.
-- References: A2A, MCP, and RFC 4648 added as informative; the
-  Checkpointed Local Log and Evidence Bundle references name their
-  current revisions.
+- References: RFC 4648 added as normative, A2A and MCP as informative.
+  The Checkpointed Local Log and Evidence Bundle references name their
+  posted revisions; the Evidence Bundle is cited under its current name,
+  draft-mih-zhang-agent-disclosure-bundle (posted -00 cited it under an
+  earlier anchor). Evidence Layer and Agent Action Capsule references,
+  cited by the text added in {{carries}}, are new.
 
 # Acknowledgments {#acknowledgments}
 {:numbered="false"}
