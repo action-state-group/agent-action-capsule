@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Evidence Bundle producer in each implementation's `bundle` module, beside the verifier: Python
+  `build_evidence_bundle` / `build_unproven_bundle` / `proof_source_from_cll`, Go
+  `BuildEvidenceBundle` / `BuildUnprovenBundle` / `ProofSourceFromCLL`, TypeScript
+  `buildEvidenceBundle` / `buildUnprovenBundle` / `proofSourceFromCll`, Rust
+  `build_evidence_bundle` / `build_unproven_bundle` / `proof_source_from_cll` (feature `strict`).
+  The producer assembles an `evidence-bundle/v2` from a `ProofSource` (the log's signed COSE
+  checkpoint, its leaves, records by Capsule ID, inclusion and range proofs) using the verifier's
+  citation-closure rule, holds no key, and refuses any result strict verification calls INVALID.
+  The interval is required: a range proof from a chosen seq to the checkpoint tip, or explicitly
+  none (producer-selected records). `proof_source_from_cll` adapts a CLL backend and a record
+  store; `build_unproven_bundle` builds the form with no log proof. Dependency floors: the Python
+  `bundle` extra requires `checkpointed-local-log>=0.6.0` and the Rust `cll` dependency `0.3.1`,
+  the first releases with the CLL backend interface (`load_cll`).
 - Go: an evidence-interop/0 verifier and the Personal-Agent History Profile v0 Basic level
   evaluator, ported from the Python reference. `evidencerequest.Verifier.Verify` checks a set of
   exchanges as `InteropVerifier.verify` does: the §7.2 envelope and refusal properties, absence
