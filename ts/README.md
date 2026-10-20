@@ -58,7 +58,8 @@ and a record past the checkpoint are refused by name. A missing citation or an
 unsigned record is stated, not refused, and reads INCOMPLETE.
 `buildUnprovenBundle(records, { root })` is the form with no log proof, for
 Capsules that belong to no log. `buildEvidenceBundle` needs CLL and Node, where
-the checkpoint verifier runs.
+the checkpoint verifier runs; `buildUnprovenBundle` reads no checkpoint, so it
+runs wherever strict `verifyBundle` does, the browser included.
 
 `@action-state-group/agent-action-capsule/settlement` exports
 `verifySettlements`, which derives the states of

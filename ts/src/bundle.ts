@@ -1007,31 +1007,9 @@ function parseCertificate(
     checkpoint.root !== rootHex
   )
     return undefined;
-  const range = object(certificate.range_proof)
-      ? certificate.range_proof
-      : undefined,
-    fromSeq = range?.from_seq,
-    toSeq = range?.to_seq,
-    size = range?.size,
-    fromIndex = range?.from_index,
-    toIndex = range?.to_index,
-    witness = range?.witness;
-  if (
-    !integer(fromSeq) ||
-    !integer(toSeq) ||
-    !integer(size) ||
-    !integer(fromIndex) ||
-    !integer(toIndex) ||
-    fromSeq < 1 ||
-    toSeq < fromSeq ||
-    size < 0 ||
-    fromIndex < 0 ||
-    toIndex < fromIndex ||
-    !Array.isArray(witness) ||
-    !witness.every(isHex64) ||
-    checkpoint.mmr_size !== size
-  )
-    return undefined;
+  const range = parseRangeProof(certificate.range_proof);
+  if (!range || checkpoint.mmr_size !== range.size) return undefined;
+  const { fromSeq, toSeq, size, fromIndex, toIndex, witness } = range;
   return {
     root: hex(rootHex),
     logId,
@@ -1055,6 +1033,41 @@ function parseCertificate(
       },
     },
   };
+}
+/** A certificate's `range_proof` members, or undefined when malformed. */
+function parseRangeProof(raw: unknown):
+  | {
+      fromSeq: number;
+      toSeq: number;
+      size: number;
+      fromIndex: number;
+      toIndex: number;
+      witness: string[];
+    }
+  | undefined {
+  const range = object(raw) ? raw : undefined,
+    fromSeq = range?.from_seq,
+    toSeq = range?.to_seq,
+    size = range?.size,
+    fromIndex = range?.from_index,
+    toIndex = range?.to_index,
+    witness = range?.witness;
+  if (
+    !integer(fromSeq) ||
+    !integer(toSeq) ||
+    !integer(size) ||
+    !integer(fromIndex) ||
+    !integer(toIndex) ||
+    fromSeq < 1 ||
+    toSeq < fromSeq ||
+    size < 0 ||
+    fromIndex < 0 ||
+    toIndex < fromIndex ||
+    !Array.isArray(witness) ||
+    !witness.every(isHex64)
+  )
+    return undefined;
+  return { fromSeq, toSeq, size, fromIndex, toIndex, witness };
 }
 async function rangeValid(
   root: Uint8Array,
@@ -1981,7 +1994,9 @@ function checkOptions(
   extensions: Record<string, unknown>,
 ): void {
   if (!integer(closureDepth) || closureDepth < 0)
-    throw new BundleBuildError("closureDepth must be a non-negative integer");
+    throw new BundleBuildError(
+      "closureDepth must be a non-negative safe integer",
+    );
   if (
     payloadsMode !== undefined &&
     !PAYLOADS_MODES.includes(payloadsMode as "all")
@@ -2035,7 +2050,7 @@ async function closure(
   const found = new Map([[root, rootRecord]]),
     missing: string[] = [];
   let frontier = [root];
-  for (let level = 0; level < depth; level += 1) {
+  for (let level = 0; level < depth && frontier.length; level += 1) {
     const next: string[] = [];
     for (const source of frontier)
       for (const target of citations(found.get(source)!)) {
@@ -2085,10 +2100,75 @@ function completenessBlock(
   return {
     closure_depth: closureDepth,
     records_mode: missing.length ? "declared_incomplete" : "complete",
-    payloads_mode:
-      payloadsMode ?? (overlay && !unrevealed.length ? "all" : "selected"),
+    payloads_mode: payloadsMode ?? (unrevealed.length ? "selected" : "all"),
     suppressed_fields: suppressed,
     missing: [...missing],
+  };
+}
+
+const noCanonicalDigest = (detail?: string): BundleBuildError =>
+  new BundleBuildError(
+    `the bundle has no canonical digest: extensions and verification must hold only JSON that canonicalizes (no fractional numbers or integers beyond 2**53 - 1)${detail === undefined ? "" : `; ${detail}`}`,
+  );
+
+/**
+ * Refuse caller input that has no canonical form before anything copies or
+ * reads it: JCS, the bundle digest's own canonicalization, rejects fractional
+ * and unsafe numbers and nesting beyond its depth limit without recursing
+ * past it.
+ */
+function canonicalInput(input: Record<string, unknown>): void {
+  for (const [name, value] of Object.entries(input))
+    if (value !== undefined)
+      try {
+        jcs(value);
+      } catch (error) {
+        throw noCanonicalDigest(
+          `${name}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+}
+
+/** A source's inclusion proof, parsed as the verifier parses it. */
+function inclusionProofWire(seq: number, raw: unknown): BundleInclusionProof {
+  let proof: Proof | undefined;
+  try {
+    proof = parseProof(raw);
+  } catch {
+    proof = undefined; // a getter that throws, say
+  }
+  if (proof === undefined)
+    throw new BundleBuildError(
+      `the source's inclusion proof for seq ${seq} is malformed`,
+    );
+  return {
+    v: 1,
+    kind: "inclusion",
+    size: proof.size,
+    leaf_index: proof.leaf_index,
+    witness: [...proof.witness],
+    peaks_left: [...proof.peaks_left],
+    peaks_right: [...proof.peaks_right],
+  };
+}
+
+/** A source's range proof, parsed as the verifier parses it. */
+function rangeProofWire(raw: unknown): BundleRangeProof {
+  let range: ReturnType<typeof parseRangeProof>;
+  try {
+    range = parseRangeProof(raw);
+  } catch {
+    range = undefined;
+  }
+  if (range === undefined)
+    throw new BundleBuildError("the source's range proof is malformed");
+  return {
+    from_seq: range.fromSeq,
+    to_seq: range.toSeq,
+    size: range.size,
+    from_index: range.fromIndex,
+    to_index: range.toIndex,
+    witness: [...range.witness],
   };
 }
 
@@ -2119,6 +2199,9 @@ async function decodeRecord(
     throw new BundleBuildError(
       `record ${capsuleId}: the store returned a different capsule`,
     );
+  // Only a verified envelope may claim authorship: inline copies are dropped.
+  delete capsule.signature;
+  delete capsule.key_id;
   const envelope = stored.producerEnvelope ?? new Uint8Array();
   if (envelope.length) {
     const checked = await verifyProducerEnvelope(capsuleId, envelope);
@@ -2150,7 +2233,24 @@ export async function buildEvidenceBundle(
     throw new BundleBuildError(
       "building a Bundle needs @action-state-group/cll's checkpoint verifier, which runs in Node: install @action-state-group/cll",
     );
-  const { root, intervalFrom } = options;
+  const { root, intervalFrom, include = [], producerKey } = options;
+  if (!Array.isArray(include) || !include.every((id) => typeof id === "string"))
+    throw new BundleBuildError("include must be a list of Capsule IDs");
+  if (
+    producerKey !== undefined &&
+    (!(producerKey instanceof Uint8Array) || producerKey.length !== 32)
+  )
+    throw new BundleBuildError(
+      "producerKey must be a raw 32-byte Ed25519 public key",
+    );
+  for (const name of ["extensions", "verification"] as const)
+    if (options[name] !== undefined && !object(options[name]))
+      throw new BundleBuildError(`${name} must be a JSON object`);
+  canonicalInput({
+    disclosures: options.disclosures,
+    extensions: options.extensions,
+    verification: options.verification,
+  });
   const closureDepth = options.closureDepth ?? 2,
     suppressedFields = options.suppressedFields ?? [],
     disclosures = copyDisclosures(options.disclosures),
@@ -2209,7 +2309,7 @@ export async function buildEvidenceBundle(
   };
 
   const { found: carried, missing } = await closure(root, closureDepth, lookup);
-  for (const capsuleId of options.include ?? [])
+  for (const capsuleId of include)
     if (!carried.has(capsuleId)) {
       const record = await lookup(capsuleId);
       if (record === undefined)
@@ -2251,7 +2351,7 @@ export async function buildEvidenceBundle(
     certificate.body_digests = leaves
       .slice(intervalFrom - 1, tip)
       .map((value) => toHex(value));
-    certificate.range_proof = structuredClone(
+    certificate.range_proof = rangeProofWire(
       await source.rangeProof(intervalFrom),
     );
   }
@@ -2270,7 +2370,10 @@ export async function buildEvidenceBundle(
     const seq = seqOf.get(id)!;
     setMember(memberships, id, {
       log_coordinates: { log_id: signed.logId, seq, leaf_index: seq - 1 },
-      inclusion_proof: structuredClone(await source.inclusionProof(seq)),
+      inclusion_proof: inclusionProofWire(
+        seq,
+        await source.inclusionProof(seq),
+      ),
     });
   }
   certificate.memberships = memberships;
@@ -2303,16 +2406,8 @@ export async function buildEvidenceBundle(
     },
   };
   if (Object.keys(disclosures).length) bundle.disclosures = disclosures;
-  if (options.producerKey !== undefined) {
-    if (
-      !(options.producerKey instanceof Uint8Array) ||
-      options.producerKey.length !== 32
-    )
-      throw new BundleBuildError(
-        "producerKey must be a raw 32-byte Ed25519 public key",
-      );
-    extensions["producer-key/v1"] = { public_key: toHex(options.producerKey) };
-  }
+  if (producerKey !== undefined)
+    extensions["producer-key/v1"] = { public_key: toHex(producerKey) };
   if (Object.keys(extensions).length) bundle.extensions = extensions;
   if (options.verification !== undefined)
     bundle.verification = { ...options.verification };
@@ -2321,6 +2416,7 @@ export async function buildEvidenceBundle(
 
 async function selfChecked(bundle: Bundle): Promise<Bundle> {
   const result = await verifyBundle(bundle, { strict: true });
+  if (result.bundleDigest === undefined) throw noCanonicalDigest();
   if (result.strict.verdict === "INVALID") {
     const failed = result.strict.claims
       .filter((claim) => claim.status === "fail")
@@ -2346,6 +2442,7 @@ export async function buildUnprovenBundle(
   options: BuildUnprovenBundleOptions,
 ): Promise<Record<string, unknown>> {
   const { root } = options;
+  canonicalInput({ records, disclosures: options.disclosures });
   const closureDepth = options.closureDepth ?? 2,
     suppressedFields = options.suppressedFields ?? [],
     disclosures = copyDisclosures(options.disclosures);

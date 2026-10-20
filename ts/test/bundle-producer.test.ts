@@ -646,6 +646,318 @@ describe("refusals", () => {
   });
 });
 
+describe("round-1 review", () => {
+  /** A source every read of which fails: the refusal came first. */
+  const untouchable: ProofSource = {
+    checkpoint: () => Promise.reject(new Error("source read")),
+    leaves: () => Promise.reject(new Error("source read")),
+    record: () => Promise.reject(new Error("source read")),
+    inclusionProof: () => Promise.reject(new Error("source read")),
+    rangeProof: () => Promise.reject(new Error("source read")),
+  };
+  const deep = (levels: number): Obj => {
+    let value: Obj = {};
+    for (let level = 0; level < levels; level += 1) value = { n: value };
+    return value;
+  };
+
+  it("a bundle with no canonical digest is refused", async () => {
+    await refused(
+      buildEvidenceBundle(source, {
+        root: cid(0),
+        intervalFrom: 1,
+        extensions: { "example/notes": { n: 1.5 } },
+      }),
+      /no canonical digest/,
+    );
+    await refused(
+      buildEvidenceBundle(source, {
+        root: cid(0),
+        intervalFrom: 1,
+        verification: { count: 2 ** 60 },
+      }),
+      /no canonical digest/,
+    );
+  });
+
+  it.each([
+    ["a valid inline signature", "valid"],
+    ["a malformed inline signature", "malformed"],
+    ["only one of the two fields", "one"],
+  ] as const)(
+    "an empty envelope with %s is carried unsigned",
+    async (_, kind) => {
+      const a = await capsule(`inline-${kind}`);
+      const id = a.capsule_id as string;
+      const inline: Obj = { ...a };
+      if (kind === "valid") {
+        inline.signature = toHex(envelope(id));
+        inline.key_id = toHex(PRODUCER.publicKey);
+      } else if (kind === "malformed") {
+        inline.signature = "zz";
+        inline.key_id = toHex(PRODUCER.publicKey);
+      } else inline.key_id = toHex(PRODUCER.publicKey);
+      const store = new Records();
+      store.held.set(id, {
+        capsule: jcs(inline),
+        producerEnvelope: new Uint8Array(),
+      });
+      const bundle = await buildEvidenceBundle(await makeLog([id], store), {
+        root: id,
+        intervalFrom: 1,
+      });
+      const record = (bundle.records as Obj[])[0]!;
+      expect(record).not.toHaveProperty("signature");
+      expect(record).not.toHaveProperty("key_id");
+      expect((await claims(bundle)).signatures).toBe("withheld");
+      expect(await verdict(bundle)).toBe("INCOMPLETE");
+    },
+  );
+
+  it("the closure walk stops when nothing new is reached", async () => {
+    const bundle = await buildEvidenceBundle(source, {
+      root: cid(1),
+      intervalFrom: null,
+      closureDepth: Number.MAX_SAFE_INTEGER,
+    });
+    expect(ids(bundle)).toEqual([cid(0), cid(1)]);
+    const lone = await buildUnprovenBundle([caps[1]!], {
+      root: cid(1),
+      closureDepth: Number.MAX_SAFE_INTEGER,
+    });
+    expect((lone.completeness as Obj).missing).toEqual([cid(0)]);
+    for (const depth of [Number.MAX_SAFE_INTEGER + 1, 1.5, Infinity])
+      await refused(
+        buildEvidenceBundle(untouchable, {
+          root: cid(0),
+          intervalFrom: null,
+          closureDepth: depth,
+        }),
+        /closureDepth must be a non-negative safe integer/,
+      );
+  });
+
+  it("a derived payloadsMode is all when nothing committed is unrevealed", async () => {
+    // caps[1] commits to no payload: vacuously all, with no overlay.
+    const vacuous = await buildEvidenceBundle(source, {
+      root: cid(1),
+      intervalFrom: null,
+      closureDepth: 0,
+    });
+    expect((vacuous.completeness as Obj).payloads_mode).toBe("all");
+    const suppressed = await buildEvidenceBundle(source, {
+      root: cid(0),
+      intervalFrom: null,
+      closureDepth: 0,
+      suppressedFields: ["agent_input"],
+    });
+    expect((suppressed.completeness as Obj).payloads_mode).toBe("all");
+    expect(
+      (
+        (await buildUnprovenBundle([caps[1]!], { root: cid(1) }))
+          .completeness as Obj
+      ).payloads_mode,
+    ).toBe("all");
+  });
+
+  it("source proofs carry only their wire fields", async () => {
+    const padded: ProofSource = {
+      ...source,
+      inclusionProof: async (seq) => ({
+        ...(await source.inclusionProof(seq)),
+        extra: 1,
+        hook: () => 0,
+      }),
+      rangeProof: async (first) => ({
+        ...(await source.rangeProof(first)),
+        extra: 1,
+      }),
+    };
+    const bundle = await buildEvidenceBundle(padded, {
+      root: cid(2),
+      intervalFrom: 2,
+      closureDepth: 1,
+    });
+    const cert = bundle.completeness_certificate as Obj;
+    expect(Object.keys(cert.range_proof as Obj).sort()).toEqual([
+      "from_index",
+      "from_seq",
+      "size",
+      "to_index",
+      "to_seq",
+      "witness",
+    ]);
+    for (const member of Object.values(cert.memberships as Obj))
+      expect(
+        Object.keys(
+          (member as { inclusion_proof: Obj }).inclusion_proof,
+        ).sort(),
+      ).toEqual([
+        "kind",
+        "leaf_index",
+        "peaks_left",
+        "peaks_right",
+        "size",
+        "v",
+        "witness",
+      ]);
+    expect(await verdict(bundle)).toBe("VALID");
+  });
+
+  it("a malformed source proof is refused", async () => {
+    const throwing = Object.defineProperty({}, "v", {
+      enumerable: true,
+      get() {
+        throw new Error("getter");
+      },
+    });
+    const cases: [Partial<ProofSource>, RegExp][] = [
+      [
+        { inclusionProof: async () => "proof" as never },
+        /the source's inclusion proof for seq 3 is malformed/,
+      ],
+      [
+        { inclusionProof: async () => throwing as never },
+        /inclusion proof for seq 3 is malformed/,
+      ],
+      [{ rangeProof: async () => null as never }, /range proof is malformed/],
+      [
+        {
+          rangeProof: async (first) => ({
+            ...(await source.rangeProof(first)),
+            witness: [1] as never,
+          }),
+        },
+        /range proof is malformed/,
+      ],
+    ];
+    for (const [override, message] of cases)
+      await refused(
+        buildEvidenceBundle(
+          { ...source, ...override },
+          { root: cid(2), intervalFrom: 3, closureDepth: 0 },
+        ),
+        message,
+      );
+  });
+
+  it("a source that lies under a range is refused", async () => {
+    const corrupt = (hashes: string[]): void => {
+      hashes[0] = (hashes[0]![0] !== "0" ? "0" : "1") + hashes[0]!.slice(1);
+    };
+    const cases: [Partial<ProofSource>, number, RegExp][] = [
+      [
+        {
+          rangeProof: async (first) => {
+            const proof = await source.rangeProof(first);
+            const witness = [...proof.witness];
+            corrupt(witness);
+            return { ...proof, witness };
+          },
+        },
+        2,
+        /does not verify: .*range_proof_invalid/,
+      ],
+      [
+        {
+          leaves: async () => {
+            const [a, b, ...rest] = await source.leaves();
+            return [b!, a!, ...rest];
+          },
+        },
+        1,
+        /does not verify/,
+      ],
+      [
+        {
+          inclusionProof: async (seq) => {
+            const proof = await source.inclusionProof(seq);
+            const copy = {
+              ...proof,
+              witness: [...proof.witness],
+              peaks_left: [...proof.peaks_left],
+              peaks_right: [...proof.peaks_right],
+            };
+            const key = (
+              ["witness", "peaks_left", "peaks_right"] as const
+            ).find((name) => copy[name].length)!;
+            corrupt(copy[key]);
+            return copy;
+          },
+        },
+        1,
+        /does not verify: .*membership_proof_invalid/,
+      ],
+    ];
+    for (const [override, intervalFrom, message] of cases)
+      await refused(
+        buildEvidenceBundle(
+          { ...source, ...override },
+          { root: cid(2), intervalFrom, closureDepth: 3 - intervalFrom },
+        ),
+        message,
+      );
+  });
+
+  it("a record edited under its capsule_id is refused by name", async () => {
+    const edited = { ...caps[1]!, action_id: "edited" };
+    for (const intervalFrom of [1, null])
+      await refused(
+        buildEvidenceBundle(
+          {
+            ...source,
+            record: async (id) =>
+              id === cid(1)
+                ? { capsule: jcs(edited), producerEnvelope: envelope(id) }
+                : source.record(id),
+          },
+          { root: cid(2), intervalFrom },
+        ),
+        `record_identity_invalid:${cid(1)}`,
+      );
+  });
+
+  it("caller input is validated before the source is read", async () => {
+    const base = { root: cid(0), intervalFrom: null };
+    const cases: [Obj, RegExp][] = [
+      [{ producerKey: "00".repeat(32) }, /producerKey must be/],
+      [{ producerKey: new Uint8Array(31) }, /producerKey must be/],
+      [{ include: cid(0) }, /include must be a list of Capsule IDs/],
+      [{ include: [1] }, /include must be a list of Capsule IDs/],
+      [{ extensions: [] }, /extensions must be a JSON object/],
+      [{ extensions: "x" }, /extensions must be a JSON object/],
+      [{ verification: [] }, /verification must be a JSON object/],
+      [{ verification: 1 }, /verification must be a JSON object/],
+      [
+        { extensions: { "example/deep": deep(5000) } },
+        /no canonical digest.*extensions: JSON nesting exceeds/,
+      ],
+      [
+        { verification: deep(5000) },
+        /no canonical digest.*verification: JSON nesting exceeds/,
+      ],
+    ];
+    for (const [options, message] of cases)
+      await refused(
+        buildEvidenceBundle(untouchable, { ...base, ...options } as never),
+        message,
+      );
+    await refused(
+      buildUnprovenBundle(caps, {
+        root: cid(0),
+        disclosures: { [cid(0)]: { agent_input: deep(5000) } },
+      }),
+      /no canonical digest.*disclosures: JSON nesting exceeds/,
+    );
+    await refused(
+      buildUnprovenBundle([{ ...caps[0]!, deep: deep(5000) }], {
+        root: cid(0),
+      }),
+      /no canonical digest.*records: JSON nesting exceeds/,
+    );
+  });
+});
+
 describe("the unproven form", () => {
   it("carries no log proof", async () => {
     const bundle = await buildUnprovenBundle(caps, { root: cid(2) });
