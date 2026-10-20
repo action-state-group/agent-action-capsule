@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/agent-action-capsule/go/envelope"
 	"github.com/action-state-group/agent-action-capsule/go/registries"
 	"github.com/action-state-group/agent-action-capsule/go/witness"
@@ -263,7 +264,9 @@ type BuildOptions struct {
 	Disclosures map[string]map[string]interface{}
 	// SuppressedFields are disclosure-eligible members declared suppressed.
 	SuppressedFields []string
-	// PayloadsMode is "all" or "selected"; empty derives it from the overlay.
+	// PayloadsMode is "all" or "selected"; empty derives it: "all" when no
+	// committed, eligible, unsuppressed member of a carried record is left
+	// unrevealed, else "selected".
 	// A declared "all" must reveal every committed, unsuppressed member of
 	// each record the overlay discloses.
 	PayloadsMode string
@@ -299,7 +302,10 @@ var ownedExtensions = []string{"producer-key/v1", ComposedKind}
 // one, a claimed envelope that does not verify, a range over a leaf that is
 // not a record, a carried record below IntervalFrom, a record past the
 // checkpoint, an overlay for a record not carried, an ineligible or
-// suppressed overlay member, and any result VerifyStrict calls INVALID. A
+// suppressed overlay member, a proof the verifier cannot parse, caller input
+// nested too deeply, a Bundle with no canonical digest (a float or an integer
+// beyond 2^53-1 in Extensions or Verification), and any result VerifyStrict
+// calls INVALID. A
 // missing citation or an unsigned record is stated, not refused, and reads
 // INCOMPLETE. An error from source is returned unchanged.
 func BuildEvidenceBundle(ctx context.Context, source ProofSource, opts BuildOptions) (map[string]interface{}, error) {
@@ -419,13 +425,14 @@ func BuildEvidenceBundle(ctx context.Context, source ProofSource, opts BuildOpti
 		if err != nil {
 			return nil, err
 		}
+		wire, err := rangeProofWire(proof)
+		if err != nil {
+			return nil, refuse("the source's range proof from seq %d is malformed: %v", first, err)
+		}
 		certificate["first_seq"] = jsonInteger(first)
 		certificate["last_seq"] = jsonInteger(tip)
 		certificate["body_digests"] = bodyDigests
-		certificate["range_proof"] = map[string]interface{}{
-			"from_seq": jsonInteger(proof.FromSeq), "to_seq": jsonInteger(proof.ToSeq), "size": jsonInteger(proof.Size),
-			"from_index": jsonInteger(proof.FromIndex), "to_index": jsonInteger(proof.ToIndex), "witness": stringList(proof.Witness),
-		}
+		certificate["range_proof"] = wire
 	}
 
 	ordered := sortedBySeq(carried, seqOf)
@@ -441,13 +448,14 @@ func BuildEvidenceBundle(ctx context.Context, source ProofSource, opts BuildOpti
 		if err != nil {
 			return nil, err
 		}
+		wire, err := inclusionProofWire(proof)
+		if err != nil {
+			return nil, refuse("the source's inclusion proof for seq %d is malformed: %v", seq, err)
+		}
 		records[i], recordMaps[i] = carried[capsuleID], carried[capsuleID]
 		memberships[capsuleID] = map[string]interface{}{
 			"log_coordinates": map[string]interface{}{"log_id": signed.LogID, "seq": jsonInteger(seq), "leaf_index": jsonInteger(seq - 1)},
-			"inclusion_proof": map[string]interface{}{
-				"v": jsonInteger(proof.V), "kind": proof.Kind, "size": jsonInteger(proof.Size), "leaf_index": jsonInteger(proof.LeafIndex),
-				"witness": stringList(proof.Witness), "peaks_left": stringList(proof.PeaksLeft), "peaks_right": stringList(proof.PeaksRight),
-			},
+			"inclusion_proof": wire,
 		}
 	}
 	certificate["memberships"] = memberships
@@ -562,8 +570,8 @@ type checkedOptions struct {
 func checkOptions(depth *int, disclosures map[string]map[string]interface{}, suppressed []string, payloadsMode string, extensions map[string]interface{}) (checkedOptions, error) {
 	out := checkedOptions{depth: 2}
 	if depth != nil {
-		if *depth < 0 {
-			return out, refuse("ClosureDepth must be a non-negative integer")
+		if *depth < 0 || int64(*depth) > canonical.MaxSafeInteger {
+			return out, refuse("ClosureDepth must be a non-negative safe integer (at most 2^53-1)")
 		}
 		out.depth = *depth
 	}
@@ -695,9 +703,9 @@ func closure(root string, depth int, lookup func(string) (map[string]interface{}
 }
 
 // completenessBlock states closure_depth, records_mode, missing,
-// suppressed_fields and payloads_mode: as declared, else all when every
-// committed, unsuppressed member of every carried record is revealed in a
-// non-empty overlay, else selected.
+// suppressed_fields and payloads_mode: as declared, else all when no
+// committed, eligible, unsuppressed member of any carried record is left
+// unrevealed (vacuously so when there is none), else selected.
 func completenessBlock(records []map[string]interface{}, checked checkedOptions, missing []string, payloadsMode string) (map[string]interface{}, error) {
 	suppressed := map[string]bool{}
 	for _, member := range checked.suppressed {
@@ -728,7 +736,7 @@ func completenessBlock(records []map[string]interface{}, checked checkedOptions,
 	}
 	if payloadsMode == "" {
 		payloadsMode = "selected"
-		if len(checked.disclosures) != 0 && len(unrevealed) == 0 {
+		if len(unrevealed) == 0 {
 			payloadsMode = "all"
 		}
 	}
@@ -745,9 +753,10 @@ func completenessBlock(records []map[string]interface{}, checked checkedOptions,
 	}, nil
 }
 
-// decodeRecord is the stored record as a Bundle carries it: the Capsule, with
-// a claimed Producer Envelope re-inlined as its local-only signature and
-// key_id (both outside the capsule_id preimage).
+// decodeRecord is the stored record as a Bundle carries it: the Capsule
+// without any signature or key_id of its own, and with a claimed Producer
+// Envelope re-inlined as those local-only fields (both outside the
+// capsule_id preimage).
 func decodeRecord(capsuleID string, stored StoredRecord) (map[string]interface{}, error) {
 	value, err := decodeJSONText(stored.Capsule)
 	if err != nil {
@@ -760,6 +769,10 @@ func decodeRecord(capsuleID string, stored StoredRecord) (map[string]interface{}
 	if capsule["capsule_id"] != capsuleID {
 		return nil, refuse("record %s: the store returned a different capsule", capsuleID)
 	}
+	// Only the stored envelope speaks for the record: signature fields in the
+	// stored JSON are dropped, so an empty envelope always reads unsigned.
+	delete(capsule, "signature")
+	delete(capsule, "key_id")
 	if len(stored.ProducerEnvelope) != 0 {
 		checked := envelope.Verify(capsuleID, stored.ProducerEnvelope)
 		if !checked.OK {
@@ -771,8 +784,12 @@ func decodeRecord(capsuleID string, stored StoredRecord) (map[string]interface{}
 	return capsule, nil
 }
 
-// selfChecked returns bundle unless VerifyStrict calls it INVALID.
+// selfChecked returns bundle unless its digest cannot be computed (a number
+// JCS refuses) or VerifyStrict calls it INVALID.
 func selfChecked(bundle map[string]interface{}) (map[string]interface{}, error) {
+	if _, err := BundleDigest(bundle); err != nil {
+		return nil, refuse("the bundle has no canonical digest: %v", err)
+	}
 	result := VerifyStrict(bundle, StrictOptions{})
 	if result.Verdict != VerdictInvalid {
 		return bundle, nil
@@ -803,6 +820,9 @@ func jsonObject(value map[string]interface{}, name string) (map[string]interface
 	if value == nil {
 		return nil, nil
 	}
+	if canonical.TooDeep(value) {
+		return nil, refuse("%s is nested too deeply (more than %d levels)", name, canonical.MaxNestingDepth)
+	}
 	data, err := json.Marshal(value)
 	if err != nil {
 		return nil, refuse("%s is not JSON: %v", name, err)
@@ -832,4 +852,36 @@ func stringList(values []string) []interface{} {
 		out[i] = value
 	}
 	return out
+}
+
+// inclusionProofWire reads a source's inclusion proof with the verifier's own
+// parser and returns only its wire fields, so a proof the verifier cannot
+// read is refused here rather than carried.
+func inclusionProofWire(proof InclusionProof) (map[string]interface{}, error) {
+	parsed, err := parseInclusionProof(map[string]interface{}{
+		"v": jsonInteger(proof.V), "kind": proof.Kind, "size": jsonInteger(proof.Size), "leaf_index": jsonInteger(proof.LeafIndex),
+		"witness": stringList(proof.Witness), "peaks_left": stringList(proof.PeaksLeft), "peaks_right": stringList(proof.PeaksRight),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"v": jsonInteger(parsed.V), "kind": parsed.Kind, "size": jsonInteger(parsed.Size), "leaf_index": jsonInteger(parsed.LeafIndex),
+		"witness": stringList(hexList(parsed.Witness)), "peaks_left": stringList(hexList(parsed.PeaksLeft)), "peaks_right": stringList(hexList(parsed.PeaksRight)),
+	}, nil
+}
+
+// rangeProofWire is inclusionProofWire for a range proof.
+func rangeProofWire(proof RangeProof) (map[string]interface{}, error) {
+	parsed, err := parseRangeProof(map[string]interface{}{
+		"from_seq": jsonInteger(proof.FromSeq), "to_seq": jsonInteger(proof.ToSeq), "size": jsonInteger(proof.Size),
+		"from_index": jsonInteger(proof.FromIndex), "to_index": jsonInteger(proof.ToIndex), "witness": stringList(proof.Witness),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"from_seq": jsonInteger(uint64(parsed.FromSeq)), "to_seq": jsonInteger(uint64(parsed.ToSeq)), "size": jsonInteger(parsed.Size),
+		"from_index": jsonInteger(parsed.Proof.FromIndex), "to_index": jsonInteger(parsed.Proof.ToIndex), "witness": stringList(hexList(parsed.Proof.Witness)),
+	}, nil
 }

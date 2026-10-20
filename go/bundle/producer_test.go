@@ -604,13 +604,51 @@ func TestBuildASourceThatLiesIsRefused(t *testing.T) {
 			proof.LeafIndex = (proof.LeafIndex + 1) % 3
 			return proof, nil
 		}}, 0, "does not verify"},
-		{"a wrong range proof", lying{rangeProof: func(ctx context.Context, first uint64) (RangeProof, error) {
+		{"a corrupted range proof witness", lying{rangeProof: func(ctx context.Context, first uint64) (RangeProof, error) {
 			proof, err := source.RangeProof(ctx, first)
 			require.NoError(t, err)
 			proof.Witness = append([]string(nil), proof.Witness...)
 			proof.Witness[0] = flip(proof.Witness[0])
 			return proof, nil
 		}}, 2, "range_proof_invalid"},
+		{"two leaves swapped", lying{leaves: func(ctx context.Context) ([][]byte, error) {
+			leaves := goodLeaves(ctx)
+			leaves[0], leaves[1] = leaves[1], leaves[0]
+			return leaves, nil
+		}}, 1, "does not verify"},
+		{"a corrupted inclusion proof witness, with a range", lying{inclusion: func(ctx context.Context, seq uint64) (InclusionProof, error) {
+			proof, err := source.InclusionProof(ctx, seq)
+			require.NoError(t, err)
+			for _, hashes := range []*[]string{&proof.Witness, &proof.PeaksLeft, &proof.PeaksRight} {
+				if len(*hashes) != 0 {
+					*hashes = append([]string(nil), *hashes...)
+					(*hashes)[0] = flip((*hashes)[0])
+					break
+				}
+			}
+			return proof, nil
+		}}, 1, "membership_proof_invalid"},
+		{"an edited record that keeps its capsule_id", lying{record: func(_ context.Context, id string) (StoredRecord, bool, error) {
+			value, err := decodeJSONText(records.held[id].Capsule)
+			require.NoError(t, err)
+			edited := value.(map[string]interface{})
+			edited["operator"] = "SOMEONE-ELSE"
+			data, err := canonical.JCS(edited)
+			require.NoError(t, err)
+			return StoredRecord{Capsule: data, ProducerEnvelope: records.held[id].ProducerEnvelope}, true, nil
+		}}, 1, "record_identity_invalid:" + root},
+		{"a malformed inclusion proof", lying{inclusion: func(ctx context.Context, seq uint64) (InclusionProof, error) {
+			proof, err := source.InclusionProof(ctx, seq)
+			require.NoError(t, err)
+			proof.Kind = "range"
+			return proof, nil
+		}}, 1, "the source's inclusion proof for seq 1 is malformed"},
+		{"a malformed range proof", lying{rangeProof: func(ctx context.Context, first uint64) (RangeProof, error) {
+			proof, err := source.RangeProof(ctx, first)
+			require.NoError(t, err)
+			proof.Witness = []string{"not hex"}
+			return proof, nil
+		}}, 2, "the source's range proof from seq 2 is malformed"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -678,4 +716,124 @@ func TestUnprovenBundleRefusals(t *testing.T) {
 	requireRefusal(t, err, "capsule_id")
 	_, err = BuildUnprovenBundle(caps, cid(caps[0]), UnprovenOptions{Disclosures: map[string]map[string]interface{}{absent: {}}})
 	requireRefusal(t, err, "does not carry")
+}
+
+// -- round-1 review cases -----------------------------------------------------------
+
+func TestBuildRefusesABundleWithNoCanonicalDigest(t *testing.T) {
+	source, caps, _ := testChain(t)
+	ctx := t.Context()
+	_, err := BuildEvidenceBundle(ctx, source, BuildOptions{Root: cid(caps[0]), IntervalFrom: 1, Extensions: map[string]interface{}{"example/notes": map[string]interface{}{"n": 1.5}}})
+	requireRefusal(t, err, "no canonical digest")
+	_, err = BuildEvidenceBundle(ctx, source, BuildOptions{Root: cid(caps[0]), IntervalFrom: 1, Verification: map[string]interface{}{"n": 1 << 60}})
+	requireRefusal(t, err, "no canonical digest")
+}
+
+func TestBuildDropsInlineSignatureFieldsOfAnUnsignedRecord(t *testing.T) {
+	signer := producerCapsule(t, "signed-inline", capsuleOptions{})
+	validSignature := hex.EncodeToString(signedEnvelope(t, cid(signer)))
+	validKey := hex.EncodeToString(producerKey.Public().(ed25519.PublicKey))
+	cases := map[string]map[string]interface{}{
+		"a valid inline signature":     {"signature": validSignature, "key_id": validKey},
+		"a malformed inline signature": {"signature": "zz", "key_id": validKey},
+		"only a signature":             {"signature": validSignature},
+		"only a key_id":                {"key_id": validKey},
+	}
+	for name, inline := range cases {
+		t.Run(name, func(t *testing.T) {
+			record := producerCapsule(t, "signed-inline", capsuleOptions{})
+			for field, value := range inline {
+				record[field] = value
+			}
+			data, err := canonical.JCS(record)
+			require.NoError(t, err)
+			records := newRecords()
+			records.held[cid(record)] = StoredRecord{Capsule: data}
+			bundle, err := BuildEvidenceBundle(t.Context(), makeLog(t, ids(record), records, -1), BuildOptions{Root: cid(record), IntervalFrom: 1})
+			require.NoError(t, err)
+			carried := bundle["records"].([]interface{})[0].(map[string]interface{})
+			assert.NotContains(t, carried, "signature")
+			assert.NotContains(t, carried, "key_id")
+			assert.Equal(t, "withheld", claimStatus(t, bundle, "signatures"))
+			assert.Equal(t, VerdictIncomplete, strictVerdictOf(bundle))
+		})
+	}
+}
+
+func TestBuildClosureDepthIsASafeIntegerAndTheWalkStopsEarly(t *testing.T) {
+	records := newRecords()
+	a := producerCapsule(t, "alone", capsuleOptions{})
+	records.put(t, a, true)
+	source := makeLog(t, ids(a), records, -1)
+	huge := int(canonical.MaxSafeInteger)
+	done := make(chan error, 1)
+	go func() {
+		_, err := BuildEvidenceBundle(t.Context(), source, BuildOptions{Root: cid(a), IntervalFrom: 1, ClosureDepth: &huge})
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("a huge ClosureDepth on a one-record graph did not return promptly")
+	}
+	unproven, err := BuildUnprovenBundle([]map[string]interface{}{a}, cid(a), UnprovenOptions{ClosureDepth: &huge})
+	require.NoError(t, err)
+	assert.Equal(t, json.Number(fmt.Sprint(huge)), unproven["completeness"].(map[string]interface{})["closure_depth"])
+
+	tooBig := huge + 1
+	_, err = BuildEvidenceBundle(t.Context(), source, BuildOptions{Root: cid(a), IntervalFrom: 1, ClosureDepth: &tooBig})
+	requireRefusal(t, err, "safe integer")
+}
+
+func TestBuildDerivesPayloadsModeWithoutAnOverlay(t *testing.T) {
+	payloadsMode := func(bundle map[string]interface{}) interface{} {
+		return bundle["completeness"].(map[string]interface{})["payloads_mode"]
+	}
+	// No committed member anywhere: vacuously all.
+	records := newRecords()
+	plain := producerCapsule(t, "plain", capsuleOptions{})
+	records.put(t, plain, true)
+	bundle, err := BuildEvidenceBundle(t.Context(), makeLog(t, ids(plain), records, -1), BuildOptions{Root: cid(plain), IntervalFrom: 1})
+	require.NoError(t, err)
+	assert.Equal(t, "all", payloadsMode(bundle))
+	unproven, err := BuildUnprovenBundle([]map[string]interface{}{plain}, cid(plain), UnprovenOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, "all", payloadsMode(unproven))
+
+	// The only committed member is suppressed: all.
+	source, caps, _ := testChain(t)
+	suppressed, err := BuildEvidenceBundle(t.Context(), source, BuildOptions{Root: cid(caps[0]), IntervalFrom: 1, SuppressedFields: []string{"agent_input"}})
+	require.NoError(t, err)
+	assert.Equal(t, "all", payloadsMode(suppressed))
+	assert.Equal(t, VerdictValid, strictVerdictOf(suppressed))
+}
+
+// nested is a value nesting objects deeper than the verifier reads.
+func nested() map[string]interface{} {
+	value := map[string]interface{}{}
+	for i := 0; i <= canonical.MaxNestingDepth; i++ {
+		value = map[string]interface{}{"x": value}
+	}
+	return value
+}
+
+func TestBuildRefusesCallerInputNestedTooDeeply(t *testing.T) {
+	source, caps, _ := testChain(t)
+	root := cid(caps[0])
+	deep := nested()
+	for name, opts := range map[string]BuildOptions{
+		"Extensions":   {Root: root, IntervalFrom: 1, Extensions: map[string]interface{}{"example/deep": deep}},
+		"Verification": {Root: root, IntervalFrom: 1, Verification: deep},
+		"Disclosures":  {Root: root, IntervalFrom: 1, Disclosures: map[string]map[string]interface{}{root: {"agent_input": deep}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := BuildEvidenceBundle(t.Context(), source, opts)
+			requireRefusal(t, err, "nested too deeply")
+		})
+	}
+	_, err := BuildUnprovenBundle([]map[string]interface{}{deep}, root, UnprovenOptions{})
+	requireRefusal(t, err, "nested too deeply")
+	_, err = BuildUnprovenBundle(caps, root, UnprovenOptions{Disclosures: map[string]map[string]interface{}{root: {"agent_input": deep}}})
+	requireRefusal(t, err, "nested too deeply")
 }
