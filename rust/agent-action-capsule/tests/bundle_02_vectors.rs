@@ -502,7 +502,7 @@ fn the_category_coverage_form_edges_fail() {
             m["categories"][""] = json!({"status": "AVAILABLE"});
         }),
         ("policy_uri not a string", |m| {
-            m["categories"]["messages"]["policy_uri"] = json!(7);
+            m["categories"]["messages"]["policy_uri"] = json!(["https://example.com/policy"]);
         }),
         ("key_id in uppercase", |m| {
             let upper = m["signer"]["key_id"].as_str().unwrap().to_uppercase();
@@ -548,6 +548,18 @@ fn a_requested_name_that_is_not_utf8_is_not_read() {
     assert_eq!(
         request(br#"{"categories": {"set": "example-set", "names": ["nope"]}}"#),
         "FAIL"
+    );
+}
+
+#[test]
+fn a_fifth_content_member_is_malformed_whatever_its_name() {
+    let mut bundle = bundle_of("non-record-leaves", "pos-padded-whole-log");
+    // "zz" sorts after every padding member.
+    bundle["completeness_certificate"]["non_record_leaves"][0]["content"]["zz"] = json!(1);
+    let strict = verify_bundle_strict(&bundle, &StrictOptions::default());
+    assert_eq!(
+        strict.claim("per_record_membership"),
+        Some(&claim("fail", &["non_record_leaf_malformed:6"]))
     );
 }
 

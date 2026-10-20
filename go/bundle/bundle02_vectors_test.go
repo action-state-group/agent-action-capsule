@@ -318,7 +318,7 @@ func TestCategoryCoverageFormEdges(t *testing.T) {
 			m["categories"].(map[string]interface{})[""] = map[string]interface{}{"status": "AVAILABLE"}
 		},
 		"policy_uri not a string": func(m map[string]interface{}) {
-			m["categories"].(map[string]interface{})["messages"].(map[string]interface{})["policy_uri"] = json.Number("7")
+			m["categories"].(map[string]interface{})["messages"].(map[string]interface{})["policy_uri"] = []interface{}{"https://example.com/policy"}
 		},
 		"key_id in uppercase": func(m map[string]interface{}) {
 			signer := m["signer"].(map[string]interface{})
@@ -340,6 +340,14 @@ func TestCategoryCoverageRequestNameNotUTF8(t *testing.T) {
 	}
 	require.Equal(t, bundle.CoverageNotChecked, request("{\"categories\": {\"set\": \"example-set\", \"names\": [\"\xff\"]}}"))
 	require.Equal(t, bundle.CoverageFail, request(`{"categories": {"set": "example-set", "names": ["nope"]}}`))
+}
+
+func TestNonRecordLeafWithAFifthMember(t *testing.T) {
+	b := bundle02Bundle(t, "non-record-leaves", "pos-padded-whole-log")
+	content := b["completeness_certificate"].(map[string]interface{})["non_record_leaves"].([]interface{})[0].(map[string]interface{})["content"].(map[string]interface{})
+	content["zz"] = json.Number("1") // sorts after every padding member
+	strict := bundle.VerifyStrict(b, bundle.StrictOptions{})
+	require.Equal(t, claim("fail", "non_record_leaf_malformed:6"), *strict.Claim("per_record_membership"))
 }
 
 func TestNonRecordLeafRecordTypeNotAString(t *testing.T) {
