@@ -2,14 +2,16 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Generate the Evidence Bundle -02 certificate vectors.
 
-Two directories, both read by strict ``verify_bundle`` exactly as
+Three directories, read by strict ``verify_bundle`` as
 ``vectors/bundle/strict/`` is:
 
 - ``vectors/bundle/non-record-leaves/``: a range over a log whose leaves include
   padding records, carried in ``completeness_certificate.non_record_leaves``;
 - ``vectors/bundle/certificate-mode/``: the producer-selected certificate in the
   shape producers already emit, and ``completeness.selection`` values that name
-  a certificate mode the verifier does not implement.
+  a certificate mode the verifier does not implement;
+- ``vectors/bundle/category-coverage/``: the ``category_coverage`` member's five
+  properties and the strict verdict.
 
 Every expected result below is written by hand, per case, from the rules in
 each directory's README; nothing here runs a verifier. The literal Bundles are
@@ -24,6 +26,7 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -331,6 +334,168 @@ def mode_cases() -> list[dict]:
     return cases
 
 
+# -- category_coverage ----------------------------------------------------------
+
+SET_ID = "example-set"
+SET_NAMES = ["messages", "tool_calls", "payments", "approvals", "model_inputs", "memory", "telemetry"]
+POLICY_URI = "https://policy.example/retention/v1"
+
+
+def sign_coverage(member: dict, root: str, key: Any = None) -> dict:
+    """``member`` with ``signer`` and ``signature`` by ``key`` (the producer
+    key by default) over JCS({"category_coverage": member without signature,
+    "root": root})."""
+    key = key or strict.PRODUCER
+    out = {**{k: v for k, v in member.items() if k not in ("signer", "signature")},
+           "signer": {"key_id": strict.raw_public(key).hex()}}
+    out["signature"] = key.sign(jcs({"category_coverage": out, "root": root})).hex()
+    return out
+
+
+def coverage_case(case_id: str, description: str, bundle: dict, verdict: str, properties: dict | None,
+                  **options: Any) -> dict:
+    return {"id": case_id, "description": description, "options": {
+        "category_sets": options.get("category_sets"),
+        "category_request": options.get("category_request"),
+        "record_categories": options.get("record_categories"),
+    }, "bundle": bundle, "expect": {"verdict": verdict, "category_coverage": properties}}
+
+
+def props(form="PASS", signature="PASS", set_registered="PASS", request="PASS", consistency="PASS") -> dict:
+    return {
+        "category_coverage_form": form,
+        "category_coverage_signature": signature,
+        "category_coverage_set_registered": set_registered,
+        "category_coverage_request": request,
+        "category_coverage_consistency": consistency,
+    }
+
+
+MALFORMED = props("FAIL", "NOT_CHECKED", "NOT_CHECKED", "NOT_CHECKED", "NOT_CHECKED")
+
+
+def coverage_cases() -> list[dict]:
+    records = [strict.signed(strict.capsule(f"coverage-{i}")) for i in range(1, 4)]
+    base = strict.bundle_over(records)
+    root = base["root"]
+    ids = [r["capsule_id"] for r in records]
+    request = json.dumps({"subject": {"kind": "record", "id": root},
+                          "categories": {"set": SET_ID, "names": ["messages", "payments"]}},
+                         separators=(",", ":"), sort_keys=True)
+    request_digest = hashlib.sha256(request.encode()).hexdigest()
+    six = {
+        "messages": {"status": "AVAILABLE"},
+        "tool_calls": {"status": "PARTIAL"},
+        "payments": {"status": "WITHHELD"},
+        "approvals": {"status": "DELETED"},
+        "model_inputs": {"status": "ABSENT"},
+        "memory": {"status": "UNDISCLOSED", "policy_uri": POLICY_URI},
+    }
+    declaration = {"set": SET_ID, "categories": six, "request_digest": request_digest}
+    sets = {SET_ID: SET_NAMES}
+    # Every carried record is a message; nothing is in a WITHHELD or ABSENT category.
+    assigned = {cid: "messages" for cid in ids}
+    full = {"category_sets": sets, "category_request": request, "record_categories": assigned}
+
+    def with_member(member: Any) -> dict:
+        bundle = copy.deepcopy(base)
+        bundle["category_coverage"] = member
+        return bundle
+
+    signed_six = sign_coverage(declaration, root)
+    cases = [
+        coverage_case("pos-all-six-statuses", "One category in each of the six statuses, signed by the producer key, "
+                      "with every input supplied: all five properties pass.", with_member(signed_six), "VALID",
+                      props(), **full),
+        coverage_case("pos-no-inputs", "The same with no inputs: the set is unknown to the verifier (INCONCLUSIVE), "
+                      "request and consistency are NOT_CHECKED.", with_member(signed_six), "VALID",
+                      props(set_registered="INCONCLUSIVE", request="NOT_CHECKED", consistency="NOT_CHECKED")),
+        coverage_case("no-member", "A Bundle with no category_coverage member.", copy.deepcopy(base), "VALID", None, **full),
+    ]
+    private = sign_coverage({**declaration, "set": "x-local-categories"}, root)
+    cases.append(coverage_case(
+        "private-set", "A private x- set: never looked up, reported NOT_PRESENT; the request names another set.",
+        with_member(private), "VALID", props(set_registered="NOT_PRESENT", request="FAIL"), **full))
+    unsigned = {k: v for k, v in signed_six.items() if k not in ("signer", "signature")}
+    cases.append(coverage_case("unsigned-member", "No signer and no signature: the declaration is attributed to no "
+                               "one (NOT_PRESENT), which does not fail the Bundle.", with_member(unsigned), "VALID",
+                               props(signature="NOT_PRESENT"), **full))
+    wrong_key = dict(sign_coverage(declaration, root, strict.OTHER))
+    wrong_key["signer"] = {"key_id": strict.raw_public(strict.PRODUCER).hex()}
+    cases.append(coverage_case("neg-signature-wrong-key", "Signed by another key than signer.key_id.",
+                               with_member(wrong_key), "INVALID", props(signature="FAIL"), **full))
+    moved = sign_coverage(declaration, "00" * 32)
+    cases.append(coverage_case("neg-signature-other-root", "Signed over another Bundle's root: a declaration "
+                               "moved from another Bundle.", with_member(moved), "INVALID", props(signature="FAIL"),
+                               **full))
+    edited = copy.deepcopy(signed_six)
+    edited["categories"]["payments"]["status"] = "AVAILABLE"
+    cases.append(coverage_case("neg-signature-edited", "WITHHELD changed to AVAILABLE after signing.",
+                               with_member(edited), "INVALID", props(signature="FAIL"), **full))
+
+    def malformed(case_id: str, description: str, edit: Any) -> None:
+        member = copy.deepcopy(declaration)
+        edit(member)
+        cases.append(coverage_case(case_id, description, with_member(sign_coverage(member, root)), "INVALID",
+                                   MALFORMED, **full))
+
+    malformed("neg-undisclosed-without-policy-uri", "UNDISCLOSED with no policy_uri.",
+              lambda m: m["categories"]["memory"].pop("policy_uri"))
+    malformed("neg-policy-uri-relative", "UNDISCLOSED with a relative policy_uri.",
+              lambda m: m["categories"]["memory"].update(policy_uri="/retention/v1"))
+    malformed("neg-status-lowercase", "A status in lowercase (available).",
+              lambda m: m["categories"]["messages"].update(status="available"))
+    malformed("neg-status-unknown", "A status that is not one of the six (LEGAL_HOLD).",
+              lambda m: m["categories"]["messages"].update(status="LEGAL_HOLD"))
+    malformed("neg-categories-empty", "categories is an empty object.", lambda m: m.update(categories={}))
+    malformed("neg-set-missing", "No set.", lambda m: m.pop("set"))
+    malformed("neg-request-digest-uppercase", "request_digest in uppercase hex.",
+              lambda m: m.update(request_digest=m["request_digest"].upper()))
+    half = dict(signed_six)
+    del half["signature"]
+    cases.append(coverage_case("neg-signer-without-signature", "signer with no signature.", with_member(half),
+                               "INVALID", MALFORMED, **full))
+    cases.append(coverage_case("neg-member-not-object", "category_coverage is an array.", with_member([signed_six]),
+                               "INVALID", MALFORMED, **full))
+
+    unknown_name = sign_coverage({**declaration, "categories": {**six, "receipts": {"status": "AVAILABLE"}}}, root)
+    cases.append(coverage_case("unknown-category", "A name the registered set does not have: set_registered fails, "
+                               "which is reported and does not fail the Bundle.", with_member(unknown_name), "VALID",
+                               props(set_registered="FAIL"), **full))
+    cases.append(coverage_case("unknown-set", "A set the verifier does not know: INCONCLUSIVE.",
+                               with_member(signed_six), "VALID", props(set_registered="INCONCLUSIVE"),
+                               **{**full, "category_sets": {"another-set": SET_NAMES}}))
+    narrow = copy.deepcopy(declaration)
+    del narrow["categories"]["payments"]
+    cases.append(coverage_case("request-not-covered", "The request asks for payments; the declaration has no entry "
+                               "for it.", with_member(sign_coverage(narrow, root)), "VALID", props(request="FAIL"),
+                               **full))
+    other_request = request.replace('"messages"', '"telemetry"')
+    cases.append(coverage_case("request-digest-mismatch", "request_digest names another request than the one "
+                               "supplied.", with_member(signed_six), "VALID", props(request="FAIL"),
+                               **{**full, "category_request": other_request}))
+    no_digest = sign_coverage({k: v for k, v in declaration.items() if k != "request_digest"}, root)
+    bare = json.dumps({"subject": {"kind": "record", "id": root}}, separators=(",", ":"), sort_keys=True)
+    cases.append(coverage_case("request-without-categories", "The request asked for no categories: NOT_PRESENT.",
+                               with_member(no_digest), "VALID", props(request="NOT_PRESENT"),
+                               **{**full, "category_request": bare}))
+    for case_id, category, status in (
+        ("neg-consistency-absent-with-record", "model_inputs", "ABSENT"),
+        ("neg-consistency-withheld-with-record", "payments", "WITHHELD"),
+    ):
+        cases.append(coverage_case(case_id, f"A carried record is in a category declared {status}.",
+                                   with_member(signed_six), "INVALID", props(consistency="FAIL"),
+                                   **{**full, "record_categories": {**assigned, ids[0]: category}}))
+    for case_id, category, status in (
+        ("consistency-deleted-with-record", "approvals", "DELETED"),
+        ("consistency-undisclosed-with-record", "memory", "UNDISCLOSED"),
+    ):
+        cases.append(coverage_case(case_id, f"A carried record is in a category declared {status}: not a "
+                                   "contradiction.", with_member(signed_six), "VALID", props(),
+                                   **{**full, "record_categories": {**assigned, ids[0]: category}}))
+    return cases
+
+
 def write(out: Path, description: str, cases: list[dict]) -> None:
     out.mkdir(parents=True, exist_ok=True)
     vectors = {
@@ -362,6 +527,8 @@ def main() -> None:
           "completeness_certificate.non_record_leaves (Evidence Bundle -02). See README.md.", leaf_cases())
     write(out / "certificate-mode", "Strict verify_bundle on the producer-selected certificate and on certificate "
           "modes a verifier does not implement (Evidence Bundle -02). See README.md.", mode_cases())
+    write(out / "category-coverage", "verify_bundle on the category_coverage member: its five properties and "
+          "the strict verdict (Evidence Bundle -02). See README.md.", coverage_cases())
 
 
 if __name__ == "__main__":
