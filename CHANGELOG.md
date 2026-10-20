@@ -4,6 +4,11 @@
 
 ## 0.11.0 — 2026-10-20
 
+- TypeScript: outcome-report and bundle-page fixes. A resolved conversation's summary and
+  drill-down count the criteria the pack judged instead of always saying "nine", and the report
+  fits a phone (#323); with one criterion the Why line reads "1 criterion met" (#325). A bundle
+  page that fails another check no longer says it shows the bundle as passing without the
+  checkpoint (#326).
 - Interlock: the Evidence Bundle producer is checked across implementations.
   `scripts/cross-language-interlock.sh` gains a producer step: Python, Go, TypeScript and Rust each
   build, with their own `proof_source_from_cll` and `build_evidence_bundle`, a whole-log Bundle, a
