@@ -354,6 +354,18 @@ describe("Bundle -02 edges", () => {
     );
   });
 
+  it("a fifth content member is malformed, whatever its name", async () => {
+    const bundle = bundleOf("non-record-leaves", "pos-padded-whole-log");
+    const content = (
+      (bundle.completeness_certificate as Obj).non_record_leaves as Obj[]
+    )[0]!.content as Obj;
+    content.zz = 1; // sorts after every padding member
+    const result = await verifyBundle(bundle, { strict: true });
+    expect(result.perRecordMembership).toEqual(
+      claim("fail", "non_record_leaf_malformed:6"),
+    );
+  });
+
   it("a record_type that is not a string is malformed", async () => {
     const bundle = bundleOf("non-record-leaves", "pos-padded-whole-log");
     const content = (
@@ -386,7 +398,10 @@ describe("Bundle -02 edges", () => {
     ],
     [
       "policy_uri not a string",
-      (m) => (((m.categories as Obj).messages as Obj).policy_uri = 7),
+      (m) =>
+        (((m.categories as Obj).messages as Obj).policy_uri = [
+          "https://example.com/policy",
+        ]),
     ],
     [
       "key_id in uppercase",
