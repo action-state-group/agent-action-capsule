@@ -464,7 +464,7 @@ func TestBuildUncoveredRecordIsRefused(t *testing.T) {
 	records.put(t, late, true)
 	source := makeLog(t, ids(a, late), records, 1)
 	_, err := BuildEvidenceBundle(t.Context(), source, BuildOptions{Root: cid(late), NoRange: true})
-	requireRefusal(t, err, "not covered by the checkpoint")
+	requireRefusal(t, err, "is not a leaf at or below the checkpoint (not yet covered, or not in this log)")
 }
 
 func TestBuildUnknownRootAndIncludeAreRefused(t *testing.T) {
@@ -578,10 +578,11 @@ func TestBuildASourceThatLiesIsRefused(t *testing.T) {
 		message  string
 	}{
 		{"empty checkpoint", lying{checkpoint: func(context.Context) ([]byte, error) { return []byte{}, nil }}, 0, "checkpoint does not verify"},
-		{"tampered checkpoint", lying{checkpoint: func(ctx context.Context) ([]byte, error) {
+		{"a valid checkpoint with one signature byte flipped", lying{checkpoint: func(ctx context.Context) ([]byte, error) {
 			cose, err := source.Checkpoint(ctx)
 			require.NoError(t, err)
 			cose = append([]byte(nil), cose...)
+			// COSE_Sign1 ends with its signature, so the last byte is a signature byte.
 			cose[len(cose)-1] ^= 1
 			return cose, nil
 		}}, 0, "checkpoint does not verify"},
@@ -836,4 +837,20 @@ func TestBuildRefusesCallerInputNestedTooDeeply(t *testing.T) {
 	requireRefusal(t, err, "nested too deeply")
 	_, err = BuildUnprovenBundle(caps, root, UnprovenOptions{Disclosures: map[string]map[string]interface{}{root: {"agent_input": deep}}})
 	requireRefusal(t, err, "nested too deeply")
+}
+
+// A Capsule ID at two leaves: a range over both positions cannot bind the
+// second one to a record, so no bundle is returned. (A CLL backend appends
+// idempotently, so the repeat comes from a lying source.)
+func TestBuildRefusesARangeOverARepeatedCapsuleID(t *testing.T) {
+	source, caps, _ := testChain(t)
+	repeated := lying{ProofSource: source, leaves: func(ctx context.Context) ([][]byte, error) {
+		leaves, err := source.Leaves(ctx)
+		require.NoError(t, err)
+		return [][]byte{leaves[0], leaves[1], leaves[0]}, nil
+	}}
+	bundle, err := BuildEvidenceBundle(t.Context(), repeated, BuildOptions{Root: cid(caps[0]), IntervalFrom: 1})
+	var refusal *BuildError
+	require.ErrorAs(t, err, &refusal)
+	assert.Nil(t, bundle)
 }

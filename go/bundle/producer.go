@@ -104,9 +104,11 @@ type RecordSource interface {
 }
 
 // ProofSourceFromCLL is a ProofSource over a CLL backend (its entries and
-// checkpoint state) and a record store. The backend's state is read once, on
-// first use, and the proofs are built from its MMR nodes at the latest
-// checkpoint's size; a log with no checkpoint is refused.
+// checkpoint state) and a record store. It reads the backend's state once, on
+// first use, and serves one consistent snapshot from then on: the checkpoint,
+// leaves and proofs all come from that read, at the latest checkpoint's size,
+// however the log grows afterwards. Use a new source for a later checkpoint.
+// A log with no checkpoint is refused.
 func ProofSourceFromCLL(backend interface {
 	cll.EntrySource
 	LoadCLL(context.Context) (cll.State, error)
@@ -367,7 +369,7 @@ func BuildEvidenceBundle(ctx context.Context, source ProofSource, opts BuildOpti
 			return nil, err
 		}
 		if _, covered := seqOf[capsuleID]; !covered {
-			return nil, refuse("record %s is not covered by the checkpoint: build again after the next one", capsuleID)
+			return nil, refuse("record %s is not a leaf at or below the checkpoint (not yet covered, or not in this log)", capsuleID)
 		}
 		return decodeRecord(capsuleID, stored)
 	}
