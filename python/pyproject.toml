@@ -52,7 +52,7 @@ anchor = ["scitt-cose>=0.1.1"]
 # extra those two claims fail closed as `completeness_verifier_unavailable`
 # (never pass, and never reported as an invalid certificate). Not a core
 # dependency: checkpointed-local-log itself depends on this package.
-bundle = ["checkpointed-local-log>=0.4.0"]
+bundle = ["checkpointed-local-log>=0.6.0"]
 
 [project.scripts]
 agent-action-capsule = "agent_action_capsule.cli:main"
