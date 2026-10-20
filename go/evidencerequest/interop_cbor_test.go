@@ -3,6 +3,7 @@
 package evidencerequest
 
 import (
+	"math"
 	"testing"
 
 	"github.com/fxamacker/cbor/v2"
@@ -19,6 +20,23 @@ func mustCBOR(t *testing.T, v any) []byte {
 
 // A float map key is dropped and flagged, as the reference drops it, and a
 // float value compares by value.
+// Half-precision values decode as Python's struct "e" decodes them,
+// subnormals and infinities included.
+func TestHalfFloatsDecodeAsTheReferenceDoes(t *testing.T) {
+	for h, want := range map[uint16]float64{
+		0x0001: 5.960464477539063e-08, // smallest subnormal
+		0x03ff: 6.097555160522461e-05, // largest subnormal
+		0x7bff: 65504,                 // largest normal
+		0x3e00: 1.5,
+		0x8000: math.Copysign(0, -1),
+		0x7c00: math.Inf(1),
+		0xfc00: math.Inf(-1),
+	} {
+		assert.Equal(t, want, halfFloat(h), "%#04x", h)
+	}
+	assert.True(t, math.IsNaN(halfFloat(0x7e00)))
+}
+
 func TestStrictCBORDropsAFloatKey(t *testing.T) {
 	// {"correlation": "d", 1.5: "x"}
 	data := append([]byte{0xa2}, mustCBOR(t, "correlation")...)
