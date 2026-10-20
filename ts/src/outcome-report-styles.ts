@@ -201,6 +201,7 @@ export const OUTCOME_REPORT_CSS = `
 .oi li.turn pre.call{color:var(--navy);background:var(--gold-l);padding:3px 6px;border-radius:6px}
 @media (max-width:820px){
   .oi .ih-row{flex-direction:column;gap:16px}
+  .oi .ih-row .party:empty{display:none}
   .oi .ih-title{text-align:left}
   .oi .meta{width:100%}
   .oi .sheet .pad,.oi .sec{padding:22px}
@@ -210,15 +211,12 @@ export const OUTCOME_REPORT_CSS = `
   .oi .checks,.oi .ran,.oi .reasons{grid-template-columns:1fr}
   .oi .bar{grid-template-columns:1fr}
   .oi .bar .num{text-align:left}
-  .oi .cal{grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
-  .oi .day{min-height:64px;padding:6px 4px;min-width:0;overflow-wrap:anywhere}
+  .oi .cal{grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:4px}
+  .oi .day{min-height:64px;padding:6px 4px;min-width:0}
+  .oi .day .dn{font-size:11px}
   .oi .day .v{font-size:14px}
   .oi .tech,.oi.oi-vp dl,.oi dl.chk{grid-template-columns:1fr}
   .oi summary.conv-s{grid-template-columns:1fr auto}
-}
-@media (max-width:480px){
-  .oi .cal{grid-template-columns:repeat(auto-fill,minmax(76px,1fr))}
-  .oi .day .dn{font-size:11px}
 }
 @media print{
   .oi{background:#fff}

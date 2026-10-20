@@ -263,7 +263,7 @@ function verdictProbability(
 }
 
 const COUNT_WORDS = [
-  "no",
+  "zero",
   "one",
   "two",
   "three",
@@ -285,10 +285,10 @@ function countWord(n: number): string {
 
 /**
  * How a resolved conversation's criteria read, from the number the pack
- * judged it on: "all four criteria met or not applicable".
+ * judged it on: "all four criteria met or not applicable". A conversation
+ * has at least one criterion: the terms come from its own claims.
  */
 function allCriteriaMet(n: number): string {
-  if (n === 0) return "no criteria judged";
   if (n === 1) return "its one criterion met or not applicable";
   return `all ${countWord(n)} criteria met or not applicable`;
 }
@@ -327,11 +327,11 @@ function renderConversation(
   summary.append(el("span", "go", "open ›"));
   details.append(summary);
 
-  // The body (a row and a sealed rationale per criterion, the ids) is built the first
-  // time this conversation is opened, not up front: the same conversation
-  // appears under its report line and under its missed reason, and building
-  // every body eagerly multiplies the page's DOM for content nobody opened.
-  // Built from the same model either way.
+  // The body (a row and a sealed rationale per criterion, the ids) is
+  // built the first time this conversation is opened, not up front: the
+  // same conversation appears under its report line and under its missed
+  // reason, and building every body eagerly multiplies the page's DOM for
+  // content nobody opened. Built from the same model either way.
   let built = false;
   details.addEventListener("toggle", () => {
     if (built || !(details as HTMLDetailsElement).open) return;
