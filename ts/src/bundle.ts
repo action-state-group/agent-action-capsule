@@ -1,5 +1,8 @@
 import {
+  inclusionProof,
   leafCount,
+  MmrTree,
+  rangeProof,
   rootFromPeaks,
   verifyHexInclusion,
   verifyRange,
@@ -36,6 +39,7 @@ import {
   type ComposedResult,
 } from "./composed.js";
 import {
+  verifyProducerEnvelope,
   verifyRecordSignature,
   type RecordSignatureVerdict,
 } from "./producer-envelope-verification.js";
@@ -1705,3 +1709,680 @@ export const disclosurePayload = async (
   field: DisclosureField,
 ): Promise<unknown> =>
   (await resolveDisclosure(record, disclosures, field)).payload;
+
+// -- the producer ---------------------------------------------------------------
+//
+// `buildEvidenceBundle` assembles a Bundle from a `ProofSource` and checks the
+// result with strict `verifyBundle` before returning it. It holds no key and
+// trusts nothing the source returns: the checkpoint is verified from its COSE
+// form, and every proof and record is checked by the strict verifier.
+
+/** The producer refused to build the Bundle; the message says why. */
+export class BundleBuildError extends Error {
+  public constructor(message: string) {
+    super(message);
+    this.name = "BundleBuildError";
+  }
+}
+
+/**
+ * A record as a store holds it: the Capsule's JSON bytes and its Producer
+ * Envelope bytes (empty when the record is unsigned).
+ */
+export interface StoredRecord {
+  readonly capsule: Uint8Array;
+  readonly producerEnvelope: Uint8Array;
+}
+
+/** A membership's `inclusion_proof`, in the Bundle's wire shape. */
+export interface BundleInclusionProof {
+  readonly v: 1;
+  readonly kind: "inclusion";
+  readonly size: number;
+  readonly leaf_index: number;
+  readonly witness: readonly string[];
+  readonly peaks_left: readonly string[];
+  readonly peaks_right: readonly string[];
+}
+
+/** A completeness certificate's `range_proof`, in the Bundle's wire shape. */
+export interface BundleRangeProof {
+  readonly from_seq: number;
+  readonly to_seq: number;
+  readonly size: number;
+  readonly from_index: number;
+  readonly to_index: number;
+  readonly witness: readonly string[];
+}
+
+/**
+ * The read-only proof material {@link buildEvidenceBundle} reads.
+ *
+ * - `checkpoint()`: the signed CLL COSE checkpoint the Bundle is built against.
+ * - `leaves()`: the 32-byte value of every leaf, seq 1 to
+ *   `leafCount(mmr_size)`, in order; a record's value is its Capsule ID.
+ * - `record(capsuleId)`: the stored record, or `undefined` when the log does
+ *   not hold that leaf as a record. Any other failure rejects.
+ * - `inclusionProof(seq)`: the inclusion proof for that leaf at the
+ *   checkpoint's size.
+ * - `rangeProof(firstSeq)`: the range proof over `[firstSeq, tip]`.
+ */
+export interface ProofSource {
+  checkpoint(): Promise<Uint8Array>;
+  leaves(): Promise<readonly Uint8Array[]>;
+  record(capsuleId: string): Promise<StoredRecord | undefined>;
+  inclusionProof(seq: number): Promise<BundleInclusionProof>;
+  rangeProof(firstSeq: number): Promise<BundleRangeProof>;
+}
+
+/** The CLL backend members {@link proofSourceFromCll} reads. */
+export interface CllProofBackend {
+  scanEntries(
+    afterSeq: bigint,
+    limit: number,
+  ): Promise<readonly { readonly value: Uint8Array }[]>;
+  loadCll(): Promise<{
+    readonly nodes: readonly Uint8Array[];
+    readonly checkpoint?: Uint8Array;
+    readonly checkpointSize?: bigint;
+    readonly checkpointIndexedSeq?: bigint;
+  }>;
+}
+
+/**
+ * A record store: `get` resolves to the Capsule's bytes and its Producer
+ * Envelope bytes, and rejects with an error whose `code` is `"not_found"` for
+ * a record it does not hold.
+ */
+export interface RecordStore {
+  get(capsuleId: string): Promise<{
+    readonly capsule: Uint8Array;
+    readonly producerEnvelope?: Uint8Array;
+  }>;
+}
+
+export interface BuildEvidenceBundleOptions {
+  /** The Capsule ID the Bundle is built around. */
+  readonly root: string;
+  /**
+   * Required: the first seq of a range proof that ends at the checkpoint tip,
+   * carrying every record in `[intervalFrom, tip]` and none below it; or
+   * `null` for no range proof, each record proven alone
+   * (`completeness.selection: "producer-selected"`, read as INCOMPLETE).
+   */
+  readonly intervalFrom: number | null;
+  /** The citation depth from `root`; 2 when not given. */
+  readonly closureDepth?: number;
+  /** Further records to carry. */
+  readonly include?: readonly string[];
+  /** The Bundle-level disclosure overlay, by Capsule ID and member. */
+  readonly disclosures?: Readonly<
+    Record<string, Readonly<Record<string, unknown>>>
+  >;
+  readonly suppressedFields?: readonly string[];
+  /**
+   * Derived from the overlay when not given; a given `all` must reveal every
+   * committed, unsuppressed member of each record the overlay discloses.
+   */
+  readonly payloadsMode?: "all" | "selected";
+  /** A raw 32-byte Ed25519 public key: adds `producer-key/v1`. */
+  readonly producerKey?: Uint8Array;
+  /** Extension blocks of any kind but `producer-key/v1` and `composed/v1`. */
+  readonly extensions?: Readonly<Record<string, unknown>>;
+  /** The producer's self-report, carried as given. */
+  readonly verification?: Readonly<Record<string, unknown>>;
+}
+
+export interface BuildUnprovenBundleOptions {
+  readonly root: string;
+  readonly closureDepth?: number;
+  readonly disclosures?: Readonly<
+    Record<string, Readonly<Record<string, unknown>>>
+  >;
+  readonly suppressedFields?: readonly string[];
+}
+
+// Extension kinds this package owns; `extensions` cannot set them.
+const OWNED_EXTENSIONS = ["producer-key/v1", COMPOSED_KIND] as const;
+const PAYLOADS_MODES = ["all", "selected"] as const;
+
+const toHex = (bytes: Uint8Array): string =>
+  Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+const eligible = (member: string): boolean =>
+  Object.hasOwn(disclosureEligibleFields, member);
+const sortedText = (values: Iterable<string>): string =>
+  JSON.stringify([...values].sort(byCodePoint));
+
+/**
+ * A {@link ProofSource} over a CLL backend (`scanEntries` and `loadCll`) and
+ * a record store. The proofs are built from the backend's MMR nodes at the
+ * latest checkpoint's size.
+ */
+export function proofSourceFromCll(
+  backend: CllProofBackend,
+  records: RecordStore,
+): ProofSource {
+  let loaded:
+    | Promise<{
+        state: Awaited<ReturnType<CllProofBackend["loadCll"]>>;
+        tree: MmrTree;
+      }>
+    | undefined;
+  const load = () =>
+    (loaded ??= backend
+      .loadCll()
+      .then((state) => ({ state, tree: new MmrTree(state.nodes) })));
+  const signed = async () => {
+    const { state, tree } = await load();
+    if (state.checkpoint === undefined || state.checkpointSize === undefined)
+      throw new BundleBuildError(
+        "the log has no checkpoint: nothing can be proven until one is cut",
+      );
+    return { cose: state.checkpoint, size: state.checkpointSize, tree };
+  };
+  return {
+    async checkpoint() {
+      return Uint8Array.from((await signed()).cose);
+    },
+    async leaves() {
+      const { state } = await load();
+      if (state.checkpoint === undefined) return [];
+      const want = state.checkpointIndexedSeq ?? 0n,
+        out: Uint8Array[] = [];
+      while (BigInt(out.length) < want) {
+        const remaining = want - BigInt(out.length);
+        const page = await backend.scanEntries(
+          BigInt(out.length),
+          remaining < 1000n ? Number(remaining) : 1000,
+        );
+        if (!page.length) break;
+        for (const entry of page) out.push(Uint8Array.from(entry.value));
+      }
+      return out;
+    },
+    async record(capsuleId) {
+      try {
+        const stored = await records.get(capsuleId);
+        return {
+          capsule: stored.capsule,
+          producerEnvelope: stored.producerEnvelope ?? new Uint8Array(),
+        };
+      } catch (error) {
+        // The record-store contract's not-found code.
+        if (
+          error !== null &&
+          typeof error === "object" &&
+          (error as { code?: unknown }).code === "not_found"
+        )
+          return undefined;
+        throw error;
+      }
+    },
+    async inclusionProof(seq) {
+      const { size, tree } = await signed();
+      const proof = await inclusionProof(tree, BigInt(seq - 1), size);
+      return {
+        v: 1,
+        kind: "inclusion",
+        size: proof.size,
+        leaf_index: proof.leaf_index,
+        witness: [...proof.witness],
+        peaks_left: [...proof.peaks_left],
+        peaks_right: [...proof.peaks_right],
+      };
+    },
+    async rangeProof(firstSeq) {
+      const { size, tree } = await signed();
+      const tip = leafCount(size) ?? 0n;
+      const proof = await rangeProof(
+        tree,
+        BigInt(firstSeq - 1),
+        tip - 1n,
+        size,
+      );
+      return {
+        from_seq: firstSeq,
+        to_seq: Number(tip),
+        size: proof.size,
+        from_index: proof.from_index,
+        to_index: proof.to_index,
+        witness: [...proof.witness],
+      };
+    },
+  };
+}
+
+function committedMembers(record: Bundle): string[] {
+  return Object.entries(disclosureEligibleFields)
+    .filter(
+      ([, path]) =>
+        typeof resolveDisclosurePath(record as ParsedJson, path) === "string",
+    )
+    .map(([member]) => member)
+    .sort(byCodePoint);
+}
+
+function copyDisclosures(raw: unknown): Record<string, unknown> {
+  if (raw === undefined || raw === null) return {};
+  if (!object(raw)) throw new BundleBuildError("disclosures is not an object");
+  return Object.fromEntries(
+    Object.entries(raw).map(([id, members]) => [
+      id,
+      object(members) ? { ...members } : members,
+    ]),
+  );
+}
+
+function checkOptions(
+  closureDepth: unknown,
+  disclosures: Record<string, unknown>,
+  suppressedFields: readonly string[],
+  payloadsMode: unknown,
+  extensions: Record<string, unknown>,
+): void {
+  if (!integer(closureDepth) || closureDepth < 0)
+    throw new BundleBuildError("closureDepth must be a non-negative integer");
+  if (
+    payloadsMode !== undefined &&
+    !PAYLOADS_MODES.includes(payloadsMode as "all")
+  )
+    throw new BundleBuildError(
+      `payloadsMode must be one of ${JSON.stringify(PAYLOADS_MODES)}`,
+    );
+  const ineligible = suppressedFields.filter((member) => !eligible(member));
+  if (ineligible.length)
+    throw new BundleBuildError(
+      `suppressedFields names members that are not disclosure-eligible: ${sortedText(ineligible)}`,
+    );
+  for (const [id, members] of Object.entries(disclosures)) {
+    if (!object(members))
+      throw new BundleBuildError(`disclosures[${id}] is not an object`);
+    const bad = Object.keys(members).filter((member) => !eligible(member));
+    if (bad.length)
+      throw new BundleBuildError(
+        `disclosures[${id}] names members that are not disclosure-eligible: ${sortedText(bad)}`,
+      );
+    const both = Object.keys(members).filter((member) =>
+      suppressedFields.includes(member),
+    );
+    if (both.length)
+      throw new BundleBuildError(
+        `disclosures[${id}] reveals member(s) declared suppressed: ${sortedText(both)}`,
+      );
+  }
+  const owned = OWNED_EXTENSIONS.filter((kind) =>
+    Object.hasOwn(extensions, kind),
+  );
+  if (owned.length)
+    throw new BundleBuildError(
+      `extensions cannot set kinds this producer owns: ${sortedText(owned)}`,
+    );
+}
+
+/**
+ * Records reached from `root` within `depth` citation edges (root included),
+ * and the targets `lookup` does not hold, in first-seen order: the traversal
+ * {@link verifyBundle} checks graph closure with.
+ */
+async function closure(
+  root: string,
+  depth: number,
+  lookup: (capsuleId: string) => Promise<Bundle | undefined>,
+): Promise<{ found: Map<string, Bundle>; missing: string[] }> {
+  const rootRecord = await lookup(root);
+  if (rootRecord === undefined)
+    throw new BundleBuildError(`root ${root}: no such record`);
+  const found = new Map([[root, rootRecord]]),
+    missing: string[] = [];
+  let frontier = [root];
+  for (let level = 0; level < depth; level += 1) {
+    const next: string[] = [];
+    for (const source of frontier)
+      for (const target of citations(found.get(source)!)) {
+        if (found.has(target) || missing.includes(target)) continue;
+        const record = await lookup(target);
+        if (record === undefined) missing.push(target);
+        else {
+          found.set(target, record);
+          next.push(target);
+        }
+      }
+    frontier = next;
+  }
+  return { found, missing };
+}
+
+function completenessBlock(
+  records: readonly Bundle[],
+  closureDepth: number,
+  missing: readonly string[],
+  disclosures: Record<string, unknown>,
+  suppressedFields: readonly string[],
+  payloadsMode: string | undefined,
+): Record<string, unknown> {
+  const suppressed = [...new Set(suppressedFields)].sort(byCodePoint);
+  const unrevealed: [string, string][] = [];
+  for (const record of records) {
+    const id = capsuleIdOf(record),
+      revealed = disclosures[id];
+    for (const member of committedMembers(record))
+      if (
+        !suppressed.includes(member) &&
+        !(object(revealed) && Object.hasOwn(revealed, member))
+      )
+        unrevealed.push([id, member]);
+  }
+  const overlay = Object.keys(disclosures).length > 0;
+  if (payloadsMode === "all" && overlay) {
+    const gaps = unrevealed.filter(([id]) => Object.hasOwn(disclosures, id));
+    if (gaps.length)
+      throw new BundleBuildError(
+        `payloadsMode all, but the disclosures overlay does not reveal: ${gaps
+          .map(([id, member]) => `${id}:${member}`)
+          .join(", ")}`,
+      );
+  }
+  return {
+    closure_depth: closureDepth,
+    records_mode: missing.length ? "declared_incomplete" : "complete",
+    payloads_mode:
+      payloadsMode ?? (overlay && !unrevealed.length ? "all" : "selected"),
+    suppressed_fields: suppressed,
+    missing: [...missing],
+  };
+}
+
+/**
+ * The stored record as a Bundle carries it: the Capsule, with a claimed
+ * Producer Envelope re-inlined as its local-only `signature` and `key_id`
+ * (both outside the `capsule_id` preimage).
+ */
+async function decodeRecord(
+  capsuleId: string,
+  stored: StoredRecord,
+): Promise<Bundle> {
+  let capsule: unknown;
+  try {
+    if (!(stored.capsule instanceof Uint8Array))
+      throw new TypeError("capsule is not bytes");
+    capsule = plainIntegers(decodeStrictJson(stored.capsule));
+  } catch (error) {
+    throw new BundleBuildError(
+      `record ${capsuleId}: the stored capsule is not a JSON object (${String(error)})`,
+    );
+  }
+  if (!object(capsule))
+    throw new BundleBuildError(
+      `record ${capsuleId}: the stored capsule is not a JSON object`,
+    );
+  if (capsule.capsule_id !== capsuleId)
+    throw new BundleBuildError(
+      `record ${capsuleId}: the store returned a different capsule`,
+    );
+  const envelope = stored.producerEnvelope ?? new Uint8Array();
+  if (envelope.length) {
+    const checked = await verifyProducerEnvelope(capsuleId, envelope);
+    if (!checked.ok || checked.publicKey === undefined)
+      throw new BundleBuildError(
+        `record ${capsuleId}: its producer envelope does not verify`,
+      );
+    setMember<unknown>(capsule, "signature", toHex(envelope));
+    setMember<unknown>(capsule, "key_id", toHex(checked.publicKey));
+  }
+  return capsule;
+}
+
+/**
+ * Build an Evidence Bundle around `options.root` from `source`
+ * ({@link BuildEvidenceBundleOptions}).
+ *
+ * Needs `@action-state-group/cll` and Node, where its COSE checkpoint
+ * verifier runs. Rejects with {@link BundleBuildError} on every refusal,
+ * including any result strict {@link verifyBundle} calls INVALID; a
+ * declared-incomplete closure or an unsigned record is stated, not refused.
+ */
+export async function buildEvidenceBundle(
+  source: ProofSource,
+  options: BuildEvidenceBundleOptions,
+): Promise<Record<string, unknown>> {
+  const checkpointMetadata = await loadCheckpointMetadata();
+  if (!checkpointMetadata)
+    throw new BundleBuildError(
+      "building a Bundle needs @action-state-group/cll's checkpoint verifier, which runs in Node: install @action-state-group/cll",
+    );
+  const { root, intervalFrom } = options;
+  const closureDepth = options.closureDepth ?? 2,
+    suppressedFields = options.suppressedFields ?? [],
+    disclosures = copyDisclosures(options.disclosures),
+    extensions: Record<string, unknown> = { ...options.extensions };
+  checkOptions(
+    closureDepth,
+    disclosures,
+    suppressedFields,
+    options.payloadsMode,
+    extensions,
+  );
+  if (
+    intervalFrom === undefined ||
+    (intervalFrom !== null && (!integer(intervalFrom) || intervalFrom < 1))
+  )
+    throw new BundleBuildError(
+      "intervalFrom is required: a seq of at least 1, or null for no range proof",
+    );
+
+  const cose = await source.checkpoint();
+  let signed: Awaited<ReturnType<CheckpointMetadata>>;
+  try {
+    signed =
+      cose instanceof Uint8Array ? await checkpointMetadata(cose) : undefined;
+  } catch {
+    signed = undefined;
+  }
+  const tipCount = signed === undefined ? undefined : leafCount(signed.size);
+  if (signed === undefined || tipCount === undefined)
+    throw new BundleBuildError("the checkpoint does not verify");
+  const tip = Number(tipCount);
+  const leaves = [...(await source.leaves())];
+  if (
+    leaves.length !== tip ||
+    leaves.some(
+      (value) => !(value instanceof Uint8Array) || value.length !== 32,
+    )
+  )
+    throw new BundleBuildError(
+      `the source gave ${leaves.length} leaves; the checkpoint covers ${tip} 32-byte leaves`,
+    );
+  const seqOf = new Map<string, number>();
+  leaves.forEach((value, index) => {
+    const id = toHex(value);
+    if (!seqOf.has(id)) seqOf.set(id, index + 1);
+  });
+
+  const lookup = async (capsuleId: string): Promise<Bundle | undefined> => {
+    const stored = await source.record(capsuleId);
+    if (stored === undefined || stored === null) return undefined;
+    if (!seqOf.has(capsuleId))
+      throw new BundleBuildError(
+        `record ${capsuleId} is not covered by the checkpoint: build again after the next one`,
+      );
+    return decodeRecord(capsuleId, stored);
+  };
+
+  const { found: carried, missing } = await closure(root, closureDepth, lookup);
+  for (const capsuleId of options.include ?? [])
+    if (!carried.has(capsuleId)) {
+      const record = await lookup(capsuleId);
+      if (record === undefined)
+        throw new BundleBuildError(`include: no such record: ${capsuleId}`);
+      carried.set(capsuleId, record);
+    }
+
+  const certificate: Record<string, unknown> = {
+    log_id: signed.logId,
+    range_root: signed.root,
+  };
+  if (intervalFrom !== null) {
+    if (intervalFrom > tip)
+      throw new BundleBuildError(
+        `intervalFrom ${intervalFrom} is past the checkpoint tip ${tip}`,
+      );
+    const below = [...carried.keys()]
+      .map((id) => [seqOf.get(id)!, id] as const)
+      .filter(([seq]) => seq < intervalFrom)
+      .sort(([a, x], [b, y]) => a - b || byCodePoint(x, y));
+    if (below.length)
+      throw new BundleBuildError(
+        `record(s) below intervalFrom ${intervalFrom}: ${below
+          .map(([seq, id]) => `${id} (seq ${seq})`)
+          .join(", ")}; lower it or build without a range`,
+      );
+    for (let seq = intervalFrom; seq <= tip; seq += 1) {
+      const capsuleId = toHex(leaves[seq - 1]!);
+      if (carried.has(capsuleId)) continue;
+      const record = await lookup(capsuleId);
+      if (record === undefined)
+        throw new BundleBuildError(
+          `seq ${seq} in the interval is not a record the source holds; a range cannot cover it: start the interval after it or build without a range`,
+        );
+      carried.set(capsuleId, record);
+    }
+    certificate.first_seq = intervalFrom;
+    certificate.last_seq = tip;
+    certificate.body_digests = leaves
+      .slice(intervalFrom - 1, tip)
+      .map((value) => toHex(value));
+    certificate.range_proof = structuredClone(
+      await source.rangeProof(intervalFrom),
+    );
+  }
+
+  const ordered = [...carried.keys()].sort(
+    (a, b) => seqOf.get(a)! - seqOf.get(b)!,
+  );
+  const unknown = Object.keys(disclosures).filter((id) => !carried.has(id));
+  if (unknown.length)
+    throw new BundleBuildError(
+      `disclosures given for record(s) the bundle does not carry: ${sortedText(unknown)}`,
+    );
+  const records = ordered.map((id) => carried.get(id)!);
+  const memberships: Record<string, unknown> = {};
+  for (const id of ordered) {
+    const seq = seqOf.get(id)!;
+    setMember(memberships, id, {
+      log_coordinates: { log_id: signed.logId, seq, leaf_index: seq - 1 },
+      inclusion_proof: structuredClone(await source.inclusionProof(seq)),
+    });
+  }
+  certificate.memberships = memberships;
+  const completeness = completenessBlock(
+    records,
+    closureDepth,
+    missing,
+    disclosures,
+    suppressedFields,
+    options.payloadsMode,
+  );
+  if (intervalFrom === null)
+    completeness.selection = SELECTION_PRODUCER_SELECTED;
+  const bundle: Bundle = {
+    bundle_version: "2",
+    bundle_kind: "evidence-bundle/v2",
+    root,
+    records,
+    completeness,
+    completeness_certificate: certificate,
+    checkpoint: {
+      log_id: signed.logId,
+      mmr_size: Number(signed.size),
+      root: signed.root,
+      prev_size: Number(signed.previousSize),
+      prev_root: signed.previousRoot,
+      key_id: signed.keyId,
+      timestamp: signed.timestamp,
+      cose: encodeBase64Url(cose),
+    },
+  };
+  if (Object.keys(disclosures).length) bundle.disclosures = disclosures;
+  if (options.producerKey !== undefined) {
+    if (
+      !(options.producerKey instanceof Uint8Array) ||
+      options.producerKey.length !== 32
+    )
+      throw new BundleBuildError(
+        "producerKey must be a raw 32-byte Ed25519 public key",
+      );
+    extensions["producer-key/v1"] = { public_key: toHex(options.producerKey) };
+  }
+  if (Object.keys(extensions).length) bundle.extensions = extensions;
+  if (options.verification !== undefined)
+    bundle.verification = { ...options.verification };
+  return selfChecked(bundle);
+}
+
+async function selfChecked(bundle: Bundle): Promise<Bundle> {
+  const result = await verifyBundle(bundle, { strict: true });
+  if (result.strict.verdict === "INVALID") {
+    const failed = result.strict.claims
+      .filter((claim) => claim.status === "fail")
+      .map(
+        (claim) =>
+          `${claim.name}: ${claim.findings.join(", ") || claim.status}`,
+      );
+    throw new BundleBuildError(
+      `the bundle does not verify: ${failed.join("; ") || "not an evidence bundle"}`,
+    );
+  }
+  return bundle;
+}
+
+/**
+ * An Evidence Bundle with no log proof: no checkpoint and no certificate, for
+ * Capsules that belong to no log. Every given record is carried; the closure
+ * from `root` decides `missing`. Strict {@link verifyBundle} reads it as
+ * INCOMPLETE. Rejects with {@link BundleBuildError}.
+ */
+export async function buildUnprovenBundle(
+  records: readonly Readonly<Record<string, unknown>>[],
+  options: BuildUnprovenBundleOptions,
+): Promise<Record<string, unknown>> {
+  const { root } = options;
+  const closureDepth = options.closureDepth ?? 2,
+    suppressedFields = options.suppressedFields ?? [],
+    disclosures = copyDisclosures(options.disclosures);
+  checkOptions(closureDepth, disclosures, suppressedFields, undefined, {});
+  const ids = records.map((record) =>
+    object(record) ? record.capsule_id : undefined,
+  );
+  if (!ids.every((id): id is string => typeof id === "string"))
+    throw new BundleBuildError("every record needs a capsule_id");
+  if (new Set(ids).size !== ids.length)
+    throw new BundleBuildError("duplicate capsule_id among the records");
+  const byId = new Map(ids.map((id, index) => [id, { ...records[index] }]));
+  if (!byId.has(root))
+    throw new BundleBuildError(`root ${root} is not among the records`);
+  const unknown = Object.keys(disclosures).filter((id) => !byId.has(id));
+  if (unknown.length)
+    throw new BundleBuildError(
+      `disclosures given for record(s) the bundle does not carry: ${sortedText(unknown)}`,
+    );
+  const { missing } = await closure(root, closureDepth, async (id) =>
+    byId.get(id),
+  );
+  const carried = ids.map((id) => byId.get(id)!);
+  const bundle: Bundle = {
+    bundle_version: "2",
+    bundle_kind: "evidence-bundle/v2",
+    root,
+    records: carried,
+    completeness: completenessBlock(
+      carried,
+      closureDepth,
+      missing,
+      disclosures,
+      suppressedFields,
+      undefined,
+    ),
+  };
+  if (Object.keys(disclosures).length) bundle.disclosures = disclosures;
+  return selfChecked(bundle);
+}
