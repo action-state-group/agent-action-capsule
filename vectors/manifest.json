@@ -23,6 +23,7 @@
     "bundle_strict": "bundle/strict/manifest.json",
     "bundle_non_record_leaves": "bundle/non-record-leaves/manifest.json",
     "bundle_certificate_mode": "bundle/certificate-mode/manifest.json",
+    "bundle_category_coverage": "bundle/category-coverage/manifest.json",
     "cll_material": "cll-material/manifest.json",
     "adapter_x402": "adapters/x402/manifest.json",
     "adapter_ucp": "adapters/ucp/manifest.json"

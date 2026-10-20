@@ -49,12 +49,14 @@ same-commit files in CI.
   producer-selected Bundles, the `disclosures` claim and witness receipts of the
   `cll`, `rekor` and `scrapi` bindings under a supplied witness directory;
   `python/scripts/generate_bundle_strict_vectors.py` regenerates them.
-- `bundle/non-record-leaves/` and `bundle/certificate-mode/`: Evidence Bundle
-  -02 certificates under strict verification: a range that carries padding
-  leaves in full in `completeness_certificate.non_record_leaves`, the
-  producer-selected certificate in the shape producers emit, and
-  `completeness.selection` values naming a mode the verifier does not
-  implement (`certificate_mode_unsupported`, never a failure);
+- `bundle/non-record-leaves/`, `bundle/certificate-mode/` and
+  `bundle/category-coverage/`: Evidence Bundle -02 under strict verification:
+  a range that carries padding leaves in full in
+  `completeness_certificate.non_record_leaves`, the producer-selected
+  certificate in the shape producers emit, `completeness.selection` values
+  naming a mode the verifier does not implement
+  (`certificate_mode_unsupported`, never a failure), and the
+  `category_coverage` member's five properties;
   `python/scripts/generate_bundle_02_vectors.py` regenerates them.
 - `judgment/`: PROVISIONAL judgment extension cases (the `x-judgment-v1`
   Capsule member: `rubric_digest`, `rubric_version`, `judge_parameters_digest`,

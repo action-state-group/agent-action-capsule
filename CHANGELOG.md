@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Evidence Bundle -02 (`spec/draft-mih-zhang-agent-disclosure-bundle-02.md`, Python reference;
+  Go, TypeScript and Rust follow). Certificate modes: `verify_bundle` reads
+  `completeness.selection` as the certificate's mode; a producer-selected Bundle is no longer a
+  failure in plain mode, and any other value withholds interval coverage and per-record
+  membership with `certificate_mode_unsupported`, never a failure. Non-record leaves: a range
+  covers padding leaves carried in full in `completeness_certificate.non_record_leaves`; each
+  position of the interval is a record's membership, a recomputed padding leaf, or missing; a leaf
+  of an undefined `record_type` makes the Bundle INCOMPLETE. `build_evidence_bundle` carries them
+  only with `carry_non_record_leaves=True` and a source with the optional `leaf_content`
+  capability; a source without it builds exactly as before. Category coverage: the
+  `category_coverage` member is reported as five properties
+  (`agent_action_capsule.category_coverage`, `BundleVerificationResult.category_coverage`), with
+  `verify_bundle` inputs `category_sets`, `category_request` and `record_categories`; in strict
+  mode a `FAIL` of its form, signature or consistency is INVALID. Vectors:
+  `vectors/bundle/non-record-leaves/`, `vectors/bundle/certificate-mode/` and
+  `vectors/bundle/category-coverage/` (`python/scripts/generate_bundle_02_vectors.py`).
+
 ## 0.11.0 — 2026-10-20
 
 - TypeScript: outcome-report and bundle-page fixes. A resolved conversation's summary and
