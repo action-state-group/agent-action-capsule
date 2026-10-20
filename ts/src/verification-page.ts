@@ -4,6 +4,7 @@ import type {
   ExtensionResult,
 } from "./bundle.js";
 import {
+  bundleVerified,
   presentationRefusalLine,
   presentationRefusalRow,
   type PresentationRefusal,
@@ -580,9 +581,13 @@ export function verificationCheckLists(
     page: pick("page"),
     failed,
     notChecked: pick("notChecked"),
-    // A page that failed a check does not show the bundle as passing, so
-    // the note that it passed without the checkpoint would be false there.
-    passedWithoutCheckpoint: passedWithoutCheckpoint && failed.length === 0,
+    // The note says the page shows the bundle as passing: true only when
+    // the page's own verdict (bundleVerified, the banner's) passes and no
+    // check on this page failed.
+    passedWithoutCheckpoint:
+      passedWithoutCheckpoint &&
+      failed.length === 0 &&
+      bundleVerified(verified),
   };
 }
 

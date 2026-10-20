@@ -214,6 +214,26 @@ describe("the verification page's check lists", () => {
     expect(lists.passedWithoutCheckpoint).toBe(false);
   });
 
+  it("a declared-incomplete bundle, which the banner fails, never says it passed without the checkpoint", async () => {
+    const bundle = signedCheckpointBundle();
+    const verified = await verifyBundle(bundle);
+    const unchecked = {
+      status: "pass" as const,
+      findings: ["checkpoint_unverified"],
+    };
+    // A declared missing record leaves closure withheld: no check on the
+    // page fails, but the page's verdict does not pass.
+    const lists = verificationCheckLists(bundle, {
+      ...verified,
+      graphClosure: { status: "withheld" as const, findings: [] },
+      intervalCoverage: unchecked,
+      perRecordMembership: unchecked,
+    });
+    expect(lists.failed).toEqual([]);
+    expect(lists.notChecked).toEqual(["checkpoint-signature"]);
+    expect(lists.passedWithoutCheckpoint).toBe(false);
+  });
+
   it("a checkpoint whose signature does not authenticate moves to the failed list", async () => {
     const bundle = signedCheckpointBundle();
     const verified = await verifyBundle(bundle);
