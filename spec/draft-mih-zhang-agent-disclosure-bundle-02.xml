@@ -290,8 +290,8 @@ closure but does not satisfy per-record membership.</t>
 is read:</t>
         <ul spacing="normal">
           <li>
-            <t><strong>Absent</strong>: a range certificate, as described above. Its interval ends at
-the checkpoint's last leaf.</t>
+            <t><strong>Absent</strong> (the Bundle has no <tt>selection</tt> member): a range certificate, as
+described above. Its interval ends at the checkpoint's last leaf.</t>
           </li>
           <li>
             <t><strong><tt>producer-selected</tt></strong>: a producer-selected certificate
@@ -299,7 +299,8 @@ the checkpoint's last leaf.</t>
           </li>
         </ul>
         <t>This document defines no other value. A verifier that meets a <tt>selection</tt>
-value it does not implement, including a value that is not a string, MUST
+value it does not implement, including a value that is not a string (<tt>null</tt>
+among them), MUST
 report interval coverage and per-record membership as not established
 (finding <tt>certificate_mode_unsupported</tt>). It MUST NOT report either claim as
 failed because of the mode, MUST NOT read the certificate under another mode,
@@ -310,7 +311,10 @@ not implement producer-selected certificates reports such a Bundle's interval
 coverage and per-record membership as not established, never as failed. A
 Bundle in a mode the verifier lacks is unverified in that respect; it is not
 evidence of tampering, and reporting it as invalid would make an honest Bundle
-indistinguishable from an altered one.</t>
+indistinguishable from an altered one. The <tt>selection</tt> member is the
+producer's to write, and so is any edit to a Bundle after it is made: setting
+an unknown mode can turn a failing claim into one that is not established,
+but never into one that is established (<xref target="security"/>).</t>
       </section>
       <section anchor="producer-selected">
         <name>Producer-Selected Certificates</name>
@@ -345,7 +349,8 @@ verifier does not read them. It MUST NOT carry <tt>non_record_leaves</tt>
           </li>
           <li>
             <t>verifies per-record membership record by record. <tt>range_root</tt> MUST equal the
-checkpoint's root. Each record's membership entry MUST carry
+checkpoint's root, and the certificate's <tt>log_id</tt> the checkpoint's
+<tt>log_id</tt>. Each record's membership entry MUST carry
 <tt>log_coordinates</tt> naming the checkpoint's <tt>log_id</tt>, a <tt>seq</tt> of at least 1
 that no other entry claims, and <tt>leaf_index = seq - 1</tt>, and an inclusion
 proof at that index whose <tt>size</tt> equals <tt>checkpoint.mmr_size</tt> and that binds
@@ -404,10 +409,11 @@ document.)</t>
 <tt>non_record_leaf_element_invalid</tt>).</t>
           </li>
           <li>
-            <t>A <tt>seq</tt> that is not an integer within <tt>[first_seq, last_seq]</tt>, or that is
-the <tt>seq</tt> of a record's membership entry or of an earlier element, is
-invalid (finding <tt>non_record_leaf_seq_invalid</tt>); the element accounts for
-no position.</t>
+            <t>A <tt>seq</tt> that is not an integer within <tt>[first_seq, last_seq]</tt>, that any
+membership entry states in its <tt>log_coordinates</tt> (whether or not that entry
+is otherwise valid), or that is the <tt>seq</tt> of an earlier element, is invalid
+(finding <tt>non_record_leaf_seq_invalid</tt>); the element accounts for no
+position.</t>
           </li>
           <li>
             <t>Otherwise the element accounts for its <tt>seq</tt>. Then:
@@ -419,7 +425,8 @@ the element is malformed (finding <tt>non_record_leaf_malformed</tt>);</t>
               </li>
               <li>
                 <t>when <tt>record_type</tt> is not <tt>padding</tt>, the leaf is of a type this document
-does not define (finding <tt>non_record_leaf_type_unsupported</tt>);</t>
+does not define (finding <tt>non_record_leaf_type_unsupported</tt>), and the
+verifier checks nothing further about it;</t>
               </li>
               <li>
                 <t>when the padding <tt>content</tt> does not have exactly the four members above,
@@ -506,7 +513,8 @@ with <tt>status</tt> and, where required, <tt>policy_uri</tt>. <tt>request_diges
 OPTIONAL, is the digest of the Evidence Request this declaration answers,
 computed as <xref target="I-D.mih-agent-evidence-request"/> computes a request digest, in
 lowercase hexadecimal. <tt>signer</tt> and <tt>signature</tt> are OPTIONAL, and present
-together or not at all. Members not defined here are ignored.</t>
+together or not at all. Members not defined here are ignored: they never make
+the member malformed, and a signature covers them.</t>
       <t>The member is part of the bundle digest (<xref target="bundle-digest"/>), so a
 countersignature binds it.</t>
       <section anchor="category-statuses">
@@ -552,12 +560,13 @@ countersignature binds it.</t>
             </tr>
           </tbody>
         </table>
-        <t><tt>AVAILABLE</tt>, <tt>PARTIAL</tt>, <tt>WITHHELD</tt>, <tt>DELETED</tt> and <tt>UNDISCLOSED</tt> are the
-retention states of the Evidence Layer <xref target="I-D.mih-agent-evidence-layer"/>, with
-the same meanings, applied to a category rather than to one record's payload.
-<tt>ABSENT</tt> is the producer's asserted absence in that document's sense: its own
-unproven claim about its own store, never a non-membership proof and never
-the requester's recorded absence of <xref target="I-D.mih-agent-evidence-request"/>. The
+        <t><tt>AVAILABLE</tt>, <tt>PARTIAL</tt>, <tt>WITHHELD</tt> and <tt>DELETED</tt> are retention states of the
+Evidence Layer <xref target="I-D.mih-agent-evidence-layer"/>, with the same meanings,
+applied to a category rather than to one record's payload. This document
+defines <tt>UNDISCLOSED</tt> and <tt>ABSENT</tt>. <tt>ABSENT</tt> is the producer's asserted
+absence in the Evidence Layer's sense ("Three Kinds of No"): its own unproven
+claim about its own store, never a non-membership proof and never the
+requester's recorded absence of <xref target="I-D.mih-agent-evidence-request"/>. The
 retention state <tt>LEGAL_HOLD</tt> is not a status: it changes what may happen to
 evidence, not what is offered.</t>
         <t><tt>UNDISCLOSED</tt> MUST carry <tt>policy_uri</tt>, an absolute URI (<xref target="RFC3986"/>,
@@ -576,8 +585,11 @@ lowercase hexadecimal characters, under that key over the signing input</t>
 UTF8(JCS({"category_coverage": <the member without signature>,
           "root": <the Bundle's root>}))
 ]]></artwork>
-        <t>Including <tt>root</tt> binds the declaration to the Bundle it was made for, so a
-signed declaration copied into another Bundle does not verify. The signature
+        <t>Including <tt>root</tt> binds the declaration to the root record of the Bundle it
+was made for: a signed declaration copied into a Bundle with another root
+does not verify. It does not bind the rest of the Bundle; a Bundle with the
+same root and other records carries it unchanged, and only the bundle digest
+(<xref target="bundle-digest"/>) tells the two Bundles apart. The signature
 attributes the declaration to the holder of the key. It does not establish
 who that holder is; a verifier MAY compare <tt>signer.key_id</tt> with the
 producer's keys (<xref target="self-countersignature"/>) and report the result.</t>
@@ -586,10 +598,8 @@ producer's keys (<xref target="self-countersignature"/>) and report the result.<
         <name>Verifier Properties</name>
         <t>A verifier that implements this member reports the following properties,
 each as exactly one of <tt>PASS</tt>, <tt>FAIL</tt>, <tt>NOT_PRESENT</tt>, <tt>NOT_CHECKED</tt> and
-<tt>INCONCLUSIVE</tt>, with the meanings of the countersignature results
-(<xref target="countersign-entry"/>): the check held, did not hold, had nothing to operate
-on, could not run, or resolved only in part. A Bundle without the member has
-no category properties.</t>
+<tt>INCONCLUSIVE</tt>, as the definition of each property below assigns them. A
+Bundle without the member has no category properties.</t>
         <dl>
           <dt><tt>category_coverage_form</tt>:</dt>
           <dd>
@@ -600,7 +610,8 @@ property is <tt>NOT_CHECKED</tt>.</t>
           <dt><tt>category_coverage_signature</tt>:</dt>
           <dd>
             <t><tt>NOT_PRESENT</tt> when the member carries no signature; <tt>PASS</tt> when the
-signature verifies; <tt>FAIL</tt> otherwise.</t>
+signature verifies; <tt>FAIL</tt> otherwise, including when the signing input has
+no JCS serialization (for example, a number JCS cannot represent).</t>
           </dd>
           <dt><tt>category_coverage_set_registered</tt>:</dt>
           <dd>
@@ -611,15 +622,19 @@ is not one of its names; <tt>PASS</tt> otherwise.</t>
           <dt><tt>category_coverage_request</tt>:</dt>
           <dd>
             <t><tt>NOT_CHECKED</tt> when the verifier does not have the Evidence Request;
-<tt>FAIL</tt> when <tt>request_digest</tt> is present and is not that request's digest;
+otherwise <tt>FAIL</tt> when <tt>request_digest</tt> is present and is not that
+request's digest, computed over its octets before they are parsed;
+otherwise <tt>NOT_CHECKED</tt> when the request cannot be read, or its
+<tt>categories</tt> field is malformed (<xref target="I-D.mih-agent-evidence-request"/>);
 <tt>NOT_PRESENT</tt> when the request has no <tt>categories</tt> field; <tt>FAIL</tt> when the
 request names another set, or a requested category has no entry; <tt>PASS</tt>
 otherwise.</t>
           </dd>
           <dt><tt>category_coverage_consistency</tt>:</dt>
           <dd>
-            <t><tt>NOT_CHECKED</tt> when the verifier cannot assign the Bundle's records to
-categories (the set's definition says how); <tt>FAIL</tt> when a record the Bundle
+            <t><tt>NOT_CHECKED</tt> when the verifier cannot assign every record the Bundle
+carries to a category, or to none (the set's definition says how): a record
+it cannot assign could be in any category; <tt>FAIL</tt> when a record the Bundle
 carries belongs to a category declared <tt>ABSENT</tt> or <tt>WITHHELD</tt>; <tt>PASS</tt>
 otherwise. A record in a <tt>DELETED</tt> or <tt>UNDISCLOSED</tt> category is not a
 contradiction, and an <tt>AVAILABLE</tt> category with no record in the Bundle is
@@ -1349,11 +1364,17 @@ log; it says nothing about the records the producer left out, so a verifier
 never presents one as complete (<xref target="producer-selected"/>). Reporting an
 unimplemented certificate mode as not established rather than invalid keeps a
 failure meaningful: a verifier that reported every unfamiliar mode as invalid
-would report an honest Bundle and an altered one identically. A non-record
-leaf is accepted only with its full content, never as a bare digest, because
-a bare leaf value could be the identifier of a Capsule the producer chose not
-to show; recomputing the value from padding content, whose only free member is
-a random nonce, rules that out (<xref target="non-record-leaves"/>).</t>
+would report an honest Bundle and an altered one identically. The cost is a
+downgrade: whoever alters a Bundle can name an unknown mode, or put a
+non-record leaf of an undefined type where a record or a padding leaf was, and
+so turn a failing per-record membership into one that is not established
+(<xref target="certificate-modes"/>, <xref target="non-record-leaves"/>). Neither change can make a
+claim established. A relying party therefore treats "not established" as
+unverified, never as a pass. A padding leaf is accepted only with its full
+content, never as a bare digest, because a bare leaf value could be the
+identifier of a Capsule the producer chose not to show; recomputing the value
+from padding content, whose only free member is a random nonce, rules that
+out (<xref target="non-record-leaves"/>).</t>
       <t>A countersignature's <tt>statement</tt> and <tt>signer</tt> are what a relying party reads,
 so both are inside the signing input (<xref target="countersign-entry"/>); a signature over
 the bundle digest alone would let anyone holding the Bundle rewrite a <tt>failed</tt>
@@ -1405,7 +1426,9 @@ reported as registered, and why a verifier reports properties rather than a
 verdict of completeness. A signed <tt>ABSENT</tt> is attributable and can be
 contradicted by records a counterparty holds, but it is not evidence that
 nothing exists. Including the Bundle's <tt>root</tt> in the signing input stops a
-declaration made for one Bundle from being presented with another.</t>
+declaration made for one root record from being presented with another; a
+countersignature over the bundle digest is what binds it to the whole
+Bundle.</t>
       </section>
     </section>
     <section anchor="privacy">
@@ -1746,7 +1769,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 1360?>
+    <?line 1383?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>

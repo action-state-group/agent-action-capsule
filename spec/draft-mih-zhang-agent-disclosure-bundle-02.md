@@ -341,13 +341,14 @@ closure but does not satisfy per-record membership.
 `completeness.selection` names the mode in which `completeness_certificate`
 is read:
 
-- **Absent**: a range certificate, as described above. Its interval ends at
-  the checkpoint's last leaf.
+- **Absent** (the Bundle has no `selection` member): a range certificate, as
+  described above. Its interval ends at the checkpoint's last leaf.
 - **`producer-selected`**: a producer-selected certificate
   ({{producer-selected}}).
 
 This document defines no other value. A verifier that meets a `selection`
-value it does not implement, including a value that is not a string, MUST
+value it does not implement, including a value that is not a string (`null`
+among them), MUST
 report interval coverage and per-record membership as not established
 (finding `certificate_mode_unsupported`). It MUST NOT report either claim as
 failed because of the mode, MUST NOT read the certificate under another mode,
@@ -359,7 +360,10 @@ not implement producer-selected certificates reports such a Bundle's interval
 coverage and per-record membership as not established, never as failed. A
 Bundle in a mode the verifier lacks is unverified in that respect; it is not
 evidence of tampering, and reporting it as invalid would make an honest Bundle
-indistinguishable from an altered one.
+indistinguishable from an altered one. The `selection` member is the
+producer's to write, and so is any edit to a Bundle after it is made: setting
+an unknown mode can turn a failing claim into one that is not established,
+but never into one that is established ({{security}}).
 
 ## Producer-Selected Certificates {#producer-selected}
 
@@ -393,7 +397,8 @@ A verifier that implements this mode:
 - reports interval coverage as not established (finding
   `selection_not_checkable`): there is no interval;
 - verifies per-record membership record by record. `range_root` MUST equal the
-  checkpoint's root. Each record's membership entry MUST carry
+  checkpoint's root, and the certificate's `log_id` the checkpoint's
+  `log_id`. Each record's membership entry MUST carry
   `log_coordinates` naming the checkpoint's `log_id`, a `seq` of at least 1
   that no other entry claims, and `leaf_index = seq - 1`, and an inclusion
   proof at that index whose `size` equals `checkpoint.mmr_size` and that binds
@@ -451,15 +456,17 @@ document.)
 
 1. An element that is not an object is malformed (finding
    `non_record_leaf_element_invalid`).
-2. A `seq` that is not an integer within `[first_seq, last_seq]`, or that is
-   the `seq` of a record's membership entry or of an earlier element, is
-   invalid (finding `non_record_leaf_seq_invalid`); the element accounts for
-   no position.
+2. A `seq` that is not an integer within `[first_seq, last_seq]`, that any
+   membership entry states in its `log_coordinates` (whether or not that entry
+   is otherwise valid), or that is the `seq` of an earlier element, is invalid
+   (finding `non_record_leaf_seq_invalid`); the element accounts for no
+   position.
 3. Otherwise the element accounts for its `seq`. Then:
    - when `content` is not an object, or its `record_type` is not a string,
      the element is malformed (finding `non_record_leaf_malformed`);
    - when `record_type` is not `padding`, the leaf is of a type this document
-     does not define (finding `non_record_leaf_type_unsupported`);
+     does not define (finding `non_record_leaf_type_unsupported`), and the
+     verifier checks nothing further about it;
    - when the padding `content` does not have exactly the four members above,
      each in the form above, with `epistemic_type` equal to `producer_claim`,
      it is malformed (finding `non_record_leaf_malformed`);
@@ -536,7 +543,8 @@ with `status` and, where required, `policy_uri`. `request_digest`,
 OPTIONAL, is the digest of the Evidence Request this declaration answers,
 computed as {{I-D.mih-agent-evidence-request}} computes a request digest, in
 lowercase hexadecimal. `signer` and `signature` are OPTIONAL, and present
-together or not at all. Members not defined here are ignored.
+together or not at all. Members not defined here are ignored: they never make
+the member malformed, and a signature covers them.
 
 The member is part of the bundle digest ({{bundle-digest}}), so a
 countersignature binds it.
@@ -554,12 +562,13 @@ Each category has exactly one `status`, written in upper case:
 | `ABSENT` | the producer states that it holds nothing in this category |
 | `UNDISCLOSED` | the producer does not state which of the other statuses applies, under the policy `policy_uri` names |
 
-`AVAILABLE`, `PARTIAL`, `WITHHELD`, `DELETED` and `UNDISCLOSED` are the
-retention states of the Evidence Layer {{I-D.mih-agent-evidence-layer}}, with
-the same meanings, applied to a category rather than to one record's payload.
-`ABSENT` is the producer's asserted absence in that document's sense: its own
-unproven claim about its own store, never a non-membership proof and never
-the requester's recorded absence of {{I-D.mih-agent-evidence-request}}. The
+`AVAILABLE`, `PARTIAL`, `WITHHELD` and `DELETED` are retention states of the
+Evidence Layer {{I-D.mih-agent-evidence-layer}}, with the same meanings,
+applied to a category rather than to one record's payload. This document
+defines `UNDISCLOSED` and `ABSENT`. `ABSENT` is the producer's asserted
+absence in the Evidence Layer's sense ("Three Kinds of No"): its own unproven
+claim about its own store, never a non-membership proof and never the
+requester's recorded absence of {{I-D.mih-agent-evidence-request}}. The
 retention state `LEGAL_HOLD` is not a status: it changes what may happen to
 evidence, not what is offered.
 
@@ -581,8 +590,11 @@ UTF8(JCS({"category_coverage": <the member without signature>,
           "root": <the Bundle's root>}))
 ~~~
 
-Including `root` binds the declaration to the Bundle it was made for, so a
-signed declaration copied into another Bundle does not verify. The signature
+Including `root` binds the declaration to the root record of the Bundle it
+was made for: a signed declaration copied into a Bundle with another root
+does not verify. It does not bind the rest of the Bundle; a Bundle with the
+same root and other records carries it unchanged, and only the bundle digest
+({{bundle-digest}}) tells the two Bundles apart. The signature
 attributes the declaration to the holder of the key. It does not establish
 who that holder is; a verifier MAY compare `signer.key_id` with the
 producer's keys ({{self-countersignature}}) and report the result.
@@ -591,10 +603,8 @@ producer's keys ({{self-countersignature}}) and report the result.
 
 A verifier that implements this member reports the following properties,
 each as exactly one of `PASS`, `FAIL`, `NOT_PRESENT`, `NOT_CHECKED` and
-`INCONCLUSIVE`, with the meanings of the countersignature results
-({{countersign-entry}}): the check held, did not hold, had nothing to operate
-on, could not run, or resolved only in part. A Bundle without the member has
-no category properties.
+`INCONCLUSIVE`, as the definition of each property below assigns them. A
+Bundle without the member has no category properties.
 
 `category_coverage_form`:
 : `PASS` when the member is as described above, including a `policy_uri` for
@@ -603,7 +613,8 @@ no category properties.
 
 `category_coverage_signature`:
 : `NOT_PRESENT` when the member carries no signature; `PASS` when the
-  signature verifies; `FAIL` otherwise.
+  signature verifies; `FAIL` otherwise, including when the signing input has
+  no JCS serialization (for example, a number JCS cannot represent).
 
 `category_coverage_set_registered`:
 : `NOT_PRESENT` for a private (`x-`) set; `INCONCLUSIVE` when the verifier
@@ -612,14 +623,18 @@ no category properties.
 
 `category_coverage_request`:
 : `NOT_CHECKED` when the verifier does not have the Evidence Request;
-  `FAIL` when `request_digest` is present and is not that request's digest;
+  otherwise `FAIL` when `request_digest` is present and is not that
+  request's digest, computed over its octets before they are parsed;
+  otherwise `NOT_CHECKED` when the request cannot be read, or its
+  `categories` field is malformed ({{I-D.mih-agent-evidence-request}});
   `NOT_PRESENT` when the request has no `categories` field; `FAIL` when the
   request names another set, or a requested category has no entry; `PASS`
   otherwise.
 
 `category_coverage_consistency`:
-: `NOT_CHECKED` when the verifier cannot assign the Bundle's records to
-  categories (the set's definition says how); `FAIL` when a record the Bundle
+: `NOT_CHECKED` when the verifier cannot assign every record the Bundle
+  carries to a category, or to none (the set's definition says how): a record
+  it cannot assign could be in any category; `FAIL` when a record the Bundle
   carries belongs to a category declared `ABSENT` or `WITHHELD`; `PASS`
   otherwise. A record in a `DELETED` or `UNDISCLOSED` category is not a
   contradiction, and an `AVAILABLE` category with no record in the Bundle is
@@ -1257,11 +1272,17 @@ log; it says nothing about the records the producer left out, so a verifier
 never presents one as complete ({{producer-selected}}). Reporting an
 unimplemented certificate mode as not established rather than invalid keeps a
 failure meaningful: a verifier that reported every unfamiliar mode as invalid
-would report an honest Bundle and an altered one identically. A non-record
-leaf is accepted only with its full content, never as a bare digest, because
-a bare leaf value could be the identifier of a Capsule the producer chose not
-to show; recomputing the value from padding content, whose only free member is
-a random nonce, rules that out ({{non-record-leaves}}).
+would report an honest Bundle and an altered one identically. The cost is a
+downgrade: whoever alters a Bundle can name an unknown mode, or put a
+non-record leaf of an undefined type where a record or a padding leaf was, and
+so turn a failing per-record membership into one that is not established
+({{certificate-modes}}, {{non-record-leaves}}). Neither change can make a
+claim established. A relying party therefore treats "not established" as
+unverified, never as a pass. A padding leaf is accepted only with its full
+content, never as a bare digest, because a bare leaf value could be the
+identifier of a Capsule the producer chose not to show; recomputing the value
+from padding content, whose only free member is a random nonce, rules that
+out ({{non-record-leaves}}).
 
 A countersignature's `statement` and `signer` are what a relying party reads,
 so both are inside the signing input ({{countersign-entry}}); a signature over
@@ -1307,7 +1328,9 @@ reported as registered, and why a verifier reports properties rather than a
 verdict of completeness. A signed `ABSENT` is attributable and can be
 contradicted by records a counterparty holds, but it is not evidence that
 nothing exists. Including the Bundle's `root` in the signing input stops a
-declaration made for one Bundle from being presented with another.
+declaration made for one root record from being presented with another; a
+countersignature over the bundle digest is what binds it to the whole
+Bundle.
 
 # Privacy Considerations {#privacy}
 
