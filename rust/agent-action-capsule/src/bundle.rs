@@ -21,6 +21,12 @@
 //! a verdict. `completeness.selection` and `checkpoint.witnesses` are not
 //! defined by the Bundle draft, so strict mode reads them as verifier
 //! extensions (`vectors/bundle/strict/README.md`).
+//!
+//! The `strict` feature also adds the producer: [`build_evidence_bundle`]
+//! assembles a Bundle from a [`ProofSource`] and refuses any result
+//! [`verify_bundle_strict`] calls INVALID; [`proof_source_from_cll`] adapts a
+//! CLL backend and a [`RecordSource`]; [`build_unproven_bundle`] builds the
+//! form with no log proof.
 
 #[cfg(feature = "strict")]
 mod strict;
@@ -29,12 +35,20 @@ pub use strict::{
     verify_bundle_strict, RecordResult, StrictOptions, StrictVerificationResult,
     SELECTION_PRODUCER_SELECTED,
 };
+#[cfg(feature = "strict")]
+mod producer;
+#[cfg(feature = "strict")]
+pub use producer::{
+    build_evidence_bundle, build_unproven_bundle, proof_source_from_cll, BuildError, BuildOptions,
+    CllProofSource, InclusionProof, Interval, PayloadsMode, ProofSource, RangeProof, RecordSource,
+    StoredRecord, UnprovenOptions,
+};
 
 use crate::canonical::{self, CanonicalError};
 use crate::{disclosure, verify};
 use base64::Engine as _;
 use cll::mmr;
-use cll::range_proof::{self, RangeProof};
+use cll::range_proof::{self, RangeProof as CllRangeProof};
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, HashSet};
 use std::fmt;
@@ -400,7 +414,7 @@ struct RangeProofData {
     from_seq: i64,
     to_seq: i64,
     size: u64,
-    proof: RangeProof,
+    proof: CllRangeProof,
 }
 
 fn parse_range_proof(raw: Option<&Value>) -> Option<RangeProofData> {
@@ -418,7 +432,7 @@ fn parse_range_proof(raw: Option<&Value>) -> Option<RangeProofData> {
         from_seq,
         to_seq,
         size: size as u64,
-        proof: RangeProof {
+        proof: CllRangeProof {
             v: 1,
             kind: "range".to_string(),
             size: size as u64,

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Evidence Bundle producer (feature `strict`): `bundle::build_evidence_bundle`
+  over a `ProofSource`, `proof_source_from_cll` for a CLL backend and a
+  `RecordSource`, and `build_unproven_bundle`. Each Bundle is checked with
+  `verify_bundle_strict` and refused when INVALID. Requires
+  `checkpointed-local-log` 0.3.1.
+
 ## 0.3.0
 
 - `settlement`: a `fee_asset_differs` finding names the leg or legs whose
