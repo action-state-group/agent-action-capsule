@@ -766,7 +766,7 @@ pub fn build_evidence_bundle<S: ProofSource + ?Sized>(
         };
         if !seq_of.contains_key(capsule_id) {
             return Err(BuildError::new(format!(
-                "record {capsule_id} is not covered by the checkpoint: build again after the next one"
+                "record {capsule_id} is not a leaf at or below the checkpoint (not yet covered, or not in this log)"
             )));
         }
         decode_record(capsule_id, &stored).map(Some)

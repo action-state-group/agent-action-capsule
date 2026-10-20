@@ -160,19 +160,33 @@ impl RecordSource for Records {
 /// first `checkpoint_after` leaves (all when `None`).
 fn make_backend(leaves: &[String], checkpoint_after: Option<usize>) -> MemoryStore {
     let backend = MemoryStore::new();
-    let mut nodes = MemoryNodeStore::new();
-    let covered = checkpoint_after.unwrap_or(leaves.len());
-    for (index, value) in leaves.iter().enumerate() {
-        let raw: [u8; 32] = hex::decode(value).unwrap().try_into().unwrap();
+    for value in leaves {
         backend
             .append(&AppendInput {
-                value: raw.to_vec(),
-                appended_at: Timestamp::from_unix_millis(1_792_368_000_000),
+                value: hex::decode(value).unwrap(),
+                appended_at: appended_at(),
             })
             .unwrap();
-        if index < covered {
-            mmr::add_leaf(&mut nodes, mmr::leaf_hash(&raw)).unwrap();
-        }
+    }
+    let covered = checkpoint_after.unwrap_or(leaves.len());
+    backend
+        .commit_cll(0, None, &signed_state(&leaves[..covered]))
+        .unwrap();
+    backend
+}
+
+fn appended_at() -> Timestamp {
+    Timestamp::from_unix_millis(1_792_368_000_000)
+}
+
+/// The CLL state of an MMR over `leaves` (hex values), with a signed COSE
+/// checkpoint at its size.
+fn signed_state(leaves: &[String]) -> State {
+    let mut nodes = MemoryNodeStore::new();
+    let covered = leaves.len();
+    for value in leaves {
+        let raw: [u8; 32] = hex::decode(value).unwrap().try_into().unwrap();
+        mmr::add_leaf(&mut nodes, mmr::leaf_hash(&raw)).unwrap();
     }
     let size = nodes.size();
     let peak_hashes: Vec<mmr::Hash> = mmr::peaks(size)
@@ -195,7 +209,7 @@ fn make_backend(leaves: &[String], checkpoint_after: Option<usize>) -> MemorySto
         witnesses: Vec::new(),
     };
     let cose = checkpoint_to_cose(&cp, &key, &peak_hashes, None, None, None).unwrap();
-    let state = State {
+    State {
         size,
         nodes: (0..size).map(|i| nodes.node(i).to_vec()).collect(),
         indexed_seq: covered as u64,
@@ -207,9 +221,7 @@ fn make_backend(leaves: &[String], checkpoint_after: Option<usize>) -> MemorySto
             peaks: peak_hashes.iter().map(|p| p.to_vec()).collect(),
         }),
         witnesses: Vec::new(),
-    };
-    backend.commit_cll(0, None, &state).unwrap();
-    backend
+    }
 }
 
 fn make_log(
@@ -616,7 +628,7 @@ fn an_uncovered_record_is_refused() {
     let source = make_log(&[cid(&a), cid(&late)], records, Some(1));
     refused(
         build_evidence_bundle(&source, &options(&late, Interval::ProducerSelected)),
-        "not covered by the checkpoint",
+        "is not a leaf at or below the checkpoint (not yet covered, or not in this log)",
     );
 }
 
@@ -713,12 +725,19 @@ enum Lie {
     EditedRecord(String),
     MalformedInclusion,
     MalformedRange,
+    FlippedCheckpointSignature,
 }
 
 impl ProofSource for Lying<'_> {
     fn checkpoint(&self) -> Result<Vec<u8>, BuildError> {
         match self.lie {
             Lie::EmptyCheckpoint => Ok(Vec::new()),
+            Lie::FlippedCheckpointSignature => {
+                // The signature is the COSE_Sign1's last element: its last byte.
+                let mut cose = self.base.checkpoint()?;
+                *cose.last_mut().unwrap() ^= 1;
+                Ok(cose)
+            }
             _ => self.base.checkpoint(),
         }
     }
@@ -802,6 +821,10 @@ fn a_source_that_lies_is_refused() {
     let other = jcs(&capsule("other", CapsuleSpec::default())).unwrap();
     let cases = [
         (Lie::EmptyCheckpoint, "the checkpoint does not verify"),
+        (
+            Lie::FlippedCheckpointSignature,
+            "the checkpoint does not verify",
+        ),
         (Lie::DropLastLeaf, "the source gave 2 leaves"),
         (Lie::ExtraLeaf, "the source gave 4 leaves"),
         (Lie::OtherCapsule(other), "different capsule"),
@@ -1251,5 +1274,31 @@ fn proof_source_from_cll_error_paths() {
     refused(
         build_evidence_bundle(&source, &options(&caps[2], Interval::From(1))),
         "the source gave 2 leaves",
+    );
+}
+
+#[test]
+fn a_capsule_id_at_two_leaves_is_refused() {
+    let mut records = Records::default();
+    let a = capsule("twice", CapsuleSpec::default());
+    records.put(&a, true);
+    let id = cid(&a);
+    let leaves = [id.clone(), id.clone()];
+    let backend = FakeBackend {
+        state: Some(signed_state(&leaves)),
+        entries: (1..=2)
+            .map(|seq| Entry {
+                seq,
+                value: hex::decode(&id).unwrap(),
+                appended_at: appended_at(),
+            })
+            .collect(),
+        fail_scan: false,
+    };
+    let source = proof_source_from_cll(&backend, records).unwrap();
+    assert_eq!(source.leaves().unwrap().len(), 2);
+    refused(
+        build_evidence_bundle(&source, &options(&a, Interval::From(1))),
+        "membership_record_missing:2",
     );
 }
