@@ -353,3 +353,116 @@ func jcsOf(t *testing.T, text string, edit func(map[string]any)) string {
 	require.NoError(t, err)
 	return string(out)
 }
+
+// holderSign signs an envelope value (its signed members) with the
+// holder's test key and returns the reply octets, artifact included.
+func holderSign(t *testing.T, env map[string]any, artifact []byte) []byte {
+	t.Helper()
+	seed := sha256.Sum256([]byte("personal-agent-history-profile-v0 conformance vectors: holder key"))
+	key := ed25519.NewKeyFromSeed(seed[:])
+	env["responder"] = hex.EncodeToString(key.Public().(ed25519.PublicKey))
+	env["artifact_digest"] = evidencerequest.Digest(artifact)
+	body, err := evidencerequest.EncodeJCS(env)
+	require.NoError(t, err)
+	env["sig"] = hex.EncodeToString(ed25519.Sign(key, body))
+	env["artifact"] = base64.RawURLEncoding.EncodeToString(artifact)
+	out, err := evidencerequest.EncodeJCS(env)
+	require.NoError(t, err)
+	return out
+}
+
+// The Artifact's anchor is the resolved anchor digest (PH §4.3): an
+// envelope answered under min_freshness has no anchor digest, and an
+// Artifact whose anchor is null does not match it by both being absent.
+func TestArtifactAnchorMustBeADigest(t *testing.T) {
+	c := load(t)
+	definition := personalhistory.Definition([]string{"deal-a"}, "recipient-1")
+	derivation, err := personalhistory.DerivationID(definition)
+	require.NoError(t, err)
+	request, err := evidencerequest.EncodeJCS(map[string]any{
+		"coverage": map[string]any{"min_freshness": uint64(1)}, "derivation": derivation, "nonce": "n",
+		"profile": evidencerequest.ProfileID, "subject": map[string]any{"correlation": "deal-a"},
+	})
+	require.NoError(t, err)
+	artifact, err := evidencerequest.EncodeJCS(map[string]any{
+		"anchor": nil, "derivation": derivation, "evidence_stream": "s",
+		"records": []any{map[string]any{"digest": strings.Repeat("a", 64), "leaf_index": uint64(0), "record_type": personalhistory.StepCompleted}},
+		"subject": map[string]any{"correlation": "deal-a"},
+	})
+	require.NoError(t, err)
+	reply := holderSign(t, map[string]any{
+		"profile": evidencerequest.ProfileID, "request_digest": evidencerequest.Digest(request),
+		"subject": map[string]any{"correlation": "deal-a"}, "derivation": derivation,
+		"anchor": map[string]any{"freshness": uint64(3)}, "issued_at": "2026-10-15T00:00:00Z",
+	}, artifact)
+	vc := c.Cases[0]
+	res, err := personalhistory.Evaluate(verifier(t, vc.Pins, c.Contract.Document), definition, []personalhistory.FileExchange{{
+		Request: evidencerequest.Message{Octets: request, MediaType: evidencerequest.MediaTypeJSON},
+		Reply:   evidencerequest.Message{Octets: reply, MediaType: evidencerequest.MediaTypeJSON},
+	}}, nil)
+	require.NoError(t, err)
+	require.True(t, res.Exchanges[0].Accepted, "the envelope itself verifies under min_freshness")
+	assert.Equal(t, evidencerequest.StatusFail, res.Properties["artifact_form"])
+}
+
+func TestFileRoundTripsTheOctetsExactly(t *testing.T) {
+	c := load(t)
+	var positive vectorCase
+	for _, vc := range c.Cases {
+		if vc.ID == "history-basic" {
+			positive = vc
+		}
+	}
+	cborReply := []byte{0xa1, 0x61, 0x61, 0x01} // {"a": 1}, any octets: the file never re-encodes them
+	f := personalhistory.File{Definition: positive.Inputs.Definition, Exchanges: []personalhistory.FileExchange{
+		{Request: positive.Inputs.Exchanges[0].Request.wire(), Reply: positive.Inputs.Exchanges[0].Reply.wire()},
+		{Request: evidencerequest.Message{Octets: []byte{0xa0}, MediaType: evidencerequest.MediaTypeCBOR}, Reply: evidencerequest.Message{Octets: cborReply, MediaType: evidencerequest.MediaTypeCBOR}},
+	}}
+	encoded, err := personalhistory.EncodeFile(f)
+	require.NoError(t, err)
+	back, err := personalhistory.ParseFile(encoded)
+	require.NoError(t, err)
+	require.Len(t, back.Exchanges, 2)
+	assert.Equal(t, f.Exchanges[0].Request.Octets, back.Exchanges[0].Request.Octets)
+	assert.Equal(t, f.Exchanges[0].Reply.Octets, back.Exchanges[0].Reply.Octets)
+	assert.Equal(t, cborReply, back.Exchanges[1].Reply.Octets)
+	assert.Equal(t, evidencerequest.MediaTypeCBOR, back.Exchanges[1].Reply.MediaType)
+	again, err := personalhistory.EncodeFile(back)
+	require.NoError(t, err)
+	assert.Equal(t, encoded, again, "JCS, so one History has one file")
+
+	_, err = personalhistory.EncodeFile(personalhistory.File{Definition: map[string]any{}, Exchanges: []personalhistory.FileExchange{
+		{Request: evidencerequest.Message{Octets: []byte{0xff, 0xfe}, MediaType: evidencerequest.MediaTypeJSON}, Reply: f.Exchanges[0].Reply},
+	}})
+	assert.ErrorIs(t, err, personalhistory.ErrInvalid, "JSON octets a JSON string cannot carry exactly")
+	_, err = personalhistory.EncodeFile(personalhistory.File{Definition: map[string]any{}, Exchanges: []personalhistory.FileExchange{
+		{Request: evidencerequest.Message{Octets: []byte("{}"), MediaType: "text/plain"}, Reply: f.Exchanges[0].Reply},
+	}})
+	assert.ErrorIs(t, err, personalhistory.ErrInvalid)
+}
+
+func TestParseFileRefusesWhatIsNotTheContainer(t *testing.T) {
+	msg := `{"media_type":"application/json","octets_text":"{}"}`
+	cases := map[string]string{
+		"not JSON":              `not json`,
+		"an array":              `[]`,
+		"duplicate member":      `{"history":"personal_history_basic/1","history":"personal_history_basic/1","definition":{},"exchanges":[]}`,
+		"another level":         `{"history":"personal_history_basic/2","definition":{},"exchanges":[]}`,
+		"an extra member":       `{"history":"personal_history_basic/1","definition":{},"exchanges":[],"carrier":"x"}`,
+		"no definition":         `{"history":"personal_history_basic/1","exchanges":[]}`,
+		"exchanges not a list":  `{"history":"personal_history_basic/1","definition":{},"exchanges":{}}`,
+		"exchange extra member": `{"history":"personal_history_basic/1","definition":{},"exchanges":[{"request":` + msg + `,"reply":` + msg + `,"x":1}]}`,
+		"message extra member":  `{"history":"personal_history_basic/1","definition":{},"exchanges":[{"request":{"media_type":"application/json","octets_text":"{}","x":1},"reply":` + msg + `}]}`,
+		"JSON given as hex":     `{"history":"personal_history_basic/1","definition":{},"exchanges":[{"request":{"media_type":"application/json","octets_hex":"7b7d"},"reply":` + msg + `}]}`,
+		"CBOR given as text":    `{"history":"personal_history_basic/1","definition":{},"exchanges":[{"request":{"media_type":"application/cbor","octets_text":"{}"},"reply":` + msg + `}]}`,
+		"uppercase hex":         `{"history":"personal_history_basic/1","definition":{},"exchanges":[{"request":{"media_type":"application/cbor","octets_hex":"A0"},"reply":` + msg + `}]}`,
+		"odd-length hex":        `{"history":"personal_history_basic/1","definition":{},"exchanges":[{"request":{"media_type":"application/cbor","octets_hex":"a"},"reply":` + msg + `}]}`,
+		"unknown media type":    `{"history":"personal_history_basic/1","definition":{},"exchanges":[{"request":{"media_type":"text/plain","octets_text":"{}"},"reply":` + msg + `}]}`,
+	}
+	for name, text := range cases {
+		_, err := personalhistory.ParseFile([]byte(text))
+		assert.ErrorIs(t, err, personalhistory.ErrInvalid, name)
+	}
+	_, err := personalhistory.ParseFile([]byte(`{"history":"personal_history_basic/1","definition":{},"exchanges":[{"request":` + msg + `,"reply":` + msg + `}]}`))
+	assert.NoError(t, err, "the container itself")
+}

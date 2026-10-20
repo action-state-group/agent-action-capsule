@@ -3,7 +3,6 @@
 package evidencerequest
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
@@ -31,15 +30,14 @@ func (m malformed) Error() string { return string(m) }
 // formed and in deterministic encoding (RFC 8949 §4.2.1): re-encoding the
 // decoded item must give the same octets.
 func deterministicItem(octets []byte, label string) (any, error) {
-	var raw any
-	if err := strictCBOR.Unmarshal(octets, &raw); err != nil {
-		return nil, malformed(fmt.Sprintf("%s: %v", label, err))
+	d, err := decodeCBORItem(octets)
+	if err != nil {
+		return nil, malformed(label + ": " + err.Error())
 	}
-	again, err := deterministicCBOR.Marshal(raw)
-	if err != nil || !bytes.Equal(again, octets) {
+	if !d.deterministic || !d.wellFormed() {
 		return nil, malformed(label + " is not deterministic CBOR")
 	}
-	return raw, nil
+	return d.value, nil
 }
 
 func peakList(raw any) ([][]byte, error) {
@@ -56,6 +54,17 @@ func peakList(raw any) ([][]byte, error) {
 		return nil, malformed("commitment is not an array of one or more 32-octet byte strings")
 	}
 	return list, nil
+}
+
+func wellFormedCBOR(octets []byte, label string) error {
+	d, err := decodeCBORItem(octets)
+	if err != nil {
+		return malformed(label + ": " + err.Error())
+	}
+	if !d.wellFormed() {
+		return malformed(label + " has a duplicate map key or a value outside the data model")
+	}
+	return nil
 }
 
 type cllCheckpoint struct {
@@ -93,6 +102,13 @@ func asUint(v any) (uint64, bool) {
 // decodeCLLCheckpoint is step 7: the one fixed COSE_Sign1 form of a CLL
 // checkpoint, decoded and checked.
 func decodeCLLCheckpoint(octets []byte) (*cllCheckpoint, error) {
+	// The reference decodes the checkpoint, its header and its payload with
+	// its strict decoder and fails step 7 when any is not well formed (a
+	// duplicate key, a float, a key that is no scalar, undefined or an
+	// indefinite length). The same gate runs first here.
+	if err := wellFormedCBOR(octets, "checkpoint"); err != nil {
+		return nil, err
+	}
 	var outer cbor.Tag
 	if err := strictCBOR.Unmarshal(octets, &outer); err != nil || outer.Number != 18 {
 		var raw any
@@ -118,6 +134,12 @@ func decodeCLLCheckpoint(octets []byte) (*cllCheckpoint, error) {
 		return nil, malformed("COSE_Sign1 member has the wrong type")
 	}
 	cp := &cllCheckpoint{protected: protected, payload: payload, signature: signature}
+	if err := wellFormedCBOR(protected, "checkpoint header"); err != nil {
+		return nil, err
+	}
+	if err := wellFormedCBOR(payload, "checkpoint payload"); err != nil {
+		return nil, err
+	}
 	var hdr, claims any
 	if err := strictCBOR.Unmarshal(protected, &hdr); err != nil {
 		return nil, malformed(fmt.Sprintf("checkpoint header or payload: %v", err))

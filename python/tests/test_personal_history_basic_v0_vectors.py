@@ -152,7 +152,8 @@ def artifact_form(envs: list[dict], reads: set) -> bool:
         a = env["artifact"]
         if not isinstance(a, dict) or set(a) != ARTIFACT_MEMBERS:
             return False
-        if a["anchor"] != env["anchor"].get("digest") or a["derivation"] != env.get("derivation") \
+        if not (isinstance(a["anchor"], str) and re.fullmatch(r"[0-9a-f]{64}", a["anchor"])) \
+                or a["anchor"] != env["anchor"].get("digest") or a["derivation"] != env.get("derivation") \
                 or a["subject"] != env["subject"]:
             return False
         recs = a["records"]
@@ -187,7 +188,9 @@ def history_properties(definition: Any, envs: list[dict]) -> dict:
         "single_signer": len({e["responder"] for e in envs}) == 1,
         "single_anchor": len({jcs(e["anchor"]) for e in envs}) == 1,
         "artifact_form": artifact_form(envs, reads),
-        "record_kinds": all(r.get("record_type") in KINDS for e in envs for r in e["artifact"]["records"]),
+        "record_kinds": all(isinstance(e["artifact"], dict) and isinstance(e["artifact"].get("records"), list)
+                            and all(isinstance(r, dict) and r.get("record_type") in KINDS for r in e["artifact"]["records"])
+                            for e in envs),
     }
     return {k: "PASS" if v else "FAIL" for k, v in ok.items()}
 
@@ -475,3 +478,48 @@ def test_artifact_bytes_and_values_beside_the_form_fail():
         changed = copy.deepcopy(envs)
         changed[0]["artifact"]["records"][0][member] = value
         assert not artifact_form(changed, reads), member
+
+
+def _resigned(case: dict, artifact: bytes) -> dict:
+    """The case with its first reply's Artifact replaced, its digest recomputed and the envelope
+    re-signed by the holder's test key, as a holder could."""
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    key = Ed25519PrivateKey.from_private_bytes(hashlib.sha256(DATA["test_keys"]["keys"]["holder"]["seed_label"].encode()).digest())
+    case = copy.deepcopy(case)
+    reply = case["inputs"]["exchanges"][0]["reply"]
+    env = json.loads(reply["octets_text"])
+    env["artifact_digest"] = sha(artifact)
+    signed = {k: env[k] for k in ("profile", "request_digest", "subject", "derivation", "anchor", "artifact_digest",
+                                  "verification", "responder", "issued_at") if k in env}
+    env["sig"] = key.sign(jcs(signed)).hex()
+    env["artifact"] = base64.urlsafe_b64encode(artifact).rstrip(b"=").decode()
+    reply["octets_text"] = jcs(env).decode()
+    return case
+
+
+def test_resigned_artifact_mutants_fail_artifact_form_end_to_end():
+    """Each re-signed mutant passes every envelope check and fails artifact_form through the whole
+    evaluation, with no evaluator error."""
+    (positive,) = [c for c in CASES if c["id"] == "history-basic"]
+    env = json.loads(positive["inputs"]["exchanges"][0]["reply"]["octets_text"])
+    octets = base64.urlsafe_b64decode(env["artifact"] + "=" * (-len(env["artifact"]) % 4))
+    assert run_history(_resigned(positive, octets))["accepted"], "re-signing the same Artifact changes nothing"
+    value = json.loads(octets)
+
+    def with_entry(member: str, v: Any) -> bytes:
+        changed = copy.deepcopy(value)
+        changed["records"][0][member] = v
+        return jcs(changed)
+
+    for name, bad in {
+        "trailing object": octets + b'{"counterparty":"private value"}',
+        "trailing space": octets + b" ",
+        "duplicate member": octets.replace(b'{"anchor"', b'{"anchor":"x","anchor"', 1),
+        "object in leaf_index": with_entry("leaf_index", {"counterparty": "private value"}),
+        "object in a read": with_entry("committed_at", {"counterparty": "private value"}),
+    }.items():
+        got = run_history(_resigned(positive, bad))
+        assert got["exchanges"][0]["accepted"], name
+        assert got["history_properties"]["artifact_form"] == "FAIL", name
+        assert not got["accepted"], name

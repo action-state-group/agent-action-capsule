@@ -3,6 +3,7 @@
 package evidencerequest
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -231,6 +232,7 @@ func NewVerifier(trust TrustPolicy, policy VerificationPolicy, evaluationTime st
 	if contract == nil {
 		return v, nil
 	}
+	contract, _ = profileNumbers(contract).(map[string]any)
 	reqs, _ := contract["requirements"].([]any)
 	for _, raw := range reqs {
 		req, _ := raw.(map[string]any)
@@ -889,6 +891,13 @@ func (v *Verifier) Verify(exchanges []Exchange, opts VerifyOptions) (Verificatio
 		}
 		out = append(out, result)
 	}
+	for _, r := range all {
+		for _, p := range r.Properties {
+			if !validStatus(p.Status) {
+				return VerificationResult{}, fmt.Errorf("%w: %s reported %q, not a §7.1 status", errInvariant, p.Property, p.Status)
+			}
+		}
+	}
 	invariance, conflicted := callerInvariance(all)
 	for _, result := range out {
 		for _, r := range result.Replies {
@@ -920,7 +929,10 @@ func (v *Verifier) Verify(exchanges []Exchange, opts VerifyOptions) (Verificatio
 func requestMap(request Message) (map[string]any, error) {
 	received, ok, _ := decodeReceived(request)
 	value, isMap := received.value.(map[string]any)
-	if !ok || !isMap || (request.MediaType == MediaTypeJSON && !received.wellFormed) {
+	// The requester's own octets: a duplicate member or an out-of-range
+	// number makes them no request map, as the reference reads them; an
+	// unpaired surrogate escape does not, since the reference keeps it.
+	if !ok || !isMap || (request.MediaType == MediaTypeJSON && !received.structural) {
 		return nil, fmt.Errorf("%w: the retained request octets are not a request map", ErrInvalid)
 	}
 	return value, nil
@@ -961,6 +973,9 @@ func (v *Verifier) mapReply(r *ReplyResult, ids []string, opts VerifyOptions, co
 	}
 	if opts.Foreign != nil && allPass && !contradicted {
 		nc := v.nativeCheck(r.Artifact, *opts.Foreign)
+		if !validStatus(nc.Status) {
+			return fmt.Errorf("%w: native_check reported %q, not a §7.1 status", errInvariant, nc.Status)
+		}
 		r.NativeCheck = &nc
 	}
 	native := ""
@@ -1007,4 +1022,40 @@ func (v *Verifier) mapReply(r *ReplyResult, ids []string, opts VerifyOptions, co
 		}
 	}
 	return nil
+}
+
+func validStatus(s string) bool {
+	switch s {
+	case StatusPass, StatusFail, StatusNotPresent, StatusNotChecked, StatusInconclusive:
+		return true
+	}
+	return false
+}
+
+// profileNumbers converts the numbers of a value decoded by encoding/json
+// (json.Number, or a float64 without UseNumber) to the profile's types, so
+// a contract read that way has a JCS form and a contract_digest.
+func profileNumbers(v any) any {
+	switch x := v.(type) {
+	case json.Number:
+		return JSONNumber(x)
+	case float64:
+		if x >= 0 && x <= MaxSafeInteger && x == float64(uint64(x)) {
+			return uint64(x)
+		}
+		return OutsideModel{}
+	case []any:
+		out := make([]any, len(x))
+		for i, item := range x {
+			out[i] = profileNumbers(item)
+		}
+		return out
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, item := range x {
+			out[k] = profileNumbers(item)
+		}
+		return out
+	}
+	return v
 }

@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/fxamacker/cbor/v2"
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
 )
 
 // The five property statuses (profile §7.1).
@@ -47,6 +47,13 @@ type receivedValue struct {
 	value      any
 	wellFormed bool
 	why        string
+	// lossy is set when the JSON text holds an unpaired surrogate escape,
+	// which decoding replaces with U+FFFD: the value no longer holds what
+	// was signed, so a reply carrying one is not well formed.
+	lossy bool
+	// structural is false for a duplicate member or an out-of-range
+	// number: what makes JSON octets no request map (§5.2).
+	structural bool
 }
 
 // decodeReceived reads octets as a verifier reads a reply or record: JSON
@@ -84,8 +91,11 @@ func decodeReceivedJSON(data []byte) (receivedValue, bool, string) {
 	if _, err := r.decoder.Token(); !errors.Is(err, io.EOF) {
 		return receivedValue{}, false, "not a JSON object"
 	}
-	out := receivedValue{value: value, wellFormed: !r.duplicates && !r.badNumber}
+	lossy := canonical.CheckJSONText(data) != nil
+	out := receivedValue{value: value, wellFormed: !r.duplicates && !r.badNumber && !lossy, lossy: lossy, structural: !r.duplicates && !r.badNumber}
 	switch {
+	case lossy:
+		out.why = "an unpaired surrogate escape"
 	case r.duplicates:
 		out.why = "duplicate member"
 	case r.badNumber:
@@ -162,88 +172,34 @@ func (r *jsonReader) read(depth int) (any, error) {
 	return nil, errNotWellFormed
 }
 
-var lenientCBOR = func() cbor.DecMode {
-	mode, err := cbor.DecOptions{
-		DupMapKey:         cbor.DupMapKeyQuiet,
-		MaxNestedLevels:   maxReceivedNesting,
-		UTF8:              cbor.UTF8RejectInvalid,
-		IndefLength:       cbor.IndefLengthAllowed,
-		TagsMd:            cbor.TagsAllowed,
-		IntDec:            cbor.IntDecConvertNone,
-		ExtraReturnErrors: cbor.ExtraDecErrorNone,
-	}.DecMode()
-	if err != nil {
-		panic(err)
-	}
-	return mode
-}()
-
 func decodeReceivedCBOR(data []byte) (receivedValue, bool, string) {
-	var raw any
-	duplicates := false
-	if err := strictCBOR.Unmarshal(data, &raw); err != nil {
-		var dup *cbor.DupMapKeyError
-		if !errors.As(err, &dup) {
-			return receivedValue{}, false, "not a CBOR data item"
-		}
-		raw = nil
-		if err := lenientCBOR.Unmarshal(data, &raw); err != nil {
-			return receivedValue{}, false, "not a CBOR data item"
-		}
-		duplicates = true
+	d, err := decodeCBORItem(data)
+	if err != nil {
+		return receivedValue{}, false, "not a CBOR data item"
 	}
-	if _, isMap := raw.(map[any]any); !isMap {
+	if _, isMap := d.value.(map[string]any); !isMap {
 		return receivedValue{}, false, "not a CBOR map"
 	}
-	value, textKeys := fromCBORKeep(raw)
-	inDomain := textKeys && numbersInDomain(value)
-	out := receivedValue{value: value, wellFormed: !duplicates && inDomain}
+	// Classified by its members whatever else is wrong with it (§1). The
+	// signature is over JCS whatever the frame (§5.1), so a frame that is
+	// not deterministic CBOR is not, by itself, a reason to fail it.
+	inDomain := !d.nonTextKeys && numbersInDomain(d.value)
+	out := receivedValue{value: d.value, wellFormed: !d.duplicateKeys && !d.irregular && inDomain}
 	switch {
-	case duplicates:
+	case d.duplicateKeys:
 		out.why = "duplicate map key"
-	case !inDomain:
+	case !out.wellFormed:
 		out.why = "a value outside the §5.2 data model (a float, a non-text key, or a number out of range)"
 	}
 	return out, true, ""
-}
-
-// fromCBORKeep is fromCBOR that keeps a map whose keys are not all text:
-// its text-keyed members stay readable, so the map is still classified by
-// its members (§1). textKeys is false when any map at any depth has a key
-// that is not text; that is reported apart from the members, so no member
-// the input chose can stand in for it.
-func fromCBORKeep(v any) (out any, textKeys bool) {
-	textKeys = true
-	switch x := v.(type) {
-	case []any:
-		items := make([]any, len(x))
-		for i, item := range x {
-			var ok bool
-			items[i], ok = fromCBORKeep(item)
-			textKeys = textKeys && ok
-		}
-		return items, textKeys
-	case map[any]any:
-		m := make(map[string]any, len(x))
-		for key, item := range x {
-			name, isText := key.(string)
-			if !isText {
-				textKeys = false
-				continue
-			}
-			var ok bool
-			m[name], ok = fromCBORKeep(item)
-			textKeys = textKeys && ok
-		}
-		return m, textKeys
-	}
-	return fromCBOR(v), true
 }
 
 func numbersInDomain(v any) bool {
 	switch x := v.(type) {
 	case OutsideModel:
 		return false
+	case cborTag:
+		return numbersInDomain(x.Value)
 	case []any:
 		for _, item := range x {
 			if !numbersInDomain(item) {

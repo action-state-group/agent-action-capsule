@@ -4,6 +4,7 @@ package evidencerequest_test
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -328,4 +329,117 @@ func TestVerifierFailsACBORMapWithANonTextKey(t *testing.T) {
 		require.Equal(t, "envelope", r.MessageType)
 		assert.Equal(t, er.StatusFail, r.Status("envelope_signature"))
 	}
+}
+
+// An unpaired surrogate escape decodes to U+FFFD, so a reply that swaps a
+// signed U+FFFD for one would verify on the decoded value. It is not well
+// formed, and its signature fails (§5.2).
+func TestVerifierFailsAnUnpairedSurrogateEscape(t *testing.T) {
+	s, key := signer(t, 1)
+	req := er.Request{Subject: er.Subject{Kind: er.SubjectCorrelation, Correlation: "deal-�"}, Coverage: er.Coverage{ExpectedPin: anchorPin}, Nonce: "n", Profile: er.ProfileID}
+	octets, err := er.EncodeRequest(req, er.MediaTypeJSON)
+	require.NoError(t, err)
+	artifact := []byte("{}")
+	env, err := er.Envelope{Profile: er.ProfileID, RequestDigest: er.Digest(octets), Subject: req.Subject, Anchor: er.Anchor{Digest: anchorPin},
+		ArtifactDigest: er.Digest(artifact), Responder: key, IssuedAt: "2026-10-15T00:00:00Z", Artifact: artifact}.Sign(context.Background(), s)
+	require.NoError(t, err)
+	reply, err := er.EncodeReply(er.MediaTypeJSON, &env, nil)
+	require.NoError(t, err)
+	v := verifierFor(t, er.TrustPolicy{ResponderKeys: []string{key}}, er.VerificationPolicy{})
+	r := verifyOne(t, v, er.Message{Octets: octets, MediaType: er.MediaTypeJSON}, reply.Message)
+	require.Equal(t, er.StatusPass, r.Status("envelope_signature"), "the signed reply as sent")
+	swapped := strings.Replace(string(reply.Message.Octets), "deal-�", `deal-\ud800`, 1)
+	require.NotEqual(t, string(reply.Message.Octets), swapped)
+	r = verifyOne(t, v, er.Message{Octets: octets, MediaType: er.MediaTypeJSON}, er.Message{Octets: []byte(swapped), MediaType: er.MediaTypeJSON})
+	assert.Equal(t, er.StatusFail, r.Status("envelope_signature"))
+	assert.Equal(t, "envelope-2", r.Requirements["r"].Row)
+}
+
+// withCBORMember is a CBOR reply map with one more member appended after
+// its own (the map's count is raised by one), so a key may repeat.
+func withCBORMember(t *testing.T, reply []byte, key string, value []byte) []byte {
+	t.Helper()
+	require.Equal(t, byte(0xa0), reply[0]&0xe0, "a map")
+	n := reply[0] & 0x1f
+	require.Less(t, n, byte(23), "a short map head")
+	k, err := cbor.Marshal(key)
+	require.NoError(t, err)
+	out := append([]byte{0xa0 | (n + 1)}, reply[1:]...)
+	return append(append(out, k...), value...)
+}
+
+// A CBOR map that repeats a key keeps its first occurrence, as the
+// reference does: a repeated profile naming another version leaves
+// profile_version PASS on the first, and the map is not well formed, so
+// its signature fails (row 2), never NOT_CHECKED (row 4).
+func TestVerifierKeepsTheFirstOfARepeatedCBORKey(t *testing.T) {
+	a := answer(t, 1, er.MediaTypeCBOR)
+	v := verifierFor(t, er.TrustPolicy{ResponderKeys: []string{a.key}}, er.VerificationPolicy{})
+	other, err := cbor.Marshal("evidence-interop/9")
+	require.NoError(t, err)
+	r := verifyOne(t, v, a.request, er.Message{Octets: withCBORMember(t, a.reply.Octets, "profile", other), MediaType: er.MediaTypeCBOR})
+	assert.Equal(t, er.StatusPass, r.Status("profile_version"))
+	assert.Equal(t, er.StatusFail, r.Status("envelope_signature"))
+	assert.Equal(t, "envelope-2", r.Requirements["r"].Row)
+}
+
+// CBOR undefined, other simple values and indefinite lengths are no data
+// item of the profile's model: the reply is a transport condition, as the
+// reference reads it, and undefined never stands in for null.
+func TestVerifierRefusesCBORUndefinedAndIndefiniteItems(t *testing.T) {
+	a := answer(t, 1, er.MediaTypeCBOR)
+	v := verifierFor(t, er.TrustPolicy{ResponderKeys: []string{a.key}}, er.VerificationPolicy{})
+	for name, value := range map[string][]byte{"undefined": {0xf7}, "simple 16": {0xf0}, "indefinite array": {0x9f, 0xff}} {
+		r := verifyOne(t, v, a.request, er.Message{Octets: withCBORMember(t, a.reply.Octets, "x", value), MediaType: er.MediaTypeCBOR})
+		assert.Equal(t, "not_a_response", r.MessageType, name)
+	}
+	r := verifyOne(t, v, a.request, er.Message{Octets: withCBORMember(t, a.reply.Octets, "x", []byte{0xf6}), MediaType: er.MediaTypeCBOR})
+	assert.Equal(t, "envelope", r.MessageType, "null is in the model")
+	assert.Equal(t, er.StatusPass, r.Status("envelope_signature"), "an extra member outside the signed set leaves the signature as it was")
+}
+
+// Two verified envelopes for one question that name different Artifacts
+// break caller invariance (§7.2, ER §5): each maps to row 1, and a
+// contract's uncertainty.on_conflict "contradicted" makes it CONTRADICTED.
+func TestVerifierMapsAConflictToRowOne(t *testing.T) {
+	s, key := signer(t, 1)
+	contract := map[string]any{"id": "C", "version": json.Number("1"), "requirements": []any{
+		map[string]any{"id": "r", "profile": "outcome", "statement": "s"},
+		map[string]any{"id": "q", "profile": "outcome", "statement": "s", "uncertainty": map[string]any{"on_conflict": "contradicted"}},
+	}}
+	v, err := er.NewVerifier(er.TrustPolicy{ResponderKeys: []string{key}}, er.VerificationPolicyFromPin(nil), "2026-10-16T00:00:00Z", contract)
+	require.NoError(t, err, "a contract decoded with json.Number")
+	var exchanges []er.Exchange
+	for i, artifact := range [][]byte{[]byte(`{"a":1}`), []byte(`{"a":2}`)} {
+		req := er.Request{Subject: er.Subject{Kind: er.SubjectCorrelation, Correlation: "deal-a"}, Coverage: er.Coverage{ExpectedPin: anchorPin}, Nonce: string(rune('a' + i)), Profile: er.ProfileID}
+		octets, err := er.EncodeRequest(req, er.MediaTypeJSON)
+		require.NoError(t, err)
+		env, err := er.Envelope{Profile: er.ProfileID, RequestDigest: er.Digest(octets), Subject: req.Subject, Anchor: er.Anchor{Digest: anchorPin},
+			ArtifactDigest: er.Digest(artifact), Responder: key, IssuedAt: "2026-10-15T00:00:00Z", Artifact: artifact}.Sign(context.Background(), s)
+		require.NoError(t, err)
+		reply, err := er.EncodeReply(er.MediaTypeJSON, &env, nil)
+		require.NoError(t, err)
+		exchanges = append(exchanges, er.Exchange{Request: er.Message{Octets: octets, MediaType: er.MediaTypeJSON}, Replies: []er.Message{reply.Message}})
+	}
+	res, err := v.Verify(exchanges, er.VerifyOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, er.StatusFail, res.CallerInvariance.Status)
+	for _, ex := range res.Exchanges {
+		r := ex.Replies[0]
+		assert.Equal(t, "envelope-1", r.Requirements["r"].Row)
+		assert.Equal(t, "CONTRADICTED", r.Requirements["r"].Status, "row 1 contributes CONTRADICTED")
+		assert.Equal(t, "CONTRADICTED", r.Requirements["q"].Status)
+	}
+	res, err = v.Verify(exchanges[:1], er.VerifyOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, er.StatusNotChecked, res.CallerInvariance.Status, "one envelope compares with nothing")
+}
+
+func TestVerifierRefusesAStatusOutsideTheVocabulary(t *testing.T) {
+	a := answer(t, 1, er.MediaTypeJSON)
+	policy := er.VerificationPolicyFromPin(map[string]any{"online": true})
+	policy.KeyStatus = func(string, string) (string, string) { return "MAYBE", "a resolver with its own words" }
+	v := verifierFor(t, er.TrustPolicy{ResponderKeys: []string{a.key}}, policy)
+	_, err := v.Verify([]er.Exchange{{Request: a.request, Replies: []er.Message{a.reply}}}, er.VerifyOptions{})
+	assert.Error(t, err)
 }

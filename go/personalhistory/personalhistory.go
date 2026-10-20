@@ -23,6 +23,7 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/agent-action-capsule/go/evidencerequest"
 )
 
@@ -199,6 +200,11 @@ func EncodeFile(f File) ([]byte, error) {
 func fileValue(m evidencerequest.Message) (map[string]any, error) {
 	switch m.MediaType {
 	case evidencerequest.MediaTypeJSON:
+		// octets_text carries the octets exactly (PH §8.2), so they must be
+		// text a JSON string can hold unchanged.
+		if err := canonical.CheckJSONText(m.Octets); err != nil {
+			return nil, fmt.Errorf("%w: JSON octets that a JSON string cannot carry exactly: %v", ErrInvalid, err)
+		}
 		return map[string]any{"media_type": m.MediaType, "octets_text": string(m.Octets)}, nil
 	case evidencerequest.MediaTypeCBOR:
 		return map[string]any{"media_type": m.MediaType, "octets_hex": fmt.Sprintf("%x", m.Octets)}, nil
@@ -344,6 +350,13 @@ func jsonModel(v any) any {
 	switch x := v.(type) {
 	case json.Number:
 		return evidencerequest.JSONNumber(x)
+	case float64:
+		// A definition decoded by encoding/json without UseNumber: an
+		// integral value keeps its JCS form; any other has none.
+		if x >= 0 && x <= evidencerequest.MaxSafeInteger && x == float64(uint64(x)) {
+			return uint64(x)
+		}
+		return x
 	case []any:
 		out := make([]any, len(x))
 		for i, item := range x {
@@ -412,7 +425,8 @@ func artifactForm(envs []ExchangeResult, reads []string) bool {
 			return false
 		}
 		anchor, _ := e.Reply.Envelope["anchor"].(map[string]any)
-		if !equal(a["anchor"], anchor["digest"]) || !equal(a["derivation"], e.Reply.Envelope["derivation"]) || !equal(a["subject"], e.Subject) {
+		digest, isText := a["anchor"].(string)
+		if !isText || !evidencerequest.IsDigest(digest) || !equal(a["anchor"], anchor["digest"]) || !equal(a["derivation"], e.Reply.Envelope["derivation"]) || !equal(a["subject"], e.Subject) {
 			return false
 		}
 		records, ok := a["records"].([]any)
@@ -538,7 +552,8 @@ func dealStates(envs []ExchangeResult) States {
 		case completed:
 			state = StateCompletedSteps
 		}
-		correlation, _ := e.Subject.(map[string]any)["correlation"].(string)
+		subject, _ := e.Subject.(map[string]any)
+		correlation, _ := subject["correlation"].(string)
 		per[correlation] = state
 	}
 	s := States{SelectedDeals: len(per), Counts: map[string]int{}}

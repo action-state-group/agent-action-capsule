@@ -15,8 +15,11 @@
   in the Python test, reads an Artifact only when its octets are exactly the JCS of one object
   (PH §4.3), and each records entry's values only in their forms (a 64-hex `digest`, an unsigned
   `leaf_index`, a text string for each read member), so a re-signed Artifact with trailing data,
-  a duplicate member or an object in a permitted member fails `artifact_form`; every vector's
-  expected result is unchanged.
+  a duplicate member or an object in a permitted member fails `artifact_form`, as does an Artifact
+  `anchor` that is not a digest; every vector's expected result is unchanged. Received CBOR is
+  read with a port of the reference's strict decoder (`interop_profile._cbor`): the first of a
+  repeated key is kept, and undefined, other simple values and indefinite lengths are no data
+  item. A JSON reply with an unpaired surrogate escape is not well formed.
 
 - Vectors `capsule/canonical-integer-negative-zero` and
   `capsule/canonical-integer-negative-zero-as-zero` (spec-derived): `-0` as a direct member,
