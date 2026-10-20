@@ -86,6 +86,7 @@ Interval coverage is unchanged: the range proof already binds every
 | `pos-padded-whole-log` | the whole log, [1, 64] | VALID |
 | `pos-padded-suffix` | the suffix [6, 64], starting on a padding leaf | VALID |
 | `neg-padding-nonce-edited` | seq 6's nonce edited, its `capsule_id` left | INVALID |
+| `neg-padding-capsule-id-edited` | seq 23 recomputes to its body digest but carries another `capsule_id` | INVALID |
 | `neg-padding-other-leaf` | seq 7 is a self-consistent padding record of another log | INVALID |
 | `neg-padding-swapped` | the contents of seq 6 and 7 swapped | INVALID |
 | `neg-padding-digest-only` | seq 8 carried as a digest, no content | INVALID |

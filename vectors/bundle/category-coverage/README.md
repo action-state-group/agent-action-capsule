@@ -101,7 +101,7 @@ The other properties never change it.
 | `unknown-category` | a name the known set lacks: set `FAIL` | VALID |
 | `unknown-set` | a set the verifier does not know: `INCONCLUSIVE` | VALID |
 | `request-not-covered` | a requested name has no entry: request `FAIL` | VALID |
-| `request-digest-mismatch` | `request_digest` of another request: request `FAIL` | VALID |
+| `request-digest-mismatch` | `request_digest` of another request asking for the same categories: request `FAIL` | VALID |
 | `request-without-categories` | the request asked for none: `NOT_PRESENT` | VALID |
 | `neg-consistency-absent-with-record` | a record in an `ABSENT` category | INVALID |
 | `neg-consistency-withheld-with-record` | a record in a `WITHHELD` category | INVALID |
