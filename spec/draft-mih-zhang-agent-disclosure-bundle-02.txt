@@ -22,11 +22,12 @@ Abstract
    bundle at its URL.  The bundle does not alter any enclosed Capsule.
    It declares its citation closure and any missing cited records,
    carries verified disclosure preimages as a bundle-level overlay,
-   separates three different completeness claims, and permits
-   independently specified extension blocks and countersignatures:
-   signatures by a party other than the producer over the bundle digest,
-   each accompanied by a statement of which claims that party recomputed
-   and with what result.
+   separates three different completeness claims, can carry the
+   producer's signed declaration of what it offers in each category of
+   evidence, and permits independently specified extension blocks and
+   countersignatures: signatures by a party other than the producer over
+   the bundle digest, each accompanied by a statement of which claims
+   that party recomputed and with what result.
 
 Status of This Memo
 
@@ -49,7 +50,6 @@ Copyright Notice
 
    Copyright (c) 2026 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
-
 
 
 
@@ -78,34 +78,34 @@ Table of Contents
      6.1.  Certificate Modes . . . . . . . . . . . . . . . . . . . .   8
      6.2.  Producer-Selected Certificates  . . . . . . . . . . . . .   9
      6.3.  Non-Record Leaves . . . . . . . . . . . . . . . . . . . .  10
-   7.  Typed Extensions  . . . . . . . . . . . . . . . . . . . . . .  12
-     7.1.  The producer-key/v1 Extension . . . . . . . . . . . . . .  12
-     7.2.  The composed/v1 Extension . . . . . . . . . . . . . . . .  13
-       7.2.1.  Block . . . . . . . . . . . . . . . . . . . . . . . .  14
-       7.2.2.  Members and Outcomes  . . . . . . . . . . . . . . . .  16
-       7.2.3.  Composition Closure . . . . . . . . . . . . . . . . .  17
-       7.2.4.  Joins . . . . . . . . . . . . . . . . . . . . . . . .  18
-       7.2.5.  Observers and Redundancy  . . . . . . . . . . . . . .  19
-       7.2.6.  Composed Digest . . . . . . . . . . . . . . . . . . .  20
-       7.2.7.  Verifying composed/v1 . . . . . . . . . . . . . . . .  21
-     7.3.  Provisional Extension Kinds . . . . . . . . . . . . . . .  22
-   8.  Bundle Digest and Countersignatures . . . . . . . . . . . . .  22
-     8.1.  The countersign/v1 Entry  . . . . . . . . . . . . . . . .  23
-     8.2.  Verifying a countersign/v1 Entry  . . . . . . . . . . . .  25
-     8.3.  Self-Countersignature . . . . . . . . . . . . . . . . . .  25
-   9.  Fragment Codec  . . . . . . . . . . . . . . . . . . . . . . .  26
-   10. Verification  . . . . . . . . . . . . . . . . . . . . . . . .  26
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .  26
-     11.1.  composed/v1  . . . . . . . . . . . . . . . . . . . . . .  27
-   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  28
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  28
-   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  29
-     14.1.  Normative References . . . . . . . . . . . . . . . . . .  29
-     14.2.  Informative References . . . . . . . . . . . . . . . . .  30
-   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  31
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  32
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  32
-
+   7.  Category Coverage . . . . . . . . . . . . . . . . . . . . . .  12
+     7.1.  Statuses  . . . . . . . . . . . . . . . . . . . . . . . .  13
+     7.2.  Signature . . . . . . . . . . . . . . . . . . . . . . . .  14
+     7.3.  Verifier Properties . . . . . . . . . . . . . . . . . . .  14
+   8.  Typed Extensions  . . . . . . . . . . . . . . . . . . . . . .  15
+     8.1.  The producer-key/v1 Extension . . . . . . . . . . . . . .  15
+     8.2.  The composed/v1 Extension . . . . . . . . . . . . . . . .  16
+       8.2.1.  Block . . . . . . . . . . . . . . . . . . . . . . . .  17
+       8.2.2.  Members and Outcomes  . . . . . . . . . . . . . . . .  19
+       8.2.3.  Composition Closure . . . . . . . . . . . . . . . . .  20
+       8.2.4.  Joins . . . . . . . . . . . . . . . . . . . . . . . .  21
+       8.2.5.  Observers and Redundancy  . . . . . . . . . . . . . .  22
+       8.2.6.  Composed Digest . . . . . . . . . . . . . . . . . . .  23
+       8.2.7.  Verifying composed/v1 . . . . . . . . . . . . . . . .  24
+     8.3.  Provisional Extension Kinds . . . . . . . . . . . . . . .  25
+   9.  Bundle Digest and Countersignatures . . . . . . . . . . . . .  25
+     9.1.  The countersign/v1 Entry  . . . . . . . . . . . . . . . .  26
+     9.2.  Verifying a countersign/v1 Entry  . . . . . . . . . . . .  28
+     9.3.  Self-Countersignature . . . . . . . . . . . . . . . . . .  28
+   10. Fragment Codec  . . . . . . . . . . . . . . . . . . . . . . .  29
+   11. Verification  . . . . . . . . . . . . . . . . . . . . . . . .  29
+   12. Security Considerations . . . . . . . . . . . . . . . . . . .  29
+     12.1.  composed/v1  . . . . . . . . . . . . . . . . . . . . . .  30
+     12.2.  Category Coverage  . . . . . . . . . . . . . . . . . . .  31
+   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  31
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  31
+   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  32
+     15.1.  Normative References . . . . . . . . . . . . . . . . . .  32
 
 
 
@@ -113,6 +113,11 @@ Mih & Zhang                Expires 2 May 2027                   [Page 2]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
+
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  34
+   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  34
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  36
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  36
 
 1.  Introduction
 
@@ -160,11 +165,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-
-
-
-
-
 Mih & Zhang                Expires 2 May 2027                   [Page 3]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
@@ -181,7 +181,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       outside this document.
 
    Self-countersignature:  An entry in countersignatures whose signer
-      key is the producer's key (Section 8.3).  It is well-formed and is
+      key is the producer's key (Section 9.3).  It is well-formed and is
       rendered as not independent.
 
    countersignatures is a member name.  An entry is a statement by a
@@ -245,6 +245,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
      "disclosure_record": "<capsule_id>",
      "completeness_certificate": { ... },
      "checkpoint": { ... },
+     "category_coverage": { ... },
      "verification": { ... },
      "extensions": { "<registered kind>": { ... } },
      "countersignatures": [ ... ]
@@ -268,7 +269,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    mode of completeness_certificate (Section 6.1). suppressed_fields
    names fields intentionally not carried by the Bundle; it does not
    turn an absent disclosure into an empty value or a failure.
-
 
 
 
@@ -353,7 +353,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    completeness_certificate and checkpoint, when supplied, support three
    separate claims.  A verifier MUST report each claim independently.
    The composed/v1 extension adds a fourth claim, composition closure
-   (Section 7.2.3), which is reported separately from these three.
+   (Section 8.2.3), which is reported separately from these three.
 
    1.  *Graph closure*: every citation reached under Section 4 is
        supplied with matching identity or explicitly listed in
@@ -635,7 +635,185 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    non_record_leaf_type_unsupported; a producer that needs a Bundle over
    such a log without that result uses a producer-selected certificate.
 
-7.  Typed Extensions
+7.  Category Coverage
+
+   category_coverage, when present, is the producer's signed declaration
+   of what it offers in each category of a named category set: for each
+   category, exactly one status.  It answers the categories field of an
+   Evidence Request ([I-D.mih-agent-evidence-request]), and a producer
+   MAY include it without one. *It declares; it does not prove.* A
+   verifier checks that it is well formed, who signed it, and whether it
+   is consistent with what the Bundle carries.  It never establishes
+   that the producer offers everything it declares, or that nothing
+   exists in a category declared absent.
+
+   "category_coverage": {
+     "set": "<category set identifier>",
+     "categories": {
+       "<category name>": { "status": "AVAILABLE" },
+       "<category name>": { "status": "UNDISCLOSED",
+                            "policy_uri": "<absolute URI>" }
+     },
+     "request_digest": "<64 hex>",
+     "signer": { "key_id": "<64 hex>" },
+     "signature": "<128 hex>"
+   }
+
+   set is REQUIRED, a non-empty string naming a category set
+   (Section 14).  A set whose identifier begins x- is private: it is not
+   registered, and a verifier never treats it as known. categories is
+   REQUIRED, a non-empty object keyed by category name; each value is an
+   object with status and, where required, policy_uri. request_digest,
+   OPTIONAL, is the digest of the Evidence Request this declaration
+   answers, computed as [I-D.mih-agent-evidence-request] computes a
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 12]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
+   request digest, in lowercase hexadecimal. signer and signature are
+   OPTIONAL, and present together or not at all.  Members not defined
+   here are ignored.
+
+   The member is part of the bundle digest (Section 9), so a
+   countersignature binds it.
+
+7.1.  Statuses
+
+   Each category has exactly one status, written in upper case:
+
+   +=============+=====================================================+
+   | status      | Meaning                                             |
+   +=============+=====================================================+
+   | AVAILABLE   | evidence in this category is offered                |
+   +-------------+-----------------------------------------------------+
+   | PARTIAL     | only some evidence in this category                 |
+   |             | is offered                                          |
+   +-------------+-----------------------------------------------------+
+   | WITHHELD    | evidence in this category may exist                 |
+   |             | and is not released to this requester               |
+   +-------------+-----------------------------------------------------+
+   | DELETED     | evidence in this category was                       |
+   |             | destroyed or has expired                            |
+   +-------------+-----------------------------------------------------+
+   | ABSENT      | the producer states that it holds                   |
+   |             | nothing in this category                            |
+   +-------------+-----------------------------------------------------+
+   | UNDISCLOSED | the producer does not state which of                |
+   |             | the other statuses applies, under the               |
+   |             | policy policy_uri names                             |
+   +-------------+-----------------------------------------------------+
+
+                                  Table 1
+
+   AVAILABLE, PARTIAL, WITHHELD, DELETED and UNDISCLOSED are the
+   retention states of the Evidence Layer
+   [I-D.mih-agent-evidence-layer], with the same meanings, applied to a
+   category rather than to one record's payload.  ABSENT is the
+   producer's asserted absence in that document's sense: its own
+   unproven claim about its own store, never a non-membership proof and
+   never the requester's recorded absence of
+   [I-D.mih-agent-evidence-request].  The retention state LEGAL_HOLD is
+   not a status: it changes what may happen to evidence, not what is
+   offered.
+
+
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 13]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
+   UNDISCLOSED MUST carry policy_uri, an absolute URI ([RFC3986],
+   Section 4.3) naming the policy under which the status is not
+   disclosed; policy_uri MAY accompany any other status.  WITHHELD and
+   UNDISCLOSED are different statements and MUST NOT be conflated:
+   WITHHELD says evidence may exist and is not released; UNDISCLOSED
+   says nothing about whether any exists.
+
+7.2.  Signature
+
+   signer.key_id is a 32-byte Ed25519 [RFC8032] public key as 64
+   lowercase hexadecimal characters. signature is the Ed25519 signature,
+   as 128 lowercase hexadecimal characters, under that key over the
+   signing input
+
+   UTF8(JCS({"category_coverage": <the member without signature>,
+             "root": <the Bundle's root>}))
+
+   Including root binds the declaration to the Bundle it was made for,
+   so a signed declaration copied into another Bundle does not verify.
+   The signature attributes the declaration to the holder of the key.
+   It does not establish who that holder is; a verifier MAY compare
+   signer.key_id with the producer's keys (Section 9.3) and report the
+   result.
+
+7.3.  Verifier Properties
+
+   A verifier that implements this member reports the following
+   properties, each as exactly one of PASS, FAIL, NOT_PRESENT,
+   NOT_CHECKED and INCONCLUSIVE, with the meanings of the
+   countersignature results (Section 9.1): the check held, did not hold,
+   had nothing to operate on, could not run, or resolved only in part.
+   A Bundle without the member has no category properties.
+
+   category_coverage_form:  PASS when the member is as described above,
+      including a policy_uri for every UNDISCLOSED status; otherwise
+      FAIL.  When it is FAIL, every other property is NOT_CHECKED.
+
+   category_coverage_signature:  NOT_PRESENT when the member carries no
+      signature; PASS when the signature verifies; FAIL otherwise.
+
+   category_coverage_set_registered:  NOT_PRESENT for a private (x-)
+      set; INCONCLUSIVE when the verifier does not know the set; FAIL
+      when it knows the set and a declared category is not one of its
+      names; PASS otherwise.
+
+   category_coverage_request:  NOT_CHECKED when the verifier does not
+
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 14]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
+      have the Evidence Request; FAIL when request_digest is present and
+      is not that request's digest; NOT_PRESENT when the request has no
+      categories field; FAIL when the request names another set, or a
+      requested category has no entry; PASS otherwise.
+
+   category_coverage_consistency:  NOT_CHECKED when the verifier cannot
+      assign the Bundle's records to categories (the set's definition
+      says how); FAIL when a record the Bundle carries belongs to a
+      category declared ABSENT or WITHHELD; PASS otherwise.  A record in
+      a DELETED or UNDISCLOSED category is not a contradiction, and an
+      AVAILABLE category with no record in the Bundle is not one either:
+      the Bundle may cover less than the producer offers.
+
+   Each property stands alone.  A verifier MUST report them separately
+   and MUST NOT combine them, or the statuses, into a count, a
+   percentage, a score or a claim of completeness.  It MUST NOT report a
+   PASS of every property as proof that the producer offered everything
+   it holds.  A FAIL of category_coverage_form,
+   category_coverage_signature or category_coverage_consistency is a
+   failed check of the Bundle; the other properties are reported and
+   change no other result.  Category coverage is reported apart from the
+   completeness claims of Section 6 and changes none of them.
+
+   A verifier that does not implement this member follows the rule for
+   any member it does not know: it reports nothing about it, and the
+   member stays covered by the bundle digest.
+
+8.  Typed Extensions
 
    extensions, when present, is an object keyed by a registered Evidence
    Bundle extension kind.  The member name declares the kind and its
@@ -645,34 +823,28 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    such as report/v1 is permitted only as such an extension; this
    neutral core does not define, parse, or own its rows.
 
-   Extensions are included in the bundle digest (Section 8).  A verifier
+   Extensions are included in the bundle digest (Section 9).  A verifier
    that does not implement a registered extension kind MUST preserve its
    integrity status as digest-covered, report the block as
    uninterpreted, and MUST NOT apply that block's semantics.  An unknown
    kind MUST NOT alter the core Capsule, closure, disclosure, or
    membership checks.
 
-7.1.  The producer-key/v1 Extension
+8.1.  The producer-key/v1 Extension
 
    The producer-key/v1 extension kind declares the key of the producer
    that assembled the Bundle:
 
-   "extensions": {
-     "producer-key/v1": { "public_key": "<64 lowercase hex>" }
-   }
 
 
-
-
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 12]
+Mih & Zhang                Expires 2 May 2027                  [Page 15]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
+
+   "extensions": {
+     "producer-key/v1": { "public_key": "<64 lowercase hex>" }
+   }
 
    public_key is the producer's 32-byte Ed25519 [RFC8032] public key as
    64 lowercase hexadecimal characters.  The block carries one key.  A
@@ -684,7 +856,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    A verifier that implements this kind uses public_key for one purpose
    only: it adds the key to the producer's keys when determining
-   independence (Section 8.3), so that a countersign/v1 entry whose
+   independence (Section 9.3), so that a countersign/v1 entry whose
    signer.key_id equals it is reported as not independent.  The
    declaration can only cause an entry to be reported as not
    independent.  It MUST NOT cause any entry to be reported as
@@ -699,7 +871,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    when determining independence, MUST NOT fail the Bundle or any claim
    because of it, and still treats the block as digest-covered.
 
-7.2.  The composed/v1 Extension
+8.2.  The composed/v1 Extension
 
    The composed/v1 extension kind carries an evidence set built from the
    answers of several responders as one portable object.  Each responder
@@ -718,17 +890,18 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    *  the observer that produced each member;
 
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 16]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    *  the joins between members;
 
    *  a _composed digest_ that a judgment or other record can cite as
       the exact evidence set it was made from.
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 13]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    The containing Bundle is an ordinary evidence-bundle/v2.  Its root is
    the composing party's own record, and its core checks apply
@@ -763,7 +936,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
      }
    }
 
-7.2.1.  Block
+8.2.1.  Block
 
    The block is a JSON object conforming to this CDDL [RFC8610]:
 
@@ -773,18 +946,18 @@ Internet-Draft             AAC Evidence Bundle              October 2026
      ? joins: [* composed-join],
      ? not_requested: [* label-id],
      ? missing: [* label-id],
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 17]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
      composed_digest: digest-hex,
    }
 
    composed-member = artifact-member / refusal-member / absence-member
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 14]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    member-common = (
      id: label-id,
@@ -829,23 +1002,24 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    composed-join = {
      members: [label-id, label-id],  ; two distinct ids, ascending
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 18]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
      basis: join-basis,
      ? pointer: tstr,                ; RFC 6901 JSON Pointer
      ? identifier_digest: digest-hex,
      ? compare: [+ tstr],            ; RFC 6901 JSON Pointers
      state: join-state,
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 15]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    }
 
    join-basis = "pre_agreed_identifier" / "shared_artifact_digest" /
-                "issued_receipt" / "same_interval"
+                "issued_receipt" / "same_interval" /
+                "controller_binding"
    join-state = "agree" / "mismatch" / "unjoined" / "one_sided"
 
    label-id   = text .regexp "[A-Za-z0-9._:-]{1,128}"
@@ -862,7 +1036,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    is malformed.  A verifier reports a malformed block as a failed
    composed/v1 check and MUST NOT report any composition result from it.
 
-7.2.2.  Members and Outcomes
+8.2.2.  Members and Outcomes
 
    A member records the outcome of one request to one responder, and
    nothing else.  The three outcomes are those of
@@ -882,21 +1056,19 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    digest depends on the outcome:
 
    *  For artifact, it is the member Evidence Bundle's bundle digest
-      (Section 8).
+      (Section 9).
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 19]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    *  For refusal and absence, it is the lowercase hexadecimal SHA-256
       of the UTF-8 JCS [RFC8785] serialization of the refusal or absence
       object, as carried.
-
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 16]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    When the body (bundle, refusal or absence) is carried, a verifier
    MUST recompute digest from it.  For a refusal or absence, it MUST
@@ -919,7 +1091,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    exactly as a refusal's is.  A verifier that does not implement that
    profile reports the response as signature-unverified, which is
    neither failed nor absent. response is not part of the composed
-   digest (Section 7.2.6).
+   digest (Section 8.2.6).
 
    An artifact that fails verification is still an artifact member.  The
    verifier reports the failure on that member.  It is not a fourth
@@ -936,23 +1108,22 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    claims are about its own records only.  A refusal or absence member
    is not a failed claim: a verifier reports it as what it is.
 
-7.2.3.  Composition Closure
+8.2.3.  Composition Closure
 
    A composed/v1 block makes a fourth completeness claim, _composition
    closure_. It holds when every member is either:
 
    *  present, meaning its body is carried and reproduces its digest; or
 
-   *  declared missing, meaning its id is listed in missing and it
-      carries no body.
 
 
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 17]
+Mih & Zhang                Expires 2 May 2027                  [Page 20]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
+
+   *  declared missing, meaning its id is listed in missing and it
+      carries no body.
 
    The claim has three results:
 
@@ -981,9 +1152,9 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    Composition closure covers declared members only.  A participant that
    is in neither members nor not_requested is not visible to a verifier
-   from this block (Section 11.1).
+   from this block (Section 12.1).
 
-7.2.4.  Joins
+8.2.4.  Joins
 
    A join declares that two members' records are about the same thing,
    and how that is established.  The producer DECLARES a state; a
@@ -1002,10 +1173,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 18]
+Mih & Zhang                Expires 2 May 2027                  [Page 21]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1031,13 +1199,15 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       root record.  The members are linked when the two values are
       identical.
 
-   The bases issued_receipt (the two records cite one Receipt) and
-   same_interval (the two records fall in one declared interval) are
-   reserved for a later specification that defines their derivation.  A
-   block MAY declare joins on them; such joins are digest-covered.  A
-   verifier that does not implement a derivation for the basis reports
-   such a join as not_derivable.  It MUST NOT report the join as a
-   derived agreement, and MUST NOT count it as corroboration.
+   The bases issued_receipt (the two records cite one Receipt),
+   same_interval (the two records fall in one declared interval) and
+   controller_binding (the holders of the two root records' signing keys
+   jointly signed a statement binding the keys) are reserved for a later
+   specification that defines their derivation.  A block MAY declare
+   joins on them; such joins are digest-covered.  A verifier that does
+   not implement a derivation for the basis reports such a join as
+   not_derivable.  It MUST NOT report the join as a derived agreement,
+   and MUST NOT count it as corroboration.
 
    A join one of whose artifact members is declared missing is also
    not_derivable.
@@ -1045,7 +1215,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    On a derived mismatch, a verifier reports each member's value at each
    differing pointer, and names no winner.
 
-7.2.5.  Observers and Redundancy
+8.2.5.  Observers and Redundancy
 
    observers[] states, for each member, which observer produced it, in
    what role, and in which custody_domain. role is a short token naming
@@ -1059,9 +1229,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 19]
+Mih & Zhang                Expires 2 May 2027                  [Page 22]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1081,7 +1249,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    it MUST qualify that as resting on _declared_ custody.
 
    Custody labels are the composing party's declaration.  Like producer-
-   key/v1 (Section 7.1), they can only downgrade a result.  Identical
+   key/v1 (Section 8.1), they can only downgrade a result.  Identical
    labels make a pair redundant.  Distinct labels never establish that
    two observers are independent, and a verifier MUST NOT present them
    as doing so.
@@ -1090,7 +1258,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    the block.  A verifier lists results per pair.  It MUST NOT combine
    them into a count or score.
 
-7.2.6.  Composed Digest
+8.2.6.  Composed Digest
 
    The composed digest is the digest a judgment cites as the evidence
    set it was made from.  It is computed only from the declarations in
@@ -1117,7 +1285,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 20]
+Mih & Zhang                Expires 2 May 2027                  [Page 23]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1150,7 +1318,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    failed composed/v1 check.  It MUST NOT report the recomputed value as
    the digest of any member, nor as the containing Bundle's digest.
 
-   The containing Bundle's own digest (Section 8) still covers the whole
+   The containing Bundle's own digest (Section 9) still covers the whole
    block, bodies included.  A countersignature over the containing
    Bundle therefore binds the composition and everything carried with
    it.  The composed digest binds only the evidence set.
@@ -1162,7 +1330,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    declared custody, and with it the redundancy result a verifier
    derives from that custody.
 
-7.2.7.  Verifying composed/v1
+8.2.7.  Verifying composed/v1
 
    A verifier that implements composed/v1 MUST report each of the
    following separately:
@@ -1173,7 +1341,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 21]
+Mih & Zhang                Expires 2 May 2027                  [Page 24]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1191,23 +1359,23 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    5.  per derived agree: redundant (with reason) or corroborating on
        declared custody.
 
-   A verifier that does not implement composed/v1 follows Section 7: it
+   A verifier that does not implement composed/v1 follows Section 8: it
    reports the block as uninterpreted and integrity-covered.  It MUST
    NOT present any member, join or composed digest as checked.
 
-7.3.  Provisional Extension Kinds
+8.3.  Provisional Extension Kinds
 
-   The interim registry (Section 13) also records two extension kinds
+   The interim registry (Section 14) also records two extension kinds
    held for ratification and not registered: sd-jwt-issuers/v1, the
    issuer keys under which SD-JWT presentations [RFC9901] in a revealed
    agent_input are verified offline, and disclosure-policy-decisions/v1,
    the per-Capsule disclosure-policy decision that a constraint record
    binds by digest.  This document does not define them.  A verifier
    that does not implement them treats them as it treats any extension
-   kind it does not implement (Section 7): digest-covered and
+   kind it does not implement (Section 8): digest-covered and
    uninterpreted.
 
-8.  Bundle Digest and Countersignatures
+9.  Bundle Digest and Countersignatures
 
    The bundle digest is SHA-256(UTF8(JCS(canonical bundle form))),
    rendered as 64 lowercase hexadecimal characters.  The canonical
@@ -1229,7 +1397,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 22]
+Mih & Zhang                Expires 2 May 2027                  [Page 25]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1237,14 +1405,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    verification are future scope; a current verifier MUST surface each
    such entry as unverified and MUST NOT present pass-through data as a
    verified countersignature.  The countersign/v1 object is defined in
-   Section 8.1.  A verifier MUST report an entry of a type it does not
+   Section 9.1.  A verifier MUST report an entry of a type it does not
    implement as unverified and MUST NOT let it change any other result.
    An entry with no type member is the legacy form of countersign/v1.  A
    verifier MUST process it as countersign/v1, and its signing input
    then uses the value countersign/v1 for type.  A producer MUST NOT
    emit the legacy form.
 
-8.1.  The countersign/v1 Entry
+9.1.  The countersign/v1 Entry
 
    {
      "type": "countersign/v1",
@@ -1272,7 +1440,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    itself, not a digest of it, so that a verifier holding only the entry
    can check the signature offline.
 
-   over is the bundle digest (Section 8) of the Bundle the countersigner
+   over is the bundle digest (Section 9) of the Bundle the countersigner
    recomputed.
 
    statement says what the countersigner recomputed and with what
@@ -1285,7 +1453,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 23]
+Mih & Zhang                Expires 2 May 2027                  [Page 26]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1316,7 +1484,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    | inconclusive | The check ran but resolved only in part.           |
    +--------------+----------------------------------------------------+
 
-                                  Table 1
+                                  Table 2
 
    Each result stands alone.  A statement MUST NOT carry an aggregate
    result, a score, a rating, or a claim of compliance, and a verifier
@@ -1341,7 +1509,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 24]
+Mih & Zhang                Expires 2 May 2027                  [Page 27]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1349,7 +1517,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    A verifier MUST ignore entry members not defined here, and they MUST
    NOT change any result it reports.
 
-8.2.  Verifying a countersign/v1 Entry
+9.2.  Verifying a countersign/v1 Entry
 
    A verifier MUST, for each countersign/v1 entry:
 
@@ -1361,7 +1529,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
        entry whose signature fails is invalid, and its checks MUST NOT
        be displayed as results;
 
-   3.  determine independence as in Section 8.3.
+   3.  determine independence as in Section 9.3.
 
    A verifier MAY resolve signer.key_id against a directory of
    countersigners that it or the relying party chooses, to put a name to
@@ -1373,12 +1541,12 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    the signer's statement, and MUST NOT present them as its own
    findings.
 
-8.3.  Self-Countersignature
+9.3.  Self-Countersignature
 
    A countersignature is a self-countersignature when signer.key_id
    equals the producer's key: the kid of a Producer Envelope over any
    record in records ([I-D.mih-scitt-agent-action-capsule]), the
-   public_key of a well-formed producer-key/v1 extension (Section 7.1),
+   public_key of a well-formed producer-key/v1 extension (Section 8.1),
    or any other key the verifier holds for that producer.  A self-
    countersignature is a well-formed entry that does not meet the
    definition of a countersignature, because its signer is the producer.
@@ -1397,12 +1565,12 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 25]
+Mih & Zhang                Expires 2 May 2027                  [Page 28]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
 
-9.  Fragment Codec
+10.  Fragment Codec
 
    The common permalink codec is exact.  To encode a Bundle in a URL
    fragment, a producer MUST serialize the whole Bundle with JCS,
@@ -1419,7 +1587,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    a Bundle only when it is otherwise uploaded or embedded in the
    returned report.
 
-10.  Verification
+11.  Verification
 
    verification, when present, is producer self-report.  It MAY record
    tool versions, performed checks, or findings, but it is not proof and
@@ -1436,7 +1604,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    Bundle, so that a certificate mode it does not implement is reported
    as not established, never as failed.
 
-11.  Security Considerations
+12.  Security Considerations
 
    The Bundle does not make omitted evidence disappear.  Its explicit
    missing declaration is necessary to prevent a short report from being
@@ -1453,7 +1621,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 26]
+Mih & Zhang                Expires 2 May 2027                  [Page 29]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1471,7 +1639,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    a random nonce, rules that out (Section 6.3).
 
    A countersignature's statement and signer are what a relying party
-   reads, so both are inside the signing input (Section 8.1); a
+   reads, so both are inside the signing input (Section 9.1); a
    signature over the bundle digest alone would let anyone holding the
    Bundle rewrite a failed result as established, or attribute the entry
    to a different signer identifier, without detection.  A verified
@@ -1480,7 +1648,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    directory used to put a name to a key, are outside this document.  A
    self-countersignature is not a second party's check, and rendering it
    as one would present the producer's own claim as independent
-   corroboration; Section 8.3 forbids that.  A producer-key/v1
+   corroboration; Section 9.3 forbids that.  A producer-key/v1
    declaration can only cause an entry to be reported as not
    independent: a producer that declares a key it does not hold weakens
    only its own Bundle's countersignatures, and a producer that
@@ -1490,7 +1658,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    an aggregate would hide a failed or not checked result behind a
    total.
 
-11.1.  composed/v1
+12.1.  composed/v1
 
    *  *Omitted participants.* The composing party chooses whom to list.
       Composition closure proves that every _declared_ member is present
@@ -1503,13 +1671,13 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    *  *Declarations versus derivations.* Declared join states are re-
       derived; a mismatch fails.  Declared custody can only downgrade
-      (Section 7.2.5).  Nothing a producer declares can make two
+      (Section 8.2.5).  Nothing a producer declares can make two
       observers independent.
 
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 27]
+Mih & Zhang                Expires 2 May 2027                  [Page 30]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1518,7 +1686,19 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       synthesizing either one from the other forges the stronger record
       from the weaker.
 
-12.  Privacy Considerations
+12.2.  Category Coverage
+
+   A category declaration is the producer's statement about itself
+   (Section 7).  A producer that chooses its own categories can declare
+   whatever is favorable to it; this is why a private set is never
+   reported as registered, and why a verifier reports properties rather
+   than a verdict of completeness.  A signed ABSENT is attributable and
+   can be contradicted by records a counterparty holds, but it is not
+   evidence that nothing exists.  Including the Bundle's root in the
+   signing input stops a declaration made for one Bundle from being
+   presented with another.
+
+13.  Privacy Considerations
 
    A Bundle reveals a preimage only through its disclosure overlay
    (Section 5); a member absent from the overlay stays WITHHELD.
@@ -1531,7 +1711,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    show them uses a producer-selected certificate (Section 6.2), which
    carries no positions other than those of the records it carries.
 
-   For the composed/v1 extension (Section 7.2):
+   For the composed/v1 extension (Section 8.2):
 
    *  Join identifiers enter only as digests (identifier_digest).
 
@@ -1542,7 +1722,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       stable.  A judgment can therefore be checked against a composition
       presented to an audience that may not see every member.
 
-13.  IANA Considerations
+14.  IANA Considerations
 
    IANA is requested to create the "AAC Evidence Bundle Parameters"
    registry group with these Specification Required registries, using
@@ -1551,33 +1731,37 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    1.  "Evidence Bundle kind", initial value evidence-bundle/v2.
 
-   2.  "Evidence Bundle extension kind", initial values producer-key/v1
-       (Section 7.1) and composed/v1 (Section 7.2).  A registered
-       specification defines each block; private x- prefixed kinds are
-       not registered.  The kinds sd-jwt-issuers/v1 and disclosure-
-       policy-decisions/v1 (Section 7.3) are not initial values.
-
-   3.  "Evidence Bundle countersignature type", initial values cose-
-       sign1 (Section 8) and countersign/v1 (Section 8.1).
 
 
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 28]
+Mih & Zhang                Expires 2 May 2027                  [Page 31]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
+
+   2.  "Evidence Bundle extension kind", initial values producer-key/v1
+       (Section 8.1) and composed/v1 (Section 8.2).  A registered
+       specification defines each block; private x- prefixed kinds are
+       not registered.  The kinds sd-jwt-issuers/v1 and disclosure-
+       policy-decisions/v1 (Section 8.3) are not initial values.
+
+   3.  "Evidence Bundle countersignature type", initial values cose-
+       sign1 (Section 9) and countersign/v1 (Section 9.1).
+
+   4.  "Evidence Bundle category set", with no initial values.  Each
+       entry registers a category set identifier for category_coverage
+       (Section 7), its category names, and how a record is assigned to
+       a category.  The registering specification names any external
+       source of the categories by version.  Identifiers beginning x-
+       are private and are not registered.
 
    Until IANA registry creation, the interim registry of record is
    REGISTRY.md in the source repository of
    [I-D.mih-scitt-agent-action-capsule].  It records the same values and
    policy.
 
-14.  References
+15.  References
 
-14.1.  Normative References
+15.1.  Normative References
 
    [I-D.mih-agent-disclosure-envelope]
               Mih, S., "Disclosure Envelope Profile for Agent Action
@@ -1599,6 +1783,17 @@ Internet-Draft             AAC Evidence Bundle              October 2026
               capsule-05, n.d., <https://datatracker.ietf.org/doc/html/
               draft-mih-scitt-agent-action-capsule-05>.
 
+
+
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 32]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
               DOI 10.17487/RFC2119, March 1997,
@@ -1608,6 +1803,11 @@ Internet-Draft             AAC Evidence Bundle              October 2026
               Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
               <https://www.rfc-editor.org/rfc/rfc3339>.
 
+   [RFC3986]  Berners-Lee, T., Fielding, R., and L. Masinter, "Uniform
+              Resource Identifier (URI): Generic Syntax", STD 66,
+              RFC 3986, DOI 10.17487/RFC3986, January 2005,
+              <https://www.rfc-editor.org/rfc/rfc3986>.
+
    [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
               Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
               <https://www.rfc-editor.org/rfc/rfc4648>.
@@ -1616,15 +1816,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
               "JavaScript Object Notation (JSON) Pointer", RFC 6901,
               DOI 10.17487/RFC6901, April 2013,
               <https://www.rfc-editor.org/rfc/rfc6901>.
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 29]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
               Signature Algorithm (EdDSA)", RFC 8032,
@@ -1651,6 +1842,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
               JSON Data Structures", RFC 8610, DOI 10.17487/RFC8610,
               June 2019, <https://www.rfc-editor.org/rfc/rfc8610>.
 
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 33]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
               Canonicalization Scheme (JCS)", RFC 8785,
               DOI 10.17487/RFC8785, June 2020,
@@ -1667,20 +1866,13 @@ Internet-Draft             AAC Evidence Bundle              October 2026
               DOI 10.17487/RFC9943, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9943>.
 
-14.2.  Informative References
+15.2.  Informative References
 
    [I-D.mih-agent-evidence-layer]
               Mih, S., "Evidence Layer", Work in Progress, Internet-
               Draft, draft-mih-agent-evidence-layer-00, 3 October 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-agent-
               evidence-layer-00>.
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 30]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    [I-D.mih-sokolov-scitt-payload-binding]
               Mih, S. and A. Sokolov, "Canonicalization Declaration for
@@ -1703,6 +1895,17 @@ Change Log
 
    Since -01:
 
+
+
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 34]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    *  Certificate modes (Section 6.1): completeness.selection names the
       mode of completeness_certificate; a verifier reports a mode it
       does not implement as not established
@@ -1722,7 +1925,18 @@ Change Log
       that unknown completeness_certificate members are ignored.
       Privacy Considerations: what a padded range reveals.
 
-   *  Cites Evidence Request -01 and Evidence Layer -00.
+   *  Category coverage (Section 7): the OPTIONAL category_coverage
+      member, a producer's signed declaration of one status per category
+      of a named category set (AVAILABLE, PARTIAL, WITHHELD, DELETED,
+      ABSENT, UNDISCLOSED; UNDISCLOSED requires policy_uri), answering
+      the Evidence Request categories field; five verifier properties,
+      reported separately and never combined; it declares and does not
+      prove.  Created the "Evidence Bundle category set" registry, with
+      no initial values.
+
+   *  composed/v1: added controller_binding to the reserved join bases.
+
+   *  Cites Evidence Request -01 and, informatively, Evidence Layer -00.
 
    Since -00:
 
@@ -1730,14 +1944,6 @@ Change Log
       entry, its statement, and its five check results; defined
       countersignature, countersigner, and self-countersignature, and
       required a self-countersignature to be rendered as not
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 31]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
       independent; registered countersign/v1 as a second
       countersignature type; an entry with no type is processed as
       countersign/v1 (the legacy form).
@@ -1745,6 +1951,16 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    *  Defined and registered the producer-key/v1 extension kind, which
       declares the producer's key and can only cause a countersignature
       to be reported as not independent.
+
+
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 35]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    *  Defined and registered the composed/v1 extension kind: one member
       per responder carrying its Evidence Request outcome (artifact,
@@ -1789,4 +2005,12 @@ Authors' Addresses
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 32]
+
+
+
+
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 36]

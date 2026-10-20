@@ -98,7 +98,9 @@ fragment, an offline HTML report carries a bundle in its shell, and a hosted
 report serves a bundle at its URL. The bundle does not alter any enclosed
 Capsule. It declares its citation closure and any missing cited records,
 carries verified disclosure preimages as a bundle-level overlay, separates
-three different completeness claims, and permits independently specified
+three different completeness claims, can carry the producer's signed
+declaration of what it offers in each category of evidence, and permits
+independently specified
 extension blocks and countersignatures: signatures by a party other than the
 producer over the bundle digest, each accompanied by a statement of which
 claims that party recomputed and with what result.
@@ -201,6 +203,7 @@ untyped replacement formats.
   "disclosure_record": "<capsule_id>",
   "completeness_certificate": { ... },
   "checkpoint": { ... },
+  "category_coverage": { ... },
   "verification": { ... },
   "extensions": { "<registered kind>": { ... } },
   "countersignatures": [ ... ]
@@ -500,6 +503,142 @@ over a log that contains one is reported, at best, as not established through
 `non_record_leaf_type_unsupported`; a producer that needs a Bundle over such a
 log without that result uses a producer-selected certificate.
 
+# Category Coverage {#category-coverage}
+
+`category_coverage`, when present, is the producer's signed declaration of
+what it offers in each category of a named category set: for each category,
+exactly one status. It answers the `categories` field of an Evidence Request
+({{I-D.mih-agent-evidence-request}}), and a producer MAY include it without
+one. **It declares; it does not prove.** A verifier checks that it is well
+formed, who signed it, and whether it is consistent with what the Bundle
+carries. It never establishes that the producer offers everything it
+declares, or that nothing exists in a category declared absent.
+
+~~~
+"category_coverage": {
+  "set": "<category set identifier>",
+  "categories": {
+    "<category name>": { "status": "AVAILABLE" },
+    "<category name>": { "status": "UNDISCLOSED",
+                         "policy_uri": "<absolute URI>" }
+  },
+  "request_digest": "<64 hex>",
+  "signer": { "key_id": "<64 hex>" },
+  "signature": "<128 hex>"
+}
+~~~
+
+`set` is REQUIRED, a non-empty string naming a category set
+({{iana}}). A set whose identifier begins `x-` is private: it is not
+registered, and a verifier never treats it as known. `categories` is
+REQUIRED, a non-empty object keyed by category name; each value is an object
+with `status` and, where required, `policy_uri`. `request_digest`,
+OPTIONAL, is the digest of the Evidence Request this declaration answers,
+computed as {{I-D.mih-agent-evidence-request}} computes a request digest, in
+lowercase hexadecimal. `signer` and `signature` are OPTIONAL, and present
+together or not at all. Members not defined here are ignored.
+
+The member is part of the bundle digest ({{bundle-digest}}), so a
+countersignature binds it.
+
+## Statuses {#category-statuses}
+
+Each category has exactly one `status`, written in upper case:
+
+| status | Meaning |
+|---|---|
+| `AVAILABLE` | evidence in this category is offered |
+| `PARTIAL` | only some evidence in this category is offered |
+| `WITHHELD` | evidence in this category may exist and is not released to this requester |
+| `DELETED` | evidence in this category was destroyed or has expired |
+| `ABSENT` | the producer states that it holds nothing in this category |
+| `UNDISCLOSED` | the producer does not state which of the other statuses applies, under the policy `policy_uri` names |
+
+`AVAILABLE`, `PARTIAL`, `WITHHELD`, `DELETED` and `UNDISCLOSED` are the
+retention states of the Evidence Layer {{I-D.mih-agent-evidence-layer}}, with
+the same meanings, applied to a category rather than to one record's payload.
+`ABSENT` is the producer's asserted absence in that document's sense: its own
+unproven claim about its own store, never a non-membership proof and never
+the requester's recorded absence of {{I-D.mih-agent-evidence-request}}. The
+retention state `LEGAL_HOLD` is not a status: it changes what may happen to
+evidence, not what is offered.
+
+`UNDISCLOSED` MUST carry `policy_uri`, an absolute URI ({{!RFC3986}},
+Section 4.3) naming the policy under which the status is not disclosed;
+`policy_uri` MAY accompany any other status. `WITHHELD` and `UNDISCLOSED` are
+different statements and MUST NOT be conflated: `WITHHELD` says evidence may
+exist and is not released; `UNDISCLOSED` says nothing about whether any
+exists.
+
+## Signature {#category-signature}
+
+`signer.key_id` is a 32-byte Ed25519 {{RFC8032}} public key as 64 lowercase
+hexadecimal characters. `signature` is the Ed25519 signature, as 128
+lowercase hexadecimal characters, under that key over the signing input
+
+~~~
+UTF8(JCS({"category_coverage": <the member without signature>,
+          "root": <the Bundle's root>}))
+~~~
+
+Including `root` binds the declaration to the Bundle it was made for, so a
+signed declaration copied into another Bundle does not verify. The signature
+attributes the declaration to the holder of the key. It does not establish
+who that holder is; a verifier MAY compare `signer.key_id` with the
+producer's keys ({{self-countersignature}}) and report the result.
+
+## Verifier Properties {#category-properties}
+
+A verifier that implements this member reports the following properties,
+each as exactly one of `PASS`, `FAIL`, `NOT_PRESENT`, `NOT_CHECKED` and
+`INCONCLUSIVE`, with the meanings of the countersignature results
+({{countersign-entry}}): the check held, did not hold, had nothing to operate
+on, could not run, or resolved only in part. A Bundle without the member has
+no category properties.
+
+`category_coverage_form`:
+: `PASS` when the member is as described above, including a `policy_uri` for
+  every `UNDISCLOSED` status; otherwise `FAIL`. When it is `FAIL`, every other
+  property is `NOT_CHECKED`.
+
+`category_coverage_signature`:
+: `NOT_PRESENT` when the member carries no signature; `PASS` when the
+  signature verifies; `FAIL` otherwise.
+
+`category_coverage_set_registered`:
+: `NOT_PRESENT` for a private (`x-`) set; `INCONCLUSIVE` when the verifier
+  does not know the set; `FAIL` when it knows the set and a declared category
+  is not one of its names; `PASS` otherwise.
+
+`category_coverage_request`:
+: `NOT_CHECKED` when the verifier does not have the Evidence Request;
+  `FAIL` when `request_digest` is present and is not that request's digest;
+  `NOT_PRESENT` when the request has no `categories` field; `FAIL` when the
+  request names another set, or a requested category has no entry; `PASS`
+  otherwise.
+
+`category_coverage_consistency`:
+: `NOT_CHECKED` when the verifier cannot assign the Bundle's records to
+  categories (the set's definition says how); `FAIL` when a record the Bundle
+  carries belongs to a category declared `ABSENT` or `WITHHELD`; `PASS`
+  otherwise. A record in a `DELETED` or `UNDISCLOSED` category is not a
+  contradiction, and an `AVAILABLE` category with no record in the Bundle is
+  not one either: the Bundle may cover less than the producer offers.
+
+Each property stands alone. A verifier MUST report them separately and MUST
+NOT combine them, or the statuses, into a count, a percentage, a score or a
+claim of completeness. It MUST NOT report a `PASS` of every property as proof
+that the producer offered everything it holds. A `FAIL` of
+`category_coverage_form`, `category_coverage_signature` or
+`category_coverage_consistency` is a failed check of the Bundle; the other
+properties are reported and change no other result. Category coverage is
+reported apart from the completeness claims of {{completeness}} and changes
+none of them.
+
+A verifier that does not implement this member follows the rule for any
+member it does not know: it reports nothing about it, and the member stays
+covered by the bundle digest.
+
 # Typed Extensions {#extensions}
 
 `extensions`, when present, is an object keyed by a registered Evidence Bundle
@@ -670,7 +809,8 @@ composed-join = {
 }
 
 join-basis = "pre_agreed_identifier" / "shared_artifact_digest" /
-             "issued_receipt" / "same_interval"
+             "issued_receipt" / "same_interval" /
+             "controller_binding"
 join-state = "agree" / "mismatch" / "unjoined" / "one_sided"
 
 label-id   = text .regexp "[A-Za-z0-9._:-]{1,128}"
@@ -804,9 +944,11 @@ Linkage is evaluated on each artifact member's root record (its bundle's
 - **`shared_artifact_digest`**: `pointer` selects a digest string in each root
   record. The members are linked when the two values are identical.
 
-The bases `issued_receipt` (the two records cite one Receipt) and
-`same_interval` (the two records fall in one declared interval) are reserved
-for a later specification that defines their derivation. A block MAY declare
+The bases `issued_receipt` (the two records cite one Receipt),
+`same_interval` (the two records fall in one declared interval) and
+`controller_binding` (the holders of the two root records' signing keys
+jointly signed a statement binding the keys) are reserved for a later
+specification that defines their derivation. A block MAY declare
 joins on them; such joins are digest-covered. A verifier that does not
 implement a derivation for the basis reports such a join as `not_derivable`.
 It MUST NOT report the join as a derived agreement, and MUST NOT count it as
@@ -1156,6 +1298,17 @@ are listed per check and never combined, because an aggregate would hide a
   synthesizing either one from the other forges the stronger record from the
   weaker.
 
+## Category Coverage {#category-security}
+
+A category declaration is the producer's statement about itself
+({{category-coverage}}). A producer that chooses its own categories can
+declare whatever is favorable to it; this is why a private set is never
+reported as registered, and why a verifier reports properties rather than a
+verdict of completeness. A signed `ABSENT` is attributable and can be
+contradicted by records a counterparty holds, but it is not evidence that
+nothing exists. Including the Bundle's `root` in the signing input stops a
+declaration made for one Bundle from being presented with another.
+
 # Privacy Considerations {#privacy}
 
 A Bundle reveals a preimage only through its disclosure overlay
@@ -1193,6 +1346,12 @@ group with these Specification Required registries, using {{RFC8174}} and
    values.
 3. "Evidence Bundle countersignature type", initial values `cose-sign1`
    ({{bundle-digest}}) and `countersign/v1` ({{countersign-entry}}).
+4. "Evidence Bundle category set", with no initial values. Each entry
+   registers a category set identifier for `category_coverage`
+   ({{category-coverage}}), its category names, and how a record is assigned
+   to a category. The registering specification names any external source of
+   the categories by version. Identifiers beginning `x-` are private and are
+   not registered.
 
 Until IANA registry creation, the interim registry of record is `REGISTRY.md`
 in the source repository of {{I-D.mih-scitt-agent-action-capsule}}. It records
@@ -1220,7 +1379,15 @@ Since -01:
   the claim not established, never established. Stated that per-record
   membership is the claim, and that unknown `completeness_certificate` members
   are ignored. Privacy Considerations: what a padded range reveals.
-- Cites Evidence Request -01 and Evidence Layer -00.
+- Category coverage ({{category-coverage}}): the OPTIONAL `category_coverage`
+  member, a producer's signed declaration of one status per category of a
+  named category set (`AVAILABLE`, `PARTIAL`, `WITHHELD`, `DELETED`, `ABSENT`,
+  `UNDISCLOSED`; `UNDISCLOSED` requires `policy_uri`), answering the Evidence
+  Request `categories` field; five verifier properties, reported separately and
+  never combined; it declares and does not prove. Created the "Evidence Bundle
+  category set" registry, with no initial values.
+- `composed/v1`: added `controller_binding` to the reserved join bases.
+- Cites Evidence Request -01 and, informatively, Evidence Layer -00.
 
 Since -00:
 
