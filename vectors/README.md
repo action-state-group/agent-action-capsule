@@ -16,9 +16,11 @@ same-commit files in CI.
 - `disclosure-envelope/`: Disclosure Envelope DE-1 through DE-3 cases.
 - `cross-language/`: format-4 inputs used by the all-producer/all-consumer
   interlock: the released `-04` `seal-input.json` and its `-05` twin
-  `seal-input-v05.json`, and `bundle-producer-log.json`, one checkpointed log
+  `seal-input-v05.json`, `bundle-producer-log.json`, one checkpointed log
   of signed records every implementation builds the same Evidence Bundles
-  from; `python/scripts/generate_bundle_producer_fixture.py` regenerates it.
+  from, and `bundle-producer-padded-log.json`, the same for a log whose range
+  covers padding leaves (Bundle -02 `non_record_leaves`);
+  `python/scripts/generate_bundle_producer_fixture.py` regenerates both.
   `verify-number-findings.json` pins the number findings every verifier
   reports for one record (at most 64 per code, paths cut to 256 characters);
   `python/scripts/generate_verify_number_findings_fixture.py` regenerates it.

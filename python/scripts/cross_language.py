@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Minimal stdin/stdout adapter for the CI language interlock.
 
-``seal`` and ``verify`` read a Capsule. ``bundle-produce <kind>`` reads the
-producer fixture (``vectors/cross-language/bundle-producer-log.json``) and
-writes the JCS bytes of the Bundle ``kind`` names in its ``builds``.
+``seal`` and ``verify`` read a Capsule. ``bundle-produce <kind>`` reads a
+producer fixture (``vectors/cross-language/bundle-producer-log.json`` or
+``bundle-producer-padded-log.json``) and writes the JCS bytes of the Bundle
+``kind`` names in its ``builds``.
 ``bundle-verify`` reads a Bundle's JSON text and prints its strict verdict.
 """
 import json
@@ -68,6 +69,20 @@ class _FixtureRecords:
         return self._held[capsule_id]
 
 
+class _WithLeafContent:
+    """A proof source with the optional ``leaf_content`` capability, over the
+    fixture's ``leaf_contents``."""
+
+    def __init__(self, source, contents: dict) -> None:
+        self._source, self._contents = source, contents
+
+    def __getattr__(self, name):
+        return getattr(self._source, name)
+
+    def leaf_content(self, seq: int):
+        return self._contents.get(str(seq))
+
+
 def bundle_produce(kind: str, fixture: dict) -> int:
     from agent_action_capsule.bundle import build_evidence_bundle, proof_source_from_cll
     from agent_action_capsule.canonical import jcs
@@ -77,8 +92,14 @@ def bundle_produce(kind: str, fixture: dict) -> int:
         return 2
     build = fixture["builds"][kind]
     source = proof_source_from_cll(_FixtureBackend(fixture["log"]), _FixtureRecords(fixture["records"]))
+    if "leaf_contents" in fixture:
+        source = _WithLeafContent(source, fixture["leaf_contents"])
     bundle = build_evidence_bundle(
-        source, root=fixture["root"], interval_from=build["interval_from"], closure_depth=build["closure_depth"]
+        source,
+        root=fixture["root"],
+        interval_from=build["interval_from"],
+        closure_depth=build["closure_depth"],
+        carry_non_record_leaves=build.get("carry_non_record_leaves", False),
     )
     sys.stdout.buffer.write(jcs(bundle))
     return 0
