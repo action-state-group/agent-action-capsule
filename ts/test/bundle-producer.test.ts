@@ -917,6 +917,87 @@ describe("round-1 review", () => {
       );
   });
 
+  it("a hostile source hash list is copied or refused, never thrown raw", async () => {
+    // An iterator that throws is never used: the copy is made by index.
+    const noIterator = (list: readonly string[]): string[] => {
+      const copy = [...list];
+      Object.defineProperty(copy, Symbol.iterator, {
+        get() {
+          throw new Error("iterator");
+        },
+      });
+      return copy;
+    };
+    // An element that reads once, then throws: it passes the parser and
+    // fails in the copy, inside the same error boundary.
+    const secondReadThrows = (list: readonly string[]): string[] => {
+      const copy = [...list];
+      let reads = 0;
+      Object.defineProperty(copy, 0, {
+        enumerable: true,
+        get() {
+          reads += 1;
+          if (reads > 1) throw new Error("second read");
+          return list[0];
+        },
+      });
+      return copy;
+    };
+    const holed = (list: readonly string[]): string[] => {
+      const copy = [...list];
+      delete copy[0];
+      return copy;
+    };
+    const options = { root: cid(2), intervalFrom: 2, closureDepth: 1 };
+    const withInclusion = (
+      change: (list: readonly string[]) => string[],
+    ): ProofSource => ({
+      ...source,
+      inclusionProof: async (seq) => {
+        const proof = await source.inclusionProof(seq);
+        const key = (["witness", "peaks_left", "peaks_right"] as const).find(
+          (name) => proof[name].length,
+        )!;
+        return { ...proof, [key]: change(proof[key]) };
+      },
+    });
+    const withRange = (
+      change: (list: readonly string[]) => string[],
+    ): ProofSource => ({
+      ...source,
+      rangeProof: async (first) => {
+        const proof = await source.rangeProof(first);
+        return { ...proof, witness: change(proof.witness) };
+      },
+    });
+    for (const make of [withInclusion, withRange])
+      expect(
+        await verdict(await buildEvidenceBundle(make(noIterator), options)),
+      ).toBe("VALID");
+    for (const change of [secondReadThrows, holed]) {
+      await refused(
+        buildEvidenceBundle(withInclusion(change), options),
+        /the source's inclusion proof for seq \d+ is malformed/,
+      );
+      await refused(
+        buildEvidenceBundle(withRange(change), options),
+        /the source's range proof is malformed/,
+      );
+    }
+  });
+
+  it("an include list with a hole is refused before the source is read", async () => {
+    for (const include of [new Array(1), [cid(0), , cid(1)]])
+      await refused(
+        buildEvidenceBundle(untouchable, {
+          root: cid(0),
+          intervalFrom: null,
+          include: include as string[],
+        }),
+        /include must be a list of Capsule IDs/,
+      );
+  });
+
   it("caller input is validated before the source is read", async () => {
     const base = { root: cid(0), intervalFrom: null };
     const cases: [Obj, RegExp][] = [

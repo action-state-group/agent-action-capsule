@@ -2129,47 +2129,72 @@ function canonicalInput(input: Record<string, unknown>): void {
       }
 }
 
-/** A source's inclusion proof, parsed as the verifier parses it. */
+/**
+ * A copy of a source's hash list made by index, not through its iterator, so
+ * holes and non-hash members are seen; undefined unless every member is a
+ * hash. Called inside the caller's error boundary.
+ */
+function hashList(list: readonly string[]): string[] | undefined {
+  const out: unknown[] = [];
+  for (let index = 0; index < list.length; index += 1) out.push(list[index]);
+  return out.every(isHex64) ? out : undefined;
+}
+
+/**
+ * A source's inclusion proof, parsed as the verifier parses it, with only its
+ * wire fields copied; parsing and copying share one error boundary.
+ */
 function inclusionProofWire(seq: number, raw: unknown): BundleInclusionProof {
-  let proof: Proof | undefined;
+  let wire: BundleInclusionProof | undefined;
   try {
-    proof = parseProof(raw);
+    const proof = parseProof(raw);
+    const witness = proof && hashList(proof.witness),
+      left = proof && hashList(proof.peaks_left),
+      right = proof && hashList(proof.peaks_right);
+    if (proof && witness && left && right)
+      wire = {
+        v: 1,
+        kind: "inclusion",
+        size: proof.size,
+        leaf_index: proof.leaf_index,
+        witness,
+        peaks_left: left,
+        peaks_right: right,
+      };
   } catch {
-    proof = undefined; // a getter that throws, say
+    wire = undefined; // a getter that throws, say
   }
-  if (proof === undefined)
+  if (wire === undefined)
     throw new BundleBuildError(
       `the source's inclusion proof for seq ${seq} is malformed`,
     );
-  return {
-    v: 1,
-    kind: "inclusion",
-    size: proof.size,
-    leaf_index: proof.leaf_index,
-    witness: [...proof.witness],
-    peaks_left: [...proof.peaks_left],
-    peaks_right: [...proof.peaks_right],
-  };
+  return wire;
 }
 
-/** A source's range proof, parsed as the verifier parses it. */
+/**
+ * A source's range proof, parsed as the verifier parses it, with only its
+ * wire fields copied; parsing and copying share one error boundary.
+ */
 function rangeProofWire(raw: unknown): BundleRangeProof {
-  let range: ReturnType<typeof parseRangeProof>;
+  let wire: BundleRangeProof | undefined;
   try {
-    range = parseRangeProof(raw);
+    const range = parseRangeProof(raw);
+    const witness = range && hashList(range.witness);
+    if (range && witness)
+      wire = {
+        from_seq: range.fromSeq,
+        to_seq: range.toSeq,
+        size: range.size,
+        from_index: range.fromIndex,
+        to_index: range.toIndex,
+        witness,
+      };
   } catch {
-    range = undefined;
+    wire = undefined;
   }
-  if (range === undefined)
+  if (wire === undefined)
     throw new BundleBuildError("the source's range proof is malformed");
-  return {
-    from_seq: range.fromSeq,
-    to_seq: range.toSeq,
-    size: range.size,
-    from_index: range.fromIndex,
-    to_index: range.toIndex,
-    witness: [...range.witness],
-  };
+  return wire;
 }
 
 /**
@@ -2233,9 +2258,17 @@ export async function buildEvidenceBundle(
     throw new BundleBuildError(
       "building a Bundle needs @action-state-group/cll's checkpoint verifier, which runs in Node: install @action-state-group/cll",
     );
-  const { root, intervalFrom, include = [], producerKey } = options;
-  if (!Array.isArray(include) || !include.every((id) => typeof id === "string"))
+  const { root, intervalFrom, producerKey } = options;
+  // By index, so a hole (which `every` would skip) is refused too.
+  const include: string[] = [];
+  if (options.include !== undefined && !Array.isArray(options.include))
     throw new BundleBuildError("include must be a list of Capsule IDs");
+  for (let index = 0; index < (options.include?.length ?? 0); index += 1) {
+    const id: unknown = options.include![index];
+    if (typeof id !== "string")
+      throw new BundleBuildError("include must be a list of Capsule IDs");
+    include.push(id);
+  }
   if (
     producerKey !== undefined &&
     (!(producerKey instanceof Uint8Array) || producerKey.length !== 32)
