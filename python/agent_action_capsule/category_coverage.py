@@ -54,6 +54,11 @@ _HEX128 = re.compile(r"^[0-9a-f]{128}$")
 # percent-encodings. ASCII only; no fragment ("#"), so no relative reference.
 _ABSOLUTE_URI = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:(?:[A-Za-z0-9._~!$&'()*+,;=:@/?-]|%[0-9A-Fa-f]{2})*$")
 _PRIVATE_SET = "x-"
+# A UTF-16 surrogate code point. Strict UTF-8 decoding admits none and json
+# joins an escaped pair into one character, so one left over came from an
+# unpaired escape such as "\ud800", which I-JSON (RFC 7493 Section 2.1)
+# forbids.
+_SURROGATE = re.compile("[\ud800-\udfff]")
 # A record in one of these categories contradicts the declaration.
 _CONTRADICTED_BY_A_RECORD = ("ABSENT", "WITHHELD")
 
@@ -132,6 +137,23 @@ def _no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def _holds_lone_surrogate(value: Any) -> bool:
+    """Whether any string in ``value``, member names included, holds a
+    surrogate code point."""
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, str):
+            if _SURROGATE.search(item):
+                return True
+        elif isinstance(item, Mapping):
+            stack.extend(item.keys())
+            stack.extend(item.values())
+        elif isinstance(item, list):
+            stack.extend(item)
+    return False
+
+
 def _reject_constant(name: str) -> Any:
     raise ValueError(f"{name} is not JSON")
 
@@ -148,7 +170,7 @@ def _request(member: Mapping[str, Any], request: bytes | None) -> str:
         parsed = json.loads(request.decode("utf-8"), object_pairs_hook=_no_duplicates, parse_constant=_reject_constant)
     except (UnicodeError, ValueError, TypeError, RecursionError):
         return NOT_CHECKED
-    if not isinstance(parsed, Mapping):
+    if _holds_lone_surrogate(parsed) or not isinstance(parsed, Mapping):
         return NOT_CHECKED
     if "categories" not in parsed:
         return NOT_PRESENT

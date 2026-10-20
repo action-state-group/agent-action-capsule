@@ -551,6 +551,13 @@ def coverage_cases() -> list[dict]:
     cases.append(coverage_case("request-duplicate-member", "The request repeats the categories member: it is not "
                                "read, so the property is NOT_CHECKED.", with_member(no_digest), "VALID",
                                props(request="NOT_CHECKED"), **{**full, "category_request": duplicate}))
+    # An unpaired surrogate escape in a member the property never reads: a
+    # reader that kept it or replaced it with U+FFFD would report PASS.
+    lone = '{"x-note":"\\ud800",' + request[1:]
+    cases.append(coverage_case("request-lone-surrogate", "The request carries an unpaired surrogate escape (I-JSON, "
+                               "RFC 7493 Section 2.1): it is not read, so the property is NOT_CHECKED.",
+                               with_member(no_digest), "VALID", props(request="NOT_CHECKED"),
+                               **{**full, "category_request": lone}))
     partial = {cid: "messages" for cid in ids[1:]}
     cases.append(coverage_case("consistency-partial-assignment", "The caller assigns two of the three records: the "
                                "third could be in any category, so consistency is NOT_CHECKED.",

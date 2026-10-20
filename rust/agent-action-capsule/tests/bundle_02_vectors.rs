@@ -154,7 +154,7 @@ fn coverage_value(coverage: &Option<Vec<(&'static str, &'static str)>>) -> Value
 fn every_category_coverage_case_matches() {
     let mut failures = Vec::new();
     let all = cases("category-coverage");
-    assert_eq!(all.len(), 32);
+    assert_eq!(all.len(), 33);
     for case in all {
         let inputs = Inputs::of(&case["options"]);
         let options = StrictOptions {
@@ -269,6 +269,27 @@ fn the_request_is_read_strictly() {
     assert_eq!(request(b"{\"categories\": \"\xff\"}"), "NOT_CHECKED");
     assert_eq!(request(b"\xef\xbb\xbf{}"), "NOT_CHECKED");
     assert_eq!(request(b"{}"), "NOT_PRESENT");
+    // An unpaired surrogate escape is refused wherever it is (I-JSON); a
+    // pair, and escapes that only look like one, are read.
+    for text in [
+        r#"{"x": "\ud800"}"#,
+        r#"{"x": "\udc00"}"#,
+        r#"{"\ud800": 1}"#,
+        r#"["a\ud800b"]"#,
+        r#"{"x": "\ud800\u0041"}"#,
+        r#"{"x": "\ud800\ud800"}"#,
+        r#"{"x": "\udc00\ud800"}"#,
+    ] {
+        assert_eq!(request(text.as_bytes()), "NOT_CHECKED", "{text}");
+    }
+    for text in [
+        r#"{"x": "\ud83d\ude00"}"#,
+        r#"{"x": "\\ud800"}"#,
+        r#"{"x": "\"\ud83d\ude00"}"#,
+        r#"{"x": "\u00e9"}"#,
+    ] {
+        assert_eq!(request(text.as_bytes()), "NOT_PRESENT", "{text}");
+    }
     // The same member name in two objects is no repeat.
     assert_eq!(
         request(br#"{"a": {"x": 1}, "b": {"x": [{"x": 2}]}, "x": 3}"#),

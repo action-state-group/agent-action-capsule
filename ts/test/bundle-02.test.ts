@@ -184,6 +184,25 @@ describe("Bundle -02 category_coverage vectors", () => {
       ),
     ).toBe("NOT_CHECKED");
     expect(await request("{}")).toBe("NOT_PRESENT");
+    // An unpaired surrogate escape is refused wherever it is (I-JSON); a
+    // pair, and escapes that only look like one, are read.
+    for (const text of [
+      String.raw`{"x": "\ud800"}`,
+      String.raw`{"x": "\udc00"}`,
+      String.raw`{"\ud800": 1}`,
+      String.raw`["a\ud800b"]`,
+      String.raw`{"x": "\ud800\u0041"}`,
+      String.raw`{"x": "\ud800\ud800"}`,
+      String.raw`{"x": "\udc00\ud800"}`,
+    ])
+      expect(await request(text), text).toBe("NOT_CHECKED");
+    for (const text of [
+      String.raw`{"x": "\ud83d\ude00"}`,
+      String.raw`{"x": "\\ud800"}`,
+      String.raw`{"x": "\"\ud83d\ude00"}`,
+      String.raw`{"x": "\u00e9"}`,
+    ])
+      expect(await request(text), text).toBe("NOT_PRESENT");
     // The same member name in two objects is no repeat.
     expect(
       await request('{"a": {"x": 1}, "b": {"x": [{"x": 2}]}, "x": 3}'),
