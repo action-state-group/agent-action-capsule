@@ -1196,6 +1196,19 @@ def _closure(root: str, depth: int, lookup: Any) -> tuple[dict[str, dict], list[
     return found, missing
 
 
+def _check_canonical(**inputs: Any) -> None:
+    """Refuse caller JSON with no canonical form (a fractional number, an
+    integer beyond 2**53 - 1, or nesting too deep) before any source is read."""
+    for name, value in inputs.items():
+        try:
+            jcs(value)
+        except (RecursionError, FloatInDigestError, UnsafeIntegerError, TypeError, ValueError) as exc:
+            raise BundleBuildError(
+                f"the bundle has no canonical digest: {name} holds JSON that does not canonicalize "
+                "(a fractional number, an integer beyond 2**53 - 1, or nesting too deep)"
+            ) from exc
+
+
 def _completeness(
     records: Sequence[Mapping[str, Any]],
     closure_depth: int,
@@ -1314,6 +1327,7 @@ def build_evidence_bundle(
     disclosures = {k: dict(v) if isinstance(v, Mapping) else v for k, v in (disclosures or {}).items()}
     extensions = dict(extensions or {})
     _check_options(closure_depth, disclosures, suppressed_fields, payloads_mode, extensions, include, producer_key, verification)
+    _check_canonical(disclosures=disclosures, extensions=extensions, verification=verification or {})
     if interval_from is not None and (isinstance(interval_from, bool) or not isinstance(interval_from, int) or interval_from < 1):
         raise BundleBuildError("interval_from must be a seq of at least 1, or None for no range proof")
 
@@ -1456,6 +1470,7 @@ def build_unproven_bundle(
     unknown = sorted(set(disclosures) - set(ids))
     if unknown:
         raise BundleBuildError(f"disclosures given for record(s) the bundle does not carry: {unknown}")
+    _check_canonical(records=list(by_id.values()), disclosures=disclosures)
     _, missing = _closure(root, closure_depth, by_id.get)
     bundle: dict[str, Any] = {
         "bundle_version": "2",

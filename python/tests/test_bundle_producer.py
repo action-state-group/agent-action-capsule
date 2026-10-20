@@ -623,6 +623,27 @@ def _deep(levels: int) -> dict:
     return node
 
 
+class _Untouchable:
+    """A source that fails on any read: refusals must come first."""
+
+    def __getattr__(self, name):
+        raise AssertionError(f"the source was read ({name}) before the options were checked")
+
+
+@pytest.mark.parametrize(
+    "option",
+    [
+        {"extensions": {"example/deep": _deep(5000)}},
+        {"verification": _deep(5000)},
+        {"disclosures": {"ab" * 32: {"agent_input": _deep(5000)}}},
+        {"extensions": {"example/n": {"n": 1.5}}},
+    ],
+)
+def test_non_canonical_input_is_refused_before_the_source_is_read(option):
+    with pytest.raises(BundleBuildError, match="no canonical digest"):
+        build_evidence_bundle(_Untouchable(), root="ab" * 32, interval_from=1, **option)
+
+
 def test_deeply_nested_input_is_refused_by_both_builders(chain):
     source, caps, _ = chain
     with pytest.raises(BundleBuildError, match="nesting too deep"):
