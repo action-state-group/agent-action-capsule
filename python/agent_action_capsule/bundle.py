@@ -1141,7 +1141,7 @@ def _check_options(
     producer_key: Any = None,
     verification: Any = None,
 ) -> None:
-    if isinstance(include, (str, bytes)) or not all(isinstance(cid, str) for cid in include):
+    if not isinstance(include, (list, tuple)) or not all(isinstance(cid, str) for cid in include):
         raise BundleBuildError("include must be a list of Capsule IDs")
     if producer_key is not None and (not isinstance(producer_key, (bytes, bytearray)) or len(producer_key) != 32):
         raise BundleBuildError("producer_key must be a raw 32-byte Ed25519 public key")
@@ -1422,8 +1422,8 @@ def _self_checked(bundle: dict[str, Any]) -> dict[str, Any]:
     result = verify_bundle(bundle, strict=True)
     if result.bundle_digest is None:
         raise BundleBuildError(
-            "the bundle has no canonical digest: extensions and verification must hold only JSON that "
-            "canonicalizes (no fractional numbers or integers beyond 2**53 - 1)"
+            "the bundle has no canonical digest: it holds JSON that does not canonicalize "
+            "(a fractional number, an integer beyond 2**53 - 1, or nesting too deep)"
         )
     if result.verdict == "INVALID":
         failed = [f"{name}: {', '.join(claim.findings) or claim.status}" for name, claim in result.claims if claim.status == "fail"]

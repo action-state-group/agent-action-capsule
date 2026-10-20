@@ -604,6 +604,8 @@ def test_a_source_that_lies_under_a_range_is_refused(chain):
     [
         ({"producer_key": "a" * 32}, "producer_key"),
         ({"include": "abc"}, "include must be"),
+        ({"include": (c for c in ["ab" * 32])}, "include must be"),
+        ({"include": None}, "include must be"),
         ({"extensions": [1]}, "extensions must be"),
         ({"verification": [1]}, "verification must be"),
     ],
@@ -612,3 +614,18 @@ def test_wrongly_typed_options_are_refused(chain, kwargs, message):
     source, caps, _ = chain
     with pytest.raises(BundleBuildError, match=message):
         build_evidence_bundle(source, root=caps[0]["capsule_id"], interval_from=None, **kwargs)
+
+
+def _deep(levels: int) -> dict:
+    node: dict = {}
+    for _ in range(levels):
+        node = {"n": node}
+    return node
+
+
+def test_deeply_nested_input_is_refused_by_both_builders(chain):
+    source, caps, _ = chain
+    with pytest.raises(BundleBuildError, match="nesting too deep"):
+        build_evidence_bundle(source, root=caps[0]["capsule_id"], interval_from=1, extensions={"example/deep": _deep(5000)})
+    with pytest.raises(BundleBuildError):
+        build_unproven_bundle([dict(caps[0], deep=_deep(5000))], root=caps[0]["capsule_id"])
