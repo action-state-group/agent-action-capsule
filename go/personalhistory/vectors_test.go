@@ -326,14 +326,15 @@ func TestArtifactBytesBesideTheObjectFail(t *testing.T) {
 	assert.Equal(t, true, same["accepted"], "re-signing the same Artifact changes nothing")
 
 	for name, mutated := range map[string]string{
-		"trailing object":      text + `{"counterparty":"private value"}`,
-		"trailing space":       text + " ",
-		"duplicate member":     strings.Replace(text, `{"anchor"`, `{"anchor":"x","anchor"`, 1),
-		"not JCS":              strings.Replace(text, `{"anchor"`, `{ "anchor"`, 1),
-		"object in leaf_index": jcsOf(t, text, func(r map[string]any) { r["leaf_index"] = map[string]any{"counterparty": "private value"} }),
-		"text in leaf_index":   jcsOf(t, text, func(r map[string]any) { r["leaf_index"] = "1" }),
-		"digest not hex":       jcsOf(t, text, func(r map[string]any) { r["digest"] = "private value" }),
-		"object in a read":     jcsOf(t, text, func(r map[string]any) { r["committed_at"] = map[string]any{"counterparty": "private value"} }),
+		"trailing object":       text + `{"counterparty":"private value"}`,
+		"trailing space":        text + " ",
+		"duplicate member":      strings.Replace(text, `{"anchor"`, `{"anchor":"x","anchor"`, 1),
+		"not JCS":               strings.Replace(text, `{"anchor"`, `{ "anchor"`, 1),
+		"object in leaf_index":  jcsOf(t, text, func(r map[string]any) { r["leaf_index"] = map[string]any{"counterparty": "private value"} }),
+		"text in leaf_index":    jcsOf(t, text, func(r map[string]any) { r["leaf_index"] = "1" }),
+		"digest not hex":        jcsOf(t, text, func(r map[string]any) { r["digest"] = "private value" }),
+		"object in a read":      jcsOf(t, text, func(r map[string]any) { r["committed_at"] = map[string]any{"counterparty": "private value"} }),
+		"object in record_type": jcsOf(t, text, func(r map[string]any) { r["record_type"] = map[string]any{"counterparty": "private value"} }),
 	} {
 		require.NotEqual(t, text, mutated, name)
 		res := evaluate(t, c, resign(t, c, positive, []byte(mutated)))
@@ -347,7 +348,7 @@ func TestArtifactBytesBesideTheObjectFail(t *testing.T) {
 			want[p] = evidencerequest.StatusPass
 		}
 		want["artifact_form"] = evidencerequest.StatusFail
-		if !strings.Contains(name, " in ") && name != "digest not hex" {
+		if (!strings.Contains(name, " in ") && name != "digest not hex") || name == "object in record_type" {
 			want["record_kinds"] = evidencerequest.StatusFail
 		}
 		assert.Equal(t, want, res.Properties, name)

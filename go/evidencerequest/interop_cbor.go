@@ -62,6 +62,19 @@ type cborState struct {
 // told from any other value.
 type cborNegative struct{ N uint64 }
 
+// cborBigUint is an unsigned integer above 2^53-1, outside the data model
+// but kept by value, as the reference keeps it.
+type cborBigUint struct{ N uint64 }
+
+// cborFloat is a float, outside the data model, kept by its encoding (so
+// equal encodings compare equal, as the reference compares by value). It
+// is never a map key: the reference drops such a key.
+type cborFloat struct{ Encoded string }
+
+// cborBytesKey is a byte-string map key in generic mode, a type of its own
+// so it never collides with the text key of the same content.
+type cborBytesKey string
+
 // decodeCBORItem decodes exactly one data item into the received model.
 func decodeCBORItem(data []byte) (cborDecoded, error) {
 	return decodeCBOR(data, false)
@@ -98,7 +111,7 @@ func (st *cborState) item(i, depth int) (any, int, error) {
 			return nil, 0, errCBOR
 		}
 		st.odd = true // a float is outside the data model (§5.2)
-		return OutsideModel{}, i + width, nil
+		return cborFloat{Encoded: string(st.data[i-1 : i+width])}, i + width, nil
 	}
 	var arg uint64
 	switch {
@@ -126,14 +139,11 @@ func (st *cborState) item(i, depth int) (any, int, error) {
 	switch major {
 	case 0:
 		if arg > MaxSafeInteger && !st.generic {
-			return OutsideModel{}, i, nil
+			return cborBigUint{N: arg}, i, nil
 		}
 		return arg, i, nil
 	case 1:
-		if st.generic {
-			if arg > math.MaxInt64 {
-				return nil, 0, errCBOR
-			}
+		if st.generic && arg <= math.MaxInt64 {
 			return -1 - int64(arg), i, nil
 		}
 		return cborNegative{N: arg}, i, nil
@@ -202,7 +212,7 @@ func (st *cborState) item(i, depth int) (any, int, error) {
 			}
 			if st.generic {
 				if b, isBytes := key.([]byte); isBytes {
-					key = string(b) // hashable; a COSE header has no byte-string keys
+					key = cborBytesKey(b) // hashable, and never equal to a text key
 				}
 				generic[key] = value
 				continue
@@ -254,9 +264,11 @@ func cborKeyID(key any, encoded []byte) string {
 	case uint64:
 		return "u" + strconv.FormatUint(k, 10)
 	case int64:
-		return "n" + strconv.FormatInt(k, 10)
+		return "n" + strconv.FormatUint(uint64(-k), 10)
 	case cborNegative:
-		return "n" + strconv.FormatUint(k.N, 10)
+		return "n" + strconv.FormatUint(k.N+1, 10)
+	case cborBigUint:
+		return "u" + strconv.FormatUint(k.N, 10)
 	}
 	return "e" + string(encoded)
 }
@@ -273,7 +285,7 @@ func receivedKey(key any, encoded []byte) string {
 // duplicate check.
 func scalarKey(key any) bool {
 	switch key.(type) {
-	case string, uint64, int64, []byte, OutsideModel, cborNegative:
+	case string, uint64, int64, []byte, cborBigUint, cborNegative:
 		return true
 	}
 	return false

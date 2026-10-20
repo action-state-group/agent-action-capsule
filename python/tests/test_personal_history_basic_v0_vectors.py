@@ -189,7 +189,8 @@ def history_properties(definition: Any, envs: list[dict]) -> dict:
         "single_anchor": len({jcs(e["anchor"]) for e in envs}) == 1,
         "artifact_form": artifact_form(envs, reads),
         "record_kinds": all(isinstance(e["artifact"], dict) and isinstance(e["artifact"].get("records"), list)
-                            and all(isinstance(r, dict) and r.get("record_type") in KINDS for r in e["artifact"]["records"])
+                            and all(isinstance(r, dict) and isinstance(r.get("record_type"), str)
+                                    and r["record_type"] in KINDS for r in e["artifact"]["records"])
                             for e in envs),
     }
     return {k: "PASS" if v else "FAIL" for k, v in ok.items()}
@@ -518,6 +519,7 @@ def test_resigned_artifact_mutants_fail_artifact_form_end_to_end():
         "duplicate member": octets.replace(b'{"anchor"', b'{"anchor":"x","anchor"', 1),
         "object in leaf_index": with_entry("leaf_index", {"counterparty": "private value"}),
         "object in a read": with_entry("committed_at", {"counterparty": "private value"}),
+        "object in record_type": with_entry("record_type", {"counterparty": "private value"}),
     }.items():
         got = run_history(_resigned(positive, bad))
         assert got["exchanges"][0]["accepted"], name
@@ -527,6 +529,6 @@ def test_resigned_artifact_mutants_fail_artifact_form_end_to_end():
         # only.
         want = dict.fromkeys(got["history_properties"], "PASS")
         want["artifact_form"] = "FAIL"
-        if not name.startswith("object in"):
+        if not name.startswith("object in") or name == "object in record_type":
             want["record_kinds"] = "FAIL"
         assert got["history_properties"] == want, name

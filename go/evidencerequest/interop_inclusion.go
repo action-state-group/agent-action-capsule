@@ -3,6 +3,7 @@
 package evidencerequest
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
@@ -343,26 +344,86 @@ func checkAnchorInclusion(env map[string]any, material [][]byte, prerequisites m
 
 // inclusionFailure is why cll-inclusion-proof octets do not prove entry a
 // leaf whose path reaches one of peaks (§6.2.1 step 12), or "" when they
-// do.
+// do. The proof is checked as the strict decoder read it, so nothing a
+// generic decoder would strip (a tag) passes unseen.
 func inclusionFailure(peaks [][]byte, entry, octets []byte) string {
-	if _, err := deterministicItem(octets, "inclusion proof"); err != nil {
+	proof, err := deterministicItem(octets, "inclusion proof")
+	if err != nil {
 		return err.Error()
 	}
-	if err := VerifyCLLInclusion(peaks, entry, octets); err != nil {
-		return strings.TrimPrefix(err.Error(), ErrInvalid.Error()+": ")
+	pair, ok := proof.([]any)
+	if !ok || len(pair) != 2 {
+		return "inclusion proof is not [index, [32-octet byte strings]]"
 	}
-	return ""
+	index, isIndex := pair[0].(uint64)
+	path, isPath := byteStrings32(pair[1])
+	if !isIndex || !isPath {
+		return "inclusion proof is not [index, [32-octet byte strings]]"
+	}
+	if MMRIndexHeight(index) != 0 {
+		return "index is not a leaf"
+	}
+	if !pathFits(index, len(path)) {
+		return "the inclusion path is longer than any MMR can have"
+	}
+	root := MMRIncludedRoot(index, CLLLeafValue(entry), path)
+	for _, peak := range peaks {
+		if bytes.Equal(peak, root) {
+			return ""
+		}
+	}
+	return "the inclusion path reaches no peak of commitment"
 }
 
 // consistencyFailure is why cll-consistency-proof octets do not prove the
-// commitment newPeaks extends oldPeaks (§6.2.1 step 13), or "" when they
-// do.
+// commitment newPeaks extends oldPeaks (§6.2.1 step 13; MMR §7.1, §7.1.1),
+// or "" when they do, checked as the strict decoder read them.
 func consistencyFailure(oldPeaks, newPeaks [][]byte, octets []byte) string {
-	if _, err := deterministicItem(octets, "consistency proof"); err != nil {
+	decoded, err := deterministicItem(octets, "consistency proof")
+	if err != nil {
 		return err.Error()
 	}
-	if err := VerifyCLLConsistency(oldPeaks, newPeaks, octets); err != nil {
-		return strings.TrimPrefix(err.Error(), ErrInvalid.Error()+": ")
+	parts, ok := decoded.([]any)
+	if !ok || len(parts) != 4 {
+		return "consistency proof is not a four-element array"
+	}
+	size1, ok1 := parts[0].(uint64)
+	size2, ok2 := parts[1].(uint64)
+	rawPaths, ok3 := parts[2].([]any)
+	right, ok4 := byteStrings32(parts[3])
+	if !ok1 || !ok2 || !ok3 || !ok4 || size1 < 1 || len(rawPaths) > maxProofNodes {
+		return "consistency proof is malformed"
+	}
+	paths := make([][][]byte, len(rawPaths))
+	for i, raw := range rawPaths {
+		if paths[i], ok = byteStrings32(raw); !ok {
+			return "consistency proof is malformed"
+		}
+	}
+	if size1 > size2 {
+		return "tree-size-1 exceeds tree-size-2"
+	}
+	oldIndices := MMRPeaks(size1 - 1)
+	if len(oldIndices) != len(paths) || len(paths) != len(oldPeaks) {
+		return "peak count, path count and prev_commitment length differ"
+	}
+	for k, index := range oldIndices {
+		if !pathFits(index, len(paths[k])) {
+			return "a consistency path is longer than any MMR can have"
+		}
+	}
+	roots := MMRConsistentRoots(size1-1, oldPeaks, paths)
+	if len(right) != len(MMRPeaks(size2-1))-len(roots) {
+		return "right-peaks count does not complete the peaks of tree-size-2"
+	}
+	all := append(append([][]byte{}, roots...), right...)
+	if len(all) != len(newPeaks) {
+		return "roots and right-peaks are not the peak list of commitment"
+	}
+	for i := range all {
+		if !bytes.Equal(all[i], newPeaks[i]) {
+			return "roots and right-peaks are not the peak list of commitment"
+		}
 	}
 	return ""
 }

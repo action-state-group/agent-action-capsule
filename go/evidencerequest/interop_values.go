@@ -101,7 +101,7 @@ func decodeReceivedCBOR(data []byte) (receivedValue, bool, string) {
 
 func numbersInDomain(v any) bool {
 	switch x := v.(type) {
-	case OutsideModel, cborNegative:
+	case OutsideModel, cborNegative, cborBigUint, cborFloat:
 		return false
 	case cborTag:
 		return numbersInDomain(x.Value)
