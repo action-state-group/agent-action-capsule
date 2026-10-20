@@ -89,9 +89,22 @@ def render_requirements(reqs: dict) -> dict:
 
 
 def artifact_value(octets: bytes | None) -> Any:
+    """The Artifact's value, or None unless its octets are exactly UTF-8 of JCS of one JSON value
+    (§4.3): a duplicate member, trailing data or any other encoding could carry bytes that
+    artifact_form never reads."""
+    if octets is None:
+        return None
+
+    def no_duplicates(pairs: list) -> dict:
+        keys = [k for k, _ in pairs]
+        if len(keys) != len(set(keys)):
+            raise ValueError("duplicate member")
+        return dict(pairs)
+
     try:
-        return json.loads(octets) if octets is not None else None
-    except ValueError:
+        value = json.loads(octets, object_pairs_hook=no_duplicates)
+        return value if jcs(value) == octets else None
+    except (ValueError, TypeError):
         return None
 
 
@@ -148,6 +161,11 @@ def artifact_form(envs: list[dict], reads: set) -> bool:
         for r in recs:
             if not isinstance(r, dict) or not {"digest", "leaf_index"} <= set(r) \
                     or not set(r) <= {"digest", "leaf_index"} | reads:
+                return False
+            # Each value in its form, so no permitted member carries an object the holder chose.
+            if not (isinstance(r["digest"], str) and re.fullmatch(r"[0-9a-f]{64}", r["digest"])) \
+                    or type(r["leaf_index"]) is not int or not 0 <= r["leaf_index"] <= 2**53 - 1 \
+                    or not all(isinstance(v, str) for k, v in r.items() if k not in ("digest", "leaf_index")):
                 return False
         if not isinstance(a["evidence_stream"], str) or not a["evidence_stream"]:
             return False
@@ -437,3 +455,23 @@ def test_does_not_import_the_generator():
     modules = [a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names]
     modules += [n.module or "" for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)]
     assert not [m for m in modules if m.startswith("generate_")]
+
+
+def test_artifact_bytes_and_values_beside_the_form_fail():
+    """An Artifact is exactly the JCS of one object (§4.3), and each entry's values are in their
+    forms: bytes or values a holder could re-sign but artifact_form would never read fail it."""
+    (positive,) = [c for c in CASES if c["id"] == "history-basic"]
+    envs = [x["_env"] for x in run_exchanges(positive)]
+    octets = jcs(envs[0]["artifact"])
+    assert artifact_value(octets) == envs[0]["artifact"]
+    for bad in (octets + b' {"counterparty":"private value"}', octets + b" ",
+                octets.replace(b'{"anchor"', b'{"anchor":"x","anchor"', 1),
+                octets.replace(b'{"anchor"', b'{ "anchor"', 1)):
+        assert artifact_value(bad) is None
+    reads = set(positive["inputs"]["definition"]["reads"])
+    assert artifact_form(envs, reads)
+    for member, value in (("leaf_index", {"counterparty": "private value"}), ("leaf_index", "1"),
+                          ("digest", "private value"), ("committed_at", {"counterparty": "private value"})):
+        changed = copy.deepcopy(envs)
+        changed[0]["artifact"]["records"][0][member] = value
+        assert not artifact_form(changed, reads), member

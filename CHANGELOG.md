@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Go: an evidence-interop/0 verifier and the Personal-Agent History Profile v0 Basic level
+  evaluator, ported from the Python reference. `evidencerequest.Verifier.Verify` checks a set of
+  exchanges as `InteropVerifier.verify` does: the §7.2 envelope and refusal properties, absence
+  records, CLL `anchor_inclusion` (§6.2.1 steps 1 to 14), the JWS `native_check`,
+  `caller_invariance` across every envelope held, and the §8 mapping with contract `uncertainty`.
+  The new package `personalhistory` builds the Basic level definition and its derivation id,
+  reads and writes the §8.2 one-file History, and evaluates §6.1, the seven §6.2 History
+  properties and the §5 deal states. The tests run every exchange case of
+  `vectors/interop-profile-v0` and every case of `vectors/personal-history-basic-v0` against each
+  case's whole expected block. No vector or spec text changes. The History evaluator, in Go and
+  in the Python test, reads an Artifact only when its octets are exactly the JCS of one object
+  (PH §4.3), and each records entry's values only in their forms (a 64-hex `digest`, an unsigned
+  `leaf_index`, a text string for each read member), so a re-signed Artifact with trailing data,
+  a duplicate member or an object in a permitted member fails `artifact_form`; every vector's
+  expected result is unchanged.
+
 - Vectors `capsule/canonical-integer-negative-zero` and
   `capsule/canonical-integer-negative-zero-as-zero` (spec-derived): `-0` as a direct member,
   nested in an object and inside an array, beside `0`, must serialize as `0` (RFC 8785), and
