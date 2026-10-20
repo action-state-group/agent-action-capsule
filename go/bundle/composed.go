@@ -50,6 +50,12 @@ type Options struct {
 	// not_derivable.
 	ControllerBindings []map[string]interface{}
 	BindingRevocations []map[string]interface{}
+	// CategorySets, CategoryRequest and RecordCategories are the inputs a
+	// Bundle cannot carry for its category_coverage member; see
+	// CheckCategoryCoverage.
+	CategorySets     map[string][]string
+	CategoryRequest  []byte
+	RecordCategories map[string]*string
 }
 
 // ComposedDigestResult is the recomputed composed digest beside the declared one.

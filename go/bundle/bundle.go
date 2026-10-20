@@ -77,6 +77,9 @@ type VerificationResult struct {
 	Countersignatures   []CountersignatureResult
 	Verification        *ProducerSelfReport
 	CapsuleResults      map[string]verify.VerificationResult
+	// CategoryCoverage is the category_coverage member's five properties in
+	// report order, or nil when the Bundle carries no such member.
+	CategoryCoverage []CategoryProperty
 }
 
 // EncodeFragment returns unpadded RFC 4648 base64url over UTF-8 JCS bytes.
@@ -202,6 +205,7 @@ func VerifyBundleWithOptions(value interface{}, opts Options) VerificationResult
 		result.Disclosures = disclosures(map[string]interface{}{}, records)
 	}
 	result.Extensions = extensions(bundle["extensions"], opts)
+	result.CategoryCoverage = CheckCategoryCoverage(bundle, opts.CategorySets, opts.CategoryRequest, opts.RecordCategories)
 	if signatures, ok := bundle["countersignatures"].([]interface{}); ok {
 		result.Countersignatures = make([]CountersignatureResult, len(signatures))
 		for i, signature := range signatures {
@@ -354,6 +358,15 @@ func completeness(bundle map[string]interface{}, records map[string]map[string]i
 		absent := ClaimResult{Status: "withheld", Findings: []string{"completeness_evidence_absent"}}
 		return absent, absent
 	}
+	if selection, stated := selectionOf(bundle); stated {
+		if selection == SelectionProducerSelected {
+			return plainSelected(bundle, checkpoint)
+		}
+		// A certificate mode this verifier does not implement: not shown, and
+		// never a failure (Bundle -02).
+		unsupported := ClaimResult{Status: "withheld", Findings: []string{CertificateModeUnsupported}}
+		return unsupported, unsupported
+	}
 	root, logID, first, last, rangeProof, ok := certificateData(certificate, checkpoint)
 	if !ok {
 		failure := ClaimResult{Status: "fail", Findings: []string{"completeness_certificate_invalid"}}
@@ -368,19 +381,59 @@ func completeness(bundle map[string]interface{}, records map[string]map[string]i
 		failure := ClaimResult{Status: "fail", Findings: []string{"checkpoint_authentication_invalid"}}
 		return failure, failure
 	}
-	findings := verifyMemberships(root, logID, first, last, certificate["memberships"], records, bundle["completeness"])
-	interval := ClaimResult{Status: "pass"}
+	findings, failed := verifyMemberships(root, logID, first, last, certificate, records, bundle["completeness"])
+	var qualifier []string
 	if authentication != "verified" {
-		interval.Findings = []string{"checkpoint_unverified"}
+		qualifier = []string{"checkpoint_unverified"}
 	}
-	if len(findings) != 0 {
+	interval := ClaimResult{Status: "pass", Findings: qualifier}
+	switch {
+	case failed:
 		return interval, ClaimResult{Status: "fail", Findings: findings}
+	case len(findings) != 0:
+		return interval, ClaimResult{Status: "withheld", Findings: append(findings, qualifier...)}
 	}
-	membership := ClaimResult{Status: "pass"}
-	if authentication != "verified" {
-		membership.Findings = []string{"checkpoint_unverified"}
+	return interval, ClaimResult{Status: "pass", Findings: qualifier}
+}
+
+// selectionOf returns completeness.selection and whether it is stated; an
+// absent member is a range certificate, while a present null is a value.
+func selectionOf(bundle map[string]interface{}) (interface{}, bool) {
+	complete, ok := bundle["completeness"].(map[string]interface{})
+	if !ok {
+		return nil, false
 	}
-	return interval, membership
+	selection, stated := complete["selection"]
+	return selection, stated
+}
+
+// plainSelected reads a producer-selected Bundle without strict mode: no
+// interval to check; each record's own proof against the stated checkpoint,
+// qualified like a range Bundle's when the checkpoint's COSE form does not
+// authenticate it.
+func plainSelected(bundle, checkpoint map[string]interface{}) (ClaimResult, ClaimResult) {
+	interval := ClaimResult{Status: "withheld", Findings: []string{"selection_not_checkable"}}
+	membership := selectedMembership(bundle, checkpoint["root"], checkpoint["mmr_size"], checkpoint["log_id"])
+	if membership.Status != "pass" {
+		return interval, membership
+	}
+	// selectedMembership passed, so root is 64 hex digits, log_id a string
+	// and mmr_size a safe integer.
+	root, _ := hex.DecodeString(checkpoint["root"].(string))
+	size, _ := integer(checkpoint["mmr_size"])
+	authentication := "invalid"
+	if size >= 0 {
+		authentication = authenticateCheckpoint(checkpoint, checkpoint["log_id"].(string), root, uint64(size))
+	} else if _, present := checkpoint["cose"]; !present {
+		authentication = "unverified"
+	}
+	switch authentication {
+	case "invalid":
+		return interval, ClaimResult{Status: "fail", Findings: []string{"checkpoint_authentication_invalid"}}
+	case "verified":
+		return interval, ClaimResult{Status: "pass"}
+	}
+	return interval, ClaimResult{Status: "pass", Findings: []string{"checkpoint_unverified"}}
 }
 
 func authenticateCheckpoint(checkpointValue map[string]interface{}, logID string, root []byte, size uint64) string {
@@ -457,10 +510,15 @@ func verifyRange(root []byte, first, last int64, certificate map[string]interfac
 	return mmr.VerifyRange(root, proof.Size, proof.Proof.FromIndex, proof.Proof.ToIndex, bodyDigests, proof.Proof)
 }
 
-func verifyMemberships(root []byte, logID string, first, last int64, raw interface{}, records map[string]map[string]interface{}, completeness interface{}) []string {
-	members, ok := raw.(map[string]interface{})
+// verifyMemberships checks per-record membership over [first, last]. It
+// returns every finding in report order and whether any of them fails the
+// claim; the others are non_record_leaf_type_unsupported, which withhold it.
+// Every seq of the interval is a record's membership, a non-record leaf, or
+// membership_record_missing.
+func verifyMemberships(root []byte, logID string, first, last int64, certificate map[string]interface{}, records map[string]map[string]interface{}, completeness interface{}) ([]string, bool) {
+	members, ok := certificate["memberships"].(map[string]interface{})
 	if !ok {
-		return []string{"memberships_absent"}
+		return []string{"memberships_absent"}, true
 	}
 	bySeq := make(map[int64]string)
 	boundRecords := make(map[string]bool)
@@ -494,8 +552,20 @@ func verifyMemberships(root []byte, logID string, first, last int64, raw interfa
 			findings = append(findings, "membership_proof_invalid:"+id)
 		}
 	}
+	leafSeqs := map[int64]bool{}
+	unsupported := 0
+	if rawLeaves, present := certificate["non_record_leaves"]; present {
+		var leafFindings []string
+		leafFindings, leafSeqs = nonRecordLeaves(rawLeaves, first, last, certificate["body_digests"], statedSeqs(members))
+		findings = append(findings, leafFindings...)
+		for _, finding := range leafFindings {
+			if strings.HasPrefix(finding, unsupportedLeaf) {
+				unsupported++
+			}
+		}
+	}
 	for seq := first; seq <= last; seq++ {
-		if _, ok := bySeq[seq]; !ok {
+		if _, ok := bySeq[seq]; !ok && !leafSeqs[seq] {
 			findings = append(findings, fmt.Sprintf("membership_record_missing:%d", seq))
 		}
 	}
@@ -514,7 +584,100 @@ func verifyMemberships(root []byte, logID string, first, last int64, raw interfa
 			findings = append(findings, "membership_record_unbound:"+id)
 		}
 	}
-	return findings
+	return findings, len(findings) > unsupported
+}
+
+const unsupportedLeaf = "non_record_leaf_type_unsupported:"
+
+// statedSeqs is every seq a memberships entry states in log_coordinates,
+// whatever else is wrong with the entry: a non-record leaf may not claim one.
+func statedSeqs(members map[string]interface{}) map[int64]bool {
+	out := map[int64]bool{}
+	for _, raw := range members {
+		member, _ := raw.(map[string]interface{})
+		coordinates, _ := member["log_coordinates"].(map[string]interface{})
+		if seq, ok := integer(coordinates["seq"]); ok {
+			out[seq] = true
+		}
+	}
+	return out
+}
+
+// nonRecordLeaves checks completeness_certificate.non_record_leaves (Bundle
+// -02). It returns the findings in element order and the seqs the member
+// accounts for. Every finding fails the claim except
+// non_record_leaf_type_unsupported:<seq>. An element whose seq is valid
+// accounts for that seq whatever else it fails, so the seq is never also
+// reported missing. bodyDigests has already been checked by the range proof.
+func nonRecordLeaves(raw interface{}, first, last int64, bodyDigests interface{}, recordSeqs map[int64]bool) ([]string, map[int64]bool) {
+	accounted := map[int64]bool{}
+	elements, ok := raw.([]interface{})
+	if !ok {
+		return []string{"non_record_leaves_malformed"}, accounted
+	}
+	digests, _ := bodyDigests.([]interface{})
+	var findings []string
+	for index, rawElement := range elements {
+		element, ok := rawElement.(map[string]interface{})
+		if !ok {
+			findings = append(findings, fmt.Sprintf("non_record_leaf_element_invalid:%d", index))
+			continue
+		}
+		seq, ok := integer(element["seq"])
+		if !ok || seq < first || seq > last || recordSeqs[seq] || accounted[seq] {
+			findings = append(findings, fmt.Sprintf("non_record_leaf_seq_invalid:%d", index))
+			continue
+		}
+		accounted[seq] = true
+		content, _ := element["content"].(map[string]interface{})
+		recordType, ok := content["record_type"].(string)
+		switch {
+		case !ok:
+			// Includes an element that carries a digest in place of content.
+			findings = append(findings, fmt.Sprintf("non_record_leaf_malformed:%d", seq))
+		case recordType != paddingType:
+			findings = append(findings, fmt.Sprintf("%s%d", unsupportedLeaf, seq))
+		case !paddingShaped(content):
+			findings = append(findings, fmt.Sprintf("non_record_leaf_malformed:%d", seq))
+		default:
+			if leaf, err := paddingLeaf(content); err != nil || leaf != content["capsule_id"] || leaf != digests[seq-first] {
+				findings = append(findings, fmt.Sprintf("non_record_leaf_mismatch:%d", seq))
+			}
+		}
+	}
+	return findings, accounted
+}
+
+// paddingType is the one non-record leaf type a range can carry (Bundle -02,
+// Evidence Layer padding).
+const paddingType = "padding"
+
+// paddingShaped reports whether content has exactly the four padding
+// members, in their closed shape.
+func paddingShaped(content map[string]interface{}) bool {
+	if len(content) != 4 {
+		return false
+	}
+	for _, name := range []string{"capsule_id", "record_type", "epistemic_type", "store_nonce"} {
+		if _, present := content[name]; !present {
+			return false
+		}
+	}
+	nonce, nonceOK := content["store_nonce"].(string)
+	id, idOK := content["capsule_id"].(string)
+	return content["epistemic_type"] == "producer_claim" && nonceOK && hex64RE.MatchString(nonce) && idOK && hex64RE.MatchString(id)
+}
+
+// paddingLeaf recomputes a padding record's leaf: JSON-DIGEST of its content
+// without capsule_id.
+func paddingLeaf(content map[string]interface{}) (string, error) {
+	preimage := make(map[string]interface{}, len(content))
+	for name, value := range content {
+		if name != "capsule_id" {
+			preimage[name] = value
+		}
+	}
+	return canonical.JSONDigest(preimage)
 }
 
 func parseRangeProof(raw interface{}) (rangeProof, error) {

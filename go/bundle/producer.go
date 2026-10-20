@@ -96,6 +96,15 @@ type ProofSource interface {
 	RangeProof(ctx context.Context, firstSeq uint64) (RangeProof, error)
 }
 
+// LeafContentSource is an optional ProofSource capability: the content of a
+// leaf that is not a record (a padding record's four members), or nil when
+// the source does not hold it. BuildEvidenceBundle reads it only with
+// BuildOptions.CarryNonRecordLeaves; a source without it builds exactly as
+// before.
+type LeafContentSource interface {
+	LeafContent(ctx context.Context, seq uint64) (map[string]interface{}, error)
+}
+
 // RecordSource looks records up by Capsule ID: the Capsule's JSON bytes and
 // its Producer Envelope bytes (empty when unsigned). A record it does not hold
 // is ErrRecordNotFound (errors.Is).
@@ -279,6 +288,12 @@ type BuildOptions struct {
 	Extensions map[string]interface{}
 	// Verification is the producer's self-report, carried as given.
 	Verification map[string]interface{}
+	// CarryNonRecordLeaves lets a range cover a padding leaf: the source's
+	// LeafContent is carried in completeness_certificate.non_record_leaves
+	// (Bundle -02). It is off by default because a verifier that predates -02
+	// reads such a Bundle as missing those seqs; turn it on only for readers
+	// that check the member.
+	CarryNonRecordLeaves bool
 }
 
 // UnprovenOptions configures BuildUnprovenBundle.
@@ -408,6 +423,7 @@ func BuildEvidenceBundle(ctx context.Context, source ProofSource, opts BuildOpti
 			return nil, refuse("record(s) below IntervalFrom %d: %s; lower it or build without a range", first, strings.Join(below, ", "))
 		}
 		bodyDigests := make([]interface{}, 0, tip-first+1)
+		var nonRecord []interface{}
 		for seq := first; seq <= tip; seq++ {
 			capsuleID := hex.EncodeToString(leaves[seq-1])
 			bodyDigests = append(bodyDigests, capsuleID)
@@ -419,7 +435,17 @@ func BuildEvidenceBundle(ctx context.Context, source ProofSource, opts BuildOpti
 				return nil, err
 			}
 			if record == nil {
-				return nil, refuse("seq %d in the interval is not a record the source holds; a range cannot cover it: start the interval after it or build without a range", seq)
+				var content map[string]interface{}
+				if opts.CarryNonRecordLeaves {
+					if content, err = paddingContent(ctx, source, seq, capsuleID); err != nil {
+						return nil, err
+					}
+				}
+				if content == nil {
+					return nil, refuse("seq %d in the interval is not a record the source holds; a range cannot cover it: start the interval after it or build without a range", seq)
+				}
+				nonRecord = append(nonRecord, map[string]interface{}{"seq": jsonInteger(seq), "content": content})
+				continue
 			}
 			carried[capsuleID] = record
 		}
@@ -435,6 +461,9 @@ func BuildEvidenceBundle(ctx context.Context, source ProofSource, opts BuildOpti
 		certificate["last_seq"] = jsonInteger(tip)
 		certificate["body_digests"] = bodyDigests
 		certificate["range_proof"] = wire
+		if len(nonRecord) != 0 {
+			certificate["non_record_leaves"] = nonRecord
+		}
 	}
 
 	ordered := sortedBySeq(carried, seqOf)
@@ -502,6 +531,43 @@ func BuildEvidenceBundle(ctx context.Context, source ProofSource, opts BuildOpti
 		bundle["verification"] = verification
 	}
 	return selfChecked(bundle)
+}
+
+// paddingContent is the source's content for the non-record leaf at seq, when
+// it is a padding record whose recomputed capsule_id is that leaf; nil when the
+// source has no LeafContent or holds nothing for seq. Any other content is
+// refused by name: the producer carries padding only.
+func paddingContent(ctx context.Context, source ProofSource, seq uint64, leafHex string) (map[string]interface{}, error) {
+	reader, ok := source.(LeafContentSource)
+	if !ok {
+		return nil, nil
+	}
+	stored, err := reader.LeafContent(ctx, seq)
+	if err != nil || stored == nil {
+		return nil, err
+	}
+	if stored["record_type"] != paddingType {
+		return nil, refuse("seq %d: the source's leaf content is not a padding record; a range cannot cover it", seq)
+	}
+	// Local-only producer envelope members are outside the leaf's preimage.
+	content := make(map[string]interface{}, len(stored))
+	for name, value := range stored {
+		if name != "signature" && name != "key_id" {
+			content[name] = value
+		}
+	}
+	content, err = jsonObject(content, fmt.Sprintf("the padding record at seq %d", seq))
+	if err != nil {
+		return nil, err
+	}
+	leaf, err := paddingLeaf(content)
+	if err != nil {
+		return nil, refuse("seq %d: the padding record has no canonical digest", seq)
+	}
+	if leaf != leafHex || content["capsule_id"] != leafHex {
+		return nil, refuse("seq %d: the padding record does not hash to the leaf", seq)
+	}
+	return content, nil
 }
 
 // BuildUnprovenBundle builds an Evidence Bundle with no log proof, no
