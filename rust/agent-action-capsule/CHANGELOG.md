@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.0
+
 - Evidence Bundle producer (feature `strict`): `bundle::build_evidence_bundle`
   over a `ProofSource`, `proof_source_from_cll` for a CLL backend and a
   `RecordSource`, and `build_unproven_bundle`. Each Bundle is checked with
