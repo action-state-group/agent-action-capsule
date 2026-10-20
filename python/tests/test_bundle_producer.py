@@ -352,7 +352,7 @@ def test_an_uncovered_record_is_refused():
     records.put(a)
     records.put(late)
     source = make_log([a["capsule_id"], late["capsule_id"]], records, checkpoint_after=1)
-    with pytest.raises(BundleBuildError, match="not covered by the checkpoint"):
+    with pytest.raises(BundleBuildError, match="not a leaf at or below the checkpoint"):
         build_evidence_bundle(source, root=late["capsule_id"], interval_from=None)
 
 
@@ -650,3 +650,38 @@ def test_deeply_nested_input_is_refused_by_both_builders(chain):
         build_evidence_bundle(source, root=caps[0]["capsule_id"], interval_from=1, extensions={"example/deep": _deep(5000)})
     with pytest.raises(BundleBuildError):
         build_unproven_bundle([dict(caps[0], deep=_deep(5000))], root=caps[0]["capsule_id"])
+
+
+def test_a_capsule_id_at_two_leaves_is_refused_under_a_range():
+    records = Records()
+    a, b = capsule("a"), capsule("b")
+    records.put(a)
+    records.put(b)
+    source = make_log([a["capsule_id"], b["capsule_id"], a["capsule_id"]], records)
+    with pytest.raises(BundleBuildError):
+        build_evidence_bundle(source, root=b["capsule_id"], interval_from=1)
+
+
+def test_a_checkpoint_with_a_flipped_signature_byte_is_refused(chain):
+    source, caps, _ = chain
+    cose = bytearray(source.checkpoint())
+    cose[-1] ^= 1
+    with pytest.raises(BundleBuildError, match="checkpoint does not verify"):
+        build_evidence_bundle(_Lying(source, {"checkpoint": lambda: bytes(cose)}), root=caps[0]["capsule_id"], interval_from=1)
+
+
+def test_the_bundle_does_not_alias_caller_objects(chain):
+    source, caps, _ = chain
+    notes = {"n": [1]}
+    report = {"producer": "tests", "checks": ["a"]}
+    bundle = build_evidence_bundle(
+        source, root=caps[0]["capsule_id"], interval_from=1, extensions={"example/notes": notes}, verification=report
+    )
+    notes["n"].append(2)
+    report["checks"].append("b")
+    assert bundle["extensions"]["example/notes"] == {"n": [1]}
+    assert bundle["verification"]["checks"] == ["a"]
+    record = dict(caps[0])
+    unproven = build_unproven_bundle([record], root=record["capsule_id"])
+    record["action_id"] = "changed"
+    assert unproven["records"][0]["action_id"] == "a"

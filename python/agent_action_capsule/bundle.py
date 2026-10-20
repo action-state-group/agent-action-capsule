@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import copy
 import hashlib
 import json
 import re
@@ -1119,7 +1120,9 @@ def proof_source_from_cll(backend: Any, records: Any) -> ProofSource:
     and a record store: ``records.get(capsule_id)`` returns an object with
     ``capsule`` and ``producer_envelope`` bytes and raises an error whose
     ``code`` is ``"not_found"`` for a record it does not hold. The proofs are
-    built from the backend's MMR nodes at the latest checkpoint's size."""
+    built from the backend's MMR nodes at the latest checkpoint's size. The
+    backend state is read once, here: the source serves one consistent
+    snapshot, so build from a fresh source after the log moves on."""
     return _CllProofSource(backend, records)
 
 
@@ -1349,7 +1352,9 @@ def build_evidence_bundle(
         if stored is None:
             return None
         if capsule_id not in seq_of:
-            raise BundleBuildError(f"record {capsule_id} is not covered by the checkpoint: build again after the next one")
+            raise BundleBuildError(
+                f"record {capsule_id} is not a leaf at or below the checkpoint (not yet covered, or not in this log)"
+            )
         return _decode_record(capsule_id, stored)
 
     carried, missing = _closure(root, closure_depth, lookup)
@@ -1422,13 +1427,13 @@ def build_evidence_bundle(
         },
     }
     if disclosures:
-        bundle["disclosures"] = disclosures
+        bundle["disclosures"] = copy.deepcopy(disclosures)
     if producer_key is not None:
         extensions["producer-key/v1"] = {"public_key": bytes(producer_key).hex()}
     if extensions:
-        bundle["extensions"] = extensions
+        bundle["extensions"] = copy.deepcopy(extensions)
     if verification is not None:
-        bundle["verification"] = dict(verification)
+        bundle["verification"] = copy.deepcopy(dict(verification))
     return _self_checked(bundle)
 
 
@@ -1476,9 +1481,9 @@ def build_unproven_bundle(
         "bundle_version": "2",
         "bundle_kind": BUNDLE_KIND,
         "root": root,
-        "records": [by_id[cid] for cid in ids],
+        "records": [copy.deepcopy(by_id[cid]) for cid in ids],
         "completeness": _completeness(list(by_id.values()), closure_depth, missing, disclosures, suppressed_fields, None),
     }
     if disclosures:
-        bundle["disclosures"] = disclosures
+        bundle["disclosures"] = copy.deepcopy(disclosures)
     return _self_checked(bundle)
