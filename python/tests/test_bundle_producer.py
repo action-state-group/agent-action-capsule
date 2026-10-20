@@ -657,8 +657,10 @@ def test_a_capsule_id_at_two_leaves_is_refused_under_a_range():
     a, b = capsule("a"), capsule("b")
     records.put(a)
     records.put(b)
-    source = make_log([a["capsule_id"], b["capsule_id"], a["capsule_id"]], records)
-    with pytest.raises(BundleBuildError):
+    leaves = [bytes.fromhex(r["capsule_id"]) for r in (a, b, a)]
+    # The memory backend keeps one entry per value, so the leaves come from the source.
+    source = _Lying(make_log([r.hex() for r in leaves], records), {"leaves": lambda: leaves})
+    with pytest.raises(BundleBuildError, match="membership_record_missing:3"):
         build_evidence_bundle(source, root=b["capsule_id"], interval_from=1)
 
 
