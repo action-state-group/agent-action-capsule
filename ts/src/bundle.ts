@@ -1869,7 +1869,9 @@ const sortedText = (values: Iterable<string>): string =>
 /**
  * A {@link ProofSource} over a CLL backend (`scanEntries` and `loadCll`) and
  * a record store. The proofs are built from the backend's MMR nodes at the
- * latest checkpoint's size.
+ * latest checkpoint's size. The backend state is read once, on first use, and
+ * the source serves that one consistent snapshot; a checkpoint cut later is
+ * seen only by a new source.
  */
 export function proofSourceFromCll(
   backend: CllProofBackend,
@@ -2112,21 +2114,27 @@ const noCanonicalDigest = (detail?: string): BundleBuildError =>
   );
 
 /**
- * Refuse caller input that has no canonical form before anything copies or
- * reads it: JCS, the bundle digest's own canonicalization, rejects fractional
- * and unsafe numbers and nesting beyond its depth limit without recursing
- * past it.
+ * Refuse caller input that has no canonical form before anything reads it,
+ * and return a structural copy of each value so the Bundle never aliases a
+ * caller object. JCS, the bundle digest's own canonicalization, rejects
+ * fractional and unsafe numbers and nesting beyond its depth limit without
+ * recursing past it; the copy is its canonical bytes decoded again.
  */
-function canonicalInput(input: Record<string, unknown>): void {
+function canonicalInput<T extends Record<string, unknown>>(input: T): T {
+  const out: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(input))
-    if (value !== undefined)
+    if (value !== undefined) {
+      let bytes: Uint8Array;
       try {
-        jcs(value);
+        bytes = jcs(value);
       } catch (error) {
         throw noCanonicalDigest(
           `${name}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
+      out[name] = plainIntegers(decodeStrictJson(bytes));
+    }
+  return out as T;
 }
 
 /**
@@ -2279,15 +2287,15 @@ export async function buildEvidenceBundle(
   for (const name of ["extensions", "verification"] as const)
     if (options[name] !== undefined && !object(options[name]))
       throw new BundleBuildError(`${name} must be a JSON object`);
-  canonicalInput({
+  const copied = canonicalInput({
     disclosures: options.disclosures,
     extensions: options.extensions,
     verification: options.verification,
   });
   const closureDepth = options.closureDepth ?? 2,
     suppressedFields = options.suppressedFields ?? [],
-    disclosures = copyDisclosures(options.disclosures),
-    extensions: Record<string, unknown> = { ...options.extensions };
+    disclosures = copyDisclosures(copied.disclosures),
+    extensions: Record<string, unknown> = { ...copied.extensions };
   checkOptions(
     closureDepth,
     disclosures,
@@ -2336,7 +2344,7 @@ export async function buildEvidenceBundle(
     if (stored === undefined || stored === null) return undefined;
     if (!seqOf.has(capsuleId))
       throw new BundleBuildError(
-        `record ${capsuleId} is not covered by the checkpoint: build again after the next one`,
+        `record ${capsuleId} is not a leaf at or below the checkpoint (not yet covered, or not in this log)`,
       );
     return decodeRecord(capsuleId, stored);
   };
@@ -2442,8 +2450,8 @@ export async function buildEvidenceBundle(
   if (producerKey !== undefined)
     extensions["producer-key/v1"] = { public_key: toHex(producerKey) };
   if (Object.keys(extensions).length) bundle.extensions = extensions;
-  if (options.verification !== undefined)
-    bundle.verification = { ...options.verification };
+  if (copied.verification !== undefined)
+    bundle.verification = copied.verification;
   return selfChecked(bundle);
 }
 
@@ -2471,14 +2479,22 @@ async function selfChecked(bundle: Bundle): Promise<Bundle> {
  * INCOMPLETE. Rejects with {@link BundleBuildError}.
  */
 export async function buildUnprovenBundle(
-  records: readonly Readonly<Record<string, unknown>>[],
+  given: readonly Readonly<Record<string, unknown>>[],
   options: BuildUnprovenBundleOptions,
 ): Promise<Record<string, unknown>> {
   const { root } = options;
-  canonicalInput({ records, disclosures: options.disclosures });
+  const copied = canonicalInput({
+    records: given,
+    disclosures: options.disclosures,
+  });
+  if (!Array.isArray(copied.records))
+    throw new BundleBuildError("records must be a list of Capsules");
+  const records = copied.records as readonly Readonly<
+    Record<string, unknown>
+  >[];
   const closureDepth = options.closureDepth ?? 2,
     suppressedFields = options.suppressedFields ?? [],
-    disclosures = copyDisclosures(options.disclosures);
+    disclosures = copyDisclosures(copied.disclosures);
   checkOptions(closureDepth, disclosures, suppressedFields, undefined, {});
   const ids = records.map((record) =>
     object(record) ? record.capsule_id : undefined,

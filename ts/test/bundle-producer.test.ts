@@ -483,7 +483,7 @@ describe("refusals", () => {
         root: late.capsule_id as string,
         intervalFrom: null,
       }),
-      /not covered by the checkpoint/,
+      /is not a leaf at or below the checkpoint \(not yet covered, or not in this log\)/,
     );
   });
 
@@ -1036,6 +1036,83 @@ describe("round-1 review", () => {
       }),
       /no canonical digest.*records: JSON nesting exceeds/,
     );
+  });
+});
+
+describe("round-3 review", () => {
+  it("a range over a Capsule ID repeated at two leaves is refused", async () => {
+    // MemoryStore appends a repeated value idempotently, so this log is a
+    // bare backend over an MMR that holds the repeat.
+    const values = [cid(0), cid(1), cid(0)];
+    const tree = new MmrTree();
+    for (const value of values) await tree.appendHexIdentity(value);
+    const signed = await signCheckpoint({
+      logId: LOG_ID,
+      mmrSize: tree.size,
+      peaks: tree.peakHashes(),
+      previousSize: 0n,
+      previousPeaks: [],
+      timestamp: TIMESTAMP,
+      identity: LOG_KEY,
+    });
+    const repeated = proofSourceFromCll(
+      {
+        scanEntries: async (after, limit) =>
+          values
+            .slice(Number(after), Number(after) + limit)
+            .map((value) => ({ value: fromHex(value) })),
+        loadCll: async () => ({
+          nodes: tree.nodes(),
+          checkpoint: signed.cose,
+          checkpointSize: tree.size,
+          checkpointIndexedSeq: BigInt(values.length),
+        }),
+      },
+      records,
+    );
+    await refused(
+      buildEvidenceBundle(repeated, { root: cid(1), intervalFrom: 1 }),
+      /does not verify/,
+    );
+  });
+
+  it("a checkpoint with one signature byte flipped is refused", async () => {
+    const cose = Uint8Array.from(await source.checkpoint());
+    cose[cose.length - 1]! ^= 1;
+    await refused(
+      buildEvidenceBundle(
+        { ...source, checkpoint: async () => cose },
+        { root: cid(0), intervalFrom: 1 },
+      ),
+      /the checkpoint does not verify/,
+    );
+  });
+
+  it("the bundle never aliases caller objects", async () => {
+    const root = cid(0);
+    const extensions = { "example/notes": { n: 1, list: [1] } };
+    const verification = { producer: "tests", checks: [{ ok: true }] };
+    const disclosures = { [root]: { agent_input: { step: 0 } } };
+    const bundle = await buildEvidenceBundle(source, {
+      root,
+      intervalFrom: 1,
+      extensions,
+      verification,
+      disclosures,
+    });
+    const before = structuredClone(bundle);
+    extensions["example/notes"].n = 2;
+    extensions["example/notes"].list.push(2);
+    verification.checks[0]!.ok = false;
+    disclosures[root]!.agent_input.step = 9;
+    expect(bundle).toEqual(before);
+    expect(await verdict(bundle)).toBe("VALID");
+
+    const given = caps.map((record) => structuredClone(record));
+    const unproven = await buildUnprovenBundle(given, { root: cid(2) });
+    const snapshot = structuredClone(unproven);
+    for (const record of given) record.action_id = "mutated";
+    expect(unproven).toEqual(snapshot);
   });
 });
 
