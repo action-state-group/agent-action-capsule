@@ -23,6 +23,7 @@ import (
 	"github.com/action-state-group/agent-action-capsule/go/witness"
 	"github.com/action-state-group/checkpointed-local-log/go/checkpoint"
 	"github.com/action-state-group/checkpointed-local-log/go/cll"
+	"github.com/action-state-group/checkpointed-local-log/go/mmr"
 	"github.com/action-state-group/checkpointed-local-log/go/store/memory"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
@@ -839,18 +840,71 @@ func TestBuildRefusesCallerInputNestedTooDeeply(t *testing.T) {
 	requireRefusal(t, err, "nested too deeply")
 }
 
-// A Capsule ID at two leaves: a range over both positions cannot bind the
-// second one to a record, so no bundle is returned. (A CLL backend appends
-// idempotently, so the repeat comes from a lying source.)
-func TestBuildRefusesARangeOverARepeatedCapsuleID(t *testing.T) {
-	source, caps, _ := testChain(t)
-	repeated := lying{ProofSource: source, leaves: func(ctx context.Context) ([][]byte, error) {
-		leaves, err := source.Leaves(ctx)
+// repeatedLog is a CLL backend whose entries hold one value twice. A real
+// backend appends idempotently, so this one is built by hand: its MMR folds
+// the given leaves and its checkpoint signs that MMR.
+type repeatedLog struct {
+	entries []cll.Entry
+	state   cll.State
+}
+
+func (l repeatedLog) ScanEntries(_ context.Context, after uint64, limit int) ([]cll.Entry, error) {
+	end := after + uint64(limit)
+	if end > uint64(len(l.entries)) {
+		end = uint64(len(l.entries))
+	}
+	if after >= end {
+		return nil, nil
+	}
+	return l.entries[after:end], nil
+}
+
+func (l repeatedLog) LoadCLL(context.Context) (cll.State, error) { return l.state, nil }
+
+func newRepeatedLog(t *testing.T, leaves [][]byte) repeatedLog {
+	t.Helper()
+	tree, err := mmr.New(nil)
+	require.NoError(t, err)
+	log := repeatedLog{}
+	for i, value := range leaves {
+		_, err := tree.Append(value)
 		require.NoError(t, err)
-		return [][]byte{leaves[0], leaves[1], leaves[0]}, nil
-	}}
-	bundle, err := BuildEvidenceBundle(t.Context(), repeated, BuildOptions{Root: cid(caps[0]), IntervalFrom: 1})
-	var refusal *BuildError
-	require.ErrorAs(t, err, &refusal)
+		log.entries = append(log.entries, cll.Entry{Seq: uint64(i + 1), Value: value, AppendedAt: producedAt})
+	}
+	root, err := tree.Root()
+	require.NoError(t, err)
+	signer, err := checkpoint.NewEd25519Signer(logKey)
+	require.NoError(t, err)
+	body, err := checkpoint.Payload{LogID: producerLogID, KeyID: signer.KeyID(), MMRSize: tree.Size(), Root: hex.EncodeToString(root), Timestamp: producedAt}.CanonicalJSON()
+	require.NoError(t, err)
+	peaks, err := tree.PeakHashesAt(tree.Size())
+	require.NoError(t, err)
+	statement, err := signer.SignCheckpoint(t.Context(), body, peaks, nil, nil)
+	require.NoError(t, err)
+	n := uint64(len(leaves))
+	log.state = cll.State{Size: tree.Size(), Nodes: tree.Nodes(), IndexedSeq: n,
+		Checkpoint: &cll.CheckpointState{Bytes: statement, Size: tree.Size(), IndexedSeq: n, Peaks: peaks}}
+	return log
+}
+
+// A Capsule ID at two leaves, under a checkpoint that really signs both: the
+// first seq binds the record, so a range over both positions leaves seq 3
+// without a membership and no bundle is returned.
+func TestBuildRefusesARangeOverARepeatedCapsuleID(t *testing.T) {
+	_, caps, records := testChain(t)
+	a, err := hex.DecodeString(cid(caps[0]))
+	require.NoError(t, err)
+	b, err := hex.DecodeString(cid(caps[1]))
+	require.NoError(t, err)
+	source := ProofSourceFromCLL(newRepeatedLog(t, [][]byte{a, b, a}), records)
+
+	// The source is sound: without a range, each record proves its membership.
+	selected, err := BuildEvidenceBundle(t.Context(), source, BuildOptions{Root: cid(caps[1]), NoRange: true})
+	require.NoError(t, err)
+	assert.Equal(t, VerdictIncomplete, strictVerdictOf(selected))
+
+	bundle, err := BuildEvidenceBundle(t.Context(), source, BuildOptions{Root: cid(caps[0]), IntervalFrom: 1})
+	requireRefusal(t, err, "membership_record_missing:3")
+	assert.NotContains(t, err.Error(), "range_proof_invalid")
 	assert.Nil(t, bundle)
 }
