@@ -903,6 +903,9 @@ it("a conversation judged on one criterion says so in the singular", async () =>
     "its one criterion met or not applicable",
   );
   open(conv);
+  expect(conv.querySelector('[data-why="resolved"]')!.textContent).toContain(
+    "Resolved: 1 criterion met and 0 not applicable.",
+  );
   expect(conv.textContent).toContain("only when its one criterion passes");
   expect(conv.textContent).toContain("take the AND of the one verdict");
 });

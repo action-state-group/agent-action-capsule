@@ -515,7 +515,7 @@ function conversationBody(
     why.append(
       element(
         "li",
-        `Resolved: ${met} criteria met and ${na.length} not applicable. The rule bills a conversation only when ${n === 1 ? "its one criterion passes" : `all ${countWord(n)} pass`}, and not applicable counts as passing.`,
+        `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met and ${na.length} not applicable. The rule bills a conversation only when ${n === 1 ? "its one criterion passes" : `all ${countWord(n)} pass`}, and not applicable counts as passing.`,
       ),
     );
   } else {
