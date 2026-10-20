@@ -15,7 +15,7 @@
 use serde_json::{Map, Number, Value};
 use std::fmt;
 
-const MAX_DEPTH: usize = 128;
+pub(crate) const MAX_DEPTH: usize = 128;
 
 /// Whether `value` nests arrays and objects deeper than the decoder accepts
 /// (128 levels). The verifier entry points that take a caller-built
@@ -23,6 +23,12 @@ const MAX_DEPTH: usize = 128;
 /// `Value` recurses once per level, so unbounded nesting would overflow the
 /// stack. The walk itself is iterative.
 pub(crate) fn exceeds_max_depth(value: &Value) -> bool {
+    exceeds_depth(value, MAX_DEPTH)
+}
+
+/// Whether `value` nests arrays and objects deeper than `max` levels; the
+/// walk is iterative, as in [`exceeds_max_depth`].
+pub(crate) fn exceeds_depth(value: &Value, max: usize) -> bool {
     let mut stack: Vec<(&Value, usize)> = vec![(value, 0)];
     while let Some((value, depth)) = stack.pop() {
         let children: Box<dyn Iterator<Item = &Value>> = match value {
@@ -30,7 +36,7 @@ pub(crate) fn exceeds_max_depth(value: &Value) -> bool {
             Value::Object(members) => Box::new(members.values()),
             _ => continue,
         };
-        if depth + 1 > MAX_DEPTH {
+        if depth + 1 > max {
             return true;
         }
         stack.extend(children.map(|child| (child, depth + 1)));

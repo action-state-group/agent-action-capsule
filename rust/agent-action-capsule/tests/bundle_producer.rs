@@ -15,7 +15,10 @@ use agent_action_capsule::canonical::{compute_capsule_id, jcs, json_digest};
 use base64::Engine as _;
 use cll::checkpoint::{checkpoint_to_cose, verify_checkpoint_cose_offline, CheckpointRecord};
 use cll::log::memory::MemoryStore;
-use cll::log::{AppendInput, CheckpointState, CheckpointStateStore, EntryStore, State, Timestamp};
+use cll::log::{
+    AppendInput, CheckpointState, CheckpointStateStore, Entry, EntrySource, EntryStore, ErrorCode,
+    State, Timestamp,
+};
 use cll::mmr::{self, MemoryNodeStore, NodeReader};
 use coset::{iana, CoseSign1Builder, HeaderBuilder, TaggedCborSerializable as _};
 use ed25519_dalek::{Signer as _, SigningKey};
@@ -705,6 +708,11 @@ enum Lie {
     NotJson,
     WrongInclusion,
     WrongRange,
+    SwapLeaves,
+    CorruptInclusionWitness,
+    EditedRecord(String),
+    MalformedInclusion,
+    MalformedRange,
 }
 
 impl ProofSource for Lying<'_> {
@@ -722,6 +730,7 @@ impl ProofSource for Lying<'_> {
                 leaves.pop();
             }
             Lie::ExtraLeaf => leaves.push([0xcd; 32]),
+            Lie::SwapLeaves => leaves.swap(0, 1),
             _ => {}
         }
         Ok(leaves)
@@ -742,22 +751,46 @@ impl ProofSource for Lying<'_> {
                 capsule: b"not json".to_vec(),
                 producer_envelope: Vec::new(),
             }),
+            Lie::EditedRecord(id) if id == capsule_id => held.map(|r| {
+                // New content under the same capsule_id member.
+                let mut edited: Value = serde_json::from_slice(&r.capsule).unwrap();
+                edited["action_id"] = json!("edited");
+                StoredRecord {
+                    capsule: jcs(&edited).unwrap(),
+                    ..r
+                }
+            }),
             _ => held,
         })
     }
 
     fn inclusion_proof(&self, seq: u64) -> Result<InclusionProof, BuildError> {
         let mut proof = self.base.inclusion_proof(seq)?;
-        if matches!(self.lie, Lie::WrongInclusion) {
-            proof.leaf_index = (proof.leaf_index + 1) % 3;
+        match self.lie {
+            Lie::WrongInclusion => proof.leaf_index = (proof.leaf_index + 1) % 3,
+            Lie::CorruptInclusionWitness => {
+                let list = [
+                    &mut proof.witness,
+                    &mut proof.peaks_left,
+                    &mut proof.peaks_right,
+                ]
+                .into_iter()
+                .find(|l| !l.is_empty())
+                .unwrap();
+                list[0] = flip(&list[0]);
+            }
+            Lie::MalformedInclusion => proof.kind = "bogus".into(),
+            _ => {}
         }
         Ok(proof)
     }
 
     fn range_proof(&self, first_seq: u64) -> Result<RangeProof, BuildError> {
         let mut proof = self.base.range_proof(first_seq)?;
-        if matches!(self.lie, Lie::WrongRange) {
-            proof.witness[0] = flip(&proof.witness[0]);
+        match self.lie {
+            Lie::WrongRange => proof.witness[0] = flip(&proof.witness[0]),
+            Lie::MalformedRange => proof.witness[0] = "zz".into(),
+            _ => {}
         }
         Ok(proof)
     }
@@ -783,14 +816,119 @@ fn a_source_that_lies_is_refused() {
             message,
         );
     }
-    // Interval coverage is the strict verifier's call too.
-    let lying = Lying {
-        base: &source,
-        lie: Lie::WrongRange,
-    };
+    // With a range, from the start and as a suffix: the strict verifier
+    // catches each lie.
+    let root = cid(&caps[2]);
+    let ranged = [
+        (Lie::WrongRange, "interval_coverage"),
+        (Lie::SwapLeaves, "the bundle does not verify"),
+        (Lie::CorruptInclusionWitness, "membership_proof_invalid"),
+        (
+            Lie::EditedRecord(root.clone()),
+            &format!("record_identity_invalid:{root}") as &str,
+        ),
+    ];
+    for (lie, message) in ranged {
+        for first in [1, 2] {
+            if matches!(lie, Lie::SwapLeaves) && first == 2 {
+                continue; // the swapped seqs 1 and 2 put a carried record below 2
+            }
+            if matches!(lie, Lie::WrongRange) && first == 1 {
+                continue; // a whole-log range proof has no witness to corrupt
+            }
+            let lying = Lying {
+                base: &source,
+                lie: lie.clone(),
+            };
+            let mut opts = options(&caps[2], Interval::From(first));
+            opts.closure_depth = 3 - first;
+            refused(build_evidence_bundle(&lying, &opts), message);
+        }
+    }
+    refused(
+        build_evidence_bundle(
+            &Lying {
+                base: &source,
+                lie: Lie::EditedRecord(root.clone()),
+            },
+            &options(&caps[2], Interval::ProducerSelected),
+        ),
+        &format!("record_identity_invalid:{root}"),
+    );
+}
+
+#[test]
+fn a_malformed_source_proof_is_refused_before_assembly() {
+    let (source, caps) = chain();
+    let mut alone = options(&caps[2], Interval::ProducerSelected);
+    alone.closure_depth = 0;
+    refused(
+        build_evidence_bundle(
+            &Lying {
+                base: &source,
+                lie: Lie::MalformedInclusion,
+            },
+            &alone,
+        ),
+        "the source's inclusion proof for seq 3 is malformed",
+    );
     let mut opts = options(&caps[2], Interval::From(2));
     opts.closure_depth = 1;
-    refused(build_evidence_bundle(&lying, &opts), "interval_coverage");
+    refused(
+        build_evidence_bundle(
+            &Lying {
+                base: &source,
+                lie: Lie::MalformedRange,
+            },
+            &opts,
+        ),
+        "the source's range proof from seq 2 is malformed",
+    );
+}
+
+#[test]
+fn proofs_carry_only_their_wire_members() {
+    let (source, caps) = chain();
+    let bundle = build_evidence_bundle(&source, &options(&caps[2], Interval::From(1))).unwrap();
+    let cert = &bundle["completeness_certificate"];
+    let keys = |v: &Value| -> Vec<String> { v.as_object().unwrap().keys().cloned().collect() };
+    let mut range = keys(&cert["range_proof"]);
+    range.sort();
+    assert_eq!(
+        range,
+        [
+            "from_index",
+            "from_seq",
+            "size",
+            "to_index",
+            "to_seq",
+            "witness"
+        ]
+    );
+    for member in cert["memberships"].as_object().unwrap().values() {
+        let mut inclusion = keys(&member["inclusion_proof"]);
+        inclusion.sort();
+        assert_eq!(
+            inclusion,
+            [
+                "kind",
+                "leaf_index",
+                "peaks_left",
+                "peaks_right",
+                "size",
+                "v",
+                "witness"
+            ]
+        );
+    }
+}
+
+#[test]
+fn a_dyn_proof_source_builds() {
+    let (source, caps) = chain();
+    let dynamic: &dyn ProofSource = &source;
+    let bundle = build_evidence_bundle(dynamic, &options(&caps[2], Interval::From(1))).unwrap();
+    assert_eq!(verdict(&bundle), "VALID");
 }
 
 #[test]
@@ -854,4 +992,264 @@ fn unproven_bundle_refusals() {
     let mut opts = UnprovenOptions::new(cid(&caps[0]));
     opts.disclosures = overlay(&[(ABSENT, json!({}))]);
     refused(build_unproven_bundle(&caps, &opts), "does not carry");
+}
+
+// -- round-1 review: signatures, digest, depth, payloads_mode -----------------
+
+#[test]
+fn an_inline_signature_without_an_envelope_is_dropped() {
+    let a = capsule("inline", CapsuleSpec::default());
+    let id = cid(&a);
+    let good_sig = hex::encode(envelope(&id));
+    let inline: [&[(&str, Value)]; 3] = [
+        &[
+            ("signature", json!(good_sig)),
+            ("key_id", json!(producer_key_hex())),
+        ],
+        &[("signature", json!("zz")), ("key_id", json!("zz"))],
+        &[("signature", json!(good_sig))],
+    ];
+    for fields in inline {
+        let mut stored = a.clone();
+        for (k, v) in fields {
+            stored[*k] = v.clone();
+        }
+        let mut records = Records::default();
+        records.held.insert(
+            id.clone(),
+            StoredRecord {
+                capsule: jcs(&stored).unwrap(),
+                producer_envelope: Vec::new(),
+            },
+        );
+        let source = make_log(std::slice::from_ref(&id), records, None);
+        let bundle = build_evidence_bundle(&source, &options(&a, Interval::From(1))).unwrap();
+        let record = &bundle["records"][0];
+        assert!(record.get("signature").is_none() && record.get("key_id").is_none());
+        assert_eq!(claims(&bundle)["signatures"], "withheld");
+        assert_eq!(verdict(&bundle), "INCOMPLETE");
+    }
+}
+
+#[test]
+fn a_bundle_with_no_canonical_digest_is_refused() {
+    let (source, caps) = chain();
+    let mut opts = options(&caps[0], Interval::From(1));
+    opts.extensions = json!({"example/float": {"x": 1.5}})
+        .as_object()
+        .unwrap()
+        .clone();
+    refused(build_evidence_bundle(&source, &opts), "no canonical digest");
+    let mut opts = options(&caps[0], Interval::From(1));
+    opts.verification = Some(json!({"n": 1u64 << 60}).as_object().unwrap().clone());
+    refused(build_evidence_bundle(&source, &opts), "no canonical digest");
+}
+
+#[test]
+fn closure_depth_is_a_safe_integer_and_the_walk_stops_early() {
+    let mut records = Records::default();
+    let a = capsule("alone", CapsuleSpec::default());
+    records.put(&a, true);
+    let source = make_log(&[cid(&a)], records, None);
+    let mut opts = options(&a, Interval::From(1));
+    opts.closure_depth = (1 << 53) - 1;
+    let started = std::time::Instant::now();
+    let bundle = build_evidence_bundle(&source, &opts).unwrap();
+    assert!(started.elapsed() < std::time::Duration::from_secs(5));
+    assert_eq!(
+        bundle["completeness"]["closure_depth"],
+        json!((1u64 << 53) - 1)
+    );
+    assert_eq!(verdict(&bundle), "VALID");
+    opts.closure_depth = 1 << 53;
+    refused(build_evidence_bundle(&source, &opts), "safe integer");
+    let mut unproven = UnprovenOptions::new(cid(&a));
+    unproven.closure_depth = (1 << 53) - 1;
+    build_unproven_bundle(std::slice::from_ref(&a), &unproven).unwrap();
+    unproven.closure_depth = 1 << 53;
+    refused(
+        build_unproven_bundle(std::slice::from_ref(&a), &unproven),
+        "safe integer",
+    );
+}
+
+#[test]
+fn payloads_mode_is_all_when_nothing_is_unrevealed() {
+    let (source, caps) = chain();
+    // No carried record commits a member: vacuously all, with no overlay.
+    let mut opts = options(&caps[1], Interval::ProducerSelected);
+    opts.closure_depth = 0;
+    let bundle = build_evidence_bundle(&source, &opts).unwrap();
+    assert_eq!(bundle["completeness"]["payloads_mode"], json!("all"));
+    // The only committed member is suppressed.
+    let mut opts = options(&caps[0], Interval::ProducerSelected);
+    opts.closure_depth = 0;
+    opts.suppressed_fields = vec!["agent_input".into()];
+    let bundle = build_evidence_bundle(&source, &opts).unwrap();
+    assert_eq!(bundle["completeness"]["payloads_mode"], json!("all"));
+    let unproven =
+        build_unproven_bundle(&caps[1..2], &UnprovenOptions::new(cid(&caps[1]))).unwrap();
+    assert_eq!(unproven["completeness"]["payloads_mode"], json!("all"));
+}
+
+fn nested(levels: usize) -> Value {
+    let mut value = json!(0);
+    for _ in 0..levels {
+        value = Value::Array(vec![value]);
+    }
+    value
+}
+
+#[test]
+fn deeply_nested_caller_input_is_refused() {
+    let (source, caps) = chain();
+    let deep = nested(200);
+    let mut opts = options(&caps[0], Interval::From(1));
+    opts.extensions.insert("example/deep".into(), deep.clone());
+    refused(
+        build_evidence_bundle(&source, &opts),
+        "extensions[example/deep] nests",
+    );
+    let mut opts = options(&caps[0], Interval::From(1));
+    let mut verification = Map::new();
+    verification.insert("deep".into(), deep.clone());
+    opts.verification = Some(verification);
+    refused(build_evidence_bundle(&source, &opts), "verification nests");
+    let mut opts = options(&caps[0], Interval::From(1));
+    opts.disclosures = overlay(&[(&cid(&caps[0]), json!({"agent_input": deep.clone()}))]);
+    refused(
+        build_evidence_bundle(&source, &opts),
+        "nests arrays and objects",
+    );
+
+    let mut record = caps[0].clone();
+    record["deep"] = deep.clone();
+    refused(
+        build_unproven_bundle(&[record], &UnprovenOptions::new(cid(&caps[0]))),
+        "a record nests",
+    );
+    let mut unproven = UnprovenOptions::new(cid(&caps[0]));
+    unproven.disclosures = overlay(&[(&cid(&caps[0]), json!({"agent_input": deep}))]);
+    refused(
+        build_unproven_bundle(&caps, &unproven),
+        "nests arrays and objects",
+    );
+}
+
+// -- proof_source_from_cll error paths ----------------------------------------
+
+/// A CLL backend over a fixed state and entry list that can fail on demand.
+struct FakeBackend {
+    state: Option<State>,
+    entries: Vec<Entry>,
+    fail_scan: bool,
+}
+
+impl EntrySource for FakeBackend {
+    fn scan_entries(&self, after_seq: u64, limit: usize) -> cll::log::Result<Vec<Entry>> {
+        if self.fail_scan {
+            return Err(cll::log::Error::new(ErrorCode::Storage, "scan down"));
+        }
+        Ok(self
+            .entries
+            .iter()
+            .filter(|e| e.seq > after_seq)
+            .take(limit)
+            .cloned()
+            .collect())
+    }
+}
+
+impl CheckpointStateStore for FakeBackend {
+    fn load_cll(&self) -> cll::log::Result<State> {
+        self.state
+            .clone()
+            .ok_or_else(|| cll::log::Error::new(ErrorCode::Storage, "state down"))
+    }
+
+    fn commit_cll(&self, _: u64, _: Option<&[u8]>, _: &State) -> cll::log::Result<()> {
+        Err(cll::log::Error::new(ErrorCode::Unsupported, "read-only"))
+    }
+}
+
+fn fake_from_chain() -> (FakeBackend, Vec<Value>) {
+    let (_, caps) = chain();
+    let leaves: Vec<String> = caps.iter().map(cid).collect();
+    let real = make_backend(&leaves, None);
+    let backend = FakeBackend {
+        state: Some(real.load_cll().unwrap()),
+        entries: real.scan_entries(0, 100).unwrap(),
+        fail_scan: false,
+    };
+    (backend, caps)
+}
+
+fn signed_records(caps: &[Value]) -> Records {
+    let mut records = Records::default();
+    for r in caps {
+        records.put(r, true);
+    }
+    records
+}
+
+#[test]
+fn proof_source_from_cll_error_paths() {
+    let (good, caps) = fake_from_chain();
+    // The fake itself works.
+    let source = proof_source_from_cll(&good, signed_records(&caps)).unwrap();
+    let bundle = build_evidence_bundle(&source, &options(&caps[2], Interval::From(1))).unwrap();
+    assert_eq!(verdict(&bundle), "VALID");
+
+    let state_down = FakeBackend {
+        state: None,
+        ..fake_from_chain().0
+    };
+    let err = proof_source_from_cll(&state_down, Records::default())
+        .err()
+        .unwrap();
+    assert!(err.to_string().contains("checkpoint state"));
+    let cause = err
+        .source()
+        .unwrap()
+        .downcast_ref::<cll::log::Error>()
+        .unwrap();
+    assert_eq!(cause.code(), ErrorCode::Storage);
+
+    let scan_down = FakeBackend {
+        fail_scan: true,
+        ..fake_from_chain().0
+    };
+    let err = proof_source_from_cll(&scan_down, Records::default())
+        .err()
+        .unwrap();
+    assert!(err.to_string().contains("entries"));
+    assert!(err
+        .source()
+        .unwrap()
+        .downcast_ref::<cll::log::Error>()
+        .is_some());
+
+    let (mut short_node, _) = fake_from_chain();
+    short_node.state.as_mut().unwrap().nodes[0] = vec![0; 31];
+    let err = proof_source_from_cll(&short_node, Records::default())
+        .err()
+        .unwrap();
+    assert!(err.to_string().contains("not 32 bytes"));
+
+    let (mut short_entry, _) = fake_from_chain();
+    short_entry.entries[0].value = vec![0; 31];
+    let source = proof_source_from_cll(&short_entry, signed_records(&caps)).unwrap();
+    refused(
+        build_evidence_bundle(&source, &options(&caps[2], Interval::From(1))),
+        "entry at seq 1 is not 32 bytes",
+    );
+
+    // A scan that ends early leaves too few leaves for the checkpoint.
+    let (mut short_scan, _) = fake_from_chain();
+    short_scan.entries.pop();
+    let source = proof_source_from_cll(&short_scan, signed_records(&caps)).unwrap();
+    refused(
+        build_evidence_bundle(&source, &options(&caps[2], Interval::From(1))),
+        "the source gave 2 leaves",
+    );
 }

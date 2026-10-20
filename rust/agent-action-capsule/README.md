@@ -82,7 +82,9 @@ over a leaf that is not a record, a carried record below `n` and a record past
 the checkpoint are refused by name. A missing citation or an unsigned record
 is stated, not refused, and reads INCOMPLETE. `build_unproven_bundle(&records,
 &UnprovenOptions::new(root))` is the form with no log proof, for Capsules
-that belong to no log.
+that belong to no log. It reads no log and calls nothing in CLL, but it is
+also behind `strict`: its self-check is `verify_bundle_strict`, and `strict`
+includes `bundle`, which depends on `checkpointed-local-log`.
 
 ```rust
 use agent_action_capsule::bundle::{

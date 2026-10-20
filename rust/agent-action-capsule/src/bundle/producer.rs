@@ -9,9 +9,12 @@
 //! the strict verifier.
 
 use super::SELECTION_PRODUCER_SELECTED;
+use super::{bundle_digest, parse_inclusion_proof, parse_range_proof};
 use super::{citation_targets, committed_digest, verify_bundle_strict, StrictOptions, B64};
+use crate::canonical::MAX_SAFE_INTEGER;
 use crate::disclosure;
 use crate::envelope;
+use crate::json::{exceeds_depth, MAX_DEPTH};
 use crate::verify::decode_capsule_json;
 use base64::Engine as _;
 use cll::log::{CheckpointStateStore, EntrySource, MAX_SCAN_LIMIT};
@@ -436,11 +439,49 @@ fn is_eligible(member: &str) -> bool {
     disclosure::disclosure_eligible_field(member).is_some()
 }
 
+/// Whether caller input placed `offset` levels below the Bundle object would
+/// take the Bundle past the verifier's depth limit. Checked before any
+/// recursive clone of the input.
+fn too_deep(value: &Value, offset: usize) -> bool {
+    exceeds_depth(value, MAX_DEPTH.saturating_sub(offset))
+}
+
+fn deep_input(what: &str) -> BuildError {
+    BuildError::new(format!(
+        "{what} nests arrays and objects deeper than the Bundle's {MAX_DEPTH}-level limit"
+    ))
+}
+
 fn check_options(
+    closure_depth: u64,
     disclosures: &BTreeMap<String, Map<String, Value>>,
     suppressed_fields: &[String],
     extensions: &Map<String, Value>,
+    verification: Option<&Map<String, Value>>,
 ) -> Result<(), BuildError> {
+    if closure_depth > MAX_SAFE_INTEGER as u64 {
+        return Err(BuildError::new(format!(
+            "closure_depth must be a safe integer (at most {MAX_SAFE_INTEGER})"
+        )));
+    }
+    // bundle > disclosures > capsule ID > member > value
+    for (cid, members) in disclosures {
+        if members.values().any(|v| too_deep(v, 3)) {
+            return Err(deep_input(&format!("disclosures[{cid}]")));
+        }
+    }
+    // bundle > extensions > kind > value
+    if let Some(kind) = extensions
+        .iter()
+        .find(|(_, v)| too_deep(v, 2))
+        .map(|(k, _)| k)
+    {
+        return Err(deep_input(&format!("extensions[{kind}]")));
+    }
+    // bundle > verification > member > value
+    if verification.is_some_and(|v| v.values().any(|v| too_deep(v, 2))) {
+        return Err(deep_input("verification"));
+    }
     let ineligible: BTreeSet<&str> = suppressed_fields
         .iter()
         .map(String::as_str)
@@ -574,7 +615,8 @@ fn completeness(
             )));
         }
     }
-    let mode = payloads_mode.unwrap_or(if !disclosures.is_empty() && unrevealed.is_empty() {
+    // Vacuously `all` when no carried record commits an unsuppressed member.
+    let mode = payloads_mode.unwrap_or(if unrevealed.is_empty() {
         PayloadsMode::All
     } else {
         PayloadsMode::Selected
@@ -595,9 +637,10 @@ fn completeness(
     Ok(out)
 }
 
-/// The stored record as a Bundle carries it: the Capsule, with a claimed
-/// Producer Envelope re-inlined as its local-only `signature` and `key_id`
-/// (both outside the `capsule_id` preimage).
+/// The stored record as a Bundle carries it: the Capsule, with any inline
+/// `signature` and `key_id` removed and a claimed Producer Envelope
+/// re-inlined as those local-only members (both outside the `capsule_id`
+/// preimage).
 fn decode_record(capsule_id: &str, stored: &StoredRecord) -> Result<Record, BuildError> {
     let capsule = decode_capsule_json(&stored.capsule).map_err(|e| {
         BuildError::new(format!(
@@ -617,6 +660,10 @@ fn decode_record(capsule_id: &str, stored: &StoredRecord) -> Result<Record, Buil
             "record {capsule_id}: the store returned a different capsule"
         )));
     }
+    // The stored envelope alone decides the signature: an inline claim in the
+    // stored JSON is dropped, so an empty envelope always reads unsigned.
+    capsule.remove("signature");
+    capsule.remove("key_id");
     if !stored.producer_envelope.is_empty() {
         let checked = envelope::verify(capsule_id, &stored.producer_envelope);
         if !checked.ok || checked.public_key.is_empty() {
@@ -648,11 +695,14 @@ fn decode_record(capsule_id: &str, stored: &StoredRecord) -> Result<Record, Buil
 /// that does not verify, a range over a leaf that is not a record, a carried
 /// record below N, a record past the checkpoint, an overlay for a record not
 /// carried, an ineligible or suppressed overlay member, an owned extension
-/// kind, and any result [`verify_bundle_strict`] calls INVALID (a wrong
-/// proof, a tampered record). A source's store failure is passed on as the
+/// kind, a `closure_depth` past 2^53-1, caller input nested past the
+/// Bundle's depth limit, a malformed source proof, a Bundle with no
+/// canonical digest, and any result [`verify_bundle_strict`] calls INVALID
+/// (a wrong proof, a tampered record). An inline `signature`/`key_id` in the
+/// stored capsule is dropped: only the stored envelope signs a record. A source's store failure is passed on as the
 /// error's source.
-pub fn build_evidence_bundle(
-    source: &impl ProofSource,
+pub fn build_evidence_bundle<S: ProofSource + ?Sized>(
+    source: &S,
     options: &BuildOptions,
 ) -> Result<Value, BuildError> {
     let BuildOptions {
@@ -667,7 +717,13 @@ pub fn build_evidence_bundle(
         extensions,
         verification,
     } = options;
-    check_options(disclosures, suppressed_fields, extensions)?;
+    check_options(
+        *closure_depth,
+        disclosures,
+        suppressed_fields,
+        extensions,
+        verification.as_ref(),
+    )?;
     let interval_from =
         match *interval_from {
             Interval::From(0) => return Err(BuildError::new(
@@ -769,7 +825,10 @@ pub fn build_evidence_bundle(
             "body_digests".into(),
             json!(leaf_hex[(first - 1) as usize..]),
         );
-        certificate.insert("range_proof".into(), source.range_proof(first)?.to_value());
+        certificate.insert(
+            "range_proof".into(),
+            normalised_range_proof(first, &source.range_proof(first)?)?,
+        );
     }
 
     let mut ordered: Vec<&String> = carried.keys().collect();
@@ -790,7 +849,7 @@ pub fn build_evidence_bundle(
             (*cid).clone(),
             json!({
                 "log_coordinates": {"log_id": signed.log_id, "seq": seq, "leaf_index": seq - 1},
-                "inclusion_proof": source.inclusion_proof(seq)?.to_value(),
+                "inclusion_proof": normalised_inclusion_proof(seq, &source.inclusion_proof(seq)?)?,
             }),
         );
     }
@@ -853,10 +912,57 @@ pub fn build_evidence_bundle(
     self_checked(Value::Object(bundle))
 }
 
-/// Refuses a Bundle [`verify_bundle_strict`] calls INVALID. A declared-
+/// The source's inclusion proof as the verifier reads it: parsed by the
+/// verifier's own parser, then written back with only the wire members.
+fn normalised_inclusion_proof(seq: u64, proof: &InclusionProof) -> Result<Value, BuildError> {
+    let parsed = parse_inclusion_proof(Some(&proof.to_value())).ok_or_else(|| {
+        BuildError::new(format!(
+            "the source's inclusion proof for seq {seq} is malformed"
+        ))
+    })?;
+    Ok(InclusionProof {
+        v: parsed.v,
+        kind: parsed.kind,
+        size: parsed.size,
+        leaf_index: parsed.leaf_index,
+        witness: parsed.witness,
+        peaks_left: parsed.peaks_left,
+        peaks_right: parsed.peaks_right,
+    }
+    .to_value())
+}
+
+/// The source's range proof as the verifier reads it, as
+/// [`normalised_inclusion_proof`].
+fn normalised_range_proof(first_seq: u64, proof: &RangeProof) -> Result<Value, BuildError> {
+    let parsed = parse_range_proof(Some(&proof.to_value())).ok_or_else(|| {
+        BuildError::new(format!(
+            "the source's range proof from seq {first_seq} is malformed"
+        ))
+    })?;
+    Ok(RangeProof {
+        from_seq: parsed.from_seq as u64,
+        to_seq: parsed.to_seq as u64,
+        size: parsed.size,
+        from_index: parsed.proof.from_index,
+        to_index: parsed.proof.to_index,
+        witness: parsed.proof.witness,
+    }
+    .to_value())
+}
+
+/// Refuses a Bundle whose digest cannot be computed (a float or an unsafe
+/// integer anywhere, for example in `extensions`), and one
+/// [`verify_bundle_strict`] calls INVALID. A declared-
 /// incomplete closure or an unsigned record is a legitimate outcome to
 /// state: the bar is INVALID, not "not VALID".
 fn self_checked(bundle: Value) -> Result<Value, BuildError> {
+    if let Err(e) = bundle_digest(&bundle) {
+        return Err(BuildError::with_source(
+            "the bundle has no canonical digest (JCS refuses it)",
+            e.to_string(),
+        ));
+    }
     let result = verify_bundle_strict(&bundle, &StrictOptions::default());
     if result.verdict() == "INVALID" {
         let failed: Vec<String> = result
@@ -898,7 +1004,17 @@ pub fn build_unproven_bundle(
         disclosures,
         suppressed_fields,
     } = options;
-    check_options(disclosures, suppressed_fields, &Map::new())?;
+    check_options(
+        *closure_depth,
+        disclosures,
+        suppressed_fields,
+        &Map::new(),
+        None,
+    )?;
+    // bundle > records > record
+    if records.iter().any(|r| too_deep(r, 2)) {
+        return Err(deep_input("a record"));
+    }
     let mut ids: Vec<String> = Vec::with_capacity(records.len());
     let mut by_id: HashMap<String, Record> = HashMap::new();
     for record in records {
