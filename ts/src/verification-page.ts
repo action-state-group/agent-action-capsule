@@ -575,11 +575,14 @@ export function verificationCheckLists(
 
   const pick = (which: "page" | "failed" | "notChecked") =>
     VERIFICATION_CHECK_IDS.filter((id) => outcome.get(id) === which);
+  const failed = pick("failed");
   return {
     page: pick("page"),
-    failed: pick("failed"),
+    failed,
     notChecked: pick("notChecked"),
-    passedWithoutCheckpoint,
+    // A page that failed a check does not show the bundle as passing, so
+    // the note that it passed without the checkpoint would be false there.
+    passedWithoutCheckpoint: passedWithoutCheckpoint && failed.length === 0,
   };
 }
 
