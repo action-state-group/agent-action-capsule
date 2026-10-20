@@ -839,6 +839,74 @@ it("drill-down: every missed-reason row opens into exactly the conversations it 
   ).toContain("Resolved: 9 criteria met");
 });
 
+/** The fixture judged on only its first n criteria, with its first
+ * conversation flipped to resolved. */
+async function resolvedWithCriteria(
+  n: number,
+): Promise<{ root: HTMLElement; first: string }> {
+  const source = fixture("outcome-report-bundle.json");
+  const resultDoc = ((source.disclosures as Obj).result as Obj)
+    .agent_input as Obj;
+  const claims = resultDoc.claims as Obj[];
+  const refs = [
+    ...new Set(claims.map((c) => c.requirement_ref as string)),
+  ].slice(0, n);
+  const first = (claims[0]!.id as string).split("::")[0]!;
+  const kept = claims
+    .filter((c) => refs.includes(c.requirement_ref as string))
+    .map((c) =>
+      (c.id as string).startsWith(`${first}::`)
+        ? {
+            ...c,
+            verdict: "met",
+            sufficiency: "SATISFIED",
+            presentation: { ...(c.presentation as Obj), status: "SATISFIED" },
+          }
+        : c,
+    );
+  (source.disclosures as Obj).result = {
+    agent_input: {
+      ...resultDoc,
+      claims: kept,
+      aggregate: {
+        ...(resultDoc.aggregate as Obj),
+        buckets: rebuildBuckets(kept),
+      },
+    },
+  };
+  const { bundle } = await sealEvidenceBundle(source);
+  return { root: await render(bundle), first };
+}
+
+it("a resolved conversation counts the criteria its pack judged, not a fixed nine", async () => {
+  const { root, first } = await resolvedWithCriteria(4);
+  const conv = root.querySelector<HTMLElement>(
+    `[data-drill="resolved"] details.conv[data-conversation="${first}"]`,
+  )!;
+  expect(conv.querySelector(".cwhy")!.textContent).toBe(
+    "all four criteria met or not applicable",
+  );
+  open(conv);
+  expect(conv.querySelector('[data-why="resolved"]')!.textContent).toContain(
+    "Resolved: 4 criteria met and 0 not applicable. The rule bills a conversation only when all four pass",
+  );
+  expect(conv.textContent).toContain("take the AND of the four verdicts");
+  expect(conv.textContent).not.toContain("nine");
+});
+
+it("a conversation judged on one criterion says so in the singular", async () => {
+  const { root, first } = await resolvedWithCriteria(1);
+  const conv = root.querySelector<HTMLElement>(
+    `[data-drill="resolved"] details.conv[data-conversation="${first}"]`,
+  )!;
+  expect(conv.querySelector(".cwhy")!.textContent).toBe(
+    "its one criterion met or not applicable",
+  );
+  open(conv);
+  expect(conv.textContent).toContain("only when its one criterion passes");
+  expect(conv.textContent).toContain("take the AND of the one verdict");
+});
+
 it("drill-down: a tampered bundle draws no conversation at all (verify-first holds)", async () => {
   const { bundle } = await sealedOutcomeReportBundle();
   const disclosures = bundle.disclosures as Record<string, Obj>;
