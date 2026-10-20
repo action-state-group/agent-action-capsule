@@ -188,6 +188,10 @@ class BundleVerificationResult:
     """The signed checkpoint's own fields (from ``checkpoint.cose``) plus the
     Bundle's ``witnesses`` list, when it verified; else empty."""
     signer_matches_checkpoint: bool | None = None
+    category_coverage: dict[str, str] | None = None
+    """The ``category_coverage`` member's five properties, in report order
+    (:mod:`agent_action_capsule.category_coverage`), or ``None`` when the
+    Bundle carries no such member. Filled in both modes."""
 
     @property
     def claims(self) -> tuple[tuple[str, ClaimResult], ...]:
@@ -213,10 +217,13 @@ class BundleVerificationResult:
         """Strict mode: nothing failed (``withheld`` is not a failure)."""
         if self.kind_ok is None:
             return None
+        from .category_coverage import GATING
+
         return (
             self.kind_ok
             and all(claim.status != "fail" for _, claim in self.claims)
             and (self.witnesses is None or self.witnesses.status != "fail")
+            and not any((self.category_coverage or {}).get(name) == "FAIL" for name in GATING)
         )
 
     @property
@@ -320,6 +327,9 @@ def verify_bundle(
     strict: bool = False,
     require_signature: bool = False,
     witness_directory: Any = None,
+    category_sets: Mapping[str, Sequence[str]] | None = None,
+    category_request: bytes | None = None,
+    record_categories: Mapping[str, str] | None = None,
 ) -> BundleVerificationResult:
     """Verify an AAC Evidence Bundle using only its supplied evidence.
 
@@ -347,9 +357,22 @@ def verify_bundle(
     ``memberships`` map is keyed by Capsule ID and each value carries
     ``log_coordinates`` (``log_id``, ``seq``, ``leaf_index``) and an
     ``inclusion_proof`` — an independent per-record membership check.
+
+    A ``category_coverage`` member is reported as five properties
+    (:attr:`BundleVerificationResult.category_coverage`). ``category_sets``,
+    ``category_request`` (the Evidence Request octets as received) and
+    ``record_categories`` are the inputs a Bundle cannot carry for itself;
+    see :func:`agent_action_capsule.category_coverage.check_category_coverage`.
+    In strict mode a ``FAIL`` of its form, signature or consistency makes the
+    verdict ``INVALID``; no property is ever combined into a score.
     """
+    coverage_inputs = {
+        "category_sets": category_sets,
+        "category_request": category_request,
+        "record_categories": record_categories,
+    }
     if not too_deep(bundle):
-        return _verify_bundle(bundle, strict, require_signature, witness_directory)
+        return _verify_bundle(bundle, strict, require_signature, witness_directory, coverage_inputs)
     # Nested more than MAX_NESTING_DEPTH levels deep (or containing itself):
     # refused before any recursive check, never raised, as in Go and Rust.
     invalid = ClaimResult("fail", ("bundle_malformed",))
@@ -360,7 +383,9 @@ def verify_bundle(
     return result
 
 
-def _verify_bundle(bundle: Any, strict: bool, require_signature: bool, witness_directory: Any) -> BundleVerificationResult:
+def _verify_bundle(
+    bundle: Any, strict: bool, require_signature: bool, witness_directory: Any, coverage_inputs: Mapping[str, Any]
+) -> BundleVerificationResult:
     invalid = ClaimResult("fail", ("bundle_malformed",))
     if not isinstance(bundle, Mapping):
         result = BundleVerificationResult(None, invalid, invalid, invalid)
@@ -391,6 +416,9 @@ def _verify_bundle(bundle: Any, strict: bool, require_signature: bool, witness_d
         ProducerSelfReport(bundle["verification"]) if "verification" in bundle else None,
         capsule_results,
     )
+    from .category_coverage import check_category_coverage
+
+    result.category_coverage = check_category_coverage(bundle, **coverage_inputs)
     if strict:
         _apply_strict(result, bundle, require_signature, witness_directory)
     return result
