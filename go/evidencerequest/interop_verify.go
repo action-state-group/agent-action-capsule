@@ -406,8 +406,8 @@ func passIf(ok bool) string {
 // strictEqual is equality by value with no bool/int conflation, as the
 // reference's _strict_equal: the same type at every level, the same
 // members, the same items in order. Integers outside the data model and
-// floats compare by value (a float by its encoding); any other value
-// outside the model equals nothing.
+// floats compare by value (floats numerically: NaN equals nothing); any
+// other value outside the model equals nothing.
 func strictEqual(a, b any) bool {
 	switch x := a.(type) {
 	case nil:

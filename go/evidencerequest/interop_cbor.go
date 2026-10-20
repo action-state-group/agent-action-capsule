@@ -4,6 +4,7 @@ package evidencerequest
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"math"
 	"sort"
@@ -66,10 +67,11 @@ type cborNegative struct{ N uint64 }
 // but kept by value, as the reference keeps it.
 type cborBigUint struct{ N uint64 }
 
-// cborFloat is a float, outside the data model, kept by its encoding (so
-// equal encodings compare equal, as the reference compares by value). It
-// is never a map key: the reference drops such a key.
-type cborFloat struct{ Encoded string }
+// cborFloat is a float, outside the data model, kept by its numeric value,
+// so it compares as the reference compares floats: 1.5 equals 1.5 at any
+// width, -0 equals 0, and NaN equals nothing. It is never a map key: the
+// reference drops such a key.
+type cborFloat struct{ F float64 }
 
 // cborBytesKey is a byte-string map key in generic mode, a type of its own
 // so it never collides with the text key of the same content.
@@ -111,7 +113,17 @@ func (st *cborState) item(i, depth int) (any, int, error) {
 			return nil, 0, errCBOR
 		}
 		st.odd = true // a float is outside the data model (§5.2)
-		return cborFloat{Encoded: string(st.data[i-1 : i+width])}, i + width, nil
+		raw := st.data[i : i+width]
+		var f float64
+		switch width {
+		case 2:
+			f = halfFloat(binary.BigEndian.Uint16(raw))
+		case 4:
+			f = float64(math.Float32frombits(binary.BigEndian.Uint32(raw)))
+		default:
+			f = math.Float64frombits(binary.BigEndian.Uint64(raw))
+		}
+		return cborFloat{F: f}, i + width, nil
 	}
 	var arg uint64
 	switch {
@@ -289,4 +301,26 @@ func scalarKey(key any) bool {
 		return true
 	}
 	return false
+}
+
+// halfFloat is an IEEE 754 half-precision value (RFC 8949 Appendix D).
+func halfFloat(h uint16) float64 {
+	exp, mant := int(h>>10)&0x1f, float64(h&0x3ff)
+	var v float64
+	switch exp {
+	case 0:
+		v = math.Ldexp(mant, -24)
+	case 31:
+		if mant == 0 {
+			v = math.Inf(1)
+		} else {
+			v = math.NaN()
+		}
+	default:
+		v = math.Ldexp(mant+1024, exp-25)
+	}
+	if h&0x8000 != 0 {
+		return -v
+	}
+	return v
 }

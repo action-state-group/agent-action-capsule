@@ -35,6 +35,21 @@ func TestStrictCBORDropsAFloatKey(t *testing.T) {
 	two, err := decodeCBORItem([]byte{0xf9, 0x3e, 0x00})
 	require.NoError(t, err)
 	assert.True(t, strictEqual(one.value, two.value), "1.5 equals 1.5")
+	for name, pair := range map[string]struct {
+		a, b  []byte
+		equal bool
+	}{
+		"1.5 at two widths": {[]byte{0xf9, 0x3e, 0x00}, []byte{0xfa, 0x3f, 0xc0, 0x00, 0x00}, true},
+		"-0 and 0":          {[]byte{0xf9, 0x80, 0x00}, []byte{0xf9, 0x00, 0x00}, true},
+		"NaN and NaN":       {[]byte{0xf9, 0x7e, 0x00}, []byte{0xf9, 0x7e, 0x00}, false},
+		"1.0 and 1":         {[]byte{0xf9, 0x3c, 0x00}, []byte{0x01}, false},
+	} {
+		a, err := decodeCBORItem(pair.a)
+		require.NoError(t, err, name)
+		b, err := decodeCBORItem(pair.b)
+		require.NoError(t, err, name)
+		assert.Equal(t, pair.equal, strictEqual(a.value, b.value), name)
+	}
 	big, err := decodeCBORItem([]byte{0x1b, 0x10, 0, 0, 0, 0, 0, 0, 0})
 	require.NoError(t, err)
 	assert.True(t, strictEqual(big.value, cborBigUint{N: 1 << 60}), "2^60 equals 2^60")
