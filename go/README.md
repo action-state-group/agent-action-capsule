@@ -39,3 +39,29 @@ checked), `RefusalRow` and `RefusalLine` (the section 3.2 wording),
 `ResolveWith` takes a `canRender` answer. The vectors under
 `../vectors/presentation-resolution/` are normative for both implementations,
 and both test suites run every case.
+
+## Evidence Bundles
+
+`bundle.VerifyBundle` checks a Bundle's claims and `bundle.VerifyStrict` gives
+the strict verdict (`VALID`, `INCOMPLETE` or `INVALID`).
+`bundle.BuildEvidenceBundle(ctx, source, opts)` builds a Bundle from a
+`ProofSource`: the log's signed COSE checkpoint, its leaves, records by
+Capsule ID, and inclusion and range proofs in the Bundle's wire shape. It
+holds no key, and it checks the result with `VerifyStrict` before returning
+it, refusing anything that verifier calls INVALID.
+`bundle.ProofSourceFromCLL(backend, records)` makes a `ProofSource` from a CLL
+backend (`ScanEntries`, `LoadCLL`) and a `RecordSource`.
+
+- `IntervalFrom: N` carries every record from seq N to the checkpoint tip, and
+  none below N, with a range proof: the Bundle can read VALID. `N = 1` is the
+  whole log.
+- `NoRange: true` carries only the chosen records, each with its own
+  inclusion proof, and states `completeness.selection: "producer-selected"`:
+  nothing is claimed about the records between them, so it reads INCOMPLETE.
+
+One of the two is required, so a caller never hands over the whole log by
+omission. `ClosureDepth` is a `*int` whose nil is the draft's 2. A range over
+a leaf that is not a record, a carried record below N and a record past the
+checkpoint are refused by name. A missing citation or an unsigned record is
+stated, not refused, and reads INCOMPLETE. `bundle.BuildUnprovenBundle` is
+the form with no log proof, for Capsules that belong to no log.
