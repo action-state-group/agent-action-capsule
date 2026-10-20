@@ -5,14 +5,16 @@
 //! `seal`: read a capsule, set its `capsule_id`, write it back.
 //! `verify`: read a capsule, print the recomputed `capsule_id` if it
 //! verifies; otherwise print each finding code to stderr and exit 1.
-//! `bundle-produce <kind>`: read the producer fixture
-//! (`vectors/cross-language/bundle-producer-log.json`) and write the JCS
-//! bytes of the Bundle `kind` names in its `builds`.
+//! `bundle-produce <kind>`: read a producer fixture
+//! (`vectors/cross-language/bundle-producer-log.json` or
+//! `bundle-producer-padded-log.json`) and write the JCS bytes of the Bundle
+//! `kind` names in its `builds`.
 //! `bundle-verify`: read a Bundle's JSON text and print its strict verdict.
 
 use agent_action_capsule::bundle::{
     build_evidence_bundle, decode_fragment, proof_source_from_cll, verify_bundle_strict,
-    BuildOptions, Interval, RecordSource, StoredRecord, StrictOptions,
+    BuildError, BuildOptions, InclusionProof, Interval, ProofSource, RangeProof, RecordSource,
+    StoredRecord, StrictOptions,
 };
 use agent_action_capsule::{canonical, verify};
 use base64::Engine as _;
@@ -186,6 +188,34 @@ fn fixture_source(fixture: &Value) -> Result<(FixtureBackend, FixtureRecords), S
     Ok((FixtureBackend { entries, state }, FixtureRecords(records)))
 }
 
+/// A proof source with the optional `leaf_content` capability, over the
+/// fixture's `leaf_contents`.
+struct WithLeafContent<'a, S> {
+    source: S,
+    contents: &'a serde_json::Map<String, Value>,
+}
+
+impl<S: ProofSource> ProofSource for WithLeafContent<'_, S> {
+    fn checkpoint(&self) -> Result<Vec<u8>, BuildError> {
+        self.source.checkpoint()
+    }
+    fn leaves(&self) -> Result<Vec<[u8; 32]>, BuildError> {
+        self.source.leaves()
+    }
+    fn record(&self, capsule_id: &str) -> Result<Option<StoredRecord>, BuildError> {
+        self.source.record(capsule_id)
+    }
+    fn inclusion_proof(&self, seq: u64) -> Result<InclusionProof, BuildError> {
+        self.source.inclusion_proof(seq)
+    }
+    fn range_proof(&self, first_seq: u64) -> Result<RangeProof, BuildError> {
+        self.source.range_proof(first_seq)
+    }
+    fn leaf_content(&self, seq: u64) -> Result<Option<Value>, BuildError> {
+        Ok(self.contents.get(&seq.to_string()).cloned())
+    }
+}
+
 fn bundle_produce(kind: &str, input: &[u8]) -> ExitCode {
     let fixture: Value = match serde_json::from_slice(input) {
         Ok(value) => value,
@@ -206,8 +236,15 @@ fn bundle_produce(kind: &str, input: &[u8]) -> ExitCode {
         let root = fixture["root"].as_str().ok_or("root must be a string")?;
         let mut options = BuildOptions::new(root, interval);
         options.closure_depth = unsigned(&build["closure_depth"])?;
+        options.carry_non_record_leaves = build["carry_non_record_leaves"] == Value::Bool(true);
         let source = proof_source_from_cll(&backend, records).map_err(|e| e.to_string())?;
-        let bundle = build_evidence_bundle(&source, &options).map_err(|e| e.to_string())?;
+        let bundle = match fixture.get("leaf_contents").and_then(Value::as_object) {
+            Some(contents) => {
+                build_evidence_bundle(&WithLeafContent { source, contents }, &options)
+            }
+            None => build_evidence_bundle(&source, &options),
+        }
+        .map_err(|e| e.to_string())?;
         canonical::jcs(&bundle).map_err(|e| e.to_string())
     });
     match built {

@@ -1302,3 +1302,206 @@ fn a_capsule_id_at_two_leaves_is_refused() {
         "membership_record_missing:2",
     );
 }
+
+// -- leaf_content (Evidence Bundle -02) ---------------------------------------
+
+fn padding(label: &str) -> Value {
+    let mut body = json!({
+        "record_type": "padding",
+        "epistemic_type": "producer_claim",
+        "store_nonce": json_digest(&json!(label)).unwrap(),
+    });
+    body["capsule_id"] = json!(json_digest(&body).unwrap());
+    body
+}
+
+/// A source with the optional `leaf_content` capability over another.
+struct WithContent<'a> {
+    source: &'a CllProofSource<Records>,
+    contents: HashMap<u64, Value>,
+}
+
+impl ProofSource for WithContent<'_> {
+    fn checkpoint(&self) -> Result<Vec<u8>, BuildError> {
+        self.source.checkpoint()
+    }
+    fn leaves(&self) -> Result<Vec<[u8; 32]>, BuildError> {
+        self.source.leaves()
+    }
+    fn record(&self, capsule_id: &str) -> Result<Option<StoredRecord>, BuildError> {
+        self.source.record(capsule_id)
+    }
+    fn inclusion_proof(&self, seq: u64) -> Result<InclusionProof, BuildError> {
+        self.source.inclusion_proof(seq)
+    }
+    fn range_proof(&self, first_seq: u64) -> Result<RangeProof, BuildError> {
+        self.source.range_proof(first_seq)
+    }
+    fn leaf_content(&self, seq: u64) -> Result<Option<Value>, BuildError> {
+        Ok(self.contents.get(&seq).cloned())
+    }
+}
+
+/// Records at seq 1 and 3, padding at 2 and at the tip, 4.
+fn padded() -> (CllProofSource<Records>, Value, Value, HashMap<u64, Value>) {
+    let mut records = Records::default();
+    let (a, b) = (
+        capsule("a", CapsuleSpec::default()),
+        capsule("b", CapsuleSpec::default()),
+    );
+    records.put(&a, true);
+    records.put(&b, true);
+    let pads = HashMap::from([(2, padding("2")), (4, padding("4"))]);
+    let leaves = [cid(&a), cid(&pads[&2]), cid(&b), cid(&pads[&4])];
+    (make_log(&leaves, records, None), a, b, pads)
+}
+
+fn carrying(root: &Value, interval: Interval) -> BuildOptions {
+    let mut options = options(root, interval);
+    options.carry_non_record_leaves = true;
+    options
+}
+
+#[test]
+fn a_source_with_leaf_content_carries_padding_when_asked() {
+    let (log, a, b, pads) = padded();
+    let mut stored = pads.clone();
+    for pad in stored.values_mut() {
+        pad["signature"] = json!("00"); // envelope dropped
+        pad["key_id"] = json!("11");
+    }
+    let source = WithContent {
+        source: &log,
+        contents: stored,
+    };
+    let bundle = build_evidence_bundle(&source, &carrying(&b, Interval::From(1))).unwrap();
+    assert_eq!(
+        bundle["completeness_certificate"]["non_record_leaves"],
+        json!([{"seq": 2, "content": pads[&2]}, {"seq": 4, "content": pads[&4]}])
+    );
+    assert_eq!(record_ids(&bundle), vec![cid(&a), cid(&b)]);
+    assert_eq!(verdict(&bundle), "VALID");
+}
+
+#[test]
+fn carrying_non_record_leaves_is_off_by_default() {
+    let (log, _, b, pads) = padded();
+    let source = WithContent {
+        source: &log,
+        contents: pads,
+    };
+    refused(
+        build_evidence_bundle(&source, &options(&b, Interval::From(1))),
+        "seq 2 in the interval is not a record",
+    );
+}
+
+#[test]
+fn an_old_source_is_unchanged() {
+    let (log, _, b, pads) = padded();
+    assert_eq!(log.leaf_content(2).unwrap(), None);
+    refused(
+        build_evidence_bundle(&log, &carrying(&b, Interval::From(1))),
+        "seq 2 in the interval is not a record",
+    );
+    let mut old_options = options(&b, Interval::ProducerSelected);
+    old_options.closure_depth = 0;
+    let old = build_evidence_bundle(&log, &old_options).unwrap();
+    let mut new_options = carrying(&b, Interval::ProducerSelected);
+    new_options.closure_depth = 0;
+    let source = WithContent {
+        source: &log,
+        contents: pads,
+    };
+    let new = build_evidence_bundle(&source, &new_options).unwrap();
+    assert_eq!(new, old);
+    assert!(new["completeness_certificate"]
+        .get("non_record_leaves")
+        .is_none());
+}
+
+#[test]
+fn no_padding_in_the_interval_means_no_member() {
+    let (log, _, b, pads) = padded();
+    refused(
+        build_evidence_bundle(&log, &options(&b, Interval::From(3))),
+        "seq 4",
+    );
+    let source = WithContent {
+        source: &log,
+        contents: pads.clone(),
+    };
+    let bundle = build_evidence_bundle(&source, &carrying(&b, Interval::From(3))).unwrap();
+    assert_eq!(
+        bundle["completeness_certificate"]["non_record_leaves"],
+        json!([{"seq": 4, "content": pads[&4]}])
+    );
+}
+
+#[test]
+fn leaf_content_that_is_not_that_padding_is_refused() {
+    let (log, _, b, pads) = padded();
+    let mut wrong_nonce = pads[&2].clone();
+    wrong_nonce["store_nonce"] = json!("00".repeat(32));
+    let mut no_id = pads[&2].clone();
+    no_id.as_object_mut().unwrap().remove("capsule_id");
+    for (content, message) in [
+        (
+            json!({"record_type": "checkpoint_stamp"}),
+            "not a padding record",
+        ),
+        (json!("padding"), "not a padding record"),
+        (wrong_nonce, "does not hash to the leaf"),
+        (no_id, "does not hash to the leaf"),
+        (
+            serde_json::from_str(r#"{"record_type": "padding", "weight": 0.5}"#).unwrap(),
+            "no canonical digest",
+        ),
+    ] {
+        let mut contents = pads.clone();
+        contents.insert(2, content);
+        let source = WithContent {
+            source: &log,
+            contents,
+        };
+        refused(
+            build_evidence_bundle(&source, &carrying(&b, Interval::From(1))),
+            message,
+        );
+    }
+}
+
+#[test]
+fn a_malformed_padding_shape_is_refused_by_the_self_check() {
+    let mut bad = json!({
+        "record_type": "padding",
+        "epistemic_type": "producer_claim",
+        "store_nonce": "AB".repeat(32),
+    });
+    bad["capsule_id"] = json!(json_digest(&bad).unwrap());
+    let mut records = Records::default();
+    let a = capsule("a", CapsuleSpec::default());
+    records.put(&a, true);
+    let log = make_log(&[cid(&a), cid(&bad)], records, None);
+    let source = WithContent {
+        source: &log,
+        contents: HashMap::from([(2, bad)]),
+    };
+    refused(
+        build_evidence_bundle(&source, &carrying(&a, Interval::From(1))),
+        "non_record_leaf_malformed:2",
+    );
+}
+
+#[test]
+fn carrying_over_a_range_without_padding_adds_no_member() {
+    let (log, caps) = chain();
+    let source = WithContent {
+        source: &log,
+        contents: HashMap::new(),
+    };
+    let bundle = build_evidence_bundle(&source, &carrying(&caps[2], Interval::From(1))).unwrap();
+    assert!(bundle["completeness_certificate"]
+        .get("non_record_leaves")
+        .is_none());
+}
