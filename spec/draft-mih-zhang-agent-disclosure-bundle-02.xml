@@ -42,14 +42,16 @@ fragment, an offline HTML report carries a bundle in its shell, and a hosted
 report serves a bundle at its URL. The bundle does not alter any enclosed
 Capsule. It declares its citation closure and any missing cited records,
 carries verified disclosure preimages as a bundle-level overlay, separates
-three different completeness claims, and permits independently specified
+three different completeness claims, can carry the producer's signed
+declaration of what it offers in each category of evidence, and permits
+independently specified
 extension blocks and countersignatures: signatures by a party other than the
 producer over the bundle digest, each accompanied by a statement of which
 claims that party recomputed and with what result.</t>
     </abstract>
   </front>
   <middle>
-    <?line 106?>
+    <?line 108?>
 
 <section anchor="introduction">
       <name>Introduction</name>
@@ -154,6 +156,7 @@ untyped replacement formats.</t>
   "disclosure_record": "<capsule_id>",
   "completeness_certificate": { ... },
   "checkpoint": { ... },
+  "category_coverage": { ... },
   "verification": { ... },
   "extensions": { "<registered kind>": { ... } },
   "countersignatures": [ ... ]
@@ -472,6 +475,171 @@ over a log that contains one is reported, at best, as not established through
 log without that result uses a producer-selected certificate.</t>
       </section>
     </section>
+    <section anchor="category-coverage">
+      <name>Category Coverage</name>
+      <t><tt>category_coverage</tt>, when present, is the producer's signed declaration of
+what it offers in each category of a named category set: for each category,
+exactly one status. It answers the <tt>categories</tt> field of an Evidence Request
+(<xref target="I-D.mih-agent-evidence-request"/>), and a producer MAY include it without
+one. <strong>It declares; it does not prove.</strong> A verifier checks that it is well
+formed, who signed it, and whether it is consistent with what the Bundle
+carries. It never establishes that the producer offers everything it
+declares, or that nothing exists in a category declared absent.</t>
+      <artwork><![CDATA[
+"category_coverage": {
+  "set": "<category set identifier>",
+  "categories": {
+    "<category name>": { "status": "AVAILABLE" },
+    "<category name>": { "status": "UNDISCLOSED",
+                         "policy_uri": "<absolute URI>" }
+  },
+  "request_digest": "<64 hex>",
+  "signer": { "key_id": "<64 hex>" },
+  "signature": "<128 hex>"
+}
+]]></artwork>
+      <t><tt>set</tt> is REQUIRED, a non-empty string naming a category set
+(<xref target="iana"/>). A set whose identifier begins <tt>x-</tt> is private: it is not
+registered, and a verifier never treats it as known. <tt>categories</tt> is
+REQUIRED, a non-empty object keyed by category name; each value is an object
+with <tt>status</tt> and, where required, <tt>policy_uri</tt>. <tt>request_digest</tt>,
+OPTIONAL, is the digest of the Evidence Request this declaration answers,
+computed as <xref target="I-D.mih-agent-evidence-request"/> computes a request digest, in
+lowercase hexadecimal. <tt>signer</tt> and <tt>signature</tt> are OPTIONAL, and present
+together or not at all. Members not defined here are ignored.</t>
+      <t>The member is part of the bundle digest (<xref target="bundle-digest"/>), so a
+countersignature binds it.</t>
+      <section anchor="category-statuses">
+        <name>Statuses</name>
+        <t>Each category has exactly one <tt>status</tt>, written in upper case:</t>
+        <table>
+          <thead>
+            <tr>
+              <th align="left">status</th>
+              <th align="left">Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left">
+                <tt>AVAILABLE</tt></td>
+              <td align="left">evidence in this category is offered</td>
+            </tr>
+            <tr>
+              <td align="left">
+                <tt>PARTIAL</tt></td>
+              <td align="left">only some evidence in this category is offered</td>
+            </tr>
+            <tr>
+              <td align="left">
+                <tt>WITHHELD</tt></td>
+              <td align="left">evidence in this category may exist and is not released to this requester</td>
+            </tr>
+            <tr>
+              <td align="left">
+                <tt>DELETED</tt></td>
+              <td align="left">evidence in this category was destroyed or has expired</td>
+            </tr>
+            <tr>
+              <td align="left">
+                <tt>ABSENT</tt></td>
+              <td align="left">the producer states that it holds nothing in this category</td>
+            </tr>
+            <tr>
+              <td align="left">
+                <tt>UNDISCLOSED</tt></td>
+              <td align="left">the producer does not state which of the other statuses applies, under the policy <tt>policy_uri</tt> names</td>
+            </tr>
+          </tbody>
+        </table>
+        <t><tt>AVAILABLE</tt>, <tt>PARTIAL</tt>, <tt>WITHHELD</tt>, <tt>DELETED</tt> and <tt>UNDISCLOSED</tt> are the
+retention states of the Evidence Layer <xref target="I-D.mih-agent-evidence-layer"/>, with
+the same meanings, applied to a category rather than to one record's payload.
+<tt>ABSENT</tt> is the producer's asserted absence in that document's sense: its own
+unproven claim about its own store, never a non-membership proof and never
+the requester's recorded absence of <xref target="I-D.mih-agent-evidence-request"/>. The
+retention state <tt>LEGAL_HOLD</tt> is not a status: it changes what may happen to
+evidence, not what is offered.</t>
+        <t><tt>UNDISCLOSED</tt> MUST carry <tt>policy_uri</tt>, an absolute URI (<xref target="RFC3986"/>,
+Section 4.3) naming the policy under which the status is not disclosed;
+<tt>policy_uri</tt> MAY accompany any other status. <tt>WITHHELD</tt> and <tt>UNDISCLOSED</tt> are
+different statements and MUST NOT be conflated: <tt>WITHHELD</tt> says evidence may
+exist and is not released; <tt>UNDISCLOSED</tt> says nothing about whether any
+exists.</t>
+      </section>
+      <section anchor="category-signature">
+        <name>Signature</name>
+        <t><tt>signer.key_id</tt> is a 32-byte Ed25519 <xref target="RFC8032"/> public key as 64 lowercase
+hexadecimal characters. <tt>signature</tt> is the Ed25519 signature, as 128
+lowercase hexadecimal characters, under that key over the signing input</t>
+        <artwork><![CDATA[
+UTF8(JCS({"category_coverage": <the member without signature>,
+          "root": <the Bundle's root>}))
+]]></artwork>
+        <t>Including <tt>root</tt> binds the declaration to the Bundle it was made for, so a
+signed declaration copied into another Bundle does not verify. The signature
+attributes the declaration to the holder of the key. It does not establish
+who that holder is; a verifier MAY compare <tt>signer.key_id</tt> with the
+producer's keys (<xref target="self-countersignature"/>) and report the result.</t>
+      </section>
+      <section anchor="category-properties">
+        <name>Verifier Properties</name>
+        <t>A verifier that implements this member reports the following properties,
+each as exactly one of <tt>PASS</tt>, <tt>FAIL</tt>, <tt>NOT_PRESENT</tt>, <tt>NOT_CHECKED</tt> and
+<tt>INCONCLUSIVE</tt>, with the meanings of the countersignature results
+(<xref target="countersign-entry"/>): the check held, did not hold, had nothing to operate
+on, could not run, or resolved only in part. A Bundle without the member has
+no category properties.</t>
+        <dl>
+          <dt><tt>category_coverage_form</tt>:</dt>
+          <dd>
+            <t><tt>PASS</tt> when the member is as described above, including a <tt>policy_uri</tt> for
+every <tt>UNDISCLOSED</tt> status; otherwise <tt>FAIL</tt>. When it is <tt>FAIL</tt>, every other
+property is <tt>NOT_CHECKED</tt>.</t>
+          </dd>
+          <dt><tt>category_coverage_signature</tt>:</dt>
+          <dd>
+            <t><tt>NOT_PRESENT</tt> when the member carries no signature; <tt>PASS</tt> when the
+signature verifies; <tt>FAIL</tt> otherwise.</t>
+          </dd>
+          <dt><tt>category_coverage_set_registered</tt>:</dt>
+          <dd>
+            <t><tt>NOT_PRESENT</tt> for a private (<tt>x-</tt>) set; <tt>INCONCLUSIVE</tt> when the verifier
+does not know the set; <tt>FAIL</tt> when it knows the set and a declared category
+is not one of its names; <tt>PASS</tt> otherwise.</t>
+          </dd>
+          <dt><tt>category_coverage_request</tt>:</dt>
+          <dd>
+            <t><tt>NOT_CHECKED</tt> when the verifier does not have the Evidence Request;
+<tt>FAIL</tt> when <tt>request_digest</tt> is present and is not that request's digest;
+<tt>NOT_PRESENT</tt> when the request has no <tt>categories</tt> field; <tt>FAIL</tt> when the
+request names another set, or a requested category has no entry; <tt>PASS</tt>
+otherwise.</t>
+          </dd>
+          <dt><tt>category_coverage_consistency</tt>:</dt>
+          <dd>
+            <t><tt>NOT_CHECKED</tt> when the verifier cannot assign the Bundle's records to
+categories (the set's definition says how); <tt>FAIL</tt> when a record the Bundle
+carries belongs to a category declared <tt>ABSENT</tt> or <tt>WITHHELD</tt>; <tt>PASS</tt>
+otherwise. A record in a <tt>DELETED</tt> or <tt>UNDISCLOSED</tt> category is not a
+contradiction, and an <tt>AVAILABLE</tt> category with no record in the Bundle is
+not one either: the Bundle may cover less than the producer offers.</t>
+          </dd>
+        </dl>
+        <t>Each property stands alone. A verifier MUST report them separately and MUST
+NOT combine them, or the statuses, into a count, a percentage, a score or a
+claim of completeness. It MUST NOT report a <tt>PASS</tt> of every property as proof
+that the producer offered everything it holds. A <tt>FAIL</tt> of
+<tt>category_coverage_form</tt>, <tt>category_coverage_signature</tt> or
+<tt>category_coverage_consistency</tt> is a failed check of the Bundle; the other
+properties are reported and change no other result. Category coverage is
+reported apart from the completeness claims of <xref target="completeness"/> and changes
+none of them.</t>
+        <t>A verifier that does not implement this member follows the rule for any
+member it does not know: it reports nothing about it, and the member stays
+covered by the bundle digest.</t>
+      </section>
+    </section>
     <section anchor="extensions">
       <name>Typed Extensions</name>
       <t><tt>extensions</tt>, when present, is an object keyed by a registered Evidence Bundle
@@ -647,7 +815,8 @@ composed-join = {
 }
 
 join-basis = "pre_agreed_identifier" / "shared_artifact_digest" /
-             "issued_receipt" / "same_interval"
+             "issued_receipt" / "same_interval" /
+             "controller_binding"
 join-state = "agree" / "mismatch" / "unjoined" / "one_sided"
 
 label-id   = text .regexp "[A-Za-z0-9._:-]{1,128}"
@@ -818,9 +987,11 @@ block.</t>
 record. The members are linked when the two values are identical.</t>
             </li>
           </ul>
-          <t>The bases <tt>issued_receipt</tt> (the two records cite one Receipt) and
-<tt>same_interval</tt> (the two records fall in one declared interval) are reserved
-for a later specification that defines their derivation. A block MAY declare
+          <t>The bases <tt>issued_receipt</tt> (the two records cite one Receipt),
+<tt>same_interval</tt> (the two records fall in one declared interval) and
+<tt>controller_binding</tt> (the holders of the two root records' signing keys
+jointly signed a statement binding the keys) are reserved for a later
+specification that defines their derivation. A block MAY declare
 joins on them; such joins are digest-covered. A verifier that does not
 implement a derivation for the basis reports such a join as <tt>not_derivable</tt>.
 It MUST NOT report the join as a derived agreement, and MUST NOT count it as
@@ -1225,6 +1396,17 @@ weaker.</t>
           </li>
         </ul>
       </section>
+      <section anchor="category-security">
+        <name>Category Coverage</name>
+        <t>A category declaration is the producer's statement about itself
+(<xref target="category-coverage"/>). A producer that chooses its own categories can
+declare whatever is favorable to it; this is why a private set is never
+reported as registered, and why a verifier reports properties rather than a
+verdict of completeness. A signed <tt>ABSENT</tt> is attributable and can be
+contradicted by records a counterparty holds, but it is not evidence that
+nothing exists. Including the Bundle's <tt>root</tt> in the signing input stops a
+declaration made for one Bundle from being presented with another.</t>
+      </section>
     </section>
     <section anchor="privacy">
       <name>Privacy Considerations</name>
@@ -1272,6 +1454,14 @@ values.</t>
         <li>
           <t>"Evidence Bundle countersignature type", initial values <tt>cose-sign1</tt>
 (<xref target="bundle-digest"/>) and <tt>countersign/v1</tt> (<xref target="countersign-entry"/>).</t>
+        </li>
+        <li>
+          <t>"Evidence Bundle category set", with no initial values. Each entry
+registers a category set identifier for <tt>category_coverage</tt>
+(<xref target="category-coverage"/>), its category names, and how a record is assigned
+to a category. The registering specification names any external source of
+the categories by version. Identifiers beginning <tt>x-</tt> are private and are
+not registered.</t>
         </li>
       </ol>
       <t>Until IANA registry creation, the interim registry of record is <tt>REGISTRY.md</tt>
@@ -1483,6 +1673,21 @@ the same values and policy.</t>
           </front>
           <seriesInfo name="Internet-Draft" value="draft-mih-agent-evidence-request-01"/>
         </reference>
+        <reference anchor="RFC3986">
+          <front>
+            <title>Uniform Resource Identifier (URI): Generic Syntax</title>
+            <author fullname="T. Berners-Lee" initials="T." surname="Berners-Lee"/>
+            <author fullname="R. Fielding" initials="R." surname="Fielding"/>
+            <author fullname="L. Masinter" initials="L." surname="Masinter"/>
+            <date month="January" year="2005"/>
+            <abstract>
+              <t>A Uniform Resource Identifier (URI) is a compact sequence of characters that identifies an abstract or physical resource. This specification defines the generic URI syntax and a process for resolving URI references that might be in relative form, along with guidelines and security considerations for the use of URIs on the Internet. The URI syntax defines a grammar that is a superset of all valid URIs, allowing an implementation to parse the common components of a URI reference without knowing the scheme-specific requirements of every possible identifier. This specification does not define a generative grammar for URIs; that task is performed by the individual specifications of each URI scheme. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="66"/>
+          <seriesInfo name="RFC" value="3986"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3986"/>
+        </reference>
       </references>
       <references anchor="sec-informative-references">
         <name>Informative References</name>
@@ -1541,7 +1746,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 1201?>
+    <?line 1360?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>
@@ -1569,7 +1774,19 @@ membership is the claim, and that unknown <tt>completeness_certificate</tt> memb
 are ignored. Privacy Considerations: what a padded range reveals.</t>
         </li>
         <li>
-          <t>Cites Evidence Request -01 and Evidence Layer -00.</t>
+          <t>Category coverage (<xref target="category-coverage"/>): the OPTIONAL <tt>category_coverage</tt>
+member, a producer's signed declaration of one status per category of a
+named category set (<tt>AVAILABLE</tt>, <tt>PARTIAL</tt>, <tt>WITHHELD</tt>, <tt>DELETED</tt>, <tt>ABSENT</tt>,
+<tt>UNDISCLOSED</tt>; <tt>UNDISCLOSED</tt> requires <tt>policy_uri</tt>), answering the Evidence
+Request <tt>categories</tt> field; five verifier properties, reported separately and
+never combined; it declares and does not prove. Created the "Evidence Bundle
+category set" registry, with no initial values.</t>
+        </li>
+        <li>
+          <t><tt>composed/v1</tt>: added <tt>controller_binding</tt> to the reserved join bases.</t>
+        </li>
+        <li>
+          <t>Cites Evidence Request -01 and, informatively, Evidence Layer -00.</t>
         </li>
       </ul>
       <t>Since -00:</t>
