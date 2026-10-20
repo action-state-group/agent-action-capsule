@@ -9,8 +9,9 @@ something no pinned document says, it states the requirement as its own and list
 drop it.
 
 This revision covers versions (§3), naming (§4), canonical bytes (§5), the digest and signature
-binding of every message (§6), per-property verification statuses (§7), the mapping from
-outcomes to an Evidence Result (§8), error codes (§9), the acceptance record (§11.1), lifecycle
+binding of every message (§6), coverage declarations (§6.7), per-property verification statuses
+(§7), the mapping from outcomes to an Evidence Result (§8), error codes (§9), the acceptance
+record (§11.1), lifecycle
 links (§11.2), the Evidence Contract prose (§11.3), carriage over A2A and MCP with discovery
 (§11.4), and the conformance vectors (§11.5).
 
@@ -41,7 +42,8 @@ IPR page:
 member names and signing input of the artifact response envelope (§6.2), the verification-material
 kind identifiers this profile adds and their check procedure (§6.2.1), the absence record
 shape (§6.4), the identity of recipient-specific disclosures and their salted-digest commitments
-(§6.5), the per-property verification status vocabulary and property catalogue (§7),
+(§6.5), the coverage declaration, its kinds, its properties and issuer independence (§6.7), the
+per-property verification status vocabulary and property catalogue (§7),
 the outcome-to-status mapping (§8), the acceptance record, acceptance receipt, ordering
 evidence rules and acceptance findings (§11.1), the lifecycle statement, its issuer rules,
 lifecycle findings and what a verifier shows (§11.2), the rules for using an Evidence Contract
@@ -57,6 +59,7 @@ and the discovery properties (§11.4).
 | DE | `draft-mih-agent-disclosure-envelope` | -00 (`spec/draft-mih-agent-disclosure-envelope-00.md`) | the JSON value digest rule |
 | SR | `draft-mih-agent-settlement-records` | -00 (`spec/draft-mih-agent-settlement-records-00.md`) | the as-transmitted rule for wrapped foreign objects |
 | RES | Evidence Result v0 | `spec/evidence-result-v0.md` | the claim, sufficiency, verdict and presentation carrier rules |
+| CB | Controller Binding v0 | `spec/controller-binding-v0.md` | the binding record, its properties, and when a binding applies to a pair (§6.7.4) |
 | BA | `draft-mih-agent-bilateral-attestation` | -02 (`spec/draft-mih-agent-bilateral-attestation-02.md`) | the requesting and performing parties, and acknowledgment as receipt without agreement |
 | EL | `draft-mih-agent-evidence-layer` | -00 (`spec/draft-mih-agent-evidence-layer-00.md`) | what a Receipt proves, witnesses, the link shape and its closed vocabulary, and the `cites`, `acknowledges`, `supersedes` and `rebuts` links |
 | EC | Evidence Contract v0 schema | `capsule_engine/schemas/evidence-contract-v0.json` in the capsule-engine repository at commit `fd43d4329ea31d69e9bdd0a79f23f013c3615219`, SHA-256 of the file `6d10d5eb97e15421db0ab922b5f6d1f0a2e9f453fb64e52fb45306ba029ad480` | the contract and every member and value of it (§11.3); the eight-value status, its four-value projection, and per-requirement handling of missing and conflicting evidence |
@@ -644,7 +647,7 @@ mechanism, and keeps ER's six subject forms closed [P-14]:
    projection's own content.
 
 The definition document's member names and its declared-field-set syntax are not fixed in this
-revision (P-14).
+revision (P-14), except `coverage_declaration` (§6.7).
 
 ### 6.6 Artifact, Evidence Bundle, presentation
 
@@ -658,6 +661,194 @@ revision (P-14).
   envelope, never a rendering of them [P-15].
 - A recipient-specific disclosure is a derivation (§6.5). It is not a rendering of the canonical
   Artifact and not a variant of it.
+
+### 6.7 Coverage declaration
+
+A set of answers given under one derivation, such as a History, carries exactly one **coverage
+declaration**. It says which population the answers claim to be, and what any completeness is
+relative to. It is the member `coverage_declaration` of the derivation's definition document
+(§6.5), so every envelope answering under that derivation signs it through `derivation` (§6.2)
+[P-58]. A host profile MAY instead fix that a definition of its own declares one kind through
+another member of that definition, and then that member is the declaration. The personal-agent
+History profile does this: the Basic level's `completeness` `"not_asserted"` declares
+`holder_selected` (its §4.1, PA-15).
+
+**A valid signature never implies completeness.** Every envelope property passing shows who
+answered, what was answered and at which anchor. It never shows that the answers are all there
+are. A verifier MUST NOT report a set of answers as complete, or as of any kind other than the one
+its signed declaration names, because their signatures verify [P-58].
+
+Other members named `coverage` mean other things, and none of them is a coverage declaration:
+
+| Member | Where | What it says |
+|---|---|---|
+| `coverage` | a request (§6.1) [ER §3.2] | the anchor an answer is asked at (`expected_pin`), or the freshness it must meet (`min_freshness`) |
+| `coverage` | an Evidence Contract requirement (§11.3.3) | how much of the subject the evidence is required to cover |
+| `aggregate.coverage` | an Evidence Result [RES §3] | how many requirements were evaluated, excluded and unresolved |
+| `coverage_report` | an Evidence Result [RES §7.1] | per requirement, what evidence exists and what is missing |
+| `coverage_declaration` | a definition document (this section); an Evidence Result aggregate (§6.7.5) | which population of units a set of answers claims to be |
+
+#### 6.7.1 The three kinds
+
+`coverage_declaration` is a JSON object whose `kind` is one of three values [P-58]:
+
+| `kind` | Other members | The population | Completeness |
+|---|---|---|---|
+| `holder_selected` | none | the units the holder chose to show | not asserted |
+| `stream_interval` | `rule`, `interval`, `live_set` | every record the rule selects, in the streams of the live set, in the interval | relative to those streams, that rule and that interval only, never to anything the holder did outside them |
+| `source_authoritative` | `source`, `method`, `population` | the units listed by a named external source, in an object that source issued, checked by its own method | relative to that source's list only |
+
+`stream_interval` members:
+
+- `rule`: a rule token. This revision defines one, `all_records`: every record the stream holds in
+  the interval [P-59].
+- `interval`: `{"from": <anchor digest> or null, "to": <anchor digest>}`. `to` is the anchor every
+  answer is given at (§6.2 `anchor.digest`). `from` is an earlier anchor, and the interval holds
+  the records committed after it. Null means from the start of each stream.
+- `live_set`: the holder's opening of the anchor. It is a non-empty array with one entry per
+  stream that `to` commits to, sorted by `stream`, without duplicates. Each entry is:
+  - `stream`: the stream's name, as an artifact names it;
+  - `checkpoint`: the digest of the stream's checkpoint that `to` commits to. Where `to` is itself
+    that stream's checkpoint, the two are equal;
+  - `start`: the lowest leaf index in the interval, 0 when `from` is null;
+  - `count`: the number of records the rule selects in that stream in the interval.
+
+  Over two or more streams, `to` is a checkpoint that commits to each stream's checkpoint, for
+  example a witnessed checkpoint tick.
+
+`source_authoritative` members:
+
+- `source`: the key identifier (§5.2) of the external source;
+- `method`: the native verification method of the source's object, named as a `native_check`
+  report names it (§7.2);
+- `population`: the SHA-256 of the octets of the source's object, as transmitted (§5.1).
+
+The source's object lists the units, in the source's own format. An adapter declaration (for
+example `spec/adapters/`) says how its units are read. The object is delivered beside the
+answers, and how is the host profile's choice. This revision registers no format for it [P-59].
+
+#### 6.7.2 Coverage properties
+
+Each is reported in the §7.1 vocabulary, with its method. They are properties of the set, not
+envelope properties (§7.2), and they enter §8 only through §6.7.3 [P-58].
+
+| Property | Kinds | Check |
+|---|---|---|
+| `coverage_declaration_form` | all | the definition carries exactly one declaration (a `coverage_declaration` member, or the member its host profile fixes), of one kind of §6.7.1, with exactly that kind's members in their forms; `start` is 0 when `interval.from` is null |
+| `coverage_declaration_anchor` | `stream_interval` | `interval.to` equals every answer's `anchor.digest`, and `interval.from` differs from it |
+| `coverage_declaration_population` | `stream_interval`, `source_authoritative` | `stream_interval`: every artifact names a stream of the live set, and for each entry, the records carried for that stream with a leaf index of at least `start` are exactly `count` distinct records. `source_authoritative`: the source's object names as its subject the key every answer is given under, and the units it lists are exactly the subjects answered |
+| `coverage_declaration_commitment` | `stream_interval` | the live set holds every stream `to` commits to, and each entry's `checkpoint`, `start` and `count` are what `to` and `from` fix. `NOT_CHECKED` in this revision: no registered material kind shows what an anchor commits to (§6.2.1, P-13) |
+| `coverage_declaration_source` | `source_authoritative` | the source's object hashes to `population`, verifies by `method` under `source`, and `source` is accepted by the relying party's trust policy as of the object's issue time. A verifier that does not implement `method` reports `NOT_CHECKED` (§7.1) |
+| `coverage_declaration_aggregate` | an aggregate (§6.7.5) | the aggregate's kind is the one §6.7.5 derives |
+
+A property that does not apply to a kind is not reported. When `coverage_declaration_form` is
+`FAIL`, no other coverage property is reported, because the declaration has no members to check
+the set against.
+
+#### 6.7.3 What a verifier reports
+
+1. The declared kind, every property of §6.7.2 that applies to it, and what completeness is
+   relative to (§6.7.1, last column).
+2. A coverage property that is `FAIL` is a conformance failure. The set is not accepted as being
+   of its declared kind, whatever its envelopes' statuses are. In particular, holder-selected
+   answers declared `stream_interval` over a live set that names records they leave out fail
+   `coverage_declaration_population`.
+3. A `stream_interval` set whose properties are `PASS` except `coverage_declaration_commitment` is
+   reported as complete relative to the live set the holder opened. The verifier states that it
+   did not check the live set against the anchor. In this revision, a holder that opens a live set
+   leaving out a stream, or under-counting one, passes every property that is checked. Only
+   `coverage_declaration_commitment` would catch it, and that is `NOT_CHECKED` (P-59).
+4. A requirement whose condition needs the set to be complete is never `SATISFIED` from it unless
+   the kind is `stream_interval` or `source_authoritative` and every coverage property that applies
+   to the set is `PASS` [P-58]. Where the evaluation would otherwise give it `SATISFIED`, its status
+   is `INSUFFICIENT` for `holder_selected` or when a property is `FAIL` or `NOT_PRESENT`, and
+   otherwise `UNKNOWN` when one is `NOT_CHECKED` or `INCONCLUSIVE`. Either way the verdict is
+   `not_evaluable` [RES §1]. This rule only ever lowers a `SATISFIED`. It never raises a status.
+
+In this revision a contract's `coverage` and `independence` are opaque text (§11.3.3). Under P-48 a
+requirement whose condition a verifier cannot apply is `UNKNOWN` already, so item 4 and §6.7.4
+change no status a verifier built from this document alone gives. They fix the result for a
+verifier that can apply such a condition, and for later revisions that give the members a
+vocabulary. They are the reason a declaration, or a pair of signatures, never by itself makes a
+completeness or corroboration requirement `SATISFIED`.
+
+So no completeness-dependent requirement reaches `SATISFIED` from a `stream_interval` set while
+`coverage_declaration_commitment` is `NOT_CHECKED`. A later revision that registers the material
+turns it into `PASS` without changing this section.
+
+#### 6.7.4 Issuer independence
+
+When a verifier compares two members of a set that are presented as corroborating each other, for
+example two agreeing halves of one exchange, it reports `issuer_independence` for the pair in the
+§7.1 vocabulary [P-60]:
+
+| Status | When | The pair is shown as |
+|---|---|---|
+| `FAIL` | both members are signed by the same key, or the keys differ and a controller binding applies to the pair [CB §6.2] | "redundant, not corroborating", with the reason: same key, or the binding's claim type and digest |
+| `NOT_CHECKED` | the keys differ, and no controller binding applies to the pair | "not corroborating" |
+| `PASS` | only with evidence that the issuers are distinct controllers, in a form this revision does not register | corroborating, with the evidence named |
+
+Two signatures never show two parties. Distinct keys alone never give `PASS`, and a verifier built
+from this revision alone never reports `PASS`. A `NOT_CHECKED` pair is not shown as redundant,
+because that would assert one controller, which nothing examined showed.
+
+A controller binding [CB] is a record that both keys sign, stating that one controller holds them,
+that one delegated to the other, or that both sit in one organization. Each of these says the two
+issuers are not independent. A binding that applies therefore turns `NOT_CHECKED` into `FAIL`,
+never into `PASS` [CB §7]. A binding that does not apply (expired, revoked, signed by one key,
+under a method the verifier does not implement, malformed, or naming other keys) leaves the pair
+`NOT_CHECKED`, as with no binding. No path through a binding gives a pair more than it has without
+one [CB §6.2]. The verifier reports the binding's
+properties beside the pair [CB §6.1].
+
+A requirement whose condition needs corroboration is never `SATISFIED` from a pair whose
+`issuer_independence` is not `PASS`. Where the evaluation would otherwise give it `SATISFIED`, its
+status is `INSUFFICIENT` on `FAIL` and `UNKNOWN` on `NOT_CHECKED`, with verdict `not_evaluable`. As
+with §6.7.3 item 4, this only ever lowers a `SATISFIED`, and P-48 already gives `UNKNOWN` where the
+condition is opaque text.
+
+This is the same rule as the Evidence Bundle's for composed members in one custody domain
+("redundant, not corroborating"), applied to keys. It differs from `coverage_report.independence`
+[RES §7.1], which counts producers per requirement.
+
+#### 6.7.5 Evidence Result aggregates
+
+An Evidence Result aggregate MAY carry `aggregate.coverage_declaration`: `{"kind": <one kind of
+§6.7.1>}` [RES §7.2]. When it does, the kind MUST NOT be stronger than the evidence [P-58]. It is
+the declared kind of every set the aggregate's claims rest on, when all of those sets declare one
+kind and none has a coverage property that is `FAIL`. Otherwise it is `holder_selected`. A verifier
+derives the kind by this rule and reports `coverage_declaration_aggregate`: `FAIL` when the
+aggregate carries another kind. An aggregate whose claims rest on no declared set carries no
+declaration. The aggregate's kind is a declaration, not a finding. A verifier shows it beside the
+sets' coverage properties, including any that are `NOT_CHECKED`, and never as completeness
+established.
+
+#### 6.7.6 Vectors
+
+The vectors are in `vectors/coverage-declaration-v0/`.
+`python/scripts/generate_coverage_declaration_v0_vectors.py` generates them from the run in
+`vectors/personal-history-basic-v0/`, and `python/tests/test_coverage_declaration_v0_vectors.py`
+checks them. They pin trust, verification policy, contract and evaluation time as §11.5 does.
+
+As in §11.5, some formats are fixed for the vectors only and are not registered:
+
+- the definition `coverage_declaration_example/0`, which is the personal-agent History Basic
+  level's definition with `coverage_declaration` in place of `completeness`;
+- a source's population object: `issued_at`, `issuer`, `items` (the deal references, sorted),
+  `subject` (the holder key) and `sig`, where `sig` is Ed25519 over UTF-8 of JCS of the other
+  members;
+- a half: the producer record of §11.5.
+
+| Cases | What they show |
+|---|---|
+| `holder-selected` | the Basic level History, read as `holder_selected` (its `completeness` `not_asserted`); an aggregate declaring `holder_selected` |
+| `stream-interval` | four deals in four streams at one anchor, with every record of the live set answered; commitment `NOT_CHECKED` |
+| `source-authoritative` | three deals listed by a source's population object, all answered; `-deal-unlisted`, `-other-subject` and `-forged-population` fail population, population and source |
+| `cherry-picked` | `stream_interval` declared over three holder-chosen deals of the live set's four: population `FAIL`; its aggregate may only declare `holder_selected` |
+| `stream-interval-record-missing` | one record of an answered stream left out of its artifact, re-signed: population `FAIL`; `-anchor-mismatch` and `-unknown-rule` fail anchor and form |
+| `aggregate-stronger-than-evidence` | the Basic level History under an aggregate declaring `stream_interval`: aggregate `FAIL` |
+| `same-controller-halves-same-key` | two agreeing halves under one key: `issuer_independence` `FAIL`, redundant |
+| `same-controller-halves-unbound-keys` | two agreeing halves under two keys and no evidence about their controllers: `NOT_CHECKED`, not corroborating |
 
 ## 7. Per-property verification statuses
 
@@ -679,7 +870,8 @@ algorithm or procedure, for example `Ed25519 over JCS signing input`. A report M
 
 This vocabulary is distinct from the Evidence Contract's eight-value per-requirement status
 [EC `bundleAssertionStatus`] and from sufficiency [RES §1]. A property status describes one
-check. It never states whether a requirement is satisfied. §8 is the only bridge between the two.
+check. It never states whether a requirement is satisfied. §8 is the only bridge between the two
+that can give a status; §6.7.3 item 4 and §6.7.4 can only turn a `SATISFIED` into another status.
 
 ### 7.2 Property catalogue
 
@@ -704,6 +896,9 @@ check. It never states whether a requirement is satisfied. §8 is the only bridg
 | lifecycle properties | lifecycle statements | §11.2.5 | decide the lifecycle finding (§11.2.5), never a status of §8 |
 | `manifest_form` | a manifest | §11.4.7 [P-45] | no; reported separately, never a status of §8 |
 | `manifest_consistency` | two or more manifests from one responder | §11.4.7 [P-45] | no; reported separately, never a status of §8 |
+| coverage properties | a set of answers under one derivation; an Evidence Result aggregate | §6.7.2 [P-58] | decide whether the set is accepted as its declared kind (§6.7.3); enter §8 only through §6.7.3 |
+| `issuer_independence` | each pair of members presented as corroborating | §6.7.4 [P-60] | enters §8 only through §6.7.4 |
+| controller binding properties | a controller binding delivered with a pair | [CB §6.1] | decide whether the binding applies to the pair (§6.7.4), never a status of §8 |
 
 When `profile_version` is not `PASS`, every other envelope property is `NOT_CHECKED` [P-4].
 `native_check` is not an envelope property: it applies to foreign objects inside an Artifact
@@ -821,6 +1016,8 @@ Where each row comes from:
 4. When the status is `WITHHELD` or `NOT_COMMITTED`, the claim's presentation carrier MUST be
    `analysis` or `story`, never `disclosure` [RES §2]. A recorded absence SHOULD use `story`,
    which is RES §2's own example [P-17].
+5. After the row that decides, §6.7.3 item 4 and §6.7.4 may turn a `SATISFIED` into `INSUFFICIENT`
+   or `UNKNOWN`. Nothing outside this section produces `SATISFIED` [P-58].
 
 ### 8.3 Filling the claim
 
@@ -2835,6 +3032,29 @@ a later draft revision.
   property" passed, while rows 5 and 6 themselves say every *required* envelope property.
   `responder_key_current` is not required, and it is `NOT_CHECKED` whenever the verifier is offline.
   The vectors read "every required envelope property" (§11.5).
+- **P-58** The coverage declaration (§6.7):
+  - one `coverage_declaration` per set of answers, as a member of the derivation's definition, with
+    one of three kinds;
+  - the rule that a valid signature never implies completeness;
+  - the coverage properties, and the rule that a completeness-dependent requirement is never
+    `SATISFIED` unless every applicable property is `PASS`;
+  - the aggregate rule, under which an aggregate's kind is never stronger than its evidence.
+
+  No pinned document states any of these. ER's `coverage` names an anchor, not a population
+  [ER §3.2]. Candidate for ER -01 or the Evidence Bundle.
+- **P-59** Open:
+  - rules for `stream_interval` beyond `all_records`, for example by record type or by deal;
+  - whether a profile may define kinds beyond the three, or may only refine the rule inside
+    `stream_interval`;
+  - a registered format for a source's population object.
+
+  `coverage_declaration_commitment` stays `NOT_CHECKED` until a material kind shows what an anchor
+  commits to (P-13). Until then, a live set that leaves out a stream passes every property that is
+  checked (§6.7.3 item 3).
+- **P-60** `issuer_independence` (§6.7.4). Open: the evidence that gives `PASS`, which has to show
+  that two keys have distinct controllers. A controller binding [CB] cannot give it, because it
+  shows the opposite: a binding that applies gives `FAIL`. Until a revision registers evidence of
+  distinct controllers, a verifier reports `FAIL` or `NOT_CHECKED` only.
 
 ## References
 
@@ -2866,5 +3086,6 @@ a later draft revision.
 - Model Context Protocol specification, revision 2026-07-28,
   <https://modelcontextprotocol.io/specification/2026-07-28>.
 - Evidence Result v0, `spec/evidence-result-v0.md`.
+- Controller Binding v0, `spec/controller-binding-v0.md`.
 - Evidence Contract v0 schema, `evidence-contract-v0.json`.
 - RFC 2119, RFC 8174 (BCP 14); RFC 3339; RFC 4648; RFC 8032; RFC 8259; RFC 8785; RFC 8949; RFC 9052; RFC 9597.

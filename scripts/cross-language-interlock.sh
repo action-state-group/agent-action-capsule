@@ -47,9 +47,17 @@ seal_go() { (cd "$repo/go" && GOWORK=off go run ./cmd/cross_language seal); }
 verify_go() { (cd "$repo/go" && GOWORK=off go run ./cmd/cross_language verify); }
 seal_ts() { node "$repo/ts/dist/cross-language.js" seal; }
 verify_ts() { node "$repo/ts/dist/cross-language.js" verify; }
-rust_example() { cargo run --quiet --locked --manifest-path "$repo/rust/Cargo.toml" --example cross_language -- "$1"; }
+rust_example() { cargo run --quiet --locked --manifest-path "$repo/rust/Cargo.toml" --features agent-action-capsule/strict --example cross_language -- "$@"; }
 seal_rust() { rust_example seal; }
 verify_rust() { rust_example verify; }
+produce_bundle_python() { "$python_bin" "$repo/python/scripts/cross_language.py" bundle-produce "$1"; }
+verify_bundle_python() { "$python_bin" "$repo/python/scripts/cross_language.py" bundle-verify; }
+produce_bundle_go() { (cd "$repo/go" && GOWORK=off go run ./cmd/cross_language bundle-produce "$1"); }
+verify_bundle_go() { (cd "$repo/go" && GOWORK=off go run ./cmd/cross_language bundle-verify); }
+produce_bundle_ts() { node "$repo/ts/dist/cross-language.js" bundle-produce "$1"; }
+verify_bundle_ts() { node "$repo/ts/dist/cross-language.js" bundle-verify; }
+produce_bundle_rust() { rust_example bundle-produce "$1"; }
+verify_bundle_rust() { rust_example bundle-verify; }
 
 languages=(python go ts rust)
 
@@ -210,3 +218,61 @@ print(json.dumps(json.load(open(sys.argv[1]))["envelope"], separators=(",", ":")
     printf '%s-built Disclosure Envelope -> %s DE-3 verification: pass\n' "$producer" "$consumer"
   done
 done
+
+# Evidence Bundle producer: every implementation builds the same three Bundles
+# from one checkpointed log of signed records, and a one-byte change of its
+# whole-log Bundle; every implementation's strict verifier reads all of them.
+# The three built Bundles must also be the same JCS bytes in every language.
+bundle_fixture="$repo/vectors/cross-language/bundle-producer-log.json"
+bundle_kinds=(whole-log suffix producer-selected tampered)
+expected_verdict() {
+  case "$1" in
+    whole-log | suffix) echo VALID ;;
+    producer-selected) echo INCOMPLETE ;;
+    tampered) echo INVALID ;;
+  esac
+}
+for producer in "${languages[@]}"; do
+  for kind in whole-log suffix producer-selected; do
+    "produce_bundle_$producer" "$kind" < "$bundle_fixture" > "$work/bundle-$producer-$kind.json"
+  done
+  # Flip the first hex digit of the first body_digest: one byte of the JSON
+  # text, which the range proof no longer covers.
+  "$python_bin" -c '
+import sys
+
+text = open(sys.argv[1], "rb").read()
+marker = b"\"body_digests\":[\""
+at = text.index(marker) + len(marker)
+flipped = b"1" if text[at:at + 1] == b"0" else b"0"
+sys.stdout.buffer.write(text[:at] + flipped + text[at + 1:])
+' "$work/bundle-$producer-whole-log.json" > "$work/bundle-$producer-tampered.json"
+done
+
+mismatches=()
+for kind in whole-log suffix producer-selected; do
+  for producer in go ts rust; do
+    if cmp -s "$work/bundle-python-$kind.json" "$work/bundle-$producer-$kind.json"; then
+      printf '%s-built %s Bundle: JCS byte-identical to python-built\n' "$producer" "$kind"
+    else
+      mismatches+=("$producer-built $kind Bundle differs from python-built")
+    fi
+  done
+done
+
+for producer in "${languages[@]}"; do
+  for kind in "${bundle_kinds[@]}"; do
+    want=$(expected_verdict "$kind")
+    for consumer in "${languages[@]}"; do
+      got=$("verify_bundle_$consumer" < "$work/bundle-$producer-$kind.json")
+      printf '%s-built %s -> %s strict: %s\n' "$producer" "$kind" "$consumer" "$got"
+      if test "$got" != "$want"; then
+        mismatches+=("$producer-built $kind -> $consumer strict: $got, expected $want")
+      fi
+    done
+  done
+done
+if test "${#mismatches[@]}" -gt 0; then
+  printf '%s\n' "${mismatches[@]}" >&2
+  exit 1
+fi

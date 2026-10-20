@@ -13,12 +13,13 @@ from __future__ import annotations
 
 import base64
 import binascii
+import copy
 import hashlib
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol
 
 from .canonical import MAX_SAFE_INTEGER, FloatInDigestError, UnsafeIntegerError, jcs
 from .disclosure_envelope import (
@@ -46,6 +47,12 @@ __all__ = [
     "COMPLETENESS_VERIFIER_UNAVAILABLE",
     "RecordResult",
     "SELECTION_PRODUCER_SELECTED",
+    "BundleBuildError",
+    "ProofSource",
+    "StoredRecord",
+    "build_evidence_bundle",
+    "build_unproven_bundle",
+    "proof_source_from_cll",
     "WitnessReceiptResult",
 ]
 
@@ -992,3 +999,491 @@ def _extensions(raw: Any) -> list[ExtensionResult]:
     if not isinstance(raw, Mapping):
         return []
     return [ExtensionResult(kind) for kind in sorted(raw)]
+
+
+# -- the producer ----------------------------------------------------------------
+#
+# ``build_evidence_bundle`` assembles a Bundle from a ``ProofSource`` and checks
+# the result with ``verify_bundle(strict=True)`` before returning it. It holds
+# no key and trusts nothing the source returns: the checkpoint is verified from
+# its COSE form, and every proof and record is checked by the strict verifier.
+
+
+class BundleBuildError(ValueError):
+    """The producer refused to build the Bundle; the message says why."""
+
+
+@dataclass(frozen=True)
+class StoredRecord:
+    """A record as a store holds it: the Capsule's JSON bytes and its Producer
+    Envelope bytes (empty when the record is unsigned)."""
+
+    capsule: bytes
+    producer_envelope: bytes = b""
+
+
+class ProofSource(Protocol):
+    """The read-only proof material ``build_evidence_bundle`` reads.
+
+    - ``checkpoint()``: the signed CLL COSE checkpoint the Bundle is built
+      against.
+    - ``leaves()``: the 32-byte value of every leaf, seq ``1`` to
+      ``leaf_count(mmr_size)``, in order; a record's value is its Capsule ID.
+    - ``record(capsule_id)``: the stored record (an object with ``capsule`` and
+      ``producer_envelope`` bytes), or ``None`` when the log does not hold that
+      leaf as a record. Any other failure raises.
+    - ``inclusion_proof(seq)``: the inclusion proof for that leaf at the
+      checkpoint's size, in the Bundle's ``inclusion_proof`` wire shape.
+    - ``range_proof(first_seq)``: the range proof over ``[first_seq, tip]``, in
+      the Bundle's ``range_proof`` wire shape.
+    """
+
+    def checkpoint(self) -> bytes: ...
+
+    def leaves(self) -> Sequence[bytes]: ...
+
+    def record(self, capsule_id: str) -> Any: ...
+
+    def inclusion_proof(self, seq: int) -> Mapping[str, Any]: ...
+
+    def range_proof(self, first_seq: int) -> Mapping[str, Any]: ...
+
+
+#: Extension kinds this package owns; ``extensions`` cannot set them.
+_OWNED_EXTENSIONS = ("producer-key/v1", "composed/v1")
+_PAYLOADS_MODES = ("all", "selected")
+
+
+def _proof_wire(proof: Any) -> dict[str, Any]:
+    return {k: list(v) if isinstance(v, tuple) else v for k, v in proof.__dict__.items()}
+
+
+class _CllProofSource:
+    """``proof_source_from_cll``'s source: a CLL backend's entries and latest
+    checkpoint state, with records from ``records``."""
+
+    def __init__(self, backend: Any, records: Any) -> None:
+        from cll.checkpoint import MemoryNodeStore
+
+        self._backend, self._records = backend, records
+        state = backend.load_cll()
+        self._checkpoint = state.checkpoint
+        self._nodes = MemoryNodeStore()
+        self._nodes.append_nodes(list(state.nodes))
+
+    def checkpoint(self) -> bytes:
+        if self._checkpoint is None:
+            raise BundleBuildError("the log has no checkpoint: nothing can be proven until one is cut")
+        return bytes(self._checkpoint.bytes)
+
+    def leaves(self) -> list[bytes]:
+        if self._checkpoint is None:
+            return []
+        out: list[bytes] = []
+        while len(out) < self._checkpoint.indexed_seq:
+            page = self._backend.scan_entries(len(out), min(1000, self._checkpoint.indexed_seq - len(out)))
+            if not page:
+                break
+            out.extend(bytes(entry.value) for entry in page)
+        return out
+
+    def record(self, capsule_id: str) -> Any:
+        try:
+            return self._records.get(capsule_id)
+        except Exception as exc:  # the artifact-store contract's not-found code
+            if getattr(exc, "code", None) == "not_found":
+                return None
+            raise
+
+    def inclusion_proof(self, seq: int) -> dict[str, Any]:
+        from cll.checkpoint import core
+
+        return _proof_wire(core.inclusion_proof(self._nodes, seq - 1, self._checkpoint.size))
+
+    def range_proof(self, first_seq: int) -> dict[str, Any]:
+        from cll.checkpoint import core
+
+        tip = core.leaf_count(self._checkpoint.size)
+        proof = core.range_proof(self._nodes, first_seq - 1, tip - 1, self._checkpoint.size)
+        return {
+            "from_seq": first_seq,
+            "to_seq": tip,
+            "size": proof.size,
+            "from_index": proof.from_index,
+            "to_index": proof.to_index,
+            "witness": list(proof.witness),
+        }
+
+
+def proof_source_from_cll(backend: Any, records: Any) -> ProofSource:
+    """A ``ProofSource`` over a CLL backend (``scan_entries`` and ``load_cll``)
+    and a record store: ``records.get(capsule_id)`` returns an object with
+    ``capsule`` and ``producer_envelope`` bytes and raises an error whose
+    ``code`` is ``"not_found"`` for a record it does not hold. The proofs are
+    built from the backend's MMR nodes at the latest checkpoint's size. The
+    backend state is read once, here: the source serves one consistent
+    snapshot, so build from a fresh source after the log moves on."""
+    return _CllProofSource(backend, records)
+
+
+def _committed_members(record: Mapping[str, Any]) -> set[str]:
+    return {
+        member
+        for member, path in DISCLOSURE_ELIGIBLE_FIELDS.items()
+        if isinstance(_committed_digest(record, path), str)
+    }
+
+
+def _check_options(
+    closure_depth: Any,
+    disclosures: Mapping[str, Any],
+    suppressed_fields: Sequence[str],
+    payloads_mode: Any,
+    extensions: Mapping[str, Any],
+    include: Any = (),
+    producer_key: Any = None,
+    verification: Any = None,
+) -> None:
+    if not isinstance(include, (list, tuple)) or not all(isinstance(cid, str) for cid in include):
+        raise BundleBuildError("include must be a list of Capsule IDs")
+    if producer_key is not None and (not isinstance(producer_key, (bytes, bytearray)) or len(producer_key) != 32):
+        raise BundleBuildError("producer_key must be a raw 32-byte Ed25519 public key")
+    if verification is not None and not isinstance(verification, Mapping):
+        raise BundleBuildError("verification must be a JSON object")
+    if not _safe_int(closure_depth) or closure_depth < 0:
+        raise BundleBuildError("closure_depth must be a non-negative safe integer")
+    if payloads_mode is not None and payloads_mode not in _PAYLOADS_MODES:
+        raise BundleBuildError(f"payloads_mode must be one of {_PAYLOADS_MODES}")
+    ineligible = sorted(set(suppressed_fields) - set(DISCLOSURE_ELIGIBLE_FIELDS))
+    if ineligible:
+        raise BundleBuildError(f"suppressed_fields names members that are not disclosure-eligible: {ineligible}")
+    for cid, members in disclosures.items():
+        if not isinstance(members, Mapping):
+            raise BundleBuildError(f"disclosures[{cid}] is not an object")
+        bad = sorted(set(members) - set(DISCLOSURE_ELIGIBLE_FIELDS))
+        if bad:
+            raise BundleBuildError(f"disclosures[{cid}] names members that are not disclosure-eligible: {bad}")
+        both = sorted(set(members) & set(suppressed_fields))
+        if both:
+            raise BundleBuildError(f"disclosures[{cid}] reveals member(s) declared suppressed: {both}")
+    owned = sorted(set(extensions) & set(_OWNED_EXTENSIONS))
+    if owned:
+        raise BundleBuildError(f"extensions cannot set kinds this producer owns: {owned}")
+
+
+def _closure(root: str, depth: int, lookup: Any) -> tuple[dict[str, dict], list[str]]:
+    """Records reached from ``root`` within ``depth`` citation edges (root
+    included), and the targets ``lookup`` does not hold, in first-seen order:
+    the traversal ``verify_bundle`` checks graph closure with."""
+    root_record = lookup(root)
+    if root_record is None:
+        raise BundleBuildError(f"root {root}: no such record")
+    found = {root: root_record}
+    missing: list[str] = []
+    frontier = [root]
+    for _ in range(depth):
+        if not frontier:
+            break
+        next_frontier: list[str] = []
+        for source in frontier:
+            for target in _citation_targets(found[source]):
+                if target in found or target in missing:
+                    continue
+                record = lookup(target)
+                if record is None:
+                    missing.append(target)
+                else:
+                    found[target] = record
+                    next_frontier.append(target)
+        frontier = next_frontier
+    return found, missing
+
+
+def _check_canonical(**inputs: Any) -> None:
+    """Refuse caller JSON with no canonical form (a fractional number, an
+    integer beyond 2**53 - 1, or nesting too deep) before any source is read."""
+    for name, value in inputs.items():
+        try:
+            jcs(value)
+        except (RecursionError, FloatInDigestError, UnsafeIntegerError, TypeError, ValueError) as exc:
+            raise BundleBuildError(
+                f"the bundle has no canonical digest: {name} holds JSON that does not canonicalize "
+                "(a fractional number, an integer beyond 2**53 - 1, or nesting too deep)"
+            ) from exc
+
+
+def _completeness(
+    records: Sequence[Mapping[str, Any]],
+    closure_depth: int,
+    missing: list[str],
+    disclosures: Mapping[str, Mapping[str, Any]],
+    suppressed_fields: Sequence[str],
+    payloads_mode: str | None,
+) -> dict[str, Any]:
+    suppressed = set(suppressed_fields)
+    unrevealed = [
+        (r["capsule_id"], member)
+        for r in records
+        for member in sorted(_committed_members(r) - suppressed)
+        if member not in (disclosures.get(r["capsule_id"]) or {})
+    ]
+    if payloads_mode == "all" and disclosures:
+        gaps = [(cid, member) for cid, member in unrevealed if cid in disclosures]
+        if gaps:
+            raise BundleBuildError(f"payloads_mode all, but the disclosures overlay does not reveal: {gaps}")
+    if payloads_mode is None:
+        payloads_mode = "selected" if unrevealed else "all"
+    return {
+        "closure_depth": closure_depth,
+        "records_mode": "declared_incomplete" if missing else "complete",
+        "payloads_mode": payloads_mode,
+        "suppressed_fields": sorted(suppressed),
+        "missing": list(missing),
+    }
+
+
+def _inclusion_proof_wire(seq: int, raw: Any) -> dict[str, Any]:
+    """A source's inclusion proof, parsed as the verifier parses it; only the
+    wire fields are kept."""
+    try:
+        return _proof_wire(_inclusion_proof(raw))
+    except (KeyError, TypeError, ValueError) as exc:
+        raise BundleBuildError(f"the source's inclusion proof for seq {seq} is malformed") from exc
+
+
+def _range_proof_wire(raw: Any) -> dict[str, Any]:
+    """A source's range proof, parsed as the verifier parses it; only the
+    wire fields are kept."""
+    try:
+        fields = _range_proof_fields(raw)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise BundleBuildError("the source's range proof is malformed") from exc
+    return {**fields, "witness": list(fields["witness"])}
+
+
+def _decode_record(capsule_id: str, stored: Any) -> dict[str, Any]:
+    """The stored record as a Bundle carries it: the Capsule, with a claimed
+    Producer Envelope re-inlined as its local-only ``signature`` and
+    ``key_id`` (both outside the ``capsule_id`` preimage)."""
+    from .producer_envelope import verify_producer_envelope
+
+    try:
+        capsule = json.loads(bytes(stored.capsule), object_pairs_hook=_checked_object)
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise BundleBuildError(f"record {capsule_id}: the stored capsule is not a JSON object ({exc})") from exc
+    if not isinstance(capsule, dict) or capsule.get("capsule_id") != capsule_id:
+        raise BundleBuildError(f"record {capsule_id}: the store returned a different capsule")
+    # Only a verified envelope may claim authorship: inline copies are dropped.
+    capsule.pop("signature", None)
+    capsule.pop("key_id", None)
+    envelope = bytes(getattr(stored, "producer_envelope", b"") or b"")
+    if envelope:
+        checked = verify_producer_envelope(capsule_id, envelope)
+        if not checked.ok or checked.public_key is None:
+            raise BundleBuildError(f"record {capsule_id}: its producer envelope does not verify")
+        capsule["signature"] = envelope.hex()
+        capsule["key_id"] = checked.public_key.hex()
+    return capsule
+
+
+def build_evidence_bundle(
+    source: ProofSource,
+    *,
+    root: str,
+    interval_from: int | None,
+    closure_depth: int = 2,
+    include: Sequence[str] = (),
+    disclosures: Mapping[str, Mapping[str, Any]] | None = None,
+    suppressed_fields: Sequence[str] = (),
+    payloads_mode: str | None = None,
+    producer_key: bytes | None = None,
+    extensions: Mapping[str, Any] | None = None,
+    verification: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build an Evidence Bundle around ``root`` from ``source``.
+
+    ``interval_from`` is required: the first seq of a range proof that ends at
+    the checkpoint tip, carrying every record in ``[interval_from, tip]`` and
+    none below it; or ``None`` for no range proof, each record proven alone
+    (``completeness.selection: "producer-selected"``, which ``verify_bundle``
+    reads as INCOMPLETE). ``closure_depth`` is the citation depth from
+    ``root``; ``include`` names further records to carry. ``disclosures`` is
+    the Bundle-level overlay. ``payloads_mode`` (``all`` or ``selected``) is
+    derived from the overlay when not given; a given ``all`` must reveal every
+    committed, unsuppressed member of each record the overlay discloses.
+    ``producer_key`` (raw 32-byte Ed25519) adds ``producer-key/v1``;
+    ``extensions`` adds blocks of any other kind; ``verification`` carries the
+    producer's self-report.
+
+    Requires checkpointed-local-log (the ``bundle`` extra). Raises
+    :class:`BundleBuildError` on every refusal, including any result
+    ``verify_bundle(strict=True)`` calls INVALID; a declared-incomplete
+    closure or an unsigned record is stated, not refused.
+    """
+    try:
+        from cll.checkpoint import leaf_count, verify_checkpoint_cose_offline
+    except ImportError as exc:  # pragma: no cover - exercised without the extra
+        raise BundleBuildError("building a Bundle needs checkpointed-local-log: install agent-action-capsule[bundle]") from exc
+
+    if extensions is not None and not isinstance(extensions, Mapping):
+        raise BundleBuildError("extensions must be a JSON object")
+    disclosures = {k: dict(v) if isinstance(v, Mapping) else v for k, v in (disclosures or {}).items()}
+    extensions = dict(extensions or {})
+    _check_options(closure_depth, disclosures, suppressed_fields, payloads_mode, extensions, include, producer_key, verification)
+    _check_canonical(disclosures=disclosures, extensions=extensions, verification=verification or {})
+    if interval_from is not None and (isinstance(interval_from, bool) or not isinstance(interval_from, int) or interval_from < 1):
+        raise BundleBuildError("interval_from must be a seq of at least 1, or None for no range proof")
+
+    cose = bytes(source.checkpoint())
+    checked = verify_checkpoint_cose_offline(cose)
+    if not checked.ok or checked.decoded is None:
+        raise BundleBuildError(f"the checkpoint does not verify: {'; '.join(map(str, checked.errors))}")
+    signed = checked.decoded
+    tip = leaf_count(signed.mmr_size)
+    leaves = [bytes(v) for v in source.leaves()]
+    if len(leaves) != tip or any(len(v) != 32 for v in leaves):
+        raise BundleBuildError(f"the source gave {len(leaves)} leaves; the checkpoint covers {tip} 32-byte leaves")
+    seq_of: dict[str, int] = {}
+    for seq, value in enumerate(leaves, 1):
+        seq_of.setdefault(value.hex(), seq)
+
+    def lookup(capsule_id: str) -> dict[str, Any] | None:
+        stored = source.record(capsule_id)
+        if stored is None:
+            return None
+        if capsule_id not in seq_of:
+            raise BundleBuildError(
+                f"record {capsule_id} is not a leaf at or below the checkpoint (not yet covered, or not in this log)"
+            )
+        return _decode_record(capsule_id, stored)
+
+    carried, missing = _closure(root, closure_depth, lookup)
+    for capsule_id in include:
+        if capsule_id not in carried:
+            record = lookup(capsule_id)
+            if record is None:
+                raise BundleBuildError(f"include: no such record: {capsule_id}")
+            carried[capsule_id] = record
+
+    certificate: dict[str, Any] = {"log_id": signed.log_id, "range_root": signed.root}
+    if interval_from is not None:
+        if interval_from > tip:
+            raise BundleBuildError(f"interval_from {interval_from} is past the checkpoint tip {tip}")
+        below = sorted((seq_of[cid], cid) for cid in carried if seq_of[cid] < interval_from)
+        if below:
+            named = ", ".join(f"{cid} (seq {seq})" for seq, cid in below)
+            raise BundleBuildError(f"record(s) below interval_from {interval_from}: {named}; lower it or build without a range")
+        for seq in range(interval_from, tip + 1):
+            capsule_id = leaves[seq - 1].hex()
+            if capsule_id in carried:
+                continue
+            record = lookup(capsule_id)
+            if record is None:
+                raise BundleBuildError(
+                    f"seq {seq} in the interval is not a record the source holds; a range cannot cover it: "
+                    "start the interval after it or build without a range"
+                )
+            carried[capsule_id] = record
+        certificate.update(
+            {
+                "first_seq": interval_from,
+                "last_seq": tip,
+                "body_digests": [leaves[seq - 1].hex() for seq in range(interval_from, tip + 1)],
+                "range_proof": _range_proof_wire(source.range_proof(interval_from)),
+            }
+        )
+
+    ordered = sorted(carried, key=lambda cid: seq_of[cid])
+    unknown = sorted(set(disclosures) - set(ordered))
+    if unknown:
+        raise BundleBuildError(f"disclosures given for record(s) the bundle does not carry: {unknown}")
+    records = [carried[cid] for cid in ordered]
+    certificate["memberships"] = {
+        cid: {
+            "log_coordinates": {"log_id": signed.log_id, "seq": seq_of[cid], "leaf_index": seq_of[cid] - 1},
+            "inclusion_proof": _inclusion_proof_wire(seq_of[cid], source.inclusion_proof(seq_of[cid])),
+        }
+        for cid in ordered
+    }
+    completeness = _completeness(records, closure_depth, missing, disclosures, suppressed_fields, payloads_mode)
+    if interval_from is None:
+        completeness["selection"] = SELECTION_PRODUCER_SELECTED
+    bundle: dict[str, Any] = {
+        "bundle_version": "2",
+        "bundle_kind": BUNDLE_KIND,
+        "root": root,
+        "records": records,
+        "completeness": completeness,
+        "completeness_certificate": certificate,
+        "checkpoint": {
+            "log_id": signed.log_id,
+            "mmr_size": signed.mmr_size,
+            "root": signed.root,
+            "prev_size": signed.prev_size,
+            "prev_root": signed.prev_root,
+            "key_id": signed.key_id,
+            "timestamp": signed.timestamp,
+            "cose": base64.urlsafe_b64encode(cose).rstrip(b"=").decode("ascii"),
+        },
+    }
+    if disclosures:
+        bundle["disclosures"] = copy.deepcopy(disclosures)
+    if producer_key is not None:
+        extensions["producer-key/v1"] = {"public_key": bytes(producer_key).hex()}
+    if extensions:
+        bundle["extensions"] = copy.deepcopy(extensions)
+    if verification is not None:
+        bundle["verification"] = copy.deepcopy(dict(verification))
+    return _self_checked(bundle)
+
+
+def _self_checked(bundle: dict[str, Any]) -> dict[str, Any]:
+    result = verify_bundle(bundle, strict=True)
+    if result.bundle_digest is None:
+        raise BundleBuildError(
+            "the bundle has no canonical digest: it holds JSON that does not canonicalize "
+            "(a fractional number, an integer beyond 2**53 - 1, or nesting too deep)"
+        )
+    if result.verdict == "INVALID":
+        failed = [f"{name}: {', '.join(claim.findings) or claim.status}" for name, claim in result.claims if claim.status == "fail"]
+        raise BundleBuildError(f"the bundle does not verify: {'; '.join(failed) or 'not an evidence bundle'}")
+    return bundle
+
+
+def build_unproven_bundle(
+    records: Sequence[Mapping[str, Any]],
+    *,
+    root: str,
+    closure_depth: int = 2,
+    disclosures: Mapping[str, Mapping[str, Any]] | None = None,
+    suppressed_fields: Sequence[str] = (),
+) -> dict[str, Any]:
+    """An Evidence Bundle with no log proof: no checkpoint and no certificate,
+    for Capsules that belong to no log. Every given record is carried; the
+    closure from ``root`` decides ``missing``. ``verify_bundle(strict=True)``
+    reads it as INCOMPLETE."""
+    disclosures = {k: dict(v) if isinstance(v, Mapping) else v for k, v in (disclosures or {}).items()}
+    _check_options(closure_depth, disclosures, suppressed_fields, None, {})
+    ids = [r.get("capsule_id") if isinstance(r, Mapping) else None for r in records]
+    if not all(isinstance(cid, str) for cid in ids):
+        raise BundleBuildError("every record needs a capsule_id")
+    if len(set(ids)) != len(ids):
+        raise BundleBuildError("duplicate capsule_id among the records")
+    by_id = {cid: dict(r) for cid, r in zip(ids, records)}
+    if root not in by_id:
+        raise BundleBuildError(f"root {root} is not among the records")
+    unknown = sorted(set(disclosures) - set(ids))
+    if unknown:
+        raise BundleBuildError(f"disclosures given for record(s) the bundle does not carry: {unknown}")
+    _check_canonical(records=list(by_id.values()), disclosures=disclosures)
+    _, missing = _closure(root, closure_depth, by_id.get)
+    bundle: dict[str, Any] = {
+        "bundle_version": "2",
+        "bundle_kind": BUNDLE_KIND,
+        "root": root,
+        "records": [copy.deepcopy(by_id[cid]) for cid in ids],
+        "completeness": _completeness(list(by_id.values()), closure_depth, missing, disclosures, suppressed_fields, None),
+    }
+    if disclosures:
+        bundle["disclosures"] = copy.deepcopy(disclosures)
+    return _self_checked(bundle)

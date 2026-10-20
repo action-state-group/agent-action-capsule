@@ -63,16 +63,24 @@ GENERATORS = (
     "generate_bundle_producer_key_vectors.py",
     "generate_bundle_composed_vectors.py",
     "generate_bundle_strict_vectors.py",
+    "generate_bundle_producer_fixture.py",
     "generate_judgment_extension_vectors.py",
     "generate_profile_vectors.py",
     "generate_interop_profile_v0_vectors.py",
     "generate_personal_history_basic_v0_vectors.py",
+    "generate_coverage_declaration_v0_vectors.py",
+    "generate_controller_binding_v0_vectors.py",
+    "generate_deal_reconcile_v0_vectors.py",
     "generate_registry_conformance_vectors.py",
     "generate_adapter_x402_vectors.py",
     "generate_ucp_adapter_vectors.py",
+    # Reads the x402 adapter corpus, so it runs after it.
+    "generate_personal_history_outcome_v0_vectors.py",
     # Append to the capsule, disclosure-envelope and producer-envelope manifests.
     "generate_parity_hardening_vectors.py",
     "generate_envelope_encoding_vectors.py",
+    # Appends to the capsule manifest.
+    "generate_negative_zero_vectors.py",
 )
 
 

@@ -6,7 +6,8 @@ The profile is ``spec/personal-agent-history-profile-v0.md``; its §6.4 describe
 run these vectors publish (PA-11). The positive run is ``responder-run.json`` in the output
 directory: requests and replies exchanged with an IP responder, produced by ``producer/main.go``
 there (see the corpus README). This script reads that run and builds from it one History, the nine
-§6.4 mutants, a second reading of the other-anchor mutant and a refusal to another requester. It
+§6.4 mutants, a second reading of the other-anchor mutant, a History over several streams at one
+anchor (§2) with its mixed-anchor mutant, and a refusal to another requester. It
 states every expected status by hand from the profile text. Each case cites the
 sections it comes from. Nothing here imports or runs a verifier.
 
@@ -94,6 +95,11 @@ CONTRACT_DIGEST = json_digest(CONTRACT)
 REQUIREMENT = "r-deal-steps"
 EVAL = "2026-10-15T01:00:00Z"
 
+# §2's anchors for a History over several streams. Each is a label digest, not a real checkpoint: at
+# the Basic level a verifier checks only that every envelope names the same anchor (PA-14).
+TICK = shx(b"personal-agent-history-profile-v0 conformance vectors: witnessed checkpoint tick")
+STREAM_CHECKPOINT = shx(b"personal-agent-history-profile-v0 conformance vectors: one deal stream's checkpoint")
+
 
 def load_run(path: Path) -> dict:
     run = json.loads(path.read_text(encoding="utf-8"))
@@ -127,6 +133,22 @@ def resign(env: dict, key: str, *, artifact: dict | None = None, **members: Any)
     body = {k: out[k] for k in SIGNED if k in out}
     out["sig"] = PRIV[key].sign(jcs(body).encode()).hex()
     return out
+
+
+def multi_stream(exchange: dict, env: dict, anchor: str) -> tuple[dict, dict]:
+    """One deal of the run moved to a stream of its own (§2) and answered at ``anchor``: the request
+    names ``anchor``, and the reply is re-signed by the holder key over that request."""
+    request = json.loads(exchange["request"]["octets_text"])
+    request["coverage"] = {"expected_pin": anchor}
+    request["nonce"] = request["nonce"].replace("/history-", "/multi-stream-")
+    req = {"media_type": J, "octets_text": jcs(request)}
+    a = artifact_of(env)
+    a["anchor"] = anchor
+    a["evidence_stream"] = f"deal/{a['subject']['correlation']}"
+    a["records"] = [dict(r, leaf_index=i) for i, r in enumerate(a["records"])]
+    reply = resign(env, "holder", artifact=a, anchor={"digest": anchor},
+                   request_digest=shx(req["octets_text"].encode()))
+    return req, carried(reply)
 
 
 def carried(env: dict) -> dict:
@@ -331,6 +353,30 @@ def cases(run: dict) -> list[dict]:
         container(wide, [(e["request"], e["reply"]) for e in wides]),
         [answered(decode(e["reply"])) for e in wides],
         history_props(definition_form="FAIL"), ["definition_form"]))
+
+    # §2: the same three deals, each held in its own stream and answered at one witnessed checkpoint
+    # tick. The responder of the run serves one stream, so these are derived: each deal's records
+    # move to a stream of their own, keeping their order, and each request and reply names the tick.
+    multi = [multi_stream(e, env, TICK) for e, env in zip(history, envs)]
+    streams = sorted({artifact_of(decode(rep))["evidence_stream"] for _, rep in multi})
+    assert len(streams) == 3, streams
+    out.append(case(
+        "multi-stream-one-tick", "Three deals in three streams, one holder key, one witnessed checkpoint tick",
+        ["§2", "§4.3", "§6.1", "§6.2"],
+        "derived: each of history-1 to history-3 moved to a stream of its own deal, requested at the tick and "
+        "re-signed by the holder key",
+        container(basic, multi), [answered(decode(rep)) for _, rep in multi], history_props(), [], states=states))
+
+    # §2, §6.2: the same, with one deal answered at its own stream's checkpoint, as its request named.
+    alone = multi_stream(history[o], envs[o], STREAM_CHECKPOINT)
+    out.append(case(
+        "mutant-multi-stream-mixed-anchor", "Three deals in three streams, one answered at its stream's own checkpoint",
+        ["§2", "§6.2"],
+        f"derived: multi-stream-one-tick with history-{o + 1} requested and answered at its stream's checkpoint, "
+        "re-signed by the holder key",
+        container(basic, swap(multi, o, alone)),
+        swap([answered(decode(rep)) for _, rep in multi], o, answered(decode(alone[1]))),
+        history_props(single_anchor="FAIL"), ["single_anchor"]))
 
     # A request under the definition from a requester other than its recipient (§8.1, ER §4.2).
     refused = ex["other-requester"]

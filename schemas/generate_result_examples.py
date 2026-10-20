@@ -17,7 +17,8 @@ negative fixtures, each a byte-for-byte copy of the positive with exactly one
 field changed, each spec/evidence-result-v0.md rule this document requires
 MUST reject.
 
-PROPOSED claim types (the 2026-09-25 ruling): five more positives --
+Claim types (the 2026-09-25 ruling; reconcile normative, close PROPOSED):
+five more positives --
 one reconcile Result, one AGREED close, one UNILATERAL close (no peer
 named), one UNILATERAL close that names the peer it closed against, one
 CONTESTED close (the Evidence Layer's third Close state, draft-mih-agent-
@@ -243,8 +244,9 @@ neg_disclosure_carrier_under_withheld["claims"][2]["presentation"] = {
 }
 
 # ===========================================================================
-# PROPOSED claim types (the 2026-09-25 ruling: "close + reconcile as
-# claim types in result v0, so they feed the same result"). Each positive
+# Claim types, reconcile normative and close PROPOSED (the 2026-09-25
+# ruling: "close + reconcile as claim types in result v0, so they feed
+# the same result"). Each positive
 # below keeps the untouched requirement claim-1 beside its typed claims, so
 # the pre-existing shape is proven to coexist with each type in the same
 # claims[] array: the three close positives pair claim-1 with ONE typed
@@ -1001,6 +1003,19 @@ neg_coverage_correlated_counted_as_met["coverage_report"]["requirements"][0]["in
 neg_coverage_summary_does_not_recompute = _mutated(pos_example_org_coverage_result)
 neg_coverage_summary_does_not_recompute["coverage_report"]["summary"]["satisfied"] = 3
 
+# ---------------------------------------------------------------------------
+# PROPOSED aggregate.coverage_declaration (spec section 7.2) -- the claims
+# positive with the aggregate's coverage kind, and one kind outside the three.
+# ---------------------------------------------------------------------------
+pos_example_org_coverage_declaration_result = _mutated(pos_example_org_claims_result)
+pos_example_org_coverage_declaration_result["aggregate"]["coverage_declaration"] = {"kind": "holder_selected"}
+
+# --- neg-coverage-declaration-unknown-kind -- a kind outside the three -----
+#     (schema: CoverageKind's closed enum). "complete" is the claim the
+#     vocabulary exists to keep apart from its population.
+neg_coverage_declaration_unknown_kind = _mutated(pos_example_org_coverage_declaration_result)
+neg_coverage_declaration_unknown_kind["aggregate"]["coverage_declaration"]["kind"] = "complete"
+
 
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1039,6 +1054,8 @@ def main() -> int:
     write("neg-coverage-uppercase-epistemic-type", neg_coverage_uppercase_epistemic_type)
     write("neg-coverage-correlated-counted-as-met", neg_coverage_correlated_counted_as_met)
     write("neg-coverage-summary-does-not-recompute", neg_coverage_summary_does_not_recompute)
+    write("pos-example-org-coverage-declaration-result", pos_example_org_coverage_declaration_result)
+    write("neg-coverage-declaration-unknown-kind", neg_coverage_declaration_unknown_kind)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)
     return 0

@@ -102,18 +102,28 @@ func DecodeFragment(fragment string) (interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fragment is not UTF-8 JSON: %w", err)
 	}
-	if err := canonical.CheckJSONText(raw); err != nil {
+	value, err := decodeJSONText(raw)
+	if err != nil {
 		return nil, fmt.Errorf("fragment is not UTF-8 JSON: %w", err)
+	}
+	return value, nil
+}
+
+// decodeJSONText decodes one JSON text with integers kept as json.Number,
+// refusing invalid UTF-8, unpaired surrogate escapes and trailing data.
+func decodeJSONText(raw []byte) (interface{}, error) {
+	if err := canonical.CheckJSONText(raw); err != nil {
+		return nil, err
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	var value interface{}
 	if err := decoder.Decode(&value); err != nil {
-		return nil, fmt.Errorf("fragment is not UTF-8 JSON: %w", err)
+		return nil, err
 	}
 	var trailing interface{}
 	if err := decoder.Decode(&trailing); err != io.EOF {
-		return nil, fmt.Errorf("fragment is not UTF-8 JSON")
+		return nil, fmt.Errorf("trailing data after the JSON value")
 	}
 	return value, nil
 }

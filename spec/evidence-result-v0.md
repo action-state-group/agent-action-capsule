@@ -6,7 +6,8 @@ requirement, what was judged and with what assurance, over an Evidence Contract.
 (result semantics, disclosure policy, aggregate/coverage) carry **the 2026-09-22 ruling, quoted verbatim
 below** — the gate required before this schema could freeze. The gate is
 satisfied; the schema, validator, and fixtures below are encoded to the ruled text and are no
-longer DRAFT.
+longer DRAFT. §4.1's `type: reconcile` claim is normative; its `type: close` claim and §7.1's
+`coverage_report` are PROPOSED.
 
 **Companion schema.** `schemas/evidence-result-v0.json` — a JSON Schema (2020-12) encoding of
 every object model defined below. The schema is descriptive of the semantics fixed here; where
@@ -226,9 +227,16 @@ are cross-element constraints over the `claims` array plain JSON Schema cannot e
 class of gap `evidence-plan-ir-v0.md` §3.1 documents for node `id` uniqueness and DAG order. A
 conforming verifier MUST check both in addition to schema validation.
 
-### 4.1 Claim types — `reconcile` and `close` (PROPOSED)
+### 4.1 Claim types — `reconcile` (normative) and `close` (PROPOSED)
 
-**Status: PROPOSED against the 2026-09-25 ruling, quoted verbatim:**
+**Status: `type: reconcile` is normative; `type: close` stays PROPOSED.** Normative for v0: the
+`type` member and its absent-means-`requirement` default; the `reconcile` body (`join_key`, `peer`,
+`period`, the six tallies, `state_of_record`); the reconcile sufficiency derivation; and, in the
+rendering paragraph, the `A_ONLY` / `B_ONLY` versus `CONFLICTING` rule and the `unrecognized`-row
+rule. Still PROPOSED: the `close` body, everything about `close_state` (its derivation and the three
+further bindings, whose "(normative)" labels give the force they take once `close` is ruled), and
+the `UNILATERAL` / `CONTESTED` rendering rules. Both types were staged against the 2026-09-25
+ruling, quoted verbatim:
 
 > close + reconcile as claim types in result v0, so they feed the same result. the constraint i
 > care about more than the vocabulary: A_ONLY / B_ONLY must never render like CONFLICTING, and
@@ -417,6 +425,8 @@ aggregate:
     evaluated_population: integer     # requirements actually evaluated
     excluded_not_applicable: integer  # requirements excluded as NOT_APPLICABLE — an EvidenceStatus value (§2), not §1's Sufficiency
     unknown_count: integer            # evaluated requirements whose sufficiency resolved UNKNOWN (§1)
+  coverage_declaration:               # OPTIONAL, PROPOSED — §7.2
+    kind: holder_selected | stream_interval | source_authoritative
   buckets:
     met: [claim-id, ...]
     not_met: [claim-id, ...]
@@ -572,6 +582,27 @@ same amount, or that lowers `required_producers`, passes every rule above. Detec
 recompute from the records and the contract version that `contract_ref` names. A relying party that
 needs the independence count to hold MUST recompute it, not read it.
 
+### 7.2 Coverage kind — `aggregate.coverage_declaration` (PROPOSED)
+
+**Status: PROPOSED.** Not ruled. `aggregate.coverage_declaration` is OPTIONAL. A Result without it
+is unchanged and still valid. It carries one member, `kind`, which names the population the
+aggregate's evidence claims to be. The kinds, and what completeness is relative to under each, are
+the interop profile's (`spec/interop-profile-v0.md` §6.7.1).
+
+**Never stronger than the evidence (normative).** The kind is the declared kind of every set of
+answers the aggregate's claims rest on, when all of them declare one kind and none has a coverage
+property that is `FAIL`. Otherwise it is `holder_selected` (interop profile §6.7.5). A producer
+MUST NOT write any other kind. Checking this needs the sets themselves, so a verifier of the
+document alone cannot catch a stronger kind. A verifier following the interop profile derives the
+kind (its §6.7.5) and reports `coverage_declaration_aggregate` `FAIL` when the aggregate carries
+another one. An
+aggregate whose claims rest on no declared set carries no `coverage_declaration`.
+
+It is not `aggregate.coverage` (§3), which counts requirements. It is not `coverage_report` (§7.1),
+which reports evidence per requirement. A valid signature on any of the evidence never implies
+completeness (interop profile §6.7). A Result rendering `kind` shows it beside the coverage
+statement and never as a grade.
+
 ## 8. View
 
 Presentation hints only — **never data**. The `presentation/v1` header fields: producer
@@ -670,7 +701,8 @@ field, each failing at exactly one documented rule. See that directory's `README
 cases and `schemas/check_evidence_result_examples.py` for the validation run, including the
 mutant/load-bearing proof for each negative.
 
-§4.1's PROPOSED claim types add five positives (`pos-example-org-reconcile-result.json`,
+§4.1's claim types (`reconcile` normative, `close` PROPOSED) add five positives
+(`pos-example-org-reconcile-result.json`,
 `pos-example-org-close-agreed-result.json`, `pos-example-org-close-unilateral-result.json`,
 `pos-example-org-close-unilateral-named-peer-result.json`, `pos-example-org-close-contested-result.json` — each the
 untouched requirement `claim-1` beside its typed claims: one on each close positive, two on the
@@ -709,3 +741,11 @@ whose gap names a remedy), five schema negatives (`neg-coverage-satisfied-with-g
 negatives that validate against the schema and are rejected by the checker's cross-element
 coverage check (`neg-coverage-correlated-counted-as-met`, `neg-coverage-summary-does-not-recompute`).
 Each negative has its own mutant proof.
+
+§7.2's PROPOSED `aggregate.coverage_declaration` adds one positive,
+`pos-example-org-coverage-declaration-result.json`. It is the claims positive with
+`coverage_declaration` `{"kind": "holder_selected"}`, and with the member removed it is
+byte-identical to the claims positive. It also adds one schema negative,
+`neg-coverage-declaration-unknown-kind.json`, whose kind is outside the three, with its own mutant
+proof. The never-stronger rule needs the evidence sets. Its vector is the interop profile's
+`aggregate-stronger-than-evidence` (`vectors/coverage-declaration-v0/`).

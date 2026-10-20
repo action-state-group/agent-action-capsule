@@ -14,7 +14,9 @@ same-commit files in CI.
 - `disclosure-envelope/`: Disclosure Envelope DE-1 through DE-3 cases.
 - `cross-language/`: format-4 inputs used by the all-producer/all-consumer
   interlock: the released `-04` `seal-input.json` and its `-05` twin
-  `seal-input-v05.json`.
+  `seal-input-v05.json`, and `bundle-producer-log.json`, one checkpointed log
+  of signed records every implementation builds the same Evidence Bundles
+  from; `python/scripts/generate_bundle_producer_fixture.py` regenerates it.
 - `interop/`: established composition and run-under interoperability suites.
 - `evidence-request/`: draft-mih-agent-evidence-request-00 cases (request map,
   subject forms, request digest, signed refusal, outcomes, caller invariance,
@@ -62,6 +64,27 @@ same-commit files in CI.
   IP responder at a pinned commit (`responder-run.json`, reproduced by `producer/main.go`), the
   nine mutants of the §6.4 table and a refusal to another requester;
   `python/scripts/generate_personal_history_basic_v0_vectors.py` regenerates them from the run.
+- `coverage-declaration-v0/`: the coverage declaration of `spec/interop-profile-v0.md` §6.7: one
+  positive per coverage kind, the cherry-picked and record-missing negatives, an aggregate
+  declaring more than its evidence, two source negatives, and two pairs of agreeing halves for
+  issuer independence. Built from the personal-history run;
+  `python/scripts/generate_coverage_declaration_v0_vectors.py` regenerates them.
+- `controller-binding-v0/`: the controller binding record of `spec/controller-binding-v0.md` and
+  its use in issuer independence (`spec/interop-profile-v0.md` §6.7.4): one valid binding per claim
+  type, and expired, revoked, one-key-signed, same-key, other-keys, forged-credential,
+  unknown-method, unbound-delegator and revocation cases, each over a pair of agreeing halves;
+  `python/scripts/generate_controller_binding_v0_vectors.py` regenerates them.
+- `deal-reconcile-v0/`: the Evidence Contract `ec:deal-reconcile@1` of
+  `spec/deal-reconcile-contract-v0.md`: a deal whose two halves' amount and currency commitments
+  open and match, and one whose amount opening fails, with the six tallies and the Evidence Result
+  of each; `python/scripts/generate_deal_reconcile_v0_vectors.py` regenerates them.
+- `personal-history-outcome-v0/`: the Outcome level of the personal-agent History profile
+  (`spec/personal-agent-history-outcome-v0.md`): one positive per outcome source (the holder's
+  record, the other party's half, an x402 native object, a judge's verdict under consent), a
+  `not_evaluable` delivery beside an established payment, the deal commitment unopened and
+  wrongly opened, and one mutant per property the level adds. Derived from the personal-history run
+  and the x402 adapter corpus;
+  `python/scripts/generate_personal_history_outcome_v0_vectors.py` regenerates them.
 - `adapters/x402/`: the x402 adapter declaration `spec/adapters/x402-v0.md`: a positive and a
   native-check-fails case for an `exact`/`eip3009` payment, with the wrapped objects' octets, the
   relying party's policy and recorded lookup, and the expected `native_check` reports. Constructed,

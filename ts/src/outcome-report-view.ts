@@ -122,8 +122,8 @@ const TIER_LABEL: Record<CriterionTierReading, string> = {
 
 // ---------------------------------------------------------------------------
 // Drill-down: every report line and every missed-reason row opens into the
-// conversations behind it, and each conversation opens into its nine
-// criteria, the rationale exactly as sealed, why it missed, and the ids to
+// conversations behind it, and each conversation opens into its criteria,
+// the rationale exactly as sealed, why it missed, and the ids to
 // recompute it. Native <details>, no script, no button: the page stays a
 // static rendering of a bundle that already verified. Read ONLY from the
 // model, which reads only from the verified bundle.
@@ -262,6 +262,37 @@ function verdictProbability(
   return probs[key];
 }
 
+const COUNT_WORDS = [
+  "zero",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+  "eleven",
+  "twelve",
+];
+
+/** A count in words up to twelve, in digits above. */
+function countWord(n: number): string {
+  return COUNT_WORDS[n] ?? String(n);
+}
+
+/**
+ * How a resolved conversation's criteria read, from the number the pack
+ * judged it on: "all four criteria met or not applicable". A conversation
+ * has at least one criterion: the terms come from its own claims.
+ */
+function allCriteriaMet(n: number): string {
+  if (n === 1) return "its one criterion met or not applicable";
+  return `all ${countWord(n)} criteria met or not applicable`;
+}
+
 function renderConversation(
   conversation: Conversation,
   model: OutcomeReportModel,
@@ -287,7 +318,7 @@ function renderConversation(
       "span",
       "cwhy",
       resolved
-        ? `all nine criteria met or not applicable${na.length > 0 ? ` (${na.length} not applicable)` : ""}`
+        ? `${allCriteriaMet(conversation.criteria.length)}${na.length > 0 ? ` (${na.length} not applicable)` : ""}`
         : `missed on: ${[...misses, ...(misses.length === 0 ? unjudged : [])]
             .map((c) => criterionLabel(model, c.checkId, c.criterionId).label)
             .join(", ")}`,
@@ -296,11 +327,11 @@ function renderConversation(
   summary.append(el("span", "go", "open ›"));
   details.append(summary);
 
-  // The body (nine rows, nine sealed rationales, the ids) is built the first
-  // time this conversation is opened, not up front: the same conversation
-  // appears under its report line and under its missed reason, and building
-  // every body eagerly multiplies the page's DOM for content nobody opened.
-  // Built from the same model either way.
+  // The body (a row and a sealed rationale per criterion, the ids) is
+  // built the first time this conversation is opened, not up front: the
+  // same conversation appears under its report line and under its missed
+  // reason, and building every body eagerly multiplies the page's DOM for
+  // content nobody opened. Built from the same model either way.
   let built = false;
   details.addEventListener("toggle", () => {
     if (built || !(details as HTMLDetailsElement).open) return;
@@ -480,10 +511,11 @@ function conversationBody(
   why.dataset.why = resolved ? "resolved" : "missed";
   if (resolved) {
     const met = conversation.criteria.filter((c) => c.verdict === "met").length;
+    const n = conversation.criteria.length;
     why.append(
       element(
         "li",
-        `Resolved: ${met} criteria met and ${na.length} not applicable. The rule bills a conversation only when all nine pass, and not applicable counts as passing.`,
+        `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met and ${na.length} not applicable. The rule bills a conversation only when ${n === 1 ? "its one criterion passes" : `all ${countWord(n)} pass`}, and not applicable counts as passing.`,
       ),
     );
   } else {
@@ -558,7 +590,7 @@ function conversationBody(
     el(
       "p",
       "small",
-      "To recompute: read each report above from the book, check its digest, and take the AND of the nine verdicts (not applicable passes). To re-judge, run the pinned judge on the case record and compare.",
+      `To recompute: read each report above from the book, check its digest, and take the AND of the ${conversation.criteria.length === 1 ? "one verdict" : `${countWord(conversation.criteria.length)} verdicts`} (not applicable passes). To re-judge, run the pinned judge on the case record and compare.`,
     ),
   );
 

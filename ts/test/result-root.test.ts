@@ -16,8 +16,10 @@ import {
   GRADES,
   isResultRoot,
   PROOF_KINDS,
+  RECONCILE_TALLY_KEYS,
   RESULT_MEMBERS,
   RESULT_VERSION,
+  STATES_OF_RECORD,
   SUFFICIENCIES,
   TIERS,
   UNVERIFIED_KEY_LABEL,
@@ -239,7 +241,7 @@ describe("buildResultRoot", () => {
   it("carries an unknown claim type as unrecognized, with its axes, never dropped", async () => {
     const source = fixture("result-root-bundle.json");
     const claims = resultOf(source).claims as Obj[];
-    claims[2]!.type = "reconcile";
+    claims[2]!.type = "adjudication";
     claims[1]!.type = 7;
     const result = await buildResultRoot(
       (await sealEvidenceBundle(source)).bundle,
@@ -255,12 +257,66 @@ describe("buildResultRoot", () => {
       verdict: "not_met",
     });
     expect(result.claims[2]).toMatchObject({
-      type: "reconcile",
+      type: "adjudication",
       recognized: false,
       sufficiency: "GAP",
       tier: "recomputed",
       grade: "countersigned",
     });
+  });
+
+  it("reads a reconcile claim's body and recognizes it; a malformed body stays unrecognized", async () => {
+    // reconcile-2's body from the reconcile positive vector: insufficient 3, so GAP
+    const vector = JSON.parse(
+      readFileSync(
+        new URL(
+          "../../vectors/evidence-result/pos-example-org-reconcile-result.json",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ) as { claims: Obj[] };
+    const body = vector.claims.find((claim) => claim.id === "reconcile-2")!
+      .reconcile as Obj;
+    const source = fixture("result-root-bundle.json");
+    const claims = resultOf(source).claims as Obj[];
+    claims[2]!.type = "reconcile";
+    claims[2]!.reconcile = body;
+    claims[1]!.type = "reconcile";
+    const tallies = { ...(body.tallies as Obj) };
+    delete tallies.unresolved;
+    claims[1]!.reconcile = { ...body, tallies };
+    const result = await buildResultRoot(
+      (await sealEvidenceBundle(source)).bundle,
+    );
+    expect(result.claims[2]).toMatchObject({
+      type: "reconcile",
+      recognized: true,
+      sufficiency: "GAP",
+      reconcile: {
+        joinKey: "reservation_id",
+        peer: "example-org-sor",
+        period: {
+          start: "2026-09-01T00:00:00Z",
+          end: "2026-10-01T00:00:00Z",
+        },
+        tallies: {
+          matched: 380,
+          a_only: 0,
+          b_only: 0,
+          conflicting: 0,
+          insufficient: 3,
+          unresolved: 0,
+        },
+        stateOfRecord: "B",
+      },
+    });
+    // a tally missing: the row is kept, unrecognized, with no body
+    expect(result.claims[1]).toMatchObject({
+      type: "reconcile",
+      recognized: false,
+    });
+    expect(result.claims[1]!.reconcile).toBeUndefined();
   });
 
   it("accepts a Result carried in the root's agent_output member", async () => {
@@ -392,6 +448,8 @@ describe("buildResultRoot", () => {
       enum: [...PROOF_KINDS],
     });
     expect(defs.Claim!.required).toEqual([...CLAIM_REQUIRED]);
+    expect(defs.ReconcileTallies!.required).toEqual([...RECONCILE_TALLY_KEYS]);
+    expect(defs.StateOfRecord!.enum).toEqual([...STATES_OF_RECORD]);
     expect(
       ((defs.EvidenceResult!.properties as Obj).result_version as Obj).const,
     ).toBe(RESULT_VERSION);

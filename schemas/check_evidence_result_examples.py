@@ -29,7 +29,8 @@ mechanical half):
      above can actually fail, not just report green by construction. The
      rule is then restored in memory (the committed schema file is never
      modified) and re-verified red.
-  4. PROPOSED CLAIM TYPES (the 2026-09-25 ruling -- "close +
+  4. CLAIM TYPES, reconcile normative, close PROPOSED (the 2026-09-25
+     ruling -- "close +
      reconcile as claim types in result v0"): five more positives
      (pos-example-org-reconcile-result, pos-example-org-close-agreed-result,
      pos-example-org-close-unilateral-result, pos-example-org-close-unilateral-named-peer-
@@ -174,6 +175,15 @@ mechanical half):
          `count_records`: independence reached by counting records.
        - neg-coverage-summary-does-not-recompute: summary.satisfied 3 over
          two SATISFIED rows. Mutant `trust_summary`: no recompute.
+  10. PROPOSED aggregate.coverage_declaration (spec section 7.2): one more
+     positive, pos-example-org-coverage-declaration-result (the claims
+     positive with the aggregate's coverage kind), MUST validate, and with
+     the member removed MUST equal the claims positive byte for byte. One
+     schema negative MUST fail, with a strip-the-rule mutant:
+       - neg-coverage-declaration-unknown-kind: kind `complete`, outside the
+         closed CoverageKind enum.
+     The never-stronger-than-the-evidence rule needs the evidence sets; its
+     vector is vectors/coverage-declaration-v0/aggregate-stronger-than-evidence.
 
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
@@ -417,7 +427,8 @@ def close_state_findings(
 
 POSITIVE_RESULT = "pos-example-org-claims-result"
 
-# PROPOSED claim types (2026-09-25 ruling): every positive keeps the
+# Claim types (2026-09-25 ruling; reconcile normative, close PROPOSED):
+# every positive keeps the
 # untouched requirement claim-1 beside its typed claims -- one typed claim
 # on each close positive, two on the reconcile positive (reconcile-1
 # SATISFIED, reconcile-2 GAP).
@@ -431,6 +442,7 @@ POSITIVES = [
     "pos-example-org-extended-result",
     "pos-judge-producer-x-judge-result",
     "pos-example-org-coverage-result",
+    "pos-example-org-coverage-declaration-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -454,6 +466,7 @@ NEGATIVES = [
     "neg-coverage-gap-remedy-absent",
     "neg-coverage-unknown-epistemic-type",
     "neg-coverage-uppercase-epistemic-type",
+    "neg-coverage-declaration-unknown-kind",
 ]
 
 # Section 8a: the two levels that carry the x- slot, as $defs names.
@@ -730,7 +743,7 @@ def main() -> int:
             "DisclosureCarrier.status's restriction to DisclosedStatus",
         )
 
-    # --- PROPOSED claim types (2026-09-25 ruling) ---------------------------
+    # --- Claim types (2026-09-25 ruling) -----------------------------------
 
     if negative_errors_by_name["neg-close-agreed-without-peer"]:
         mutant = copy.deepcopy(schema)
@@ -915,6 +928,28 @@ def main() -> int:
             mutant,
             "EpistemicType's closed enum",
         )
+
+    # PROPOSED aggregate.coverage_declaration (spec section 7.2): the kind is
+    # a closed enum, and the member is additive -- removing it from its
+    # positive gives the claims positive byte for byte.
+    if negative_errors_by_name["neg-coverage-declaration-unknown-kind"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["CoverageKind"] = {"type": "string"}
+        _mutant_check(
+            "neg-coverage-declaration-unknown-kind",
+            mutant,
+            "CoverageKind's closed enum",
+        )
+    declared = _load("pos-example-org-coverage-declaration-result")
+    del declared["aggregate"]["coverage_declaration"]
+    if json.dumps(declared, indent=2, sort_keys=True) + "\n" != (VECTORS_DIR / f"{POSITIVE_RESULT}.json").read_text(encoding="utf-8"):
+        findings.append(
+            "COVERAGE-DECLARATION-NOT-ISOLATED pos-example-org-coverage-declaration-result: with "
+            f"aggregate.coverage_declaration removed it is not {POSITIVE_RESULT}.json"
+        )
+    else:
+        print("OK  ADDITIVE      pos-example-org-coverage-declaration-result.json minus "
+              f"aggregate.coverage_declaration == {POSITIVE_RESULT}.json")
 
     # EpistemicType is the record header's set exactly as the vendored copy
     # lists it: same tokens, same (lower) case, same order.

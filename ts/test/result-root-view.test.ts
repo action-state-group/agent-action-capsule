@@ -345,7 +345,7 @@ it("(b) renders a claim whose cited id is missing from the bundle as unsupported
 
 it("renders a claim of an unknown type as unrecognized, with its axes, never dropped", async () => {
   const source = fixture("result-root-bundle.json");
-  (resultOf(source).claims as Obj[])[2]!.type = "reconcile";
+  (resultOf(source).claims as Obj[])[2]!.type = "adjudication";
   const { bundle } = await sealEvidenceBundle(source);
   const root = await render(bundle);
   const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
@@ -354,7 +354,7 @@ it("renders a claim of an unknown type as unrecognized, with its axes, never dro
   const type = row.querySelector<HTMLElement>("[data-claim-type]")!;
   expect(type.dataset.claimType).toBe("unrecognized");
   expect(type.className).toBe("claim-unrecognized");
-  expect(type.textContent).toBe("unrecognized (reconcile)");
+  expect(type.textContent).toBe("unrecognized (adjudication)");
   expect(
     row.querySelector<HTMLElement>("[data-verdict]")!.dataset.verdict,
   ).toBe("not_evaluable");

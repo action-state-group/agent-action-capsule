@@ -49,7 +49,7 @@ alone:
 - It compares both with the case's whole `expected` block.
 - It checks that each row of the §6.4 mutant table has a case that fails the property the row
   names.
-- It runs eight defective History evaluators, each of which must disagree with at least one case,
+- It runs ten defective History evaluators, each of which must disagree with at least one case,
   and one evaluator that counts envelopes §6.1 rejected, which must also disagree.
 - It regenerates the directory twice and requires both runs to be byte-identical to the committed
   files.
@@ -86,6 +86,8 @@ second checkpoint.
 | `mutant-record-kind-outside-list` | a record kind outside §3, re-signed by the holder key | derived | `record_kinds` |
 | `mutant-member-outside-reads` | a record carrying a member outside `reads`, re-signed by the holder key | derived | `artifact_form` |
 | `mutant-definition-reads-widened` | a definition whose `reads` adds `statement` and `counterparty_ref` | responder | `definition_form` |
+| `multi-stream-one-tick` | (§2: the positive deals, each in its own stream, at one witnessed checkpoint tick) | derived | nothing: every History property `PASS`, every envelope accepted, each requirement row `envelope-4` |
+| `mutant-multi-stream-mixed-anchor` | (§2: the same, one deal at its own stream's checkpoint) | derived | `single_anchor` |
 | `refused-other-requester` | a request under the definition from another requester | responder | refused `not_authorized`: refusal properties `PASS`, row `refusal-withheld` |
 
 ## Reading the expected values
@@ -118,6 +120,13 @@ The profile leaves some readings open. This corpus fixes them as follows:
 - **`artifact_form` reads `reads` from the definition the recipient holds.** In
   `mutant-definition-reads-widened` the records carry neither added member, so `artifact_form`
   passes under either reading.
+- **The multi-stream cases are derived.** The responder of the run serves one stream. In
+  `multi-stream-one-tick` each selected deal's records move to a stream of their own,
+  `deal/<deal reference>`, in their order, with `leaf_index` counted from 0 in that stream; each
+  request names the tick in `expected_pin`; each reply is re-signed by the holder key over that
+  request. The tick and the one stream's checkpoint in `mutant-multi-stream-mixed-anchor` are label
+  digests, not real checkpoints: at the Basic level a verifier checks only that every envelope
+  names the same anchor (§2, PA-14). The definition, and so the derivation, is the positive run's.
 - **A definition with one more deal still has a valid form.** In `mutant-deal-added-to-definition`
   the selection stays sorted and free of duplicates, so `definition_form` passes. Only the binding
   and the coverage fail.

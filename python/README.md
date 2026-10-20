@@ -96,6 +96,29 @@ calls a Bundle VALID, and sets `result.verdict` to `VALID`, `INCOMPLETE` or
 Strict mode needs `agent-action-capsule[bundle,envelope]`.
 [`vectors/bundle/strict/`](../vectors/bundle/strict/) states the rules.
 
+`build_evidence_bundle(source, root=..., interval_from=...)` builds a Bundle
+from a `ProofSource`: the log's signed COSE checkpoint, its leaves, records by
+Capsule ID, and inclusion and range proofs. It holds no key, and it checks the
+result with `verify_bundle(strict=True)` before returning it, refusing anything
+that verifier calls INVALID. `proof_source_from_cll(backend, records)` makes a
+`ProofSource` from a CLL backend (`scan_entries`, `load_cll`) and a record
+store whose `get(capsule_id)` returns `capsule` and `producer_envelope` bytes.
+
+- `interval_from=N` carries every record from seq N to the checkpoint tip, and
+  none below N, with a range proof: the Bundle can read VALID. `N=1` is the
+  whole log.
+- `interval_from=None` carries only the chosen records, each with its own
+  inclusion proof, and states `completeness.selection: "producer-selected"`:
+  nothing is claimed about the records between them, so it reads INCOMPLETE.
+
+`interval_from` has no default, so a caller never hands over the whole log by
+omission. A range over a leaf that is not a record, a carried record below N
+and a record past the checkpoint are refused by name. A missing citation or
+an unsigned record is stated, not refused, and reads INCOMPLETE.
+`build_unproven_bundle(records, root=...)` is the form with no log proof, for
+Capsules that belong to no log. `build_evidence_bundle` needs the `bundle` and
+`envelope` extras; `build_unproven_bundle` needs only `envelope`.
+
 `agent_action_capsule.settlement.verify_settlements(capsules, key_policy=...,
 wrapped_objects=...)` derives the payment and delivery states of
 `draft-mih-agent-settlement-records-00` from both parties' leg records. It
