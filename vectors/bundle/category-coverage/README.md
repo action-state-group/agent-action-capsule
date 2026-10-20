@@ -72,11 +72,18 @@ member, `category_coverage` is `null`.
    `FAIL` when `request_digest` is present and is not the SHA-256 of the
    request octets (checked before parsing, so also for octets that are not
    JSON); `NOT_CHECKED` when the octets are not UTF-8 JSON read strictly (no
-   repeated member name, no `NaN` or `Infinity`), are not an object, or have a
+   repeated member name, no `NaN` or `Infinity`, and no unpaired surrogate
+   escape such as `\ud800` anywhere, as I-JSON, RFC 7493 Section 2.1,
+   requires: such a request is refused, never read with the surrogate kept or
+   replaced by U+FFFD), are not an object, or have a
    `categories` that is not `{set: string, names: [non-empty, distinct
    strings]}`; `NOT_PRESENT` when the request has no `categories`; `FAIL` when
    the request's `set` differs or a requested name has no entry; `PASS`
    otherwise. Declaring more names than were asked for is not a failure.
+   How many digits an integer in the request may have before a verifier
+   stops reading it is implementation-defined; the vectors do not pin it.
+   How deeply the request may nest before a verifier stops reading it is
+   implementation-defined; the vectors do not pin it either.
 5. `category_coverage_consistency`: `NOT_CHECKED` with no assignment, or when
    a carried record is not in it (a record the caller could not assign could
    be in any category; `null` assigns a record to no category); `FAIL`
@@ -120,6 +127,7 @@ The other properties never change it.
 | `request-without-categories` | the request asked for none: `NOT_PRESENT` | VALID |
 | `request-digest-mismatch-unparsable` | `request_digest` of another request, octets not JSON: request `FAIL` | VALID |
 | `request-duplicate-member` | the request repeats `categories`: `NOT_CHECKED` | VALID |
+| `request-lone-surrogate` | the request carries an unpaired `\ud800` escape in a member nothing reads: `NOT_CHECKED` | VALID |
 | `consistency-partial-assignment` | two of three records assigned: `NOT_CHECKED` | VALID |
 | `neg-consistency-absent-with-record` | a record in an `ABSENT` category | INVALID |
 | `neg-consistency-withheld-with-record` | a record in a `WITHHELD` category | INVALID |

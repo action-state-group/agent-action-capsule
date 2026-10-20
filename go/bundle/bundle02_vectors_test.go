@@ -271,6 +271,14 @@ func TestCategoryCoverageRequestIsReadStrictly(t *testing.T) {
 	}
 	// The same member name in two objects is no repeat.
 	require.Equal(t, bundle.CoverageNotPresent, request(`{"a": {"x": 1}, "b": {"x": [{"x": 2}]}, "x": 3}`))
+	// An unpaired surrogate escape is refused wherever it is; a pair, and
+	// escapes that only look like one, are read.
+	for _, text := range []string{`{"x": "\ud800"}`, `{"x": "\udc00"}`, `{"\ud800": 1}`, `["a\ud800b"]`, `{"x": "\ud800\u0041"}`, `{"x": "\ud800\ud800"}`, `{"x": "\udc00\ud800"}`} {
+		require.Equal(t, bundle.CoverageNotChecked, request(text), text)
+	}
+	for _, text := range []string{`{"x": "\ud83d\ude00"}`, `{"x": "\\ud800"}`, `{"x": "\"\ud83d\ude00"}`, `{"x": "\u00e9"}`} {
+		require.Equal(t, bundle.CoverageNotPresent, request(text), text)
+	}
 	// A number beyond float64 does not end the scan before a repeat.
 	require.Equal(t, bundle.CoverageNotChecked, request(`{"pad": 1e400, "categories": {"set": "example-set", "names": ["messages"]}, "categories": {"set": "example-set", "names": ["messages"]}}`))
 	require.Equal(t, bundle.CoverageNotChecked, request(`{"categories": {"set": "example-set", "names": ["messages", "messages"]}}`))

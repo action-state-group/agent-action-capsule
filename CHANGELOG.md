@@ -29,6 +29,11 @@
   (`scripts/cross-language-interlock.sh`) adds `padded-whole-log` and `padded-tampered`, built by
   every language from `vectors/cross-language/bundle-producer-padded-log.json` and read by every
   strict verifier.
+- Evidence Bundle -02 `category_coverage_request`: an Evidence Request holding an unpaired surrogate
+  escape such as `\ud800` is not read (`NOT_CHECKED`) in Python, Go, TypeScript and Rust (I-JSON,
+  RFC 7493 Section 2.1); Python no longer keeps the surrogate and Go no longer reads it as U+FFFD.
+  Vector `request-lone-surrogate`. How large an integer and how deep a nesting a request may hold
+  is implementation-defined and not pinned.
 
 ## 0.11.0 — 2026-10-20
 

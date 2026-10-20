@@ -11,7 +11,9 @@ import (
 	"io"
 	"math/big"
 	"regexp"
+	"strconv"
 	"strings"
+	"unicode/utf16"
 	"unicode/utf8"
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
@@ -326,8 +328,9 @@ func coverageRequest(member map[string]interface{}, request []byte) string {
 var errRequestJSON = errors.New("not a strict JSON text")
 
 // decodeRequest reads the request octets strictly: UTF-8, exactly one JSON
-// value, no repeated member name in any object. encoding/json already refuses
-// NaN and Infinity.
+// value, no repeated member name in any object and no unpaired surrogate
+// escape (I-JSON, RFC 7493 Section 2.1). encoding/json already refuses NaN
+// and Infinity.
 func decodeRequest(data []byte) (interface{}, error) {
 	if !utf8.Valid(data) {
 		return nil, errRequestJSON
@@ -341,7 +344,7 @@ func decodeRequest(data []byte) (interface{}, error) {
 	if _, err := decoder.Token(); err != io.EOF {
 		return nil, errRequestJSON
 	}
-	if repeatsMember(json.NewDecoder(bytes.NewReader(data))) {
+	if repeatsMember(json.NewDecoder(bytes.NewReader(data))) || unpairedSurrogate(data) {
 		return nil, errRequestJSON
 	}
 	return value, nil
@@ -395,6 +398,43 @@ func repeatsMember(decoder *json.Decoder) bool {
 			stack[len(stack)-1].key = true
 		}
 	}
+}
+
+// unpairedSurrogate reports whether a string in one already-valid JSON text
+// holds a \u escape of a UTF-16 surrogate that is not a high surrogate
+// followed at once by an escaped low one. encoding/json would read it as
+// U+FFFD instead of refusing it.
+func unpairedSurrogate(data []byte) bool {
+	escaped := func(at int) (rune, bool) {
+		if at+6 > len(data) || data[at] != '\\' || data[at+1] != 'u' {
+			return 0, false
+		}
+		value, err := strconv.ParseUint(string(data[at+2:at+6]), 16, 16)
+		return rune(value), err == nil
+	}
+	// In valid JSON a backslash occurs only inside a string, so no string
+	// boundary needs tracking.
+	for i := 0; i < len(data); i++ {
+		if data[i] != '\\' {
+			continue
+		}
+		r, ok := escaped(i)
+		switch {
+		case !ok:
+			i++ // a one-character escape such as \" or \\
+		case utf16.IsSurrogate(r) && r < 0xdc00:
+			low, lowOK := escaped(i + 6)
+			if !lowOK || low < 0xdc00 || low > 0xdfff {
+				return true
+			}
+			i += 11
+		case utf16.IsSurrogate(r):
+			return true
+		default:
+			i += 5
+		}
+	}
+	return false
 }
 
 func coverageConsistency(member map[string]interface{}, recordIDs []string, recordCategories map[string]*string) string {
