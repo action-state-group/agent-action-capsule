@@ -116,7 +116,8 @@ omission. A range over a leaf that is not a record, a carried record below N
 and a record past the checkpoint are refused by name. A missing citation or
 an unsigned record is stated, not refused, and reads INCOMPLETE.
 `build_unproven_bundle(records, root=...)` is the form with no log proof, for
-Capsules that belong to no log. Both need the `bundle` and `envelope` extras.
+Capsules that belong to no log. `build_evidence_bundle` needs the `bundle` and
+`envelope` extras; `build_unproven_bundle` needs only `envelope`.
 
 `agent_action_capsule.settlement.verify_settlements(capsules, key_policy=...,
 wrapped_objects=...)` derives the payment and delivery states of

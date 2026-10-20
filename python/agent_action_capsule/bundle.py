@@ -1137,9 +1137,18 @@ def _check_options(
     suppressed_fields: Sequence[str],
     payloads_mode: Any,
     extensions: Mapping[str, Any],
+    include: Any = (),
+    producer_key: Any = None,
+    verification: Any = None,
 ) -> None:
-    if isinstance(closure_depth, bool) or not isinstance(closure_depth, int) or closure_depth < 0:
-        raise BundleBuildError("closure_depth must be a non-negative integer")
+    if isinstance(include, (str, bytes)) or not all(isinstance(cid, str) for cid in include):
+        raise BundleBuildError("include must be a list of Capsule IDs")
+    if producer_key is not None and (not isinstance(producer_key, (bytes, bytearray)) or len(producer_key) != 32):
+        raise BundleBuildError("producer_key must be a raw 32-byte Ed25519 public key")
+    if verification is not None and not isinstance(verification, Mapping):
+        raise BundleBuildError("verification must be a JSON object")
+    if not _safe_int(closure_depth) or closure_depth < 0:
+        raise BundleBuildError("closure_depth must be a non-negative safe integer")
     if payloads_mode is not None and payloads_mode not in _PAYLOADS_MODES:
         raise BundleBuildError(f"payloads_mode must be one of {_PAYLOADS_MODES}")
     ineligible = sorted(set(suppressed_fields) - set(DISCLOSURE_ELIGIBLE_FIELDS))
@@ -1170,6 +1179,8 @@ def _closure(root: str, depth: int, lookup: Any) -> tuple[dict[str, dict], list[
     missing: list[str] = []
     frontier = [root]
     for _ in range(depth):
+        if not frontier:
+            break
         next_frontier: list[str] = []
         for source in frontier:
             for target in _citation_targets(found[source]):
@@ -1205,7 +1216,7 @@ def _completeness(
         if gaps:
             raise BundleBuildError(f"payloads_mode all, but the disclosures overlay does not reveal: {gaps}")
     if payloads_mode is None:
-        payloads_mode = "all" if disclosures and not unrevealed else "selected"
+        payloads_mode = "selected" if unrevealed else "all"
     return {
         "closure_depth": closure_depth,
         "records_mode": "declared_incomplete" if missing else "complete",
@@ -1213,6 +1224,25 @@ def _completeness(
         "suppressed_fields": sorted(suppressed),
         "missing": list(missing),
     }
+
+
+def _inclusion_proof_wire(seq: int, raw: Any) -> dict[str, Any]:
+    """A source's inclusion proof, parsed as the verifier parses it; only the
+    wire fields are kept."""
+    try:
+        return _proof_wire(_inclusion_proof(raw))
+    except (KeyError, TypeError, ValueError) as exc:
+        raise BundleBuildError(f"the source's inclusion proof for seq {seq} is malformed") from exc
+
+
+def _range_proof_wire(raw: Any) -> dict[str, Any]:
+    """A source's range proof, parsed as the verifier parses it; only the
+    wire fields are kept."""
+    try:
+        fields = _range_proof_fields(raw)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise BundleBuildError("the source's range proof is malformed") from exc
+    return {**fields, "witness": list(fields["witness"])}
 
 
 def _decode_record(capsule_id: str, stored: Any) -> dict[str, Any]:
@@ -1227,6 +1257,9 @@ def _decode_record(capsule_id: str, stored: Any) -> dict[str, Any]:
         raise BundleBuildError(f"record {capsule_id}: the stored capsule is not a JSON object ({exc})") from exc
     if not isinstance(capsule, dict) or capsule.get("capsule_id") != capsule_id:
         raise BundleBuildError(f"record {capsule_id}: the store returned a different capsule")
+    # Only a verified envelope may claim authorship: inline copies are dropped.
+    capsule.pop("signature", None)
+    capsule.pop("key_id", None)
     envelope = bytes(getattr(stored, "producer_envelope", b"") or b"")
     if envelope:
         checked = verify_producer_envelope(capsule_id, envelope)
@@ -1276,9 +1309,11 @@ def build_evidence_bundle(
     except ImportError as exc:  # pragma: no cover - exercised without the extra
         raise BundleBuildError("building a Bundle needs checkpointed-local-log: install agent-action-capsule[bundle]") from exc
 
+    if extensions is not None and not isinstance(extensions, Mapping):
+        raise BundleBuildError("extensions must be a JSON object")
     disclosures = {k: dict(v) if isinstance(v, Mapping) else v for k, v in (disclosures or {}).items()}
     extensions = dict(extensions or {})
-    _check_options(closure_depth, disclosures, suppressed_fields, payloads_mode, extensions)
+    _check_options(closure_depth, disclosures, suppressed_fields, payloads_mode, extensions, include, producer_key, verification)
     if interval_from is not None and (isinstance(interval_from, bool) or not isinstance(interval_from, int) or interval_from < 1):
         raise BundleBuildError("interval_from must be a seq of at least 1, or None for no range proof")
 
@@ -1335,7 +1370,7 @@ def build_evidence_bundle(
                 "first_seq": interval_from,
                 "last_seq": tip,
                 "body_digests": [leaves[seq - 1].hex() for seq in range(interval_from, tip + 1)],
-                "range_proof": dict(source.range_proof(interval_from)),
+                "range_proof": _range_proof_wire(source.range_proof(interval_from)),
             }
         )
 
@@ -1347,7 +1382,7 @@ def build_evidence_bundle(
     certificate["memberships"] = {
         cid: {
             "log_coordinates": {"log_id": signed.log_id, "seq": seq_of[cid], "leaf_index": seq_of[cid] - 1},
-            "inclusion_proof": dict(source.inclusion_proof(seq_of[cid])),
+            "inclusion_proof": _inclusion_proof_wire(seq_of[cid], source.inclusion_proof(seq_of[cid])),
         }
         for cid in ordered
     }
@@ -1375,8 +1410,6 @@ def build_evidence_bundle(
     if disclosures:
         bundle["disclosures"] = disclosures
     if producer_key is not None:
-        if len(producer_key) != 32:
-            raise BundleBuildError("producer_key must be a raw 32-byte Ed25519 public key")
         extensions["producer-key/v1"] = {"public_key": bytes(producer_key).hex()}
     if extensions:
         bundle["extensions"] = extensions
@@ -1387,6 +1420,11 @@ def build_evidence_bundle(
 
 def _self_checked(bundle: dict[str, Any]) -> dict[str, Any]:
     result = verify_bundle(bundle, strict=True)
+    if result.bundle_digest is None:
+        raise BundleBuildError(
+            "the bundle has no canonical digest: extensions and verification must hold only JSON that "
+            "canonicalizes (no fractional numbers or integers beyond 2**53 - 1)"
+        )
     if result.verdict == "INVALID":
         failed = [f"{name}: {', '.join(claim.findings) or claim.status}" for name, claim in result.claims if claim.status == "fail"]
         raise BundleBuildError(f"the bundle does not verify: {'; '.join(failed) or 'not an evidence bundle'}")

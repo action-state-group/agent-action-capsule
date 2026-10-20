@@ -483,3 +483,132 @@ def test_unproven_bundle_refusals(chain):
         build_unproven_bundle([{}], root="x")
     with pytest.raises(BundleBuildError, match="does not carry"):
         build_unproven_bundle(caps, root=caps[0]["capsule_id"], disclosures={ABSENT: {}})
+
+
+# -- round-1 review fixes --------------------------------------------------------
+
+
+@pytest.mark.parametrize("option", [{"extensions": {"example/notes": {"n": 1.5}}}, {"verification": {"n": 2**60}}])
+def test_a_bundle_with_no_canonical_digest_is_refused(chain, option):
+    source, caps, _ = chain
+    with pytest.raises(BundleBuildError, match="no canonical digest"):
+        build_evidence_bundle(source, root=caps[0]["capsule_id"], interval_from=1, **option)
+
+
+@pytest.mark.parametrize(
+    "inline",
+    [
+        {"signature": "VALID", "key_id": "VALID"},
+        {"signature": "00", "key_id": "11"},
+        {"signature": "VALID"},
+        {"key_id": "VALID"},
+    ],
+)
+def test_an_empty_envelope_means_unsigned_whatever_the_stored_json_says(inline):
+    from agent_action_capsule.canonical import jcs as canonical
+
+    a = capsule("inline")
+    real = {"signature": envelope(a["capsule_id"]).hex(), "key_id": _raw(PRODUCER).hex()}
+    stored = dict(a, **{k: real[k] if v == "VALID" else v for k, v in inline.items()})
+    records = Records()
+    records.held[a["capsule_id"]] = StoredRecord(canonical(stored), b"")
+    bundle = build_evidence_bundle(make_log([a["capsule_id"]], records), root=a["capsule_id"], interval_from=1)
+    assert "signature" not in bundle["records"][0] and "key_id" not in bundle["records"][0]
+    assert verdict(bundle) == "INCOMPLETE"
+
+
+def test_closure_stops_when_the_graph_is_exhausted(chain):
+    import time
+
+    source, caps, _ = chain
+    started = time.monotonic()
+    bundle = build_evidence_bundle(source, root=caps[0]["capsule_id"], interval_from=None, closure_depth=2**53 - 1)
+    assert time.monotonic() - started < 5
+    assert bundle["completeness"]["closure_depth"] == 2**53 - 1
+    with pytest.raises(BundleBuildError, match="closure_depth"):
+        build_evidence_bundle(source, root=caps[0]["capsule_id"], interval_from=None, closure_depth=2**53)
+
+
+def test_payloads_mode_is_all_when_nothing_committed_is_unrevealed(chain):
+    source, caps, _ = chain
+    # caps[1] commits no payload digest: nothing to reveal, so "all".
+    nothing = build_evidence_bundle(source, root=caps[1]["capsule_id"], interval_from=None, closure_depth=0)
+    assert nothing["completeness"]["payloads_mode"] == "all"
+    # caps[0] commits agent_input; suppressing it leaves nothing unrevealed.
+    suppressed = build_evidence_bundle(
+        source, root=caps[0]["capsule_id"], interval_from=None, closure_depth=0, suppressed_fields=["agent_input"]
+    )
+    assert suppressed["completeness"]["payloads_mode"] == "all"
+    assert verdict(suppressed) == "INCOMPLETE"  # no range: producer-selected
+
+
+def test_source_proofs_are_normalised_to_their_wire_fields(chain):
+    source, caps, _ = chain
+    inclusion, ranged = source.inclusion_proof, source.range_proof
+    padded = _Lying(
+        source,
+        {
+            "inclusion_proof": lambda seq: {**inclusion(seq), "smuggled": "x"},
+            "range_proof": lambda first: {**ranged(first), "note": "hi"},
+        },
+    )
+    bundle = build_evidence_bundle(padded, root=caps[2]["capsule_id"], interval_from=1)
+    cert = bundle["completeness_certificate"]
+    assert "note" not in cert["range_proof"]
+    assert all("smuggled" not in m["inclusion_proof"] for m in cert["memberships"].values())
+    for override, message in (
+        ({"inclusion_proof": lambda seq: None}, "inclusion proof for seq 1 is malformed"),
+        ({"range_proof": lambda first: [1]}, "range proof is malformed"),
+    ):
+        with pytest.raises(BundleBuildError, match=message):
+            build_evidence_bundle(_Lying(source, override), root=caps[2]["capsule_id"], interval_from=1)
+
+
+def test_a_source_that_lies_under_a_range_is_refused(chain):
+    source, caps, records = chain
+    root = caps[2]["capsule_id"]
+    inclusion, ranged, leaves = source.inclusion_proof, source.range_proof, source.leaves
+
+    def flip(proof, field):
+        proof = {k: list(v) if isinstance(v, (list, tuple)) else v for k, v in dict(proof).items()}
+        proof[field][0] = _flip(proof[field][0])
+        return proof
+
+    def swapped():
+        values = list(leaves())
+        values[0], values[1] = values[1], values[0]
+        return values
+
+    def edited(cid):
+        body = dict(capsule("a", agent_input={"step": 0}), action_id="edited", capsule_id=cid)
+        return StoredRecord(jcs(body), b"")
+
+    def wrong_inclusion(seq):
+        proof = dict(inclusion(seq))
+        field = next(k for k in ("witness", "peaks_left", "peaks_right") if proof[k])
+        return flip(proof, field)
+
+    cases = [
+        ({"range_proof": lambda first: flip(ranged(first), "witness")}, 2, "does not verify"),
+        ({"leaves": swapped}, 1, "does not verify"),
+        ({"inclusion_proof": wrong_inclusion}, 1, "does not verify"),
+        ({"record": edited}, 1, "record_identity_invalid"),
+    ]
+    for override, first, message in cases:
+        with pytest.raises(BundleBuildError, match=message):
+            build_evidence_bundle(_Lying(source, override), root=root, interval_from=first, closure_depth=1 if first > 1 else 2)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"producer_key": "a" * 32}, "producer_key"),
+        ({"include": "abc"}, "include must be"),
+        ({"extensions": [1]}, "extensions must be"),
+        ({"verification": [1]}, "verification must be"),
+    ],
+)
+def test_wrongly_typed_options_are_refused(chain, kwargs, message):
+    source, caps, _ = chain
+    with pytest.raises(BundleBuildError, match=message):
+        build_evidence_bundle(source, root=caps[0]["capsule_id"], interval_from=None, **kwargs)
