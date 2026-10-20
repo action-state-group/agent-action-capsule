@@ -21,7 +21,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from .canonical import MAX_SAFE_INTEGER, FloatInDigestError, UnsafeIntegerError, jcs
+from .canonical import MAX_SAFE_INTEGER, FloatInDigestError, UnsafeIntegerError, jcs, json_digest
 from .disclosure_envelope import (
     INELIGIBLE,
     MATCH,
@@ -47,6 +47,7 @@ __all__ = [
     "COMPLETENESS_VERIFIER_UNAVAILABLE",
     "RecordResult",
     "SELECTION_PRODUCER_SELECTED",
+    "CERTIFICATE_MODE_UNSUPPORTED",
     "BundleBuildError",
     "ProofSource",
     "StoredRecord",
@@ -63,11 +64,21 @@ __all__ = [
 COMPLETENESS_VERIFIER_UNAVAILABLE = "completeness_verifier_unavailable"
 
 # ``completeness.selection`` of a producer-selected Bundle: records the producer
-# picked from its log, with no claim about the records between them. Not
-# defined by the Bundle draft; read only in strict mode. Deliberately not named
-# ``PRODUCER_SELECTED``: capsule-emit 0.10 and earlier take that name as a sign
-# that the non-strict verifier reads such Bundles, which it does not.
+# picked from its log, each proven on its own, with no claim about the records
+# between them (Bundle -02). Deliberately not named ``PRODUCER_SELECTED``:
+# capsule-emit 0.10 and earlier take that name as a sign that the non-strict
+# verifier reads such Bundles the way it did before -02.
 SELECTION_PRODUCER_SELECTED = "producer-selected"
+
+# Finding for a ``completeness.selection`` value naming a certificate mode this
+# verifier does not implement (Bundle -02): interval coverage and per-record
+# membership are withheld, never failed.
+CERTIFICATE_MODE_UNSUPPORTED = "certificate_mode_unsupported"
+
+# The one non-record leaf type a range can carry (Bundle -02, Evidence Layer
+# padding), and the exact members of its content.
+_PADDING = "padding"
+_PADDING_MEMBERS = frozenset({"capsule_id", "record_type", "epistemic_type", "store_nonce"})
 
 BUNDLE_KIND = "evidence-bundle/v2"
 
@@ -429,7 +440,12 @@ def _apply_strict(result: BundleVerificationResult, bundle: Mapping[str, Any], r
         # The certificate binds the producer's selection, not an interval: the
         # interval proof cannot be read, each record's own proof still can.
         result.interval_coverage = ClaimResult("withheld", ("selection_not_checkable",))
-        result.per_record_membership = _selected_membership(bundle, signed if authenticated else {})
+        if authenticated:
+            result.per_record_membership = _selected_membership(bundle, signed["root"], signed["mmr_size"], signed["log_id"])
+        elif _range_member_without_range(bundle):
+            result.per_record_membership = ClaimResult("fail", ("completeness_certificate_invalid",))
+        else:
+            result.per_record_membership = ClaimResult("withheld", ("checkpoint_unverified",))
     if not authenticated:
         result.interval_coverage = _unanchored(result.interval_coverage)
         result.per_record_membership = _unanchored(result.per_record_membership)
@@ -511,26 +527,43 @@ def _unanchored(claim: ClaimResult) -> ClaimResult:
     return ClaimResult("withheld", tuple(dict.fromkeys((*claim.findings, "checkpoint_unverified"))))
 
 
-def _producer_selected(bundle: Mapping[str, Any]) -> bool:
+def _selection(bundle: Mapping[str, Any]) -> Any:
+    """``completeness.selection``, or ``None`` when absent (a range certificate)."""
     completeness = bundle.get("completeness")
-    return isinstance(completeness, Mapping) and completeness.get("selection") == SELECTION_PRODUCER_SELECTED
+    return completeness.get("selection") if isinstance(completeness, Mapping) else None
 
 
-def _selected_membership(bundle: Mapping[str, Any], signed: Mapping[str, Any]) -> ClaimResult:
-    """Each record's inclusion proof against the signed checkpoint's root and
-    size, for a producer-selected Bundle. With no signed checkpoint nothing is
-    shown (the caller withholds it)."""
-    if not signed:
-        return ClaimResult("withheld", ("checkpoint_unverified",))
+def _producer_selected(bundle: Mapping[str, Any]) -> bool:
+    return _selection(bundle) == SELECTION_PRODUCER_SELECTED
+
+
+def _range_member_without_range(bundle: Mapping[str, Any]) -> bool:
+    """A producer-selected certificate carrying ``non_record_leaves``: wrong on
+    its face, with or without a signed checkpoint."""
+    certificate = bundle.get("completeness_certificate")
+    return isinstance(certificate, Mapping) and "non_record_leaves" in certificate
+
+
+def _selected_membership(bundle: Mapping[str, Any], root_hex: Any, size: Any, log_id: Any) -> ClaimResult:
+    """Each record's inclusion proof against ``root_hex`` and ``size``, for a
+    producer-selected Bundle. A ``non_record_leaves`` member makes the
+    certificate invalid: with no range there is no interval for it to cover."""
+    certificate = bundle.get("completeness_certificate")
+    members = certificate.get("memberships") if isinstance(certificate, Mapping) else None
+    if (
+        not isinstance(members, Mapping)
+        or _range_member_without_range(bundle)
+        or certificate.get("range_root") != root_hex
+        or not isinstance(root_hex, str)
+        or not _HEX64.fullmatch(root_hex)
+        or not _safe_int(size)
+    ):
+        return ClaimResult("fail", ("completeness_certificate_invalid",))
     if not _cll_available():
         return ClaimResult("withheld", ("membership_verifier_unavailable",))
     from cll.checkpoint import verify_inclusion
 
-    certificate = bundle.get("completeness_certificate")
-    members = certificate.get("memberships") if isinstance(certificate, Mapping) else None
-    if not isinstance(members, Mapping) or certificate.get("range_root") != signed.get("root"):
-        return ClaimResult("fail", ("completeness_certificate_invalid",))
-    root, size, log_id = bytes.fromhex(signed["root"]), signed["mmr_size"], signed["log_id"]
+    root = bytes.fromhex(root_hex)
     raw_records = bundle.get("records") if isinstance(bundle.get("records"), list) else []
     ids = [r["capsule_id"] if isinstance(r.get("capsule_id"), str) else "" for r in raw_records if isinstance(r, Mapping)]
     findings: list[str] = []
@@ -687,6 +720,14 @@ def _verify_completeness(bundle: Mapping[str, Any], records: Mapping[str, Mappin
     if not isinstance(certificate, Mapping) or not isinstance(checkpoint, Mapping):
         absent = ClaimResult("withheld", ("completeness_evidence_absent",))
         return absent, absent
+    selection = _selection(bundle)
+    if selection == SELECTION_PRODUCER_SELECTED:
+        return _plain_selected(bundle, certificate, checkpoint)
+    if selection is not None:
+        # A certificate mode this verifier does not implement: not shown, and
+        # never a failure (Bundle -02).
+        unsupported = ClaimResult("withheld", (CERTIFICATE_MODE_UNSUPPORTED,))
+        return unsupported, unsupported
     parsed = _certificate(certificate, checkpoint)
     if parsed is None:
         failure = ClaimResult("fail", ("completeness_certificate_invalid",))
@@ -713,17 +754,38 @@ def _verify_completeness(bundle: Mapping[str, Any], records: Mapping[str, Mappin
     # checkpoint authenticator is verified. Preserve the proof result, but
     # never present it as an unqualified completeness claim.
     interval = ClaimResult("pass") if authentication == "verified" else ClaimResult("pass", ("checkpoint_unverified",))
-    membership_findings = _verify_memberships(
+    membership_findings, failed = _verify_memberships(
         root,
         log_id,
         first_seq,
         last_seq,
-        certificate.get("memberships"),
+        certificate,
         records,
         bundle.get("completeness"),
     )
-    membership = ClaimResult("pass") if authentication == "verified" else ClaimResult("pass", ("checkpoint_unverified",))
-    return interval, membership if not membership_findings else ClaimResult("fail", tuple(membership_findings))
+    qualifier = () if authentication == "verified" else ("checkpoint_unverified",)
+    if failed:
+        return interval, ClaimResult("fail", tuple(membership_findings))
+    if membership_findings:
+        return interval, ClaimResult("withheld", (*membership_findings, *qualifier))
+    return interval, ClaimResult("pass", qualifier)
+
+
+def _plain_selected(
+    bundle: Mapping[str, Any], certificate: Mapping[str, Any], checkpoint: Mapping[str, Any]
+) -> tuple[ClaimResult, ClaimResult]:
+    """A producer-selected Bundle without strict mode: no interval to check;
+    each record's own proof against the stated checkpoint, qualified like a
+    range Bundle's when the checkpoint's COSE form does not authenticate it."""
+    interval = ClaimResult("withheld", ("selection_not_checkable",))
+    membership = _selected_membership(bundle, certificate.get("range_root"), checkpoint.get("mmr_size"), checkpoint.get("log_id"))
+    if membership.status != "pass":
+        return interval, membership
+    root_hex = certificate.get("range_root")
+    authentication = _authenticate_checkpoint(checkpoint, checkpoint.get("log_id"), bytes.fromhex(root_hex), checkpoint.get("mmr_size"))
+    if authentication == "invalid":
+        return interval, ClaimResult("fail", ("checkpoint_authentication_invalid",))
+    return interval, ClaimResult("pass", () if authentication == "verified" else ("checkpoint_unverified",))
 
 
 def _authenticate_checkpoint(checkpoint: Mapping[str, Any], log_id: str, root: bytes, size: int) -> str:
@@ -830,12 +892,18 @@ def _verify_memberships(
     log_id: str,
     first_seq: int,
     last_seq: int,
-    raw: Any,
+    certificate: Mapping[str, Any],
     records: Mapping[str, Mapping[str, Any]],
     completeness: Any,
-) -> list[str]:
+) -> tuple[list[str], list[str]]:
+    """Per-record membership over ``[first_seq, last_seq]``: every finding in
+    report order, and whether any of them fails the claim (the others are
+    ``non_record_leaf_type_unsupported``, which withhold it). Every seq of the
+    interval is a record's membership, a non-record leaf, or
+    ``membership_record_missing``."""
+    raw = certificate.get("memberships")
     if not isinstance(raw, Mapping):
-        return ["memberships_absent"]
+        return ["memberships_absent"], True
     by_seq: dict[int, str] = {}
     bound_records: set[str] = set()
     findings: list[str] = []
@@ -874,15 +942,75 @@ def _verify_memberships(
                 findings.append(f"membership_proof_invalid:{capsule_id}")
         except (ImportError, TypeError, ValueError, KeyError):
             findings.append(f"membership_proof_invalid:{capsule_id}")
+    leaf_seqs: set[int] = set()
+    unsupported = 0
+    if "non_record_leaves" in certificate:
+        leaf_findings, leaf_seqs = _non_record_leaves(
+            certificate["non_record_leaves"], first_seq, last_seq, certificate.get("body_digests"), set(by_seq)
+        )
+        findings += leaf_findings
+        unsupported = sum(f.startswith(_UNSUPPORTED_LEAF) for f in leaf_findings)
     for seq in range(first_seq, last_seq + 1):
-        if seq not in by_seq:
+        if seq not in by_seq and seq not in leaf_seqs:
             findings.append(f"membership_record_missing:{seq}")
     raw_missing = completeness.get("missing", []) if isinstance(completeness, Mapping) else []
     declared_missing = {c for c in raw_missing if isinstance(c, str)} if isinstance(raw_missing, list) else set()
     for capsule_id in records:
         if capsule_id not in bound_records and capsule_id not in declared_missing:
             findings.append(f"membership_record_unbound:{capsule_id}")
-    return findings
+    return findings, len(findings) > unsupported
+
+
+_UNSUPPORTED_LEAF = "non_record_leaf_type_unsupported:"
+
+
+def _non_record_leaves(
+    raw: Any, first_seq: int, last_seq: int, body_digests: Any, record_seqs: set[int]
+) -> tuple[list[str], set[int]]:
+    """Check ``completeness_certificate.non_record_leaves`` (Bundle -02).
+
+    Returns the findings in element order and the seqs the member accounts
+    for. Every finding fails the claim except
+    ``non_record_leaf_type_unsupported:<seq>``. An element whose ``seq`` is
+    valid accounts for that seq whatever else it fails, so the seq is never
+    also reported missing. ``body_digests`` has already been checked by the
+    range proof."""
+    if not isinstance(raw, list):
+        return ["non_record_leaves_malformed"], set()
+    findings: list[str] = []
+    accounted: set[int] = set()
+    for index, element in enumerate(raw):
+        if not isinstance(element, Mapping):
+            findings.append(f"non_record_leaf_element_invalid:{index}")
+            continue
+        seq = element.get("seq")
+        if not _safe_int(seq) or not first_seq <= seq <= last_seq or seq in record_seqs or seq in accounted:
+            findings.append(f"non_record_leaf_seq_invalid:{index}")
+            continue
+        accounted.add(seq)
+        content = element.get("content")
+        record_type = content.get("record_type") if isinstance(content, Mapping) else None
+        if not isinstance(record_type, str):
+            # Includes an element that carries a digest in place of content.
+            findings.append(f"non_record_leaf_malformed:{seq}")
+            continue
+        if record_type != _PADDING:
+            findings.append(f"{_UNSUPPORTED_LEAF}{seq}")
+            continue
+        if (
+            set(content) != _PADDING_MEMBERS
+            or content.get("epistemic_type") != "producer_claim"
+            or not isinstance(content.get("store_nonce"), str)
+            or not _HEX64.fullmatch(content["store_nonce"])
+            or not isinstance(content.get("capsule_id"), str)
+            or not _HEX64.fullmatch(content["capsule_id"])
+        ):
+            findings.append(f"non_record_leaf_malformed:{seq}")
+            continue
+        leaf = json_digest({k: v for k, v in content.items() if k != "capsule_id"})
+        if leaf != content["capsule_id"] or leaf != body_digests[seq - first_seq]:
+            findings.append(f"non_record_leaf_mismatch:{seq}")
+    return findings, accounted
 
 
 def _inclusion_proof(raw: Any) -> Any:
@@ -1043,6 +1171,12 @@ class ProofSource(Protocol):
       checkpoint's size, in the Bundle's ``inclusion_proof`` wire shape.
     - ``range_proof(first_seq)``: the range proof over ``[first_seq, tip]``, in
       the Bundle's ``range_proof`` wire shape.
+
+    Optional capability: ``leaf_content(seq)``, the content of a leaf that is
+    not a record (a padding record's four members), or ``None`` when the
+    source does not hold it. ``build_evidence_bundle`` reads it only with
+    ``carry_non_record_leaves=True``; a source without it builds exactly as
+    before.
     """
 
     def checkpoint(self) -> bytes: ...
@@ -1306,6 +1440,7 @@ def build_evidence_bundle(
     producer_key: bytes | None = None,
     extensions: Mapping[str, Any] | None = None,
     verification: Mapping[str, Any] | None = None,
+    carry_non_record_leaves: bool = False,
 ) -> dict[str, Any]:
     """Build an Evidence Bundle around ``root`` from ``source``.
 
@@ -1321,6 +1456,12 @@ def build_evidence_bundle(
     ``producer_key`` (raw 32-byte Ed25519) adds ``producer-key/v1``;
     ``extensions`` adds blocks of any other kind; ``verification`` carries the
     producer's self-report.
+
+    ``carry_non_record_leaves`` lets a range cover a padding leaf: the source's
+    ``leaf_content(seq)`` is carried in ``completeness_certificate.
+    non_record_leaves`` (Bundle -02). It is off by default because a verifier
+    that predates -02 reads such a Bundle as missing those seqs; turn it on only
+    for readers that check the member.
 
     Requires checkpointed-local-log (the ``bundle`` extra). Raises
     :class:`BundleBuildError` on every refusal, including any result
@@ -1380,16 +1521,21 @@ def build_evidence_bundle(
         if below:
             named = ", ".join(f"{cid} (seq {seq})" for seq, cid in below)
             raise BundleBuildError(f"record(s) below interval_from {interval_from}: {named}; lower it or build without a range")
+        non_record: list[dict[str, Any]] = []
         for seq in range(interval_from, tip + 1):
             capsule_id = leaves[seq - 1].hex()
             if capsule_id in carried:
                 continue
             record = lookup(capsule_id)
             if record is None:
-                raise BundleBuildError(
-                    f"seq {seq} in the interval is not a record the source holds; a range cannot cover it: "
-                    "start the interval after it or build without a range"
-                )
+                content = _padding_content(source, seq, capsule_id) if carry_non_record_leaves else None
+                if content is None:
+                    raise BundleBuildError(
+                        f"seq {seq} in the interval is not a record the source holds; a range cannot cover it: "
+                        "start the interval after it or build without a range"
+                    )
+                non_record.append({"seq": seq, "content": content})
+                continue
             carried[capsule_id] = record
         certificate.update(
             {
@@ -1399,6 +1545,8 @@ def build_evidence_bundle(
                 "range_proof": _range_proof_wire(source.range_proof(interval_from)),
             }
         )
+        if non_record:
+            certificate["non_record_leaves"] = non_record
 
     ordered = sorted(carried, key=lambda cid: seq_of[cid])
     unknown = sorted(set(disclosures) - set(ordered))
@@ -1442,6 +1590,30 @@ def build_evidence_bundle(
     if verification is not None:
         bundle["verification"] = copy.deepcopy(dict(verification))
     return _self_checked(bundle)
+
+
+def _padding_content(source: Any, seq: int, leaf_hex: str) -> dict[str, Any] | None:
+    """The source's content for a non-record leaf, when it is a padding record
+    whose recomputed ``capsule_id`` is that leaf; ``None`` when the source has
+    no ``leaf_content`` or holds nothing for ``seq``. Any other content is
+    refused by name: the producer carries padding only."""
+    reader = getattr(source, "leaf_content", None)
+    if reader is None:
+        return None
+    content = reader(seq)
+    if content is None:
+        return None
+    if not isinstance(content, Mapping) or content.get("record_type") != _PADDING:
+        raise BundleBuildError(f"seq {seq}: the source's leaf content is not a padding record; a range cannot cover it")
+    # Local-only producer envelope members are outside the leaf's preimage.
+    content = {k: v for k, v in content.items() if k not in ("signature", "key_id")}
+    try:
+        leaf = json_digest({k: v for k, v in content.items() if k != "capsule_id"})
+    except (FloatInDigestError, UnsafeIntegerError, TypeError, ValueError) as exc:
+        raise BundleBuildError(f"seq {seq}: the padding record has no canonical digest") from exc
+    if leaf != leaf_hex or content.get("capsule_id") != leaf_hex:
+        raise BundleBuildError(f"seq {seq}: the padding record does not hash to the leaf")
+    return copy.deepcopy(dict(content))
 
 
 def _self_checked(bundle: dict[str, Any]) -> dict[str, Any]:
