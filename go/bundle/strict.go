@@ -2,6 +2,7 @@
 package bundle
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"math/big"
 	"sort"
@@ -14,10 +15,14 @@ import (
 )
 
 // SelectionProducerSelected is completeness.selection of a producer-selected
-// Bundle: records the producer picked from its log, with no claim about the
-// records between them. It is not defined by the Bundle draft and is read
-// only by VerifyStrict.
+// Bundle: records the producer picked from its log, each proven on its own,
+// with no claim about the records between them (Bundle -02).
 const SelectionProducerSelected = "producer-selected"
+
+// CertificateModeUnsupported is the finding for a completeness.selection value
+// naming a certificate mode this verifier does not implement (Bundle -02):
+// interval coverage and per-record membership are withheld, never failed.
+const CertificateModeUnsupported = "certificate_mode_unsupported"
 
 // Strict-mode verdicts.
 const (
@@ -82,8 +87,9 @@ type StrictResult struct {
 	// least one record, whether every record's key_id is the checkpoint's
 	// key_id. It is reported and never gates.
 	SignerMatchesCheckpoint *bool
-	// Verdict is VALID when every claim passed, INVALID when a claim or the
-	// witnesses failed, and INCOMPLETE otherwise.
+	// Verdict is VALID when every claim passed, INVALID when a claim, the
+	// witnesses or a gating category_coverage property failed, and
+	// INCOMPLETE otherwise.
 	Verdict string
 }
 
@@ -106,9 +112,11 @@ func (r StrictResult) Claim(name string) *ClaimResult {
 //     withheld without one, fail when it does not verify or the JSON copy
 //     differs from it. Without a signed checkpoint the interval and
 //     membership claims are not shown, so the Bundle is never VALID;
-//   - a producer-selected Bundle (completeness.selection producer-selected,
-//     outside the Bundle draft): interval coverage is withheld and each
-//     record's own inclusion proof is checked against the signed checkpoint;
+//   - a producer-selected Bundle (completeness.selection producer-selected):
+//     interval coverage is withheld and each record's own inclusion proof is
+//     checked against the signed checkpoint;
+//   - a category_coverage member: a FAIL of its form, signature or
+//     consistency makes the verdict INVALID;
 //   - the disclosures overlay as one claim, when the Bundle carries one;
 //   - the witness receipts in checkpoint.witnesses under the keys of
 //     WitnessDirectory.
@@ -206,11 +214,11 @@ func VerifyStrict(value interface{}, opts StrictOptions) StrictResult {
 		// The certificate binds the producer's selection, not an interval: the
 		// interval proof cannot be read, each record's own proof still can.
 		result.IntervalCoverage = ClaimResult{Status: "withheld", Findings: []string{"selection_not_checkable"}}
-		var anchor *witness.SignedCheckpoint
 		if authenticated {
-			anchor = signed
+			result.PerRecordMembership = selectedMembership(bundle, signed.Root, signed.MMRSize, signed.LogID)
 		}
-		result.PerRecordMembership = selectedMembership(bundle, anchor)
+		// Otherwise the plain reading stands: each proof against the stated
+		// checkpoint, withheld below unless it failed, as for a range Bundle.
 	}
 	if !authenticated {
 		result.IntervalCoverage = unanchored(result.IntervalCoverage)
@@ -265,6 +273,9 @@ func VerifyStrict(value interface{}, opts StrictOptions) StrictResult {
 		}
 	}
 	result.Verdict = strictVerdict(result.Claims, *result.Witnesses)
+	if coverageFails(result.CategoryCoverage) {
+		result.Verdict = VerdictInvalid
+	}
 	return result
 }
 
@@ -379,22 +390,23 @@ func unanchored(claim ClaimResult) ClaimResult {
 	return ClaimResult{Status: "withheld", Findings: findings}
 }
 
-// selectedMembership checks each record's inclusion proof against the signed
-// checkpoint's root and size, for a producer-selected Bundle. With no signed
-// checkpoint nothing is shown.
-func selectedMembership(bundle map[string]interface{}, signed *witness.SignedCheckpoint) ClaimResult {
-	if signed == nil {
-		return ClaimResult{Status: "withheld", Findings: []string{"checkpoint_unverified"}}
-	}
+// selectedMembership checks each record's inclusion proof against rootHex
+// and size, for a producer-selected Bundle. A non_record_leaves member makes
+// the certificate invalid: with no range there is no interval for it to
+// cover.
+func selectedMembership(bundle map[string]interface{}, rootHex, sizeValue, logID interface{}) ClaimResult {
+	invalid := ClaimResult{Status: "fail", Findings: []string{"completeness_certificate_invalid"}}
 	certificate, _ := bundle["completeness_certificate"].(map[string]interface{})
 	members, isObject := certificate["memberships"].(map[string]interface{})
-	if !isObject || certificate["range_root"] != signed.Root {
-		return ClaimResult{Status: "fail", Findings: []string{"completeness_certificate_invalid"}}
+	_, carriesLeaves := certificate["non_record_leaves"]
+	rootText, rootOK := rootHex.(string)
+	logText, logOK := logID.(string)
+	size, sizeOK := integer(sizeValue)
+	if !isObject || carriesLeaves || !logOK || !rootOK || certificate["range_root"] != rootText ||
+		certificate["log_id"] != logText || !hex64RE.MatchString(rootText) || !sizeOK {
+		return invalid
 	}
-	root, err := hashes([]interface{}{signed.Root})
-	if err != nil {
-		return ClaimResult{Status: "fail", Findings: []string{"completeness_certificate_invalid"}}
-	}
+	root, _ := hex.DecodeString(rootText)
 	rawRecords, _ := bundle["records"].([]interface{})
 	var ids []string
 	inBundle := map[string]bool{}
@@ -416,13 +428,13 @@ func selectedMembership(bundle map[string]interface{}, signed *witness.SignedChe
 		}
 		seq, seqOK := integer(coordinates["seq"])
 		index, indexOK := integer(coordinates["leaf_index"])
-		if coordinates["log_id"] != signed.LogID || !seqOK || !indexOK || seq < 1 || index != seq-1 || seen[seq] {
+		if coordinates["log_id"] != logText || !seqOK || !indexOK || seq < 1 || index != seq-1 || seen[seq] {
 			findings = append(findings, "membership_coordinates_invalid:"+id)
 			continue
 		}
 		seen[seq] = true
 		proof, err := parseInclusionProof(member["inclusion_proof"])
-		if err != nil || proof.Size != signed.MMRSize || !mmr.VerifyHexInclusion(root[0], signed.MMRSize, uint64(index), id, proof) {
+		if err != nil || size < 0 || proof.Size != uint64(size) || !mmr.VerifyHexInclusion(root, proof.Size, uint64(index), id, proof) {
 			findings = append(findings, "membership_proof_invalid:"+id)
 		}
 	}
