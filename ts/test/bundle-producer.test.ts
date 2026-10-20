@@ -1146,3 +1146,190 @@ describe("the unproven form", () => {
     );
   });
 });
+
+describe("leafContent (Evidence Bundle -02)", () => {
+  const padding = async (label: string): Promise<Obj> => {
+    const body = {
+      record_type: "padding",
+      epistemic_type: "producer_claim",
+      store_nonce: await jsonDigest(label),
+    };
+    return { capsule_id: await jsonDigest(body), ...body };
+  };
+  /** A source with the optional `leafContent` capability over another. */
+  const withContent = (
+    base: ProofSource,
+    contents: Map<number, unknown>,
+  ): ProofSource => ({
+    checkpoint: () => base.checkpoint(),
+    leaves: () => base.leaves(),
+    record: (id) => base.record(id),
+    inclusionProof: (seq) => base.inclusionProof(seq),
+    rangeProof: (seq) => base.rangeProof(seq),
+    leafContent: async (seq) => structuredClone(contents.get(seq)),
+  });
+  /** Records at seq 1 and 3, padding at 2 and at the tip, 4. */
+  const padded = async () => {
+    const store = new Records();
+    const a = await capsule("a"),
+      b = await capsule("b");
+    store.put(a);
+    store.put(b);
+    const pads = new Map<number, Obj>([
+      [2, await padding("2")],
+      [4, await padding("4")],
+    ]);
+    const log = await makeLog(
+      [
+        a.capsule_id as string,
+        pads.get(2)!.capsule_id as string,
+        b.capsule_id as string,
+        pads.get(4)!.capsule_id as string,
+      ],
+      store,
+    );
+    return { log, a, b, pads };
+  };
+
+  it("a source with leafContent carries padding when asked", async () => {
+    const { log, a, b, pads } = await padded();
+    const stored = new Map(
+      [...pads].map(([seq, pad]) => [
+        seq,
+        { ...pad, signature: "00", key_id: "11" }, // envelope dropped
+      ]),
+    );
+    const bundle = await buildEvidenceBundle(withContent(log, stored), {
+      root: b.capsule_id as string,
+      intervalFrom: 1,
+      carryNonRecordLeaves: true,
+    });
+    expect((bundle.completeness_certificate as Obj).non_record_leaves).toEqual([
+      { seq: 2, content: pads.get(2) },
+      { seq: 4, content: pads.get(4) },
+    ]);
+    expect(ids(bundle)).toEqual([a.capsule_id, b.capsule_id]);
+    expect(await verdict(bundle)).toBe("VALID");
+  });
+
+  it("carrying over a range without padding adds no member", async () => {
+    const bundle = await buildEvidenceBundle(withContent(source, new Map()), {
+      root: cid(2),
+      intervalFrom: 1,
+      carryNonRecordLeaves: true,
+    });
+    expect(bundle.completeness_certificate).not.toHaveProperty(
+      "non_record_leaves",
+    );
+  });
+
+  it("carrying is off by default", async () => {
+    const { log, b, pads } = await padded();
+    await refused(
+      buildEvidenceBundle(withContent(log, pads), {
+        root: b.capsule_id as string,
+        intervalFrom: 1,
+      }),
+      /seq 2 in the interval is not a record/,
+    );
+  });
+
+  it("an old source is unchanged", async () => {
+    const { log, b, pads } = await padded();
+    expect(log.leafContent).toBeUndefined();
+    await refused(
+      buildEvidenceBundle(log, {
+        root: b.capsule_id as string,
+        intervalFrom: 1,
+        carryNonRecordLeaves: true,
+      }),
+      /seq 2 in the interval is not a record/,
+    );
+    const old = await buildEvidenceBundle(log, {
+      root: b.capsule_id as string,
+      intervalFrom: null,
+      closureDepth: 0,
+    });
+    const carried = await buildEvidenceBundle(withContent(log, pads), {
+      root: b.capsule_id as string,
+      intervalFrom: null,
+      closureDepth: 0,
+      carryNonRecordLeaves: true,
+    });
+    expect(carried).toEqual(old);
+    expect(carried.completeness_certificate).not.toHaveProperty(
+      "non_record_leaves",
+    );
+  });
+
+  it("no padding in the interval means no member", async () => {
+    const { log, b, pads } = await padded();
+    await refused(
+      buildEvidenceBundle(log, {
+        root: b.capsule_id as string,
+        intervalFrom: 3,
+      }),
+      /seq 4/,
+    );
+    const bundle = await buildEvidenceBundle(withContent(log, pads), {
+      root: b.capsule_id as string,
+      intervalFrom: 3,
+      carryNonRecordLeaves: true,
+    });
+    expect((bundle.completeness_certificate as Obj).non_record_leaves).toEqual([
+      { seq: 4, content: pads.get(4) },
+    ]);
+  });
+
+  it.each([
+    [{ record_type: "checkpoint_stamp" }, /not a padding record/],
+    ["padding", /not a padding record/],
+    ["wrong-nonce", /does not hash to the leaf/],
+    ["no-id", /does not hash to the leaf/],
+    [{ record_type: "padding", weight: 0.5 }, /no canonical digest/],
+  ])(
+    "leafContent %j that is not that padding is refused",
+    async (content, message) => {
+      const { log, b, pads } = await padded();
+      let given: unknown = content;
+      if (content === "wrong-nonce")
+        given = { ...pads.get(2), store_nonce: "00".repeat(32) };
+      else if (content === "no-id") {
+        const { capsule_id: _, ...rest } = pads.get(2)!;
+        given = rest;
+      }
+      await refused(
+        buildEvidenceBundle(
+          withContent(log, new Map<number, unknown>([...pads, [2, given]])),
+          {
+            root: b.capsule_id as string,
+            intervalFrom: 1,
+            carryNonRecordLeaves: true,
+          },
+        ),
+        message,
+      );
+    },
+  );
+
+  it("a malformed padding shape is refused by the self-check", async () => {
+    const body = {
+      record_type: "padding",
+      epistemic_type: "producer_claim",
+      store_nonce: "AB".repeat(32),
+    };
+    const bad = { capsule_id: await jsonDigest(body), ...body };
+    const store = new Records();
+    const a = await capsule("a");
+    store.put(a);
+    const log = await makeLog([a.capsule_id as string, bad.capsule_id], store);
+    await refused(
+      buildEvidenceBundle(withContent(log, new Map([[2, bad]])), {
+        root: a.capsule_id as string,
+        intervalFrom: 1,
+        carryNonRecordLeaves: true,
+      }),
+      /non_record_leaf_malformed:2/,
+    );
+  });
+});

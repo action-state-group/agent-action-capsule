@@ -44,6 +44,12 @@ import {
   verifyRecordSignature,
   type RecordSignatureVerdict,
 } from "./producer-envelope-verification.js";
+import {
+  categoryCoverageFails,
+  checkCategoryCoverage,
+  type CategoryCoverageInputs,
+  type CategoryCoverageResult,
+} from "./category-coverage.js";
 import { disclosureEligibleFields } from "./registries.js";
 import { verifyClass1, type VerificationResult } from "./verify.js";
 import {
@@ -135,10 +141,22 @@ export interface BundleVerificationResult {
   readonly countersignatures: readonly CountersignatureResult[];
   readonly verification?: ProducerSelfReport;
   readonly capsuleResults: Readonly<Record<string, VerificationResult>>;
+  /**
+   * The `category_coverage` member's five properties, in report order
+   * (`category-coverage.ts`), or null when the Bundle carries no such member.
+   * Filled in both modes.
+   */
+  readonly categoryCoverage: CategoryCoverageResult | null;
   /** Only with `strict`. */
   readonly strict?: StrictBundleResult;
 }
-export interface VerifyBundleOptions {
+/**
+ * `categorySets`, `categoryRequest` and `recordCategories` are the inputs a
+ * Bundle cannot carry for its `category_coverage` member
+ * ({@link CategoryCoverageInputs}). In strict mode a `FAIL` of its form,
+ * signature or consistency makes the verdict `INVALID`.
+ */
+export interface VerifyBundleOptions extends CategoryCoverageInputs {
   /**
    * Add the checks a verifier handing a verdict to a person needs
    * (vectors/bundle/strict/README.md): each record's producer signature, the
@@ -184,8 +202,9 @@ export interface StrictWitnessesResult extends ClaimResult {
 }
 export interface StrictBundleResult {
   /**
-   * `VALID` when every claim passed, `INVALID` when one failed or the
-   * witnesses failed, `INCOMPLETE` otherwise.
+   * `VALID` when every claim passed, `INVALID` when one failed, the
+   * witnesses failed or a gating `category_coverage` property failed,
+   * `INCOMPLETE` otherwise.
    */
   readonly verdict: "VALID" | "INCOMPLETE" | "INVALID";
   /** `bundle_kind` is `evidence-bundle/v2` and `bundle_version` is `"2"`. */
@@ -351,7 +370,7 @@ async function verifyPlainAndStrict(
       throw new RangeError(
         `Bundle nests more than ${MAX_NESTING_DEPTH} levels`,
       );
-    const plain = await verifyPlain(bundle);
+    const plain = await verifyPlain(bundle, options);
     return options.strict === true
       ? {
           plain,
@@ -399,9 +418,13 @@ function malformedBundle(): BundleVerificationResult {
     extensions: [],
     countersignatures: [],
     capsuleResults: {},
+    categoryCoverage: null,
   };
 }
-async function verifyPlain(bundle: unknown): Promise<BundleVerificationResult> {
+async function verifyPlain(
+  bundle: unknown,
+  options: VerifyBundleOptions,
+): Promise<BundleVerificationResult> {
   if (!object(bundle)) return malformedBundle();
   let digest: string | undefined;
   try {
@@ -439,6 +462,7 @@ async function verifyPlain(bundle: unknown): Promise<BundleVerificationResult> {
         }
       : {}),
     capsuleResults: collected.results,
+    categoryCoverage: await checkCategoryCoverage(bundle, options),
   };
 }
 // The checkpoint fields a signed COSE checkpoint states; in strict mode the
@@ -454,12 +478,18 @@ const SIGNED_CHECKPOINT_FIELDS = [
 ] as const;
 /**
  * `completeness.selection` of a producer-selected Bundle: records the
- * producer picked from its log, with no claim about the records between them.
- * Not defined by the Bundle draft; read only in strict mode.
+ * producer picked from its log, each proven on its own, with no claim about
+ * the records between them (Bundle -02).
  */
 export const SELECTION_PRODUCER_SELECTED = "producer-selected";
 /** The interval coverage finding of a producer-selected Bundle. */
 export const SELECTION_NOT_CHECKABLE = "selection_not_checkable";
+/**
+ * The finding for a `completeness.selection` value naming a certificate mode
+ * this verifier does not implement (Bundle -02): interval coverage and
+ * per-record membership are withheld, never failed.
+ */
+export const CERTIFICATE_MODE_UNSUPPORTED = "certificate_mode_unsupported";
 
 async function strict(
   plain: BundleVerificationResult,
@@ -554,7 +584,15 @@ async function strict(
       status: "withheld",
       findings: [SELECTION_NOT_CHECKABLE],
     };
-    perRecordMembership = await selectedMembership(bundle, checkpoint.signed);
+    if (checkpoint.signed !== undefined)
+      perRecordMembership = await selectedMembership(
+        bundle,
+        checkpoint.signed.root,
+        checkpoint.signed.mmr_size,
+        checkpoint.signed.log_id,
+      );
+    // Otherwise the plain reading stands: each proof against the stated
+    // checkpoint, withheld below unless it failed, as for a range Bundle.
   }
   if (!authenticated) {
     intervalCoverage = unanchored(intervalCoverage);
@@ -588,7 +626,8 @@ async function strict(
   const checkpointKey = checkpoint.signed?.key_id;
   const failed =
     claims.some((claim) => claim.status === "fail") ||
-    witnesses.status === "fail";
+    witnesses.status === "fail" ||
+    categoryCoverageFails(plain.categoryCoverage);
   return {
     ...plain,
     intervalCoverage,
@@ -726,25 +765,30 @@ function unanchored(claim: ClaimResult): ClaimResult {
 }
 
 /**
- * Each record's inclusion proof against the signed checkpoint's root and
- * size, for a producer-selected Bundle. With no signed checkpoint nothing is
- * shown (the caller withholds it).
+ * Each record's inclusion proof against `rootHex` and `size`, for a
+ * producer-selected Bundle. A `non_record_leaves` member makes the
+ * certificate invalid: with no range there is no interval for it to cover.
  */
 async function selectedMembership(
   bundle: Bundle,
-  signed: SignedCheckpointFields | undefined,
+  rootHex: unknown,
+  size: unknown,
+  logId: unknown,
 ): Promise<ClaimResult> {
-  if (signed === undefined)
-    return { status: "withheld", findings: ["checkpoint_unverified"] };
   const certificate = bundle.completeness_certificate;
   const members = object(certificate) ? certificate.memberships : undefined;
   if (
     !object(certificate) ||
     !object(members) ||
-    certificate.range_root !== signed.root
+    Object.hasOwn(certificate, "non_record_leaves") ||
+    certificate.range_root !== rootHex ||
+    certificate.log_id !== logId ||
+    typeof logId !== "string" ||
+    !isHex64(rootHex) ||
+    !integer(size)
   )
     return fail("completeness_certificate_invalid");
-  const root = hex(signed.root);
+  const root = hex(rootHex);
   const ids = (Array.isArray(bundle.records) ? bundle.records : [])
     .filter(object)
     .map(capsuleIdOf);
@@ -760,7 +804,7 @@ async function selectedMembership(
     const seq = coordinates.seq,
       index = coordinates.leaf_index;
     if (
-      coordinates.log_id !== signed.log_id ||
+      coordinates.log_id !== logId ||
       !integer(seq) ||
       !integer(index) ||
       seq < 1 ||
@@ -777,7 +821,7 @@ async function selectedMembership(
     if (
       !proof ||
       !isHex64(id) ||
-      proof.size !== signed.mmr_size ||
+      proof.size !== size ||
       proof.leaf_index !== index ||
       !(await verifyProof(root, id, proof, index))
     )
@@ -918,8 +962,22 @@ async function completeness(
     };
     return [absent, absent];
   }
-  const certificate = bundle.completeness_certificate,
-    parsed = parseCertificate(certificate, bundle.checkpoint);
+  const certificate = bundle.completeness_certificate;
+  if (
+    object(bundle.completeness) &&
+    Object.hasOwn(bundle.completeness, "selection")
+  ) {
+    if (bundle.completeness.selection === SELECTION_PRODUCER_SELECTED)
+      return plainSelected(bundle, bundle.checkpoint);
+    // A certificate mode this verifier does not implement: not shown, and
+    // never a failure (Bundle -02).
+    const unsupported: ClaimResult = {
+      status: "withheld",
+      findings: [CERTIFICATE_MODE_UNSUPPORTED],
+    };
+    return [unsupported, unsupported];
+  }
+  const parsed = parseCertificate(certificate, bundle.checkpoint);
   if (!parsed)
     return [
       fail("completeness_certificate_invalid"),
@@ -946,21 +1004,63 @@ async function completeness(
       fail("checkpoint_authentication_invalid"),
       fail("checkpoint_authentication_invalid"),
     ];
-  const findings = await memberships(
+  const { findings, failed } = await memberships(
     parsed.root,
     parsed.logId,
     parsed.firstSeq,
     parsed.lastSeq,
-    certificate.memberships,
+    certificate,
     records,
     bundle.completeness,
     parsed.rangeProof.size,
   );
-  const relative = (): ClaimResult =>
-    checkpointStatus === "verified"
+  const qualifier =
+    checkpointStatus === "verified" ? [] : ["checkpoint_unverified"];
+  const interval: ClaimResult = { status: "pass", findings: qualifier };
+  if (failed) return [interval, fail(...findings)];
+  if (findings.length)
+    return [
+      interval,
+      { status: "withheld", findings: [...findings, ...qualifier] },
+    ];
+  return [interval, { status: "pass", findings: [...qualifier] }];
+}
+/**
+ * A producer-selected Bundle without strict mode: no interval to check; each
+ * record's own proof against the stated checkpoint, qualified like a range
+ * Bundle's when the checkpoint's COSE form does not authenticate it.
+ */
+async function plainSelected(
+  bundle: Bundle,
+  checkpoint: Bundle,
+): Promise<[ClaimResult, ClaimResult]> {
+  const interval: ClaimResult = {
+    status: "withheld",
+    findings: ["selection_not_checkable"],
+  };
+  const membership = await selectedMembership(
+    bundle,
+    checkpoint.root,
+    checkpoint.mmr_size,
+    checkpoint.log_id,
+  );
+  if (membership.status !== "pass") return [interval, membership];
+  // selectedMembership passed, so these are a string, 64 hex digits and a
+  // safe integer.
+  const status = await authenticateCheckpoint(
+    checkpoint,
+    checkpoint.log_id as string,
+    hex(checkpoint.root as string),
+    checkpoint.mmr_size as number,
+  );
+  if (status === "invalid")
+    return [interval, fail("checkpoint_authentication_invalid")];
+  return [
+    interval,
+    status === "verified"
       ? pass()
-      : { status: "pass", findings: ["checkpoint_unverified"] };
-  return [relative(), findings.length ? fail(...findings) : relative()];
+      : { status: "pass", findings: ["checkpoint_unverified"] },
+  ];
 }
 // Load cll's COSE checkpoint authenticator through a dynamic import, so that a
 // cll without it resolves to undefined instead of failing to load. The pinned
@@ -1161,17 +1261,25 @@ async function rangeValid(
     proof.proof,
   );
 }
+/**
+ * Per-record membership over `[first, last]`: every finding in report order,
+ * and whether any of them fails the claim (the others are
+ * `non_record_leaf_type_unsupported`, which withhold it). Every seq of the
+ * interval is a record's membership, a non-record leaf, or
+ * `membership_record_missing`.
+ */
 async function memberships(
   root: Uint8Array,
   logId: string,
   first: number,
   last: number,
-  raw: unknown,
+  certificate: Bundle,
   records: Map<string, Bundle>,
   completeness: unknown,
   checkpointSize: number,
-): Promise<string[]> {
-  if (!object(raw)) return ["memberships_absent"];
+): Promise<{ findings: string[]; failed: boolean }> {
+  const raw = certificate.memberships;
+  if (!object(raw)) return { findings: ["memberships_absent"], failed: true };
   const bySequence = new Set<number>(),
     boundRecords = new Set<string>(),
     findings: string[] = [];
@@ -1215,8 +1323,25 @@ async function memberships(
     )
       findings.push(`membership_proof_invalid:${id}`);
   }
+  let leafSeqs = new Set<number>(),
+    unsupported = 0;
+  if (Object.hasOwn(certificate, "non_record_leaves")) {
+    const leaves = await nonRecordLeaves(
+      certificate.non_record_leaves,
+      first,
+      last,
+      certificate.body_digests,
+      statedSeqs(raw),
+    );
+    findings.push(...leaves.findings);
+    leafSeqs = leaves.accounted;
+    unsupported = leaves.findings.filter((f) =>
+      f.startsWith(UNSUPPORTED_LEAF),
+    ).length;
+  }
   for (let seq = first; seq <= last; seq += 1)
-    if (!bySequence.has(seq)) findings.push(`membership_record_missing:${seq}`);
+    if (!bySequence.has(seq) && !leafSeqs.has(seq))
+      findings.push(`membership_record_missing:${seq}`);
   const declaredMissing =
     object(completeness) && Array.isArray(completeness.missing)
       ? new Set(completeness.missing.filter(isHex64))
@@ -1224,7 +1349,104 @@ async function memberships(
   for (const id of records.keys())
     if (!boundRecords.has(id) && !declaredMissing.has(id))
       findings.push(`membership_record_unbound:${id}`);
-  return findings;
+  return { findings, failed: findings.length > unsupported };
+}
+const UNSUPPORTED_LEAF = "non_record_leaf_type_unsupported:";
+// The one non-record leaf type a range can carry (Bundle -02, Evidence Layer
+// padding), and the exact members of its content, sorted: they are compared
+// with the content's sorted names.
+const PADDING = "padding";
+const PADDING_MEMBERS = [
+  "capsule_id",
+  "epistemic_type",
+  "record_type",
+  "store_nonce",
+];
+/**
+ * Every seq a `memberships` entry states in `log_coordinates`, whatever else
+ * is wrong with the entry: a non-record leaf may not claim one.
+ */
+function statedSeqs(members: Bundle): Set<number> {
+  const out = new Set<number>();
+  for (const member of Object.values(members)) {
+    const coordinates = object(member) ? member.log_coordinates : undefined;
+    const seq = object(coordinates) ? coordinates.seq : undefined;
+    if (integer(seq)) out.add(seq);
+  }
+  return out;
+}
+/**
+ * Check `completeness_certificate.non_record_leaves` (Bundle -02): the
+ * findings in element order and the seqs the member accounts for. Every
+ * finding fails the claim except `non_record_leaf_type_unsupported:<seq>`. An
+ * element whose `seq` is valid accounts for that seq whatever else it fails,
+ * so the seq is never also reported missing. `bodyDigests` has already been
+ * checked by the range proof.
+ */
+async function nonRecordLeaves(
+  raw: unknown,
+  first: number,
+  last: number,
+  bodyDigests: unknown,
+  recordSeqs: Set<number>,
+): Promise<{ findings: string[]; accounted: Set<number> }> {
+  const accounted = new Set<number>();
+  if (!Array.isArray(raw))
+    return { findings: ["non_record_leaves_malformed"], accounted };
+  const digests = Array.isArray(bodyDigests) ? bodyDigests : [];
+  const findings: string[] = [];
+  for (const [index, element] of raw.entries()) {
+    if (!object(element)) {
+      findings.push(`non_record_leaf_element_invalid:${index}`);
+      continue;
+    }
+    const seq = element.seq;
+    if (
+      !integer(seq) ||
+      seq < first ||
+      seq > last ||
+      recordSeqs.has(seq) ||
+      accounted.has(seq)
+    ) {
+      findings.push(`non_record_leaf_seq_invalid:${index}`);
+      continue;
+    }
+    accounted.add(seq);
+    const content = element.content;
+    const recordType = object(content) ? content.record_type : undefined;
+    if (!object(content) || typeof recordType !== "string") {
+      // Includes an element that carries a digest in place of content.
+      findings.push(`non_record_leaf_malformed:${seq}`);
+      continue;
+    }
+    if (recordType !== PADDING) {
+      findings.push(`${UNSUPPORTED_LEAF}${seq}`);
+      continue;
+    }
+    const names = Object.keys(content).sort();
+    if (
+      names.length !== PADDING_MEMBERS.length ||
+      names.some((name, i) => name !== PADDING_MEMBERS[i]) ||
+      content.epistemic_type !== "producer_claim" ||
+      !isHex64(content.store_nonce) ||
+      !isHex64(content.capsule_id)
+    ) {
+      findings.push(`non_record_leaf_malformed:${seq}`);
+      continue;
+    }
+    const leaf = await paddingLeaf(content);
+    if (leaf !== content.capsule_id || leaf !== digests[seq - first])
+      findings.push(`non_record_leaf_mismatch:${seq}`);
+  }
+  return { findings, accounted };
+}
+/** A padding record's leaf: JSON-DIGEST of its content without `capsule_id`. */
+async function paddingLeaf(content: Bundle): Promise<string> {
+  return jsonDigest(
+    Object.fromEntries(
+      Object.entries(content).filter(([name]) => name !== "capsule_id"),
+    ),
+  );
 }
 function parseProof(raw: unknown): Proof | undefined {
   if (
@@ -1936,6 +2158,11 @@ export interface BundleRangeProof {
  * - `inclusionProof(seq)`: the inclusion proof for that leaf at the
  *   checkpoint's size.
  * - `rangeProof(firstSeq)`: the range proof over `[firstSeq, tip]`.
+ *
+ * Optional capability: `leafContent(seq)`, the content of a leaf that is not
+ * a record (a padding record's four members), or `undefined` when the source
+ * does not hold it. {@link buildEvidenceBundle} reads it only with
+ * `carryNonRecordLeaves: true`; a source without it builds exactly as before.
  */
 export interface ProofSource {
   checkpoint(): Promise<Uint8Array>;
@@ -1943,6 +2170,7 @@ export interface ProofSource {
   record(capsuleId: string): Promise<StoredRecord | undefined>;
   inclusionProof(seq: number): Promise<BundleInclusionProof>;
   rangeProof(firstSeq: number): Promise<BundleRangeProof>;
+  leafContent?(seq: number): Promise<unknown>;
 }
 
 /** The CLL backend members {@link proofSourceFromCll} reads. */
@@ -2001,6 +2229,13 @@ export interface BuildEvidenceBundleOptions {
   readonly extensions?: Readonly<Record<string, unknown>>;
   /** The producer's self-report, carried as given. */
   readonly verification?: Readonly<Record<string, unknown>>;
+  /**
+   * Let a range cover a padding leaf: the source's `leafContent(seq)` is
+   * carried in `completeness_certificate.non_record_leaves` (Bundle -02). Off
+   * by default because a verifier that predates -02 reads such a Bundle as
+   * missing those seqs; turn it on only for readers that check the member.
+   */
+  readonly carryNonRecordLeaves?: boolean;
 }
 
 export interface BuildUnprovenBundleOptions {
@@ -2534,14 +2769,23 @@ export async function buildEvidenceBundle(
           .map(([seq, id]) => `${id} (seq ${seq})`)
           .join(", ")}; lower it or build without a range`,
       );
+    const nonRecord: Record<string, unknown>[] = [];
     for (let seq = intervalFrom; seq <= tip; seq += 1) {
       const capsuleId = toHex(leaves[seq - 1]!);
       if (carried.has(capsuleId)) continue;
       const record = await lookup(capsuleId);
-      if (record === undefined)
-        throw new BundleBuildError(
-          `seq ${seq} in the interval is not a record the source holds; a range cannot cover it: start the interval after it or build without a range`,
-        );
+      if (record === undefined) {
+        const content =
+          options.carryNonRecordLeaves === true
+            ? await paddingContent(source, seq, capsuleId)
+            : undefined;
+        if (content === undefined)
+          throw new BundleBuildError(
+            `seq ${seq} in the interval is not a record the source holds; a range cannot cover it: start the interval after it or build without a range`,
+          );
+        nonRecord.push({ seq, content });
+        continue;
+      }
       carried.set(capsuleId, record);
     }
     certificate.first_seq = intervalFrom;
@@ -2552,6 +2796,7 @@ export async function buildEvidenceBundle(
     certificate.range_proof = rangeProofWire(
       await source.rangeProof(intervalFrom),
     );
+    if (nonRecord.length) certificate.non_record_leaves = nonRecord;
   }
 
   const ordered = [...carried.keys()].sort(
@@ -2610,6 +2855,46 @@ export async function buildEvidenceBundle(
   if (copied.verification !== undefined)
     bundle.verification = copied.verification;
   return selfChecked(bundle);
+}
+
+/**
+ * The source's content for a non-record leaf, when it is a padding record
+ * whose recomputed `capsule_id` is that leaf; undefined when the source has
+ * no `leafContent` or holds nothing for `seq`. Any other content is refused
+ * by name: the producer carries padding only.
+ */
+async function paddingContent(
+  source: ProofSource,
+  seq: number,
+  leafHex: string,
+): Promise<Bundle | undefined> {
+  if (typeof source.leafContent !== "function") return undefined;
+  const stored = await source.leafContent(seq);
+  if (stored === undefined || stored === null) return undefined;
+  if (!object(stored) || stored.record_type !== PADDING)
+    throw new BundleBuildError(
+      `seq ${seq}: the source's leaf content is not a padding record; a range cannot cover it`,
+    );
+  // Local-only producer envelope members are outside the leaf's preimage.
+  const content = Object.fromEntries(
+    Object.entries(stored).filter(
+      ([name]) => name !== "signature" && name !== "key_id",
+    ),
+  );
+  let copied: Bundle;
+  try {
+    copied = plainIntegers(decodeStrictJson(jcs(content))) as Bundle;
+  } catch {
+    throw new BundleBuildError(
+      `seq ${seq}: the padding record has no canonical digest`,
+    );
+  }
+  const leaf = await paddingLeaf(copied);
+  if (leaf !== leafHex || copied.capsule_id !== leafHex)
+    throw new BundleBuildError(
+      `seq ${seq}: the padding record does not hash to the leaf`,
+    );
+  return copied;
 }
 
 async function selfChecked(bundle: Bundle): Promise<Bundle> {
