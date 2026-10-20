@@ -192,6 +192,10 @@ def leaf_cases() -> list[dict]:
     neg("neg-padding-nonce-edited", "The padding at seq 6 has its store_nonce changed and its capsule_id left as it was.",
         lambda ls: content(6)(ls).update(store_nonce="00" * 32), "non_record_leaf_mismatch:6")
 
+    neg("neg-padding-capsule-id-edited", "The padding at seq 23 keeps its nonce, so it still recomputes to its body "
+        "digest, but carries another capsule_id.", lambda ls: content(23)(ls).update(capsule_id="ab" * 32),
+        "non_record_leaf_mismatch:23")
+
     def recomputed_other(ls: list) -> None:
         other = padding("not in this log")
         ls[index_of[7]]["content"] = other
@@ -470,9 +474,11 @@ def coverage_cases() -> list[dict]:
     cases.append(coverage_case("request-not-covered", "The request asks for payments; the declaration has no entry "
                                "for it.", with_member(sign_coverage(narrow, root)), "VALID", props(request="FAIL"),
                                **full))
-    other_request = request.replace('"messages"', '"telemetry"')
+    # Same categories, another subject: only the digest tells the two apart.
+    other_request = request.replace(root, ids[0])
+    assert other_request != request and json.loads(other_request)["categories"] == json.loads(request)["categories"]
     cases.append(coverage_case("request-digest-mismatch", "request_digest names another request than the one "
-                               "supplied.", with_member(signed_six), "VALID", props(request="FAIL"),
+                               "supplied, which asks for the same categories.", with_member(signed_six), "VALID", props(request="FAIL"),
                                **{**full, "category_request": other_request}))
     no_digest = sign_coverage({k: v for k, v in declaration.items() if k != "request_digest"}, root)
     bare = json.dumps({"subject": {"kind": "record", "id": root}}, separators=(",", ":"), sort_keys=True)

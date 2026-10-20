@@ -4674,7 +4674,7 @@
     },
     {
       "id": "request-digest-mismatch",
-      "description": "request_digest names another request than the one supplied.",
+      "description": "request_digest names another request than the one supplied, which asks for the same categories.",
       "options": {
         "category_sets": {
           "example-set": [
@@ -4687,7 +4687,7 @@
             "telemetry"
           ]
         },
-        "category_request": "{\"categories\":{\"names\":[\"telemetry\",\"payments\"],\"set\":\"example-set\"},\"subject\":{\"id\":\"a1d921d092fe8998aee9c97ea52c6989440cfa5f77a2e4f0ed3c2835c5441f3c\",\"kind\":\"record\"}}",
+        "category_request": "{\"categories\":{\"names\":[\"messages\",\"payments\"],\"set\":\"example-set\"},\"subject\":{\"id\":\"4af85200a0ce8ad8bd0596cd88bb596bdef0adcfdee18b82d443a436e15a25ff\",\"kind\":\"record\"}}",
         "record_categories": {
           "4af85200a0ce8ad8bd0596cd88bb596bdef0adcfdee18b82d443a436e15a25ff": "messages",
           "f7e4d84d87fa56d284537e50b2bbef5db8b2191ede3790ac88ff1eb53d0de594": "messages",
