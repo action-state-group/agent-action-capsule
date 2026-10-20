@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Evidence Bundle -02, as the Python reference reads it. Certificate modes:
+  `completeness.selection` names the certificate's mode; a producer-selected
+  Bundle is no longer a failure in plain mode, and any other value withholds
+  interval coverage and per-record membership with
+  `bundle::CERTIFICATE_MODE_UNSUPPORTED`. Non-record leaves: a range covers
+  padding leaves carried in `completeness_certificate.non_record_leaves`.
+  Category coverage: `bundle::check_category_coverage`,
+  `bundle::verify_bundle_with` and `CategoryInputs`; the five properties are
+  `VerificationResult::category_coverage`, and in strict mode
+  (`StrictOptions::category`) a `FAIL` of the form, signature or consistency
+  is INVALID. Producer: the optional `ProofSource::leaf_content` (default
+  `None`) with `BuildOptions::carry_non_record_leaves`. New public struct
+  fields (`VerificationResult::category_coverage`, `StrictOptions::category`,
+  `BuildOptions::carry_non_record_leaves`): a struct literal needs them, or
+  `..Default::default()` where the type has one.
+  `bundle::SELECTION_PRODUCER_SELECTED` is now defined with feature `bundle`.
+
 ## 0.4.0
 
 - Evidence Bundle producer (feature `strict`): `bundle::build_evidence_bundle`
