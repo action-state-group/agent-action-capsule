@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate ``vectors/cross-language/bundle-producer-log.json``.
+"""Generate ``vectors/cross-language/bundle-producer-log.json`` and
+``vectors/cross-language/bundle-producer-padded-log.json``.
 
 The fixture is the input of the Evidence Bundle producer step of
 ``scripts/cross-language-interlock.sh``: one checkpointed log that every
@@ -15,6 +16,13 @@ Every leaf is a record, and one signed COSE checkpoint covers them all.
 ``builds`` names the three Bundles each producer builds around ``root``: the
 whole log, a suffix whose closure stays inside its interval, and a
 producer-selected Bundle with no range proof.
+
+The padded log has the layout of the Evidence Bundle -02 vectors (5 records,
+27 padding records, 3 records, 29 padding records; the checkpoint tip is
+padding). ``leaf_contents`` gives each padding leaf's content by seq, as a
+store holds it, with its local producer envelope (``signature``, ``key_id``)
+that a producer drops. Its one build, ``padded-whole-log``, carries the padding
+in ``completeness_certificate.non_record_leaves``.
 
 Keys are fixed test seeds and Ed25519 signatures are deterministic, so the
 output is a pure function of this file. Dependencies:
@@ -45,6 +53,7 @@ from agent_action_capsule.canonical import compute_capsule_id, jcs, json_digest
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "cross-language" / "bundle-producer-log.json"
+DEFAULT_PADDED_OUT = ROOT / "vectors" / "cross-language" / "bundle-producer-padded-log.json"
 
 PRODUCER = Ed25519PrivateKey.from_private_bytes(bytes([0x0B]) * 32)
 LOG_KEY = Ed25519PrivateKey.from_private_bytes(bytes([0x2C]) * 32)
@@ -117,9 +126,9 @@ def records() -> list[dict]:
     return chain
 
 
-def fixture() -> dict:
-    chain = records()
-    ids = [r["capsule_id"] for r in chain]
+def log_state(ids: list[str]) -> dict:
+    """The fixture's ``log``: the leaves and the CLL state with one signed COSE
+    checkpoint at the tip."""
     nodes = MemoryNodeStore()
     for cid in ids:
         add_leaf(nodes, leaf_hash(bytes.fromhex(cid)))
@@ -130,6 +139,25 @@ def fixture() -> dict:
         prev_size=0, prev_root="", key_id=_Signer.key_id, timestamp=TIMESTAMP, signature="",
     )
     cose = checkpoint_to_cose(cp, _Signer(), peak_hashes)
+    return {
+        "entries": ids,
+        "state": {
+            "size": size,
+            "nodes": [nodes.node(i).hex() for i in range(size)],
+            "indexed_seq": len(ids),
+            "checkpoint": {
+                "cose": cose.hex(),
+                "size": size,
+                "indexed_seq": len(ids),
+                "peaks": [p.hex() for p in peak_hashes],
+            },
+        },
+    }
+
+
+def fixture() -> dict:
+    chain = records()
+    ids = [r["capsule_id"] for r in chain]
     return {
         "description": (
             "One checkpointed log of seven signed records, input of the Evidence Bundle producer step "
@@ -144,20 +172,62 @@ def fixture() -> dict:
             "suffix": {"interval_from": 5, "closure_depth": 1},
             "producer-selected": {"interval_from": None, "closure_depth": 2},
         },
-        "log": {
-            "entries": ids,
-            "state": {
-                "size": size,
-                "nodes": [nodes.node(i).hex() for i in range(size)],
-                "indexed_seq": len(ids),
-                "checkpoint": {
-                    "cose": cose.hex(),
-                    "size": size,
-                    "indexed_seq": len(ids),
-                    "peaks": [p.hex() for p in peak_hashes],
-                },
-            },
+        "log": log_state(ids),
+        "records": {
+            r["capsule_id"]: {"capsule": jcs(r).hex(), "producer_envelope": envelope(r["capsule_id"]).hex()}
+            for r in chain
         },
+    }
+
+
+# The layout of the Evidence Bundle -02 vectors' padded log.
+PADDED_LAYOUT = [("record", 5), ("padding", 27), ("record", 3), ("padding", 29)]
+
+
+def padding(seq: int) -> dict:
+    """A padding record as a store holds it: ``capsule_id`` and the three
+    members of its leaf preimage, plus its local producer envelope. The nonce is
+    derived from ``seq`` so the run is reproducible."""
+    body = {
+        "record_type": "padding",
+        "epistemic_type": "producer_claim",
+        "store_nonce": json_digest(f"cross-language padding {seq}"),
+    }
+    capsule_id = json_digest(body)
+    return {
+        "capsule_id": capsule_id,
+        **body,
+        "key_id": _raw(PRODUCER).hex(),
+        "signature": PRODUCER.sign(bytes.fromhex(capsule_id)).hex(),
+    }
+
+
+def padded_fixture() -> dict:
+    leaves: list[str] = []
+    chain: list[dict] = []
+    contents: dict[str, dict] = {}
+    for kind, count in PADDED_LAYOUT:
+        for _ in range(count):
+            seq = len(leaves) + 1
+            if kind == "record":
+                parent = chain[-1]["capsule_id"] if chain else None
+                chain.append(capsule(f"padded-{seq}", parent=parent))
+                leaves.append(chain[-1]["capsule_id"])
+            else:
+                contents[str(seq)] = padding(seq)
+                leaves.append(contents[str(seq)]["capsule_id"])
+    return {
+        "description": (
+            "One checkpointed log of eight signed records and 56 padding records (5, 27, 3, 29; the tip is "
+            "padding), input of the padded Evidence Bundle producer step of scripts/cross-language-interlock.sh. "
+            "Byte strings are lowercase hex. python/scripts/generate_bundle_producer_fixture.py regenerates it."
+        ),
+        "root": chain[-1]["capsule_id"],
+        "builds": {
+            "padded-whole-log": {"interval_from": 1, "closure_depth": 2, "carry_non_record_leaves": True},
+        },
+        "log": log_state(leaves),
+        "leaf_contents": contents,
         "records": {
             r["capsule_id"]: {"capsule": jcs(r).hex(), "producer_envelope": envelope(r["capsule_id"]).hex()}
             for r in chain
@@ -168,8 +238,10 @@ def fixture() -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--padded-out", type=Path, default=DEFAULT_PADDED_OUT)
     args = parser.parse_args()
     args.out.write_text(json.dumps(fixture(), indent=2) + "\n", encoding="utf-8")
+    args.padded_out.write_text(json.dumps(padded_fixture(), indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -18,6 +18,17 @@
   mode a `FAIL` of its form, signature or consistency is INVALID. Vectors:
   `vectors/bundle/non-record-leaves/`, `vectors/bundle/certificate-mode/` and
   `vectors/bundle/category-coverage/` (`python/scripts/generate_bundle_02_vectors.py`).
+- Evidence Bundle -02 in Go, TypeScript and Rust, as the Python reference reads it: every case of
+  the three -02 vector directories passes in all four languages. Go: `CertificateModeUnsupported`,
+  `CheckCategoryCoverage`, `VerificationResult.CategoryCoverage`, the `Options` inputs
+  `CategorySets`, `CategoryRequest` and `RecordCategories`, and the producer's optional
+  `LeafContentSource` with `BuildOptions.CarryNonRecordLeaves`. TypeScript: `CERTIFICATE_MODE_UNSUPPORTED`,
+  `checkCategoryCoverage` (`category-coverage.ts`), `categoryCoverage` on every result, the
+  `verifyBundle` options `categorySets`, `categoryRequest` and `recordCategories`, and the optional
+  `ProofSource.leafContent` with `carryNonRecordLeaves`. Rust: see its changelog. The interlock
+  (`scripts/cross-language-interlock.sh`) adds `padded-whole-log` and `padded-tampered`, built by
+  every language from `vectors/cross-language/bundle-producer-padded-log.json` and read by every
+  strict verifier.
 
 ## 0.11.0 — 2026-10-20
 
