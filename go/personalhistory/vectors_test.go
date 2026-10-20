@@ -338,8 +338,19 @@ func TestArtifactBytesBesideTheObjectFail(t *testing.T) {
 		require.NotEqual(t, text, mutated, name)
 		res := evaluate(t, c, resign(t, c, positive, []byte(mutated)))
 		assert.True(t, res.Exchanges[0].Accepted, "%s: the envelope verifies", name)
-		assert.Equal(t, evidencerequest.StatusFail, res.Properties["artifact_form"], name)
 		assert.False(t, res.Accepted, name)
+		// The whole report, as the Python test states it for the same
+		// mutants: an unreadable Artifact fails record_kinds too; one whose
+		// entries are readable but malformed fails artifact_form only.
+		want := map[string]string{}
+		for _, p := range personalhistory.HistoryProperties {
+			want[p] = evidencerequest.StatusPass
+		}
+		want["artifact_form"] = evidencerequest.StatusFail
+		if !strings.Contains(name, " in ") && name != "digest not hex" {
+			want["record_kinds"] = evidencerequest.StatusFail
+		}
+		assert.Equal(t, want, res.Properties, name)
 	}
 }
 
@@ -435,6 +446,12 @@ func TestFileRoundTripsTheOctetsExactly(t *testing.T) {
 		{Request: evidencerequest.Message{Octets: []byte{0xff, 0xfe}, MediaType: evidencerequest.MediaTypeJSON}, Reply: f.Exchanges[0].Reply},
 	}})
 	assert.ErrorIs(t, err, personalhistory.ErrInvalid, "JSON octets a JSON string cannot carry exactly")
+	escaped := evidencerequest.Message{Octets: []byte(`{"a":"\ud800"}`), MediaType: evidencerequest.MediaTypeJSON}
+	encoded, err = personalhistory.EncodeFile(personalhistory.File{Definition: map[string]any{}, Exchanges: []personalhistory.FileExchange{{Request: escaped, Reply: escaped}}})
+	require.NoError(t, err, "an escape is ASCII, carried as is")
+	back, err = personalhistory.ParseFile(encoded)
+	require.NoError(t, err)
+	assert.Equal(t, escaped.Octets, back.Exchanges[0].Reply.Octets)
 	_, err = personalhistory.EncodeFile(personalhistory.File{Definition: map[string]any{}, Exchanges: []personalhistory.FileExchange{
 		{Request: evidencerequest.Message{Octets: []byte("{}"), MediaType: "text/plain"}, Reply: f.Exchanges[0].Reply},
 	}})

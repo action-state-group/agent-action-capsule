@@ -22,8 +22,8 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"unicode/utf8"
 
-	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/agent-action-capsule/go/evidencerequest"
 )
 
@@ -201,9 +201,10 @@ func fileValue(m evidencerequest.Message) (map[string]any, error) {
 	switch m.MediaType {
 	case evidencerequest.MediaTypeJSON:
 		// octets_text carries the octets exactly (PH §8.2), so they must be
-		// text a JSON string can hold unchanged.
-		if err := canonical.CheckJSONText(m.Octets); err != nil {
-			return nil, fmt.Errorf("%w: JSON octets that a JSON string cannot carry exactly: %v", ErrInvalid, err)
+		// UTF-8, which a JSON string holds unchanged (an escape inside them,
+		// even one for an unpaired surrogate, is only ASCII).
+		if !utf8.Valid(m.Octets) {
+			return nil, fmt.Errorf("%w: JSON octets that are not UTF-8, which a JSON string cannot carry exactly", ErrInvalid)
 		}
 		return map[string]any{"media_type": m.MediaType, "octets_text": string(m.Octets)}, nil
 	case evidencerequest.MediaTypeCBOR:
@@ -506,10 +507,15 @@ func properties(definition any, envs []ExchangeResult) map[string]string {
 		binding = binding && digest != "" && e.Reply.Envelope["derivation"] == digest
 		signers[string(jcs(e.Reply.Envelope["responder"]))] = true
 		anchors[string(jcs(e.Reply.Envelope["anchor"]))] = true
-		for _, raw := range records(e) {
-			r, _ := raw.(map[string]any)
+		// An unreadable Artifact, or records that are no list of entries,
+		// fail record_kinds too, as the reference evaluates it.
+		a, isMap := e.Artifact.(map[string]any)
+		list, isList := a["records"].([]any)
+		kinds = kinds && isMap && isList
+		for _, raw := range list {
+			r, isEntry := raw.(map[string]any)
 			kind, _ := r["record_type"].(string)
-			kinds = kinds && (kind == StepCompleted || kind == StepFailed)
+			kinds = kinds && isEntry && (kind == StepCompleted || kind == StepFailed)
 		}
 	}
 	for _, s := range selection {

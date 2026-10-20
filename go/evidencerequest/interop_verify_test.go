@@ -5,6 +5,7 @@ package evidencerequest_test
 import (
 	"context"
 	"encoding/json"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -442,4 +443,72 @@ func TestVerifierRefusesAStatusOutsideTheVocabulary(t *testing.T) {
 	v := verifierFor(t, er.TrustPolicy{ResponderKeys: []string{a.key}}, policy)
 	_, err := v.Verify([]er.Exchange{{Request: a.request, Replies: []er.Message{a.reply}}}, er.VerifyOptions{})
 	assert.Error(t, err)
+}
+
+// A short CBOR reply whose nested array heads each claim the whole input's
+// length is refused without reserving memory for those claims.
+func TestVerifierRefusesNestedArrayHeadsCheaply(t *testing.T) {
+	a := answer(t, 1, er.MediaTypeCBOR)
+	v := verifierFor(t, er.TrustPolicy{ResponderKeys: []string{a.key}}, er.VerificationPolicy{})
+	var bomb []byte
+	for range 60 {
+		bomb = append(bomb, 0x99, 0xff, 0xff) // an array of 65535 items, each claimed within the input's length
+	}
+	bomb = append(bomb, make([]byte, 1<<17)...)
+	reply := withCBORMember(t, a.reply.Octets, "x", bomb)
+	var stats runtime.MemStats
+	runtime.ReadMemStats(&stats)
+	before := stats.TotalAlloc
+	r := verifyOne(t, v, a.request, er.Message{Octets: reply, MediaType: er.MediaTypeCBOR})
+	runtime.ReadMemStats(&stats)
+	assert.Equal(t, "not_a_response", r.MessageType)
+	// Sized by the claims, 60 levels would reserve 60 x 65535 slots (about
+	// 60 MiB); read item by item, the input allocates a few MiB at most.
+	assert.Less(t, stats.TotalAlloc-before, uint64(16<<20))
+}
+
+// The retained request is read as the reference reads it: an unpaired
+// surrogate stays itself, so a reply naming U+FFFD does not bind to a
+// request naming the surrogate.
+func TestVerifierKeepsARequestsUnpairedSurrogate(t *testing.T) {
+	s, key := signer(t, 1)
+	request := []byte(`{"coverage":{"expected_pin":"` + anchorPin + `"},"nonce":"n","profile":"evidence-interop/0","subject":{"correlation":"deal-\ud800"}}`)
+	artifact := []byte("{}")
+	env, err := er.Envelope{Profile: er.ProfileID, RequestDigest: er.Digest(request), Subject: er.Subject{Kind: er.SubjectCorrelation, Correlation: "deal-�"},
+		Anchor: er.Anchor{Digest: anchorPin}, ArtifactDigest: er.Digest(artifact), Responder: key, IssuedAt: "2026-10-15T00:00:00Z", Artifact: artifact}.Sign(context.Background(), s)
+	require.NoError(t, err)
+	reply, err := er.EncodeReply(er.MediaTypeJSON, &env, nil)
+	require.NoError(t, err)
+	v := verifierFor(t, er.TrustPolicy{ResponderKeys: []string{key}}, er.VerificationPolicy{})
+	r := verifyOne(t, v, er.Message{Octets: request, MediaType: er.MediaTypeJSON}, reply.Message)
+	assert.Equal(t, er.StatusPass, r.Status("envelope_signature"))
+	assert.Equal(t, er.StatusPass, r.Status("request_binding"))
+	assert.Equal(t, er.StatusFail, r.Status("subject_binding"))
+}
+
+// A CBOR request whose subject carries an integer-keyed member is not the
+// subject without it.
+func TestVerifierKeepsAnIntegerKeyInACBORRequest(t *testing.T) {
+	a := answer(t, 1, er.MediaTypeCBOR)
+	var request map[any]any
+	require.NoError(t, cbor.Unmarshal(a.request.Octets, &request))
+	request["subject"].(map[any]any)[uint64(1)] = "y"
+	octets, err := cbor.Marshal(request)
+	require.NoError(t, err)
+	v := verifierFor(t, er.TrustPolicy{ResponderKeys: []string{a.key}}, er.VerificationPolicy{})
+	r := verifyOne(t, v, er.Message{Octets: octets, MediaType: er.MediaTypeCBOR}, a.reply)
+	assert.Equal(t, er.StatusFail, r.Status("subject_binding"))
+}
+
+// NaN and Infinity are read as the reference reads them, as numbers
+// outside the model: the reply is still an envelope, and not well formed.
+func TestVerifierReadsNaNAsANumberOutsideTheModel(t *testing.T) {
+	a := answer(t, 1, er.MediaTypeJSON)
+	v := verifierFor(t, er.TrustPolicy{ResponderKeys: []string{a.key}}, er.VerificationPolicy{})
+	for _, word := range []string{"NaN", "Infinity", "-Infinity"} {
+		octets := strings.Replace(string(a.reply.Octets), `{"anchor"`, `{"x":`+word+`,"anchor"`, 1)
+		r := verifyOne(t, v, a.request, er.Message{Octets: []byte(octets), MediaType: er.MediaTypeJSON})
+		assert.Equal(t, "envelope", r.MessageType, word)
+		assert.Equal(t, er.StatusFail, r.Status("envelope_signature"), word)
+	}
 }

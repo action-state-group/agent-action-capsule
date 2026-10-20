@@ -521,5 +521,12 @@ def test_resigned_artifact_mutants_fail_artifact_form_end_to_end():
     }.items():
         got = run_history(_resigned(positive, bad))
         assert got["exchanges"][0]["accepted"], name
-        assert got["history_properties"]["artifact_form"] == "FAIL", name
         assert not got["accepted"], name
+        # The whole report, as the Go test states it for the same mutants: an unreadable Artifact
+        # fails record_kinds too; one whose entries are readable but malformed fails artifact_form
+        # only.
+        want = dict.fromkeys(got["history_properties"], "PASS")
+        want["artifact_form"] = "FAIL"
+        if not name.startswith("object in"):
+            want["record_kinds"] = "FAIL"
+        assert got["history_properties"] == want, name

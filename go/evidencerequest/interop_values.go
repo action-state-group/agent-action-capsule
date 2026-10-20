@@ -3,19 +3,12 @@
 package evidencerequest
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"regexp"
 	"strconv"
 	"time"
-	"unicode/utf8"
-
-	"github.com/action-state-group/agent-action-capsule/go/canonical"
 )
 
 // The five property statuses (profile §7.1).
@@ -47,13 +40,6 @@ type receivedValue struct {
 	value      any
 	wellFormed bool
 	why        string
-	// lossy is set when the JSON text holds an unpaired surrogate escape,
-	// which decoding replaces with U+FFFD: the value no longer holds what
-	// was signed, so a reply carrying one is not well formed.
-	lossy bool
-	// structural is false for a duplicate member or an out-of-range
-	// number: what makes JSON octets no request map (§5.2).
-	structural bool
 }
 
 // decodeReceived reads octets as a verifier reads a reply or record: JSON
@@ -72,33 +58,16 @@ func decodeReceived(m Message) (receivedValue, bool, string) {
 	return receivedValue{}, false, fmt.Sprintf("unknown media type %q", m.MediaType)
 }
 
-type jsonReader struct {
-	decoder    *json.Decoder
-	duplicates bool
-	badNumber  bool
-}
-
 func decodeReceivedJSON(data []byte) (receivedValue, bool, string) {
-	if !utf8.Valid(data) {
-		return receivedValue{}, false, "not a JSON object"
-	}
-	r := &jsonReader{decoder: json.NewDecoder(bytes.NewReader(data))}
-	r.decoder.UseNumber()
-	value, err := r.read(0)
+	value, duplicates, badNumber, err := parseReceivedJSON(data)
 	if err != nil {
 		return receivedValue{}, false, "not a JSON object"
 	}
-	if _, err := r.decoder.Token(); !errors.Is(err, io.EOF) {
-		return receivedValue{}, false, "not a JSON object"
-	}
-	lossy := canonical.CheckJSONText(data) != nil
-	out := receivedValue{value: value, wellFormed: !r.duplicates && !r.badNumber && !lossy, lossy: lossy, structural: !r.duplicates && !r.badNumber}
+	out := receivedValue{value: value, wellFormed: !duplicates && !badNumber}
 	switch {
-	case lossy:
-		out.why = "an unpaired surrogate escape"
-	case r.duplicates:
+	case duplicates:
 		out.why = "duplicate member"
-	case r.badNumber:
+	case badNumber:
 		out.why = "a number outside 0 to 2^53 - 1"
 	}
 	return out, true, ""
@@ -107,70 +76,6 @@ func decodeReceivedJSON(data []byte) (receivedValue, bool, string) {
 // maxReceivedNesting bounds how deep a received value may nest before it is
 // treated as no value; no object the profile defines nests near it.
 const maxReceivedNesting = 512
-
-func (r *jsonReader) read(depth int) (any, error) {
-	if depth > maxReceivedNesting {
-		return nil, errNotWellFormed
-	}
-	token, err := r.decoder.Token()
-	if err != nil {
-		return nil, err
-	}
-	switch t := token.(type) {
-	case json.Delim:
-		switch t {
-		case '{':
-			object := map[string]any{}
-			for r.decoder.More() {
-				keyToken, err := r.decoder.Token()
-				if err != nil {
-					return nil, err
-				}
-				key, ok := keyToken.(string)
-				if !ok {
-					return nil, errNotWellFormed
-				}
-				item, err := r.read(depth + 1)
-				if err != nil {
-					return nil, err
-				}
-				if _, duplicate := object[key]; duplicate {
-					r.duplicates = true
-					continue
-				}
-				object[key] = item
-			}
-			if _, err := r.decoder.Token(); err != nil {
-				return nil, err
-			}
-			return object, nil
-		case '[':
-			array := []any{}
-			for r.decoder.More() {
-				item, err := r.read(depth + 1)
-				if err != nil {
-					return nil, err
-				}
-				array = append(array, item)
-			}
-			if _, err := r.decoder.Token(); err != nil {
-				return nil, err
-			}
-			return array, nil
-		}
-		return nil, errNotWellFormed
-	case json.Number:
-		n, ok := UintValue(JSONNumber(t))
-		if !ok {
-			r.badNumber = true
-			return uint64(0), nil
-		}
-		return n, nil
-	case string, bool, nil:
-		return t, nil
-	}
-	return nil, errNotWellFormed
-}
 
 func decodeReceivedCBOR(data []byte) (receivedValue, bool, string) {
 	d, err := decodeCBORItem(data)
@@ -196,7 +101,7 @@ func decodeReceivedCBOR(data []byte) (receivedValue, bool, string) {
 
 func numbersInDomain(v any) bool {
 	switch x := v.(type) {
-	case OutsideModel:
+	case OutsideModel, cborNegative:
 		return false
 	case cborTag:
 		return numbersInDomain(x.Value)
@@ -219,7 +124,7 @@ func numbersInDomain(v any) bool {
 // jcsOrNil is UTF-8 of JCS of v, or nil when JCS cannot represent it: a
 // byte string, a value outside the data model.
 func jcsOrNil(v any) []byte {
-	if hasBytes(v) {
+	if hasBytes(v) || hasInvalidText(v) {
 		return nil
 	}
 	out, err := EncodeJCS(v)
@@ -247,13 +152,6 @@ func hasBytes(v any) bool {
 		}
 	}
 	return false
-}
-
-// sameValue is equality by value, with no conflation of a boolean and a
-// number: both sides as JCS, and false when either has no JCS form.
-func sameValue(a, b any) bool {
-	ja, jb := jcsOrNil(a), jcsOrNil(b)
-	return ja != nil && jb != nil && bytes.Equal(ja, jb)
 }
 
 var b64urlText = regexp.MustCompile(`^[A-Za-z0-9_-]*$`)

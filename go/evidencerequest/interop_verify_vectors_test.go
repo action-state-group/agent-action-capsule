@@ -3,13 +3,17 @@
 package evidencerequest_test
 
 import (
+	"crypto/ed25519"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/action-state-group/agent-action-capsule/go/evidencerequest"
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
+	er "github.com/action-state-group/agent-action-capsule/go/evidencerequest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,14 +31,14 @@ type vectorMessage struct {
 	OctetsHex  string `json:"octets_hex"`
 }
 
-func (m vectorMessage) message(t *testing.T) evidencerequest.Message {
+func (m vectorMessage) message(t *testing.T) er.Message {
 	t.Helper()
 	if m.OctetsHex != "" {
 		b, err := hex.DecodeString(m.OctetsHex)
 		require.NoError(t, err)
-		return evidencerequest.Message{Octets: b, MediaType: m.MediaType}
+		return er.Message{Octets: b, MediaType: m.MediaType}
 	}
-	return evidencerequest.Message{Octets: []byte(m.OctetsText), MediaType: m.MediaType}
+	return er.Message{Octets: []byte(m.OctetsText), MediaType: m.MediaType}
 }
 
 type vectorPins struct {
@@ -50,16 +54,16 @@ func readCorpus(t *testing.T, dir string, into any) {
 	require.NoError(t, json.Unmarshal(data, into))
 }
 
-func newVerifier(t *testing.T, pins vectorPins, contract map[string]any) *evidencerequest.Verifier {
+func newVerifier(t *testing.T, pins vectorPins, contract map[string]any) *er.Verifier {
 	t.Helper()
-	trust, err := evidencerequest.TrustPolicyFromPin(pins.TrustPolicy)
+	trust, err := er.TrustPolicyFromPin(pins.TrustPolicy)
 	require.NoError(t, err)
-	v, err := evidencerequest.NewVerifier(trust, evidencerequest.VerificationPolicyFromPin(pins.VerificationPolicy), pins.EvaluationTime, contract)
+	v, err := er.NewVerifier(trust, er.VerificationPolicyFromPin(pins.VerificationPolicy), pins.EvaluationTime, contract)
 	require.NoError(t, err)
 	return v
 }
 
-func renderRequirements(order []string, reqs map[string]evidencerequest.RequirementResult) map[string]any {
+func renderRequirements(order []string, reqs map[string]er.RequirementResult) map[string]any {
 	out := map[string]any{}
 	for _, q := range order {
 		r := reqs[q]
@@ -79,7 +83,7 @@ func nullable(s string) any {
 	return s
 }
 
-func claims(cs []evidencerequest.Claim) []any {
+func claims(cs []er.Claim) []any {
 	out := []any{}
 	for _, c := range cs {
 		m := map[string]any{}
@@ -91,7 +95,7 @@ func claims(cs []evidencerequest.Claim) []any {
 	return out
 }
 
-func renderReply(r *evidencerequest.ReplyResult, withNative bool) map[string]any {
+func renderReply(r *er.ReplyResult, withNative bool) map[string]any {
 	props := map[string]any{}
 	for _, p := range r.Properties {
 		props[p.Property] = p.Status
@@ -166,7 +170,7 @@ func TestInteropProfileExchangeVectors(t *testing.T) {
 			if in.Request != nil {
 				requests = []vectorMessage{*in.Request}
 			}
-			exchanges := make([]evidencerequest.Exchange, len(requests))
+			exchanges := make([]er.Exchange, len(requests))
 			for i, r := range requests {
 				exchanges[i].Request = r.message(t)
 			}
@@ -178,7 +182,7 @@ func TestInteropProfileExchangeVectors(t *testing.T) {
 				m := in.Absence.message(t)
 				exchanges[0].Absence = &m
 			}
-			opts := evidencerequest.VerifyOptions{Requirements: []string{"r-record"}, Relations: in.Relations}
+			opts := er.VerifyOptions{Requirements: []string{"r-record"}, Relations: in.Relations}
 			if in.Relations != nil {
 				opts.Requirements = nil
 				for q := range in.Relations {
@@ -186,7 +190,7 @@ func TestInteropProfileExchangeVectors(t *testing.T) {
 				}
 			}
 			if in.ForeignRaw != nil {
-				opts.Foreign = &evidencerequest.ForeignObject{Path: in.ForeignRaw["path"], MediaType: in.ForeignRaw["media_type"]}
+				opts.Foreign = &er.ForeignObject{Path: in.ForeignRaw["path"], MediaType: in.ForeignRaw["media_type"]}
 			}
 			result, err := v.Verify(exchanges, opts)
 			require.NoError(t, err)
@@ -219,7 +223,7 @@ func TestInteropProfileExchangeVectors(t *testing.T) {
 				}
 				out["request_digests"] = digests
 				out["artifact_octets_identical"] = len(artifacts) == 1
-				out["artifact_digest"] = evidencerequest.Digest(first)
+				out["artifact_digest"] = er.Digest(first)
 			}
 			for _, r := range replies {
 				if r.(map[string]any)["message_type"] == "envelope" {
@@ -239,4 +243,84 @@ func TestInteropProfileExchangeVectors(t *testing.T) {
 		})
 	}
 	assert.Equal(t, 26, ran, "every exchange case of the corpus ran")
+}
+
+// The checkpoint is checked as decoded strictly: its unprotected header,
+// which no signature covers, wrapped in the self-described CBOR tag 55799
+// is not the empty map step 7 requires, though a generic decoder strips
+// the tag. The envelope is re-signed by the vectors' responder key over
+// the changed material.
+func TestCheckpointUnprotectedHeaderIsReadAsSent(t *testing.T) {
+	var corpus struct {
+		Contract struct {
+			Document map[string]any `json:"document"`
+		} `json:"contract"`
+		TestKeys struct {
+			Keys map[string]struct {
+				SeedLabel string `json:"seed_label"`
+			} `json:"keys"`
+		} `json:"test_keys"`
+		Cases []struct {
+			ID     string     `json:"id"`
+			Pins   vectorPins `json:"pins"`
+			Inputs struct {
+				Request vectorMessage   `json:"request"`
+				Replies []vectorMessage `json:"replies"`
+			} `json:"inputs"`
+		} `json:"cases"`
+	}
+	readCorpus(t, "interop-profile-v0", &corpus)
+	seed := sha256.Sum256([]byte(corpus.TestKeys.Keys["responder"].SeedLabel))
+	key := ed25519.NewKeyFromSeed(seed[:])
+	for _, c := range corpus.Cases {
+		if c.ID != "valid-exchange" {
+			continue
+		}
+		v := newVerifier(t, c.Pins, corpus.Contract.Document)
+		var env map[string]any
+		require.NoError(t, json.Unmarshal([]byte(c.Inputs.Replies[0].OctetsText), &env))
+		ver := env["verification"].([]any)
+		content := env["verification_content"].([]any)
+		for i, e := range ver {
+			entry := e.(map[string]any)
+			if entry["kind"] != er.KindCLLCheckpoint {
+				continue
+			}
+			cp, err := base64.RawURLEncoding.DecodeString(content[i].(string))
+			require.NoError(t, err)
+			require.Equal(t, []byte{0xd2, 0x84}, cp[:2])
+			head := cp[2]
+			require.Equal(t, byte(0x40), head&0xe0, "a byte-string protected header")
+			n, at := int(head&0x1f), 3
+			if n == 24 {
+				n, at = int(cp[3]), 4
+			}
+			unprotected := at + n
+			require.Equal(t, byte(0xa0), cp[unprotected])
+			changed := append(append(append([]byte{}, cp[:unprotected]...), 0xd9, 0xd9, 0xf7), cp[unprotected:]...)
+			content[i] = base64.RawURLEncoding.EncodeToString(changed)
+			entry["digest"] = er.Digest(changed)
+			env["anchor"].(map[string]any)["digest"] = er.Digest(changed)
+		}
+		delete(env, "sig")
+		signed := map[string]any{}
+		for _, k := range []string{"profile", "request_digest", "subject", "derivation", "anchor", "artifact_digest", "verification", "responder", "issued_at"} {
+			if x, ok := env[k]; ok {
+				signed[k] = x
+			}
+		}
+		body, err := canonical.JCS(signed)
+		require.NoError(t, err)
+		env["sig"] = hex.EncodeToString(ed25519.Sign(key, body))
+		reply, err := canonical.JCS(env)
+		require.NoError(t, err)
+		res, err := v.Verify([]er.Exchange{{Request: c.Inputs.Request.message(t), Replies: []er.Message{{Octets: reply, MediaType: er.MediaTypeJSON}}}}, er.VerifyOptions{Requirements: []string{"r-record"}})
+		require.NoError(t, err)
+		r := res.Exchanges[0].Replies[0]
+		assert.Equal(t, er.StatusPass, r.Status("envelope_signature"))
+		assert.Equal(t, er.StatusPass, r.Status("verification_binding"))
+		assert.Equal(t, er.StatusFail, r.Status("anchor_inclusion"))
+		return
+	}
+	t.Fatal("no valid-exchange case")
 }

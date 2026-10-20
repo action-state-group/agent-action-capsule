@@ -288,7 +288,7 @@ func (v *Verifier) envelopeProperties(env map[string]any, received receivedValue
 	switch {
 	case !present(env, "profile"):
 		pv = report("profile_version", StatusNotPresent, method, "no profile member: ER alone (§3.3)")
-	case !sameScalar(env["profile"], asked):
+	case !strictEqual(env["profile"], asked):
 		pv = report("profile_version", StatusFail, method, fmt.Sprintf("requested %v, got %v", asked, env["profile"]))
 	case !implemented || env["profile"] != ProfileID:
 		pv = report("profile_version", StatusNotChecked, method, fmt.Sprintf("%v is not implemented; not checked under any other version", env["profile"]))
@@ -403,17 +403,47 @@ func passIf(ok bool) string {
 	return StatusFail
 }
 
-// sameScalar is equality of two decoded values with no conflation of
-// types, for scalars and composites alike.
-func sameScalar(a, b any) bool { return strictEqual(a, b) }
-
-// strictEqual is equality by value with no bool/int conflation, for
-// subject_binding: absent and null are both nil and equal.
+// strictEqual is equality by value with no bool/int conflation, as the
+// reference's _strict_equal: the same type at every level, the same
+// members, the same items in order. A value outside the data model equals
+// nothing, since its value is not kept.
 func strictEqual(a, b any) bool {
-	if a == nil || b == nil {
-		return a == nil && b == nil
+	switch x := a.(type) {
+	case nil:
+		return b == nil
+	case bool, string, uint64, cborNegative:
+		return a == b
+	case []byte:
+		y, ok := b.([]byte)
+		return ok && string(x) == string(y)
+	case []any:
+		y, ok := b.([]any)
+		if !ok || len(x) != len(y) {
+			return false
+		}
+		for i := range x {
+			if !strictEqual(x[i], y[i]) {
+				return false
+			}
+		}
+		return true
+	case map[string]any:
+		y, ok := b.(map[string]any)
+		if !ok || len(x) != len(y) {
+			return false
+		}
+		for k, v := range x {
+			w, present := y[k]
+			if !present || !strictEqual(v, w) {
+				return false
+			}
+		}
+		return true
+	case cborTag:
+		y, ok := b.(cborTag)
+		return ok && x.Number == y.Number && strictEqual(x.Value, y.Value)
 	}
-	return sameValue(a, b)
+	return false
 }
 
 func anchorMatch(env, request map[string]any) PropertyReport {
@@ -930,9 +960,8 @@ func requestMap(request Message) (map[string]any, error) {
 	received, ok, _ := decodeReceived(request)
 	value, isMap := received.value.(map[string]any)
 	// The requester's own octets: a duplicate member or an out-of-range
-	// number makes them no request map, as the reference reads them; an
-	// unpaired surrogate escape does not, since the reference keeps it.
-	if !ok || !isMap || (request.MediaType == MediaTypeJSON && !received.structural) {
+	// number makes them no request map, as the reference reads them.
+	if !ok || !isMap || (request.MediaType == MediaTypeJSON && !received.wellFormed) {
 		return nil, fmt.Errorf("%w: the retained request octets are not a request map", ErrInvalid)
 	}
 	return value, nil

@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-
-	"github.com/fxamacker/cbor/v2"
 )
 
 // anchor_inclusion for Checkpointed Local Log material (profile §6.2.1,
@@ -56,15 +54,15 @@ func peakList(raw any) ([][]byte, error) {
 	return list, nil
 }
 
-func wellFormedCBOR(octets []byte, label string) error {
-	d, err := decodeCBORItem(octets)
+func genericCBOR(octets []byte, label string) (any, error) {
+	d, err := decodeCBORGeneric(octets)
 	if err != nil {
-		return malformed(label + ": " + err.Error())
+		return nil, malformed(label + ": " + err.Error())
 	}
 	if !d.wellFormed() {
-		return malformed(label + " has a duplicate map key or a value outside the data model")
+		return nil, malformed(label + " has a duplicate map key or a value outside the data model")
 	}
-	return nil
+	return d.value, nil
 }
 
 type cllCheckpoint struct {
@@ -102,22 +100,21 @@ func asUint(v any) (uint64, bool) {
 // decodeCLLCheckpoint is step 7: the one fixed COSE_Sign1 form of a CLL
 // checkpoint, decoded and checked.
 func decodeCLLCheckpoint(octets []byte) (*cllCheckpoint, error) {
-	// The reference decodes the checkpoint, its header and its payload with
-	// its strict decoder and fails step 7 when any is not well formed (a
-	// duplicate key, a float, a key that is no scalar, undefined or an
-	// indefinite length). The same gate runs first here.
-	if err := wellFormedCBOR(octets, "checkpoint"); err != nil {
+	// The checkpoint, its header and its payload are each decoded with the
+	// strict decoder, as the reference decodes them, and step 7 fails when
+	// any is not well formed (a duplicate key, a float, a key that is no
+	// scalar, undefined, another simple value, an indefinite length). The
+	// decoded values are the ones checked, so nothing a generic decoder
+	// would drop (a tag, a nesting level) is lost on the way.
+	outer, err := genericCBOR(octets, "checkpoint")
+	if err != nil {
 		return nil, err
 	}
-	var outer cbor.Tag
-	if err := strictCBOR.Unmarshal(octets, &outer); err != nil || outer.Number != 18 {
-		var raw any
-		if err2 := strictCBOR.Unmarshal(octets, &raw); err2 != nil {
-			return nil, malformed(fmt.Sprintf("checkpoint: %v", err2))
-		}
+	tagged, ok := outer.(cborTag)
+	if !ok || tagged.Number != 18 {
 		return nil, malformed("checkpoint is not CBOR tag 18")
 	}
-	body, ok := outer.Content.([]any)
+	body, ok := tagged.Value.([]any)
 	if !ok || len(body) != 4 {
 		return nil, malformed("COSE_Sign1 is not a four-element array")
 	}
@@ -134,18 +131,13 @@ func decodeCLLCheckpoint(octets []byte) (*cllCheckpoint, error) {
 		return nil, malformed("COSE_Sign1 member has the wrong type")
 	}
 	cp := &cllCheckpoint{protected: protected, payload: payload, signature: signature}
-	if err := wellFormedCBOR(protected, "checkpoint header"); err != nil {
+	hdr, err := genericCBOR(protected, "checkpoint header")
+	if err != nil {
 		return nil, err
 	}
-	if err := wellFormedCBOR(payload, "checkpoint payload"); err != nil {
+	claims, err := genericCBOR(payload, "checkpoint payload")
+	if err != nil {
 		return nil, err
-	}
-	var hdr, claims any
-	if err := strictCBOR.Unmarshal(protected, &hdr); err != nil {
-		return nil, malformed(fmt.Sprintf("checkpoint header or payload: %v", err))
-	}
-	if err := strictCBOR.Unmarshal(payload, &claims); err != nil {
-		return nil, malformed(fmt.Sprintf("checkpoint header or payload: %v", err))
 	}
 	h, ok := hdr.(map[any]any)
 	alg, hasAlg := intKey(h, 1)
@@ -180,7 +172,6 @@ func decodeCLLCheckpoint(octets []byte) (*cllCheckpoint, error) {
 		return nil, malformed("issued_at is not an RFC 3339 text string")
 	}
 	cp.issuedAt = issued
-	var err error
 	if cp.commitment, err = peakList(c["commitment"]); err != nil {
 		return nil, err
 	}

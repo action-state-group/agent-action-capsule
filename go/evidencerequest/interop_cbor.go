@@ -5,6 +5,7 @@ package evidencerequest
 import (
 	"bytes"
 	"errors"
+	"math"
 	"sort"
 	"strconv"
 	"unicode/utf8"
@@ -50,11 +51,30 @@ type cborState struct {
 	dup, odd      bool
 	nonText       bool
 	deterministic bool
+	// generic: maps keep every scalar key (map[any]any), integers keep
+	// their values (uint64, or int64 when negative), as a COSE structure
+	// needs. Otherwise a map is map[string]any whose non-text keys are
+	// kept under names no text key can have (receivedKey).
+	generic bool
 }
 
-// decodeCBORItem decodes exactly one data item.
+// cborNegative is a negative integer, -1 - N, kept so that it can still be
+// told from any other value.
+type cborNegative struct{ N uint64 }
+
+// decodeCBORItem decodes exactly one data item into the received model.
 func decodeCBORItem(data []byte) (cborDecoded, error) {
-	st := &cborState{data: data, deterministic: true}
+	return decodeCBOR(data, false)
+}
+
+// decodeCBORGeneric decodes exactly one data item keeping every scalar map
+// key and integer value, for a COSE structure.
+func decodeCBORGeneric(data []byte) (cborDecoded, error) {
+	return decodeCBOR(data, true)
+}
+
+func decodeCBOR(data []byte, generic bool) (cborDecoded, error) {
+	st := &cborState{data: data, deterministic: true, generic: generic}
 	value, end, err := st.item(0, 0)
 	if err != nil {
 		return cborDecoded{}, err
@@ -105,12 +125,18 @@ func (st *cborState) item(i, depth int) (any, int, error) {
 	}
 	switch major {
 	case 0:
-		if arg > MaxSafeInteger {
+		if arg > MaxSafeInteger && !st.generic {
 			return OutsideModel{}, i, nil
 		}
 		return arg, i, nil
 	case 1:
-		return OutsideModel{}, i, nil // a negative integer
+		if st.generic {
+			if arg > math.MaxInt64 {
+				return nil, 0, errCBOR
+			}
+			return -1 - int64(arg), i, nil
+		}
+		return cborNegative{N: arg}, i, nil
 	case 2, 3:
 		if arg > uint64(len(st.data)-i) {
 			return nil, 0, errCBOR
@@ -127,7 +153,9 @@ func (st *cborState) item(i, depth int) (any, int, error) {
 		if arg > uint64(len(st.data)) {
 			return nil, 0, errCBOR
 		}
-		out := make([]any, 0, arg)
+		// No preallocation from the head's count: a short input claiming
+		// huge arrays at every level would reserve memory it never fills.
+		out := []any{}
 		for range arg {
 			v, next, err := st.item(i, depth+1)
 			if err != nil {
@@ -142,6 +170,7 @@ func (st *cborState) item(i, depth int) (any, int, error) {
 			return nil, 0, errCBOR
 		}
 		result := map[string]any{}
+		generic := map[any]any{}
 		seen := map[string]bool{}
 		var keys [][]byte
 		for range arg {
@@ -167,19 +196,33 @@ func (st *cborState) item(i, depth int) (any, int, error) {
 				}
 				seen[id] = true
 			}
-			switch k := key.(type) {
-			case string:
-				result[k] = value
-			case uint64, []byte:
-				st.nonText = true // kept by the reference, outside the data model
-			case OutsideModel:
-				st.nonText = true // a negative or out-of-range integer key
-			default:
+			if !scalarKey(key) {
 				st.odd = true // a key that is no scalar
+				continue
 			}
+			if st.generic {
+				if b, isBytes := key.([]byte); isBytes {
+					key = string(b) // hashable; a COSE header has no byte-string keys
+				}
+				generic[key] = value
+				continue
+			}
+			if k, isText := key.(string); isText {
+				result[k] = value
+				continue
+			}
+			// The reference keeps an integer or byte-string key, and its
+			// data-model check flags it (§5.2). It is kept here too, under
+			// a name no text key can have, so a subject with such a key
+			// never equals one without it.
+			st.nonText = true
+			result[receivedKey(key, keys[len(keys)-1])] = value
 		}
 		if !sort.SliceIsSorted(keys, func(a, b int) bool { return bytes.Compare(keys[a], keys[b]) < 0 }) {
 			st.deterministic = false
+		}
+		if st.generic {
+			return generic, i, nil
 		}
 		return result, i, nil
 	case 6:
@@ -201,8 +244,7 @@ func (st *cborState) item(i, depth int) (any, int, error) {
 }
 
 // cborKeyID identifies a map key for duplicate detection as the reference
-// does: a text, byte-string or unsigned key by its type and value, so two
-// encodings of one key collide, and any other key by its encoding.
+// does: a key by its type and value, so two encodings of one key collide.
 func cborKeyID(key any, encoded []byte) string {
 	switch k := key.(type) {
 	case string:
@@ -211,8 +253,19 @@ func cborKeyID(key any, encoded []byte) string {
 		return "b" + string(k)
 	case uint64:
 		return "u" + strconv.FormatUint(k, 10)
+	case int64:
+		return "n" + strconv.FormatInt(k, 10)
+	case cborNegative:
+		return "n" + strconv.FormatUint(k.N, 10)
 	}
 	return "e" + string(encoded)
+}
+
+// receivedKey names a non-text map key in the received model: 0xff, which
+// no UTF-8 text holds, then the key's identity. No text key can collide
+// with it, and JCS has no form for it.
+func receivedKey(key any, encoded []byte) string {
+	return "\xff" + cborKeyID(key, encoded)
 }
 
 // scalarKey is a key the reference can hold in a map: an integer, a text
@@ -220,7 +273,7 @@ func cborKeyID(key any, encoded []byte) string {
 // duplicate check.
 func scalarKey(key any) bool {
 	switch key.(type) {
-	case string, uint64, []byte, OutsideModel:
+	case string, uint64, int64, []byte, OutsideModel, cborNegative:
 		return true
 	}
 	return false
