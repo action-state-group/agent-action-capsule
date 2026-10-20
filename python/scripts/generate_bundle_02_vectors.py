@@ -303,6 +303,32 @@ def leaf_cases() -> list[dict]:
         "non_record_leaves member.", selected,
         expect(selected, "INVALID", interval_coverage=claim("withheld", "selection_not_checkable"),
                per_record_membership=claim("fail", "completeness_certificate_invalid"))))
+
+    # A membership entry that states seq 33, however malformed, still claims it.
+    claimed = copy.deepcopy(whole)
+    rec33 = log[32][1]["capsule_id"]
+    claimed["completeness_certificate"]["memberships"][rec33]["log_coordinates"]["leaf_index"] = 40
+    claimed["completeness_certificate"]["non_record_leaves"].append({"seq": 33, "content": padding("33")})
+    cases.append(case(
+        "neg-padding-seq-on-invalid-membership", "The record at seq 33 has a membership entry with a wrong "
+        "leaf_index, and a padding element also claims seq 33.", claimed,
+        expect(claimed, "INVALID", per_record_membership=claim(
+            "fail", f"membership_coordinates_invalid:{rec33}",
+            f"non_record_leaf_seq_invalid:{len(leaves)}", "membership_record_missing:33",
+            f"membership_record_unbound:{rec33}"))))
+
+    # An undefined type withholds, whatever the leaf really is: here it stands
+    # where a record was. Never VALID; see the Security Considerations.
+    replaced = copy.deepcopy(whole)
+    replaced["records"] = [r for r in replaced["records"] if r["capsule_id"] != rec33]
+    del replaced["completeness_certificate"]["memberships"][rec33]
+    replaced["completeness_certificate"]["non_record_leaves"].append(
+        {"seq": 33, "content": {"record_type": "x-anything"}})
+    cases.append(case(
+        "incomplete-unknown-type-in-place-of-record", "The record at seq 33 is left out and an element of an undefined "
+        "type stands at seq 33: the claim is withheld, never established.", replaced,
+        expect(replaced, "INCOMPLETE", per_record_membership=claim(
+            "withheld", "non_record_leaf_type_unsupported:33"))))
     return cases
 
 
@@ -335,6 +361,29 @@ def mode_cases() -> list[dict]:
         "incomplete-certificate-mode-unknown-on-range", "A valid range certificate [33, 64] under an unknown selection "
         "value: the verifier does not read the certificate under a mode it does not implement.", ranged,
         expect(ranged, "INCOMPLETE", interval_coverage=unsupported, per_record_membership=unsupported)))
+    null_mode = bundle_over_log(log, 33)
+    null_mode["completeness"]["selection"] = None
+    cases.append(case(
+        "incomplete-certificate-mode-null", "The valid range [33, 64] with selection null: present and not a string, "
+        "so not a range certificate.", null_mode,
+        expect(null_mode, "INCOMPLETE", interval_coverage=unsupported, per_record_membership=unsupported)))
+    unsigned = copy.deepcopy(tampered)
+    del unsigned["checkpoint"]["cose"]
+    cases.append(case(
+        "neg-producer-selected-unsigned-checkpoint-tampered", "The tampered producer-selected Bundle without "
+        "checkpoint.cose: the proof is still checked against the stated checkpoint, and fails.", unsigned,
+        {**expect(unsigned, "INVALID",
+                  checkpoint=claim("withheld", "checkpoint_signature_absent"),
+                  interval_coverage=claim("withheld", "selection_not_checkable", "checkpoint_unverified"),
+                  per_record_membership=claim("fail", f"membership_proof_invalid:{unsigned['root']}")),
+         "checkpoint_authenticated": False, "signer_matches_checkpoint": None}))
+    other_log = copy.deepcopy(selected)
+    other_log["completeness_certificate"]["log_id"] = "log:other"
+    cases.append(case(
+        "neg-producer-selected-certificate-log-id", "The producer-selected certificate names another log than the "
+        "checkpoint.", other_log,
+        expect(other_log, "INVALID", interval_coverage=claim("withheld", "selection_not_checkable"),
+               per_record_membership=claim("fail", "completeness_certificate_invalid"))))
     return cases
 
 
@@ -445,6 +494,12 @@ def coverage_cases() -> list[dict]:
 
     malformed("neg-undisclosed-without-policy-uri", "UNDISCLOSED with no policy_uri.",
               lambda m: m["categories"]["memory"].pop("policy_uri"))
+    malformed("neg-policy-uri-fragment", "UNDISCLOSED with a policy_uri that has a fragment.",
+              lambda m: m["categories"]["memory"].update(policy_uri=POLICY_URI + "#section-2"))
+    malformed("neg-policy-uri-non-ascii", "UNDISCLOSED with a policy_uri holding a non-ASCII character.",
+              lambda m: m["categories"]["memory"].update(policy_uri="https://policy.example/r\u00e9tention"))
+    malformed("neg-policy-uri-bad-percent", "UNDISCLOSED with a policy_uri holding %zz.",
+              lambda m: m["categories"]["memory"].update(policy_uri="https://policy.example/%zz"))
     malformed("neg-policy-uri-relative", "UNDISCLOSED with a relative policy_uri.",
               lambda m: m["categories"]["memory"].update(policy_uri="/retention/v1"))
     malformed("neg-status-lowercase", "A status in lowercase (available).",
@@ -485,6 +540,18 @@ def coverage_cases() -> list[dict]:
     cases.append(coverage_case("request-without-categories", "The request asked for no categories: NOT_PRESENT.",
                                with_member(no_digest), "VALID", props(request="NOT_PRESENT"),
                                **{**full, "category_request": bare}))
+    cases.append(coverage_case("request-digest-mismatch-unparsable", "request_digest names another request, and the "
+                               "supplied octets are not JSON: the digest is checked first.", with_member(signed_six),
+                               "VALID", props(request="FAIL"), **{**full, "category_request": "not json"}))
+    duplicate = '{"categories":{"names":["telemetry"],"set":"example-set"},' + request[1:]
+    cases.append(coverage_case("request-duplicate-member", "The request repeats the categories member: it is not "
+                               "read, so the property is NOT_CHECKED.", with_member(no_digest), "VALID",
+                               props(request="NOT_CHECKED"), **{**full, "category_request": duplicate}))
+    partial = {cid: "messages" for cid in ids[1:]}
+    cases.append(coverage_case("consistency-partial-assignment", "The caller assigns two of the three records: the "
+                               "third could be in any category, so consistency is NOT_CHECKED.",
+                               with_member(signed_six), "VALID", props(consistency="NOT_CHECKED"),
+                               **{**full, "record_categories": partial}))
     for case_id, category, status in (
         ("neg-consistency-absent-with-record", "model_inputs", "ABSENT"),
         ("neg-consistency-withheld-with-record", "payments", "WITHHELD"),

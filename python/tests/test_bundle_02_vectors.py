@@ -118,17 +118,19 @@ def test_strict_case(case):
     assert _observed(result) == {"kind_ok": True, **case["expect"]}
 
 
-def test_padding_content_is_the_evidence_layer_padding_serialization():
-    """Every carried padding content passes the Evidence Layer padding cases'
-    rules: the same four members and the same capsule_id preimage."""
+def test_padding_content_recomputes_under_an_independent_jcs():
+    """Every carried padding content has the four members of the Evidence
+    Layer padding cases, and its capsule_id recomputes under the independent
+    RFC 8785 implementation those cases are checked against."""
+    rfc8785 = pytest.importorskip("rfc8785")
+    padding_cases = json.loads((ROOT / "vectors" / "evidence-layer" / "padding" / "cases.json").read_text())
+    members = sorted(padding_cases["rules"]["members"])
     whole = next(c for n, c in CASES if c["id"] == "pos-padded-whole-log")["bundle"]
     for element in whole["completeness_certificate"]["non_record_leaves"]:
         content = element["content"]
-        assert sorted(content) == ["capsule_id", "epistemic_type", "record_type", "store_nonce"]
-        preimage = json.dumps({k: v for k, v in content.items() if k != "capsule_id"}, sort_keys=True,
-                              separators=(",", ":"))
-        assert hashlib.sha256(preimage.encode()).hexdigest() == content["capsule_id"]
-
+        assert sorted(content) == members
+        preimage = rfc8785.dumps({k: v for k, v in content.items() if k != "capsule_id"})
+        assert hashlib.sha256(preimage).hexdigest() == content["capsule_id"]
 
 @pytest.mark.parametrize("case", COVERAGE_CASES, ids=lambda c: c["id"])
 def test_category_coverage_case(case):

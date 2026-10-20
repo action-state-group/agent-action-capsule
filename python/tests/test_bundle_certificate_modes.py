@@ -98,6 +98,67 @@ def test_unknown_completeness_certificate_members_are_ignored():
     assert verify_bundle(bundle, strict=True).verdict == "VALID"
 
 
+def test_plain_producer_selected_root_must_be_the_checkpoint_root():
+    bundle = _case("certificate-mode", "incomplete-producer-selected-padded-log")
+    del bundle["checkpoint"]["cose"]
+    bundle["checkpoint"]["root"] = "00" * 32
+    assert _plain(bundle)[1] == ("fail", ("completeness_certificate_invalid",))
+
+
+def test_plain_producer_selected_certificate_log_id_must_be_the_checkpoint_log_id():
+    bundle = _case("certificate-mode", "incomplete-producer-selected-padded-log")
+    del bundle["checkpoint"]["cose"]
+    del bundle["completeness_certificate"]["log_id"]
+    assert _plain(bundle)[1] == ("fail", ("completeness_certificate_invalid",))
+
+
+def test_plain_null_selection_is_an_unsupported_mode():
+    bundle = _case("certificate-mode", "incomplete-certificate-mode-null")
+    unsupported = ("withheld", ("certificate_mode_unsupported",))
+    assert _plain(bundle) == (unsupported, unsupported)
+    del bundle["completeness"]["selection"]
+    assert _plain(bundle) == (("pass", ()), ("pass", ()))
+
+
+def _coverage_case(case_id: str) -> dict:
+    cases = json.loads((ROOT / "vectors" / "bundle" / "category-coverage" / "vectors.json").read_text())["cases"]
+    return copy.deepcopy(next(c for c in cases if c["id"] == case_id))
+
+
+@pytest.mark.parametrize("root", [1.5, 2**60])
+def test_a_non_canonical_root_fails_the_signature_and_never_raises(root):
+    bundle = _coverage_case("pos-all-six-statuses")["bundle"]
+    bundle["root"] = root
+    for strict in (False, True):
+        result = verify_bundle(bundle, strict=strict)
+        assert result.category_coverage["category_coverage_signature"] == "FAIL"
+    assert result.verdict == "INVALID"
+
+
+def test_an_ignored_member_does_not_fail_the_form():
+    bundle = _coverage_case("unsigned-member")["bundle"]
+    bundle["category_coverage"]["x-note"] = {"weight": 0.5}
+    assert verify_bundle(bundle).category_coverage["category_coverage_form"] == "PASS"
+
+
+def test_a_request_with_nan_is_not_read():
+    case = _coverage_case("request-without-categories")
+    result = verify_bundle(case["bundle"], category_request=b'{"categories": NaN}')
+    assert result.category_coverage["category_coverage_request"] == "NOT_CHECKED"
+
+
+def test_without_ed25519_the_signature_is_not_checked(monkeypatch):
+    import agent_action_capsule.evidence_request as evidence_request
+
+    def unavailable(*_args):
+        raise ImportError("no Ed25519")
+
+    monkeypatch.setattr(evidence_request, "_ed25519_verifies", unavailable)
+    result = verify_bundle(_coverage_case("pos-no-inputs")["bundle"], strict=True)
+    assert result.category_coverage["category_coverage_signature"] == "NOT_CHECKED"
+    assert result.verdict == "VALID"
+
+
 # -- the producer: leaf_content ------------------------------------------------------
 
 

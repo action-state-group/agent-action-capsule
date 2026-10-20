@@ -31,8 +31,9 @@ __all__ = ["CATEGORY_STATUSES", "PROPERTIES", "GATING", "category_coverage_signi
 
 PASS, FAIL, NOT_PRESENT, NOT_CHECKED, INCONCLUSIVE = "PASS", "FAIL", "NOT_PRESENT", "NOT_CHECKED", "INCONCLUSIVE"
 
-#: The per-category statuses: the Evidence Layer retention states AVAILABLE,
-#: PARTIAL, WITHHELD, DELETED and UNDISCLOSED, and ABSENT.
+#: The per-category statuses: the Evidence Layer -00 retention states
+#: AVAILABLE, PARTIAL, WITHHELD and DELETED, and UNDISCLOSED and ABSENT, which
+#: Bundle -02 defines.
 CATEGORY_STATUSES = ("AVAILABLE", "PARTIAL", "WITHHELD", "DELETED", "ABSENT", "UNDISCLOSED")
 
 PROPERTIES = (
@@ -48,8 +49,10 @@ GATING = ("category_coverage_form", "category_coverage_signature", "category_cov
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _HEX128 = re.compile(r"^[0-9a-f]{128}$")
-# RFC 3986 Section 3: a scheme, then ":"; a relative reference has no scheme.
-_ABSOLUTE_URI = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:[^\s]*$")
+# RFC 3986 Section 4.3 absolute-URI, checked at the character level: a scheme,
+# ":", then only unreserved, sub-delims, ":", "@", "/", "?" and well-formed
+# percent-encodings. ASCII only; no fragment ("#"), so no relative reference.
+_ABSOLUTE_URI = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:(?:[A-Za-z0-9._~!$&'()*+,;=:@/?-]|%[0-9A-Fa-f]{2})*$")
 _PRIVATE_SET = "x-"
 # A record in one of these categories contradicts the declaration.
 _CONTRADICTED_BY_A_RECORD = ("ABSENT", "WITHHELD")
@@ -91,10 +94,6 @@ def _well_formed(member: Any) -> bool:
             return False
         if not isinstance(member["signature"], str) or not _HEX128.fullmatch(member["signature"]):
             return False
-    try:
-        jcs(member)
-    except (FloatInDigestError, UnsafeIntegerError, TypeError, ValueError):
-        return False
     return True
 
 
@@ -102,11 +101,13 @@ def _signature(member: Mapping[str, Any], root: Any) -> str:
     if "signature" not in member:
         return NOT_PRESENT
     try:
+        signing_input = category_coverage_signing_input(member, root)
+    except (FloatInDigestError, UnsafeIntegerError, TypeError, ValueError, RecursionError):
+        return FAIL  # no canonical signing input, so nothing the signature can cover
+    try:
         from .evidence_request import _ed25519_verifies
 
-        verified = _ed25519_verifies(
-            member["signer"]["key_id"], member["signature"], category_coverage_signing_input(member, root)
-        )
+        verified = _ed25519_verifies(member["signer"]["key_id"], member["signature"], signing_input)
     except ImportError:  # no Ed25519 implementation installed
         return NOT_CHECKED
     return PASS if verified else FAIL
@@ -122,17 +123,33 @@ def _set_registered(member: Mapping[str, Any], category_sets: Mapping[str, Seque
     return PASS if set(member["categories"]) <= set(known) else FAIL
 
 
+def _no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f"duplicate member {key!r}")
+        out[key] = value
+    return out
+
+
+def _reject_constant(name: str) -> Any:
+    raise ValueError(f"{name} is not JSON")
+
+
 def _request(member: Mapping[str, Any], request: bytes | None) -> str:
     if request is None:
         return NOT_CHECKED
+    request = bytes(request)
+    # The digest is over the octets as received, so it is checked before (and
+    # whether or not) they parse.
+    if "request_digest" in member and member["request_digest"] != hashlib.sha256(request).hexdigest():
+        return FAIL
     try:
-        parsed = json.loads(bytes(request).decode("utf-8"))
-    except (UnicodeError, ValueError, TypeError):
+        parsed = json.loads(request.decode("utf-8"), object_pairs_hook=_no_duplicates, parse_constant=_reject_constant)
+    except (UnicodeError, ValueError, TypeError, RecursionError):
         return NOT_CHECKED
     if not isinstance(parsed, Mapping):
         return NOT_CHECKED
-    if "request_digest" in member and member["request_digest"] != hashlib.sha256(bytes(request)).hexdigest():
-        return FAIL
     if "categories" not in parsed:
         return NOT_PRESENT
     asked = parsed["categories"]
@@ -153,9 +170,9 @@ def _request(member: Mapping[str, Any], request: bytes | None) -> str:
 def _consistency(
     member: Mapping[str, Any], record_ids: Sequence[str], record_categories: Mapping[str, str] | None
 ) -> str:
-    if record_categories is None:
-        return NOT_CHECKED
-    carried = {record_categories[cid] for cid in record_ids if cid in record_categories}
+    if record_categories is None or any(cid not in record_categories for cid in record_ids):
+        return NOT_CHECKED  # a record the caller could not assign could be in any category
+    carried = {record_categories[cid] for cid in record_ids}
     contradicted = [
         name
         for name, entry in member["categories"].items()
@@ -176,9 +193,10 @@ def check_category_coverage(
 
     ``category_sets`` maps each category set the caller knows to its names (a
     set starting ``x-`` is never looked up). ``category_request`` is the
-    Evidence Request's octets as received. ``record_categories`` maps a
+    Evidence Request's octets as received. ``record_categories`` maps each
     carried record's ``capsule_id`` to its category, as the set's rule
-    assigns it. Without it, consistency is ``NOT_CHECKED``. When the member is
+    assigns it (``None`` for a record in no category). Without it, or when a
+    carried record is not in it, consistency is ``NOT_CHECKED``. When the member is
     malformed, every other property is ``NOT_CHECKED``."""
     if "category_coverage" not in bundle:
         return None
