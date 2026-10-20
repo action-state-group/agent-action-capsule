@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.0 — 2026-10-20
+
 - Interlock: the Evidence Bundle producer is checked across implementations.
   `scripts/cross-language-interlock.sh` gains a producer step: Python, Go, TypeScript and Rust each
   build, with their own `proof_source_from_cll` and `build_evidence_bundle`, a whole-log Bundle, a
