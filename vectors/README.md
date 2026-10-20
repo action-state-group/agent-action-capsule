@@ -14,7 +14,9 @@ same-commit files in CI.
 - `disclosure-envelope/`: Disclosure Envelope DE-1 through DE-3 cases.
 - `cross-language/`: format-4 inputs used by the all-producer/all-consumer
   interlock: the released `-04` `seal-input.json` and its `-05` twin
-  `seal-input-v05.json`.
+  `seal-input-v05.json`, and `bundle-producer-log.json`, one checkpointed log
+  of signed records every implementation builds the same Evidence Bundles
+  from; `python/scripts/generate_bundle_producer_fixture.py` regenerates it.
 - `interop/`: established composition and run-under interoperability suites.
 - `evidence-request/`: draft-mih-agent-evidence-request-00 cases (request map,
   subject forms, request digest, signed refusal, outcomes, caller invariance,

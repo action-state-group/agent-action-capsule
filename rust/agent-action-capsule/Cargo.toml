@@ -67,3 +67,4 @@ required-features = ["settlement"]
 
 [[example]]
 name = "cross_language"
+required-features = ["strict"]
