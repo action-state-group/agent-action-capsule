@@ -43,9 +43,12 @@ The elements are read in order. For each one:
 
 1. Not an object: `non_record_leaf_element_invalid:<index>` (0-based index in
    the array).
-2. `seq` is not a safe integer, is outside `[first_seq, last_seq]`, is the seq
-   of a record's membership entry, or is the seq of an earlier element:
-   `non_record_leaf_seq_invalid:<index>`. The element accounts for no seq.
+2. `seq` is not a safe integer (a JSON integer, not a boolean, within
+   ±(2^53 − 1), as in `../strict/`; `18.0` is not one), is outside
+   `[first_seq, last_seq]`, is a seq that any `memberships` entry states in its
+   `log_coordinates` (whatever else is wrong with that entry), or is the seq of
+   an earlier element: `non_record_leaf_seq_invalid:<index>`. The element
+   accounts for no seq.
 3. Otherwise the element accounts for its `seq`, whatever follows. Then:
    - `content` is not an object, or its `record_type` is not a string
      (including an element that carries a digest in place of `content`):
@@ -71,6 +74,12 @@ claim is `withheld`, so the verdict is never `VALID`; when there is any other
 finding, the claim fails and lists both kinds. Without a signed checkpoint, a
 claim that did not fail is `withheld` with `checkpoint_unverified` appended, as
 in `../strict/`.
+
+A leaf of an undefined type is not checked beyond its `record_type`: its
+content is not hashed against its body digest. So a party that changes a Bundle
+can put such an element where a record or a padding leaf was, turning a
+failure into `withheld` (`incomplete-unknown-type-in-place-of-record`). It can
+never make the claim pass: the verdict is at best INCOMPLETE.
 
 A producer-selected Bundle has no range, so a `non_record_leaves` member on
 one, even an empty array, makes its certificate invalid:
@@ -107,6 +116,8 @@ Interval coverage is unchanged: the range proof already binds every
 | `neg-unknown-type-and-missing` | the unknown type and seq 22's element left out | INVALID |
 | `incomplete-unknown-leaf-type-unsigned-checkpoint` | the unknown type with no `checkpoint.cose` | INCOMPLETE |
 | `neg-non-record-leaves-on-producer-selected` | an empty member on a producer-selected Bundle | INVALID |
+| `neg-padding-seq-on-invalid-membership` | seq 33's membership has a wrong `leaf_index`; a padding element also claims 33 | INVALID |
+| `incomplete-unknown-type-in-place-of-record` | the record at seq 33 removed, an undefined type at seq 33 | INCOMPLETE |
 
 ## Regenerating
 

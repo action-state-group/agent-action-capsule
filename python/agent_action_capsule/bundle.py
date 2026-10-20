@@ -470,10 +470,8 @@ def _apply_strict(result: BundleVerificationResult, bundle: Mapping[str, Any], r
         result.interval_coverage = ClaimResult("withheld", ("selection_not_checkable",))
         if authenticated:
             result.per_record_membership = _selected_membership(bundle, signed["root"], signed["mmr_size"], signed["log_id"])
-        elif _range_member_without_range(bundle):
-            result.per_record_membership = ClaimResult("fail", ("completeness_certificate_invalid",))
-        else:
-            result.per_record_membership = ClaimResult("withheld", ("checkpoint_unverified",))
+        # Otherwise the plain reading stands: each proof against the stated
+        # checkpoint, withheld below unless it failed, as for a range Bundle.
     if not authenticated:
         result.interval_coverage = _unanchored(result.interval_coverage)
         result.per_record_membership = _unanchored(result.per_record_membership)
@@ -555,10 +553,16 @@ def _unanchored(claim: ClaimResult) -> ClaimResult:
     return ClaimResult("withheld", tuple(dict.fromkeys((*claim.findings, "checkpoint_unverified"))))
 
 
+_RANGE = object()
+
+
 def _selection(bundle: Mapping[str, Any]) -> Any:
-    """``completeness.selection``, or ``None`` when absent (a range certificate)."""
+    """``completeness.selection``, or ``_RANGE`` when the member is absent (a
+    range certificate). A present ``null`` is a value, not an absence."""
     completeness = bundle.get("completeness")
-    return completeness.get("selection") if isinstance(completeness, Mapping) else None
+    if not isinstance(completeness, Mapping) or "selection" not in completeness:
+        return _RANGE
+    return completeness["selection"]
 
 
 def _producer_selected(bundle: Mapping[str, Any]) -> bool:
@@ -582,6 +586,8 @@ def _selected_membership(bundle: Mapping[str, Any], root_hex: Any, size: Any, lo
         not isinstance(members, Mapping)
         or _range_member_without_range(bundle)
         or certificate.get("range_root") != root_hex
+        or certificate.get("log_id") != log_id
+        or not isinstance(log_id, str)
         or not isinstance(root_hex, str)
         or not _HEX64.fullmatch(root_hex)
         or not _safe_int(size)
@@ -751,7 +757,7 @@ def _verify_completeness(bundle: Mapping[str, Any], records: Mapping[str, Mappin
     selection = _selection(bundle)
     if selection == SELECTION_PRODUCER_SELECTED:
         return _plain_selected(bundle, certificate, checkpoint)
-    if selection is not None:
+    if selection is not _RANGE:
         # A certificate mode this verifier does not implement: not shown, and
         # never a failure (Bundle -02).
         unsupported = ClaimResult("withheld", (CERTIFICATE_MODE_UNSUPPORTED,))
@@ -806,10 +812,10 @@ def _plain_selected(
     each record's own proof against the stated checkpoint, qualified like a
     range Bundle's when the checkpoint's COSE form does not authenticate it."""
     interval = ClaimResult("withheld", ("selection_not_checkable",))
-    membership = _selected_membership(bundle, certificate.get("range_root"), checkpoint.get("mmr_size"), checkpoint.get("log_id"))
+    membership = _selected_membership(bundle, checkpoint.get("root"), checkpoint.get("mmr_size"), checkpoint.get("log_id"))
     if membership.status != "pass":
         return interval, membership
-    root_hex = certificate.get("range_root")
+    root_hex = checkpoint["root"]
     authentication = _authenticate_checkpoint(checkpoint, checkpoint.get("log_id"), bytes.fromhex(root_hex), checkpoint.get("mmr_size"))
     if authentication == "invalid":
         return interval, ClaimResult("fail", ("checkpoint_authentication_invalid",))
@@ -923,7 +929,7 @@ def _verify_memberships(
     certificate: Mapping[str, Any],
     records: Mapping[str, Mapping[str, Any]],
     completeness: Any,
-) -> tuple[list[str], list[str]]:
+) -> tuple[list[str], bool]:
     """Per-record membership over ``[first_seq, last_seq]``: every finding in
     report order, and whether any of them fails the claim (the others are
     ``non_record_leaf_type_unsupported``, which withhold it). Every seq of the
@@ -974,7 +980,7 @@ def _verify_memberships(
     unsupported = 0
     if "non_record_leaves" in certificate:
         leaf_findings, leaf_seqs = _non_record_leaves(
-            certificate["non_record_leaves"], first_seq, last_seq, certificate.get("body_digests"), set(by_seq)
+            certificate["non_record_leaves"], first_seq, last_seq, certificate.get("body_digests"), _stated_seqs(raw)
         )
         findings += leaf_findings
         unsupported = sum(f.startswith(_UNSUPPORTED_LEAF) for f in leaf_findings)
@@ -990,6 +996,18 @@ def _verify_memberships(
 
 
 _UNSUPPORTED_LEAF = "non_record_leaf_type_unsupported:"
+
+
+def _stated_seqs(memberships: Mapping[str, Any]) -> set[int]:
+    """Every seq a ``memberships`` entry states in ``log_coordinates``, whatever
+    else is wrong with the entry: a non-record leaf may not claim one."""
+    out: set[int] = set()
+    for member in memberships.values():
+        coords = member.get("log_coordinates") if isinstance(member, Mapping) else None
+        seq = coords.get("seq") if isinstance(coords, Mapping) else None
+        if _safe_int(seq):
+            out.add(seq)
+    return out
 
 
 def _non_record_leaves(

@@ -29,15 +29,19 @@ member is inside the bundle digest like every member other than
 - `set` is a non-empty string; `categories` a non-empty object keyed by
   category name, each value an object whose `status` is one of `AVAILABLE`,
   `PARTIAL`, `WITHHELD`, `DELETED`, `ABSENT`, `UNDISCLOSED`, upper case.
-  `policy_uri`, when present, is an absolute URI (a scheme, then `:`); it is
-  required for `UNDISCLOSED`.
+  `policy_uri`, when present, is an absolute URI (RFC 3986 Section 4.3); it is
+  required for `UNDISCLOSED`. The vectors check it at the character level: a
+  scheme (`ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )`), `:`, then only ASCII
+  unreserved and sub-delims characters, `:`, `@`, `/`, `?`, and `%` followed by
+  two hex digits. A fragment (`#`), whitespace, any non-ASCII character or a
+  bad percent-encoding is malformed.
 - `request_digest` (optional) is the SHA-256, lowercase hex, of the Evidence
   Request octets as received.
 - `signer` and `signature` are both present or both absent. `signature` is
   the Ed25519 signature by the raw key `signer.key_id` over
   `UTF8(JCS({"category_coverage": <member without signature>, "root": <the Bundle's root>}))`.
 - Members not listed are ignored (and, when signed, covered by the
-  signature).
+  signature). They never fail the form, whatever they hold.
 
 ## Inputs a Bundle cannot carry (`options`)
 
@@ -56,18 +60,26 @@ member, `category_coverage` is `null`.
    When it fails, the four others are `NOT_CHECKED`.
 2. `category_coverage_signature`: `NOT_PRESENT` with no signature; `PASS` when
    it verifies; `FAIL` otherwise (another key, another root, an edited
-   declaration).
+   declaration, a signing input with no canonical form because the member or
+   `root` holds a fractional number or an integer beyond ±(2^53 − 1), or a
+   small-order public key, which these verifiers refuse as an Ed25519 key). A
+   verifier with no Ed25519 implementation reports `NOT_CHECKED`.
 3. `category_coverage_set_registered`: `NOT_PRESENT` for a set starting `x-`,
    which is never looked up; `INCONCLUSIVE` for a set the verifier does not
    know; `FAIL` when the set is known and a declared name is not in it; `PASS`
    otherwise.
-4. `category_coverage_request`: `NOT_CHECKED` with no request (or one that is
-   not a JSON object, or whose `categories` is malformed); `FAIL` when
-   `request_digest` is present and is not the SHA-256 of the request octets;
-   `NOT_PRESENT` when the request has no `categories`; `FAIL` when the
-   request's `set` differs or a requested name has no entry; `PASS`
+4. `category_coverage_request`, in this order: `NOT_CHECKED` with no request;
+   `FAIL` when `request_digest` is present and is not the SHA-256 of the
+   request octets (checked before parsing, so also for octets that are not
+   JSON); `NOT_CHECKED` when the octets are not UTF-8 JSON read strictly (no
+   repeated member name, no `NaN` or `Infinity`), are not an object, or have a
+   `categories` that is not `{set: string, names: [non-empty, distinct
+   strings]}`; `NOT_PRESENT` when the request has no `categories`; `FAIL` when
+   the request's `set` differs or a requested name has no entry; `PASS`
    otherwise. Declaring more names than were asked for is not a failure.
-5. `category_coverage_consistency`: `NOT_CHECKED` with no assignment; `FAIL`
+5. `category_coverage_consistency`: `NOT_CHECKED` with no assignment, or when
+   a carried record is not in it (a record the caller could not assign could
+   be in any category; `null` assigns a record to no category); `FAIL`
    when a carried record is assigned to a category declared `ABSENT` or
    `WITHHELD`; `PASS` otherwise. A record in a `DELETED` or `UNDISCLOSED`
    category is not a contradiction.
@@ -91,6 +103,9 @@ The other properties never change it.
 | `neg-signature-edited` | a status changed after signing | INVALID |
 | `neg-undisclosed-without-policy-uri` | `UNDISCLOSED` without `policy_uri` | INVALID |
 | `neg-policy-uri-relative` | a relative `policy_uri` | INVALID |
+| `neg-policy-uri-fragment` | a `policy_uri` with a fragment | INVALID |
+| `neg-policy-uri-non-ascii` | a `policy_uri` with `é` | INVALID |
+| `neg-policy-uri-bad-percent` | a `policy_uri` with `%zz` | INVALID |
 | `neg-status-lowercase` | `available` | INVALID |
 | `neg-status-unknown` | `LEGAL_HOLD` | INVALID |
 | `neg-categories-empty` | `categories` is `{}` | INVALID |
@@ -103,6 +118,9 @@ The other properties never change it.
 | `request-not-covered` | a requested name has no entry: request `FAIL` | VALID |
 | `request-digest-mismatch` | `request_digest` of another request asking for the same categories: request `FAIL` | VALID |
 | `request-without-categories` | the request asked for none: `NOT_PRESENT` | VALID |
+| `request-digest-mismatch-unparsable` | `request_digest` of another request, octets not JSON: request `FAIL` | VALID |
+| `request-duplicate-member` | the request repeats `categories`: `NOT_CHECKED` | VALID |
+| `consistency-partial-assignment` | two of three records assigned: `NOT_CHECKED` | VALID |
 | `neg-consistency-absent-with-record` | a record in an `ABSENT` category | INVALID |
 | `neg-consistency-withheld-with-record` | a record in a `WITHHELD` category | INVALID |
 | `consistency-deleted-with-record` | a record in a `DELETED` category | VALID |

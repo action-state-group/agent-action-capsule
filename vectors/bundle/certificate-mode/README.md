@@ -10,15 +10,22 @@ The log is the 64-leaf padded log of `../non-record-leaves/`.
 
 ## The rules
 
-- **`selection` absent: a range certificate.** The -01 rules apply, and
+- **`selection` absent** (the member is not there; a present `null` is a
+  value): **a range certificate.** The -01 rules apply, and
   `../non-record-leaves/` for a range that covers padding.
 - **`selection` is `producer-selected`.** The producer chose the records; the
   certificate has no range (`first_seq`, `last_seq`, `body_digests`,
   `range_proof`) and claims nothing about the records between them. Interval
   coverage is `withheld` (`selection_not_checkable`). Per-record membership is
   each record's inclusion proof against the checkpoint, as in `../strict/`
-  ("Producer-selected Bundles"). `payloads_mode` `none` says the Bundle carries
-  no payload material; it changes no check.
+  ("Producer-selected Bundles"), and in addition the certificate's `log_id`
+  must equal the checkpoint's (`completeness_certificate_invalid`). With no
+  signed checkpoint, the proofs are checked against the Bundle's JSON
+  `checkpoint` (`range_root` must equal its `root`; the proof `size` its
+  `mmr_size`): a failure stays a failure, and a claim that did not fail is
+  `withheld` with `checkpoint_unverified`, as for a range Bundle.
+  `payloads_mode` `none` says the Bundle carries no payload material; it
+  changes no check.
 - **Any other `selection` value**, including one that is not a string, names a
   mode the verifier does not implement. Interval coverage and per-record
   membership are both `withheld` with the one finding
@@ -35,6 +42,9 @@ The log is the 64-leaf padded log of `../non-record-leaves/`.
 | `incomplete-certificate-mode-unknown` | `selection` `x-sampled` | INCOMPLETE |
 | `incomplete-certificate-mode-not-a-string` | `selection` `7` | INCOMPLETE |
 | `incomplete-certificate-mode-unknown-on-range` | a valid range [33, 64] under `selection` `x-sampled` | INCOMPLETE |
+| `incomplete-certificate-mode-null` | the valid range [33, 64] under `selection` `null` | INCOMPLETE |
+| `neg-producer-selected-unsigned-checkpoint-tampered` | the tampered Bundle without `checkpoint.cose` | INVALID |
+| `neg-producer-selected-certificate-log-id` | the certificate names another log | INVALID |
 
 ## Regenerating
 
