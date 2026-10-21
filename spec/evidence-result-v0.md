@@ -106,9 +106,10 @@ over that claim's cited evidence, never a property the evidence asserts about it
 
 **Traceability (the ruling's second paragraph, encoded).** "A claim that cannot be traced to
 evidence by digest" is structurally impossible here: `evidence[]` is REQUIRED on every claim
-(§4), by digest only, and holds at least one entry. "A number that cannot be traced to claims" is §3's concern — every count in
-`aggregate.coverage` and every entry in `aggregate.buckets` resolves to real claim objects in this
-same Result, never a number computed and reported without the claims that back it.
+(§4), by digest only, and holds at least one entry. "A number that cannot be traced to claims" is
+§3's concern — every count in `aggregate.coverage` and every entry in `aggregate.buckets` resolves
+to real claim objects in this same Result, never a number computed and reported without the claims
+that back it.
 
 ## 2. Disclosure policy — `disclosure` · `analysis` · `story`
 

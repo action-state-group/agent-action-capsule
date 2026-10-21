@@ -277,7 +277,8 @@ The claim's `evidence` is the digest of every half in the reconcile (§6), sorte
 `status` is `SATISFIED`, `UNKNOWN` or `INSUFFICIENT` as the sufficiency is `SATISFIED`, `UNKNOWN`
 or `GAP`: a `GAP` here only ever comes from the `insufficient` tally. A reconcile with no half in
 the period has nothing to cite, and RES §1 requires every claim to cite at least one record, so a
-builder makes no Result for it and reports that the period holds no half. The Result carries no field opening, no field text and no coverage declaration (DR-3). A recipient that holds the Result
+builder makes no Result for it and reports that the period holds no half. The Result carries no
+field opening, no field text and no coverage declaration (DR-3). A recipient that holds the Result
 but not the openings sees the tallies and the halves' digests, never the terms.
 
 ### 7.4 No cited Close

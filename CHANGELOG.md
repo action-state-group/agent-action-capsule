@@ -7,8 +7,8 @@
   validates. §2 says a claim about a `recorded_absence` cites the absence record by digest, and
   `vectors/evidence-result/` gains `pos-example-org-recorded-absence-result.json` and
   `neg-claim-evidence-empty.json`. The TypeScript viewer is unchanged: it still shows such a claim
-  as `unsupported`. The deal-reconcile contract (§7.3) makes no Result for a
-  period with no half. (#353)
+  as `unsupported`. The deal-reconcile contract (§7.3) makes no Result for a period with no half.
+  (#353)
 - Registry: `contract-report/v1` registered in `REGISTRY.md` §14 (with the Go, Python and Rust
   mirrors), defined in the new `spec/contract-report-v1.md` with the schema
   `schemas/contract-report-v1.json`. One neutral Evidence Bundle extension kind for a report over
