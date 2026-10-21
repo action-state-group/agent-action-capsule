@@ -106,7 +106,7 @@ over that claim's cited evidence, never a property the evidence asserts about it
 
 **Traceability (the ruling's second paragraph, encoded).** "A claim that cannot be traced to
 evidence by digest" is structurally impossible here: `evidence[]` is REQUIRED on every claim
-(§4), by digest only. "A number that cannot be traced to claims" is §3's concern — every count in
+(§4), by digest only, and holds at least one entry. "A number that cannot be traced to claims" is §3's concern — every count in
 `aggregate.coverage` and every entry in `aggregate.buckets` resolves to real claim objects in this
 same Result, never a number computed and reported without the claims that back it.
 
@@ -158,6 +158,8 @@ The three carriers, in descending order of what they show:
   derived characterization exists to share (e.g. a `recorded_absence` — nothing was ever produced
   to analyze). `story.narrative` describes what happened at the process level (a request was
   made, on this date, and no artifact resulted), never a claim about the withheld content itself.
+  A claim about a `recorded_absence` cites the absence record itself (`spec/interop-profile-v0.md`
+  §6.4) by digest in its `evidence[]`: the absence is a record, so it is evidence.
 
 **A Result never re-discloses payload bytes.** This holds for all three carriers, not only
 `analysis`/`story` — `disclosure` carries digests, never the bytes those digests address. The
@@ -215,7 +217,7 @@ claim:
   grade: self-attested | witnessed | countersigned   # §1, owned elsewhere
   sufficiency: SATISFIED | GAP | INSUFFICIENT | UNKNOWN   # §1, owned by the Evidence Contract
   verdict: met | not_met | not_evaluable                  # §1, owned by the Evidence Contract
-  evidence: [digest-ref, ...]         # §5 — by digest only
+  evidence: [digest-ref, ...]         # §5 — by digest only; at least one (§1)
   proofs: [proof-ref, ...]            # §5 — by digest only
   presentation: disclosure-carrier | analysis-carrier | story-carrier   # §2, §6
   x-<name>: any                       # OPTIONAL, any number — §8a, ignored by every verifier
@@ -749,3 +751,9 @@ byte-identical to the claims positive. It also adds one schema negative,
 `neg-coverage-declaration-unknown-kind.json`, whose kind is outside the three, with its own mutant
 proof. The never-stronger rule needs the evidence sets. Its vector is the interop profile's
 `aggregate-stronger-than-evidence` (`vectors/coverage-declaration-v0/`).
+
+§1's Traceability rule adds one positive, `pos-example-org-recorded-absence-result.json`: the
+claims positive with `claim-3` a `story` claim about a recorded absence, whose `evidence[]` cites
+the absence record of `spec/interop-profile-v0.md` §10 by digest (§2). It also adds one schema
+negative, `neg-claim-evidence-empty.json`, the same claim with an empty `evidence[]`, with its own
+mutant proof.

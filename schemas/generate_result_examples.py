@@ -1017,6 +1017,43 @@ neg_coverage_declaration_unknown_kind = _mutated(pos_example_org_coverage_declar
 neg_coverage_declaration_unknown_kind["aggregate"]["coverage_declaration"]["kind"] = "complete"
 
 
+# --- pos-example-org-recorded-absence-result -- a story claim about a -------
+#     recorded absence (spec section 2) cites the absence record itself by
+#     digest. The record is interop-profile-v0 section 10's absence-record
+#     example, so its digest is the one printed there
+#     (82108c56...). It is the claims positive's claim-3 replaced by this claim.
+recorded_absence_content = {
+    "outcome": "recorded_absence",
+    "recorded_at": "2026-10-12T00:01:05Z",
+    "request_digest": "ba7fee76b7afe9f3ec5ce46975865e06040492f0da733b28cbc86bd2be609d5e",
+    "route": "peer:example-responder",
+    "window": {"closed": "2026-10-12T00:01:05Z", "opened": "2026-10-12T00:00:05Z"},
+}
+absence_claim: ClaimDoc = {
+    "id": "claim-3",
+    "contract_ref": CONTRACT_REF,
+    "requirement_ref": "req-claim-3",
+    "tier": "recomputed",
+    "grade": "self-attested",
+    "sufficiency": "GAP",
+    "verdict": "not_evaluable",
+    "evidence": [digest_ref(recorded_absence_content)],
+    "proofs": [],
+    "presentation": {
+        "kind": "story",
+        "status": "NOT_FOUND",
+        "narrative": "EXAMPLE-ORG requested the record on 2026-10-12; no envelope or refusal "
+        "arrived within the one-minute window, and the absence was recorded.",
+    },
+}
+pos_example_org_recorded_absence_result = _mutated(pos_example_org_claims_result)
+pos_example_org_recorded_absence_result["claims"][2] = absence_claim
+
+# --- neg-claim-evidence-empty -- the same story claim citing nothing --------
+#     (spec section 1, Traceability: evidence[] holds at least one entry).
+neg_claim_evidence_empty = _mutated(pos_example_org_recorded_absence_result)
+neg_claim_evidence_empty["claims"][2]["evidence"] = []
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("pos-example-org-claims-result", pos_example_org_claims_result)
@@ -1056,6 +1093,8 @@ def main() -> int:
     write("neg-coverage-summary-does-not-recompute", neg_coverage_summary_does_not_recompute)
     write("pos-example-org-coverage-declaration-result", pos_example_org_coverage_declaration_result)
     write("neg-coverage-declaration-unknown-kind", neg_coverage_declaration_unknown_kind)
+    write("pos-example-org-recorded-absence-result", pos_example_org_recorded_absence_result)
+    write("neg-claim-evidence-empty", neg_claim_evidence_empty)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)
     return 0

@@ -218,7 +218,9 @@
         "sufficiency": { "$ref": "#/$defs/Sufficiency" },
         "verdict": { "$ref": "#/$defs/Verdict" },
         "evidence": {
+          "description": "spec section 1, Traceability: every claim cites at least one piece of evidence by digest. A claim about a recorded absence cites the absence record (spec section 2).",
           "type": "array",
+          "minItems": 1,
           "items": { "$ref": "#/$defs/DigestRef" }
         },
         "proofs": {

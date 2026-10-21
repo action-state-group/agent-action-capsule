@@ -206,6 +206,13 @@ The never-stronger-than-the-evidence rule of spec section 7.2 needs the evidence
 on, so no fixture here can show it. Its vector is `aggregate-stronger-than-evidence` in
 `vectors/coverage-declaration-v0/`.
 
+## Traceability — a claim cites at least one record (spec sections 1 and 2)
+
+| File | What it shows |
+|---|---|
+| `pos-example-org-recorded-absence-result.json` | the claims positive with `claim-3` replaced by a `story` claim about a recorded absence (`GAP`, `not_evaluable`, status `NOT_FOUND`). Its `evidence` cites the absence record by digest: the record is the absence-record example of `spec/interop-profile-v0.md` §10, digest `82108c56…` |
+| `neg-claim-evidence-empty.json` | the same claim with `evidence: []`. `Claim.evidence` has `minItems: 1`. Mutant: removing `minItems` accepts the fixture |
+
 ## Reproducing the validation run
 
 ```

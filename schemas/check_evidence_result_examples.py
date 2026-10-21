@@ -184,6 +184,11 @@ mechanical half):
          closed CoverageKind enum.
      The never-stronger-than-the-evidence rule needs the evidence sets; its
      vector is vectors/coverage-declaration-v0/aggregate-stronger-than-evidence.
+  11. Traceability (spec sections 1 and 2): pos-example-org-recorded-absence-result
+     (the claims positive with claim-3 a story claim about a recorded absence,
+     citing the absence record by digest) MUST validate. One schema negative
+     MUST fail, with a strip-the-rule mutant:
+       - neg-claim-evidence-empty: the same claim with `evidence: []`.
 
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
@@ -443,6 +448,7 @@ POSITIVES = [
     "pos-judge-producer-x-judge-result",
     "pos-example-org-coverage-result",
     "pos-example-org-coverage-declaration-result",
+    "pos-example-org-recorded-absence-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -467,6 +473,7 @@ NEGATIVES = [
     "neg-coverage-unknown-epistemic-type",
     "neg-coverage-uppercase-epistemic-type",
     "neg-coverage-declaration-unknown-kind",
+    "neg-claim-evidence-empty",
 ]
 
 # Section 8a: the two levels that carry the x- slot, as $defs names.
@@ -805,6 +812,17 @@ def main() -> int:
             "neg-close-contested-verdict-met",
             mutant,
             "Claim's CONTESTED-is-never-met if/then rule",
+        )
+
+    if negative_errors_by_name["neg-claim-evidence-empty"]:
+        mutant = copy.deepcopy(schema)
+        # Section 1, Traceability: a claim cites at least one record. Without
+        # minItems the story claim citing nothing validates again.
+        del mutant["$defs"]["Claim"]["properties"]["evidence"]["minItems"]
+        _mutant_check(
+            "neg-claim-evidence-empty",
+            mutant,
+            "Claim.evidence's minItems: 1",
         )
 
     # --- 8. THE x- EXTENSION SLOT (spec section 8a) ---------------------------
