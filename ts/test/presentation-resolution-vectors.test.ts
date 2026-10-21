@@ -121,8 +121,8 @@ it("every table vector resolves as recorded", async () => {
     count: number;
     cases: Probe[];
   };
-  expect(file.cases).toHaveLength(1536);
-  expect(file.count).toBe(1536);
+  expect(file.cases).toHaveLength(3072);
+  expect(file.count).toBe(3072);
   const built = registerAll(BUILTIN_MANIFESTS, toRuntime(file.runtime));
   expect(built.error).toBeNull();
   for (const c of file.cases)

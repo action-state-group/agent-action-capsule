@@ -132,7 +132,7 @@ async function render(
 }
 
 describe("registration (spec section 4.5)", () => {
-  it("registers the six built-ins without a co-matchable pair", () => {
+  it("registers the seven built-ins without a co-matchable pair", () => {
     const registry = createPresentationRegistry();
     expect(registry.list().map((m) => m.manifest.id)).toEqual(
       BUILTIN_MANIFESTS.map((m) => m.id),
@@ -199,7 +199,7 @@ describe("registration (spec section 4.5)", () => {
   it("accepts a specific module whose forbids exclude every built-in specific", () => {
     const registry = createPresentationRegistry();
     registry.register(spyModule(manifest()).module);
-    expect(registry.list()).toHaveLength(7);
+    expect(registry.list()).toHaveLength(8);
   });
 
   it("does not call disjoint audiences or formats ambiguous", () => {
@@ -611,7 +611,7 @@ describe("the presentation ABI (spec section 3.2)", () => {
     ).toThrow(PresentationAmbiguityError);
   });
 
-  it("a runtime that implements none of the built-ins' API refuses all six and renders no module", async () => {
+  it("a runtime that implements none of the built-ins' API refuses all seven and renders no module", async () => {
     const registry = new PresentationRegistry({
       presentationApis: ["aac.presentation-api/v1"],
       runtimeVersion: "1.0.0",

@@ -81,9 +81,20 @@ func Verified(result bundle.VerificationResult) bool {
 
 // extensionReaders are the extension kinds whose core reader can decline a
 // present block (section 4.2). A kind not listed is engaged when present.
+// outcome-report/v1 and eu-ai-act-compliance/v1 are deprecated aliases of
+// contract-report/v1 (section 4.2's deprecation table), read unchanged until
+// their removal.
 var extensionReaders = map[string]func(block interface{}) bool{
+	"contract-report/v1":      contractReportEngaged,
 	"outcome-report/v1":       outcomeReportEngaged,
 	"eu-ai-act-compliance/v1": complianceEngaged,
+}
+
+// contractReportEngaged: the contract-report/v1 reader accepts a closed
+// empty object (spec/contract-report-v1.md) and declines anything else.
+func contractReportEngaged(block interface{}) bool {
+	value, ok := object(block)
+	return ok && len(value) == 0
 }
 
 // outcomeReportEngaged: the outcome-report/v1 reader accepts a block whose

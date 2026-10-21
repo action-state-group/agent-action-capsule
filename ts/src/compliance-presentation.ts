@@ -1,4 +1,7 @@
 /**
+ * Deprecated: an alias of `contract-report/v1` (spec/contract-report-v1.md),
+ * read unchanged until its removal (presentation contract section 4.2).
+ *
  * `eu-ai-act-compliance/v1` typed extension: opts a verified Result v0
  * bundle into the EU AI Act obligations-report card, read only after the
  * bundle verified, and carries the producer's REGULATORY MAPPING for it:

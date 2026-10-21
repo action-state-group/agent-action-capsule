@@ -24,7 +24,7 @@ func TestBuiltinManifestsAreTheContractFiles(t *testing.T) {
 func TestBuiltinRegistries(t *testing.T) {
 	pages, err := NewBuiltinRegistry(ReferenceRuntime())
 	require.NoError(t, err)
-	require.Len(t, pages.List(), 6)
+	require.Len(t, pages.List(), 7)
 	require.Empty(t, pages.Refused())
 	sections, err := NewSectionRegistry(ReferenceRuntime())
 	require.NoError(t, err)
@@ -35,7 +35,7 @@ func TestBuiltinRegistries(t *testing.T) {
 	refusing, err := NewBuiltinRegistry(Runtime{RuntimeVersion: "0.1.0"})
 	require.NoError(t, err)
 	require.Empty(t, refusing.List())
-	require.Len(t, refusing.Refused(), 6)
+	require.Len(t, refusing.Refused(), 7)
 	kind := "evidence-bundle/v2"
 	resolution, err := refusing.Resolve(Descriptor{Verified: true, BundleKind: &kind, Profiles: []string{"spec_version:report/v1"}}, "*", FormatHTML)
 	require.NoError(t, err)

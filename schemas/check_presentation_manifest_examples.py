@@ -12,7 +12,7 @@ rejection is load-bearing rather than a check that can never fire.
 What this enforces (spec/presentation-contract-v0.md is normative; this is the
 mechanical half):
 
-  1. POSITIVE: the six built-in manifests (appendix A) and the five example
+  1. POSITIVE: the seven built-in manifests (appendix A) and the five example
      manifests (appendix B: a unilateral module that forbids composed/v1, a
      module that declares it understands a composition, a generic fallback,
      a declarative rules module reading agent_input, a declarative module
@@ -59,12 +59,16 @@ mechanical half):
      finite universe (verified or not; every root profile combination the
      current viewer distinguishes; every subset of the extensions it reads
      plus composed/v1; whether the evaluation-summary model builds; two
-     audiences; three formats), resolving over the six built-ins gives
+     audiences; three formats), resolving over the seven built-ins gives
      exactly what renderEvidenceGraph's if-chain gives today
-     (ts/src/evidence-graph-view.ts), transcribed below as `legacy`.
-     MUTANT: four forbids are each removed in turn (compliance's
-     outcome-report/v1, result's two extensions, graph's result_version,
-     outcome-report's report/v1). Each removal MUST make the static test
+     (ts/src/evidence-graph-view.ts), transcribed below as `legacy`, with
+     the one branch spec/contract-report-v1.md added: a Result root that
+     opts into contract-report/v1 takes the contract-report manifest ahead
+     of the two deprecated cards.
+     MUTANT: nine forbids are each removed in turn (the contract-report
+     manifest's report/v1; contract-report/v1 on result, outcome-report and
+     compliance; compliance's outcome-report/v1, result's two older
+     extensions, graph's result_version, outcome-report's report/v1). Each removal MUST make the static test
      report a pair and the enumeration raise an ambiguity error.
   7. PRESENTATION ABI (spec section 3.2): every built-in and example
      manifest declares a presentation_api the reference runtime implements
@@ -134,6 +138,7 @@ SCHEMA_PATH = SCHEMAS_DIR / "presentation-manifest-v0.json"
 
 BUILTINS = [
     "builtin-report-rows",
+    "builtin-result-contract-report",
     "builtin-result-outcome-report",
     "builtin-result-compliance",
     "builtin-result",
@@ -162,6 +167,7 @@ WORDING_PACKS = {
 RESERVED_WORDING_KEYS = ("page.title", "module.title")
 
 ID_ROWS = "aac.builtin.report-rows/v0"
+ID_CONTRACT_REPORT = "aac.builtin.result-contract-report/v0"
 ID_OUTCOME = "aac.builtin.result-outcome-report/v0"
 ID_COMPLIANCE = "aac.builtin.result-compliance/v0"
 ID_RESULT = "aac.builtin.result/v0"
@@ -388,16 +394,21 @@ def static_findings(registry: list[dict]) -> list[str]:
 
 # --- today's dispatch, transcribed from renderEvidenceGraph -----------------
 SPEC_TOKENS = [None, "report/v1", "evaluation-summary/v1", "org.example.other/v1"]
-READ_EXTENSIONS = ["outcome-report/v1", "eu-ai-act-compliance/v1", "composed/v1"]
+READ_EXTENSIONS = [
+    "contract-report/v1", "outcome-report/v1", "eu-ai-act-compliance/v1", "composed/v1",
+]
 
 
 def legacy(d: Descriptor, graph_builds: bool) -> str:
-    """ts/src/evidence-graph-view.ts renderEvidenceGraph, branch for branch."""
+    """ts/src/evidence-graph-view.ts renderEvidenceGraph, branch for branch,
+    plus the contract-report branch of spec/contract-report-v1.md."""
     if not d.verified:
         return REFUSAL
     if "spec_version:report/v1" in d.profiles:
         return ID_ROWS
     if "result_version:evidence-result-v0" in d.profiles:
+        if "contract-report/v1" in d.extensions:
+            return ID_CONTRACT_REPORT
         if "outcome-report/v1" in d.extensions:
             return ID_OUTCOME
         # compliance is read only when outcome-report is absent
@@ -694,6 +705,10 @@ def main() -> int:
         print(f"OK  preservation  {cases} (descriptor, audience, format) cases resolve "
               "exactly as renderEvidenceGraph dispatches today")
     for module_id, field, token in (
+        (ID_CONTRACT_REPORT, "profiles", "spec_version:report/v1"),
+        (ID_RESULT, "extensions", "contract-report/v1"),
+        (ID_OUTCOME, "extensions", "contract-report/v1"),
+        (ID_COMPLIANCE, "extensions", "contract-report/v1"),
         (ID_COMPLIANCE, "extensions", "outcome-report/v1"),
         (ID_RESULT, "extensions", "eu-ai-act-compliance/v1"),
         (ID_RESULT, "extensions", "outcome-report/v1"),

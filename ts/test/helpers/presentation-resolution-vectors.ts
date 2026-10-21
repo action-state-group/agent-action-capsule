@@ -233,7 +233,7 @@ export function runtimeRefusal(
 }
 
 // ---------------------------------------------------------------------------
-// table.json: appendix A.3's 1,536 cases
+// table.json: appendix A.3's 3,072 cases
 // ---------------------------------------------------------------------------
 
 const SPEC_TOKENS = [
@@ -243,6 +243,7 @@ const SPEC_TOKENS = [
   "org.example.other/v1",
 ];
 const READ_EXTENSIONS = [
+  "contract-report/v1",
   "outcome-report/v1",
   "eu-ai-act-compliance/v1",
   "composed/v1",
@@ -288,7 +289,7 @@ async function table(): Promise<Obj> {
           }
   return {
     description:
-      "Appendix A.3 of spec/presentation-contract-v0.md: every (descriptor, audience, format) the built-in page shapes distinguish -- verified or not; four spec_version states; a Result carrier or not; every subset of outcome-report/v1, eu-ai-act-compliance/v1 and composed/v1; whether the evaluation-summary graph renders (declines); two audiences; three formats -- resolved over the six built-in manifests registered under the reference runtime.",
+      "Appendix A.3 of spec/presentation-contract-v0.md: every (descriptor, audience, format) the built-in page shapes distinguish -- verified or not; four spec_version states; a Result carrier or not; every subset of contract-report/v1, outcome-report/v1, eu-ai-act-compliance/v1 and composed/v1; whether the evaluation-summary graph renders (declines); two audiences; three formats -- resolved over the seven built-in manifests registered under the reference runtime.",
     registry: "builtin",
     runtime: REFERENCE_WIRE_RUNTIME,
     count: cases.length,
@@ -366,6 +367,20 @@ function dropForbid(
   });
 }
 
+/**
+ * A registry's own contract-report module (spec/contract-report-v1.md section
+ * 5): the same match as aac.builtin.result-contract-report/v0, under an id
+ * outside the reserved aac. prefix.
+ */
+const CONTRACT_REPORT_MODULE: PresentationManifest = {
+  ...structuredClone(
+    BUILTIN_MANIFESTS.find(
+      (m) => m.id === "aac.builtin.result-contract-report/v0",
+    )!,
+  ),
+  id: "org.example.contract-report/v0",
+};
+
 const EXCHANGE = "spec_version:org.example.exchange/v0";
 const RULES = "spec_version:org.example.rules-comparison/v0";
 const UNSUPPORTED_PROFILE =
@@ -384,6 +399,18 @@ function registrationCases(): RegistrationCase[] {
       ),
     },
     { descriptor: d(["result_version:evidence-result-v0"], []) },
+    {
+      descriptor: d(
+        ["result_version:evidence-result-v0"],
+        ["contract-report/v1"],
+      ),
+    },
+    {
+      descriptor: d(
+        ["result_version:evidence-result-v0"],
+        ["contract-report/v1", "eu-ai-act-compliance/v1", "outcome-report/v1"],
+      ),
+    },
     { descriptor: d(["spec_version:evaluation-summary/v1"], []) },
     {
       descriptor: d(["spec_version:evaluation-summary/v1"], []),
@@ -440,9 +467,59 @@ function registrationCases(): RegistrationCase[] {
     {
       id: "builtin",
       description:
-        "The six built-in page manifests under the reference runtime: all registered; one probe per page shape.",
+        "The seven built-in page manifests under the reference runtime: all registered; one probe per page shape.",
       manifests: BUILTIN_MANIFESTS,
       probes: builtinProbes,
+    },
+    {
+      id: "contract-report-module-beside-builtin",
+      description:
+        "spec/contract-report-v1.md section 5: a contract-report module with the same match as aac.builtin.result-contract-report/v0, registered beside it, is co-matchable: section 4.5 rejects the set.",
+      manifests: [...BUILTIN_MANIFESTS, CONTRACT_REPORT_MODULE],
+    },
+    {
+      id: "contract-report-module-in-place-of-builtin",
+      description:
+        "spec/contract-report-v1.md section 5: the same module registered in place of aac.builtin.result-contract-report/v0 registers, and every Result root that opts in resolves to it, alone or beside a deprecated alias; a report/v1 root still resolves to the rows table.",
+      manifests: [
+        ...BUILTIN_MANIFESTS.filter(
+          (m) => m.id !== "aac.builtin.result-contract-report/v0",
+        ),
+        CONTRACT_REPORT_MODULE,
+      ],
+      probes: [
+        {
+          descriptor: d(
+            ["result_version:evidence-result-v0"],
+            ["contract-report/v1"],
+          ),
+        },
+        {
+          descriptor: d(
+            ["result_version:evidence-result-v0"],
+            ["contract-report/v1", "outcome-report/v1"],
+          ),
+        },
+        {
+          descriptor: d(
+            ["result_version:evidence-result-v0"],
+            ["contract-report/v1", "eu-ai-act-compliance/v1"],
+          ),
+        },
+        {
+          descriptor: d(
+            ["result_version:evidence-result-v0"],
+            ["composed/v1", "contract-report/v1"],
+          ),
+        },
+        {
+          descriptor: d(
+            ["result_version:evidence-result-v0", "spec_version:report/v1"],
+            ["contract-report/v1"],
+          ),
+        },
+        { descriptor: d(["result_version:evidence-result-v0"], []) },
+      ],
     },
     {
       id: "builtin-sections",
@@ -773,6 +850,13 @@ function registrationCases(): RegistrationCase[] {
     })),
   ];
   for (const [id, field, token] of [
+    ["aac.builtin.result/v0", "extensions", "contract-report/v1"],
+    [
+      "aac.builtin.result-outcome-report/v0",
+      "extensions",
+      "contract-report/v1",
+    ],
+    ["aac.builtin.result-compliance/v0", "extensions", "contract-report/v1"],
     ["aac.builtin.result-compliance/v0", "extensions", "outcome-report/v1"],
     ["aac.builtin.result/v0", "extensions", "eu-ai-act-compliance/v1"],
     ["aac.builtin.result/v0", "extensions", "outcome-report/v1"],
@@ -1013,6 +1097,14 @@ async function descriptors(): Promise<Obj> {
     ["compliance:enabled", complianceBlock],
     ["compliance:declined", { enabled: true, obligations: [] }],
   ];
+  // contract-report/v1 overlays, each beside the deprecated aliases absent
+  // and engaged: an engaged block, and three blocks its reader declines.
+  const CONTRACT_REPORT: Array<[string, unknown]> = [
+    ["contract-report:engaged", {}],
+    ["contract-report:declined-member", { enabled: true }],
+    ["contract-report:declined-array", []],
+    ["contract-report:declined-string", "contract-report"],
+  ];
   const COMPOSED: Array<[string, unknown]> = [
     ["composed:absent", null],
     ["composed:present", { kind: "composed/v1" }],
@@ -1070,6 +1162,21 @@ async function descriptors(): Promise<Obj> {
             "eu-ai-act-compliance/v1": compliance,
             "composed/v1": composed,
           });
+    for (const [r, report] of CONTRACT_REPORT)
+      for (const [o, outcome, c, compliance] of [
+        ["outcome:absent", null, "compliance:absent", null],
+        [
+          "outcome:enabled",
+          { enabled: true },
+          "compliance:enabled",
+          complianceBlock,
+        ],
+      ] as Array<[string, unknown, string, unknown]>)
+        await one(`${name} {${r} ${o} ${c}}`, source, {
+          "contract-report/v1": report,
+          "outcome-report/v1": outcome,
+          "eu-ai-act-compliance/v1": compliance,
+        });
   }
   return {
     description:

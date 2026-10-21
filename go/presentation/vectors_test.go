@@ -190,8 +190,8 @@ func TestTableVectors(t *testing.T) {
 		Cases   []probe `json:"cases"`
 	}
 	readVector(t, filepath.Join(vectorsDir(t), "presentation-resolution", "table.json"), &file)
-	require.Equal(t, 1536, file.Count)
-	require.Len(t, file.Cases, 1536)
+	require.Equal(t, 3072, file.Count)
+	require.Len(t, file.Cases, 3072)
 	builtins, err := BuiltinManifests()
 	built := registerAll(builtinRaw(t, manifestIDs(t, builtins, err)...), file.Runtime)
 	require.NoError(t, built.err)

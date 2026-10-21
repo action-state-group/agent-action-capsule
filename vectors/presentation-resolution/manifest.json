@@ -35,6 +35,42 @@
     },
     {
       "spec_version": "aac.presentation-manifest/v0",
+      "id": "aac.builtin.result-contract-report/v0",
+      "presentation_api": "aac.presentation-api/v0",
+      "runtime_min": "0.1.0",
+      "trust_class": "trusted-executable",
+      "requires": {
+        "bundle_kind": "evidence-bundle/v2",
+        "profiles": [
+          "result_version:evidence-result-v0"
+        ],
+        "extensions": {
+          "required": [
+            "contract-report/v1"
+          ]
+        }
+      },
+      "forbids": {
+        "profiles": [
+          "spec_version:report/v1"
+        ]
+      },
+      "audiences": [
+        "*"
+      ],
+      "formats": [
+        "html",
+        "fragment",
+        "embedded"
+      ],
+      "fallback": false,
+      "priority": 1,
+      "executable": {
+        "carrier": "core-runtime"
+      }
+    },
+    {
+      "spec_version": "aac.presentation-manifest/v0",
       "id": "aac.builtin.result-outcome-report/v0",
       "presentation_api": "aac.presentation-api/v0",
       "runtime_min": "0.1.0",
@@ -53,6 +89,9 @@
       "forbids": {
         "profiles": [
           "spec_version:report/v1"
+        ],
+        "extensions": [
+          "contract-report/v1"
         ]
       },
       "audiences": [
@@ -91,6 +130,7 @@
           "spec_version:report/v1"
         ],
         "extensions": [
+          "contract-report/v1",
           "outcome-report/v1"
         ]
       },
@@ -125,6 +165,7 @@
           "spec_version:report/v1"
         ],
         "extensions": [
+          "contract-report/v1",
           "outcome-report/v1",
           "eu-ai-act-compliance/v1"
         ]
@@ -236,18 +277,18 @@
   "files": [
     {
       "path": "table.json",
-      "sha256": "eb23a4af71ecdd0130476b4ec1e33f54bebbc90286216d9f850e9ae4e7daf7e0",
-      "count": 1536
+      "sha256": "ae3e777592f5f414357967f221df77508e2405e165b9fa9f4f9ddb95e8c53b14",
+      "count": 3072
     },
     {
       "path": "registration.json",
-      "sha256": "8d726325d073093985deaace70d941b723bdb1819d2d0edfb62e5be3e5096f57",
-      "count": 53
+      "sha256": "0d5a890dc71d2bce13196691175084105ffbe5a6f6541a41145748013b8f35d0",
+      "count": 61
     },
     {
       "path": "descriptors.json",
-      "sha256": "a002850c94bc1db160e0a089692b804bcfd90602bbf7d9aefa3435f7302b7629",
-      "count": 379
+      "sha256": "c5d06b7a629bff12b23bbb50ac97fda867cfffc00b13671edde6963af2baf4c7",
+      "count": 531
     }
   ]
 }

@@ -315,9 +315,20 @@ Resolution reads a **descriptor** derived from the context and nothing else:
   of the verified bundle's `extensions` object and the core's reader for that kind accepts the
   block. A kind for which the core has no reader is engaged when present. The v0 readers that
   decline a present block are:
+  - `contract-report/v1` (`spec/contract-report-v1.md`): engaged only when the block is an
+    object with no members;
   - `outcome-report/v1`: engaged only when `enabled` is `true`;
   - `eu-ai-act-compliance/v1`: engaged only when `enabled` is `true` and at least one
     obligation is recognizable.
+
+  **Deprecation table.** These kinds are deprecated aliases of `contract-report/v1`. Until
+  their removal their readers and built-in manifests (appendix A) are unchanged, and a
+  producer SHOULD NOT write them.
+
+  | Kind | Deprecated in | Removed in |
+  |---|---|---|
+  | `outcome-report/v1` | ts 0.6.0, go v0.12.0 | ts 0.7.0, go v0.13.0 |
+  | `eu-ai-act-compliance/v1` | ts 0.6.0, go v0.12.0 | ts 0.7.0, go v0.13.0, and not before a Result revision carries applicability (whether a requirement applies yet), which its built-in card shows and `contract-report/v1` does not |
 
   A present block that its reader declines counts as absent for resolution, in `requires` and
   in `forbids` alike. Every extension, engaged or not, is still reported on the verification
@@ -793,11 +804,13 @@ Before the registry, `renderEvidenceGraph` (`ts/src/evidence-graph-view.ts`) dis
 control flow: `report/v1` rows, then a Result root with `outcome-report/v1`, then a Result root
 with `eu-ai-act-compliance/v1` (read only when `outcome-report/v1` is absent), then the generic
 Result page, then the `evaluation-summary/v1` graph, then the no-aggregate note. That gives
-five page shapes and one floor. They are expressed here as six manifests, five specific and one
-fallback; the files are in `schemas/examples/presentation-manifest-v0/`. The reference runtime
+five page shapes and one floor. `spec/contract-report-v1.md` added one manifest after the
+registry: a Result root that opts into `contract-report/v1` takes it ahead of both cards, and
+it draws the generic Result page. They are expressed here as seven manifests, six specific and
+one fallback; the files are in `schemas/examples/presentation-manifest-v0/`. The reference runtime
 now dispatches only through these manifests (`ts/src/builtin-manifests.ts`, compared with the
 files by `ts/test/builtin-manifests.test.ts`); the "today" of A.3 is that control flow, kept as
-the oracle the checker compares resolution with. All six have
+the oracle the checker compares resolution with, with that one branch added. All seven have
 `trust_class: "trusted-executable"`, `executable.carrier: "core-runtime"`,
 `presentation_api: "aac.presentation-api/v0"`, `runtime_min: "0.1.0"`,
 `requires.bundle_kind: "evidence-bundle/v2"`, `audiences: ["*"]` and all three formats.
@@ -807,13 +820,15 @@ the oracle the checker compares resolution with. All six have
 | Id | `fallback` / `priority` | `requires` | `forbids` |
 |---|---|---|---|
 | `aac.builtin.report-rows/v0` | false / 1 | profile `spec_version:report/v1` | — |
-| `aac.builtin.result-outcome-report/v0` | false / 1 | profile `result_version:evidence-result-v0`; extension `outcome-report/v1` | profile `spec_version:report/v1` |
-| `aac.builtin.result-compliance/v0` | false / 1 | profile `result_version:evidence-result-v0`; extension `eu-ai-act-compliance/v1` | profile `spec_version:report/v1`; extension `outcome-report/v1` |
-| `aac.builtin.result/v0` | false / 1 | profile `result_version:evidence-result-v0` | profile `spec_version:report/v1`; extensions `outcome-report/v1`, `eu-ai-act-compliance/v1` |
+| `aac.builtin.result-contract-report/v0` | false / 1 | profile `result_version:evidence-result-v0`; extension `contract-report/v1` | profile `spec_version:report/v1` |
+| `aac.builtin.result-outcome-report/v0` (deprecated) | false / 1 | profile `result_version:evidence-result-v0`; extension `outcome-report/v1` | profile `spec_version:report/v1`; extension `contract-report/v1` |
+| `aac.builtin.result-compliance/v0` (deprecated) | false / 1 | profile `result_version:evidence-result-v0`; extension `eu-ai-act-compliance/v1` | profile `spec_version:report/v1`; extensions `contract-report/v1`, `outcome-report/v1` |
+| `aac.builtin.result/v0` | false / 1 | profile `result_version:evidence-result-v0` | profile `spec_version:report/v1`; extensions `contract-report/v1`, `outcome-report/v1`, `eu-ai-act-compliance/v1` |
 | `aac.builtin.evaluation-summary-graph/v0` | false / 1 | profile `spec_version:evaluation-summary/v1` | profile `result_version:evidence-result-v0` |
 | `aac.builtin.no-aggregate/v0` | true / — | — | — |
 
-"Compliance only when outcome is absent" is the compliance manifest's `forbids` of
+"The contract report ahead of both cards and the Result page" is their `forbids` of
+`contract-report/v1`. "Compliance only when outcome is absent" is the compliance manifest's `forbids` of
 `outcome-report/v1`. "Rows first" is every Result manifest's `forbids` of
 `spec_version:report/v1`. "Result before graph" is the graph's `forbids` of the Result profile.
 The graph's `canRender` is false exactly when today's `buildEvidenceGraph` throws an
@@ -821,11 +836,16 @@ The graph's `canRender` is false exactly when today's `buildEvidenceGraph` throw
 
 ### A.2 No pair is ambiguous
 
-The fallback tier has one member, so it has no pair. The ten pairs of the specific tier, each
+The fallback tier has one member, so it has no pair. The fifteen pairs of the specific tier, each
 with the token that one requires and the other forbids (or the two values of one key):
 
 | Pair | Why they cannot both match |
 |---|---|
+| rows / contract-report | contract-report forbids `spec_version:report/v1`, which rows requires. |
+| contract-report / outcome-report | outcome-report forbids `contract-report/v1`, which contract-report requires. |
+| contract-report / compliance | compliance forbids `contract-report/v1`. |
+| contract-report / result | result forbids `contract-report/v1`. |
+| contract-report / graph | graph forbids `result_version:evidence-result-v0`, which contract-report requires. |
 | rows / outcome-report | outcome-report forbids `spec_version:report/v1`, which rows requires. |
 | rows / compliance | compliance forbids `spec_version:report/v1`. |
 | rows / result | result forbids `spec_version:report/v1`. |
@@ -844,23 +864,25 @@ For a verified bundle, with `D` its descriptor:
 | Today's branch | Condition today | The one module resolution selects |
 |---|---|---|
 | rows table | root `agent_input.spec_version = report/v1` | rows: every other specific forbids or excludes that token. |
-| outcome-report card | Result root, `outcome-report/v1` enabled | outcome-report: compliance and result forbid the extension; rows is not matched; graph forbids the Result profile. |
-| compliance card | Result root, `outcome-report/v1` not enabled, compliance enabled with an obligation | compliance. |
-| Result page | Result root, neither card engaged | result. |
+| contract report (generic Result page) | Result root, `contract-report/v1` engaged, with or without either card's block | contract-report: both cards and result forbid the extension. |
+| outcome-report card | Result root, `outcome-report/v1` enabled, no `contract-report/v1` | outcome-report: compliance and result forbid the extension; rows is not matched; graph forbids the Result profile. |
+| compliance card | Result root, `outcome-report/v1` not enabled, compliance enabled with an obligation, no `contract-report/v1` | compliance. |
+| Result page | Result root, no card or contract report engaged | result. |
 | graph | `spec_version = evaluation-summary/v1`, no Result carrier, the model builds | graph. |
 | no-aggregate note | anything else, including a graph model that fails to build | no specific matches or the graph declines, so the fallback. |
 | refusal | not verified | step 1: the refusal; no module is called. |
 
-The checker enumerates 1,536 (descriptor, audience, format) cases (verified or not; four
-`spec_version` states; Result carrier or not; every subset of `outcome-report/v1`,
-`eu-ai-act-compliance/v1` and `composed/v1`; graph model builds or not; two audiences; three
+The checker enumerates 3,072 (descriptor, audience, format) cases (verified or not; four
+`spec_version` states; Result carrier or not; every subset of `contract-report/v1`,
+`outcome-report/v1`, `eu-ai-act-compliance/v1` and `composed/v1`; graph model builds or not; two audiences; three
 formats) and requires the resolved module to equal today's branch in every case. Removing any
 one of the forbids above makes it report an ambiguity.
 
 ### A.4 Depth for the built-ins
 
 The built-ins move into the depth regions without changing a word: the depth regions are
-wrapper elements with no text. The goldens of the five shapes and the floor, captured before
+wrapper elements with no text. `aac.builtin.result-contract-report/v0` draws the Result page,
+so it adds no shape. The goldens of the five shapes and the floor, captured before
 the registry change, govern what "unchanged" means.
 
 ## Appendix B. Example manifests

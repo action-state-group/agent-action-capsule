@@ -13,6 +13,7 @@ import {
   BUILTIN_MANIFEST_NO_AGGREGATE,
   BUILTIN_MANIFEST_REPORT_ROWS,
   BUILTIN_MANIFEST_RESULT,
+  BUILTIN_MANIFEST_RESULT_CONTRACT_REPORT,
   BUILTIN_MANIFEST_RESULT_COMPLIANCE,
   BUILTIN_MANIFEST_RESULT_OUTCOME_REPORT,
 } from "./builtin-manifests.js";
@@ -1612,6 +1613,21 @@ const resultModule: PresentationModule<ResultRoot> = {
   render: (model, host) => renderResultPage(model, host.L1),
 };
 
+// A Result root that opts into the contract-report view. The core runtime
+// ships no contract-report module (that module is a registry's own, which
+// replaces this one), so it draws the generic Result page, exactly as
+// resultModule does.
+const resultContractReportModule: PresentationModule<ResultRoot> = {
+  manifest: BUILTIN_MANIFEST_RESULT_CONTRACT_REPORT,
+  canRender: (context) => isResultRoot(context),
+  buildModel: async (context) =>
+    defined(
+      await resultRootOf(context),
+      BUILTIN_MANIFEST_RESULT_CONTRACT_REPORT.id,
+    ),
+  render: (model, host) => renderResultPage(model, host.L1),
+};
+
 const evaluationSummaryGraphModule: PresentationModule<{
   readonly graph: EvidenceGraph;
   readonly records: unknown[];
@@ -1659,13 +1675,15 @@ const BUILTIN_MODULE_INTERPRETERS: Readonly<
   ],
   [BUILTIN_MANIFEST_RESULT_COMPLIANCE.id]: ["result-root", "compliance-card"],
   [BUILTIN_MANIFEST_RESULT.id]: ["result-root"],
+  [BUILTIN_MANIFEST_RESULT_CONTRACT_REPORT.id]: ["result-root"],
   [BUILTIN_MANIFEST_COMPOSED.id]: ["aac.builtin.composed/v0"],
 });
 
-/** The six built-in modules, registered by default. */
+/** The seven built-in modules, registered by default. */
 export const BUILTIN_PRESENTATIONS: readonly PresentationModule[] =
   Object.freeze([
     reportRowsModule,
+    resultContractReportModule,
     resultOutcomeReportModule,
     resultComplianceModule,
     resultModule,
@@ -1673,7 +1691,7 @@ export const BUILTIN_PRESENTATIONS: readonly PresentationModule[] =
     noAggregateModule,
   ] as PresentationModule[]);
 
-/** A fresh registry holding the six built-in modules. */
+/** A fresh registry holding the seven built-in modules. */
 export function createPresentationRegistry(): PresentationRegistry {
   const registry = new PresentationRegistry();
   for (const module of BUILTIN_PRESENTATIONS) registry.register(module);
@@ -1765,13 +1783,19 @@ export interface RenderEvidenceGraphOptions {
 
 /**
  * True when the rendered page module checked the producer signature of the
- * records it cites as signers: the built-in Result page, on a Close (or a
- * record linking to it) that carries a `key_id` (result-root.ts `signerOf`).
+ * records it cites as signers: the built-in Result page (drawn by
+ * resultModule and resultContractReportModule), on a Close (or a record
+ * linking to it) that carries a `key_id` (result-root.ts `signerOf`).
  */
 function citesCheckedSigners(
   selected: { module: PresentationModule; model: unknown } | undefined,
 ): boolean {
-  if (selected === undefined || selected.module !== resultModule) return false;
+  if (
+    selected === undefined ||
+    (selected.module !== resultModule &&
+      selected.module !== resultContractReportModule)
+  )
+    return false;
   return (selected.model as ResultRoot).claims.some(
     (claim) =>
       claim.close !== undefined &&

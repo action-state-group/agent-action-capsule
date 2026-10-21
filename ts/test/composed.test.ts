@@ -476,9 +476,9 @@ const stub = (manifest: PresentationManifest): PresentationModule => ({
 });
 
 describe("precedence (contract sections 4.3 to 4.5)", () => {
-  it("as a page module the composition manifest is ambiguous with the five specific built-ins, so registration refuses it", () => {
+  it("as a page module the composition manifest is ambiguous with the six specific built-ins, so registration refuses it", () => {
     const specific = BUILTIN_MANIFESTS.filter((m) => !m.fallback);
-    expect(specific).toHaveLength(5);
+    expect(specific).toHaveLength(6);
     for (const other of specific) {
       const pair = new PresentationRegistry();
       pair.register(stub(other));
@@ -526,7 +526,7 @@ describe("precedence (contract sections 4.3 to 4.5)", () => {
     ]);
   });
 
-  it("the page registry is unchanged: the six built-ins, nothing else", () => {
+  it("the page registry is unchanged: the seven built-ins, nothing else", () => {
     expect(createPresentationRegistry().list()).toEqual(BUILTIN_PRESENTATIONS);
     expect(BUILTIN_MANIFESTS.map((m) => m.id)).not.toContain(
       BUILTIN_MANIFEST_COMPOSED.id,

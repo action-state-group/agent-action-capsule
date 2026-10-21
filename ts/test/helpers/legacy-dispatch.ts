@@ -1,12 +1,16 @@
 // TEST-ONLY ORACLE. The page-shape dispatch renderEvidenceGraph ran before the
 // presentation registry, kept verbatim (minus the DOM) so the registry can be
 // held to it: for every bundle, resolve() must pick the module this control
-// flow picked. It is never imported by src/.
+// flow picked. It is never imported by src/. One branch was added after the
+// registry, with spec/contract-report-v1.md: a Result root that opts into
+// contract-report/v1 takes aac.builtin.result-contract-report/v0 ahead of
+// the two deprecated cards, the behaviour the built-ins' forbids now state.
 import {
   type BundleVerificationResult,
   type VerifiedBundleContext,
 } from "../../src/bundle.js";
 import { readCompliancePresentation } from "../../src/compliance-presentation.js";
+import { readContractReport } from "../../src/contract-report.js";
 import {
   buildEvidenceGraph,
   EvidenceGraphError,
@@ -18,6 +22,7 @@ import { buildResultRoot, isResultRoot } from "../../src/result-root.js";
 import { unboundRecordIds } from "../../src/verification-page.js";
 
 export const ID_ROWS = "aac.builtin.report-rows/v0";
+export const ID_CONTRACT_REPORT = "aac.builtin.result-contract-report/v0";
 export const ID_OUTCOME = "aac.builtin.result-outcome-report/v0";
 export const ID_COMPLIANCE = "aac.builtin.result-compliance/v0";
 export const ID_RESULT = "aac.builtin.result/v0";
@@ -78,6 +83,7 @@ export async function legacyDispatch(
       noAggregate = true;
     }
   }
+  const contractReport = result !== undefined && readContractReport(bundle);
   const outcomeReport =
     result !== undefined ? readOutcomeReportPresentation(bundle) : undefined;
   const compliance =
@@ -85,6 +91,7 @@ export async function legacyDispatch(
       ? readCompliancePresentation(bundle)
       : undefined;
   if (reportRows !== undefined) return ID_ROWS;
+  if (contractReport) return ID_CONTRACT_REPORT;
   if (result !== undefined && outcomeReport !== undefined) return ID_OUTCOME;
   if (result !== undefined && compliance !== undefined) return ID_COMPLIANCE;
   if (result !== undefined) return ID_RESULT;
@@ -98,7 +105,7 @@ export async function legacyDispatch(
  * it (appendix A.3). `graphBuilds` stands for "buildEvidenceGraph did not
  * throw an EvidenceGraphError". The oracle test proves this transcription
  * equals legacyDispatch on every real fixture, which is what lets the
- * 1,536-case table speak for the real code.
+ * 3,072-case table speak for the real code.
  */
 export function legacyOverDescriptor(
   d: {
@@ -111,6 +118,7 @@ export function legacyOverDescriptor(
   if (!d.verified) return REFUSAL;
   if (d.profiles.has("spec_version:report/v1")) return ID_ROWS;
   if (d.profiles.has("result_version:evidence-result-v0")) {
+    if (d.extensions.has("contract-report/v1")) return ID_CONTRACT_REPORT;
     if (d.extensions.has("outcome-report/v1")) return ID_OUTCOME;
     if (d.extensions.has("eu-ai-act-compliance/v1")) return ID_COMPLIANCE;
     return ID_RESULT;

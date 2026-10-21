@@ -200,7 +200,7 @@ it("resolve() picks the old control flow's module for every fixture and every ex
               : "<no-presentation>";
         expect(id, `${name} ${audience}/${format}`).toBe(want);
       }
-    // The descriptor transcription the 1,536-case table uses agrees with the
+    // The descriptor transcription the 3,072-case table uses agrees with the
     // real old code on this real bundle.
     if (legacyError === undefined)
       expect(

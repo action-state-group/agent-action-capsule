@@ -1,4 +1,4 @@
-// The six built-in manifests are vendored as TS constants
+// The seven built-in manifests are vendored as TS constants
 // (src/builtin-manifests.ts). This compares each, as a JSON value, with the
 // committed JSON file the presentation contract ships under
 // schemas/examples/presentation-manifest-v0/. AAC_PRESENTATION_MANIFESTS_DIR
@@ -17,6 +17,7 @@ import {
 
 const FILES = [
   "builtin-report-rows",
+  "builtin-result-contract-report",
   "builtin-result-outcome-report",
   "builtin-result-compliance",
   "builtin-result",

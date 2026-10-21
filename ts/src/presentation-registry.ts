@@ -4,6 +4,7 @@ import type {
 } from "./bundle.js";
 import { verifiedPayload } from "./bundle.js";
 import { readCompliancePresentation } from "./compliance-presentation.js";
+import { CONTRACT_REPORT_KIND, readContractReport } from "./contract-report.js";
 import type { DisclosureState } from "./evidence-graph.js";
 import { readOutcomeReportPresentation } from "./outcome-report-presentation.js";
 import { carriesResultDocument, RESULT_VERSION } from "./result-root.js";
@@ -327,11 +328,14 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 
 /**
  * Extension kinds whose core reader can decline a present block. A kind not
- * listed here is engaged whenever it is present.
+ * listed here is engaged whenever it is present. The two older display kinds
+ * are deprecated aliases of `contract-report/v1` (spec section 4.2's
+ * deprecation table): read unchanged until their removal.
  */
 const EXTENSION_READERS: Readonly<
   Record<string, (bundle: unknown) => boolean>
 > = {
+  [CONTRACT_REPORT_KIND]: readContractReport,
   "outcome-report/v1": (bundle) =>
     readOutcomeReportPresentation(bundle) !== undefined,
   "eu-ai-act-compliance/v1": (bundle) =>

@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-// The built-in manifests, embedded byte for byte. The six page manifests are
+// The built-in manifests, embedded byte for byte. The seven page manifests are
 // copies of schemas/examples/presentation-manifest-v0/builtin-*.json (the
 // tests compare the bytes); the section manifest has no file in the contract
 // and equals the TypeScript constant BUILTIN_MANIFEST_COMPOSED (the tests
@@ -18,6 +18,7 @@ var builtinFiles embed.FS
 // builtinPageFiles is appendix A's table order, an order that decides nothing.
 var builtinPageFiles = []string{
 	"builtin-report-rows.json",
+	"builtin-result-contract-report.json",
 	"builtin-result-outcome-report.json",
 	"builtin-result-compliance.json",
 	"builtin-result.json",
@@ -43,7 +44,7 @@ func loadBuiltins(names []string) ([]Manifest, error) {
 	return out, nil
 }
 
-// BuiltinManifests is the six built-in page manifests of the contract's
+// BuiltinManifests is the seven built-in page manifests of the contract's
 // appendix A. Precedence between them is stated in their forbids.
 func BuiltinManifests() ([]Manifest, error) { return loadBuiltins(builtinPageFiles) }
 
@@ -81,7 +82,7 @@ func registryOf(runtime Runtime, manifests []Manifest, err error) (*Registry, er
 	return registry, nil
 }
 
-// NewBuiltinRegistry is a registry for runtime holding the six built-in page
+// NewBuiltinRegistry is a registry for runtime holding the seven built-in page
 // manifests (the TypeScript createPresentationRegistry, under any runtime).
 func NewBuiltinRegistry(runtime Runtime) (*Registry, error) {
 	manifests, err := BuiltinManifests()

@@ -1,8 +1,8 @@
 // The contract checker's resolution table (spec/presentation-contract-v0.md
-// appendix A.3), run against this registry: 1,536 (descriptor, audience,
+// appendix A.3), run against this registry: 3,072 (descriptor, audience,
 // format) cases -- verified or not; four spec_version states; a Result
-// carrier or not; every subset of outcome-report/v1, eu-ai-act-compliance/v1
-// and composed/v1; the graph model builds or not; two audiences; three
+// carrier or not; every subset of contract-report/v1, outcome-report/v1,
+// eu-ai-act-compliance/v1 and composed/v1; the graph model builds or not; two audiences; three
 // formats. Each must resolve to the module the old if-chain picked
 // (legacyOverDescriptor, which presentation-oracle.test.ts ties to the real
 // old code). Then each load-bearing forbid is removed in turn and the
@@ -20,6 +20,7 @@ import {
 } from "../src/presentation-registry.js";
 import {
   ID_COMPLIANCE,
+  ID_CONTRACT_REPORT,
   ID_GRAPH,
   ID_OUTCOME,
   ID_RESULT,
@@ -34,6 +35,7 @@ const SPEC_TOKENS = [
   "org.example.other/v1",
 ];
 const READ_EXTENSIONS = [
+  "contract-report/v1",
   "outcome-report/v1",
   "eu-ai-act-compliance/v1",
   "composed/v1",
@@ -110,11 +112,11 @@ async function table(
   return { cases, mismatches, ambiguities };
 }
 
-it("the 1,536-case table resolves exactly as the old control flow dispatched", async () => {
+it("the 3,072-case table resolves exactly as the old control flow dispatched", async () => {
   const registry = new PresentationRegistry();
   for (const manifest of BUILTIN_MANIFESTS) registry.register(stub(manifest));
   const { cases, mismatches, ambiguities } = await table(BUILTIN_MANIFESTS);
-  expect(cases).toBe(1536);
+  expect(cases).toBe(3072);
   expect(ambiguities).toBe(0);
   expect(mismatches).toEqual([]);
 });
@@ -137,6 +139,10 @@ function dropForbid(
 }
 
 it.each([
+  [ID_RESULT, "extensions", "contract-report/v1"],
+  [ID_OUTCOME, "extensions", "contract-report/v1"],
+  [ID_COMPLIANCE, "extensions", "contract-report/v1"],
+  [ID_CONTRACT_REPORT, "profiles", "spec_version:report/v1"],
   [ID_COMPLIANCE, "extensions", "outcome-report/v1"],
   [ID_RESULT, "extensions", "eu-ai-act-compliance/v1"],
   [ID_RESULT, "extensions", "outcome-report/v1"],

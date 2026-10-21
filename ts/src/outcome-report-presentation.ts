@@ -1,4 +1,7 @@
 /**
+ * Deprecated: an alias of `contract-report/v1` (spec/contract-report-v1.md),
+ * read unchanged until its removal (presentation contract section 4.2).
+ *
  * `outcome-report/v1` typed extension: whether a Result v0 bundle opts into
  * the outcome-report card in place of the generic Result page, and its
  * display settings. Kept separate from `presentation/v1`

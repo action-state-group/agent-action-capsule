@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- Registry: `contract-report/v1` registered in `REGISTRY.md` §14 (with the Go, Python and Rust
+  mirrors), defined in the new `spec/contract-report-v1.md` with the schema
+  `schemas/contract-report-v1.json`. One neutral Evidence Bundle extension kind for a report over
+  any Evidence Contract's Result: the block is a closed empty object (a producer's opt-in), the
+  view reads only the sealed Result (aggregate first, then one row per `contract_ref` and
+  `requirement_ref` with its claims counted by verdict), and every word comes from the rendering
+  module's wording pack, never from the bundle. A block that is not an empty object is declined.
+  The kind defines its wording keys; `example-wording-pack-contract-report.json` is an example
+  pack, and `schemas/check_contract_report_examples.py` (run by `schemas.yml`) checks the block
+  fixtures, their mutants and the keys.
+- Presentation contract, TypeScript and Go: a `contract-report/v1` reader in §4.2 and in both
+  descriptors, and a seventh built-in manifest, `aac.builtin.result-contract-report/v0`, which
+  draws the generic Result page for a Result root that opts in; the core runtime ships no
+  contract-report module, and a runtime that has one registers it in its place. The built-in
+  Result page and the two earlier display cards forbid `contract-report/v1`, so the new kind wins
+  over an earlier block. The resolution table grows to 3,072 cases; `vectors/presentation-resolution/`
+  gains descriptor overlays for the new block (engaged and three declined forms) and registration
+  cases for a contract-report module beside and in place of the built-in.
+- Deprecated: `outcome-report/v1` and `eu-ai-act-compliance/v1`, aliases of `contract-report/v1`
+  (presentation contract §4.2 deprecation table). Deprecated in ts 0.6.0 and go v0.12.0, removed
+  in ts 0.7.0 and go v0.13.0; their readers and cards are unchanged until then.
 - Outcome report model, TypeScript: a case that names its agent model (`case.agent_model`) now
   matches the conversation id `benchmark:domain:<model>:task-N:trial-T`; the id without the model
   still matches, and the transcript is still tied to the judged case by digest. New `reportState`
