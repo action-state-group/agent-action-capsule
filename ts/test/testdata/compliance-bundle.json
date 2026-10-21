@@ -446,7 +446,7 @@
                 "id": "F-01",
                 "severity": "Medium",
                 "recommendation": "Review flagged sessions for manufactured urgency.",
-                "owner_due": "AirlineAgentsNow \u00b7 31 Oct 2026"
+                "owner_due": "Owner \u00b7 31 Oct 2026"
               }
             }
           ]
@@ -479,7 +479,7 @@
                 "id": "F-02",
                 "severity": "Medium",
                 "recommendation": "Add clarification when a customer references a human representative.",
-                "owner_due": "AirlineAgentsNow \u00b7 15 Oct 2026"
+                "owner_due": "Owner \u00b7 15 Oct 2026"
               }
             }
           ]
@@ -505,7 +505,7 @@
                 "id": "F-03",
                 "severity": "Medium",
                 "recommendation": "Enforce confirm-before-write in the agent's tool policy.",
-                "owner_due": "Digital Care \u00b7 31 Dec 2026"
+                "owner_due": "Owner \u00b7 31 Dec 2026"
               }
             },
             {
@@ -517,7 +517,7 @@
                 "id": "F-04",
                 "severity": "Low",
                 "recommendation": "Review flagged sessions against the instructions-for-use text.",
-                "owner_due": "AirlineAgentsNow \u00b7 31 Jan 2027"
+                "owner_due": "Owner \u00b7 31 Jan 2027"
               }
             }
           ]
