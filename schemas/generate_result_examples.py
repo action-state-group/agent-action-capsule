@@ -1021,7 +1021,9 @@ neg_coverage_declaration_unknown_kind["aggregate"]["coverage_declaration"]["kind
 #     recorded absence (spec section 2) cites the absence record itself by
 #     digest. The record is interop-profile-v0 section 10's absence-record
 #     example, so its digest is the one printed there
-#     (82108c56...). It is the claims positive's claim-3 replaced by this claim.
+#     (82108c56...). It is the claims positive's claim-3 replaced by this claim,
+#     mapped as interop-profile-v0 section 8.1 maps a recorded absence:
+#     UNKNOWN / UNKNOWN / not_evaluable, so unknown_count is 1.
 recorded_absence_content = {
     "outcome": "recorded_absence",
     "recorded_at": "2026-10-12T00:01:05Z",
@@ -1035,24 +1037,26 @@ absence_claim: ClaimDoc = {
     "requirement_ref": "req-claim-3",
     "tier": "recomputed",
     "grade": "self-attested",
-    "sufficiency": "GAP",
+    "sufficiency": "UNKNOWN",
     "verdict": "not_evaluable",
     "evidence": [digest_ref(recorded_absence_content)],
     "proofs": [],
     "presentation": {
         "kind": "story",
-        "status": "NOT_FOUND",
+        "status": "UNKNOWN",
         "narrative": "EXAMPLE-ORG requested the record on 2026-10-12; no envelope or refusal "
         "arrived within the one-minute window, and the absence was recorded.",
     },
 }
 pos_example_org_recorded_absence_result = _mutated(pos_example_org_claims_result)
 pos_example_org_recorded_absence_result["claims"][2] = absence_claim
+pos_example_org_recorded_absence_result["aggregate"]["coverage"]["unknown_count"] = 1
 
 # --- neg-claim-evidence-empty -- the same story claim citing nothing --------
 #     (spec section 1, Traceability: evidence[] holds at least one entry).
 neg_claim_evidence_empty = _mutated(pos_example_org_recorded_absence_result)
 neg_claim_evidence_empty["claims"][2]["evidence"] = []
+
 
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)

@@ -210,7 +210,7 @@ on, so no fixture here can show it. Its vector is `aggregate-stronger-than-evide
 
 | File | What it shows |
 |---|---|
-| `pos-example-org-recorded-absence-result.json` | the claims positive with `claim-3` replaced by a `story` claim about a recorded absence (`GAP`, `not_evaluable`, status `NOT_FOUND`). Its `evidence` cites the absence record by digest: the record is the absence-record example of `spec/interop-profile-v0.md` §10, digest `82108c56…` |
+| `pos-example-org-recorded-absence-result.json` | the claims positive with `claim-3` replaced by a `story` claim about a recorded absence, mapped as `spec/interop-profile-v0.md` §8.1 maps one: status `UNKNOWN`, sufficiency `UNKNOWN`, `not_evaluable`, so `unknown_count` is 1. Its `evidence` cites the absence record by digest: the record is the absence-record example of `spec/interop-profile-v0.md` §10, digest `82108c56…` |
 | `neg-claim-evidence-empty.json` | the same claim with `evidence: []`. `Claim.evidence` has `minItems: 1`. Mutant: removing `minItems` accepts the fixture |
 
 ## Reproducing the validation run

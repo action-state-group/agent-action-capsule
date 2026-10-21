@@ -615,6 +615,9 @@ function claimFindings(path: string, value: unknown): string[] {
       findings.push(
         `${path}.verdict: ${value.verdict} is not a verdict under sufficiency ${value.sufficiency}`,
       );
+  // The schema requires at least one entry (minItems, spec section 1). The
+  // mirror deliberately admits an empty list: such a claim still renders,
+  // with support `unsupported`, rather than failing the whole root.
   if (!Array.isArray(value.evidence)) findings.push(`${path}.evidence`);
   else
     value.evidence.forEach((item, index) =>

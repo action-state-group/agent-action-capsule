@@ -19,6 +19,7 @@ which must disagree with at least one case.
 from __future__ import annotations
 
 import ast
+import copy
 import hashlib
 import json
 import re
@@ -61,6 +62,12 @@ APPLIES = {
 
 class Malformed(Exception):
     """DR §4.2: a half whose deal_id, book_id or recorded_at is absent or ill-formed fails the claim."""
+
+
+class NoHalf(Exception):
+    """DR §7.3: a period with no half makes no Result."""
+
+
 # DR §7.3.
 CARRIER_STATUS = {"SATISFIED": "SATISFIED", "UNKNOWN": "UNKNOWN", "GAP": "INSUFFICIENT"}
 
@@ -92,6 +99,7 @@ class Rules:
     reconciled_needs_both: bool = True         # §7.5
     result_carries_openings: bool = False      # §7.3
     result_cites_close: bool = False           # §7.4
+    no_half_refused: bool = True               # §7.3: a period with no half makes no Result
 
 
 SPEC = Rules()
@@ -222,6 +230,8 @@ def evaluate(case: dict, rules: Rules = SPEC) -> dict:
         raw = h["octets_text"].encode("utf-8")
         halves.append((read_half(json.loads(raw), inp["half_mappings"][h["book"]], h["book"], rules), sha(raw)))
     halves = [(h, d) for h, d in halves if in_period(h["recorded_at"], inp["period"]) and h["book_id"] in sides]
+    if not halves and rules.no_half_refused:
+        raise NoHalf("DR §7.3: the period holds no half, so a claim has nothing to cite")
     openings = inp["field_openings"]
     deals = sorted({h["deal_id"] for h, _ in halves})
     set_completeness = {book: completeness(inp["coverage"].get(book), inp["period"], rules) for book in sides}
@@ -445,6 +455,23 @@ def test_spec_lists_every_case():
     section = SPEC_TEXT.split("## 8. Vectors", 1)[1].split("\n## 9.", 1)[0]
     for case in CASES:
         assert f"`{case['id']}`" in section, case["id"]
+
+
+def test_a_period_with_no_half_makes_no_result():
+    """DR §7.3 and RES §1: with no half in the period a claim has nothing to cite, so no Result is
+    made. The evaluator that makes one anyway gives claims with an empty evidence list, which the
+    Result schema rejects."""
+    base = next(c for c in CASES if c["id"] == "pair-matched")
+    empty = copy.deepcopy(base)
+    empty["inputs"]["period"] = {"start": "2026-09-01T00:00:00Z", "end": "2026-10-01T00:00:00Z"}
+    with pytest.raises(NoHalf):
+        evaluate(empty)
+    jsonschema = pytest.importorskip("jsonschema")
+    schema = json.loads(RESULT_SCHEMA.read_text(encoding="utf-8"))
+    validator = jsonschema.Draft202012Validator({**schema, "$ref": "#/$defs/EvidenceResult"})
+    result = evaluate(empty, replace(SPEC, no_half_refused=False))["result"]
+    assert all(claim["evidence"] == [] for claim in result["claims"])
+    assert list(validator.iter_errors(result))
 
 
 def test_result_validates_against_the_schema():

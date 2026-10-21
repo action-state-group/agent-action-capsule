@@ -273,11 +273,11 @@ verdict is `met` when `matched` > 0 and `a_only`, `b_only` and `conflicting` are
 ### 7.3 Evidence
 
 The claim's `evidence` is the digest of every half in the reconcile (§6), sorted, by digest only
-(RES §5). A reconcile with no half in the period has nothing to cite, and RES §1 requires every
-claim to cite at least one record, so a builder makes no Result for it and reports that the period
-holds no half. Its `presentation` is a `disclosure` carrier (RES §2) over the same digests, whose
+(RES §5). Its `presentation` is a `disclosure` carrier (RES §2) over the same digests, whose
 `status` is `SATISFIED`, `UNKNOWN` or `INSUFFICIENT` as the sufficiency is `SATISFIED`, `UNKNOWN`
-or `GAP`: a `GAP` here only ever comes from the `insufficient` tally. The Result carries no field opening, no field text and no coverage declaration (DR-3). A recipient that holds the Result
+or `GAP`: a `GAP` here only ever comes from the `insufficient` tally. A reconcile with no half in
+the period has nothing to cite, and RES §1 requires every claim to cite at least one record, so a
+builder makes no Result for it and reports that the period holds no half. The Result carries no field opening, no field text and no coverage declaration (DR-3). A recipient that holds the Result
 but not the openings sees the tallies and the halves' digests, never the terms.
 
 ### 7.4 No cited Close

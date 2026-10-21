@@ -14,7 +14,7 @@
     "coverage": {
       "evaluated_population": 3,
       "excluded_not_applicable": 1,
-      "unknown_count": 0
+      "unknown_count": 1
     }
   },
   "claims": [
@@ -95,11 +95,11 @@
       "presentation": {
         "kind": "story",
         "narrative": "EXAMPLE-ORG requested the record on 2026-10-12; no envelope or refusal arrived within the one-minute window, and the absence was recorded.",
-        "status": "NOT_FOUND"
+        "status": "UNKNOWN"
       },
       "proofs": [],
       "requirement_ref": "req-claim-3",
-      "sufficiency": "GAP",
+      "sufficiency": "UNKNOWN",
       "tier": "recomputed",
       "verdict": "not_evaluable"
     }
