@@ -11,7 +11,8 @@
   module's wording pack, never from the bundle. A block that is not an empty object is declined.
   The kind defines its wording keys; `example-wording-pack-contract-report.json` is an example
   pack, and `schemas/check_contract_report_examples.py` (run by `schemas.yml`) checks the block
-  fixtures, their mutants and the keys.
+  fixtures, their mutants and the keys. TypeScript exports `CONTRACT_REPORT_KIND` and
+  `readContractReport`.
 - Presentation contract, TypeScript and Go: a `contract-report/v1` reader in §4.2 and in both
   descriptors, and a seventh built-in manifest, `aac.builtin.result-contract-report/v0`, which
   draws the generic Result page for a Result root that opts in; the core runtime ships no

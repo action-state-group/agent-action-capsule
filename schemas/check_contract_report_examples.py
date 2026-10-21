@@ -74,13 +74,11 @@ def _load(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def enum_values() -> dict[str, set[str]]:
-    """Each enum key prefix and its lowercased Result v0 values."""
-    defs = _load(RESULT_SCHEMA_PATH)["$defs"]
-    return {prefix: {v.lower() for v in defs[defn]["enum"]} for prefix, defn in ENUM_KEYS.items()}
-
-
-ENUM_VALUES = enum_values()
+RESULT_DEFS = _load(RESULT_SCHEMA_PATH)["$defs"]
+# Each enum key prefix and its lowercased Result v0 values.
+ENUM_VALUES = {
+    prefix: {v.lower() for v in RESULT_DEFS[defn]["enum"]} for prefix, defn in ENUM_KEYS.items()
+}
 
 
 def defined_key(key: str) -> bool:
@@ -137,9 +135,8 @@ def main() -> int:
     # --- 3. WORDING KEYS ---
     manifest_schema = _load(MANIFEST_SCHEMA_PATH)
     key_pattern = re.compile(manifest_schema["$defs"]["WordingKey"]["pattern"])
-    result_defs = _load(RESULT_SCHEMA_PATH)["$defs"]
     for prefix, defn in ENUM_KEYS.items():
-        for value in result_defs[defn]["enum"]:
+        for value in RESULT_DEFS[defn]["enum"]:
             key = f"{prefix}.{value.lower()}"
             if not key_pattern.match(key) or not defined_key(key):
                 findings.append(f"ENUM-KEY {key}: not a valid, defined WordingKey")
