@@ -4,6 +4,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, it } from "vitest";
 import { renderEvidenceGraph } from "../src/browser.js";
+import { verifyBundle } from "../src/bundle.js";
+import { renderOutcomeReportPage } from "../src/outcome-report-view.js";
+import {
+  buildResultRoot,
+  type CitedRecord,
+  type ResultRoot,
+} from "../src/result-root.js";
 import { jsonDigest } from "../src/json.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
@@ -160,6 +167,46 @@ it("shows counts by default, never a percentage, unless the presentation flag as
   )!;
   expect(pctTable.querySelector('[data-line="missed"]')!.textContent).toContain(
     "100%",
+  );
+});
+
+it("chrome rule (presentation contract section 6): result wording never comes from the bundle -- the card is byte-identical with result_words supplied, removed, or altered", async () => {
+  const page = async (mutate?: (block: Obj) => void): Promise<string> => {
+    const { bundle } = await sealedOutcomeReportBundle((source) => {
+      mutate?.((source.extensions as Obj)["outcome-report/v1"] as Obj);
+    });
+    const root = await render(bundle);
+    // The bundle digest covers the extensions, so it changes with them; it
+    // is evidence, not wording, and is masked here only.
+    return root
+      .querySelector<HTMLElement>('[data-page="outcome-report"]')!
+      .outerHTML.replace(
+        /(Bundle digest<\/div><div class="v">)[0-9a-f]{64}/u,
+        "$1<digest>",
+      );
+  };
+  const plain = await page();
+  expect(
+    await page((block) => {
+      block.result_words = "ladder";
+    }),
+  ).toBe(plain);
+  expect(
+    await page((block) => {
+      block.result_words = "LADDER established failed";
+      block.labels = { met: "established", not_met: "failed" };
+    }),
+  ).toBe(plain);
+  // the one display flag the section names, flipped, is the only change
+  expect(
+    await page((block) => {
+      block.percentages = true;
+      block.result_words = "ladder";
+    }),
+  ).toBe(
+    await page((block) => {
+      block.percentages = true;
+    }),
   );
 });
 
@@ -716,6 +763,78 @@ it("drill-down: the missed line opens into every missed conversation, each with 
   ).toBe(
     "Rationale: derived from the judge's probabilities; the judge returns no free-text reasoning.",
   );
+});
+
+it("drill-down: with every report withheld and the case taken from the claims, the transcript is 'cited', never 'the conversation the judge read'", async () => {
+  // The reviewer's layout: the case record carries the transcript itself,
+  // and the reports are withheld, so only the claims name the case.
+  const { bundle } = await sealEvidenceBundle(
+    fixture("outcome-report-bundle.json"),
+  );
+  const result = await buildResultRoot(bundle);
+  const records = new Map<string, CitedRecord>();
+  for (const [id, record] of result.records)
+    records.set(id, {
+      ...record,
+      agentInput: { state: "withheld" },
+    } as CitedRecord);
+  const caseKey = (conversationId: string): string => `case:${conversationId}`;
+  const claims = result.claims.map((claim) => {
+    const sep = claim.id.indexOf("::");
+    if (sep === -1) return claim;
+    const conversationId = claim.id.slice(0, sep);
+    const [benchmark, domain, task, trial] = conversationId.split(":");
+    const key = caseKey(conversationId);
+    if (!records.has(key))
+      records.set(key, {
+        capsuleId: key,
+        agentInput: { state: "disclosed", payload: {} },
+        carriedInput: {
+          state: "disclosed",
+          payload: {
+            case: {
+              benchmark,
+              domain,
+              task_id: task!.replace("task-", ""),
+              trial: Number(trial!.replace("trial-", "")),
+            },
+            agent_interaction: {
+              messages: [{ role: "user", content: "cancel my trip" }],
+            },
+          },
+        },
+        carriedCapsuleId: key.replace(/[^0-9a-z]/gu, "0").padEnd(64, "c"),
+        carriedInputDigest: "d".repeat(64),
+        carriedActionId: `urn:${conversationId}`,
+        stated: { timestamp: "2025-06-05T16:09:32Z" },
+        agentOutput: { state: "absent" },
+        cites: [],
+      } as unknown as CitedRecord);
+    return {
+      ...claim,
+      evidence: [claim.evidence[0]!, { digest: key, resolved: true }],
+    };
+  });
+  const withheld = { ...result, claims, records } as unknown as ResultRoot;
+  const root = document.createElement("main");
+  await renderOutcomeReportPage(
+    withheld,
+    { percentages: false },
+    bundle,
+    await verifyBundle(bundle),
+    root,
+  );
+  const conv = open(root.querySelector<HTMLElement>("details.conv")!);
+  const tx = conv.querySelector<HTMLElement>("[data-transcript]")!;
+  expect(tx.dataset.transcript).toBe("cited");
+  expect(tx.textContent).toContain(
+    "The judge's reports are withheld, so which conversation the judge read is not shown.",
+  );
+  expect(tx.textContent).not.toContain(
+    "this is the conversation the judge read",
+  );
+  expect(tx.querySelectorAll("li.turn")).toHaveLength(1);
+  expect(root.querySelector('[data-transcript="verified"]')).toBeNull();
 });
 
 it("drill-down: says plainly the transcript is absent, and gives the record ids and judge pin to recompute", async () => {

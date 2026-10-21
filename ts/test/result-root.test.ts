@@ -5,6 +5,8 @@ import { verifyBundle } from "../src/bundle.js";
 import { EvidenceGraphError } from "../src/evidence-graph.js";
 import {
   buildResultRoot,
+  carriedCapsuleCommitment,
+  type CitedRecord,
   CLAIM_REQUIRED,
   counterpartyLinks,
   deriveCloseState,
@@ -25,7 +27,9 @@ import {
   UNVERIFIED_KEY_LABEL,
   validateEvidenceResult,
   VERDICTS,
+  type ResultClaim,
 } from "../src/result-root.js";
+import { reportState } from "../src/outcome-report.js";
 import { jsonDigest, sha256Hex } from "../src/json.js";
 import { computeCapsuleId } from "../src/verify.js";
 import { sealEvidenceBundle, TEST_KEYS } from "./helpers/sealed-bundle.js";
@@ -1431,6 +1435,57 @@ describe("resolveCarriedInput", () => {
     expect(await resolveCarriedInput(header, payloads, elsewhere)).toEqual({
       state: "withheld",
     });
+  });
+
+  it("a report capsule whose bytes are missing or corrupted resolves withheld, but has no checked carried capsule, so reportState says invalid, never withheld", async () => {
+    const intact = await carried({ withOriginal: false });
+    const commitment = await carriedCapsuleCommitment(
+      intact.header,
+      intact.payloads,
+    );
+    expect(commitment?.actionId).toBe("urn:test:report");
+    const asRecord = async (
+      header: Obj,
+      payloads: Obj,
+    ): Promise<CitedRecord> => {
+      const checked = await carriedCapsuleCommitment(header, payloads);
+      return {
+        capsuleId: header.subject_ref as string,
+        agentInput: { state: "disclosed", payload: header },
+        carriedInput: (await resolveCarriedInput(header, payloads))!,
+        ...(checked === undefined
+          ? {}
+          : {
+              carriedCapsuleId: checked.capsuleId,
+              carriedInputDigest: checked.inputDigest,
+            }),
+        agentOutput: { state: "absent" },
+        cites: [],
+      } as unknown as CitedRecord;
+    };
+    const claim = {
+      evidence: [{ digest: intact.header.subject_ref as string }],
+    } as unknown as ResultClaim;
+    const state = async (header: Obj, payloads: Obj) =>
+      reportState(
+        new Map([
+          [header.subject_ref as string, await asRecord(header, payloads)],
+        ]),
+        claim,
+      );
+    expect(await state(intact.header, intact.payloads)).toBe("withheld");
+    const commitments = intact.header.payload_commitments as string[];
+    const corrupted = { ...intact.payloads };
+    corrupted[commitments[0]!] = b64url(enc.encode('{"capsule_id":"x"}'));
+    expect(await resolveCarriedInput(intact.header, corrupted)).toEqual({
+      state: "withheld",
+    });
+    expect(await state(intact.header, corrupted)).toBe("invalid");
+    const missing = { ...intact.payloads };
+    delete missing[commitments[0]!];
+    expect(await state(intact.header, missing)).toBe("invalid");
+    const noCommitments = { ...intact.header, payload_commitments: [] };
+    expect(await state(noCommitments, intact.payloads)).toBe("invalid");
   });
 
   it("still reads an original committed as a third book payload", async () => {

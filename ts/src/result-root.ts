@@ -479,6 +479,15 @@ export interface CitedRecord extends RecordTimes {
   readonly carriedCapsuleId?: string;
   readonly carriedInputDigest?: string;
   /**
+   * The carried capsule's own `action_id`, as it states it, under the same
+   * checks as `carriedCapsuleId` (absent when they fail or it states none).
+   * It is what the capsule declares itself to be (a benchmark case capsule
+   * is `urn:<benchmark>:<domain>:task-N:trial-T`), so a reader can tell a
+   * case capsule from a report, policy or rubric capsule without its
+   * input being disclosed.
+   */
+  readonly carriedActionId?: string;
+  /**
    * The occurrence-time fields the capsule itself states, verbatim, never
    * parsed or assigned a zone: its `timestamp` and, when present, its
    * `provenance_mode` block (AAC -05 "Provenance mode and backfilled
@@ -1181,7 +1190,13 @@ export async function carriedCapsuleCommitment(
   header: unknown,
   payloads: ObjectValue,
 ): Promise<
-  { capsuleId: string; inputDigest: string; stated: StatedTimes } | undefined
+  | {
+      capsuleId: string;
+      inputDigest: string;
+      stated: StatedTimes;
+      actionId?: string;
+    }
+  | undefined
 > {
   if (!isObject(header) || header.record_type !== PUBLISHED_CAPSULE_RECORD_TYPE)
     return undefined;
@@ -1201,11 +1216,13 @@ export async function carriedCapsuleCommitment(
       capsule as unknown as RecordWithId,
       "agent_input",
     );
+    const actionId = asString((capsule as unknown as ObjectValue).action_id);
     return isHex64(committed)
       ? {
           capsuleId: id,
           inputDigest: committed,
           stated: statedTimes(capsule as unknown as ObjectValue),
+          ...(actionId === undefined ? {} : { actionId }),
         }
       : undefined;
   } catch {
@@ -1422,6 +1439,9 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
         : {
             carriedCapsuleId: carriedCapsule.capsuleId,
             carriedInputDigest: carriedCapsule.inputDigest,
+            ...(carriedCapsule.actionId === undefined
+              ? {}
+              : { carriedActionId: carriedCapsule.actionId }),
           }),
       ...(carriedCapsule !== undefined
         ? { stated: carriedCapsule.stated }

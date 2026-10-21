@@ -6,16 +6,24 @@
   matches the conversation id `benchmark:domain:<model>:task-N:trial-T`; the id without the model
   still matches, and the transcript is still tied to the judged case by digest. New `reportState`
   says what the bundle shows of each cited report: disclosed, withheld, mismatch (the original does
-  not match its commitment), unreadable (not an object) or not carried; each criterion carries it.
-  Only when every report of a conversation is withheld is its case the one case capsule every claim
-  cites (`caseFrom: "claims"`); disclosed reports that name no case, or mismatched ones, leave the
-  case unresolved and the transcript unverified. A withheld report's judged day is its capsule's
+  not match its commitment), unreadable (not an object), invalid (a book record whose report
+  capsule is missing or does not check out: never counted as withheld) or not carried; each
+  criterion carries it. Only when every report of a conversation is withheld is its case read from
+  the claims (`caseFrom: "claims"`), and only when the record is a case record for that
+  conversation (a checked carried capsule whose own `action_id` declares the case, new
+  `CitedRecord.carriedActionId`), each claim cites exactly one, every claim the same one, and no
+  other conversation's claims cite it; otherwise there is no case. A case read from the claims
+  never makes the transcript `verified`: the new transcript state `cited` says the claims cite this
+  case and, the reports being withheld, which conversation the judge read is not shown. Disclosed
+  reports that name no case, or mismatched, unreadable or invalid ones, leave the case unresolved
+  and the transcript unverified. Only a withheld report's judged day falls back to its capsule's
   own stated timestamp. `runInfo.reportsWithheld` counts only withheld reports;
-  `reportsMismatched` and `reportsUnreadable` are counted apart, all of `reportsCited`. Each
-  criterion carries the judge pin digest its disclosed report states. `parseJudgeProbabilities`
-  drops any value outside [0, 1]. New exports `reportState`, `reportSealedDay`, `claimsCitedCase`
-  and `withheldReports`. `outcome-report/v1` admits `result_words: "ladder"` (display only, off by
-  default).
+  `reportsMismatched`, `reportsUnreadable` and `reportsInvalid` are counted apart, all of
+  `reportsCited`. Each criterion carries the judge pin digest its disclosed report states.
+  `parseJudgeProbabilities` reads whole numeric tokens (signed exponents included) and drops the
+  whole probabilities set when any value is outside [0, 1] or is not a whole number, never a
+  partial set; a confidence outside [0, 1] is dropped. New exports `reportState`,
+  `reportSealedDay`, `claimsCitedCase` and `withheldReports`.
 
 ## 0.11.0 — 2026-10-20
 

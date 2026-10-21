@@ -352,7 +352,7 @@ function renderTranscript(conversation: Conversation): HTMLElement {
   const t = conversation.transcript;
   const wrap = el("div", "tx");
   wrap.dataset.transcript = t.state;
-  if (t.state !== "verified") {
+  if (t.state !== "verified" && t.state !== "cited") {
     wrap.append(
       el(
         "p",
@@ -368,7 +368,9 @@ function renderTranscript(conversation: Conversation): HTMLElement {
     el(
       "p",
       "small",
-      `Sealed in record ${t.transcriptRecordId}. Its content digest equals what the judged case capsule ${conversation.sourceCapsuleId} committed to (${t.inputDigest}), checked on this page: this is the conversation the judge read. ${t.turns!.length} messages, in order.`,
+      t.state === "cited"
+        ? `Sealed in record ${t.transcriptRecordId}: the conversation of case capsule ${conversation.sourceCapsuleId} (input ${t.inputDigest}), which every claim of this conversation cites. The judge's reports are withheld, so which conversation the judge read is not shown. ${t.turns!.length} messages, in order.`
+        : `Sealed in record ${t.transcriptRecordId}. Its content digest equals what the judged case capsule ${conversation.sourceCapsuleId} committed to (${t.inputDigest}), checked on this page: this is the conversation the judge read. ${t.turns!.length} messages, in order.`,
     ),
   );
   const list = el("ol", "turns");
@@ -568,7 +570,10 @@ function conversationBody(
     row("Judged and sealed", conversation.judgedDay);
   }
   row("Result capsule", model.capsuleId);
-  if (conversation.transcript.state === "verified") {
+  if (
+    conversation.transcript.state === "verified" ||
+    conversation.transcript.state === "cited"
+  ) {
     row("Transcript record", conversation.transcript.transcriptRecordId!);
     row("Case input digest", conversation.transcript.inputDigest!);
   }

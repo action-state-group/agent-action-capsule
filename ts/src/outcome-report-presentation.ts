@@ -20,13 +20,6 @@ export interface OutcomeReportPresentation {
   readonly enabled: boolean;
   readonly percentages: boolean;
   /**
-   * `result_words: "ladder"`: word each result on the grade ladder
-   * (established, failed, not present, inconclusive, not checked) instead of
-   * the plain default (met, not met, did not apply, could not decide). A
-   * display choice only; every result is the same sealed verdict either way.
-   */
-  readonly resultWords?: "ladder";
-  /**
    * `producer_note`: the producer's own plain-text note about this bundle
    * (e.g. "what changed in this run" on a rerun report). Text only -- every
    * line reaches the DOM through textContent, never as markup -- and the view
@@ -114,9 +107,6 @@ export function readOutcomeReportPresentation(
   return {
     enabled: true,
     percentages,
-    ...(block.result_words === "ladder"
-      ? { resultWords: "ladder" as const }
-      : {}),
     ...(producerNote === undefined ? {} : { producerNote }),
     ...(editedCriteria === undefined ? {} : { editedCriteria }),
   };
