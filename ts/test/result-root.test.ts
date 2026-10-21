@@ -29,7 +29,11 @@ import {
   VERDICTS,
   type ResultClaim,
 } from "../src/result-root.js";
-import { reportState } from "../src/outcome-report.js";
+import {
+  claimsCitedCase,
+  reportSealedDay,
+  reportState,
+} from "../src/outcome-report.js";
 import { jsonDigest, sha256Hex } from "../src/json.js";
 import { computeCapsuleId } from "../src/verify.js";
 import { sealEvidenceBundle, TEST_KEYS } from "./helpers/sealed-bundle.js";
@@ -1360,6 +1364,81 @@ describe("resolveCarriedInput", () => {
     };
   }
 
+  // How a report record reads through reportState and both claims-fallback
+  // gates (reportSealedDay's stated-timestamp day, claimsCitedCase's case),
+  // the claim citing the report record and this conversation's case record.
+  const conversation = "benchmark:airline:task-1:trial-1";
+  const caseDigest = "ee".repeat(32);
+  async function gates(
+    header: Obj,
+    payloads: Obj,
+  ): Promise<{ state: string; day?: string; case?: string }> {
+    const checked = await carriedCapsuleCommitment(header, payloads);
+    const reportRecord = {
+      capsuleId: header.subject_ref as string,
+      agentInput: { state: "disclosed", payload: header },
+      carriedInput: (await resolveCarriedInput(header, payloads))!,
+      ...(checked === undefined
+        ? {}
+        : {
+            carriedCapsuleId: checked.capsuleId,
+            carriedInputDigest: checked.inputDigest,
+            stated: checked.stated,
+          }),
+      agentOutput: { state: "absent" },
+      cites: [],
+    } as unknown as CitedRecord;
+    const caseRecord = {
+      capsuleId: caseDigest,
+      agentInput: { state: "withheld" },
+      carriedInput: { state: "withheld" },
+      carriedCapsuleId: caseDigest,
+      carriedInputDigest: "ff".repeat(32),
+      carriedActionId: `urn:${conversation}`,
+      agentOutput: { state: "absent" },
+      cites: [],
+    } as unknown as CitedRecord;
+    const records = new Map<string, CitedRecord>([
+      [header.subject_ref as string, reportRecord],
+      [caseDigest, caseRecord],
+    ]);
+    const claim = {
+      id: `${conversation}::req-1`,
+      evidence: [
+        { digest: header.subject_ref as string },
+        { digest: caseDigest },
+      ],
+    } as unknown as ResultClaim;
+    const day = reportSealedDay(records, claim);
+    const found = claimsCitedCase(records, conversation, [claim]);
+    return {
+      state: reportState(records, claim),
+      ...(day === undefined ? {} : { day }),
+      ...(found === undefined ? {} : { case: found }),
+    };
+  }
+
+  it("a withheld report (original left out) unlocks both claims-fallback gates", async () => {
+    const { header, payloads } = await carried({ withOriginal: false });
+    expect(await gates(header, payloads)).toEqual({
+      state: "withheld",
+      day: "2026-09-23",
+      case: caseDigest,
+    });
+    // An original committed but left out of the payloads is withheld too.
+    const left = await carried();
+    const commitments = left.header.payload_commitments as string[];
+    delete left.payloads[commitments[2]!];
+    expect(await resolveCarriedInput(left.header, left.payloads)).toEqual({
+      state: "withheld",
+    });
+    expect(await gates(left.header, left.payloads)).toEqual({
+      state: "withheld",
+      day: "2026-09-23",
+      case: caseDigest,
+    });
+  });
+
   it("discloses the carried capsule's agent_input original when every link checks", async () => {
     const { header, payloads } = await carried();
     expect(await resolveCarriedInput(header, payloads)).toEqual({
@@ -1375,23 +1454,35 @@ describe("resolveCarriedInput", () => {
     });
   });
 
-  it("never discloses an original that is not the capsule's committed preimage", async () => {
+  it("reads a supplied original that is not the capsule's committed preimage as a mismatch, never withheld, and it unlocks no claims fallback", async () => {
     const { header, payloads } = await carried({
       original: { ...report, period: "day:2026-01-01" },
     });
     expect(await resolveCarriedInput(header, payloads)).toEqual({
-      state: "withheld",
+      state: "disclosure_mismatch",
     });
+    expect(await gates(header, payloads)).toEqual({ state: "mismatch" });
   });
 
-  it("never discloses payload bytes that do not hash to their commitment", async () => {
+  it("reads supplied payload bytes that do not hash to their commitment as a mismatch, never withheld, and they unlock no claims fallback", async () => {
     const { header, payloads } = await carried();
     const commitments = header.payload_commitments as string[];
     payloads[commitments[2]!] = b64url(
       enc.encode(JSON.stringify({ ...report, period: "day:2026-01-01" })),
     );
     expect(await resolveCarriedInput(header, payloads)).toEqual({
-      state: "withheld",
+      state: "disclosure_mismatch",
+    });
+    expect(await gates(header, payloads)).toEqual({ state: "mismatch" });
+    // Bytes that are not base64url at all fail the same way.
+    payloads[commitments[2]!] = "not base64url!";
+    expect(await gates(header, payloads)).toEqual({ state: "mismatch" });
+    // And a failing payload beside a disclosing one still breaks the link.
+    const both = await carried();
+    const all = both.header.payload_commitments as string[];
+    both.payloads[all[1]!] = b64url(enc.encode("tampered envelope"));
+    expect(await resolveCarriedInput(both.header, both.payloads)).toEqual({
+      state: "disclosure_mismatch",
     });
   });
 

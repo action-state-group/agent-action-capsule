@@ -23,7 +23,11 @@
   `parseJudgeProbabilities` reads whole numeric tokens (signed exponents included) and drops the
   whole probabilities set when any value is outside [0, 1] or is not a whole number, never a
   partial set; a confidence outside [0, 1] is dropped. New exports `reportState`,
-  `reportSealedDay`, `claimsCitedCase` and `withheldReports`.
+  `reportSealedDay`, `claimsCitedCase` and `withheldReports`. `resolveCarriedInput` tells a
+  supplied payload that fails from one the bundle leaves out: payload bytes that do not hash to
+  their commitment, or a JSON original whose JSON-DIGEST is not the capsule's committed digest,
+  resolve `disclosure_mismatch` (reportState `mismatch`), never `withheld`, so they unlock no
+  claims fallback; only a payload left out is withheld.
 
 ## 0.11.0 — 2026-10-20
 

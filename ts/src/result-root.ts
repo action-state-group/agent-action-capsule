@@ -1153,16 +1153,30 @@ function base64UrlBytes(value: string): Uint8Array | undefined {
   }
 }
 
+/**
+ * The payload committed under `digest`: `absent` when the bundle supplies
+ * nothing under it, `failed` when it supplies something that is not
+ * base64url or does not hash to the commitment, else the checked bytes.
+ */
+async function bookPayload(
+  payloads: ObjectValue,
+  digest: string,
+): Promise<"absent" | "failed" | Uint8Array> {
+  if (!Object.hasOwn(payloads, digest)) return "absent";
+  const encoded = asString(payloads[digest]);
+  if (encoded === undefined) return "failed";
+  const bytes = base64UrlBytes(encoded);
+  if (bytes === undefined) return "failed";
+  return (await sha256Hex(bytes)) === digest ? bytes : "failed";
+}
+
 /** The payload bytes committed under `digest`, only when they hash to it. */
 async function verifiedBookPayload(
   payloads: ObjectValue,
   digest: string,
 ): Promise<Uint8Array | undefined> {
-  const encoded = asString(payloads[digest]);
-  if (encoded === undefined) return undefined;
-  const bytes = base64UrlBytes(encoded);
-  if (bytes === undefined) return undefined;
-  return (await sha256Hex(bytes)) === digest ? bytes : undefined;
+  const payload = await bookPayload(payloads, digest);
+  return typeof payload === "string" ? undefined : payload;
 }
 
 /**
@@ -1178,7 +1192,11 @@ async function verifiedBookPayload(
  * the header commits to hashes to its commitment AND its JSON-DIGEST equals
  * the capsule's own `agent_input_digest`. A capsule published before the book
  * carried originals (two payloads, capsule and producer envelope) resolves
- * `withheld`; a broken link resolves `disclosure_mismatch`.
+ * `withheld`; a broken link resolves `disclosure_mismatch`. A payload the
+ * bundle supplies but that fails -- bytes that do not hash to their
+ * commitment, or a JSON original whose JSON-DIGEST is not the capsule's
+ * committed digest -- is a broken link, never `withheld`: only a payload the
+ * bundle leaves out is withheld.
  */
 /**
  * The capsule a `published_capsule` book header carries, checked link by link
@@ -1260,17 +1278,39 @@ export async function resolveCarriedInput(
     return { state: "disclosure_mismatch" };
   }
   if (!isHex64(committed)) return { state: "withheld" };
+  // A supplied payload that fails is a broken link, whether or not another
+  // payload discloses: absent payloads are withheld, failing ones are not.
+  let disclosed: unknown;
+  let found = false;
+  let failed = false;
   for (const digest of commitments.slice(1)) {
-    const bytes = await verifiedBookPayload(payloads, digest);
-    if (bytes === undefined) continue;
+    const bytes = await bookPayload(payloads, digest);
+    if (bytes === "absent") continue;
+    if (bytes === "failed") {
+      failed = true;
+      continue;
+    }
+    let value: unknown;
     try {
-      const value: unknown = JSON.parse(utf8.decode(bytes));
-      if ((await jsonDigest(value)) === committed)
-        return { state: "disclosed", payload: value };
+      value = JSON.parse(utf8.decode(bytes));
     } catch {
-      /* not JSON (the producer envelope), or JCS cannot render it */
+      continue; /* not JSON: the producer envelope */
+    }
+    let digestOfValue: string | undefined;
+    try {
+      digestOfValue = await jsonDigest(value);
+    } catch {
+      digestOfValue = undefined; /* JCS cannot render it */
+    }
+    if (digestOfValue === committed) {
+      if (!found) disclosed = value;
+      found = true;
+    } else {
+      failed = true; /* a JSON original that is not the committed preimage */
     }
   }
+  if (failed) return { state: "disclosure_mismatch" };
+  if (found) return { state: "disclosed", payload: disclosed };
   // An original attached at disclose time (AGENT_INPUT_ORIGINALS_EXTENSION),
   // keyed by the capsule id just recomputed: disclosed only when its
   // JSON-DIGEST is the capsule's committed agent_input_digest.
