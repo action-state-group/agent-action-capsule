@@ -282,8 +282,8 @@
     },
     {
       "path": "registration.json",
-      "sha256": "0d5a890dc71d2bce13196691175084105ffbe5a6f6541a41145748013b8f35d0",
-      "count": 61
+      "sha256": "dcd9ca8dffe92b9cee8399ed1b522b3d3fe0f2ef526857b5906227f8c20dcdb4",
+      "count": 63
     },
     {
       "path": "descriptors.json",

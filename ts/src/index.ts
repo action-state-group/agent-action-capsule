@@ -6,6 +6,7 @@ export * from "./evidence-graph.js";
 export * from "./json.js";
 export * from "./model.js";
 export * from "./outcome-report.js";
+export * from "./contract-report.js";
 export * from "./outcome-report-presentation.js";
 export * from "./presentation.js";
 export * from "./presentation-registry.js";

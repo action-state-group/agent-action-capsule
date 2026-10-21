@@ -44,7 +44,7 @@ mechanical half):
      Each pack carries both reserved keys (spec section 7.4), `page.title`
      and `module.title`, with different strings. A one-character edit of a
      pack (in memory) MUST change the digest.
-  4. STATIC RESOLUTION TEST (section 4.5): within each registry (the six
+  4. STATIC RESOLUTION TEST (section 4.5): within each registry (the seven
      built-ins; the four examples), no two manifests of the same tier
      (specific or fallback) can match one descriptor. A manifest whose
      requires and forbids intersect, or which requires two tokens of one

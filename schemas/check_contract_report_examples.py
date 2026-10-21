@@ -17,7 +17,7 @@ mechanical half):
      neg-not-object.json (an array). MUTANT CHECK: with the one rule each
      depends on removed in memory (maxProperties, type), the fixture MUST
      validate, and the restored schema MUST reject it again.
-  3. WORDING KEYS (spec section 4): every key the kind defines for a Result
+  3. WORDING KEYS (spec section 3): every key the kind defines for a Result
      v0 enum value, assembled from the lowercased value, is a valid
      WordingKey, and the same key built from an uppercase value is not (so
      the lowercasing rule is load-bearing). The example wording pack
@@ -45,7 +45,7 @@ NEGATIVES = [
     ("neg-enabled", "maxProperties", lambda s: s.pop("maxProperties")),
     ("neg-not-object", "type", lambda s: s.pop("type")),
 ]
-# spec/contract-report-v1.md section 4: key prefix -> Result v0 enum ($defs).
+# spec/contract-report-v1.md section 3: key prefix -> Result v0 enum ($defs).
 ENUM_KEYS = {
     "verdict": "Verdict",
     "sufficiency": "Sufficiency",
@@ -74,13 +74,22 @@ def _load(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def enum_values() -> dict[str, set[str]]:
+    """Each enum key prefix and its lowercased Result v0 values."""
+    defs = _load(RESULT_SCHEMA_PATH)["$defs"]
+    return {prefix: {v.lower() for v in defs[defn]["enum"]} for prefix, defn in ENUM_KEYS.items()}
+
+
+ENUM_VALUES = enum_values()
+
+
 def defined_key(key: str) -> bool:
-    """A key spec/contract-report-v1.md section 4 defines, or a reserved key."""
+    """A key spec/contract-report-v1.md section 3 defines, or a reserved key."""
     if key in RESERVED or key in FIXED_KEYS:
         return True
     head, _, rest = key.partition(".")
-    if head in ENUM_KEYS:
-        return "." not in rest
+    if head in ENUM_VALUES:
+        return rest in ENUM_VALUES[head]
     if head == "group":
         return rest.endswith(".title") and "." not in rest[: -len(".title")]
     if head == "row":
@@ -153,6 +162,9 @@ def main() -> int:
             findings.append(f"PACK-KEY {key}: not a key spec/contract-report-v1.md defines")
     if not defined_key("row.intake.confirmed.label") or defined_key("row.intake.confirmed"):
         findings.append("HARNESS: defined_key misreads row keys")
+    for undefined in ("verdict.mte", "tier.unknown", "status.gap", "grade.self_attested"):
+        if defined_key(undefined):
+            findings.append(f"HARNESS: defined_key accepts {undefined}, which no Result v0 enum defines")
     if not findings:
         print(f"OK  every entry of {PACK_PATH.name} is a key the kind defines or a reserved key")
 

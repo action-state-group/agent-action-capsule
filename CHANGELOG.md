@@ -22,7 +22,9 @@
   cases for a contract-report module beside and in place of the built-in.
 - Deprecated: `outcome-report/v1` and `eu-ai-act-compliance/v1`, aliases of `contract-report/v1`
   (presentation contract §4.2 deprecation table). Deprecated in ts 0.6.0 and go v0.12.0, removed
-  in ts 0.7.0 and go v0.13.0; their readers and cards are unchanged until then.
+  in ts 0.7.0 and go v0.13.0 (the second not before a Result revision carries applicability,
+  #350); until then their readers and cards are unchanged, and their built-in manifests differ
+  only in forbidding `contract-report/v1`.
 - Outcome report model, TypeScript: a case that names its agent model (`case.agent_model`) now
   matches the conversation id `benchmark:domain:<model>:task-N:trial-T`; the id without the model
   still matches, and the transcript is still tied to the judged case by digest. New `reportState`

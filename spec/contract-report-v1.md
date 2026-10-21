@@ -82,7 +82,7 @@ locale: a builder may, for example, choose the pack for the Result's contract, o
 command-line option. Delivering the pack to the module is the presentation runtime's.
 
 A module MAY layer its own default pack beneath the host's pack, entry by entry. Each layer is
-bound by its own `wording_sha256`, and the page records each one. A builder MAY refuse to write a
+bound by its own `wording_sha256`, and the page states the provenance of each layer. A builder MAY refuse to write a
 page whose pack is refused (PC §7.4) instead of falling back.
 
 **Keys this kind defines.** Each is a full `WordingKey` once assembled. An enum value is
@@ -104,8 +104,9 @@ written for one contract, and two contracts can use one `requirement_ref` for di
 requirements (ER §1). In a Result that cites several contracts, rows and groups show their raw
 identifiers.
 
-**Missing words.** After layering, a word whose entry is missing, whose assembled key is not a
-valid `WordingKey`, or whose pack was refused is shown as its raw token or identifier. A missing
+**Missing words.** A refused pack is handled as PC §7.4 says: the core's own fallback labels.
+After layering, a word the core has no fallback label for, whose entry is missing, or whose
+assembled key is not a valid `WordingKey` is shown as its raw token or identifier. A missing
 `report.title` shows no title. Nothing is guessed. Other keys a pack carries are the module's own.
 
 `schemas/examples/presentation-manifest-v0/example-wording-pack-contract-report.json` is an example
@@ -146,6 +147,7 @@ pins both registrations (`contract-report-module-beside-builtin`,
 
 Two earlier, unregistered display kinds are deprecated aliases of this one, listed in PC §4.2's
 deprecation table with the releases that deprecate and remove them. Nothing converts an earlier
-block into this one: until their removal they are read by their own readers, unchanged. A producer
-migrates by writing `{"contract-report/v1": {}}` in place of its earlier block and moving its
-words into its pack's wording pack.
+block into this one: until their removal they are read by their own readers, unchanged, and
+their built-in manifests differ only in forbidding `contract-report/v1`. A producer migrates by
+writing `{"contract-report/v1": {}}` in place of its earlier block and moving its words into its
+wording pack.

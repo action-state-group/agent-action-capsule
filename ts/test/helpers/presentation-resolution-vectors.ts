@@ -369,7 +369,7 @@ function dropForbid(
 
 /**
  * A registry's own contract-report module (spec/contract-report-v1.md section
- * 5): the same match as aac.builtin.result-contract-report/v0, under an id
+ * 4): the same match as aac.builtin.result-contract-report/v0, under an id
  * outside the reserved aac. prefix.
  */
 const CONTRACT_REPORT_MODULE: PresentationManifest = {
@@ -474,13 +474,13 @@ function registrationCases(): RegistrationCase[] {
     {
       id: "contract-report-module-beside-builtin",
       description:
-        "spec/contract-report-v1.md section 5: a contract-report module with the same match as aac.builtin.result-contract-report/v0, registered beside it, is co-matchable: section 4.5 rejects the set.",
+        "spec/contract-report-v1.md section 4: a contract-report module with the same match as aac.builtin.result-contract-report/v0, registered beside it, is co-matchable: section 4.5 rejects the set.",
       manifests: [...BUILTIN_MANIFESTS, CONTRACT_REPORT_MODULE],
     },
     {
       id: "contract-report-module-in-place-of-builtin",
       description:
-        "spec/contract-report-v1.md section 5: the same module registered in place of aac.builtin.result-contract-report/v0 registers, and every Result root that opts in resolves to it, alone or beside a deprecated alias; a report/v1 root still resolves to the rows table.",
+        "spec/contract-report-v1.md section 4: the same module registered in place of aac.builtin.result-contract-report/v0 registers, and every Result root that opts in resolves to it, alone or beside a deprecated alias; a report/v1 root still resolves to the rows table.",
       manifests: [
         ...BUILTIN_MANIFESTS.filter(
           (m) => m.id !== "aac.builtin.result-contract-report/v0",
@@ -857,6 +857,11 @@ function registrationCases(): RegistrationCase[] {
       "contract-report/v1",
     ],
     ["aac.builtin.result-compliance/v0", "extensions", "contract-report/v1"],
+    [
+      "aac.builtin.result-contract-report/v0",
+      "profiles",
+      "spec_version:report/v1",
+    ],
     ["aac.builtin.result-compliance/v0", "extensions", "outcome-report/v1"],
     ["aac.builtin.result/v0", "extensions", "eu-ai-act-compliance/v1"],
     ["aac.builtin.result/v0", "extensions", "outcome-report/v1"],

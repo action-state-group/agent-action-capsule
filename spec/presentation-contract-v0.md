@@ -322,13 +322,14 @@ Resolution reads a **descriptor** derived from the context and nothing else:
     obligation is recognizable.
 
   **Deprecation table.** These kinds are deprecated aliases of `contract-report/v1`. Until
-  their removal their readers and built-in manifests (appendix A) are unchanged, and a
-  producer SHOULD NOT write them.
+  their removal their readers and built-in cards are unchanged; their built-in manifests
+  (appendix A) differ only in forbidding `contract-report/v1`. A producer SHOULD NOT write
+  them.
 
   | Kind | Deprecated in | Removed in |
   |---|---|---|
   | `outcome-report/v1` | ts 0.6.0, go v0.12.0 | ts 0.7.0, go v0.13.0 |
-  | `eu-ai-act-compliance/v1` | ts 0.6.0, go v0.12.0 | ts 0.7.0, go v0.13.0, and not before a Result revision carries applicability (whether a requirement applies yet), which its built-in card shows and `contract-report/v1` does not |
+  | `eu-ai-act-compliance/v1` | ts 0.6.0, go v0.12.0 | ts 0.7.0 and go v0.13.0, or the first release after a Result revision carries applicability (whether a requirement applies yet, which its built-in card shows and `contract-report/v1` does not), whichever is later |
 
   A present block that its reader declines counts as absent for resolution, in `requires` and
   in `forbids` alike. Every extension, engaged or not, is still reported on the verification
