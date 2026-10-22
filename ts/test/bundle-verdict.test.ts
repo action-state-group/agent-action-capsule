@@ -389,12 +389,23 @@ describe("the strict result beside the page's own checks", () => {
       expect(checks(root, list)).not.toContain("range");
   });
 
-  it("a producer selection with a broken record proof is still refused", async () => {
-    for (const id of [
-      "neg-producer-selected-proof-invalid",
-      "neg-producer-selected-coordinates-log-and-seq",
+  it("a producer selection the strict checks call INVALID is still refused, records and all", async () => {
+    // A record with a stated key and no signature: INVALID by its
+    // signature, while every proof still verifies.
+    const unsigned = strictCase("incomplete-producer-selected");
+    const record = (unsigned.records as Obj[]).find(
+      (r) => typeof r.signature === "string",
+    );
+    expect(record).toBeDefined();
+    delete record!.signature;
+    expect(await verdict(unsigned)).toBe("INVALID");
+    for (const bundle of [
+      strictCase("neg-producer-selected-proof-invalid"),
+      strictCase("neg-producer-selected-coordinates-log-and-seq"),
+      strictCase("neg-producer-selected-unbound"),
+      unsigned,
     ]) {
-      const root = await renderWith(renderEvidenceGraph, strictCase(id));
+      const root = await renderWith(renderEvidenceGraph, bundle);
       expect(banner(root).dataset.verdict).toBe("invalid");
       expect(
         root.querySelector('[data-refusal="unverified-bundle"]'),

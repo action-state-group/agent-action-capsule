@@ -1593,31 +1593,37 @@ function deepFreeze<T>(value: T): T {
  * (`interval_coverage` carries `selection_not_checkable`), the viewer reads
  * interval coverage and per-record membership as they do, so the page, its
  * render gate and its check lists agree with the strict verdict (#361).
- * Every other claim is the plain one.
+ * Every other claim is the plain one, and an INVALID selection is read
+ * plainly.
  */
 function readSelection(
   plain: BundleVerificationResult,
-  strict: StrictBundleResult | undefined,
+  strict: StrictBundleVerificationResult | undefined,
 ): BundleVerificationResult {
-  const claim = (name: StrictClaimName): ClaimResult | undefined => {
-    const found = strict?.claims.find((entry) => entry.name === name);
-    return found === undefined
-      ? undefined
-      : { status: found.status, findings: found.findings };
-  };
-  const interval = claim("interval_coverage");
-  const membership = claim("per_record_membership");
-  if (
-    interval === undefined ||
-    membership === undefined ||
-    !interval.findings.includes(SELECTION_NOT_CHECKABLE)
-  )
-    return plain;
-  return {
-    ...plain,
-    intervalCoverage: interval,
-    perRecordMembership: membership,
-  };
+  // Only for a selection the strict checks did not reject: an INVALID one
+  // keeps the plain reading, which refuses it as it always has, so this
+  // never lets the page show a Bundle it refused before.
+  return strict !== undefined &&
+    strict.strict.verdict !== "INVALID" &&
+    isProducerSelection(strict)
+    ? {
+        ...plain,
+        intervalCoverage: strict.intervalCoverage,
+        perRecordMembership: strict.perRecordMembership,
+      }
+    : plain;
+}
+
+/**
+ * True when `result` reads its Bundle as a producer selection: the strict
+ * checks' interval coverage, or a context's (`readSelection`), is not
+ * checkable for it.
+ */
+export function isProducerSelection(result: BundleVerificationResult): boolean {
+  return (
+    result.intervalCoverage.status === "withheld" &&
+    result.intervalCoverage.findings.includes(SELECTION_NOT_CHECKABLE)
+  );
 }
 
 /** True only for a context {@link buildVerifiedBundleContext} made. */
@@ -1650,7 +1656,7 @@ export async function buildVerifiedBundleContext(
   });
   return contextFrom(
     owned,
-    readSelection(plain, strict?.strict),
+    readSelection(plain, strict),
     strict?.strict,
     options.countersigners === undefined
       ? undefined
