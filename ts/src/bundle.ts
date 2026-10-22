@@ -1482,54 +1482,69 @@ const plain = (value: object): boolean => {
  * A structural copy of JSON-shaped input: arrays and plain objects are copied
  * (own enumerable string keys, each read once), primitives are kept. Keys are
  * defined, not assigned, so a parsed `__proto__` member stays a member. Any
- * other object is kept by reference and left as it is.
+ * other object is kept by reference and left as it is. Iterative, so input
+ * nested beyond the stack is copied and then refused by the verifier, never
+ * raised as a RangeError (#360).
  */
-function ownedCopy<T>(value: T, seen = new Map<object, unknown>()): T {
-  if (value === null || typeof value !== "object" || !plain(value))
-    return value;
-  const done = seen.get(value);
-  if (done !== undefined) return done as T;
-  if (Array.isArray(value)) {
-    const out: unknown[] = [];
-    seen.set(value, out);
-    for (const item of value) out.push(ownedCopy(item, seen));
-    return out as T;
+function ownedCopy<T>(value: T): T {
+  const seen = new Map<object, unknown>();
+  // Containers whose members are still to copy, each with its copy.
+  const pending: [object, unknown[] | Record<string, unknown>][] = [];
+  const copyOf = (input: unknown): unknown => {
+    if (input === null || typeof input !== "object" || !plain(input))
+      return input;
+    const done = seen.get(input);
+    if (done !== undefined) return done;
+    const out: unknown[] | Record<string, unknown> = Array.isArray(input)
+      ? []
+      : {};
+    seen.set(input, out);
+    pending.push([input, out]);
+    return out;
+  };
+  const root = copyOf(value);
+  while (pending.length > 0) {
+    const [source, out] = pending.pop()!;
+    if (Array.isArray(source)) {
+      for (const item of source) (out as unknown[]).push(copyOf(item));
+      continue;
+    }
+    for (const key of Object.keys(source))
+      Object.defineProperty(out, key, {
+        value: copyOf((source as Record<string, unknown>)[key]),
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
   }
-  const out: Record<string, unknown> = {};
-  seen.set(value, out);
-  for (const key of Object.keys(value))
-    Object.defineProperty(out, key, {
-      value: ownedCopy((value as Record<string, unknown>)[key], seen),
-      enumerable: true,
-      writable: true,
-      configurable: true,
-    });
-  return out as T;
+  return root as T;
 }
 
 /**
  * Freeze an object graph the context owns: arrays and plain objects,
- * recursively through data properties (accessors are never invoked). A
+ * through data properties (accessors are never invoked). A
  * {@link ReadonlyMapView} freezes itself and its entries are frozen through
- * it.
+ * it. Iterative, like {@link ownedCopy}.
  */
-function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
-  if (value === null || typeof value !== "object" || seen.has(value))
-    return value;
-  seen.add(value);
-  if (value instanceof ReadonlyMapView) {
-    for (const [key, entry] of value as ReadonlyMapView<unknown, unknown>) {
-      deepFreeze(key, seen);
-      deepFreeze(entry, seen);
+function deepFreeze<T>(value: T): T {
+  const seen = new WeakSet<object>();
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const next = pending.pop();
+    if (next === null || typeof next !== "object" || seen.has(next)) continue;
+    seen.add(next);
+    if (next instanceof ReadonlyMapView) {
+      for (const [key, entry] of next as ReadonlyMapView<unknown, unknown>)
+        pending.push(key, entry);
+      continue;
     }
-    return value;
+    if (!plain(next)) continue;
+    Object.freeze(next);
+    for (const descriptor of Object.values(
+      Object.getOwnPropertyDescriptors(next),
+    ))
+      if ("value" in descriptor) pending.push(descriptor.value);
   }
-  if (!plain(value)) return value;
-  Object.freeze(value);
-  for (const descriptor of Object.values(
-    Object.getOwnPropertyDescriptors(value),
-  ))
-    if ("value" in descriptor) deepFreeze(descriptor.value, seen);
   return value;
 }
 

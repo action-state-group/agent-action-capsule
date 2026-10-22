@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- TypeScript: `buildVerifiedBundleContext` no longer throws `RangeError` on input nested beyond
+  the stack. Its copy and freeze of the input are iterative, so the verifier's own refusal
+  (`bundle_malformed`, INVALID in strict mode) is what the context carries, and
+  `renderEvidenceGraph` draws the refusal instead of rejecting. (#360)
 - TypeScript viewer: plain words for the banner and the verification page (#346), and five
   verification states always distinct, with `checking` shown (#309). **Breaking for anything that
   matches the banner's words or `data-verify`.** `data-verify` now names the state the reader is
