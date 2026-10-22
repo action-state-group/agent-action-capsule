@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+- Evidence Result v0: `out_of_scope` is a fourth verdict, and a requirement's applicability is
+  sealed data (#349, #350), revised in place: `result_version` stays `evidence-result-v0`, and every
+  new member is optional, so a Result that validated before validates unchanged. `out_of_scope`
+  pairs only with `SATISFIED`, only on a requirement claim that carries `out_of_scope_allowed`
+  (copied from the Evidence Contract), and sits in its own `buckets.out_of_scope`, present exactly
+  when a claim is switched on; it is never in `met`. `applies_from` (copied from the contract's
+  `clause.effective_from`) makes a claim later when it is after the UTC date of `generated_at`: a
+  later claim keeps its verdict as readiness, sits in no bucket, and is counted in
+  `coverage.not_yet_in_force`. The schema, the checker's new cross-element rules and the
+  TypeScript reader enforce these, with a strict RFC 3339 date grammar. The core Result page draws
+  the fourth bucket, a "not yet in force" list and the as-of date, labelled as copied from the
+  contract; the two deprecated cards count `out_of_scope` on their own and leave later claims out.
+  The Plan IR's decision verdict and the interop profile's pair invariant gain the fourth value,
+  the Go and Python evaluators copy both facts (P-61) and refuse a contract whose `effective_from`
+  is not a calendar date (P-62), and a new vector set, `vectors/interop-profile-v0-requirement-facts/`,
+  pins the copy. `contract-report/v1` gains the fourth count, a "Not yet in force" section, the as-of
+  date and wording keys. The interop profile re-pins the Evidence Contract v0 schema to
+  capsule-engine `773ae9e` (SHA-256 `6b969610…b770`), which carries the verdict and the switch;
+  the frozen personal-history Basic level keeps its released pin. Wording reviewed by Sherlock2.
+  (#368)
+- Evidence Result v0 coverage counts evaluations, one per claim, as every implementation counted:
+  the spec text now says so, the core page reads "N evaluations of M requirements … N with an
+  unknown result", and no count rolls a requirement up to one verdict. (#362, #363)
+- Judge records carry `out_of_scope` (#371). `x-judgment-v1` gains a second answer definition,
+  `JudgeAnswerWithOutOfScope`; `JudgeAnswer` and its digest are unchanged, so every pin and record
+  stays valid. A judge declaration names one definition by `schema_hash`, and the join gains check
+  7: a disclosed answer matches its committed digest and fits the definition named. A withheld
+  answer joins only as "produced by the declared judge; answer not disclosed, so not checked".
+  `evaluation-report/v1` cases may be `out_of_scope`, counted on their own by any reader. A judge
+  answers `out_of_scope` only for a switched-on requirement, and a producer never maps it to
+  another verdict: the personal-history outcome profile gains `judge_verdict_allowed`, so such a
+  case no longer falls through to `not_evaluable`. Wording reviewed by Sherlock2.
+
 - TypeScript viewer: the verification page's countersignature line now adds "Checking a
   countersignature is not one of the bundle's own checks, so its result never changes the
   bundle's verdict." A failed

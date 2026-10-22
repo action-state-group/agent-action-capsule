@@ -141,6 +141,23 @@ def main() -> int:
         if not validator(schema, def_name).is_valid(value):
             failures.append(f"preimage does not validate against $defs/{def_name}")
 
+    # Answer schema (spec section 3): the out_of_scope answer fits only the wider
+    # definition, every answer fits the wider one, and JudgeAnswer is unchanged.
+    oos = cases["pos-ai-judge-out-of-scope"]["preimages"]["values"]
+    if not validator(schema, "JudgeParameters").is_valid(oos["judge_parameters"]):
+        failures.append("pos-ai-judge-out-of-scope parameters do not validate")
+    if validator(schema, "JudgeAnswer").is_valid(oos["agent_output"]):
+        failures.append("an out_of_scope answer validates against JudgeAnswer")
+    for cid in ("pos-ai-judge", "pos-human-expert", "pos-ai-judge-out-of-scope"):
+        if not validator(schema, "JudgeAnswerWithOutOfScope").is_valid(cases[cid]["preimages"]["values"]["agent_output"]):
+            failures.append(f"{cid} answer does not validate against JudgeAnswerWithOutOfScope")
+    from agent_action_capsule.canonical import json_digest
+    for def_name, pinned in (("JudgeAnswer", "1b8f1f21f261cc5ee87c23a1fc1711a0907be6599a45b1a9e3ebfe13d626a0ec"),
+                             ("JudgeAnswerWithOutOfScope",
+                              "07ec203b83ec977d43188b4d4edb93fac563298aa54523bff09713bd52dd9507")):
+        if json_digest(schema["$defs"][def_name]) != pinned:
+            failures.append(f"$defs/{def_name} digest moved off its published value (spec section 3)")
+
     # prompt_file_digest: optional, absent is absent, and the retired name is not accepted.
     params_validator = validator(schema, "JudgeParameters")
     base_params = pre["pos-ai-judge"]["judge_parameters"]

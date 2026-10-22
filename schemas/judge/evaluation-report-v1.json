@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentactioncapsule.org/schemas/judge/evaluation-report-v1.json",
   "title": "Evaluation Report v1",
-  "description": "Companion schema for spec/judge-record-family-v1.md section 2. The root schema validates an Evaluation Report record: per-case met/not_met/not_evaluable judgments over cited acts, reached under one judge pin. This is the single-party case of adjudication-v1.json's shape -- each Case's basis reuses that schema's Basis $def field-for-field (model_id, prompt_digest, axes_digest, sampling), so 'judgment-basis fields identical across both' is a literal, not just a stated, property of this family. Unifies capsule-judge's judge_judgment/judge_adjudication and capsule-compiler's judge_judgment_adapter row convention into one schema. epistemic_type is fixed to semantic_judgment -- a judgment reached by interpretation, not direct observation.",
+  "description": "Companion schema for spec/judge-record-family-v1.md section 2. The root schema validates an Evaluation Report record: per-case judgments in the Evidence Contract's verdict vocabulary over cited acts, reached under one judge pin. This is the single-party case of adjudication-v1.json's shape -- each Case's basis reuses that schema's Basis $def field-for-field (model_id, prompt_digest, axes_digest, sampling), so 'judgment-basis fields identical across both' is a literal, not just a stated, property of this family. Unifies capsule-judge's judge_judgment/judge_adjudication and capsule-compiler's judge_judgment_adapter row convention into one schema. epistemic_type is fixed to semantic_judgment -- a judgment reached by interpretation, not direct observation.",
   "$ref": "#/$defs/EvaluationReport",
   "$defs": {
     "HexDigest": {
@@ -67,13 +67,13 @@
       }
     },
     "Case": {
-      "description": "The single-party adjudication: one case, judged under this report's judge_pin, against cited acts and a cited method, resolving to three values of the Evidence Contract's Verdict (mirrored here, never redefined; the Contract and evidence-result-v0.json's Claim.verdict also carry out_of_scope, which this record does not carry in this version).",
+      "description": "The single-party adjudication: one case, judged under this report's judge_pin, against cited acts and a cited method, resolving to the Evidence Contract's Verdict (mirrored here, never redefined; the same vocabulary evidence-result-v0.json's Claim.verdict uses). out_of_scope only for a requirement with out_of_scope_allowed; a reader counts it on its own, never as met or not applicable (spec section 2).",
       "type": "object",
       "additionalProperties": false,
       "required": ["case_id", "verdict", "acts", "method"],
       "properties": {
         "case_id": { "type": "string", "minLength": 1 },
-        "verdict": { "enum": ["met", "not_met", "not_evaluable"] },
+        "verdict": { "enum": ["met", "not_met", "not_evaluable", "out_of_scope"] },
         "acts": {
           "type": "array",
           "minItems": 1,

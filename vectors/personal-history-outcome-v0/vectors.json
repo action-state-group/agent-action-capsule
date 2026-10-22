@@ -159,10 +159,11 @@
       "judge_signer_trust",
       "judge_subject",
       "judge_grounds",
-      "consent_precedes_judgment"
+      "consent_precedes_judgment",
+      "judge_verdict_allowed"
     ]
   },
-  "count": 24,
+  "count": 25,
   "cases": [
     {
       "id": "holder-record",
@@ -1666,7 +1667,8 @@
               "judge_signer_trust": "PASS",
               "judge_subject": "PASS",
               "judge_grounds": "PASS",
-              "consent_precedes_judgment": "PASS"
+              "consent_precedes_judgment": "PASS",
+              "judge_verdict_allowed": "PASS"
             },
             "counts": true,
             "deal_binding": "carried",
@@ -3236,7 +3238,8 @@
               "judge_signer_trust": "PASS",
               "judge_subject": "PASS",
               "judge_grounds": "PASS",
-              "consent_precedes_judgment": "PASS"
+              "consent_precedes_judgment": "PASS",
+              "judge_verdict_allowed": "PASS"
             },
             "counts": false,
             "deal_binding": "carried",
@@ -3622,7 +3625,8 @@
               "judge_signer_trust": "PASS",
               "judge_subject": "PASS",
               "judge_grounds": "PASS",
-              "consent_precedes_judgment": "FAIL"
+              "consent_precedes_judgment": "FAIL",
+              "judge_verdict_allowed": "PASS"
             },
             "counts": false,
             "deal_binding": "carried",
@@ -4008,7 +4012,8 @@
               "judge_signer_trust": "PASS",
               "judge_subject": "PASS",
               "judge_grounds": "FAIL",
-              "consent_precedes_judgment": "PASS"
+              "consent_precedes_judgment": "PASS",
+              "judge_verdict_allowed": "PASS"
             },
             "counts": false,
             "deal_binding": "carried",
@@ -4394,7 +4399,8 @@
               "judge_signer_trust": "PASS",
               "judge_subject": "PASS",
               "judge_grounds": "PASS",
-              "consent_precedes_judgment": "PASS"
+              "consent_precedes_judgment": "PASS",
+              "judge_verdict_allowed": "PASS"
             },
             "counts": false,
             "deal_binding": "carried",
@@ -4780,7 +4786,8 @@
               "judge_signer_trust": "FAIL",
               "judge_subject": "PASS",
               "judge_grounds": "PASS",
-              "consent_precedes_judgment": "FAIL"
+              "consent_precedes_judgment": "FAIL",
+              "judge_verdict_allowed": "PASS"
             },
             "counts": false,
             "deal_binding": "carried",
@@ -5167,7 +5174,8 @@
               "judge_signer_trust": "PASS",
               "judge_subject": "FAIL",
               "judge_grounds": "PASS",
-              "consent_precedes_judgment": "PASS"
+              "consent_precedes_judgment": "PASS",
+              "judge_verdict_allowed": "PASS"
             },
             "counts": false,
             "deal_binding": "holder_only",
@@ -5234,6 +5242,393 @@
         },
         "fails": [
           "judge_subject"
+        ]
+      }
+    },
+    {
+      "id": "judge-verdict-out-of-scope",
+      "title": "The judge's case for the predicate answers out_of_scope, which no requirement here allows",
+      "cites": [
+        "§5.4",
+        "§6",
+        "§8.3",
+        "§8.4"
+      ],
+      "source": "derived: history-1 to history-3 asked under the Outcome level definition, the deal commitment added to each deal's first record; a consent record and an outcome record citing the judge record, re-signed by the holder key; the judge record signed by the judge key",
+      "mode": "asked",
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034"
+          ],
+          "log_keys": [
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#15",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            },
+            {
+              "iss": "holder-stream-1",
+              "sub": "holder-stream-1#22",
+              "kid": "74897b69738198f3322a53d7e4ac2f70ffd568e7303f8549655ccffe14d28320"
+            }
+          ],
+          "foreign_keys": [
+            "b1a9bb526f68d76c2d7c2b2e64f2ef3f5bc679f8799ee1dc510886b214cbd5a7",
+            "9a25b8bc311b225bc86627dd1fca2fb643ee5a9c3d23b54afc42c3ad40036e5e"
+          ],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "O@1",
+        "contract_digest": "c1f2e124339ff3f5a6e8272dfd0a83a4ee33210355e0e8a0324f0d859d3ec304",
+        "outcome_roles": {
+          "counterparty": [
+            "b1a9bb526f68d76c2d7c2b2e64f2ef3f5bc679f8799ee1dc510886b214cbd5a7"
+          ],
+          "judge": [
+            "9a25b8bc311b225bc86627dd1fca2fb643ee5a9c3d23b54afc42c3ad40036e5e"
+          ]
+        },
+        "outcome_requirements": [
+          {
+            "id": "r-completed",
+            "predicate": "completed",
+            "sources": [
+              "counterparty_half",
+              "holder_record",
+              "judge_verdict",
+              "native_object"
+            ]
+          },
+          {
+            "id": "r-delivered",
+            "predicate": "delivered",
+            "sources": [
+              "counterparty_half",
+              "judge_verdict",
+              "native_object"
+            ]
+          },
+          {
+            "id": "r-paid",
+            "predicate": "paid",
+            "sources": [
+              "counterparty_half",
+              "judge_verdict",
+              "native_object"
+            ]
+          }
+        ],
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "history": "personal_history_outcome/1",
+        "definition": {
+          "kind": "projection",
+          "name": "personal_history_outcome/1",
+          "reads": [
+            "commit_alg",
+            "committed_at",
+            "consent",
+            "deal_commitment",
+            "epistemic_type",
+            "event_time_claim",
+            "outcome",
+            "record_type"
+          ],
+          "recipient": "recipient-1",
+          "selection": [
+            "50c896dcc67b046d2e960466df3d7ce4",
+            "6d443544e41e7d4878ff95318777cc05",
+            "a34e091973f2480c793ad9b9bc5aa118"
+          ],
+          "subject_form": "correlation",
+          "coverage_declaration": {
+            "kind": "holder_selected"
+          },
+          "holder_role": "seller",
+          "sources": [
+            "counterparty_half",
+            "holder_record",
+            "judge_verdict",
+            "native_object"
+          ],
+          "predicates": "b5c7fe64bd1b4978aeef89cbc3bd9ecc23c2a57a48202a3d8d29e713ef4abfdc"
+        },
+        "exchanges": [
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"f72f9400e26644384f49846824d5e56c4b20ce5edacb57f69579a5234a635416\",\"nonce\":\"recipient-1/judge-verdict-out-of-scope-1\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6ImY3MmY5NDAwZTI2NjQ0Mzg0ZjQ5ODQ2ODI0ZDVlNTZjNGIyMGNlNWVkYWNiNTdmNjk1NzlhNTIzNGE2MzU0MTYiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXRfYWxnIjoic2hhMjU2LWpjcy1ub25jZTI1NiIsImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MDJaIiwiZGVhbF9jb21taXRtZW50IjoiYjZhZTk4ZjBkY2E3NTFmMTNlNjAzM2IxNjVlZGFhNGNmNDQ4ZWJiMGFmNDU3Mjk4MmRlMWZkMDQ0MzMzMjhlNiIsImRpZ2VzdCI6IjcwNGQ5YWFlNzJlZDRiMjZiMDVmMWE4ZDIwOGQyMDg4MzEzZmQ4Y2QwYTVkMDVkZDU1ZDY0OTExMWZiZTRkNWYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjU6MDJaIiwibGVhZl9pbmRleCI6MSwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDoxMFoiLCJkaWdlc3QiOiJhNzVmZjE2YzA0OTRmOTFmMTM0NzFhNDFjOGEwNjczYzE2MTlmMGNkMDNmYzkzMTg5Y2Y3YzUxNThjODY5ODFmIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjUwOjEwWiIsImxlYWZfaW5kZXgiOjgsInJlY29yZF90eXBlIjoic3RlcF9mYWlsZWQifSx7ImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDE6MDFaIiwiY29uc2VudCI6eyJjb250cmFjdF9yZWYiOiJlYzpwZXJzb25hbC1oaXN0b3J5LW91dGNvbWUtZXhhbXBsZToyMDI2LTEwLTE5QDEiLCJqdWRnZSI6IjlhMjViOGJjMzExYjIyNWJjODY2MjdkZDFmY2EyZmI2NDNlZTVhOWMzZDIzYjU0YWZjNDJjM2FkNDAwMzZlNWUifSwiZGlnZXN0IjoiMTkzY2Y3Nzk0OWRhMjdhYTQzYjQwMzc1YjVhNWUyMmQyYjRiMWQ0ZDk0YWYzODI5OWFkZmMxMTNmZjUzY2FlYSIsImVwaXN0ZW1pY190eXBlIjoicHJvZHVjZXJfY2xhaW0iLCJldmVudF90aW1lX2NsYWltIjoiMjAyNi0xMC0xNVQwMDowMTowMVoiLCJsZWFmX2luZGV4IjoxMDEsInJlY29yZF90eXBlIjoianVkZ2VfY29uc2VudCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMTowMloiLCJkaWdlc3QiOiI5MmI5YzhlYjA3M2JmMjE4MzZhNGExMTg2ODM1OWZjZjRiZjg0MjFmNjg5M2E3OTA1NDVjNTUyM2I1MjY1NGYxIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE1VDAwOjAxOjAyWiIsImxlYWZfaW5kZXgiOjEwMiwib3V0Y29tZSI6eyJldmlkZW5jZSI6WyI2ZWExYmVmMTA2MGY1YzQ2ZTE2Zjk0YmU4MmJlOGMxMTNjNDMyZDIzNmUzYTQzNDFhYjYxOGE2Y2ZmNjA1ZmY1Il0sInByZWRpY2F0ZSI6ImNvbXBsZXRlZCIsInNvdXJjZSI6Imp1ZGdlX3ZlcmRpY3QifSwicmVjb3JkX3R5cGUiOiJvdXRjb21lX3JlY29yZGVkIn1dLCJzdWJqZWN0Ijp7ImNvcnJlbGF0aW9uIjoiNTBjODk2ZGNjNjdiMDQ2ZDJlOTYwNDY2ZGYzZDdjZTQifX0\",\"artifact_digest\":\"53cd33f024ab7773be23108502a71fbc8f6267292a2c455a58d5433c2f7e6f9f\",\"derivation\":\"f72f9400e26644384f49846824d5e56c4b20ce5edacb57f69579a5234a635416\",\"issued_at\":\"2026-10-15T00:00:15Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"82751ca0996afa034e02183e57935dcb6f36a75dba0af284a0d00559781043d2\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"778376bc2a78fed259fa0d519b34fc1b7802082780c0b4d3d2214936b6273e7ff5a26bd45bc9e67b74691803d1e712ef33185deb577ceb8d50d39b2556f90b0a\",\"subject\":{\"correlation\":\"50c896dcc67b046d2e960466df3d7ce4\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"f72f9400e26644384f49846824d5e56c4b20ce5edacb57f69579a5234a635416\",\"nonce\":\"recipient-1/judge-verdict-out-of-scope-2\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6ImY3MmY5NDAwZTI2NjQ0Mzg0ZjQ5ODQ2ODI0ZDVlNTZjNGIyMGNlNWVkYWNiNTdmNjk1NzlhNTIzNGE2MzU0MTYiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXRfYWxnIjoic2hhMjU2LWpjcy1ub25jZTI1NiIsImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MDVaIiwiZGVhbF9jb21taXRtZW50IjoiNTM4NjdiZTQ0M2FkMGZlMTFhNzhkMDhhNjY2NjNhNDNhZDdlMTZkZTEyNjY4ZDQxZTk0MzIxOTA1OTYwNjYzMSIsImRpZ2VzdCI6ImY5Njk3YjNmMWI4ZTMyNDkwMzA3ZWE0NjUyMTgyMTA4MzQxNzM2NjIxNzViNmFhNTg3YzQyYmFmNGI4YzIzNTYiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6NDA6MDVaIiwibGVhZl9pbmRleCI6NCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9XSwic3ViamVjdCI6eyJjb3JyZWxhdGlvbiI6IjZkNDQzNTQ0ZTQxZTdkNDg3OGZmOTUzMTg3NzdjYzA1In19\",\"artifact_digest\":\"1c63e85fe9d4842152243911947adad592284b0877ec5d476f50b42b2fba10b5\",\"derivation\":\"f72f9400e26644384f49846824d5e56c4b20ce5edacb57f69579a5234a635416\",\"issued_at\":\"2026-10-15T00:00:17Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"6187aeec31c12d0b08e518ea5bdfaf4018fe07c49b6b256f4826ad3bc57dc5f2\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"f0bc223c68fda9cddeb54962057f9daf139d10b952d9b499f80ccff95129f691d38df5dde3bb62121231a5d80292c34c7a698a1b0106e3b74f7344e05f2cc10e\",\"subject\":{\"correlation\":\"6d443544e41e7d4878ff95318777cc05\"}}"
+            }
+          },
+          {
+            "request": {
+              "media_type": "application/json",
+              "octets_text": "{\"coverage\":{\"expected_pin\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"derivation\":\"f72f9400e26644384f49846824d5e56c4b20ce5edacb57f69579a5234a635416\",\"nonce\":\"recipient-1/judge-verdict-out-of-scope-3\",\"profile\":\"evidence-interop/0\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            },
+            "reply": {
+              "media_type": "application/json",
+              "octets_text": "{\"anchor\":{\"digest\":\"c417672f9e12bb4282024b2f159f2ecd09ffd01409ce7e0a531024fb142d6c51\"},\"artifact\":\"eyJhbmNob3IiOiJjNDE3NjcyZjllMTJiYjQyODIwMjRiMmYxNTlmMmVjZDA5ZmZkMDE0MDljZTdlMGE1MzEwMjRmYjE0MmQ2YzUxIiwiZGVyaXZhdGlvbiI6ImY3MmY5NDAwZTI2NjQ0Mzg0ZjQ5ODQ2ODI0ZDVlNTZjNGIyMGNlNWVkYWNiNTdmNjk1NzlhNTIzNGE2MzU0MTYiLCJldmlkZW5jZV9zdHJlYW0iOiJob2xkZXItc3RyZWFtLTEiLCJyZWNvcmRzIjpbeyJjb21taXRfYWxnIjoic2hhMjU2LWpjcy1ub25jZTI1NiIsImNvbW1pdHRlZF9hdCI6IjIwMjYtMTAtMTVUMDA6MDA6MDFaIiwiZGVhbF9jb21taXRtZW50IjoiMTljMTM1YWJiYjBiMWQxNTg2MDQzMWFiN2E5ZmQxMGE1ZTM2NWI1NDY4YTNhMjNhNjE2MzgyNGEwNzYxNzBkZCIsImRpZ2VzdCI6IjA1MzA3NWVmZDBmYWE2N2JiMmU0YTI2ZWIwMTc4NjIyYjViYjcxYzQ0MmU1YTkyZDdhZDVlOTI2YmJhZTdmMWEiLCJlcGlzdGVtaWNfdHlwZSI6InByb2R1Y2VyX2NsYWltIiwiZXZlbnRfdGltZV9jbGFpbSI6IjIwMjYtMTAtMTRUMjM6MjA6MDFaIiwibGVhZl9pbmRleCI6MCwicmVjb3JkX3R5cGUiOiJzdGVwX2NvbXBsZXRlZCJ9LHsiY29tbWl0dGVkX2F0IjoiMjAyNi0xMC0xNVQwMDowMDowNFoiLCJkaWdlc3QiOiIwNzVkY2FlZWJhZjgyNjBiNDk4ZmQxYjRmOTgwNGE3NDRmZGZhODAxMWZiZTMzNjYzZGE5ZTY5YzllOWY0NjRlIiwiZXBpc3RlbWljX3R5cGUiOiJwcm9kdWNlcl9jbGFpbSIsImV2ZW50X3RpbWVfY2xhaW0iOiIyMDI2LTEwLTE0VDIzOjM1OjA0WiIsImxlYWZfaW5kZXgiOjMsInJlY29yZF90eXBlIjoic3RlcF9jb21wbGV0ZWQifV0sInN1YmplY3QiOnsiY29ycmVsYXRpb24iOiJhMzRlMDkxOTczZjI0ODBjNzkzYWQ5YjliYzVhYTExOCJ9fQ\",\"artifact_digest\":\"5a6a3538035e4411d8f2a844c6cbc41d8cd0d5646eefc56df8f765f864310e95\",\"derivation\":\"f72f9400e26644384f49846824d5e56c4b20ce5edacb57f69579a5234a635416\",\"issued_at\":\"2026-10-15T00:00:19Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"6b89a09cf6f3606e677c203da42ace842394ff4787d88d3b4e96ea97c4a87c33\",\"responder\":\"27cb07b534232cb4f4b7b269a8436fafb17c19be41fbab20ac948d1c81b0a034\",\"sig\":\"17caa692ce225422376a8d1d4864ef88d80f0605fd9e9a715c13a746851e223828f29c4e4cd188078671ac0d11930b23982870617ab8190a2008e515e7290a08\",\"subject\":{\"correlation\":\"a34e091973f2480c793ad9b9bc5aa118\"}}"
+            }
+          }
+        ],
+        "evidence": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"judge\":\"9a25b8bc311b225bc86627dd1fca2fb643ee5a9c3d23b54afc42c3ad40036e5e\",\"record\":{\"cases\":[{\"acts\":[{\"citation_purpose\":\"grounds\",\"digest\":\"704d9aae72ed4b26b05f1a8d208d2088313fd8cd0a5d05dd55d649111fbe4d5f\",\"digest_alg\":\"SHA-256\",\"type\":\"personal-history-record\"},{\"citation_purpose\":\"grounds\",\"digest\":\"a75ff16c0494f91f13471a41c8a0673c1619f0cd03fc93189cf7c5158c86981f\",\"digest_alg\":\"SHA-256\",\"type\":\"personal-history-record\"}],\"case_id\":\"completed\",\"method\":{\"citation_purpose\":\"method\",\"digest\":\"3c3216f313fe578572d1ff967717aef126f3ec6eb462866775568775a449702b\",\"digest_alg\":\"SHA-256\",\"type\":\"rubric\"},\"verdict\":\"out_of_scope\"}],\"contract_ref\":\"ec:personal-history-outcome-example:2026-10-19@1\",\"epistemic_type\":\"semantic_judgment\",\"generated_at\":\"2026-10-15T00:00:40Z\",\"judge_pin\":{\"axes_digest\":{\"digest\":\"4fdcaf90df27a903972404e7acf8ed044fb83054ed503640761c09c0dd651345\",\"digest_alg\":\"SHA-256\"},\"model_id\":\"example-judge-v1\",\"prompt_digest\":{\"digest\":\"72c24f7938b40217ebf4f6a225e9a37f5d94f3012017c537bd1c13d9b08bd898\",\"digest_alg\":\"SHA-256\"},\"sampling\":{\"seed\":1,\"temperature_micros\":0}},\"record_id\":\"er-50c896dcc67b046d2e960466df3d7ce4\",\"record_version\":\"evaluation-report/v1\"},\"sig\":\"29f49b7f1795d1f3bf2119fce6b3b8aa0d5d6b61b4e17bae43774123e3f3132458795f174caf949f3856f7a29058a3827f8a4b153f591a11b80013a4acd6010f\",\"subject_ref\":\"50c896dcc67b046d2e960466df3d7ce4\"}"
+          }
+        ],
+        "openings": {
+          "50c896dcc67b046d2e960466df3d7ce4": {
+            "nonce": "10c056721ca284db057474a7638332db075bf354bb52830e8574ad5901d917b0",
+            "text": "terms of 50c896dcc67b046d2e960466df3d7ce4"
+          },
+          "6d443544e41e7d4878ff95318777cc05": {
+            "nonce": "419c84c1f28b439b044fdf9598461e27e01a8397fa3c0a83bdfe15f8d6b06922",
+            "text": "terms of 6d443544e41e7d4878ff95318777cc05"
+          },
+          "a34e091973f2480c793ad9b9bc5aa118": {
+            "nonce": "c707278b52daee3c25371a422a2b1cc8a0d7f37a80f892e9ac0607dae920f2f9",
+            "text": "terms of a34e091973f2480c793ad9b9bc5aa118"
+          }
+        }
+      },
+      "expected": {
+        "exchanges": [
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "50c896dcc67b046d2e960466df3d7ce4"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "53cd33f024ab7773be23108502a71fbc8f6267292a2c455a58d5433c2f7e6f9f"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "6d443544e41e7d4878ff95318777cc05"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "1c63e85fe9d4842152243911947adad592284b0877ec5d476f50b42b2fba10b5"
+                }
+              ],
+              "proofs": []
+            }
+          },
+          {
+            "message_type": "envelope",
+            "subject": {
+              "correlation": "a34e091973f2480c793ad9b9bc5aa118"
+            },
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "NOT_PRESENT",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "accepted": true,
+            "requirements": {
+              "r-deal-steps": {
+                "row": "envelope-4",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "5a6a3538035e4411d8f2a844c6cbc41d8cd0d5646eefc56df8f765f864310e95"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "history_properties": {
+          "definition_form": "PASS",
+          "definition_binding": "PASS",
+          "predicate_binding": "PASS",
+          "coverage_declaration_form": "PASS",
+          "selection_coverage": "PASS",
+          "single_signer": "PASS",
+          "single_anchor": "PASS",
+          "artifact_form": "PASS",
+          "record_kinds": "PASS"
+        },
+        "accepted": true,
+        "claims": [
+          {
+            "deal": "50c896dcc67b046d2e960466df3d7ce4",
+            "record": "92b9c8eb073bf21836a4a11868359fcf4bf8421f6893a790545c5523b52654f1",
+            "predicate": "completed",
+            "source": "judge_verdict",
+            "properties": {
+              "outcome_form": "PASS",
+              "outcome_source_allowed": "PASS",
+              "outcome_evidence": "PASS",
+              "judge_signature": "PASS",
+              "judge_signer_trust": "PASS",
+              "judge_subject": "PASS",
+              "judge_grounds": "PASS",
+              "consent_precedes_judgment": "PASS",
+              "judge_verdict_allowed": "FAIL"
+            },
+            "counts": false,
+            "deal_binding": "carried",
+            "verdict": null
+          }
+        ],
+        "requirements": {
+          "r-completed": {
+            "50c896dcc67b046d2e960466df3d7ce4": {
+              "status": "INSUFFICIENT",
+              "sufficiency": "INSUFFICIENT",
+              "verdict": "not_evaluable"
+            },
+            "6d443544e41e7d4878ff95318777cc05": {
+              "status": "GAP",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable"
+            },
+            "a34e091973f2480c793ad9b9bc5aa118": {
+              "status": "GAP",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable"
+            }
+          },
+          "r-delivered": {
+            "50c896dcc67b046d2e960466df3d7ce4": {
+              "status": "GAP",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable"
+            },
+            "6d443544e41e7d4878ff95318777cc05": {
+              "status": "GAP",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable"
+            },
+            "a34e091973f2480c793ad9b9bc5aa118": {
+              "status": "GAP",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable"
+            }
+          },
+          "r-paid": {
+            "50c896dcc67b046d2e960466df3d7ce4": {
+              "status": "GAP",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable"
+            },
+            "6d443544e41e7d4878ff95318777cc05": {
+              "status": "GAP",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable"
+            },
+            "a34e091973f2480c793ad9b9bc5aa118": {
+              "status": "GAP",
+              "sufficiency": "GAP",
+              "verdict": "not_evaluable"
+            }
+          }
+        },
+        "deal_commitment_opening": {
+          "50c896dcc67b046d2e960466df3d7ce4": "PASS",
+          "6d443544e41e7d4878ff95318777cc05": "PASS",
+          "a34e091973f2480c793ad9b9bc5aa118": "PASS"
+        },
+        "fails": [
+          "judge_verdict_allowed"
         ]
       }
     },

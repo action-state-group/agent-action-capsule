@@ -51,6 +51,7 @@ JSON-DIGEST is the base profile's rule: lowercase-hex SHA-256 of
 | `pos-human-expert` | pass: same `rubric_digest` and same `judged_from` as `pos-ai-judge`; parameters are the rating protocol and the packet shown |
 | `neg-judge-parameters-digest-mismatch` | fail: schema-valid and Class 1 valid, but `judge_parameters_digest` does not recompute from the published parameters |
 | `neg-missing-rubric-version` | fail: the schema rejects the member (required `rubric_version` absent) |
+| `pos-ai-judge-out-of-scope` | pass: a model judge answers `out_of_scope` under its own rubric and instruction template, which list the fourth answer; its parameters carry no prompt file. The answer validates against `JudgeAnswerWithOutOfScope` and not against `JudgeAnswer`, so it joins only a judge declaration that pinned the wider definition (spec §3, §4.2 check 7) |
 
 Each case carries `preimages.values` (the JSON values) and `preimages.canonical`
 (their literal JCS strings). `raw_files` holds the text whose raw-byte digests

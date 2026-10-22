@@ -204,6 +204,20 @@ evaluation_report_pos: EvaluationReportDoc = {
 }
 write("evaluation-report", "pos-example-org-evaluation-report", evaluation_report_pos)
 
+# A case judged out_of_scope beside a met case: the situation its criterion
+# describes did not arise (spec/judge-record-family-v1.md section 2). The
+# report's contract switches out_of_scope on for that requirement; the record
+# alone cannot show that, the claim citing the case does (Result v0 section 4.2).
+evaluation_report_out_of_scope = copy.deepcopy(evaluation_report_pos)
+evaluation_report_out_of_scope["record_id"] = "er-example-org-2"
+evaluation_report_out_of_scope["cases"].append({
+    "case_id": "example-org-sim-002",
+    "verdict": "out_of_scope",
+    "acts": [citation("tau2-conversation", "grounds", {**_tau2_case1_conversation, "sim_id": "example-org-sim-002"})],
+    "method": citation("rubric", "method", _method_content),
+})
+write("evaluation-report", "pos-example-org-evaluation-report-out-of-scope", evaluation_report_out_of_scope)
+
 evaluation_report_neg = copy.deepcopy(evaluation_report_pos)
 del evaluation_report_neg["cases"][0]["method"]
 write("evaluation-report", "neg-case-without-method", evaluation_report_neg)

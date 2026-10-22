@@ -225,7 +225,11 @@ for that (§12) [PO-6].
   The deal binding is `carried` when `judge_subject` is `PASS`, and `holder_only` otherwise.
 
 It establishes "a judge concluded P, from these records, for this question". The verdict is the
-case's `verdict`: `met`, `not_met` or `not_evaluable` [JR §2].
+case's `verdict`: `met`, `not_met` or `not_evaluable` [JR §2]. This level's requirements carry no
+`out_of_scope` switch, so a case verdict outside those three, such as `out_of_scope`, gives a claim
+that does not count, with `judge_verdict_allowed` `FAIL`. A producer MUST NOT map such a verdict to
+another one. `judge_verdict_allowed` is `NOT_CHECKED` when there is not exactly one case for the
+predicate, where `judge_grounds` already fails.
 
 ## 6. Predicates
 
@@ -361,7 +365,7 @@ For each `outcome_recorded` record of an accepted History, the verifier reports:
 | `half_signature`, `half_signer_trust`, `half_subject`, `half_states` | `counterparty_half` | §5.2 |
 | `issuer_independence` | `counterparty_half` | IP §6.7.4, between the half's key and the holder key |
 | `adapter_predicate_maps`, `native_check` | `native_object` | §5.3 |
-| `judge_signature`, `judge_signer_trust`, `judge_subject`, `judge_grounds`, `consent_precedes_judgment` | `judge_verdict` | §5.4 |
+| `judge_signature`, `judge_signer_trust`, `judge_subject`, `judge_grounds`, `consent_precedes_judgment`, `judge_verdict_allowed` | `judge_verdict` | §5.4 |
 
 A claim's properties that need its evidence are `NOT_CHECKED` when the evidence is not held.
 
@@ -482,6 +486,7 @@ here would depend on bytes that revision changes.
 | `deal-commitment-unopened`, `deal-commitment-wrong-opening` | `deal_commitment_opening` `NOT_PRESENT` and `FAIL` |
 | `source-not-allowed`, `judgment-before-consent`, `judge-acts-outside-deal`, `judge-signature-forged` | `outcome_source_allowed`, `consent_precedes_judgment`, `judge_grounds`, `judge_signature` `FAIL` |
 | `judge-not-a-judge`, `judge-for-another-deal` | `judge_signer_trust` (with `consent_precedes_judgment`, whose consent names the judge) and `judge_subject` `FAIL`; the second is `holder_only` |
+| `judge-verdict-out-of-scope` | a judge's case answering `out_of_scope`: `judge_verdict_allowed` `FAIL`, the claim does not count, `r-completed` `INSUFFICIENT` |
 | `half-states-other-predicate`, `half-for-another-deal`, `half-signature-forged` | `half_states`, `half_subject` (and `holder_only`), `half_signature` `FAIL` |
 | `half-under-holder-key`, `half-under-holder-key-trusted` | a half signed by the holder key: `half_signer_trust` with `issuer_independence` `FAIL`; and, where the policy accepts the holder key as the other party's, `issuer_independence` `FAIL` alone |
 | `payment-evidence-claimed-as-delivered` | an x402 payment cited for `delivered`: `outcome_form` and `adapter_predicate_maps` `FAIL` (§6.3) |

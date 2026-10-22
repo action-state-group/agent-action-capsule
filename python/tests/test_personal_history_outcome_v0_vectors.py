@@ -69,6 +69,7 @@ FIXED = {"kind": "projection", "subject_form": "correlation", "reads": READS}
 ROLES = {"seller", "buyer"}
 SOURCES = {"holder_record", "counterparty_half", "native_object", "judge_verdict"}
 ARTIFACT_MEMBERS = {"anchor", "derivation", "evidence_stream", "records", "subject"}
+JUDGE_VERDICTS = {"met", "not_met", "not_evaluable"}
 RECORD_KINDS = {"step_completed", "step_failed", "outcome_recorded", "judge_consent"}
 COMMIT_ALG = "sha256-jcs-nonce256"
 MUST_PASS = ("profile_version", "envelope_signature", "responder_trust", "issued_at_form", "request_binding",
@@ -331,7 +332,7 @@ def judge_properties(case: dict, o: dict, deal: str, rec: dict, deal_records: li
     j = json.loads(objects[o["evidence"][0]]) if len(o.get("evidence", [])) == 1 else None
     if not isinstance(j, dict):
         return dict.fromkeys(["judge_signature", "judge_signer_trust", "judge_subject", "judge_grounds",
-                              "consent_precedes_judgment"], "NOT_CHECKED"), None
+                              "consent_precedes_judgment", "judge_verdict_allowed"], "NOT_CHECKED"), None
     report = j.get("record", {})
     mine = [c for c in report.get("cases", []) if c.get("case_id") == o["predicate"]]
     digests = {r["digest"] for r in deal_records}
@@ -343,7 +344,10 @@ def judge_properties(case: dict, o: dict, deal: str, rec: dict, deal_records: li
              "judge_signer_trust": "PASS" if j.get("judge") in trusted else "FAIL",
              "judge_subject": "PASS" if j.get("subject_ref") == deal else "FAIL",
              "judge_grounds": "PASS" if len(mine) == 1 and acts and set(acts) <= digests else "FAIL",
-             "consent_precedes_judgment": "PASS" if consents else "FAIL"}
+             "consent_precedes_judgment": "PASS" if consents else "FAIL",
+             # §5.4: this level's requirements carry no out_of_scope switch, so any other verdict fails.
+             "judge_verdict_allowed": "NOT_CHECKED" if len(mine) != 1 else (
+                 "PASS" if mine[0].get("verdict") in JUDGE_VERDICTS else "FAIL")}
     return props, (mine[0]["verdict"] if len(mine) == 1 else None)
 
 
@@ -470,7 +474,7 @@ def failing(result: dict) -> set:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 24
+    assert DATA["count"] == len(CASES) == 25
     assert DATA["history"] == NAME
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     run = ROOT / "vectors" / DATA["run"]["path"]
@@ -600,6 +604,7 @@ DEFECTIVE: dict[str, dict] = {
     "consent order not checked": {"evaluate": _override(consent_precedes_judgment="PASS")},
     "judge grounds not checked": {"evaluate": _override(judge_grounds="PASS")},
     "judge signature not checked": {"evaluate": _override(judge_signature="PASS")},
+    "judge verdict not checked": {"evaluate": _override(judge_verdict_allowed="PASS")},
     "half claim not read": {"evaluate": _override(half_states="PASS")},
     "half subject not read": {"evaluate": _override(half_subject="PASS")},
     "same-key half corroborates": {"evaluate": _override(issuer_independence="NOT_CHECKED")},
@@ -627,6 +632,20 @@ def test_disputed_is_never_an_outcome_claim():
     (claim,) = case["expected"]["claims"]
     assert claim["properties"]["outcome_form"] == "FAIL" and not claim["counts"]
     assert PREDICATES["disputed"]["sources"] == []
+
+
+def test_out_of_scope_verdict_is_never_mapped():
+    """§5.4: this level's requirements carry no out_of_scope switch, so a judge's out_of_scope case
+    gives a claim that does not count, never one read as another verdict."""
+    (case,) = [c for c in CASES if c["id"] == "judge-verdict-out-of-scope"]
+    (claim,) = case["expected"]["claims"]
+    assert claim["properties"]["judge_verdict_allowed"] == "FAIL" and not claim["counts"]
+    assert claim["verdict"] is None
+    assert case["expected"]["requirements"]["r-completed"][claim["deal"]]["status"] == "INSUFFICIENT"
+    for c in CASES:
+        for cl in c["expected"]["claims"] or []:
+            if cl["source"] == "judge_verdict" and c["id"] != case["id"]:
+                assert cl["properties"]["judge_verdict_allowed"] == "PASS", c["id"]
 
 
 # ---------------------------------------------------------------------------

@@ -762,6 +762,28 @@ def test_requirement_facts_are_copied(req, applies_from, allowed):
                             content_evaluator=lambda q, art, nc: ("SATISFIED", "out_of_scope"))
 
 
+def test_out_of_scope_follows_each_requirements_switch():
+    """§8.2 invariant 1 per requirement: in one contract, out_of_scope is accepted on the switched-on
+    native requirement and refused on the unswitched one beside it. A pairing failure fails the
+    whole run, so this takes two runs."""
+    native = {"statement": "s", "evidence_rule": "e", "forward_verdict": "DETERMINISTIC",
+              "backward_verdict": "DETERMINISTIC"}
+    contract = copy.deepcopy(CONTRACT)
+    contract["requirements"][0] = {**native, "id": "r-record", "out_of_scope_allowed": True}
+    contract["requirements"][1] = {**native, "id": "r-carried-signature"}
+    case, ex = _valid_exchange()
+    trust, vpolicy, now = policies(case)
+    verifier = InteropVerifier(trust, vpolicy, now, contract=contract)
+    ids = ["r-record", "r-carried-signature"]
+    mixed = verifier.verify([ex], requirements=ids, content_evaluator=lambda q, art, nc: (
+        "SATISFIED", "out_of_scope" if q["id"] == "r-record" else "met"))
+    got = mixed.exchanges[0].replies[0].requirements
+    assert (got["r-record"].verdict, got["r-record"].out_of_scope_allowed) == ("out_of_scope", True)
+    assert (got["r-carried-signature"].verdict, got["r-carried-signature"].out_of_scope_allowed) == ("met", False)
+    with pytest.raises(ValueError, match="r-carried-signature.*§8.2 invariant 1"):
+        verifier.verify([ex], requirements=ids, content_evaluator=lambda q, art, nc: ("SATISFIED", "out_of_scope"))
+
+
 @pytest.mark.parametrize("bad", ["2027-02-30", "2027-13-01", "2027-2-03", "20270203", "2027-02-03T00:00:00Z",
                                  "0000-01-01", "２０２７-02-03", 20270203, None])
 def test_non_calendar_effective_from_is_not_evaluated(bad):

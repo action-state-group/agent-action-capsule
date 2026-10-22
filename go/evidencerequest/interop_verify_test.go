@@ -394,6 +394,42 @@ func TestVerifierCopiesTheRequirementsFacts(t *testing.T) {
 	}
 }
 
+// §8.2 invariant 1 per requirement: in one contract, out_of_scope is accepted
+// on the switched-on native requirement and refused on the unswitched one
+// beside it. A pairing failure fails the whole run, so this takes two runs.
+func TestVerifierOutOfScopeFollowsEachRequirementsSwitch(t *testing.T) {
+	pins, contract, ex := rowSeven(t)
+	reqs := slices.Clone(contract["requirements"].([]any))
+	reqs[0] = map[string]any{"id": "r-record", "statement": "s", "evidence_rule": "e",
+		"forward_verdict": "DETERMINISTIC", "backward_verdict": "DETERMINISTIC", "out_of_scope_allowed": true}
+	reqs[1] = map[string]any{"id": "r-carried-signature", "statement": "s", "evidence_rule": "e",
+		"forward_verdict": "DETERMINISTIC", "backward_verdict": "DETERMINISTIC"}
+	doc := map[string]any{"id": contract["id"], "version": contract["version"], "requirements": reqs}
+	v := newVerifier(t, pins, doc)
+	ids := []string{"r-record", "r-carried-signature"}
+	answer := func(switchedOnly bool) er.VerifyOptions {
+		return er.VerifyOptions{Requirements: ids,
+			Content: func(req map[string]any, _ []byte, _ *er.PropertyReport) (string, string, bool) {
+				if req["id"] == "r-record" || !switchedOnly {
+					return "SATISFIED", "out_of_scope", true
+				}
+				return "SATISFIED", "met", true
+			}}
+	}
+
+	res, err := v.Verify(ex, answer(true))
+	require.NoError(t, err)
+	got := res.Exchanges[0].Replies[0].Requirements
+	assert.Equal(t, "out_of_scope", got["r-record"].Verdict)
+	assert.True(t, got["r-record"].OutOfScopeAllowed)
+	assert.Equal(t, "met", got["r-carried-signature"].Verdict)
+	assert.False(t, got["r-carried-signature"].OutOfScopeAllowed)
+
+	_, err = v.Verify(ex, answer(false))
+	require.ErrorContains(t, err, "r-carried-signature")
+	assert.NotContains(t, err.Error(), "r-record:")
+}
+
 // §11.3.7: an effective_from that is not a calendar date means the contract
 // version is not evaluated, the same as two requirements sharing an id.
 func TestVerifierDoesNotEvaluateANonCalendarEffectiveFrom(t *testing.T) {

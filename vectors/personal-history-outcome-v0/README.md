@@ -45,7 +45,7 @@ alone:
   those statuses;
 - it compares all of that with each case's whole `expected` block, and checks that each case's
   `fails` are exactly the properties that are `FAIL`;
-- it runs fifteen defective evaluators, each of which must disagree with at least one case;
+- it runs sixteen defective evaluators, each of which must disagree with at least one case;
 - it checks that every file of the Basic level corpus has the digest it had when this level was
   cut, and that no file was added;
 - it regenerates the directory twice and requires both runs to be byte-identical to the committed

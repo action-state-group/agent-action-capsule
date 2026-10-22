@@ -1,0 +1,60 @@
+{
+  "cases": [
+    {
+      "acts": [
+        {
+          "citation_purpose": "grounds",
+          "digest": "f7567d3dcb2517ef163fccac913f161a5697192f21f0fde408eef176a2624912",
+          "digest_alg": "SHA-256",
+          "type": "tau2-conversation"
+        }
+      ],
+      "case_id": "example-org-sim-001",
+      "method": {
+        "citation_purpose": "method",
+        "digest": "381d8ecfcebaee02f0f0e43bcebb83f018a785a822100480737e2f6e8dbbfebd",
+        "digest_alg": "SHA-256",
+        "type": "rubric"
+      },
+      "verdict": "met"
+    },
+    {
+      "acts": [
+        {
+          "citation_purpose": "grounds",
+          "digest": "6f55d760092458b0e5c626edde26d363d12b71fa36be74fe227622754e5cfa69",
+          "digest_alg": "SHA-256",
+          "type": "tau2-conversation"
+        }
+      ],
+      "case_id": "example-org-sim-002",
+      "method": {
+        "citation_purpose": "method",
+        "digest": "381d8ecfcebaee02f0f0e43bcebb83f018a785a822100480737e2f6e8dbbfebd",
+        "digest_alg": "SHA-256",
+        "type": "rubric"
+      },
+      "verdict": "out_of_scope"
+    }
+  ],
+  "contract_ref": "ec:example-org-claims-eval:2026-09-22@1",
+  "epistemic_type": "semantic_judgment",
+  "generated_at": "2026-09-25T00:00:00Z",
+  "judge_pin": {
+    "axes_digest": {
+      "digest": "bdc75875acf0d351338ea4b9baeeb2a7a5bec65cda6dd02dfd735951bfb9a571",
+      "digest_alg": "SHA-256"
+    },
+    "model_id": "example-org-judge-v1",
+    "prompt_digest": {
+      "digest": "cd3ab312b2e14dd75bd3859999adba2f66d9082dc8bd6369c406e0426711e749",
+      "digest_alg": "SHA-256"
+    },
+    "sampling": {
+      "seed": 1,
+      "temperature_micros": 0
+    }
+  },
+  "record_id": "er-example-org-2",
+  "record_version": "evaluation-report/v1"
+}

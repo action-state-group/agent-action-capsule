@@ -123,11 +123,32 @@ does not pin a version, so a `hosted` model can change behind a matching `model_
 
 ## 3. Answer schema
 
-The answer schema of every `x-judgment-v1` record is `$defs/JudgeAnswer` in the companion
-schema: `{verdict, rationale}`, with `verdict` in `met | not_met | not_evaluable`. It is fixed by
-the member name, so the record carries no answer-schema field. The **answer schema digest** is
-the JSON-DIGEST of the `$defs/JudgeAnswer` value as published in
-`schemas/judgment/judgment-extension-v1.json` at the member's version.
+An `x-judgment-v1` record's answer is `{verdict, rationale}` (`rationale` optional), under one of
+two definitions in the companion schema:
+
+- `$defs/JudgeAnswer`: `verdict` in `met | not_met | not_evaluable`;
+- `$defs/JudgeAnswerWithOutOfScope`: the same, with `verdict` also `out_of_scope` (the Evidence
+  Contract's fourth verdict, `spec/evidence-result-v0.md` §4.2).
+
+The record names neither: a pack's judge declaration names one by its `schema_hash` (§4.1). Every
+answer `JudgeAnswer` accepts, `JudgeAnswerWithOutOfScope` accepts, so a record's answer is
+well formed when it validates against `JudgeAnswerWithOutOfScope`. An **answer schema digest** is
+the JSON-DIGEST of one of the two values as published in `schemas/judgment/judgment-extension-v1.json`
+at the member's version: `1b8f1f21f261cc5ee87c23a1fc1711a0907be6599a45b1a9e3ebfe13d626a0ec` for
+`JudgeAnswer`, `07ec203b83ec977d43188b4d4edb93fac563298aa54523bff09713bd52dd9507` for
+`JudgeAnswerWithOutOfScope`. Each value is frozen with its description, which is inside its
+digest. `JudgeAnswer`'s description still says it is the answer schema of every record and calls the
+contract's vocabulary three-valued; this section supersedes both sentences.
+
+**`out_of_scope` is for a switched-on requirement only.** A judge answers `out_of_scope` only for a
+requirement that carries `out_of_scope_allowed` (`spec/evidence-result-v0.md` §4.2), and a pack
+pins `JudgeAnswerWithOutOfScope` only for a judge that answers such requirements. A producer MUST
+NOT map a judge's `out_of_scope` answer to any other verdict: where the requirement has no switch,
+the answer is malformed and gives no counting claim. A record does not name its requirement, so
+this is checked where the requirement is known: the Result claim, against its copied switch
+(Result v0 §4.2), and the interop profile's evaluator (§8.3). A third party can tell that a
+producer mapped such an answer to another verdict only from the judge's disclosed answer or by
+re-evaluating.
 
 The axes file (`axes_digest`, a RAW-DIGEST inside `judge_parameters_digest`) is not the answer
 schema. It names what the judge is asked to assess, which is part of how the judge was asked.
@@ -153,7 +174,7 @@ The judge declaration's members are `model_id`, `prompt_template_hash`, `schema_
 | *(no member)* | | `x-judgment-v1.model_reference` (optional) | reference string (§2.1, rung 2) | **No pack counterpart.** |
 | `prompt_template_hash` | JSON-DIGEST of the instruction template object, as published, before interpolation | `JudgeParameters.instruction_template_digest`, reached by recomputing `judge_parameters_digest` from the published `JudgeParameters` | JSON-DIGEST of the same object | **digest-level, equal**. |
 | *(no member)* | | `JudgeParameters.prompt_file_digest` (optional) | RAW-DIGEST of a published judge prompt file | **No pack counterpart.** MUST NOT be compared with `prompt_template_hash`. |
-| `schema_hash` | JSON-DIGEST of the answer schema | *(no member)*: the answer schema digest (§3), fixed by the member name | JSON-DIGEST of `$defs/JudgeAnswer` | **digest-level, against a constant**. |
+| `schema_hash` | JSON-DIGEST of the answer schema | *(no member)*: one of the two answer schema digests (§3); the declaration names which | JSON-DIGEST of `$defs/JudgeAnswer` or of `$defs/JudgeAnswerWithOutOfScope` | **digest-level, against one of two constants**; a disclosed answer is then checked against the definition named (§4.2 check 7). |
 | *(no member)* | | `JudgeParameters.axes_digest` | RAW-DIGEST of the published axes file | **No pack counterpart.** |
 | `input_refs` | list of action field names | *(no member)* | | **Not joinable.** `judged_from` names the evidence by digest, not which of its fields the template read. |
 | *(no member)* | | `JudgeParameters.sampling_params`, `min_confidence_micros`, `judge_batch` | inside `judge_parameters_digest` | **Not declared by the pack**, so any value is consistent with the declaration. |
@@ -177,18 +198,32 @@ Neither digest preimage carries the action's content. `instruction_template_dige
 
 ### 4.2 Procedure
 
-Given a judge declaration `D`, a judgment Capsule `C` whose member is `M`, and the published
-`JudgeParameters` `P` behind `C`, a verifier reports **"produced by the declared judge"** if and
-only if all six checks hold:
+Given a judge declaration `D`, a judgment Capsule `C` whose member is `M`, the published
+`JudgeParameters` `P` behind `C`, and, when the bundle discloses it, the judge's answer `A` (the
+disclosure field `agent_output`), a verifier runs seven checks:
 
 1. `JSON-DIGEST(P)` equals `M.judge_parameters_digest`.
 2. `P.instruction_template_digest` equals `D.prompt_template_hash`.
-3. `D.schema_hash` equals the answer schema digest (§3).
+3. `D.schema_hash` equals one of the two answer schema digests (§3).
 4. `C.developer` equals `D.model_id`, or begins with `D.model_id` followed by `@`.
 5. `M.model_hosting` (or `hosted`, if absent) equals `D.model_hosting`.
 6. If `D.model_digest` is present, `M.model_digest` is present and equal to it.
+7. If `A` is disclosed, `JSON-DIGEST(A)` equals `C.model_attestation.compute_attestation.agent_output_digest`,
+   and `A` validates against the definition `D.schema_hash` names.
 
-Checks 1 to 3 and 6 are digest-level. Checks 4 and 5 are value-level. When check 6 applies,
+It reports one of two outcomes, and nothing else as attribution:
+
+- **"produced by the declared judge"** when checks 1 to 7 hold with `A` disclosed;
+- **"produced by the declared judge; answer not disclosed, so not checked"** when checks 1 to 6
+  hold and `A` is not disclosed. A verifier MUST NOT drop the qualifier: a withheld answer is not
+  a checked one, and not a failed one.
+
+So a disclosed `out_of_scope` answer under a declaration that pinned `JudgeAnswer` fails the join,
+and an answer substituted for the committed one fails on its digest. A record that joined under
+the six checks of the earlier revision still joins, with the qualifier when its answer is
+withheld.
+
+Checks 1 to 3, 6 and the digest half of 7 are digest-level. Checks 4 and 5 are value-level. When check 6 applies,
 the join reaches rung 3, which is still self-reported (§2.1). A pass establishes
 **attribution**, not re-derivation (§1). It says nothing about the rubric, the sampling
 parameters or the fields read, which the declaration does not pin (§4.1). A human-expert record

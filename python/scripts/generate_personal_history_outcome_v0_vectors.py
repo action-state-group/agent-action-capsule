@@ -106,7 +106,8 @@ CLAIM_PROPS = {
     "native_object": ["outcome_form", "outcome_source_allowed", "outcome_evidence", "adapter_predicate_maps",
                       "native_check"],
     "judge_verdict": ["outcome_form", "outcome_source_allowed", "outcome_evidence", "judge_signature",
-                      "judge_signer_trust", "judge_subject", "judge_grounds", "consent_precedes_judgment"],
+                      "judge_signer_trust", "judge_subject", "judge_grounds", "consent_precedes_judgment",
+                      "judge_verdict_allowed"],
 }
 
 # The IP requirement every envelope maps (as at the Basic level, §6.1 there), and the recipient's
@@ -407,8 +408,9 @@ def cases(run: dict) -> list[dict]:
 
     # §5.4: a judge's verdict, after the holder's consent.
     def judged(cid: str, title: str, *, acts: list[str] = d1_records, signer: str = "judge", named: str = "judge",
-               subject: str = d1, consent_seq: int = 1, defn: dict | None = None, **props: str) -> dict:
-        jr = judge_record(subject, acts, "met", signer, named)
+               subject: str = d1, consent_seq: int = 1, defn: dict | None = None, verdict: str = "met",
+               **props: str) -> dict:
+        jr = judge_record(subject, acts, verdict, signer, named)
         jd = shx(jr["octets_text"].encode())
         c = record(consent_seq, "judge_consent", consent={"judge": PUB["judge"], "contract_ref": JUDGE_CONTRACT_REF})
         r = record(2, "outcome_recorded", outcome=outcome("completed", "judge_verdict", [jd]))
@@ -458,6 +460,9 @@ def cases(run: dict) -> list[dict]:
                       consent_precedes_judgment="FAIL"))
     out.append(judged("judge-for-another-deal", "A judge record naming the second deal, cited for the first",
                       subject=d2, judge_subject="FAIL"))
+    out.append(judged("judge-verdict-out-of-scope",
+                      "The judge's case for the predicate answers out_of_scope, which no requirement here allows",
+                      verdict="out_of_scope", judge_verdict_allowed="FAIL"))
 
     def halved(cid: str, title: str, h: dict, predicate: str = "delivered", roles: dict | None = None,
                **props: str) -> dict:

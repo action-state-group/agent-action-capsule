@@ -104,8 +104,8 @@ def test_sha256sums_pin_every_file():
 
 
 def test_cases_and_provisional_status():
-    assert DATA["count"] == len(DATA["cases"]) == 4
-    assert set(POSITIVE) == {"pos-ai-judge", "pos-human-expert"}
+    assert DATA["count"] == len(DATA["cases"]) == 5
+    assert set(POSITIVE) == {"pos-ai-judge", "pos-human-expert", "pos-ai-judge-out-of-scope"}
     assert "PROVISIONAL" in DATA["status"] and "unratified" in DATA["status"]
     assert "proposed and unratified" in (VECTORS / "README.md").read_text(encoding="utf-8")
     corpora = json.loads((ROOT / "vectors" / "manifest.json").read_text(encoding="utf-8"))["corpora"]
@@ -240,6 +240,66 @@ def test_preimages_validate_against_their_defs():
     for values in (ai, expert):
         assert _validator("RubricDocument").is_valid(values["rubric"])
         assert _validator("JudgeAnswer").is_valid(values["agent_output"])
+
+
+# ---------------------------------------------------------------------------
+# Answer schema and the judge-declaration join (spec sections 3 and 4.2)
+# ---------------------------------------------------------------------------
+
+ANSWER_SCHEMA_DIGESTS = {
+    "JudgeAnswer": "1b8f1f21f261cc5ee87c23a1fc1711a0907be6599a45b1a9e3ebfe13d626a0ec",
+    "JudgeAnswerWithOutOfScope": "07ec203b83ec977d43188b4d4edb93fac563298aa54523bff09713bd52dd9507",
+}
+NOT_CHECKED = "produced by the declared judge; answer not disclosed, so not checked"
+
+
+def answer_join(schema_hash: str, capsule: dict, answer: dict | None) -> str | None:
+    """Checks 3 and 7 of section 4.2: the outcome they allow, or None when they fail."""
+    named = {digest: name for name, digest in ANSWER_SCHEMA_DIGESTS.items()}.get(schema_hash)
+    if named is None:
+        return None
+    if answer is None:
+        return NOT_CHECKED
+    committed = capsule["model_attestation"]["compute_attestation"]["agent_output_digest"]
+    if _json_digest(answer) != committed or not _validator(named).is_valid(answer):
+        return None
+    return "produced by the declared judge"
+
+
+def test_answer_schema_digests_are_the_published_ones():
+    defs = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))["$defs"]
+    for name, digest in ANSWER_SCHEMA_DIGESTS.items():
+        assert _json_digest(defs[name]) == digest, name
+
+
+def test_every_answer_fits_the_wider_definition_and_out_of_scope_only_that():
+    for case_id in ("pos-ai-judge", "pos-human-expert", "pos-ai-judge-out-of-scope"):
+        assert _validator("JudgeAnswerWithOutOfScope").is_valid(CASES[case_id]["preimages"]["values"]["agent_output"])
+    oos = CASES["pos-ai-judge-out-of-scope"]["preimages"]["values"]
+    assert not _validator("JudgeAnswer").is_valid(oos["agent_output"])
+    assert _validator("JudgeParameters").is_valid(oos["judge_parameters"])
+    assert _validator("RubricDocument").is_valid(oos["rubric"])
+    assert CASES["pos-ai-judge-out-of-scope"]["expect"]["answer_schema"] == "JudgeAnswerWithOutOfScope"
+
+
+def test_judge_declaration_join_checks_3_and_7():
+    ai, oos = CASES["pos-ai-judge"], CASES["pos-ai-judge-out-of-scope"]
+    old, wide = ANSWER_SCHEMA_DIGESTS["JudgeAnswer"], ANSWER_SCHEMA_DIGESTS["JudgeAnswerWithOutOfScope"]
+    ai_answer = ai["preimages"]["values"]["agent_output"]
+    oos_answer = oos["preimages"]["values"]["agent_output"]
+    joined = "produced by the declared judge"
+    # an older answer joins under either pin
+    assert answer_join(old, ai["capsule"], ai_answer) == joined
+    assert answer_join(wide, ai["capsule"], ai_answer) == joined
+    # out_of_scope joins only under the wider pin
+    assert answer_join(wide, oos["capsule"], oos_answer) == joined
+    assert answer_join(old, oos["capsule"], oos_answer) is None
+    # an unknown pin never joins
+    assert answer_join("0" * 64, ai["capsule"], ai_answer) is None
+    # a schema-valid answer substituted for the committed one fails on its digest
+    assert answer_join(wide, oos["capsule"], {"verdict": "met"}) is None
+    # a withheld answer joins only with the qualifier
+    assert answer_join(old, oos["capsule"], None) == NOT_CHECKED
 
 
 @pytest.mark.parametrize("mutation", ["no-judged-from", "two-judged-from", "extra-member", "upper-hex"])
