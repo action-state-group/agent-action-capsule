@@ -2215,17 +2215,14 @@ export async function renderEvidenceGraph(
   // Verify first. Until the verification result is in hand the page shows
   // `checking` and nothing else, and no module is consulted for a bundle
   // that did not verify. A render that rejects while its own `checking` is
-  // still shown puts back what `root` held, so it still draws nothing; once
-  // another render has replaced that state, its page is left alone.
-  // Another render's `checking` is never put back: it may have ended.
-  const before = [...root.childNodes].filter(
-    (node) =>
-      !(
-        node.nodeType === 1 &&
-        (node as Element).getAttribute("data-verify") === "checking"
-      ),
-  );
+  // still shown puts back what `root` held, so it still draws nothing. When
+  // another render on the same root is still checking, its `checking` is
+  // put back instead; another render's `checking` that has ended never is.
+  const before = [...root.childNodes];
   const checking = renderChecking(root);
+  const active = checkingRenders.get(root) ?? new Set<HTMLElement>();
+  checkingRenders.set(root, active);
+  active.add(checking);
   try {
     await renderVerifiedContext(
       await buildVerifiedBundleContext(input, {
@@ -2235,10 +2232,28 @@ export async function renderEvidenceGraph(
       options,
     );
   } catch (err) {
-    if (checking.parentNode === root) root.replaceChildren(...before);
+    if (checking.parentNode === root) {
+      const other = [...active].find((node) => node !== checking);
+      if (other !== undefined) root.replaceChildren(other);
+      else
+        root.replaceChildren(
+          ...before.filter(
+            (node) =>
+              !(
+                node.nodeType === 1 &&
+                (node as Element).getAttribute("data-verify") === "checking"
+              ),
+          ),
+        );
+    }
     throw err;
+  } finally {
+    active.delete(checking);
   }
 }
+
+// The `checking` banners of the renders still verifying, by root.
+const checkingRenders = new WeakMap<HTMLElement, Set<HTMLElement>>();
 
 async function renderVerifiedContext(
   context: VerifiedBundleContext,
@@ -2387,8 +2402,10 @@ async function renderVerifiedContext(
     if (
       banners.length !== frame.parts.length ||
       frame.parts.some((part, i) => banners[i] !== part) ||
-      root.firstElementChild !== (frame.header ?? top) ||
-      top.previousElementSibling !== frame.header ||
+      // Nodes, not elements: a bare text node before the banner is words
+      // too. The core draws no text node at the root.
+      root.firstChild !== (frame.header ?? top) ||
+      top.previousSibling !== frame.header ||
       (frame.header !== null && frame.header.parentNode !== root) ||
       (detail !== undefined && detail.previousElementSibling !== top) ||
       top.parentNode !== root ||

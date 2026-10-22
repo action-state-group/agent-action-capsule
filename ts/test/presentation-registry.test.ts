@@ -455,6 +455,12 @@ describe("resolution and rendering (spec section 4.3)", () => {
       },
     ],
     [
+      "puts bare words before the banner",
+      (b: HTMLElement) => {
+        b.parentElement!.prepend("✓ Verified by the module");
+      },
+    ],
+    [
       "removes the banner",
       (b: HTMLElement) => {
         b.remove();
@@ -579,6 +585,51 @@ describe("resolution and rendering (spec section 4.3)", () => {
     gates[1]!();
     await expect(second).rejects.toThrow("late model failure");
     expect(root.querySelector('[data-verify="checking"]')).toBeNull();
+  });
+
+  it("a render that rejects while another on the same root is still checking puts that render's checking back", async () => {
+    let failSecond!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      failSecond = resolve;
+    });
+    let finishFirst!: () => void;
+    const held = new Promise<void>((resolve) => {
+      finishFirst = resolve;
+    });
+    const slow = new PresentationRegistry();
+    slow.register({
+      ...spyModule(manifest()).module,
+      buildModel: async () => {
+        await held;
+        return { id: "org.example.view/v0" };
+      },
+    });
+    const failing = new PresentationRegistry();
+    failing.register({
+      ...spyModule(manifest()).module,
+      buildModel: async () => {
+        await gate;
+        throw new Error("late model failure");
+      },
+    });
+    const root = document.createElement("main");
+    const first = renderEvidenceGraph(producerKeyBundle(), root, undefined, {
+      registry: slow,
+    });
+    const second = renderEvidenceGraph(producerKeyBundle(), root, undefined, {
+      registry: failing,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    failSecond();
+    await expect(second).rejects.toThrow("late model failure");
+    // The first render is still checking, and the page says so.
+    expect(
+      root.querySelector<HTMLElement>("[data-verify]")?.dataset.verify,
+    ).toBe("checking");
+    finishFirst();
+    await first;
+    expect(root.querySelector('[data-verify="checking"]')).toBeNull();
+    expect(root.querySelectorAll("[data-verify]")).toHaveLength(1);
   });
 
   it("a module whose model cannot be built rejects before anything is drawn (as a malformed Result root always has)", async () => {
