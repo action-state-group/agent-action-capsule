@@ -680,7 +680,7 @@ def test_judge_verdict_allowed_not_checked_without_one_case_or_the_record():
 
 def test_out_of_scope_verdict_is_never_mapped():
     """§5.4: this level's requirements carry no out_of_scope switch, so a judge's out_of_scope case
-    gives a claim that does not count, never one read as another verdict."""
+    backs no counting claim and is never read as another verdict."""
     (case,) = [c for c in CASES if c["id"] == "judge-verdict-out-of-scope"]
     (claim,) = case["expected"]["claims"]
     assert claim["properties"]["judge_verdict_allowed"] == "FAIL" and not claim["counts"]
