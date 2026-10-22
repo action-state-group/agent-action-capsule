@@ -1411,3 +1411,25 @@ it("(ER 4.2) an out_of_scope claim is its own criterion verdict and count, never
     conversation.criteria.filter((cr) => cr.verdict === "not_applicable"),
   ).toHaveLength(0);
 });
+
+it("(ER 4.3) a criterion not yet in force that failed verification is still drawn failed, and its conversation never resolves", async () => {
+  const { bundle } = await sealEvidenceBundle(
+    fixture("outcome-report-bundle.json"),
+  );
+  const result = await buildResultRoot(bundle);
+  const target = result.claims.find((claim) => claim.verdict === "met")!;
+  const failedLater = {
+    ...result,
+    claims: result.claims.map((claim) =>
+      claim.id === target.id ? { ...claim, later: true, failed: true } : claim,
+    ),
+  };
+  const model = buildOutcomeReportModel(failedLater, { percentages: false });
+  const conversation = model.conversations.find((c) =>
+    c.criteria.some((cr) => cr.claim?.id === target.id),
+  )!;
+  expect(
+    conversation.criteria.find((cr) => cr.claim?.id === target.id)!.verdict,
+  ).toBe("failed");
+  expect(conversation.verdict).not.toBe("met");
+});

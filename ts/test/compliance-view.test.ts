@@ -199,3 +199,34 @@ it("(ER 4.2, 4.3) draws an Out of scope column, and a row whose claims are all n
   );
   expect(header).toContain("Out of scope");
 });
+
+it("(ER 4.3) an obligation whose claims are all not yet in force reads Not yet in force in the summary, never No exceptions", async () => {
+  const { bundle } = await sealedComplianceBundle((source) => {
+    const result = ((source.disclosures as Obj).result as Obj)
+      .agent_input as Obj;
+    const claims = result.claims as Obj[];
+    const isArt50 = (ref: unknown) =>
+      typeof ref === "string" && ref.startsWith("art50.");
+    let later = 0;
+    for (const claim of claims)
+      if (isArt50(claim.requirement_ref)) {
+        claim.applies_from = "2027-08-02";
+        later += 1;
+      }
+    const buckets = (result.aggregate as Obj).buckets as Obj;
+    for (const key of ["met", "not_met", "not_evaluable"])
+      buckets[key] = (buckets[key] as string[]).filter(
+        (id) => !id.includes("::art50."),
+      );
+    const coverage = (result.aggregate as Obj).coverage as Obj;
+    coverage.evaluated_population =
+      (coverage.evaluated_population as number) - later;
+    coverage.not_yet_in_force = later;
+  });
+  const root = await render(bundle);
+  const summary = root.querySelector<HTMLElement>(
+    '[data-rows="summary"] tr[data-obligation="art50"]',
+  )!;
+  expect(summary.textContent).toContain("Not yet in force");
+  expect(summary.textContent).not.toContain("No exceptions");
+});

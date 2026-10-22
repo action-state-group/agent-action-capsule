@@ -526,7 +526,7 @@ function conversationBody(
         "li",
         outOfScope.length === 0
           ? `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met and ${na.length} not applicable. The rule bills a conversation only when ${n === 1 ? "its one criterion passes" : `all ${countWord(n)} pass`}, and not applicable counts as passing.`
-          : `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met, ${na.length} not applicable and ${outOfScope.length} out of scope. The rule bills a conversation only when every criterion that applies passes; not applicable and out of scope (did not arise) count as not applying, never as met.`,
+          : `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met, ${na.length} not applicable and ${outOfScope.length} out of scope. The rule bills a conversation only when ${n === 1 ? "its one criterion passes" : `all ${countWord(n)} pass`}, and not applicable and out of scope (did not arise) count as passing beside a met, never alone.`,
       ),
     );
   } else {

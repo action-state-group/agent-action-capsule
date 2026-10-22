@@ -115,6 +115,19 @@ function obligationStatus(obligation: ObligationModel): {
   text: string;
 } {
   const exceptions = obligation.rows.reduce((sum, r) => sum + r.notMetCount, 0);
+  // Result v0 section 4.3: when nothing in force was evaluated and some
+  // claims are later, there is no population to have no exceptions in.
+  const evaluated = obligation.rows.reduce(
+    (sum, r) =>
+      sum +
+      r.metCount +
+      r.notMetCount +
+      r.notEvaluableCount +
+      r.outOfScopeCount,
+    0,
+  );
+  if (evaluated === 0 && obligation.rows.some((r) => r.notYetInForceCount > 0))
+    return { cls: "future", text: "Not yet in force" };
   if (obligation.applicability.status === "not stated")
     return exceptions > 0
       ? { cls: "exc", text: `Exceptions noted (${fmt(exceptions)})` }

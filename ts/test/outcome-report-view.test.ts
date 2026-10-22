@@ -1466,6 +1466,6 @@ it("(ER 4.2) a resolved conversation with an out_of_scope criterion never says i
   );
   open(conv);
   expect(conv.querySelector('[data-why="resolved"]')!.textContent).toContain(
-    "Resolved: 1 criterion met, 0 not applicable and 1 out of scope.",
+    "Resolved: 1 criterion met, 0 not applicable and 1 out of scope. The rule bills a conversation only when all two pass, and not applicable and out of scope (did not arise) count as passing beside a met, never alone.",
   );
 });

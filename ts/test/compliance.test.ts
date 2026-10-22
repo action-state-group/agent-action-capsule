@@ -272,3 +272,26 @@ it("(ER 4.2, 4.3) counts out_of_scope on its own, never as not applicable or an 
   expect(art50.outOfScopeCount).toBe(0);
   expect(art50.notYetInForceCount).toBe(2);
 });
+
+it("(ER 4.3) a claim not yet in force that failed verification stays an exception, never readiness", async () => {
+  const { bundle } = await sealedComplianceBundle();
+  const result = await buildResultRoot(bundle);
+  const target =
+    "tau2:airline:task-0:trial-0::art5.no_manipulation_or_deception";
+  const failedLater = {
+    ...result,
+    claims: result.claims.map((claim) =>
+      claim.id === target ? { ...claim, later: true, failed: true } : claim,
+    ),
+  };
+  const m = buildComplianceModel(
+    failedLater,
+    readCompliancePresentation(bundle)!,
+  );
+  const art5 = m.obligations
+    .flatMap((o) => o.rows)
+    .find((r) => r.criterionId === "art5.no_manipulation_or_deception")!;
+  expect(art5.notYetInForceCount).toBe(0);
+  expect(art5.metCount).toBe(0);
+  expect(art5.notMetCount).toBe(2);
+});
