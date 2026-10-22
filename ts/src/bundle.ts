@@ -1492,11 +1492,7 @@ function ownedCopy<T>(value: T): T {
   // is copied before the next member is read, so every value, getters
   // included, is read in the order the recursive copy read it.
   type Frame =
-    | {
-        readonly source: readonly unknown[];
-        readonly out: unknown[];
-        index: number;
-      }
+    | { readonly items: Iterator<unknown>; readonly out: unknown[] }
     | {
         readonly source: Record<string, unknown>;
         readonly out: Record<string, unknown>;
@@ -1513,7 +1509,8 @@ function ownedCopy<T>(value: T): T {
     if (Array.isArray(input)) {
       const out: unknown[] = [];
       seen.set(input, out);
-      frames.push({ source: input, out, index: 0 });
+      // The array's own iterator, as `for...of` read it.
+      frames.push({ items: input[Symbol.iterator](), out });
       return out;
     }
     const out: Record<string, unknown> = {};
@@ -1542,11 +1539,12 @@ function ownedCopy<T>(value: T): T {
         configurable: true,
       });
     } else {
-      if (frame.index >= frame.source.length) {
+      const next = frame.items.next();
+      if (next.done === true) {
         frames.pop();
         continue;
       }
-      frame.out.push(copyOf(frame.source[frame.index++]));
+      frame.out.push(copyOf(next.value));
     }
   }
   return root as T;
