@@ -350,7 +350,8 @@ def judge_properties(case: dict, o: dict, deal: str, rec: dict, deal_records: li
              "judge_verdict_allowed": "NOT_CHECKED" if len(mine) != 1 else (
                  "PASS" if isinstance(mine[0].get("verdict"), str) and mine[0]["verdict"] in JUDGE_VERDICTS
                  else "FAIL")}
-    return props, (mine[0].get("verdict") if len(mine) == 1 else None)
+    verdict = mine[0].get("verdict") if len(mine) == 1 else None
+    return props, (verdict if isinstance(verdict, str) else None)
 
 
 def claim_properties(case: dict, definition: dict, env: dict, rec: dict) -> tuple[dict, str | None]:
