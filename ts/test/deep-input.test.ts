@@ -104,7 +104,8 @@ describe("input nested beyond the stack", () => {
 
 // #360: the viewer's context copies and freezes its input before verifying
 // it. Both walks are iterative, so the copy succeeds and the verifier's own
-// refusal is what the page shows.
+// refusal is what the page shows. A million levels take a few seconds on a
+// slow runner, hence the longer timeouts.
 describe("a context over input nested beyond the stack", () => {
   it("is built over the refused result, never rejects", async () => {
     const context = await buildVerifiedBundleContext(deepBundle());
@@ -123,7 +124,7 @@ describe("a context over input nested beyond the stack", () => {
       depth += 1;
     }
     expect(depth).toBe(DEPTH);
-  });
+  }, 60_000);
 
   it("renders the refusal, never rejects", async () => {
     // jsdom ships no type declarations, so it is loaded untyped.
@@ -141,7 +142,7 @@ describe("a context over input nested beyond the stack", () => {
     expect(
       root.querySelector('[data-refusal="unverified-bundle"]')?.textContent,
     ).toBe(UNVERIFIED_BUNDLE_REFUSAL);
-  });
+  }, 60_000);
 });
 
 describe("the context's copy keeps its semantics", () => {
