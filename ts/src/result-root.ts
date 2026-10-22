@@ -1201,20 +1201,16 @@ async function verifiedBookPayload(
 /**
  * The capsule a `published_capsule` book header carries, checked link by link
  * (capsule bytes against their commitment, recomputed id against
- * `capsule_id` and `subject_ref`): its id and its agent_input commitment.
- * Undefined when any link fails or the header is not a published capsule.
+ * `capsule_id` and `subject_ref`), and its recomputed id. Undefined when any
+ * link fails or the header is not a published capsule. It asks nothing of the
+ * capsule's commitments, so a carried capsule with no `agent_input` digest
+ * still has an id.
  */
-export async function carriedCapsuleCommitment(
+async function carriedCapsuleId(
   header: unknown,
   payloads: ObjectValue,
 ): Promise<
-  | {
-      capsuleId: string;
-      inputDigest: string;
-      stated: StatedTimes;
-      actionId?: string;
-    }
-  | undefined
+  { capsule: ReturnType<typeof decodeCapsuleJson>; id: string } | undefined
 > {
   if (!isObject(header) || header.record_type !== PUBLISHED_CAPSULE_RECORD_TYPE)
     return undefined;
@@ -1230,22 +1226,46 @@ export async function carriedCapsuleCommitment(
     const id = await computeCapsuleId(capsule);
     if (id !== capsule.capsule_id || id !== header.subject_ref)
       return undefined;
-    const committed = committedDigest(
-      capsule as unknown as RecordWithId,
-      "agent_input",
-    );
-    const actionId = asString((capsule as unknown as ObjectValue).action_id);
-    return isHex64(committed)
-      ? {
-          capsuleId: id,
-          inputDigest: committed,
-          stated: statedTimes(capsule as unknown as ObjectValue),
-          ...(actionId === undefined ? {} : { actionId }),
-        }
-      : undefined;
+    return { capsule, id };
   } catch {
     return undefined;
   }
+}
+
+/**
+ * The capsule a `published_capsule` book header carries, checked as
+ * `carriedCapsuleId` checks it: its id and its agent_input commitment.
+ * Undefined when any link fails, or when the capsule commits no agent_input
+ * digest.
+ */
+export async function carriedCapsuleCommitment(
+  header: unknown,
+  payloads: ObjectValue,
+): Promise<
+  | {
+      capsuleId: string;
+      inputDigest: string;
+      stated: StatedTimes;
+      actionId?: string;
+    }
+  | undefined
+> {
+  const carried = await carriedCapsuleId(header, payloads);
+  if (carried === undefined) return undefined;
+  const { capsule, id } = carried;
+  const committed = committedDigest(
+    capsule as unknown as RecordWithId,
+    "agent_input",
+  );
+  const actionId = asString((capsule as unknown as ObjectValue).action_id);
+  return isHex64(committed)
+    ? {
+        capsuleId: id,
+        inputDigest: committed,
+        stated: statedTimes(capsule as unknown as ObjectValue),
+        ...(actionId === undefined ? {} : { actionId }),
+      }
+    : undefined;
 }
 
 export async function resolveCarriedInput(
@@ -1423,12 +1443,13 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
   // is never taken from the header's own `subject_ref` field directly --
   // that is a producer-asserted value a dishonest bundle could set to any
   // string, including a cited claim's evidence digest, with no carried
-  // capsule to back it. `carriedCapsuleCommitment` recomputes the id from
-  // the carried capsule's own bytes (via `computeCapsuleId`) and only
-  // returns it once that recomputed id equals both the capsule's own
-  // `capsule_id` and the header's `subject_ref` -- the same check
-  // `resolveRecord` below already applies to every OTHER use of a carried
-  // capsule's id. Built on first need: a payload-form bundle, where every
+  // capsule to back it. `carriedCapsuleId` recomputes the id from the
+  // carried capsule's own bytes (via `computeCapsuleId`) and only returns it
+  // once that recomputed id equals both the capsule's own `capsule_id` and
+  // the header's `subject_ref` -- the same check `resolveRecord` below
+  // applies, through `carriedCapsuleCommitment`, to every OTHER use of a
+  // carried capsule's id. It doesn't require an agent_input commitment, so a
+  // carried capsule without one still resolves a claim that cites it. Built on first need: a payload-form bundle, where every
   // cited id is a record id, never pays for it.
   let carriersById: Map<string, RecordWithId> | undefined;
   const bookCarrier = async (id: string): Promise<RecordWithId | undefined> => {
@@ -1442,12 +1463,9 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
           header.payload.record_type !== PUBLISHED_CAPSULE_RECORD_TYPE
         )
           continue;
-        const carried = await carriedCapsuleCommitment(
-          header.payload,
-          bookPayloads,
-        );
-        if (carried !== undefined && !recordsById.has(carried.capsuleId))
-          carriersById.set(carried.capsuleId, record);
+        const carried = await carriedCapsuleId(header.payload, bookPayloads);
+        if (carried !== undefined && !recordsById.has(carried.id))
+          carriersById.set(carried.id, record);
       }
     }
     return carriersById.get(id);

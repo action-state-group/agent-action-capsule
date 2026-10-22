@@ -1619,7 +1619,13 @@ describe("claims citing a capsule a book record carries", () => {
   // subject_ref -- a dishonest book could set subject_ref to anything,
   // including a claim's own cited evidence digest, with no real capsule
   // behind it (the case the second test below exists to close).
-  async function carriedCapsule(): Promise<{ id: string; digest: string }> {
+  async function carriedCapsule(options?: {
+    // Omit model_attestation, so the capsule commits no agent_input digest.
+    noAttestation?: boolean;
+    // The capsule_id written into the capsule's bytes, in place of its
+    // recomputed id.
+    statedId?: string;
+  }): Promise<{ id: string; digest: string }> {
     const capsule: Obj = {
       action_id: "urn:test:carried",
       action_type: "fyi",
@@ -1638,8 +1644,9 @@ describe("claims citing a capsule a book record carries", () => {
       spec_version: "draft-mih-scitt-agent-action-capsule-05",
       timestamp: "2026-09-23T23:59:59Z",
     };
+    if (options?.noAttestation) delete capsule.model_attestation;
     const id = await computeCapsuleId(capsule as never);
-    capsule.capsule_id = id;
+    capsule.capsule_id = options?.statedId ?? id;
     const bytes = enc.encode(JSON.stringify(capsule));
     const digest = await sha256Hex(bytes);
     carriedPayloads[digest] = b64url(bytes);
@@ -1714,20 +1721,66 @@ describe("claims citing a capsule a book record carries", () => {
     expect(result.records.has(forged)).toBe(false);
   });
 
+  it("resolves a carried capsule that commits no agent_input digest", async () => {
+    // model_attestation is RECOMMENDED, not required, so a conforming
+    // capsule may commit no agent_input digest; its id still checks.
+    carriedPayloads = {};
+    const { id, digest } = await carriedCapsule({ noAttestation: true });
+    const { bundle } = await sealEvidenceBundle(
+      bookCited(id, { subjectRef: id, commitments: [digest] }),
+    );
+    const result = await buildResultRoot(bundle);
+    const claim = result.claims.find((c) => c.id === "claim-1")!;
+    expect(claim.evidence[0]).toEqual({ digest: id, resolved: true });
+    expect(claim.support).toBe("supported");
+    expect(result.records.has(id)).toBe(true);
+  });
+
+  it("never resolves when the capsule's bytes and the header both state a forged id", async () => {
+    // The strongest forgery: capsule_id inside the committed bytes and the
+    // header's subject_ref both name the cited digest. Only the recomputed
+    // id differs.
+    carriedPayloads = {};
+    const forged = "ab".repeat(32);
+    const { digest } = await carriedCapsule({ statedId: forged });
+    const { bundle } = await sealEvidenceBundle(
+      bookCited(forged, { subjectRef: forged, commitments: [digest] }),
+    );
+    const result = await buildResultRoot(bundle);
+    const claim = result.claims.find((c) => c.id === "claim-1")!;
+    expect(claim.evidence[0]).toEqual({ digest: forged, resolved: false });
+    expect(claim.support).toBe("unsupported");
+    expect(result.records.has(forged)).toBe(false);
+  });
+
+  it("never resolves when only the capsule's stated capsule_id differs from its recomputed id", async () => {
+    carriedPayloads = {};
+    const { id, digest } = await carriedCapsule({ statedId: "cd".repeat(32) });
+    const { bundle } = await sealEvidenceBundle(
+      bookCited(id, { subjectRef: id, commitments: [digest] }),
+    );
+    const result = await buildResultRoot(bundle);
+    const claim = result.claims.find((c) => c.id === "claim-1")!;
+    expect(claim.evidence[0]).toEqual({ digest: id, resolved: false });
+    expect(claim.support).toBe("unsupported");
+    expect(result.records.has(id)).toBe(false);
+  });
+
   it("never resolves through a header that does not match its record's committed digest", async () => {
+    // subject_ref stays the capsule's true id, so the identity check passes:
+    // only the header's commitment fails.
     carriedPayloads = {};
     const { id, digest } = await carriedCapsule();
-    const carried = "cd".repeat(32);
     const { bundle, ids } = await sealEvidenceBundle(
-      bookCited(carried, { subjectRef: id, commitments: [digest] }),
+      bookCited(id, { subjectRef: id, commitments: [digest] }),
     );
     const header = ((bundle.disclosures as Obj)[ids["day-1"]!] as Obj)
       .agent_input as Obj;
-    header.subject_ref = carried;
+    header.book_id = "another-log";
     const result = await buildResultRoot(bundle);
     const claim = result.claims.find((c) => c.id === "claim-1")!;
-    expect(claim.evidence[0]).toEqual({ digest: carried, resolved: false });
+    expect(claim.evidence[0]).toEqual({ digest: id, resolved: false });
     expect(claim.support).toBe("unsupported");
-    expect(result.records.has(carried)).toBe(false);
+    expect(result.records.has(id)).toBe(false);
   });
 });
