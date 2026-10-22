@@ -103,9 +103,10 @@ export interface PresentationHost {
   readonly L2: HTMLElement;
   readonly depth: "L0" | "L1" | "L2";
   /**
-   * Restyle the banner and the verification section by class only. The one
-   * chrome class the core knows is `"oi"` (the outcome-report look); any
-   * other name is an error. Words, order and data attributes never change.
+   * Restyle the banner and the verification section by class only. The
+   * chrome classes the core knows are `"oi"` (the outcome-report look) and
+   * `"cc"` (the compliance card's look); any other name is an error. Words,
+   * order and data attributes never change.
    */
   setChromeClass(name: string): void;
 }

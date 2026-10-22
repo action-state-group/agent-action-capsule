@@ -232,11 +232,16 @@ export function renderUnableToVerify(
   root.append(element("p", UNABLE_TO_VERIFY_LINES.command), block);
 }
 
-// Drawn in the outcome-report card's own look when that card renders
-// (OUTCOME_REPORT_CSS's .oi-banner rules); the words and data attributes are
-// identical either way -- the class is presentation only.
-function styleBanner(banner: HTMLElement, verified: boolean): void {
-  banner.className = `oi oi-banner ${verified ? "oi-banner-ok" : "oi-banner-failed"}`;
+// Drawn in the rendering card's own look when a card renders
+// (OUTCOME_REPORT_CSS's .oi-banner rules or COMPLIANCE_CSS's .cc-banner
+// rules); the words and data attributes are identical either way -- the
+// class is presentation only.
+function styleBanner(
+  banner: HTMLElement,
+  verified: boolean,
+  chrome: ChromeClass,
+): void {
+  banner.className = `${chrome} ${chrome}-banner ${chrome}-banner-${verified ? "ok" : "failed"}`;
 }
 
 // presentation/v1 is rendered here, in the header only, and nowhere else in
@@ -597,10 +602,13 @@ function renderCheckLists(
 // and the countersignature stamp classification), never from bundle-supplied
 // markup. It is never labeled a certificate.
 //
-// `styled` (true only when the outcome-report card rendered above it) draws
-// this same page in that card's look: the section takes the card's `.oi`
-// scope plus `.oi-vp`, and its content goes inside one `.sec` panel like
-// every card section. Content, order and data attributes are identical
+// `chrome` (set only when the outcome-report or compliance card rendered
+// above it) draws this same page in that card's look: the section takes the
+// card's own scope (`.oi` or `.cc`) plus its `-vp` variant. For the
+// outcome-report card, the content goes inside one `.sec` panel like every
+// card section; the compliance card has no `.sec` equivalent, so its content
+// goes inside a bare `<section>`, styled by `.cc section` the same as the
+// card's own sections. Content, order and data attributes are identical
 // either way, and it stays the last element of the rendering.
 //
 // `applied` is the set of extension interpreters this rendering ran; an
@@ -609,7 +617,7 @@ function renderCheckLists(
 async function renderVerificationPage(
   root: HTMLElement,
   context: VerifiedBundleContext,
-  styled: boolean,
+  chrome: ChromeClass | undefined,
   applied: ReadonlySet<ExtensionInterpreterId>,
   refused: readonly PresentationRefusal[],
   citedSigners: boolean,
@@ -619,10 +627,18 @@ async function renderVerificationPage(
   const section = element("section");
   section.dataset.page = "verification";
   let page = section;
-  if (styled) {
-    section.className = "oi oi-vp";
-    page = element("div");
-    page.className = "sec";
+  if (chrome !== undefined) {
+    section.className = `${chrome} ${chrome}-vp`;
+    if (chrome === "oi") {
+      page = element("div");
+      page.className = "sec";
+    } else {
+      // The compliance card has no `.sec` white-card class (its own
+      // sections use the bare `<section>` tag, styled by `.cc section`
+      // in compliance-styles.ts) -- reuse that existing rule instead of
+      // inventing a parallel one.
+      page = element("section");
+    }
     section.append(page);
   }
   page.append(element("h2", "Verification"));
@@ -1596,14 +1612,17 @@ const resultComplianceModule: PresentationModule<
     bundle: context.bundle,
     verification: context.verification,
   }),
-  render: (model, host) =>
+  render: (model, host) => {
+    // The banner and the verification page take the card's look.
+    host.setChromeClass("cc");
     renderCompliancePage(
       model.result,
       model.card,
       model.bundle,
       model.verification,
       host.L1,
-    ),
+    );
+  },
 };
 
 /** A module that draws the generic Result page under `manifest`. */
@@ -1805,7 +1824,12 @@ function citesCheckedSigners(
   );
 }
 
-const OUTCOME_CHROME = "oi";
+// The chrome classes the core knows: the outcome-report look and the
+// compliance card's look. Any other name is an error.
+type ChromeClass = "oi" | "cc";
+const CHROME_CLASSES: readonly string[] = ["oi", "cc"];
+const isChromeClass = (name: string): name is ChromeClass =>
+  CHROME_CLASSES.includes(name);
 
 function presentationServices(
   context: VerifiedBundleContext,
@@ -1972,7 +1996,7 @@ export async function renderEvidenceGraph(
   if (refused.length > 0)
     root.dataset.presentationRefused = refused.map((r) => r.id).join(" ");
   else delete root.dataset.presentationRefused;
-  let chrome: string | undefined;
+  let chrome: ChromeClass | undefined;
   if (selected !== undefined) {
     const host: PresentationHost = {
       L0: root,
@@ -1980,10 +2004,10 @@ export async function renderEvidenceGraph(
       L2: root,
       depth: options.depth ?? "L2",
       setChromeClass(name: string): void {
-        if (name !== OUTCOME_CHROME)
+        if (!isChromeClass(name))
           throw new Error(`unknown chrome class ${JSON.stringify(name)}`);
         chrome = name;
-        styleBanner(banner, verified);
+        styleBanner(banner, verified, name);
       },
     };
     try {
@@ -2051,7 +2075,7 @@ export async function renderEvidenceGraph(
   await renderVerificationPage(
     root,
     context,
-    chrome === OUTCOME_CHROME,
+    chrome,
     applied,
     refused,
     refusal === undefined && citesCheckedSigners(selected),
