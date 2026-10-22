@@ -244,12 +244,24 @@ function bannerWords(
   ].some((entry) =>
     entry.findings.includes("checkpoint_authentication_invalid"),
   );
+  // With no strict result, the page's own checks may still have
+  // authenticated a signed checkpoint (Node's CLL needs no WebCrypto): the
+  // proofs over it then carry no `checkpoint_unverified`.
+  const plainAuthenticated =
+    typeof cose === "string" &&
+    cose !== "" &&
+    verification.intervalCoverage.status === "pass" &&
+    [verification.intervalCoverage, verification.perRecordMembership].every(
+      (entry) => !entry.findings.includes("checkpoint_unverified"),
+    );
   const checkpoint: BannerCheckpoint = rejected
     ? "invalid"
     : checkpointClaim === undefined
       ? cose === undefined || cose === null
         ? "absent"
-        : "unverified"
+        : plainAuthenticated
+          ? "verified"
+          : "unverified"
       : checkpointClaim.status === "pass"
         ? "verified"
         : checkpointClaim.status === "fail"
@@ -276,7 +288,7 @@ function bannerWords(
       verdict = "incomplete";
       const records = object(bundle).records;
       const carried = [
-        ...(cose === undefined || cose === null
+        ...(checkpoint === "absent" || checkpoint === "verified"
           ? []
           : ["the checkpoint signature"]),
         ...(Array.isArray(records) &&
@@ -287,7 +299,9 @@ function bannerWords(
       sentences.push(
         carried.length > 0
           ? `Bundle verification incomplete: none of the bundle's checks failed, but this page cannot check signatures, so ${carried.join(" and ")} could not be checked.`
-          : "Bundle verification incomplete: none of the bundle's checks failed, but neither the checkpoint nor any record is signed.",
+          : checkpoint === "verified"
+            ? "Bundle verification incomplete: none of the bundle's checks failed, but no record is signed."
+            : "Bundle verification incomplete: none of the bundle's checks failed, but neither the checkpoint nor any record is signed.",
       );
     }
   } else {
@@ -323,17 +337,48 @@ function bannerWords(
           return coverage.total === 1
             ? "the record's producer signature does not verify (producer_signature_invalid)"
             : `${invalid} of ${coverage.total} records' producer signatures do not verify (producer_signature_invalid)`;
+        // What went wrong with the checkpoint, not only which object.
+        if (entry.name === "checkpoint") {
+          const names = findingNames(entry.findings);
+          const words = [
+            ...(names.includes("checkpoint_field_mismatch")
+              ? [
+                  "the checkpoint's fields do not match its signature (checkpoint_field_mismatch)",
+                ]
+              : []),
+            ...(names.includes("checkpoint_field_missing")
+              ? [
+                  "the checkpoint is missing fields its signature covers (checkpoint_field_missing)",
+                ]
+              : []),
+          ];
+          if (words.length > 0) return words.join("; ");
+        }
         return `${CLAIM_WORDS[entry.name]} (${findingNames(entry.findings).join(", ")})`;
       });
-      // Only the receipts that failed; one not checked is not a failure.
-      if (strict.witnesses?.status === "fail")
-        named.push(
-          `the witness receipts (${findingNames(
-            strict.witnesses.findings.filter(
-              (f) => !f.startsWith("witness_unverified:"),
-            ),
-          ).join(", ")})`,
-        );
+      // Only the receipts that failed, counted; one not checked is not a
+      // failure.
+      if (strict.witnesses?.status === "fail") {
+        const carried = object(object(bundle).checkpoint).witnesses;
+        const total = Array.isArray(carried) ? carried.length : 0;
+        const count = (prefix: string): number =>
+          strict.witnesses!.findings.filter((f) => f.startsWith(prefix)).length;
+        // The same count form as the records: "1 of 3 … are".
+        const receipts = (n: number, plural: string, single: string) =>
+          total === 1
+            ? `the witness receipt ${single}`
+            : `${n} of ${total} witness receipts ${plural}`;
+        const malformed = count("witness_receipt_malformed:"),
+          invalid = count("witness_receipt_invalid:");
+        if (malformed > 0)
+          named.push(
+            `${receipts(malformed, "are malformed", "is malformed")} (witness_receipt_malformed)`,
+          );
+        if (invalid > 0)
+          named.push(
+            `${receipts(invalid, "do not verify", "does not verify")} (witness_receipt_invalid)`,
+          );
+      }
       sentences.push(
         unboundOnly
           ? uncheckpointed

@@ -241,7 +241,7 @@ describe("the banner never claims more than was checked", () => {
     expect(top.dataset.verdict).toBe("invalid");
     expect(top.dataset.checkpoint).toBe("invalid");
     expect(top.textContent).toBe(
-      "Bundle verification failed: the signed checkpoint (checkpoint_field_mismatch).",
+      "Bundle verification failed: the checkpoint's fields do not match its signature (checkpoint_field_mismatch).",
     );
     expect(checks(root, "failed")).toContain("checkpoint-signature");
     const garbled = { ...bundle, checkpoint: { ...checkpoint, cose: "AAAA" } };
@@ -304,7 +304,7 @@ describe("the strict result beside the page's own checks", () => {
     const top = banner(root);
     expect(top.dataset.verdict).toBe("invalid");
     expect(top.textContent).toBe(
-      "Bundle verification failed: the witness receipts (witness_receipt_malformed).",
+      "Bundle verification failed: 1 of 2 witness receipts are malformed (witness_receipt_malformed).",
     );
     expect(checks(root, "failed")).toContain("witness-receipts");
     expect(checks(root, "page")).not.toContain("witness-receipts");
@@ -324,6 +324,19 @@ describe("the strict result beside the page's own checks", () => {
     );
     expect(checks(root, "failed")).toContain("membership");
     expect(checks(root, "page")).not.toContain("membership");
+  });
+
+  it("a checkpoint missing a field it signs: says so", async () => {
+    const top = banner(
+      await renderWith(
+        renderEvidenceGraph,
+        strictCase("neg-checkpoint-field-missing"),
+      ),
+    );
+    expect(top.dataset.verdict).toBe("invalid");
+    expect(top.textContent).toBe(
+      "Bundle verification failed: the checkpoint is missing fields its signature covers (checkpoint_field_missing).",
+    );
   });
 
   it("a cose of null: the checkpoint is invalid, as the lists say", async () => {
