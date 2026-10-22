@@ -12,6 +12,7 @@ import {
 import type { CompliancePresentation } from "./compliance-presentation.js";
 import { COMPLIANCE_CSS } from "./compliance-styles.js";
 import { NOT_STATED } from "./outcome-report.js";
+import { BASIS_TEXT, datingStatement, span } from "./outcome-report-view.js";
 import type { ResultRoot } from "./result-root.js";
 
 /**
@@ -38,6 +39,32 @@ function element(tag: string, text?: string): HTMLElement {
 function el(tag: string, className: string, text?: string): HTMLElement {
   const value = element(tag, text);
   value.className = className;
+  return value;
+}
+
+/**
+ * Producer text: the eu-ai-act-compliance/v1 mapping, carried beside the
+ * signed records and signed by no one. Set in italics (`<i>`, the browser's
+ * own style) and tagged `data-source="producer"`, so it never reads as a
+ * sealed finding; the header's basis line says what the italics mean.
+ */
+function producerText(text: string): HTMLElement {
+  const value = element("i", text);
+  value.dataset.source = "producer";
+  value.title = "The producer's mapping, not a sealed record";
+  return value;
+}
+
+/** `text` in an element of its own, as producer text when `producer` is true. */
+function maybeProducer(
+  tag: string,
+  className: string,
+  text: string,
+  producer: boolean,
+): HTMLElement {
+  if (!producer) return el(tag, className, text);
+  const value = el(tag, className);
+  value.append(producerText(text));
   return value;
 }
 
@@ -99,7 +126,7 @@ function renderHeader(host: HTMLElement, model: ComplianceModel): void {
   const basis = el(
     "p",
     "na",
-    `Counts, verdicts, test wording, tiers and the pack are read from the sealed claims and reports in this bundle, or marked "${NOT_STATED}". The article, applicability, method and finding recommendations are the producer's mapping, carried on this bundle's eu-ai-act-compliance/v1 extension outside the signed records.`,
+    `Counts, verdicts, test wording, tiers and the pack are read from the sealed claims and reports in this bundle, or marked "${NOT_STATED}". Obligation titles, test names, the article, the plain-language summary, applicability, method, finding recommendations and owners, and the notes on undecided tests and quality checks are the producer's mapping, set in italics: carried on this bundle's eu-ai-act-compliance/v1 extension outside the signed records.`,
   );
   basis.dataset.basis = "terms";
   hd.append(basis);
@@ -115,6 +142,22 @@ function obligationStatus(obligation: ObligationModel): {
   text: string;
 } {
   const exceptions = obligation.rows.reduce((sum, r) => sum + r.notMetCount, 0);
+  // Absent is never pass: an obligation whose rows were never actually
+  // evaluated (no met, no not_met -- the same all-not_evaluable shape
+  // renderTests() already detects per row) reads "Not evaluable", never
+  // "No exceptions". Checked before the exception count: a not-yet-applicable
+  // obligation keeps saying so, alongside "not evaluable".
+  const evaluated = obligation.rows.some(
+    (r) => r.metCount > 0 || r.notMetCount > 0,
+  );
+  if (!evaluated)
+    return {
+      cls: "ne",
+      text:
+        obligation.applicability.status === "future"
+          ? "Not yet applicable · not evaluable"
+          : "Not evaluable",
+    };
   if (obligation.applicability.status === "not stated")
     return exceptions > 0
       ? { cls: "exc", text: `Exceptions noted (${fmt(exceptions)})` }
@@ -161,9 +204,9 @@ function renderSummary(host: HTMLElement, model: ComplianceModel): void {
     row.dataset.obligation = obligation.key;
     const status = obligationStatus(obligation);
     row.append(
-      el("td", "b", obligation.article),
-      element("td", obligation.title),
-      element("td", obligation.applicability.note),
+      maybeProducer("td", "b", obligation.article, obligation.mapped),
+      maybeProducer("td", "", obligation.title, obligation.mapped),
+      maybeProducer("td", "", obligation.applicability.note, obligation.mapped),
     );
     const statusCell = document.createElement("td");
     statusCell.append(statusPill(status.cls, status.text));
@@ -254,6 +297,27 @@ function renderSessionDetails(session: Session): HTMLElement {
   const summary = document.createElement("summary");
   summary.textContent = `${session.conversationId} · ${session.day}`;
   details.append(summary);
+  // Which date the session is counted under, verbatim, beside the sealed day:
+  // the outcome card's drill-down line, so a backfilled session never reads
+  // as if it happened on the day it was sealed.
+  const dated = session.dated;
+  if (dated.basis !== "judged") {
+    const line = el(
+      "div",
+      "",
+      `${dated.stated ?? dated.date}${dated.zone === "not-stated" ? " (timezone not stated)" : ""}: ${BASIS_TEXT[dated.basis]}`,
+    );
+    line.dataset.dated = dated.basis;
+    details.append(line);
+    if (dated.importedAt !== undefined) {
+      const imported = el("div", "", `Imported ${dated.importedAt}`);
+      imported.dataset.imported = "";
+      details.append(imported);
+    }
+    const sealed = el("div", "", `Judged and sealed ${session.judgedDay}`);
+    sealed.dataset.sealed = "";
+    details.append(sealed);
+  }
   for (const test of session.tests) details.append(checkItBlock(test));
   details.append(renderTranscript(session));
   return details;
@@ -326,7 +390,9 @@ function renderTests(host: HTMLElement, model: ComplianceModel): void {
       ) {
         resultCell.append(statusPill("ne", "Not evaluable"));
         if (row.notEvaluableNote !== undefined)
-          resultCell.append(el("div", "applic", row.notEvaluableNote));
+          resultCell.append(
+            maybeProducer("div", "applic", row.notEvaluableNote, true),
+          );
       } else {
         resultCell.append(
           statusPill(
@@ -336,8 +402,8 @@ function renderTests(host: HTMLElement, model: ComplianceModel): void {
         );
       }
       tr.append(
-        el("td", "b", `${obligation.article}`),
-        element("td", row.name),
+        maybeProducer("td", "b", obligation.article, obligation.mapped),
+        maybeProducer("td", "", row.name, row.producerName),
         typeCell,
         el("td", "n", fmt(population)),
         el("td", "n", fmt(row.notMetCount)),
@@ -388,8 +454,8 @@ function renderFindings(host: HTMLElement, model: ComplianceModel): void {
     fh.append(
       el("b", "", finding.id),
       severityPill(finding.severity),
-      element("span", finding.article),
-      el("span", "", finding.testName),
+      producerText(finding.article),
+      producerText(finding.testName),
     );
     box.append(fh);
     const table = document.createElement("table");
@@ -402,12 +468,12 @@ function renderFindings(host: HTMLElement, model: ComplianceModel): void {
     const recRow = document.createElement("tr");
     recRow.append(
       element("th", "Recommendation"),
-      el("td", "", finding.recommendation),
+      maybeProducer("td", "", finding.recommendation, true),
     );
     const ownerRow = document.createElement("tr");
     ownerRow.append(
       element("th", "Owner · due"),
-      element("td", finding.ownerDue),
+      maybeProducer("td", "", finding.ownerDue, true),
     );
     table.append(evRow, recRow, ownerRow);
     box.append(table);
@@ -433,14 +499,18 @@ function renderQuality(host: HTMLElement, model: ComplianceModel): void {
     host.append(section);
     return;
   }
-  section.append(
-    el(
-      "p",
-      "lede",
-      `Protocol ${protocol.protocol ?? "unspecified"}${protocol.cadence === undefined ? "" : `, ${protocol.cadence}`}. Recomputed tests are not sampled.`,
-    ),
+  const line = el("p", "lede", "Protocol ");
+  line.append(
+    protocol.protocol === undefined
+      ? "unspecified"
+      : producerText(protocol.protocol),
   );
-  if (protocol.note !== undefined) section.append(el("p", "na", protocol.note));
+  if (protocol.cadence !== undefined)
+    line.append(", ", producerText(protocol.cadence));
+  line.append(". Recomputed tests are not sampled.");
+  section.append(line);
+  if (protocol.note !== undefined)
+    section.append(maybeProducer("p", "na", protocol.note, true));
   host.append(section);
 }
 
@@ -471,7 +541,22 @@ function renderWhatRan(host: HTMLElement, model: ComplianceModel): void {
         : "disagrees across sessions"),
   );
   field("Sessions", fmt(model.totalSessions));
+  const { dating } = model;
+  if (dating.from !== undefined && dating.to !== undefined) {
+    field("Period", span([dating.from, dating.to]));
+    ran.lastElementChild!.setAttribute("data-period", "");
+  }
+  if (dating.basis !== "judged") {
+    field("Sealed", span(dating.judgedDays));
+    ran.lastElementChild!.setAttribute("data-sealed", "");
+  }
   section.append(ran);
+  const note = datingStatement(dating, model.totalSessions);
+  if (note !== undefined) {
+    const p = el("p", "na", note);
+    p.dataset.dateNote = dating.basis;
+    section.append(p);
+  }
   host.append(section);
 }
 
@@ -486,7 +571,9 @@ function renderObligationDetail(
   const details = document.createElement("details");
   details.dataset.obligationDetail = obligation.key;
   const summary = document.createElement("summary");
-  summary.textContent = `${obligation.article} · ${obligation.title}`;
+  const heading = `${obligation.article} · ${obligation.title}`;
+  if (obligation.mapped) summary.append(producerText(heading));
+  else summary.textContent = heading;
   details.append(summary);
   details.dataset.mapped = String(obligation.mapped);
   details.append(
@@ -494,21 +581,25 @@ function renderObligationDetail(
       "p",
       "na",
       obligation.mapped
-        ? "Article, summary and method: the producer's mapping, not a sealed record."
+        ? "Title, article, summary, method, test names and the undecided-session note: the producer's mapping, in italics, not a sealed record."
         : `The producer's extension does not map this obligation: article, summary and method ${NOT_STATED}.`,
     ),
   );
-  details.append(el("p", "", obligation.plain));
-  if (obligation.judgedTerms.length > 0)
-    details.append(
-      el("p", "applic", `Judged terms: ${obligation.judgedTerms.join(", ")}`),
-    );
-  details.append(el("p", "", obligation.method));
+  details.append(maybeProducer("p", "", obligation.plain, obligation.mapped));
+  if (obligation.judgedTerms.length > 0) {
+    const terms = el("p", "applic", "Judged terms: ");
+    terms.append(producerText(obligation.judgedTerms.join(", ")));
+    details.append(terms);
+  }
+  details.append(maybeProducer("p", "", obligation.method, obligation.mapped));
   for (const row of obligation.rows) {
     const rowBox = el("div", "ck");
     rowBox.dataset.wording = row.wording.source;
     const h = el("div", "h");
-    h.append(element("span", row.name), tierBadge(row.tier));
+    h.append(
+      maybeProducer("span", "", row.name, row.producerName),
+      tierBadge(row.tier),
+    );
     rowBox.append(h);
     rowBox.append(
       el(
@@ -522,7 +613,7 @@ function renderObligationDetail(
       ),
     );
     if (row.notEvaluableNote !== undefined)
-      rowBox.append(el("div", "ev", row.notEvaluableNote));
+      rowBox.append(maybeProducer("div", "ev", row.notEvaluableNote, true));
     details.append(rowBox);
   }
   host.append(details);

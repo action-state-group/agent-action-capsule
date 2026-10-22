@@ -1007,7 +1007,7 @@ it("a resolved conversation counts the criteria its pack judged, not a fixed nin
   );
   open(conv);
   expect(conv.querySelector('[data-why="resolved"]')!.textContent).toContain(
-    "Resolved: 4 criteria met and 0 not applicable. The rule bills a conversation only when all four pass",
+    "Resolved: 4 criteria met and 0 not applicable. The rule resolves a conversation only when all four pass",
   );
   expect(conv.textContent).toContain("take the AND of the four verdicts");
   expect(conv.textContent).not.toContain("nine");

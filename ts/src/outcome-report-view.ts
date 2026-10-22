@@ -517,7 +517,7 @@ function conversationBody(
     why.append(
       element(
         "li",
-        `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met and ${na.length} not applicable. The rule bills a conversation only when ${n === 1 ? "its one criterion passes" : `all ${countWord(n)} pass`}, and not applicable counts as passing.`,
+        `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met and ${na.length} not applicable. The rule resolves a conversation only when ${n === 1 ? "its one criterion passes" : `all ${countWord(n)} pass`}, and not applicable counts as passing.`,
       ),
     );
   } else {
@@ -647,14 +647,14 @@ function packLine(model: OutcomeReportModel): string {
 // the plain label that says so (see `ConversationDate`)
 // ---------------------------------------------------------------------------
 
-function span(days: readonly string[]): string {
+export function span(days: readonly string[]): string {
   const first = days[0];
   const last = days[days.length - 1];
   if (first === undefined || last === undefined) return "unknown";
   return first === last ? first : `${first} – ${last}`;
 }
 
-const BASIS_TEXT: Record<ConversationDate["basis"], string> = {
+export const BASIS_TEXT: Record<ConversationDate["basis"], string> = {
   source:
     "source says (backfilled record; the source's own timestamp, self-attested)",
   record: "the case record's own timestamp",
@@ -663,7 +663,15 @@ const BASIS_TEXT: Record<ConversationDate["basis"], string> = {
 
 /** The page's one plain statement of what its dates are, or undefined when every conversation is dated by the day it was judged (the card's behaviour before record dating). */
 function datingNote(model: OutcomeReportModel): string | undefined {
-  const { basis, counts, judgedDays, zoneNotStated } = model.dating;
+  return datingStatement(model.dating, model.totalCount);
+}
+
+/** `datingNote` over any card's dating (the obligations card shares it), `total` being the conversations it counts. */
+export function datingStatement(
+  dating: OutcomeReportModel["dating"],
+  total: number,
+): string | undefined {
+  const { basis, counts, judgedDays, zoneNotStated } = dating;
   if (basis === "judged") return undefined;
   const sealed = `Sealed ${span(judgedDays)}.`;
   const parts: string[] = [];
@@ -697,7 +705,7 @@ function datingNote(model: OutcomeReportModel): string | undefined {
     );
   if (zoneNotStated > 0)
     parts.push(
-      `Timezone not stated on ${zoneNotStated} of ${model.totalCount}; no zone is assumed.`,
+      `Timezone not stated on ${zoneNotStated} of ${total}; no zone is assumed.`,
     );
   return parts.join(" ");
 }

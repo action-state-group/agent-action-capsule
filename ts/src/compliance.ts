@@ -7,10 +7,15 @@ import type {
   ComplianceRow,
 } from "./compliance-presentation.js";
 import {
+  buildDating,
+  caseRecord,
+  conversationDate,
   findTranscript,
   NOT_STATED,
   readableId,
+  type ConversationDate,
   type ConversationTranscript,
+  type OutcomeReportDating,
 } from "./outcome-report.js";
 import {
   REQUIREMENT_CLAIM,
@@ -78,7 +83,11 @@ export interface SessionTest {
 
 export interface Session {
   readonly conversationId: string;
+  /** The date this session is counted under (`dated.date`): the case record's own date when the bundle carries it verifiably, as on the outcome card (see `ConversationDate`). */
   readonly day: string;
+  readonly dated: ConversationDate;
+  /** The day its reports were sealed under (`period`), whatever `dated` says. */
+  readonly judgedDay: string;
   readonly tests: readonly SessionTest[];
   readonly sourceCapsuleId?: string;
   readonly transcript: ConversationTranscript;
@@ -88,6 +97,8 @@ export interface ObligationRowModel {
   readonly criterionId: string;
   /** The producer's short label when it maps this test, else the test id made readable. */
   readonly name: string;
+  /** True when `name` is the producer's label (unsigned), false when it is the sealed test id made readable. */
+  readonly producerName: boolean;
   /** The wording the test was run against: the sealed `clause_claim`, or not stated. */
   readonly wording: SealedText;
   readonly tier: TierReading;
@@ -145,6 +156,12 @@ export interface CompliancePack {
   readonly version: string;
 }
 
+export interface ComplianceDating extends OutcomeReportDating {
+  /** The first and last session date (`Session.day`), when any session is dated. */
+  readonly from?: string;
+  readonly to?: string;
+}
+
 export interface ComplianceModel {
   readonly regulation: string;
   readonly pack: CompliancePack;
@@ -152,6 +169,8 @@ export interface ComplianceModel {
   readonly sessions: readonly Session[];
   readonly findings: readonly ComplianceFindingModel[];
   readonly totalSessions: number;
+  /** How the sessions are dated, the same reading the outcome card uses. */
+  readonly dating: ComplianceDating;
   readonly runInfo: ComplianceRunInfo;
   readonly qualityProtocol: CompliancePresentation["qualityProtocol"];
   readonly capsuleId: string;
@@ -273,7 +292,7 @@ function buildSessions(
   for (const [conversationId, conversationClaims] of byConversation) {
     const tests: SessionTest[] = [];
     const sources = new Set<string>();
-    let day: string = NOT_STATED;
+    let judgedDay: string = NOT_STATED;
     for (const criterionId of testIds) {
       const claim = conversationClaims.find(
         (c) => c.requirementRef === criterionId,
@@ -300,7 +319,7 @@ function buildSessions(
       const judgePinDigest = asString(payload?.judge_pin_digest);
       const source = asString(payload?.source_capsule_id);
       if (source !== undefined) sources.add(source);
-      if (day === NOT_STATED) day = dayOf(payload);
+      if (judgedDay === NOT_STATED) judgedDay = dayOf(payload);
       const reportDigest = claim.evidence[0]?.digest;
       tests.push({
         criterionId,
@@ -314,9 +333,18 @@ function buildSessions(
       });
     }
     const sourceCapsuleId = sources.size === 1 ? [...sources][0]! : undefined;
+    // A backfilled case record is dated by its source's own time, a plain
+    // one by its own timestamp, else by the sealed day: the outcome card's
+    // rule (conversationDate), so the two cards never date a session apart.
+    const dated = conversationDate(
+      caseRecord(result, conversationClaims, sourceCapsuleId),
+      judgedDay,
+    );
     sessions.push({
       conversationId,
-      day,
+      day: dated.date,
+      dated,
+      judgedDay,
       tests,
       ...(sourceCapsuleId === undefined ? {} : { sourceCapsuleId }),
       transcript: findTranscript(
@@ -384,6 +412,7 @@ function buildRow(
     name:
       mapping?.name ??
       readableId(criterionId.slice(criterionId.indexOf(".") + 1)),
+    producerName: mapping !== undefined,
     wording,
     tier: agree<TierReading>(tiers, "not stated", "mixed"),
     ...(mapping?.notEvaluableNote === undefined
@@ -468,6 +497,19 @@ function buildFindings(
   return findings;
 }
 
+function complianceDating(sessions: readonly Session[]): ComplianceDating {
+  const days = sessions
+    .map((s) => s.day)
+    .filter((d) => d !== NOT_STATED)
+    .sort();
+  return {
+    ...buildDating(sessions),
+    ...(days.length === 0
+      ? {}
+      : { from: days[0]!, to: days[days.length - 1]! }),
+  };
+}
+
 export function buildComplianceModel(
   result: ResultRoot,
   presentation: CompliancePresentation,
@@ -509,6 +551,7 @@ export function buildComplianceModel(
     sessions,
     findings: buildFindings(obligations),
     totalSessions: sessions.length,
+    dating: complianceDating(sessions),
     runInfo: buildRunInfo(sessions),
     qualityProtocol: presentation.qualityProtocol,
     capsuleId: result.capsuleId,

@@ -722,7 +722,7 @@ export function withheldReports(
  * capsule checks out: a book record carrying it (`carriedCapsuleId`) or the
  * plain record itself. Only its `stated` times are read.
  */
-function caseRecord(
+export function caseRecord(
   result: ResultRoot,
   claims: readonly ResultClaim[],
   sourceCapsuleId: string | undefined,
@@ -744,7 +744,7 @@ function caseRecord(
 }
 
 /** See `ConversationDate`. */
-function conversationDate(
+export function conversationDate(
   record: CitedRecord | undefined,
   judgedDay: string,
 ): ConversationDate {
@@ -1524,8 +1524,15 @@ export function readOutcomeReportTerms(result: ResultRoot): OutcomeReportTerms {
   };
 }
 
-function buildDating(
-  conversations: readonly Conversation[],
+/**
+ * How a set of dated conversations is dated as a whole; the outcome and
+ * obligations cards share it, so both state their dates the same way.
+ */
+export function buildDating(
+  conversations: readonly {
+    readonly dated: ConversationDate;
+    readonly judgedDay: string;
+  }[],
 ): OutcomeReportDating {
   const counts = { source: 0, record: 0, judged: 0 };
   for (const c of conversations) counts[c.dated.basis] += 1;
