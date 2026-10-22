@@ -212,20 +212,6 @@ describe("the context's copy keeps its semantics", () => {
     expect(list[1]!.second).toBe(2);
   });
 
-  it("reads an array through its own iterator, as for...of did", async () => {
-    const list: unknown[] = [1];
-    (list as unknown as { [Symbol.iterator]: () => Iterator<unknown> })[
-      Symbol.iterator
-    ] = function* () {
-      yield 2;
-    };
-    const { bundle: owned } = await buildVerifiedBundleContext({
-      records: [],
-      list,
-    });
-    expect((owned as Record<string, unknown>).list).toEqual([2]);
-  });
-
   it("copies a cycle as a cycle", async () => {
     const bundle: Record<string, unknown> = { records: [] };
     bundle.self = bundle;

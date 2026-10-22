@@ -1479,8 +1479,11 @@ const plain = (value: object): boolean => {
 };
 
 /**
- * A structural copy of JSON-shaped input: arrays and plain objects are copied
- * (own enumerable string keys, each read once), primitives are kept. Keys are
+ * A structural copy of JSON-shaped input: arrays (by index, re-reading
+ * `length` each step) and plain objects (own enumerable string keys, each
+ * read once) are copied, primitives are kept. Every reader verifies and reads
+ * the copy, so an array's own iterator, which JSON never carries, is not
+ * consulted. Keys are
  * defined, not assigned, so a parsed `__proto__` member stays a member. Any
  * other object is kept by reference and left as it is. Iterative, so input
  * nested beyond the stack is copied and then refused by the verifier, never
@@ -1492,7 +1495,11 @@ function ownedCopy<T>(value: T): T {
   // is copied before the next member is read, so every value, getters
   // included, is read in the order the recursive copy read it.
   type Frame =
-    | { readonly items: Iterator<unknown>; readonly out: unknown[] }
+    | {
+        readonly source: readonly unknown[];
+        readonly out: unknown[];
+        index: number;
+      }
     | {
         readonly source: Record<string, unknown>;
         readonly out: Record<string, unknown>;
@@ -1509,8 +1516,7 @@ function ownedCopy<T>(value: T): T {
     if (Array.isArray(input)) {
       const out: unknown[] = [];
       seen.set(input, out);
-      // The array's own iterator, as `for...of` read it.
-      frames.push({ items: input[Symbol.iterator](), out });
+      frames.push({ source: input, out, index: 0 });
       return out;
     }
     const out: Record<string, unknown> = {};
@@ -1539,12 +1545,11 @@ function ownedCopy<T>(value: T): T {
         configurable: true,
       });
     } else {
-      const next = frame.items.next();
-      if (next.done === true) {
+      if (frame.index >= frame.source.length) {
         frames.pop();
         continue;
       }
-      frame.out.push(copyOf(next.value));
+      frame.out.push(copyOf(frame.source[frame.index++]));
     }
   }
   return root as T;
