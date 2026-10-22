@@ -22,8 +22,9 @@ the aggregate coverage statement and bucket grouping.
 **Depends on, and mirrors by reference rather than redefines:**
 
 - The Evidence Contract's two closed result vocabularies — the four-value Sufficiency
-  (`SATISFIED | GAP | INSUFFICIENT | UNKNOWN`) and the three-value Verdict
-  (`met | not_met | not_evaluable`) — and its eight-value per-requirement bundle assertion status.
+  (`SATISFIED | GAP | INSUFFICIENT | UNKNOWN`) and the four-value Verdict
+  (`met | not_met | not_evaluable | out_of_scope`) — and its eight-value per-requirement bundle
+  assertion status.
 - The Evidence Plan IR's (`evidence-plan-ir-v0.md`) two-value `tier` vocabulary (§4.2) and its
   `<contract_id>@<version>` compact contract-reference convention (§2, carried on every IR node
   as `contract_ref`; this document uses the identical field name and shape on every claim).
@@ -75,15 +76,19 @@ other:
   Contract's contract result: was enough of the right evidence found, committed, and
   disclosed to make a determination on this requirement at all. Owned by the Evidence
   Contract; mirrored here, never redefined.
-- **Verdict** (`verdict` — `met | not_met | not_evaluable`) — the Evidence Contract's judged
-  outcome, once sufficiency allows a determination at all. Owned by the Evidence Contract.
+- **Verdict** (`verdict` — `met | not_met | not_evaluable | out_of_scope`) — the Evidence
+  Contract's judged outcome, once sufficiency allows a determination at all. Owned by the Evidence
+  Contract. `out_of_scope` exists only where the claim's requirement allows it (§4.2).
 
 **The rule that binds them (the Evidence Contract's own rule, restated normatively here because a Result is exactly the
 artifact this rule constrains):** `verdict` MUST be `not_evaluable` whenever `sufficiency` is
-anything other than `SATISFIED`; `verdict` MUST be `met` or `not_met` only when `sufficiency` is
-`SATISFIED`. A claim asserting `met` or `not_met` against `GAP`, `INSUFFICIENT`, or `UNKNOWN`
-sufficiency is malformed. The companion schema enforces this structurally (§4, `Claim`'s
-`if`/`then`).
+anything other than `SATISFIED`; `verdict` MUST be `met`, `not_met` or, where the requirement allows
+it, `out_of_scope` only when `sufficiency` is `SATISFIED`. A claim asserting any of those three
+against `GAP`, `INSUFFICIENT`, or `UNKNOWN` sufficiency is malformed, and so is a `SATISFIED` claim
+asserting `not_evaluable`. The companion schema enforces this structurally (§4, `Claim`'s
+`if`/`then`). `out_of_scope` is ruling 10 of 2026-10-21 (Steven: "a fourth Result verdict where a
+pack switches it on, shown with its own count, never folded into met"); the 2026-09-22 ruling quoted
+above lists the three judgments that existed then, and its rule holds for all four.
 
 Every claim also carries:
 
@@ -181,7 +186,7 @@ The remainder of this section encodes the ruling above into this document's voca
 where the companion schema enforces it.
 
 A Result's top-level `aggregate` is what a sponsor-facing reader sees before any individual claim:
-a **coverage statement**, then **three buckets** — never a single number, score, grade, or
+a **coverage statement**, then the **buckets** — never a single number, score, grade, or
 percentage above the fold.
 
 **Coverage (mandatory) — "requirements evaluated, excluded as not applicable, and unresolved."**
@@ -189,28 +194,30 @@ percentage above the fold.
 requirement of one contract version evaluated once, which is exactly a claim (§1). A requirement
 evaluated on several subjects, or re-judged, is several evaluations, so the counts below can exceed
 the number of distinct requirements. `evaluated_population` counts the evaluations in the population
-(the Result's claims); `excluded_not_applicable` counts the evaluations excluded as `NOT_APPLICABLE`,
-which have no claim (outside the evaluated population by construction, not a gap; `NOT_APPLICABLE`
-is an `EvidenceStatus` value, §2, not one of §1's four `Sufficiency` values); and `unknown_count`
-counts the evaluations whose `sufficiency` resolved `UNKNOWN`. A reader shows these as evaluations,
-beside the number of distinct requirements (`contract_ref`, `requirement_ref`) the claims cite, for
-example "24 evaluations of 4 requirements", and names `unknown_count` "evaluations with an unknown
-result", never "unresolved requirements": a requirement can have one `UNKNOWN` evaluation and one
-resolved one. An aggregate without a coverage statement is not a summary, it is a claim with the
-denominator hidden, and the companion schema refuses to validate one (§7).
+(the Result's in-force claims, §4.3); `excluded_not_applicable` counts the evaluations excluded as
+`NOT_APPLICABLE`, which have no claim (outside the evaluated population by construction, not a gap;
+`NOT_APPLICABLE` is an `EvidenceStatus` value, §2, not one of §1's four `Sufficiency` values); and
+`unknown_count` counts the in-force evaluations whose `sufficiency` resolved `UNKNOWN`. A claim not
+yet in force is in neither; `not_yet_in_force` counts it (§4.3). A reader shows these as
+evaluations, beside the number of distinct requirements (`contract_ref`, `requirement_ref`) the
+claims cite, for example "24 evaluations of 4 requirements", and names `unknown_count` "evaluations
+with an unknown result", never "unresolved requirements": a requirement can have one `UNKNOWN`
+evaluation and one resolved one. An aggregate without a coverage statement is not a summary, it is a
+claim with the denominator hidden, and the companion schema refuses to validate one (§7).
 
 **No count rolls a requirement up to one verdict.** Coverage counts evaluations and the buckets list
 claims. Nothing in the aggregate states a verdict per requirement, so a requirement with both a `met`
 and a `not_met` claim is never counted as met; a reader shows each verdict's count.
 
-**Three buckets, never a single number.** Beneath coverage, `aggregate.buckets` groups every
-evaluated claim by its `verdict` — `met`, `not_met`, `not_evaluable` — never rolled up into one
-pass/fail figure or a percentage. A single number hides which requirements were actually judged
+**Buckets, never a single number.** Beneath coverage, `aggregate.buckets` groups every in-force
+claim by its `verdict` — `met`, `not_met`, `not_evaluable`, and `out_of_scope` where the contract
+switches it on (§4.2) — never rolled up into one pass/fail figure or a percentage. A claim not yet
+in force is in no bucket (§4.3). A single number hides which requirements were actually judged
 versus which were skipped for lack of evidence; the three buckets keep that distinction visible at
 the point a sponsor first looks at the Result. `not_evaluable` is not a failure and not a success
 — it is its own bucket, exactly as large as `sufficiency != SATISFIED` makes it (§1), and a Result
 that folds it into either of the other two has silently converted "we could not tell" into an
-answer.
+answer. `out_of_scope` is likewise its own bucket: never in `met`, and never in a pass figure.
 
 **Assurance stays attached to each claim.** The ruling's closing sentence — "who says so, and could
 I independently check it?" — is why `tier` and `grade` are per-claim fields (§1, §4), never
@@ -228,7 +235,9 @@ claim:
   tier: recomputed | judged           # §1, mirrors evidence-plan-ir-v0.md §4.2
   grade: self-attested | witnessed | countersigned   # §1, owned elsewhere
   sufficiency: SATISFIED | GAP | INSUFFICIENT | UNKNOWN   # §1, owned by the Evidence Contract
-  verdict: met | not_met | not_evaluable                  # §1, owned by the Evidence Contract
+  verdict: met | not_met | not_evaluable | out_of_scope   # §1, owned by the Evidence Contract
+  out_of_scope_allowed: true          # OPTIONAL — §4.2, copied from the contract
+  applies_from: YYYY-MM-DD            # OPTIONAL — §4.3, copied from the contract
   evidence: [digest-ref, ...]         # §5 — by digest only; at least one (§1)
   proofs: [proof-ref, ...]            # §5 — by digest only
   presentation: disclosure-carrier | analysis-carrier | story-carrier   # §2, §6
@@ -384,6 +393,74 @@ dropped. `ClaimType` is a closed enum here, so an unknown type fails *validation
 
 Fixtures: §11.
 
+### 4.2 `out_of_scope` — the fourth verdict
+
+**Status: RULED (ruling 10, 2026-10-21, and the 2026-10-22 ruling on this revision).** `out_of_scope`
+is a judged outcome: the requirement was evaluated against sufficient evidence, and the situation it
+asks about did not arise in the evaluated subject. It is a claim with evidence, tier and grade like
+any other. It is not three nearby things:
+
+| Term | What it is |
+|---|---|
+| verdict `out_of_scope` | a claim's judged outcome: evaluated, the situation did not arise |
+| `coverage.excluded_not_applicable` | an evaluation excluded as `NOT_APPLICABLE`, which has no claim (§3) |
+| an `x-` member a producer names `out_of_scope` | the producer's own record, never read by a verifier (§8a) |
+
+A `not_applicable` token is still refused in any verdict field (§9).
+
+**Where a contract switches it on.** The Evidence Contract's native requirements carry an optional
+switch, `out_of_scope_allowed: true`; a pack that offers `out_of_scope` compiles to that switch on
+each requirement it offers it for, and to no switch on a requirement marked never out of scope. A
+claim copies the switch as its own `out_of_scope_allowed: true` (absent means not allowed; there is
+no `false`). The same name on a requirement shape other than a native one grants nothing. Any
+producer that emits a claim for a requirement, typed or not, copies the switch by this rule. These
+hold:
+
+- A claim whose `verdict` is `out_of_scope` MUST carry `out_of_scope_allowed`, MUST be a requirement
+  claim (`type` absent or `requirement`; never `reconcile` or `close`), and its carrier `status` MUST
+  NOT be `NOT_APPLICABLE` (schema).
+- `aggregate.buckets.out_of_scope` is REQUIRED when any claim carries `out_of_scope_allowed`, and
+  MUST be absent otherwise (schema). A Result whose contract does not switch it on carries the same
+  three buckets it did before this section existed.
+- Every claim of one requirement (`contract_ref`, `requirement_ref`) carries the same value
+  (checker).
+- An in-force `out_of_scope` claim counts in `evaluated_population`, sits in `buckets.out_of_scope`
+  only, and is never in `met`. A later one follows §4.3.
+
+**What the Result alone cannot check.** The flag is the producer's copy. A producer that sets it on a
+requirement whose contract does not grant it passes every rule above. A conforming evaluator copies
+the contract's switch (`spec/interop-profile-v0.md` §8.3); checking another party's Result against
+its contract is not defined by this revision. A relying party that needs the copy to hold
+re-evaluates the contract.
+
+### 4.3 Applicability — `applies_from`
+
+**Status: RULED (2026-10-22).** A claim MAY carry `applies_from`, the date (`YYYY-MM-DD`) its
+requirement applies from, copied from the Evidence Contract requirement's `clause.effective_from`.
+Absent means in force. Presence follows the requirement, not its profile: a native outcome with a
+dated `clause` is dated too. Any producer that emits a claim for a dated requirement, typed or not,
+copies the date.
+
+A claim is **later** when `applies_from` is after the UTC calendar date of the Result's
+`generated_at`; on that date or before it, the claim is in force. The status is derived, never
+carried. When any claim carries `applies_from`, `generated_at` MUST parse as an RFC 3339 date-time
+with an offset, and every `applies_from` MUST be a calendar date (checker; the schema's `pattern`
+checks only the shape).
+
+- A later claim keeps its own sufficiency and verdict, as readiness. It is in no verdict bucket (so
+  never in `met` or `out_of_scope`), and it is in neither `evaluated_population` nor
+  `unknown_count`. Applicability decides first: a later `out_of_scope` claim is later.
+- Every in-force claim is in exactly one verdict bucket (§4's cross-element rule).
+- `coverage.not_yet_in_force` counts the later claims (§3's unit). It is REQUIRED when any claim is
+  later and absent otherwise (checker: the schema cannot compare dates).
+- Every claim of one requirement carries the same `applies_from` (checker).
+
+A reader that shows the split prints the as-of date, the UTC date of `generated_at`, whenever any
+claim carries `applies_from`, including when every dated requirement is already in force, so a
+reader of an evaluation of past activity sees what "in force" is relative to. The date and the
+switch are copied facts (§4.2's last paragraph applies to both): a reader labels them as copied from
+the contract, never as verified.
+
 ## 5. Evidence and proofs
 
 `evidence[]` and `proofs[]` are both by-digest-only arrays; neither ever inlines bytes.
@@ -436,19 +513,22 @@ characterize or narrate instead; §2's gate is one-directional and this is delib
 ```
 aggregate:
   coverage:
-    evaluated_population: integer     # evaluations in the population: the claims (§3)
+    evaluated_population: integer     # evaluations in the population: the in-force claims (§3, §4.3)
     excluded_not_applicable: integer  # evaluations excluded as NOT_APPLICABLE, which have no claim — an EvidenceStatus value (§2), not §1's Sufficiency
-    unknown_count: integer            # evaluations whose sufficiency resolved UNKNOWN (§1, §3)
+    unknown_count: integer            # in-force evaluations whose sufficiency resolved UNKNOWN (§1, §3)
+    not_yet_in_force: integer         # OPTIONAL — the later claims; present exactly when one is later (§4.3)
   coverage_declaration:               # OPTIONAL, PROPOSED — §7.2
     kind: holder_selected | stream_interval | source_authoritative
   buckets:
     met: [claim-id, ...]
     not_met: [claim-id, ...]
     not_evaluable: [claim-id, ...]
+    out_of_scope: [claim-id, ...]     # present exactly when a claim carries out_of_scope_allowed (§4.2)
 ```
 
-`buckets` always carries all three keys, each an array (possibly empty) — never an absent key,
-and never collapsed into a single figure (§3).
+`buckets` always carries the three keys `met`, `not_met` and `not_evaluable`, each an array
+(possibly empty) — never an absent key, and never collapsed into a single figure (§3) — and the
+fourth key `out_of_scope` exactly when the contract switches it on (§4.2).
 
 ### 7.1 Coverage per requirement — `coverage_report` (PROPOSED)
 
@@ -774,3 +854,10 @@ mutant proof.
 positive with `claim-2` evaluating `claim-1`'s requirement on a second subject, so one requirement
 has a `met` and a `not_met` claim. Its population is three evaluations of two requirements, and the
 checker requires every positive's `evaluated_population` and `unknown_count` to count claims.
+
+§4.2's `out_of_scope` adds three positives (`pos-example-org-out-of-scope-result.json`,
+`pos-example-org-out-of-scope-empty-result.json`, `pos-example-org-close-switched-on-result.json`),
+eight schema negatives and two checker negatives; §4.3's applicability adds four positives
+(`pos-example-org-applicability-result.json`, `-boundary-`, `-in-force-` and
+`pos-example-org-reconcile-later-result.json`) and eight checker negatives. Each negative has its own
+mutant proof; `vectors/evidence-result/README.md` lists them.

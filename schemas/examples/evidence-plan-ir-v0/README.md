@@ -20,6 +20,7 @@ fixture here or in the generator names a company.
 | `plan-outcome.json` + `plan-outcome-result.json` | `outcome` | `evidence` → `assurance` → `decision`, a `remote:` planner with no `LOCAL_ONLY` node |
 | `plan-obligation.json` + `plan-obligation-result.json` | `obligation` | `traditional` (`LOCAL_ONLY`) → `semantic` (`judged`, `ABSTRACTABLE`) → `decision`, a `local:` planner — the positive counterpart to the negative fixture below |
 | `plan-process.json` + `plan-process-result.json` | `process` | `traditional` → `assurance.bundle` → `decision`, a `remote:` planner |
+| `plan-obligation-out-of-scope-result.json` | `obligation` | `plan-obligation-result.json` with `node-3`'s `verdict` `out_of_scope`: the decision node resolves the upstream `semantic` judgment that the situation did not arise, for a requirement whose contract switches `out_of_scope` on (`spec/evidence-result-v0.md` §4.2) |
 | `attestation-record-example.json` | — | the `obligation` plan's `node-2` attestation record: the one `judged`-tier node across all three plans, so this is the fixture that exercises `adjudicator.model`/`model_version` |
 
 Each `plan-*-result.json`'s `plan_ref` is the real digest of its matching `plan-*.json`
@@ -47,6 +48,11 @@ header field from `contract_version` to `contract_ref`; the value is unchanged).
 `$defs/EvidencePlan` validation. `check_evidence_plan_ir_examples.py` asserts the rejection and
 proves it is name-specific by renaming the key back to `contract_ref` in memory and confirming the
 SAME fixture then validates clean.
+
+`invalid-result-unknown-verdict.json` — `plan-obligation-result.json` with `node-3`'s `verdict`
+`not_applicable`, outside the closed four-value set (not applicable is a population exclusion, never
+a verdict). It MUST fail `$defs/PlanResult` validation; the checker proves the closed `Verdict` enum
+is what rejects it by opening the enum in memory.
 
 ## Reproducing the validation run
 

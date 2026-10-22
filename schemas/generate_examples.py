@@ -398,6 +398,15 @@ _legacy_header = plan_invalid_legacy_contract_version["header"]
 _legacy_header["contract_version"] = _legacy_header.pop("contract_ref")
 
 
+# Result v0 section 4.2: the decision node of the obligation plan resolves
+# out_of_scope from its upstream semantic node's judgment (the requirement
+# carries the switch). The negative carries a verdict outside the closed set.
+plan_obligation_out_of_scope_result = json.loads(json.dumps(plan_obligation_result))
+plan_obligation_out_of_scope_result["results"]["node-3"]["verdict"] = "out_of_scope"
+invalid_result_unknown_verdict = json.loads(json.dumps(plan_obligation_result))
+invalid_result_unknown_verdict["results"]["node-3"]["verdict"] = "not_applicable"
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("plan-outcome", plan_outcome)
@@ -409,6 +418,8 @@ def main() -> int:
     write("attestation-record-example", obligation_node2_attestation)
     write("invalid-local-only-under-remote-planner", plan_invalid_local_only_under_remote_planner)
     write("invalid-legacy-contract-version-field", plan_invalid_legacy_contract_version)
+    write("plan-obligation-out-of-scope-result", plan_obligation_out_of_scope_result)
+    write("invalid-result-unknown-verdict", invalid_result_unknown_verdict)
     return 0
 
 

@@ -18,7 +18,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The exchange cases of vectors/interop-profile-v0 run through the Verifier
+// The exchange cases of vectors/interop-profile-v0 and
+// vectors/interop-profile-v0-requirement-facts, each set with its own
+// contract, run through the Verifier
 // from their inputs alone, and the result is compared with each case's
 // whole expected block, as python/tests/test_interop_profile_verifier.py
 // compares the Python reference verifier's. The carriage, acceptance and
@@ -70,6 +72,12 @@ func renderRequirements(order []string, reqs map[string]er.RequirementResult) ma
 		entry := map[string]any{"row": r.Row, "status": nullable(r.Status), "sufficiency": nullable(r.Sufficiency), "verdict": nullable(r.Verdict)}
 		if r.Note != "" {
 			entry["note"] = r.Note
+		}
+		if r.AppliesFrom != "" {
+			entry["applies_from"] = r.AppliesFrom
+		}
+		if r.OutOfScopeAllowed {
+			entry["out_of_scope_allowed"] = true
 		}
 		out[q] = entry
 	}
@@ -130,6 +138,13 @@ func normalize(t *testing.T, v any) any {
 }
 
 func TestInteropProfileExchangeVectors(t *testing.T) {
+	// Each set and the number of its exchange cases.
+	for set, want := range map[string]int{"interop-profile-v0": 26, "interop-profile-v0-requirement-facts": 2} {
+		t.Run(set, func(t *testing.T) { runExchangeVectors(t, set, want) })
+	}
+}
+
+func runExchangeVectors(t *testing.T, set string, want int) {
 	var corpus struct {
 		Contract struct {
 			Document map[string]any `json:"document"`
@@ -152,11 +167,12 @@ func TestInteropProfileExchangeVectors(t *testing.T) {
 				Statements   any                               `json:"statements"`
 				Acceptances  any                               `json:"acceptance_records"`
 				OtherRequest any                               `json:"other_request"`
+				Requirements []string                          `json:"requirements"`
 			} `json:"inputs"`
 			Expected map[string]any `json:"expected"`
 		} `json:"cases"`
 	}
-	readCorpus(t, "interop-profile-v0", &corpus)
+	readCorpus(t, set, &corpus)
 	ran := 0
 	for _, c := range corpus.Cases {
 		in := c.Inputs
@@ -183,6 +199,9 @@ func TestInteropProfileExchangeVectors(t *testing.T) {
 				exchanges[0].Absence = &m
 			}
 			opts := er.VerifyOptions{Requirements: []string{"r-record"}, Relations: in.Relations}
+			if in.Requirements != nil {
+				opts.Requirements = in.Requirements
+			}
 			if in.Relations != nil {
 				opts.Requirements = nil
 				for q := range in.Relations {
@@ -242,7 +261,7 @@ func TestInteropProfileExchangeVectors(t *testing.T) {
 			assert.Equal(t, normalize(t, c.Expected), normalize(t, out))
 		})
 	}
-	assert.Equal(t, 26, ran, "every exchange case of the corpus ran")
+	assert.Equal(t, want, ran, "every exchange case of the corpus ran")
 }
 
 // The checkpoint is checked as decoded strictly: its unprotected header,

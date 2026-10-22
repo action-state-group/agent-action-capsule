@@ -1,0 +1,94 @@
+{
+  "description": "spec/contract-report-v1.md section 2 and 3: what a contract-report module shows for the Result v0 sections 4.2 and 4.3 vectors. AAC's core runtime has no contract-report module (section 4), so a module's own rendering tests run these, with the example pack (schemas/examples/presentation-manifest-v0/example-wording-pack-contract-report.json) and each case's entry overrides layered over it. Counts are per claim (Result v0 section 3).",
+  "cases": [
+    {
+      "name": "out-of-scope-count",
+      "result": "vectors/evidence-result/pos-example-org-out-of-scope-result.json",
+      "expect": {
+        "buckets": {
+          "met": 1,
+          "not_met": 0,
+          "not_evaluable": 1,
+          "out_of_scope": 1
+        },
+        "out_of_scope_word": "Did not arise",
+        "contract_fact_note_beside_out_of_scope": true,
+        "as_of": null,
+        "not_yet_in_force_rows": []
+      }
+    },
+    {
+      "name": "switched-on-empty",
+      "result": "vectors/evidence-result/pos-example-org-out-of-scope-empty-result.json",
+      "expect": {
+        "buckets": {
+          "met": 1,
+          "not_met": 1,
+          "not_evaluable": 1,
+          "out_of_scope": 0
+        },
+        "as_of": null,
+        "not_yet_in_force_rows": []
+      }
+    },
+    {
+      "name": "not-yet-in-force-rows",
+      "result": "vectors/evidence-result/pos-example-org-applicability-result.json",
+      "expect": {
+        "buckets": {
+          "met": 1,
+          "not_met": 0,
+          "not_evaluable": 1,
+          "out_of_scope": 0
+        },
+        "as_of": "2026-09-22",
+        "as_of_text": "In force as of 2026-09-22",
+        "not_yet_in_force_rows": [
+          "req-claim-2",
+          "req-claim-4",
+          "req-claim-5"
+        ],
+        "readiness_label_on_every_later_tally": true
+      }
+    },
+    {
+      "name": "as-of-when-every-dated-row-is-in-force",
+      "result": "vectors/evidence-result/pos-example-org-applicability-in-force-result.json",
+      "expect": {
+        "as_of": "2026-09-22",
+        "as_of_text": "In force as of 2026-09-22",
+        "not_yet_in_force_rows": []
+      }
+    },
+    {
+      "name": "as-of-by-utc-date",
+      "result": "vectors/evidence-result/pos-example-org-applicability-boundary-result.json",
+      "expect": {
+        "as_of": "2026-09-23",
+        "not_yet_in_force_rows": [
+          "req-claim-2"
+        ]
+      }
+    },
+    {
+      "name": "as-of-word-without-a-slot",
+      "result": "vectors/evidence-result/pos-example-org-applicability-in-force-result.json",
+      "pack_entries": {
+        "applicability.as_of": "In force as of"
+      },
+      "expect": {
+        "as_of_text": "2026-09-22"
+      }
+    },
+    {
+      "name": "as-of-word-with-two-slots",
+      "result": "vectors/evidence-result/pos-example-org-applicability-in-force-result.json",
+      "pack_entries": {
+        "applicability.as_of": "In force as of {date} ({date})"
+      },
+      "expect": {
+        "as_of_text": "2026-09-22"
+      }
+    }
+  ]
+}

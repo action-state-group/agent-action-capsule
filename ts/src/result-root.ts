@@ -101,6 +101,17 @@ export const VERDICTS = Object.freeze([
   "met",
   "not_met",
   "not_evaluable",
+  "out_of_scope",
+] as const);
+/**
+ * The buckets every aggregate carries. The fourth, `out_of_scope`, is
+ * present exactly when a claim carries `out_of_scope_allowed` (spec section
+ * 4.2).
+ */
+export const REQUIRED_BUCKETS = Object.freeze([
+  "met",
+  "not_met",
+  "not_evaluable",
 ] as const);
 export const EVIDENCE_STATUSES = Object.freeze([
   "SATISFIED",
@@ -351,6 +362,18 @@ export interface ResultClaim {
   readonly grade: Grade;
   readonly sufficiency: Sufficiency;
   readonly verdict: Verdict;
+  /**
+   * Copied from the contract requirement (spec sections 4.2, 4.3), never
+   * verified here: whether the requirement allows `out_of_scope`, and the
+   * date it applies from.
+   */
+  readonly outOfScopeAllowed: boolean;
+  readonly appliesFrom?: string;
+  /**
+   * `appliesFrom` is after the UTC date of `generated_at`: the claim's
+   * verdict is readiness only, in no bucket and outside the population.
+   */
+  readonly later: boolean;
   readonly support: ClaimSupport;
   readonly evidence: readonly ClaimEvidenceRef[];
   /** The cited digests no supplied record carries, in citation order. */
@@ -383,12 +406,16 @@ export interface ResultCoverage {
   readonly evaluatedPopulation: number;
   readonly excludedNotApplicable: number;
   readonly unknownCount: number;
+  /** The later claims (spec section 4.3); absent when none is later. */
+  readonly notYetInForce?: number;
 }
 
 export interface ResultBuckets {
   readonly met: readonly string[];
   readonly notMet: readonly string[];
   readonly notEvaluable: readonly string[];
+  /** Present exactly when the contract switches `out_of_scope` on. */
+  readonly outOfScope?: readonly string[];
 }
 
 /**
@@ -400,15 +427,19 @@ export interface ResultBucketCounts {
   readonly met: number;
   readonly notMet: number;
   readonly notEvaluable: number;
+  /** Present exactly when the Result carries the fourth bucket. */
+  readonly outOfScope?: number;
   readonly failed: number;
 }
 
 export type CountField =
   | "evaluated_population"
   | "unknown_count"
+  | "not_yet_in_force"
   | "buckets.met"
   | "buckets.not_met"
-  | "buckets.not_evaluable";
+  | "buckets.not_evaluable"
+  | "buckets.out_of_scope";
 
 /** A headline number the producer stated that the claims do not bear out. */
 export interface CountMismatch {
@@ -584,6 +615,55 @@ function presentationFindings(path: string, value: unknown): string[] {
   return findings;
 }
 
+const CALENDAR_DATE = /^(\d{4})-(\d{2})-(\d{2})$/u;
+const RFC3339_WITH_OFFSET =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/iu;
+
+/** `YYYY-MM-DD` naming a real calendar date, as `applies_from` must. */
+export function isCalendarDate(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const match = CALENDAR_DATE.exec(value);
+  if (match === null) return false;
+  const [year, month, day] = match.slice(1).map(Number) as [
+    number,
+    number,
+    number,
+  ];
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+}
+
+/**
+ * The UTC calendar date of an RFC 3339 date-time with an offset, as
+ * `YYYY-MM-DD`; undefined when it is not one (spec section 4.3).
+ */
+export function utcDateOf(generatedAt: unknown): string | undefined {
+  if (typeof generatedAt !== "string" || !RFC3339_WITH_OFFSET.test(generatedAt))
+    return undefined;
+  const time = Date.parse(generatedAt);
+  return Number.isNaN(time)
+    ? undefined
+    : new Date(time).toISOString().slice(0, 10);
+}
+
+/**
+ * The ids of the later claims: `applies_from` after the UTC date of
+ * `generated_at` (spec section 4.3). Assumes a document whose dates parse.
+ */
+export function laterClaimIds(document: ObjectValue): ReadonlySet<string> {
+  const asOf = utcDateOf(document.generated_at);
+  const later = new Set<string>();
+  if (asOf === undefined) return later;
+  for (const claim of document.claims as ObjectValue[])
+    if (typeof claim.applies_from === "string" && claim.applies_from > asOf)
+      later.add(claim.id as string);
+  return later;
+}
+
 function claimFindings(path: string, value: unknown): string[] {
   if (!isObject(value)) return [`${path}: not an object`];
   const findings: string[] = [];
@@ -604,8 +684,9 @@ function claimFindings(path: string, value: unknown): string[] {
   if (!oneOf(SUFFICIENCIES, value.sufficiency))
     findings.push(`${path}.sufficiency`);
   if (!oneOf(VERDICTS, value.verdict)) findings.push(`${path}.verdict`);
-  // The rule that binds the two axes (spec section 1): a verdict is met or
-  // not_met only under SATISFIED sufficiency, and not_evaluable otherwise.
+  // The rule that binds the two axes (spec section 1): a verdict is met,
+  // not_met or out_of_scope only under SATISFIED sufficiency, and
+  // not_evaluable otherwise.
   if (oneOf(SUFFICIENCIES, value.sufficiency) && oneOf(VERDICTS, value.verdict))
     if (
       value.sufficiency === "SATISFIED"
@@ -615,6 +696,36 @@ function claimFindings(path: string, value: unknown): string[] {
       findings.push(
         `${path}.verdict: ${value.verdict} is not a verdict under sufficiency ${value.sufficiency}`,
       );
+  if (
+    Object.hasOwn(value, "out_of_scope_allowed") &&
+    value.out_of_scope_allowed !== true
+  )
+    findings.push(`${path}.out_of_scope_allowed: not true`);
+  if (
+    Object.hasOwn(value, "applies_from") &&
+    (typeof value.applies_from !== "string" ||
+      !CALENDAR_DATE.test(value.applies_from))
+  )
+    findings.push(`${path}.applies_from: not YYYY-MM-DD`);
+  // Spec section 4.2: the requirement allows it, it is a requirement claim,
+  // and it never reads as the NOT_APPLICABLE population exclusion.
+  if (value.verdict === "out_of_scope") {
+    if (value.out_of_scope_allowed !== true)
+      findings.push(
+        `${path}.verdict: out_of_scope where the requirement does not allow it`,
+      );
+    if (Object.hasOwn(value, "type") && value.type !== REQUIREMENT_CLAIM)
+      findings.push(
+        `${path}.verdict: out_of_scope on a ${String(value.type)} claim`,
+      );
+    if (
+      isObject(value.presentation) &&
+      value.presentation.status === "NOT_APPLICABLE"
+    )
+      findings.push(
+        `${path}.presentation.status: NOT_APPLICABLE on an out_of_scope claim`,
+      );
+  }
   // The schema requires at least one entry (minItems, spec section 1). The
   // mirror deliberately admits an empty list: such a claim still renders,
   // with support `unsupported`, rather than failing the whole root.
@@ -687,16 +798,74 @@ export function validateEvidenceResult(value: unknown): string[] {
         findings.push(
           `aggregate.coverage.${member}: not a non-negative integer`,
         );
+  if (
+    coverage !== undefined &&
+    Object.hasOwn(coverage, "not_yet_in_force") &&
+    !nonNegativeInteger(coverage.not_yet_in_force)
+  )
+    findings.push(
+      "aggregate.coverage.not_yet_in_force: not a non-negative integer",
+    );
   const buckets = isObject(aggregate?.buckets) ? aggregate.buckets : undefined;
   if (buckets === undefined) findings.push("aggregate.buckets: not an object");
-  else
-    for (const member of VERDICTS)
+  else {
+    for (const member of REQUIRED_BUCKETS)
       if (
         !Array.isArray(buckets[member]) ||
         !buckets[member].every(nonEmptyString)
       )
         findings.push(`aggregate.buckets.${member}: not an array of claim ids`);
+    if (
+      Object.hasOwn(buckets, "out_of_scope") &&
+      (!Array.isArray(buckets.out_of_scope) ||
+        !buckets.out_of_scope.every(nonEmptyString))
+    )
+      findings.push(
+        "aggregate.buckets.out_of_scope: not an array of claim ids",
+      );
+  }
   if (findings.length > 0) return findings;
+
+  const claimList = value.claims as ObjectValue[];
+  // Spec section 4.2: the fourth bucket is there exactly when the contract
+  // switches out_of_scope on.
+  const switchedOn = claimList.some(
+    (claim) => claim.out_of_scope_allowed === true,
+  );
+  if (switchedOn !== Object.hasOwn(buckets!, "out_of_scope"))
+    findings.push(
+      switchedOn
+        ? "aggregate.buckets.out_of_scope: absent, but a claim allows out_of_scope"
+        : "aggregate.buckets.out_of_scope: present, but no claim allows out_of_scope",
+    );
+  // Spec section 4.3: dates parse, and every claim of one requirement
+  // carries the same copied facts.
+  const dated = claimList.filter((claim) =>
+    Object.hasOwn(claim, "applies_from"),
+  );
+  if (dated.length > 0) {
+    if (utcDateOf(value.generated_at) === undefined)
+      findings.push(
+        "generated_at: not an RFC 3339 date-time with an offset, and a claim is dated",
+      );
+    dated.forEach((claim) => {
+      if (!isCalendarDate(claim.applies_from))
+        findings.push(
+          `claims: ${String(claim.id)}.applies_from ${String(claim.applies_from)} is not a calendar date`,
+        );
+    });
+  }
+  const rows = new Map<string, ObjectValue[]>();
+  for (const claim of claimList) {
+    const key = JSON.stringify([claim.contract_ref, claim.requirement_ref]);
+    rows.set(key, [...(rows.get(key) ?? []), claim]);
+  }
+  for (const [key, members] of rows)
+    for (const member of ["out_of_scope_allowed", "applies_from"])
+      if (new Set(members.map((claim) => String(claim[member]))).size > 1)
+        findings.push(`claims: the claims of ${key} disagree on ${member}`);
+  if (findings.length > 0) return findings;
+  const later = laterClaimIds(value);
 
   const verdictById = new Map<string, string>();
   (value.claims as ObjectValue[]).forEach((claim, index) => {
@@ -708,18 +877,24 @@ export function validateEvidenceResult(value: unknown): string[] {
   const appearances = new Map<string, number>();
   let entries = 0;
   for (const member of VERDICTS)
-    for (const id of buckets![member] as string[]) {
+    for (const id of (buckets![member] as string[] | undefined) ?? []) {
       entries += 1;
       appearances.set(id, (appearances.get(id) ?? 0) + 1);
-      if (verdictById.get(id) !== member)
+      if (later.has(id))
+        findings.push(
+          `aggregate.buckets.${member}: ${id} is not yet in force and belongs in no bucket`,
+        );
+      else if (verdictById.get(id) !== member)
         findings.push(
           `aggregate.buckets.${member}: ${id} is not a claim with that verdict`,
         );
     }
-  // The exact partition (2026-09-28): every claim in exactly one bucket, and
-  // exactly as many entries as claims. A claim in no bucket is a verdict the
+  // The exact partition (2026-09-28): every in-force claim in exactly one
+  // bucket, a later claim (spec section 4.3) in none, and exactly as many
+  // entries as in-force claims. A claim in no bucket is a verdict the
   // headline hides; one in two is a verdict counted twice.
   for (const [id, verdict] of verdictById) {
+    if (later.has(id)) continue;
     const count = appearances.get(id) ?? 0;
     if (count === 0)
       findings.push(
@@ -730,9 +905,10 @@ export function validateEvidenceResult(value: unknown): string[] {
         `aggregate.buckets: ${id} appears ${count} times across the buckets`,
       );
   }
-  if (entries !== verdictById.size)
+  const inForce = verdictById.size - later.size;
+  if (entries !== inForce)
     findings.push(
-      `aggregate.buckets: ${entries} entries for ${verdictById.size} claims`,
+      `aggregate.buckets: ${entries} entries for ${inForce} ${later.size > 0 ? "in-force claims" : "claims"}`,
     );
   return findings;
 }
@@ -743,8 +919,9 @@ const countOf = (value: unknown): number =>
 /**
  * The headline numbers as the claims bear them out. Takes a document that
  * passed `validateEvidenceResult` and returns coverage and per-bucket
- * counts recomputed from `claims[]` -- the claim count, the UNKNOWN
- * sufficiencies, and the verdicts -- beside a list of every stated number
+ * counts recomputed from `claims[]` -- the in-force claim count, their
+ * UNKNOWN sufficiencies and verdicts, and the later claims (spec section
+ * 4.3) -- beside a list of every stated number
  * that disagrees. `excluded_not_applicable` is carried as stated (no claim
  * backs it, by construction). Pure, so a disagreement the partition gate
  * makes unreachable through `buildResultRoot` is still provable here.
@@ -765,44 +942,58 @@ export function recomputeCounts(
   const aggregate = document.aggregate as ObjectValue;
   const coverage = aggregate.coverage as ObjectValue;
   const buckets = aggregate.buckets as ObjectValue;
-  const standing = claims.filter((claim) => !failed.has(claim.id as string));
-  const stated = {
+  const later = laterClaimIds(document);
+  // Spec section 4.3: a later claim is readiness only, outside the
+  // population and in no bucket.
+  const inForce = claims.filter((claim) => !later.has(claim.id as string));
+  const standing = inForce.filter((claim) => !failed.has(claim.id as string));
+  const fourth = Object.hasOwn(buckets, "out_of_scope");
+  const verdictCount = (verdict: Verdict): number =>
+    standing.filter((claim) => claim.verdict === verdict).length;
+  const stated: Partial<Record<CountField, number>> = {
     evaluated_population: countOf(coverage.evaluated_population),
     unknown_count: countOf(coverage.unknown_count),
     "buckets.met": (buckets.met as unknown[]).length,
     "buckets.not_met": (buckets.not_met as unknown[]).length,
     "buckets.not_evaluable": (buckets.not_evaluable as unknown[]).length,
-  } as const;
-  const recomputed = {
-    evaluated_population: claims.length,
+  };
+  const recomputed: Partial<Record<CountField, number>> = {
+    evaluated_population: inForce.length,
     unknown_count: standing.filter((claim) => claim.sufficiency === "UNKNOWN")
       .length,
-    "buckets.met": standing.filter((claim) => claim.verdict === "met").length,
-    "buckets.not_met": standing.filter((claim) => claim.verdict === "not_met")
-      .length,
-    "buckets.not_evaluable": standing.filter(
-      (claim) => claim.verdict === "not_evaluable",
-    ).length,
-  } as const;
+    "buckets.met": verdictCount("met"),
+    "buckets.not_met": verdictCount("not_met"),
+    "buckets.not_evaluable": verdictCount("not_evaluable"),
+  };
+  if (fourth) {
+    stated["buckets.out_of_scope"] = (buckets.out_of_scope as unknown[]).length;
+    recomputed["buckets.out_of_scope"] = verdictCount("out_of_scope");
+  }
+  if (later.size > 0 || Object.hasOwn(coverage, "not_yet_in_force")) {
+    stated.not_yet_in_force = countOf(coverage.not_yet_in_force);
+    recomputed.not_yet_in_force = later.size;
+  }
   const mismatches: CountMismatch[] = [];
-  for (const field of Object.keys(stated) as CountField[])
+  for (const field of Object.keys(recomputed) as CountField[])
     if (stated[field] !== recomputed[field])
       mismatches.push({
         field,
-        stated: stated[field],
-        recomputed: recomputed[field],
+        stated: stated[field]!,
+        recomputed: recomputed[field]!,
       });
   return {
     coverage: {
-      evaluatedPopulation: recomputed.evaluated_population,
+      evaluatedPopulation: recomputed.evaluated_population!,
       excludedNotApplicable: countOf(coverage.excluded_not_applicable),
-      unknownCount: recomputed.unknown_count,
+      unknownCount: recomputed.unknown_count!,
+      ...(later.size > 0 ? { notYetInForce: later.size } : {}),
     },
     bucketCounts: {
-      met: recomputed["buckets.met"],
-      notMet: recomputed["buckets.not_met"],
-      notEvaluable: recomputed["buckets.not_evaluable"],
-      failed: claims.length - standing.length,
+      met: recomputed["buckets.met"]!,
+      notMet: recomputed["buckets.not_met"]!,
+      notEvaluable: recomputed["buckets.not_evaluable"]!,
+      ...(fourth ? { outOfScope: recomputed["buckets.out_of_scope"]! } : {}),
+      failed: inForce.length - standing.length,
     },
     mismatches,
   };
@@ -1510,6 +1701,7 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
     ? await inboundCloseLinks(context)
     : new Map<string, readonly CloseLink[]>();
 
+  const later = laterClaimIds(document);
   const claims: ResultClaim[] = [];
   for (const raw of document.claims as ObjectValue[]) {
     const evidence: ClaimEvidenceRef[] = [];
@@ -1661,6 +1853,11 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
       grade: raw.grade as Grade,
       sufficiency: raw.sufficiency as Sufficiency,
       verdict: raw.verdict as Verdict,
+      outOfScopeAllowed: raw.out_of_scope_allowed === true,
+      ...(typeof raw.applies_from === "string"
+        ? { appliesFrom: raw.applies_from }
+        : {}),
+      later: later.has(raw.id as string),
       support:
         evidence.length > 0 && missing.length === 0
           ? "supported"
@@ -1714,6 +1911,9 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
       evaluatedPopulation: coverage.evaluated_population as number,
       excludedNotApplicable: coverage.excluded_not_applicable as number,
       unknownCount: coverage.unknown_count as number,
+      ...(nonNegativeInteger(coverage.not_yet_in_force)
+        ? { notYetInForce: coverage.not_yet_in_force }
+        : {}),
     },
     bucketCounts: counts.bucketCounts,
     countMismatches: counts.mismatches,
@@ -1721,6 +1921,9 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
       met: [...(buckets.met as string[])],
       notMet: [...(buckets.not_met as string[])],
       notEvaluable: [...(buckets.not_evaluable as string[])],
+      ...(Array.isArray(buckets.out_of_scope)
+        ? { outOfScope: [...(buckets.out_of_scope as string[])] }
+        : {}),
     },
     claims,
     records: cited,

@@ -16,6 +16,7 @@
     "verdict.met": "Met",
     "verdict.not_met": "Not met",
     "verdict.not_evaluable": "Not evaluable",
+    "verdict.out_of_scope": "Did not arise",
     "sufficiency.satisfied": "Enough evidence",
     "sufficiency.gap": "Evidence gap",
     "sufficiency.insufficient": "Insufficient evidence",
@@ -26,6 +27,10 @@
     "grade.witnessed": "Witnessed",
     "grade.countersigned": "Countersigned",
     "status.withheld": "Withheld",
-    "status.not_committed": "Not committed"
+    "status.not_committed": "Not committed",
+    "applicability.not_yet_in_force.title": "Not yet in force",
+    "applicability.not_yet_in_force.note": "These take effect after the report's date. Their results show readiness only and are not counted above.",
+    "applicability.as_of": "In force as of {date}",
+    "contract_fact.note": "From the contract, not re-checked here"
   }
 }

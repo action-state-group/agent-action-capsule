@@ -1068,6 +1068,163 @@ pos_example_org_repeated_requirement_result = _mutated(pos_example_org_claims_re
 pos_example_org_repeated_requirement_result["claims"][1]["requirement_ref"] = "req-claim-1"
 
 
+# --- spec section 4.2: out_of_scope, the fourth verdict -------------------
+#     pos-example-org-out-of-scope-result: the claims positive with claim-1
+#     and claim-2 copying the contract's switch (out_of_scope_allowed), and
+#     claim-2 judged out_of_scope (SATISFIED: the situation did not arise). It
+#     sits in its own fourth bucket; claim-1's switch keeps the bucket
+#     required when claim-2's is removed, so each negative below fails at
+#     exactly one rule.
+pos_example_org_out_of_scope_result = _mutated(pos_example_org_claims_result)
+for _claim in pos_example_org_out_of_scope_result["claims"][:2]:
+    _claim["out_of_scope_allowed"] = True
+pos_example_org_out_of_scope_result["claims"][1]["verdict"] = "out_of_scope"
+pos_example_org_out_of_scope_result["aggregate"]["buckets"]["not_met"] = []
+pos_example_org_out_of_scope_result["aggregate"]["buckets"]["out_of_scope"] = ["claim-2"]
+
+# switched on, nothing judged out_of_scope: the fourth bucket is shown, empty
+pos_example_org_out_of_scope_empty_result = _mutated(pos_example_org_claims_result)
+pos_example_org_out_of_scope_empty_result["claims"][0]["out_of_scope_allowed"] = True
+pos_example_org_out_of_scope_empty_result["aggregate"]["buckets"]["out_of_scope"] = []
+
+neg_out_of_scope_without_switch = _mutated(pos_example_org_out_of_scope_result)
+del neg_out_of_scope_without_switch["claims"][1]["out_of_scope_allowed"]
+
+neg_out_of_scope_bucket_absent = _mutated(pos_example_org_out_of_scope_empty_result)
+del neg_out_of_scope_bucket_absent["aggregate"]["buckets"]["out_of_scope"]
+
+neg_out_of_scope_bucket_without_switch = _mutated(pos_example_org_claims_result)
+neg_out_of_scope_bucket_without_switch["aggregate"]["buckets"]["out_of_scope"] = []
+
+neg_out_of_scope_with_gap = _mutated(pos_example_org_out_of_scope_result)
+neg_out_of_scope_with_gap["claims"][1]["sufficiency"] = "GAP"
+
+neg_out_of_scope_not_applicable_carrier = _mutated(pos_example_org_out_of_scope_result)
+neg_out_of_scope_not_applicable_carrier["claims"][1]["presentation"]["status"] = "NOT_APPLICABLE"
+
+neg_satisfied_not_evaluable = _mutated(pos_example_org_claims_result)
+neg_satisfied_not_evaluable["claims"][1]["verdict"] = "not_evaluable"
+
+neg_not_applicable_verdict = _mutated(pos_example_org_claims_result)
+neg_not_applicable_verdict["claims"][1]["verdict"] = "not_applicable"
+
+# the out_of_scope verdict is for requirement claims only
+neg_out_of_scope_on_reconcile_claim = _mutated(pos_example_org_reconcile_result)
+neg_out_of_scope_on_reconcile_claim["claims"][1]["out_of_scope_allowed"] = True
+neg_out_of_scope_on_reconcile_claim["claims"][1]["verdict"] = "out_of_scope"
+neg_out_of_scope_on_reconcile_claim["aggregate"]["buckets"]["not_met"] = []
+neg_out_of_scope_on_reconcile_claim["aggregate"]["buckets"]["out_of_scope"] = ["reconcile-1"]
+
+# checker negatives: schema-valid, rejected by the cross-element rules
+neg_out_of_scope_listed_in_met = _mutated(pos_example_org_out_of_scope_result)
+neg_out_of_scope_listed_in_met["aggregate"]["buckets"]["met"] = ["claim-1", "claim-2"]
+neg_out_of_scope_listed_in_met["aggregate"]["buckets"]["out_of_scope"] = []
+
+neg_switch_disagrees_in_row = _mutated(pos_example_org_out_of_scope_result)
+del neg_switch_disagrees_in_row["claims"][0]["out_of_scope_allowed"]
+neg_switch_disagrees_in_row["claims"][1]["requirement_ref"] = "req-claim-1"
+
+# the copied switch on a typed claim of the same requirement: a close claim
+# and a requirement claim of one row, both switched on, neither out_of_scope
+pos_example_org_close_switched_on_result = _mutated(pos_example_org_close_agreed_result)
+for _claim in pos_example_org_close_switched_on_result["claims"]:
+    _claim["out_of_scope_allowed"] = True
+pos_example_org_close_switched_on_result["claims"][1]["requirement_ref"] = "req-claim-1"
+pos_example_org_close_switched_on_result["aggregate"]["buckets"]["out_of_scope"] = []
+CLOSE_RECORDS["pos-example-org-close-switched-on-result"] = CLOSE_RECORDS["pos-example-org-close-agreed-result"]
+
+
+# --- spec section 4.3: applicability ---------------------------------------
+#     generated_at is 2026-09-22. claim-1 has applied since 2026-01-01 and is
+#     in force; claim-2 (not_met) and three more later claims apply from
+#     2027-08-02, so they keep their verdicts as readiness and are in no
+#     bucket: claim-4 a later UNKNOWN (not in unknown_count) and claim-5 a
+#     later out_of_scope (not in the switched-on, empty fourth bucket).
+#     claim-3 is undated. Population 2, not_yet_in_force 3.
+LATER = "2027-08-02"
+pos_example_org_applicability_result = _mutated(pos_example_org_claims_result)
+_claims = pos_example_org_applicability_result["claims"]
+_claims[0]["applies_from"] = "2026-01-01"
+_claims[1]["applies_from"] = LATER
+_later_unknown = json.loads(json.dumps(absence_claim))
+_later_unknown.update({"id": "claim-4", "requirement_ref": "req-claim-4", "applies_from": LATER})
+_later_out_of_scope = json.loads(json.dumps(_claims[1]))
+_later_out_of_scope.update({
+    "id": "claim-5", "requirement_ref": "req-claim-5", "verdict": "out_of_scope",
+    "out_of_scope_allowed": True, "applies_from": LATER,
+})
+_claims.extend([_later_unknown, _later_out_of_scope])
+pos_example_org_applicability_result["aggregate"] = {
+    "coverage": {
+        "evaluated_population": 2,
+        "excluded_not_applicable": 1,
+        "unknown_count": 0,
+        "not_yet_in_force": 3,
+    },
+    "buckets": {"met": ["claim-1"], "not_met": [], "not_evaluable": ["claim-3"], "out_of_scope": []},
+}
+
+#     The UTC date decides. generated_at 2026-09-22T23:30:00-05:00 is
+#     2026-09-23 in UTC: claim-1 applies from that date and is in force, as is
+#     claim-3 (a leap day long past); claim-2 applies from the next day and is
+#     later.
+pos_example_org_applicability_boundary_result = _mutated(pos_example_org_claims_result)
+pos_example_org_applicability_boundary_result["generated_at"] = "2026-09-22T23:30:00-05:00"
+_claims = pos_example_org_applicability_boundary_result["claims"]
+_claims[0]["applies_from"] = "2026-09-23"
+_claims[1]["applies_from"] = "2026-09-24"
+_claims[2]["applies_from"] = "2024-02-29"
+pos_example_org_applicability_boundary_result["aggregate"]["coverage"].update(
+    {"evaluated_population": 2, "not_yet_in_force": 1}
+)
+pos_example_org_applicability_boundary_result["aggregate"]["buckets"]["not_met"] = []
+
+# dated, and every dated claim already in force: no claim is later, so
+# there is no not_yet_in_force, but a reader still prints the as-of date
+pos_example_org_applicability_in_force_result = _mutated(pos_example_org_claims_result)
+pos_example_org_applicability_in_force_result["claims"][0]["applies_from"] = "2026-01-01"
+
+# a requirement claim and a reconcile claim of one row, both later
+pos_example_org_reconcile_later_result = _mutated(pos_example_org_reconcile_result)
+_claims = pos_example_org_reconcile_later_result["claims"]
+_claims[1]["contract_ref"] = _claims[0]["contract_ref"]
+_claims[1]["requirement_ref"] = "req-claim-1"
+for _claim in _claims[:2]:
+    _claim["applies_from"] = LATER
+pos_example_org_reconcile_later_result["aggregate"]["coverage"].update(
+    {"evaluated_population": 1, "not_yet_in_force": 2}
+)
+pos_example_org_reconcile_later_result["aggregate"]["buckets"].update({"met": [], "not_met": []})
+
+# checker negatives
+neg_later_claim_in_bucket = _mutated(pos_example_org_applicability_result)
+neg_later_claim_in_bucket["aggregate"]["buckets"]["not_met"] = ["claim-2"]
+
+neg_later_claim_in_population = _mutated(pos_example_org_applicability_result)
+neg_later_claim_in_population["aggregate"]["coverage"]["evaluated_population"] = 5
+
+neg_later_unknown_counted = _mutated(pos_example_org_applicability_result)
+neg_later_unknown_counted["aggregate"]["coverage"]["unknown_count"] = 1
+
+neg_not_yet_in_force_absent = _mutated(pos_example_org_applicability_result)
+del neg_not_yet_in_force_absent["aggregate"]["coverage"]["not_yet_in_force"]
+
+neg_not_yet_in_force_wrong = _mutated(pos_example_org_applicability_result)
+neg_not_yet_in_force_wrong["aggregate"]["coverage"]["not_yet_in_force"] = 2
+
+neg_generated_at_unparseable = _mutated(pos_example_org_applicability_result)
+neg_generated_at_unparseable["generated_at"] = "2026-09-22"
+
+neg_applies_from_not_a_date = _mutated(pos_example_org_applicability_result)
+neg_applies_from_not_a_date["claims"][1]["applies_from"] = "2027-02-30"
+
+neg_applies_from_disagrees_in_row = _mutated(pos_example_org_reconcile_later_result)
+del neg_applies_from_disagrees_in_row["claims"][1]["applies_from"]
+neg_applies_from_disagrees_in_row["aggregate"]["coverage"].update(
+    {"evaluated_population": 2, "not_yet_in_force": 1}
+)
+neg_applies_from_disagrees_in_row["aggregate"]["buckets"]["not_met"] = ["reconcile-1"]
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("pos-example-org-claims-result", pos_example_org_claims_result)
@@ -1109,6 +1266,31 @@ def main() -> int:
     write("neg-coverage-declaration-unknown-kind", neg_coverage_declaration_unknown_kind)
     write("pos-example-org-recorded-absence-result", pos_example_org_recorded_absence_result)
     write("pos-example-org-repeated-requirement-result", pos_example_org_repeated_requirement_result)
+    write("pos-example-org-out-of-scope-result", pos_example_org_out_of_scope_result)
+    write("pos-example-org-out-of-scope-empty-result", pos_example_org_out_of_scope_empty_result)
+    write("neg-out-of-scope-without-switch", neg_out_of_scope_without_switch)
+    write("neg-out-of-scope-bucket-absent", neg_out_of_scope_bucket_absent)
+    write("neg-out-of-scope-bucket-without-switch", neg_out_of_scope_bucket_without_switch)
+    write("neg-out-of-scope-with-gap", neg_out_of_scope_with_gap)
+    write("neg-out-of-scope-not-applicable-carrier", neg_out_of_scope_not_applicable_carrier)
+    write("neg-satisfied-not-evaluable", neg_satisfied_not_evaluable)
+    write("neg-not-applicable-verdict", neg_not_applicable_verdict)
+    write("neg-out-of-scope-on-reconcile-claim", neg_out_of_scope_on_reconcile_claim)
+    write("neg-out-of-scope-listed-in-met", neg_out_of_scope_listed_in_met)
+    write("neg-switch-disagrees-in-row", neg_switch_disagrees_in_row)
+    write("pos-example-org-close-switched-on-result", pos_example_org_close_switched_on_result)
+    write("pos-example-org-applicability-result", pos_example_org_applicability_result)
+    write("pos-example-org-applicability-boundary-result", pos_example_org_applicability_boundary_result)
+    write("pos-example-org-applicability-in-force-result", pos_example_org_applicability_in_force_result)
+    write("pos-example-org-reconcile-later-result", pos_example_org_reconcile_later_result)
+    write("neg-later-claim-in-bucket", neg_later_claim_in_bucket)
+    write("neg-later-claim-in-population", neg_later_claim_in_population)
+    write("neg-later-unknown-counted", neg_later_unknown_counted)
+    write("neg-not-yet-in-force-absent", neg_not_yet_in_force_absent)
+    write("neg-not-yet-in-force-wrong", neg_not_yet_in_force_wrong)
+    write("neg-generated-at-unparseable", neg_generated_at_unparseable)
+    write("neg-applies-from-not-a-date", neg_applies_from_not_a_date)
+    write("neg-applies-from-disagrees-in-row", neg_applies_from_disagrees_in_row)
     write("neg-claim-evidence-empty", neg_claim_evidence_empty)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)

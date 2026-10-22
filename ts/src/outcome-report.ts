@@ -114,7 +114,8 @@ export interface ConversationCriterion {
    * excludes such a criterion from `claims[]` entirely -- see
    * `aggregate.coverage.excluded_not_applicable` -- never emits a claim with
    * that verdict), so there is no claim object to carry for it here either.
-   * Every other verdict always has one.
+   * Every other verdict always has one, and so does a `not_applicable`
+   * drawn from an `out_of_scope` claim (see `drawnVerdict`).
    */
   readonly claim?: ResultClaim;
   /** The claim's own drawn verdict: `failed`/`unsupported` never read as `met` (see `drawnVerdict`). `not_applicable` carries no claim (see `claim` above) -- a reader is still shown WHICH criterion, just not its rationale/tier/evidence, none of which the Result v0 document carries for an excluded criterion. */
@@ -466,11 +467,14 @@ function parseClaimGrouping(
 }
 
 /** The claim's verdict as a reader may draw it: never `met` for a failed or unsupported claim. */
-function drawnVerdict(
-  claim: ResultClaim,
-): ConversationVerdict | "failed" | "unsupported" {
+function drawnVerdict(claim: ResultClaim): ConversationCriterion["verdict"] {
   if (claim.failed) return "failed";
   if (claim.support === "unsupported") return "unsupported";
+  // This deprecated card predates the fourth verdict (Result v0 section
+  // 4.2). Its "not applicable" is what an out_of_scope judgment means here:
+  // the criterion did not apply, never met. The contract-report view shows
+  // the verdict as itself.
+  if (claim.verdict === "out_of_scope") return "not_applicable";
   return claim.verdict;
 }
 

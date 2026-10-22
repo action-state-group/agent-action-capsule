@@ -219,6 +219,42 @@ on, so no fixture here can show it. Its vector is `aggregate-stronger-than-evide
 |---|---|
 | `pos-example-org-repeated-requirement-result.json` | the claims positive with `claim-2` evaluating `claim-1`'s requirement `req-claim-1` on a second subject: one `met` and one `not_met` evaluation of one requirement. `evaluated_population` stays 3, three evaluations of two requirements, and each claim stays in its own bucket: nothing rolls the requirement up to one verdict. The checker also requires every positive's `evaluated_population` to equal its claim count and `unknown_count` its `UNKNOWN` claims, and fails if this positive counted requirements instead |
 
+## The fourth verdict, `out_of_scope` (spec section 4.2)
+
+| File | What it shows |
+|---|---|
+| `pos-example-org-out-of-scope-result.json` | the claims positive with `claim-1` and `claim-2` copying the contract's switch (`out_of_scope_allowed`) and `claim-2` judged `out_of_scope` (`SATISFIED`). It sits in the fourth bucket, never in `met` |
+| `pos-example-org-out-of-scope-empty-result.json` | switched on, nothing judged `out_of_scope`: the fourth bucket is present and empty |
+| `pos-example-org-close-switched-on-result.json` | a requirement claim and a `close` claim of one requirement, both switched on, neither `out_of_scope`: the copied switch is allowed on a typed claim (its records ship beside it) |
+| `neg-out-of-scope-without-switch.json` | `claim-2`'s switch removed. Mutant: the out_of_scope `Claim` rule removed accepts it |
+| `neg-out-of-scope-bucket-absent.json` | switched on, no fourth bucket. Mutant: the `EvidenceResult` bucket rule removed |
+| `neg-out-of-scope-bucket-without-switch.json` | the claims positive with an empty fourth bucket and no switch. Same mutant |
+| `neg-out-of-scope-with-gap.json` | `out_of_scope` under `GAP`. Mutant: the sufficiency/verdict rule removed |
+| `neg-out-of-scope-not-applicable-carrier.json` | an `out_of_scope` claim whose carrier status is `NOT_APPLICABLE`. Mutant: the out_of_scope rule removed |
+| `neg-satisfied-not-evaluable.json` | `not_evaluable` under `SATISFIED`. Mutant: the sufficiency/verdict rule removed |
+| `neg-not-applicable-verdict.json` | the token `not_applicable` as a verdict. Refused by the closed `Verdict` enum and the pairing rule; the mutant opens both |
+| `neg-out-of-scope-on-reconcile-claim.json` | `out_of_scope` on a `reconcile` claim. Mutant: the out_of_scope rule removed |
+| `neg-out-of-scope-listed-in-met.json` | schema-valid; the checker refuses the `out_of_scope` claim listed under `met` (bucket partition) |
+| `neg-switch-disagrees-in-row.json` | schema-valid; two claims of one requirement disagree on the switch (one value per requirement) |
+
+## Applicability, `applies_from` (spec section 4.3)
+
+| File | What it shows |
+|---|---|
+| `pos-example-org-applicability-result.json` | `generated_at` 2026-09-22. `claim-1` in force since 2026-01-01; `claim-2` (`not_met`), `claim-4` (`UNKNOWN`) and `claim-5` (`out_of_scope`) apply from 2027-08-02, keep their verdicts as readiness and are in no bucket. Population 2, `not_yet_in_force` 3, `unknown_count` 0, the fourth bucket empty |
+| `pos-example-org-applicability-boundary-result.json` | `generated_at` 2026-09-22T23:30:00-05:00, which is 2026-09-23 in UTC: a claim dated that day is in force, the next day's is later, a leap day long past is in force |
+| `pos-example-org-applicability-in-force-result.json` | one dated claim, already in force: no `not_yet_in_force`, but a reader still prints the as-of date |
+| `pos-example-org-reconcile-later-result.json` | a requirement claim and a `reconcile` claim of one requirement, both later |
+| `neg-later-claim-in-bucket.json` | checker: a later claim listed in `not_met` |
+| `neg-later-claim-in-population.json`, `neg-later-unknown-counted.json` | checker: later claims counted in `evaluated_population` or `unknown_count` |
+| `neg-not-yet-in-force-absent.json`, `neg-not-yet-in-force-wrong.json` | checker: the later count absent or wrong |
+| `neg-generated-at-unparseable.json` | checker: a dated Result whose `generated_at` is a bare date |
+| `neg-applies-from-not-a-date.json` | checker: `applies_from` 2027-02-30 |
+| `neg-applies-from-disagrees-in-row.json` | checker: two claims of one requirement disagree on the date |
+
+Every checker negative validates against the schema and fails `revision_findings`, and its mutant
+(the rule switched off) accepts it.
+
 ## Reproducing the validation run
 
 ```

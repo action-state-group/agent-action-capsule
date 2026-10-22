@@ -160,6 +160,11 @@ export interface ComplianceModel {
 function drawnVerdict(claim: ResultClaim): TestVerdict {
   if (claim.failed) return "failed";
   if (claim.support === "unsupported") return "unsupported";
+  // This deprecated card predates the fourth verdict (spec section 4.2). Its
+  // "not applicable" is what an out_of_scope judgment means here: the
+  // situation did not arise, never met. The contract-report view shows the
+  // verdict as itself.
+  if (claim.verdict === "out_of_scope") return "not_applicable";
   return claim.verdict;
 }
 

@@ -54,7 +54,17 @@ ENUM_KEYS = {
     "status": "EvidenceStatus",
 }
 RESERVED = ("page.title", "module.title")
-FIXED_KEYS = ("report.title", "report.summary")
+FIXED_KEYS = (
+    "report.title",
+    "report.summary",
+    # Result v0 sections 4.2 and 4.3 (spec section 2's applicability rules).
+    "applicability.not_yet_in_force.title",
+    "applicability.not_yet_in_force.note",
+    "applicability.as_of",
+    "contract_fact.note",
+)
+# The one slot applicability.as_of carries: exactly one, or the word is missing.
+AS_OF_SLOT = "{date}"
 ROW_SUFFIXES = ("label", "detail", "not_evaluable")
 
 
@@ -162,8 +172,26 @@ def main() -> int:
     for undefined in ("verdict.mte", "tier.unknown", "status.gap", "grade.self_attested"):
         if defined_key(undefined):
             findings.append(f"HARNESS: defined_key accepts {undefined}, which no Result v0 enum defines")
+    # The rendering cases a contract-report module runs: every Result exists,
+    # and every malformed as-of override really is malformed.
+    cases = _load(EXAMPLES_DIR / "rendering-cases.json")["cases"]
+    repo = SCHEMAS_DIR.parent
+    for case in cases:
+        if not (repo / case["result"]).is_file():
+            findings.append(f"RENDER-CASE {case['name']}: {case['result']} does not exist")
+        override = case.get("pack_entries", {}).get("applicability.as_of")
+        if override is not None and override.count(AS_OF_SLOT) == 1:
+            findings.append(f"RENDER-CASE {case['name']}: its as-of override is well formed")
+    print(f"OK  {len(cases)} rendering case(s) name existing Results")
+    as_of = entries.get("applicability.as_of")
+    if as_of is not None and as_of.count(AS_OF_SLOT) != 1:
+        findings.append(f"PACK-AS-OF: applicability.as_of must carry exactly one {AS_OF_SLOT}, got {as_of!r}")
+    for malformed in ("In force as of", "In force as of {date} ({date})"):
+        if malformed.count(AS_OF_SLOT) == 1:
+            findings.append(f"HARNESS: the slot check accepts {malformed!r}")
     if not findings:
-        print(f"OK  every entry of {PACK_PATH.name} is a key the kind defines or a reserved key")
+        print(f"OK  every entry of {PACK_PATH.name} is a key the kind defines or a reserved key, "
+              f"and applicability.as_of carries one {AS_OF_SLOT}")
 
     if findings:
         print("\nFAILED:")

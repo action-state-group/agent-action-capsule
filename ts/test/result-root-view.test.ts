@@ -867,3 +867,70 @@ it("the committed sealed Result-root bundle is the seal of the readable fixture"
   );
   expect(bundle).toEqual(fixture("result-root-bundle.sealed.json"));
 });
+
+it("(ER 4.2) draws the fourth bucket only when the contract switches out_of_scope on, never under met", async () => {
+  const source = fixture("result-root-bundle.json");
+  const doc = resultOf(source);
+  const claims = doc.claims as Obj[];
+  claims[0]!.out_of_scope_allowed = true;
+  claims[1]!.out_of_scope_allowed = true;
+  claims[1]!.verdict = "out_of_scope";
+  const buckets = (doc.aggregate as Obj).buckets as Obj;
+  buckets.not_met = [];
+  buckets.out_of_scope = ["claim-2"];
+  const root = await render((await sealEvidenceBundle(source)).bundle);
+  const heading = root.querySelector<HTMLElement>(
+    '[data-bucket-of="outOfScope"]',
+  )!;
+  expect(heading.textContent).toBe("out of scope: 1");
+  expect(
+    root.querySelector('[data-bucket="outOfScope"] [data-claim-ref="claim-2"]'),
+  ).not.toBeNull();
+  expect(
+    root.querySelector('[data-bucket="met"] [data-claim-ref="claim-2"]'),
+  ).toBeNull();
+  expect(root.querySelectorAll("[data-count-mismatch]")).toHaveLength(0);
+
+  // a Result that does not switch it on has no fourth heading
+  const plain = await render(
+    (await sealEvidenceBundle(fixture("result-root-bundle.json"))).bundle,
+  );
+  expect(plain.querySelector('[data-bucket-of="outOfScope"]')).toBeNull();
+});
+
+it("(ER 4.3) lists claims not yet in force apart from the buckets, with the as-of date and the copied-fact label", async () => {
+  const source = fixture("result-root-bundle.json");
+  const doc = resultOf(source);
+  const claims = doc.claims as Obj[];
+  claims[0]!.applies_from = "2026-01-01";
+  claims[1]!.applies_from = "2027-08-02";
+  const aggregate = doc.aggregate as Obj;
+  (aggregate.buckets as Obj).not_met = [];
+  Object.assign(aggregate.coverage as Obj, {
+    evaluated_population: 2,
+    not_yet_in_force: 1,
+  });
+  const root = await render((await sealEvidenceBundle(source)).bundle);
+  const line = root.querySelector<HTMLElement>('[data-coverage="result"]')!;
+  expect(line.textContent).toBe(
+    "coverage: 2 evaluations of 3 requirements · 1 excluded as not applicable · 0 with an unknown result · 1 not yet in force",
+  );
+  expect(root.querySelectorAll("[data-count-mismatch]")).toHaveLength(0);
+  const asOf = root.querySelector<HTMLElement>("[data-as-of]")!;
+  expect(asOf.dataset.asOf).toBe("2026-09-16");
+  expect(asOf.textContent).toContain("In force as of 2026-09-16.");
+  expect(asOf.textContent).toContain("from the contract, not re-checked here");
+  const later = root.querySelector<HTMLElement>(
+    '[data-bucket="notYetInForce"] [data-claim-ref="claim-2"]',
+  )!;
+  expect(later.textContent).toBe(
+    "claim-2 · applies from 2027-08-02 · readiness: not_met",
+  );
+  expect(
+    root.querySelector('[data-bucket="notMet"] [data-claim-ref="claim-2"]'),
+  ).toBeNull();
+  const verdict = root.querySelector<HTMLElement>(
+    '[data-claim-row="claim-2"] [data-later="true"]',
+  )!;
+  expect(verdict.textContent).toBe("not_met (readiness)");
+});

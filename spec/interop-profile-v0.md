@@ -1007,8 +1007,10 @@ Where each row comes from:
 
 ### 8.2 Invariants of the mapping
 
-1. A verifier MUST NOT emit `met` or `not_met` for any status that projects to anything but
-   `SATISFIED` [RES §1].
+1. A verdict pairs with its sufficiency as RES §1 states: `SATISFIED` with `met`, `not_met`, or
+   `out_of_scope` where the requirement allows it (§8.3); every other projection with
+   `not_evaluable` only. A verifier MUST NOT emit any other pair, or a verdict outside those four
+   [RES §1, §4.2].
 2. A verification failure never yields `SATISFIED` with `met` for a requirement that depends on
    the failed property [ER §4.6; RES §1].
 3. A refusal is never mapped as an absence, and an absence is never mapped as a refusal
@@ -1038,6 +1040,12 @@ The claim's fields [RES §4, §5] are filled as follows:
 - `contract_ref` is the `<contract_id>@<version>` of the contract evaluated [RES §1]. The
   contract-digest binding of an accepted contract is §11.1.
 - `tier` and `grade` are set by the evaluator as RES §1 defines. This profile does not set them.
+- The claim copies two facts from the requirement it evaluates [RES §4.2, §4.3; P-61]:
+  `out_of_scope_allowed: true` when the requirement is a native outcome or native obligation
+  (§11.3.2) carrying `out_of_scope_allowed: true`, and `applies_from` equal to the requirement's
+  `clause.effective_from` when it carries one, whatever its shape. The same switch name on any
+  other shape grants nothing. A verdict `out_of_scope` on a requirement without the switch breaks
+  invariant 1 (§8.2).
 
 The status in a `not_evaluable` claim's carrier tells the requester what kind of follow-up could
 change the result: a corrected request, a different subject, or a later one. The claim itself
@@ -2225,8 +2233,9 @@ that a contract never carries. They are the outputs of evaluating a contract aga
   `NOT_FOUND`, `NOT_COMMITTED`, `WITHHELD`, `CONTRADICTED`, `NOT_APPLICABLE`, `UNKNOWN`;
 - `contractResult`: its four-value projection, `SATISFIED`, `GAP`, `INSUFFICIENT`, `UNKNOWN`, as §8
   states it;
-- `verdict`: `met`, `not_met`, `not_evaluable`, never `met` or `not_met` unless the projection is
-  `SATISFIED` [RES §1].
+- `verdict`: `met`, `not_met`, `not_evaluable`, `out_of_scope`; anything but `not_evaluable` only
+  when the projection is `SATISFIED`, and `out_of_scope` only where the requirement allows it
+  [RES §1, §4.2].
 
 #### 11.3.7 How a contract feeds this profile
 
@@ -2263,6 +2272,13 @@ a re-evaluation gives new claims [RES §1; P-47]:
 - Within one contract version, the `id` of each requirement MUST be unique, so that a claim's
   `requirement_ref` names one requirement [P-47]. A verifier that finds two requirements with one
   `id` MUST NOT evaluate that contract version, and emits no claim under it [P-47].
+- A `clause.effective_from` MUST name a calendar date. The schema checks only its pattern [EC], so
+  `2027-02-30` is valid against it. A verifier that finds one that does not name a calendar date
+  MUST NOT evaluate that contract version, and emits no claim under it [P-62].
+- The facts a claim copies from a requirement (§8.3) are checked against the contract only by the
+  party that evaluates it. This revision defines no operation that checks another party's Result
+  against a contract document; a relying party that needs the copies to hold re-evaluates the
+  contract [P-63].
 - The claim's `contract_ref` is the contract's (above), its `requirement_ref` is the requirement's
   `id`, and its sufficiency and verdict, and the status kept in its carrier (§8.3), come from §8
   [RES §4; P-17].
@@ -2742,6 +2758,9 @@ checks them. Each case pins:
 Each case also cites the sections its expected values come from. The contract document
 validates against the Evidence Contract v0 schema pinned as EC (§11.3), and the corpus records
 that pin's SHA-256.
+A second set, `vectors/interop-profile-v0-requirement-facts/`, has its own contract, pins and
+cases, from the same generator with `--set requirement-facts`; it shows the requirement facts that
+§8.3 copies into each requirement block.
 
 | Cases | What they show | Sections |
 |---|---|---|
@@ -3055,6 +3074,12 @@ a later draft revision.
   that two keys have distinct controllers. A controller binding [CB] cannot give it, because it
   shows the opposite: a binding that applies gives `FAIL`. Until a revision registers evidence of
   distinct controllers, a verifier reports `FAIL` or `NOT_CHECKED` only.
+- **P-61** A claim copies the requirement's `out_of_scope` switch (native shapes only) and its
+  `clause.effective_from` as `out_of_scope_allowed` and `applies_from` (§8.3; RES §4.2, §4.3).
+- **P-62** A contract version with a `clause.effective_from` that names no calendar date is not
+  evaluated and gives no claims, as for a repeated `id` (P-47; §11.3.7).
+- **P-63** Open: no operation checks another party's Result against its contract document, so a
+  producer's copied facts (P-61) are checkable only by re-evaluation (§11.3.7).
 
 ## References
 

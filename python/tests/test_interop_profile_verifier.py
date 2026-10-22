@@ -50,6 +50,9 @@ PACKAGE = ROOT / "python" / "agent_action_capsule" / "interop_profile"
 DATA = json.loads((ROOT / "vectors" / "interop-profile-v0" / "vectors.json").read_text(encoding="utf-8"))
 CASES = DATA["cases"]
 CONTRACT = DATA["contract"]["document"]
+# The second set: its own contract, whose requirements carry the facts §8.3 copies.
+FACTS = json.loads((ROOT / "vectors" / "interop-profile-v0-requirement-facts" / "vectors.json")
+                   .read_text(encoding="utf-8"))
 PROFILE_TEXT = (ROOT / "spec" / "interop-profile-v0.md").read_text(encoding="utf-8")
 
 
@@ -82,6 +85,10 @@ def render_requirements(reqs: dict) -> dict:
         entry = {"row": r.row, "status": r.status, "sufficiency": r.sufficiency, "verdict": r.verdict}
         if r.note is not None:
             entry["note"] = r.note
+        if r.applies_from is not None:
+            entry["applies_from"] = r.applies_from
+        if r.out_of_scope_allowed:
+            entry["out_of_scope_allowed"] = True
         out[q] = entry
     return out
 
@@ -108,10 +115,10 @@ def render_absence(a) -> dict:
             "presentation_kind_recommended": a.presentation_kind_recommended}
 
 
-def run_exchange_case(case: dict) -> dict:
+def run_exchange_case(case: dict, contract: dict = CONTRACT) -> dict:
     inp = case["inputs"]
     trust, vpolicy, now = policies(case)
-    verifier = InteropVerifier(trust, vpolicy, now, contract=CONTRACT)
+    verifier = InteropVerifier(trust, vpolicy, now, contract=contract)
     requests = [inp["request"]] if "request" in inp else inp["requests"]
     exchanges = [Exchange(message(r)) for r in requests]
     # The corpus pairs reply i with request i where it holds several requests, else with the one.
@@ -121,7 +128,8 @@ def run_exchange_case(case: dict) -> dict:
         exchanges[0].absence_record = message(inp["absence_record"])
     relations = inp.get("requirement_relations")
     foreign = inp.get("foreign_object")
-    result = verifier.verify(exchanges, requirements=list(relations) if relations else ["r-record"],
+    named = inp.get("requirements") or (list(relations) if relations else ["r-record"])
+    result = verifier.verify(exchanges, requirements=named,
                              requirement_relations=relations,
                              foreign_object=ForeignObject(foreign["path"], foreign["media_type"]) if foreign else None)
     out: dict[str, Any] = {}
@@ -263,6 +271,24 @@ def test_corpus_size_and_contract_pin():
 @pytest.mark.parametrize("case", CASES, ids=lambda c: c["id"])
 def test_verifier_reproduces_every_expected_value(case):
     assert run_case(case) == comparable(case["expected"])
+
+
+def test_requirement_facts_set_pins_its_own_contract():
+    contract = FACTS["contract"]["document"]
+    assert FACTS["count"] == len(FACTS["cases"]) == 2
+    verifier = InteropVerifier(TrustPolicy(), VerificationPolicy(), "2026-10-12T00:00:00Z", contract=contract)
+    assert verifier.contract_digest == FACTS["contract"]["contract_digest"] != DATA["contract"]["contract_digest"]
+    for case in FACTS["cases"]:
+        assert case["pins"]["contract_digest"] == verifier.contract_digest
+
+
+@pytest.mark.parametrize("case", FACTS["cases"], ids=lambda c: c["id"])
+def test_verifier_reproduces_the_requirement_facts_set(case):
+    """§8.3: each dated requirement's block carries applies_from, the undated one's none."""
+    assert run_exchange_case(case, FACTS["contract"]["document"]) == case["expected"]
+    for reply in case["expected"]["replies"]:
+        dated = {q for q, b in reply["requirements"].items() if "applies_from" in b}
+        assert dated == {"r-obligation-dated", "r-outcome-dated"}
 
 
 def test_no_claim_from_the_verifier_breaks_the_met_rule():
@@ -645,6 +671,13 @@ def test_uncertainty_on_missing_changes_only_missing_rows():
     assert (r.row, r.status) == ("envelope-2", "INSUFFICIENT")
 
 
+def _with_record(req: dict) -> dict:
+    """The corpus contract with ``r-record`` replaced by ``req``, keeping its id."""
+    contract = copy.deepcopy(CONTRACT)
+    contract["requirements"][0] = {**req, "id": "r-record"}
+    return contract
+
+
 def test_content_evaluator_cannot_break_the_met_rule():
     case, ex = _valid_exchange()
     trust, vpolicy, now = policies(case)
@@ -654,6 +687,90 @@ def test_content_evaluator_cannot_break_the_met_rule():
     assert (r.status, r.sufficiency, r.verdict) == ("SATISFIED", "SATISFIED", "met")
     with pytest.raises(ValueError):
         verifier.verify([ex], requirements=["r-record"], content_evaluator=lambda req, art, nc: ("UNKNOWN", "met"))
+
+
+SWITCHED = {"out_of_scope_allowed": True}  # a native outcome carrying the switch
+
+
+@pytest.mark.parametrize("contract_req,status,verdict", [
+    (None, "INSUFFICIENT", "met"),
+    (None, "UNKNOWN", "not_met"),
+    (None, "SATISFIED", "not_evaluable"),
+    (None, "SATISFIED", "passed"),
+    (None, "UNKNOWN", "passed"),
+    (None, "SATISFIED", None),
+    (None, "SATISFIED", "out_of_scope"),
+    (SWITCHED, "NOT_FOUND", "out_of_scope"),
+    (SWITCHED, "SATISFIED", "not_evaluable"),
+])
+def test_content_evaluator_verdict_must_pair(contract_req, status, verdict):
+    """§8.2 invariant 1 is the full relation: SATISFIED pairs with met, not_met or, where the
+    requirement carries the switch, out_of_scope; every other sufficiency pairs with not_evaluable
+    only; no other verdict exists."""
+    case, ex = _valid_exchange()
+    trust, vpolicy, now = policies(case)
+    contract = CONTRACT if contract_req is None else _with_record(contract_req)
+    with pytest.raises(ValueError, match="§8.2 invariant 1"):
+        InteropVerifier(trust, vpolicy, now, contract=contract).verify(
+            [ex], requirements=["r-record"], content_evaluator=lambda req, art, nc: (status, verdict))
+
+
+@pytest.mark.parametrize("status,verdict", [
+    ("SATISFIED", "met"), ("SATISFIED", "not_met"), ("SATISFIED", "out_of_scope"),
+    ("NOT_FOUND", "not_evaluable"), ("INSUFFICIENT", "not_evaluable"), ("UNKNOWN", "not_evaluable"),
+])
+def test_content_evaluator_verdicts_that_pair(status, verdict):
+    case, ex = _valid_exchange()
+    trust, vpolicy, now = policies(case)
+    r = InteropVerifier(trust, vpolicy, now, contract=_with_record(SWITCHED)).verify(
+        [ex], requirements=["r-record"], content_evaluator=lambda req, art, nc: (status, verdict)
+    ).exchanges[0].replies[0].requirements["r-record"]
+    assert (r.status, r.verdict, r.out_of_scope_allowed) == (status, verdict, True)
+
+
+@pytest.mark.parametrize("req,applies_from,allowed", [
+    (None, None, False),
+    ({"profile": "obligation", "evidence_rule": {}, "clause": {"effective_from": "2027-08-02"}}, "2027-08-02", False),
+    ({"clause": {"effective_from": "2028-02-29"}}, "2028-02-29", False),
+    ({"profile": "outcome", "clause": {"effective_from": "2027-08-02"}}, "2027-08-02", False),
+    (SWITCHED, None, True),
+    ({"profile": "obligation", "evidence_rule": {}, "out_of_scope_allowed": True}, None, True),
+    ({"out_of_scope_allowed": False}, None, False),
+    ({"out_of_scope_allowed": "true"}, None, False),
+    ({"profile": "process", "out_of_scope_allowed": True}, None, False),
+    ({"profile": "outcome", "out_of_scope_allowed": True}, None, False),
+])
+def test_requirement_facts_are_copied(req, applies_from, allowed):
+    """§8.3: the claim carries the requirement's effective_from as applies_from, whatever its shape,
+    and a native requirement's out_of_scope_allowed. The same member on an open stub or an
+    abstract shape grants nothing."""
+    case, ex = _valid_exchange()
+    trust, vpolicy, now = policies(case)
+    verifier = InteropVerifier(trust, vpolicy, now, contract=CONTRACT if req is None else _with_record(req))
+    r = verifier.verify([ex], requirements=["r-record"]).exchanges[0].replies[0].requirements["r-record"]
+    assert (r.status, r.verdict) == ("UNKNOWN", "not_evaluable")
+    assert (r.applies_from, r.out_of_scope_allowed) == (applies_from, allowed)
+    claim = r.claim()
+    assert claim.get("applies_from") == applies_from and ("applies_from" in claim) == (applies_from is not None)
+    assert claim.get("out_of_scope_allowed") == (True if allowed else None)
+    if allowed:
+        verifier.verify([ex], requirements=["r-record"],
+                        content_evaluator=lambda q, art, nc: ("SATISFIED", "out_of_scope"))
+    else:
+        with pytest.raises(ValueError, match="§8.2 invariant 1"):
+            verifier.verify([ex], requirements=["r-record"],
+                            content_evaluator=lambda q, art, nc: ("SATISFIED", "out_of_scope"))
+
+
+@pytest.mark.parametrize("bad", ["2027-02-30", "2027-13-01", "2027-2-03", "20270203", "2027-02-03T00:00:00Z",
+                                 "0000-01-01", "２０２７-02-03", 20270203, None])
+def test_non_calendar_effective_from_is_not_evaluated(bad):
+    """§11.3.7: an effective_from that is not a calendar date means the contract version is not
+    evaluated, the same as two requirements sharing an id."""
+    for profile in ({}, {"profile": "process"}):
+        with pytest.raises(ValueError, match="not a calendar date"):
+            InteropVerifier(TrustPolicy(), VerificationPolicy(), "2026-10-12T00:00:00Z",
+                            contract=_with_record({**profile, "clause": {"effective_from": bad}}))
 
 
 def test_duplicate_requirement_ids_are_not_evaluated():

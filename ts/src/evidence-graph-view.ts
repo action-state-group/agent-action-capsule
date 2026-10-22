@@ -85,6 +85,8 @@ import {
   buildResultRoot,
   isResultRoot,
   UNVERIFIED_KEY_LABEL,
+  utcDateOf,
+  type CountField,
   type CountMismatch,
   type ResultClose,
   type CitedRecord,
@@ -1507,9 +1509,15 @@ function appendVerdict(parent: HTMLElement, claim: ResultClaim): HTMLElement {
     : claim.support === "supported"
       ? claim.verdict
       : "unsupported";
-  const cell = element(parent.tagName === "TR" ? "td" : "dd", shown);
+  // A later claim's verdict is readiness only (ER section 4.3): never read
+  // as a result that counts.
+  const cell = element(
+    parent.tagName === "TR" ? "td" : "dd",
+    claim.later ? `${shown} (readiness)` : shown,
+  );
   cell.dataset.verdict = shown;
   cell.dataset.support = claim.support;
+  if (claim.later) cell.dataset.later = "true";
   if (claim.failed) {
     cell.dataset.statedVerdict = claim.verdict;
     cell.className = "claim-failed";
@@ -1622,10 +1630,14 @@ function renderClaim(
   }
 }
 
-const BUCKETS: ReadonlyArray<readonly [keyof ResultRoot["buckets"], string]> = [
-  ["met", "met"],
-  ["notMet", "not met"],
-  ["notEvaluable", "not evaluable"],
+const BUCKETS: ReadonlyArray<
+  readonly [keyof ResultRoot["buckets"], string, CountField]
+> = [
+  ["met", "met", "buckets.met"],
+  ["notMet", "not met", "buckets.not_met"],
+  ["notEvaluable", "not evaluable", "buckets.not_evaluable"],
+  // ER section 4.2: drawn only when the Result carries the fourth bucket.
+  ["outOfScope", "out of scope", "buckets.out_of_scope"],
 ];
 
 // Coverage is the first thing in the Result section after its heading, and
@@ -1660,6 +1672,13 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
   );
   const unknownMarker = countMismatchMarker(result, "unknown_count");
   if (unknownMarker !== undefined) coverage.append(" ", unknownMarker);
+  const later = result.claims.filter((claim) => claim.later);
+  const laterMarker = countMismatchMarker(result, "not_yet_in_force");
+  if (later.length > 0 || laterMarker !== undefined) {
+    coverage.append(` · ${later.length} not yet in force`);
+    if (laterMarker !== undefined) coverage.append(" ", laterMarker);
+    coverage.dataset.notYetInForce = String(later.length);
+  }
   coverage.dataset.coverage = "result";
   coverage.dataset.evaluated = String(result.coverage.evaluatedPopulation);
   coverage.dataset.requirements = String(requirements);
@@ -1667,23 +1686,34 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
   coverage.dataset.excludedBasis = "stated";
   coverage.dataset.unknown = String(result.coverage.unknownCount);
   section.append(coverage);
+  // ER section 4.3: whenever a claim is dated, the date "in force" is
+  // relative to, and that the dates and the switch are the producer's copy
+  // of the contract, never checked here.
+  if (result.claims.some((claim) => claim.appliesFrom !== undefined)) {
+    // A dated Result passed validation, so generated_at parses.
+    const date = utcDateOf(result.generatedAt) ?? result.generatedAt;
+    const asOf = element(
+      "p",
+      `In force as of ${date}. Dates and the out_of_scope switch: from the contract, not re-checked here.`,
+    );
+    asOf.dataset.asOf = date;
+    section.append(asOf);
+  }
 
   const byId = new Map(result.claims.map((claim) => [claim.id, claim]));
   const buckets = element("section");
   buckets.dataset.buckets = "verdict";
   buckets.append(element("h2", "Claims by verdict"));
-  for (const [key, label] of BUCKETS) {
-    const count = result.bucketCounts[key];
+  for (const [key, label, field] of BUCKETS) {
+    const ids = result.buckets[key];
+    if (ids === undefined) continue;
+    const count = result.bucketCounts[key] ?? 0;
     const heading = element("h3", `${label}: ${count === 0 ? "none" : count}`);
     heading.dataset.bucketCount = String(count);
     heading.dataset.bucketOf = key;
-    const marker = countMismatchMarker(
-      result,
-      `buckets.${key === "notMet" ? "not_met" : key === "notEvaluable" ? "not_evaluable" : "met"}`,
-    );
+    const marker = countMismatchMarker(result, field);
     if (marker !== undefined) heading.append(" ", marker);
     buckets.append(heading);
-    const ids = result.buckets[key];
     if (ids.length === 0) {
       buckets.append(element("p", "none"));
       continue;
@@ -1732,6 +1762,25 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
       const item = element("li", id);
       item.dataset.claimRef = id;
       item.className = "claim-failed";
+      list.append(item);
+    }
+    buckets.append(list);
+  }
+  // ER section 4.3: claims not yet in force, their verdicts readiness only,
+  // in no bucket above.
+  if (later.length > 0) {
+    const heading = element("h3", `not yet in force: ${later.length}`);
+    heading.dataset.bucketOf = "notYetInForce";
+    heading.dataset.bucketCount = String(later.length);
+    buckets.append(heading);
+    const list = element("ul");
+    list.dataset.bucket = "notYetInForce";
+    for (const claim of later) {
+      const item = element(
+        "li",
+        `${claim.id} · applies from ${claim.appliesFrom ?? ""} · readiness: ${claim.verdict}`,
+      );
+      item.dataset.claimRef = claim.id;
       list.append(item);
     }
     buckets.append(list);

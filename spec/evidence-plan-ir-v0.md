@@ -173,7 +173,7 @@ node's `operator` MUST be one of these six values; `family` and `tier` are fixed
 | `evidence.request_answer` | `evidence` | `recomputed` | A request to a counterparty answered with exactly one of an artifact, a signed policy refusal, or a signed recorded absence — never a bare unsigned absence. Names the existing three-state responder. |
 | `assurance.verify` | `assurance` | `recomputed` | Verification of an evidence artifact's signature, binding, inclusion proof, or witness stamp. Names the existing verifier. |
 | `assurance.bundle` | `assurance` | `recomputed` | Assembly of a proof bundle (receipt, inclusion proof, covering checkpoint and witness stamp, prior checkpoint, consistency proof) over an already-verified artifact. Names the existing bundle assembler. |
-| `decision.resolve_verdict` | `decision` | `recomputed` | Mechanical projection of the `evidence`/`assurance` results gathered for one requirement into the closed three-value verdict vocabulary `met \| not_met \| not_evaluable`. Deterministic given its inputs — no judgment of its own; the judgment, if any, already happened in an upstream `semantic` node. |
+| `decision.resolve_verdict` | `decision` | `recomputed` | Mechanical projection of the `evidence`/`assurance` results gathered for one requirement, and of an upstream `semantic` node's judgment read from that node's `outputs`, into the Evidence Contract's closed four-value verdict vocabulary `met \| not_met \| not_evaluable \| out_of_scope`. Deterministic given its inputs — no judgment of its own; the judgment, if any, already happened in the upstream `semantic` node. The requirement's `out_of_scope` switch is an input: it yields `out_of_scope` only when that judgment says so, the sufficiency is `SATISFIED`, and the switch is on (`spec/evidence-result-v0.md` §4.2). Like the rest of the verdict rule, this is not checkable from the envelopes alone. |
 
 No operator in this catalogue names, cites, or depends on a specific model, prompt, or planning
 heuristic. `semantic.judge_adjudicate` names the *existence* of a semantic-adjudication step; the
@@ -232,7 +232,7 @@ plan-result:
       outputs: [ { digest_alg: "SHA-256", digest: <64-hex> }, ... ]   # by digest only
       attestation_ref: { digest_alg: "SHA-256", digest: <64-hex> }    # digest of an
                                                             # attestation-record (§6)
-      verdict: met | not_met | not_evaluable   # OPTIONAL in general; REQUIRED exactly when
+      verdict: met | not_met | not_evaluable | out_of_scope   # OPTIONAL in general; REQUIRED exactly when
                                                             # family == decision (§6.1a)
 ```
 
@@ -244,16 +244,17 @@ only the judged ones (§6).
 
 ### 6.1a Verdict on the envelope
 
-The `decision`-family verdict — the closed three-value `met | not_met | not_evaluable` produced
-by `decision.resolve_verdict` (§5) — is surfaced directly on the result envelope as `verdict`.
+The `decision`-family verdict — the closed four-value
+`met | not_met | not_evaluable | out_of_scope` produced by `decision.resolve_verdict` (§5) — is
+surfaced directly on the result envelope as `verdict`.
 
 **Normative rule (schema-enforced — the `if`/`then` on the companion schema's `ResultEnvelope`):**
 `verdict` is OPTIONAL on any envelope, and MUST be present exactly when the reporting node's
 `family` is `decision`. This lets a Result emitter read the verdict from the envelope directly,
 rather than having to dereference the decision node's `outputs` digest to recover it. The `verdict`
-vocabulary is the same closed three-value set §5 fixes for `decision.resolve_verdict`; this
-document does not extend it. `status` (the eight-value per-requirement bundle assertion status,
-not the four-value Sufficiency) and `verdict` (the three-value decision) are distinct axes:
+vocabulary is the same closed four-value set §5 fixes for `decision.resolve_verdict`, which is
+the Evidence Contract's own; this document does not extend it. `status` (the eight-value per-requirement bundle assertion status,
+not the four-value Sufficiency) and `verdict` (the four-value decision) are distinct axes:
 `status` says what the bundle assertion for a requirement found, `verdict` says how the requirement
 resolved.
 

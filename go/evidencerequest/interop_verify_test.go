@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -247,11 +248,10 @@ func TestVerifierRefusesAContractItCannotEvaluate(t *testing.T) {
 	assert.ErrorIs(t, err, er.ErrInvalid)
 }
 
-// Row 7: with every required property PASS and no failed native check,
-// the requirement is the content evaluator's, which may not claim met
-// without SATISFIED (§8.2 invariant 1). The corpus's valid exchange is a
-// record subject with CLL material, so it reaches row 7.
-func TestVerifierRowSevenGoesToTheContentEvaluator(t *testing.T) {
+// rowSeven is the corpus's valid exchange, a record subject with CLL
+// material that reaches row 7, with its pins and contract.
+func rowSeven(t *testing.T) (vectorPins, map[string]any, []er.Exchange) {
+	t.Helper()
 	var corpus struct {
 		Contract struct {
 			Document map[string]any `json:"document"`
@@ -267,42 +267,148 @@ func TestVerifierRowSevenGoesToTheContentEvaluator(t *testing.T) {
 	}
 	readCorpus(t, "interop-profile-v0", &corpus)
 	for _, c := range corpus.Cases {
-		if c.ID != "valid-exchange" {
-			continue
+		if c.ID == "valid-exchange" {
+			return c.Pins, corpus.Contract.Document, []er.Exchange{{Request: c.Inputs.Request.message(t),
+				Replies: []er.Message{c.Inputs.Replies[0].message(t)}}}
 		}
-		v := newVerifier(t, c.Pins, corpus.Contract.Document)
-		ex := []er.Exchange{{Request: c.Inputs.Request.message(t), Replies: []er.Message{c.Inputs.Replies[0].message(t)}}}
-		var seen []byte
-		res, err := v.Verify(ex, er.VerifyOptions{Requirements: []string{"r-record"},
-			Content: func(_ map[string]any, artifact []byte, native *er.PropertyReport) (string, string, bool) {
-				seen = artifact
-				assert.Nil(t, native)
-				return "SATISFIED", "met", true
-			}})
-		require.NoError(t, err)
-		r := res.Exchanges[0].Replies[0]
-		assert.Equal(t, r.Artifact, seen)
-		got := r.Requirements["r-record"]
-		assert.Equal(t, []string{"envelope-7", "SATISFIED", "SATISFIED", "met"}, []string{got.Row, got.Status, got.Sufficiency, got.Verdict})
-		assert.Len(t, r.Proofs, 1, "an inclusion proof backs the claim")
-
-		_, err = v.Verify(ex, er.VerifyOptions{Requirements: []string{"r-record"},
-			Content: func(map[string]any, []byte, *er.PropertyReport) (string, string, bool) {
-				return "INSUFFICIENT", "met", true
-			}})
-		assert.Error(t, err, "met without SATISFIED breaks §8.2 invariant 1")
-		_, err = v.Verify(ex, er.VerifyOptions{Requirements: []string{"r-record"},
-			Content: func(map[string]any, []byte, *er.PropertyReport) (string, string, bool) { return "PROVEN", "met", true }})
-		assert.Error(t, err, "not an Evidence Contract status")
-		res, err = v.Verify(ex, er.VerifyOptions{Requirements: []string{"r-record"},
-			Content: func(map[string]any, []byte, *er.PropertyReport) (string, string, bool) {
-				return "NOT_APPLICABLE", "", true
-			}})
-		require.NoError(t, err)
-		assert.Empty(t, res.Exchanges[0].Replies[0].Requirements, "NOT_APPLICABLE leaves the evaluated population")
-		return
 	}
 	t.Fatal("no valid-exchange case")
+	return vectorPins{}, nil, nil
+}
+
+// withRecord is the corpus contract with r-record replaced by req, keeping
+// its id.
+func withRecord(contract map[string]any, req map[string]any) map[string]any {
+	reqs := slices.Clone(contract["requirements"].([]any))
+	req["id"] = "r-record"
+	reqs[0] = req
+	return map[string]any{"id": contract["id"], "version": contract["version"], "requirements": reqs}
+}
+
+func content(status, verdict string) er.VerifyOptions {
+	return er.VerifyOptions{Requirements: []string{"r-record"},
+		Content: func(map[string]any, []byte, *er.PropertyReport) (string, string, bool) { return status, verdict, true }}
+}
+
+// Row 7: with every required property PASS and no failed native check,
+// the requirement is the content evaluator's, whose verdict must pair with
+// its sufficiency (§8.2 invariant 1).
+func TestVerifierRowSevenGoesToTheContentEvaluator(t *testing.T) {
+	pins, contract, ex := rowSeven(t)
+	v := newVerifier(t, pins, contract)
+	var seen []byte
+	res, err := v.Verify(ex, er.VerifyOptions{Requirements: []string{"r-record"},
+		Content: func(_ map[string]any, artifact []byte, native *er.PropertyReport) (string, string, bool) {
+			seen = artifact
+			assert.Nil(t, native)
+			return "SATISFIED", "met", true
+		}})
+	require.NoError(t, err)
+	r := res.Exchanges[0].Replies[0]
+	assert.Equal(t, r.Artifact, seen)
+	got := r.Requirements["r-record"]
+	assert.Equal(t, []string{"envelope-7", "SATISFIED", "SATISFIED", "met"}, []string{got.Row, got.Status, got.Sufficiency, got.Verdict})
+	assert.Len(t, r.Proofs, 1, "an inclusion proof backs the claim")
+
+	_, err = v.Verify(ex, content("PROVEN", "met"))
+	assert.Error(t, err, "not an Evidence Contract status")
+	res, err = v.Verify(ex, content("NOT_APPLICABLE", ""))
+	require.NoError(t, err)
+	assert.Empty(t, res.Exchanges[0].Replies[0].Requirements, "NOT_APPLICABLE leaves the evaluated population")
+}
+
+// §8.2 invariant 1 is the full relation: SATISFIED pairs with met, not_met
+// or, where the requirement carries the switch, out_of_scope; every other
+// sufficiency pairs with not_evaluable only; no other verdict exists.
+func TestVerifierRefusesAVerdictThatDoesNotPair(t *testing.T) {
+	pins, contract, ex := rowSeven(t)
+	plain := newVerifier(t, pins, contract)
+	switched := newVerifier(t, pins, withRecord(contract, map[string]any{"out_of_scope_allowed": true}))
+	for _, tc := range []struct {
+		name            string
+		v               *er.Verifier
+		status, verdict string
+	}{
+		{"met without SATISFIED", plain, "INSUFFICIENT", "met"},
+		{"not_met without SATISFIED", plain, "UNKNOWN", "not_met"},
+		{"SATISFIED with not_evaluable", plain, "SATISFIED", "not_evaluable"},
+		{"an unknown verdict", plain, "SATISFIED", "passed"},
+		{"an unknown verdict without SATISFIED", plain, "UNKNOWN", "passed"},
+		{"an empty verdict", plain, "SATISFIED", ""},
+		{"out_of_scope without the switch", plain, "SATISFIED", "out_of_scope"},
+		{"out_of_scope with GAP", switched, "NOT_FOUND", "out_of_scope"},
+		{"SATISFIED with not_evaluable, switched on", switched, "SATISFIED", "not_evaluable"},
+	} {
+		_, err := tc.v.Verify(ex, content(tc.status, tc.verdict))
+		require.Error(t, err, tc.name)
+		assert.Contains(t, err.Error(), "§8.2 invariant 1", tc.name)
+	}
+	for _, tc := range []struct{ status, verdict string }{
+		{"SATISFIED", "met"}, {"SATISFIED", "not_met"}, {"SATISFIED", "out_of_scope"},
+		{"NOT_FOUND", "not_evaluable"}, {"INSUFFICIENT", "not_evaluable"}, {"UNKNOWN", "not_evaluable"},
+	} {
+		res, err := switched.Verify(ex, content(tc.status, tc.verdict))
+		require.NoError(t, err, tc.verdict)
+		assert.Equal(t, tc.verdict, res.Exchanges[0].Replies[0].Requirements["r-record"].Verdict)
+	}
+}
+
+// §8.3: the claim carries the requirement's effective_from as applies_from,
+// whatever its shape, and a native requirement's out_of_scope_allowed. The
+// same member on an open stub or an abstract shape grants nothing.
+func TestVerifierCopiesTheRequirementsFacts(t *testing.T) {
+	pins, contract, ex := rowSeven(t)
+	for _, tc := range []struct {
+		name    string
+		req     map[string]any
+		from    string
+		allowed bool
+	}{
+		{"corpus abstract outcome", nil, "", false},
+		{"dated native obligation", map[string]any{"profile": "obligation", "evidence_rule": map[string]any{},
+			"clause": map[string]any{"effective_from": "2027-08-02"}}, "2027-08-02", false},
+		{"dated native outcome", map[string]any{"clause": map[string]any{"effective_from": "2028-02-29"}}, "2028-02-29", false},
+		{"dated abstract outcome", map[string]any{"profile": "outcome",
+			"clause": map[string]any{"effective_from": "2027-08-02"}}, "2027-08-02", false},
+		{"switch on a native outcome", map[string]any{"out_of_scope_allowed": true}, "", true},
+		{"switch on a native obligation", map[string]any{"profile": "obligation", "evidence_rule": map[string]any{},
+			"out_of_scope_allowed": true}, "", true},
+		{"switch false", map[string]any{"out_of_scope_allowed": false}, "", false},
+		{"switch not a boolean", map[string]any{"out_of_scope_allowed": "true"}, "", false},
+		{"name on an open stub", map[string]any{"profile": "process", "out_of_scope_allowed": true}, "", false},
+		{"name on an abstract outcome", map[string]any{"profile": "outcome", "out_of_scope_allowed": true}, "", false},
+	} {
+		doc := contract
+		if tc.req != nil {
+			doc = withRecord(contract, tc.req)
+		}
+		v := newVerifier(t, pins, doc)
+		res, err := v.Verify(ex, er.VerifyOptions{Requirements: []string{"r-record"}})
+		require.NoError(t, err, tc.name)
+		got := res.Exchanges[0].Replies[0].Requirements["r-record"]
+		assert.Equal(t, []string{"UNKNOWN", "not_evaluable"}, []string{got.Status, got.Verdict}, tc.name)
+		assert.Equal(t, tc.from, got.AppliesFrom, tc.name)
+		assert.Equal(t, tc.allowed, got.OutOfScopeAllowed, tc.name)
+		_, err = v.Verify(ex, content("SATISFIED", "out_of_scope"))
+		assert.Equal(t, !tc.allowed, err != nil, tc.name)
+	}
+}
+
+// §11.3.7: an effective_from that is not a calendar date means the contract
+// version is not evaluated, the same as two requirements sharing an id.
+func TestVerifierDoesNotEvaluateANonCalendarEffectiveFrom(t *testing.T) {
+	pins, contract, _ := rowSeven(t)
+	trust, err := er.TrustPolicyFromPin(pins.TrustPolicy)
+	require.NoError(t, err)
+	for _, bad := range []any{"2027-02-30", "2027-13-01", "2027-2-03", "20270203", "2027-02-03T00:00:00Z", "0000-01-01", "２０２７-02-03", 20270203, nil} {
+		doc := withRecord(contract, map[string]any{"clause": map[string]any{"effective_from": bad}})
+		v, err := er.NewVerifier(trust, er.VerificationPolicyFromPin(pins.VerificationPolicy), pins.EvaluationTime, doc)
+		assert.ErrorIs(t, err, er.ErrInvalid, "%v", bad)
+		assert.Nil(t, v, "%v", bad)
+	}
+	doc := withRecord(contract, map[string]any{"profile": "process", "clause": map[string]any{"effective_from": "2027-02-30"}})
+	_, err = er.NewVerifier(trust, er.VerificationPolicyFromPin(pins.VerificationPolicy), pins.EvaluationTime, doc)
+	assert.ErrorIs(t, err, er.ErrInvalid, "any shape")
 }
 
 func hexOf(b []byte) string {

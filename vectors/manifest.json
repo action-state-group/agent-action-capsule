@@ -15,6 +15,7 @@
     "presentation_resolution": "presentation-resolution/manifest.json",
     "viewer_core_text": "viewer-core-text/manifest.json",
     "interop_profile_v0": "interop-profile-v0/manifest.json",
+    "interop_profile_v0_requirement_facts": "interop-profile-v0-requirement-facts/manifest.json",
     "personal_history_basic_v0": "personal-history-basic-v0/manifest.json",
     "coverage_declaration_v0": "coverage-declaration-v0/manifest.json",
     "controller_binding_v0": "controller-binding-v0/manifest.json",

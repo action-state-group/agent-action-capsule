@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
+	"time"
 )
 
 // The envelope properties of profile §7.2, in the order a report lists
@@ -51,9 +53,9 @@ var rowStatus = map[string]string{
 var missingRows = []string{"envelope-3", "envelope-4", "refusal-no_such_subject", "refusal-retention_expired",
 	"refusal-coverage_unsatisfiable", "refusal-deadline_or_malformed", "absence"}
 
-const row7Note = "§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives " +
-	"SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no " +
-	"content evaluator the requirement is UNKNOWN (§11.3.7)."
+const row7Note = "§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met or, " +
+	"where the requirement allows it, out_of_scope, and any other sufficiency gives not_evaluable [RES §1]. " +
+	"This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
 
 // Exchange is one request the requester transmitted, every reply it
 // received for it, and the absence record it wrote if its window closed
@@ -87,16 +89,20 @@ type Claim map[string]string
 // RequirementResult is one requirement's §8 result: the row, status,
 // sufficiency and verdict, and the claim's evidence and proofs. An empty
 // status, sufficiency or verdict is the null the vectors write.
+// AppliesFrom and OutOfScopeAllowed are the facts §8.3 copies from the
+// requirement; "" and false are the absent member.
 type RequirementResult struct {
-	RequirementRef string
-	ContractRef    string
-	Row            string
-	Status         string
-	Sufficiency    string
-	Verdict        string
-	Evidence       []Claim
-	Proofs         []Claim
-	Note           string
+	RequirementRef    string
+	ContractRef       string
+	Row               string
+	Status            string
+	Sufficiency       string
+	Verdict           string
+	Evidence          []Claim
+	Proofs            []Claim
+	Note              string
+	AppliesFrom       string
+	OutOfScopeAllowed bool
 }
 
 // PresentationKindsAllowed is §8.2 invariant 4: WITHHELD and NOT_COMMITTED
@@ -223,7 +229,8 @@ type Verifier struct {
 // NewVerifier makes a verifier. evaluationTime is required and is the only
 // "now" it knows. contract, when not nil, is the contract version document
 // evaluated; the claims carry its contract_ref. A contract with two
-// requirements of one id is not evaluated (§11.3.7).
+// requirements of one id, or a requirement whose clause.effective_from is
+// not a calendar date, is not evaluated (§11.3.7).
 func NewVerifier(trust TrustPolicy, policy VerificationPolicy, evaluationTime string, contract map[string]any) (*Verifier, error) {
 	if _, ok := parseInstant(evaluationTime); !ok {
 		return nil, fmt.Errorf("%w: evaluation time must be an RFC 3339 time; the verifier never reads the clock", ErrInvalid)
@@ -239,6 +246,9 @@ func NewVerifier(trust TrustPolicy, policy VerificationPolicy, evaluationTime st
 		id, _ := req["id"].(string)
 		if _, dup := v.requirements[id]; dup {
 			return nil, fmt.Errorf("%w: two requirements share one id; the contract version is not evaluated (§11.3.7)", ErrInvalid)
+		}
+		if _, dated := effectiveFrom(req); dated && !isCalendarDate(appliesFrom(req)) {
+			return nil, fmt.Errorf("%w: %s: clause.effective_from is not a calendar date; the contract version is not evaluated (§11.3.7)", ErrInvalid, id)
 		}
 		v.requirements[id] = req
 		v.order = append(v.order, id)
@@ -747,6 +757,57 @@ func applyUncertainty(req map[string]any, row, status string) string {
 	return status
 }
 
+// effectiveFrom is the requirement's clause.effective_from as carried, and
+// whether it is present. Any shape may carry it (§11.3.4).
+func effectiveFrom(req map[string]any) (any, bool) {
+	clause, _ := req["clause"].(map[string]any)
+	value, ok := clause["effective_from"]
+	return value, ok
+}
+
+// appliesFrom is the date §8.3 copies into the claim, or "" when the
+// requirement states none.
+func appliesFrom(req map[string]any) string {
+	value, _ := effectiveFrom(req)
+	s, _ := value.(string)
+	return s
+}
+
+// outOfScopeAllowed is the requirement's switch: only a native shape carries
+// it, so the same member on an open stub or an abstract shape grants nothing.
+func outOfScopeAllowed(req map[string]any) bool {
+	if req == nil {
+		return false
+	}
+	if shape := requirementShape(req); shape != "native-outcome" && shape != "native-obligation" {
+		return false
+	}
+	allowed, _ := req["out_of_scope_allowed"].(bool)
+	return allowed
+}
+
+// isCalendarDate reports whether s is YYYY-MM-DD naming a real date. The
+// Evidence Contract schema checks only the pattern, so 2027-02-30 passes it.
+func isCalendarDate(s string) bool {
+	if !calendarDateText.MatchString(s) {
+		return false
+	}
+	d, err := time.Parse(time.DateOnly, s)
+	return err == nil && d.Year() >= 1
+}
+
+var calendarDateText = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}$`)
+
+// pairs is §8.2 invariant 1, the verdict relation of [RES §1]: SATISFIED
+// pairs with met, not_met or, where the requirement allows it, out_of_scope;
+// every other sufficiency pairs with not_evaluable only.
+func pairs(sufficiency, verdict string, allowed bool) bool {
+	if sufficiency != "SATISFIED" {
+		return verdict == "not_evaluable"
+	}
+	return verdict == "met" || verdict == "not_met" || (verdict == "out_of_scope" && allowed)
+}
+
 var evidenceStatuses = []string{"SATISFIED", "NOT_FOUND", "NOT_COMMITTED", "WITHHELD", "CONTRADICTED", "INSUFFICIENT", "UNKNOWN", "NOT_APPLICABLE"}
 
 // errInvariant reports a content evaluator that broke §8.2 invariant 1 or
@@ -766,11 +827,13 @@ func (v *Verifier) requirement(id, row string, evidence, proofs []Claim, status,
 		return nil, nil
 	}
 	sufficiency := statusProjection[status]
-	if (verdict == "met" || verdict == "not_met") && sufficiency != "SATISFIED" {
-		return nil, fmt.Errorf("%w: %s: %s with sufficiency %s breaks §8.2 invariant 1", errInvariant, id, verdict, sufficiency)
+	allowed := outOfScopeAllowed(req)
+	if !pairs(sufficiency, verdict, allowed) {
+		return nil, fmt.Errorf("%w: %s: %q with sufficiency %s breaks §8.2 invariant 1", errInvariant, id, verdict, sufficiency)
 	}
 	return &RequirementResult{RequirementRef: id, ContractRef: v.contractRef, Row: row, Status: status, Sufficiency: sufficiency,
-		Verdict: verdict, Evidence: slices.Clone(evidence), Proofs: slices.Clone(proofs), Note: note}, nil
+		Verdict: verdict, Evidence: slices.Clone(evidence), Proofs: slices.Clone(proofs), Note: note,
+		AppliesFrom: appliesFrom(req), OutOfScopeAllowed: allowed}, nil
 }
 
 func envelopeRow(req map[string]string, contradicted bool, native, relation string) string {

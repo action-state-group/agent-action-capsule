@@ -68,10 +68,16 @@ EXAMPLES_DIR = SCHEMAS_DIR / "examples" / "evidence-plan-ir-v0"
 SCHEMA_PATH = SCHEMAS_DIR / "evidence-plan-ir-v0.json"
 
 POSITIVE_PLANS = ["plan-outcome", "plan-obligation", "plan-process"]
-POSITIVE_RESULTS = ["plan-outcome-result", "plan-obligation-result", "plan-process-result"]
+POSITIVE_RESULTS = [
+    "plan-outcome-result",
+    "plan-obligation-result",
+    "plan-process-result",
+    "plan-obligation-out-of-scope-result",
+]
 POSITIVE_ATTESTATIONS = ["attestation-record-example"]
 NEGATIVE_PLAN = "invalid-local-only-under-remote-planner"
 NEGATIVE_LEGACY_FIELD = "invalid-legacy-contract-version-field"
+NEGATIVE_RESULT_VERDICT = "invalid-result-unknown-verdict"
 
 
 def _load(name: str) -> IRDocument:
@@ -173,6 +179,29 @@ def main() -> int:
         else:
             print("OK  EvidencePlan   renaming 'contract_version' -> 'contract_ref' makes "
                   f"{NEGATIVE_LEGACY_FIELD}.json VALIDATE CLEAN (rejection is name-specific)")
+
+    # --- 2c. NEGATIVE: a decision verdict outside the closed four-value set ---
+    #         (Result v0 section 4.2 widened it to the Evidence Contract's
+    #         four; not_applicable is still no verdict). Opening the Verdict
+    #         enum MUST make the same fixture validate.
+    verdict_instance = _load(NEGATIVE_RESULT_VERDICT)
+    if not list(result_validator.iter_errors(verdict_instance)):
+        findings.append(
+            f"NEGATIVE-DID-NOT-FAIL {NEGATIVE_RESULT_VERDICT}: a decision verdict of "
+            "'not_applicable' validated clean"
+        )
+    else:
+        print(f"OK  PlanResult     {NEGATIVE_RESULT_VERDICT}.json correctly REJECTED")
+        open_schema = copy.deepcopy(schema)
+        open_schema["$defs"]["Verdict"] = {"type": "string"}
+        if list(_validator_for(open_schema, "PlanResult").iter_errors(verdict_instance)):
+            findings.append(
+                f"MUTANT-DID-NOT-FLIP {NEGATIVE_RESULT_VERDICT}: with the Verdict enum "
+                "opened it still failed -- the rejection is not the closed verdict set"
+            )
+        else:
+            print(f"OK  MUTANT        with the Verdict enum opened, {NEGATIVE_RESULT_VERDICT}.json "
+                  "VALIDATES CLEAN (confirms the closed set is load-bearing)")
 
     # --- 3. MUTANT CHECK: strip the locality if/then, confirm the SAME ---
     #        negative fixture now validates, then confirm restoring it makes

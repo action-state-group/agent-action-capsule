@@ -33,6 +33,10 @@ from agent_action_capsule.canonical import jcs
 
 ROOT = Path(__file__).resolve().parents[2]
 VECTORS = ROOT / "vectors" / "interop-profile-v0"
+# Each set the generator writes, by its --set name: its directory and its root manifest key.
+SETS = {"interop-profile-v0": (VECTORS, "interop_profile_v0"),
+        "requirement-facts": (ROOT / "vectors" / "interop-profile-v0-requirement-facts",
+                              "interop_profile_v0_requirement_facts")}
 GENERATOR = ROOT / "python" / "scripts" / "generate_interop_profile_v0_vectors.py"
 HAND_WRITTEN = ("README.md",)
 DATA = json.loads((VECTORS / "vectors.json").read_text(encoding="utf-8"))
@@ -931,7 +935,7 @@ def test_corpus_catches_mutant_verifier(mutant):
 
 
 # ---------------------------------------------------------------------------
-# The §8.2 invariant: never met/not_met unless SATISFIED
+# The §8.2 invariants: the verdict pairs with the sufficiency (invariant 1), and the rest
 # ---------------------------------------------------------------------------
 
 
@@ -946,16 +950,26 @@ def requirement_blocks(corpus: dict):
                 yield case["id"], name, block, exp["absence"]
 
 
+VERDICTS = ("met", "not_met", "out_of_scope", "not_evaluable")
+
+
 def invariant_violations(corpus: dict) -> list[str]:
     bad = []
     for cid, name, b, holder in requirement_blocks(corpus):
         where = f"{cid}/{name}"
-        if b["verdict"] in ("met", "not_met") and b["sufficiency"] != "SATISFIED":
-            bad.append(f"{where}: {b['verdict']} with sufficiency {b['sufficiency']}")
-        if b["status"] is not None and PROJECTION.get(b["status"]) != b["sufficiency"]:
-            bad.append(f"{where}: status {b['status']} does not project to {b['sufficiency']}")
-        if b["sufficiency"] not in (None, "SATISFIED") and b["verdict"] != "not_evaluable":
-            bad.append(f"{where}: sufficiency {b['sufficiency']} without not_evaluable")
+        verdict, sufficiency = b["verdict"], b["sufficiency"]
+        if verdict not in VERDICTS:
+            bad.append(f"{where}: {verdict!r} is not a verdict")
+        elif sufficiency == "SATISFIED" and verdict == "not_evaluable":
+            bad.append(f"{where}: not_evaluable with sufficiency SATISFIED")
+        elif sufficiency != "SATISFIED" and verdict != "not_evaluable":
+            bad.append(f"{where}: {verdict} with sufficiency {sufficiency}")
+        if verdict == "out_of_scope" and b.get("out_of_scope_allowed") is not True:
+            bad.append(f"{where}: out_of_scope on a requirement without the switch")
+        if "out_of_scope_allowed" in b and b["out_of_scope_allowed"] is not True:
+            bad.append(f"{where}: out_of_scope_allowed is true or absent")
+        if b["status"] is not None and PROJECTION.get(b["status"]) != sufficiency:
+            bad.append(f"{where}: status {b['status']} does not project to {sufficiency}")
         if None in (b["status"], b["sufficiency"], b["verdict"]):
             bad.append(f"{where}: an empty result; a requirement the verifier cannot apply is UNKNOWN (§11.3.7)")
         if b["status"] in ("WITHHELD", "NOT_COMMITTED") and "disclosure" in holder.get(
@@ -980,7 +994,7 @@ ROW_TRIPLES = {
 }
 
 
-def test_no_vector_yields_met_or_not_met_unless_satisfied():
+def test_every_vector_verdict_pairs_with_its_sufficiency():
     assert invariant_violations(DATA) == []
     blocks = list(requirement_blocks(DATA))
     assert any(b["verdict"] == "not_met" for _, _, b, _ in blocks), "row 5 is exercised"
@@ -989,7 +1003,9 @@ def test_no_vector_yields_met_or_not_met_unless_satisfied():
 
 
 @pytest.mark.parametrize("mutation", ["row-6-not-met", "row-2-met", "withheld-as-disclosure", "row-7-met",
-                                      "row-7-null"])
+                                      "row-7-null", "row-5-not-evaluable", "row-5-unknown-verdict",
+                                      "row-5-out-of-scope-without-switch", "gap-out-of-scope",
+                                      "switch-false"])
 def test_invariant_check_catches_its_mutant(mutation):
     corpus = copy.deepcopy(DATA)
     for _, _, b, holder in requirement_blocks(corpus):
@@ -1003,6 +1019,17 @@ def test_invariant_check_catches_its_mutant(mutation):
             b["verdict"] = "met"
         elif mutation == "row-7-null" and b["row"] == "envelope-7":
             b["status"] = b["sufficiency"] = b["verdict"] = None
+        elif mutation == "row-5-not-evaluable" and b["row"] == "envelope-5":
+            b["verdict"] = "not_evaluable"
+        elif mutation == "row-5-unknown-verdict" and b["row"] == "envelope-5":
+            b["verdict"] = "passed"
+        elif mutation == "row-5-out-of-scope-without-switch" and b["row"] == "envelope-5":
+            b["verdict"] = "out_of_scope"
+        elif mutation == "gap-out-of-scope" and b["sufficiency"] == "GAP":
+            b["verdict"] = "out_of_scope"
+            b["out_of_scope_allowed"] = True
+        elif mutation == "switch-false" and b["row"] == "envelope-5":
+            b["out_of_scope_allowed"] = False
     assert invariant_violations(corpus), f"invariant check missed {mutation}"
 
 
@@ -1086,35 +1113,41 @@ def test_carriage_moves_one_octet_string():
 # ---------------------------------------------------------------------------
 
 
-def _generate(out: Path) -> None:
+def _generate(out: Path, set_name: str) -> None:
     for name in HAND_WRITTEN:
-        shutil.copyfile(VECTORS / name, out / name)
-    subprocess.run([sys.executable, str(GENERATOR), "--out", str(out)], check=True)
+        shutil.copyfile(SETS[set_name][0] / name, out / name)
+    subprocess.run([sys.executable, str(GENERATOR), "--set", set_name, "--out", str(out)], check=True)
 
 
-def test_generator_is_deterministic_and_reproduces_every_file(tmp_path):
+@pytest.mark.parametrize("set_name", sorted(SETS))
+def test_generator_is_deterministic_and_reproduces_every_file(tmp_path, set_name):
+    vectors = SETS[set_name][0]
     a, b = tmp_path / "a", tmp_path / "b"
     a.mkdir()
     b.mkdir()
-    _generate(a)
-    _generate(b)
-    committed = sorted(p.name for p in VECTORS.iterdir() if p.is_file())
+    _generate(a, set_name)
+    _generate(b, set_name)
+    committed = sorted(p.name for p in vectors.iterdir() if p.is_file())
     assert committed == sorted(p.name for p in a.iterdir()) == sorted(p.name for p in b.iterdir())
     for name in committed:
-        assert (a / name).read_bytes() == (b / name).read_bytes() == (VECTORS / name).read_bytes(), name
+        assert (a / name).read_bytes() == (b / name).read_bytes() == (vectors / name).read_bytes(), name
 
 
-def test_sha256sums_and_registration():
-    listed = dict(reversed(line.split("  ", 1)) for line in (VECTORS / "SHA256SUMS").read_text().splitlines())
-    on_disk = {p.name for p in VECTORS.iterdir() if p.is_file() and p.name != "SHA256SUMS"}
+@pytest.mark.parametrize("set_name", sorted(SETS))
+def test_sha256sums_and_registration(set_name):
+    vectors, key = SETS[set_name]
+    listed = dict(reversed(line.split("  ", 1)) for line in (vectors / "SHA256SUMS").read_text().splitlines())
+    on_disk = {p.name for p in vectors.iterdir() if p.is_file() and p.name != "SHA256SUMS"}
     assert set(listed) == on_disk
     for name, digest in listed.items():
-        assert shx((VECTORS / name).read_bytes()) == digest, name
+        assert shx((vectors / name).read_bytes()) == digest, name
     top = dict(reversed(line.split("  ", 1)) for line in (ROOT / "vectors" / "SHA256SUMS").read_text().splitlines())
     for name in on_disk:
-        assert top.get(f"interop-profile-v0/{name}") == listed[name], name
+        assert top.get(f"{vectors.name}/{name}") == listed[name], name
     corpora = json.loads((ROOT / "vectors" / "manifest.json").read_text(encoding="utf-8"))["corpora"]
-    assert corpora["interop_profile_v0"] == "interop-profile-v0/manifest.json"
-    assert DATA["count"] == len(CASES)
-    manifest = json.loads((VECTORS / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["files"] == [{"path": "vectors.json", "sha256": listed["vectors.json"], "count": len(CASES)}]
+    assert corpora[key] == f"{vectors.name}/manifest.json"
+    data = json.loads((vectors / "vectors.json").read_text(encoding="utf-8"))
+    assert data["count"] == len(data["cases"])
+    manifest = json.loads((vectors / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["files"] == [{"path": "vectors.json", "sha256": listed["vectors.json"],
+                                  "count": len(data["cases"])}]

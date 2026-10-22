@@ -42,8 +42,8 @@ means engaged. Like every extension, the block is covered by the bundle digest.
 A **contract-report module** is a presentation module that draws the contract-report view. These
 rules bind it:
 
-- **Summary first.** It shows the Result's sealed `aggregate` as it is: coverage, then the three
-  buckets (ER §3). Coverage counts evaluations, beside the number of distinct requirements the
+- **Summary first.** It shows the Result's sealed `aggregate` as it is: coverage, then the
+  buckets (ER §3), the fourth `out_of_scope` bucket included when the Result carries it (ER §4.2). Coverage counts evaluations, beside the number of distinct requirements the
   claims cite ("24 evaluations of 4 requirements"), and the buckets list claims; the module labels
   each with its unit and never calls `unknown_count` unresolved requirements (ER §3). It never
   recomputes the aggregate. A bucket that names a claim the Result lacks, or a claim with a
@@ -51,7 +51,8 @@ rules bind it:
   module does not repair it. Showing the sealed aggregate does not mean every judgment in it
   verified: a claim whose own checks fail is shown as failed, apart from the producer's counts.
 - **Rows.** A row is one (`contract_ref`, `requirement_ref`) pair. Its tally counts that row's
-  claims by `verdict` (`met`, `not_met`, `not_evaluable`), each a separate count, always shown with
+  claims by `verdict` (`met`, `not_met`, `not_evaluable`, and `out_of_scope` when the Result carries
+  the fourth bucket), each a separate count, always shown with
   its denominator ("2 of 5 claims"). A re-judged requirement has several claims, and each counts as
   a claim, never as a requirement. There is no percentage and no single score.
 - **Several contracts.** A Result that cites more than one contract shows its rows grouped by
@@ -71,9 +72,18 @@ rules bind it:
 - **Other sealed records.** A module MAY also show other sealed records of the bundle (for example
   per-case reports) under the same rules: every number traces to sealed records, withheld stays
   explicit, and producer text is labelled as the producer's.
-- **Applicability** (whether a requirement applies yet) is not shown: Result v0 has no member for
-  it, and this kind adds none.
-- **Verdicts.** The kind shows the verdict values ER defines, and no others.
+- **Applicability** (ER §4.3). A row whose claims are later is shown in its own section, after the
+  in-force rows and never merged with them, titled `applicability.not_yet_in_force.title` with the
+  note `applicability.not_yet_in_force.note`. Every tally in it carries the readiness label, so a
+  later `not_met` never reads as a violation, and none of it counts in the summary's buckets.
+  Whenever any claim carries `applies_from`, later or not, the summary shows the as-of date, the
+  `YYYY-MM-DD` UTC date of `generated_at`, through `applicability.as_of`.
+- **Copied facts are labelled as copied.** A claim's `applies_from` and `out_of_scope_allowed` are
+  the producer's copy of the contract, and nothing here checks them against it (ER §4.2). The module
+  shows `contract_fact.note` with the as-of date and beside the `out_of_scope` count, and never
+  presents either fact as verified.
+- **Verdicts.** The kind shows the verdict values ER defines, and no others: `out_of_scope`, where
+  present, is its own count, never part of `met`.
 
 ## 3. Words
 
@@ -94,7 +104,10 @@ lowercased:
 | `report.title`, `report.summary` | The report's heading and its one-line summary. |
 | `group.<segment>.title` | A group's heading. |
 | `row.<requirement_ref>.label`, `.detail`, `.not_evaluable` | A row's name, its explanation, and the note shown when its claims are not evaluable. |
-| `verdict.<value>` | `met`, `not_met`, `not_evaluable`. |
+| `verdict.<value>` | `met`, `not_met`, `not_evaluable`, `out_of_scope`. |
+| `applicability.not_yet_in_force.title`, `.note` | The heading and note of the section for rows not yet in force (§2). |
+| `applicability.as_of` | The as-of phrase, with exactly one `{date}` slot that the module fills with the `YYYY-MM-DD` UTC date of `generated_at`, with no locale formatting. A word without exactly one `{date}` is treated as missing. When it is missing, the module shows the bare date, never nothing. |
+| `contract_fact.note` | The label that says the dates and the `out_of_scope` switch are copied from the contract, not re-checked here. |
 | `sufficiency.<value>` | `satisfied`, `gap`, `insufficient`, `unknown`. |
 | `tier.<value>` | `recomputed`, `judged`. |
 | `grade.<value>` | `self-attested`, `witnessed`, `countersigned`. |
