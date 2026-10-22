@@ -64,19 +64,24 @@ describe("vectors/viewer-core-text", () => {
     );
   });
 
-  it("the top-level index lists the corpus", () => {
-    const top = readFileSync(resolvePath(VECTORS, "SHA256SUMS"), "utf8");
-    for (const name of readdirSync(DIR).filter((n) => n !== "SHA256SUMS"))
-      expect(top).toContain(
-        `${sha256(readFileSync(resolvePath(DIR, name)))}  viewer-core-text/${name}`,
+  // Skipped while writing: generate_all_vectors.py rewrites the top-level
+  // list after every generator has run.
+  it.skipIf(process.env.AAC_WRITE_VECTORS === "1")(
+    "the top-level index lists the corpus",
+    () => {
+      const top = readFileSync(resolvePath(VECTORS, "SHA256SUMS"), "utf8");
+      for (const name of readdirSync(DIR).filter((n) => n !== "SHA256SUMS"))
+        expect(top).toContain(
+          `${sha256(readFileSync(resolvePath(DIR, name)))}  viewer-core-text/${name}`,
+        );
+      const index = JSON.parse(
+        readFileSync(resolvePath(VECTORS, "manifest.json"), "utf8"),
+      ) as { corpora: Record<string, string> };
+      expect(index.corpora.viewer_core_text).toBe(
+        "viewer-core-text/manifest.json",
       );
-    const index = JSON.parse(
-      readFileSync(resolvePath(VECTORS, "manifest.json"), "utf8"),
-    ) as { corpora: Record<string, string> };
-    expect(index.corpora.viewer_core_text).toBe(
-      "viewer-core-text/manifest.json",
-    );
-  });
+    },
+  );
 
   it("no banner line names an internal token or says passed", () => {
     for (const state of BANNER_STATES) {

@@ -450,18 +450,12 @@ function renderVerificationBanner(
       : words.verdict === "incomplete"
         ? "incomplete"
         : "failed";
-  const banner = element(
-    "p",
-    !rendered
-      ? VERIFICATION_BANNER_LINES.refused
-      : state === "verified"
-        ? VERIFICATION_BANNER_LINES.verified
-        : state === "incomplete"
-          ? notCheckedListDrawn
-            ? VERIFICATION_BANNER_LINES.incomplete
-            : VERIFICATION_BANNER_LINES.incompleteNoList
-          : VERIFICATION_BANNER_LINES.failed,
-  );
+  const line = !rendered
+    ? VERIFICATION_BANNER_LINES.refused
+    : state === "incomplete" && !notCheckedListDrawn
+      ? VERIFICATION_BANNER_LINES.incompleteNoList
+      : VERIFICATION_BANNER_LINES[state];
+  const banner = element("p", line);
   banner.dataset.verify = state;
   banner.dataset.verdict = words.verdict;
   banner.dataset.checkpoint = words.checkpoint;
@@ -481,12 +475,14 @@ function renderVerificationBanner(
 
 /**
  * Draw the `checking` state into `root`, replacing what it held: the banner
- * alone, with no verdict and no row, until the checks finish.
+ * alone, with no verdict and no row, until the checks finish. Returns that
+ * banner.
  */
-export function renderChecking(root: HTMLElement): void {
+export function renderChecking(root: HTMLElement): HTMLElement {
   const banner = element("p", VERIFICATION_BANNER_LINES.checking);
   banner.dataset.verify = "checking";
   root.replaceChildren(banner);
+  return banner;
 }
 
 /** The words a page says when this viewer cannot verify the bundle at all. */
@@ -2218,10 +2214,11 @@ export async function renderEvidenceGraph(
     );
   // Verify first. Until the verification result is in hand the page shows
   // `checking` and nothing else, and no module is consulted for a bundle
-  // that did not verify. A render that rejects puts back what `root` held,
-  // so it still draws nothing.
+  // that did not verify. A render that rejects while its own `checking` is
+  // still shown puts back what `root` held, so it still draws nothing; once
+  // another render has replaced that state, its page is left alone.
   const before = [...root.childNodes];
-  renderChecking(root);
+  const checking = renderChecking(root);
   try {
     await renderVerifiedContext(
       await buildVerifiedBundleContext(input, {
@@ -2231,7 +2228,7 @@ export async function renderEvidenceGraph(
       options,
     );
   } catch (err) {
-    root.replaceChildren(...before);
+    if (checking.parentNode === root) root.replaceChildren(...before);
     throw err;
   }
 }
@@ -2317,7 +2314,8 @@ async function renderVerifiedContext(
     context.countersigners,
   );
   // The banner points at the not-checked list only when the page draws one.
-  // That list does not depend on which module renders.
+  // The page's lists also read `citedSigners`, which depends on the module,
+  // but that adds only to the checked list, never to this one.
   const notCheckedListDrawn =
     verificationCheckLists(bundle, verification, {
       stamps,
@@ -2340,6 +2338,20 @@ async function renderVerifiedContext(
   // a module that changes them, or removes the banner or its details line,
   // is discarded for the refusal like one that throws. Only the class may
   // change, through setChromeClass.
+  // A banner part's words and every attribute but `class`, which
+  // setChromeClass may change: `hidden`, `aria-hidden` or a style on the
+  // banner would hide the core's words as surely as rewriting them.
+  const snapshot = (parts: readonly HTMLElement[]): string =>
+    JSON.stringify(
+      parts.map((part) => [
+        part.textContent,
+        part
+          .getAttributeNames()
+          .filter((name) => name !== "class")
+          .sort()
+          .map((name) => [name, part.getAttribute(name)]),
+      ]),
+    );
   const frameOf = (top: HTMLElement) => {
     const detail = top.nextElementSibling;
     const parts = [
@@ -2348,20 +2360,27 @@ async function renderVerifiedContext(
         ? [detail as HTMLElement]
         : []),
     ];
-    return {
-      parts,
-      words: JSON.stringify(
-        parts.map((part) => [part.textContent, { ...part.dataset }]),
-      ),
-    };
+    return { parts, words: snapshot(parts) };
   };
   let frame = frameOf(banner);
   const assertFrameIntact = (): void => {
+    // Exactly one banner and one details line on the page, the core's own:
+    // a second `[data-verify]` a module drew is a banner it supplied.
+    const banners = root.querySelectorAll(
+      "[data-verify], [data-banner-detail]",
+    );
+    // It stays first, after the header only, so no row comes before it.
+    const before = frame.parts[0]!.previousElementSibling;
     if (
-      frame.parts.some((part) => part.parentNode !== root) ||
-      JSON.stringify(
-        frame.parts.map((part) => [part.textContent, { ...part.dataset }]),
-      ) !== frame.words
+      banners.length !== frame.parts.length ||
+      frame.parts.some(
+        (part, i) => part.parentNode !== root || banners[i] !== part,
+      ) ||
+      (before !== null &&
+        before.getAttribute("data-presentation") !== "header") ||
+      (frame.parts[1] !== undefined &&
+        frame.parts[1].previousElementSibling !== frame.parts[0]) ||
+      snapshot(frame.parts) !== frame.words
     )
       throw new Error("a module altered the verification banner");
   };

@@ -14,9 +14,12 @@
   page draws one), "✗ A check failed: do not rely on this page", "✗ This bundle did not verify: do
   not rely on it" and "Couldn't check this page here: check it with a full verifier". The findings
   #196 added to the banner move to a details line under it (`data-banner-detail`). `checking` is
-  drawn as soon as `renderEvidenceGraph` starts on a bundle, and a render that rejects puts back
-  what the root held. A module that changes the banner's words or attributes, or removes the
-  banner or its details line, is discarded for the `presentation-failed` refusal. On the
+  drawn as soon as `renderEvidenceGraph` starts on a bundle, and a render that rejects while its
+  own `checking` is shown puts back what the root held. A module that, while it renders, changes
+  the banner's words or attributes (other than the class `setChromeClass` sets), hides or moves
+  it, removes it or its details line, or draws a second banner, is discarded for the
+  `presentation-failed` refusal. The state follows the strict verdict, so a countersignature or a
+  top-level witness receipt is listed on the verification page but never changes it. On the
   verification page, each check-list line keeps its words in `[data-check-line]` and gains its
   technical name (`VERIFICATION_CHECK_TECHNICAL_NAMES`) in `[data-check-name]`. The digests, the
   completeness statement and the ten checks move under a closed "Technical details" disclosure

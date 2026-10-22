@@ -32,6 +32,10 @@ export interface WireBannerState {
   readonly description: string;
   readonly data_verify: string;
   readonly data_verdict: string | null;
+  /**
+   * Whether the checks let the records be shown; a presentation refusal can
+   * still withhold them under the same banner.
+   */
   readonly records_shown: boolean;
   readonly line: string;
 }

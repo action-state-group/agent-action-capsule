@@ -5,7 +5,9 @@ pack or bundle supplies (`spec/presentation-contract-v0.md` sections 6.1,
 6.2 and 8):
 
 - the banner's line for each verification state of section 6.2, with its
-  `data-verify` and `data-verdict` values and whether the records are shown;
+  `data-verify` and `data-verdict` values and whether the checks let the
+  records be shown (a presentation refusal can still withhold them, and never
+  changes the banner);
 - the refusal line of invariant I1, and the lines of the unable-to-verify
   state;
 - the verification page's check-list headings, each check's line in plain

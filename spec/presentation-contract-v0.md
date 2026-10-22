@@ -232,8 +232,9 @@ presentation" notice) where a refused module matched says so, in these words.
   for `runtime_too_old`. When the bundle digest could not be computed, the cell begins
   `Integrity not verified;` instead of `Integrity verified;` and is otherwise the same. The row
   carries `data-semantics="refused"`, `data-refused-module="<id>"` and
-  `data-refusal="<reason>"`. A refusal takes precedence over "interpreted by": the refused
-  module did not run, so nothing interpreted the block on its behalf.
+  `data-refusal="<reason>"`. A refusal takes precedence over the line saying a module shows
+  the block (section 6.2's extension rows): the refused module did not run, so nothing
+  interpreted the block on its behalf.
 - **When it requires no extension.** A refused module whose manifest requires no extension has
   no row of its own, so the verification section shows, after the extension rows, one line per
   such module, exactly:
@@ -582,10 +583,15 @@ restating the lists.
 
 ### 6.2 The verification banner
 
-The banner is the first thing a page draws. It states exactly one verification state at a
-time, taken from the rendering runtime's own result and never from the bundle. Its
-`data-verify` attribute names the state. Once the checks have finished, `data-verdict` names
-the strict verdict of `draft-mih-zhang-agent-disclosure-bundle` they reached.
+The banner is the first thing a page draws after the header chrome (section 9.1), before any
+record. It states exactly one verification state at a time, taken from the rendering
+runtime's own result and never from the bundle. Its `data-verify` attribute names the state.
+Once the checks have finished, `data-verdict` names the strict verdict of
+`draft-mih-zhang-agent-disclosure-bundle` they reached. The state follows that verdict, so it
+covers the bundle's own checks: records, signatures, graph closure, the checkpoint, interval
+coverage, per-record membership and disclosures. A countersignature or a top-level witness
+receipt is not one of them; its line appears in the lists of section 6.1 and never changes the
+state, so a countersignature anyone appends cannot turn a verified page into a failed one.
 
 | State | `data-verify` | `data-verdict` | Records shown |
 |---|---|---|---|
@@ -597,16 +603,23 @@ the strict verdict of `draft-mih-zhang-agent-disclosure-bundle` they reached.
 
 - **checking** is drawn as soon as rendering starts and stays until the checks finish. No
   record, module region or verdict is drawn while it is shown.
-- **verified** is drawn only once every check the bundle calls for has run on this page and
-  passed. A runtime that cannot run one of them (for example, one that cannot authenticate the
-  checkpoint) draws **incomplete** instead.
-- **failed** is drawn whenever a check failed, whether or not the records are still shown.
+- **verified** is drawn only for a `valid` verdict: every one of the bundle's own checks ran on
+  this page and passed. A runtime that cannot run one of them (for example, one that cannot
+  authenticate the checkpoint) draws **incomplete** instead.
+- **failed** is drawn whenever one of the bundle's own checks failed, whether or not the
+  records are still shown.
 - **unable to verify** means the runtime could not run the checks at all. It is never drawn
   as failed.
+- "Records shown" is what the checks allow. A presentation refusal (section 4.3: an
+  ambiguity, or a module's `render` failure) still discards every module's content under a
+  verified, incomplete or failed banner, and adds its own refusal line. It never changes the
+  banner, because the refusal is about the presentation, not the evidence.
 
 The banner's line for each state, and the details line under it naming the checks behind an
 incomplete or failed verdict, are the core's own fixed text, like the lists of section 6.1.
-No module, wording pack or bundle supplies, selects or alters them. The banner line names no
+No module, wording pack or bundle supplies, selects or alters them, and a viewer discards a
+module that changes, moves or hides the banner or its details line while it renders, as it
+discards one whose `render` fails. The banner line names no
 internal token. The details line carries the labels the bundle draft requires, such as
 `checkpoint_unverified`. `vectors/viewer-core-text/core-text.json` holds the exact
 fixed words of each state and of each check-list line, and a viewer's words MUST equal it.

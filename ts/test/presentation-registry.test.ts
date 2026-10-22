@@ -414,6 +414,29 @@ describe("resolution and rendering (spec section 4.3)", () => {
       },
     ],
     [
+      "draws a second banner of its own before the core's",
+      (b: HTMLElement) => {
+        const fake = document.createElement("p");
+        fake.dataset.verify = "verified";
+        fake.textContent = "✓ Unchanged since it was sealed";
+        b.before(fake);
+      },
+    ],
+    [
+      "hides the banner",
+      (b: HTMLElement) => {
+        b.hidden = true;
+      },
+    ],
+    [
+      "moves the banner after its own rows",
+      (b: HTMLElement) => {
+        const root = b.parentElement!;
+        const detail = b.nextElementSibling!;
+        root.append(b, detail);
+      },
+    ],
+    [
       "removes the banner",
       (b: HTMLElement) => {
         b.remove();
@@ -449,6 +472,34 @@ describe("resolution and rendering (spec section 4.3)", () => {
     const page = await render(producerKeyBundle(), registry);
     expect(page.querySelectorAll("[data-test-module]")).toHaveLength(1);
     expect(page.querySelector("[data-refusal]")).toBeNull();
+  });
+
+  it("a render that rejects after another render on the same root finished leaves that page, never its own or the other's checking", async () => {
+    let fail!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      fail = resolve;
+    });
+    const failing = spyModule(manifest());
+    const registry = new PresentationRegistry();
+    registry.register({
+      ...failing.module,
+      buildModel: async () => {
+        await gate;
+        throw new Error("late model failure");
+      },
+    });
+    const root = document.createElement("main");
+    const first = renderEvidenceGraph(producerKeyBundle(), root);
+    const second = renderEvidenceGraph(producerKeyBundle(), root, undefined, {
+      registry,
+    });
+    await first;
+    fail();
+    await expect(second).rejects.toThrow("late model failure");
+    const banners = root.querySelectorAll<HTMLElement>("[data-verify]");
+    expect(banners).toHaveLength(1);
+    expect(banners[0]!.dataset.verify).toBe("incomplete");
+    expect(root.querySelector('[data-page="verification"]')).not.toBeNull();
   });
 
   it("a module whose model cannot be built rejects before anything is drawn (as a malformed Result root always has)", async () => {

@@ -41,8 +41,8 @@ the presentation contract's section 6.2. `data-verify` names the state:
 verdict), `incomplete`, `failed` or `unable` (no SHA-256 at all). Each state
 has one fixed line (`VERIFICATION_BANNER_LINES`, pinned for every viewer in
 [`vectors/viewer-core-text/`](../vectors/viewer-core-text/README.md)), and no
-module, wording pack or bundle supplies it: a module that changes the banner
-is discarded for the refusal. `data-verdict` is `valid`, `incomplete` or
+module, wording pack or bundle supplies it: a module that changes, hides or
+moves the banner while it renders is discarded for the refusal. `data-verdict` is `valid`, `incomplete` or
 `invalid`, and `data-checkpoint` is `verified`, `unverified`, `invalid` or
 `absent`. A details line under the banner (`data-banner-detail`) names what
 the page did not check or what failed, with the verifier's finding names, and
