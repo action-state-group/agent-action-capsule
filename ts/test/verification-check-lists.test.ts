@@ -313,6 +313,12 @@ describe("a tampered bundle", () => {
     expect(root.querySelector("[data-verdict]")?.textContent).toMatch(
       /^None of the bundle's checks failed, /u,
     );
+    // And the failed line says it does not change the verdict.
+    expect(
+      root.querySelector(
+        '[data-checks="failed"] [data-check="countersignatures"] [data-check-line]',
+      )?.textContent,
+    ).toMatch(/so it never changes the bundle's verdict\.$/u);
   });
 
   it("a moved membership entry moves the membership check out of the page list", async () => {

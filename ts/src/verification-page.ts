@@ -485,8 +485,12 @@ export const VERIFICATION_CHECK_WORDS: Readonly<
     "The signature on the log's checkpoint, and the fields it signs.",
   disclosures:
     "Each disclosed value against the digest its record committed to.",
+  // A countersignature sits outside the bundle digest, so its outcome never
+  // changes the banner's state (presentation contract section 6.2). The line
+  // says so, so a failed one under a verified banner is not read as a
+  // second verdict.
   countersignatures:
-    "Each countersignature's signature, over this bundle's digest, under the key it names.",
+    "Each countersignature's signature, over this bundle's digest, under the key it names. A countersignature is not one of the bundle's own checks, so it never changes the bundle's verdict.",
   composed:
     "Each bundle this file composes, and the digest over the composition.",
   "cited-signers":
