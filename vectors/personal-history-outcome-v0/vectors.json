@@ -115,7 +115,7 @@
     "contract_digest": "c1f2e124339ff3f5a6e8272dfd0a83a4ee33210355e0e8a0324f0d859d3ec304",
     "schema": {
       "name": "evidence-contract-v0.json",
-      "sha256": "6d10d5eb97e15421db0ab922b5f6d1f0a2e9f453fb64e52fb45306ba029ad480"
+      "sha256": "6b969610e6f120a9f5b98555aa5045644c62665f14075bb83fb9e78bab21b770"
     }
   },
   "history_properties": [

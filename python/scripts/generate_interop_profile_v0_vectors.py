@@ -48,7 +48,7 @@ KINDS = ["cll-checkpoint", "cll-inclusion-proof", "cll-consistency-proof"]
 # The Evidence Contract v0 schema this corpus's contract validates against (the profile's EC pin).
 EC_SCHEMA = {
     "name": "evidence-contract-v0.json",
-    "sha256": "6d10d5eb97e15421db0ab922b5f6d1f0a2e9f453fb64e52fb45306ba029ad480",
+    "sha256": "6b969610e6f120a9f5b98555aa5045644c62665f14075bb83fb9e78bab21b770",
 }
 
 # ---------------------------------------------------------------------------
@@ -1295,11 +1295,10 @@ def carriage_cases() -> list[dict]:
 # The requirement-facts set (§8.3): a contract whose requirements carry the facts the claim copies
 # ---------------------------------------------------------------------------
 
-# Native shapes only (§11.3.2), so the set's contract validates against the EC pin. Every row is
-# UNKNOWN or GAP with no content evaluator; the point is what the requirement block copies.
-# TODO(capsule-engine#196): once the EC pin carries out_of_scope_allowed, add a native requirement
-# with out_of_scope_allowed: true (its block carries out_of_scope_allowed) and an open stub carrying
-# the same name (its block carries none: the name grants nothing there).
+# The set's contract validates against the EC pin. Every row is UNKNOWN or GAP with no content
+# evaluator; the point is what the requirement block copies: the date a clause states, and the
+# out_of_scope switch on a native requirement. The open stub carries the same name, which grants
+# nothing there (§8.3).
 _NATIVE = {"forward_verdict": "DETERMINISTIC", "backward_verdict": "DETERMINISTIC"}
 FACTS_CONTRACT = {
     "id": "C-facts",
@@ -1318,6 +1317,11 @@ FACTS_CONTRACT = {
         {"id": "r-outcome", "profile": "outcome",
          "statement": "The evidence record named by the request is served at all.",
          "evidence_rule": "a reply names the record", **_NATIVE},
+        {"id": "r-outcome-switched-on", "profile": "outcome",
+         "statement": "The situation the evidence record answers arose in the session.",
+         "evidence_rule": "a reply names the record", **_NATIVE, "out_of_scope_allowed": True},
+        {"id": "r-process-stub", "profile": "process",
+         "statement": "The steps were taken in order.", "out_of_scope_allowed": True},
     ],
 }
 FACTS_IDS = [r["id"] for r in FACTS_CONTRACT["requirements"]]
@@ -1332,6 +1336,9 @@ def with_facts(row: str) -> dict:
         block = mapped(row)
         if "effective_from" in req.get("clause", {}):
             block["applies_from"] = req["clause"]["effective_from"]
+        # the switch counts on a native shape only (evidence_rule present)
+        if req.get("out_of_scope_allowed") is True and "evidence_rule" in req:
+            block["out_of_scope_allowed"] = True
         out[req["id"]] = block
     return out
 

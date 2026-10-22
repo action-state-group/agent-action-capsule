@@ -32,7 +32,6 @@ from typing import Any
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from generate_interop_profile_v0_vectors import (
-    EC_SCHEMA,
     KINDS,
     PROFILE,
     REFUSAL_PROPS,
@@ -46,6 +45,14 @@ from generate_interop_profile_v0_vectors import (
     sha,
     shx,
 )
+
+# The Basic level is frozen at its release (tests/test_personal_history_outcome_v0_vectors.py
+# test_basic_vectors_unchanged), so it keeps the EC pin it was released under, not the profile's
+# current one.
+RELEASED_EC_SCHEMA = {
+    "name": "evidence-contract-v0.json",
+    "sha256": "6d10d5eb97e15421db0ab922b5f6d1f0a2e9f453fb64e52fb45306ba029ad480",
+}
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "personal-history-basic-v0"
@@ -418,7 +425,7 @@ def build(run: dict, run_sha256: str) -> dict[str, bytes]:
             "keys": {name: {"seed_label": SEED_LABELS[name], "public": PUB[name]} for name in SEED_LABELS},
         },
         "contract": {"document": CONTRACT, "document_jcs": jcs(CONTRACT), "contract_ref": CONTRACT_REF,
-                     "contract_digest": CONTRACT_DIGEST, "schema": EC_SCHEMA},
+                     "contract_digest": CONTRACT_DIGEST, "schema": RELEASED_EC_SCHEMA},
         "holder_stream": {"deals": run["deals"], "selection": run["selection"], "records": run["records"],
                           "checkpoints": run["checkpoints"]},
         "history_properties": HISTORY_PROPS,

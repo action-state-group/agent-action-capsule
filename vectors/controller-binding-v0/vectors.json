@@ -66,7 +66,7 @@
     "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
     "schema": {
       "name": "evidence-contract-v0.json",
-      "sha256": "6d10d5eb97e15421db0ab922b5f6d1f0a2e9f453fb64e52fb45306ba029ad480"
+      "sha256": "6b969610e6f120a9f5b98555aa5045644c62665f14075bb83fb9e78bab21b770"
     }
   },
   "credential_method": "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)",

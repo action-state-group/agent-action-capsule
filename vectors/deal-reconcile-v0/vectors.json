@@ -34,7 +34,7 @@
     "contract_digest": "6b45af8d90e2bd178a56925f600d4a4c508fd8834bec3ffd7ec07cac13e7c140",
     "schema": {
       "name": "evidence-contract-v0.json",
-      "sha256": "6d10d5eb97e15421db0ab922b5f6d1f0a2e9f453fb64e52fb45306ba029ad480"
+      "sha256": "6b969610e6f120a9f5b98555aa5045644c62665f14075bb83fb9e78bab21b770"
     }
   },
   "fields": {

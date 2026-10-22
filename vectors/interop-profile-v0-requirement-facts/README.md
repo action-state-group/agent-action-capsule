@@ -15,14 +15,16 @@ verifier (`go/evidencerequest/interop_verify_vectors_test.go`) and the Python re
 
 ## Contract
 
-`contract.document` has three native requirements, so it validates against the Evidence Contract
-v0 schema the profile pins as EC (SHA-256 `contract.schema.sha256`):
+`contract.document` validates against the Evidence Contract v0 schema the profile pins as EC
+(SHA-256 `contract.schema.sha256`):
 
-| Requirement | Shape | `clause.effective_from` |
-|---|---|---|
-| `r-obligation-dated` | native obligation | 2027-08-02, after the evaluation time |
-| `r-outcome-dated` | native outcome | 2026-01-01, before the evaluation time |
-| `r-outcome` | native outcome | none |
+| Requirement | Shape | `clause.effective_from` | `out_of_scope_allowed` |
+|---|---|---|---|
+| `r-obligation-dated` | native obligation | 2027-08-02, after the evaluation time | none |
+| `r-outcome-dated` | native outcome | 2026-01-01, before the evaluation time | none |
+| `r-outcome` | native outcome | none | none |
+| `r-outcome-switched-on` | native outcome | none | `true` |
+| `r-process-stub` | open stub (process) | none | `true`, an unlisted member that grants nothing |
 
 Each case's `inputs.requirements` names the requirements it evaluates.
 
@@ -33,9 +35,8 @@ Each case's `inputs.requirements` names the requirements it evaluates.
 | `facts-row-7` | A verified envelope, §8.1 row 7 with no content evaluator: each requirement is UNKNOWN, and each dated block carries `applies_from`, copied from its clause whether or not the date has passed |
 | `facts-refusal` | A `no_such_subject` refusal: NOT_FOUND, GAP, with the same copied facts |
 
-A block carries `applies_from` exactly when its requirement's clause states `effective_from`.
-No block here carries `out_of_scope_allowed`: the EC schema the profile pins has no such member
-yet. A switched-on native requirement, and an open stub carrying the same name (which grants
-nothing), are added when the EC pin moves (capsule-engine#196).
+A block carries `applies_from` exactly when its requirement's clause states `effective_from`, and
+`out_of_scope_allowed` exactly when a native requirement carries the switch: `r-outcome-switched-on`
+does, and `r-process-stub`, an open stub carrying the same name, does not.
 
 **All keys are test keys.** Never use any of them for anything else.

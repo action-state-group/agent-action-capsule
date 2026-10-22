@@ -87,15 +87,30 @@
           "evidence_rule": "a reply names the record",
           "forward_verdict": "DETERMINISTIC",
           "backward_verdict": "DETERMINISTIC"
+        },
+        {
+          "id": "r-outcome-switched-on",
+          "profile": "outcome",
+          "statement": "The situation the evidence record answers arose in the session.",
+          "evidence_rule": "a reply names the record",
+          "forward_verdict": "DETERMINISTIC",
+          "backward_verdict": "DETERMINISTIC",
+          "out_of_scope_allowed": true
+        },
+        {
+          "id": "r-process-stub",
+          "profile": "process",
+          "statement": "The steps were taken in order.",
+          "out_of_scope_allowed": true
         }
       ]
     },
-    "document_jcs": "{\"id\":\"C-facts\",\"requirements\":[{\"backward_verdict\":\"DETERMINISTIC\",\"clause\":{\"article\":\"Article 1\",\"effective_from\":\"2027-08-02\",\"instrument\":\"Example Instrument A\"},\"evidence_rule\":\"the record is served under a verified envelope\",\"forward_verdict\":\"DETERMINISTIC\",\"id\":\"r-obligation-dated\",\"profile\":\"obligation\",\"statement\":\"The evidence record named by the request is kept as the example instrument requires.\"},{\"backward_verdict\":\"DETERMINISTIC\",\"clause\":{\"article\":\"Article 2\",\"effective_from\":\"2026-01-01\",\"instrument\":\"Example Instrument B\"},\"evidence_rule\":\"the record is served under a verified envelope\",\"forward_verdict\":\"DETERMINISTIC\",\"id\":\"r-outcome-dated\",\"profile\":\"outcome\",\"statement\":\"The evidence record named by the request is served under a verified envelope.\"},{\"backward_verdict\":\"DETERMINISTIC\",\"evidence_rule\":\"a reply names the record\",\"forward_verdict\":\"DETERMINISTIC\",\"id\":\"r-outcome\",\"profile\":\"outcome\",\"statement\":\"The evidence record named by the request is served at all.\"}],\"version\":\"1\"}",
+    "document_jcs": "{\"id\":\"C-facts\",\"requirements\":[{\"backward_verdict\":\"DETERMINISTIC\",\"clause\":{\"article\":\"Article 1\",\"effective_from\":\"2027-08-02\",\"instrument\":\"Example Instrument A\"},\"evidence_rule\":\"the record is served under a verified envelope\",\"forward_verdict\":\"DETERMINISTIC\",\"id\":\"r-obligation-dated\",\"profile\":\"obligation\",\"statement\":\"The evidence record named by the request is kept as the example instrument requires.\"},{\"backward_verdict\":\"DETERMINISTIC\",\"clause\":{\"article\":\"Article 2\",\"effective_from\":\"2026-01-01\",\"instrument\":\"Example Instrument B\"},\"evidence_rule\":\"the record is served under a verified envelope\",\"forward_verdict\":\"DETERMINISTIC\",\"id\":\"r-outcome-dated\",\"profile\":\"outcome\",\"statement\":\"The evidence record named by the request is served under a verified envelope.\"},{\"backward_verdict\":\"DETERMINISTIC\",\"evidence_rule\":\"a reply names the record\",\"forward_verdict\":\"DETERMINISTIC\",\"id\":\"r-outcome\",\"profile\":\"outcome\",\"statement\":\"The evidence record named by the request is served at all.\"},{\"backward_verdict\":\"DETERMINISTIC\",\"evidence_rule\":\"a reply names the record\",\"forward_verdict\":\"DETERMINISTIC\",\"id\":\"r-outcome-switched-on\",\"out_of_scope_allowed\":true,\"profile\":\"outcome\",\"statement\":\"The situation the evidence record answers arose in the session.\"},{\"id\":\"r-process-stub\",\"out_of_scope_allowed\":true,\"profile\":\"process\",\"statement\":\"The steps were taken in order.\"}],\"version\":\"1\"}",
     "contract_ref": "C-facts@1",
-    "contract_digest": "3220ceb9f48ec9da73ce14b637b0378f9869fd7f588162bab805915d8ec7e34d",
+    "contract_digest": "1760bd4feecad1d279a92bdb95d242a97595ffc8ca5a43df04f324788b9aee5b",
     "schema": {
       "name": "evidence-contract-v0.json",
-      "sha256": "6d10d5eb97e15421db0ab922b5f6d1f0a2e9f453fb64e52fb45306ba029ad480"
+      "sha256": "6b969610e6f120a9f5b98555aa5045644c62665f14075bb83fb9e78bab21b770"
     }
   },
   "logs": {
@@ -161,7 +176,7 @@
           ]
         },
         "contract_ref": "C-facts@1",
-        "contract_digest": "3220ceb9f48ec9da73ce14b637b0378f9869fd7f588162bab805915d8ec7e34d",
+        "contract_digest": "1760bd4feecad1d279a92bdb95d242a97595ffc8ca5a43df04f324788b9aee5b",
         "evaluation_time": "2026-10-12T01:00:00Z"
       },
       "inputs": {
@@ -179,7 +194,9 @@
         "requirements": [
           "r-obligation-dated",
           "r-outcome-dated",
-          "r-outcome"
+          "r-outcome",
+          "r-outcome-switched-on",
+          "r-process-stub"
         ]
       },
       "expected": {
@@ -218,6 +235,21 @@
                 "applies_from": "2026-01-01"
               },
               "r-outcome": {
+                "row": "envelope-7",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met or, where the requirement allows it, out_of_scope, and any other sufficiency gives not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
+              },
+              "r-outcome-switched-on": {
+                "row": "envelope-7",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met or, where the requirement allows it, out_of_scope, and any other sufficiency gives not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7).",
+                "out_of_scope_allowed": true
+              },
+              "r-process-stub": {
                 "row": "envelope-7",
                 "status": "UNKNOWN",
                 "sufficiency": "UNKNOWN",
@@ -289,7 +321,7 @@
           ]
         },
         "contract_ref": "C-facts@1",
-        "contract_digest": "3220ceb9f48ec9da73ce14b637b0378f9869fd7f588162bab805915d8ec7e34d",
+        "contract_digest": "1760bd4feecad1d279a92bdb95d242a97595ffc8ca5a43df04f324788b9aee5b",
         "evaluation_time": "2026-10-12T01:00:00Z"
       },
       "inputs": {
@@ -307,7 +339,9 @@
         "requirements": [
           "r-obligation-dated",
           "r-outcome-dated",
-          "r-outcome"
+          "r-outcome",
+          "r-outcome-switched-on",
+          "r-process-stub"
         ]
       },
       "expected": {
@@ -339,6 +373,19 @@
                 "applies_from": "2026-01-01"
               },
               "r-outcome": {
+                "row": "refusal-no_such_subject",
+                "status": "NOT_FOUND",
+                "sufficiency": "GAP",
+                "verdict": "not_evaluable"
+              },
+              "r-outcome-switched-on": {
+                "row": "refusal-no_such_subject",
+                "status": "NOT_FOUND",
+                "sufficiency": "GAP",
+                "verdict": "not_evaluable",
+                "out_of_scope_allowed": true
+              },
+              "r-process-stub": {
                 "row": "refusal-no_such_subject",
                 "status": "NOT_FOUND",
                 "sufficiency": "GAP",
