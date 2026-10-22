@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.12.0 — 2026-10-22
+
+Python 0.12.0, TypeScript 0.6.0 and Go v0.12.0. The outcome report model entry (#317) already shipped
+in TypeScript 0.5.0.
+
 - Evidence Result v0: `out_of_scope` is a fourth verdict, and a requirement's applicability is
   sealed data (#349, #350), revised in place: `result_version` stays `evidence-result-v0`, and every
   new member is optional, so a Result that validated before validates unchanged. `out_of_scope`
@@ -174,7 +179,7 @@
   supplied payload that fails from one the bundle leaves out: payload bytes that do not hash to
   their commitment, or a JSON original whose JSON-DIGEST is not the capsule's committed digest,
   resolve `disclosure_mismatch` (reportState `mismatch`), never `withheld`, so they unlock no
-  claims fallback; only a payload left out is withheld.
+  claims fallback; only a payload left out is withheld. First released in TypeScript 0.5.0 (#317).
 
 - TypeScript Result root: a claim citing a capsule that a book record carries resolves only when
   the carried capsule's id, recomputed from its own bytes, matches both its stated `capsule_id`
