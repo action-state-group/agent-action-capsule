@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- TypeScript viewer: a producer-selected Bundle (`completeness.selection: "producer-selected"`,
+  which `buildEvidenceBundle(..., { intervalFrom: null })` produces) renders as `incomplete`, the
+  strict verdict, instead of being refused as failed. The plain checks read a selection as an
+  interval and failed per-record membership; the context now reads interval coverage
+  (`selection_not_checkable`) and per-record membership as the strict checks do, so the render
+  gate, the coverage statement and the check lists agree with the strict verdict. A selection
+  the strict checks call INVALID is still refused. The browser build cannot authenticate the
+  checkpoint, so the strict checks withhold a selection's proofs there, and the page still
+  refuses it rather than show records a full verifier may call INVALID. (#361)
 - TypeScript: `buildVerifiedBundleContext` no longer throws `RangeError` on input nested beyond
   the stack. Its copy and freeze of the input are iterative, so the verifier's own refusal
   (`bundle_malformed`, INVALID in strict mode) is what the context carries, and

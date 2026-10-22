@@ -371,6 +371,48 @@ describe("the strict result beside the page's own checks", () => {
     expect(checks(root, "failed")).toContain("checkpoint-signature");
   });
 
+  // #361: a producer-selected bundle (completeness.selection) has no
+  // interval to check; the page reads each record's proof as the strict
+  // checks do, so the strict verdict, INCOMPLETE, is what it shows.
+  it("a producer selection renders as incomplete, with each record's proof checked and no interval", async () => {
+    const root = await renderWith(
+      renderEvidenceGraph,
+      strictCase("incomplete-producer-selected"),
+    );
+    const top = banner(root);
+    expect(top.dataset.verify).toBe("incomplete");
+    expect(top.dataset.verdict).toBe("incomplete");
+    expect(root.querySelector("[data-refusal]")).toBeNull();
+    expect(detail(root)).toContain("selection_not_checkable");
+    expect(checks(root, "page")).toContain("membership");
+    for (const list of ["page", "failed", "not-checked"])
+      expect(checks(root, list)).not.toContain("range");
+  });
+
+  it("a producer selection with a broken record proof is still refused", async () => {
+    for (const id of [
+      "neg-producer-selected-proof-invalid",
+      "neg-producer-selected-coordinates-log-and-seq",
+    ]) {
+      const root = await renderWith(renderEvidenceGraph, strictCase(id));
+      expect(banner(root).dataset.verdict).toBe("invalid");
+      expect(
+        root.querySelector('[data-refusal="unverified-bundle"]'),
+      ).not.toBeNull();
+    }
+  });
+
+  it("the browser build, which cannot read a selection's proofs, refuses it rather than claim more", async () => {
+    const root = await renderWith(
+      browserRender,
+      strictCase("incomplete-producer-selected"),
+    );
+    expect(banner(root).dataset.verify).toBe("failed");
+    expect(
+      root.querySelector('[data-refusal="unverified-bundle"]'),
+    ).not.toBeNull();
+  });
+
   it("keeps the strict result when the countersigners change", async () => {
     const context = await buildVerifiedBundleContext(await fullySigned());
     expect(context.strict?.verdict).toBe("VALID");
@@ -390,10 +432,6 @@ const ORDER: Readonly<Record<string, number>> = {
   incomplete: 1,
   valid: 2,
 };
-// The page's own checks refuse a producer-selected bundle (its interval is
-// not checkable), so the page says invalid where the strict verdict is
-// incomplete: less, never more.
-const REFUSED_BY_THE_PAGE = new Set(["incomplete-producer-selected"]);
 describe("the page's verdict on vectors/bundle/strict", () => {
   const vectors = JSON.parse(
     readFileSync(
@@ -429,9 +467,7 @@ describe("the page's verdict on vectors/bundle/strict", () => {
     const expected = c.expect.verdict.toLowerCase();
     const pageRoot = await renderWith(renderEvidenceGraph, c.bundle);
     const top = banner(pageRoot);
-    expect(top.dataset.verdict).toBe(
-      REFUSED_BY_THE_PAGE.has(id) ? "invalid" : expected,
-    );
+    expect(top.dataset.verdict).toBe(expected);
     const browserRoot = await renderWith(browserRender, c.bundle);
     const browser = banner(browserRoot);
     expect(["invalid", "incomplete"]).toContain(browser.dataset.verdict);

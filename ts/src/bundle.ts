@@ -450,6 +450,8 @@ const SIGNED_CHECKPOINT_FIELDS = [
  * Not defined by the Bundle draft; read only in strict mode.
  */
 export const SELECTION_PRODUCER_SELECTED = "producer-selected";
+/** The interval coverage finding of a producer-selected Bundle. */
+export const SELECTION_NOT_CHECKABLE = "selection_not_checkable";
 
 async function strict(
   plain: BundleVerificationResult,
@@ -537,7 +539,7 @@ async function strict(
     // interval proof cannot be read, each record's own proof still can.
     intervalCoverage = {
       status: "withheld",
-      findings: ["selection_not_checkable"],
+      findings: [SELECTION_NOT_CHECKABLE],
     };
     perRecordMembership = await selectedMembership(bundle, checkpoint.signed);
   }
@@ -1583,6 +1585,41 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
+/**
+ * The plain result as the viewer reads it. The plain checks do not know a
+ * producer-selected Bundle (`completeness.selection`, which the Bundle draft
+ * does not define), so they read its selection as an interval and fail per-
+ * record membership. When the strict checks read the Bundle as a selection
+ * (`interval_coverage` carries `selection_not_checkable`), the viewer reads
+ * interval coverage and per-record membership as they do, so the page, its
+ * render gate and its check lists agree with the strict verdict (#361).
+ * Every other claim is the plain one.
+ */
+function readSelection(
+  plain: BundleVerificationResult,
+  strict: StrictBundleResult | undefined,
+): BundleVerificationResult {
+  const claim = (name: StrictClaimName): ClaimResult | undefined => {
+    const found = strict?.claims.find((entry) => entry.name === name);
+    return found === undefined
+      ? undefined
+      : { status: found.status, findings: found.findings };
+  };
+  const interval = claim("interval_coverage");
+  const membership = claim("per_record_membership");
+  if (
+    interval === undefined ||
+    membership === undefined ||
+    !interval.findings.includes(SELECTION_NOT_CHECKABLE)
+  )
+    return plain;
+  return {
+    ...plain,
+    intervalCoverage: interval,
+    perRecordMembership: membership,
+  };
+}
+
 /** True only for a context {@link buildVerifiedBundleContext} made. */
 export function isVerifiedBundleContext(
   value: unknown,
@@ -1613,7 +1650,7 @@ export async function buildVerifiedBundleContext(
   });
   return contextFrom(
     owned,
-    plain,
+    readSelection(plain, strict?.strict),
     strict?.strict,
     options.countersigners === undefined
       ? undefined
