@@ -29,12 +29,11 @@
   resolve `disclosure_mismatch` (reportState `mismatch`), never `withheld`, so they unlock no
   claims fallback; only a payload left out is withheld.
 
-### Fixed
 - TypeScript Result root: a claim citing a capsule that a book record carries resolves only when
-  the carried capsule's id, recomputed from its own bytes, matches the header's `subject_ref`.
-  Previously the lookup keyed on the header's stated `subject_ref`, so a header naming an id with
-  no carried capsule behind it could make the claim read as supported. Affects TypeScript releases
-  0.1.1 through 0.5.0.
+  the carried capsule's id, recomputed from its own bytes, matches both its stated `capsule_id`
+  and the header's `subject_ref`. Previously the lookup keyed on the header's stated
+  `subject_ref`, so a header naming an id with no carried capsule behind it could make the claim
+  read as supported. Affects TypeScript releases 0.1.0 through 0.5.0. (#192)
 
 ## 0.11.0 — 2026-10-20
 
