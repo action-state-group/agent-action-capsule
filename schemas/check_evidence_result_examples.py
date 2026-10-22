@@ -600,9 +600,10 @@ _STATUS_TO_SUFFICIENCY = {
 # reader applies (ts/src/result-root.ts `utcDateOf`). A leap second (60) is
 # not accepted.
 RFC3339_WITH_OFFSET = re.compile(
-    r"\A(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|([+-])(\d{2}):(\d{2}))\Z"
+    r"\A(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|([+-])(\d{2}):(\d{2}))\Z",
+    re.ASCII,
 )
-CALENDAR_DATE = re.compile(r"\A(\d{4})-(\d{2})-(\d{2})\Z")
+CALENDAR_DATE = re.compile(r"\A(\d{4})-(\d{2})-(\d{2})\Z", re.ASCII)
 
 
 def _calendar_date(value: str) -> date | None:
@@ -634,7 +635,11 @@ def _utc_date(generated_at: str) -> date | None:
         offset = timedelta(hours=int(offset_hours), minutes=int(offset_minutes))
         if sign == "-":
             offset = -offset
-    return (local - offset).date()
+    try:
+        utc = local - offset
+    except OverflowError:
+        return None  # before 0001-01-01 or after 9999-12-31 in UTC
+    return utc.date()
 
 
 def revision_findings(doc: EvidenceResultDoc, *, mutant: str | None = None) -> list[str]:
@@ -1224,11 +1229,15 @@ def main() -> int:
         ("2026-09-22X00:00:00+00:00", None),
         ("2026-09-22T00:00:00+00:00:30", None),
         ("2026-09-22", None),
+        ("\u0662\u0660\u0662\u0666-09-22T00:00:00Z", None),
+        ("0001-01-01T00:00:00+01:00", None),
+        ("9999-12-31T23:00:00-05:00", None),
     ):
         got = _utc_date(stamp)
         if (got.isoformat() if got else None) != expected:
             findings.append(f"DATE-GRAMMAR {stamp!r}: read as {got}, expected {expected}")
-    for value, ok in (("0099-01-01", True), ("2024-02-29", True), ("0000-01-01", False), ("2027-02-30", False)):
+    for value, ok in (("0099-01-01", True), ("2024-02-29", True), ("0000-01-01", False), ("2027-02-30", False),
+                      ("\u0662\u0660\u0662\u0666-09-22", False)):
         if (_calendar_date(value) is not None) != ok:
             findings.append(f"DATE-GRAMMAR {value!r}: calendar date should be {ok}")
 

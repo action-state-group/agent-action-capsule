@@ -270,4 +270,5 @@ it("(ER 4.2, 4.3) counts out_of_scope on its own, never as not applicable or an 
   )!;
   expect(art50.metCount + art50.notMetCount + art50.notEvaluableCount).toBe(0);
   expect(art50.outOfScopeCount).toBe(0);
+  expect(art50.notYetInForceCount).toBe(2);
 });

@@ -445,7 +445,8 @@ A claim is **later** when `applies_from` is after the UTC calendar date of the R
 `generated_at`; on that date or before it, the claim is in force. The status is derived, never
 carried. When any claim carries `applies_from`, `generated_at` MUST be an RFC 3339 `date-time`
 (section 5.6) with an offset (`Z` or `+hh:mm`/`-hh:mm`; `T` and `Z` in either case), naming a real
-date and time: no leap second, hour at most 23, offset hours at most 23. Every `applies_from` MUST
+date and time whose UTC date falls in years 0001 to 9999: no leap second, hour at most 23,
+offset hours at most 23, ASCII digits only. Every `applies_from` MUST
 be a calendar date from year 0001 on. The checker and the TypeScript reader apply this one grammar;
 the schema's `pattern` checks only the shape.
 

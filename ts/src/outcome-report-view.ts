@@ -322,7 +322,7 @@ function renderConversation(
       "span",
       "cwhy",
       resolved
-        ? `${allCriteriaMet(conversation.criteria.length)}${na.length > 0 ? ` (${na.length} not applicable)` : ""}${outOfScope.length > 0 ? ` (${outOfScope.length} out of scope)` : ""}`
+        ? `${allCriteriaMet(conversation.criteria.length - outOfScope.length)}${na.length > 0 ? ` (${na.length} not applicable)` : ""}${outOfScope.length > 0 ? `, and ${outOfScope.length} out of scope` : ""}`
         : `missed on: ${[...misses, ...(misses.length === 0 ? unjudged : [])]
             .map((c) => criterionLabel(model, c.checkId, c.criterionId).label)
             .join(", ")}`,
@@ -517,11 +517,16 @@ function conversationBody(
   why.dataset.why = resolved ? "resolved" : "missed";
   if (resolved) {
     const met = conversation.criteria.filter((c) => c.verdict === "met").length;
+    const outOfScope = conversation.criteria.filter(
+      (c) => c.verdict === "out_of_scope",
+    );
     const n = conversation.criteria.length;
     why.append(
       element(
         "li",
-        `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met and ${na.length} not applicable. The rule bills a conversation only when ${n === 1 ? "its one criterion passes" : `all ${countWord(n)} pass`}, and not applicable counts as passing.`,
+        outOfScope.length === 0
+          ? `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met and ${na.length} not applicable. The rule bills a conversation only when ${n === 1 ? "its one criterion passes" : `all ${countWord(n)} pass`}, and not applicable counts as passing.`
+          : `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met, ${na.length} not applicable and ${outOfScope.length} out of scope. The rule bills a conversation only when every criterion that applies passes; not applicable and out of scope (did not arise) count as not applying, never as met.`,
       ),
     );
   } else {

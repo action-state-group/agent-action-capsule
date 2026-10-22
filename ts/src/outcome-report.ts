@@ -1020,8 +1020,8 @@ function groupClaims(
         }
         // Result v0 section 4.3: a claim not yet in force is readiness only,
         // outside the population; this deprecated card draws no criterion
-        // for it.
-        if (claim.later) continue;
+        // for it, unless it failed verification: a failure is still drawn.
+        if (claim.later && !claim.failed) continue;
         const judgment = reportPayload(result.records, claim);
         const rationale = judgment ? asString(judgment.rationale) : undefined;
         const reasonCode = judgment

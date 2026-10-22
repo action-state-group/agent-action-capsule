@@ -689,6 +689,9 @@ export function utcDateOf(generatedAt: unknown): string | undefined {
   const utc = new Date(
     utcMillis(year, month, day, hours, minutes, seconds) - offset,
   );
+  // Before 0001-01-01 or after 9999-12-31 in UTC is no date this grammar
+  // names (the schema checker refuses it too).
+  if (utc.getUTCFullYear() < 1 || utc.getUTCFullYear() > 9999) return undefined;
   return [
     String(utc.getUTCFullYear()).padStart(4, "0"),
     String(utc.getUTCMonth() + 1).padStart(2, "0"),

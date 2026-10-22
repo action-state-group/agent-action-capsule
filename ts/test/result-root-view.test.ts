@@ -964,3 +964,32 @@ it("(ER 4.3) a later claim whose evidence is not in the bundle reads unsupported
   );
   expect(item.className).toBe("claim-unsupported");
 });
+
+it("(ER 4.3) a later Close that failed verification is listed failed, in the failed count and the later list, never its stated verdict", async () => {
+  const source = fixture("result-root-close-bundle.json");
+  const header = ((source.disclosures as Obj)["close-b"] as Obj)
+    .agent_input as Obj;
+  (header.links as Obj[])[0]!.type = "rebuts";
+  const doc = resultOf(source);
+  const close = (doc.claims as Obj[]).find((c) => c.id === "close-1")!;
+  close.applies_from = "2099-01-01";
+  const aggregate = doc.aggregate as Obj;
+  const buckets = aggregate.buckets as Obj;
+  for (const key of Object.keys(buckets))
+    buckets[key] = (buckets[key] as string[]).filter((id) => id !== "close-1");
+  const coverage = aggregate.coverage as Obj;
+  coverage.evaluated_population = (coverage.evaluated_population as number) - 1;
+  coverage.not_yet_in_force = 1;
+  const root = await render((await sealEvidenceBundle(source)).bundle);
+  const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
+  expect(
+    page.querySelector<HTMLElement>('[data-bucket-of="failed"]')!.textContent,
+  ).toBe("failed: 1");
+  const item = page.querySelector<HTMLElement>(
+    '[data-bucket="notYetInForce"] [data-claim-ref="close-1"]',
+  )!;
+  expect(item.textContent).toBe(
+    "close-1 · applies from 2099-01-01 · readiness: failed",
+  );
+  expect(item.className).toBe("claim-failed");
+});

@@ -193,11 +193,13 @@ function checkItBlock(test: SessionTest): HTMLElement {
           ? "— not applicable"
           : test.verdict === "out_of_scope"
             ? "— out of scope: did not arise"
-            : test.verdict === "failed"
-              ? "✗ failed verification (counted as an exception)"
-              : test.verdict === "unsupported"
-                ? "✗ unsupported: its evidence is not in this bundle (counted as an exception)"
-                : "– not evaluable";
+            : test.verdict === "not_yet_in_force"
+              ? "— not yet in force (readiness only, not counted)"
+              : test.verdict === "failed"
+                ? "✗ failed verification (counted as an exception)"
+                : test.verdict === "unsupported"
+                  ? "✗ unsupported: its evidence is not in this bundle (counted as an exception)"
+                  : "– not evaluable";
   head.append(element("span", label));
   head.append(tierBadge(test.tier));
   box.append(head);
@@ -320,8 +322,11 @@ function renderTests(host: HTMLElement, model: ComplianceModel): void {
       const typeCell = document.createElement("td");
       typeCell.append(tierBadge(row.tier));
       const resultCell = document.createElement("td");
-      const population = model.totalSessions - row.notApplicableCount;
-      if (
+      const population =
+        model.totalSessions - row.notApplicableCount - row.notYetInForceCount;
+      if (population === 0 && row.notYetInForceCount > 0)
+        resultCell.append(statusPill("future", "Not yet in force"));
+      else if (
         population > 0 &&
         row.notEvaluableCount === population &&
         row.notMetCount === 0 &&
@@ -351,7 +356,7 @@ function renderTests(host: HTMLElement, model: ComplianceModel): void {
       tbody.append(tr);
       const drill = document.createElement("tr");
       const drillCell = document.createElement("td");
-      drillCell.colSpan = 7;
+      drillCell.colSpan = 8;
       const sessionIds = [
         ...(row.sessionsByVerdict.get("not_met") ?? []),
         ...(row.sessionsByVerdict.get("not_evaluable") ?? []),

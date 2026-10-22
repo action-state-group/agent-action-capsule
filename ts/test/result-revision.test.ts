@@ -131,5 +131,11 @@ describe("Result v0 sections 4.2 and 4.3", () => {
     expect(utcDateOf("2026-09-22T00:00:00+00:00:30")).toBeUndefined();
     expect(utcDateOf("2026-09-22t23:30:00-05:00")).toBe("2026-09-23");
     expect(utcDateOf("2026-09-22T00:30:00+01:00")).toBe("2026-09-21");
+    expect(
+      utcDateOf("\u0662\u0660\u0662\u0666-09-22T00:00:00Z"),
+    ).toBeUndefined();
+    expect(utcDateOf("0001-01-01T00:00:00+01:00")).toBeUndefined();
+    expect(utcDateOf("9999-12-31T23:00:00-05:00")).toBeUndefined();
+    expect(isCalendarDate("\u0662\u0660\u0662\u0666-09-22")).toBe(false);
   });
 });

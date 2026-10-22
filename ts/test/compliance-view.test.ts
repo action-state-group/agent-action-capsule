@@ -166,3 +166,36 @@ it("population counts only the sessions a test has a sealed result for", async (
   )!;
   expect(row.querySelectorAll("td")[3]!.textContent).toBe("1");
 });
+
+it("(ER 4.2, 4.3) draws an Out of scope column, and a row whose claims are all not yet in force as Not yet in force over no population", async () => {
+  const { bundle } = await sealedComplianceBundle((source) => {
+    const result = ((source.disclosures as Obj).result as Obj)
+      .agent_input as Obj;
+    const claims = result.claims as Obj[];
+    const later = "art50.disclosure_clear_or_obvious";
+    for (const claim of claims)
+      if (claim.requirement_ref === later) claim.applies_from = "2027-08-02";
+    const buckets = (result.aggregate as Obj).buckets as Obj;
+    for (const key of ["met", "not_met"])
+      buckets[key] = (buckets[key] as string[]).filter(
+        (id) => !id.endsWith(later),
+      );
+    const coverage = (result.aggregate as Obj).coverage as Obj;
+    coverage.evaluated_population =
+      (coverage.evaluated_population as number) - 2;
+    coverage.not_yet_in_force = 2;
+  });
+  const root = await render(bundle);
+  const row = root.querySelector<HTMLElement>(
+    'tr[data-criterion="art50.disclosure_clear_or_obvious"]',
+  )!;
+  const cells = Array.from(row.querySelectorAll("td"), (td) => td.textContent);
+  expect(cells).toContain("Not yet in force");
+  expect(cells).not.toContain("No exceptions");
+  expect(cells[3]).toBe("0");
+  const header = Array.from(
+    root.querySelectorAll("thead th"),
+    (th) => th.textContent,
+  );
+  expect(header).toContain("Out of scope");
+});
