@@ -69,7 +69,7 @@ it("(e) renders the Result root: banner, then coverage before any number, bucket
   const coverage = page.querySelector<HTMLElement>('[data-coverage="result"]')!;
   expect(coverage).not.toBeNull();
   expect(coverage.textContent).toBe(
-    "coverage: 3 requirements evaluated · 1 excluded as not applicable · 0 unresolved",
+    "coverage: 3 evaluations of 3 requirements · 1 excluded as not applicable · 0 with an unknown result",
   );
   // coverage is the first thing after the heading, and nothing before it,
   // anywhere on the rendered page, carries a number
@@ -398,7 +398,7 @@ it("(c) a tampered claim in the root Result fails verification: no Result page, 
   expect(root.querySelectorAll("pre")).toHaveLength(0);
   expect(root.textContent).not.toContain("req-2-tampered");
   expect(root.querySelector('[data-coverage="result"]')).toBeNull();
-  expect(root.textContent).not.toContain("requirements evaluated");
+  expect(root.textContent).not.toContain("evaluations of");
   expect(root.lastElementChild).toBe(
     root.querySelector('[data-page="verification"]'),
   );
@@ -466,7 +466,7 @@ it("(ii) draws recomputed coverage with a count mismatch marker beside it -- the
   const line = root.querySelector<HTMLElement>('[data-coverage="result"]')!;
   expect(line.dataset.evaluated).toBe("3");
   expect(line.textContent).toBe(
-    "coverage: 3 requirements evaluated count mismatch · 1 excluded as not applicable · 0 unresolved",
+    "coverage: 3 evaluations of 3 requirements count mismatch · 1 excluded as not applicable · 0 with an unknown result",
   );
   const marker = line.querySelector<HTMLElement>(
     '[data-count-mismatch="evaluated_population"]',
@@ -489,7 +489,7 @@ it("(ii) draws recomputed coverage with a count mismatch marker beside it -- the
   )!;
   expect(unknownLine.dataset.unknown).toBe("1");
   expect(unknownLine.textContent).toBe(
-    "coverage: 3 requirements evaluated · 1 excluded as not applicable · 1 unresolved count mismatch",
+    "coverage: 3 evaluations of 3 requirements · 1 excluded as not applicable · 1 with an unknown result count mismatch",
   );
   expect(
     unknownLine.querySelector<HTMLElement>(
@@ -502,6 +502,36 @@ it("(ii) draws recomputed coverage with a count mismatch marker beside it -- the
     (await sealEvidenceBundle(fixture("result-root-bundle.json"))).bundle,
   );
   expect(clean.querySelectorAll("[data-count-mismatch]")).toHaveLength(0);
+});
+
+it("(ii) counts coverage in evaluations beside the distinct requirements, and never rolls a requirement with met and not_met claims up to met", async () => {
+  // claim-2 re-evaluates claim-1's requirement: two evaluations of req-1,
+  // one met and one not_met, plus req-3
+  const source = fixture("result-root-bundle.json");
+  (resultOf(source).claims as Obj[])[1]!.requirement_ref = "req-1";
+  const root = await render((await sealEvidenceBundle(source)).bundle);
+  const line = root.querySelector<HTMLElement>('[data-coverage="result"]')!;
+  expect(line.textContent).toBe(
+    "coverage: 3 evaluations of 2 requirements · 1 excluded as not applicable · 0 with an unknown result",
+  );
+  expect(line.dataset.evaluated).toBe("3");
+  expect(line.dataset.requirements).toBe("2");
+  expect(line.querySelectorAll("[data-count-mismatch]")).toHaveLength(0);
+  const buckets = root.querySelector<HTMLElement>('[data-buckets="verdict"]')!;
+  expect(buckets.textContent).toContain("claim-1");
+  expect(buckets.textContent).toContain("claim-2");
+
+  // the same requirement id under a second contract is a second requirement
+  const twoContracts = fixture("result-root-bundle.json");
+  const claims = resultOf(twoContracts).claims as Obj[];
+  claims[1]!.requirement_ref = "req-1";
+  claims[1]!.contract_ref = "ec:airline-week:2026-09-14@2";
+  const page = await render((await sealEvidenceBundle(twoContracts)).bundle);
+  expect(
+    page.querySelector<HTMLElement>('[data-coverage="result"]')!.textContent,
+  ).toBe(
+    "coverage: 3 evaluations of 3 requirements · 1 excluded as not applicable · 0 with an unknown result",
+  );
 });
 
 it("(ii) bucket headings carry counts recomputed from the claims' verdicts, an empty bucket reading none", async () => {

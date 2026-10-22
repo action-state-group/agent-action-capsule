@@ -133,10 +133,15 @@ claim count is a finding from `validateEvidenceResult`, so the Result is
 refused with that error and never rendered. This is what stops "not met:
 none" over a `not_met` claim from reaching the page.
 
-**Counts are recomputed from the claims.** `evaluated_population` and
-`unknown_count` are recomputed (the claim count; the claims whose
-sufficiency is `UNKNOWN`), as is each bucket's headline count (from the
-claims' verdicts, never from the bucket lists' lengths). `recomputeCounts`
+**Counts are recomputed from the claims.** Coverage counts evaluations, one
+per claim (`spec/evidence-result-v0.md` §3), so `evaluated_population` and
+`unknown_count` are recomputed as the claim count and the claims whose
+sufficiency is `UNKNOWN`. The page's coverage line names them as evaluations
+beside the number of distinct requirements the claims cite ("3 evaluations
+of 2 requirements · 1 excluded as not applicable · 0 with an unknown
+result"), never as unresolved requirements. Each bucket's headline count is
+recomputed too, from the claims' verdicts, never from the bucket lists'
+lengths. `recomputeCounts`
 is a pure function of the document; `ResultRoot.coverage` and
 `ResultRoot.bucketCounts` carry the recomputed values, `statedCoverage` the
 producer's, and `countMismatches` every stated number the claims do not

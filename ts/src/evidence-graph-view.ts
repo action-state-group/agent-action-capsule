@@ -165,6 +165,10 @@ function appendTime(
 
 const recordsWord = (count: number): string =>
   `${count} ${count === 1 ? "record" : "records"}`;
+const evaluationsWord = (count: number): string =>
+  `${count} ${count === 1 ? "evaluation" : "evaluations"}`;
+const requirementsWord = (count: number): string =>
+  `${count} ${count === 1 ? "requirement" : "requirements"}`;
 
 /** The page's verdict: the strict verifier's, in lower case. */
 type BannerVerdict = "valid" | "incomplete" | "invalid";
@@ -1583,24 +1587,32 @@ const BUCKETS: ReadonlyArray<readonly [keyof ResultRoot["buckets"], string]> = [
 // (`result.coverage`, `result.bucketCounts`); a producer figure the claims
 // do not bear out shows as a `count mismatch` marker beside the recomputed
 // value. `excluded as not applicable` is the one figure carried as stated:
-// no claim backs it, by construction.
+// no claim backs it, by construction. Coverage counts evaluations (one per
+// claim, ER §3), so the line also names how many distinct requirements the
+// claims cite, and an UNKNOWN count is never called unresolved requirements.
 function renderResultPage(result: ResultRoot, root: HTMLElement): void {
   const section = element("section");
   section.dataset.page = "result";
   section.append(element("h1", "Evidence result"));
+  const requirements = new Set(
+    result.claims.map((claim) =>
+      JSON.stringify([claim.contractRef, claim.requirementRef]),
+    ),
+  ).size;
   const coverage = element("p");
   coverage.append(
-    `coverage: ${result.coverage.evaluatedPopulation} requirements evaluated`,
+    `coverage: ${evaluationsWord(result.coverage.evaluatedPopulation)} of ${requirementsWord(requirements)}`,
   );
   const evaluatedMarker = countMismatchMarker(result, "evaluated_population");
   if (evaluatedMarker !== undefined) coverage.append(" ", evaluatedMarker);
   coverage.append(
-    ` · ${result.coverage.excludedNotApplicable} excluded as not applicable · ${result.coverage.unknownCount} unresolved`,
+    ` · ${result.coverage.excludedNotApplicable} excluded as not applicable · ${result.coverage.unknownCount} with an unknown result`,
   );
   const unknownMarker = countMismatchMarker(result, "unknown_count");
   if (unknownMarker !== undefined) coverage.append(" ", unknownMarker);
   coverage.dataset.coverage = "result";
   coverage.dataset.evaluated = String(result.coverage.evaluatedPopulation);
+  coverage.dataset.requirements = String(requirements);
   coverage.dataset.excluded = String(result.coverage.excludedNotApplicable);
   coverage.dataset.excludedBasis = "stated";
   coverage.dataset.unknown = String(result.coverage.unknownCount);

@@ -43,8 +43,9 @@ A **contract-report module** is a presentation module that draws the contract-re
 rules bind it:
 
 - **Summary first.** It shows the Result's sealed `aggregate` as it is: coverage, then the three
-  buckets (ER §3). Coverage counts requirements and the buckets list claims, and the module labels
-  each with its unit. It never recomputes the aggregate. A bucket that names a claim the Result
+  buckets (ER §3). Coverage counts evaluations, beside the number of distinct requirements the claims
+  cite ("24 evaluations of 4 requirements"), and the buckets list claims; the module labels each with
+  its unit and never calls `unknown_count` unresolved requirements (ER §3). It never recomputes the aggregate. A bucket that names a claim the Result
   lacks, or a claim with a different verdict, makes the Result invalid (ER §4); the Result checks
   report that, and the module does not repair it. Showing the sealed aggregate does not mean every
   judgment in it verified: a claim whose own checks fail is shown as failed, apart from the

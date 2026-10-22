@@ -213,6 +213,12 @@ on, so no fixture here can show it. Its vector is `aggregate-stronger-than-evide
 | `pos-example-org-recorded-absence-result.json` | the claims positive with `claim-3` replaced by a `story` claim about a recorded absence, mapped as `spec/interop-profile-v0.md` §8.1 maps one: status `UNKNOWN`, sufficiency `UNKNOWN`, `not_evaluable`, so `unknown_count` is 1. Its `evidence` cites the absence record by digest: the record is the absence-record example of `spec/interop-profile-v0.md` §10, digest `82108c56…` |
 | `neg-claim-evidence-empty.json` | the same claim with `evidence: []`. `Claim.evidence` has `minItems: 1`. Mutant: removing `minItems` accepts the fixture |
 
+## Coverage counts evaluations (spec section 3)
+
+| File | What it shows |
+|---|---|
+| `pos-example-org-repeated-requirement-result.json` | the claims positive with `claim-2` evaluating `claim-1`'s requirement `req-claim-1` on a second subject: one `met` and one `not_met` evaluation of one requirement. `evaluated_population` stays 3, three evaluations of two requirements, and each claim stays in its own bucket: nothing rolls the requirement up to one verdict. The checker also requires every positive's `evaluated_population` to equal its claim count and `unknown_count` its `UNKNOWN` claims, and fails if this positive counted requirements instead |
+
 ## Reproducing the validation run
 
 ```

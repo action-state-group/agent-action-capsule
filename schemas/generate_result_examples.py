@@ -1058,6 +1058,15 @@ neg_claim_evidence_empty = _mutated(pos_example_org_recorded_absence_result)
 neg_claim_evidence_empty["claims"][2]["evidence"] = []
 
 
+# --- pos-example-org-repeated-requirement-result -- coverage counts ---------
+#     evaluations, one per claim (spec section 3). The claims positive with
+#     claim-2 evaluating claim-1's requirement on a second subject: two
+#     evaluations of req-claim-1, one met and one not_met, so the population is
+#     still 3 (evaluations of 2 requirements) and nothing rolls req-claim-1 up
+#     to one verdict: claim-1 stays in met and claim-2 in not_met.
+pos_example_org_repeated_requirement_result = _mutated(pos_example_org_claims_result)
+pos_example_org_repeated_requirement_result["claims"][1]["requirement_ref"] = "req-claim-1"
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("pos-example-org-claims-result", pos_example_org_claims_result)
@@ -1098,6 +1107,7 @@ def main() -> int:
     write("pos-example-org-coverage-declaration-result", pos_example_org_coverage_declaration_result)
     write("neg-coverage-declaration-unknown-kind", neg_coverage_declaration_unknown_kind)
     write("pos-example-org-recorded-absence-result", pos_example_org_recorded_absence_result)
+    write("pos-example-org-repeated-requirement-result", pos_example_org_repeated_requirement_result)
     write("neg-claim-evidence-empty", neg_claim_evidence_empty)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)

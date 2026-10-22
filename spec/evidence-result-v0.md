@@ -185,12 +185,23 @@ a **coverage statement**, then **three buckets** — never a single number, scor
 percentage above the fold.
 
 **Coverage (mandatory) — "requirements evaluated, excluded as not applicable, and unresolved."**
-`aggregate.coverage` states the evaluated population precisely: `evaluated_population` (requirements
-evaluated), `excluded_not_applicable` (excluded as `NOT_APPLICABLE` — outside the evaluated
-population by construction, not a gap; `NOT_APPLICABLE` is an `EvidenceStatus` value, §2, not one of
-§1's four `Sufficiency` values), and `unknown_count` (the "unresolved" count — evaluated
-requirements whose `sufficiency` resolved `UNKNOWN`). An aggregate without a coverage statement is not a summary,
-it is a claim with the denominator hidden, and the companion schema refuses to validate one (§7).
+`aggregate.coverage` states the evaluated population precisely. Its unit is the **evaluation**: one
+requirement of one contract version evaluated once, which is exactly a claim (§1). A requirement
+evaluated on several subjects, or re-judged, is several evaluations, so the counts below can exceed
+the number of distinct requirements. `evaluated_population` counts the evaluations in the population
+(the Result's claims); `excluded_not_applicable` counts the evaluations excluded as `NOT_APPLICABLE`,
+which have no claim (outside the evaluated population by construction, not a gap; `NOT_APPLICABLE`
+is an `EvidenceStatus` value, §2, not one of §1's four `Sufficiency` values); and `unknown_count`
+counts the evaluations whose `sufficiency` resolved `UNKNOWN`. A reader shows these as evaluations,
+beside the number of distinct requirements (`contract_ref`, `requirement_ref`) the claims cite, for
+example "24 evaluations of 4 requirements", and names `unknown_count` "evaluations with an unknown
+result", never "unresolved requirements": a requirement can have one `UNKNOWN` evaluation and one
+resolved one. An aggregate without a coverage statement is not a summary, it is a claim with the
+denominator hidden, and the companion schema refuses to validate one (§7).
+
+**No count rolls a requirement up to one verdict.** Coverage counts evaluations and the buckets list
+claims. Nothing in the aggregate states a verdict per requirement, so a requirement with both a `met`
+and a `not_met` claim is never counted as met; a reader shows each verdict's count.
 
 **Three buckets, never a single number.** Beneath coverage, `aggregate.buckets` groups every
 evaluated claim by its `verdict` — `met`, `not_met`, `not_evaluable` — never rolled up into one
@@ -425,9 +436,9 @@ characterize or narrate instead; §2's gate is one-directional and this is delib
 ```
 aggregate:
   coverage:
-    evaluated_population: integer     # requirements actually evaluated
-    excluded_not_applicable: integer  # requirements excluded as NOT_APPLICABLE — an EvidenceStatus value (§2), not §1's Sufficiency
-    unknown_count: integer            # evaluated requirements whose sufficiency resolved UNKNOWN (§1)
+    evaluated_population: integer     # evaluations in the population: the claims (§3)
+    excluded_not_applicable: integer  # evaluations excluded as NOT_APPLICABLE, which have no claim — an EvidenceStatus value (§2), not §1's Sufficiency
+    unknown_count: integer            # evaluations whose sufficiency resolved UNKNOWN (§1, §3)
   coverage_declaration:               # OPTIONAL, PROPOSED — §7.2
     kind: holder_selected | stream_interval | source_authoritative
   buckets:
@@ -758,3 +769,8 @@ claims positive with `claim-3` a `story` claim about a recorded absence, whose `
 the absence record of `spec/interop-profile-v0.md` §10 by digest (§2). It also adds one schema
 negative, `neg-claim-evidence-empty.json`, the same claim with an empty `evidence[]`, with its own
 mutant proof.
+
+§3's counting rule adds one positive, `pos-example-org-repeated-requirement-result.json`: the claims
+positive with `claim-2` evaluating `claim-1`'s requirement on a second subject, so one requirement
+has a `met` and a `not_met` claim. Its population is three evaluations of two requirements, and the
+checker requires every positive's `evaluated_population` and `unknown_count` to count claims.

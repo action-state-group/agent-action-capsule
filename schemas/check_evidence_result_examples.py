@@ -189,6 +189,12 @@ mechanical half):
      citing the absence record by digest) MUST validate. One schema negative
      MUST fail, with a strip-the-rule mutant:
        - neg-claim-evidence-empty: the same claim with `evidence: []`.
+  12. Coverage counts evaluations, one per claim (spec section 3):
+     pos-example-org-repeated-requirement-result (two claims of one
+     requirement, one met and one not_met) MUST validate, and every positive's
+     `evaluated_population` MUST equal its claim count and `unknown_count` its
+     UNKNOWN claims. `excluded_not_applicable` has no claim and is not
+     recomputed.
 
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
@@ -449,6 +455,7 @@ POSITIVES = [
     "pos-example-org-coverage-result",
     "pos-example-org-coverage-declaration-result",
     "pos-example-org-recorded-absence-result",
+    "pos-example-org-repeated-requirement-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -1007,6 +1014,29 @@ def main() -> int:
         else:
             print(f"OK  MUTANT        {name} -- under the mutant ({mutation_label}) the fixture "
                   "PASSES (confirms the rule is load-bearing)")
+
+    # Coverage counts evaluations (spec section 3): one per claim, so a
+    # requirement evaluated twice counts twice.
+    for name in POSITIVES:
+        instance = _load(name)
+        claims = instance["claims"]
+        coverage = instance["aggregate"]["coverage"]
+        unknown = sum(1 for claim in claims if claim["sufficiency"] == "UNKNOWN")
+        if coverage["evaluated_population"] != len(claims) or coverage["unknown_count"] != unknown:
+            findings.append(
+                f"COVERAGE-COUNT {name}: evaluated_population {coverage['evaluated_population']} / "
+                f"unknown_count {coverage['unknown_count']}, but {len(claims)} claim(s) and "
+                f"{unknown} UNKNOWN"
+            )
+    repeated = _load("pos-example-org-repeated-requirement-result")
+    rows = {(c["contract_ref"], c["requirement_ref"]) for c in repeated["claims"]}
+    # Load-bearing: the same positive counted per requirement (2, not 3) is
+    # what the rule refuses.
+    if repeated["aggregate"]["coverage"]["evaluated_population"] == len(rows):
+        findings.append("COVERAGE-COUNT-NOT-LOAD-BEARING: the repeated-requirement positive "
+                        "counts as many requirements as evaluations")
+    print(f"OK  COUNTS        every positive counts evaluations; the repeated-requirement "
+          f"positive has 3 evaluations of {len(rows)} requirements")
 
     # --- 5. CLOSE STATE IS DERIVABLE: the link walk ----------------------------
     #        Schema validation cannot see across records; this can. Every
