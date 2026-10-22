@@ -2217,7 +2217,14 @@ export async function renderEvidenceGraph(
   // that did not verify. A render that rejects while its own `checking` is
   // still shown puts back what `root` held, so it still draws nothing; once
   // another render has replaced that state, its page is left alone.
-  const before = [...root.childNodes];
+  // Another render's `checking` is never put back: it may have ended.
+  const before = [...root.childNodes].filter(
+    (node) =>
+      !(
+        node.nodeType === 1 &&
+        (node as Element).getAttribute("data-verify") === "checking"
+      ),
+  );
   const checking = renderChecking(root);
   try {
     await renderVerifiedContext(
@@ -2334,17 +2341,20 @@ async function renderVerifiedContext(
     );
   };
   let banner = drawFrame();
-  // The banner's words and attributes are the core's (contract section 3):
-  // a module that changes them, or removes the banner or its details line,
-  // is discarded for the refusal like one that throws. Only the class may
-  // change, through setChromeClass.
-  // A banner part's words and every attribute but `class`, which
-  // setChromeClass may change: `hidden`, `aria-hidden` or a style on the
-  // banner would hide the core's words as surely as rewriting them.
+  // The banner and its details line are the core's (contract sections 3 and
+  // 6.2). A module that, while it renders, changes their words, structure or
+  // any attribute but the class setChromeClass sets, hides or moves them,
+  // puts anything before them but the core's own header, or draws a second
+  // banner, is discarded for the refusal like one that throws.
   const snapshot = (parts: readonly HTMLElement[]): string =>
     JSON.stringify(
       parts.map((part) => [
-        part.textContent,
+        // The structure too: the words wrapped in a hidden child keep the
+        // same textContent.
+        Array.from(part.childNodes, (node) => [
+          node.nodeType,
+          node.textContent,
+        ]),
         part
           .getAttributeNames()
           .filter((name) => name !== "class")
@@ -2360,26 +2370,28 @@ async function renderVerifiedContext(
         ? [detail as HTMLElement]
         : []),
     ];
-    return { parts, words: snapshot(parts) };
+    // The core's own header when it drew one, else nothing: the banner is
+    // the root's first element after it.
+    return {
+      parts,
+      header: top.previousElementSibling,
+      words: snapshot(parts),
+    };
   };
   let frame = frameOf(banner);
   const assertFrameIntact = (): void => {
-    // Exactly one banner and one details line on the page, the core's own:
-    // a second `[data-verify]` a module drew is a banner it supplied.
+    const [top, detail] = frame.parts as [HTMLElement, HTMLElement?];
     const banners = root.querySelectorAll(
       "[data-verify], [data-banner-detail]",
     );
-    // It stays first, after the header only, so no row comes before it.
-    const before = frame.parts[0]!.previousElementSibling;
     if (
       banners.length !== frame.parts.length ||
-      frame.parts.some(
-        (part, i) => part.parentNode !== root || banners[i] !== part,
-      ) ||
-      (before !== null &&
-        before.getAttribute("data-presentation") !== "header") ||
-      (frame.parts[1] !== undefined &&
-        frame.parts[1].previousElementSibling !== frame.parts[0]) ||
+      frame.parts.some((part, i) => banners[i] !== part) ||
+      root.firstElementChild !== (frame.header ?? top) ||
+      top.previousElementSibling !== frame.header ||
+      (frame.header !== null && frame.header.parentNode !== root) ||
+      (detail !== undefined && detail.previousElementSibling !== top) ||
+      top.parentNode !== root ||
       snapshot(frame.parts) !== frame.words
     )
       throw new Error("a module altered the verification banner");

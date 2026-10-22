@@ -30,6 +30,7 @@ import {
   REFERENCE_PRESENTATION_RUNTIME,
 } from "../src/presentation-registry.js";
 import { VERIFICATION_BANNER_LINES } from "../src/verification-page.js";
+import { derivedFixture } from "./helpers/derived-fixtures.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 type Obj = Record<string, unknown>;
@@ -437,6 +438,23 @@ describe("resolution and rendering (spec section 4.3)", () => {
       },
     ],
     [
+      "wraps the banner's words in a hidden child",
+      (b: HTMLElement) => {
+        const span = document.createElement("span");
+        span.hidden = true;
+        span.textContent = b.textContent;
+        b.replaceChildren(span);
+      },
+    ],
+    [
+      "puts its own row before the banner",
+      (b: HTMLElement) => {
+        const row = document.createElement("p");
+        row.textContent = "a row first";
+        b.parentElement!.prepend(row);
+      },
+    ],
+    [
       "removes the banner",
       (b: HTMLElement) => {
         b.remove();
@@ -500,6 +518,67 @@ describe("resolution and rendering (spec section 4.3)", () => {
     expect(banners).toHaveLength(1);
     expect(banners[0]!.dataset.verify).toBe("incomplete");
     expect(root.querySelector('[data-page="verification"]')).not.toBeNull();
+  });
+
+  it("a module that puts a row before the producer's header is discarded too", async () => {
+    const headed = manifest({
+      requires: {
+        bundle_kind: "evidence-bundle/v2",
+        extensions: { required: ["presentation/v1"] },
+      },
+    });
+    // The fixture is a report/v1 bundle, which the default forbids exclude.
+    delete (headed as unknown as Obj).forbids;
+    const before = spyModule(headed, {
+      tamper: (b) => {
+        const row = document.createElement("p");
+        row.textContent = "a row first";
+        b.parentElement!.prepend(row);
+      },
+    });
+    const registry = new PresentationRegistry();
+    registry.register(before.module);
+    const page = await render(
+      await derivedFixture("week-bundle-presentation.json"),
+      registry,
+    );
+    expect(before.calls).toContain("render");
+    expect(page.firstElementChild?.getAttribute("data-presentation")).toBe(
+      "header",
+    );
+    expect(
+      page.querySelector('[data-refusal="presentation-failed"]'),
+    ).not.toBeNull();
+  });
+
+  it("two renders on one root that both reject leave no checking behind, whichever rejects first", async () => {
+    const gates: (() => void)[] = [];
+    const lateFailure = (): PresentationRegistry => {
+      const registry = new PresentationRegistry();
+      const gate = new Promise<void>((resolve) => gates.push(resolve));
+      registry.register({
+        ...spyModule(manifest()).module,
+        buildModel: async () => {
+          await gate;
+          throw new Error("late model failure");
+        },
+      });
+      return registry;
+    };
+    const root = document.createElement("main");
+    root.append("untouched");
+    const first = renderEvidenceGraph(producerKeyBundle(), root, undefined, {
+      registry: lateFailure(),
+    });
+    const second = renderEvidenceGraph(producerKeyBundle(), root, undefined, {
+      registry: lateFailure(),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    gates[0]!();
+    await expect(first).rejects.toThrow("late model failure");
+    gates[1]!();
+    await expect(second).rejects.toThrow("late model failure");
+    expect(root.querySelector('[data-verify="checking"]')).toBeNull();
   });
 
   it("a module whose model cannot be built rejects before anything is drawn (as a malformed Result root always has)", async () => {
