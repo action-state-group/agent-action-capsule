@@ -8,6 +8,20 @@
   countersignature can sit under a verified banner, because a countersignature is outside the
   bundle digest (presentation contract section 6.2), and the line now says why the two do not
   disagree. `vectors/viewer-core-text/` carries the new line. (Sherlock2's review of #364)
+- Python CLI: `verify --store` reads a ledger store directory (checkpointed-local-log's managed
+  `LedgerStore`, `manifest.json` plus `segments/`), which capsule-emit's `seal()` will make its
+  default ledger (capsule-emit#358, planned). A ledger's bookkeeping lines (`kind` `checkpoint_stamp`,
+  `disclosure_record` or `checkpoint_witness_backfill`, each with exactly its kind's members) are
+  counted and named in the summary instead of failing as capsules, so a witnessed `ledger.jsonl`
+  no longer fails on its own checkpoint stamps. Any other `kind`, or a listed one with other
+  members, is a problem (exit 1). Padding records are checked against the padding vectors' rules.
+  In a JSONL file an unparseable line is skipped with a notice. In a ledger store the active
+  segment's unterminated last line, and a later line identical to an earlier one under the same
+  `capsule_id`, are skipped with a notice; any other unparseable line, and a different line under a
+  repeated `capsule_id`, is a problem. A file is read as one JSON document first, then as JSONL,
+  so a multi-line JSONL file that fails to parse no longer falls back to its first line alone.
+  Under `--json`, stdout keeps the result document and the summary, notices and problems go to
+  stderr.
 - TypeScript viewer: a producer-selected Bundle (`completeness.selection: "producer-selected"`,
   which `buildEvidenceBundle(..., { intervalFrom: null })` produces) renders as `incomplete`, the
   strict verdict, instead of being refused as failed. The plain checks read a selection as an

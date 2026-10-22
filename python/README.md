@@ -43,6 +43,48 @@ $ agent-action-capsule verify ../vectors/capsule/neg-confirmed-without-response/
 Add `--json` for the raw `VerificationResult`, or `--store <dir-or-ledger-file>`
 for store-level chain checks (supersedes / concurrent-supersedes / open-items).
 
+### What `--store` reads
+
+- **A ledger store directory**, one holding `manifest.json`: checkpointed-local-log's
+  managed `LedgerStore`, which capsule-emit plans to make `seal()`'s default ledger
+  (capsule-emit#358). Its segments are read in manifest order; the SQLite indexes
+  are not opened. The store's entries are its complete lines, the first per
+  `capsule_id`: the active segment's unterminated last line is skipped with a notice,
+  as is a later line identical to an earlier one under the same `capsule_id`. Any
+  other line that does not parse, a different line under a `capsule_id` already
+  seen, or an archived (unmounted) segment makes the run not ok.
+- **Any other directory**: its `*.json` files, one capsule each.
+- **A file**: one JSON document first (an array, a `{"ledger": [...]}` object or one
+  capsule, compact or pretty-printed), otherwise JSONL. A JSONL line that does not
+  parse, such as a fragment left by a writer that crashed mid-line, is skipped with
+  a notice. An empty file is an empty ledger; a file with no parseable line cannot be
+  read (exit 2).
+
+A ledger holds lines that are not capsules. These are recognized and counted, not
+verified, and the summary names them, for example "3 bookkeeping entries not
+checked (2 checkpoint stamps, 1 disclosure record); only capsules are checked":
+
+| `kind` | What it is |
+|---|---|
+| `checkpoint_stamp` | a signed checkpoint the ledger's writer recorded over its own entries |
+| `disclosure_record` | the writer's record of disclosing entries to an audience |
+| `checkpoint_witness_backfill` | a witness receipt that arrived after its checkpoint was recorded |
+
+A line counts as bookkeeping only when its `kind` is one of these three and its
+members are exactly that kind's, with `v` equal to 1 and a `capsule_id` of 64
+lowercase hex. A witness backfill's `capsule_id` must also equal the SHA-256 of its
+`checkpoint_entry_digest` and `witness` members (as JSON with sorted keys and no
+spaces). A line with any other `kind`, or with a listed `kind` but other members (a
+capsule or a padding record relabelled), makes the run not ok. Bookkeeping lines are
+checked for shape only.
+
+A padding record (`record_type: "padding"`) is checked against the Evidence Layer
+padding rules ([vectors/evidence-layer/padding](../vectors/evidence-layer/padding/README.md)).
+Checkpoints themselves are not verified here; `--store` checks capsules and
+their chain rules only. Under `--json`, stdout keeps the result document and the
+summary, notices and problems go to stderr; a problem makes the exit code 1 even
+when every listed result is ok.
+
 ### The two layers
 
 Verification is two layers, and this package is honest about which it does:
