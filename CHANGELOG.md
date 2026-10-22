@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- TypeScript viewer: plain words for the banner and the verification page (#346), and five
+  verification states always distinct, with `checking` shown (#309). **Breaking for anything that
+  matches the banner's words or `data-verify`.** `data-verify` now names the state the reader is
+  told: `checking`, `verified`, `incomplete`, `failed` or `unable`. `verified` appears only with
+  `data-verdict="valid"`; an incomplete page, and a page whose checks failed but whose records
+  still render, no longer carry `verified`. Whether the records are refused is still the refusal
+  line (`data-refusal="unverified-bundle"`). Each state has one fixed line
+  (`VERIFICATION_BANNER_LINES`): "Checking…", "✓ Unchanged since it was sealed", "None of the
+  bundle's checks failed, but some were not run" (with a pointer to the not-checked list when the
+  page draws one), "✗ A check failed: do not rely on this page", "✗ This bundle did not verify: do
+  not rely on it" and "Couldn't check this page here: check it with a full verifier". The findings
+  #196 added to the banner move to a details line under it (`data-banner-detail`). `checking` is
+  drawn as soon as `renderEvidenceGraph` starts on a bundle, and a render that rejects puts back
+  what the root held. A module that changes the banner's words or attributes, or removes the
+  banner or its details line, is discarded for the `presentation-failed` refusal. On the
+  verification page, each check-list line keeps its words in `[data-check-line]` and gains its
+  technical name (`VERIFICATION_CHECK_TECHNICAL_NAMES`) in `[data-check-name]`. The digests, the
+  completeness statement and the ten checks move under a closed "Technical details" disclosure
+  (`[data-technical-details]`); the ten checks' heading is "Each check, by its technical name", and
+  "suppressed fields" with nothing suppressed reads "none", not `[]`. Extension rows say "Shown by
+  the page's module", "Read by this page itself" or "not interpreted by this page's checks",
+  always with whether the file's fingerprint covers the block; the interpreter's id moves to
+  `data-interpreter`. `spec/presentation-contract-v0.md` gains section 6.2 (the banner's states),
+  and the new `vectors/viewer-core-text/` pins every fixed line. `UNVERIFIED_BUNDLE_REFUSAL` and
+  `renderChecking` are exported. Wording reviewed by Sherlock2.
 - TypeScript viewer: the banner states the strict verdict (`verifyBundle`'s `strict`), the
   outcome a full verifier reports, and no longer says "Bundle verification passed" for a bundle
   that verifier calls INCOMPLETE. It sets `data-verdict` (`valid`, `incomplete`, `invalid`) and

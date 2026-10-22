@@ -63,7 +63,7 @@ async function sealedOutcomeReportBundle(
 it("renders the outcome-report card, not the generic Result page, when outcome-report/v1 opts in", async () => {
   const { bundle } = await sealedOutcomeReportBundle();
   const root = await render(bundle);
-  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(root.querySelector('[data-verify="incomplete"]')).not.toBeNull();
   const page = root.querySelector<HTMLElement>('[data-page="outcome-report"]')!;
   expect(page).not.toBeNull();
   expect(page.classList.contains("oi")).toBe(true);
@@ -576,7 +576,7 @@ it("renders verification details: bundle digest, checkpoint root/size, and names
 it("draws the verification banner and the verification page in the card's look -- banner first, verification page still last", async () => {
   const { bundle } = await sealedOutcomeReportBundle();
   const root = await render(bundle);
-  const banner = root.querySelector<HTMLElement>('[data-verify="verified"]')!;
+  const banner = root.querySelector<HTMLElement>('[data-verify="incomplete"]')!;
   expect(banner.classList.contains("oi-banner")).toBe(true);
   // an unsigned checkpoint and unsigned records: incomplete, never "ok"
   expect(banner.dataset.verdict).toBe("incomplete");
@@ -1128,7 +1128,7 @@ it("producer note and edited badges: rendered from outcome-report/v1 as presenta
     ];
   });
   const root = await render(bundle);
-  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(root.querySelector('[data-verify="incomplete"]')).not.toBeNull();
   const page = root.querySelector<HTMLElement>('[data-page="outcome-report"]')!;
   const note = page.querySelector<HTMLElement>("[data-producer-note]")!;
   // first thing after the card's own <style>: directly under the banner
@@ -1176,7 +1176,7 @@ it("wording: each criterion prints the clause_claim its sealed reports carry, no
     ),
   );
   const root = await render(bundle);
-  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(root.querySelector('[data-verify="incomplete"]')).not.toBeNull();
   const terms = root.querySelector<HTMLElement>('[data-section="terms"]')!;
   const item = terms.querySelector<HTMLElement>(
     'li[data-criterion-id="within_fare_rules"]',
@@ -1336,7 +1336,7 @@ it("dating: backfilled case records put the calendar and period on the source's 
     withCaseRecords(source, () => BACKFILLED("2025-06-05T16:06:37.787845")),
   );
   const root = await render(bundle);
-  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(root.querySelector('[data-verify="incomplete"]')).not.toBeNull();
   const calendar = root.querySelector<HTMLElement>(
     '[data-section="calendar"]',
   )!;

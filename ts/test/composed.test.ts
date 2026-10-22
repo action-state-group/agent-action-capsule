@@ -375,14 +375,18 @@ describe("the composition section", () => {
         (composed.composed_digest as Obj).declared,
         String((composed.composed_digest as Obj).matches),
       ]);
-      // The verification page now says the block was interpreted, by this module.
+      // The verification page now says the block was shown, by this module.
       expect(extensionCells(root)).toEqual([
         [
           "composed/v1",
           "covered",
-          `interpreted by ${BUILTIN_MANIFEST_COMPOSED.id}`,
+          "Shown by the page's module; covered by the file's fingerprint",
         ],
       ]);
+      expect(
+        root.querySelector<HTMLElement>('tr[data-extension-id="composed/v1"]')
+          ?.dataset.interpreter,
+      ).toBe(BUILTIN_MANIFEST_COMPOSED.id);
     },
   );
 

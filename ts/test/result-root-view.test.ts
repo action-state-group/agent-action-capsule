@@ -55,7 +55,7 @@ it("(e) renders the Result root: banner, then coverage before any number, bucket
   );
   const root = await render(bundle);
 
-  const banner = root.querySelector<HTMLElement>('[data-verify="verified"]')!;
+  const banner = root.querySelector<HTMLElement>('[data-verify="incomplete"]')!;
   expect(banner).not.toBeNull();
   const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
   expect(page).not.toBeNull();
@@ -244,11 +244,11 @@ it("renders a cited record outside the checkpoint as uncheckpointed under the Re
   // rendered, with the count said up front: this is the bundle-level
   // banner, above every section, and the one number that precedes coverage
   const banner = root.querySelector<HTMLElement>("[data-verify]")!;
-  expect(banner.dataset.verify).toBe("verified");
+  expect(banner.dataset.verify).toBe("failed");
   expect(banner.dataset.verdict).toBe("invalid");
   expect(banner.dataset.uncheckpointed).toBe("1");
-  expect(banner.textContent).toBe(
-    "Bundle verification failed: 1 of 5 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
+  expect(root.querySelector("[data-banner-detail]")?.textContent).toBe(
+    "1 of 5 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
   );
   const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
   expect(page).not.toBeNull();
@@ -311,7 +311,7 @@ it("(b) renders a claim whose cited id is missing from the bundle as unsupported
     ABSENT_ID;
   const { bundle } = await sealEvidenceBundle(source);
   const root = await render(bundle);
-  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(root.querySelector('[data-verify="incomplete"]')).not.toBeNull();
   const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
 
   const rows = page.querySelectorAll<HTMLElement>("[data-claim-row]");
@@ -426,7 +426,7 @@ it("(a) a verified bundle whose root names itself a Result v0 but is malformed i
 
 it("still renders the evaluation-summary and report/v1 root families", async () => {
   const week = await render(fixture("week-bundle.json"));
-  expect(week.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(week.querySelector('[data-verify="incomplete"]')).not.toBeNull();
   expect(week.querySelectorAll("[data-report-date]").length).toBeGreaterThan(0);
   expect(week.querySelector('[data-page="result"]')).toBeNull();
 

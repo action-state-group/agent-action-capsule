@@ -29,6 +29,7 @@ import {
   type PresentationResolver,
   REFERENCE_PRESENTATION_RUNTIME,
 } from "../src/presentation-registry.js";
+import { VERIFICATION_BANNER_LINES } from "../src/verification-page.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 type Obj = Record<string, unknown>;
@@ -91,6 +92,8 @@ function spyModule(
     buildThrows?: boolean;
     renderThrows?: boolean;
     chrome?: string;
+    /** Rewrites the core's banner from inside render (contract section 3). */
+    tamper?: (banner: HTMLElement) => void;
   } = {},
 ): Spy {
   const calls: string[] = [];
@@ -115,6 +118,10 @@ function spyModule(
         out.dataset.testModule = (model as { id: string }).id;
         out.textContent = `module ${m.id}`;
         host.L1.append(out);
+        if (behaviour.tamper !== undefined)
+          behaviour.tamper(
+            host.L0.querySelector<HTMLElement>("[data-verify]")!,
+          );
         if (behaviour.renderThrows) throw new Error(`${m.id} render failed`);
       },
     },
@@ -377,11 +384,71 @@ describe("resolution and rendering (spec section 4.3)", () => {
     ).not.toBeNull();
     // The chrome class the module set is discarded with its content.
     const banner = page.querySelector<HTMLElement>("[data-verify]")!;
-    expect(banner.dataset.verify).toBe("verified");
+    expect(banner.dataset.verify).toBe("incomplete");
     expect(banner.className).toBe("");
     expect(page.lastElementChild).toBe(
       page.querySelector('[data-page="verification"]'),
     );
+  });
+
+  // The banner's words and attributes are the core's: a module that writes
+  // them, softens them or removes the banner is discarded for the refusal,
+  // as one that throws is. Only setChromeClass may restyle it.
+  it.each([
+    [
+      "rewrites the banner's line",
+      (b: HTMLElement) => {
+        b.textContent = "✓ Unchanged since it was sealed";
+      },
+    ],
+    [
+      "sets data-verify",
+      (b: HTMLElement) => {
+        b.dataset.verify = "verified";
+      },
+    ],
+    [
+      "removes the details line",
+      (b: HTMLElement) => {
+        b.nextElementSibling?.remove();
+      },
+    ],
+    [
+      "removes the banner",
+      (b: HTMLElement) => {
+        b.remove();
+      },
+    ],
+  ] as const)(
+    "a module that %s is discarded for the refusal, and the banner is redrawn",
+    async (_, tamper) => {
+      const tampering = spyModule(manifest(), { tamper, chrome: "oi" });
+      const registry = new PresentationRegistry();
+      registry.register(tampering.module);
+      const page = await render(producerKeyBundle(), registry);
+      expect(page.querySelectorAll("[data-test-module]")).toHaveLength(0);
+      expect(
+        page.querySelector('[data-refusal="presentation-failed"]'),
+      ).not.toBeNull();
+      const banners = page.querySelectorAll<HTMLElement>("[data-verify]");
+      expect(banners).toHaveLength(1);
+      expect(banners[0]!.dataset.verify).toBe("incomplete");
+      // The page's own line, whatever the module wrote.
+      expect(banners[0]!.textContent).toBe(
+        VERIFICATION_BANNER_LINES.incompleteNoList,
+      );
+      expect(banners[0]!.className).toBe("");
+      expect(page.querySelector("[data-banner-detail]")).not.toBeNull();
+    },
+  );
+
+  it("a module that only restyles the banner through setChromeClass renders", async () => {
+    const styling = spyModule(manifest(), { chrome: "oi" });
+    const registry = new PresentationRegistry();
+    registry.register(styling.module);
+    const page = await render(producerKeyBundle(), registry);
+    expect(page.querySelectorAll("[data-test-module]")).toHaveLength(1);
+    expect(page.querySelector("[data-refusal]")).toBeNull();
   });
 
   it("a module whose model cannot be built rejects before anything is drawn (as a malformed Result root always has)", async () => {

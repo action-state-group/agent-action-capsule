@@ -1,0 +1,15 @@
+{
+  "contract": "spec/presentation-contract-v0.md (sections 6.1, 6.2, 8)",
+  "provenance": "reference-derived",
+  "generator": "ts/test/helpers/viewer-core-text-vectors.ts",
+  "normative_for": [
+    "ts/src/evidence-graph-view.ts"
+  ],
+  "files": [
+    {
+      "path": "core-text.json",
+      "sha256": "c86bc4e5a24abe623dc6482e27d9b94a1256416b2378bf393ba5dc7fa5ad71ac",
+      "count": 21
+    }
+  ]
+}

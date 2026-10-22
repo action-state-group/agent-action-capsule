@@ -580,6 +580,37 @@ the verification page is the one place a reader finds it. A module that shows a 
 outcome beside the item it concerns (a signer marked verified or not, for example) is not
 restating the lists.
 
+### 6.2 The verification banner
+
+The banner is the first thing a page draws. It states exactly one verification state at a
+time, taken from the rendering runtime's own result and never from the bundle. Its
+`data-verify` attribute names the state. Once the checks have finished, `data-verdict` names
+the strict verdict of `draft-mih-zhang-agent-disclosure-bundle` they reached.
+
+| State | `data-verify` | `data-verdict` | Records shown |
+|---|---|---|---|
+| checking | `checking` | (absent) | no |
+| verified | `verified` | `valid` | yes |
+| incomplete | `incomplete` | `incomplete` | yes |
+| failed | `failed` | `invalid` | yes, unless the page's own checks refuse them (then the refusal of section 8 follows the banner) |
+| unable to verify | `unable` | (absent) | no |
+
+- **checking** is drawn as soon as rendering starts and stays until the checks finish. No
+  record, module region or verdict is drawn while it is shown.
+- **verified** is drawn only once every check the bundle calls for has run on this page and
+  passed. A runtime that cannot run one of them (for example, one that cannot authenticate the
+  checkpoint) draws **incomplete** instead.
+- **failed** is drawn whenever a check failed, whether or not the records are still shown.
+- **unable to verify** means the runtime could not run the checks at all. It is never drawn
+  as failed.
+
+The banner's line for each state, and the details line under it naming the checks behind an
+incomplete or failed verdict, are the core's own fixed text, like the lists of section 6.1.
+No module, wording pack or bundle supplies, selects or alters them. The banner line names no
+internal token. The details line carries the labels the bundle draft requires, such as
+`checkpoint_unverified`. `vectors/viewer-core-text/core-text.json` holds the exact
+fixed words of each state and of each check-list line, and a viewer's words MUST equal it.
+
 ## 7. The text-binding rule
 
 Words on a page are of two kinds, and each has one place to live.

@@ -35,7 +35,7 @@ async function sealedComplianceBundle(
 it("renders the compliance card, not the generic Result page, when eu-ai-act-compliance/v1 opts in", async () => {
   const { bundle } = await sealedComplianceBundle();
   const root = await render(bundle);
-  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(root.querySelector('[data-verify="incomplete"]')).not.toBeNull();
   const page = root.querySelector<HTMLElement>('[data-page="compliance"]')!;
   expect(page).not.toBeNull();
   expect(page.classList.contains("cc")).toBe(true);

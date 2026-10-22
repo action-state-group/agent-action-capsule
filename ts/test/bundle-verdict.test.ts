@@ -8,7 +8,10 @@ import {
   verifyBundle,
   withCountersigners,
 } from "../src/bundle.js";
-import { renderEvidenceGraph } from "../src/browser.js";
+import {
+  renderEvidenceGraph,
+  VERIFICATION_BANNER_LINES as LINES,
+} from "../src/browser.js";
 import { sealEvidenceBundle, TEST_KEYS } from "./helpers/sealed-bundle.js";
 
 // The page states the strict verifier's verdict (#196): valid, incomplete or
@@ -68,6 +71,12 @@ function tamperPayload(bundle: Obj): Obj {
 
 const banner = (root: HTMLElement): HTMLElement =>
   root.querySelector<HTMLElement>("[data-verdict]")!;
+// The details line under the banner, or "" when it draws none.
+const detail = (root: HTMLElement): string =>
+  root.querySelector<HTMLElement>("[data-banner-detail]")?.textContent ?? "";
+// Everything the banner and its details line say.
+const said = (root: HTMLElement): string =>
+  `${banner(root).textContent} ${detail(root)}`;
 const checks = (root: HTMLElement, list: string): string[] =>
   [
     ...root.querySelectorAll<HTMLElement>(
@@ -112,7 +121,8 @@ describe("the banner never claims more than was checked", () => {
     expect(top.dataset.verdict).toBe("valid");
     expect(top.dataset.checkpoint).toBe("verified");
     expect(top.dataset.verify).toBe("verified");
-    expect(top.textContent).toBe("Bundle verification passed");
+    expect(top.textContent).toBe(LINES.verified);
+    expect(detail(root)).toBe("");
     // Both signatures were checked here, so the page lists them as checked.
     expect(checks(root, "page")).toEqual(
       expect.arrayContaining(["checkpoint-signature", "producer-signatures"]),
@@ -128,10 +138,10 @@ describe("the banner never claims more than was checked", () => {
     const top = banner(root);
     expect(top.dataset.verdict).toBe("incomplete");
     expect(top.dataset.checkpoint).toBe("unverified");
-    expect(top.dataset.verify).toBe("verified");
-    expect(top.textContent).not.toContain("passed");
-    expect(top.textContent).toBe(
-      "Bundle verification incomplete: none of the bundle's checks failed, but this page did not check " +
+    expect(top.dataset.verify).toBe("incomplete");
+    expect(top.textContent).toBe(LINES.incomplete);
+    expect(detail(root)).toBe(
+      "This page did not check " +
         "any record's producer signature, because no record is signed (producer_signature_unclaimed); " +
         "the checkpoint signature, which this page cannot check (checkpoint_verifier_unavailable). " +
         "Interval coverage and per-record membership are checkpoint_unverified: " +
@@ -146,16 +156,20 @@ describe("the banner never claims more than was checked", () => {
     const top = banner(await renderWith(browserRender, bundle));
     expect(top.dataset.verdict).toBe("incomplete");
     expect(top.dataset.checkpoint).toBe("unverified");
-    expect(top.textContent).not.toContain("passed");
+    expect(top.textContent).not.toBe(LINES.verified);
   });
 
   it("an unsigned checkpoint: incomplete, relative to a checkpoint that is not signed", async () => {
     const { bundle } = await sealEvidenceBundle(SOURCE(TEST_KEYS.a));
-    const top = banner(await renderWith(renderEvidenceGraph, bundle));
+    const root = await renderWith(renderEvidenceGraph, bundle);
+    const top = banner(root);
     expect(top.dataset.verdict).toBe("incomplete");
     expect(top.dataset.checkpoint).toBe("absent");
-    expect(top.textContent).toBe(
-      "Bundle verification incomplete: none of the bundle's checks failed, but this page did not check " +
+    // An unsigned checkpoint is not a check the bundle calls for, so the
+    // page draws no not-checked list and the banner does not point at one.
+    expect(top.textContent).toBe(LINES.incompleteNoList);
+    expect(detail(root)).toBe(
+      "This page did not check " +
         "the checkpoint signature, because the checkpoint is not signed (checkpoint_signature_absent). " +
         "Interval coverage and per-record membership are checkpoint_unverified: " +
         "relative to a producer-asserted checkpoint that is not signed.",
@@ -177,11 +191,12 @@ describe("the banner never claims more than was checked", () => {
       },
       { signCheckpoint: true },
     );
-    const top = banner(await renderWith(renderEvidenceGraph, bundle));
+    const root = await renderWith(renderEvidenceGraph, bundle);
+    const top = banner(root);
     expect(top.dataset.verdict).toBe("incomplete");
     expect(top.dataset.checkpoint).toBe("verified");
-    expect(top.textContent).toBe(
-      "Bundle verification incomplete: none of the bundle's checks failed, but this page did not check " +
+    expect(detail(root)).toBe(
+      "This page did not check " +
         "the producer signature of 1 of 2 records, because that record is not signed (producer_signature_unclaimed).",
     );
   });
@@ -194,7 +209,8 @@ describe("the banner never claims more than was checked", () => {
       const top = banner(root);
       expect(top.dataset.verdict).toBe("invalid");
       expect(top.dataset.verify).toBe("failed");
-      expect(top.textContent).toBe("Bundle verification failed");
+      expect(top.textContent).toBe(LINES.refused);
+      expect(detail(root)).toBe("");
       expect(root.querySelector('[data-refusal="unverified-bundle"]')).not.toBe(
         null,
       );
@@ -210,9 +226,10 @@ describe("the banner never claims more than was checked", () => {
     const root = await renderWith(renderEvidenceGraph, bundle);
     const top = banner(root);
     expect(top.dataset.verdict).toBe("invalid");
-    expect(top.dataset.verify).toBe("verified");
-    expect(top.textContent).toBe(
-      "Bundle verification failed: 1 of 2 records' producer signatures do not verify (producer_signature_invalid).",
+    expect(top.dataset.verify).toBe("failed");
+    expect(top.textContent).toBe(LINES.failed);
+    expect(detail(root)).toBe(
+      "What failed: 1 of 2 records' producer signatures do not verify (producer_signature_invalid).",
     );
     expect(checks(root, "failed")).toEqual(["producer-signatures"]);
   });
@@ -223,9 +240,10 @@ describe("the banner never claims more than was checked", () => {
       unsigned: ["act"],
     });
     expect(await verdict(bundle)).toBe("INVALID");
-    const top = banner(await renderWith(renderEvidenceGraph, bundle));
-    expect(top.dataset.verdict).toBe("invalid");
-    expect(top.textContent).toContain("producer_signature_invalid");
+    const root = await renderWith(renderEvidenceGraph, bundle);
+    expect(banner(root).dataset.verdict).toBe("invalid");
+    expect(banner(root).dataset.verify).toBe("failed");
+    expect(detail(root)).toContain("producer_signature_invalid");
   });
 
   it("a checkpoint whose JSON copy disagrees with what it signed: invalid", async () => {
@@ -240,8 +258,8 @@ describe("the banner never claims more than was checked", () => {
     const top = banner(root);
     expect(top.dataset.verdict).toBe("invalid");
     expect(top.dataset.checkpoint).toBe("invalid");
-    expect(top.textContent).toBe(
-      "Bundle verification failed: the checkpoint's fields do not match its signature (checkpoint_field_mismatch).",
+    expect(detail(root)).toBe(
+      "What failed: the checkpoint's fields do not match its signature (checkpoint_field_mismatch).",
     );
     expect(checks(root, "failed")).toContain("checkpoint-signature");
     const garbled = { ...bundle, checkpoint: { ...checkpoint, cose: "AAAA" } };
@@ -262,15 +280,20 @@ describe("the banner never claims more than was checked", () => {
     ];
     for (const value of cases)
       for (const render of [renderEvidenceGraph, browserRender]) {
-        const top = banner(await renderWith(render, value));
+        const root = await renderWith(render, value);
+        const top = banner(root);
         expect(["valid", "incomplete", "invalid"]).toContain(
           top.dataset.verdict,
+        );
+        // `verified` only for a valid verdict, never for less.
+        expect(top.dataset.verify === "verified").toBe(
+          top.dataset.verdict === "valid",
         );
         expect(top.dataset.checkpoint).toMatch(
           /^(?:verified|unverified|invalid|absent)$/u,
         );
         if (top.dataset.verdict !== "valid")
-          expect(top.textContent).not.toContain("passed");
+          expect(said(root)).not.toContain(LINES.verified);
       }
   });
 });
@@ -303,8 +326,8 @@ describe("the strict result beside the page's own checks", () => {
     root = await renderWith(renderEvidenceGraph, bundle);
     const top = banner(root);
     expect(top.dataset.verdict).toBe("invalid");
-    expect(top.textContent).toBe(
-      "Bundle verification failed: 1 of 2 witness receipts are malformed (witness_receipt_malformed).",
+    expect(detail(root)).toBe(
+      "What failed: 1 of 2 witness receipts are malformed (witness_receipt_malformed).",
     );
     expect(checks(root, "failed")).toContain("witness-receipts");
     expect(checks(root, "page")).not.toContain("witness-receipts");
@@ -317,25 +340,24 @@ describe("the strict result beside the page's own checks", () => {
     });
     const root = await renderWith(renderEvidenceGraph, bundle);
     const top = banner(root);
-    expect(top.dataset.verify).toBe("verified");
+    expect(top.dataset.verify).toBe("failed");
     expect(top.dataset.verdict).toBe("invalid");
-    expect(top.textContent).toBe(
-      "Bundle verification failed: 1 of 2 records are uncheckpointed (bound to no log position), so per-record membership fails.",
+    expect(root.querySelector("[data-refusal]")).toBeNull();
+    expect(detail(root)).toBe(
+      "1 of 2 records are uncheckpointed (bound to no log position), so per-record membership fails.",
     );
     expect(checks(root, "failed")).toContain("membership");
     expect(checks(root, "page")).not.toContain("membership");
   });
 
   it("a checkpoint missing a field it signs: says so", async () => {
-    const top = banner(
-      await renderWith(
-        renderEvidenceGraph,
-        strictCase("neg-checkpoint-field-missing"),
-      ),
+    const root = await renderWith(
+      renderEvidenceGraph,
+      strictCase("neg-checkpoint-field-missing"),
     );
-    expect(top.dataset.verdict).toBe("invalid");
-    expect(top.textContent).toBe(
-      "Bundle verification failed: the checkpoint is missing fields its signature covers (checkpoint_field_missing).",
+    expect(banner(root).dataset.verdict).toBe("invalid");
+    expect(detail(root)).toBe(
+      "What failed: the checkpoint is missing fields its signature covers (checkpoint_field_missing).",
     );
   });
 
@@ -405,11 +427,13 @@ describe("the page's verdict on vectors/bundle/strict", () => {
 
   it.each(cases.map((c) => [c.id, c] as const))("%s", async (id, c) => {
     const expected = c.expect.verdict.toLowerCase();
-    const top = banner(await renderWith(renderEvidenceGraph, c.bundle));
+    const pageRoot = await renderWith(renderEvidenceGraph, c.bundle);
+    const top = banner(pageRoot);
     expect(top.dataset.verdict).toBe(
       REFUSED_BY_THE_PAGE.has(id) ? "invalid" : expected,
     );
-    const browser = banner(await renderWith(browserRender, c.bundle));
+    const browserRoot = await renderWith(browserRender, c.bundle);
+    const browser = banner(browserRoot);
     expect(["invalid", "incomplete"]).toContain(browser.dataset.verdict);
     if (ORDER[browser.dataset.verdict!]! > ORDER[expected]!) {
       // Allowed only when every failure is the checkpoint's, which the
@@ -425,10 +449,10 @@ describe("the page's verdict on vectors/bundle/strict", () => {
         ).toBe(true);
       expect(browser.dataset.verdict).toBe("incomplete");
       expect(browser.dataset.checkpoint).toBe("unverified");
-      expect(browser.textContent).toContain("checkpoint_verifier_unavailable");
+      expect(detail(browserRoot)).toContain("checkpoint_verifier_unavailable");
     }
-    for (const page of [top, browser])
-      if (page.dataset.verdict !== "valid")
-        expect(page.textContent).not.toContain("passed");
+    for (const page of [pageRoot, browserRoot])
+      if (banner(page).dataset.verdict !== "valid")
+        expect(said(page)).not.toContain(LINES.verified);
   });
 });

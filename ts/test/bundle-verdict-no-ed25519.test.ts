@@ -43,10 +43,11 @@ describe("no Ed25519, a checkpoint the page's own checks authenticated", () => {
     const banner = root.querySelector<HTMLElement>("[data-verify]")!;
     expect(banner.dataset.verdict).toBe("incomplete");
     expect(banner.dataset.checkpoint).toBe("verified");
-    expect(banner.textContent).toBe(
-      "Bundle verification incomplete: none of the bundle's checks failed, but no record is signed.",
+    expect(banner.dataset.verify).toBe("incomplete");
+    expect(root.querySelector("[data-banner-detail]")?.textContent).toBe(
+      "No record is signed.",
     );
-    expect(banner.textContent).not.toContain("checkpoint_unverified");
+    expect(root.textContent).not.toContain("checkpoint_unverified");
     const page = Array.from(
       root.querySelectorAll<HTMLElement>('ul[data-checks="page"] > li'),
       (item) => item.dataset.check!,

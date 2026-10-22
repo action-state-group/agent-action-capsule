@@ -13,6 +13,7 @@ import { chromium, type Browser } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   CHECKPOINT_NOT_CHECKED_NOTE,
+  VERIFICATION_BANNER_LINES,
   VERIFICATION_CHECK_WORDS,
 } from "../src/verification-page.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
@@ -48,6 +49,7 @@ interface Lists {
   readonly verify: string | null;
   readonly verdict: string | null;
   readonly checkpoint: string | null;
+  readonly detail: string | null;
   readonly banner: string | null;
 }
 
@@ -113,7 +115,7 @@ describe.skipIf(executablePath === undefined)(
           notChecked: ids("not-checked"),
           checkpointLine:
             document.querySelector(
-              'ul[data-checks="not-checked"] > li[data-check="checkpoint-signature"]',
+              'ul[data-checks="not-checked"] > li[data-check="checkpoint-signature"] > [data-check-line]',
             )?.textContent ?? null,
           hint:
             document.querySelector("[data-verifier-hint]")?.textContent ?? null,
@@ -130,6 +132,8 @@ describe.skipIf(executablePath === undefined)(
               .querySelector("[data-verify]")
               ?.getAttribute("data-checkpoint") ?? null,
           banner: document.querySelector("[data-verify]")?.textContent ?? null,
+          detail:
+            document.querySelector("[data-banner-detail]")?.textContent ?? null,
         };
       });
       await context.close();
@@ -145,12 +149,12 @@ describe.skipIf(executablePath === undefined)(
         "input.json",
       ).bundle;
       const shown = await open(bundle);
-      expect(shown.verify).toBe("verified");
+      expect(shown.verify).toBe("incomplete");
       // The checkpoint could not be authenticated here (#196): never "passed".
       expect(shown.verdict).toBe("incomplete");
       expect(shown.checkpoint).toBe("unverified");
-      expect(shown.banner).not.toContain("passed");
-      expect(shown.banner).toContain(
+      expect(shown.banner).toBe(VERIFICATION_BANNER_LINES.incomplete);
+      expect(shown.detail).toContain(
         "checkpoint_unverified: relative to a producer-asserted checkpoint this page could not authenticate.",
       );
       expect(shown.page).toEqual([

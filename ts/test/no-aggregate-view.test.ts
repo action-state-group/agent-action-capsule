@@ -19,7 +19,7 @@ it("renders a verified bundle with no evaluation summary, without the aggregate 
   });
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
-  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(root.querySelector('[data-verify="incomplete"]')).not.toBeNull();
   expect(root.querySelector('[data-notice="no-aggregate"]')).not.toBeNull();
   expect(root.querySelector('[data-page="verification"]')).not.toBeNull();
 });

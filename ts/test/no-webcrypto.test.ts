@@ -171,16 +171,16 @@ describe("without SubtleCrypto", () => {
     expect(await probeEd25519()).toBe(true);
   });
 
-  it("renders a verified bundle as verified, and its verdict as incomplete, never failed", async () => {
+  it("renders a bundle that passed the page's checks as incomplete, never failed", async () => {
     withoutWebCrypto();
     const root = document.createElement("main");
     await renderEvidenceGraph(fixture("week-bundle.json"), root);
     const banner = root.querySelector<HTMLElement>("[data-verify]")!;
-    expect(banner.dataset.verify).toBe("verified");
+    expect(banner.dataset.verify).toBe("incomplete");
     // No Ed25519, so no strict verdict; this bundle carries no signature.
     expect(banner.dataset.verdict).toBe("incomplete");
-    expect(banner.textContent).toBe(
-      "Bundle verification incomplete: none of the bundle's checks failed, but neither the checkpoint nor any record is signed. Interval coverage and per-record membership are checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
+    expect(root.querySelector("[data-banner-detail]")?.textContent).toBe(
+      "Neither the checkpoint nor any record is signed. Interval coverage and per-record membership are checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
     );
     expect(root.querySelector('[data-refusal="unverified-bundle"]')).toBeNull();
   });
@@ -194,10 +194,10 @@ describe("without SubtleCrypto", () => {
     const root = document.createElement("main");
     await renderEvidenceGraph(bundle, root);
     const banner = root.querySelector<HTMLElement>("[data-verify]")!;
-    expect(banner.dataset.verify).toBe("verified");
+    expect(banner.dataset.verify).toBe("failed");
     expect(banner.dataset.verdict).toBe("invalid");
-    expect(banner.textContent).toBe(
-      "Bundle verification failed: 1 of 5 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
+    expect(root.querySelector("[data-banner-detail]")?.textContent).toBe(
+      "1 of 5 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
     );
     // The lists agree: membership failed, never checked.
     const listed = (which: string): string[] =>
@@ -227,8 +227,9 @@ describe("without SubtleCrypto", () => {
     const banner = root.querySelector<HTMLElement>("[data-verify]")!;
     expect(banner.dataset.verdict).toBe("incomplete");
     expect(banner.dataset.checkpoint).toBe("absent");
-    expect(banner.textContent).toMatch(
-      /^Bundle verification incomplete: none of the bundle's checks failed, but this page cannot check signatures, so the records' producer signatures could not be checked\./u,
+    expect(banner.dataset.verify).toBe("incomplete");
+    expect(root.querySelector("[data-banner-detail]")?.textContent).toMatch(
+      /^This page cannot check signatures, so the records' producer signatures could not be checked\./u,
     );
   });
 });

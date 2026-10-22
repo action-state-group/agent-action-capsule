@@ -311,7 +311,7 @@ describe("a tampered bundle", () => {
     // A countersignature is not one of the bundle's own checks: the banner
     // scopes its words to those, beside a failed countersignature line.
     expect(root.querySelector("[data-verdict]")?.textContent).toMatch(
-      /^Bundle verification incomplete: none of the bundle's checks failed, /u,
+      /^None of the bundle's checks failed, /u,
     );
   });
 

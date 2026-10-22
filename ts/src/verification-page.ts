@@ -99,13 +99,36 @@ export type CoverageStatement =
  * bytes, and this line never lets the first read as the second.
  */
 export const EXTENSION_NOT_INTERPRETED =
-  "Integrity verified; meaning not interpreted by this viewer";
+  "Covered by the file's fingerprint; not interpreted by this page's checks";
 /**
  * The same cell when the bundle digest could not be computed: nothing about
  * the block's bytes was verified either, so the line must not claim it.
  */
 export const EXTENSION_NOT_INTERPRETED_NOT_COVERED =
-  "Integrity not verified; meaning not interpreted by this viewer";
+  "Not covered by the file's fingerprint; not interpreted by this page's checks";
+/**
+ * The semantics cell of an extension a module this page ran shows, by
+ * whether the bundle digest covers the block: a block a module shows is not
+ * thereby covered, so the cell always says which.
+ */
+export const EXTENSION_SHOWN = Object.freeze({
+  covered: "Shown by the page's module; covered by the file's fingerprint",
+  notCovered:
+    "Shown by the page's module; not covered by the file's fingerprint",
+} as const);
+/**
+ * The same for an extension the core itself reads (the presentation header
+ * and the countersignature stamp), which no module shows.
+ */
+export const EXTENSION_READ_BY_PAGE = Object.freeze({
+  covered: "Read by this page itself; covered by the file's fingerprint",
+  notCovered: "Read by this page itself; not covered by the file's fingerprint",
+} as const);
+// The interpreters that are part of the core, not of a page module.
+const CORE_INTERPRETERS: ReadonlySet<ExtensionInterpreterId> = new Set([
+  "presentation-header",
+  "countersignature-stamp",
+]);
 
 /**
  * One row per `extensions` member, in kind order: its id, whether the bundle
@@ -123,7 +146,7 @@ export interface ExtensionRow {
    */
   readonly refusal?: PresentationRefusal;
   /**
-   * "interpreted by <interpreter>", one of the two not-interpreted lines, or
+   * One of the shown, read-by-page or not-interpreted lines, or
    * the refusal wording of section 3.2 (`presentationRefusalRow`).
    */
   readonly semantics: string;
@@ -173,7 +196,11 @@ export function extensionRows(
         id: extension.kind,
         integrity,
         interpreter: extension.interpreter,
-        semantics: `interpreted by ${extension.interpreter}`,
+        semantics: (CORE_INTERPRETERS.has(extension.interpreter)
+          ? EXTENSION_READ_BY_PAGE
+          : EXTENSION_SHOWN)[
+          extension.integrityCovered ? "covered" : "notCovered"
+        ],
       };
     return {
       id: extension.kind,
@@ -396,6 +423,36 @@ export interface CheckListInputs {
   readonly strict?: StrictBundleResult;
 }
 
+/** The state a page's banner states (presentation contract section 6.2). */
+export type VerifyState =
+  | "checking"
+  | "verified"
+  | "incomplete"
+  | "failed"
+  | "unable";
+
+/**
+ * The banner's line for each state: the core's fixed text, which no module,
+ * wording pack or bundle supplies. It names no internal token; the line
+ * under it does (`data-banner-detail`). `incomplete` points at the
+ * not-checked list only when the page draws one, and `failed` reads one way
+ * when the records are still shown and another when the page refuses them.
+ */
+export const VERIFICATION_BANNER_LINES = Object.freeze({
+  checking: "Checking…",
+  verified: "✓ Unchanged since it was sealed",
+  incomplete:
+    'None of the bundle\'s checks failed, but some were not run: see "Not checked on this page" below',
+  incompleteNoList: "None of the bundle's checks failed, but some were not run",
+  failed: "✗ A check failed: do not rely on this page",
+  refused: "✗ This bundle did not verify: do not rely on it",
+  unable: "Couldn't check this page here: check it with a full verifier",
+} as const);
+
+/** The refusal line after the banner of a bundle the page refuses (contract I1). */
+export const UNVERIFIED_BUNDLE_REFUSAL =
+  "This bundle did not verify. Its records, rows and payloads are not shown; the verification page below lists which checks failed.";
+
 export const CHECKED_ON_THIS_PAGE = "Checked on this page";
 export const FAILED_ON_THIS_PAGE = "Failed on this page";
 export const NOT_CHECKED_ON_THIS_PAGE = "Not checked on this page";
@@ -438,6 +495,30 @@ export const VERIFICATION_CHECK_WORDS: Readonly<
   "countersignature-types":
     "A countersignature of a type this page does not check.",
   "countersignature-receipts": "The receipt carried with a countersignature.",
+});
+
+/**
+ * The name a full verifier's report uses for each check, drawn under its
+ * line so a reader can match the two; the line itself stays in plain words.
+ */
+export const VERIFICATION_CHECK_TECHNICAL_NAMES: Readonly<
+  Record<VerificationCheckId, string>
+> = Object.freeze({
+  "record-digests": "capsule ID matches contents",
+  "record-rules":
+    "required fields, effect consistency, verdict conflict, chain parent, assurance claims",
+  closure: "graph closure",
+  range: "interval coverage",
+  membership: "per-record membership",
+  "checkpoint-signature": "checkpoint signature (checkpoint.cose)",
+  disclosures: "disclosure digests",
+  countersignatures: "countersignature signatures",
+  composed: "composed bundles (composed/v1)",
+  "cited-signers": "cited producer signatures",
+  "producer-signatures": "producer signatures",
+  "witness-receipts": "witness receipts",
+  "countersignature-types": "countersignature types",
+  "countersignature-receipts": "countersignature receipts",
 });
 
 /** Added to the checkpoint line when the claims resting on it passed without it. */

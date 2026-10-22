@@ -52,7 +52,7 @@ it("renders the dated drill-down view and verifies the bundle", async () => {
   );
   expect(transcript).toContain(JSON.stringify(act.agentInput));
   expect(transcript).toContain(JSON.stringify(act.agentOutput));
-  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(root.querySelector('[data-verify="incomplete"]')).not.toBeNull();
 });
 
 it("renders disclosed calibration agreement and confusion data", async () => {
@@ -247,7 +247,9 @@ it("accepts a withheld disclosure as verified", async () => {
   delete withheld.disclosures[bundle.records[0]!.capsule_id];
   const withheldRoot = document.createElement("main");
   await renderEvidenceGraph(withheld, withheldRoot);
-  expect(withheldRoot.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(
+    withheldRoot.querySelector('[data-verify="incomplete"]'),
+  ).not.toBeNull();
 });
 
 it("renders the verification page as the last page with the ten checks and the verify-independently line", async () => {
@@ -524,7 +526,7 @@ it("H2: a forged disclosure fails verification, so the case rows it would have f
 it("H2: on a verified bundle the banner precedes every tile and the drill-down content", async () => {
   const root = document.createElement("main");
   await renderEvidenceGraph(await fixture("week-bundle.json"), root);
-  const banner = root.querySelector<HTMLElement>('[data-verify="verified"]')!;
+  const banner = root.querySelector<HTMLElement>('[data-verify="incomplete"]')!;
   expect(root.querySelector("[data-refusal]")).toBeNull();
   const tiles = root.querySelectorAll<HTMLElement>("[data-report-date]");
   expect(tiles.length).toBeGreaterThan(0);
@@ -549,7 +551,7 @@ it("renders a tile for a report that carries date and no day", async () => {
   );
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
-  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(root.querySelector('[data-verify="incomplete"]')).not.toBeNull();
   const tiles = root.querySelectorAll<HTMLElement>("[data-report-date]");
   expect(tiles).toHaveLength(1);
   expect(tiles[0]!.dataset.reportDate).toBe("2026-09-14");
@@ -577,7 +579,7 @@ it("renders every tile of the week when the report payloads carry only date", as
   const { bundle } = await sealEvidenceBundle(dateOnly);
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
-  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(root.querySelector('[data-verify="incomplete"]')).not.toBeNull();
   expect(
     Array.from(
       root.querySelectorAll<HTMLElement>("[data-report-date]"),
@@ -594,7 +596,7 @@ it("prints a naive report timestamp verbatim with a timezone-not-stated marker, 
   );
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
-  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
+  expect(root.querySelector('[data-verify="incomplete"]')).not.toBeNull();
 
   const tiles = root.querySelectorAll<HTMLElement>("[data-report-date]");
   expect(tiles).toHaveLength(2);
@@ -705,11 +707,11 @@ it("renders records that sit outside the checkpoint as uncheckpointed, one statu
   // the full verifier's: a record bound to no log position fails
   // per-record membership, so the bundle is invalid and the banner says so
   const banner = root.querySelector<HTMLElement>("[data-verify]")!;
-  expect(banner.dataset.verify).toBe("verified");
+  expect(banner.dataset.verify).toBe("failed");
   expect(banner.dataset.verdict).toBe("invalid");
   expect(banner.dataset.uncheckpointed).toBe("2");
-  expect(banner.textContent).toBe(
-    "Bundle verification failed: 2 of 4 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
+  expect(root.querySelector("[data-banner-detail]")!.textContent).toBe(
+    "2 of 4 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
   );
   expect(root.querySelector("[data-refusal]")).toBeNull();
 
@@ -1007,8 +1009,10 @@ it("evaluation graph: an uncheckpointed act shows its own status and its checkpo
   );
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
-  expect(root.querySelector<HTMLElement>("[data-verify]")!.textContent).toBe(
-    "Bundle verification failed: 1 of 5 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
+  expect(
+    root.querySelector<HTMLElement>("[data-banner-detail]")!.textContent,
+  ).toBe(
+    "1 of 5 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
   );
   expect(root.querySelectorAll("[data-report-date]")).toHaveLength(2);
   const panelFor = (capsuleId: string): HTMLElement =>

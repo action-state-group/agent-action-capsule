@@ -36,7 +36,7 @@ describe("presentation mount", () => {
       audience: "*",
       format: "embedded",
     });
-    expect(verifyStates(root)).toEqual(["verified"]);
+    expect(verifyStates(root)).toEqual(["incomplete"]);
     expect(root.querySelector("[data-refusal]")).toBeNull();
   });
 
@@ -51,7 +51,7 @@ describe("presentation mount", () => {
     });
     const root = document.createElement("main");
     await mountPresentationFragment(`#${fragment}`, root);
-    expect(verifyStates(root)).toEqual(["verified"]);
+    expect(verifyStates(root)).toEqual(["incomplete"]);
     expect(root.querySelector("[data-refusal]")).toBeNull();
   });
 

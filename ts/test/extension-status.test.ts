@@ -71,11 +71,11 @@ const verdicts = (result: BundleVerificationResult) => ({
 describe("extension interpretation status", () => {
   it("the user-facing wording is exact", () => {
     expect(EXTENSION_NOT_INTERPRETED).toBe(
-      "Integrity verified; meaning not interpreted by this viewer",
+      "Covered by the file's fingerprint; not interpreted by this page's checks",
     );
   });
 
-  it("an interpreted extension names its interpreter, with integrity in its own cell", async () => {
+  it("an interpreted extension says the page reads it, with integrity in its own cell and its interpreter as a data attribute", async () => {
     const bundle = await derivedFixture("week-bundle-presentation.json");
     const verified = await verifyBundle(bundle);
     expect(verified.extensions).toEqual([
@@ -95,10 +95,16 @@ describe("extension interpretation status", () => {
         cells: [
           "presentation/v1",
           "covered",
-          "interpreted by presentation-header",
+          "Read by this page itself; covered by the file's fingerprint",
         ],
       },
     ]);
+    const { root: shown } = await render(bundle);
+    expect(
+      shown.querySelector<HTMLElement>(
+        'tr[data-extension-id="presentation/v1"]',
+      )?.dataset.interpreter,
+    ).toBe("presentation-header");
   });
 
   it("an unknown x- extension is covered but uninterpreted, in exactly those words, and changes no verdict", async () => {
@@ -124,7 +130,7 @@ describe("extension interpretation status", () => {
         cells: [
           "x-acme-risk-score/v1",
           "covered",
-          "Integrity verified; meaning not interpreted by this viewer",
+          "Covered by the file's fingerprint; not interpreted by this page's checks",
         ],
       },
     ]);
@@ -224,7 +230,8 @@ describe("extension interpretation status", () => {
         id: "evidencebook/payloads",
         integrity: "covered",
         interpreter: "result-root",
-        semantics: "interpreted by result-root",
+        semantics:
+          "Shown by the page's module; covered by the file's fingerprint",
       },
       { id: "x-a", integrity: "covered", semantics: EXTENSION_NOT_INTERPRETED },
     ]);

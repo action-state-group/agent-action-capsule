@@ -35,17 +35,24 @@ is trusted without it. The signed checkpoint is verified only in Node, where
 CLL's COSE checkpoint verifier exists; elsewhere the `checkpoint` claim is
 `withheld` and the verdict is never `VALID`.
 
-`renderEvidenceGraph` states that verdict in its banner: `data-verdict` is
-`valid`, `incomplete` or `invalid`, and `data-checkpoint` is `verified`,
-`unverified`, `invalid` or `absent`. The banner says "passed" only for
-`valid`; for `incomplete` it names what it did not check, and it labels
-interval coverage and per-record membership `checkpoint_unverified` when they
-rest on a checkpoint it did not authenticate. `data-verify` is still whether
-the rows are shown. A runtime with no Ed25519 reaches no strict verdict;
-missing Ed25519 is never itself a failure, so a bundle that passes the page's
-own checks, with every record bound to a log position, reads `incomplete`.
-The browser build cannot authenticate a checkpoint, so it says at most
-`incomplete`.
+`renderEvidenceGraph` states that verdict in its banner, one of the states of
+the presentation contract's section 6.2. `data-verify` names the state:
+`checking` until the checks finish, then `verified` (only for a `valid`
+verdict), `incomplete`, `failed` or `unable` (no SHA-256 at all). Each state
+has one fixed line (`VERIFICATION_BANNER_LINES`, pinned for every viewer in
+[`vectors/viewer-core-text/`](../vectors/viewer-core-text/README.md)), and no
+module, wording pack or bundle supplies it: a module that changes the banner
+is discarded for the refusal. `data-verdict` is `valid`, `incomplete` or
+`invalid`, and `data-checkpoint` is `verified`, `unverified`, `invalid` or
+`absent`. A details line under the banner (`data-banner-detail`) names what
+the page did not check or what failed, with the verifier's finding names, and
+labels interval coverage and per-record membership `checkpoint_unverified`
+when they rest on a checkpoint the page did not authenticate. A runtime with
+no Ed25519 reaches no strict verdict; missing Ed25519 is never itself a
+failure, so a bundle that passes the page's own checks, with every record
+bound to a log position, reads `incomplete`. The browser build cannot
+authenticate a checkpoint, so it says at most `incomplete`. Match a page's
+state on these attributes, not on its words.
 
 `buildEvidenceBundle(source, { root, intervalFrom })` builds a Bundle from a
 `ProofSource`: the log's signed COSE checkpoint, its leaves, records by Capsule
