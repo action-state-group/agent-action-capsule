@@ -1488,34 +1488,66 @@ const plain = (value: object): boolean => {
  */
 function ownedCopy<T>(value: T): T {
   const seen = new Map<object, unknown>();
-  // Containers whose members are still to copy, each with its copy.
-  const pending: [object, unknown[] | Record<string, unknown>][] = [];
+  // One frame per container being copied, depth first: a member's subtree
+  // is copied before the next member is read, so every value, getters
+  // included, is read in the order the recursive copy read it.
+  type Frame =
+    | {
+        readonly source: readonly unknown[];
+        readonly out: unknown[];
+        index: number;
+      }
+    | {
+        readonly source: Record<string, unknown>;
+        readonly out: Record<string, unknown>;
+        readonly keys: readonly string[];
+        index: number;
+      };
+  const frames: Frame[] = [];
+  // The copy of `input`, opening a frame for a container not yet copied.
   const copyOf = (input: unknown): unknown => {
     if (input === null || typeof input !== "object" || !plain(input))
       return input;
     const done = seen.get(input);
     if (done !== undefined) return done;
-    const out: unknown[] | Record<string, unknown> = Array.isArray(input)
-      ? []
-      : {};
+    if (Array.isArray(input)) {
+      const out: unknown[] = [];
+      seen.set(input, out);
+      frames.push({ source: input, out, index: 0 });
+      return out;
+    }
+    const out: Record<string, unknown> = {};
     seen.set(input, out);
-    pending.push([input, out]);
+    frames.push({
+      source: input as Record<string, unknown>,
+      out,
+      keys: Object.keys(input),
+      index: 0,
+    });
     return out;
   };
   const root = copyOf(value);
-  while (pending.length > 0) {
-    const [source, out] = pending.pop()!;
-    if (Array.isArray(source)) {
-      for (const item of source) (out as unknown[]).push(copyOf(item));
-      continue;
-    }
-    for (const key of Object.keys(source))
-      Object.defineProperty(out, key, {
-        value: copyOf((source as Record<string, unknown>)[key]),
+  while (frames.length > 0) {
+    const frame = frames[frames.length - 1]!;
+    if ("keys" in frame) {
+      if (frame.index === frame.keys.length) {
+        frames.pop();
+        continue;
+      }
+      const key = frame.keys[frame.index++]!;
+      Object.defineProperty(frame.out, key, {
+        value: copyOf(frame.source[key]),
         enumerable: true,
         writable: true,
         configurable: true,
       });
+    } else {
+      if (frame.index >= frame.source.length) {
+        frames.pop();
+        continue;
+      }
+      frame.out.push(copyOf(frame.source[frame.index++]));
+    }
   }
   return root as T;
 }

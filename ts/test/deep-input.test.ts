@@ -176,6 +176,42 @@ describe("the context's copy keeps its semantics", () => {
     expect(Object.isFrozen(copy.extensions)).toBe(true);
   });
 
+  it("reads every value in the order a depth-first copy reads it", async () => {
+    let n = 0;
+    const bundle: Record<string, unknown> = {
+      records: [],
+      a: {
+        get value() {
+          n += 1;
+          return n;
+        },
+      },
+      get b() {
+        return n;
+      },
+      list: [
+        {
+          get first() {
+            n += 1;
+            return n;
+          },
+        },
+        {
+          get second() {
+            return n;
+          },
+        },
+      ],
+    };
+    const { bundle: owned } = await buildVerifiedBundleContext(bundle);
+    const copy = owned as Record<string, unknown>;
+    expect((copy.a as Record<string, unknown>).value).toBe(1);
+    expect(copy.b).toBe(1);
+    const list = copy.list as Record<string, unknown>[];
+    expect(list[0]!.first).toBe(2);
+    expect(list[1]!.second).toBe(2);
+  });
+
   it("copies a cycle as a cycle", async () => {
     const bundle: Record<string, unknown> = { records: [] };
     bundle.self = bundle;
