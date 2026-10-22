@@ -329,11 +329,32 @@ export async function verifyBundle(
   if (digestCapability() === "none") throw new Sha256UnavailableError();
   if (options.strict === true && !(await probeEd25519()))
     throw new Ed25519UnavailableError();
+  const { plain, strict } = await verifyPlainAndStrict(bundle, options);
+  return strict ?? plain;
+}
+/**
+ * The plain result and, with `strict`, the strict one computed from it, so
+ * a caller that needs both runs the plain checks once.
+ */
+async function verifyPlainAndStrict(
+  bundle: unknown,
+  options: VerifyBundleOptions,
+): Promise<{
+  plain: BundleVerificationResult;
+  strict?: StrictBundleVerificationResult;
+}> {
   try {
     const plain = await verifyPlain(bundle);
     return options.strict === true
-      ? await strict(plain, object(bundle) ? bundle : undefined, options)
-      : plain;
+      ? {
+          plain,
+          strict: await strict(
+            plain,
+            object(bundle) ? bundle : undefined,
+            options,
+          ),
+        }
+      : { plain };
   } catch (error) {
     // A Bundle nested beyond what this implementation can read overflows
     // the stack (a RangeError). It is refused, never raised: every claim is
@@ -342,18 +363,21 @@ export async function verifyBundle(
     const plain = malformedBundle();
     return options.strict === true
       ? {
-          ...plain,
+          plain,
           strict: {
-            verdict: "INVALID",
-            kindOk: false,
-            claims: [{ name: "records", ...fail("bundle_malformed") }],
-            witnesses: null,
-            records: [],
-            checkpointAuthenticated: false,
-            signerMatchesCheckpoint: null,
+            ...plain,
+            strict: {
+              verdict: "INVALID",
+              kindOk: false,
+              claims: [{ name: "records", ...fail("bundle_malformed") }],
+              witnesses: null,
+              records: [],
+              checkpointAuthenticated: false,
+              signerMatchesCheckpoint: null,
+            },
           },
         }
-      : plain;
+      : { plain };
   }
 }
 /** The result for input that is not a readable Bundle. */
@@ -1352,6 +1376,15 @@ export interface VerifiedBundleContext {
   /** The one verification run every builder shares. */
   readonly verification: BundleVerificationResult;
   /**
+   * The strict checks and verdict over the same bytes, computed from
+   * `verification` (`verifyBundle`'s `strict`, with no witness directory
+   * and unsigned records allowed). Undefined where this runtime has no
+   * Ed25519, so no verdict can be reached; that is never a failure. The
+   * verdict is what a page states; whether it shows records is
+   * `verification`'s alone.
+   */
+  readonly strict: StrictBundleResult | undefined;
+  /**
    * capsule_id -> both disclosable members, resolved from
    * `verification.disclosures`: `disclosed` (carrying the supplied value)
    * only for a `disclosure_match`; `disclosure_mismatch` for a mismatch or a
@@ -1521,11 +1554,17 @@ export async function buildVerifiedBundleContext(
   // bytes every builder reads and nothing (the caller included) can change
   // them afterwards.
   const owned = deepFreeze(ownedCopy(bundle));
+  // Every check hashes; with no SHA-256 there is no result (verifyBundle).
+  if (digestCapability() === "none") throw new Sha256UnavailableError();
   // Settles ed25519Available() for every reader of this context.
-  await probeEd25519();
+  const ed25519 = await probeEd25519();
+  const { plain, strict } = await verifyPlainAndStrict(owned, {
+    strict: ed25519,
+  });
   return contextFrom(
     owned,
-    await verifyBundle(owned),
+    plain,
+    strict?.strict,
     options.countersigners === undefined
       ? undefined
       : deepFreeze(ownedCopy(options.countersigners)),
@@ -1552,6 +1591,7 @@ export function withCountersigners(
   return contextFrom(
     context.bundle,
     context.verification,
+    context.strict,
     countersigners === undefined
       ? undefined
       : deepFreeze(ownedCopy(countersigners)),
@@ -1562,6 +1602,7 @@ export function withCountersigners(
 function contextFrom(
   bundle: unknown,
   verification: BundleVerificationResult,
+  strict: StrictBundleResult | undefined,
   countersigners: CountersignerSource | undefined,
   reuse?: VerifiedBundleContext,
 ): VerifiedBundleContext {
@@ -1602,6 +1643,7 @@ function contextFrom(
         ? bundle.root
         : undefined,
     verification,
+    strict,
     resolvedDisclosures,
     records,
     recordIndex,

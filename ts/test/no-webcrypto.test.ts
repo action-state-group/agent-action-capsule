@@ -171,13 +171,17 @@ describe("without SubtleCrypto", () => {
     expect(await probeEd25519()).toBe(true);
   });
 
-  it("renders a verified bundle as verified", async () => {
+  it("renders a verified bundle as verified, and its verdict as incomplete, never failed", async () => {
     withoutWebCrypto();
     const root = document.createElement("main");
     await renderEvidenceGraph(fixture("week-bundle.json"), root);
-    expect(
-      root.querySelector("[data-verify]")?.getAttribute("data-verify"),
-    ).toBe("verified");
+    const banner = root.querySelector<HTMLElement>("[data-verify]")!;
+    expect(banner.dataset.verify).toBe("verified");
+    // No Ed25519, so no strict verdict: no signature was checked.
+    expect(banner.dataset.verdict).toBe("incomplete");
+    expect(banner.textContent).toBe(
+      "Bundle verification incomplete: no check failed, but this viewer cannot check signatures, so the checkpoint signature and the records' producer signatures were not checked.",
+    );
     expect(root.querySelector('[data-refusal="unverified-bundle"]')).toBeNull();
   });
 });

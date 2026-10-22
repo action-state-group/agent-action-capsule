@@ -35,6 +35,16 @@ is trusted without it. The signed checkpoint is verified only in Node, where
 CLL's COSE checkpoint verifier exists; elsewhere the `checkpoint` claim is
 `withheld` and the verdict is never `VALID`.
 
+`renderEvidenceGraph` states that verdict in its banner: `data-verdict` is
+`valid`, `incomplete` or `invalid`, and `data-checkpoint` is `verified`,
+`unverified`, `invalid` or `absent`. The banner says "passed" only for
+`valid`; for `incomplete` it names what it did not show, and it labels
+interval coverage and per-record membership `checkpoint_unverified` when they
+rest on a checkpoint it did not authenticate. `data-verify` is still whether
+the rows are shown. A runtime with no Ed25519 reaches no strict verdict and
+says `incomplete`, never failed. The browser build cannot authenticate a
+checkpoint, so it says at most `incomplete`.
+
 `buildEvidenceBundle(source, { root, intervalFrom })` builds a Bundle from a
 `ProofSource`: the log's signed COSE checkpoint, its leaves, records by Capsule
 ID, and inclusion and range proofs in the Bundle's own wire shape. It holds no

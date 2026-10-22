@@ -1,5 +1,7 @@
 import type {
   BundleVerificationResult,
+  StrictBundleResult,
+  StrictClaimName,
   ExtensionInterpreterId,
   ExtensionResult,
 } from "./bundle.js";
@@ -386,6 +388,12 @@ export interface CheckListInputs {
   readonly stamps?: readonly CountersignatureStamp[];
   /** True when the rendered page module checked the signers it cites. */
   readonly citedSigners?: boolean;
+  /**
+   * The strict result this runtime reached (the context's `strict`): with
+   * it, the producer signatures and the checkpoint signature were checked
+   * here.
+   */
+  readonly strict?: StrictBundleResult;
 }
 
 export const CHECKED_ON_THIS_PAGE = "Checked on this page";
@@ -431,9 +439,9 @@ export const VERIFICATION_CHECK_WORDS: Readonly<
   "countersignature-receipts": "The receipt carried with a countersignature.",
 });
 
-/** Added to the checkpoint line when the page passed the bundle without it. */
+/** Added to the checkpoint line when the claims resting on it passed without it. */
 export const CHECKPOINT_NOT_CHECKED_NOTE =
-  "This page could not check it, and shows the bundle as passing without it.";
+  "This page could not check it, so the range and membership checks rest on a checkpoint the producer asserted.";
 
 /** The words a list item shows for `id` under `list`. */
 export function verificationCheckWords(
@@ -574,6 +582,25 @@ export function verificationCheckLists(
   )
     outcome.set("countersignature-receipts", "notChecked");
 
+  // The strict checks ran here: the lists say how the producer signatures
+  // and the checkpoint signature went, not only that the bundle carries them.
+  const strict = inputs.strict;
+  if (strict?.kindOk === true) {
+    const claim = (name: StrictClaimName) =>
+      strict.claims.find((entry) => entry.name === name);
+    const signatures = claim("signatures");
+    if (signatures?.status === "pass") ran("producer-signatures", true);
+    else if (
+      signatures?.findings.some((f) =>
+        f.startsWith("producer_signature_invalid:"),
+      )
+    )
+      ran("producer-signatures", false);
+    const checkpoint = claim("checkpoint");
+    if (checkpoint?.status === "pass") ran("checkpoint-signature", true);
+    else if (checkpoint?.status === "fail") ran("checkpoint-signature", false);
+  }
+
   const pick = (which: "page" | "failed" | "notChecked") =>
     VERIFICATION_CHECK_IDS.filter((id) => outcome.get(id) === which);
   const failed = pick("failed");
@@ -581,11 +608,13 @@ export function verificationCheckLists(
     page: pick("page"),
     failed,
     notChecked: pick("notChecked"),
-    // The note says the page shows the bundle as passing: true only when
-    // the page's own verdict (bundleVerified, the banner's) passes and no
-    // check on this page failed.
+    // The note says the range and membership checks passed on a checkpoint
+    // the producer asserted: true only when the page's own checks
+    // (bundleVerified) pass, no check on this page failed and the
+    // checkpoint line is in the not-checked list.
     passedWithoutCheckpoint:
       passedWithoutCheckpoint &&
+      outcome.get("checkpoint-signature") === "notChecked" &&
       failed.length === 0 &&
       bundleVerified(verified),
   };

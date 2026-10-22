@@ -286,7 +286,9 @@ describe("a tampered bundle", () => {
       vector("minimum-necessary", "bundle-mismatch", "input.json").bundle,
     );
     expect(page).not.toContain("disclosures");
-    expect(failed).toEqual(["disclosures"]);
+    // The strict checkpoint claim fails too: the checkpoint's JSON copy
+    // states no log_id (checkpoint_field_missing:log_id).
+    expect(failed).toEqual(["checkpoint-signature", "disclosures"]);
   });
 
   it("an edited countersignature moves the countersignature check out of the page list", async () => {

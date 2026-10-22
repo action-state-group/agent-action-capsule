@@ -241,13 +241,14 @@ it("renders a cited record outside the checkpoint as uncheckpointed under the Re
   ).not.toContain(ids["day-2"]);
   const root = await render(bundle);
 
-  // verified, with the count said up front: this is the bundle-level banner,
-  // above every section, and the one number that precedes coverage
+  // rendered, with the count said up front: this is the bundle-level
+  // banner, above every section, and the one number that precedes coverage
   const banner = root.querySelector<HTMLElement>("[data-verify]")!;
   expect(banner.dataset.verify).toBe("verified");
+  expect(banner.dataset.verdict).toBe("invalid");
   expect(banner.dataset.uncheckpointed).toBe("1");
   expect(banner.textContent).toBe(
-    "Bundle verification passed; 1 of 5 records uncheckpointed",
+    "Bundle verification failed: 1 of 5 records uncheckpointed, bound to no log position, so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
   );
   const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
   expect(page).not.toBeNull();

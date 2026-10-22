@@ -46,6 +46,9 @@ interface Lists {
   readonly checkpointLine: string | null;
   readonly hint: string | null;
   readonly verify: string | null;
+  readonly verdict: string | null;
+  readonly checkpoint: string | null;
+  readonly banner: string | null;
 }
 
 describe.skipIf(executablePath === undefined)(
@@ -118,13 +121,22 @@ describe.skipIf(executablePath === undefined)(
             document
               .querySelector("[data-verify]")
               ?.getAttribute("data-verify") ?? null,
+          verdict:
+            document
+              .querySelector("[data-verify]")
+              ?.getAttribute("data-verdict") ?? null,
+          checkpoint:
+            document
+              .querySelector("[data-verify]")
+              ?.getAttribute("data-checkpoint") ?? null,
+          banner: document.querySelector("[data-verify]")?.textContent ?? null,
         };
       });
       await context.close();
       return shown;
     }
 
-    it("a signed checkpoint: the bundle passes, and the checkpoint signature is listed as not checked", async () => {
+    it("a signed checkpoint: the rows render, the verdict is incomplete, and the checkpoint signature is listed as not checked", async () => {
       const bundle = json(
         "..",
         "vectors",
@@ -134,6 +146,13 @@ describe.skipIf(executablePath === undefined)(
       ).bundle;
       const shown = await open(bundle);
       expect(shown.verify).toBe("verified");
+      // The checkpoint could not be authenticated here (#196): never "passed".
+      expect(shown.verdict).toBe("incomplete");
+      expect(shown.checkpoint).toBe("unverified");
+      expect(shown.banner).not.toContain("passed");
+      expect(shown.banner).toContain(
+        "checkpoint_unverified: relative to a producer-asserted checkpoint this page could not authenticate.",
+      );
       expect(shown.page).toEqual([
         "record-digests",
         "record-rules",

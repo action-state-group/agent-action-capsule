@@ -578,7 +578,9 @@ it("draws the verification banner and the verification page in the card's look -
   const root = await render(bundle);
   const banner = root.querySelector<HTMLElement>('[data-verify="verified"]')!;
   expect(banner.classList.contains("oi-banner")).toBe(true);
-  expect(banner.classList.contains("oi-banner-ok")).toBe(true);
+  // an unsigned checkpoint and unsigned records: incomplete, never "ok"
+  expect(banner.dataset.verdict).toBe("incomplete");
+  expect(banner.classList.contains("oi-banner-incomplete")).toBe(true);
   const card = root.querySelector('[data-page="outcome-report"]')!;
   expect(
     banner.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -599,6 +601,7 @@ it("draws the verification banner and the verification page in the card's look -
   )!.textContent!;
   expect(style).toContain(".oi.oi-vp");
   expect(style).toContain(".oi.oi-banner-ok");
+  expect(style).toContain(".oi.oi-banner-incomplete");
 });
 
 it("leaves the banner and verification page unstyled for every other root family", async () => {

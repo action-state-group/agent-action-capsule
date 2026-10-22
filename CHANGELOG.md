@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- TypeScript viewer: the banner states the strict verdict (`verifyBundle`'s `strict`), the
+  outcome a full verifier reports, and no longer says "Bundle verification passed" for a bundle
+  that verifier calls INCOMPLETE. It sets `data-verdict` (`valid`, `incomplete`, `invalid`) and
+  `data-checkpoint` (`verified`, `unverified`, `invalid`, `absent`); `data-verify` is still the
+  render gate. "Passed" is kept for `valid`. `incomplete` names what the page did not show, and
+  coverage or membership resting on a checkpoint the page did not authenticate is labelled
+  `checkpoint_unverified`, relative to a producer-asserted checkpoint (Evidence Bundle,
+  completeness). Records bound to no log position now read "Bundle verification failed: N of M
+  records uncheckpointed …" (INVALID, as every verifier says) where the banner said "passed";
+  their rows still render. A runtime with no Ed25519 says `incomplete`. The verification page's
+  check lists now list the producer signatures and the checkpoint signature as checked or failed
+  when the page checked them. `VerifiedBundleContext` gains `strict`; `CheckListInputs` gains
+  `strict`. A styled banner gets `oi-banner-incomplete` (a new `OUTCOME_REPORT_CSS` rule, so a page
+  that hashes that stylesheet for its CSP gets a new hash). Tests carried over from #197 (Steven
+  Mih). (#196)
 - Evidence Result v0: `Claim.evidence` now has `minItems: 1`, matching §1's Traceability rule that
   `evidence[]` is REQUIRED on every claim. A Result with a claim that cites nothing no longer
   validates. §2 says a claim about a `recorded_absence` cites the absence record by digest, and
