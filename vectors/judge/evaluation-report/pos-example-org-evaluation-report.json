@@ -3,17 +3,17 @@
     {
       "acts": [
         {
-          "citation_purpose": "grounds",
           "digest": "f7567d3dcb2517ef163fccac913f161a5697192f21f0fde408eef176a2624912",
           "digest_alg": "SHA-256",
+          "judge_purpose": "grounds",
           "type": "tau2-conversation"
         }
       ],
       "case_id": "example-org-sim-001",
       "method": {
-        "citation_purpose": "method",
         "digest": "381d8ecfcebaee02f0f0e43bcebb83f018a785a822100480737e2f6e8dbbfebd",
         "digest_alg": "SHA-256",
+        "judge_purpose": "method",
         "type": "rubric"
       },
       "verdict": "met"

@@ -3,9 +3,9 @@
     {
       "acts": [
         {
-          "citation_purpose": "grounds",
           "digest": "f7567d3dcb2517ef163fccac913f161a5697192f21f0fde408eef176a2624912",
           "digest_alg": "SHA-256",
+          "judge_purpose": "grounds",
           "type": "tau2-conversation"
         }
       ],

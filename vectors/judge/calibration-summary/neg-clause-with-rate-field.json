@@ -16,9 +16,9 @@
   "computed_at": "2026-09-25T00:00:00Z",
   "epistemic_type": "derived_metric",
   "judge_pin": {
-    "citation_purpose": "calibrates",
     "digest": "90b5b2951e3aaf6f864f3dd6d8e13ccef113569ff0c14000f47bce9249c6a935",
     "digest_alg": "SHA-256",
+    "judge_purpose": "calibrates",
     "type": "judge-pin"
   },
   "record_id": "cal-example-org-1",
