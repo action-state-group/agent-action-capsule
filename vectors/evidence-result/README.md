@@ -243,12 +243,15 @@ on, so no fixture here can show it. Its vector is `aggregate-stronger-than-evide
 |---|---|
 | `pos-example-org-applicability-result.json` | `generated_at` 2026-09-22. `claim-1` in force since 2026-01-01; `claim-2` (`not_met`), `claim-4` (`UNKNOWN`) and `claim-5` (`out_of_scope`) apply from 2027-08-02, keep their verdicts as readiness and are in no bucket. Population 2, `not_yet_in_force` 3, `unknown_count` 0, the fourth bucket empty |
 | `pos-example-org-applicability-boundary-result.json` | `generated_at` 2026-09-22T23:30:00-05:00, which is 2026-09-23 in UTC: a claim dated that day is in force, the next day's is later, a leap day long past is in force |
-| `pos-example-org-applicability-in-force-result.json` | one dated claim, already in force: no `not_yet_in_force`, but a reader still prints the as-of date |
+| `pos-example-org-applicability-in-force-result.json` | two dated claims, both in force (one from year 0099, a year like any other): no `not_yet_in_force`, but a reader still prints the as-of date |
 | `pos-example-org-reconcile-later-result.json` | a requirement claim and a `reconcile` claim of one requirement, both later |
 | `neg-later-claim-in-bucket.json` | checker: a later claim listed in `not_met` |
 | `neg-later-claim-in-population.json`, `neg-later-unknown-counted.json` | checker: later claims counted in `evaluated_population` or `unknown_count` |
 | `neg-not-yet-in-force-absent.json`, `neg-not-yet-in-force-wrong.json` | checker: the later count absent or wrong |
 | `neg-generated-at-unparseable.json` | checker: a dated Result whose `generated_at` is a bare date |
+| `neg-generated-at-impossible.json` | checker: `generated_at` 2026-02-30T00:00:00Z, a date that does not exist |
+| `neg-generated-at-without-seconds.json` | checker: `generated_at` 2026-09-22T10:00+00:00, outside RFC 3339's `date-time` |
+| `neg-not-yet-in-force-without-later.json` | checker: `not_yet_in_force` 0 present though no claim is later |
 | `neg-applies-from-not-a-date.json` | checker: `applies_from` 2027-02-30 |
 | `neg-applies-from-disagrees-in-row.json` | checker: two claims of one requirement disagree on the date |
 

@@ -226,3 +226,48 @@ it("without a transcript in the bundle, a session's transcript reads absent", as
   const m = await model();
   expect(m.sessions[0]!.transcript.state).toBe("absent");
 });
+
+// Result v0 section 4.2: the art5 claims switched on, task-1's judged
+// out_of_scope; section 4.3: the art50 clear-or-obvious claims later.
+function outOfScopeAndLater(source: Obj): void {
+  const doc = (source.disclosures as Obj).result as Obj;
+  const result = doc.agent_input as Obj;
+  const claims = result.claims as Obj[];
+  const buckets = (result.aggregate as Obj).buckets as Obj;
+  for (const claim of claims) {
+    if (claim.requirement_ref === "art5.no_manipulation_or_deception")
+      claim.out_of_scope_allowed = true;
+    if (claim.requirement_ref === "art50.disclosure_clear_or_obvious")
+      claim.applies_from = "2027-08-02";
+  }
+  const judged =
+    "tau2:airline:task-1:trial-0::art5.no_manipulation_or_deception";
+  claims.find((c) => c.id === judged)!.verdict = "out_of_scope";
+  const later = (id: unknown) =>
+    typeof id === "string" && id.endsWith("art50.disclosure_clear_or_obvious");
+  buckets.met = (buckets.met as string[]).filter((id) => !later(id));
+  buckets.not_met = (buckets.not_met as string[]).filter(
+    (id) => id !== judged && !later(id),
+  );
+  buckets.out_of_scope = [judged];
+  const coverage = (result.aggregate as Obj).coverage as Obj;
+  coverage.evaluated_population = (coverage.evaluated_population as number) - 2;
+  coverage.not_yet_in_force = 2;
+}
+
+it("(ER 4.2, 4.3) counts out_of_scope on its own, never as not applicable or an exception, and draws no row for a claim not yet in force", async () => {
+  const m = await model(outOfScopeAndLater);
+  const rows = m.obligations.flatMap((o) => o.rows);
+  const art5 = rows.find(
+    (r) => r.criterionId === "art5.no_manipulation_or_deception",
+  )!;
+  expect(art5.metCount).toBe(1);
+  expect(art5.notMetCount).toBe(0);
+  expect(art5.outOfScopeCount).toBe(1);
+  expect(art5.notApplicableCount).toBe(0);
+  const art50 = rows.find(
+    (r) => r.criterionId === "art50.disclosure_clear_or_obvious",
+  )!;
+  expect(art50.metCount + art50.notMetCount + art50.notEvaluableCount).toBe(0);
+  expect(art50.outOfScopeCount).toBe(0);
+});

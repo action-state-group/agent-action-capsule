@@ -86,8 +86,8 @@ anything other than `SATISFIED`; `verdict` MUST be `met`, `not_met` or, where th
 it, `out_of_scope` only when `sufficiency` is `SATISFIED`. A claim asserting any of those three
 against `GAP`, `INSUFFICIENT`, or `UNKNOWN` sufficiency is malformed, and so is a `SATISFIED` claim
 asserting `not_evaluable`. The companion schema enforces this structurally (§4, `Claim`'s
-`if`/`then`). `out_of_scope` is ruling 10 of 2026-10-21 (Steven: "a fourth Result verdict where a
-pack switches it on, shown with its own count, never folded into met"); the 2026-09-22 ruling quoted
+`if`/`then`). `out_of_scope` is the 2026-10-21 ruling ("a fourth Result verdict where a pack
+switches it on, shown with its own count, never folded into met"); the 2026-09-22 ruling quoted
 above lists the three judgments that existed then, and its rule holds for all four.
 
 Every claim also carries:
@@ -213,7 +213,7 @@ and a `not_met` claim is never counted as met; a reader shows each verdict's cou
 claim by its `verdict` — `met`, `not_met`, `not_evaluable`, and `out_of_scope` where the contract
 switches it on (§4.2) — never rolled up into one pass/fail figure or a percentage. A claim not yet
 in force is in no bucket (§4.3). A single number hides which requirements were actually judged
-versus which were skipped for lack of evidence; the three buckets keep that distinction visible at
+versus which were skipped for lack of evidence; the buckets keep that distinction visible at
 the point a sponsor first looks at the Result. `not_evaluable` is not a failure and not a success
 — it is its own bucket, exactly as large as `sufficiency != SATISFIED` makes it (§1), and a Result
 that folds it into either of the other two has silently converted "we could not tell" into an
@@ -395,7 +395,7 @@ Fixtures: §11.
 
 ### 4.2 `out_of_scope` — the fourth verdict
 
-**Status: RULED (ruling 10, 2026-10-21, and the 2026-10-22 ruling on this revision).** `out_of_scope`
+**Status: RULED (2026-10-21, 2026-10-22).** `out_of_scope`
 is a judged outcome: the requirement was evaluated against sufficient evidence, and the situation it
 asks about did not arise in the evaluated subject. It is a claim with evidence, tier and grade like
 any other. It is not three nearby things:
@@ -420,8 +420,8 @@ hold:
   claim (`type` absent or `requirement`; never `reconcile` or `close`), and its carrier `status` MUST
   NOT be `NOT_APPLICABLE` (schema).
 - `aggregate.buckets.out_of_scope` is REQUIRED when any claim carries `out_of_scope_allowed`, and
-  MUST be absent otherwise (schema). A Result whose contract does not switch it on carries the same
-  three buckets it did before this section existed.
+  MUST be absent otherwise (schema). A Result whose contract does not switch it on carries the
+  buckets it did before this section existed: `met`, `not_met` and `not_evaluable`.
 - Every claim of one requirement (`contract_ref`, `requirement_ref`) carries the same value
   (checker).
 - An in-force `out_of_scope` claim counts in `evaluated_population`, sits in `buckets.out_of_scope`
@@ -443,9 +443,11 @@ copies the date.
 
 A claim is **later** when `applies_from` is after the UTC calendar date of the Result's
 `generated_at`; on that date or before it, the claim is in force. The status is derived, never
-carried. When any claim carries `applies_from`, `generated_at` MUST parse as an RFC 3339 date-time
-with an offset, and every `applies_from` MUST be a calendar date (checker; the schema's `pattern`
-checks only the shape).
+carried. When any claim carries `applies_from`, `generated_at` MUST be an RFC 3339 `date-time`
+(section 5.6) with an offset (`Z` or `+hh:mm`/`-hh:mm`; `T` and `Z` in either case), naming a real
+date and time: no leap second, hour at most 23, offset hours at most 23. Every `applies_from` MUST
+be a calendar date from year 0001 on. The checker and the TypeScript reader apply this one grammar;
+the schema's `pattern` checks only the shape.
 
 - A later claim keeps its own sufficiency and verdict, as readiness. It is in no verdict bucket (so
   never in `met` or `out_of_scope`), and it is in neither `evaluated_population` nor
@@ -771,7 +773,7 @@ shape has no counterpart field at all in Result v0 and is not tabulated below.
 | `AxisJudgment.rationale` | `presentation.summary` (`analysis` carrier) or `presentation.narrative` (`story` carrier) | Renamed and gated: #102's rationale is unconditional free text; Result v0 only allows the equivalent carriers when the disclosure policy (§2) permits, and `disclosure`-carried claims have neither field. |
 | `AxisJudgment.evidenceIds` | `claim.evidence[]` | Renamed; #102 carries bare ids (implicitly capsule ids), Result v0 carries `{digest_alg, digest}` refs — by digest only, never a bare id resolved against an unspecified namespace. |
 | `RatingNode.verdict` (`pass \| fail \| unsure`) | `claim.verdict` | A THIRD independent three-value spelling of the same pass/fail/unclear concept #102 already spells two ways (`AxisJudgment.status` and `RatingNode.verdict` disagree with each other). Result v0 has exactly one verdict vocabulary; both #102 fields rename onto it. |
-| `ReportNode.outcomes[].aggregate` (`pass \| fail \| null`) | *(no direct counterpart)* | Closest analogue is a claim's own `verdict`, but #102's `Outcome.aggregate` is a rollup across cases, and §3 forbids rolling verdicts up into anything narrower than the three named buckets. `aggregate.buckets` is the v0 replacement shape, not a per-outcome pass/fail/null field. |
+| `ReportNode.outcomes[].aggregate` (`pass \| fail \| null`) | *(no direct counterpart)* | Closest analogue is a claim's own `verdict`, but #102's `Outcome.aggregate` is a rollup across cases, and §3 forbids rolling verdicts up into anything narrower than the named buckets. `aggregate.buckets` is the v0 replacement shape, not a per-outcome pass/fail/null field. |
 | `ReportNode.withheldActs` | `presentation` = `analysis` or `story` carrier, `status` gated by §2 | #102 marks an act "withheld" structurally (missing `agentInput`/`agentOutput`) with no further typed distinction. Result v0 requires naming *why* via the eight-value `EvidenceStatus`, and gates which carrier may be used (§2) — a strictly more specific replacement. |
 | `SummaryNode.crossCaseAggregation` / `perAxis` / `counts` / `cohort` | *(no counterpart)* | Free-form cross-case aggregation and cohort fields; out of scope for v0's per-requirement claim model. A future revision MAY add a comparable rollup once a concrete need exists (the same deferral `evidence-plan-ir-v0.md` §3.1 uses for typed-ref alignment). |
 | `CalibrationNode.*` | *(no counterpart)* | Calibration (confusion matrix, agreement, corrected rate) is a derived-metric concept outside the per-requirement claim model; not part of v0. |
@@ -859,5 +861,5 @@ checker requires every positive's `evaluated_population` and `unknown_count` to 
 `pos-example-org-out-of-scope-empty-result.json`, `pos-example-org-close-switched-on-result.json`),
 eight schema negatives and two checker negatives; §4.3's applicability adds four positives
 (`pos-example-org-applicability-result.json`, `-boundary-`, `-in-force-` and
-`pos-example-org-reconcile-later-result.json`) and eight checker negatives. Each negative has its own
+`pos-example-org-reconcile-later-result.json`) and eleven checker negatives. Each negative has its own
 mutant proof; `vectors/evidence-result/README.md` lists them.

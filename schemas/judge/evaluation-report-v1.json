@@ -67,7 +67,7 @@
       }
     },
     "Case": {
-      "description": "The single-party adjudication: one case, judged under this report's judge_pin, against cited acts and a cited method, resolving to the Evidence Contract's three-value Verdict (mirrored here, never redefined -- same vocabulary evidence-result-v0.json's Claim.verdict uses).",
+      "description": "The single-party adjudication: one case, judged under this report's judge_pin, against cited acts and a cited method, resolving to three values of the Evidence Contract's Verdict (mirrored here, never redefined; the Contract and evidence-result-v0.json's Claim.verdict also carry out_of_scope, which this record does not carry in this version).",
       "type": "object",
       "additionalProperties": false,
       "required": ["case_id", "verdict", "acts", "method"],

@@ -138,6 +138,7 @@ const VERDICT_TEXT: Record<DrawnVerdict, string> = {
   failed: "failed verification",
   unsupported: "unsupported",
   not_applicable: "not applicable",
+  out_of_scope: "out of scope",
 };
 
 /** `tau2:airline:task-20:trial-0` reads "task 20"; any other id is shown whole. */
@@ -240,7 +241,7 @@ function pill(verdict: DrawnVerdict | "resolved" | "missed"): HTMLElement {
   const tone =
     verdict === "met" || verdict === "resolved"
       ? "ok"
-      : verdict === "not_applicable"
+      : verdict === "not_applicable" || verdict === "out_of_scope"
         ? "na"
         : verdict === "not_evaluable"
           ? "ne"
@@ -309,6 +310,9 @@ function renderConversation(
   const na = conversation.criteria.filter(
     (c) => c.verdict === "not_applicable",
   );
+  const outOfScope = conversation.criteria.filter(
+    (c) => c.verdict === "out_of_scope",
+  );
 
   const summary = el("summary", "conv-s");
   summary.append(el("span", "cid", caseLabel(conversation.conversationId)));
@@ -318,7 +322,7 @@ function renderConversation(
       "span",
       "cwhy",
       resolved
-        ? `${allCriteriaMet(conversation.criteria.length)}${na.length > 0 ? ` (${na.length} not applicable)` : ""}`
+        ? `${allCriteriaMet(conversation.criteria.length)}${na.length > 0 ? ` (${na.length} not applicable)` : ""}${outOfScope.length > 0 ? ` (${outOfScope.length} out of scope)` : ""}`
         : `missed on: ${[...misses, ...(misses.length === 0 ? unjudged : [])]
             .map((c) => criterionLabel(model, c.checkId, c.criterionId).label)
             .join(", ")}`,
@@ -809,6 +813,12 @@ function renderLines(
       model.notApplicableCount,
       fmtCount(model.notApplicableCount),
     ],
+    [
+      "out-of-scope",
+      "Criterion judgments out of scope",
+      model.outOfScopeCount,
+      fmtCount(model.outOfScopeCount),
+    ],
   ];
   for (const [key, label, count, shown] of lines) {
     const tr = document.createElement("tr");
@@ -825,7 +835,11 @@ function renderLines(
             ? model.conversations.filter((c) =>
                 c.criteria.some((cr) => cr.verdict === "not_applicable"),
               )
-            : undefined;
+            : key === "out-of-scope"
+              ? model.conversations.filter((c) =>
+                  c.criteria.some((cr) => cr.verdict === "out_of_scope"),
+                )
+              : undefined;
     if (behind !== undefined && behind.length > 0)
       desc.append(
         drill(

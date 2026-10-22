@@ -616,10 +616,38 @@ function presentationFindings(path: string, value: unknown): string[] {
 }
 
 const CALENDAR_DATE = /^(\d{4})-(\d{2})-(\d{2})$/u;
+// RFC 3339 section 5.6 with a required offset, read the same way by the
+// schema checker (schemas/check_evidence_result_examples.py `_utc_date`).
+// A leap second (60) is not accepted.
 const RFC3339_WITH_OFFSET =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/iu;
+  /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|([+-])(\d{2}):(\d{2}))$/u;
 
-/** `YYYY-MM-DD` naming a real calendar date, as `applies_from` must. */
+/** Milliseconds since the epoch of a proleptic UTC calendar instant; years below 100 stay as written. */
+function utcMillis(
+  year: number,
+  month: number,
+  day: number,
+  hours = 0,
+  minutes = 0,
+  seconds = 0,
+): number {
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(hours, minutes, seconds, 0);
+  return date.getTime();
+}
+
+function realDate(year: number, month: number, day: number): boolean {
+  if (year < 1) return false;
+  const date = new Date(utcMillis(year, month, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+/** `YYYY-MM-DD` naming a real calendar date (year 0001 on), as `applies_from` must. */
 export function isCalendarDate(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const match = CALENDAR_DATE.exec(value);
@@ -629,25 +657,43 @@ export function isCalendarDate(value: unknown): value is string {
     number,
     number,
   ];
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  return (
-    parsed.getUTCFullYear() === year &&
-    parsed.getUTCMonth() === month - 1 &&
-    parsed.getUTCDate() === day
-  );
+  return realDate(year, month, day);
 }
 
 /**
  * The UTC calendar date of an RFC 3339 date-time with an offset, as
- * `YYYY-MM-DD`; undefined when it is not one (spec section 4.3).
+ * `YYYY-MM-DD`; undefined when it is not one, including an impossible date
+ * or time such as 2026-02-30 or 24:00 (spec section 4.3).
  */
 export function utcDateOf(generatedAt: unknown): string | undefined {
-  if (typeof generatedAt !== "string" || !RFC3339_WITH_OFFSET.test(generatedAt))
+  if (typeof generatedAt !== "string") return undefined;
+  const match = RFC3339_WITH_OFFSET.exec(generatedAt);
+  if (match === null) return undefined;
+  const [year, month, day, hours, minutes, seconds] = match
+    .slice(1, 7)
+    .map(Number) as [number, number, number, number, number, number];
+  const sign = match[7];
+  const offsetHours = sign === undefined ? 0 : Number(match[8]);
+  const offsetMinutes = sign === undefined ? 0 : Number(match[9]);
+  if (
+    !realDate(year, month, day) ||
+    hours > 23 ||
+    minutes > 59 ||
+    seconds > 59 ||
+    offsetHours > 23 ||
+    offsetMinutes > 59
+  )
     return undefined;
-  const time = Date.parse(generatedAt);
-  return Number.isNaN(time)
-    ? undefined
-    : new Date(time).toISOString().slice(0, 10);
+  const offset =
+    (sign === "-" ? -1 : 1) * (offsetHours * 60 + offsetMinutes) * 60_000;
+  const utc = new Date(
+    utcMillis(year, month, day, hours, minutes, seconds) - offset,
+  );
+  return [
+    String(utc.getUTCFullYear()).padStart(4, "0"),
+    String(utc.getUTCMonth() + 1).padStart(2, "0"),
+    String(utc.getUTCDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 /**
@@ -866,6 +912,13 @@ export function validateEvidenceResult(value: unknown): string[] {
         findings.push(`claims: the claims of ${key} disagree on ${member}`);
   if (findings.length > 0) return findings;
   const later = laterClaimIds(value);
+  // Spec section 4.3: not_yet_in_force is there exactly when a claim is
+  // later. Its absence beside a later claim reads as a count mismatch
+  // (recomputeCounts); its presence with none later is malformed.
+  if (later.size === 0 && Object.hasOwn(coverage!, "not_yet_in_force"))
+    findings.push(
+      "aggregate.coverage.not_yet_in_force: present, but no claim is later",
+    );
 
   const verdictById = new Map<string, string>();
   (value.claims as ObjectValue[]).forEach((claim, index) => {
@@ -993,7 +1046,9 @@ export function recomputeCounts(
       notMet: recomputed["buckets.not_met"]!,
       notEvaluable: recomputed["buckets.not_evaluable"]!,
       ...(fourth ? { outOfScope: recomputed["buckets.out_of_scope"]! } : {}),
-      failed: inForce.length - standing.length,
+      // A later claim that failed verification is still a failure: applicability
+      // takes a claim out of the verdict counts, never out of verification.
+      failed: claims.filter((claim) => failed.has(claim.id as string)).length,
     },
     mismatches,
   };

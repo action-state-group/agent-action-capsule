@@ -49,6 +49,9 @@ const REFUSED = [
   "neg-applies-from-disagrees-in-row",
   "neg-generated-at-unparseable",
   "neg-applies-from-not-a-date",
+  "neg-generated-at-impossible",
+  "neg-generated-at-without-seconds",
+  "neg-not-yet-in-force-without-later",
 ];
 
 // Valid documents whose stated counts the claims do not bear out: the
@@ -101,6 +104,15 @@ describe("Result v0 sections 4.2 and 4.3", () => {
     });
   });
 
+  it("counts a later claim that failed verification as failed", () => {
+    const counts = recomputeCounts(
+      vector("pos-example-org-applicability-result"),
+      new Set(["claim-2"]),
+    );
+    expect(counts.bucketCounts.failed).toBe(1);
+    expect(counts.coverage.notYetInForce).toBe(3);
+  });
+
   it("judges in force by the UTC date of generated_at", () => {
     const doc = vector("pos-example-org-applicability-boundary-result");
     expect(utcDateOf(doc.generated_at)).toBe("2026-09-23");
@@ -110,5 +122,14 @@ describe("Result v0 sections 4.2 and 4.3", () => {
     expect(isCalendarDate("2024-02-29")).toBe(true);
     expect(isCalendarDate("2027-02-30")).toBe(false);
     expect(isCalendarDate("2027-13-01")).toBe(false);
+    expect(isCalendarDate("0099-01-01")).toBe(true);
+    expect(isCalendarDate("0000-01-01")).toBe(false);
+    expect(utcDateOf("2026-02-30T00:00:00Z")).toBeUndefined();
+    expect(utcDateOf("2026-09-22T24:00:00Z")).toBeUndefined();
+    expect(utcDateOf("2026-09-22T10:00+00:00")).toBeUndefined();
+    expect(utcDateOf("2026-09-22X00:00:00+00:00")).toBeUndefined();
+    expect(utcDateOf("2026-09-22T00:00:00+00:00:30")).toBeUndefined();
+    expect(utcDateOf("2026-09-22t23:30:00-05:00")).toBe("2026-09-23");
+    expect(utcDateOf("2026-09-22T00:30:00+01:00")).toBe("2026-09-21");
   });
 });

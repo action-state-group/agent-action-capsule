@@ -191,11 +191,13 @@ function checkItBlock(test: SessionTest): HTMLElement {
         ? "✗ not met"
         : test.verdict === "not_applicable"
           ? "— not applicable"
-          : test.verdict === "failed"
-            ? "✗ failed verification (counted as an exception)"
-            : test.verdict === "unsupported"
-              ? "✗ unsupported: its evidence is not in this bundle (counted as an exception)"
-              : "– not evaluable";
+          : test.verdict === "out_of_scope"
+            ? "— out of scope: did not arise"
+            : test.verdict === "failed"
+              ? "✗ failed verification (counted as an exception)"
+              : test.verdict === "unsupported"
+                ? "✗ unsupported: its evidence is not in this bundle (counted as an exception)"
+                : "– not evaluable";
   head.append(element("span", label));
   head.append(tierBadge(test.tier));
   box.append(head);
@@ -305,6 +307,7 @@ function renderTests(host: HTMLElement, model: ComplianceModel): void {
     el("th", "n", "Population"),
     el("th", "n", "Exceptions"),
     el("th", "n", "Not evaluable"),
+    el("th", "n", "Out of scope"),
     element("th", "Result"),
   );
   thead.append(headRow);
@@ -342,6 +345,7 @@ function renderTests(host: HTMLElement, model: ComplianceModel): void {
         el("td", "n", fmt(population)),
         el("td", "n", fmt(row.notMetCount)),
         el("td", "n", fmt(row.notEvaluableCount)),
+        el("td", "n", fmt(row.outOfScopeCount)),
         resultCell,
       );
       tbody.append(tr);

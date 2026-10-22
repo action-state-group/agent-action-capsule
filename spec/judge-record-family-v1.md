@@ -25,9 +25,10 @@ old-field → new-field mapping in §9.
   `schemas/vendor/epistemic-types.json` for this family's own parity check (§0).
 - The Evidence Layer's six-state reconcile vocabulary and Close model (section "Reconcile and
   Close") — `close/v1` (§3) is a direct schema encoding of that prose, not a second model.
-- The Evidence Contract's three-value `Verdict` (`met | not_met | not_evaluable`),
-  mirrored by `evaluation-report/v1`'s `cases[].verdict`, identical to `evidence-result-v0.json`'s
-  `Claim.verdict`.
+- Three values of the Evidence Contract's `Verdict` (`met | not_met | not_evaluable`), mirrored
+  by `evaluation-report/v1`'s `cases[].verdict`. The Contract and `evidence-result-v0.json`'s
+  `Claim.verdict` also carry `out_of_scope` (Result v0 §4.2); this family's records do not carry it
+  in this version.
 - `evidence-result-v0.json`'s and `evidence-plan-ir-v0.json`'s `<contract_id>@<version>`
   `contract_ref` convention.
 

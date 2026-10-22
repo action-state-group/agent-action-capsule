@@ -1183,6 +1183,8 @@ pos_example_org_applicability_boundary_result["aggregate"]["buckets"]["not_met"]
 # there is no not_yet_in_force, but a reader still prints the as-of date
 pos_example_org_applicability_in_force_result = _mutated(pos_example_org_claims_result)
 pos_example_org_applicability_in_force_result["claims"][0]["applies_from"] = "2026-01-01"
+# a year below 100 is a year like any other, never read as 19xx
+pos_example_org_applicability_in_force_result["claims"][1]["applies_from"] = "0099-01-01"
 
 # a requirement claim and a reconcile claim of one row, both later
 pos_example_org_reconcile_later_result = _mutated(pos_example_org_reconcile_result)
@@ -1214,6 +1216,15 @@ neg_not_yet_in_force_wrong["aggregate"]["coverage"]["not_yet_in_force"] = 2
 
 neg_generated_at_unparseable = _mutated(pos_example_org_applicability_result)
 neg_generated_at_unparseable["generated_at"] = "2026-09-22"
+
+neg_generated_at_impossible = _mutated(pos_example_org_applicability_result)
+neg_generated_at_impossible["generated_at"] = "2026-02-30T00:00:00Z"
+
+neg_generated_at_without_seconds = _mutated(pos_example_org_applicability_result)
+neg_generated_at_without_seconds["generated_at"] = "2026-09-22T10:00+00:00"
+
+neg_not_yet_in_force_without_later = _mutated(pos_example_org_applicability_in_force_result)
+neg_not_yet_in_force_without_later["aggregate"]["coverage"]["not_yet_in_force"] = 0
 
 neg_applies_from_not_a_date = _mutated(pos_example_org_applicability_result)
 neg_applies_from_not_a_date["claims"][1]["applies_from"] = "2027-02-30"
@@ -1290,6 +1301,9 @@ def main() -> int:
     write("neg-not-yet-in-force-wrong", neg_not_yet_in_force_wrong)
     write("neg-generated-at-unparseable", neg_generated_at_unparseable)
     write("neg-applies-from-not-a-date", neg_applies_from_not_a_date)
+    write("neg-generated-at-impossible", neg_generated_at_impossible)
+    write("neg-generated-at-without-seconds", neg_generated_at_without_seconds)
+    write("neg-not-yet-in-force-without-later", neg_not_yet_in_force_without_later)
     write("neg-applies-from-disagrees-in-row", neg_applies_from_disagrees_in_row)
     write("neg-claim-evidence-empty", neg_claim_evidence_empty)
     for name, records in CLOSE_RECORDS.items():

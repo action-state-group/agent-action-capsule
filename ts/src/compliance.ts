@@ -54,6 +54,7 @@ export type TestVerdict =
   | "not_met"
   | "not_evaluable"
   | "not_applicable"
+  | "out_of_scope"
   | "failed"
   | "unsupported";
 
@@ -97,9 +98,11 @@ export interface ObligationRowModel {
   readonly notMetCount: number;
   readonly notEvaluableCount: number;
   readonly notApplicableCount: number;
+  /** Judged out_of_scope (Result v0 section 4.2): its own count, in the population, never an exception. */
+  readonly outOfScopeCount: number;
   /** verdict bucket -> conversation ids, for the row's own drill-down. failed/unsupported fold into not_met here. */
   readonly sessionsByVerdict: ReadonlyMap<
-    "met" | "not_met" | "not_evaluable" | "not_applicable",
+    "met" | "not_met" | "not_evaluable" | "not_applicable" | "out_of_scope",
     readonly string[]
   >;
 }
@@ -160,11 +163,6 @@ export interface ComplianceModel {
 function drawnVerdict(claim: ResultClaim): TestVerdict {
   if (claim.failed) return "failed";
   if (claim.support === "unsupported") return "unsupported";
-  // This deprecated card predates the fourth verdict (spec section 4.2). Its
-  // "not applicable" is what an out_of_scope judgment means here: the
-  // situation did not arise, never met. The contract-report view shows the
-  // verdict as itself.
-  if (claim.verdict === "out_of_scope") return "not_applicable";
   return claim.verdict;
 }
 
@@ -294,6 +292,9 @@ function buildSessions(
         });
         continue;
       }
+      // Result v0 section 4.3: a claim not yet in force is readiness only,
+      // outside the population; this deprecated card draws no row for it.
+      if (claim.later) continue;
       const payload = reportPayload(result.records, claim);
       const rationale = asString(payload?.rationale);
       // The Result's own schema-checked contract_ref first, then what the
@@ -362,13 +363,14 @@ function buildRow(
   sessions: readonly Session[],
 ): ObligationRowModel {
   const byVerdict = new Map<
-    "met" | "not_met" | "not_evaluable" | "not_applicable",
+    "met" | "not_met" | "not_evaluable" | "not_applicable" | "out_of_scope",
     string[]
   >([
     ["met", []],
     ["not_met", []],
     ["not_evaluable", []],
     ["not_applicable", []],
+    ["out_of_scope", []],
   ]);
   const tiers: TierReading[] = [];
   for (const session of sessions) {
@@ -399,6 +401,9 @@ function buildRow(
     notMetCount: byVerdict.get("not_met")!.length,
     notEvaluableCount: byVerdict.get("not_evaluable")!.length,
     notApplicableCount: byVerdict.get("not_applicable")!.length,
+    // Result v0 section 4.2: judged, in the population, counted on its own,
+    // never as not applicable and never as met.
+    outOfScopeCount: byVerdict.get("out_of_scope")!.length,
     sessionsByVerdict: byVerdict,
   };
 }

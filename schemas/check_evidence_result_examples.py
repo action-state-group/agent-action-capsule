@@ -229,8 +229,9 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import sys
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -517,6 +518,9 @@ REVISION_NEGATIVES = [
     ("neg-not-yet-in-force-wrong", "skip_later_count", "the not_yet_in_force count"),
     ("neg-generated-at-unparseable", "skip_date_parse", "the date parse"),
     ("neg-applies-from-not-a-date", "skip_date_parse", "the date parse"),
+    ("neg-generated-at-impossible", "skip_date_parse", "the date parse"),
+    ("neg-generated-at-without-seconds", "skip_date_parse", "the date parse"),
+    ("neg-not-yet-in-force-without-later", "skip_later_count", "the not_yet_in_force count"),
 ]
 
 # Section 8a: the two levels that carry the x- slot, as $defs names.
@@ -592,17 +596,45 @@ _STATUS_TO_SUFFICIENCY = {
 }
 
 
-def _utc_date(generated_at: str, *, mutant: str | None) -> date | None:
-    if mutant == "skip_date_parse":
-        return date.fromisoformat(generated_at[:10])
-    # RFC 3339 with an offset; Python 3.9's fromisoformat needs +00:00 for Z.
+# RFC 3339 section 5.6 with a required offset, the same grammar the TypeScript
+# reader applies (ts/src/result-root.ts `utcDateOf`). A leap second (60) is
+# not accepted.
+RFC3339_WITH_OFFSET = re.compile(
+    r"\A(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|([+-])(\d{2}):(\d{2}))\Z"
+)
+CALENDAR_DATE = re.compile(r"\A(\d{4})-(\d{2})-(\d{2})\Z")
+
+
+def _calendar_date(value: str) -> date | None:
+    match = CALENDAR_DATE.match(value)
+    if match is None:
+        return None
     try:
-        stamp = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+        return date(*(int(part) for part in match.groups()))
     except ValueError:
         return None
-    if stamp.tzinfo is None:
+
+
+def _utc_date(generated_at: str) -> date | None:
+    match = RFC3339_WITH_OFFSET.match(generated_at)
+    if match is None:
         return None
-    return stamp.astimezone(timezone.utc).date()
+    year, month, day, hours, minutes, seconds = (int(part) for part in match.groups()[:6])
+    sign, offset_hours, offset_minutes = match.group(7), match.group(8), match.group(9)
+    if hours > 23 or minutes > 59 or seconds > 59:
+        return None
+    if sign is not None and (int(offset_hours) > 23 or int(offset_minutes) > 59):
+        return None
+    try:
+        local = datetime(year, month, day, hours, minutes, seconds)
+    except ValueError:
+        return None
+    offset = timedelta(0)
+    if sign is not None:
+        offset = timedelta(hours=int(offset_hours), minutes=int(offset_minutes))
+        if sign == "-":
+            offset = -offset
+    return (local - offset).date()
 
 
 def revision_findings(doc: EvidenceResultDoc, *, mutant: str | None = None) -> list[str]:
@@ -620,23 +652,22 @@ def revision_findings(doc: EvidenceResultDoc, *, mutant: str | None = None) -> l
     aggregate = doc["aggregate"]
     coverage = aggregate["coverage"]
     dated = [c for c in claims if "applies_from" in c]
-    as_of = _utc_date(doc["generated_at"], mutant=mutant) if dated else None
-    if dated and as_of is None:
-        out.append(f"generated_at {doc['generated_at']!r} is not an RFC 3339 date-time with an offset")
-        return out
     later: set[str] = set()
-    for claim in dated:
-        try:
-            applies = date.fromisoformat(claim["applies_from"])
-        except ValueError:
-            if mutant != "skip_date_parse":
+    if dated and mutant == "skip_date_parse":
+        # the rule switched off: dates compared as text, nothing parsed
+        as_of_text = doc["generated_at"][:10]
+        later = {c["id"] for c in dated if c["applies_from"] > as_of_text}
+    elif dated:
+        as_of = _utc_date(doc["generated_at"])
+        if as_of is None:
+            out.append(f"generated_at {doc['generated_at']!r} is not an RFC 3339 date-time with an offset")
+            return out
+        for claim in dated:
+            applies = _calendar_date(claim["applies_from"])
+            if applies is None:
                 out.append(f"{claim['id']}: applies_from {claim['applies_from']!r} is not a calendar date")
-                continue
-            if claim["applies_from"] > as_of.isoformat():
+            elif applies > as_of:
                 later.add(claim["id"])
-            continue
-        if applies > as_of:
-            later.add(claim["id"])
     in_force = [c for c in claims if c["id"] not in later]
 
     if mutant != "trust_buckets":
@@ -1181,6 +1212,26 @@ def main() -> int:
     # 4.3's bucket, row and applicability rules. Every positive passes; each
     # revision negative passes the schema, fails the check, and its mutant
     # flips it.
+    # The date grammar, case by case, as the TypeScript reader's tests pin it
+    # (ts/test/result-revision.test.ts).
+    for stamp, expected in (
+        ("2026-09-22T23:30:00-05:00", "2026-09-23"),
+        ("2026-09-22t23:30:00-05:00", "2026-09-23"),
+        ("2026-09-22T00:30:00+01:00", "2026-09-21"),
+        ("2026-02-30T00:00:00Z", None),
+        ("2026-09-22T24:00:00Z", None),
+        ("2026-09-22T10:00+00:00", None),
+        ("2026-09-22X00:00:00+00:00", None),
+        ("2026-09-22T00:00:00+00:00:30", None),
+        ("2026-09-22", None),
+    ):
+        got = _utc_date(stamp)
+        if (got.isoformat() if got else None) != expected:
+            findings.append(f"DATE-GRAMMAR {stamp!r}: read as {got}, expected {expected}")
+    for value, ok in (("0099-01-01", True), ("2024-02-29", True), ("0000-01-01", False), ("2027-02-30", False)):
+        if (_calendar_date(value) is not None) != ok:
+            findings.append(f"DATE-GRAMMAR {value!r}: calendar date should be {ok}")
+
     count_findings = len(findings)
     for name in POSITIVES:
         for line in revision_findings(_load(name)):

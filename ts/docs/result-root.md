@@ -69,7 +69,7 @@ viewer does not resolve them and says so on the row.
 
 From the root Result, and only from there: the coverage line
 (`evaluated_population`, `excluded_not_applicable`, `unknown_count`), the
-three buckets, and for every claim its `sufficiency`, `verdict`, `tier`,
+buckets (the fourth only when the contract switches it on), and for every claim its `sufficiency`, `verdict`, `tier`,
 `grade`, `type`, presentation carrier and status, and its cited digests.
 
 From the cited records, and only from there: every drill-down -- the

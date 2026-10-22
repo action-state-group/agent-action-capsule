@@ -1374,3 +1374,40 @@ it("reads the judge's probabilities only as probabilities: a value outside [0, 1
   ).toEqual({});
   expect(parseJudgeProbabilities("confidence=0.8abc")).toEqual({});
 });
+
+it("(ER 4.2) an out_of_scope claim is its own criterion verdict and count, never not applicable, and rolls up as does-not-apply", async () => {
+  const source = fixture("outcome-report-bundle.json");
+  const resultDoc = ((source.disclosures as Obj).result as Obj)
+    .agent_input as Obj;
+  const claims = resultDoc.claims as Obj[];
+  const requirementRef = "task_resolution.right_reservation";
+  for (const claim of claims)
+    if (claim.requirement_ref === requirementRef)
+      claim.out_of_scope_allowed = true;
+  const target = claims.find(
+    (claim) =>
+      claim.requirement_ref === requirementRef &&
+      claim.verdict === "not_met" &&
+      claim.sufficiency === "SATISFIED",
+  )!;
+  target.verdict = "out_of_scope";
+  const buckets = rebuildBuckets(
+    claims.filter((claim) => claim.verdict !== "out_of_scope"),
+  );
+  buckets.out_of_scope = [target.id as string];
+  (resultDoc.aggregate as Obj).buckets = buckets;
+  const { bundle } = await sealEvidenceBundle(source);
+  const result = await buildResultRoot(bundle);
+  const model = buildOutcomeReportModel(result, { percentages: false });
+  expect(model.outOfScopeCount).toBe(1);
+  const conversation = model.conversations.find((c) =>
+    c.criteria.some((cr) => cr.claim?.id === target.id),
+  )!;
+  const criterion = conversation.criteria.find(
+    (cr) => cr.claim?.id === target.id,
+  )!;
+  expect(criterion.verdict).toBe("out_of_scope");
+  expect(
+    conversation.criteria.filter((cr) => cr.verdict === "not_applicable"),
+  ).toHaveLength(0);
+});

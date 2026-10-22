@@ -890,6 +890,13 @@ it("(ER 4.2) draws the fourth bucket only when the contract switches out_of_scop
     root.querySelector('[data-bucket="met"] [data-claim-ref="claim-2"]'),
   ).toBeNull();
   expect(root.querySelectorAll("[data-count-mismatch]")).toHaveLength(0);
+  // undated, switched on: the switch is still labelled as copied
+  expect(
+    root.querySelector<HTMLElement>('[data-copied-facts="contract"]')!
+      .textContent,
+  ).toBe(
+    "The out-of-scope switch is copied from the contract, not re-checked here.",
+  );
 
   // a Result that does not switch it on has no fourth heading
   const plain = await render(
@@ -913,13 +920,14 @@ it("(ER 4.3) lists claims not yet in force apart from the buckets, with the as-o
   const root = await render((await sealEvidenceBundle(source)).bundle);
   const line = root.querySelector<HTMLElement>('[data-coverage="result"]')!;
   expect(line.textContent).toBe(
-    "coverage: 2 evaluations of 3 requirements · 1 excluded as not applicable · 0 with an unknown result · 1 not yet in force",
+    "coverage: 2 evaluations of 2 requirements · 1 excluded as not applicable · 0 with an unknown result · 1 evaluation not yet in force",
   );
   expect(root.querySelectorAll("[data-count-mismatch]")).toHaveLength(0);
   const asOf = root.querySelector<HTMLElement>("[data-as-of]")!;
   expect(asOf.dataset.asOf).toBe("2026-09-16");
-  expect(asOf.textContent).toContain("In force as of 2026-09-16.");
-  expect(asOf.textContent).toContain("from the contract, not re-checked here");
+  expect(asOf.textContent).toBe(
+    "In force as of 2026-09-16. The dates are copied from the contract, not re-checked here.",
+  );
   const later = root.querySelector<HTMLElement>(
     '[data-bucket="notYetInForce"] [data-claim-ref="claim-2"]',
   )!;
@@ -933,4 +941,26 @@ it("(ER 4.3) lists claims not yet in force apart from the buckets, with the as-o
     '[data-claim-row="claim-2"] [data-later="true"]',
   )!;
   expect(verdict.textContent).toBe("not_met (readiness)");
+});
+
+it("(ER 4.3) a later claim whose evidence is not in the bundle reads unsupported in the later list, never its stated verdict", async () => {
+  const source = fixture("result-root-bundle.json");
+  const doc = resultOf(source);
+  const claims = doc.claims as Obj[];
+  claims[0]!.applies_from = "2027-08-02";
+  (claims[0]!.evidence as Obj[])[0]!.digest = ABSENT_ID;
+  const aggregate = doc.aggregate as Obj;
+  (aggregate.buckets as Obj).met = [];
+  Object.assign(aggregate.coverage as Obj, {
+    evaluated_population: 2,
+    not_yet_in_force: 1,
+  });
+  const root = await render((await sealEvidenceBundle(source)).bundle);
+  const item = root.querySelector<HTMLElement>(
+    '[data-bucket="notYetInForce"] [data-claim-ref="claim-1"]',
+  )!;
+  expect(item.textContent).toBe(
+    "claim-1 · applies from 2027-08-02 · readiness: unsupported",
+  );
+  expect(item.className).toBe("claim-unsupported");
 });

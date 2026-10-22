@@ -52,6 +52,7 @@
       "verdict": "met"
     },
     {
+      "applies_from": "0099-01-01",
       "contract_ref": "ec:example-org-claims-eval:2026-09-22@1",
       "evidence": [
         {

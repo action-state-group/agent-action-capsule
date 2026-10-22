@@ -1503,12 +1503,18 @@ function renderClose(
 // `failed` -- never `met`, never its stated verdict, which is kept on
 // `data-stated-verdict` only. Otherwise an unresolved citation reads
 // `unsupported`. The row stays in every case.
-function appendVerdict(parent: HTMLElement, claim: ResultClaim): HTMLElement {
-  const shown = claim.failed
+// The verdict a reader may see: never the producer's word for a claim that
+// failed verification or whose evidence is not in the bundle.
+function shownVerdict(claim: ResultClaim): string {
+  return claim.failed
     ? "failed"
     : claim.support === "supported"
       ? claim.verdict
       : "unsupported";
+}
+
+function appendVerdict(parent: HTMLElement, claim: ResultClaim): HTMLElement {
+  const shown = shownVerdict(claim);
   // A later claim's verdict is readiness only (ER section 4.3): never read
   // as a result that counts.
   const cell = element(
@@ -1641,7 +1647,7 @@ const BUCKETS: ReadonlyArray<
 ];
 
 // Coverage is the first thing in the Result section after its heading, and
-// no number precedes it within the section; then the three buckets, never a
+// no number precedes it within the section; then the buckets, never a
 // single figure; then one row per claim with its own tier and grade. The
 // bundle-level verification banner, drawn before every section, is the one
 // thing above coverage that can carry digits ("N of M records
@@ -1656,10 +1662,15 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
   const section = element("section");
   section.dataset.page = "result";
   section.append(element("h1", "Evidence result"));
+  // The requirements the in-force evaluations cover: every claim of one
+  // requirement carries the same applies_from, so a requirement is in force
+  // or later as a whole (ER section 4.3).
   const requirements = new Set(
-    result.claims.map((claim) =>
-      JSON.stringify([claim.contractRef, claim.requirementRef]),
-    ),
+    result.claims
+      .filter((claim) => !claim.later)
+      .map((claim) =>
+        JSON.stringify([claim.contractRef, claim.requirementRef]),
+      ),
   ).size;
   const coverage = element("p");
   coverage.append(
@@ -1675,7 +1686,7 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
   const later = result.claims.filter((claim) => claim.later);
   const laterMarker = countMismatchMarker(result, "not_yet_in_force");
   if (later.length > 0 || laterMarker !== undefined) {
-    coverage.append(` · ${later.length} not yet in force`);
+    coverage.append(` · ${evaluationsWord(later.length)} not yet in force`);
     if (laterMarker !== undefined) coverage.append(" ", laterMarker);
     coverage.dataset.notYetInForce = String(later.length);
   }
@@ -1686,18 +1697,28 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
   coverage.dataset.excludedBasis = "stated";
   coverage.dataset.unknown = String(result.coverage.unknownCount);
   section.append(coverage);
-  // ER section 4.3: whenever a claim is dated, the date "in force" is
-  // relative to, and that the dates and the switch are the producer's copy
-  // of the contract, never checked here.
-  if (result.claims.some((claim) => claim.appliesFrom !== undefined)) {
-    // A dated Result passed validation, so generated_at parses.
-    const date = utcDateOf(result.generatedAt) ?? result.generatedAt;
-    const asOf = element(
-      "p",
-      `In force as of ${date}. Dates and the out_of_scope switch: from the contract, not re-checked here.`,
+  // ER sections 4.2 and 4.3: whenever a claim is dated, the date "in force"
+  // is relative to; and whenever a claim is dated or the out-of-scope switch
+  // is on, that these are the producer's copy of the contract, never checked
+  // here.
+  const dated = result.claims.some((claim) => claim.appliesFrom !== undefined);
+  if (dated || result.buckets.outOfScope !== undefined) {
+    const copied = element("p");
+    if (dated) {
+      // A dated Result passed validation, so generated_at parses.
+      const date = utcDateOf(result.generatedAt) ?? result.generatedAt;
+      copied.append(`In force as of ${date}. `);
+      copied.dataset.asOf = date;
+    }
+    copied.append(
+      dated && result.buckets.outOfScope !== undefined
+        ? "The dates and the out-of-scope switch are copied from the contract, not re-checked here."
+        : dated
+          ? "The dates are copied from the contract, not re-checked here."
+          : "The out-of-scope switch is copied from the contract, not re-checked here.",
     );
-    asOf.dataset.asOf = date;
-    section.append(asOf);
+    copied.dataset.copiedFacts = "contract";
+    section.append(copied);
   }
 
   const byId = new Map(result.claims.map((claim) => [claim.id, claim]));
@@ -1738,7 +1759,7 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
     }
     buckets.append(list);
   }
-  // The verifier's own state, after the producer's three buckets: claims
+  // The verifier's own state, after the producer's buckets: claims
   // that failed verification (a close state the links contradict). Drawn
   // always, `none` when empty, so a reader never has to infer from an
   // absent heading that nothing failed. Not a verdict bucket: a failed
@@ -1778,9 +1799,12 @@ function renderResultPage(result: ResultRoot, root: HTMLElement): void {
     for (const claim of later) {
       const item = element(
         "li",
-        `${claim.id} · applies from ${claim.appliesFrom ?? ""} · readiness: ${claim.verdict}`,
+        `${claim.id} · applies from ${claim.appliesFrom ?? ""} · readiness: ${shownVerdict(claim)}`,
       );
       item.dataset.claimRef = claim.id;
+      if (claim.failed) item.className = "claim-failed";
+      else if (claim.support === "unsupported")
+        item.className = "claim-unsupported";
       list.append(item);
     }
     buckets.append(list);
