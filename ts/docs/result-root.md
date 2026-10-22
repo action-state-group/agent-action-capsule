@@ -150,7 +150,7 @@ disagreed a `count mismatch` marker (`data-count-mismatch=<field>`) sits
 beside it, with the stated figure on the marker's `data-stated` attribute
 and nowhere in the text a reader takes as the number. The one figure
 carried as stated is `excluded_not_applicable`
-(`data-excluded-basis="stated"`): requirements excluded as not applicable
+(`data-excluded-basis="stated"`): evaluations excluded as not applicable
 are outside the evaluated population by construction and are never
 claims, so the document holds nothing to recount them from. The bucket
 headings read `met: 1` / `not met: none`, from the recomputed counts; a

@@ -421,7 +421,7 @@ export interface RecomputedCounts {
   /**
    * `evaluatedPopulation` and `unknownCount` are recomputed from the
    * claims (the claim count; claims whose sufficiency is UNKNOWN).
-   * `excludedNotApplicable` is carried as stated: requirements excluded as
+   * `excludedNotApplicable` is carried as stated: evaluations excluded as
    * not applicable are outside the evaluated population by construction
    * and are never claims, so the document holds nothing to recount them
    * from -- the view says so beside the number.
@@ -752,7 +752,7 @@ const countOf = (value: unknown): number =>
  * `failed` names the claims that failed verification (a close-state
  * mismatch; `ResultClaim.failed`). They stay in `evaluated_population` --
  * the producer did evaluate them -- but contribute to no verdict count and
- * to no unresolved count: their sufficiency and verdict are withheld, and
+ * to no `unknown_count`: their sufficiency and verdict are withheld, and
  * they are counted under `bucketCounts.failed` instead. A producer's
  * `buckets.met` that lists a failed claim therefore reads as a count
  * mismatch beside the recomputed `met`.

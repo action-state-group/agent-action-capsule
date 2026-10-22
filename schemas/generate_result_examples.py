@@ -1067,6 +1067,7 @@ neg_claim_evidence_empty["claims"][2]["evidence"] = []
 pos_example_org_repeated_requirement_result = _mutated(pos_example_org_claims_result)
 pos_example_org_repeated_requirement_result["claims"][1]["requirement_ref"] = "req-claim-1"
 
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("pos-example-org-claims-result", pos_example_org_claims_result)

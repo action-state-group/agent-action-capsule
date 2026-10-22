@@ -612,8 +612,8 @@ kind (its §6.7.5) and reports `coverage_declaration_aggregate` `FAIL` when the 
 another one. An
 aggregate whose claims rest on no declared set carries no `coverage_declaration`.
 
-It is not `aggregate.coverage` (§3), which counts requirements. It is not `coverage_report` (§7.1),
-which reports evidence per requirement. A valid signature on any of the evidence never implies
+It is not `aggregate.coverage` (§3), which counts evaluations, one per claim. It is not
+`coverage_report` (§7.1), which reports evidence per requirement. A valid signature on any of the evidence never implies
 completeness (interop profile §6.7). A Result rendering `kind` shows it beside the coverage
 statement and never as a grade.
 

@@ -684,7 +684,7 @@ Other members named `coverage` mean other things, and none of them is a coverage
 |---|---|---|
 | `coverage` | a request (§6.1) [ER §3.2] | the anchor an answer is asked at (`expected_pin`), or the freshness it must meet (`min_freshness`) |
 | `coverage` | an Evidence Contract requirement (§11.3.3) | how much of the subject the evidence is required to cover |
-| `aggregate.coverage` | an Evidence Result [RES §3] | how many requirements were evaluated, excluded and unresolved |
+| `aggregate.coverage` | an Evidence Result [RES §3] | how many evaluations (claims) were evaluated, how many were excluded as not applicable, and how many had an unknown result |
 | `coverage_report` | an Evidence Result [RES §7.1] | per requirement, what evidence exists and what is missing |
 | `coverage_declaration` | a definition document (this section); an Evidence Result aggregate (§6.7.5) | which population of units a set of answers claims to be |
 

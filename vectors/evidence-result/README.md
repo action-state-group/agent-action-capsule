@@ -30,7 +30,7 @@ gate (spec section 2):
 | `claim-3` | `GAP` | `not_evaluable` | `not_evaluable` | `analysis` | `WITHHELD` — the disclosure gate case: `disclosure` is not legal here (spec section 2) |
 
 `aggregate.coverage` reports `evaluated_population: 3` (the three claims above),
-`excluded_not_applicable: 1` (one requirement excluded from the evaluated population entirely, not
+`excluded_not_applicable: 1` (one evaluation excluded from the evaluated population entirely, not
 represented by a claim — the `EvidenceStatus` value `NOT_APPLICABLE` (spec sections 2 and 6), which is
 not one of section 1's four `Sufficiency` values), and
 `unknown_count: 0`.

@@ -1017,6 +1017,7 @@ def main() -> int:
 
     # Coverage counts evaluations (spec section 3): one per claim, so a
     # requirement evaluated twice counts twice.
+    count_findings = len(findings)
     for name in POSITIVES:
         instance = _load(name)
         claims = instance["claims"]
@@ -1035,8 +1036,9 @@ def main() -> int:
     if repeated["aggregate"]["coverage"]["evaluated_population"] == len(rows):
         findings.append("COVERAGE-COUNT-NOT-LOAD-BEARING: the repeated-requirement positive "
                         "counts as many requirements as evaluations")
-    print(f"OK  COUNTS        every positive counts evaluations; the repeated-requirement "
-          f"positive has 3 evaluations of {len(rows)} requirements")
+    if len(findings) == count_findings:
+        print(f"OK  COUNTS        every positive counts evaluations; the repeated-requirement "
+              f"positive has {len(repeated['claims'])} evaluations of {len(rows)} requirements")
 
     # --- 5. CLOSE STATE IS DERIVABLE: the link walk ----------------------------
     #        Schema validation cannot see across records; this can. Every
