@@ -582,8 +582,9 @@ export function verificationCheckLists(
   )
     outcome.set("countersignature-receipts", "notChecked");
 
-  // The strict checks ran here: the lists say how the producer signatures
-  // and the checkpoint signature went, not only that the bundle carries them.
+  // The strict checks ran here: the lists say how the producer signatures,
+  // the checkpoint, the proof claims and the witness receipts went, not only
+  // that the bundle carries them.
   const strict = inputs.strict;
   if (strict?.kindOk === true) {
     const claim = (name: StrictClaimName) =>
@@ -599,6 +600,26 @@ export function verificationCheckLists(
     const checkpoint = claim("checkpoint");
     if (checkpoint?.status === "pass") ran("checkpoint-signature", true);
     else if (checkpoint?.status === "fail") ran("checkpoint-signature", false);
+    // A proof claim the strict verdict failed is never listed as checked:
+    // records bound to no log position fail per-record membership.
+    if (claim("interval_coverage")?.status === "fail") ran("range", false);
+    if (claim("per_record_membership")?.status === "fail")
+      ran("membership", false);
+    // The receipts in `checkpoint.witnesses`, as the strict verdict read
+    // them: checked only when every one verified.
+    const witnesses = strict.witnesses;
+    if (witnesses?.status === "fail") ran("witness-receipts", false);
+    else if (
+      witnesses?.status === "pass" &&
+      witnesses.receipts.every((r) => r.status === "pass")
+    )
+      ran("witness-receipts", true);
+    else if (
+      witnesses !== null &&
+      witnesses !== undefined &&
+      !witnesses.findings.includes("witness_receipt_absent")
+    )
+      outcome.set("witness-receipts", "notChecked");
   }
 
   const pick = (which: "page" | "failed" | "notChecked") =>

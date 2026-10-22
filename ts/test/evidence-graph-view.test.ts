@@ -709,7 +709,7 @@ it("renders records that sit outside the checkpoint as uncheckpointed, one statu
   expect(banner.dataset.verdict).toBe("invalid");
   expect(banner.dataset.uncheckpointed).toBe("2");
   expect(banner.textContent).toBe(
-    "Bundle verification failed: 2 of 4 records uncheckpointed, bound to no log position, so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
+    "Bundle verification failed: 2 of 4 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
   );
   expect(root.querySelector("[data-refusal]")).toBeNull();
 
@@ -1008,7 +1008,7 @@ it("evaluation graph: an uncheckpointed act shows its own status and its checkpo
   const root = document.createElement("main");
   await renderEvidenceGraph(bundle, root);
   expect(root.querySelector<HTMLElement>("[data-verify]")!.textContent).toBe(
-    "Bundle verification failed: 1 of 5 records uncheckpointed, bound to no log position, so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
+    "Bundle verification failed: 1 of 5 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
   );
   expect(root.querySelectorAll("[data-report-date]")).toHaveLength(2);
   const panelFor = (capsuleId: string): HTMLElement =>

@@ -38,7 +38,7 @@ CLL's COSE checkpoint verifier exists; elsewhere the `checkpoint` claim is
 `renderEvidenceGraph` states that verdict in its banner: `data-verdict` is
 `valid`, `incomplete` or `invalid`, and `data-checkpoint` is `verified`,
 `unverified`, `invalid` or `absent`. The banner says "passed" only for
-`valid`; for `incomplete` it names what it did not show, and it labels
+`valid`; for `incomplete` it names what it did not check, and it labels
 interval coverage and per-record membership `checkpoint_unverified` when they
 rest on a checkpoint it did not authenticate. `data-verify` is still whether
 the rows are shown. A runtime with no Ed25519 reaches no strict verdict and

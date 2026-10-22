@@ -180,9 +180,25 @@ describe("without SubtleCrypto", () => {
     // No Ed25519, so no strict verdict: no signature was checked.
     expect(banner.dataset.verdict).toBe("incomplete");
     expect(banner.textContent).toBe(
-      "Bundle verification incomplete: no check failed, but this viewer cannot check signatures, so the checkpoint signature and the records' producer signatures were not checked.",
+      "Bundle verification incomplete: no check failed, but this page cannot check signatures, so the checkpoint signature and the records' producer signatures were not checked.",
     );
     expect(root.querySelector('[data-refusal="unverified-bundle"]')).toBeNull();
+  });
+
+  it("still says invalid for a record bound to no log position", async () => {
+    const { bundle } = await sealEvidenceBundle(
+      fixture("report-mixed-tz-bundle.json"),
+      { uncheckpointed: ["act-naive"] },
+    );
+    withoutWebCrypto();
+    const root = document.createElement("main");
+    await renderEvidenceGraph(bundle, root);
+    const banner = root.querySelector<HTMLElement>("[data-verify]")!;
+    expect(banner.dataset.verify).toBe("verified");
+    expect(banner.dataset.verdict).toBe("invalid");
+    expect(banner.textContent).toBe(
+      "Bundle verification failed: 1 of 5 records are uncheckpointed (bound to no log position), so per-record membership fails.",
+    );
   });
 });
 

@@ -248,13 +248,15 @@ it("renders a cited record outside the checkpoint as uncheckpointed under the Re
   expect(banner.dataset.verdict).toBe("invalid");
   expect(banner.dataset.uncheckpointed).toBe("1");
   expect(banner.textContent).toBe(
-    "Bundle verification failed: 1 of 5 records uncheckpointed, bound to no log position, so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
+    "Bundle verification failed: 1 of 5 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
   );
   const page = root.querySelector<HTMLElement>('[data-page="result"]')!;
   expect(page).not.toBeNull();
   const coverage = page.querySelector<HTMLElement>('[data-coverage="result"]')!;
   expect(textBefore(page, coverage)).not.toMatch(/\d/u);
-  expect(textBefore(root, coverage)).toMatch(/1 of 5 records uncheckpointed/u);
+  expect(textBefore(root, coverage)).toMatch(
+    /1 of 5 records are uncheckpointed/u,
+  );
   expect(page.querySelectorAll("[data-claim-row]")).toHaveLength(3);
 
   // the root's own panel is checkpointed; nothing cited is drawn yet
