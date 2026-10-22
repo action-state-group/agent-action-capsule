@@ -427,6 +427,7 @@ func TestVerifierOutOfScopeFollowsEachRequirementsSwitch(t *testing.T) {
 
 	_, err = v.Verify(ex, answer(false))
 	require.ErrorContains(t, err, "r-carried-signature")
+	require.ErrorContains(t, err, "§8.2 invariant 1")
 	assert.NotContains(t, err.Error(), "r-record:")
 }
 

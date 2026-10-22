@@ -144,7 +144,8 @@ carries `out_of_scope_allowed`, and a producer MUST NOT map such an answer to an
 the requirement has no switch, the case is malformed and backs no counting claim. A case names a
 `case_id`, not its requirement, so the record alone cannot show the switch; the claim that cites the
 case is held to Result v0 §4.2, and a third party that needs more re-evaluates. A reader that counts
-case verdicts counts `out_of_scope` on its own, never as met and never as not applicable. (No reader
+case verdicts counts `out_of_scope` on its own: never as `met` or `not_evaluable`, and never as the
+not-applicable exclusion (Result v0 §3). (No reader
 in this repository counts case verdicts today: the presentation views take verdicts from claims.)
 
 **This is the single-party case of `adjudication/v1`'s shape, not a parallel family.** A `Case`'s

@@ -22,8 +22,12 @@ PROVISIONAL) against schemas/judgment/judgment-extension-v1.json:
   6. prompt_file_digest is optional: JudgeParameters without it validates, an empty
      value is rejected, and the retired name prompt_digest is rejected (with a mutant
      proving that rejection rests on additionalProperties: false).
+  7. Answer definitions (spec section 3): every case's answer validates against
+     JudgeAnswerWithOutOfScope, the out_of_scope answer does not validate against
+     JudgeAnswer, pos-ai-judge-out-of-scope's parameters and rubric validate, and both
+     $defs keep their published JSON-DIGESTs.
 
-Digest recomputation is python/tests/test_judgment_extension_vectors.py's job.
+Recomputing the vectors' own digests is python/tests/test_judgment_extension_vectors.py's job.
 
 Usage (repo root):  python3 schemas/check_judgment_extension_examples.py
 Exit 0: all checks passed. Exit 1: a finding was printed. Exit 2: harness error.
@@ -146,6 +150,8 @@ def main() -> int:
     oos = cases["pos-ai-judge-out-of-scope"]["preimages"]["values"]
     if not validator(schema, "JudgeParameters").is_valid(oos["judge_parameters"]):
         failures.append("pos-ai-judge-out-of-scope parameters do not validate")
+    if not validator(schema, "RubricDocument").is_valid(oos["rubric"]):
+        failures.append("pos-ai-judge-out-of-scope rubric does not validate")
     if validator(schema, "JudgeAnswer").is_valid(oos["agent_output"]):
         failures.append("an out_of_scope answer validates against JudgeAnswer")
     for cid in ("pos-ai-judge", "pos-human-expert", "pos-ai-judge-out-of-scope"):
@@ -180,7 +186,7 @@ def main() -> int:
         print(f"FAIL {line}")
     if not failures:
         print(f"ok: {len(data['cases'])} cases, 1 mutant, {hosting_checks} model_hosting checks, "
-              f"{len(identity_cases)} identity checks, {len(identity_mutants)} identity mutants, {len(checks)} preimages, "
+              f"{len(identity_cases)} identity checks, {len(identity_mutants)} identity mutants, {len(checks)} preimages, 2 answer definitions, "
               f"{len(prompt_file_cases)} prompt_file_digest checks, 1 prompt_file_digest mutant")
     return 1 if failures else 0
 

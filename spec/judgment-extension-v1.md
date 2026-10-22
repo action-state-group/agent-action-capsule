@@ -130,9 +130,10 @@ two definitions in the companion schema:
 - `$defs/JudgeAnswerWithOutOfScope`: the same, with `verdict` also `out_of_scope` (the Evidence
   Contract's fourth verdict, `spec/evidence-result-v0.md` §4.2).
 
-The record names neither: a pack's judge declaration names one by its `schema_hash` (§4.1). Every
-answer `JudgeAnswer` accepts, `JudgeAnswerWithOutOfScope` accepts, so a record's answer is
-well formed when it validates against `JudgeAnswerWithOutOfScope`. An **answer schema digest** is
+The record names neither: a pack's judge declaration names one by its `schema_hash` (§4.1).
+`JudgeAnswerWithOutOfScope` accepts every answer `JudgeAnswer` accepts, so a record's answer is well
+formed when it validates against `JudgeAnswerWithOutOfScope`; whether it fits the declared judge is
+check 7 (§4.2). An **answer schema digest** is
 the JSON-DIGEST of one of the two values as published in `schemas/judgment/judgment-extension-v1.json`
 at the member's version: `1b8f1f21f261cc5ee87c23a1fc1711a0907be6599a45b1a9e3ebfe13d626a0ec` for
 `JudgeAnswer`, `07ec203b83ec977d43188b4d4edb93fac563298aa54523bff09713bd52dd9507` for
@@ -144,9 +145,10 @@ contract's vocabulary three-valued; this section supersedes both sentences.
 requirement that carries `out_of_scope_allowed` (`spec/evidence-result-v0.md` §4.2), and a pack
 pins `JudgeAnswerWithOutOfScope` only for a judge that answers such requirements. A producer MUST
 NOT map a judge's `out_of_scope` answer to any other verdict: where the requirement has no switch,
-the answer is malformed and gives no counting claim. A record does not name its requirement, so
+the answer is malformed and backs no counting claim. A record does not name its requirement, so
 this is checked where the requirement is known: the Result claim, against its copied switch
-(Result v0 §4.2), and the interop profile's evaluator (§8.3). A third party can tell that a
+(Result v0 §4.2), and the interop profile's evaluator (`spec/interop-profile-v0.md` §8.2
+invariant 1, §8.3). A third party can tell that a
 producer mapped such an answer to another verdict only from the judge's disclosed answer or by
 re-evaluating.
 
@@ -223,7 +225,8 @@ and an answer substituted for the committed one fails on its digest. A record th
 the six checks of the earlier revision still joins, with the qualifier when its answer is
 withheld.
 
-Checks 1 to 3, 6 and the digest half of 7 are digest-level. Checks 4 and 5 are value-level. When check 6 applies,
+Checks 1 to 3, 6 and the digest half of 7 are digest-level; the other half of 7 is schema validation.
+Checks 4 and 5 are value-level. When check 6 applies,
 the join reaches rung 3, which is still self-reported (§2.1). A pass establishes
 **attribution**, not re-derivation (§1). It says nothing about the rubric, the sampling
 parameters or the fields read, which the declaration does not pin (§4.1). A human-expert record

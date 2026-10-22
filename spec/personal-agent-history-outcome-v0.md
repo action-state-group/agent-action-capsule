@@ -226,8 +226,8 @@ for that (§12) [PO-6].
 
 It establishes "a judge concluded P, from these records, for this question". The verdict is the
 case's `verdict`: `met`, `not_met` or `not_evaluable` [JR §2]. This level's requirements carry no
-`out_of_scope` switch, so a case verdict outside those three, such as `out_of_scope`, gives a claim
-that does not count, with `judge_verdict_allowed` `FAIL`. A producer MUST NOT map such a verdict to
+`out_of_scope` switch, so a case verdict outside those three, such as `out_of_scope`, backs no
+counting claim: `judge_verdict_allowed` is `FAIL`. A producer MUST NOT map such a verdict to
 another one. `judge_verdict_allowed` is `NOT_CHECKED` when there is not exactly one case for the
 predicate, where `judge_grounds` already fails.
 

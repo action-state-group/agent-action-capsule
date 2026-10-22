@@ -20,7 +20,7 @@
   pins the copy. `contract-report/v1` gains the fourth count, a "Not yet in force" section, the as-of
   date and wording keys. The interop profile re-pins the Evidence Contract v0 schema to
   capsule-engine `773ae9e` (SHA-256 `6b969610…b770`), which carries the verdict and the switch;
-  the frozen personal-history Basic level keeps its released pin. Wording reviewed by Sherlock2.
+  the frozen personal-history Basic level keeps its released pin.
   (#368)
 - Evidence Result v0 coverage counts evaluations, one per claim, as every implementation counted:
   the spec text now says so, the core page reads "N evaluations of M requirements … N with an
@@ -30,10 +30,11 @@
   stays valid. A judge declaration names one definition by `schema_hash`, and the join gains check
   7: a disclosed answer matches its committed digest and fits the definition named. A withheld
   answer joins only as "produced by the declared judge; answer not disclosed, so not checked".
-  `evaluation-report/v1` cases may be `out_of_scope`, counted on their own by any reader. A judge
+  `evaluation-report/v1` cases may be `out_of_scope`; a reader that counts case verdicts counts it
+  on its own, never as `met` or `not_evaluable` and never as the not-applicable exclusion. A judge
   answers `out_of_scope` only for a switched-on requirement, and a producer never maps it to
   another verdict: the personal-history outcome profile gains `judge_verdict_allowed`, so such a
-  case no longer falls through to `not_evaluable`. Wording reviewed by Sherlock2.
+  case no longer falls through to `not_evaluable`.
 
 - TypeScript viewer: the verification page's countersignature line now adds "Checking a
   countersignature is not one of the bundle's own checks, so its result never changes the

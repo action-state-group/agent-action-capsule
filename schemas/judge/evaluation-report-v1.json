@@ -67,7 +67,7 @@
       }
     },
     "Case": {
-      "description": "The single-party adjudication: one case, judged under this report's judge_pin, against cited acts and a cited method, resolving to the Evidence Contract's Verdict (mirrored here, never redefined; the same vocabulary evidence-result-v0.json's Claim.verdict uses). out_of_scope only for a requirement with out_of_scope_allowed; a reader counts it on its own, never as met or not applicable (spec section 2).",
+      "description": "The single-party adjudication: one case, judged under this report's judge_pin, against cited acts and a cited method, resolving to the Evidence Contract's Verdict (mirrored here, never redefined; the same vocabulary evidence-result-v0.json's Claim.verdict uses). out_of_scope only for a requirement with out_of_scope_allowed; a reader counts it on its own: never as met or not_evaluable, and never as the not-applicable exclusion (spec section 2).",
       "type": "object",
       "additionalProperties": false,
       "required": ["case_id", "verdict", "acts", "method"],

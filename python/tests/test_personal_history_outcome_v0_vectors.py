@@ -329,7 +329,8 @@ def native_properties(case: dict, o: dict, objects: dict) -> dict:
 def judge_properties(case: dict, o: dict, deal: str, rec: dict, deal_records: list[dict],
                      objects: dict) -> tuple[dict, str | None]:
     trusted = set(case["pins"]["outcome_roles"]["judge"])
-    j = json.loads(objects[o["evidence"][0]]) if len(o.get("evidence", [])) == 1 else None
+    raw = objects.get(o["evidence"][0]) if len(o.get("evidence", [])) == 1 else None
+    j = json.loads(raw) if raw is not None else None
     if not isinstance(j, dict):
         return dict.fromkeys(["judge_signature", "judge_signer_trust", "judge_subject", "judge_grounds",
                               "consent_precedes_judgment", "judge_verdict_allowed"], "NOT_CHECKED"), None
@@ -347,8 +348,9 @@ def judge_properties(case: dict, o: dict, deal: str, rec: dict, deal_records: li
              "consent_precedes_judgment": "PASS" if consents else "FAIL",
              # §5.4: this level's requirements carry no out_of_scope switch, so any other verdict fails.
              "judge_verdict_allowed": "NOT_CHECKED" if len(mine) != 1 else (
-                 "PASS" if mine[0].get("verdict") in JUDGE_VERDICTS else "FAIL")}
-    return props, (mine[0]["verdict"] if len(mine) == 1 else None)
+                 "PASS" if isinstance(mine[0].get("verdict"), str) and mine[0]["verdict"] in JUDGE_VERDICTS
+                 else "FAIL")}
+    return props, (mine[0].get("verdict") if len(mine) == 1 else None)
 
 
 def claim_properties(case: dict, definition: dict, env: dict, rec: dict) -> tuple[dict, str | None]:
@@ -632,6 +634,47 @@ def test_disputed_is_never_an_outcome_claim():
     (claim,) = case["expected"]["claims"]
     assert claim["properties"]["outcome_form"] == "FAIL" and not claim["counts"]
     assert PREDICATES["disputed"]["sources"] == []
+
+
+def _judge_inputs(cases: list) -> tuple[dict, dict, dict]:
+    """A minimal judge_verdict claim's inputs: the case pins, the outcome, and the held judge record."""
+    record = {"judge": "j", "subject_ref": "deal", "record": {"contract_ref": "c@1", "cases": cases}}
+    raw = json.dumps(record).encode()
+    case = {"pins": {"outcome_roles": {"judge": ["j"]}}}
+    o = {"predicate": "completed", "evidence": [sha(raw)]}
+    return case, o, {sha(raw): raw}
+
+
+@pytest.mark.parametrize("verdict", ["out_of_scope", "not_applicable", "", [], {}, 1, "MISSING"])
+def test_judge_verdict_allowed_fails_closed_on_any_other_verdict(verdict):
+    """§5.4: with exactly one case, a verdict outside the three fails, never crashes, never maps."""
+    one = {"case_id": "completed", "acts": []}
+    if verdict != "MISSING":
+        one["verdict"] = verdict
+    case, o, objects = _judge_inputs([one])
+    props, _ = judge_properties(case, o, "deal", {"leaf_index": 9}, [], objects)
+    assert props["judge_verdict_allowed"] == "FAIL"
+    assert not counts(props)
+
+
+@pytest.mark.parametrize("verdict", sorted(JUDGE_VERDICTS))
+def test_judge_verdict_allowed_passes_the_three(verdict):
+    case, o, objects = _judge_inputs([{"case_id": "completed", "verdict": verdict, "acts": []}])
+    props, got = judge_properties(case, o, "deal", {"leaf_index": 9}, [], objects)
+    assert (props["judge_verdict_allowed"], got) == ("PASS", verdict)
+
+
+def test_judge_verdict_allowed_not_checked_without_one_case_or_the_record():
+    one = {"case_id": "completed", "verdict": "out_of_scope", "acts": []}
+    case, o, objects = _judge_inputs([one])
+    # the judge record not held
+    props, verdict = judge_properties(case, o, "deal", {"leaf_index": 9}, [], {})
+    assert props["judge_verdict_allowed"] == "NOT_CHECKED" and verdict is None
+    # zero or two cases for the predicate
+    for cases in ([], [one, one]):
+        case, o, objects = _judge_inputs(cases)
+        props, verdict = judge_properties(case, o, "deal", {"leaf_index": 9}, [], objects)
+        assert props["judge_verdict_allowed"] == "NOT_CHECKED" and verdict is None and not counts(props)
 
 
 def test_out_of_scope_verdict_is_never_mapped():
