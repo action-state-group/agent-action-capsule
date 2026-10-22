@@ -41,9 +41,11 @@ CLL's COSE checkpoint verifier exists; elsewhere the `checkpoint` claim is
 `valid`; for `incomplete` it names what it did not check, and it labels
 interval coverage and per-record membership `checkpoint_unverified` when they
 rest on a checkpoint it did not authenticate. `data-verify` is still whether
-the rows are shown. A runtime with no Ed25519 reaches no strict verdict and
-says `incomplete`, never failed. The browser build cannot authenticate a
-checkpoint, so it says at most `incomplete`.
+the rows are shown. A runtime with no Ed25519 reaches no strict verdict;
+missing Ed25519 is never itself a failure, so a bundle that passes the page's
+own checks, with every record bound to a log position, reads `incomplete`.
+The browser build cannot authenticate a checkpoint, so it says at most
+`incomplete`.
 
 `buildEvidenceBundle(source, { root, intervalFrom })` builds a Bundle from a
 `ProofSource`: the log's signed COSE checkpoint, its leaves, records by Capsule

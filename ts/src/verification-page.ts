@@ -423,7 +423,8 @@ export const VERIFICATION_CHECK_WORDS: Readonly<
   range:
     "That no record is missing from the stretch of the log this file covers.",
   membership: "That each record bound to a log position sits at that position.",
-  "checkpoint-signature": "The signature on the log's checkpoint.",
+  "checkpoint-signature":
+    "The signature on the log's checkpoint, and the fields it signs.",
   disclosures:
     "Each disclosed value against the digest its record committed to.",
   countersignatures:
@@ -519,7 +520,13 @@ export function verificationCheckLists(
     if (stopped || checkpointInvalid) {
       outcome.set("membership", "notChecked");
     } else {
-      ran("membership", coverageStatement(verified).status === "established");
+      // A record bound to no log position fails per-record membership: the
+      // rows still render, but the page's verdict calls it a failure.
+      ran(
+        "membership",
+        coverageStatement(verified).status === "established" &&
+          unboundRecordIds(verified).length === 0,
+      );
     }
     if (checkpointInvalid) outcome.set("checkpoint-signature", "failed");
     else if (signed) {

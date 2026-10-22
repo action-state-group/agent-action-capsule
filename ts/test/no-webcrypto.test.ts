@@ -35,7 +35,7 @@ import {
   sha256Hex,
 } from "../src/json.js";
 import { buildResultRoot } from "../src/result-root.js";
-import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
+import { sealEvidenceBundle, TEST_KEYS } from "./helpers/sealed-bundle.js";
 
 function fixture(name: string): Record<string, unknown> {
   return JSON.parse(
@@ -177,10 +177,10 @@ describe("without SubtleCrypto", () => {
     await renderEvidenceGraph(fixture("week-bundle.json"), root);
     const banner = root.querySelector<HTMLElement>("[data-verify]")!;
     expect(banner.dataset.verify).toBe("verified");
-    // No Ed25519, so no strict verdict: no signature was checked.
+    // No Ed25519, so no strict verdict; this bundle carries no signature.
     expect(banner.dataset.verdict).toBe("incomplete");
     expect(banner.textContent).toBe(
-      "Bundle verification incomplete: no check failed, but this page cannot check signatures, so the checkpoint signature and the records' producer signatures were not checked.",
+      "Bundle verification incomplete: none of the bundle's checks failed, but neither the checkpoint nor any record is signed. Interval coverage and per-record membership are checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
     );
     expect(root.querySelector('[data-refusal="unverified-bundle"]')).toBeNull();
   });
@@ -197,7 +197,38 @@ describe("without SubtleCrypto", () => {
     expect(banner.dataset.verify).toBe("verified");
     expect(banner.dataset.verdict).toBe("invalid");
     expect(banner.textContent).toBe(
-      "Bundle verification failed: 1 of 5 records are uncheckpointed (bound to no log position), so per-record membership fails.",
+      "Bundle verification failed: 1 of 5 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
+    );
+    // The lists agree: membership failed, never checked.
+    const listed = (which: string): string[] =>
+      Array.from(
+        root.querySelectorAll<HTMLElement>(`ul[data-checks="${which}"] > li`),
+        (item) => item.dataset.check!,
+      );
+    expect(listed("failed")).toContain("membership");
+    expect(listed("page")).not.toContain("membership");
+  });
+
+  it("names the signatures it could not check", async () => {
+    const { bundle } = await sealEvidenceBundle({
+      root: "deal",
+      records: [
+        { capsule_id: "act", key_id: TEST_KEYS.a },
+        {
+          capsule_id: "deal",
+          key_id: TEST_KEYS.a,
+          chain: { parent_capsule_id: "act", relation: "derived_from" },
+        },
+      ],
+    });
+    withoutWebCrypto();
+    const root = document.createElement("main");
+    await renderEvidenceGraph(bundle, root);
+    const banner = root.querySelector<HTMLElement>("[data-verify]")!;
+    expect(banner.dataset.verdict).toBe("incomplete");
+    expect(banner.dataset.checkpoint).toBe("absent");
+    expect(banner.textContent).toMatch(
+      /^Bundle verification incomplete: none of the bundle's checks failed, but this page cannot check signatures, so the records' producer signatures could not be checked\./u,
     );
   });
 });

@@ -11,7 +11,9 @@
   `checkpoint_unverified`, relative to a producer-asserted checkpoint (Evidence Bundle,
   completeness). Records bound to no log position now read "Bundle verification failed: N of M
   records are uncheckpointed …" (INVALID, as every verifier says) where the banner said "passed";
-  their rows still render. A runtime with no Ed25519 says `incomplete`. The verification page's
+  their rows still render. With no Ed25519 there is no strict verdict, and that alone is
+  never a failure: a bundle that passes the page's own checks, with every record bound to a log
+  position, reads `incomplete`. The verification page's
   check lists now list the producer signatures and the checkpoint signature as checked or failed
   when the page checked them. `VerifiedBundleContext` gains `strict`; `CheckListInputs` gains
   `strict`, and the lists also read the strict proof claims and the witness receipts in

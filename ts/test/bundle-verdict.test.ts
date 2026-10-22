@@ -131,7 +131,7 @@ describe("the banner never claims more than was checked", () => {
     expect(top.dataset.verify).toBe("verified");
     expect(top.textContent).not.toContain("passed");
     expect(top.textContent).toBe(
-      "Bundle verification incomplete: no check failed, but this page did not check " +
+      "Bundle verification incomplete: none of the bundle's checks failed, but this page did not check " +
         "any record's producer signature, because no record is signed (producer_signature_unclaimed); " +
         "the checkpoint signature, which this page cannot check (checkpoint_verifier_unavailable). " +
         "Interval coverage and per-record membership are checkpoint_unverified: " +
@@ -155,7 +155,7 @@ describe("the banner never claims more than was checked", () => {
     expect(top.dataset.verdict).toBe("incomplete");
     expect(top.dataset.checkpoint).toBe("absent");
     expect(top.textContent).toBe(
-      "Bundle verification incomplete: no check failed, but this page did not check " +
+      "Bundle verification incomplete: none of the bundle's checks failed, but this page did not check " +
         "the checkpoint signature, because the checkpoint is not signed (checkpoint_signature_absent). " +
         "Interval coverage and per-record membership are checkpoint_unverified: " +
         "relative to a producer-asserted checkpoint that is not signed.",
@@ -181,7 +181,7 @@ describe("the banner never claims more than was checked", () => {
     expect(top.dataset.verdict).toBe("incomplete");
     expect(top.dataset.checkpoint).toBe("verified");
     expect(top.textContent).toBe(
-      "Bundle verification incomplete: no check failed, but this page did not check " +
+      "Bundle verification incomplete: none of the bundle's checks failed, but this page did not check " +
         "the producer signature of 1 of 2 records, because that record is not signed (producer_signature_unclaimed).",
     );
   });
@@ -327,14 +327,13 @@ describe("the strict result beside the page's own checks", () => {
   });
 
   it("a cose of null: the checkpoint is invalid, as the lists say", async () => {
-    const top = banner(
-      await renderWith(
-        renderEvidenceGraph,
-        strictCase("neg-checkpoint-cose-null"),
-      ),
+    const root = await renderWith(
+      renderEvidenceGraph,
+      strictCase("neg-checkpoint-cose-null"),
     );
-    expect(top.dataset.verdict).toBe("invalid");
-    expect(top.dataset.checkpoint).toBe("invalid");
+    expect(banner(root).dataset.verdict).toBe("invalid");
+    expect(banner(root).dataset.checkpoint).toBe("invalid");
+    expect(checks(root, "failed")).toContain("checkpoint-signature");
   });
 
   it("keeps the strict result when the countersigners change", async () => {

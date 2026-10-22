@@ -5,6 +5,7 @@ import {
   type ExtensionInterpreterId,
   withCountersigners,
   type BundleVerificationResult,
+  type ClaimResult,
   type StrictBundleResult,
   type StrictClaim,
   type StrictClaimName,
@@ -263,82 +264,107 @@ function bannerWords(
       text: "Bundle verification failed",
     };
   const uncheckpointed = `Bundle verification failed: ${coverage.uncheckpointed} of ${recordsWord(coverage.total)} are uncheckpointed (bound to no log position), so per-record membership fails.`;
-  // With no Ed25519 there is no strict verdict, but a record bound to no
-  // log position already failed the page's own membership check.
-  if (strict === undefined)
-    return coverage.uncheckpointed > 0
-      ? { verdict: "invalid", checkpoint, text: uncheckpointed }
-      : {
-          verdict: "incomplete",
-          checkpoint,
-          text: "Bundle verification incomplete: no check failed, but this page cannot check signatures, so the checkpoint signature and the records' producer signatures were not checked.",
-        };
-  const verdict = strict.verdict.toLowerCase() as BannerVerdict;
   const sentences: string[] = [];
-  if (verdict === "valid") sentences.push("Bundle verification passed");
-  else if (verdict === "incomplete") {
-    const notShown = strict.claims
-      .filter((entry) => entry.status !== "pass" || entry.findings.length > 0)
-      .map((entry) => notShownWords(entry, strict.records.length))
-      .filter((words) => words !== "");
-    sentences.push(
-      notShown.length > 0
-        ? `Bundle verification incomplete: no check failed, but this page did not check ${notShown.join("; ")}.`
-        : "Bundle verification incomplete: no check failed, but not every check was run.",
-    );
-  } else {
-    // The rows render (the bundle passed the page's own checks) although
-    // the verdict is invalid: say what failed, before any row.
-    const failed = strict.claims.filter((entry) => entry.status === "fail");
-    const unboundOnly =
-      coverage.uncheckpointed > 0 &&
-      failed.length === 1 &&
-      failed[0]!.name === "per_record_membership" &&
-      strict.witnesses?.status !== "fail";
-    const named = failed.map((entry) => {
-      const invalid = entry.findings.filter((f) =>
-        f.startsWith("producer_signature_invalid:"),
-      ).length;
-      // Refused by kind or form: the bundle itself, not its records.
-      if (!strict.kindOk)
-        return `the bundle's kind and form (${findingNames(entry.findings).join(", ")})`;
-      // A count, as the uncheckpointed line gives one: never "the records'
-      // signatures" when only some failed.
-      if (entry.name === "signatures" && invalid > 0)
-        return coverage.total === 1
-          ? "the record's producer signature does not verify (producer_signature_invalid)"
-          : `${invalid} of ${coverage.total} records' producer signatures do not verify (producer_signature_invalid)`;
-      return `${CLAIM_WORDS[entry.name]} (${findingNames(entry.findings).join(", ")})`;
-    });
-    // Only the receipts that failed; one not checked is not a failure.
-    if (strict.witnesses?.status === "fail")
-      named.push(
-        `the witness receipts (${findingNames(
-          strict.witnesses.findings.filter(
-            (f) => !f.startsWith("witness_unverified:"),
-          ),
-        ).join(", ")})`,
+  let verdict: BannerVerdict;
+  if (strict === undefined) {
+    // No Ed25519, so no strict verdict; a record bound to no log position
+    // has still failed the page's own membership check.
+    if (coverage.uncheckpointed > 0) {
+      verdict = "invalid";
+      sentences.push(uncheckpointed);
+    } else {
+      verdict = "incomplete";
+      const records = object(bundle).records;
+      const carried = [
+        ...(cose === undefined || cose === null
+          ? []
+          : ["the checkpoint signature"]),
+        ...(Array.isArray(records) &&
+        records.some((record) => typeof object(record).signature === "string")
+          ? ["the records' producer signatures"]
+          : []),
+      ];
+      sentences.push(
+        carried.length > 0
+          ? `Bundle verification incomplete: none of the bundle's checks failed, but this page cannot check signatures, so ${carried.join(" and ")} could not be checked.`
+          : "Bundle verification incomplete: none of the bundle's checks failed, but neither the checkpoint nor any record is signed.",
       );
-    sentences.push(
-      unboundOnly
-        ? uncheckpointed
-        : `Bundle verification failed: ${named.join("; ")}.`,
-    );
+    }
+  } else {
+    verdict = strict.verdict.toLowerCase() as BannerVerdict;
+    if (verdict === "valid") sentences.push("Bundle verification passed");
+    else if (verdict === "incomplete") {
+      const notChecked = strict.claims
+        .filter((entry) => entry.status !== "pass" || entry.findings.length > 0)
+        .map((entry) => notShownWords(entry, strict.records.length))
+        .filter((words) => words !== "");
+      sentences.push(
+        notChecked.length > 0
+          ? `Bundle verification incomplete: none of the bundle's checks failed, but this page did not check ${notChecked.join("; ")}.`
+          : "Bundle verification incomplete: none of the bundle's checks failed, but not every check was run.",
+      );
+    } else {
+      // The rows render (the bundle passed the page's own checks, which a
+      // bundle refused by its kind never does) although the verdict is
+      // invalid: say what failed, before any row.
+      const failed = strict.claims.filter((entry) => entry.status === "fail");
+      const unboundOnly =
+        coverage.uncheckpointed > 0 &&
+        failed.length === 1 &&
+        failed[0]!.name === "per_record_membership" &&
+        strict.witnesses?.status !== "fail";
+      const named = failed.map((entry) => {
+        const invalid = entry.findings.filter((f) =>
+          f.startsWith("producer_signature_invalid:"),
+        ).length;
+        // A count, as the uncheckpointed line gives one: never "the
+        // records' signatures" when only some failed.
+        if (entry.name === "signatures" && invalid > 0)
+          return coverage.total === 1
+            ? "the record's producer signature does not verify (producer_signature_invalid)"
+            : `${invalid} of ${coverage.total} records' producer signatures do not verify (producer_signature_invalid)`;
+        return `${CLAIM_WORDS[entry.name]} (${findingNames(entry.findings).join(", ")})`;
+      });
+      // Only the receipts that failed; one not checked is not a failure.
+      if (strict.witnesses?.status === "fail")
+        named.push(
+          `the witness receipts (${findingNames(
+            strict.witnesses.findings.filter(
+              (f) => !f.startsWith("witness_unverified:"),
+            ),
+          ).join(", ")})`,
+        );
+      sentences.push(
+        unboundOnly
+          ? uncheckpointed
+          : `Bundle verification failed: ${named.join("; ")}.`,
+      );
+    }
   }
-  const unanchored = [
-    claim("interval_coverage"),
-    claim("per_record_membership"),
-  ].filter(
-    (entry): entry is StrictClaim =>
+  // The proof claims as this page read them: the strict ones, or the plain
+  // ones where no strict verdict was reached.
+  const proofs: readonly (readonly [
+    StrictClaimName,
+    ClaimResult | undefined,
+  ])[] =
+    strict === undefined
+      ? [
+          ["interval_coverage", verification.intervalCoverage],
+          ["per_record_membership", verification.perRecordMembership],
+        ]
+      : [
+          ["interval_coverage", claim("interval_coverage")],
+          ["per_record_membership", claim("per_record_membership")],
+        ];
+  const unanchored = proofs.filter(
+    ([, entry]) =>
       entry !== undefined &&
       entry.status !== "fail" &&
       entry.findings.includes("checkpoint_unverified"),
   );
   // A checkpoint that failed is named above; nothing rests on it.
   if (unanchored.length > 0 && checkpoint !== "invalid") {
-    const names = unanchored
-      .map((entry) => CLAIM_WORDS[entry.name])
-      .join(" and ");
+    const names = unanchored.map(([name]) => CLAIM_WORDS[name]).join(" and ");
     sentences.push(
       `${names[0]!.toUpperCase()}${names.slice(1)} ${unanchored.length === 1 ? "is" : "are"} checkpoint_unverified: relative to a producer-asserted checkpoint ${checkpoint === "absent" ? "that is not signed" : "this page could not authenticate"}.`,
     );
