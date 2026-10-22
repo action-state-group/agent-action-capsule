@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- TypeScript viewer: the verification page's countersignature line now adds "A countersignature
-  is not one of the bundle's own checks, so it never changes the bundle's verdict." A failed
+- TypeScript viewer: the verification page's countersignature line now adds "Checking a
+  countersignature is not one of the bundle's own checks, so its result never changes the
+  bundle's verdict." A failed
   countersignature can sit under a verified banner, because a countersignature is outside the
   bundle digest (presentation contract section 6.2), and the line now says why the two do not
   disagree. `vectors/viewer-core-text/` carries the new line. (Sherlock2's review of #364)

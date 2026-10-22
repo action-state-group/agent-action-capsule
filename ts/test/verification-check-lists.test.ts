@@ -318,7 +318,7 @@ describe("a tampered bundle", () => {
       root.querySelector(
         '[data-checks="failed"] [data-check="countersignatures"] [data-check-line]',
       )?.textContent,
-    ).toMatch(/so it never changes the bundle's verdict\.$/u);
+    ).toMatch(/so its result never changes the bundle's verdict\.$/u);
   });
 
   it("a moved membership entry moves the membership check out of the page list", async () => {

@@ -490,7 +490,7 @@ export const VERIFICATION_CHECK_WORDS: Readonly<
   // says so, so a failed one under a verified banner is not read as a
   // second verdict.
   countersignatures:
-    "Each countersignature's signature, over this bundle's digest, under the key it names. A countersignature is not one of the bundle's own checks, so it never changes the bundle's verdict.",
+    "Each countersignature's signature, over this bundle's digest, under the key it names. Checking a countersignature is not one of the bundle's own checks, so its result never changes the bundle's verdict.",
   composed:
     "Each bundle this file composes, and the digest over the composition.",
   "cited-signers":

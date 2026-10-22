@@ -109,7 +109,7 @@
       },
       {
         "id": "countersignatures",
-        "words": "Each countersignature's signature, over this bundle's digest, under the key it names. A countersignature is not one of the bundle's own checks, so it never changes the bundle's verdict.",
+        "words": "Each countersignature's signature, over this bundle's digest, under the key it names. Checking a countersignature is not one of the bundle's own checks, so its result never changes the bundle's verdict.",
         "technical_name": "countersignature signatures"
       },
       {
