@@ -289,6 +289,14 @@ function countWord(n: number): string {
  * judged it on: "all four criteria met or not applicable". A conversation
  * has at least one criterion: the terms come from its own claims.
  */
+// One sentence for the billing rule, whatever the criteria (Result v0
+// section 4.2: out_of_scope is never met).
+const RESOLUTION_RULE =
+  "The rule bills a conversation only when every criterion that applies passes and at least one is met; not applicable and out of scope (did not arise) count as not applying, never as met.";
+
+const countOf = (n: number, one: string, many: string): string =>
+  `${n} ${n === 1 ? one : many}`;
+
 function allCriteriaMet(n: number): string {
   if (n === 1) return "its one criterion met or not applicable";
   return `all ${countWord(n)} criteria met or not applicable`;
@@ -322,7 +330,9 @@ function renderConversation(
       "span",
       "cwhy",
       resolved
-        ? `${allCriteriaMet(conversation.criteria.length - outOfScope.length)}${na.length > 0 ? ` (${na.length} not applicable)` : ""}${outOfScope.length > 0 ? `, and ${outOfScope.length} out of scope` : ""}`
+        ? outOfScope.length === 0
+          ? `${allCriteriaMet(conversation.criteria.length)}${na.length > 0 ? ` (${na.length} not applicable)` : ""}`
+          : `${countOf(conversation.criteria.length - outOfScope.length, "criterion", "criteria")} met or not applicable and ${outOfScope.length} out of scope`
         : `missed on: ${[...misses, ...(misses.length === 0 ? unjudged : [])]
             .map((c) => criterionLabel(model, c.checkId, c.criterionId).label)
             .join(", ")}`,
@@ -525,8 +535,8 @@ function conversationBody(
       element(
         "li",
         outOfScope.length === 0
-          ? `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met and ${na.length} not applicable. The rule bills a conversation only when ${n === 1 ? "its one criterion passes" : `all ${countWord(n)} pass`}, and not applicable counts as passing.`
-          : `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met, ${na.length} not applicable and ${outOfScope.length} out of scope. The rule bills a conversation only when ${n === 1 ? "its one criterion passes" : `all ${countWord(n)} pass`}, and not applicable and out of scope (did not arise) count as passing beside a met, never alone.`,
+          ? `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met and ${na.length} not applicable. ${RESOLUTION_RULE}`
+          : `Resolved: ${met} ${met === 1 ? "criterion" : "criteria"} met, ${na.length} not applicable and ${outOfScope.length} out of scope. ${RESOLUTION_RULE}`,
       ),
     );
   } else {
