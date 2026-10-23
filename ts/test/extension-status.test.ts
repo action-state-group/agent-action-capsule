@@ -12,6 +12,7 @@ import {
   type BundleVerificationResult,
 } from "../src/browser.js";
 import { derivedFixture } from "./helpers/derived-fixtures.js";
+import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 type Obj = Record<string, unknown>;
 
@@ -243,11 +244,19 @@ describe("extension interpretation status", () => {
     // The outcome card forbids contract-report/v1, so the root resolves to
     // aac.builtin.result-contract-report/v0, the generic Result page, which
     // reads neither report block.
-    const bundle = withExtensions(
-      json("test", "testdata", "outcome-report-bundle.json"),
-      { "contract-report/v1": {} },
+    const { bundle } = await sealEvidenceBundle(
+      withExtensions(json("test", "testdata", "outcome-report-bundle.json"), {
+        "contract-report/v1": {},
+      }),
     );
-    const { rows } = await render(bundle);
+    expect((await verifyBundle(bundle)).extensions).toContainEqual({
+      kind: "contract-report/v1",
+      status: "interpreted",
+      interpreter: "contract-report",
+      integrityCovered: true,
+    });
+    const { root, rows } = await render(bundle);
+    expect(root.querySelector('[data-page="result"]')).not.toBeNull();
     expect(rows.map((row) => row.cells)).toEqual([
       ["contract-report/v1", "covered", EXTENSION_NOT_INTERPRETED],
       ["outcome-report/v1", "covered", EXTENSION_NOT_INTERPRETED],
