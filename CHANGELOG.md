@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- TypeScript: `contract-report/v1` has an extension interpreter, `contract-report`, so a runtime
+  whose contract-report module drew the page can list the block as interpreted (contract-report/v1
+  §4). Its reader is the descriptor's: a closed empty object only. `verifyBundle` now reports such
+  a block `interpreted`; the core page still lists it as not interpreted, since the core ships no
+  contract-report module. (capsule-viewer#72)
+
 ## 0.12.0 — 2026-10-22
 
 Python 0.12.0, TypeScript 0.6.0 and Go v0.12.0. The outcome report model entry (#317) already shipped

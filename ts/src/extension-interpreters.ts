@@ -4,6 +4,7 @@ import {
 } from "./countersignature-stamp.js";
 import { readCompliancePresentation } from "./compliance-presentation.js";
 import { COMPOSED_KIND, composedBlockProblem } from "./composed.js";
+import { CONTRACT_REPORT_KIND, readContractReport } from "./contract-report.js";
 import { readOutcomeReportPresentation } from "./outcome-report-presentation.js";
 import { readPresentationBlock } from "./presentation.js";
 
@@ -27,6 +28,9 @@ export type ExtensionInterpreterId =
   | "countersignature-stamp"
   | "outcome-report-card"
   | "compliance-card"
+  // A runtime's own contract-report module (spec/contract-report-v1.md
+  // section 4); the core ships none, so its page never applies this id.
+  | "contract-report"
   | "result-root"
   // The composition section's module id (builtin-manifests.ts).
   | "aac.builtin.composed/v0";
@@ -66,6 +70,13 @@ const INTERPRETERS: Readonly<Record<string, Interpreter>> = Object.freeze({
   "eu-ai-act-compliance/v1": {
     id: "compliance-card",
     accepts: (bundle) => readCompliancePresentation(bundle) !== undefined,
+  },
+  // contract-report.ts readContractReport, the descriptor's reader (a closed
+  // empty object only, as go/presentation/descriptor.go contractReportEngaged).
+  // Only a runtime that registers a contract-report module applies it.
+  [CONTRACT_REPORT_KIND]: {
+    id: "contract-report",
+    accepts: readContractReport,
   },
   // evidence-graph-view.ts composition section -> composed.ts verifyComposed;
   // a malformed block yields no composition result, so it is not interpreted.
