@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.12.1 — 2026-10-23
+
+Python 0.12.1, TypeScript 0.6.2 and Go v0.13.1. Go v0.13.0 shipped the number-bound and checkpoint
+entries earlier the same day, and TypeScript 0.6.1 shipped the contract-report entry
+(capsule-viewer#72).
+
 - Strict witness receipts (Go, Python, Rust, TypeScript): a `checkpoint.witnesses` entry is malformed
   unless `ts_url`, `entry_hash` and `receipt_b64` are non-empty strings and `receipt_b64` is canonical
   standard base64, as well as every member being present. Such an entry was read as a receipt and,
@@ -20,7 +26,7 @@
   also list findings in a different order, and a Python record nested past the recursion limit
   reports `capsule_id_uncomputable` where it reported `verifier_internal_error`. A new
   cross-language fixture, `vectors/cross-language/verify-number-findings.json`, pins the findings.
-  (#383)
+  (#383, #387)
 - Strict Bundle verification (Go, Python, Rust, TypeScript): the `checkpoint` claim also holds the
   completeness certificate's `log_id`, when stated, to the signed log identifier, and reports
   `checkpoint_field_mismatch:log_id` when it differs (bundle -01 §Completeness). A producer-selected
