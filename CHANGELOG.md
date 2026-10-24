@@ -2,13 +2,13 @@
 
 ## Unreleased
 
-- TypeScript: the page renderers under the `browser` condition are removed: `renderEvidenceGraph`,
-  `mountPresentation`, the outcome-report, compliance and composed card renderers and their styles,
-  the EU compliance card model, and `dist/evidence-graph.iife.js`. capsule-viewer
-  (`@action-state-group/capsule-viewer`) draws the page from AAC's verification model. `browser.ts`
-  now also exports `evidence-graph`, `outcome-report`, `outcome-report-presentation` and
-  `report-rows`, and `UNABLE_TO_VERIFY_LINES` moved to `verification-page.ts` unchanged. Breaking
-  for the next ts minor. (#379)
+- **Breaking**, TypeScript (ts 0.8.0): the page renderers under the `browser` condition are
+  removed: `renderEvidenceGraph`, `mountPresentation`, the outcome-report, compliance and composed
+  card renderers and their styles, the EU compliance card model, and `dist/evidence-graph.iife.js`.
+  capsule-viewer (`@action-state-group/capsule-viewer`) draws the page from AAC's verification
+  model. `browser.ts` now also exports `evidence-graph`, `outcome-report`,
+  `outcome-report-presentation` and `report-rows`, and `UNABLE_TO_VERIFY_LINES` moved to
+  `verification-page.ts` unchanged. (#379)
 - Go presentation gate: `presentation.DescribeBundle` reads a producer-selected Bundle as the
   TypeScript context does, taking interval coverage and per-record membership from the strict
   checks when they do not reject it, and `presentation.Verified` exempts its interval coverage as

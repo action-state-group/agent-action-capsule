@@ -845,8 +845,8 @@ and a result that differs from a case is a defect in that implementation.
 
 ## Appendix A. The built-in manifests
 
-Before the registry, `renderEvidenceGraph` (`ts/src/evidence-graph-view.ts`, now drawn in
-capsule-viewer, `action-state-group/capsule-viewer`) dispatched in
+Before the registry, `renderEvidenceGraph` (`ts/src/evidence-graph-view.ts`, now in capsule-viewer,
+`action-state-group/capsule-viewer`) dispatched in
 control flow: `report/v1` rows, then a Result root with `outcome-report/v1`, then a Result root
 with `eu-ai-act-compliance/v1` (read only when `outcome-report/v1` is absent), then the generic
 Result page, then the `evaluation-summary/v1` graph, then the no-aggregate note. That gives
