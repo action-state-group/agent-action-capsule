@@ -110,6 +110,24 @@ describe("verificationBanner", () => {
     expect(await drawn(bundle)).toEqual(banner);
   });
 
+  it("a countersignature it cannot check: the incomplete line points at the not-checked list", async () => {
+    const { bundle } = await sealEvidenceBundle(SOURCE(TEST_KEYS.a));
+    const countersigned = {
+      ...bundle,
+      countersignatures: [{ type: "countersign/v2", anything: true }],
+    };
+    const context = await buildVerifiedBundleContext(countersigned);
+    const without = verificationBanner(context);
+    const banner = verificationBanner(context, [
+      { kind: "unverified", type: "countersign/v2", reason: "type" },
+    ]);
+    // Only the line changes: the stamp adds a not-checked list for the
+    // banner to point at, and never changes the state or the verdict.
+    expect(without.line).toBe(LINES.incompleteNoList);
+    expect(banner).toEqual({ ...without, line: LINES.incomplete });
+    expect(await drawn(countersigned)).toEqual(banner);
+  });
+
   it("a producer signature under the wrong key: failed, the records still shown", async () => {
     const { bundle } = await sealEvidenceBundle(SOURCE(TEST_KEYS.a), {
       signCheckpoint: true,
