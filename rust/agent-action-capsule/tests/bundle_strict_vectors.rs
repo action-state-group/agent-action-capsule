@@ -54,7 +54,7 @@ fn every_strict_case_matches() {
     let vectors = vectors();
     let directory = &vectors["witness_directory"];
     let cases = vectors["cases"].as_array().expect("cases");
-    assert_eq!(cases.len(), 61);
+    assert_eq!(cases.len(), 62);
     let mut failures = Vec::new();
     for case in cases {
         let options = StrictOptions {
@@ -256,7 +256,11 @@ fn unreadable_receipts_fail_and_never_panic() {
     // A cll row with a usable key and receipts that are not one: each fails,
     // as malformed ("%%%", "") or as a receipt that does not verify ("AAAA").
     let directory = json!([{"endpoint": "https://w.example", "key_ids": ["22".repeat(32)]}]);
-    for receipt in ["%%%", "AAAA", ""] {
+    for (receipt, finding) in [
+        ("%%%", "witness_receipt_malformed:0"),
+        ("AAAA", "witness_receipt_invalid:https://w.example"),
+        ("", "witness_receipt_malformed:0"),
+    ] {
         let record = json!({"ts_url": "https://w.example", "receipt_b64": receipt,
             "entry_hash": "00", "leaf_index": 0, "tree_size": 1});
         let report = verify_witness_receipts(
@@ -266,6 +270,7 @@ fn unreadable_receipts_fail_and_never_panic() {
             Some(&directory),
         );
         assert_eq!(report.status, "fail", "{receipt}");
+        assert_eq!(report.findings, [finding], "{receipt}");
     }
 }
 
@@ -310,10 +315,21 @@ fn a_record_with_a_malformed_member_is_malformed() {
         ("receipt_b64", json!("!")),
         ("receipt_b64", json!("AA")),
         ("receipt_b64", json!("AB==")),
+        ("ts_url", json!(7)),
     ];
     for (field, value) in edits {
         let mut record = good.clone();
         record[field] = value.clone();
+        // A stub with the same member is no less malformed.
+        let mut stub = record.clone();
+        stub["is_stub"] = json!(true);
+        let report =
+            verify_witness_receipts(Some(&json!([stub])), Some(&signed()), Some(b"c"), None);
+        assert_eq!(
+            report.findings,
+            ["witness_receipt_malformed:0"],
+            "stub {field}={value}"
+        );
         let report =
             verify_witness_receipts(Some(&json!([record])), Some(&signed()), Some(b"c"), None);
         assert_eq!(report.status, "fail", "{field}={value}");

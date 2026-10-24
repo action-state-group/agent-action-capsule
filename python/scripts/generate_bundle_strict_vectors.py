@@ -907,6 +907,20 @@ def build_cases() -> list[dict]:
                  witnessed(cll_receipt(leaf), non_canonical, hash_not_text),
                  {"status": "fail", "findings": ["witness_receipt_malformed:1", "witness_receipt_malformed:2"],
                   "receipts": [receipt_expect(CLL_URL, "cll", "pass", "mmr-verified")]}, verdict="INVALID")
+    good = cll_receipt(leaf)
+    shapes = [
+        {**good, "ts_url": 7},
+        {**good, "entry_hash": ""},
+        {**good, "receipt_b64": good["receipt_b64"][:8] + "\n" + good["receipt_b64"][8:]},
+        {**good, "receipt_b64": "AA"},  # "AA==" without its padding
+        {**good, "is_stub": True, "receipt_b64": ""},
+    ]
+    witness_case("neg-witness-malformed-shapes",
+                 "Beside a good receipt: a non-string ts_url, an empty entry_hash, a receipt_b64 with a line break, "
+                 "one without its padding, and a stub with an empty receipt_b64.",
+                 witnessed(good, *shapes),
+                 {"status": "fail", "findings": [f"witness_receipt_malformed:{i}" for i in range(1, 6)],
+                  "receipts": [receipt_expect(CLL_URL, "cll", "pass", "mmr-verified")]}, verdict="INVALID")
     witness_case("pos-witness-scrapi", "A SCRAPI receipt over SHA-256 of the COSE checkpoint, no grade label.",
                  witnessed(scrapi_receipt(cose)),
                  {"status": "pass", "findings": [], "receipts": [receipt_expect(SCRAPI_URL, "scrapi", "pass", "observed-only")]})

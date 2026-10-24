@@ -155,7 +155,7 @@ checkpoint's `key_id`. It is reported and never gates. Otherwise it is
   `ts_url`, `entry_hash` and `receipt_b64` are non-empty strings and whose
   `receipt_b64` is canonical standard base64 (padded, no non-zero trailing
   bits, no whitespace; `neg-witness-malformed-member-no-row`,
-  `neg-witness-malformed-members`). A malformed entry is never merely not
+  `neg-witness-malformed-members`, `neg-witness-malformed-shapes`). A malformed entry is never merely not
   checked: it fails with or without a directory row for its witness. Its
   finding, `witness_receipt_malformed:<index>`, is listed before every other
   finding.
@@ -341,6 +341,7 @@ checkpoint is signed by another, the log key.
 | `neg-witness-malformed` | an entry without `tree_size`, beside a good receipt | INVALID |
 | `neg-witness-malformed-member-no-row` | a receipt with an empty `receipt_b64`, for a witness with no directory row | INVALID |
 | `neg-witness-malformed-members` | beside a good receipt, a non-canonical `receipt_b64` and a non-string `entry_hash` | INVALID |
+| `neg-witness-malformed-shapes` | beside a good receipt, five more malformed shapes, a stub among them | INVALID |
 | `pos-witness-scrapi` | a `scrapi` receipt, no grade label | VALID, grade `observed-only` |
 | `pos-witness-scrapi-unknown-grade` | an unknown grade label | VALID, grade `observed-only` |
 | `neg-witness-scrapi-other-statement` | a `scrapi` receipt over other bytes | INVALID |

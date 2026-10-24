@@ -449,7 +449,7 @@ def _is_record(entry: Any) -> bool:
         return False
     try:
         _b64_canonical(entry["receipt_b64"])
-    except (TypeError, ValueError, binascii.Error):
+    except ValueError:  # binascii.Error included
         return False
     return True
 
