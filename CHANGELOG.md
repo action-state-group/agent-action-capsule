@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.13.0 — 2026-10-23
+
+Python 0.13.0 and TypeScript 0.7.0. Go v0.13.0 shipped the first two entries earlier the same day, and
+the contract-report entry (capsule-viewer#72) already shipped in TypeScript 0.6.1.
+
 - Class 1 verify (Go, Python, TypeScript) does bounded work on hostile numbers, as Rust does since
   #382. It reports at most 64 `float_in_digest_field` and 64 `unsafe_integer_in_digest_field`
   findings, each quoting at most 256 code points of its path, then `...`, and writes a path only for
