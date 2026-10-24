@@ -550,10 +550,30 @@ export async function verifyReceipt(
   });
 }
 
-const isRecord = (entry: unknown): entry is Row =>
-  object(entry) &&
-  typeof entry.ts_url === "string" &&
-  RECORD_FIELDS.every((name) => Object.hasOwn(entry, name));
+/**
+ * A WitnessRecord: every member present; `ts_url`, `entry_hash` and
+ * `receipt_b64` non-empty strings; `receipt_b64` canonical standard base64.
+ * Anything else is malformed, never merely not checked.
+ */
+const isRecord = (entry: unknown): entry is Row => {
+  if (
+    !object(entry) ||
+    !RECORD_FIELDS.every((name) => Object.hasOwn(entry, name))
+  )
+    return false;
+  if (
+    !(["ts_url", "entry_hash", "receipt_b64"] as const).every(
+      (name) => typeof entry[name] === "string" && entry[name] !== "",
+    )
+  )
+    return false;
+  try {
+    base64Canonical(entry.receipt_b64);
+  } catch {
+    return false;
+  }
+  return true;
+};
 
 /**
  * Check every receipt in `receipts` (a Bundle's `checkpoint.witnesses`)

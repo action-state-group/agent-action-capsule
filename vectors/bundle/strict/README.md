@@ -150,8 +150,13 @@ checkpoint's `key_id`. It is reported and never gates. Otherwise it is
   `withheld` (`witness_receipt_absent`).
 - When the checkpoint is not authenticated, it is `withheld`
   (`checkpoint_unverified`).
-- Otherwise, an entry that is not an object with a string `ts_url` and all of
-  `entry_hash`, `receipt_b64`, `leaf_index` and `tree_size` is malformed. Its
+- Otherwise, an entry is malformed unless it is an object with all of
+  `ts_url`, `entry_hash`, `receipt_b64`, `leaf_index` and `tree_size`, whose
+  `ts_url`, `entry_hash` and `receipt_b64` are non-empty strings and whose
+  `receipt_b64` is canonical standard base64 (padded, no non-zero trailing
+  bits, no whitespace; `neg-witness-malformed-member-no-row`,
+  `neg-witness-malformed-members`). A malformed entry is never merely not
+  checked: it fails with or without a directory row for its witness. Its
   finding, `witness_receipt_malformed:<index>`, is listed before every other
   finding.
 
@@ -334,6 +339,8 @@ checkpoint is signed by another, the log key.
 | `pos-witness-row-binding-null` | the only row for the endpoint has `binding: null` | VALID, witnesses withheld |
 | `neg-witness-stub-not-boolean` | `is_stub: 1` on bytes that are not a receipt | INVALID |
 | `neg-witness-malformed` | an entry without `tree_size`, beside a good receipt | INVALID |
+| `neg-witness-malformed-member-no-row` | a receipt with an empty `receipt_b64`, for a witness with no directory row | INVALID |
+| `neg-witness-malformed-members` | beside a good receipt, a non-canonical `receipt_b64` and a non-string `entry_hash` | INVALID |
 | `pos-witness-scrapi` | a `scrapi` receipt, no grade label | VALID, grade `observed-only` |
 | `pos-witness-scrapi-unknown-grade` | an unknown grade label | VALID, grade `observed-only` |
 | `neg-witness-scrapi-other-statement` | a `scrapi` receipt over other bytes | INVALID |

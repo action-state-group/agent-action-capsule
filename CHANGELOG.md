@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Strict witness receipts (Go, Python, Rust, TypeScript): a `checkpoint.witnesses` entry is malformed
+  unless `ts_url`, `entry_hash` and `receipt_b64` are non-empty strings and `receipt_b64` is canonical
+  standard base64, as well as every member being present. Such an entry was read as a receipt and,
+  for a witness with no directory row, withheld, so the Bundle stayed VALID. It now fails as
+  `witness_receipt_malformed:<index>`, with or without a row. Three new strict vectors,
+  `neg-witness-malformed-member-no-row`, `neg-witness-malformed-members` and
+  `neg-witness-malformed-shapes`, pin it. (capsule-cli#438)
 - Class 1 verify (Go, Python, TypeScript) does bounded work on hostile numbers, as Rust does since
   #382. It reports at most 64 `float_in_digest_field` and 64 `unsafe_integer_in_digest_field`
   findings, each quoting at most 256 code points of its path, then `...`, and writes a path only for

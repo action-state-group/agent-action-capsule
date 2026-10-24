@@ -682,12 +682,23 @@ pub fn verify_receipt(
     verify_scrapi_receipt(&receipt, cose, Some(key_der))
 }
 
+/// A WitnessRecord: every member present; `ts_url`, `entry_hash` and
+/// `receipt_b64` non-empty strings; `receipt_b64` canonical standard base64.
+/// Anything else is malformed, never merely not checked.
 fn is_record(entry: &Value) -> Option<&Map<String, Value>> {
     let record = entry.as_object()?;
-    (record.get("ts_url").is_some_and(Value::is_string)
-        && RECORD_FIELDS
-            .iter()
-            .all(|field| record.contains_key(*field)))
+    let text = |field: &str| {
+        record
+            .get(field)
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+    };
+    (RECORD_FIELDS
+        .iter()
+        .all(|field| record.contains_key(*field))
+        && text("ts_url").is_some()
+        && text("entry_hash").is_some()
+        && text("receipt_b64").is_some_and(|b64| STANDARD.decode(b64).is_ok()))
     .then_some(record)
 }
 

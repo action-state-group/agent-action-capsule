@@ -68,10 +68,21 @@ def test_scrapi_without_a_pinned_key_checks_nothing():
 def test_unreadable_receipts_fail_and_never_raise():
     directory = {"witnesses": [{"endpoint": "https://r.example", "binding": "rekor", "key_ids": ["22" * 32],
                                 "public_keys": ["not base64!"]}]}
-    record = {"ts_url": "rekor+https://r.example", "receipt_b64": "%%%", "entry_hash": "", "leaf_index": 0,
+    record = {"ts_url": "rekor+https://r.example", "receipt_b64": "AA==", "entry_hash": "ab", "leaf_index": 0,
               "tree_size": 1}
     status, findings, receipts = verify_witness_receipts([record], SIGNED, b"cose", directory)
     assert status == "withheld" and receipts[0].reason.startswith("not checked: unusable key")
+
+
+@pytest.mark.parametrize("edit", [
+    {"ts_url": ""}, {"entry_hash": ""}, {"entry_hash": True}, {"receipt_b64": ""}, {"receipt_b64": 7},
+    {"receipt_b64": "!"}, {"receipt_b64": "AA"}, {"receipt_b64": "AB=="}, {"is_stub": True, "receipt_b64": ""},
+])
+def test_a_record_with_a_malformed_member_is_malformed(edit):
+    record = {"ts_url": "https://w.example", "entry_hash": "ab", "receipt_b64": "AA==", "leaf_index": 0,
+              "tree_size": 1, **edit}
+    status, findings, receipts = verify_witness_receipts([record], SIGNED, b"cose", None)
+    assert (status, findings, receipts) == ("fail", ("witness_receipt_malformed:0",), ())
 
 
 def test_a_non_object_bundle_is_invalid_in_strict_mode():

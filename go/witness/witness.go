@@ -76,6 +76,9 @@ const (
 
 var recordFields = []string{"ts_url", "entry_hash", "receipt_b64", "leaf_index", "tree_size"}
 
+// textFields are the WitnessRecord members that must be non-empty strings.
+var textFields = []string{"ts_url", "entry_hash", "receipt_b64"}
+
 // ReceiptResult is one receipt's outcome. Status is pass, withheld or fail.
 // Reason is a human-readable explanation and is not part of the
 // cross-language contract. Grade is the verified receipt grade, or nil.
@@ -312,13 +315,21 @@ func isRecord(entry interface{}) (map[string]interface{}, bool) {
 	if !isObject {
 		return nil, false
 	}
-	if _, isString := record["ts_url"].(string); !isString {
-		return nil, false
-	}
 	for _, name := range recordFields {
 		if _, present := record[name]; !present {
 			return nil, false
 		}
+	}
+	// ts_url, entry_hash and receipt_b64 are non-empty strings, and
+	// receipt_b64 is canonical standard base64: an entry that is not a receipt
+	// is malformed, never merely not checked.
+	for _, name := range textFields {
+		if text, isString := record[name].(string); !isString || text == "" {
+			return nil, false
+		}
+	}
+	if _, err := decodeStdBase64(record["receipt_b64"].(string)); err != nil {
+		return nil, false
 	}
 	return record, true
 }

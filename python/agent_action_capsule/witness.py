@@ -79,6 +79,8 @@ _GRADE_LABEL = -65537
 # The CLL checkpoint fields its signing body covers, besides ``v``/``kind``.
 _SIGNED_FIELDS = ("log_id", "mmr_size", "root", "prev_size", "prev_root", "key_id", "timestamp")
 _RECORD_FIELDS = ("ts_url", "entry_hash", "receipt_b64", "leaf_index", "tree_size")
+#: The WitnessRecord members that must be non-empty strings.
+_TEXT_FIELDS = ("ts_url", "entry_hash", "receipt_b64")
 
 
 @dataclass(frozen=True)
@@ -438,7 +440,18 @@ def verify_receipt(
 
 
 def _is_record(entry: Any) -> bool:
-    return isinstance(entry, Mapping) and isinstance(entry.get("ts_url"), str) and all(k in entry for k in _RECORD_FIELDS)
+    """A WitnessRecord: every member present; ``ts_url``, ``entry_hash`` and
+    ``receipt_b64`` non-empty strings; ``receipt_b64`` canonical standard
+    base64. Anything else is malformed, never merely not checked."""
+    if not isinstance(entry, Mapping) or not all(k in entry for k in _RECORD_FIELDS):
+        return False
+    if not all(isinstance(entry[k], str) and entry[k] for k in _TEXT_FIELDS):
+        return False
+    try:
+        _b64_canonical(entry["receipt_b64"])
+    except (TypeError, ValueError, binascii.Error):
+        return False
+    return True
 
 
 def verify_witness_receipts(

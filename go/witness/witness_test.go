@@ -504,12 +504,42 @@ func TestVerifyReceiptsWithoutAnchorOrEntries(t *testing.T) {
 	require.Equal(t, StatusWithheld, status)
 	require.Equal(t, []string{"checkpoint_unverified"}, findings)
 
-	record := map[string]interface{}{"ts_url": "https://w.example", "entry_hash": "", "receipt_b64": 7, "leaf_index": 0, "tree_size": 1}
+	record := map[string]interface{}{"ts_url": "https://w.example", "entry_hash": "ab", "receipt_b64": "AA==", "leaf_index": 0, "tree_size": 1}
 	directory := DirectoryFromValue([]interface{}{map[string]interface{}{"endpoint": "https://w.example", "key_ids": []interface{}{"zz"}}})
 	status, findings, receipts = VerifyReceipts([]interface{}{record, "junk"}, &SignedCheckpoint{}, []byte{1}, directory)
 	require.Equal(t, StatusFail, status, "a malformed entry fails the witnesses")
 	require.Equal(t, []string{"witness_receipt_malformed:1", "witness_unverified:https://w.example"}, findings)
 	require.Equal(t, StatusWithheld, receipts[0].Status, "an unusable row key is not checked")
+}
+
+// A record whose members are present but empty, of another type, or whose
+// receipt_b64 is not canonical standard base64 is malformed, with or without
+// a directory row for its witness (vectors/bundle/strict/README.md).
+func TestVerifyReceiptsFailsAMalformedMember(t *testing.T) {
+	good := func() map[string]interface{} {
+		return map[string]interface{}{"ts_url": "https://w.example", "entry_hash": "ab", "receipt_b64": "AA==", "leaf_index": 0, "tree_size": 1}
+	}
+	for name, edit := range map[string]func(map[string]interface{}){
+		"ts_url empty":              func(r map[string]interface{}) { r["ts_url"] = "" },
+		"entry_hash empty":          func(r map[string]interface{}) { r["entry_hash"] = "" },
+		"entry_hash not a string":   func(r map[string]interface{}) { r["entry_hash"] = true },
+		"receipt_b64 empty":         func(r map[string]interface{}) { r["receipt_b64"] = "" },
+		"receipt_b64 not a string":  func(r map[string]interface{}) { r["receipt_b64"] = 7 },
+		"receipt_b64 not base64":    func(r map[string]interface{}) { r["receipt_b64"] = "!" },
+		"receipt_b64 unpadded":      func(r map[string]interface{}) { r["receipt_b64"] = "AA" },
+		"receipt_b64 trailing bits": func(r map[string]interface{}) { r["receipt_b64"] = "AB==" },
+		"a stub, receipt_b64 empty": func(r map[string]interface{}) { r["is_stub"] = true; r["receipt_b64"] = "" },
+	} {
+		record := good()
+		edit(record)
+		status, findings, receipts := VerifyReceipts([]interface{}{record}, &SignedCheckpoint{}, []byte{1}, Directory{})
+		require.Equal(t, StatusFail, status, name)
+		require.Equal(t, []string{"witness_receipt_malformed:0"}, findings, name)
+		require.Empty(t, receipts, name)
+	}
+	status, findings, _ := VerifyReceipts([]interface{}{good()}, &SignedCheckpoint{}, []byte{1}, Directory{})
+	require.Equal(t, StatusWithheld, status)
+	require.Equal(t, []string{"witness_unverified:https://w.example"}, findings)
 }
 
 // rekorEntry builds a Rekor dsse entry logging a checkpoint under
