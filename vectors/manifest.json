@@ -12,7 +12,6 @@
     "minimum_necessary": "minimum-necessary/manifest.json",
     "bundle_composed": "bundle/composed/manifest.json",
     "judgment": "judgment/manifest.json",
-    "presentation_resolution": "presentation-resolution/manifest.json",
     "viewer_core_text": "viewer-core-text/manifest.json",
     "interop_profile_v0": "interop-profile-v0/manifest.json",
     "interop_profile_v0_requirement_facts": "interop-profile-v0-requirement-facts/manifest.json",

@@ -1,5 +1,5 @@
 {
-  "description": "spec/contract-report-v1.md section 2 and 3: what a contract-report module shows for the Result v0 sections 4.2 and 4.3 vectors. AAC's core runtime has no contract-report module (section 4), so a module's own rendering tests run these, with the example pack (schemas/examples/presentation-manifest-v0/example-wording-pack-contract-report.json) and each case's entry overrides layered over it. Counts are per claim (Result v0 section 3).",
+  "description": "capsule-viewer's spec/contract-report-module-v1.md sections 2 and 3 (formerly spec/contract-report-v1.md here): what a contract-report module shows for the Result v0 sections 4.2 and 4.3 vectors. AAC's core runtime has no contract-report module, so a module's own rendering tests run these, with capsule-viewer's example pack (schemas/examples/presentation-manifest-v0/example-wording-pack-contract-report.json there) and each case's entry overrides layered over it. Counts are per claim (Result v0 section 3).",
   "cases": [
     {
       "name": "out-of-scope-count",

@@ -110,7 +110,7 @@ const sha256 = (text: string): string =>
 export function generateCoreTextVectors(): Record<string, string> {
   const coreText = json({
     description:
-      "The core's fixed text (spec/presentation-contract-v0.md sections 6.1, 6.2 and 8): one banner line per verification state, the refusal, the unable-to-verify lines, the check lists' headings and lines, and the extension rows. A viewer draws exactly these words; no module, wording pack or bundle supplies them.",
+      "The core's fixed text (spec/verification-display-v0.md sections 6.1, 6.2 and 8): one banner line per verification state, the refusal, the unable-to-verify lines, the check lists' headings and lines, and the extension rows. A viewer draws exactly these words; no module, wording pack or bundle supplies them.",
     count: BANNER_STATES.length + VERIFICATION_CHECK_IDS.length,
     banner: BANNER_STATES,
     refusal: UNVERIFIED_BUNDLE_REFUSAL,
@@ -146,7 +146,7 @@ export function generateCoreTextVectors(): Record<string, string> {
   return {
     "core-text.json": coreText,
     "manifest.json": json({
-      contract: "spec/presentation-contract-v0.md (sections 6.1, 6.2, 8)",
+      contract: "spec/verification-display-v0.md (sections 6.1, 6.2, 8)",
       provenance: "reference-derived",
       generator: "ts/test/helpers/viewer-core-text-vectors.ts",
       normative_for: ["ts/src/verification-page.ts"],
