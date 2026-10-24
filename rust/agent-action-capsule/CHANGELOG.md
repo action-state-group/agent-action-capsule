@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.1
+
 - `verify::verify` does bounded work on hostile numbers. The float and
   unsafe-integer walk writes a path only for a number that fails, where it
   used to build one for every member it visited. It reports at most 64
