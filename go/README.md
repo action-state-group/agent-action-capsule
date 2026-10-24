@@ -27,26 +27,17 @@ GOWORK=off go test -race ./...
 GOWORK=off go run ./cmd/vector_runner/
 ```
 
-## Presentation resolver
-
-`presentation/` is the Go resolver of `spec/presentation-contract-v0.md`, the
-twin of `ts/src/presentation-registry.ts`: `ParseManifest`, `Registry`
-(`Register`, `List`, `Refused`, `Resolve`, `ResolveWith`), `Describe` and
-`DescribeBundle` (the section 4.2 descriptor of a bundle, verified as the
-TypeScript context verifies it: `bundle.VerifyBundle`, with a producer selection
-the strict checks do not reject read through `bundle.VerifyStrict`; `Verified`
-gives the TypeScript answer on the result `DescribeBundle` returns, not on a
-plain `bundle.VerifyBundle` result), `RefusalRow` and `RefusalLine` (the section 3.2 wording),
-`NewBuiltinRegistry` and `NewSectionRegistry`. Go has no module code, so
-`Resolve` selects by the declarative match as if every module could render;
-`ResolveWith` takes a `canRender` answer. The vectors under
-`../vectors/presentation-resolution/` are normative for both implementations,
-and both test suites run every case.
-
 ## Evidence Bundles
 
 `bundle.VerifyBundle` checks a Bundle's claims and `bundle.VerifyStrict` gives
 the strict verdict (`VALID`, `INCOMPLETE` or `INVALID`).
+`bundle.VerifyBundleForPage` reads a Bundle as the TypeScript page context
+does (`bundle.VerifyBundle`, with a producer selection the strict checks do not
+reject read through `bundle.VerifyStrict`), and `bundle.Verified` is the page's
+verification gate on that result (`spec/verification-display-v0.md` section 1,
+TypeScript `bundleVerified`). The presentation resolver that was `presentation/`
+is now `github.com/action-state-group/capsule-viewer/go/presentation`.
+
 `bundle.BuildEvidenceBundle(ctx, source, opts)` builds a Bundle from a
 `ProofSource`: the log's signed COSE checkpoint, its leaves, records by
 Capsule ID, and inclusion and range proofs in the Bundle's wire shape. It
