@@ -11,10 +11,15 @@ use std::time::{Duration, Instant};
 
 use agent_action_capsule::canonical::float_paths;
 use agent_action_capsule::verify::verify;
-
-/// The verifier reports at most this many findings of one number kind.
-const MAX_PATH_FINDINGS: usize = 64;
 use serde_json::{json, Value};
+
+/// The verifier reports at most this many findings of one number kind
+/// (`verify::MAX_PATH_FINDINGS`, crate-private).
+const MAX_PATH_FINDINGS: usize = 64;
+
+/// Generous for a debug build on a shared CI runner. The memory bounds are
+/// the real check: before the fix these shapes needed about 125 GB.
+const TIME_LIMIT: Duration = Duration::from_secs(10);
 
 struct Counting;
 
@@ -101,7 +106,7 @@ fn opening_many_containers_under_a_long_key_writes_no_paths() {
         peak < copy / 100,
         "peak {peak} bytes; one copy of the record is {copy}"
     );
-    assert!(took < Duration::from_secs(2), "took {took:?}");
+    assert!(took < TIME_LIMIT, "took {took:?}");
     assert!(verify(&record, None).ok);
 }
 
@@ -126,7 +131,7 @@ fn a_wide_array_under_a_long_key_is_checked_in_bounded_memory_and_time() {
         peak < 3 * copy,
         "peak {peak} bytes; one copy of the record is {copy}"
     );
-    assert!(took < Duration::from_secs(2), "took {took:?}");
+    assert!(took < TIME_LIMIT, "took {took:?}");
 }
 
 #[test]
@@ -143,10 +148,28 @@ fn failing_numbers_under_a_long_key_cost_only_clipped_paths() {
         .filter(|f| f.code == "float_in_digest_field")
         .collect();
     assert_eq!(floats.len(), MAX_PATH_FINDINGS);
+    let first = format!(
+        "at model_attestation.{}...",
+        "k".repeat(256 - "model_attestation.".len())
+    );
+    assert!(floats[0].detail.contains(&first), "{}", floats[0].detail);
     assert!(floats.iter().all(|f| f.detail.chars().count() < 400));
-    assert!(took < Duration::from_secs(2), "took {took:?}");
+    assert!(took < TIME_LIMIT, "took {took:?}");
     assert!(
         peak < 3 * copy,
         "peak {peak} bytes; one copy of the record is {copy}"
     );
+}
+
+#[test]
+fn unsafe_integers_are_capped_too() {
+    let _serial = serial();
+    let big: Value = serde_json::from_str("9007199254740993").unwrap();
+    let record = wide_record(Value::Array(vec![big; 1_000]));
+    let findings = verify(&record, None).findings;
+    let unsafe_ints = findings
+        .iter()
+        .filter(|f| f.code == "unsafe_integer_in_digest_field")
+        .count();
+    assert_eq!(unsafe_ints, MAX_PATH_FINDINGS);
 }

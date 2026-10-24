@@ -376,7 +376,7 @@ fn join(root_path: &str, stack: &[Frame<'_>], last: Option<&Step<'_>>, max_chars
             Step::Index(i) => path.push(&format!("[{i}]")),
         }
     }
-    if path.text.is_empty() {
+    if path.text.is_empty() && !path.full {
         return "<root>".to_string();
     }
     if path.full {
@@ -486,6 +486,11 @@ mod tests {
         );
         assert_eq!(float_paths_limited(&v, 0, 9), Vec::<String>::new());
         assert_eq!(float_paths_limited(&Value::from(1.5), 9, 2), ["<root>"]);
+        assert_eq!(float_paths_limited(&v, 1, 0), ["..."]);
+        // Characters, not bytes: a cut never splits one.
+        let wide: Value = serde_json::from_str("{\"é\u{10000}x\": 1.5}").unwrap();
+        assert_eq!(float_paths_limited(&wide, 1, 2), ["é\u{10000}..."]);
+        assert_eq!(float_paths_limited(&wide, 1, 3), ["é\u{10000}x"]);
         let big: Value =
             serde_json::from_str(r#"[9007199254740992, 1.5, 9007199254740993]"#).unwrap();
         assert_eq!(unsafe_int_paths_limited(&big, 1, 9), ["[0]"]);
