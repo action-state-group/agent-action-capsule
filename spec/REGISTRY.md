@@ -410,11 +410,23 @@ registered.
 |---|---|
 | `producer-key/v1` | `{"public_key": "<64 lowercase hex>"}`: the declaring producer's Ed25519 public key, one key per block, defined in the Evidence Bundle draft (`-01` and later), "The producer-key/v1 Extension". Covered by the bundle digest like every extension. A verifier uses it only to classify a countersignature whose `signer.key_id` equals it as not independent (a self-countersignature). It can only downgrade an entry to not independent, never upgrade one, and it is not an identity or authority claim. A malformed block is ignored and does not fail the Bundle. |
 | `composed/v1` | `{"members", "observers", "joins"?, "not_requested"?, "missing"?, "composed_digest"}`: a composition of several responders' Evidence Request outcomes, defined in the Evidence Bundle draft (`-01` and later), "The composed/v1 Extension". Each member records one responder's outcome (`artifact`, `refusal` or `absence`), the observer that produced it and its digest; each observer has a `role` and an opaque `custody_domain`; each join declares a linkage basis and a state (`agree`, `mismatch`, `unjoined` or `one_sided`) that a verifier re-derives. `composed_digest` is SHA-256 over the JCS form of the member, observer, join and `not_requested` declarations (member bodies and `missing` excluded). A verifier reports composition closure (every member present or declared missing) separately from each member Bundle's own three claims, and reports two agreeing members in one custody domain as redundant, not corroborating. Conformance vectors: `vectors/bundle/composed/`. |
-| `contract-report/v1` | `{}`: a closed empty object, defined in `spec/contract-report-v1.md` with the schema `schemas/contract-report-v1.json`. A producer's opt-in to the contract-report view of a verified Evidence Result (`spec/evidence-result-v0.md`): the Result's sealed aggregate first, then one row per (`contract_ref`, `requirement_ref`) with its claims counted by verdict, each claim keeping its tier, grade and carrier status. The block carries no words, data, grouping or flags; the words come from the rendering module's wording pack (`spec/presentation-contract-v0.md` §6, §7.4), never from the bundle. A block that is not an empty object is declined: the kind is not engaged. Earlier unregistered display kinds that it replaces are listed in the deprecation table of `spec/presentation-contract-v0.md` §4.2. |
+| `contract-report/v1` | `{}`: a closed empty object, defined in `spec/contract-report-v1.md` with the schema `schemas/contract-report-v1.json`. A producer's opt-in to the contract-report view of a verified Evidence Result (`spec/evidence-result-v0.md`): the Result's sealed aggregate first, then one row per (`contract_ref`, `requirement_ref`) with its claims counted by verdict, each claim keeping its tier, grade and carrier status. The block carries no words, data, grouping or flags; the words come from the rendering module's wording pack, never from the bundle. A block that is not an empty object is declined: the kind is not engaged. Earlier unregistered display kinds that it replaces are listed in the deprecation table below. |
 
 A company-specific row model such as `report/v1` is an extension only when
 its independently available specification is registered; this registry does
 not define that row model.
+
+### Deprecated: earlier display kinds
+
+**Deprecation table.** These kinds are deprecated aliases of `contract-report/v1`. Until
+their removal their readers and built-in cards are unchanged; their built-in manifests
+differ only in forbidding `contract-report/v1`. A producer SHOULD NOT write
+them.
+
+| Kind | Deprecated in | Removed in |
+|---|---|---|
+| `outcome-report/v1` | ts 0.6.0, go v0.12.0 | ts 0.8.0, which removes its TypeScript reader (`outcome-report-presentation.ts`) and its extension interpreter. Its Go reader and built-in manifest left this repository with `go/presentation` and are not removed by a Go release here. |
+| `eu-ai-act-compliance/v1` | ts 0.6.0, go v0.12.0 | ts 0.8.0, which removes its TypeScript reader (`compliance-presentation.ts`) and its extension interpreter. Its Go reader and built-in manifest left this repository with `go/presentation` and are not removed by a Go release here. |
 
 ### Provisional: minimum-necessary extension kinds
 

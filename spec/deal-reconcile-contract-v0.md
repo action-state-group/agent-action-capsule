@@ -25,7 +25,7 @@ a claim cites no Close (§7.4).
 |---|---|---|
 | RES | `spec/evidence-result-v0.md` | the claim, the `type: reconcile` body (§4.1): `join_key`, `peer`, `period`, the six tallies, `state_of_record`; the sufficiency derivation (§4.1); evidence by digest only (§5) |
 | PO | `spec/personal-agent-history-outcome-v0.md` | the deal commitment rule (§7): the construction `sha256-jcs-nonce256`, where an opening travels, who an opening is released to; the `openings` carriage (§11) |
-| PC | `spec/presentation-contract-v0.md` | the commitment construction `sha256-jcs-nonce256` (§7.2) |
+| VD | `spec/verification-display-v0.md` | the commitment construction `sha256-jcs-nonce256` (§7.2) |
 | EL | `draft-mih-agent-evidence-layer-00` | the six per-pairing states and "one half unavailable is not disagreement" ("Reconcile and Close") |
 | IP | `spec/interop-profile-v0.md` (`evidence-interop/0`) | the value conventions (§5.2), the as-transmitted rule (§5.1), the coverage declaration, its properties and what a verifier reports (§6.7.1 to §6.7.3), the Evidence Contract prose (§11.3) |
 
@@ -108,7 +108,7 @@ This contract reads six abstract members of a half and ignores everything else i
 | `deal_id` | REQUIRED | non-empty text | the deal; the join key |
 | `book_id` | REQUIRED | non-empty text | the book that holds the half |
 | `recorded_at` | REQUIRED | RFC 3339 time | when the book recorded the half |
-| `commit_alg` | OPTIONAL | `"sha256-jcs-nonce256"` | the commitment construction (PO §7, PC §7.2) |
+| `commit_alg` | OPTIONAL | `"sha256-jcs-nonce256"` | the commitment construction (PO §7, VD §7.2) |
 | `amount_commitment` | OPTIONAL | lowercase-hex SHA-256 | the commitment to the amount |
 | `currency_commitment` | OPTIONAL | lowercase-hex SHA-256 | the commitment to the currency |
 
