@@ -57,9 +57,15 @@ func unboundRecords(result bundle.VerificationResult) int {
 // fail solely because some supplied records sit outside any checkpoint),
 // every record's identity verifies, and every disclosure matches or is
 // withheld.
+//
+// A producer-selected Bundle, as DescribeBundle reads it, has no interval to
+// check, so its interval coverage is exempt; each record's own inclusion
+// proof is gated like any Bundle's membership. This is the TypeScript gate
+// (bundleVerified), so both languages resolve the same Bundle the same way.
 func Verified(result bundle.VerificationResult) bool {
 	membership := result.PerRecordMembership
-	if result.GraphClosure.Status != "pass" || result.IntervalCoverage.Status != "pass" {
+	if result.GraphClosure.Status != "pass" ||
+		(result.IntervalCoverage.Status != "pass" && !producerSelection(result)) {
 		return false
 	}
 	if membership.Status != "pass" &&
@@ -255,8 +261,34 @@ func Describe(value interface{}, result bundle.VerificationResult) Descriptor {
 	return d
 }
 
-// DescribeBundle verifies value with bundle.VerifyBundle and describes it.
+// DescribeBundle verifies value as the TypeScript context does (bundle.ts
+// buildVerifiedBundleContext) and describes it: the plain result of
+// bundle.VerifyBundle, except that for a producer selection the strict
+// checks did not reject, interval coverage and per-record membership are the
+// strict readings (bundle.VerifyStrict). The plain checks do not know a
+// producer selection and read it as an interval; an INVALID selection keeps
+// the plain reading, so it stays refused.
 func DescribeBundle(value interface{}) (Descriptor, bundle.VerificationResult) {
 	result := bundle.VerifyBundle(value)
+	if strict := bundle.VerifyStrict(value, bundle.StrictOptions{}); strict.Verdict != bundle.VerdictInvalid &&
+		producerSelection(strict.VerificationResult) {
+		result.IntervalCoverage = strict.IntervalCoverage
+		result.PerRecordMembership = strict.PerRecordMembership
+	}
 	return Describe(value, result), result
+}
+
+// producerSelection reports whether result reads its Bundle as a producer
+// selection: interval coverage is withheld as not checkable (TypeScript
+// isProducerSelection).
+func producerSelection(result bundle.VerificationResult) bool {
+	if result.IntervalCoverage.Status != "withheld" {
+		return false
+	}
+	for _, finding := range result.IntervalCoverage.Findings {
+		if finding == "selection_not_checkable" {
+			return true
+		}
+	}
+	return false
 }

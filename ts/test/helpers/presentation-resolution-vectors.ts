@@ -1088,6 +1088,18 @@ async function descriptors(): Promise<Obj> {
       ]);
     }
   }
+  // The producer-selected strict cases (#395): the valid selection resolves
+  // as verified, and every selection the strict checks reject stays refused.
+  const strictFile = "bundle/strict/vectors.json";
+  for (const c of json(resolvePath(ROOT, "vectors", strictFile))
+    .cases as Obj[]) {
+    const id = String(c.id);
+    if (!id.includes("producer-selected")) continue;
+    sources.push([
+      `vectors/${strictFile}#${id}`,
+      { vector: { file: strictFile, key: "id", case: id, member: "bundle" } },
+    ]);
+  }
 
   const complianceBlock = (
     json(resolvePath(TESTDATA, "compliance-bundle.json")).extensions as Obj

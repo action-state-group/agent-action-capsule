@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Go presentation gate: `presentation.DescribeBundle` reads a producer-selected Bundle as the
+  TypeScript context does, taking interval coverage and per-record membership from the strict
+  checks when they do not reject it, and `presentation.Verified` exempts its interval coverage as
+  `bundleVerified` does. Go refused the valid selection (`incomplete-producer-selected`) that the
+  TypeScript page renders, so capsule-cli's `presentation list` and `build` resolved a refusal for
+  it; every selection the strict checks call INVALID stays refused. The nine producer-selected
+  strict cases join `vectors/presentation-resolution/descriptors.json`, which both languages run;
+  no existing case changes. (#395)
 - TypeScript: `verificationBanner(context, stamps)` in `verification-page.ts` returns the banner a
   page draws for a verified bundle context (presentation contract §6.2): its state, fixed line,
   strict verdict, checkpoint state, details line, uncheckpointed count and, for a refused bundle,
