@@ -173,3 +173,28 @@ fn unsafe_integers_are_capped_too() {
         .count();
     assert_eq!(unsafe_ints, MAX_PATH_FINDINGS);
 }
+
+/// `vectors/cross-language/verify-number-findings.json` pins the number
+/// findings of one record for every implementation: the same codes, in the
+/// same order, quoting the same (clipped) paths.
+#[test]
+fn number_findings_match_the_shared_fixture() {
+    let _serial = serial();
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../vectors/cross-language/verify-number-findings.json"
+    );
+    let fixture: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let found: Vec<_> = verify(&fixture["record"], None)
+        .findings
+        .into_iter()
+        .filter(|f| f.code == "float_in_digest_field" || f.code == "unsafe_integer_in_digest_field")
+        .collect();
+    let expected = fixture["expected"].as_array().unwrap();
+    assert_eq!(found.len(), expected.len());
+    for (f, e) in found.iter().zip(expected) {
+        assert_eq!(f.code, e["code"].as_str().unwrap());
+        let quoted = format!(" at {}", e["path"].as_str().unwrap());
+        assert!(f.detail.contains(&quoted), "{} lacks {quoted}", f.detail);
+    }
+}

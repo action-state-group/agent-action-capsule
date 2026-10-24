@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Class 1 verify (Go, Python, TypeScript) does bounded work on hostile numbers, as Rust does since
+  #382. It reports at most 64 `float_in_digest_field` and 64 `unsafe_integer_in_digest_field`
+  findings, each quoting at most 256 characters of its path, then `...`, and writes a path only for
+  a failing number. A 60 KB record with 2,000 floats under a 50 KB key used to need about 200 MB in
+  Python. Python and TypeScript now list object members in code point order, as Go and Rust do, so
+  all four report the same findings. Verdicts and finding codes don't change. A new cross-language
+  fixture, `vectors/cross-language/verify-number-findings.json`, pins the findings. (#383)
 - Strict Bundle verification (Go, Python, Rust, TypeScript): the `checkpoint` claim also holds the
   completeness certificate's `log_id`, when stated, to the signed log identifier, and reports
   `checkpoint_field_mismatch:log_id` when it differs (bundle -01 §Completeness). A producer-selected

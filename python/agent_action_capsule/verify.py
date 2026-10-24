@@ -15,7 +15,7 @@ verification (§8.2) is out of scope.
 """
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -261,39 +261,89 @@ def _reference_findings(
     return findings
 
 
-def _float_paths(v: Any, path: str = "") -> list[str]:
-    out: list[str] = []
-    if isinstance(v, bool):
-        return out
-    if isinstance(v, float):
-        return [path or "<root>"]
-    if isinstance(v, Mapping):
-        for k, val in v.items():
-            out += _float_paths(val, f"{path}.{k}" if path else str(k))
-    elif isinstance(v, (list, tuple)):
-        for i, val in enumerate(v):
-            out += _float_paths(val, f"{path}[{i}]")
-    return out
+# At most this many ``float_in_digest_field`` (and, separately,
+# ``unsafe_integer_in_digest_field``) findings are reported; the verdict needs
+# only one. Each quotes at most _MAX_PATH_CHARS characters of its path, then
+# "...". The Rust, Go and TS verifiers use the same limits.
+_MAX_PATH_FINDINGS = 64
+_MAX_PATH_CHARS = 256
+
+_END = object()
 
 
-def _unsafe_int_paths(v: Any, path: str = "") -> list[str]:
+def _is_float(v: Any) -> bool:
+    return isinstance(v, float)
+
+
+def _is_unsafe_int(v: Any) -> bool:
     # Integers outside the IEEE-754-double safe range are a digest-reproducibility
-    # hazard (mirror of _float_paths; see canonical.MAX_SAFE_INTEGER). bool is an
-    # int subclass but is never a numeric value here.
-    out: list[str] = []
-    if isinstance(v, bool):
-        return out
-    if isinstance(v, int):
-        if v > MAX_SAFE_INTEGER or v < -MAX_SAFE_INTEGER:
-            return [path or "<root>"]
-        return out
+    # hazard (see canonical.MAX_SAFE_INTEGER). bool is an int subclass but is
+    # never a numeric value here.
+    return isinstance(v, int) and not isinstance(v, bool) and (v > MAX_SAFE_INTEGER or v < -MAX_SAFE_INTEGER)
+
+
+def _children(v: Any) -> Iterator[tuple[str | int, Any]] | None:
+    # Object members in code point order of their keys: the Rust and Go byte
+    # order, so a capped list is the same prefix in every implementation.
     if isinstance(v, Mapping):
-        for k, val in v.items():
-            out += _unsafe_int_paths(val, f"{path}.{k}" if path else str(k))
-    elif isinstance(v, (list, tuple)):
-        for i, val in enumerate(v):
-            out += _unsafe_int_paths(val, f"{path}[{i}]")
+        return ((str(k), v[k]) for k in sorted(v, key=str))
+    if isinstance(v, (list, tuple)):
+        return enumerate(v)
+    return None
+
+
+def _number_paths(v: Any, matches: Callable[[Any], bool], limit: int, max_chars: int) -> list[str]:
+    """The first ``limit`` JSON paths at which ``matches`` holds, each cut to
+    ``max_chars`` characters followed by ``...``.
+
+    Depth-first without recursion, keeping only the step (key or index) of each
+    open container: a path is written only for a number that matches, so the
+    work is linear in the input plus the paths returned.
+    """
+    out: list[str] = []
+    if limit <= 0:
+        return out
+    root = _children(v)
+    if root is None:
+        return [_join([], max_chars)] if matches(v) else out
+    stack = [root]
+    steps: list[str | int] = []  # steps[i] reached stack[i + 1]
+    while stack:
+        nxt = next(stack[-1], _END)
+        if nxt is _END:
+            stack.pop()
+            if steps:
+                steps.pop()
+            continue
+        step, child = nxt
+        kids = _children(child)
+        if kids is not None:
+            stack.append(kids)
+            steps.append(step)
+        elif matches(child):
+            steps.append(step)
+            out.append(_join(steps, max_chars))
+            steps.pop()
+            if len(out) >= limit:
+                break
     return out
+
+
+def _join(steps: list[str | int], max_chars: int) -> str:
+    """``a.b[0]`` from its steps; past ``max_chars`` characters the rest is
+    dropped and ``...`` marks the cut."""
+    text = ""
+    for step in steps:
+        room = max_chars - len(text)
+        if isinstance(step, int):
+            piece = f"[{step}]"
+        else:
+            # Slice first, so a huge key is not copied whole for each finding.
+            piece = ("." if text else "") + step[: room + 1]
+        if len(piece) > room:
+            return text + piece[:room] + "..."
+        text += piece
+    return text or "<root>"
 
 
 def _text(v: Any) -> str | None:
@@ -399,9 +449,9 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
             findings.append(Finding(f"{fld}_not_string", f"{fld} MUST be a string when present (§-02)", check=1))
     if "constraints" in capsule and not isinstance(capsule["constraints"], list):
         findings.append(Finding("constraints_not_array", "constraints MUST be an array when present (§8.1)", check=1))
-    for p in _float_paths(capsule):
+    for p in _number_paths(capsule, _is_float, _MAX_PATH_FINDINGS, _MAX_PATH_CHARS):
         findings.append(Finding("float_in_digest_field", f"floating-point value at {p}; §5.1 forbids it", check=1))
-    for p in _unsafe_int_paths(capsule):
+    for p in _number_paths(capsule, _is_unsafe_int, _MAX_PATH_FINDINGS, _MAX_PATH_CHARS):
         findings.append(Finding(
             "unsafe_integer_in_digest_field",
             f"integer outside the JS-safe range (+/-{MAX_SAFE_INTEGER}) at {p}; "

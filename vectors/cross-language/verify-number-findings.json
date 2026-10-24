@@ -1,0 +1,669 @@
+{
+ "description": "Number findings every verifier reports for record: at most 64 per code, object members in code point order, paths cut to 256 code points then '...'.",
+ "record": {
+  "z": [
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5
+  ],
+  "w": [
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993,
+   9007199254740993,
+   -9007199254740993
+  ],
+  "k\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9": [
+   0.25
+  ],
+  "a": {
+   "\ud83d\ude00": 1.5,
+   "n": 1,
+   "t": true,
+   "\uff61": 0.5,
+   "big": 9007199254740991
+  }
+ },
+ "expected": [
+  {
+   "code": "float_in_digest_field",
+   "path": "a.\uff61"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "a.\ud83d\ude00"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "k\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9..."
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[0]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[1]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[2]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[3]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[4]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[5]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[6]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[7]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[8]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[9]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[10]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[11]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[12]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[13]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[14]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[15]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[16]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[17]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[18]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[19]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[20]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[21]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[22]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[23]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[24]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[25]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[26]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[27]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[28]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[29]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[30]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[31]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[32]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[33]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[34]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[35]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[36]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[37]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[38]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[39]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[40]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[41]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[42]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[43]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[44]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[45]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[46]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[47]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[48]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[49]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[50]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[51]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[52]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[53]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[54]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[55]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[56]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[57]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[58]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[59]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "z[60]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[0]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[1]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[2]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[3]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[4]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[5]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[6]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[7]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[8]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[9]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[10]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[11]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[12]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[13]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[14]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[15]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[16]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[17]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[18]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[19]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[20]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[21]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[22]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[23]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[24]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[25]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[26]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[27]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[28]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[29]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[30]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[31]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[32]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[33]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[34]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[35]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[36]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[37]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[38]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[39]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[40]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[41]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[42]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[43]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[44]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[45]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[46]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[47]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[48]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[49]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[50]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[51]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[52]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[53]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[54]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[55]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[56]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[57]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[58]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[59]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[60]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[61]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[62]"
+  },
+  {
+   "code": "unsafe_integer_in_digest_field",
+   "path": "w[63]"
+  }
+ ]
+}
