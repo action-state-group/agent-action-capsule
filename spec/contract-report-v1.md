@@ -16,7 +16,6 @@ governs.
 | Tag | Document | What this document takes from it |
 |---|---|---|
 | ER | `spec/evidence-result-v0.md` | the Evidence Result the block opts into a view of |
-| PC | `spec/presentation-contract-v0.md` | which extension kinds are engaged (§4.2) |
 | REG | `spec/REGISTRY.md` | the kind's row and the deprecation table of the earlier kinds (§14) |
 
 **Does not define:** a renderer. The core runtime ships no contract-report module. Nor does it
@@ -30,10 +29,10 @@ define any pack, its rows, its words, or how a builder chooses a pack for a page
 
 The block is a closed empty object. It carries no words, data, grouping, flags or provenance:
 everything a contract-report module shows comes from the sealed Result, and every word from the
-module's wording pack (the former §3, below).
+module's wording pack.
 
-A block that is not an object, or that has any member, is **declined**: the kind is not engaged
-(PC §4.2), and the verification page still lists the block as present. Present and well formed
+A block that is not an object, or that has any member, is **declined**: a reader of the kind
+treats the block as absent, and the verification page still lists the block as present. Present and well formed
 means engaged. Like every extension, the block is covered by the bundle digest.
 
 Sections 2 to 4 (how a contract-report module reads the Result, its words and keys, its
@@ -44,7 +43,7 @@ resolution, manifest and registration) and the example pack moved to the
 
 Two earlier, unregistered display kinds are deprecated aliases of this one, listed in REG §14's
 deprecation table with the releases that deprecate and remove them. Nothing converts an earlier
-block into this one: until their removal they are read by their own readers, unchanged, and
-their built-in manifests differ only in forbidding `contract-report/v1`. A producer migrates by
+block into this one, and this repository no longer reads either of them from ts 0.8.0. A
+producer migrates by
 writing `{"contract-report/v1": {}}` in place of its earlier block and moving its words into its
 wording pack.

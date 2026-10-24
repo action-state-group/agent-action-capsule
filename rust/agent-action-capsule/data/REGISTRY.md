@@ -418,15 +418,14 @@ not define that row model.
 
 ### Deprecated: earlier display kinds
 
-**Deprecation table.** These kinds are deprecated aliases of `contract-report/v1`. Until
-their removal their readers and built-in cards are unchanged; their built-in manifests
-differ only in forbidding `contract-report/v1`. A producer SHOULD NOT write
-them.
+**Deprecation table.** These kinds are deprecated aliases of `contract-report/v1`. This
+repository's TypeScript readers of them and their extension interpreters are removed in ts
+0.8.0; it carries no built-in card or manifest for them. A producer SHOULD NOT write them.
 
 | Kind | Deprecated in | Removed in |
 |---|---|---|
 | `outcome-report/v1` | ts 0.6.0, go v0.12.0 | ts 0.8.0, which removes its TypeScript reader (`outcome-report-presentation.ts`) and its extension interpreter. Its Go reader and built-in manifest left this repository with `go/presentation` and are not removed by a Go release here. |
-| `eu-ai-act-compliance/v1` | ts 0.6.0, go v0.12.0 | ts 0.8.0, which removes its TypeScript reader (`compliance-presentation.ts`) and its extension interpreter. Its Go reader and built-in manifest left this repository with `go/presentation` and are not removed by a Go release here. |
+| `eu-ai-act-compliance/v1` | ts 0.6.0, go v0.12.0 | ts 0.8.0, which removes its TypeScript reader (`compliance-presentation.ts`) and its extension interpreter. The removal waited for a Result revision that carries applicability; Results now do (`spec/evidence-result-v0.md` §4.3). Its Go reader and built-in manifest left this repository with `go/presentation` and are not removed by a Go release here. |
 
 ### Provisional: minimum-necessary extension kinds
 

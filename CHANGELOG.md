@@ -33,17 +33,19 @@
   `presentation.DescribeBundle` did inline (the plain result, with a producer selection the
   strict checks do not reject read through `VerifyStrict`). A new test runs the nine
   producer-selected strict vectors through both. (#379)
-- Spec: the presentation contract moved to capsule-viewer. What a page states about verification
-  stays here, in the new `spec/verification-display-v0.md`, with its words unchanged and the
-  contract's section numbers: the "Verified" gate (§1), the check lists (§6.1), the banner
-  (§6.2), evidentiary words (§7.1), `sha256-jcs-nonce256` (§7.2) and invariants I1 (the
-  refusal's text) and I3. It defines every term it uses and has its own conformance line;
-  `spec/check-verification-display-terms.py` checks the terms in the Spec workflow.
-  `spec/presentation-contract-v0.md` and `spec/presentation-builder-v0.md` are now informative
-  pointers that map each old section to its new home. `spec/contract-report-v1.md` keeps §1 (the
-  block) and §5 (earlier kinds); its §2 to §4 and example pack moved. The deprecation table of
-  the earlier kinds is now in `spec/REGISTRY.md` §14, its removal column rewritten (ts 0.8.0;
-  the Go readers left with `go/presentation`). `spec/deal-reconcile-contract-v0.md` and
+- **Breaking**, spec: the presentation contract moved to capsule-viewer, so this repository no
+  longer states conformance for manifests, registries, resolution or I4; a claim of
+  `presentation-contract-v0` conformance now refers to capsule-viewer's copy. What a page states
+  about verification stays here, in the new `spec/verification-display-v0.md`, with its words
+  unchanged except the edits listed in #400 and the contract's section numbers: the "Verified" gate
+  (§1), the check lists (§6.1), the banner (§6.2), evidentiary words (§7.1), `sha256-jcs-nonce256`
+  (§7.2) and invariants I1 (failure collapses to the refusal) and I3. It defines every term it uses
+  and has its own conformance line; `spec/check-verification-display-terms.py` checks the terms in
+  the Spec workflow. `spec/presentation-contract-v0.md` and `spec/presentation-builder-v0.md` are
+  now informative pointers that map each old section to its new home. `spec/contract-report-v1.md`
+  keeps §1 (the block) and §5 (earlier kinds); its §2 to §4 and example pack moved. The deprecation
+  table of the earlier kinds is now in `spec/REGISTRY.md` §14, its removal column rewritten (ts
+  0.8.0; the Go readers left with `go/presentation`). `spec/deal-reconcile-contract-v0.md` and
   `spec/personal-agent-history-outcome-v0.md` cite `sha256-jcs-nonce256` there. (#379)
 - Vectors and schemas: `vectors/presentation-resolution/`, `schemas/presentation-manifest-v0.json`
   with its examples and checker, and the contract-report wording-pack check moved to
