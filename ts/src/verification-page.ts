@@ -731,18 +731,24 @@ export interface VerificationBanner {
   readonly detail: string;
   /** Records bound to no log position. */
   readonly uncheckpointed: number;
-  /** The refusal line after the banner when the page refuses the records. */
+  /**
+   * The refusal line after the banner when the page refuses the records
+   * (contract section 8, I1). A viewer shows the records exactly when this
+   * is absent (section 6.2's "Records shown").
+   */
   readonly refusal?: string;
 }
 
 /**
  * The banner for a verified bundle context. `stamps` is the countersignature
- * classification the page draws; it decides whether the page draws a
- * not-checked list, which the incomplete line points at only when it does.
+ * classification the page draws, the same one it gives
+ * `verificationCheckLists`: it can add a not-checked list, and the
+ * incomplete line points at that list only when the page draws one. It is
+ * required so that a viewer cannot leave it out by mistake.
  */
 export function verificationBanner(
   context: VerifiedBundleContext,
-  stamps: readonly CountersignatureStamp[] = [],
+  stamps: readonly CountersignatureStamp[],
 ): VerificationBanner {
   const { bundle, verification, strict } = context;
   const rendered = bundleVerified(verification);

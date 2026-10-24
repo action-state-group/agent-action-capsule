@@ -53,7 +53,7 @@ function tamperPayload(bundle: Obj): Obj {
 }
 
 async function model(bundle: unknown): Promise<VerificationBanner> {
-  return verificationBanner(await buildVerifiedBundleContext(bundle));
+  return verificationBanner(await buildVerifiedBundleContext(bundle), []);
 }
 
 // The drawn banner, its details line and refusal, as the model's members.
@@ -117,7 +117,7 @@ describe("verificationBanner", () => {
       countersignatures: [{ type: "countersign/v2", anything: true }],
     };
     const context = await buildVerifiedBundleContext(countersigned);
-    const without = verificationBanner(context);
+    const without = verificationBanner(context, []);
     const banner = verificationBanner(context, [
       { kind: "unverified", type: "countersign/v2", reason: "type" },
     ]);
@@ -141,6 +141,24 @@ describe("verificationBanner", () => {
       "What failed: 1 of 2 records' producer signatures do not verify (producer_signature_invalid).",
     );
     expect(banner.refusal).toBeUndefined();
+    expect(await drawn(bundle)).toEqual(banner);
+  });
+
+  it("a record bound to no log position: failed, counted, the records still shown", async () => {
+    const { bundle } = await sealEvidenceBundle(SOURCE(TEST_KEYS.a), {
+      signCheckpoint: true,
+      uncheckpointed: ["act"],
+    });
+    const banner = await model(bundle);
+    expect(banner).toEqual({
+      state: "failed",
+      line: LINES.failed,
+      verdict: "invalid",
+      checkpoint: "verified",
+      detail:
+        "1 of 2 records are uncheckpointed (bound to no log position), so per-record membership fails.",
+      uncheckpointed: 1,
+    });
     expect(await drawn(bundle)).toEqual(banner);
   });
 

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- TypeScript: `verificationBanner(context, stamps?)` in `verification-page.ts` returns the banner a
+- TypeScript: `verificationBanner(context, stamps)` in `verification-page.ts` returns the banner a
   page draws for a verified bundle context (presentation contract §6.2): its state, fixed line,
   strict verdict, checkpoint state, details line, uncheckpointed count and, for a refused bundle,
   the refusal line. The logic moved unchanged from the page renderer, which now draws from it, so a
