@@ -6,7 +6,8 @@
 
 Python 0.12.1, TypeScript 0.6.2 and Go v0.13.1. Go v0.13.0 shipped the number-bound and checkpoint
 entries earlier the same day, and TypeScript 0.6.1 shipped the contract-report entry
-(capsule-viewer#72).
+(capsule-viewer#72). The Rust parts of the witness and checkpoint entries ship with the next
+`agent-action-capsule` crate release.
 
 - Strict witness receipts (Go, Python, Rust, TypeScript): a `checkpoint.witnesses` entry is malformed
   unless `ts_url`, `entry_hash` and `receipt_b64` are non-empty strings and `receipt_b64` is canonical
