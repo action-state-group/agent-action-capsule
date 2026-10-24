@@ -1,6 +1,6 @@
 {
   "name": "@action-state-group/agent-action-capsule",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "TypeScript reference for Agent Action Capsule format 4",
   "license": "BSD-3-Clause",
   "type": "module",
