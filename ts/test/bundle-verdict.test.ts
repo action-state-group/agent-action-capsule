@@ -9,6 +9,7 @@ import {
 import { VERIFICATION_BANNER_LINES as LINES } from "../src/browser.js";
 import { browserPageModel } from "./helpers/browser-page-model.js";
 import { pageModel, type PageModel } from "./helpers/page-model.js";
+import { bundleVerified } from "../src/presentation-registry.js";
 import { sealEvidenceBundle, TEST_KEYS } from "./helpers/sealed-bundle.js";
 
 // The page states the strict verifier's verdict (#196): valid, incomplete or
@@ -314,6 +315,56 @@ describe("the strict result beside the page's own checks", () => {
     expect(checks(model, "failed")).toContain("membership");
     expect(checks(model, "page")).not.toContain("membership");
   });
+
+  // The gate exempts a record bound to no log position only when every
+  // membership finding is such a record: one beside it whose proof does not
+  // verify, or whose entry names another log, still refuses the records.
+  for (const [name, spoil] of [
+    [
+      "an inclusion proof that does not verify",
+      (entry: Obj) => {
+        const proof = entry.inclusion_proof as Obj;
+        entry.inclusion_proof = {
+          ...proof,
+          witness: (proof.witness as string[]).map(() => "00".repeat(32)),
+        };
+      },
+    ],
+    [
+      "an entry that names another log",
+      (entry: Obj) => {
+        (entry.log_coordinates as Obj).log_id = "some-other-log";
+      },
+    ],
+  ] as const)
+    it(`a record bound to no log position beside ${name}: refused`, async () => {
+      // Several records stay in the log, so each proof has a witness path.
+      const { bundle } = await sealEvidenceBundle(
+        JSON.parse(
+          readFileSync(
+            resolve(
+              import.meta.dirname,
+              "testdata",
+              "report-rows-uncheckpointed-bundle.json",
+            ),
+            "utf8",
+          ),
+        ) as Obj,
+        { uncheckpointed: ["act-backfilled"] },
+      );
+      const memberships = (bundle.completeness_certificate as Obj)
+        .memberships as Record<string, Obj>;
+      const entries = Object.values(memberships);
+      expect(
+        ((entries[1]!.inclusion_proof as Obj).witness as unknown[]).length,
+      ).toBeGreaterThan(0);
+      spoil(entries[1]!);
+      const context = await buildVerifiedBundleContext(bundle);
+      expect(bundleVerified(context.verification)).toBe(false);
+      const model = await libraryModel(bundle);
+      expect(banner(model).state).toBe("failed");
+      expect(refusal(model)).not.toBeNull();
+    });
 
   it("a checkpoint missing a field it signs: says so", async () => {
     const model = await libraryModel(
