@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The fragment codec against capsule-viewer's fragment.py, over the vectors
-// the TypeScript codec test reads too: an ASCII payload encodes to the same
-// token, and every token decodes to its payload.
+// The fragment codec over vectors/bundle/fragment/, which the TypeScript
+// codec test reads too: an ASCII payload encodes to the recorded token, and
+// every recorded token decodes to its payload.
 func TestFragmentCodecMatchesFragmentPyVectors(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "..", "ts", "test", "testdata", "presentation-fragment-vectors.json"))
+	raw, err := os.ReadFile(filepath.Join("..", "..", "vectors", "bundle", "fragment", "vectors.json"))
 	require.NoError(t, err)
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()

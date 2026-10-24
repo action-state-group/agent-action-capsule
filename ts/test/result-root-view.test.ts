@@ -1,17 +1,20 @@
 // What the Result page is drawn from, for a Result v0 root: the verification
-// the page states, the built-in page the bundle selects, and the Result model
-// (buildResultRoot) the page shows, recomputed, with every marker where the
-// producer disagreed. capsule-viewer draws the page
+// the page states, whether the page may show the Result (the bundle verified
+// and its root carries one), and the Result model (buildResultRoot) the page
+// shows, recomputed, with every marker where the producer disagreed.
+// capsule-viewer resolves and draws the page
 // (action-state-group/capsule-viewer).
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, it } from "vitest";
 import {
+  bundleVerified,
   buildResultRoot,
+  carriesResultDocument,
   type ResultClaim,
   type ResultRoot,
+  type VerifiedBundleContext,
 } from "../src/browser.js";
-import { builtinPage } from "./helpers/builtin-resolution.js";
 import { pageModel, type PageModel } from "./helpers/page-model.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
@@ -31,19 +34,30 @@ const ABSENT_ID =
   "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
 interface Shown extends PageModel {
-  /** The built-in page the bundle selects. */
+  /** RESULT when the page may show the Result, "<refusal>" when the bundle did not verify. */
   readonly selected: string;
-  /** The Result model, when the bundle verified and selected the Result page. */
+  /** The Result model, when the page may show the Result. */
   readonly result?: ResultRoot;
 }
 
+const RESULT = "result";
+
+// What AAC decides for the page: the gate, then whether the root carries a
+// Result. Which built-in page draws it is capsule-viewer's registry.
+const showable = (context: VerifiedBundleContext): string =>
+  !bundleVerified(context.verification)
+    ? "<refusal>"
+    : carriesResultDocument(context)
+      ? RESULT
+      : "<other>";
+
 async function render(bundle: unknown): Promise<Shown> {
   const model = await pageModel(bundle);
-  const selected = await builtinPage(model.context);
+  const selected = showable(model.context);
   return {
     ...model,
     selected,
-    ...(selected === "aac.builtin.result/v0"
+    ...(selected === RESULT
       ? { result: await buildResultRoot(model.context) }
       : {}),
   };
@@ -51,8 +65,6 @@ async function render(bundle: unknown): Promise<Shown> {
 
 const claimOf = (result: ResultRoot | undefined, id: string): ResultClaim =>
   result!.claims.find((claim) => claim.id === id)!;
-
-const RESULT = "aac.builtin.result/v0";
 
 function tamperCheckpoint(bundle: Obj): Obj {
   const checkpoint = bundle.checkpoint as { mmr_size: number };
@@ -296,21 +308,10 @@ it("(a) a verified bundle whose root names itself a Result v0 but is malformed i
   (resultOf(source).claims as Obj[])[2]!.verdict = "met";
   const { bundle } = await sealEvidenceBundle(source);
   const { context } = await pageModel(bundle);
-  expect(await builtinPage(context)).toBe(RESULT);
+  expect(showable(context)).toBe(RESULT);
   await expect(buildResultRoot(context)).rejects.toThrow(
     /root is not a Result v0/u,
   );
-});
-
-it("still selects the evaluation-summary and report/v1 root families", async () => {
-  const week = await render(fixture("week-bundle.json"));
-  expect(week.banner.state).toBe("incomplete");
-  expect(week.selected).toBe("aac.builtin.evaluation-summary-graph/v0");
-
-  const { bundle } = await sealEvidenceBundle(
-    fixture("report-rows-bundle.json"),
-  );
-  expect((await render(bundle)).selected).toBe("aac.builtin.report-rows/v0");
 });
 
 // ---------------------------------------------------------------------------
@@ -593,7 +594,7 @@ it("(iv) a close whose cited Close is not in this bundle reads the asserted stat
 });
 
 it("the committed sealed Result-root bundle is the seal of the readable fixture", async () => {
-  // The presentation-resolution vectors read the sealed file as an input.
+  // The sealed file is committed so a reader can use it without sealing.
   const { bundle } = await sealEvidenceBundle(
     fixture("result-root-bundle.json"),
   );

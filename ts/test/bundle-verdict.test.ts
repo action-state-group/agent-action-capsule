@@ -9,7 +9,7 @@ import {
 import { VERIFICATION_BANNER_LINES as LINES } from "../src/browser.js";
 import { browserPageModel } from "./helpers/browser-page-model.js";
 import { pageModel, type PageModel } from "./helpers/page-model.js";
-import { bundleVerified } from "../src/presentation-registry.js";
+import { bundleVerified } from "../src/verification-page.js";
 import { sealEvidenceBundle, TEST_KEYS } from "./helpers/sealed-bundle.js";
 
 // The page states the strict verifier's verdict (#196): valid, incomplete or

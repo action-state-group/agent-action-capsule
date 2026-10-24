@@ -12,7 +12,6 @@ import {
 } from "../src/browser.js";
 import { derivedFixture } from "./helpers/derived-fixtures.js";
 import { pageModel } from "./helpers/page-model.js";
-import { builtinPage } from "./helpers/builtin-resolution.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 type Obj = Record<string, unknown>;
@@ -181,38 +180,57 @@ describe("extension interpretation status", () => {
   });
 
   it("an interpretable block whose module did not render is shown as not interpreted", async () => {
-    // outcome-report/v1 is a card over a Result root; on an evaluation-summary
-    // root the card never renders, so its meaning was not applied here.
-    const bundle = withExtensions(weekBundle(), {
-      "outcome-report/v1": { enabled: true },
-    });
+    // The core ships no contract-report module, so on the core page the
+    // block's meaning was not applied here.
+    const bundle = withExtensions(weekBundle(), { "contract-report/v1": {} });
     const verified = await verifyBundle(bundle);
     expect(verified.extensions).toEqual([
       {
-        kind: "outcome-report/v1",
+        kind: "contract-report/v1",
         status: "interpreted",
-        interpreter: "outcome-report-card",
+        interpreter: "contract-report",
         integrityCovered: true,
       },
     ]);
     const { rows } = await render(bundle);
     expect(rows.map((row) => row.cells)).toEqual([
-      ["outcome-report/v1", "covered", EXTENSION_NOT_INTERPRETED],
+      ["contract-report/v1", "covered", EXTENSION_NOT_INTERPRETED],
     ]);
   });
 
   it("a block its interpreter's reader ignores is uninterpreted", async () => {
     const verified = await verifyBundle(
       withExtensions(weekBundle(), {
-        "outcome-report/v1": { enabled: false },
+        "contract-report/v1": { enabled: true },
         "presentation/v1": { badge: "VERIFIED" },
         "producer-key/v1": { public_key: "ABC" },
       }),
     );
     expect(verified.extensions.map((e) => [e.kind, e.status])).toEqual([
-      ["outcome-report/v1", "uninterpreted"],
+      ["contract-report/v1", "uninterpreted"],
       ["presentation/v1", "uninterpreted"],
       ["producer-key/v1", "uninterpreted"],
+    ]);
+  });
+
+  it("the removed aliases outcome-report/v1 and eu-ai-act-compliance/v1 have no interpreter (REGISTRY.md section 14)", async () => {
+    const verified = await verifyBundle(
+      withExtensions(weekBundle(), {
+        "eu-ai-act-compliance/v1": { enabled: true },
+        "outcome-report/v1": { enabled: true },
+      }),
+    );
+    expect(verified.extensions).toEqual([
+      {
+        kind: "eu-ai-act-compliance/v1",
+        status: "uninterpreted",
+        integrityCovered: true,
+      },
+      {
+        kind: "outcome-report/v1",
+        status: "uninterpreted",
+        integrityCovered: true,
+      },
     ]);
   });
 
@@ -241,10 +259,8 @@ describe("extension interpretation status", () => {
       ]);
   });
 
-  it("the core page lists an engaged contract-report/v1 block as not interpreted: it has no contract-report module (contract-report/v1 section 4)", async () => {
-    // The outcome card forbids contract-report/v1, so the root resolves to
-    // aac.builtin.result-contract-report/v0, the generic Result page, which
-    // reads neither report block.
+  it("the core page lists an engaged contract-report/v1 block as not interpreted: it has no contract-report module", async () => {
+    // A Result page that runs the Result reader reads neither report block.
     const { bundle } = await sealEvidenceBundle(
       withExtensions(json("test", "testdata", "outcome-report-bundle.json"), {
         "contract-report/v1": {},
@@ -256,11 +272,6 @@ describe("extension interpretation status", () => {
       interpreter: "contract-report",
       integrityCovered: true,
     });
-    const { context } = await pageModel(bundle);
-    expect(await builtinPage(context)).toBe(
-      "aac.builtin.result-contract-report/v0",
-    );
-    // That page runs the Result reader, and no report block's.
     const { rows } = await render(bundle, new Set([...CORE, "result-root"]));
     expect(rows.map((row) => row.cells)).toEqual([
       ["contract-report/v1", "covered", EXTENSION_NOT_INTERPRETED],

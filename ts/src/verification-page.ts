@@ -9,13 +9,6 @@ import type {
   ExtensionResult,
 } from "./bundle.js";
 import { isProducerSelection } from "./bundle.js";
-import {
-  bundleVerified,
-  presentationRefusalLine,
-  presentationRefusalRow,
-  type PresentationRefusal,
-  type PresentationRefusalReason,
-} from "./presentation-registry.js";
 import type { CountersignatureStamp } from "./countersignature-stamp.js";
 import type { VerificationResult } from "./verify.js";
 
@@ -143,29 +136,8 @@ export interface ExtensionRow {
   readonly id: string;
   readonly integrity: "covered" | "not covered";
   readonly interpreter?: ExtensionInterpreterId;
-  /**
-   * Set when a presentation module that requires this extension matched and
-   * this runtime refused it (presentation contract section 3.2). It takes
-   * precedence over `interpreter`: the refused module never ran.
-   */
-  readonly refusal?: PresentationRefusal;
-  /**
-   * One of the shown, read-by-page or not-interpreted lines, or
-   * the refusal wording of section 3.2 (`presentationRefusalRow`).
-   */
+  /** One of the shown, read-by-page or not-interpreted lines. */
   readonly semantics: string;
-}
-
-/**
- * A refused presentation module that requires no extension, so has no row
- * of its own: the verification page shows `line` after the extension rows
- * (presentation contract section 3.2).
- */
-export interface PresentationRefusalNotice {
-  readonly id: string;
-  readonly reason: PresentationRefusalReason;
-  /** `presentationRefusalLine`, exactly. */
-  readonly line: string;
 }
 
 /**
@@ -178,20 +150,9 @@ export interface PresentationRefusalNotice {
 export function extensionRows(
   extensions: readonly ExtensionResult[],
   applied?: ReadonlySet<ExtensionInterpreterId>,
-  refused: readonly PresentationRefusal[] = [],
 ): readonly ExtensionRow[] {
   return extensions.map((extension): ExtensionRow => {
     const integrity = extension.integrityCovered ? "covered" : "not covered";
-    // The first refused module (in resolution order) that requires this
-    // kind names the row; the refusal outranks any interpreter.
-    const refusal = refused.find((r) => r.extensions.includes(extension.kind));
-    if (refusal !== undefined)
-      return {
-        id: extension.kind,
-        integrity,
-        refusal,
-        semantics: presentationRefusalRow(refusal, extension.integrityCovered),
-      };
     if (
       extension.status === "interpreted" &&
       (applied === undefined || applied.has(extension.interpreter))
@@ -236,27 +197,9 @@ export interface VerificationPageModel {
   readonly checks: readonly CheckSummary[];
   /** One row per supplied extension (empty when the bundle carries none). */
   readonly extensions: readonly ExtensionRow[];
-  /**
-   * One per refused presentation module that requires no extension, in
-   * resolution order; empty when nothing was refused.
-   */
-  readonly presentationRefusals: readonly PresentationRefusalNotice[];
   /** Which checks this page ran, which failed, and which it did not run. */
   readonly checkLists: VerificationCheckLists;
   readonly verifyIndependentlyLine: string;
-}
-
-/** The refused modules that have no extension row (section 3.2). */
-export function presentationRefusalNotices(
-  refused: readonly PresentationRefusal[],
-): readonly PresentationRefusalNotice[] {
-  return refused
-    .filter((refusal) => refusal.extensions.length === 0)
-    .map((refusal) => ({
-      id: refusal.id,
-      reason: refusal.reason,
-      line: presentationRefusalLine(refusal),
-    }));
 }
 
 const UNBOUND = "membership_record_unbound:";
@@ -294,6 +237,51 @@ export function unboundRecordIds(
     const id = finding.slice(UNBOUND.length);
     return invalid.has(id) ? [] : [id];
   });
+}
+
+// Per-record membership may fail solely because some supplied records are
+// bound to no log position (the verifier's `membership_record_unbound`): real
+// records that sit outside any checkpoint. That is coverage, not a broken
+// proof -- every other record's inclusion proof still verified -- so the
+// bundle renders, each such record carries its own `uncheckpointed` status,
+// and the banner and verification page state how many there are. Any other
+// membership finding (an invalid proof, bad coordinates, a missing sequence)
+// still fails the bundle as a whole: `unboundRecordIds` leaves out a record
+// whose supplied entry was rejected, so the counts below can only agree when
+// every finding is a clean unbound record.
+function membershipProvenOrUnbound(result: BundleVerificationResult): boolean {
+  return (
+    result.perRecordMembership.status === "pass" ||
+    (result.perRecordMembership.status === "fail" &&
+      result.perRecordMembership.findings.length > 0 &&
+      result.perRecordMembership.findings.length ===
+        unboundRecordIds(result).length)
+  );
+}
+
+// A producer-selected Bundle, as the context reads it (bundle.ts
+// readSelection, only when the strict verdict is not INVALID): no interval
+// to check, and each record's own inclusion proof read against the signed
+// checkpoint, gated like any Bundle's membership. Where the checkpoint
+// cannot be authenticated (the browser build) the strict checks withhold
+// those proofs, so the page refuses the Bundle there.
+/**
+ * The viewer's verification gate: what "verified" means for a page
+ * (spec/verification-display-v0.md section 1).
+ */
+export function bundleVerified(result: BundleVerificationResult): boolean {
+  const selected = isProducerSelection(result);
+  return (
+    result.graphClosure.status === "pass" &&
+    (selected || result.intervalCoverage.status === "pass") &&
+    membershipProvenOrUnbound(result) &&
+    Object.values(result.capsuleResults).every((capsule) => capsule.ok) &&
+    result.disclosures.every(
+      (disclosure) =>
+        disclosure.status === "disclosure_match" ||
+        disclosure.status === "withheld",
+    )
+  );
 }
 
 /**
@@ -1183,7 +1171,6 @@ export function buildVerificationPageModel(
   bundle: unknown,
   verified: BundleVerificationResult,
   appliedInterpreters?: ReadonlySet<ExtensionInterpreterId>,
-  refused: readonly PresentationRefusal[] = [],
   checkInputs: CheckListInputs = {},
 ): VerificationPageModel {
   const top = object(bundle) ?? {};
@@ -1239,12 +1226,7 @@ export function buildVerificationPageModel(
       ? {}
       : { completeness: completenessStatement(top.completeness)! }),
     checks,
-    extensions: extensionRows(
-      verified.extensions,
-      appliedInterpreters,
-      refused,
-    ),
-    presentationRefusals: presentationRefusalNotices(refused),
+    extensions: extensionRows(verified.extensions, appliedInterpreters),
     checkLists: verificationCheckLists(bundle, verified, checkInputs),
     verifyIndependentlyLine: VERIFY_INDEPENDENTLY_LINE,
   };

@@ -16,7 +16,6 @@ import {
   type CountersignerSource,
 } from "../../src/countersignature-stamp.js";
 import type { ExtensionInterpreterId } from "../../src/extension-interpreters.js";
-import type { PresentationRefusal } from "../../src/presentation-registry.js";
 import {
   buildVerificationPageModel,
   verificationBanner,
@@ -28,7 +27,6 @@ export interface PageModelOptions {
   readonly countersigners?: CountersignerSource;
   /** The interpreters the drawn page ran; omitted, the verifier's status stands. */
   readonly applied?: ReadonlySet<ExtensionInterpreterId>;
-  readonly refused?: readonly PresentationRefusal[];
   /** True when the drawn page module checked the signers it cites. */
   readonly citedSigners?: boolean;
 }
@@ -69,7 +67,6 @@ export async function pageModel(
       context.bundle,
       context.verification,
       options.applied,
-      options.refused ?? [],
       {
         stamps,
         ...(options.citedSigners === undefined

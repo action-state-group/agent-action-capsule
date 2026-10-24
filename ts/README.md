@@ -36,9 +36,10 @@ CLL's COSE checkpoint verifier exists; elsewhere the `checkpoint` claim is
 `withheld` and the verdict is never `VALID`.
 
 `verificationBanner(context, stamps)` states that verdict as the banner of a
-page, one of the states of the presentation contract's section 6.2;
-`buildVerificationPageModel` and `verificationCheckLists` give the rest of the
-verification page. This package draws no page: capsule-viewer
+page, one of the states of
+[`spec/verification-display-v0.md`](../spec/verification-display-v0.md) section
+6.2; `bundleVerified` is its gate (section 1), and `buildVerificationPageModel`
+and `verificationCheckLists` give the rest of the verification page. This package draws no page: capsule-viewer
 ([`action-state-group/capsule-viewer`](https://github.com/action-state-group/capsule-viewer),
 `ts/src/evidence-graph-view.ts` there) draws it from this model. The banner's
 `state` is `verified` only for a `valid` verdict, else `incomplete` or
