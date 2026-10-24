@@ -143,8 +143,8 @@ export interface ExtensionRow {
 /**
  * The verification page's extension rows. `applied`, when given, is the set
  * of interpreters this rendering actually ran: an extension the library can
- * interpret but whose module did not render (an outcome-report/v1 block on a
- * root that is not a Result, say) is shown as not interpreted, because here
+ * interpret but whose module did not render (a contract-report/v1 block when
+ * no contract-report module drew the page, say) is shown as not interpreted, because here
  * its meaning was not applied. Omitted, the verifier's status stands.
  */
 export function extensionRows(

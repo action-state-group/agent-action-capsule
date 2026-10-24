@@ -101,6 +101,9 @@ The words are the core's own fixed text. A host MAY supply its own text for runn
 verifier (for example a command line); it is presentation only, shown as text after the
 pointer, and it changes no list. Nothing from the bundle reaches the lists' words.
 
+Every extension block the bundle carries, whether or not a presentation reads it, is
+reported on the verification page with its integrity and interpretation status.
+
 Two word rules hold for all of the verification page's own text: the lists, the lines around
 them and every other row (check names, receipt and countersignature lines). Values the page
 shows from the bundle, such as a witness name or a countersigner's statement, are data, not the
@@ -143,6 +146,7 @@ state, so a countersignature anyone appends cannot turn a verified page into a f
 - **unable to verify** means the runtime could not run the checks at all. It is never drawn
   as failed.
 - "Records shown" is what the checks allow.
+- A presentation failure never changes the banner or its state.
 
 The banner's line for each state, and the details line under it naming the checks behind an
 incomplete or failed verdict, are the core's own fixed text, like the lists of section 6.1.
@@ -185,10 +189,9 @@ the opposite failure: evidentiary words displayed from a bundle extension no rec
 
 ### 7.2 `sha256-jcs-nonce256`
 
-This construction was not defined in this repository before this document; this section
-defines it. It is the construction already declared under the same identifier by an existing
-public producer profile (capsule-cli's `record-common-v0` schema), and this definition is
-intended to be identical to it.
+This section defines the construction. It is the construction already declared under the same
+identifier by an existing public producer profile (capsule-cli's `record-common-v0` schema),
+and this definition is intended to be identical to it.
 
 ```
 commitment = lowercase_hex( SHA-256( JCS( { "nonce": N, "text": T } ) ) )
@@ -209,7 +212,9 @@ commitment = lowercase_hex( SHA-256( JCS( { "nonce": N, "text": T } ) ) )
 
 ## 8. Invariants
 
-- **I1. The refusal's text.** The refusal's text is the core's:
+- **I1. Failure collapses to the refusal.** A page whose bundle is not Verified draws the
+  banner, the refusal and the verification page, and no module content. The refusal's text is
+  the core's:
   "This bundle did not verify. Its records, rows and payloads are not shown; the verification
   page below lists which checks failed."
 - **I3. Theme, wording, locale and depth never change evidence identifiers.** The bundle
