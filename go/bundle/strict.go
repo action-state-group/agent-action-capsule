@@ -104,8 +104,9 @@ func (r StrictResult) Claim(name string) *ClaimResult {
 //     withheld unless RequireSignature);
 //   - the checkpoint read only from its signed COSE form (checkpoint):
 //     withheld without one, fail when it does not verify or the JSON copy,
-//     or the completeness certificate's log_id, differs from it. Without a signed checkpoint the interval and
-//     membership claims are not shown, so the Bundle is never VALID;
+//     or the completeness certificate's log_id, differs from it. Without a
+//     signed checkpoint the interval and membership claims are not shown, so
+//     the Bundle is never VALID;
 //   - a producer-selected Bundle (completeness.selection producer-selected,
 //     outside the Bundle draft): interval coverage is withheld and each
 //     record's own inclusion proof is checked against the signed checkpoint;
@@ -290,7 +291,9 @@ func strictVerdict(claims []NamedClaim, witnesses ClaimResult) string {
 // certificate's log_id when stated, to the signed statement. It returns the
 // claim and, when it passed, the signed fields and the COSE bytes, for a
 // caller that checks something further against the authenticated
-// checkpoint.
+// checkpoint. As for VerifyStrict, the Bundle must be decoded with
+// json.Decoder.UseNumber: a float64 never equals a signed integer, so a
+// Bundle decoded without it fails on mmr_size.
 func VerifyCheckpoint(bundle map[string]interface{}) (ClaimResult, *witness.SignedCheckpoint, []byte) {
 	stated, _ := bundle["checkpoint"].(map[string]interface{})
 	encodedValue := stated["cose"]

@@ -105,7 +105,9 @@ record is unclaimed and the caller passed `require_signature`. It is
   §Completeness: equal to "the certificate and checkpoint values"): when it is
   not the signed `log_id`, the claim gets `checkpoint_field_mismatch:log_id`,
   once, whatever the checkpoint's own copy says
-  (`neg-producer-selected-certificate-log-id`). Each of `log_id`,
+  (`neg-producer-selected-certificate-log-id`, `neg-producer-selected-both-log-ids`;
+  a `null` copy is stated and is not the signed value,
+  `neg-producer-selected-certificate-log-id-null`). Each of `log_id`,
   `mmr_size` and `root` that the copy lacks gets
   `checkpoint_field_missing:<name>`. Any such finding fails the claim.
 - Otherwise the claim passes, and the checkpoint is authenticated.
@@ -301,6 +303,8 @@ checkpoint is signed by another, the log key.
 | `incomplete-producer-selected` | records 1 and 3 of 3, producer-selected | INCOMPLETE |
 | `neg-producer-selected-proof-invalid` | the same with one inclusion proof edited | INVALID |
 | `neg-producer-selected-certificate-log-id` | producer-selected: the certificate's `log_id` is not the signed one | INVALID |
+| `neg-producer-selected-both-log-ids` | producer-selected: both `log_id` copies name another log, one mismatch | INVALID |
+| `neg-producer-selected-certificate-log-id-null` | producer-selected: the certificate's `log_id` is `null`, the checkpoint has none | INVALID |
 | `neg-producer-selected-coordinates-log-and-seq` | producer-selected: one membership names another log, another has `seq` 0 | INVALID |
 | `neg-producer-selected-leaf-index` | producer-selected: `leaf_index` is not `seq - 1` | INVALID |
 | `neg-producer-selected-repeated-seq` | producer-selected: two memberships claim `seq` 1 | INVALID |

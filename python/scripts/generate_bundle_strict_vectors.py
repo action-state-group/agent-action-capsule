@@ -658,6 +658,35 @@ def build_cases() -> list[dict]:
          "checkpoint_authenticated": False, "signer_matches_checkpoint": None},
     ))
 
+    selected_both = copy.deepcopy(selected)
+    selected_both["completeness_certificate"]["log_id"] = "log:other"
+    selected_both["checkpoint"]["log_id"] = "log:other"
+    cases.append(case(
+        "neg-producer-selected-both-log-ids",
+        "Producer-selected: the certificate's and the checkpoint's log_id both name another log; one mismatch.",
+        selected_both,
+        {"verdict": "INVALID", "claims": claims(
+            checkpoint=claim("fail", "checkpoint_field_mismatch:log_id"),
+            interval_coverage=claim("withheld", "selection_not_checkable", "checkpoint_unverified"),
+            per_record_membership=claim("withheld", "checkpoint_unverified")),
+         "witnesses": ABSENT, "records": records_expect(selected_both),
+         "checkpoint_authenticated": False, "signer_matches_checkpoint": None},
+    ))
+    selected_null = copy.deepcopy(selected)
+    selected_null["completeness_certificate"]["log_id"] = None
+    del selected_null["checkpoint"]["log_id"]
+    cases.append(case(
+        "neg-producer-selected-certificate-log-id-null",
+        "Producer-selected: the certificate's log_id is null and the checkpoint carries none.",
+        selected_null,
+        {"verdict": "INVALID", "claims": claims(
+            checkpoint=claim("fail", "checkpoint_field_mismatch:log_id", "checkpoint_field_missing:log_id"),
+            interval_coverage=claim("withheld", "selection_not_checkable", "checkpoint_unverified"),
+            per_record_membership=claim("withheld", "checkpoint_unverified")),
+         "witnesses": ABSENT, "records": records_expect(selected_null),
+         "checkpoint_authenticated": False, "signer_matches_checkpoint": None},
+    ))
+
     def selected_with(case_id: str, description: str, edit: Any, findings: list[str]) -> None:
         bundle = copy.deepcopy(selected)
         edit(bundle["completeness_certificate"]["memberships"])
