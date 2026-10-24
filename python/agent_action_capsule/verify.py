@@ -306,19 +306,25 @@ def _number_paths(v: Any, matches: Callable[[Any], bool], limit: int, max_chars:
     root = _children(v)
     if root is None:
         return [_join([], max_chars)] if matches(v) else out
-    stack = [root]
+    # Each open container with its id. An in-memory value can contain itself,
+    # which JSON cannot; it is refused rather than walked forever.
+    stack = [(root, id(v))]
+    open_ids = {id(v)}
     steps: list[str | int] = []  # steps[i] reached stack[i + 1]
     while stack:
-        nxt = next(stack[-1], _END)
+        nxt = next(stack[-1][0], _END)
         if nxt is _END:
-            stack.pop()
+            open_ids.discard(stack.pop()[1])
             if steps:
                 steps.pop()
             continue
         step, child = nxt
         kids = _children(child)
         if kids is not None:
-            stack.append(kids)
+            if id(child) in open_ids:
+                raise ValueError("value contains itself")
+            stack.append((kids, id(child)))
+            open_ids.add(id(child))
             steps.append(step)
         elif matches(child):
             steps.append(step)

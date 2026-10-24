@@ -4,15 +4,16 @@
 
 - Class 1 verify (Go, Python, TypeScript) does bounded work on hostile numbers, as Rust does since
   #382. It reports at most 64 `float_in_digest_field` and 64 `unsafe_integer_in_digest_field`
-  findings, each quoting at most 256 code points of its path, then `...`, and writes a path only
-  for a failing number. Python 0.12.0 needed about 200 MB for a 60 KB record with 2,000 floats
-  under a 50 KB key (measured in #383). Python and TypeScript now list object members in code
-  point order, as Go and Rust do, so all four report the same findings. Verdicts and finding codes
-  don't change. What does change, in all three: a record with more than 64 failing numbers of one
-  kind lists only the first 64, and a long path is cut. Python and TypeScript also list findings
-  in a different order, and a Python record nested past the recursion limit reports
-  `capsule_id_uncomputable` where it reported `verifier_internal_error`. A new cross-language fixture,
-  `vectors/cross-language/verify-number-findings.json`, pins the findings. (#383)
+  findings, each quoting at most 256 code points of its path, then `...`, and writes a path only for
+  a failing number. Python 0.12.0 needed about 200 MB for a 60 KB record with 2,000 floats under a
+  50 KB key (measured in #383). Python and TypeScript now list object members in code point order,
+  as Go and Rust do, so all four report the same findings. Verdicts don't change, and finding codes
+  change only in the Python case below. What does change, in all three: a record with more than 64
+  failing numbers of one kind lists only the first 64, and a long path is cut. Python and TypeScript
+  also list findings in a different order, and a Python record nested past the recursion limit
+  reports `capsule_id_uncomputable` where it reported `verifier_internal_error`. A new
+  cross-language fixture, `vectors/cross-language/verify-number-findings.json`, pins the findings.
+  (#383)
 - Strict Bundle verification (Go, Python, Rust, TypeScript): the `checkpoint` claim also holds the
   completeness certificate's `log_id`, when stated, to the signed log identifier, and reports
   `checkpoint_field_mismatch:log_id` when it differs (bundle -01 §Completeness). A producer-selected

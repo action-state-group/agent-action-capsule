@@ -93,3 +93,20 @@ def test_wide_array_under_a_long_key_is_bounded(value):
     assert len(found) == 64
     assert f" at model_attestation.{'k' * (256 - len('model_attestation.'))}..." in found[0].detail
     assert all(len(f.detail) < 600 for f in found)
+
+
+def test_a_value_that_contains_itself_is_refused_not_walked_forever():
+    record = {"a": [0.5]}
+    record["self"] = record
+    res = verify(record)
+    assert not res.ok
+    assert [f.code for f in res.findings][-1] == "verifier_internal_error"
+
+
+def test_a_shared_subvalue_is_walked_each_time():
+    shared = [0.5]
+    found = number_findings(verify({"a": shared, "b": {"c": shared}}))
+    assert [f.detail for f in found] == [
+        "floating-point value at a[0]; §5.1 forbids it",
+        "floating-point value at b.c[0]; §5.1 forbids it",
+    ]
