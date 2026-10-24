@@ -2,5 +2,3 @@ dist/
 node_modules/
 test/testdata/bundle-vectors.json
 test/testdata/countersign-v1-anchor-golden.json
-test/testdata/deal-presentation-ambiguity/capsulectl.deal-view.manifest.json
-test/testdata/deal-presentation-ambiguity/capsuleviewer.receipt.unilateral.manifest.json
