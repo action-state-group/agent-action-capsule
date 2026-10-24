@@ -30,7 +30,7 @@ selection and requirement sets (§10).
 | ER | `draft-mih-agent-evidence-request` | what a record carries for a `correlation` subject, and what makes it cite an `exchange` half [ER §3.1.1, -01 text] |
 | AD | `spec/adapters/` (`x402-v0.md`, `ucp-v0.md`, `acp-v0.md`) | each adapter's five declarations: native object, issuer, native method, the exact predicate (d) and per-property results (e) |
 | JR | `spec/judge-record-family-v1.md` | `evaluation-report/v1`, its `cases[].verdict` and `acts` |
-| PC | `spec/presentation-contract-v0.md` | the commitment construction `sha256-jcs-nonce256` (§7.2) |
+| VD | `spec/verification-display-v0.md` | the commitment construction `sha256-jcs-nonce256` (§7.2) |
 | RES | `spec/evidence-result-v0.md` | sufficiency and verdict |
 
 ER §3.1.1 is in the -01 text of the Evidence Request source, which has not been posted yet. This
@@ -310,7 +310,7 @@ disclosed by an answer:
 
 - At most one record of the deal carries `commit_alg` `"sha256-jcs-nonce256"` and
   `deal_commitment`, the lowercase-hex SHA-256 of UTF-8 of JCS of `{"nonce": N, "text": T}`
-  [PC §7.2]. `N` is 32 bytes from a cryptographically secure random source, fresh for each deal,
+  [VD §7.2]. `N` is 32 bytes from a cryptographically secure random source, fresh for each deal,
   as 64 lowercase hex characters.
 - The artifact reveals `deal_commitment`, never `T`. Without the opening, the commitment shows
   only that the record committed to some text.
@@ -511,7 +511,7 @@ The Basic level's vectors are unchanged.
 - **A judge concludes only from what it cites.** `judge_grounds` bounds the verdict to the deal's
   records. Consent before judging is the holder's record, and what the judge retains afterwards is
   the judge's commitment, not something this level shows.
-- **Commitments.** A commitment without its opening reveals nothing a guess can test (PC §7.2).
+- **Commitments.** A commitment without its opening reveals nothing a guess can test (VD §7.2).
   An opening, once released, is the text: release it only to the recipient.
 - **Linkage.** Evidence digests are stable across Histories, as deal references and record digests
   are (PH §4.5). Two recipients holding the same half can tell they hold the same deal.

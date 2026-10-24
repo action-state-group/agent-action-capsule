@@ -70,7 +70,7 @@ function listLines(lists: VerificationCheckLists): [string, string][] {
 }
 
 // Every line of the core's own text on the verification page: the checks'
-// names and results, the coverage reason, the extension and refusal lines,
+// names and results, the coverage reason, the extension lines,
 // the check lists and the pointer to a full verifier. Keyed by where it is
 // shown.
 function panelLines(model: PageModel): [string, string][] {
@@ -86,10 +86,6 @@ function panelLines(model: PageModel): [string, string][] {
     ...page.extensions.map((row): [string, string] => [
       `extension:${row.id}`,
       row.semantics,
-    ]),
-    ...page.presentationRefusals.map((notice): [string, string] => [
-      `refusal:${notice.id}`,
-      notice.line,
     ]),
     ...listLines(page.checkLists),
     ["verify-independently", page.verifyIndependentlyLine],

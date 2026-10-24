@@ -1,4 +1,4 @@
-// The verification banner's states (spec/presentation-contract-v0.md section
+// The verification banner's states (spec/verification-display-v0.md section
 // 6.2; issues #309 and #346): a page shows exactly one of checking,
 // verified, incomplete, failed and unable to verify, each with the core's
 // fixed line from vectors/viewer-core-text/. Here each final state is read

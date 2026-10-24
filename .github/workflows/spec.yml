@@ -107,3 +107,8 @@ jobs:
       - name: check verdict_class vocabulary references
         working-directory: spec
         run: python3 check_verdict_class_refs.py
+      - name: check verification-display terms
+        working-directory: spec
+        run: |
+          python3 check-verification-display-terms.py --self-test
+          python3 check-verification-display-terms.py

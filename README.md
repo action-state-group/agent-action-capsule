@@ -29,9 +29,13 @@ denied Capsule is affirmative evidence that a gate worked.
   registry for the seven profile vocabularies until IANA registries are
   established on RFC publication.
 - **Reader's guide:** [`spec/section-map.md`](spec/section-map.md).
-- **Presentation contract:** [`spec/presentation-contract-v0.md`](spec/presentation-contract-v0.md)
-  — how a verified bundle becomes a page: module interface, manifests and their resolution,
-  trust classes, text binding, invariants and depth levels.
+- **Verification display:** [`spec/verification-display-v0.md`](spec/verification-display-v0.md):
+  what a page states about verification: the verification gate, the check lists, the
+  banner, the refusal's text, evidentiary words and `sha256-jcs-nonce256`. How a verified
+  bundle becomes a page (the presentation contract) is now capsule-viewer's
+  ([`action-state-group/capsule-viewer`](https://github.com/action-state-group/capsule-viewer));
+  [`spec/presentation-contract-v0.md`](spec/presentation-contract-v0.md) maps each of its old
+  sections to its new home.
 
 The authoritative version of the draft is the one on the
 [Datatracker](https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/);

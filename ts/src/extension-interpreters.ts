@@ -2,10 +2,8 @@ import {
   declaredProducerKeys,
   PRODUCER_KEY_V1,
 } from "./countersignature-stamp.js";
-import { readCompliancePresentation } from "./compliance-presentation.js";
 import { COMPOSED_KIND, composedBlockProblem } from "./composed.js";
 import { CONTRACT_REPORT_KIND, readContractReport } from "./contract-report.js";
-import { readOutcomeReportPresentation } from "./outcome-report-presentation.js";
 import { readPresentationBlock } from "./presentation.js";
 
 /** The evidence-book bundle extension that carries a disclosed record's payloads, keyed by payload commitment (SHA-256 of the exact bytes), each base64url without padding. */
@@ -26,13 +24,13 @@ export const AGENT_INPUT_ORIGINALS_EXTENSION =
 export type ExtensionInterpreterId =
   | "presentation-header"
   | "countersignature-stamp"
-  | "outcome-report-card"
-  | "compliance-card"
-  // A runtime's own contract-report module (spec/contract-report-v1.md
-  // section 4); the core ships none, so its page never applies this id.
+  // A runtime's own contract-report module (capsule-viewer's
+  // spec/contract-report-module-v1.md); the core ships none, so its page
+  // never applies this id.
   | "contract-report"
   | "result-root"
-  // The composition section's module id (builtin-manifests.ts).
+  // The composition section's module id (the built-in manifest
+  // aac.builtin.composed/v0, which capsule-viewer's registry carries).
   | "aac.builtin.composed/v0";
 
 const object = (value: unknown): value is Record<string, unknown> =>
@@ -61,18 +59,8 @@ const INTERPRETERS: Readonly<Record<string, Interpreter>> = Object.freeze({
     id: "countersignature-stamp",
     accepts: (bundle) => declaredProducerKeys(bundle).length > 0,
   },
-  // outcome-report-presentation.ts readOutcomeReportPresentation (the outcome-report card)
-  "outcome-report/v1": {
-    id: "outcome-report-card",
-    accepts: (bundle) => readOutcomeReportPresentation(bundle) !== undefined,
-  },
-  // compliance-presentation.ts readCompliancePresentation (the compliance card)
-  "eu-ai-act-compliance/v1": {
-    id: "compliance-card",
-    accepts: (bundle) => readCompliancePresentation(bundle) !== undefined,
-  },
   // contract-report.ts readContractReport, the descriptor's reader (a closed
-  // empty object only, as go/presentation/descriptor.go contractReportEngaged).
+  // empty object only, spec/contract-report-v1.md section 1).
   // Only a runtime that registers a contract-report module applies it.
   [CONTRACT_REPORT_KIND]: {
     id: "contract-report",

@@ -52,6 +52,10 @@ same-commit files in CI.
   producer-selected Bundles, the `disclosures` claim and witness receipts of the
   `cll`, `rekor` and `scrapi` bindings under a supplied witness directory;
   `python/scripts/generate_bundle_strict_vectors.py` regenerates them.
+- `bundle/fragment/`: the Evidence Bundle permalink codec ("Fragment Codec" of
+  `draft-mih-zhang-agent-disclosure-bundle`): payloads and the tokens an
+  independent encoder wrote for them, run by the TypeScript and Go codecs
+  (see its README). Hand-maintained; `SHA256SUMS` pins it.
 - `judgment/`: PROVISIONAL judgment extension cases (the `x-judgment-v1`
   Capsule member: `rubric_digest`, `rubric_version`, `judge_parameters_digest`,
   schema `schemas/judgment/judgment-extension-v1.json`). The digest rules are
@@ -94,13 +98,8 @@ same-commit files in CI.
   not recorded, and signed with a published development key;
   `python/scripts/generate_adapter_x402_vectors.py` regenerates them.
 
-- `presentation-resolution/`: shared presentation resolution vectors for
-  `spec/presentation-contract-v0.md` (ABI refusal, the descriptor, the match,
-  the tiers and the static ambiguity test), normative for the TypeScript
-  registry and the Go package `go/presentation`; the TypeScript registry
-  generates them (see its README).
 - `viewer-core-text/`: the core's fixed text of
-  `spec/presentation-contract-v0.md` sections 6.1 and 6.2 (the banner's line
+  `spec/verification-display-v0.md` sections 6.1 and 6.2 (the banner's line
   for each verification state, the refusal, and the check lists' lines),
   which a viewer's words must equal; the TypeScript viewer generates them
   (see its README).
