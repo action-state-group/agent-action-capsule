@@ -2,6 +2,56 @@
 
 ## Unreleased
 
+- **Breaking**, TypeScript (ts 0.8.0): the presentation registry, the built-in manifests and the
+  builder's fragment packaging moved to capsule-viewer (`@action-state-group/capsule-viewer`),
+  which carries them with every public name unchanged. Removed here: `presentation-registry.ts`
+  (`PresentationRegistry`, `resolveModules`, `describeContext`, `manifestMatches`,
+  `manifestsCoMatchable`, `manifestProblems`, the manifest, module, runtime, descriptor,
+  resolution and refusal types, `PresentationAmbiguityError`, `PresentationRegistrationError`,
+  `presentationRefusalRow`, `presentationRefusalLine`, `presentationRefusalReason` and the
+  `PRESENTATION_*` constants), `builtin-manifests.ts` (`BUILTIN_MANIFESTS`,
+  `BUILTIN_SECTION_MANIFESTS` and each `BUILTIN_MANIFEST_*`) and `presentation-fragment.ts`.
+  `bundleVerified`, the verification gate, moved unchanged to `verification-page.ts`. (#379)
+- **Breaking**, TypeScript (ts 0.8.0): presentation refusals leave AAC's verification page model.
+  `buildVerificationPageModel(bundle, verified, applied, options)` and
+  `extensionRows(extensions, applied)` drop their `refused` input, so the check-list options
+  move from the fifth argument to the fourth, and `ExtensionRow.refusal`,
+  `PresentationRefusalNotice`, `VerificationPageModel.presentationRefusals` and
+  `presentationRefusalNotices` are removed. capsule-viewer's registry adds its refusal rows and
+  notices on top of this model, taking the integrity words from each row's `integrity`. (#379)
+- **Breaking**, TypeScript (ts 0.8.0): the deprecated aliases of `contract-report/v1` lose their
+  readers, as `spec/REGISTRY.md` §14 schedules: `readOutcomeReportPresentation` and
+  `OutcomeReportPresentation` (`outcome-report-presentation.ts`), the internal compliance reader,
+  and their extension interpreters (`outcome-report-card` and `compliance-card` leave
+  `ExtensionInterpreterId`). `verifyBundle` now reports an `outcome-report/v1` or
+  `eu-ai-act-compliance/v1` block as uninterpreted; a producer writes `contract-report/v1`.
+  (#379, #351)
+- **Breaking**, Go (the next minor after go v0.13.x): `go/presentation` is removed; it is now
+  `github.com/action-state-group/capsule-viewer/go/presentation`. What a page needs from
+  verification stays in `go/bundle`: `bundle.Verified` (moved unchanged from
+  `presentation.Verified`) and `bundle.VerifyBundleForPage`, the reading
+  `presentation.DescribeBundle` did inline (the plain result, with a producer selection the
+  strict checks do not reject read through `VerifyStrict`). A new test runs the nine
+  producer-selected strict vectors through both. (#379)
+- Spec: the presentation contract moved to capsule-viewer. What a page states about verification
+  stays here, in the new `spec/verification-display-v0.md`, with its words unchanged and the
+  contract's section numbers: the "Verified" gate (§1), the check lists (§6.1), the banner
+  (§6.2), evidentiary words (§7.1), `sha256-jcs-nonce256` (§7.2) and invariants I1 (the
+  refusal's text) and I3. It defines every term it uses and has its own conformance line;
+  `spec/check-verification-display-terms.py` checks the terms in the Spec workflow.
+  `spec/presentation-contract-v0.md` and `spec/presentation-builder-v0.md` are now informative
+  pointers that map each old section to its new home. `spec/contract-report-v1.md` keeps §1 (the
+  block) and §5 (earlier kinds); its §2 to §4 and example pack moved. The deprecation table of
+  the earlier kinds is now in `spec/REGISTRY.md` §14, its removal column rewritten (ts 0.8.0;
+  the Go readers left with `go/presentation`). `spec/deal-reconcile-contract-v0.md` and
+  `spec/personal-agent-history-outcome-v0.md` cite `sha256-jcs-nonce256` there. (#379)
+- Vectors and schemas: `vectors/presentation-resolution/`, `schemas/presentation-manifest-v0.json`
+  with its examples and checker, and the contract-report wording-pack check moved to
+  capsule-viewer. The fragment codec vectors moved unchanged from
+  `ts/test/testdata/presentation-fragment-vectors.json` to `vectors/bundle/fragment/`, read by
+  the TypeScript and Go codec tests. `vectors/viewer-core-text/` cites the new document; its
+  bytes change, no case does. (#379)
+
 - Interop profile v0: the "Pins, never redefines" table pins CPB
   (`draft-mih-sokolov-scitt-payload-binding`) -05 and composition
   (`draft-mih-sato-agent-accountability-composition`) -01 by the SHA-256 of the posted `.txt`, as
