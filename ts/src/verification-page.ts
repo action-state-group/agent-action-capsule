@@ -733,8 +733,9 @@ export interface VerificationBanner {
   readonly uncheckpointed: number;
   /**
    * The refusal line after the banner when the page refuses the records
-   * (contract section 8, I1). A viewer shows the records exactly when this
-   * is absent (section 6.2's "Records shown").
+   * (contract section 8, I1). When it is present the records MUST NOT be
+   * shown; when it is absent the checks allow them (section 6.2's "Records
+   * shown"), though a presentation refusal can still withhold them.
    */
   readonly refusal?: string;
 }
