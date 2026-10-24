@@ -18,7 +18,7 @@ the contract-report entry (capsule-viewer#72) already shipped in TypeScript 0.6.
   also list findings in a different order, and a Python record nested past the recursion limit
   reports `capsule_id_uncomputable` where it reported `verifier_internal_error`. A new
   cross-language fixture, `vectors/cross-language/verify-number-findings.json`, pins the findings.
-  (#383)
+  (#383, #387)
 - Strict Bundle verification (Go, Python, Rust, TypeScript): the `checkpoint` claim also holds the
   completeness certificate's `log_id`, when stated, to the signed log identifier, and reports
   `checkpoint_field_mismatch:log_id` when it differs (bundle -01 §Completeness). A producer-selected
