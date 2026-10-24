@@ -2,12 +2,11 @@
 // each verification state, the refusal, and the verification page's check
 // lists, exactly as this package defines them (presentation contract
 // sections 6.1 and 6.2). test/verification-states.test.ts compares the
-// committed files with what this writes, and renders every state against
-// them.
+// committed files with what this writes, and reads every final state from
+// the verification model against them; capsule-viewer renders every state.
 //
 //   AAC_WRITE_VECTORS=1 npx vitest run test/verification-states.test.ts
 import { createHash } from "node:crypto";
-import { UNABLE_TO_VERIFY_LINES } from "../../src/evidence-graph-view.js";
 import {
   CHECKED_ON_THIS_PAGE,
   CHECKPOINT_NOT_CHECKED_NOTE,
@@ -23,6 +22,7 @@ import {
   VERIFICATION_BANNER_LINES,
   VERIFICATION_CHECK_IDS,
   VERIFICATION_CHECK_TECHNICAL_NAMES,
+  UNABLE_TO_VERIFY_LINES,
   VERIFICATION_CHECK_WORDS,
 } from "../../src/verification-page.js";
 
@@ -149,7 +149,7 @@ export function generateCoreTextVectors(): Record<string, string> {
       contract: "spec/presentation-contract-v0.md (sections 6.1, 6.2, 8)",
       provenance: "reference-derived",
       generator: "ts/test/helpers/viewer-core-text-vectors.ts",
-      normative_for: ["ts/src/evidence-graph-view.ts"],
+      normative_for: ["ts/src/verification-page.ts"],
       files: [
         {
           path: "core-text.json",

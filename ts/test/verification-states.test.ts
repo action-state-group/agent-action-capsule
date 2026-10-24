@@ -1,38 +1,27 @@
 // The verification banner's states (spec/presentation-contract-v0.md section
 // 6.2; issues #309 and #346): a page shows exactly one of checking,
 // verified, incomplete, failed and unable to verify, each with the core's
-// fixed line from vectors/viewer-core-text/. `checking` is drawn before the
-// digests are computed and replaced by the final state; `unable` is never
-// drawn as failed, and `verified` never appears before the checks finish.
+// fixed line from vectors/viewer-core-text/. Here each final state is read
+// from the verification model (verificationBanner) a viewer draws;
+// capsule-viewer renders every state against the same corpus, including
+// `checking` before the digests are computed.
 //
 //   AAC_WRITE_VECTORS=1 npx vitest run test/verification-states.test.ts
 //
 // rewrites the corpus (and its SHA256SUMS) instead of comparing it.
 import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { resolve as resolvePath } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { renderEvidenceGraph } from "../src/evidence-graph-view.js";
-import { setSha256FallbackForTesting } from "../src/json.js";
+import { digestCapability, setSha256FallbackForTesting } from "../src/json.js";
+import { UNABLE_TO_VERIFY_LINES } from "../src/verification-page.js";
 import {
   BANNER_STATES,
   generateCoreTextVectors,
   type WireBannerState,
 } from "./helpers/viewer-core-text-vectors.js";
+import { pageModel, type PageModel } from "./helpers/page-model.js";
 import { sealEvidenceBundle, TEST_KEYS } from "./helpers/sealed-bundle.js";
-
-// A DOM constructed directly with jsdom rather than a whole-file environment
-// override, as test/bundle-verdict.test.ts does: under the jsdom
-// environment the signed checkpoint's bytes come from another realm and the
-// page cannot check them. jsdom ships no type declarations.
-const { JSDOM } = createRequire(import.meta.url)("jsdom") as {
-  JSDOM: new () => { window: Window & typeof globalThis };
-};
-const dom = new JSDOM();
-globalThis.document = dom.window.document;
-globalThis.HTMLElement = dom.window.HTMLElement;
-const { MutationObserver } = dom.window;
 
 type Obj = Record<string, unknown>;
 const VECTORS = resolvePath(process.cwd(), "..", "vectors");
@@ -129,25 +118,19 @@ function tamperPayload(bundle: Obj): Obj {
   return { ...bundle, disclosures };
 }
 
-async function render(bundle: unknown): Promise<HTMLElement> {
-  const root = document.createElement("main");
-  await renderEvidenceGraph(bundle, root);
-  return root;
-}
+const render = (bundle: unknown): Promise<PageModel> => pageModel(bundle);
 
-// The banner, its data attributes and the elements before the first row.
-function expectState(root: HTMLElement, expected: WireBannerState): void {
-  const banners = root.querySelectorAll<HTMLElement>("[data-verify]");
-  expect(banners).toHaveLength(1);
-  const banner = banners[0]!;
-  expect(banner.textContent).toBe(expected.line);
-  expect(banner.dataset.verify).toBe(expected.data_verify);
-  expect(banner.dataset.verdict ?? null).toBe(expected.data_verdict);
-  const refusal = root.querySelector('[data-refusal="unverified-bundle"]');
-  expect(refusal !== null).toBe(
+// The banner's state, verdict, line and refusal, against the corpus.
+function expectState(root: PageModel, expected: WireBannerState): void {
+  const { banner } = root;
+  expect(banner.line).toBe(expected.line);
+  expect(banner.state).toBe(expected.data_verify);
+  expect(banner.verdict).toBe(expected.data_verdict);
+  expect(banner.refusal !== undefined).toBe(
     expected.data_verify === "failed" && !expected.records_shown,
   );
-  if (refusal !== null) expect(refusal.textContent).toBe(corpus().refusal);
+  if (banner.refusal !== undefined)
+    expect(banner.refusal).toBe(corpus().refusal);
 }
 
 afterEach(() => {
@@ -155,7 +138,7 @@ afterEach(() => {
   setSha256FallbackForTesting(true);
 });
 
-describe("one golden page per state", () => {
+describe("one golden banner per state", () => {
   it("verified: every signature checked here", async () => {
     const { bundle } = await sealEvidenceBundle(SOURCE(TEST_KEYS.a), {
       signCheckpoint: true,
@@ -183,25 +166,15 @@ describe("one golden page per state", () => {
     );
     const root = await render(bundle);
     expectState(root, state("incomplete"));
-    expect(
-      root.querySelector(
-        '[data-page="verification"] [data-checks="not-checked"]',
-      ),
-    ).not.toBeNull();
+    expect(root.page.checkLists.notChecked).not.toEqual([]);
   });
 
   it("incomplete, with no not-checked list: nothing is signed", async () => {
     const { bundle } = await sealEvidenceBundle(SOURCE());
     const root = await render(bundle);
     expectState(root, state("incomplete-no-list"));
-    expect(
-      root.querySelector(
-        '[data-page="verification"] [data-checks="not-checked"]',
-      ),
-    ).toBeNull();
-    expect(root.querySelector("[data-banner-detail]")?.textContent).toContain(
-      "checkpoint_signature_absent",
-    );
+    expect(root.page.checkLists.notChecked).toEqual([]);
+    expect(root.banner.detail).toContain("checkpoint_signature_absent");
   });
 
   it("failed, records still shown: a record bound to no log position", async () => {
@@ -211,7 +184,7 @@ describe("one golden page per state", () => {
     });
     const root = await render(bundle);
     expectState(root, state("failed"));
-    expect(root.querySelector("[data-banner-detail]")?.textContent).toBe(
+    expect(root.banner.detail).toBe(
       "1 of 2 records are uncheckpointed (bound to no log position), so per-record membership fails.",
     );
   });
@@ -222,90 +195,18 @@ describe("one golden page per state", () => {
     });
     const root = await render(tamperPayload(bundle));
     expectState(root, state("refused"));
-    expect(root.querySelector("[data-banner-detail]")).toBeNull();
+    expect(root.banner.detail).toBe("");
   });
 
-  it("unable to verify: no SHA-256 at all, never drawn as failed", async () => {
-    const { bundle } = await sealEvidenceBundle(SOURCE());
+  it("unable to verify: no SHA-256 at all, a state of its own with the core's line", async () => {
     vi.stubGlobal("crypto", undefined);
     setSha256FallbackForTesting(false);
-    const root = await render(bundle);
-    expectState(root, state("unable"));
-    expect(root.querySelector('[data-verify="failed"]')).toBeNull();
-  });
-});
-
-describe("checking", () => {
-  // A slow hash: every SHA-256 waits on `release`, so the page is held in
-  // the checking state until the test lets the digests through.
-  function holdDigests(): () => void {
-    const real = globalThis.crypto.subtle;
-    let release!: () => void;
-    const gate = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const subtle = new Proxy(real, {
-      get(target, name) {
-        if (name === "digest")
-          return async (...args: Parameters<SubtleCrypto["digest"]>) => {
-            await gate;
-            return target.digest(...args);
-          };
-        const value = Reflect.get(target, name) as unknown;
-        return typeof value === "function" ? value.bind(target) : value;
-      },
-    });
-    vi.stubGlobal("crypto", {
-      subtle,
-      getRandomValues: globalThis.crypto.getRandomValues.bind(
-        globalThis.crypto,
-      ),
-    });
-    return release;
-  }
-
-  it("is drawn alone before the checks finish, then replaced by the final state", async () => {
-    const { bundle } = await sealEvidenceBundle(SOURCE(TEST_KEYS.a), {
-      signCheckpoint: true,
-    });
-    const release = holdDigests();
-    const root = document.createElement("main");
-    root.append("previous page");
-    const done = renderEvidenceGraph(bundle, root);
-    // Let every microtask before the first digest run.
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expectState(root, state("checking"));
-    expect(root.childNodes).toHaveLength(1);
-    expect(root.querySelector('[data-verify="verified"]')).toBeNull();
-    release();
-    await done;
-    expectState(root, state("verified"));
-    expect(root.querySelector('[data-verify="checking"]')).toBeNull();
-  });
-
-  it("is drawn for a bundle that turns out to fail, which then shows failed, never verified on the way", async () => {
-    const { bundle } = await sealEvidenceBundle(SOURCE(TEST_KEYS.a), {
-      signCheckpoint: true,
-    });
-    const release = holdDigests();
-    const root = document.createElement("main");
-    const seen: string[] = [];
-    const observer = new MutationObserver(() => {
-      const verify =
-        root.querySelector<HTMLElement>("[data-verify]")?.dataset.verify;
-      if (verify !== undefined && seen.at(-1) !== verify) seen.push(verify);
-    });
-    observer.observe(root, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-    });
-    const done = renderEvidenceGraph(tamperPayload(bundle), root);
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    release();
-    await done;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    observer.disconnect();
-    expect(seen).toEqual(["checking", "failed"]);
+    // A viewer draws `unable` (never failed) when it has no digest at all.
+    expect(digestCapability()).toBe("none");
+    const unable = state("unable");
+    expect(unable.line).toBe(UNABLE_TO_VERIFY_LINES.banner);
+    expect(unable.data_verify).toBe("unable");
+    expect(unable.data_verdict).toBeNull();
+    expect(unable.records_shown).toBe(false);
   });
 });

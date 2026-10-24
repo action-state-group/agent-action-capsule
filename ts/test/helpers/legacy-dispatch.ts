@@ -31,7 +31,8 @@ export const ID_NO_AGGREGATE = "aac.builtin.no-aggregate/v0";
 export const REFUSAL = "<refusal>";
 
 // The pre-registry verification gate, copied as it stood in
-// evidence-graph-view.ts (the registry now owns its own copy).
+// evidence-graph-view.ts, since moved to capsule-viewer (the registry now owns
+// its own copy).
 function membershipProvenOrUnbound(result: BundleVerificationResult): boolean {
   return (
     result.perRecordMembership.status === "pass" ||

@@ -1,11 +1,10 @@
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildVerifiedBundleContext, verifyBundle } from "../src/bundle.js";
-import { renderEvidenceGraph } from "../src/evidence-graph-view.js";
 import { UNVERIFIED_BUNDLE_REFUSAL } from "../src/verification-page.js";
 import { verifyRecordSignature } from "../src/producer-envelope-verification.js";
+import { pageModel } from "./helpers/page-model.js";
 
 // vectors/bundle/strict/README.md: a verifier never raises on its input. A
 // Bundle or record nested beyond what an implementation can read is
@@ -104,7 +103,7 @@ describe("input nested beyond the stack", () => {
 
 // #360: the viewer's context copies and freezes its input before verifying
 // it. Both walks are iterative, so the copy succeeds and the verifier's own
-// refusal is what the page shows. A million levels take a few seconds on a
+// refusal is what the page states. A million levels take a few seconds on a
 // slow runner, hence the longer timeouts.
 describe("a context over input nested beyond the stack", () => {
   it("is built over the refused result, never rejects", async () => {
@@ -126,22 +125,10 @@ describe("a context over input nested beyond the stack", () => {
     expect(depth).toBe(DEPTH);
   }, 60_000);
 
-  it("renders the refusal, never rejects", async () => {
-    // jsdom ships no type declarations, so it is loaded untyped.
-    const { JSDOM } = createRequire(import.meta.url)("jsdom") as {
-      JSDOM: new () => { window: Window & typeof globalThis };
-    };
-    const dom = new JSDOM();
-    globalThis.document = dom.window.document;
-    globalThis.HTMLElement = dom.window.HTMLElement;
-    const root = document.createElement("main");
-    await renderEvidenceGraph(deepBundle(), root);
-    expect(
-      root.querySelector<HTMLElement>("[data-verify]")?.dataset.verify,
-    ).toBe("failed");
-    expect(
-      root.querySelector('[data-refusal="unverified-bundle"]')?.textContent,
-    ).toBe(UNVERIFIED_BUNDLE_REFUSAL);
+  it("states the refusal, never rejects", async () => {
+    const { banner } = await pageModel(deepBundle());
+    expect(banner.state).toBe("failed");
+    expect(banner.refusal).toBe(UNVERIFIED_BUNDLE_REFUSAL);
   }, 60_000);
 });
 

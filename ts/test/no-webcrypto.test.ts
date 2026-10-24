@@ -1,16 +1,16 @@
-// @vitest-environment jsdom
-
 // A page outside a secure context (a file, an app's attachment viewer) has
 // no SubtleCrypto. These tests remove `crypto` the way such a page lacks it
 // and check that integrity still verifies with the plain SHA-256, that an
 // Ed25519 signature reads "not checked in this viewer" rather than failed,
-// and that a runtime with no SHA-256 at all renders "unable to verify in
-// this viewer", never the failure banner.
+// and that a runtime with no SHA-256 at all refuses to verify rather than
+// report a failure, so a viewer shows "unable to verify in this viewer",
+// never the failure banner. The banner and lists are read from the
+// verification model; capsule-viewer draws them.
 //
 // Under vitest the Node condition of @action-state-group/cll is loaded,
 // whose MMR hash is node:crypto; the browser condition's MMR fallback is
-// covered in cll-ts (test/mmr-conformance.test.ts) and end to end by the
-// built IIFE in test/no-webcrypto-iife.test.ts.
+// covered in cll-ts (test/mmr-conformance.test.ts) and end to end by
+// capsule-viewer's built page.
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -23,10 +23,6 @@ import {
 } from "../src/bundle.js";
 import { classifyCountersignatures } from "../src/countersignature-stamp.js";
 import {
-  UNABLE_TO_VERIFY_LINES,
-  renderEvidenceGraph,
-} from "../src/evidence-graph-view.js";
-import {
   Sha256UnavailableError,
   digestCapability,
   ed25519Available,
@@ -35,6 +31,8 @@ import {
   sha256Hex,
 } from "../src/json.js";
 import { buildResultRoot } from "../src/result-root.js";
+import { UNABLE_TO_VERIFY_LINES } from "../src/verification-page.js";
+import { pageModel } from "./helpers/page-model.js";
 import { sealEvidenceBundle, TEST_KEYS } from "./helpers/sealed-bundle.js";
 
 function fixture(name: string): Record<string, unknown> {
@@ -173,16 +171,14 @@ describe("without SubtleCrypto", () => {
 
   it("renders a bundle that passed the page's checks as incomplete, never failed", async () => {
     withoutWebCrypto();
-    const root = document.createElement("main");
-    await renderEvidenceGraph(fixture("week-bundle.json"), root);
-    const banner = root.querySelector<HTMLElement>("[data-verify]")!;
-    expect(banner.dataset.verify).toBe("incomplete");
+    const { banner } = await pageModel(fixture("week-bundle.json"));
+    expect(banner.state).toBe("incomplete");
     // No Ed25519, so no strict verdict; this bundle carries no signature.
-    expect(banner.dataset.verdict).toBe("incomplete");
-    expect(root.querySelector("[data-banner-detail]")?.textContent).toBe(
+    expect(banner.verdict).toBe("incomplete");
+    expect(banner.detail).toBe(
       "Neither the checkpoint nor any record is signed. Interval coverage and per-record membership are checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
     );
-    expect(root.querySelector('[data-refusal="unverified-bundle"]')).toBeNull();
+    expect(banner.refusal).toBeUndefined();
   });
 
   it("still says invalid for a record bound to no log position", async () => {
@@ -191,22 +187,15 @@ describe("without SubtleCrypto", () => {
       { uncheckpointed: ["act-naive"] },
     );
     withoutWebCrypto();
-    const root = document.createElement("main");
-    await renderEvidenceGraph(bundle, root);
-    const banner = root.querySelector<HTMLElement>("[data-verify]")!;
-    expect(banner.dataset.verify).toBe("failed");
-    expect(banner.dataset.verdict).toBe("invalid");
-    expect(root.querySelector("[data-banner-detail]")?.textContent).toBe(
+    const { banner, page } = await pageModel(bundle);
+    expect(banner.state).toBe("failed");
+    expect(banner.verdict).toBe("invalid");
+    expect(banner.detail).toBe(
       "1 of 5 records are uncheckpointed (bound to no log position), so per-record membership fails. Interval coverage is checkpoint_unverified: relative to a producer-asserted checkpoint that is not signed.",
     );
     // The lists agree: membership failed, never checked.
-    const listed = (which: string): string[] =>
-      Array.from(
-        root.querySelectorAll<HTMLElement>(`ul[data-checks="${which}"] > li`),
-        (item) => item.dataset.check!,
-      );
-    expect(listed("failed")).toContain("membership");
-    expect(listed("page")).not.toContain("membership");
+    expect(page.checkLists.failed).toContain("membership");
+    expect(page.checkLists.page).not.toContain("membership");
   });
 
   it("names the signatures it could not check", async () => {
@@ -222,13 +211,11 @@ describe("without SubtleCrypto", () => {
       ],
     });
     withoutWebCrypto();
-    const root = document.createElement("main");
-    await renderEvidenceGraph(bundle, root);
-    const banner = root.querySelector<HTMLElement>("[data-verify]")!;
-    expect(banner.dataset.verdict).toBe("incomplete");
-    expect(banner.dataset.checkpoint).toBe("absent");
-    expect(banner.dataset.verify).toBe("incomplete");
-    expect(root.querySelector("[data-banner-detail]")?.textContent).toMatch(
+    const { banner } = await pageModel(bundle);
+    expect(banner.verdict).toBe("incomplete");
+    expect(banner.checkpoint).toBe("absent");
+    expect(banner.state).toBe("incomplete");
+    expect(banner.detail).toMatch(
       /^This page cannot check signatures, so the records' producer signatures could not be checked\./u,
     );
   });
@@ -247,38 +234,14 @@ describe("with no SHA-256 at all", () => {
     ).rejects.toBeInstanceOf(Sha256UnavailableError);
   });
 
-  it("renders 'unable to verify in this viewer' with the command, not the failure banner", async () => {
+  it("builds no context, so a viewer can only say 'unable to verify in this viewer', never failed", async () => {
     withoutWebCrypto();
     setSha256FallbackForTesting(false);
-    const root = document.createElement("main");
-    const command = "capsulectl verify --bundle report.html";
-    await renderEvidenceGraph(fixture("week-bundle.json"), root, undefined, {
-      verifyCommand: command,
-    });
-    expect(root.querySelector('[data-verify="unable"]')?.textContent).toBe(
-      UNABLE_TO_VERIFY_LINES.banner,
-    );
-    expect(
-      root.querySelector('[data-refusal="unable-to-verify"]'),
-    ).not.toBeNull();
-    expect(root.querySelector("[data-verify-command]")?.textContent).toBe(
-      command,
-    );
-    expect(root.querySelector('[data-verify="failed"]')).toBeNull();
-    expect(root.querySelector('[data-refusal="unverified-bundle"]')).toBeNull();
-    expect(root.textContent).not.toMatch(/verification failed|did not verify/i);
-    expect(root.querySelector("[data-report-date]")).toBeNull();
-  });
-
-  it("says where to check the file when no command is given", async () => {
-    withoutWebCrypto();
-    setSha256FallbackForTesting(false);
-    const root = document.createElement("main");
-    await renderEvidenceGraph(fixture("week-bundle.json"), root);
-    expect(root.querySelector('[data-verify="unable"]')).not.toBeNull();
-    expect(root.querySelector("[data-verify-command]")).toBeNull();
-    expect(root.textContent).toContain(UNABLE_TO_VERIFY_LINES.noCommand);
-    expect(root.querySelector('[data-verify="failed"]')).toBeNull();
-    expect(root.querySelector('[data-refusal="unverified-bundle"]')).toBeNull();
+    await expect(
+      buildVerifiedBundleContext(fixture("week-bundle.json")),
+    ).rejects.toBeInstanceOf(Sha256UnavailableError);
+    // The words a viewer then shows never say the bundle failed.
+    for (const line of Object.values(UNABLE_TO_VERIFY_LINES))
+      expect(line).not.toMatch(/verification failed|did not verify/i);
   });
 });

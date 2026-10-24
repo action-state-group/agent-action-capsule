@@ -51,12 +51,12 @@ interface Interpreter {
  * its block holds.
  */
 const INTERPRETERS: Readonly<Record<string, Interpreter>> = Object.freeze({
-  // evidence-graph-view.ts renderPresentationHeader -> presentation.ts readPresentationBlock
+  // the page header (capsule-viewer draws it) -> presentation.ts readPresentationBlock
   "presentation/v1": {
     id: "presentation-header",
     accepts: (bundle) => readPresentationBlock(bundle) !== undefined,
   },
-  // evidence-graph-view.ts renderVerificationPage -> countersignature-stamp.ts declaredProducerKeys
+  // the verification page's stamps (capsule-viewer draws them) -> countersignature-stamp.ts declaredProducerKeys
   [PRODUCER_KEY_V1]: {
     id: "countersignature-stamp",
     accepts: (bundle) => declaredProducerKeys(bundle).length > 0,
@@ -78,7 +78,7 @@ const INTERPRETERS: Readonly<Record<string, Interpreter>> = Object.freeze({
     id: "contract-report",
     accepts: readContractReport,
   },
-  // evidence-graph-view.ts composition section -> composed.ts verifyComposed;
+  // the composition section (capsule-viewer draws it) -> composed.ts verifyComposed;
   // a malformed block yields no composition result, so it is not interpreted.
   [COMPOSED_KIND]: {
     id: "aac.builtin.composed/v0",

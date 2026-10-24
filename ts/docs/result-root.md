@@ -4,7 +4,9 @@ The report takes one input: a bundle whose root record is a sealed Evidence
 Result v0. Not a bundle plus a Result file. This note says what that root
 looks like, what the viewer reads from it, what it reads from the records it
 cites, and the two rules the root adds. Module: `src/result-root.ts`; view:
-`src/evidence-graph-view.ts`; fixture: `test/testdata/result-root-bundle.json`.
+capsule-viewer's `ts/src/evidence-graph-view.ts`
+([`action-state-group/capsule-viewer`](https://github.com/action-state-group/capsule-viewer));
+fixture: `test/testdata/result-root-bundle.json`.
 
 ## The record
 
@@ -239,8 +241,8 @@ whatever bucket it wrote, marked `· failed`, and its `buckets.met` of two
 over one standing `met` claim reads as `met: 1 count mismatch` with the
 stated two on the marker. A relabelled-AGREED close therefore never
 contributes to `met`; `test/result-root.test.ts` and
-`test/result-root-view.test.ts` pin the row, the drill-down, the headings
-and the counts. Only a state mismatch fails a claim: a `peer_close_ref`
+`test/result-root-view.test.ts` pin the claim, its Close and the counts
+(capsule-viewer's tests pin the row, the drill-down and the headings). Only a state mismatch fails a claim: a `peer_close_ref`
 that is not the linking record is marked (`peerRefMismatch`), and a Close
 absent from the bundle is `producer-asserted` -- neither is a failure,
 since neither contradicts the state.

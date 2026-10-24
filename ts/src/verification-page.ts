@@ -453,6 +453,16 @@ export const VERIFICATION_BANNER_LINES = Object.freeze({
   unable: "Couldn't check this page here: check it with a full verifier",
 } as const);
 
+/** The words a page says when this viewer cannot verify the bundle at all. */
+export const UNABLE_TO_VERIFY_LINES = {
+  banner: VERIFICATION_BANNER_LINES.unable,
+  reason:
+    "This viewer cannot compute the SHA-256 digests the checks need, so nothing was checked and no records are shown. This is not a failed check: the file may well be valid.",
+  command: "To check this file, run:",
+  noCommand:
+    "To check this file, open it from a secure (https) page, or check it with a verifier outside this viewer.",
+} as const;
+
 /** The refusal line after the banner of a bundle the page refuses (contract I1). */
 export const UNVERIFIED_BUNDLE_REFUSAL =
   "This bundle did not verify. Its records, rows and payloads are not shown; the verification page below lists which checks failed.";

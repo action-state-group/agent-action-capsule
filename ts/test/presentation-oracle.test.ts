@@ -1,10 +1,11 @@
-// @vitest-environment jsdom
-// The registry against the old control flow, on real bundles: every fixture
-// page the render-diff covers, plus each verified one re-dressed with every
-// combination of the extension blocks the old dispatch read (and composed/v1,
-// which it ignored). For each, resolve() must pick the module the old
-// if-chain picked; where the old chain threw before drawing, the selected
-// module's buildModel must throw the same error.
+// The registry's inputs against the old control flow, on real bundles: every
+// fixture page the render-diff covers, plus each verified one re-dressed with
+// every combination of the extension blocks the old dispatch read (and
+// composed/v1, which it ignored). For each, the registry's verification gate
+// agrees with the old one, and the descriptor transcription the 3,072-case
+// table (presentation-resolution-table.test.ts) resolves over picks the
+// module the old if-chain picked. The built-in modules themselves, and
+// resolve() over them, are capsule-viewer's (action-state-group/capsule-viewer).
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { expect, it } from "vitest";
@@ -16,11 +17,9 @@ import {
   buildEvidenceGraph,
   EvidenceGraphError,
 } from "../src/evidence-graph.js";
-import { createPresentationRegistry } from "../src/evidence-graph-view.js";
 import {
   bundleVerified,
   describeContext,
-  PRESENTATION_FORMATS,
 } from "../src/presentation-registry.js";
 import {
   derivedFixture,
@@ -141,8 +140,7 @@ async function graphBuilds(context: VerifiedBundleContext): Promise<boolean> {
   }
 }
 
-it("resolve() picks the old control flow's module for every fixture and every extension combination", async () => {
-  const registry = createPresentationRegistry();
+it("the descriptor picks the old control flow's module for every fixture and every extension combination", async () => {
   const cases: Array<[string, unknown]> = [];
   for (const [name, bundle] of await fixtureBundles()) {
     cases.push([name, bundle]);
@@ -162,47 +160,24 @@ it("resolve() picks the old control flow's module for every fixture and every ex
   }
 
   const seen = new Map<string, number>();
-  let resolutions = 0;
   for (const [name, bundle] of cases) {
     const context = await buildVerifiedBundleContext(bundle);
     expect(bundleVerified(context.verification), name).toBe(
       legacyBundleVerified(context.verification),
     );
     let want: string;
-    let legacyError: unknown;
+    let threw = false;
     try {
       want = await legacyDispatch(context);
-    } catch (err) {
+    } catch {
       want = "<threw>";
-      legacyError = err;
+      threw = true;
     }
     seen.set(want, (seen.get(want) ?? 0) + 1);
-    for (const audience of ["*", "owner", "counterparty"])
-      for (const format of PRESENTATION_FORMATS) {
-        resolutions += 1;
-        const got = await registry.resolve(context, audience, format);
-        if (legacyError !== undefined) {
-          // The old chain threw before drawing: the same module family is
-          // selected and its buildModel throws the same error.
-          expect(got.kind, name).toBe("module");
-          if (got.kind !== "module") continue;
-          await expect(
-            Promise.resolve().then(() => got.module.buildModel(context)),
-            name,
-          ).rejects.toThrow(String((legacyError as Error).message));
-          continue;
-        }
-        const id =
-          got.kind === "module"
-            ? got.module.manifest.id
-            : got.kind === "refusal"
-              ? REFUSAL
-              : "<no-presentation>";
-        expect(id, `${name} ${audience}/${format}`).toBe(want);
-      }
-    // The descriptor transcription the 3,072-case table uses agrees with the
-    // real old code on this real bundle.
-    if (legacyError === undefined)
+    // The descriptor transcription agrees with the real old code on this
+    // real bundle (where the old chain threw before drawing, no module was
+    // picked to compare).
+    if (!threw)
       expect(
         legacyOverDescriptor(
           describeContext(context),
@@ -224,6 +199,6 @@ it("resolve() picks the old control flow's module for every fixture and every ex
   ])
     expect(seen.get(id) ?? 0, `cases selecting ${id}`).toBeGreaterThan(0);
   console.info(
-    `presentation oracle: ${cases.length} bundles, ${resolutions} resolutions; by old branch: ${JSON.stringify(Object.fromEntries(seen))}`,
+    `presentation oracle: ${cases.length} bundles; by old branch: ${JSON.stringify(Object.fromEntries(seen))}`,
   );
 }, 600_000);

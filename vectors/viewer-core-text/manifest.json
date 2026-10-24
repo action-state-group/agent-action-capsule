@@ -3,7 +3,7 @@
   "provenance": "reference-derived",
   "generator": "ts/test/helpers/viewer-core-text-vectors.ts",
   "normative_for": [
-    "ts/src/evidence-graph-view.ts"
+    "ts/src/verification-page.ts"
   ],
   "files": [
     {

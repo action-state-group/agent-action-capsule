@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 // contract-report/v1 (spec/contract-report-v1.md): the block reader, the
 // descriptor it feeds, and the built-in manifest that draws the generic
 // Result page for a Result root that opts in.
@@ -11,8 +10,9 @@ import {
   CONTRACT_REPORT_KIND,
   readContractReport,
 } from "../src/contract-report.js";
-import { renderEvidenceGraph } from "../src/browser.js";
 import { describeContext } from "../src/presentation-registry.js";
+import { builtinPage } from "./helpers/builtin-resolution.js";
+import { pageModel } from "./helpers/page-model.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 type Obj = Record<string, unknown>;
@@ -67,35 +67,25 @@ describe("readContractReport", () => {
   });
 });
 
-async function render(bundle: unknown): Promise<HTMLElement> {
-  const root = document.createElement("main");
-  await renderEvidenceGraph(bundle, root);
-  return root;
-}
-
-/**
- * The Result page and the verification page's two check lists (which include
- * the cited-signer check). The rest of the verification page differs by
- * design: the bundle digest covers the block, and the extension table
- * lists it.
- */
-function resultAndChecks(root: HTMLElement): string[] {
-  return [
-    '[data-page="result"]',
-    'ul[data-checks="page"]',
-    'ul[data-checks="not-checked"]',
-  ].map((selector) => root.querySelector(selector)?.outerHTML ?? "");
-}
-
-function extensionRow(root: HTMLElement, kind: string): HTMLElement | null {
-  return root.querySelector<HTMLElement>(
-    `table[data-extensions] tr[data-extension-id="${kind}"]`,
-  );
+// What a Result page states about the bundle: the page it resolves to, its
+// check lists (the Result page checks the signers it cites) and its
+// extension rows, with the interpreters the generic Result page runs.
+async function render(bundle: unknown) {
+  const { context } = await pageModel(bundle);
+  const { page } = await pageModel(context, {
+    citedSigners: true,
+    applied: new Set([
+      "presentation-header",
+      "countersignature-stamp",
+      "result-root",
+    ]),
+  });
+  return { selected: await builtinPage(context), page };
 }
 
 describe("a Result root that opts into contract-report/v1", () => {
   it.each(["result-root-bundle.json", "result-root-close-bundle.json"])(
-    "%s: the engaged block resolves to aac.builtin.result-contract-report/v0, which draws the generic Result page unchanged",
+    "%s: the engaged block resolves to aac.builtin.result-contract-report/v0, the generic Result page, with the same checks",
     async (name) => {
       const { bundle } = await sealEvidenceBundle(fixture(name));
       const opted = withExtensions(bundle as Obj, {
@@ -110,22 +100,24 @@ describe("a Result root that opts into contract-report/v1", () => {
 
       const plain = await render(bundle);
       const report = await render(opted);
-      expect(report.querySelector('[data-page="result"]')).not.toBeNull();
-      // Same page, same check lists (the cited-signer check included).
-      expect(resultAndChecks(report)).toEqual(resultAndChecks(plain));
+      expect(plain.selected).toBe("aac.builtin.result/v0");
+      expect(report.selected).toBe("aac.builtin.result-contract-report/v0");
+      // The same check lists (the cited-signer check included).
+      expect(report.page.checkLists).toEqual(plain.page.checkLists);
       // AAC applies no report view, so the block is listed as present and
       // not interpreted.
-      expect(
-        extensionRow(report, CONTRACT_REPORT_KIND)?.dataset.semantics,
-      ).toBe("uninterpreted");
+      const row = report.page.extensions.find(
+        (r) => r.id === CONTRACT_REPORT_KIND,
+      );
+      expect(row).toBeDefined();
+      expect(row?.interpreter).toBeUndefined();
     },
   );
 
-  it("takes precedence over a deprecated alias: the outcome card is not drawn", async () => {
+  it("takes precedence over a deprecated alias: the outcome card is not selected", async () => {
     const { bundle } = await sealEvidenceBundle(
       fixture("result-root-bundle.json"),
     );
-    const plain = await render(bundle);
     const both = await render(
       withExtensions(bundle as Obj, {
         [CONTRACT_REPORT_KIND]: {},
@@ -135,14 +127,12 @@ describe("a Result root that opts into contract-report/v1", () => {
     const alias = await render(
       withExtensions(bundle as Obj, { "outcome-report/v1": { enabled: true } }),
     );
-    expect(both.querySelector('[data-page="result"]')?.outerHTML).toBe(
-      plain.querySelector('[data-page="result"]')?.outerHTML,
-    );
-    // Without the new kind, the deprecated alias still draws its card.
-    expect(alias.querySelector('[data-page="result"]')).toBeNull();
+    expect(both.selected).toBe("aac.builtin.result-contract-report/v0");
+    // Without the new kind, the deprecated alias still selects its card.
+    expect(alias.selected).toBe("aac.builtin.result-outcome-report/v0");
   });
 
-  it("a declined block is not engaged: the generic Result page draws, and the block is listed as present", async () => {
+  it("a declined block is not engaged: the generic Result page is selected, and the block is listed as present", async () => {
     const { bundle } = await sealEvidenceBundle(
       fixture("result-root-bundle.json"),
     );
@@ -153,8 +143,10 @@ describe("a Result root that opts into contract-report/v1", () => {
       await buildVerifiedBundleContext(declined),
     );
     expect(descriptor.extensions.has(CONTRACT_REPORT_KIND)).toBe(false);
-    const root = await render(declined);
-    expect(root.querySelector('[data-page="result"]')).not.toBeNull();
-    expect(extensionRow(root, CONTRACT_REPORT_KIND)).not.toBeNull();
+    const { selected, page } = await render(declined);
+    expect(selected).toBe("aac.builtin.result/v0");
+    expect(page.extensions.map((row) => row.id)).toContain(
+      CONTRACT_REPORT_KIND,
+    );
   });
 });

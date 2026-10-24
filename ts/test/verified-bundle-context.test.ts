@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,7 +8,6 @@ import {
   type VerifiedBundleContext,
   withCountersigners,
 } from "../src/bundle.js";
-import { renderEvidenceGraph } from "../src/browser.js";
 import {
   buildEvidenceGraph,
   EvidenceGraphError,
@@ -18,6 +15,7 @@ import {
 import { buildReportRows } from "../src/report-rows.js";
 import { buildResultRoot, isResultRoot } from "../src/result-root.js";
 import { derivedFixture } from "./helpers/derived-fixtures.js";
+import { pageModel } from "./helpers/page-model.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 type Obj = Record<string, unknown>;
@@ -87,10 +85,30 @@ async function contextWithMismatch(
   return { context, t };
 }
 
+// Everything a page is drawn from, as text: the verification it states and
+// every model a built-in page builds over the context (capsule-viewer draws
+// them).
 async function renderedText(context: VerifiedBundleContext): Promise<string> {
-  const root = document.createElement("main");
-  await renderEvidenceGraph(context, root);
-  return root.innerHTML;
+  const { banner, stamps, page } = await pageModel(context);
+  let graph: unknown;
+  try {
+    graph = await buildEvidenceGraph(context);
+  } catch (err) {
+    if (!(err instanceof EvidenceGraphError)) throw err;
+  }
+  return JSON.stringify({
+    banner,
+    stamps,
+    page,
+    rows: (await buildReportRows(context)) ?? null,
+    result: (await isResultRoot(context))
+      ? await buildResultRoot(context).catch((err: unknown) => {
+          if (err instanceof EvidenceGraphError) return null;
+          throw err;
+        })
+      : null,
+    graph: graph ?? null,
+  });
 }
 
 describe("VerifiedBundleContext: no builder reads a mismatched payload", () => {
@@ -263,38 +281,32 @@ describe("VerifiedBundleContext: countersigners", () => {
     const context = await buildVerifiedBundleContext(bundle, {
       countersigners,
     });
-    const root = document.createElement("main");
-    // The shell's call shape: no third argument.
-    await renderEvidenceGraph(context, root);
-    const stamp = root.querySelector('[data-stamp-kind="resolved"]');
-    expect(stamp?.querySelector("span")?.textContent).toBe(
-      "Countersigned by Example Countersigners Ltd · recomputed 2026-09-12T00:00:00Z",
-    );
+    // The shell's call shape: no list of its own.
+    const { stamps } = await pageModel(context);
+    expect(stamps).toHaveLength(1);
+    expect(stamps[0]).toMatchObject({
+      kind: "resolved",
+      name: "Example Countersigners Ltd",
+    });
   });
 
-  it("a bare bundle with no list still renders the signer as unlisted", async () => {
+  it("a bare bundle with no list still states the signer as unlisted", async () => {
     const bundle = await derivedFixture(
       "week-bundle-directory-countersigned.json",
     );
-    const root = document.createElement("main");
-    await renderEvidenceGraph(bundle, root);
-    expect(
-      root.querySelector('[data-stamp-kind="unresolved-signer"]'),
-    ).not.toBeNull();
+    const { stamps } = await pageModel(bundle);
+    expect(stamps.map((stamp) => stamp.kind)).toEqual(["unresolved-signer"]);
   });
 
-  it("an explicit third argument overrides the context's list", async () => {
+  it("an explicit list overrides the context's list", async () => {
     const bundle = await derivedFixture(
       "week-bundle-directory-countersigned.json",
     );
     const context = await buildVerifiedBundleContext(bundle, {
       countersigners: fixture("countersigners.json") as never,
     });
-    const root = document.createElement("main");
-    await renderEvidenceGraph(context, root, []);
-    expect(
-      root.querySelector('[data-stamp-kind="unresolved-signer"]'),
-    ).not.toBeNull();
+    const { stamps } = await pageModel(context, { countersigners: [] });
+    expect(stamps.map((stamp) => stamp.kind)).toEqual(["unresolved-signer"]);
   });
 });
 

@@ -5,9 +5,9 @@ the one builder that turns a verified Evidence Bundle into a page for one audien
 ways it packages that page: one offline `.html` file, a fragment permalink, an element in a host
 page, and a static page that runs no script. It also defines how the builder reports that a
 packaging is unavailable for a bundle. The reference builder lives in capsule-viewer
-(`ts/src/presentation-builder.ts` there, with this repository's `ts/src/presentation-fragment.ts`
-and `ts/src/presentation-mount.ts`); the Go twin of the offline packaging is capsule-viewer's
-`go/emitter/presentation.go`. The static packaging is TypeScript only (section 2.4).
+(`ts/src/presentation-builder.ts` and `ts/src/presentation-mount.ts` there, with this
+repository's `ts/src/presentation-fragment.ts`); the Go twin of the offline packaging is
+capsule-viewer's `go/emitter/presentation.go`. The static packaging is TypeScript only (section 2.4).
 
 The key words MUST, MUST NOT, SHOULD and MAY are to be interpreted as described in BCP 14
 (RFC 2119, RFC 8174) when, and only when, they appear in all capitals.

@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -6,16 +5,14 @@ import {
   buildVerifiedBundleContext,
   type VerifiedBundleContext,
 } from "../src/bundle.js";
-import {
-  BUILTIN_PRESENTATIONS,
-  createPresentationRegistry,
-} from "../src/evidence-graph-view.js";
+import { BUILTIN_MANIFESTS } from "../src/builtin-manifests.js";
 import {
   describeContext,
   PresentationAmbiguityError,
   type PresentationFormat,
   type PresentationManifest,
   type PresentationModule,
+  PresentationRegistry,
   resolveModules,
 } from "../src/presentation-registry.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
@@ -31,6 +28,9 @@ import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
  * resolution.json is what the registry does today, pinned: one named error,
  * PresentationAmbiguityError with both ids, at registration (section 4.5)
  * and, for a resolver that skipped that test, at resolution (section 4.3).
+ *
+ * The built-in modules stand in by their manifests (BUILTIN_MANIFESTS), each
+ * able to render: their own pages are capsule-viewer's.
  */
 
 type Obj = Record<string, unknown>;
@@ -62,6 +62,17 @@ function stub(manifest: PresentationManifest, calls: string[]) {
     buildModel: () => ({}),
     render: () => {},
   } satisfies PresentationModule;
+}
+
+// The built-in modules by their manifests, each able to render.
+const BUILTIN_PRESENTATIONS: readonly PresentationModule[] =
+  BUILTIN_MANIFESTS.map((manifest) => stub(manifest, []));
+
+/** A fresh registry holding the built-in manifests. */
+function createPresentationRegistry(): PresentationRegistry {
+  const registry = new PresentationRegistry();
+  for (const module of BUILTIN_PRESENTATIONS) registry.register(module);
+  return registry;
 }
 
 function outcome(run: () => unknown): Obj {

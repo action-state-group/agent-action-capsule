@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -7,11 +5,14 @@ import {
   EXTENSION_NOT_INTERPRETED,
   EXTENSION_NOT_INTERPRETED_NOT_COVERED,
   extensionRows,
-  renderEvidenceGraph,
   verifyBundle,
   type BundleVerificationResult,
+  type ExtensionInterpreterId,
+  type VerificationPageModel,
 } from "../src/browser.js";
 import { derivedFixture } from "./helpers/derived-fixtures.js";
+import { pageModel } from "./helpers/page-model.js";
+import { builtinPage } from "./helpers/builtin-resolution.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 type Obj = Record<string, unknown>;
@@ -36,27 +37,37 @@ const withExtensions = (bundle: Obj, extensions: Obj): Obj => ({
 });
 
 interface Row {
-  id: string | undefined;
-  integrity: string | undefined;
-  semantics: string | undefined;
+  id: string;
+  integrity: string;
+  semantics: "interpreted" | "uninterpreted";
   cells: string[];
 }
 
+// The interpreters a page runs whatever its module: the presentation header
+// and the countersignature stamp. A module adds its own only when it draws
+// (capsule-viewer, which draws the page, passes the set it ran).
+const CORE: ReadonlySet<ExtensionInterpreterId> = new Set([
+  "presentation-header",
+  "countersignature-stamp",
+]);
+
+// The verification page's extension rows, as the page's table states them:
+// the id, the integrity cell and the semantics line.
 async function render(
   bundle: unknown,
-): Promise<{ root: HTMLElement; rows: Row[] }> {
-  const root = document.createElement("main");
-  await renderEvidenceGraph(bundle, root);
-  const page = root.querySelector<HTMLElement>('[data-page="verification"]')!;
-  const rows = Array.from(
-    page.querySelectorAll<HTMLElement>("table[data-extensions] tbody tr"),
-  ).map((tr) => ({
-    id: tr.dataset.extensionId,
-    integrity: tr.dataset.integrity,
-    semantics: tr.dataset.semantics,
-    cells: Array.from(tr.querySelectorAll("td"), (td) => td.textContent ?? ""),
-  }));
-  return { root, rows };
+  applied: ReadonlySet<ExtensionInterpreterId> = CORE,
+): Promise<{ page: VerificationPageModel; rows: Row[] }> {
+  const { page } = await pageModel(bundle, { applied });
+  const rows = page.extensions.map(
+    (row): Row => ({
+      id: row.id,
+      integrity: row.integrity,
+      semantics:
+        row.interpreter === undefined ? "uninterpreted" : "interpreted",
+      cells: [row.id, row.integrity, row.semantics],
+    }),
+  );
+  return { page, rows };
 }
 
 const verdicts = (result: BundleVerificationResult) => ({
@@ -100,12 +111,8 @@ describe("extension interpretation status", () => {
         ],
       },
     ]);
-    const { root: shown } = await render(bundle);
-    expect(
-      shown.querySelector<HTMLElement>(
-        'tr[data-extension-id="presentation/v1"]',
-      )?.dataset.interpreter,
-    ).toBe("presentation-header");
+    const { page } = await render(bundle);
+    expect(page.extensions[0]?.interpreter).toBe("presentation-header");
   });
 
   it("an unknown x- extension is covered but uninterpreted, in exactly those words, and changes no verdict", async () => {
@@ -122,7 +129,7 @@ describe("extension interpretation status", () => {
       },
     ]);
     expect(verdicts(verified)).toEqual(verdicts(await verifyBundle(plain)));
-    const { root, rows } = await render(bundle);
+    const { page, rows } = await render(bundle);
     expect(rows).toEqual([
       {
         id: "x-acme-risk-score/v1",
@@ -136,20 +143,16 @@ describe("extension interpretation status", () => {
       },
     ]);
     // The block's own words never reach the page.
-    expect(root.textContent).not.toContain("approved");
-    // Nothing else on the page moves: the extension table is the only
+    expect(JSON.stringify(page)).not.toContain("approved");
+    // Nothing else on the page moves: the extension rows are the only
     // addition, apart from the bundle digest the new block changes.
     const before = await render(plain);
-    root
-      .querySelector("table[data-extensions]")
-      ?.previousElementSibling?.remove();
-    root.querySelector("table[data-extensions]")?.remove();
     expect(
-      root.innerHTML.replaceAll(
+      JSON.stringify({ ...page, extensions: [] }).replaceAll(
         verified.bundleDigest!,
         (await verifyBundle(plain)).bundleDigest!,
       ),
-    ).toBe(before.root.innerHTML);
+    ).toBe(JSON.stringify(before.page));
   });
 
   it("composed/v1 and an unknown kind render two rows, both covered; on a refused bundle composed/v1 is not interpreted (its section did not render)", async () => {
@@ -170,13 +173,11 @@ describe("extension interpretation status", () => {
     expect(verified.extensions).toEqual([
       { kind: "x-float/v1", status: "uninterpreted", integrityCovered: false },
     ]);
-    const { root, rows } = await render(bundle);
+    const { rows } = await render(bundle);
     expect(rows.map((row) => row.cells)).toEqual([
       ["x-float/v1", "not covered", EXTENSION_NOT_INTERPRETED_NOT_COVERED],
     ]);
-    expect(
-      root.querySelector("table[data-extensions]")?.textContent,
-    ).not.toContain("Integrity verified");
+    expect(JSON.stringify(rows)).not.toMatch(/verified/iu);
   });
 
   it("an interpretable block whose module did not render is shown as not interpreted", async () => {
@@ -255,8 +256,12 @@ describe("extension interpretation status", () => {
       interpreter: "contract-report",
       integrityCovered: true,
     });
-    const { root, rows } = await render(bundle);
-    expect(root.querySelector('[data-page="result"]')).not.toBeNull();
+    const { context } = await pageModel(bundle);
+    expect(await builtinPage(context)).toBe(
+      "aac.builtin.result-contract-report/v0",
+    );
+    // That page runs the Result reader, and no report block's.
+    const { rows } = await render(bundle, new Set([...CORE, "result-root"]));
     expect(rows.map((row) => row.cells)).toEqual([
       ["contract-report/v1", "covered", EXTENSION_NOT_INTERPRETED],
       ["outcome-report/v1", "covered", EXTENSION_NOT_INTERPRETED],
@@ -310,8 +315,8 @@ describe("extension interpretation status", () => {
     ]);
   });
 
-  it("a bundle with no extensions draws no extension table", async () => {
-    const { root } = await render(weekBundle());
-    expect(root.querySelector("table[data-extensions]")).toBeNull();
+  it("a bundle with no extensions has no extension rows", async () => {
+    const { page } = await render(weekBundle());
+    expect(page.extensions).toEqual([]);
   });
 });

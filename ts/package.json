@@ -43,9 +43,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && npm run emitter:iife",
+    "build": "tsc -p tsconfig.build.json",
     "prepare": "npm run build",
-    "emitter:iife": "esbuild src/browser.ts --bundle --format=iife --global-name=EvidenceGraph --footer:js='globalThis.renderEvidenceGraph = EvidenceGraph.renderEvidenceGraph;' --outfile=dist/evidence-graph.iife.js",
     "check": "npm run format:check && npm run typecheck && npm test && npm run build && npm run check:package",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

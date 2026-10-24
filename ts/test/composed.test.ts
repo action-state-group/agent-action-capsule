@@ -1,7 +1,6 @@
-// @vitest-environment jsdom
-//
 // composed/v1: the verify core's port of go/bundle/composed.go, and the
-// composition section that shows its result.
+// composition section's selection and what the verification page states
+// about the block. capsule-viewer draws the section itself.
 //
 // Parity: testdata/composed-parity/ holds, per case, the output of
 // `capsulectl verify --bundle` (capsule-cli, which verifies composed/v1 with
@@ -14,26 +13,28 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   BUILTIN_MANIFEST_COMPOSED,
+  BUILTIN_MANIFEST_NO_AGGREGATE,
   BUILTIN_MANIFESTS,
-  BUILTIN_PRESENTATIONS,
-  BUILTIN_SECTIONS,
+  BUILTIN_SECTION_MANIFESTS,
   EXTENSION_NOT_INTERPRETED,
   PresentationAmbiguityError,
   PresentationRegistry,
   buildVerifiedBundleContext,
   composedDigest,
   composedDigestPreimage,
-  createPresentationRegistry,
-  createSectionRegistry,
   extensionRows,
-  renderEvidenceGraph,
   verifyBundle,
   verifyComposed,
   type ComposedResult,
+  type ExtensionInterpreterId,
   type PresentationManifest,
   type PresentationModule,
-  type RenderEvidenceGraphOptions,
+  type PresentationRefusal,
+  type PresentationRuntime,
+  type VerificationPageModel,
 } from "../src/browser.js";
+import { pageModel, type PageModel } from "./helpers/page-model.js";
+import { stub } from "./helpers/presentation-resolution-vectors.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 type Obj = Record<string, unknown>;
@@ -306,145 +307,117 @@ async function sealed(container: Obj): Promise<Obj> {
   return out;
 }
 
-async function render(bundle: unknown): Promise<HTMLElement> {
-  const root = document.createElement("main");
-  await renderEvidenceGraph(bundle, root);
-  return root;
+// The built-in modules by their manifests, each able to render: the modules
+// that draw them are capsule-viewer's.
+const BUILTIN_PRESENTATIONS: readonly PresentationModule[] =
+  BUILTIN_MANIFESTS.map(stub);
+const BUILTIN_SECTIONS: readonly PresentationModule[] =
+  BUILTIN_SECTION_MANIFESTS.map(stub);
+
+function createPresentationRegistry(): PresentationRegistry {
+  const registry = new PresentationRegistry();
+  for (const module of BUILTIN_PRESENTATIONS) registry.register(module);
+  return registry;
 }
 
-const extensionCells = (root: HTMLElement): string[][] =>
-  Array.from(root.querySelectorAll("table[data-extensions] tbody tr"), (tr) =>
-    Array.from(tr.querySelectorAll("td"), (td) => td.textContent ?? ""),
-  );
+function createSectionRegistry(
+  runtime?: PresentationRuntime,
+): PresentationRegistry {
+  const registry = new PresentationRegistry(runtime);
+  for (const module of BUILTIN_SECTIONS) registry.register(module);
+  return registry;
+}
+
+// The interpreters a page runs whatever its module.
+const CORE: readonly ExtensionInterpreterId[] = [
+  "presentation-header",
+  "countersignature-stamp",
+];
+
+interface Shown {
+  readonly model: PageModel;
+  /** The page module selected, if any. */
+  readonly page: string | undefined;
+  /** The section selected, if any. */
+  readonly section: string | undefined;
+  /** Every refused module that matched, page first, as the page names them. */
+  readonly refused: readonly PresentationRefusal[];
+}
+
+// Resolve the page, then (for a verified bundle) the section, as a viewer
+// does, and read the verification page with what that selection ran and
+// refused (contract sections 3.2 and 4.3).
+async function render(
+  bundle: unknown,
+  options: {
+    registry?: PresentationRegistry;
+    sections?: PresentationRegistry;
+  } = {},
+): Promise<Shown> {
+  const { context, banner } = await pageModel(bundle);
+  const pages = await (
+    options.registry ?? createPresentationRegistry()
+  ).resolve(context, "*", "html");
+  const refused: PresentationRefusal[] =
+    pages.kind === "refusal" ? [] : [...pages.refused];
+  let section: string | undefined;
+  if (banner.refusal === undefined) {
+    const sections = await (
+      options.sections ?? createSectionRegistry()
+    ).resolve(context, "*", "html");
+    if (sections.kind !== "refusal") refused.push(...sections.refused);
+    if (sections.kind === "module") section = sections.module.manifest.id;
+  }
+  const applied = new Set<ExtensionInterpreterId>([
+    ...CORE,
+    ...(section === undefined ? [] : [section as ExtensionInterpreterId]),
+  ]);
+  return {
+    model: await pageModel(context, { applied, refused }),
+    page: pages.kind === "module" ? pages.module.manifest.id : undefined,
+    section,
+    refused,
+  };
+}
+
+const extensionCells = (shown: Shown): string[][] =>
+  shown.model.page.extensions.map((row) => [
+    row.id,
+    row.integrity,
+    row.semantics,
+  ]);
+const rows = (shown: Shown): VerificationPageModel["extensions"] =>
+  shown.model.page.extensions;
+const refusedIds = (shown: Shown): string =>
+  shown.refused.map((r) => r.id).join(" ");
 
 describe("the composition section", () => {
   it.each(parityCases().map((c) => [c.name, c] as const))(
-    "%s: the page's join and agreement classifications equal capsulectl's",
+    "%s: the section is selected, and the verification page says the block was shown by it",
     async (_name, c) => {
-      const root = await render(await sealed(c.bundle));
-      const section = root.querySelector<HTMLElement>(
-        '[data-section="composition"]',
-      )!;
-      expect(section).not.toBeNull();
-      const composed = cliComposed(c.cli);
-      expect(
-        section.querySelector<HTMLElement>("[data-composition-status]")!.dataset
-          .compositionStatus,
-      ).toBe(composed.status);
-      expect(
-        Array.from(
-          section.querySelectorAll<HTMLElement>("tr[data-join-members]"),
-          (tr) => [
-            tr.dataset.joinMembers,
-            tr.dataset.joinDeclared,
-            tr.dataset.joinDerived,
-            tr.dataset.joinResult,
-          ],
-        ),
-      ).toEqual(
-        (composed.joins as Obj[]).map((j) => [
-          (j.members as string[]).join(","),
-          j.declared,
-          j.derived ?? "not_derivable",
-          j.result,
-        ]),
-      );
-      expect(
-        Array.from(
-          section.querySelectorAll<HTMLElement>("tr[data-agreement-members]"),
-          (tr) => [tr.dataset.agreementMembers, tr.dataset.corroboration],
-        ),
-      ).toEqual(
-        (composed.corroboration as Obj[]).map((a) => [
-          (a.members as string[]).join(","),
-          a.result,
-        ]),
-      );
-      expect(
-        Array.from(
-          section.querySelectorAll<HTMLElement>("tr[data-member-id]"),
-          (tr) => [tr.dataset.memberId, tr.dataset.body, tr.dataset.digest],
-        ),
-      ).toEqual(
-        (composed.members as Obj[]).map((m) => [m.id, m.body, m.digest]),
-      );
-      const digest = section.querySelector<HTMLElement>(
-        "[data-composed-digest]",
-      )!;
-      expect([digest.dataset.composedDigest, digest.dataset.matches]).toEqual([
-        (composed.composed_digest as Obj).declared,
-        String((composed.composed_digest as Obj).matches),
-      ]);
-      // The verification page now says the block was shown, by this module.
-      expect(extensionCells(root)).toEqual([
+      const shown = await render(await sealed(c.bundle));
+      expect(shown.section).toBe(BUILTIN_MANIFEST_COMPOSED.id);
+      expect(extensionCells(shown)).toEqual([
         [
           "composed/v1",
           "covered",
           "Shown by the page's module; covered by the file's fingerprint",
         ],
       ]);
-      expect(
-        root.querySelector<HTMLElement>('tr[data-extension-id="composed/v1"]')
-          ?.dataset.interpreter,
-      ).toBe(BUILTIN_MANIFEST_COMPOSED.id);
+      expect(rows(shown)[0]?.interpreter).toBe(BUILTIN_MANIFEST_COMPOSED.id);
     },
   );
 
-  it("a same-custody agreeing pair renders redundant, not corroborating, with its reason", async () => {
-    const container = VECTORS.cases.find(
-      (c) => c.id === "same-custody-redundant",
-    )!.container;
-    const root = await render(await sealed(container));
-    const row = root.querySelector<HTMLElement>("tr[data-agreement-members]")!;
-    expect(row.dataset.corroboration).toBe("redundant");
-    expect(row.dataset.reasons).toBe("same_custody_domain");
-    expect(row.textContent).toContain(
-      "redundant, not corroborating (same_custody_domain)",
-    );
-    expect(row.textContent).not.toContain("corroborating, on declared custody");
-    // Both observers are shown with the one custody domain they declare.
-    expect(
-      Array.from(
-        root.querySelectorAll("tr[data-observer-id] td:last-child"),
-        (td) => td.textContent,
-      ),
-    ).toEqual(["operator.example", "operator.example"]);
-  });
-
-  it("a separate-custody agreeing pair is corroborating only on declared custody", async () => {
+  it("an unverified container selects no section, and the block reads not interpreted", async () => {
     const container = VECTORS.cases.find((c) => c.id === "agree")!.container;
-    const root = await render(await sealed(container));
-    const row = root.querySelector<HTMLElement>("tr[data-agreement-members]")!;
-    expect(row.dataset.corroboration).toBe("corroborating");
-    expect(row.textContent).toContain("corroborating, on declared custody");
-    expect(root.textContent).toContain(
-      "distinct labels do not establish that two observers are independent",
-    );
-  });
-
-  it("a mismatch shows each member's value at the differing pointer and names no winner", async () => {
-    const c = parityCases().find((p) => p.name === "mismatch")!;
-    const root = await render(await sealed(c.bundle));
-    const details = root.querySelector<HTMLElement>("[data-join-differences]")!;
-    expect(details.tagName).toBe("DETAILS");
-    const values = Array.from(
-      details.querySelectorAll("dd"),
-      (dd) => dd.textContent,
-    );
-    expect(values).toEqual([
-      'responder-a: "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408"',
-      'responder-b: "4d0c2ac3b851f692b652985e349e55268be73d0b8ecf815df8654d8a97df4cc7"',
-    ]);
-  });
-
-  it("an unverified container shows no section, and the block reads not interpreted", async () => {
-    const container = VECTORS.cases.find((c) => c.id === "agree")!.container;
-    const root = await render(container);
+    const shown = await render(container);
+    expect(shown.model.banner.refusal).toBeDefined();
+    expect(shown.section).toBeUndefined();
+    const context = await buildVerifiedBundleContext(container);
     expect(
-      root.querySelector('[data-refusal="unverified-bundle"]'),
-    ).not.toBeNull();
-    expect(root.querySelector('[data-section="composition"]')).toBeNull();
-    expect(extensionCells(root)).toEqual([
+      (await createSectionRegistry().resolve(context, "*", "html")).kind,
+    ).toBe("refusal");
+    expect(extensionCells(shown)).toEqual([
       ["composed/v1", "covered", EXTENSION_NOT_INTERPRETED],
     ]);
   });
@@ -455,28 +428,17 @@ describe("the composition section", () => {
     expect(await createSectionRegistry().resolve(context, "*", "html")).toEqual(
       { kind: "no-presentation", refused: [] },
     );
-    const root = await render(plain);
-    expect(root.querySelector('[data-section="composition"]')).toBeNull();
+    expect((await render(plain)).section).toBeUndefined();
   });
 
-  it("the section is drawn after the page module and before the verification page", async () => {
+  it("the section is selected beside the page module, not in its place", async () => {
     const container = VECTORS.cases.find((c) => c.id === "agree")!.container;
-    const root = await render(await sealed(container));
-    const order = Array.from(
-      root.querySelectorAll<HTMLElement>(
-        '[data-notice="no-aggregate"], [data-section="composition"], [data-page="verification"]',
-      ),
-      (el) => el.dataset.notice ?? el.dataset.section ?? el.dataset.page,
-    );
-    expect(order).toEqual(["no-aggregate", "composition", "verification"]);
+    const shown = await render(await sealed(container));
+    expect([shown.page, shown.section]).toEqual([
+      BUILTIN_MANIFEST_NO_AGGREGATE.id,
+      BUILTIN_MANIFEST_COMPOSED.id,
+    ]);
   });
-});
-
-const stub = (manifest: PresentationManifest): PresentationModule => ({
-  manifest,
-  canRender: () => true,
-  buildModel: () => null,
-  render: () => undefined,
 });
 
 describe("precedence (contract sections 4.3 to 4.5)", () => {
@@ -530,7 +492,8 @@ describe("precedence (contract sections 4.3 to 4.5)", () => {
     ]);
   });
 
-  it("the page registry is unchanged: the seven built-ins, nothing else", () => {
+  it("the page manifests are unchanged: the seven built-ins, nothing else", () => {
+    expect(BUILTIN_MANIFESTS).toHaveLength(7);
     expect(createPresentationRegistry().list()).toEqual(BUILTIN_PRESENTATIONS);
     expect(BUILTIN_MANIFESTS.map((m) => m.id)).not.toContain(
       BUILTIN_MANIFEST_COMPOSED.id,
@@ -567,22 +530,10 @@ describe("the presentation ABI on the composition section and the extension rows
       throw new Error("a refused module's render was called");
     },
   });
-  const rows = (root: HTMLElement): HTMLElement[] =>
-    Array.from(
-      root.querySelectorAll<HTMLElement>("table[data-extensions] tbody tr"),
-    );
   const fallbackOnly = (): PresentationRegistry => {
     const registry = new PresentationRegistry();
-    registry.register(BUILTIN_PRESENTATIONS.at(-1)!);
+    registry.register(stub(BUILTIN_MANIFEST_NO_AGGREGATE));
     return registry;
-  };
-  const renderWith = async (
-    bundle: unknown,
-    options: RenderEvidenceGraphOptions,
-  ): Promise<HTMLElement> => {
-    const root = document.createElement("main");
-    await renderEvidenceGraph(bundle, root, undefined, options);
-    return root;
   };
 
   it("the composition section manifest declares aac.presentation-api/v0 at 0.1.0, and the reference runtime refuses no section", () => {
@@ -599,16 +550,16 @@ describe("the presentation ABI on the composition section and the extension rows
     expect(sections.refused().map((r) => r.id)).toEqual([
       BUILTIN_MANIFEST_COMPOSED.id,
     ]);
-    const root = await renderWith(await agree(), { sections });
-    expect(root.querySelector('[data-section="composition"]')).toBeNull();
-    expect(root.dataset.presentationRefused).toBe(BUILTIN_MANIFEST_COMPOSED.id);
-    const [row, ...rest] = rows(root);
+    const shown = await render(await agree(), { sections });
+    expect(shown.section).toBeUndefined();
+    expect(refusedIds(shown)).toBe(BUILTIN_MANIFEST_COMPOSED.id);
+    const [row, ...rest] = rows(shown);
     expect(rest).toEqual([]);
-    expect(row!.dataset.extensionId).toBe("composed/v1");
-    expect(row!.dataset.semantics).toBe("refused");
-    expect(row!.dataset.refusedModule).toBe(BUILTIN_MANIFEST_COMPOSED.id);
-    expect(row!.dataset.refusal).toBe("presentation_api_unsupported");
-    expect(extensionCells(root)).toEqual([
+    expect(row!.id).toBe("composed/v1");
+    expect(row!.interpreter).toBeUndefined();
+    expect(row!.refusal?.id).toBe(BUILTIN_MANIFEST_COMPOSED.id);
+    expect(row!.refusal?.reason).toBe("presentation_api_unsupported");
+    expect(extensionCells(shown)).toEqual([
       [
         "composed/v1",
         "covered",
@@ -616,11 +567,7 @@ describe("the presentation ABI on the composition section and the extension rows
       ],
     ]);
     // A module with an extension row gets no separate line.
-    expect(
-      root.querySelectorAll(
-        '[data-page="verification"] [data-presentation-refused]',
-      ),
-    ).toHaveLength(0);
+    expect(shown.model.page.presentationRefusals).toEqual([]);
   });
 
   it("a section refused for runtime_too_old reads the runtime wording", async () => {
@@ -628,11 +575,11 @@ describe("the presentation ABI on the composition section and the extension rows
       presentationApis: ["aac.presentation-api/v0"],
       runtimeVersion: "0.0.9",
     });
-    const root = await renderWith(await agree(), { sections });
-    expect(root.querySelector('[data-section="composition"]')).toBeNull();
-    const [row] = rows(root);
-    expect(row!.dataset.refusal).toBe("runtime_too_old");
-    expect(extensionCells(root)[0]![2]).toBe(
+    const shown = await render(await agree(), { sections });
+    expect(shown.section).toBeUndefined();
+    const [row] = rows(shown);
+    expect(row!.refusal?.reason).toBe("runtime_too_old");
+    expect(extensionCells(shown)[0]![2]).toBe(
       "Integrity verified; meaning not interpreted: presentation module aac.builtin.composed/v0 needs runtime 0.1.0 or later; this viewer is 0.0.9",
     );
   });
@@ -645,19 +592,17 @@ describe("the presentation ABI on the composition section and the extension rows
       presentation_api: "aac.presentation-api/v9",
     });
     expect(registry.register(refusedPage).status).toBe("refused");
-    const root = await renderWith(await agree(), { registry });
+    const shown = await render(await agree(), { registry });
     // The section still ran (its own registry accepts it) ...
-    expect(root.querySelector('[data-section="composition"]')).not.toBeNull();
+    expect(shown.section).toBe(BUILTIN_MANIFEST_COMPOSED.id);
     // ... but the row names the refused module: the refusal takes precedence.
-    const [row] = rows(root);
-    expect(row!.dataset.semantics).toBe("refused");
-    expect(row!.dataset.refusedModule).toBe("org.example.composition-page/v0");
-    expect(extensionCells(root)[0]![2]).toBe(
+    const [row] = rows(shown);
+    expect(row!.interpreter).toBeUndefined();
+    expect(row!.refusal?.id).toBe("org.example.composition-page/v0");
+    expect(extensionCells(shown)[0]![2]).toBe(
       "Integrity verified; meaning not interpreted: presentation module org.example.composition-page/v0 needs presentation API aac.presentation-api/v9, which this viewer does not implement",
     );
-    expect(root.dataset.presentationRefused).toBe(
-      "org.example.composition-page/v0",
-    );
+    expect(refusedIds(shown)).toBe("org.example.composition-page/v0");
   });
 
   it("a refused module that requires no extension gets the contract's line after the extension rows", async () => {
@@ -676,23 +621,17 @@ describe("the presentation ABI on the composition section and the extension rows
       executable: { carrier: "core-runtime" },
     };
     expect(registry.register(untouchable(plain)).status).toBe("refused");
-    const root = await renderWith(await agree(), { registry });
-    const page = root.querySelector<HTMLElement>('[data-page="verification"]')!;
-    const line = page.querySelector<HTMLElement>(
-      "p[data-presentation-refused]",
-    )!;
-    expect(line.textContent).toBe(
-      "Presentation module org.example.plain/v0 was not used: it needs runtime 0.2.0 or later; this viewer is 0.1.0",
-    );
-    expect(line.dataset.presentationRefused).toBe("org.example.plain/v0");
-    expect(line.dataset.refusal).toBe("runtime_too_old");
-    // After the extension rows, which are untouched by this refusal.
-    const table = page.querySelector("table[data-extensions]")!;
-    expect(
-      table.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(rows(root)[0]!.dataset.semantics).toBe("interpreted");
-    expect(root.dataset.presentationRefused).toBe("org.example.plain/v0");
+    const shown = await render(await agree(), { registry });
+    expect(shown.model.page.presentationRefusals).toEqual([
+      {
+        id: "org.example.plain/v0",
+        reason: "runtime_too_old",
+        line: "Presentation module org.example.plain/v0 was not used: it needs runtime 0.2.0 or later; this viewer is 0.1.0",
+      },
+    ]);
+    // The extension rows are untouched by this refusal.
+    expect(rows(shown)[0]!.interpreter).toBe(BUILTIN_MANIFEST_COMPOSED.id);
+    expect(refusedIds(shown)).toBe("org.example.plain/v0");
   });
 
   it("a page and a section refused together are both named, page first", async () => {
@@ -704,15 +643,15 @@ describe("the presentation ABI on the composition section and the extension rows
         presentation_api: "aac.presentation-api/v9",
       }),
     );
-    const root = await renderWith(await agree(), {
+    const shown = await render(await agree(), {
       registry,
       sections: createSectionRegistry(V1_ONLY),
     });
-    expect(root.dataset.presentationRefused).toBe(
+    expect(refusedIds(shown)).toBe(
       `org.example.composition-page/v0 ${BUILTIN_MANIFEST_COMPOSED.id}`,
     );
     // One row, named by the first refusal in resolution order.
-    expect(rows(root).map((r) => r.dataset.refusedModule)).toEqual([
+    expect(rows(shown).map((r) => r.refusal?.id)).toEqual([
       "org.example.composition-page/v0",
     ]);
   });

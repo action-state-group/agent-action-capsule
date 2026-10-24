@@ -60,8 +60,9 @@ mechanical half):
      current viewer distinguishes; every subset of the extensions it reads
      plus composed/v1; whether the evaluation-summary model builds; two
      audiences; three formats), resolving over the seven built-ins gives
-     exactly what renderEvidenceGraph's if-chain gives today
-     (ts/src/evidence-graph-view.ts), transcribed below as `legacy`, with
+     exactly what renderEvidenceGraph's if-chain gave before the registry
+     (ts/src/evidence-graph-view.ts, now drawn in capsule-viewer),
+     transcribed below as `legacy`, with
      the one branch spec/contract-report-v1.md added: a Result root that
      opts into contract-report/v1 takes the contract-report manifest ahead
      of the two deprecated cards.
@@ -392,7 +393,7 @@ def static_findings(registry: list[dict]) -> list[str]:
     return out
 
 
-# --- today's dispatch, transcribed from renderEvidenceGraph -----------------
+# --- the pre-registry dispatch, transcribed from renderEvidenceGraph ---------
 SPEC_TOKENS = [None, "report/v1", "evaluation-summary/v1", "org.example.other/v1"]
 READ_EXTENSIONS = [
     "contract-report/v1", "outcome-report/v1", "eu-ai-act-compliance/v1", "composed/v1",
@@ -400,8 +401,9 @@ READ_EXTENSIONS = [
 
 
 def legacy(d: Descriptor, graph_builds: bool) -> str:
-    """ts/src/evidence-graph-view.ts renderEvidenceGraph, branch for branch,
-    plus the contract-report branch of spec/contract-report-v1.md."""
+    """The pre-registry renderEvidenceGraph (ts/src/evidence-graph-view.ts,
+    now in capsule-viewer), branch for branch, plus the contract-report
+    branch of spec/contract-report-v1.md."""
     if not d.verified:
         return REFUSAL
     if "spec_version:report/v1" in d.profiles:
@@ -703,7 +705,7 @@ def main() -> int:
     findings.extend(found[:20])
     if not found:
         print(f"OK  preservation  {cases} (descriptor, audience, format) cases resolve "
-              "exactly as renderEvidenceGraph dispatches today")
+              "exactly as the pre-registry renderEvidenceGraph dispatched")
     for module_id, field, token in (
         (ID_CONTRACT_REPORT, "profiles", "spec_version:report/v1"),
         (ID_RESULT, "extensions", "contract-report/v1"),

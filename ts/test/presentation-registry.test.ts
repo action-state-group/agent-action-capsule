@@ -1,4 +1,8 @@
-// @vitest-environment jsdom
+// The presentation registry (spec/presentation-contract-v0.md sections 3.2
+// and 4): registration, resolution over a verified context, and the ABI
+// refusals. The built-in modules stand in by their manifests
+// (BUILTIN_MANIFESTS); the modules themselves, and the page that draws what
+// resolve() selects, are capsule-viewer's (action-state-group/capsule-viewer).
 import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -11,12 +15,6 @@ import {
   BUILTIN_MANIFESTS,
 } from "../src/builtin-manifests.js";
 import {
-  BUILTIN_PRESENTATIONS,
-  createPresentationRegistry,
-  registerPresentation,
-  renderEvidenceGraph,
-} from "../src/evidence-graph-view.js";
-import {
   describeContext,
   presentationRefusalLine,
   presentationRefusalRow,
@@ -26,11 +24,13 @@ import {
   resolveModules,
   type PresentationManifest,
   type PresentationModule,
+  type PresentationResolution,
   type PresentationResolver,
   REFERENCE_PRESENTATION_RUNTIME,
 } from "../src/presentation-registry.js";
-import { VERIFICATION_BANNER_LINES } from "../src/verification-page.js";
-import { derivedFixture } from "./helpers/derived-fixtures.js";
+import type { VerificationBanner } from "../src/verification-page.js";
+import { pageModel } from "./helpers/page-model.js";
+import { stub } from "./helpers/presentation-resolution-vectors.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 type Obj = Record<string, unknown>;
@@ -81,6 +81,21 @@ function manifest(overrides: Partial<Obj> = {}): PresentationManifest {
   } as PresentationManifest;
 }
 
+// The built-in modules by their manifests, each able to render.
+const BUILTIN_PRESENTATIONS: readonly PresentationModule[] =
+  BUILTIN_MANIFESTS.map(stub);
+
+/** A fresh registry holding the seven built-in manifests. */
+function createPresentationRegistry(): PresentationRegistry {
+  const registry = new PresentationRegistry();
+  for (const module of BUILTIN_PRESENTATIONS) registry.register(module);
+  return registry;
+}
+
+const defaultRegistry = createPresentationRegistry();
+const registerPresentation = (module: PresentationModule) =>
+  defaultRegistry.register(module);
+
 interface Spy {
   readonly module: PresentationModule;
   readonly calls: string[];
@@ -88,14 +103,7 @@ interface Spy {
 
 function spyModule(
   m: PresentationManifest,
-  behaviour: {
-    canRender?: boolean;
-    buildThrows?: boolean;
-    renderThrows?: boolean;
-    chrome?: string;
-    /** Rewrites the core's banner from inside render (contract section 3). */
-    tamper?: (banner: HTMLElement) => void;
-  } = {},
+  behaviour: { canRender?: boolean } = {},
 ): Spy {
   const calls: string[] = [];
   return {
@@ -108,35 +116,46 @@ function spyModule(
       },
       buildModel: () => {
         calls.push("buildModel");
-        if (behaviour.buildThrows) throw new Error(`${m.id} model failed`);
         return { id: m.id };
       },
-      render: (model, host) => {
+      render: () => {
         calls.push("render");
-        if (behaviour.chrome !== undefined)
-          host.setChromeClass(behaviour.chrome);
-        const out = document.createElement("p");
-        out.dataset.testModule = (model as { id: string }).id;
-        out.textContent = `module ${m.id}`;
-        host.L1.append(out);
-        if (behaviour.tamper !== undefined)
-          behaviour.tamper(
-            host.L0.querySelector<HTMLElement>("[data-verify]")!,
-          );
-        if (behaviour.renderThrows) throw new Error(`${m.id} render failed`);
       },
     },
   };
 }
 
+interface Resolved {
+  readonly banner: VerificationBanner;
+  readonly resolution: PresentationResolution;
+  /** The selected module's id, if one was selected. */
+  readonly selected: string | undefined;
+  /** The refused modules that matched, as the page names them. */
+  readonly refused: string;
+}
+
+// Verify the bundle and resolve its page over `registry`, as a viewer does.
 async function render(
   bundle: unknown,
   registry: PresentationResolver,
   options: { audience?: string } = {},
-): Promise<HTMLElement> {
-  const root = document.createElement("main");
-  await renderEvidenceGraph(bundle, root, undefined, { registry, ...options });
-  return root;
+): Promise<Resolved> {
+  const { context, banner } = await pageModel(bundle);
+  const resolution = await registry.resolve(
+    context,
+    options.audience ?? "*",
+    "html",
+  );
+  return {
+    banner,
+    resolution,
+    selected:
+      resolution.kind === "module" ? resolution.module.manifest.id : undefined,
+    refused:
+      resolution.kind === "refusal"
+        ? ""
+        : resolution.refused.map((r) => r.id).join(" "),
+  };
 }
 
 describe("registration (spec section 4.5)", () => {
@@ -279,7 +298,7 @@ describe("registration (spec section 4.5)", () => {
   });
 });
 
-describe("resolution and rendering (spec section 4.3)", () => {
+describe("resolution (spec section 4.3)", () => {
   it("chooses the specific module over a declared fallback; the fallback renders when the specific declines", async () => {
     const generic = manifest({
       id: "org.example.generic-view/v0",
@@ -296,11 +315,7 @@ describe("resolution and rendering (spec section 4.3)", () => {
     registry.register(fallback.module); // order decides nothing
     registry.register(specific.module);
     const page = await render(producerKeyBundle(), registry);
-    expect(
-      [...page.querySelectorAll("[data-test-module]")].map(
-        (e) => (e as HTMLElement).dataset.testModule,
-      ),
-    ).toEqual(["org.example.view/v0"]);
+    expect(page.selected).toBe("org.example.view/v0");
     expect(fallback.calls).toEqual([]);
 
     const declining = spyModule(manifest(), { canRender: false });
@@ -309,30 +324,23 @@ describe("resolution and rendering (spec section 4.3)", () => {
     registry2.register(declining.module);
     registry2.register(fallback2.module);
     const page2 = await render(producerKeyBundle(), registry2);
-    expect(
-      [...page2.querySelectorAll("[data-test-module]")].map(
-        (e) => (e as HTMLElement).dataset.testModule,
-      ),
-    ).toEqual(["org.example.generic-view/v0"]);
+    expect(page2.selected).toBe("org.example.generic-view/v0");
     expect(declining.calls).toEqual(["canRender"]);
   });
 
-  it("a specific module registered beside the built-ins replaces the no-aggregate note for the bundles it matches", async () => {
+  it("a specific module registered beside the built-ins replaces the no-aggregate page for the bundles it matches", async () => {
     const registry = createPresentationRegistry();
     registry.register(spyModule(manifest()).module);
     const page = await render(producerKeyBundle(), registry);
-    expect(
-      page.querySelector('[data-test-module="org.example.view/v0"]'),
-    ).not.toBeNull();
-    expect(page.querySelector('[data-notice="no-aggregate"]')).toBeNull();
+    expect(page.selected).toBe("org.example.view/v0");
     const plain = await render(
       producerKeyBundle(),
       createPresentationRegistry(),
     );
-    expect(plain.querySelector('[data-notice="no-aggregate"]')).not.toBeNull();
+    expect(plain.selected).toBe(BUILTIN_MANIFEST_NO_AGGREGATE.id);
   });
 
-  it("a failing bundle renders the refusal and zero module output; no module method is called", async () => {
+  it("a failing bundle states the refusal and selects no module; no module method is called", async () => {
     const everything = spyModule(
       manifest({
         id: "org.example.everything/v0",
@@ -347,304 +355,16 @@ describe("resolution and rendering (spec section 4.3)", () => {
     // Unsealed: alias ids, so the bundle does not verify.
     const unverified = json(resolvePath(testdata, "report-rows-bundle.json"));
     const page = await render(unverified, registry);
-    expect(page.querySelector('[data-verify="failed"]')).not.toBeNull();
-    expect(
-      page.querySelector('[data-refusal="unverified-bundle"]'),
-    ).not.toBeNull();
-    expect(page.querySelectorAll("[data-test-module]")).toHaveLength(0);
+    expect(page.banner.state).toBe("failed");
+    expect(page.banner.refusal).toBeDefined();
+    expect(page.resolution.kind).toBe("refusal");
     expect(everything.calls).toEqual([]);
 
     const builtIn = await render(unverified, createPresentationRegistry());
-    expect(
-      [...builtIn.querySelectorAll("[data-page]")].map(
-        (e) => (e as HTMLElement).dataset.page,
-      ),
-    ).toEqual(["verification"]);
-    expect(builtIn.querySelector("[data-notice]")).toBeNull();
+    expect(builtIn.resolution.kind).toBe("refusal");
   });
 
-  it("a module that throws while rendering is discarded for the refusal, and no other module is tried", async () => {
-    const generic = manifest({
-      id: "org.example.generic-view/v0",
-      requires: { bundle_kind: "evidence-bundle/v2" },
-      fallback: true,
-    });
-    delete (generic as unknown as Obj).priority;
-    delete (generic as unknown as Obj).forbids;
-    const failing = spyModule(manifest(), { renderThrows: true, chrome: "oi" });
-    const fallback = spyModule(generic);
-    const registry = new PresentationRegistry();
-    registry.register(failing.module);
-    registry.register(fallback.module);
-    const page = await render(producerKeyBundle(), registry);
-    expect(failing.calls).toEqual(["canRender", "buildModel", "render"]);
-    expect(fallback.calls).toEqual([]);
-    expect(page.querySelectorAll("[data-test-module]")).toHaveLength(0);
-    expect(
-      page.querySelector('[data-refusal="presentation-failed"]'),
-    ).not.toBeNull();
-    // The chrome class the module set is discarded with its content.
-    const banner = page.querySelector<HTMLElement>("[data-verify]")!;
-    expect(banner.dataset.verify).toBe("incomplete");
-    expect(banner.className).toBe("");
-    expect(page.lastElementChild).toBe(
-      page.querySelector('[data-page="verification"]'),
-    );
-  });
-
-  // The banner's words and attributes are the core's: a module that writes
-  // them, softens them or removes the banner is discarded for the refusal,
-  // as one that throws is. Only setChromeClass may restyle it.
-  it.each([
-    [
-      "rewrites the banner's line",
-      (b: HTMLElement) => {
-        b.textContent = "✓ Unchanged since it was sealed";
-      },
-    ],
-    [
-      "sets data-verify",
-      (b: HTMLElement) => {
-        b.dataset.verify = "verified";
-      },
-    ],
-    [
-      "removes the details line",
-      (b: HTMLElement) => {
-        b.nextElementSibling?.remove();
-      },
-    ],
-    [
-      "draws a second banner of its own before the core's",
-      (b: HTMLElement) => {
-        const fake = document.createElement("p");
-        fake.dataset.verify = "verified";
-        fake.textContent = "✓ Unchanged since it was sealed";
-        b.before(fake);
-      },
-    ],
-    [
-      "hides the banner",
-      (b: HTMLElement) => {
-        b.hidden = true;
-      },
-    ],
-    [
-      "moves the banner after its own rows",
-      (b: HTMLElement) => {
-        const root = b.parentElement!;
-        const detail = b.nextElementSibling!;
-        root.append(b, detail);
-      },
-    ],
-    [
-      "wraps the banner's words in a hidden child",
-      (b: HTMLElement) => {
-        const span = document.createElement("span");
-        span.hidden = true;
-        span.textContent = b.textContent;
-        b.replaceChildren(span);
-      },
-    ],
-    [
-      "puts its own row before the banner",
-      (b: HTMLElement) => {
-        const row = document.createElement("p");
-        row.textContent = "a row first";
-        b.parentElement!.prepend(row);
-      },
-    ],
-    [
-      "puts bare words before the banner",
-      (b: HTMLElement) => {
-        b.parentElement!.prepend("✓ Verified by the module");
-      },
-    ],
-    [
-      "removes the banner",
-      (b: HTMLElement) => {
-        b.remove();
-      },
-    ],
-  ] as const)(
-    "a module that %s is discarded for the refusal, and the banner is redrawn",
-    async (_, tamper) => {
-      const tampering = spyModule(manifest(), { tamper, chrome: "oi" });
-      const registry = new PresentationRegistry();
-      registry.register(tampering.module);
-      const page = await render(producerKeyBundle(), registry);
-      expect(page.querySelectorAll("[data-test-module]")).toHaveLength(0);
-      expect(
-        page.querySelector('[data-refusal="presentation-failed"]'),
-      ).not.toBeNull();
-      const banners = page.querySelectorAll<HTMLElement>("[data-verify]");
-      expect(banners).toHaveLength(1);
-      expect(banners[0]!.dataset.verify).toBe("incomplete");
-      // The page's own line, whatever the module wrote.
-      expect(banners[0]!.textContent).toBe(
-        VERIFICATION_BANNER_LINES.incompleteNoList,
-      );
-      expect(banners[0]!.className).toBe("");
-      expect(page.querySelector("[data-banner-detail]")).not.toBeNull();
-    },
-  );
-
-  it("a module that only restyles the banner through setChromeClass renders", async () => {
-    const styling = spyModule(manifest(), { chrome: "oi" });
-    const registry = new PresentationRegistry();
-    registry.register(styling.module);
-    const page = await render(producerKeyBundle(), registry);
-    expect(page.querySelectorAll("[data-test-module]")).toHaveLength(1);
-    expect(page.querySelector("[data-refusal]")).toBeNull();
-  });
-
-  it("a render that rejects after another render on the same root finished leaves that page, never its own or the other's checking", async () => {
-    let fail!: () => void;
-    const gate = new Promise<void>((resolve) => {
-      fail = resolve;
-    });
-    const failing = spyModule(manifest());
-    const registry = new PresentationRegistry();
-    registry.register({
-      ...failing.module,
-      buildModel: async () => {
-        await gate;
-        throw new Error("late model failure");
-      },
-    });
-    const root = document.createElement("main");
-    const first = renderEvidenceGraph(producerKeyBundle(), root);
-    const second = renderEvidenceGraph(producerKeyBundle(), root, undefined, {
-      registry,
-    });
-    await first;
-    fail();
-    await expect(second).rejects.toThrow("late model failure");
-    const banners = root.querySelectorAll<HTMLElement>("[data-verify]");
-    expect(banners).toHaveLength(1);
-    expect(banners[0]!.dataset.verify).toBe("incomplete");
-    expect(root.querySelector('[data-page="verification"]')).not.toBeNull();
-  });
-
-  it("a module that puts a row before the producer's header is discarded too", async () => {
-    const headed = manifest({
-      requires: {
-        bundle_kind: "evidence-bundle/v2",
-        extensions: { required: ["presentation/v1"] },
-      },
-    });
-    // The fixture is a report/v1 bundle, which the default forbids exclude.
-    delete (headed as unknown as Obj).forbids;
-    const before = spyModule(headed, {
-      tamper: (b) => {
-        const row = document.createElement("p");
-        row.textContent = "a row first";
-        b.parentElement!.prepend(row);
-      },
-    });
-    const registry = new PresentationRegistry();
-    registry.register(before.module);
-    const page = await render(
-      await derivedFixture("week-bundle-presentation.json"),
-      registry,
-    );
-    expect(before.calls).toContain("render");
-    expect(page.firstElementChild?.getAttribute("data-presentation")).toBe(
-      "header",
-    );
-    expect(
-      page.querySelector('[data-refusal="presentation-failed"]'),
-    ).not.toBeNull();
-  });
-
-  it("two renders on one root that both reject leave no checking behind, whichever rejects first", async () => {
-    const gates: (() => void)[] = [];
-    const lateFailure = (): PresentationRegistry => {
-      const registry = new PresentationRegistry();
-      const gate = new Promise<void>((resolve) => gates.push(resolve));
-      registry.register({
-        ...spyModule(manifest()).module,
-        buildModel: async () => {
-          await gate;
-          throw new Error("late model failure");
-        },
-      });
-      return registry;
-    };
-    const root = document.createElement("main");
-    root.append("untouched");
-    const first = renderEvidenceGraph(producerKeyBundle(), root, undefined, {
-      registry: lateFailure(),
-    });
-    const second = renderEvidenceGraph(producerKeyBundle(), root, undefined, {
-      registry: lateFailure(),
-    });
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    gates[0]!();
-    await expect(first).rejects.toThrow("late model failure");
-    gates[1]!();
-    await expect(second).rejects.toThrow("late model failure");
-    expect(root.querySelector('[data-verify="checking"]')).toBeNull();
-  });
-
-  it("a render that rejects while another on the same root is still checking puts that render's checking back", async () => {
-    let failSecond!: () => void;
-    const gate = new Promise<void>((resolve) => {
-      failSecond = resolve;
-    });
-    let finishFirst!: () => void;
-    const held = new Promise<void>((resolve) => {
-      finishFirst = resolve;
-    });
-    const slow = new PresentationRegistry();
-    slow.register({
-      ...spyModule(manifest()).module,
-      buildModel: async () => {
-        await held;
-        return { id: "org.example.view/v0" };
-      },
-    });
-    const failing = new PresentationRegistry();
-    failing.register({
-      ...spyModule(manifest()).module,
-      buildModel: async () => {
-        await gate;
-        throw new Error("late model failure");
-      },
-    });
-    const root = document.createElement("main");
-    const first = renderEvidenceGraph(producerKeyBundle(), root, undefined, {
-      registry: slow,
-    });
-    const second = renderEvidenceGraph(producerKeyBundle(), root, undefined, {
-      registry: failing,
-    });
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    failSecond();
-    await expect(second).rejects.toThrow("late model failure");
-    // The first render is still checking, and the page says so.
-    expect(
-      root.querySelector<HTMLElement>("[data-verify]")?.dataset.verify,
-    ).toBe("checking");
-    finishFirst();
-    await first;
-    expect(root.querySelector('[data-verify="checking"]')).toBeNull();
-    expect(root.querySelectorAll("[data-verify]")).toHaveLength(1);
-  });
-
-  it("a module whose model cannot be built rejects before anything is drawn (as a malformed Result root always has)", async () => {
-    const failing = spyModule(manifest(), { buildThrows: true });
-    const registry = new PresentationRegistry();
-    registry.register(failing.module);
-    const root = document.createElement("main");
-    root.append("untouched");
-    await expect(
-      renderEvidenceGraph(producerKeyBundle(), root, undefined, { registry }),
-    ).rejects.toThrow("org.example.view/v0 model failed");
-    expect(root.textContent).toBe("untouched");
-  });
-
-  it("an ambiguity met at resolution shows the refusal and no module content", async () => {
+  it("an ambiguity met at resolution is a named error, and no module is consulted", async () => {
     const a = spyModule(manifest({ id: "org.example.a/v0" }));
     const b = spyModule(manifest({ id: "org.example.b/v0" }));
     // A resolver that skipped the registration test.
@@ -658,31 +378,24 @@ describe("resolution and rendering (spec section 4.3)", () => {
           (m) => m.canRender(context),
         ),
     };
-    const page = await render(producerKeyBundle(), unchecked);
-    expect(
-      page.querySelector('[data-refusal="presentation-unresolved"]'),
-    ).not.toBeNull();
-    expect(page.querySelectorAll("[data-test-module]")).toHaveLength(0);
+    await expect(render(producerKeyBundle(), unchecked)).rejects.toThrow(
+      PresentationAmbiguityError,
+    );
     expect(a.calls).toEqual([]);
     expect(b.calls).toEqual([]);
   });
 
-  it("shows the no-presentation notice when nothing matches", async () => {
+  it("resolves to no presentation when nothing matches", async () => {
     const registry = new PresentationRegistry();
     registry.register(
       spyModule(manifest({ audiences: ["counterparty"] })).module,
     );
     const page = await render(producerKeyBundle(), registry);
-    expect(
-      page.querySelector('[data-notice="no-presentation"]'),
-    ).not.toBeNull();
-    expect(page.querySelectorAll("[data-test-module]")).toHaveLength(0);
+    expect(page.resolution.kind).toBe("no-presentation");
     const forThem = await render(producerKeyBundle(), registry, {
       audience: "counterparty",
     });
-    expect(
-      forThem.querySelector('[data-test-module="org.example.view/v0"]'),
-    ).not.toBeNull();
+    expect(forThem.selected).toBe("org.example.view/v0");
   });
 
   it("derives the descriptor from the context: profile tokens and engaged extensions only", async () => {
@@ -716,29 +429,6 @@ describe("resolution and rendering (spec section 4.3)", () => {
     expect(descriptor.profiles.size).toBe(0);
     expect(descriptor.extensions.size).toBe(0);
   });
-});
-
-it("renderEvidenceGraph has no payload-specific branch: the page shape comes from resolve()", () => {
-  const source = readFileSync(
-    resolvePath(process.cwd(), "src", "evidence-graph-view.ts"),
-    "utf8",
-  );
-  const body = source.slice(
-    source.indexOf("export async function renderEvidenceGraph(\n  input"),
-  );
-  for (const banned of [
-    "buildReportRows",
-    "isResultRoot",
-    "buildResultRoot",
-    "buildEvidenceGraph",
-    "readOutcomeReportPresentation",
-    "readCompliancePresentation",
-    "outcome-report/v1",
-    "eu-ai-act-compliance/v1",
-    "spec_version",
-  ])
-    expect(body, banned).not.toContain(banned);
-  expect(body).toContain("registry.resolve(");
 });
 
 describe("the presentation ABI (spec section 3.2)", () => {
@@ -790,7 +480,7 @@ describe("the presentation ABI (spec section 3.2)", () => {
 
     // The page names it.
     const root = await render(producerKeyBundle(), registry);
-    expect(root.dataset.presentationRefused).toBe("org.example.future/v1");
+    expect(root.refused).toBe("org.example.future/v1");
     expect(future.calls).toEqual([]);
 
     // The words of the contract, exactly.
@@ -810,10 +500,8 @@ describe("the presentation ABI (spec section 3.2)", () => {
     const registry = createPresentationRegistry();
     expect(registry.register(current.module)).toEqual({ status: "registered" });
     const root = await render(producerKeyBundle(), registry);
-    expect(root.querySelector("[data-test-module]")?.textContent).toBe(
-      "module org.example.future/v1",
-    );
-    expect(root.dataset.presentationRefused).toBeUndefined();
+    expect(root.selected).toBe("org.example.future/v1");
+    expect(root.refused).toBe("");
   });
 
   it("refuses a module whose runtime_min the runtime does not meet", async () => {
@@ -831,7 +519,7 @@ describe("the presentation ABI (spec section 3.2)", () => {
       "Presentation module org.example.newer/v0 was not used: it needs runtime 0.2.0 or later; this viewer is 0.1.0",
     );
     const root = await render(producerKeyBundle(), registry);
-    expect(root.dataset.presentationRefused).toBe("org.example.newer/v0");
+    expect(root.refused).toBe("org.example.newer/v0");
     expect(newer.calls).toEqual([]);
 
     // A runtime at 0.2.0 implementing the same API accepts it.
@@ -859,7 +547,7 @@ describe("the presentation ABI (spec section 3.2)", () => {
     ).toThrow(PresentationAmbiguityError);
   });
 
-  it("a runtime that implements none of the built-ins' API refuses all seven and renders no module", async () => {
+  it("a runtime that implements none of the built-ins' API refuses all seven and selects no module", async () => {
     const registry = new PresentationRegistry({
       presentationApis: ["aac.presentation-api/v1"],
       runtimeVersion: "1.0.0",
@@ -875,11 +563,7 @@ describe("the presentation ABI (spec section 3.2)", () => {
       BUILTIN_MANIFEST_NO_AGGREGATE.id,
     ]);
     const root = await render(producerKeyBundle(), registry);
-    expect(root.dataset.presentationRefused).toBe(
-      BUILTIN_MANIFEST_NO_AGGREGATE.id,
-    );
-    expect(
-      root.querySelector('[data-notice="no-presentation"]'),
-    ).not.toBeNull();
+    expect(root.refused).toBe(BUILTIN_MANIFEST_NO_AGGREGATE.id);
+    expect(root.resolution.kind).toBe("no-presentation");
   });
 });
