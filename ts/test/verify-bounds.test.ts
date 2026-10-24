@@ -40,9 +40,14 @@ describe("verify number findings", () => {
       (await verifyClass1(decodeCapsuleJson(text).record!)).findings,
     );
     expect(found.map((f) => f.code)).toEqual(expected.map((e) => e.code));
-    found.forEach((f, i) =>
-      expect(f.detail).toContain(` at ${expected[i]!.path}`),
-    );
+    found.forEach((f, i) => {
+      // Exactly the path: it ends the detail or a ';' follows it.
+      const path = expected[i]!.path;
+      expect(
+        f.detail.endsWith(` at ${path}`) || f.detail.includes(` at ${path};`),
+        `${f.detail} lacks ${path}`,
+      ).toBe(true);
+    });
   });
 
   // A well-formed record with 250,000 copies of `value` in one array under a
@@ -83,13 +88,15 @@ describe("verify number findings", () => {
     "stay bounded for a wide array of %s under a long key",
     async (name, value) => {
       const record = await wideRecord(value);
-      const before = process.memoryUsage().heapUsed;
+      // The process's peak resident size (KiB), which only grows: how far a
+      // call raises it bounds what the call needed at its peak.
+      const before = process.resourceUsage().maxRSS;
       const start = Date.now();
       const result = await verifyClass1(record);
       expect(Date.now() - start).toBeLessThan(10_000);
       // The identity check re-canonicalizes the record; before #383 the floats
       // shape needed about 125 GB.
-      expect(process.memoryUsage().heapUsed - before).toBeLessThan(256 << 20);
+      expect(process.resourceUsage().maxRSS - before).toBeLessThan(256 * 1024);
       const found = numberFindings(result.findings);
       if (name === "zeros" || name === "objects") {
         expect(result.findings.filter((f) => f.severity === "error")).toEqual(
@@ -106,4 +113,17 @@ describe("verify number findings", () => {
       for (const f of found) expect(f.detail.length).toBeLessThan(600);
     },
   );
+
+  it("still refuses input nested beyond the stack after both caps are reached", async () => {
+    // verifyBundle relies on this RangeError to refuse such input as
+    // bundle_malformed (test/deep-input.test.ts), so the walk visits every
+    // member even after it has 64 paths of each kind.
+    const record = decodeCapsuleJson(
+      `{"a":[${Array(64).fill("0.5").join(",")}],"b":[${Array(64).fill("9007199254740993").join(",")}]}`,
+    );
+    let deep: unknown = 0;
+    for (let i = 0; i < 1_000_000; i++) deep = [deep];
+    (record as Record<string, unknown>).z = deep;
+    await expect(verifyClass1(record)).rejects.toThrow(RangeError);
+  });
 });

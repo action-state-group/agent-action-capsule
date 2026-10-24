@@ -150,9 +150,43 @@
    "t": true,
    "\uff61": 0.5,
    "big": 9007199254740991
-  }
+  },
+  "": 1.5,
+  "e": {
+   "": [
+    1.5
+   ],
+   "x": {
+    "": 1.5
+   }
+  },
+  "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff": 1.5,
+  "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd": {
+   "y": 1.5
+  },
+  "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg": [
+   1.5
+  ],
+  "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1.5
+  ],
+  "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii\ud83d\ude00x": 1.5
  },
  "expected": [
+  {
+   "code": "float_in_digest_field",
+   "path": "<root>"
+  },
   {
    "code": "float_in_digest_field",
    "path": "a.\uff61"
@@ -160,6 +194,34 @@
   {
    "code": "float_in_digest_field",
    "path": "a.\ud83d\ude00"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd..."
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "e.[0]"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "e.x."
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg..."
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh[1..."
+  },
+  {
+   "code": "float_in_digest_field",
+   "path": "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii\ud83d\ude00..."
   },
   {
    "code": "float_in_digest_field",
@@ -376,38 +438,6 @@
   {
    "code": "float_in_digest_field",
    "path": "z[52]"
-  },
-  {
-   "code": "float_in_digest_field",
-   "path": "z[53]"
-  },
-  {
-   "code": "float_in_digest_field",
-   "path": "z[54]"
-  },
-  {
-   "code": "float_in_digest_field",
-   "path": "z[55]"
-  },
-  {
-   "code": "float_in_digest_field",
-   "path": "z[56]"
-  },
-  {
-   "code": "float_in_digest_field",
-   "path": "z[57]"
-  },
-  {
-   "code": "float_in_digest_field",
-   "path": "z[58]"
-  },
-  {
-   "code": "float_in_digest_field",
-   "path": "z[59]"
-  },
-  {
-   "code": "float_in_digest_field",
-   "path": "z[60]"
   },
   {
    "code": "unsafe_integer_in_digest_field",

@@ -194,7 +194,12 @@ fn number_findings_match_the_shared_fixture() {
     assert_eq!(found.len(), expected.len());
     for (f, e) in found.iter().zip(expected) {
         assert_eq!(f.code, e["code"].as_str().unwrap());
+        // Exactly the path: it ends the detail or a ';' follows it.
         let quoted = format!(" at {}", e["path"].as_str().unwrap());
-        assert!(f.detail.contains(&quoted), "{} lacks {quoted}", f.detail);
+        assert!(
+            f.detail.ends_with(&quoted) || f.detail.contains(&format!("{quoted};")),
+            "{} lacks {quoted}",
+            f.detail
+        );
     }
 }

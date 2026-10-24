@@ -32,6 +32,12 @@ func numberFindings(res verify.VerificationResult) []verify.Finding {
 	return out
 }
 
+// quotesPath reports whether detail quotes exactly path: the path ends the
+// detail or a ';' follows it.
+func quotesPath(detail, path string) bool {
+	return strings.HasSuffix(detail, " at "+path) || strings.Contains(detail, " at "+path+";")
+}
+
 func TestNumberFindingsMatchTheSharedFixture(t *testing.T) {
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)
@@ -52,7 +58,7 @@ func TestNumberFindingsMatchTheSharedFixture(t *testing.T) {
 	require.Len(t, found, len(fixture.Expected))
 	for i, e := range fixture.Expected {
 		assert.Equal(t, e.Code, found[i].Code, i)
-		assert.Contains(t, found[i].Detail, " at "+e.Path, i)
+		assert.True(t, quotesPath(found[i].Detail, e.Path), "%d: %q lacks %q", i, found[i].Detail, e.Path)
 	}
 }
 

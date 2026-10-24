@@ -101,9 +101,9 @@ type PathStep = string | number;
  * code point order of their keys, each cut to `maxChars` code points followed
  * by `...`. The walk keeps only each open container's step: a path is written
  * only for a number that matches, so the work is linear in the input plus the
- * paths returned. It recurses on purpose: input nested beyond the stack
- * raises a RangeError, which verifyBundle refuses as bundle_malformed
- * (vectors/bundle/strict/README.md).
+ * paths returned. It recurses on purpose and visits every member, even past
+ * `limit`: input nested beyond the stack raises a RangeError, which
+ * verifyBundle refuses as bundle_malformed (vectors/bundle/strict/README.md).
  */
 function pathFind(
   value: ParsedJson,
@@ -113,32 +113,29 @@ function pathFind(
 ): string[] {
   const out: string[] = [];
   const steps: PathStep[] = [];
-  // True once `limit` paths are found.
-  const walk = (node: ParsedJson): boolean => {
+  const walk = (node: ParsedJson): void => {
     if (node instanceof JsonNumber) {
-      if (predicate(node)) out.push(joinPath(steps, maxChars));
-      return out.length >= limit;
+      if (out.length < limit && predicate(node))
+        out.push(joinPath(steps, maxChars));
+      return;
     }
     if (Array.isArray(node)) {
       for (let index = 0; index < node.length; index++) {
         steps.push(index);
-        const done = walk(node[index]!);
+        walk(node[index]!);
         steps.pop();
-        if (done) return true;
       }
-      return false;
+      return;
     }
     const record = object(node);
-    if (record === undefined) return false;
+    if (record === undefined) return;
     for (const key of Object.keys(record).sort(byCodePoint)) {
       steps.push(key);
-      const done = walk(record[key]!);
+      walk(record[key]!);
       steps.pop();
-      if (done) return true;
     }
-    return false;
   };
-  if (limit > 0) walk(value);
+  walk(value);
   return out;
 }
 

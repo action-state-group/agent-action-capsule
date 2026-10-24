@@ -29,7 +29,12 @@ def test_number_findings_match_the_shared_fixture():
     found = number_findings(verify(fixture["record"]))
     assert [f.code for f in found] == [e["code"] for e in fixture["expected"]]
     for f, e in zip(found, fixture["expected"]):
-        assert f" at {e['path']}" in f.detail
+        assert _quotes(f.detail, e["path"]), (f.detail, e["path"])
+
+
+def _quotes(detail, path):
+    """``detail`` quotes exactly ``path``: the path ends the detail or a ';' follows it."""
+    return detail.endswith(f" at {path}") or f" at {path};" in detail
 
 
 def _peak_during(fn):

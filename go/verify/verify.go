@@ -219,8 +219,6 @@ const (
 	maxPathChars    = 256
 )
 
-func isFloatNumber(n json.Number) bool { return canonical.IsFloat(n) }
-
 func isUnsafeIntNumber(n json.Number) bool {
 	return !canonical.IsFloat(n) && canonical.IsUnsafeInt(n)
 }
@@ -490,7 +488,7 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 
 	// Float check. One finding fails the record; on hostile input the cap and
 	// the quoted-path limit keep the result small.
-	for _, p := range numberPaths(capsule, isFloatNumber, maxPathFindings, maxPathChars) {
+	for _, p := range numberPaths(capsule, canonical.IsFloat, maxPathFindings, maxPathChars) {
 		findings = append(findings, Finding{
 			Code:     "float_in_digest_field",
 			Detail:   fmt.Sprintf("floating-point value at %s; §5.1 forbids it", p),
