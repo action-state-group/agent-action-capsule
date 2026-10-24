@@ -13,10 +13,13 @@
   `neg-producer-selected-certificate-log-id-null`).
 - Witness receipts: a `checkpoint.witnesses` entry is malformed unless every
   member is present, `ts_url`, `entry_hash` and `receipt_b64` are non-empty
-  strings, and `receipt_b64` is canonical standard base64. Such an entry was
-  read as a receipt and, for a witness with no directory row, withheld, so the
-  Bundle stayed VALID. It now fails as `witness_receipt_malformed:<index>`,
-  with or without a row (#386, the strict vectors
+  strings, and `receipt_b64` is canonical standard base64. An entry with every
+  member and a string `ts_url` that fails one of the new checks (an empty
+  `ts_url`, an empty or non-string `entry_hash`, or an empty, non-string or
+  non-canonical `receipt_b64`) was read as a receipt and withheld for a
+  witness with no directory row (a stub, with or without one), so the Bundle
+  stayed VALID. It now fails as `witness_receipt_malformed:<index>`, with or
+  without a row (#386, the strict vectors
   `neg-witness-malformed-member-no-row`, `neg-witness-malformed-members` and
   `neg-witness-malformed-shapes`).
 
