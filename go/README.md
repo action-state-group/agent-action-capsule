@@ -32,8 +32,11 @@ GOWORK=off go run ./cmd/vector_runner/
 `presentation/` is the Go resolver of `spec/presentation-contract-v0.md`, the
 twin of `ts/src/presentation-registry.ts`: `ParseManifest`, `Registry`
 (`Register`, `List`, `Refused`, `Resolve`, `ResolveWith`), `Describe` and
-`DescribeBundle` (the section 4.2 descriptor of a bundle `bundle.VerifyBundle`
-checked), `RefusalRow` and `RefusalLine` (the section 3.2 wording),
+`DescribeBundle` (the section 4.2 descriptor of a bundle, verified as the
+TypeScript context verifies it: `bundle.VerifyBundle`, with a producer selection
+the strict checks do not reject read through `bundle.VerifyStrict`; `Verified`
+gives the TypeScript answer on the result `DescribeBundle` returns, not on a
+plain `bundle.VerifyBundle` result), `RefusalRow` and `RefusalLine` (the section 3.2 wording),
 `NewBuiltinRegistry` and `NewSectionRegistry`. Go has no module code, so
 `Resolve` selects by the declarative match as if every module could render;
 `ResolveWith` takes a `canRender` answer. The vectors under
