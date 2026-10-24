@@ -1,7 +1,10 @@
 import type {
   BundleVerificationResult,
+  ClaimResult,
   StrictBundleResult,
+  StrictClaim,
   StrictClaimName,
+  VerifiedBundleContext,
   ExtensionInterpreterId,
   ExtensionResult,
 } from "./bundle.js";
@@ -453,6 +456,330 @@ export const VERIFICATION_BANNER_LINES = Object.freeze({
 /** The refusal line after the banner of a bundle the page refuses (contract I1). */
 export const UNVERIFIED_BUNDLE_REFUSAL =
   "This bundle did not verify. Its records, rows and payloads are not shown; the verification page below lists which checks failed.";
+
+const recordsWord = (count: number): string =>
+  `${count} ${count === 1 ? "record" : "records"}`;
+
+// A JSON object's members, or none.
+const fields = (value: unknown): Record<string, unknown> => object(value) ?? {};
+
+/** The page's verdict: the strict verifier's, in lower case. */
+export type BannerVerdict = "valid" | "incomplete" | "invalid";
+/** What became of the checkpoint signature on this page. */
+export type BannerCheckpoint = "verified" | "unverified" | "invalid" | "absent";
+
+interface BannerWords {
+  readonly verdict: BannerVerdict;
+  readonly checkpoint: BannerCheckpoint;
+  /** The details line under the banner, naming each finding; "" for none. */
+  readonly detail: string;
+}
+
+// Each claim's name in the banner's words.
+const CLAIM_WORDS: Readonly<Record<StrictClaimName, string>> = {
+  records: "each record's identity",
+  signatures: "the records' producer signatures",
+  graph_closure: "the graph closure",
+  checkpoint: "the signed checkpoint",
+  interval_coverage: "interval coverage",
+  per_record_membership: "per-record membership",
+  disclosures: "the disclosed values",
+};
+
+// A finding's name, without the record or member it is about.
+const findingNames = (findings: readonly string[]): string[] => [
+  ...new Set(findings.map((finding) => finding.split(":", 1)[0]!)),
+];
+
+// What the page did not check for a claim that did not fail, naming the
+// verifier's finding so a reader can match it to a full verifier's report.
+// A proof claim whose only finding is `checkpoint_unverified` is left to the
+// checkpoint sentence.
+function notShownWords(claim: StrictClaim, records: number): string {
+  const names = findingNames(claim.findings);
+  if (claim.name === "checkpoint")
+    return names.includes("checkpoint_signature_absent")
+      ? "the checkpoint signature, because the checkpoint is not signed (checkpoint_signature_absent)"
+      : `the checkpoint signature, which this page cannot check (${names.join(", ")})`;
+  if (claim.name === "signatures") {
+    const unsigned = claim.findings.length;
+    return unsigned === records
+      ? "any record's producer signature, because no record is signed (producer_signature_unclaimed)"
+      : `the producer signature of ${unsigned} of ${recordsWord(records)}, because ${unsigned === 1 ? "that record is" : "those records are"} not signed (producer_signature_unclaimed)`;
+  }
+  const rest = names.filter((name) => name !== "checkpoint_unverified");
+  if (names.length > 0 && rest.length === 0) return "";
+  const words = CLAIM_WORDS[claim.name];
+  return rest.length > 0 ? `${words} (${rest.join(", ")})` : words;
+}
+
+/**
+ * The banner's verdict, checkpoint state and details line, from the strict
+ * result alone (the full verifier's three outcomes). The banner's own line
+ * is fixed per state (VERIFICATION_BANNER_LINES); this details line names
+ * what was not checked or what failed, with the verifier's finding names.
+ * When interval coverage or per-record membership carries
+ * `checkpoint_unverified`, it says they are relative to a producer-asserted
+ * checkpoint (Evidence Bundle, completeness). Without a strict result (no
+ * Ed25519 here) no signature was checked, so a bundle whose rows render is
+ * at most `incomplete`. A bundle refused by the page's own checks is
+ * `invalid` with no details line: the refusal follows the banner.
+ */
+function bannerWords(
+  bundle: unknown,
+  verification: BundleVerificationResult,
+  strict: StrictBundleResult | undefined,
+  rendered: boolean,
+  coverage: { uncheckpointed: number; total: number },
+): BannerWords {
+  const claim = (name: StrictClaimName): StrictClaim | undefined =>
+    strict?.claims.find((entry) => entry.name === name);
+  const checkpointClaim = claim("checkpoint");
+  const cose = fields(fields(bundle).checkpoint).cose;
+  // The page's own checks reject a `cose` that is present but unusable
+  // (`null` included), whatever the strict claim calls it.
+  const rejected = [
+    verification.intervalCoverage,
+    verification.perRecordMembership,
+  ].some((entry) =>
+    entry.findings.includes("checkpoint_authentication_invalid"),
+  );
+  // With no strict result, the page's own checks may still have
+  // authenticated a signed checkpoint (Node's CLL needs no WebCrypto): the
+  // proofs over it then carry no `checkpoint_unverified`.
+  const plainAuthenticated =
+    typeof cose === "string" &&
+    cose !== "" &&
+    verification.intervalCoverage.status === "pass" &&
+    [verification.intervalCoverage, verification.perRecordMembership].every(
+      (entry) => !entry.findings.includes("checkpoint_unverified"),
+    );
+  const checkpoint: BannerCheckpoint = rejected
+    ? "invalid"
+    : checkpointClaim === undefined
+      ? cose === undefined || cose === null
+        ? "absent"
+        : plainAuthenticated
+          ? "verified"
+          : "unverified"
+      : checkpointClaim.status === "pass"
+        ? "verified"
+        : checkpointClaim.status === "fail"
+          ? "invalid"
+          : checkpointClaim.findings.includes("checkpoint_signature_absent")
+            ? "absent"
+            : "unverified";
+  if (!rendered)
+    return {
+      verdict: "invalid",
+      checkpoint,
+      detail: "",
+    };
+  const uncheckpointed = `${coverage.uncheckpointed} of ${recordsWord(coverage.total)} are uncheckpointed (bound to no log position), so per-record membership fails.`;
+  const sentences: string[] = [];
+  let verdict: BannerVerdict;
+  if (strict === undefined) {
+    // No Ed25519, so no strict verdict; a record bound to no log position
+    // has still failed the page's own membership check.
+    if (coverage.uncheckpointed > 0) {
+      verdict = "invalid";
+      sentences.push(uncheckpointed);
+    } else {
+      verdict = "incomplete";
+      const records = fields(bundle).records;
+      const carried = [
+        ...(checkpoint === "absent" || checkpoint === "verified"
+          ? []
+          : ["the checkpoint signature"]),
+        ...(Array.isArray(records) &&
+        records.some((record) => typeof fields(record).signature === "string")
+          ? ["the records' producer signatures"]
+          : []),
+      ];
+      sentences.push(
+        carried.length > 0
+          ? `This page cannot check signatures, so ${carried.join(" and ")} could not be checked.`
+          : checkpoint === "verified"
+            ? "No record is signed."
+            : "Neither the checkpoint nor any record is signed.",
+      );
+    }
+  } else {
+    verdict = strict.verdict.toLowerCase() as BannerVerdict;
+    if (verdict === "incomplete") {
+      const notChecked = strict.claims
+        .filter((entry) => entry.status !== "pass" || entry.findings.length > 0)
+        .map((entry) => notShownWords(entry, strict.records.length))
+        .filter((words) => words !== "");
+      // With nothing to name, the banner's own line says it all.
+      if (notChecked.length > 0)
+        sentences.push(`This page did not check ${notChecked.join("; ")}.`);
+    } else if (verdict === "invalid") {
+      // The rows render (the bundle passed the page's own checks, which a
+      // bundle refused by its kind never does) although the verdict is
+      // invalid: say what failed, before any row.
+      const failed = strict.claims.filter((entry) => entry.status === "fail");
+      const unboundOnly =
+        coverage.uncheckpointed > 0 &&
+        failed.length === 1 &&
+        failed[0]!.name === "per_record_membership" &&
+        strict.witnesses?.status !== "fail";
+      const named = failed.map((entry) => {
+        const invalid = entry.findings.filter((f) =>
+          f.startsWith("producer_signature_invalid:"),
+        ).length;
+        // A count, as the uncheckpointed line gives one: never "the
+        // records' signatures" when only some failed.
+        if (entry.name === "signatures" && invalid > 0)
+          return coverage.total === 1
+            ? "the record's producer signature does not verify (producer_signature_invalid)"
+            : `${invalid} of ${coverage.total} records' producer signatures do not verify (producer_signature_invalid)`;
+        // What went wrong with the checkpoint, not only which object.
+        if (entry.name === "checkpoint") {
+          const names = findingNames(entry.findings);
+          const words = [
+            ...(names.includes("checkpoint_field_mismatch")
+              ? [
+                  "the checkpoint's fields do not match its signature (checkpoint_field_mismatch)",
+                ]
+              : []),
+            ...(names.includes("checkpoint_field_missing")
+              ? [
+                  "the checkpoint is missing fields its signature covers (checkpoint_field_missing)",
+                ]
+              : []),
+          ];
+          if (words.length > 0) return words.join("; ");
+        }
+        return `${CLAIM_WORDS[entry.name]} (${findingNames(entry.findings).join(", ")})`;
+      });
+      // Only the receipts that failed, counted; one not checked is not a
+      // failure.
+      if (strict.witnesses?.status === "fail") {
+        const carried = fields(fields(bundle).checkpoint).witnesses;
+        const total = Array.isArray(carried) ? carried.length : 0;
+        const count = (prefix: string): number =>
+          strict.witnesses!.findings.filter((f) => f.startsWith(prefix)).length;
+        // The same count form as the records: "1 of 3 … are".
+        const receipts = (n: number, plural: string, single: string) =>
+          total === 1
+            ? `the witness receipt ${single}`
+            : `${n} of ${total} witness receipts ${plural}`;
+        const malformed = count("witness_receipt_malformed:"),
+          invalid = count("witness_receipt_invalid:");
+        if (malformed > 0)
+          named.push(
+            `${receipts(malformed, "are malformed", "is malformed")} (witness_receipt_malformed)`,
+          );
+        if (invalid > 0)
+          named.push(
+            `${receipts(invalid, "do not verify", "does not verify")} (witness_receipt_invalid)`,
+          );
+      }
+      sentences.push(
+        unboundOnly ? uncheckpointed : `What failed: ${named.join("; ")}.`,
+      );
+    }
+  }
+  // The proof claims as this page read them: the strict ones, or the plain
+  // ones where no strict verdict was reached.
+  const proofs: readonly (readonly [
+    StrictClaimName,
+    ClaimResult | undefined,
+  ])[] =
+    strict === undefined
+      ? [
+          ["interval_coverage", verification.intervalCoverage],
+          ["per_record_membership", verification.perRecordMembership],
+        ]
+      : [
+          ["interval_coverage", claim("interval_coverage")],
+          ["per_record_membership", claim("per_record_membership")],
+        ];
+  const unanchored = proofs.filter(
+    ([, entry]) =>
+      entry !== undefined &&
+      entry.status !== "fail" &&
+      entry.findings.includes("checkpoint_unverified"),
+  );
+  // A checkpoint that failed is named above; nothing rests on it.
+  if (unanchored.length > 0 && checkpoint !== "invalid") {
+    const names = unanchored.map(([name]) => CLAIM_WORDS[name]).join(" and ");
+    sentences.push(
+      `${names[0]!.toUpperCase()}${names.slice(1)} ${unanchored.length === 1 ? "is" : "are"} checkpoint_unverified: relative to a producer-asserted checkpoint ${checkpoint === "absent" ? "that is not signed" : "this page could not authenticate"}.`,
+    );
+  }
+  return { verdict, checkpoint, detail: sentences.join(" ") };
+}
+
+/**
+ * The banner a page draws for one verification run (presentation contract
+ * section 6.2), once the checks have finished: its state, its fixed line,
+ * the strict verdict, what became of the checkpoint signature and the
+ * details line naming the findings. It is computed from the verification
+ * result alone, so every viewer states AAC's verdict in the same words and
+ * none computes a verdict of its own. `checking` and `unable` are drawn
+ * before or instead of a result, from VERIFICATION_BANNER_LINES.
+ */
+export interface VerificationBanner {
+  readonly state: Exclude<VerifyState, "checking" | "unable">;
+  /** The banner's line: the core's fixed text for the state. */
+  readonly line: string;
+  readonly verdict: BannerVerdict;
+  readonly checkpoint: BannerCheckpoint;
+  /** The details line under the banner (`data-banner-detail`); "" for none. */
+  readonly detail: string;
+  /** Records bound to no log position. */
+  readonly uncheckpointed: number;
+  /** The refusal line after the banner when the page refuses the records. */
+  readonly refusal?: string;
+}
+
+/**
+ * The banner for a verified bundle context. `stamps` is the countersignature
+ * classification the page draws; it decides whether the page draws a
+ * not-checked list, which the incomplete line points at only when it does.
+ */
+export function verificationBanner(
+  context: VerifiedBundleContext,
+  stamps: readonly CountersignatureStamp[] = [],
+): VerificationBanner {
+  const { bundle, verification, strict } = context;
+  const rendered = bundleVerified(verification);
+  const records = fields(bundle).records;
+  const coverage = {
+    uncheckpointed: unboundRecordIds(verification).length,
+    total: Array.isArray(records) ? records.length : 0,
+  };
+  const words = bannerWords(bundle, verification, strict, rendered, coverage);
+  const state = !rendered
+    ? "failed"
+    : words.verdict === "valid"
+      ? "verified"
+      : words.verdict === "incomplete"
+        ? "incomplete"
+        : "failed";
+  // The page's lists also read `citedSigners`, which depends on the module,
+  // but that adds only to the checked list, never to the not-checked one.
+  const notCheckedListDrawn =
+    verificationCheckLists(bundle, verification, {
+      stamps,
+      ...(strict === undefined ? {} : { strict }),
+    }).notChecked.length > 0;
+  return {
+    state,
+    line: !rendered
+      ? VERIFICATION_BANNER_LINES.refused
+      : state === "incomplete" && !notCheckedListDrawn
+        ? VERIFICATION_BANNER_LINES.incompleteNoList
+        : VERIFICATION_BANNER_LINES[state],
+    verdict: words.verdict,
+    checkpoint: words.checkpoint,
+    detail: words.detail,
+    uncheckpointed: coverage.uncheckpointed,
+    ...(rendered ? {} : { refusal: UNVERIFIED_BUNDLE_REFUSAL }),
+  };
+}
 
 export const CHECKED_ON_THIS_PAGE = "Checked on this page";
 export const FAILED_ON_THIS_PAGE = "Failed on this page";

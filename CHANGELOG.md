@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- TypeScript: `verificationBanner(context, stamps?)` in `verification-page.ts` returns the banner a
+  page draws for a verified bundle context (presentation contract §6.2): its state, fixed line,
+  strict verdict, checkpoint state, details line, uncheckpointed count and, for a refused bundle,
+  the refusal line. The logic moved unchanged from the page renderer, which now draws from it, so a
+  viewer can state AAC's verdict in the core's words without computing one. Additive; the drawn page
+  does not change. (#379, capsule-viewer#79)
 - Strict witness receipts (Go, Python, Rust, TypeScript): a `checkpoint.witnesses` entry is
   malformed unless every member is present, `ts_url`, `entry_hash` and `receipt_b64` are non-empty
   strings, and `receipt_b64` is canonical standard base64. An entry with every member and a string
