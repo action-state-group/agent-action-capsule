@@ -9,8 +9,9 @@
   and each quotes at most 256 characters of its path, then `...`. One finding
   already fails the record, so verdicts do not change. A 1 MB record holding
   250,000 floats under a 500 KB key used to need about 125 GB, and now
-  verifies in a few times the memory of one parsed copy. `canonical::float_paths` and
-  `unsafe_int_paths` still return every path, in full.
+  verifies in a few times the memory of one parsed copy.
+  `canonical::float_paths` and `unsafe_int_paths` still return every path, in
+  full.
 
 ## 0.4.0
 
