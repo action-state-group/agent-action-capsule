@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- `verify::verify` does bounded work on hostile numbers. The float and
+  unsafe-integer walk writes a path only for a number that fails, where it
+  used to build one for every member it visited. It reports at most 64
+  `float_in_digest_field` and 64 `unsafe_integer_in_digest_field` findings,
+  and each quotes at most 256 characters of its path, then `...`. One finding
+  already fails the record, so verdicts do not change. A 1 MB record holding
+  250,000 floats under a 500 KB key used to need about 125 GB, and now
+  verifies in memory a few times its size. `canonical::float_paths` and
+  `unsafe_int_paths` still return every path, in full.
+
 ## 0.4.0
 
 - Evidence Bundle producer (feature `strict`): `bundle::build_evidence_bundle`
