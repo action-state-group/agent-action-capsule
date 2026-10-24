@@ -16,12 +16,14 @@
   strings, and `receipt_b64` is canonical standard base64. An entry with every
   member and a string `ts_url` that fails one of the new checks (an empty
   `ts_url`, an empty or non-string `entry_hash`, or an empty, non-string or
-  non-canonical `receipt_b64`) was read as a receipt and withheld for a
-  witness with no directory row (a stub, with or without one), so the Bundle
-  stayed VALID. It now fails as `witness_receipt_malformed:<index>`, with or
-  without a row (#386, the strict vectors
-  `neg-witness-malformed-member-no-row`, `neg-witness-malformed-members` and
-  `neg-witness-malformed-shapes`).
+  non-canonical `receipt_b64`) was read as a receipt. It was withheld when no
+  usable key checked it (no directory row, a row without a usable key, or a
+  stub), and an empty or non-string `entry_hash` beside a rekor or scrapi
+  receipt that verified passed, since only the cll binding reads it. In each
+  case the Bundle stayed VALID. It now fails as
+  `witness_receipt_malformed:<index>`, with or without a row (#386, the strict
+  vectors `neg-witness-malformed-member-no-row`,
+  `neg-witness-malformed-members` and `neg-witness-malformed-shapes`).
 
 ## 0.4.1
 

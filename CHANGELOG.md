@@ -2,10 +2,13 @@
 
 ## Unreleased
 
-- Strict witness receipts (Go, Python, Rust, TypeScript): a `checkpoint.witnesses` entry is malformed
-  unless `ts_url`, `entry_hash` and `receipt_b64` are non-empty strings and `receipt_b64` is canonical
-  standard base64, as well as every member being present. Such an entry was read as a receipt and,
-  for a witness with no directory row, withheld, so the Bundle stayed VALID. It now fails as
+- Strict witness receipts (Go, Python, Rust, TypeScript): a `checkpoint.witnesses` entry is
+  malformed unless every member is present, `ts_url`, `entry_hash` and `receipt_b64` are non-empty
+  strings, and `receipt_b64` is canonical standard base64. An entry with every member and a string
+  `ts_url` that failed one of these checks was read as a receipt: withheld when no usable key
+  checked it (no directory row, a row without a usable key, or a stub), and passed when only its
+  `entry_hash` was empty or not a string beside a rekor or scrapi receipt that verified, since only
+  the cll binding reads it. The Bundle stayed VALID. It now fails as
   `witness_receipt_malformed:<index>`, with or without a row. Three new strict vectors,
   `neg-witness-malformed-member-no-row`, `neg-witness-malformed-members` and
   `neg-witness-malformed-shapes`, pin it. (capsule-cli#438)
