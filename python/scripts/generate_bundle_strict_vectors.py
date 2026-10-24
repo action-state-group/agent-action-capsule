@@ -644,6 +644,20 @@ def build_cases() -> list[dict]:
          "checkpoint_authenticated": True, "signer_matches_checkpoint": False},
     ))
 
+    selected_log = copy.deepcopy(selected)
+    selected_log["completeness_certificate"]["log_id"] = "log:other"
+    cases.append(case(
+        "neg-producer-selected-certificate-log-id",
+        "Producer-selected: the certificate's log_id is not the signed one, though the checkpoint's copy is.",
+        selected_log,
+        {"verdict": "INVALID", "claims": claims(
+            checkpoint=claim("fail", "checkpoint_field_mismatch:log_id"),
+            interval_coverage=claim("withheld", "selection_not_checkable", "checkpoint_unverified"),
+            per_record_membership=claim("withheld", "checkpoint_unverified")),
+         "witnesses": ABSENT, "records": records_expect(selected_log),
+         "checkpoint_authenticated": False, "signer_matches_checkpoint": None},
+    ))
+
     def selected_with(case_id: str, description: str, edit: Any, findings: list[str]) -> None:
         bundle = copy.deepcopy(selected)
         edit(bundle["completeness_certificate"]["memberships"])

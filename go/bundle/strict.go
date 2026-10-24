@@ -103,8 +103,8 @@ func (r StrictResult) Claim(name string) *ClaimResult {
 //   - each record's producer signature (signatures; an unsigned record is
 //     withheld unless RequireSignature);
 //   - the checkpoint read only from its signed COSE form (checkpoint):
-//     withheld without one, fail when it does not verify or the JSON copy
-//     differs from it. Without a signed checkpoint the interval and
+//     withheld without one, fail when it does not verify or the JSON copy,
+//     or the completeness certificate's log_id, differs from it. Without a signed checkpoint the interval and
 //     membership claims are not shown, so the Bundle is never VALID;
 //   - a producer-selected Bundle (completeness.selection producer-selected,
 //     outside the Bundle draft): interval coverage is withheld and each
@@ -199,7 +199,7 @@ func VerifyStrict(value interface{}, opts StrictOptions) StrictResult {
 	}
 
 	stated, _ := bundle["checkpoint"].(map[string]interface{})
-	checkpointClaim, signed, cose := strictCheckpoint(stated)
+	checkpointClaim, signed, cose := VerifyCheckpoint(bundle)
 	authenticated := checkpointClaim.Status == "pass"
 
 	if complete, _ := bundle["completeness"].(map[string]interface{}); complete["selection"] == SelectionProducerSelected {
@@ -285,9 +285,14 @@ func strictVerdict(claims []NamedClaim, witnesses ClaimResult) string {
 	return verdict
 }
 
-// strictCheckpoint verifies checkpoint.cose and holds the JSON copy to it. It
-// returns the claim and, when it passed, the signed fields and COSE bytes.
-func strictCheckpoint(stated map[string]interface{}) (ClaimResult, *witness.SignedCheckpoint, []byte) {
+// VerifyCheckpoint is VerifyStrict's checkpoint claim on its own: it verifies
+// the Bundle's checkpoint.cose and holds the JSON copy, and the completeness
+// certificate's log_id when stated, to the signed statement. It returns the
+// claim and, when it passed, the signed fields and the COSE bytes, for a
+// caller that checks something further against the authenticated
+// checkpoint.
+func VerifyCheckpoint(bundle map[string]interface{}) (ClaimResult, *witness.SignedCheckpoint, []byte) {
+	stated, _ := bundle["checkpoint"].(map[string]interface{})
 	encodedValue := stated["cose"]
 	if encodedValue == nil {
 		return ClaimResult{Status: "withheld", Findings: []string{"checkpoint_signature_absent"}}, nil, nil
@@ -316,9 +321,18 @@ func strictCheckpoint(stated map[string]interface{}) (ClaimResult, *witness.Sign
 		{"prev_size", sameInteger(signed.PrevSize)},
 		{"prev_root", sameString(signed.PrevRoot)},
 	}
+	// The certificate's log_id is a second stated copy of the signed one
+	// (bundle -01 §Completeness): either copy differing is one mismatch.
+	certificate, _ := bundle["completeness_certificate"].(map[string]interface{})
+	certificateLogID, certificateStates := certificate["log_id"]
 	var findings []string
 	for _, field := range fields {
-		if value, present := stated[field.name]; present && !field.same(value) {
+		value, present := stated[field.name]
+		mismatch := present && !field.same(value)
+		if field.name == "log_id" && certificateStates && !field.same(certificateLogID) {
+			mismatch = true
+		}
+		if mismatch {
 			findings = append(findings, "checkpoint_field_mismatch:"+field.name)
 		}
 	}

@@ -421,7 +421,8 @@ def _apply_strict(result: BundleVerificationResult, bundle: Mapping[str, Any], r
         result.signatures = ClaimResult("withheld" if unclaimed else "pass", signature_findings)
 
     stated = bundle.get("checkpoint") if isinstance(bundle.get("checkpoint"), Mapping) else {}
-    result.checkpoint, signed, cose = _strict_checkpoint(stated)
+    certificate = bundle.get("completeness_certificate")
+    result.checkpoint, signed, cose = _strict_checkpoint(stated, certificate if isinstance(certificate, Mapping) else {})
     authenticated = result.checkpoint.status == "pass"
 
     if _producer_selected(bundle):
@@ -462,9 +463,12 @@ def _same_json(a: Any, b: Any) -> bool:
     return type(a) is type(b) and a == b
 
 
-def _strict_checkpoint(stated: Mapping[str, Any]) -> tuple[ClaimResult, dict[str, Any], bytes | None]:
-    """Verify ``checkpoint.cose`` and hold the JSON copy to it. Returns the
-    claim and, when it passed, the signed fields and the COSE bytes."""
+def _strict_checkpoint(
+    stated: Mapping[str, Any], certificate: Mapping[str, Any]
+) -> tuple[ClaimResult, dict[str, Any], bytes | None]:
+    """Verify ``checkpoint.cose`` and hold the JSON copy, and the completeness
+    certificate's ``log_id`` when stated, to it. Returns the claim and, when it
+    passed, the signed fields and the COSE bytes."""
     encoded = stated.get("cose")
     if encoded is None:
         return ClaimResult("withheld", ("checkpoint_signature_absent",)), {}, None
@@ -488,7 +492,10 @@ def _strict_checkpoint(stated: Mapping[str, Any]) -> tuple[ClaimResult, dict[str
     mismatched = tuple(
         f"checkpoint_field_mismatch:{name}"
         for name in _SIGNED_CHECKPOINT_FIELDS
-        if name in stated and not _same_json(stated[name], signed[name])
+        if (name in stated and not _same_json(stated[name], signed[name]))
+        # The certificate's log_id is a second stated copy of the signed one
+        # (bundle -01 §Completeness): either copy differing is one mismatch.
+        or (name == "log_id" and "log_id" in certificate and not _same_json(certificate["log_id"], signed[name]))
     )
     missing = tuple(f"checkpoint_field_missing:{name}" for name in ("log_id", "mmr_size", "root") if name not in stated)
     if mismatched or missing:

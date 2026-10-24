@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Strict Bundle verification (Go, Python, Rust, TypeScript): the `checkpoint` claim also holds the
+  completeness certificate's `log_id`, when stated, to the signed log identifier, and reports
+  `checkpoint_field_mismatch:log_id` when it differs (bundle -01 §Completeness). A producer-selected
+  Bundle whose certificate names another log was INCOMPLETE and is now INVALID; a new strict vector,
+  `neg-producer-selected-certificate-log-id`, pins it. Go exports the claim on its own as
+  `bundle.VerifyCheckpoint`, which also returns the authenticated checkpoint and its COSE bytes.
+  (capsule-cli#438)
 - TypeScript: `contract-report/v1` has an extension interpreter, `contract-report` (a new
   `ExtensionInterpreterId` member), so a runtime whose contract-report module drew the page can
   list the block as interpreted (contract-report/v1 §4). Its reader is the descriptor's: a closed

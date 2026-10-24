@@ -290,7 +290,11 @@ pub fn verify_bundle_strict(value: &Value, options: &StrictOptions) -> StrictVer
         .get("checkpoint")
         .and_then(Value::as_object)
         .unwrap_or(&empty);
-    let (checkpoint, signed) = strict_checkpoint(stated);
+    let certificate = bundle
+        .get("completeness_certificate")
+        .and_then(Value::as_object)
+        .unwrap_or(&empty);
+    let (checkpoint, signed) = strict_checkpoint(stated, certificate);
 
     let mut interval = base.interval_coverage.clone();
     let mut membership = base.per_record_membership.clone();
@@ -376,10 +380,12 @@ fn same_integer(stated: &Value, signed: u64) -> bool {
     }
 }
 
-/// Verifies `checkpoint.cose` and holds the JSON copy to it. Returns the
-/// claim and, when it passed, the signed fields and the COSE bytes.
+/// Verifies `checkpoint.cose` and holds the JSON copy, and the completeness
+/// certificate's `log_id` when stated, to it. Returns the claim and, when it
+/// passed, the signed fields and the COSE bytes.
 fn strict_checkpoint(
     stated: &Map<String, Value>,
+    certificate: &Map<String, Value>,
 ) -> (ClaimResult, Option<(SignedCheckpoint, Vec<u8>)>) {
     let fail = |finding: &str| (ClaimResult::fail(vec![finding.to_string()]), None);
     let encoded = match stated.get("cose") {
@@ -404,15 +410,23 @@ fn strict_checkpoint(
     let mut findings: Vec<String> = SIGNED_CHECKPOINT_FIELDS
         .iter()
         .filter(|name| {
-            stated.get(**name).is_some_and(|value| match **name {
-                "log_id" => !same_string(value, &signed.log_id),
-                "mmr_size" => !same_integer(value, signed.mmr_size),
-                "root" => !same_string(value, &signed.root),
-                "key_id" => !same_string(value, &signed.key_id),
-                "timestamp" => !same_string(value, &signed.timestamp),
-                "prev_size" => !same_integer(value, signed.prev_size),
-                _ => !same_string(value, &signed.prev_root),
-            })
+            // The certificate's log_id is a second stated copy of the signed
+            // one (bundle -01 §Completeness): either copy differing is one
+            // mismatch.
+            let certificate_differs = **name == "log_id"
+                && certificate
+                    .get("log_id")
+                    .is_some_and(|value| !same_string(value, &signed.log_id));
+            certificate_differs
+                || stated.get(**name).is_some_and(|value| match **name {
+                    "log_id" => !same_string(value, &signed.log_id),
+                    "mmr_size" => !same_integer(value, signed.mmr_size),
+                    "root" => !same_string(value, &signed.root),
+                    "key_id" => !same_string(value, &signed.key_id),
+                    "timestamp" => !same_string(value, &signed.timestamp),
+                    "prev_size" => !same_integer(value, signed.prev_size),
+                    _ => !same_string(value, &signed.prev_root),
+                })
         })
         .map(|name| format!("checkpoint_field_mismatch:{name}"))
         .collect();

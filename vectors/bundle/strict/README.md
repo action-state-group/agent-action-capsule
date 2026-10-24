@@ -99,7 +99,13 @@ record is unclaimed and the caller passed `require_signature`. It is
   decodes them, are strings for `log_id`, `root` (lowercase hex), `key_id`
   (lowercase hex), `timestamp` (the statement's `issued_at` text as signed)
   and `prev_root` (`""` for a first checkpoint, never `null`), and integers
-  for `mmr_size` and `prev_size` (`1.0` and `true` are not `1`). Each of `log_id`,
+  for `mmr_size` and `prev_size` (`1.0` and `true` are not `1`). The
+  completeness certificate's `log_id`, when the certificate is an object that
+  states one, is a second copy of the signed log identifier (the Bundle draft,
+  §Completeness: equal to "the certificate and checkpoint values"): when it is
+  not the signed `log_id`, the claim gets `checkpoint_field_mismatch:log_id`,
+  once, whatever the checkpoint's own copy says
+  (`neg-producer-selected-certificate-log-id`). Each of `log_id`,
   `mmr_size` and `root` that the copy lacks gets
   `checkpoint_field_missing:<name>`. Any such finding fails the claim.
 - Otherwise the claim passes, and the checkpoint is authenticated.
@@ -294,6 +300,7 @@ checkpoint is signed by another, the log key.
 | `neg-record-duplicate` | the third record appears twice | INVALID |
 | `incomplete-producer-selected` | records 1 and 3 of 3, producer-selected | INCOMPLETE |
 | `neg-producer-selected-proof-invalid` | the same with one inclusion proof edited | INVALID |
+| `neg-producer-selected-certificate-log-id` | producer-selected: the certificate's `log_id` is not the signed one | INVALID |
 | `neg-producer-selected-coordinates-log-and-seq` | producer-selected: one membership names another log, another has `seq` 0 | INVALID |
 | `neg-producer-selected-leaf-index` | producer-selected: `leaf_index` is not `seq - 1` | INVALID |
 | `neg-producer-selected-repeated-seq` | producer-selected: two memberships claim `seq` 1 | INVALID |

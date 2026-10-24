@@ -526,7 +526,12 @@ async function strict(
         };
 
   const stated = object(bundle.checkpoint) ? bundle.checkpoint : {};
-  const checkpoint = await strictCheckpoint(stated);
+  const checkpoint = await strictCheckpoint(
+    stated,
+    object(bundle.completeness_certificate)
+      ? bundle.completeness_certificate
+      : {},
+  );
   const authenticated = checkpoint.signed !== undefined;
 
   let intervalCoverage = plain.intervalCoverage,
@@ -631,10 +636,14 @@ const sameJson = (stated: unknown, signed: string | number): boolean =>
   typeof stated === typeof signed && stated === signed;
 
 /**
- * Verify `checkpoint.cose` and hold the JSON copy to it. The signed fields
+ * Verify `checkpoint.cose` and hold the JSON copy, and the completeness
+ * certificate's `log_id` when stated, to it. The signed fields
  * and the COSE bytes are returned only when the claim passed.
  */
-async function strictCheckpoint(stated: Bundle): Promise<{
+async function strictCheckpoint(
+  stated: Bundle,
+  certificate: Bundle,
+): Promise<{
   claim: ClaimResult;
   signed?: SignedCheckpointFields;
   cose?: Uint8Array;
@@ -680,7 +689,13 @@ async function strictCheckpoint(stated: Bundle): Promise<{
   const findings = [
     ...SIGNED_CHECKPOINT_FIELDS.filter(
       (name) =>
-        Object.hasOwn(stated, name) && !sameJson(stated[name], signed[name]),
+        (Object.hasOwn(stated, name) &&
+          !sameJson(stated[name], signed[name])) ||
+        // The certificate's log_id is a second stated copy of the signed one
+        // (bundle -01 §Completeness): either copy differing is one mismatch.
+        (name === "log_id" &&
+          Object.hasOwn(certificate, "log_id") &&
+          !sameJson(certificate.log_id, signed.log_id)),
     ).map((name) => `checkpoint_field_mismatch:${name}`),
     ...(["log_id", "mmr_size", "root"] as const)
       .filter((name) => !Object.hasOwn(stated, name))
