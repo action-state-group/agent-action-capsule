@@ -83,7 +83,7 @@ def opening(book: str, field: str, text: str) -> dict:
 
 
 def commitment(o: dict) -> str:
-    """DR §4, as PO §7 and PC §7.2: SHA-256 of JCS of {nonce, text}."""
+    """DR §4, as PO §7 and VD §7.2: SHA-256 of JCS of {nonce, text}."""
     return json_digest({"nonce": o["nonce"], "text": o["text"]})
 
 

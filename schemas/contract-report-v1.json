@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentactioncapsule.org/schemas/contract-report-v1.json",
   "title": "contract-report/v1 extension block",
-  "description": "Companion schema for spec/contract-report-v1.md. Validates the value of a Bundle's extensions[\"contract-report/v1\"] member: a closed empty object, the producer's opt-in to the contract-report view of a verified Evidence Result. It carries no words, data, grouping, flags or provenance; a renderer takes its words from its wording pack (spec/presentation-contract-v0.md sections 6 and 7.4) and everything it shows from the sealed Result. A block this schema rejects is declined: the kind is not engaged (presentation contract section 4.2). Where this schema and the document disagree, the document governs.",
+  "description": "Companion schema for spec/contract-report-v1.md. Validates the value of a Bundle's extensions[\"contract-report/v1\"] member: a closed empty object, the producer's opt-in to the contract-report view of a verified Evidence Result. It carries no words, data, grouping, flags or provenance; a renderer takes its words from its wording pack and everything it shows from the sealed Result. A block this schema rejects is declined: the kind is not engaged (spec/contract-report-v1.md section 1). Where this schema and the document disagree, the document governs.",
   "type": "object",
   "maxProperties": 0
 }
