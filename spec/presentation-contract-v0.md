@@ -42,7 +42,7 @@ number unless the row says otherwise. "Verification display" is `spec/verificati
 | 7.1 Evidentiary words | Verification display §7.1 |
 | 7.2 `sha256-jcs-nonce256` | Verification display §7.2 |
 | 7.3 Presentation words, 7.4 Wording packs and `wording_sha256` | Viewer contract |
-| 8. Invariants: I1 | The refusal's text: verification display §8, I1. The collapse and the render-failure rules: viewer contract §8, I1 |
+| 8. Invariants: I1 | Failure collapses to the refusal, and the refusal's text: verification display §8, I1. The render-failure rules: viewer contract §8, I1 |
 | 8. Invariants: I3 | Verification display §8, I3 |
 | 8. Invariants: I2, I4 to I8 | Viewer contract |
 | 9. Depth levels and the shell, 9.1, 9.2 | Viewer contract |
