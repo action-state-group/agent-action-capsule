@@ -1,7 +1,7 @@
 # Viewer core text vectors
 
 The core's own fixed text, which every page draws and no module, wording
-pack or bundle supplies (`spec/presentation-contract-v0.md` sections 6.1,
+pack or bundle supplies (`spec/verification-display-v0.md` sections 6.1,
 6.2 and 8):
 
 - the banner's line for each verification state of section 6.2, with its

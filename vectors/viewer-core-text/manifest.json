@@ -1,5 +1,5 @@
 {
-  "contract": "spec/presentation-contract-v0.md (sections 6.1, 6.2, 8)",
+  "contract": "spec/verification-display-v0.md (sections 6.1, 6.2, 8)",
   "provenance": "reference-derived",
   "generator": "ts/test/helpers/viewer-core-text-vectors.ts",
   "normative_for": [
@@ -8,7 +8,7 @@
   "files": [
     {
       "path": "core-text.json",
-      "sha256": "2050dc6a038e8814c7d1889ed830ddd961de1285bee672cf3fad9060b31f44d2",
+      "sha256": "87ef58d4e0cddc687d73703bb9cd29d7d8eef197fa4c8910d958d7d891199d6a",
       "count": 21
     }
   ]

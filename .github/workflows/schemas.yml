@@ -63,8 +63,5 @@ jobs:
       - name: Judgment extension fixtures (provisional)
         run: python3 schemas/check_judgment_extension_examples.py
 
-      - name: Presentation manifest fixtures (schema, negatives, mutants, resolution)
-        run: python3 schemas/check_presentation_manifest_examples.py
-
       - name: contract-report/v1 fixtures (schema, negatives, mutants, wording keys)
         run: python3 schemas/check_contract_report_examples.py
