@@ -1976,7 +1976,7 @@ Internet-Draft              Evidence Request                October 2026
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
-              capsule-05, October 2026,
+              capsule-05, September 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
               agent-action-capsule-05>.
 
@@ -1990,9 +1990,9 @@ Internet-Draft              Evidence Request                October 2026
    [I-D.mih-zhang-agent-disclosure-bundle]
               Mih, S. and Y. Zhang, "AAC Evidence Bundle", Work in
               Progress, Internet-Draft, draft-mih-zhang-agent-
-              disclosure-bundle-00, September 2026,
+              disclosure-bundle-01, October 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-zhang-
-              agent-disclosure-bundle-00>.
+              agent-disclosure-bundle-01>.
 
    [MCP]      Model Context Protocol, "Model Context Protocol
               Specification", 28 July 2026,
