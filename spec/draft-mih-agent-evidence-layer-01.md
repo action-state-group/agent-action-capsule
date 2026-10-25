@@ -44,25 +44,25 @@ informative:
   I-D.mih-scitt-checkpointed-local-log:
     title: "The Checkpointed Local Log (CLL)"
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-checkpointed-local-log-01
+      Internet-Draft: draft-mih-scitt-checkpointed-local-log-02
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group
-    date: 2026-09
+    date: 2026-10
   I-D.mih-agent-evidence-request:
     title: "An Interaction Model for Requesting Verifiable Evidence"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-evidence-request-00
+      Internet-Draft: draft-mih-agent-evidence-request-01
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-09
+    date: 2026-10
   I-D.mih-zhang-agent-disclosure-bundle:
     title: "AAC Evidence Bundle"
     seriesinfo:
-      Internet-Draft: draft-mih-zhang-agent-disclosure-bundle-00
+      Internet-Draft: draft-mih-zhang-agent-disclosure-bundle-01
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -70,7 +70,7 @@ informative:
       - ins: Y. Zhang
         name: Yiqun Zhang
         organization: Independent
-    date: 2026-09
+    date: 2026-10
   I-D.mih-agent-disclosure-envelope:
     title: "Disclosure Envelope Profile for Agent Action Capsules"
     seriesinfo:
@@ -729,7 +729,8 @@ checkpoint carries no record content, but it is not free of information.
 **What a checkpoint reveals.** Every checkpoint states the size of the
 store's committed history: the number of records appended since the store's
 first record, not since the previous checkpoint (in a Checkpointed Local Log
-({{I-D.mih-scitt-checkpointed-local-log}}), its `log_size`). A party holding
+({{I-D.mih-scitt-checkpointed-local-log}}), its `leaf_count`, which follows
+from its `log_size`). A party holding
 two checkpoints from one store therefore learns how many records the store
 committed between them, across every subject and counterparty the store
 records, not only those it shares with that party. A checkpoint also
