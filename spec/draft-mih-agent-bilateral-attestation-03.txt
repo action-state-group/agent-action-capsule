@@ -816,9 +816,9 @@ Internet-Draft         Bilateral Agent Attestation          October 2026
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
-              capsule-04, 28 August 2026,
+              capsule-05, 26 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
-              agent-action-capsule-04>.
+              agent-action-capsule-05>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -879,11 +879,11 @@ Internet-Draft         Bilateral Agent Attestation          October 2026
               agent-action-capsule-sel-disc-00>.
 
    [I-D.nelson-agent-delegation-receipts]
-              Nelson, R., "Delegation Receipt Protocol for AI Agent
-              Authorization", Work in Progress, Internet-Draft, draft-
-              nelson-agent-delegation-receipts-10, 13 June 2026,
-              <https://datatracker.ietf.org/doc/html/draft-nelson-agent-
-              delegation-receipts-10>.
+              Nelson, R., "Agent Delegation Receipts", Work in Progress,
+              Internet-Draft, draft-nelson-agent-delegation-receipts-15,
+              21 October 2026, <https://datatracker.ietf.org/doc/html/
+              draft-nelson-agent-delegation-receipts-15>.
+
 
 
 
