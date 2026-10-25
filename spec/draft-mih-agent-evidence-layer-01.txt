@@ -1014,12 +1014,12 @@ Internet-Draft               Evidence Layer                 October 2026
    store's committed history: the number of records appended since the
    store's first record, not since the previous checkpoint (in a
    Checkpointed Local Log ([I-D.mih-scitt-checkpointed-local-log]), its
-   log_size).  A party holding two checkpoints from one store therefore
-   learns how many records the store committed between them, across
-   every subject and counterparty the store records, not only those it
-   shares with that party.  A checkpoint also carries a time, and the
-   times at which a store issues checkpoints reveal its activity
-   pattern.
+   leaf_count, which follows from its log_size).  A party holding two
+   checkpoints from one store therefore learns how many records the
+   store committed between them, across every subject and counterparty
+   the store records, not only those it shares with that party.  A
+   checkpoint also carries a time, and the times at which a store issues
+   checkpoints reveal its activity pattern.
 
    *What a checkpoint does not reveal.* A checkpoint and an inclusion
    proof reveal no record content.  The sibling values in an inclusion
@@ -1316,9 +1316,9 @@ Internet-Draft               Evidence Layer                 October 2026
    [I-D.mih-agent-evidence-request]
               Mih, S., "An Interaction Model for Requesting Verifiable
               Evidence", Work in Progress, Internet-Draft, draft-mih-
-              agent-evidence-request-00, September 2026,
+              agent-evidence-request-01, October 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-agent-
-              evidence-request-00>.
+              evidence-request-01>.
 
    [I-D.mih-agent-settlement-records]
               Mih, S., "Two-Party Settlement Records for Agent
@@ -1349,16 +1349,16 @@ Internet-Draft               Evidence Layer                 October 2026
    [I-D.mih-scitt-checkpointed-local-log]
               Mih, S., "The Checkpointed Local Log (CLL)", Work in
               Progress, Internet-Draft, draft-mih-scitt-checkpointed-
-              local-log-01, September 2026,
+              local-log-02, October 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
-              checkpointed-local-log-01>.
+              checkpointed-local-log-02>.
 
    [I-D.mih-zhang-agent-disclosure-bundle]
               Mih, S. and Y. Zhang, "AAC Evidence Bundle", Work in
               Progress, Internet-Draft, draft-mih-zhang-agent-
-              disclosure-bundle-00, September 2026,
+              disclosure-bundle-01, October 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-zhang-
-              agent-disclosure-bundle-00>.
+              agent-disclosure-bundle-01>.
 
    [RFC9942]  Steele, O., Birkholz, H., Delignat-Lavaud, A., and C.
               Fournet, "CBOR Object Signing and Encryption (COSE)
