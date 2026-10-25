@@ -16,6 +16,7 @@ on:
       - "vectors/evidence-result/**"
       - "vectors/judge/**"
       - "vectors/judgment/**"
+      - "vectors/*/vectors.json"
       - "python/agent_action_capsule/canonical.py"
       - ".github/workflows/schemas.yml"
   pull_request:
@@ -24,6 +25,7 @@ on:
       - "vectors/evidence-result/**"
       - "vectors/judge/**"
       - "vectors/judgment/**"
+      - "vectors/*/vectors.json"
       - "python/agent_action_capsule/canonical.py"
       - ".github/workflows/schemas.yml"
 
@@ -65,3 +67,6 @@ jobs:
 
       - name: contract-report/v1 fixtures (schema, negatives, mutants, wording keys)
         run: python3 schemas/check_contract_report_examples.py
+
+      - name: Evidence Contract v0 (engine copy but $id, vector contracts and pins)
+        run: python3 schemas/check_evidence_contract_examples.py
