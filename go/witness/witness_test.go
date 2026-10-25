@@ -660,3 +660,31 @@ func TestInclusionProofBlobIsDecodedLeniently(t *testing.T) {
 	_, err = VerifyCOSEReceipt(append([]byte{0xd2, 0x98, 0x04}, receipt[2:]...), leaf, public)
 	require.Error(t, err)
 }
+
+// The registration-time edges no shared vector reaches: a negative or text
+// iat, and claims without one.
+func TestRegistrationTimeEdges(t *testing.T) {
+	claims := func(value interface{}) map[interface{}]interface{} {
+		return map[interface{}]interface{}{uint64(labelCWTClaims): value}
+	}
+	for name, test := range map[string]struct {
+		protected map[interface{}]interface{}
+		want      *int64
+		reason    string
+	}{
+		"no claims":     {map[interface{}]interface{}{}, nil, ReasonIatAbsent},
+		"empty claims":  {claims(map[interface{}]interface{}{}), nil, ReasonIatAbsent},
+		"other claim":   {claims(map[interface{}]interface{}{uint64(1): "issuer"}), nil, ReasonIatAbsent},
+		"negative iat":  {claims(map[interface{}]interface{}{uint64(cwtIat): int64(-1)}), nil, ReasonIatInvalid},
+		"text iat":      {claims(map[interface{}]interface{}{uint64(cwtIat): "1792022400"}), nil, ReasonIatInvalid},
+		"largest iat":   {claims(map[interface{}]interface{}{uint64(cwtIat): uint64(maxIat)}), ptr(int64(maxIat)), ""},
+		"zero iat":      {claims(map[interface{}]interface{}{uint64(cwtIat): uint64(0)}), ptr(int64(0)), ""},
+		"claims a list": {claims([]interface{}{}), nil, ReasonIatInvalid},
+	} {
+		got, reason := registrationTime(test.protected)
+		require.Equal(t, test.want, got, name)
+		require.Equal(t, test.reason, reason, name)
+	}
+}
+
+func ptr[T any](value T) *T { return &value }

@@ -223,3 +223,26 @@ def test_input_nested_beyond_the_interpreter_is_refused_not_raised():
     assert verify_record_signature(bundle["records"][0])[0] == "invalid"
     assert verify_bundle(bundle).graph_closure.findings == ("bundle_malformed",)
     assert verify_bundle(bundle, strict=True).verdict == "INVALID"
+
+
+@pytest.mark.parametrize(
+    ("protected", "expected"),
+    [
+        ({}, (None, "iat_absent")),
+        ({15: {}}, (None, "iat_absent")),
+        ({15: {6: -1}}, (None, "iat_invalid")),
+        ({15: {6: "1792022400"}}, (None, "iat_invalid")),
+        ({15: {6: True}}, (None, "iat_invalid")),
+        ({15: [6]}, (None, "iat_invalid")),
+        ({15: {6: 0}}, (0, None)),
+        ({15: {6: 2**53 - 1}}, (2**53 - 1, None)),
+    ],
+)
+def test_registration_time_edges(protected, expected):
+    """The registration-time edges no shared vector reaches."""
+    import cbor2
+
+    from agent_action_capsule.witness import _registration_time
+
+    receipt = cbor2.dumps(cbor2.CBORTag(18, [cbor2.dumps(protected), {}, None, b""]))
+    assert _registration_time(receipt) == expected

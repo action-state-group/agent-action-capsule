@@ -798,3 +798,57 @@ describe("strict verification without Ed25519", () => {
     expect((await verifyBundle(bundle)).graphClosure.status).toBe("pass");
   });
 });
+
+describe("registration time", () => {
+  // A SCRAPI receipt's leaf is SHA-256 of the checkpoint's COSE bytes.
+  const cose = new TextEncoder().encode("checkpoint statement");
+  const scrapiLeaf = new Uint8Array(createHash("sha256").update(cose).digest());
+  const scrapiRoot = new Uint8Array(
+    createHash("sha256")
+      .update(concat(Uint8Array.of(0), scrapiLeaf))
+      .digest(),
+  );
+  /** An EdDSA SCRAPI receipt whose protected header also carries `claimsHex`
+   * under label 15. */
+  function scrapiReceipt(claimsHex: string): Uint8Array {
+    // {1: -8, 15: <claims>, 395: 1}
+    const protectedBytes = hexToBytes(`a301270f${claimsHex}19018b01`);
+    const signature = new Uint8Array(
+      sign(
+        null,
+        producerEnvelopeSigningBytes(protectedBytes, scrapiRoot),
+        ed25519.privateKey,
+      ),
+    );
+    return concat(
+      Uint8Array.of(0xd2, 0x84, 0x40 + protectedBytes.length),
+      protectedBytes,
+      unprotected,
+      hexToBytes("f6"),
+      Uint8Array.of(0x58, signature.length),
+      signature,
+    );
+  }
+
+  // The edges no shared vector reaches, and a time that is read.
+  it.each([
+    ["a1061a6ad01780", 1792022400, null],
+    ["a10600", 0, null],
+    ["a0", null, "iat_absent"],
+    ["a10120", null, "iat_absent"],
+    ["a10620", null, "iat_invalid"],
+    ["a106f5", null, "iat_invalid"],
+    [`a1066a${Buffer.from("1792022400").toString("hex")}`, null, "iat_invalid"],
+    ["8106", null, "iat_invalid"],
+  ])("reads protected claims %s", async (claims, time, reason) => {
+    const outcome = await verifyScrapiReceipt(scrapiReceipt(claims), {
+      checkpointCose: cose,
+      servicePublicKeySpki: spki(ed25519.publicKey),
+    });
+    expect(outcome).toMatchObject({
+      ok: true,
+      registrationTime: time,
+      registrationTimeReason: reason,
+    });
+  });
+});

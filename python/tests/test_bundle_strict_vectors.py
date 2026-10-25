@@ -53,7 +53,9 @@ def _observed(result) -> dict:
             "status": result.witnesses.status,
             "findings": list(result.witnesses.findings),
             "receipts": [
-                {"ts_url": r.ts_url, "binding": r.binding, "status": r.status, "grade": r.grade}
+                {"ts_url": r.ts_url, "binding": r.binding, "status": r.status, "grade": r.grade,
+                 "key_id": r.key_id, "registration_time": r.registration_time,
+                 "registration_time_reason": r.registration_time_reason}
                 for r in result.witness_receipts
             ],
         }

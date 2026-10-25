@@ -47,6 +47,7 @@ __all__ = [
     "BINDING_SCRAPI",
     "GRADE_MMR_VERIFIED",
     "GRADE_OBSERVED_ONLY",
+    "REGISTRATION_TIME_REASONS",
     "WitnessReceiptResult",
     "binding_of",
     "checkpoint_digest",
@@ -76,6 +77,16 @@ _GRADES = {
 }
 _GRADE_LABEL = -65537
 
+#: Why a receipt result has no ``registration_time``: the receipt did not
+#: pass; it passed with no ``iat`` in its protected CWT claims; its protected
+#: ``iat`` is not an integer number of seconds from 0 to 2^53 - 1; or its
+#: binding (``rekor``) is no COSE Receipt and so carries no ``iat``.
+REGISTRATION_TIME_REASONS = ("receipt_not_passed", "iat_absent", "iat_invalid", "binding_without_iat")
+_CWT_CLAIMS_LABEL = 15
+_CWT_IAT = 6
+#: The largest ``iat`` reported: every language reads it as an exact integer.
+_MAX_IAT = 2**53 - 1
+
 # The CLL checkpoint fields its signing body covers, besides ``v``/``kind``.
 _SIGNED_FIELDS = ("log_id", "mmr_size", "root", "prev_size", "prev_root", "key_id", "timestamp")
 _RECORD_FIELDS = ("ts_url", "entry_hash", "receipt_b64", "leaf_index", "tree_size")
@@ -89,7 +100,11 @@ class WitnessReceiptResult:
 
     ``reason`` is a human-readable explanation and is not part of the
     cross-language contract; ``grade`` is the verified receipt grade, or
-    ``None``.
+    ``None``. A passing receipt names the directory ``key_id`` it verified
+    under. ``registration_time`` is the ``iat`` the witness signed into a
+    passing COSE Receipt's protected header, in seconds since the epoch;
+    otherwise it is ``None`` and ``registration_time_reason`` (one of
+    :data:`REGISTRATION_TIME_REASONS`) says why.
     """
 
     ts_url: str
@@ -97,6 +112,9 @@ class WitnessReceiptResult:
     status: str
     reason: str
     grade: str | None = None
+    key_id: str | None = None
+    registration_time: int | None = None
+    registration_time_reason: str | None = None
 
 
 def binding_of(url: str) -> str:
@@ -277,6 +295,30 @@ def _receipt_shape_error(receipt: bytes, key_pem: bytes | str | None = None) -> 
 def _grade(result: Any) -> str | None:
     label = (getattr(result, "protected_header_ext", None) or {}).get(_GRADE_LABEL)
     return _GRADES.get(label) if isinstance(label, str) else None
+
+
+def _registration_time(receipt: bytes) -> tuple[int | None, str | None]:
+    """The ``iat`` (claim 6) of a verified COSE Receipt's protected CWT claims
+    (label 15), as ``(time, None)``, or ``(None, reason)``. Read only after the
+    signature verified: only the protected header is signed."""
+    import cbor2
+
+    try:
+        protected_bytes = cbor2.loads(receipt).value[0]
+        protected = cbor2.loads(protected_bytes) if protected_bytes else {}
+    except Exception:  # noqa: BLE001 -- a verified receipt decodes; never raise
+        return None, "iat_invalid"
+    if _CWT_CLAIMS_LABEL not in protected:
+        return None, "iat_absent"
+    claims = protected[_CWT_CLAIMS_LABEL]
+    if not isinstance(claims, dict):
+        return None, "iat_invalid"
+    if _CWT_IAT not in claims:
+        return None, "iat_absent"
+    iat = claims[_CWT_IAT]
+    if type(iat) is not int or not 0 <= iat <= _MAX_IAT:
+        return None, "iat_invalid"
+    return iat, None
 
 
 def _verify_cll(signed: Mapping[str, Any], record: Mapping[str, Any], pem: bytes) -> tuple[bool, str, str | None]:
@@ -482,7 +524,7 @@ def verify_witness_receipts(
             continue
         ts_url = record["ts_url"]
         row = row_for(directory, ts_url)
-        ok, reason, grade = False, "", None
+        ok, reason, grade, key_id = False, "", None, None
         if record.get("is_stub") is True:
             reason = "stub receipt (never reached a witness)"
         elif row is None:
@@ -492,12 +534,19 @@ def verify_witness_receipts(
                 pems = row_public_keys_pem(row)
             except Exception as exc:  # noqa: BLE001 -- an unusable row key is "not checked"
                 pems, reason = [], f"not checked: unusable key in directory row ({exc})"
-            for pem in pems:
+            for index, pem in enumerate(pems):
                 ok, reason, grade = verify_receipt(signed, record, pem, checkpoint_cose)
                 if ok:
+                    # row_public_keys_pem returns one key per key id, in order.
+                    key_id = row["key_ids"][index]
                     break
+        registration_time, time_reason = None, "receipt_not_passed"
         if ok:
             status = "pass"
+            if binding_of(ts_url) == BINDING_REKOR:
+                time_reason = "binding_without_iat"
+            else:
+                registration_time, time_reason = _registration_time(_b64_canonical(record["receipt_b64"]))
         elif not reason or reason.startswith(("not checked", "stub receipt")):
             status = "withheld"
             reason = reason or "not checked: no key in the directory row for this witness"
@@ -505,7 +554,9 @@ def verify_witness_receipts(
         else:
             status = "fail"
             findings.append(f"witness_receipt_invalid:{ts_url}")
-        results.append(WitnessReceiptResult(ts_url, binding_of(ts_url), status, reason, grade if ok else None))
+        results.append(WitnessReceiptResult(
+            ts_url, binding_of(ts_url), status, reason, grade if ok else None, key_id, registration_time, time_reason,
+        ))
     statuses = {r.status for r in results}
     if malformed or "fail" in statuses:
         overall = "fail"

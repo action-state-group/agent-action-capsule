@@ -18,6 +18,16 @@
   applicable and count as passing. Without the member, the cited contract's `<check>.<criterion>`
   requirements that no claim cites are criteria too. `OutcomeReportModel` adds `noClaimCount` and
   `notRun`, the cited contract's requirements outside the covered list. (#355)
+- Strict witness receipts (Go, Python, Rust, TypeScript): each receipt result also reports
+  `key_id`, the directory key id a passing receipt verified under, and `registration_time`, the
+  `iat` (claim 6) the witness signed into a passing COSE Receipt's protected CWT claims (label 15),
+  in seconds since the epoch. It is never read from the unprotected header or the checkpoint's own
+  `timestamp`. When there is no time, `registration_time_reason` names why: `receipt_not_passed`,
+  `iat_absent`, `iat_invalid` or `binding_without_iat` (rekor). Existing members and every status
+  and verdict are unchanged. Nine new strict vectors, `pos-witness-registration-time` and its
+  siblings, pin it; every existing receipt result gains the three members. Rust's
+  `WitnessReceiptResult` and `ReceiptCheck`, and TypeScript's `WitnessReceiptResult` and
+  `ReceiptOutcome`, gain members, so code that builds them by hand must add them. (#392)
 - **Breaking**, TypeScript (ts 0.8.0): the page renderers under the `browser` condition are
   removed: `renderEvidenceGraph`, `mountPresentation`, the outcome-report, compliance and composed
   card renderers and their styles, the EU compliance card model, and `dist/evidence-graph.iife.js`.

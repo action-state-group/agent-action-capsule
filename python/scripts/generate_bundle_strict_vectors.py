@@ -65,6 +65,9 @@ REKOR_URL = "rekor+https://rekor.example"
 UNLISTED_URL = "https://unlisted-witness.example"
 LOG_ID = "log:strict-vectors"
 TIMESTAMP = "2026-10-15T00:00:00Z"
+#: TIMESTAMP as a CWT NumericDate: a witness that registers the checkpoint in
+#: the same second signs this ``iat``.
+TIMESTAMP_SECONDS = 1792022400
 
 
 def ed25519(seed: bytes) -> Ed25519PrivateKey:
@@ -277,10 +280,16 @@ def entry_hash(checkpoint: dict) -> str:
 # -- witness receipts ---------------------------------------------------------
 
 
-def cll_receipt(leaf: str, key: Ed25519PrivateKey = CLL_WITNESS, *, ts_url: str = CLL_URL, grade: str | None = "mmr-verified") -> dict:
+def cll_receipt(
+    leaf: str, key: Ed25519PrivateKey = CLL_WITNESS, *, ts_url: str = CLL_URL, grade: str | None = "mmr-verified",
+    iat: int | None = None,
+) -> dict:
+    """A ``cll`` receipt; with ``iat``, the witness signs it into the protected
+    CWT claims (label 15, claim 6). Without it the bytes are the older wire
+    shape, unchanged."""
     receipt = build_receipt(
         leaf_entry_hex=leaf, leaf_index=0, tree_entries_hex=[leaf], alg="EdDSA",
-        log_private_key_pem=private_pem(key), grade=grade,
+        log_private_key_pem=private_pem(key), grade=grade, iat=iat,
     )
     return {"ts_url": ts_url, "entry_hash": leaf, "receipt_b64": b64(receipt), "leaf_index": 0, "tree_size": 1}
 
@@ -320,6 +329,19 @@ def resigned_receipt(leaf: str, protected_overrides: dict[int, Any]) -> dict:
     return {**genuine, "receipt_b64": b64(forged)}
 
 
+def unprotected_iat_receipt(leaf: str, iat: int) -> dict:
+    """A genuine ``cll`` receipt with no protected ``iat``, given CWT claims
+    carrying ``iat`` in its unprotected header, which no signature covers: it
+    still verifies, and it has no registration time."""
+    import cbor2
+
+    genuine = cll_receipt(leaf)
+    outer = cbor2.loads(base64.b64decode(genuine["receipt_b64"]))
+    unprotected = {**outer.value[1], 15: {6: iat}}
+    moved = cbor2.dumps(cbor2.CBORTag(18, [outer.value[0], unprotected, None, outer.value[3]]), canonical=True)
+    return {**genuine, "receipt_b64": b64(moved)}
+
+
 def es256_receipt(leaf: str, key: Any, ts_url: str) -> dict:
     """A ``cll`` receipt signed ES256 by ``key``, built by hand with RFC 6979
     deterministic ECDSA so the vectors stay reproducible (the COSE library's
@@ -339,11 +361,11 @@ def es256_receipt(leaf: str, key: Any, ts_url: str) -> dict:
     return {**genuine, "receipt_b64": b64(forged)}
 
 
-def scrapi_receipt(cose: bytes, *, grade: str | None = None) -> dict:
+def scrapi_receipt(cose: bytes, *, grade: str | None = None, iat: int | None = None) -> dict:
     leaf = hashlib.sha256(cose).hexdigest()
     receipt = build_receipt(
         leaf_entry_hex=leaf, leaf_index=0, tree_entries_hex=[leaf], alg="EdDSA",
-        log_private_key_pem=private_pem(SCRAPI_KEY), grade=grade,
+        log_private_key_pem=private_pem(SCRAPI_KEY), grade=grade, iat=iat,
     )
     return {"ts_url": SCRAPI_URL, "entry_hash": leaf, "receipt_b64": b64(receipt), "leaf_index": 0, "tree_size": 1}
 
@@ -402,6 +424,16 @@ DIRECTORY = {
         {"name": "Two-key witness", "endpoint": "https://two-key-witness.example", "since": "2026-01-01",
          "key_ids": [raw_public(OTHER).hex(), raw_public(CLL_WITNESS).hex()]},
     ],
+}
+
+
+#: The directory key id a passing receipt from each witness verifies under.
+PASS_KEY_IDS = {
+    CLL_URL: raw_public(CLL_WITNESS).hex(),
+    P256_URL: hashlib.sha256(spki_der(P256_WITNESS)).hexdigest(),
+    REKOR_URL: REKOR_LOG_ID,
+    SCRAPI_URL: raw_public(SCRAPI_KEY).hex(),
+    "https://two-key-witness.example": raw_public(CLL_WITNESS).hex(),
 }
 
 
@@ -800,8 +832,21 @@ def build_cases() -> list[dict]:
     def witnessed(*receipts: dict) -> dict:
         return _with_witnesses(base, *receipts)
 
-    def receipt_expect(ts_url: str, binding: str, status: str, grade: str | None = None) -> dict:
-        return {"ts_url": ts_url, "binding": binding, "status": status, "grade": grade}
+    def receipt_expect(
+        ts_url: str, binding: str, status: str, grade: str | None = None, *,
+        registration_time: int | None = None, reason: str | None = None,
+    ) -> dict:
+        """A receipt result. A passing receipt names the directory key it
+        verified under, and its registration time or why it has none."""
+        key_id = PASS_KEY_IDS[ts_url] if status == "pass" else None
+        if status != "pass":
+            reason = "receipt_not_passed"
+        elif binding == "rekor":
+            reason = "binding_without_iat"
+        elif registration_time is None:
+            reason = reason or "iat_absent"
+        return {"ts_url": ts_url, "binding": binding, "status": status, "grade": grade, "key_id": key_id,
+                "registration_time": registration_time, "registration_time_reason": reason}
 
     def witness_case(case_id: str, description: str, bundle: dict, witnesses: dict, *, verdict: str = "VALID", directory: bool = True) -> None:
         cases.append(case(case_id, description, bundle, {
@@ -969,6 +1014,53 @@ def build_cases() -> list[dict]:
                      receipt_expect(CLL_URL, "cll", "pass", "mmr-verified"),
                      receipt_expect(REKOR_URL, "rekor", "pass", "observed-only"),
                      receipt_expect(SCRAPI_URL, "scrapi", "pass", "observed-only")]})
+
+    # -- registration time: the protected CWT iat of a passing COSE receipt --
+    witness_case("pos-witness-registration-time",
+                 "A cll receipt whose witness signed iat into its protected header, in the checkpoint's own second: "
+                 "the receipt's registration time is that iat.",
+                 witnessed(cll_receipt(leaf, iat=TIMESTAMP_SECONDS)),
+                 {"status": "pass", "findings": [], "receipts": [
+                     receipt_expect(CLL_URL, "cll", "pass", "mmr-verified", registration_time=TIMESTAMP_SECONDS)]})
+    witness_case("pos-witness-registration-time-not-checkpoint-time",
+                 "A receipt whose signed iat is 90 seconds after the checkpoint's timestamp: the registration time is "
+                 "the iat, never the checkpoint's timestamp.",
+                 witnessed(cll_receipt(leaf, iat=TIMESTAMP_SECONDS + 90)),
+                 {"status": "pass", "findings": [], "receipts": [
+                     receipt_expect(CLL_URL, "cll", "pass", "mmr-verified", registration_time=TIMESTAMP_SECONDS + 90)]})
+    witness_case("pos-witness-registration-time-no-directory",
+                 "A receipt with a signed iat and no directory: it is not checked, so it has no registration time.",
+                 witnessed(cll_receipt(leaf, iat=TIMESTAMP_SECONDS)),
+                 {"status": "withheld", "findings": [f"witness_unverified:{CLL_URL}"],
+                  "receipts": [receipt_expect(CLL_URL, "cll", "withheld")]}, directory=False)
+    witness_case("neg-witness-registration-time-wrong-key",
+                 "A receipt with an iat, signed by a key the row does not list: it fails, so it has no registration time.",
+                 witnessed(cll_receipt(leaf, OTHER, iat=TIMESTAMP_SECONDS)),
+                 {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
+                  "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
+    witness_case("pos-witness-registration-time-unprotected",
+                 "A receipt with no protected iat whose unprotected header carries one: no signature covers it, so "
+                 "the receipt has no registration time.",
+                 witnessed(unprotected_iat_receipt(leaf, TIMESTAMP_SECONDS)),
+                 {"status": "pass", "findings": [], "receipts": [receipt_expect(CLL_URL, "cll", "pass", "mmr-verified")]})
+    witness_case("pos-witness-registration-time-invalid",
+                 "A receipt whose signed iat is a float: the receipt verifies, and its iat is no registration time.",
+                 witnessed(resigned_receipt(leaf, {15: {6: TIMESTAMP_SECONDS + 0.5}})),
+                 {"status": "pass", "findings": [], "receipts": [
+                     receipt_expect(CLL_URL, "cll", "pass", "mmr-verified", reason="iat_invalid")]})
+    for case_id, description, claims_value in (
+        ("pos-witness-registration-time-claims-not-a-map",
+         "A receipt whose protected CWT claims (label 15) are an integer, not a map: no registration time.", 7),
+        ("pos-witness-registration-time-out-of-range",
+         "A receipt whose signed iat is 2^53, past the largest integer every language reads exactly.", {6: 2**53}),
+    ):
+        witness_case(case_id, description, witnessed(resigned_receipt(leaf, {15: claims_value})),
+                     {"status": "pass", "findings": [], "receipts": [
+                         receipt_expect(CLL_URL, "cll", "pass", "mmr-verified", reason="iat_invalid")]})
+    witness_case("pos-witness-scrapi-registration-time", "A SCRAPI receipt with a signed iat.",
+                 witnessed(scrapi_receipt(cose, iat=TIMESTAMP_SECONDS + 5)),
+                 {"status": "pass", "findings": [], "receipts": [
+                     receipt_expect(SCRAPI_URL, "scrapi", "pass", "observed-only", registration_time=TIMESTAMP_SECONDS + 5)]})
 
     cose_null = copy.deepcopy(base)
     cose_null["checkpoint"]["cose"] = None

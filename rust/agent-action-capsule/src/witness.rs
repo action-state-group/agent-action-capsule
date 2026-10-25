@@ -55,6 +55,19 @@ pub const GRADE_OBSERVED_ONLY: &str = "observed-only";
 /// Receipt grade: MMR consistency checked.
 pub const GRADE_MMR_VERIFIED: &str = "mmr-verified";
 
+/// Registration-time reason: the receipt did not pass.
+pub const REASON_RECEIPT_NOT_PASSED: &str = "receipt_not_passed";
+/// Registration-time reason: the receipt's protected CWT claims carry no `iat`.
+pub const REASON_IAT_ABSENT: &str = "iat_absent";
+/// Registration-time reason: the protected CWT claims are not a map, or `iat`
+/// is not an integer from 0 to 2^53 - 1.
+pub const REASON_IAT_INVALID: &str = "iat_invalid";
+/// Registration-time reason: the binding (`rekor`) is no COSE Receipt.
+pub const REASON_BINDING_WITHOUT_IAT: &str = "binding_without_iat";
+const CWT_CLAIMS_LABEL: i64 = 15;
+const CWT_IAT: u64 = 6;
+const MAX_IAT: u64 = (1 << 53) - 1;
+
 /// Strict standard base64 in its one canonical spelling: padding required,
 /// and non-zero trailing bits refused, so the bytes re-encode to the text.
 const STANDARD: GeneralPurpose = GeneralPurpose::new(
@@ -110,6 +123,10 @@ impl From<&cll::checkpoint::DecodedCheckpointCose> for SignedCheckpoint {
 ///
 /// `reason` is a human-readable explanation and is not part of the
 /// cross-language contract; `grade` is the verified receipt grade, or `None`.
+/// `key_id` is the directory key id a passing receipt verified under.
+/// `registration_time` is the `iat` the witness signed into a passing COSE
+/// Receipt's protected header, in seconds since the epoch; when it is `None`,
+/// `registration_time_reason` (one of the `REASON_` constants) says why.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WitnessReceiptResult {
     pub ts_url: String,
@@ -117,6 +134,9 @@ pub struct WitnessReceiptResult {
     pub status: String,
     pub reason: String,
     pub grade: Option<String>,
+    pub key_id: Option<String>,
+    pub registration_time: Option<u64>,
+    pub registration_time_reason: Option<String>,
 }
 
 /// What [`verify_witness_receipts`] found: the overall `status`, the
@@ -128,13 +148,16 @@ pub struct WitnessReport {
     pub receipts: Vec<WitnessReceiptResult>,
 }
 
-/// One receipt check: whether it verified, why, and the verified grade. A
-/// `reason` starting with `not checked` means nothing was checked.
+/// One receipt check: whether it verified, why, the verified grade, and its
+/// registration time or the reason it has none. A `reason` starting with
+/// `not checked` means nothing was checked.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReceiptCheck {
     pub ok: bool,
     pub reason: String,
     pub grade: Option<String>,
+    pub registration_time: Option<u64>,
+    pub registration_time_reason: Option<String>,
 }
 
 impl ReceiptCheck {
@@ -143,7 +166,56 @@ impl ReceiptCheck {
             ok: false,
             reason: reason.into(),
             grade: None,
+            registration_time: None,
+            registration_time_reason: Some(REASON_RECEIPT_NOT_PASSED.to_string()),
         }
+    }
+
+    /// A receipt that verified, with the registration time of its protected
+    /// header.
+    fn verified(reason: &str, grade: Option<String>, receipt: &[u8]) -> Self {
+        let (registration_time, registration_time_reason) = match registration_time(receipt) {
+            Ok(time) => (Some(time), None),
+            Err(reason) => (None, Some(reason.to_string())),
+        };
+        ReceiptCheck {
+            ok: true,
+            reason: reason.to_string(),
+            grade,
+            registration_time,
+            registration_time_reason,
+        }
+    }
+}
+
+/// The `iat` (claim 6) of a verified COSE Receipt's protected CWT claims
+/// (label 15), or why there is none: absent with no claims map or no `iat`
+/// in it, invalid when the claims are not a map or `iat` is not an integer
+/// from 0 to 2^53 - 1. Only the protected header is signed.
+fn registration_time(receipt: &[u8]) -> Result<u64, &'static str> {
+    let sign1 = CoseSign1::from_tagged_slice(receipt).map_err(|_| REASON_IAT_INVALID)?;
+    let claims = match sign1
+        .protected
+        .header
+        .rest
+        .iter()
+        .find(|(label, _)| *label == Label::Int(CWT_CLAIMS_LABEL))
+    {
+        None => return Err(REASON_IAT_ABSENT),
+        Some((_, coset::cbor::Value::Map(claims))) => claims,
+        Some(_) => return Err(REASON_IAT_INVALID),
+    };
+    let iat = claims
+        .iter()
+        .find(|(key, _)| matches!(key, coset::cbor::Value::Integer(i) if u64::try_from(*i) == Ok(CWT_IAT)))
+        .map(|(_, value)| value)
+        .ok_or(REASON_IAT_ABSENT)?;
+    match iat {
+        coset::cbor::Value::Integer(i) => u64::try_from(*i)
+            .ok()
+            .filter(|seconds| *seconds <= MAX_IAT)
+            .ok_or(REASON_IAT_INVALID),
+        _ => Err(REASON_IAT_INVALID),
     }
 }
 
@@ -429,16 +501,15 @@ fn verify_cll(
         }),
         Ok(result) => {
             let grade = known_grade(result.grade.as_deref());
-            ReceiptCheck {
-                ok: true,
-                reason: if grade.is_some() {
+            ReceiptCheck::verified(
+                if grade.is_some() {
                     "ok"
                 } else {
                     "ok (receipt carries no grade label)"
-                }
-                .to_string(),
-                grade: grade.map(str::to_string),
-            }
+                },
+                grade.map(str::to_string),
+                &receipt,
+            )
         }
     }
 }
@@ -626,16 +697,15 @@ pub fn verify_scrapi_receipt(
         }
         Ok(result) => {
             let grade = known_grade(result.grade.as_deref());
-            ReceiptCheck {
-                ok: true,
-                reason: if grade.is_none() && result.grade.is_some() {
+            ReceiptCheck::verified(
+                if grade.is_none() && result.grade.is_some() {
                     "ok (unknown grade label ignored)"
                 } else {
                     "ok"
-                }
-                .to_string(),
-                grade: Some(grade.unwrap_or(GRADE_OBSERVED_ONLY).to_string()),
-            }
+                },
+                Some(grade.unwrap_or(GRADE_OBSERVED_ONLY).to_string()),
+                receipt,
+            )
         }
     }
 }
@@ -677,6 +747,15 @@ pub fn verify_receipt(
             ok,
             reason,
             grade: ok.then(|| GRADE_OBSERVED_ONLY.to_string()),
+            registration_time: None,
+            registration_time_reason: Some(
+                if ok {
+                    REASON_BINDING_WITHOUT_IAT
+                } else {
+                    REASON_RECEIPT_NOT_PASSED
+                }
+                .to_string(),
+            ),
         };
     }
     verify_scrapi_receipt(&receipt, cose, Some(key_der))
@@ -740,6 +819,7 @@ pub fn verify_witness_receipts(
     for record in entries.iter().filter_map(is_record) {
         let ts_url = record["ts_url"].as_str().expect("checked by is_record");
         let mut check = ReceiptCheck::fail("");
+        let mut key_id = None;
         if record.get("is_stub") == Some(&Value::Bool(true)) {
             check.reason = "stub receipt (never reached a witness)".to_string();
         } else {
@@ -750,9 +830,11 @@ pub fn verify_witness_receipts(
                         check.reason = format!("not checked: unusable key in directory row ({e})")
                     }
                     Ok(keys) => {
-                        for key in keys {
-                            check = verify_receipt(signed, record, &key, Some(cose));
+                        for (index, key) in keys.iter().enumerate() {
+                            check = verify_receipt(signed, record, key, Some(cose));
                             if check.ok {
+                                // row_public_keys returns one key per key id, in order.
+                                key_id = row["key_ids"][index].as_str().map(str::to_string);
                                 break;
                             }
                         }
@@ -782,6 +864,9 @@ pub fn verify_witness_receipts(
             status: status.to_string(),
             reason: check.reason,
             grade: if check.ok { check.grade } else { None },
+            key_id,
+            registration_time: check.registration_time,
+            registration_time_reason: check.registration_time_reason,
         });
     }
     let status = if malformed || results.iter().any(|r| r.status == "fail") {
@@ -820,6 +905,44 @@ mod tests {
                 Cbor::Bytes(vec![]),
             ])),
         ))
+    }
+
+    /// The registration-time edges no shared vector reaches.
+    #[test]
+    fn registration_time_reads_only_a_whole_iat() {
+        let int = |i: i64| Cbor::Integer(i.into());
+        let with_claims = |claims: Cbor| {
+            receipt(
+                vec![(int(1), int(-8)), (int(15), claims), (int(395), int(1))],
+                Cbor::Null,
+            )
+        };
+        let iat = |value: Cbor| with_claims(Cbor::Map(vec![(int(6), value)]));
+        let plain = receipt(vec![(int(1), int(-8)), (int(395), int(1))], Cbor::Null);
+        assert_eq!(registration_time(&plain), Err(REASON_IAT_ABSENT));
+        assert_eq!(
+            registration_time(&with_claims(Cbor::Map(vec![]))),
+            Err(REASON_IAT_ABSENT)
+        );
+        assert_eq!(
+            registration_time(&iat(int(1_792_022_400))),
+            Ok(1_792_022_400)
+        );
+        assert_eq!(registration_time(&iat(int(0))), Ok(0));
+        assert_eq!(
+            registration_time(&iat(int((1 << 53) - 1))),
+            Ok((1 << 53) - 1)
+        );
+        for invalid in [
+            iat(int(1 << 53)),
+            iat(int(-1)),
+            iat(Cbor::Bool(true)),
+            iat(Cbor::Text("1792022400".into())),
+            iat(Cbor::Float(1.5)),
+            with_claims(Cbor::Array(vec![int(6)])),
+        ] {
+            assert_eq!(registration_time(&invalid), Err(REASON_IAT_INVALID));
+        }
     }
 
     #[test]

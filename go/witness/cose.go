@@ -30,6 +30,8 @@ const (
 	labelVDS        = 395
 	labelVDP        = 396
 	labelGrade      = -65537
+	cwtIat          = 6
+	maxIat          = 1<<53 - 1
 	vdpInclusion    = -1
 	vdsRFC9162      = 1
 	algEdDSA        = -8
@@ -83,6 +85,11 @@ type COSEReceipt struct {
 	// read as observed-only), else nil.
 	GradeLabel bool
 	Grade      *string
+	// RegistrationTime is the iat claim (6) of the protected CWT claims
+	// (label 15), in seconds since the epoch, or nil. When it is nil,
+	// RegistrationTimeReason is ReasonIatAbsent or ReasonIatInvalid.
+	RegistrationTime       *int64
+	RegistrationTimeReason string
 }
 
 // VerifyCOSEReceipt verifies an RFC 9162 COSE Receipt (draft-ietf-cose-
@@ -183,6 +190,7 @@ func VerifyCOSEReceipt(receipt, leaf []byte, key crypto.PublicKey) (COSEReceipt,
 			continue
 		}
 		result := COSEReceipt{TreeSize: proof.size, LeafIndex: proof.index, Root: root}
+		result.RegistrationTime, result.RegistrationTimeReason = registrationTime(protected)
 		if label, present := protected[int64(labelGrade)]; present {
 			result.GradeLabel = true
 			if text, isString := label.(string); isString {
@@ -194,6 +202,29 @@ func VerifyCOSEReceipt(receipt, leaf []byte, key crypto.PublicKey) (COSEReceipt,
 		return result, nil
 	}
 	return COSEReceipt{}, errors.New("receipt signature did not verify over any reconstructed root")
+}
+
+// registrationTime reads the iat claim of a protected header's CWT claims:
+// absent when there is no claims map or no iat in it, invalid when the
+// claims are not a map or iat is not an integer from 0 to 2^53 - 1.
+func registrationTime(protected map[interface{}]interface{}) (*int64, string) {
+	raw, present := protected[uint64(labelCWTClaims)]
+	if !present {
+		return nil, ReasonIatAbsent
+	}
+	claims, isMap := raw.(map[interface{}]interface{})
+	if !isMap {
+		return nil, ReasonIatInvalid
+	}
+	iat, present := claims[uint64(cwtIat)]
+	if !present {
+		return nil, ReasonIatAbsent
+	}
+	if seconds, isUint := iat.(uint64); isUint && seconds <= maxIat {
+		value := int64(seconds)
+		return &value, ""
+	}
+	return nil, ReasonIatInvalid
 }
 
 // strictItem decodes one CBOR item and refuses any encoding other than its

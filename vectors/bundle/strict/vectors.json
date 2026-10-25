@@ -6776,7 +6776,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "pass",
-              "grade": "mmr-verified"
+              "grade": "mmr-verified",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
             }
           ]
         },
@@ -7042,7 +7045,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "withheld",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -7306,7 +7312,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "pass",
-              "grade": "observed-only"
+              "grade": "observed-only",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
             }
           ]
         },
@@ -7570,7 +7579,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "pass",
-              "grade": null
+              "grade": null,
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
             }
           ]
         },
@@ -7836,7 +7848,10 @@
               "ts_url": "https://unlisted-witness.example",
               "binding": "cll",
               "status": "withheld",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -8102,7 +8117,10 @@
               "ts_url": "https://keyless-witness.example",
               "binding": "cll",
               "status": "withheld",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -8369,7 +8387,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "withheld",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -8635,7 +8656,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "fail",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -8901,7 +8925,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "fail",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -9167,7 +9194,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "fail",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -9433,7 +9463,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "fail",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -9699,7 +9732,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "fail",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -9963,7 +9999,10 @@
               "ts_url": "https://p256-witness.example",
               "binding": "cll",
               "status": "pass",
-              "grade": "mmr-verified"
+              "grade": "mmr-verified",
+              "key_id": "c8b5035dd7b2bcf401f903e6f1309a8a3c139fdd33ecb8763486d57289387723",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
             }
           ]
         },
@@ -10229,7 +10268,10 @@
               "ts_url": "https://k1-witness.example",
               "binding": "cll",
               "status": "fail",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -10495,7 +10537,10 @@
               "ts_url": "https://off-curve-witness.example",
               "binding": "cll",
               "status": "fail",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -10759,7 +10804,10 @@
               "ts_url": "https://two-key-witness.example",
               "binding": "cll",
               "status": "pass",
-              "grade": "mmr-verified"
+              "grade": "mmr-verified",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
             }
           ]
         },
@@ -11025,7 +11073,10 @@
               "ts_url": "https://null-binding-witness.example",
               "binding": "cll",
               "status": "withheld",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -11292,7 +11343,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "fail",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -11564,7 +11618,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "pass",
-              "grade": "mmr-verified"
+              "grade": "mmr-verified",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
             }
           ]
         },
@@ -12104,7 +12161,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "pass",
-              "grade": "mmr-verified"
+              "grade": "mmr-verified",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
             }
           ]
         },
@@ -12410,7 +12470,10 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "pass",
-              "grade": "mmr-verified"
+              "grade": "mmr-verified",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
             }
           ]
         },
@@ -12674,7 +12737,10 @@
               "ts_url": "scrapi+https://scitt.example",
               "binding": "scrapi",
               "status": "pass",
-              "grade": "observed-only"
+              "grade": "observed-only",
+              "key_id": "5e212c0980e4b39fc09721134aa02109374edfd260c0d3d03cb501c8d65457a9",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
             }
           ]
         },
@@ -12938,7 +13004,10 @@
               "ts_url": "scrapi+https://scitt.example",
               "binding": "scrapi",
               "status": "pass",
-              "grade": "observed-only"
+              "grade": "observed-only",
+              "key_id": "5e212c0980e4b39fc09721134aa02109374edfd260c0d3d03cb501c8d65457a9",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
             }
           ]
         },
@@ -13204,7 +13273,10 @@
               "ts_url": "scrapi+https://scitt.example",
               "binding": "scrapi",
               "status": "fail",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -13468,7 +13540,10 @@
               "ts_url": "rekor+https://rekor.example",
               "binding": "rekor",
               "status": "pass",
-              "grade": "observed-only"
+              "grade": "observed-only",
+              "key_id": "93ee3e6de5002858588900a83873c44e293e61a5aab0f14c9363a03311963c49",
+              "registration_time": null,
+              "registration_time_reason": "binding_without_iat"
             }
           ]
         },
@@ -13734,7 +13809,10 @@
               "ts_url": "rekor+https://rekor.example",
               "binding": "rekor",
               "status": "fail",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -14000,7 +14078,10 @@
               "ts_url": "rekor+https://rekor.example",
               "binding": "rekor",
               "status": "fail",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -14266,7 +14347,10 @@
               "ts_url": "rekor+https://rekor.example",
               "binding": "rekor",
               "status": "fail",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -14532,7 +14616,10 @@
               "ts_url": "rekor+https://rekor-nokey.example",
               "binding": "rekor",
               "status": "withheld",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -14798,7 +14885,10 @@
               "ts_url": "rekor+https://rekor-rsa.example",
               "binding": "rekor",
               "status": "withheld",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -15064,7 +15154,10 @@
               "ts_url": "rekor+https://rekor-unknown.example",
               "binding": "rekor",
               "status": "withheld",
-              "grade": null
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
             }
           ]
         },
@@ -15342,19 +15435,2435 @@
               "ts_url": "https://cll-witness.example",
               "binding": "cll",
               "status": "pass",
-              "grade": "mmr-verified"
+              "grade": "mmr-verified",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
             },
             {
               "ts_url": "rekor+https://rekor.example",
               "binding": "rekor",
               "status": "pass",
-              "grade": "observed-only"
+              "grade": "observed-only",
+              "key_id": "93ee3e6de5002858588900a83873c44e293e61a5aab0f14c9363a03311963c49",
+              "registration_time": null,
+              "registration_time_reason": "binding_without_iat"
             },
             {
               "ts_url": "scrapi+https://scitt.example",
               "binding": "scrapi",
               "status": "pass",
-              "grade": "observed-only"
+              "grade": "observed-only",
+              "key_id": "5e212c0980e4b39fc09721134aa02109374edfd260c0d3d03cb501c8d65457a9",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
+            }
+          ]
+        },
+        "records": [
+          {
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 1
+          },
+          {
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 2
+          },
+          {
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 3
+          }
+        ],
+        "checkpoint_authenticated": true,
+        "signer_matches_checkpoint": false
+      }
+    },
+    {
+      "id": "pos-witness-registration-time",
+      "description": "A cll receipt whose witness signed iat into its protected header, in the checkpoint's own second: the receipt's registration time is that iat.",
+      "options": {
+        "require_signature": false,
+        "witness_directory": true
+      },
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba2553358408975302ac4f1f0f9f5fa5ca00a05f0e1a244d00c1a573dea0edff3249693b2008b54e85db827381fb0a8e7af175a97ee25203905a9c078630c14067b97209809",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-2",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e58402f137221d6fba48705712c816e25b44e7eda7faa2b1b3d7bfcb946cfb13c54873246c420fad72436151e2e91af10160fdeda3f7c41ec27fed64735610dacbd0a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-3",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a058203c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e343358400e5a4c2ef60417fd999bff44b179e4a7151008f38dfb4a87c654a4f95d586ffb8ca09ee20ba861660d02c374b1c2584414993a896d071d172b85a30ff842310a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "completeness_certificate": {
+          "log_id": "log:strict-vectors",
+          "range_root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "first_seq": 1,
+          "last_seq": 3,
+          "body_digests": [
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 3,
+            "size": 4,
+            "from_index": 0,
+            "to_index": 2,
+            "witness": []
+          },
+          "memberships": {
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 0,
+                "witness": [
+                  "452261e51ed21e168b50017f63fb54eade0a015c1107907e8d889c29e43234ab"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 2,
+                "leaf_index": 1
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 1,
+                "witness": [
+                  "34c54457de8fc39a3efe3ab934fc2083cfc0ae5d91bedf7eedc74fe129747aa8"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 3,
+                "leaf_index": 2
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 2,
+                "witness": [],
+                "peaks_left": [
+                  "52a72f5cc8ce32df8a3beec236025e76335058b161b83c0d57ea95a6d14fdd79"
+                ],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "log_id": "log:strict-vectors",
+          "mmr_size": 4,
+          "root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "prev_size": 0,
+          "prev_root": "",
+          "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
+          "timestamp": "2026-10-15T00:00:00Z",
+          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBSpy9cyM4y34o77sI2Al52M1BYsWG4PA1X6pWm0U_deVggBtsv9O3paWfs1BdgBGCLqHaGXaqUCAgpmEk8HIvdzsVvcHJldl9jb21taXRtZW50QFhAhM1Pt3skfb24CR2ffWnnc5ZKXTaOlXqtEdg6oR5h1Dj8UAECnbiSR-x3A9GRyiVMlbi88LPpBPE3YdSdi9HbDQ",
+          "witnesses": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "entry_hash": "f61612292ad19dc4387cddff06fba0e18055a5ac5fddbc144d08d53859d17be7",
+              "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF4A6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQEjdsuqi4PyYOaq9ymZT8qOOPrYmhJEJFLMHPlAc5lkfUqBr/h0+uIkcY1MhYTBcrVE3Arv3OfT9USeYmHdVmwA=",
+              "leaf_index": 0,
+              "tree_size": 1
+            }
+          ]
+        }
+      },
+      "expect": {
+        "verdict": "VALID",
+        "claims": [
+          {
+            "name": "records",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "signatures",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "graph_closure",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "checkpoint",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "interval_coverage",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "per_record_membership",
+            "status": "pass",
+            "findings": []
+          }
+        ],
+        "witnesses": {
+          "status": "pass",
+          "findings": [],
+          "receipts": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "binding": "cll",
+              "status": "pass",
+              "grade": "mmr-verified",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": 1792022400,
+              "registration_time_reason": null
+            }
+          ]
+        },
+        "records": [
+          {
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 1
+          },
+          {
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 2
+          },
+          {
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 3
+          }
+        ],
+        "checkpoint_authenticated": true,
+        "signer_matches_checkpoint": false
+      }
+    },
+    {
+      "id": "pos-witness-registration-time-not-checkpoint-time",
+      "description": "A receipt whose signed iat is 90 seconds after the checkpoint's timestamp: the registration time is the iat, never the checkpoint's timestamp.",
+      "options": {
+        "require_signature": false,
+        "witness_directory": true
+      },
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba2553358408975302ac4f1f0f9f5fa5ca00a05f0e1a244d00c1a573dea0edff3249693b2008b54e85db827381fb0a8e7af175a97ee25203905a9c078630c14067b97209809",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-2",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e58402f137221d6fba48705712c816e25b44e7eda7faa2b1b3d7bfcb946cfb13c54873246c420fad72436151e2e91af10160fdeda3f7c41ec27fed64735610dacbd0a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-3",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a058203c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e343358400e5a4c2ef60417fd999bff44b179e4a7151008f38dfb4a87c654a4f95d586ffb8ca09ee20ba861660d02c374b1c2584414993a896d071d172b85a30ff842310a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "completeness_certificate": {
+          "log_id": "log:strict-vectors",
+          "range_root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "first_seq": 1,
+          "last_seq": 3,
+          "body_digests": [
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 3,
+            "size": 4,
+            "from_index": 0,
+            "to_index": 2,
+            "witness": []
+          },
+          "memberships": {
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 0,
+                "witness": [
+                  "452261e51ed21e168b50017f63fb54eade0a015c1107907e8d889c29e43234ab"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 2,
+                "leaf_index": 1
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 1,
+                "witness": [
+                  "34c54457de8fc39a3efe3ab934fc2083cfc0ae5d91bedf7eedc74fe129747aa8"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 3,
+                "leaf_index": 2
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 2,
+                "witness": [],
+                "peaks_left": [
+                  "52a72f5cc8ce32df8a3beec236025e76335058b161b83c0d57ea95a6d14fdd79"
+                ],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "log_id": "log:strict-vectors",
+          "mmr_size": 4,
+          "root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "prev_size": 0,
+          "prev_root": "",
+          "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
+          "timestamp": "2026-10-15T00:00:00Z",
+          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBSpy9cyM4y34o77sI2Al52M1BYsWG4PA1X6pWm0U_deVggBtsv9O3paWfs1BdgBGCLqHaGXaqUCAgpmEk8HIvdzsVvcHJldl9jb21taXRtZW50QFhAhM1Pt3skfb24CR2ffWnnc5ZKXTaOlXqtEdg6oR5h1Dj8UAECnbiSR-x3A9GRyiVMlbi88LPpBPE3YdSdi9HbDQ",
+          "witnesses": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "entry_hash": "f61612292ad19dc4387cddff06fba0e18055a5ac5fddbc144d08d53859d17be7",
+              "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF9o6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQMP8jxQ1YIso6MG+fyccpyzvP7Poru0YiEqqW4/i1BaQXjfW8x5YaNhO1f0GQ4ooPDxII9iubcIuEfMei6FEIwc=",
+              "leaf_index": 0,
+              "tree_size": 1
+            }
+          ]
+        }
+      },
+      "expect": {
+        "verdict": "VALID",
+        "claims": [
+          {
+            "name": "records",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "signatures",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "graph_closure",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "checkpoint",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "interval_coverage",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "per_record_membership",
+            "status": "pass",
+            "findings": []
+          }
+        ],
+        "witnesses": {
+          "status": "pass",
+          "findings": [],
+          "receipts": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "binding": "cll",
+              "status": "pass",
+              "grade": "mmr-verified",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": 1792022490,
+              "registration_time_reason": null
+            }
+          ]
+        },
+        "records": [
+          {
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 1
+          },
+          {
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 2
+          },
+          {
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 3
+          }
+        ],
+        "checkpoint_authenticated": true,
+        "signer_matches_checkpoint": false
+      }
+    },
+    {
+      "id": "pos-witness-registration-time-no-directory",
+      "description": "A receipt with a signed iat and no directory: it is not checked, so it has no registration time.",
+      "options": {
+        "require_signature": false,
+        "witness_directory": false
+      },
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba2553358408975302ac4f1f0f9f5fa5ca00a05f0e1a244d00c1a573dea0edff3249693b2008b54e85db827381fb0a8e7af175a97ee25203905a9c078630c14067b97209809",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-2",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e58402f137221d6fba48705712c816e25b44e7eda7faa2b1b3d7bfcb946cfb13c54873246c420fad72436151e2e91af10160fdeda3f7c41ec27fed64735610dacbd0a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-3",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a058203c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e343358400e5a4c2ef60417fd999bff44b179e4a7151008f38dfb4a87c654a4f95d586ffb8ca09ee20ba861660d02c374b1c2584414993a896d071d172b85a30ff842310a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "completeness_certificate": {
+          "log_id": "log:strict-vectors",
+          "range_root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "first_seq": 1,
+          "last_seq": 3,
+          "body_digests": [
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 3,
+            "size": 4,
+            "from_index": 0,
+            "to_index": 2,
+            "witness": []
+          },
+          "memberships": {
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 0,
+                "witness": [
+                  "452261e51ed21e168b50017f63fb54eade0a015c1107907e8d889c29e43234ab"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 2,
+                "leaf_index": 1
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 1,
+                "witness": [
+                  "34c54457de8fc39a3efe3ab934fc2083cfc0ae5d91bedf7eedc74fe129747aa8"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 3,
+                "leaf_index": 2
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 2,
+                "witness": [],
+                "peaks_left": [
+                  "52a72f5cc8ce32df8a3beec236025e76335058b161b83c0d57ea95a6d14fdd79"
+                ],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "log_id": "log:strict-vectors",
+          "mmr_size": 4,
+          "root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "prev_size": 0,
+          "prev_root": "",
+          "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
+          "timestamp": "2026-10-15T00:00:00Z",
+          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBSpy9cyM4y34o77sI2Al52M1BYsWG4PA1X6pWm0U_deVggBtsv9O3paWfs1BdgBGCLqHaGXaqUCAgpmEk8HIvdzsVvcHJldl9jb21taXRtZW50QFhAhM1Pt3skfb24CR2ffWnnc5ZKXTaOlXqtEdg6oR5h1Dj8UAECnbiSR-x3A9GRyiVMlbi88LPpBPE3YdSdi9HbDQ",
+          "witnesses": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "entry_hash": "f61612292ad19dc4387cddff06fba0e18055a5ac5fddbc144d08d53859d17be7",
+              "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF4A6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQEjdsuqi4PyYOaq9ymZT8qOOPrYmhJEJFLMHPlAc5lkfUqBr/h0+uIkcY1MhYTBcrVE3Arv3OfT9USeYmHdVmwA=",
+              "leaf_index": 0,
+              "tree_size": 1
+            }
+          ]
+        }
+      },
+      "expect": {
+        "verdict": "VALID",
+        "claims": [
+          {
+            "name": "records",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "signatures",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "graph_closure",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "checkpoint",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "interval_coverage",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "per_record_membership",
+            "status": "pass",
+            "findings": []
+          }
+        ],
+        "witnesses": {
+          "status": "withheld",
+          "findings": [
+            "witness_unverified:https://cll-witness.example"
+          ],
+          "receipts": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "binding": "cll",
+              "status": "withheld",
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
+            }
+          ]
+        },
+        "records": [
+          {
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 1
+          },
+          {
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 2
+          },
+          {
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 3
+          }
+        ],
+        "checkpoint_authenticated": true,
+        "signer_matches_checkpoint": false
+      }
+    },
+    {
+      "id": "neg-witness-registration-time-wrong-key",
+      "description": "A receipt with an iat, signed by a key the row does not list: it fails, so it has no registration time.",
+      "options": {
+        "require_signature": false,
+        "witness_directory": true
+      },
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba2553358408975302ac4f1f0f9f5fa5ca00a05f0e1a244d00c1a573dea0edff3249693b2008b54e85db827381fb0a8e7af175a97ee25203905a9c078630c14067b97209809",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-2",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e58402f137221d6fba48705712c816e25b44e7eda7faa2b1b3d7bfcb946cfb13c54873246c420fad72436151e2e91af10160fdeda3f7c41ec27fed64735610dacbd0a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-3",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a058203c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e343358400e5a4c2ef60417fd999bff44b179e4a7151008f38dfb4a87c654a4f95d586ffb8ca09ee20ba861660d02c374b1c2584414993a896d071d172b85a30ff842310a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "completeness_certificate": {
+          "log_id": "log:strict-vectors",
+          "range_root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "first_seq": 1,
+          "last_seq": 3,
+          "body_digests": [
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 3,
+            "size": 4,
+            "from_index": 0,
+            "to_index": 2,
+            "witness": []
+          },
+          "memberships": {
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 0,
+                "witness": [
+                  "452261e51ed21e168b50017f63fb54eade0a015c1107907e8d889c29e43234ab"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 2,
+                "leaf_index": 1
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 1,
+                "witness": [
+                  "34c54457de8fc39a3efe3ab934fc2083cfc0ae5d91bedf7eedc74fe129747aa8"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 3,
+                "leaf_index": 2
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 2,
+                "witness": [],
+                "peaks_left": [
+                  "52a72f5cc8ce32df8a3beec236025e76335058b161b83c0d57ea95a6d14fdd79"
+                ],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "log_id": "log:strict-vectors",
+          "mmr_size": 4,
+          "root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "prev_size": 0,
+          "prev_root": "",
+          "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
+          "timestamp": "2026-10-15T00:00:00Z",
+          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBSpy9cyM4y34o77sI2Al52M1BYsWG4PA1X6pWm0U_deVggBtsv9O3paWfs1BdgBGCLqHaGXaqUCAgpmEk8HIvdzsVvcHJldl9jb21taXRtZW50QFhAhM1Pt3skfb24CR2ffWnnc5ZKXTaOlXqtEdg6oR5h1Dj8UAECnbiSR-x3A9GRyiVMlbi88LPpBPE3YdSdi9HbDQ",
+          "witnesses": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "entry_hash": "f61612292ad19dc4387cddff06fba0e18055a5ac5fddbc144d08d53859d17be7",
+              "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF4A6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQGXnOPtdY+NWjv7ezBFcZM4TKI+n4v4x5qyIbsoowenmtG1bJtkTcJ2iyfSOmXf1oCOdxtOd0X2kFt8/Qx4wbw4=",
+              "leaf_index": 0,
+              "tree_size": 1
+            }
+          ]
+        }
+      },
+      "expect": {
+        "verdict": "INVALID",
+        "claims": [
+          {
+            "name": "records",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "signatures",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "graph_closure",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "checkpoint",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "interval_coverage",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "per_record_membership",
+            "status": "pass",
+            "findings": []
+          }
+        ],
+        "witnesses": {
+          "status": "fail",
+          "findings": [
+            "witness_receipt_invalid:https://cll-witness.example"
+          ],
+          "receipts": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "binding": "cll",
+              "status": "fail",
+              "grade": null,
+              "key_id": null,
+              "registration_time": null,
+              "registration_time_reason": "receipt_not_passed"
+            }
+          ]
+        },
+        "records": [
+          {
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 1
+          },
+          {
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 2
+          },
+          {
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 3
+          }
+        ],
+        "checkpoint_authenticated": true,
+        "signer_matches_checkpoint": false
+      }
+    },
+    {
+      "id": "pos-witness-registration-time-unprotected",
+      "description": "A receipt with no protected iat whose unprotected header carries one: no signature covers it, so the receipt has no registration time.",
+      "options": {
+        "require_signature": false,
+        "witness_directory": true
+      },
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba2553358408975302ac4f1f0f9f5fa5ca00a05f0e1a244d00c1a573dea0edff3249693b2008b54e85db827381fb0a8e7af175a97ee25203905a9c078630c14067b97209809",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-2",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e58402f137221d6fba48705712c816e25b44e7eda7faa2b1b3d7bfcb946cfb13c54873246c420fad72436151e2e91af10160fdeda3f7c41ec27fed64735610dacbd0a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-3",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a058203c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e343358400e5a4c2ef60417fd999bff44b179e4a7151008f38dfb4a87c654a4f95d586ffb8ca09ee20ba861660d02c374b1c2584414993a896d071d172b85a30ff842310a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "completeness_certificate": {
+          "log_id": "log:strict-vectors",
+          "range_root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "first_seq": 1,
+          "last_seq": 3,
+          "body_digests": [
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 3,
+            "size": 4,
+            "from_index": 0,
+            "to_index": 2,
+            "witness": []
+          },
+          "memberships": {
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 0,
+                "witness": [
+                  "452261e51ed21e168b50017f63fb54eade0a015c1107907e8d889c29e43234ab"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 2,
+                "leaf_index": 1
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 1,
+                "witness": [
+                  "34c54457de8fc39a3efe3ab934fc2083cfc0ae5d91bedf7eedc74fe129747aa8"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 3,
+                "leaf_index": 2
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 2,
+                "witness": [],
+                "peaks_left": [
+                  "52a72f5cc8ce32df8a3beec236025e76335058b161b83c0d57ea95a6d14fdd79"
+                ],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "log_id": "log:strict-vectors",
+          "mmr_size": 4,
+          "root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "prev_size": 0,
+          "prev_root": "",
+          "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
+          "timestamp": "2026-10-15T00:00:00Z",
+          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBSpy9cyM4y34o77sI2Al52M1BYsWG4PA1X6pWm0U_deVggBtsv9O3paWfs1BdgBGCLqHaGXaqUCAgpmEk8HIvdzsVvcHJldl9jb21taXRtZW50QFhAhM1Pt3skfb24CR2ffWnnc5ZKXTaOlXqtEdg6oR5h1Dj8UAECnbiSR-x3A9GRyiVMlbi88LPpBPE3YdSdi9HbDQ",
+          "witnesses": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "entry_hash": "f61612292ad19dc4387cddff06fba0e18055a5ac5fddbc144d08d53859d17be7",
+              "receipt_b64": "0oRYGaMZAYsBOgABAABsbW1yLXZlcmlmaWVkASeiD6EGGmrQF4AZAYyhIIFEgwEAgPZYQGQJUjA2OgsmEb11yyoDK/wDZ+g7Tijw+evLT8QhxyaOS7wq54XDRVj+J4Cq962+V7ke60wdwmRVECC/C0v45QY=",
+              "leaf_index": 0,
+              "tree_size": 1
+            }
+          ]
+        }
+      },
+      "expect": {
+        "verdict": "VALID",
+        "claims": [
+          {
+            "name": "records",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "signatures",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "graph_closure",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "checkpoint",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "interval_coverage",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "per_record_membership",
+            "status": "pass",
+            "findings": []
+          }
+        ],
+        "witnesses": {
+          "status": "pass",
+          "findings": [],
+          "receipts": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "binding": "cll",
+              "status": "pass",
+              "grade": "mmr-verified",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": null,
+              "registration_time_reason": "iat_absent"
+            }
+          ]
+        },
+        "records": [
+          {
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 1
+          },
+          {
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 2
+          },
+          {
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 3
+          }
+        ],
+        "checkpoint_authenticated": true,
+        "signer_matches_checkpoint": false
+      }
+    },
+    {
+      "id": "pos-witness-registration-time-invalid",
+      "description": "A receipt whose signed iat is a float: the receipt verifies, and its iat is no registration time.",
+      "options": {
+        "require_signature": false,
+        "witness_directory": true
+      },
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba2553358408975302ac4f1f0f9f5fa5ca00a05f0e1a244d00c1a573dea0edff3249693b2008b54e85db827381fb0a8e7af175a97ee25203905a9c078630c14067b97209809",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-2",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e58402f137221d6fba48705712c816e25b44e7eda7faa2b1b3d7bfcb946cfb13c54873246c420fad72436151e2e91af10160fdeda3f7c41ec27fed64735610dacbd0a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-3",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a058203c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e343358400e5a4c2ef60417fd999bff44b179e4a7151008f38dfb4a87c654a4f95d586ffb8ca09ee20ba861660d02c374b1c2584414993a896d071d172b85a30ff842310a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "completeness_certificate": {
+          "log_id": "log:strict-vectors",
+          "range_root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "first_seq": 1,
+          "last_seq": 3,
+          "body_digests": [
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 3,
+            "size": 4,
+            "from_index": 0,
+            "to_index": 2,
+            "witness": []
+          },
+          "memberships": {
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 0,
+                "witness": [
+                  "452261e51ed21e168b50017f63fb54eade0a015c1107907e8d889c29e43234ab"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 2,
+                "leaf_index": 1
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 1,
+                "witness": [
+                  "34c54457de8fc39a3efe3ab934fc2083cfc0ae5d91bedf7eedc74fe129747aa8"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 3,
+                "leaf_index": 2
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 2,
+                "witness": [],
+                "peaks_left": [
+                  "52a72f5cc8ce32df8a3beec236025e76335058b161b83c0d57ea95a6d14fdd79"
+                ],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "log_id": "log:strict-vectors",
+          "mmr_size": 4,
+          "root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "prev_size": 0,
+          "prev_root": "",
+          "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
+          "timestamp": "2026-10-15T00:00:00Z",
+          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBSpy9cyM4y34o77sI2Al52M1BYsWG4PA1X6pWm0U_deVggBtsv9O3paWfs1BdgBGCLqHaGXaqUCAgpmEk8HIvdzsVvcHJldl9jb21taXRtZW50QFhAhM1Pt3skfb24CR2ffWnnc5ZKXTaOlXqtEdg6oR5h1Dj8UAECnbiSR-x3A9GRyiVMlbi88LPpBPE3YdSdi9HbDQ",
+          "witnesses": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "entry_hash": "f61612292ad19dc4387cddff06fba0e18055a5ac5fddbc144d08d53859d17be7",
+              "receipt_b64": "0oRYJaQBJw+hBvtB2rQF4CAAABkBiwE6AAEAAGxtbXItdmVyaWZpZWShGQGMoSCBRIMBAID2WEDySp4HLuquR+sGQmIcnk3273ttqZ0WrcFj+RrRBkEPneBwzHxuSvC7OJYD/K4YXoxSOt+5GzBN2Rks12Qs6DsJ",
+              "leaf_index": 0,
+              "tree_size": 1
+            }
+          ]
+        }
+      },
+      "expect": {
+        "verdict": "VALID",
+        "claims": [
+          {
+            "name": "records",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "signatures",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "graph_closure",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "checkpoint",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "interval_coverage",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "per_record_membership",
+            "status": "pass",
+            "findings": []
+          }
+        ],
+        "witnesses": {
+          "status": "pass",
+          "findings": [],
+          "receipts": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "binding": "cll",
+              "status": "pass",
+              "grade": "mmr-verified",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": null,
+              "registration_time_reason": "iat_invalid"
+            }
+          ]
+        },
+        "records": [
+          {
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 1
+          },
+          {
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 2
+          },
+          {
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 3
+          }
+        ],
+        "checkpoint_authenticated": true,
+        "signer_matches_checkpoint": false
+      }
+    },
+    {
+      "id": "pos-witness-registration-time-claims-not-a-map",
+      "description": "A receipt whose protected CWT claims (label 15) are an integer, not a map: no registration time.",
+      "options": {
+        "require_signature": false,
+        "witness_directory": true
+      },
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba2553358408975302ac4f1f0f9f5fa5ca00a05f0e1a244d00c1a573dea0edff3249693b2008b54e85db827381fb0a8e7af175a97ee25203905a9c078630c14067b97209809",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-2",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e58402f137221d6fba48705712c816e25b44e7eda7faa2b1b3d7bfcb946cfb13c54873246c420fad72436151e2e91af10160fdeda3f7c41ec27fed64735610dacbd0a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-3",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a058203c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e343358400e5a4c2ef60417fd999bff44b179e4a7151008f38dfb4a87c654a4f95d586ffb8ca09ee20ba861660d02c374b1c2584414993a896d071d172b85a30ff842310a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "completeness_certificate": {
+          "log_id": "log:strict-vectors",
+          "range_root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "first_seq": 1,
+          "last_seq": 3,
+          "body_digests": [
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 3,
+            "size": 4,
+            "from_index": 0,
+            "to_index": 2,
+            "witness": []
+          },
+          "memberships": {
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 0,
+                "witness": [
+                  "452261e51ed21e168b50017f63fb54eade0a015c1107907e8d889c29e43234ab"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 2,
+                "leaf_index": 1
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 1,
+                "witness": [
+                  "34c54457de8fc39a3efe3ab934fc2083cfc0ae5d91bedf7eedc74fe129747aa8"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 3,
+                "leaf_index": 2
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 2,
+                "witness": [],
+                "peaks_left": [
+                  "52a72f5cc8ce32df8a3beec236025e76335058b161b83c0d57ea95a6d14fdd79"
+                ],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "log_id": "log:strict-vectors",
+          "mmr_size": 4,
+          "root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "prev_size": 0,
+          "prev_root": "",
+          "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
+          "timestamp": "2026-10-15T00:00:00Z",
+          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBSpy9cyM4y34o77sI2Al52M1BYsWG4PA1X6pWm0U_deVggBtsv9O3paWfs1BdgBGCLqHaGXaqUCAgpmEk8HIvdzsVvcHJldl9jb21taXRtZW50QFhAhM1Pt3skfb24CR2ffWnnc5ZKXTaOlXqtEdg6oR5h1Dj8UAECnbiSR-x3A9GRyiVMlbi88LPpBPE3YdSdi9HbDQ",
+          "witnesses": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "entry_hash": "f61612292ad19dc4387cddff06fba0e18055a5ac5fddbc144d08d53859d17be7",
+              "receipt_b64": "0oRYG6QBJw8HGQGLAToAAQAAbG1tci12ZXJpZmllZKEZAYyhIIFEgwEAgPZYQPOpZX+AdM2nWTgxbySpGSpMf+oCnva0jWx2a4ajQu84dSxiaj8WKvMRA8piMMZVuaW2MKsnfcqkGe8j9KO4RQE=",
+              "leaf_index": 0,
+              "tree_size": 1
+            }
+          ]
+        }
+      },
+      "expect": {
+        "verdict": "VALID",
+        "claims": [
+          {
+            "name": "records",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "signatures",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "graph_closure",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "checkpoint",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "interval_coverage",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "per_record_membership",
+            "status": "pass",
+            "findings": []
+          }
+        ],
+        "witnesses": {
+          "status": "pass",
+          "findings": [],
+          "receipts": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "binding": "cll",
+              "status": "pass",
+              "grade": "mmr-verified",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": null,
+              "registration_time_reason": "iat_invalid"
+            }
+          ]
+        },
+        "records": [
+          {
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 1
+          },
+          {
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 2
+          },
+          {
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 3
+          }
+        ],
+        "checkpoint_authenticated": true,
+        "signer_matches_checkpoint": false
+      }
+    },
+    {
+      "id": "pos-witness-registration-time-out-of-range",
+      "description": "A receipt whose signed iat is 2^53, past the largest integer every language reads exactly.",
+      "options": {
+        "require_signature": false,
+        "witness_directory": true
+      },
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba2553358408975302ac4f1f0f9f5fa5ca00a05f0e1a244d00c1a573dea0edff3249693b2008b54e85db827381fb0a8e7af175a97ee25203905a9c078630c14067b97209809",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-2",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e58402f137221d6fba48705712c816e25b44e7eda7faa2b1b3d7bfcb946cfb13c54873246c420fad72436151e2e91af10160fdeda3f7c41ec27fed64735610dacbd0a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-3",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a058203c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e343358400e5a4c2ef60417fd999bff44b179e4a7151008f38dfb4a87c654a4f95d586ffb8ca09ee20ba861660d02c374b1c2584414993a896d071d172b85a30ff842310a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "completeness_certificate": {
+          "log_id": "log:strict-vectors",
+          "range_root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "first_seq": 1,
+          "last_seq": 3,
+          "body_digests": [
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 3,
+            "size": 4,
+            "from_index": 0,
+            "to_index": 2,
+            "witness": []
+          },
+          "memberships": {
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 0,
+                "witness": [
+                  "452261e51ed21e168b50017f63fb54eade0a015c1107907e8d889c29e43234ab"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 2,
+                "leaf_index": 1
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 1,
+                "witness": [
+                  "34c54457de8fc39a3efe3ab934fc2083cfc0ae5d91bedf7eedc74fe129747aa8"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 3,
+                "leaf_index": 2
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 2,
+                "witness": [],
+                "peaks_left": [
+                  "52a72f5cc8ce32df8a3beec236025e76335058b161b83c0d57ea95a6d14fdd79"
+                ],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "log_id": "log:strict-vectors",
+          "mmr_size": 4,
+          "root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "prev_size": 0,
+          "prev_root": "",
+          "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
+          "timestamp": "2026-10-15T00:00:00Z",
+          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBSpy9cyM4y34o77sI2Al52M1BYsWG4PA1X6pWm0U_deVggBtsv9O3paWfs1BdgBGCLqHaGXaqUCAgpmEk8HIvdzsVvcHJldl9jb21taXRtZW50QFhAhM1Pt3skfb24CR2ffWnnc5ZKXTaOlXqtEdg6oR5h1Dj8UAECnbiSR-x3A9GRyiVMlbi88LPpBPE3YdSdi9HbDQ",
+          "witnesses": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "entry_hash": "f61612292ad19dc4387cddff06fba0e18055a5ac5fddbc144d08d53859d17be7",
+              "receipt_b64": "0oRYJaQBJw+hBhsAIAAAAAAAABkBiwE6AAEAAGxtbXItdmVyaWZpZWShGQGMoSCBRIMBAID2WEBlvI2C3T4AmQpbQ+XefPnmdlPhjaMTD/CRvYYEnvRjJvjIT1z3pEud8ZacN0Br8YwE5BIqVDSKQa035gFqtrAD",
+              "leaf_index": 0,
+              "tree_size": 1
+            }
+          ]
+        }
+      },
+      "expect": {
+        "verdict": "VALID",
+        "claims": [
+          {
+            "name": "records",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "signatures",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "graph_closure",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "checkpoint",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "interval_coverage",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "per_record_membership",
+            "status": "pass",
+            "findings": []
+          }
+        ],
+        "witnesses": {
+          "status": "pass",
+          "findings": [],
+          "receipts": [
+            {
+              "ts_url": "https://cll-witness.example",
+              "binding": "cll",
+              "status": "pass",
+              "grade": "mmr-verified",
+              "key_id": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+              "registration_time": null,
+              "registration_time_reason": "iat_invalid"
+            }
+          ]
+        },
+        "records": [
+          {
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 1
+          },
+          {
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 2
+          },
+          {
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 3
+          }
+        ],
+        "checkpoint_authenticated": true,
+        "signer_matches_checkpoint": false
+      }
+    },
+    {
+      "id": "pos-witness-scrapi-registration-time",
+      "description": "A SCRAPI receipt with a signed iat.",
+      "options": {
+        "require_signature": false,
+        "witness_directory": true
+      },
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba2553358408975302ac4f1f0f9f5fa5ca00a05f0e1a244d00c1a573dea0edff3249693b2008b54e85db827381fb0a8e7af175a97ee25203905a9c078630c14067b97209809",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-2",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e58402f137221d6fba48705712c816e25b44e7eda7faa2b1b3d7bfcb946cfb13c54873246c420fad72436151e2e91af10160fdeda3f7c41ec27fed64735610dacbd0a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "strict-3",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a058203c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e343358400e5a4c2ef60417fd999bff44b179e4a7151008f38dfb4a87c654a4f95d586ffb8ca09ee20ba861660d02c374b1c2584414993a896d071d172b85a30ff842310a",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "completeness_certificate": {
+          "log_id": "log:strict-vectors",
+          "range_root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "first_seq": 1,
+          "last_seq": 3,
+          "body_digests": [
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533",
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e",
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 3,
+            "size": 4,
+            "from_index": 0,
+            "to_index": 2,
+            "witness": []
+          },
+          "memberships": {
+            "355efa38db834dbabdd2edf285ca7d796cfe36ddee397bfdc79d58c8fba25533": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 0,
+                "witness": [
+                  "452261e51ed21e168b50017f63fb54eade0a015c1107907e8d889c29e43234ab"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "b75154fa14467b4d3b2e354bac38d4610312b8569bb7c6de6b58368cc974997e": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 2,
+                "leaf_index": 1
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 1,
+                "witness": [
+                  "34c54457de8fc39a3efe3ab934fc2083cfc0ae5d91bedf7eedc74fe129747aa8"
+                ],
+                "peaks_left": [],
+                "peaks_right": [
+                  "06db2ff4ede96967ecd4176004608ba876865daa9408082998493c1c8bddcec5"
+                ]
+              }
+            },
+            "3c3fa26febcfa09aac98a9d92c08ea7652cc0bebe8306bd5599a4d62686e3433": {
+              "log_coordinates": {
+                "log_id": "log:strict-vectors",
+                "seq": 3,
+                "leaf_index": 2
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 4,
+                "leaf_index": 2,
+                "witness": [],
+                "peaks_left": [
+                  "52a72f5cc8ce32df8a3beec236025e76335058b161b83c0d57ea95a6d14fdd79"
+                ],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "log_id": "log:strict-vectors",
+          "mmr_size": 4,
+          "root": "fbeaa9c465d418241a4c7c7dfd13b8c73040eb39c16761b10b488cc4858ca8a9",
+          "prev_size": 0,
+          "prev_root": "",
+          "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
+          "timestamp": "2026-10-15T00:00:00Z",
+          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBSpy9cyM4y34o77sI2Al52M1BYsWG4PA1X6pWm0U_deVggBtsv9O3paWfs1BdgBGCLqHaGXaqUCAgpmEk8HIvdzsVvcHJldl9jb21taXRtZW50QFhAhM1Pt3skfb24CR2ffWnnc5ZKXTaOlXqtEdg6oR5h1Dj8UAECnbiSR-x3A9GRyiVMlbi88LPpBPE3YdSdi9HbDQ",
+          "witnesses": [
+            {
+              "ts_url": "scrapi+https://scitt.example",
+              "entry_hash": "7fbf91079905a9a787e5c45b78a0cb5fc2380df55bde74443605776a664500f0",
+              "receipt_b64": "0oRPoxkBiwEPoQYaatAXhQEnoRkBjKEggUSDAQCA9lhAasahyvQ2fl/OejCtWXoTVvQyfgphp43+/9H03jAd/43R48ahkWGIUGp37dKylflM2/YRXaaJ89uZQtYyrfqKDw==",
+              "leaf_index": 0,
+              "tree_size": 1
+            }
+          ]
+        }
+      },
+      "expect": {
+        "verdict": "VALID",
+        "claims": [
+          {
+            "name": "records",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "signatures",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "graph_closure",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "checkpoint",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "interval_coverage",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "per_record_membership",
+            "status": "pass",
+            "findings": []
+          }
+        ],
+        "witnesses": {
+          "status": "pass",
+          "findings": [],
+          "receipts": [
+            {
+              "ts_url": "scrapi+https://scitt.example",
+              "binding": "scrapi",
+              "status": "pass",
+              "grade": "observed-only",
+              "key_id": "5e212c0980e4b39fc09721134aa02109374edfd260c0d3d03cb501c8d65457a9",
+              "registration_time": 1792022405,
+              "registration_time_reason": null
             }
           ]
         },

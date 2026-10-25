@@ -160,8 +160,9 @@ checkpoint's `key_id`. It is reported and never gates. Otherwise it is
   finding, `witness_receipt_malformed:<index>`, is listed before every other
   finding.
 
-Each other entry gets one result `{ts_url, binding, status, grade}`, worked
-out in this order:
+Each other entry gets one result `{ts_url, binding, status, grade, key_id,
+registration_time, registration_time_reason}`, its status worked out in this
+order:
 
 1. A receipt with `is_stub` set to JSON `true` is `withheld`. Any other
    `is_stub` value (`1`, `"true"`) does not make it a stub
@@ -188,6 +189,9 @@ out in this order:
 
 A verifier that cannot run a receipt check at all (for example, no COSE
 library) reports the receipt `withheld`, never `fail`.
+
+`key_id` is the row's `key_ids` entry the receipt passed under, and `null`
+for a receipt that did not pass.
 
 A `withheld` receipt adds `witness_unverified:<ts_url>`; a `fail` adds
 `witness_receipt_invalid:<ts_url>`. Overall, `witnesses` fails when an entry
@@ -273,6 +277,26 @@ row has no key and is unusable (`pos-witness-rekor-row-rsa-key`,
 whose `key_ids` or `public_keys` is not a list, or with a key id that is not 64
 lowercase hex characters, is unusable (`withheld`).
 
+**Registration time.** `registration_time` is the time the witness signed
+into a receipt that passed: the `iat` claim (6, RFC 8392) of the CWT claims
+map (header label 15, RFC 9597) in the protected header of its COSE Receipt,
+in seconds since the epoch. It is read only from the protected header, which the verified
+signature covers. It is never taken from the unprotected header
+(`pos-witness-registration-time-unprotected`), from the checkpoint's own
+`timestamp` (`pos-witness-registration-time-not-checkpoint-time`), or from
+any other value. When it is `null`, `registration_time_reason` names why, as
+one of:
+
+| reason | the receipt |
+|---|---|
+| `receipt_not_passed` | is `withheld` or `fail` (`pos-witness-registration-time-no-directory`, `neg-witness-registration-time-wrong-key`) |
+| `iat_absent` | passed, and its protected header has no CWT claims map, or one without `iat`: the wire shape before witnesses signed a time (`pos-witness-cll`) |
+| `iat_invalid` | passed, and its protected CWT claims are not a map, or its `iat` is not an integer from 0 to 2^53 - 1 (a float, text, a negative number or 2^53 and above; `pos-witness-registration-time-invalid`, `pos-witness-registration-time-claims-not-a-map`, `pos-witness-registration-time-out-of-range`) |
+| `binding_without_iat` | passed under the `rekor` binding, whose receipt is a Rekor entry, not a COSE Receipt (`pos-witness-rekor`) |
+
+When `registration_time` is set, `registration_time_reason` is `null`. An
+`iat` that is absent or invalid never changes the receipt's `status`.
+
 The `reason` text a verifier reports for a receipt is not part of these
 vectors.
 
@@ -353,6 +377,15 @@ checkpoint is signed by another, the log key.
 | `neg-witness-rekor-string-integer` | `integratedTime` is the signed value as a JSON string | INVALID |
 | `pos-witness-rekor-row-without-key` | a `rekor` row with a log ID and no public key | VALID, witnesses withheld |
 | `pos-witness-three-bindings` | one receipt of each binding | VALID |
+| `pos-witness-registration-time` | a `cll` receipt with a protected `iat` equal to the checkpoint's timestamp | VALID, `registration_time` is the `iat` |
+| `pos-witness-registration-time-not-checkpoint-time` | a protected `iat` 90 seconds after the checkpoint's timestamp | VALID, `registration_time` is the `iat` |
+| `pos-witness-registration-time-no-directory` | a receipt with an `iat` and no directory | VALID, witnesses withheld, `receipt_not_passed` |
+| `neg-witness-registration-time-wrong-key` | a receipt with an `iat`, signed by a key the row does not list | INVALID, `receipt_not_passed` |
+| `pos-witness-registration-time-unprotected` | no protected `iat`; the unprotected header carries one | VALID, `iat_absent` |
+| `pos-witness-registration-time-invalid` | a protected `iat` that is a float | VALID, `iat_invalid` |
+| `pos-witness-registration-time-claims-not-a-map` | protected CWT claims that are an integer | VALID, `iat_invalid` |
+| `pos-witness-registration-time-out-of-range` | a protected `iat` of 2^53 | VALID, `iat_invalid` |
+| `pos-witness-scrapi-registration-time` | a `scrapi` receipt with a protected `iat` | VALID, `registration_time` is the `iat` |
 | `incomplete-witness-on-unsigned-checkpoint` | a receipt on a checkpoint with no `cose` | INCOMPLETE, witnesses withheld |
 
 ## Record signatures (`record_signatures`)
@@ -380,7 +413,8 @@ directory). Then compare:
 - `kind_ok` (expected `true` unless stated);
 - `claims` (`name`, `status`, `findings`, in order);
 - `witnesses` (`status`, `findings`, and `receipts` with `ts_url`, `binding`,
-  `status` and `grade`);
+  `status`, `grade`, `key_id`, `registration_time` and
+  `registration_time_reason`);
 - `records` (`capsule_id`, `identity_ok`, `signature`, `key_id`, `seq`);
 - `checkpoint_authenticated` (the `checkpoint` claim passed);
 - `signer_matches_checkpoint`.

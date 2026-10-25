@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Breaking**, strict witness receipts: `WitnessReceiptResult` gains `key_id`,
+  `registration_time` and `registration_time_reason`, and `ReceiptCheck`
+  gains `registration_time` and `registration_time_reason`, so a struct
+  literal must add them. A passing receipt names the directory key id it
+  verified under and the protected CWT `iat` its witness signed, or a
+  `REASON_` constant saying why it has none, as the strict vectors pin (#392).
 - Strict Bundle verification (feature `strict`): `verify_bundle_strict`'s
   `checkpoint` claim also holds the completeness certificate's `log_id`, when
   stated (a `null` counts as stated), to the signed log identifier, and

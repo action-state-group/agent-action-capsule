@@ -15,7 +15,8 @@ import {
 const COSE_SIGN1_TAG = 18n;
 const HDR_ALG = 1n;
 const HDR_CRIT = 2n;
-const HDR_CWT_CLAIMS = 15n;
+/** Protected label of the CWT claims map (RFC 9597). */
+export const HDR_CWT_CLAIMS = 15n;
 const HDR_VDS = 395n;
 const HDR_VDP = 396n;
 const VDP_INCLUSION_PROOFS = -1n;

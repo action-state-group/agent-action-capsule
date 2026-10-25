@@ -30,6 +30,8 @@ fn observed(bundle: &Value, options: &StrictOptions) -> Value {
             "findings": w.findings,
             "receipts": result.witness_receipts.iter().map(|r| json!({
                 "ts_url": r.ts_url, "binding": r.binding, "status": r.status, "grade": r.grade,
+                "key_id": r.key_id, "registration_time": r.registration_time,
+                "registration_time_reason": r.registration_time_reason,
             })).collect::<Vec<_>>(),
         })
     });
@@ -54,7 +56,7 @@ fn every_strict_case_matches() {
     let vectors = vectors();
     let directory = &vectors["witness_directory"];
     let cases = vectors["cases"].as_array().expect("cases");
-    assert_eq!(cases.len(), 62);
+    assert_eq!(cases.len(), 71);
     let mut failures = Vec::new();
     for case in cases {
         let options = StrictOptions {
