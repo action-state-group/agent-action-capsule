@@ -410,6 +410,12 @@ export interface ResultCoverage {
   readonly notYetInForce?: number;
 }
 
+/** One requirement of one contract version, as a claim names it (spec section 3). */
+export interface ResultRequirementRef {
+  readonly contractRef: string;
+  readonly requirementRef: string;
+}
+
 export interface ResultBuckets {
   readonly met: readonly string[];
   readonly notMet: readonly string[];
@@ -552,6 +558,13 @@ export interface ResultRoot extends RecordTimes {
    */
   readonly coverage: ResultCoverage;
   readonly statedCoverage: ResultCoverage;
+  /**
+   * `aggregate.coverage.requirements_covered` (spec section 3): the
+   * requirements the run evaluated or excluded. A requirement outside it was
+   * not run. Absent when the Result does not say, and then every requirement
+   * of every cited contract counts as covered.
+   */
+  readonly requirementsCovered?: readonly ResultRequirementRef[];
   readonly buckets: ResultBuckets;
   /** Headline counts per bucket, from the claims' verdicts, never from `buckets`' lengths. */
   readonly bucketCounts: ResultBucketCounts;
@@ -806,7 +819,10 @@ function claimFindings(path: string, value: unknown): string[] {
  * if-then on the closed objects it mirrors -- claims, carriers, digest and
  * proof refs, `aggregate`, coverage and buckets; and the two cross-element
  * rules spec section 4 makes a verifier's duty: claim ids are unique, and
- * every bucket entry names a claim whose verdict is that bucket. Below the
+ * every bucket entry names a claim whose verdict is that bucket; and section
+ * 3's `requirements_covered` rules, when the member is present: each pair
+ * listed once, every claimed requirement listed, and the listed requirements
+ * no claim cites at most `excluded_not_applicable`. Below the
  * top level it is open-world on additional keys. `view` and the PROPOSED
  * `coverage_report` (spec section 7.1) are not checked, and
  * `generated_at` is checked as a string, not as a date-time. Empty findings
@@ -854,6 +870,21 @@ export function validateEvidenceResult(value: unknown): string[] {
   )
     findings.push(
       "aggregate.coverage.not_yet_in_force: not a non-negative integer",
+    );
+  if (
+    coverage !== undefined &&
+    Object.hasOwn(coverage, "requirements_covered") &&
+    (!Array.isArray(coverage.requirements_covered) ||
+      !coverage.requirements_covered.every(
+        (entry) =>
+          isObject(entry) &&
+          typeof entry.contract_ref === "string" &&
+          CONTRACT_REF.test(entry.contract_ref) &&
+          nonEmptyString(entry.requirement_ref),
+      ))
+  )
+    findings.push(
+      "aggregate.coverage.requirements_covered: not an array of (contract_ref, requirement_ref) pairs",
     );
   const buckets = isObject(aggregate?.buckets) ? aggregate.buckets : undefined;
   if (buckets === undefined) findings.push("aggregate.buckets: not an object");
@@ -913,6 +944,29 @@ export function validateEvidenceResult(value: unknown): string[] {
     for (const member of ["out_of_scope_allowed", "applies_from"])
       if (new Set(members.map((claim) => String(claim[member]))).size > 1)
         findings.push(`claims: the claims of ${key} disagree on ${member}`);
+  // Spec section 3: every claimed requirement is listed, each pair once, and
+  // the listed requirements no claim cites are no more than the exclusions.
+  if (Array.isArray(coverage!.requirements_covered)) {
+    const listed = new Set<string>();
+    for (const entry of coverage!.requirements_covered as ObjectValue[]) {
+      const key = JSON.stringify([entry.contract_ref, entry.requirement_ref]);
+      if (listed.has(key))
+        findings.push(
+          `aggregate.coverage.requirements_covered: ${key} is listed twice`,
+        );
+      listed.add(key);
+    }
+    for (const key of rows.keys())
+      if (!listed.has(key))
+        findings.push(
+          `aggregate.coverage.requirements_covered: a claim cites ${key}, which it does not list`,
+        );
+    const unclaimed = [...listed].filter((key) => !rows.has(key)).length;
+    if (unclaimed > (coverage!.excluded_not_applicable as number))
+      findings.push(
+        `aggregate.coverage.requirements_covered: ${unclaimed} listed requirement(s) no claim cites, but excluded_not_applicable is ${String(coverage!.excluded_not_applicable)}`,
+      );
+  }
   if (findings.length > 0) return findings;
   const later = laterClaimIds(value);
   // Spec section 4.3: not_yet_in_force is there exactly when a claim is
@@ -2000,6 +2054,16 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
         ? { notYetInForce: coverage.not_yet_in_force }
         : {}),
     },
+    ...(Array.isArray(coverage.requirements_covered)
+      ? {
+          requirementsCovered: (
+            coverage.requirements_covered as ObjectValue[]
+          ).map((entry) => ({
+            contractRef: entry.contract_ref as string,
+            requirementRef: entry.requirement_ref as string,
+          })),
+        }
+      : {}),
     bucketCounts: counts.bucketCounts,
     countMismatches: counts.mismatches,
     buckets: {

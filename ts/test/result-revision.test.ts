@@ -30,6 +30,7 @@ const POSITIVES = [
   "pos-example-org-applicability-in-force-result",
   "pos-example-org-reconcile-later-result",
   "pos-example-org-repeated-requirement-result",
+  "pos-example-org-requirements-covered-result",
 ];
 
 // Refused by the validator: the schema rules this mirror carries, and the
@@ -52,6 +53,9 @@ const REFUSED = [
   "neg-generated-at-impossible",
   "neg-generated-at-without-seconds",
   "neg-not-yet-in-force-without-later",
+  "neg-requirements-covered-duplicate",
+  "neg-requirements-covered-omits-claimed",
+  "neg-requirements-covered-unaccounted",
 ];
 
 // Valid documents whose stated counts the claims do not bear out: the

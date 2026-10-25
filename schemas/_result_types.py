@@ -122,8 +122,14 @@ class ClaimDoc(_ClaimTypedBodyDoc):
     presentation: PresentationDoc
 
 
+class RequirementRefDoc(TypedDict):
+    contract_ref: str
+    requirement_ref: str
+
+
 class _CoverageOptionalDoc(TypedDict, total=False):
     not_yet_in_force: int  # spec section 4.3: present exactly when a claim is later
+    requirements_covered: List[RequirementRefDoc]  # spec section 3: the requirements the run covered
 
 
 class CoverageDoc(_CoverageOptionalDoc):

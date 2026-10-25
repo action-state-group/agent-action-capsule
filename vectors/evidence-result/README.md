@@ -258,6 +258,18 @@ on, so no fixture here can show it. Its vector is `aggregate-stronger-than-evide
 Every checker negative validates against the schema and fails `revision_findings`, and its mutant
 (the rule switched off) accepts it.
 
+## Which requirements the run covered, `requirements_covered` (spec section 3)
+
+| File | What it shows |
+|---|---|
+| `pos-example-org-requirements-covered-result.json` | the claims positive listing `req-claim-1` to `req-claim-3`, which its claims cite, and `req-claim-4`, which no claim cites and its one exclusion (`excluded_not_applicable` 1) accounts for |
+| `neg-requirements-covered-duplicate.json` | `req-claim-4` listed twice. Mutant: the list's `uniqueItems` removed |
+| `neg-requirements-covered-omits-claimed.json` | checker: `claim-2`'s requirement left out of the list |
+| `neg-requirements-covered-unaccounted.json` | checker: `excluded_not_applicable` 0, so nothing accounts for `req-claim-4` |
+
+Both checker negatives validate against the schema and fail `revision_findings`, and the mutant
+`skip_covered` accepts them.
+
 ## Reproducing the validation run
 
 ```

@@ -26,6 +26,16 @@
       "type": "string",
       "pattern": "^[^@\\s]+@[^@\\s]+$"
     },
+    "RequirementRef": {
+      "description": "spec section 3: one requirement of one contract version, as a claim names it (contract_ref, requirement_ref).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_ref", "requirement_ref"],
+      "properties": {
+        "contract_ref": { "$ref": "#/$defs/ContractRef" },
+        "requirement_ref": { "type": "string", "minLength": 1 }
+      }
+    },
     "Tier": {
       "description": "spec/evidence-result-v0.md section 1 -- mirrored from evidence-plan-ir-v0.md section 4.2, not redefined here.",
       "enum": ["recomputed", "judged"]
@@ -287,6 +297,12 @@
           "description": "spec section 4.3: the later claims (applies_from after the UTC date of generated_at). REQUIRED exactly when a claim is later; a checker rule, since the schema cannot compare dates.",
           "type": "integer",
           "minimum": 0
+        },
+        "requirements_covered": {
+          "description": "spec section 3: the requirements the run evaluated or excluded as NOT_APPLICABLE, each pair once. A requirement outside the list was not run. Absent means every requirement of every contract the claims cite. That every claim's pair is listed, and that the listed pairs no claim cites number at most excluded_not_applicable, are checker rules.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/RequirementRef" }
         }
       }
     },

@@ -71,6 +71,8 @@ viewer does not resolve them and says so on the row.
 
 From the root Result, and only from there: the coverage line
 (`evaluated_population`, `excluded_not_applicable`, `unknown_count`), the
+requirements the run covered (`requirements_covered`, as
+`ResultRoot.requirementsCovered`, when the Result lists them), the
 buckets (the fourth only when the contract switches it on), and for every claim its `sufficiency`, `verdict`, `tier`,
 `grade`, `type`, presentation carrier and status, and its cited digests.
 

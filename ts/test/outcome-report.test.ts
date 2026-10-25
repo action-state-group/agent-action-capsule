@@ -161,6 +161,133 @@ it("a criterion with no claim at all reads as not_applicable, counts as passing,
   expect(model.notApplicableCount).toBeGreaterThanOrEqual(1);
 });
 
+it("a criterion with no claim that excluded_not_applicable does not account for is a gap: never passing, never not_applicable", async () => {
+  // Result v0 section 3: a missing claim reads as not_applicable only when
+  // the exclusions account for it. The same removal as the test above, with
+  // the exclusion count left as it was: nothing accounts for the gap.
+  const source = fixture("outcome-report-bundle.json");
+  const resultDoc = ((source.disclosures as Obj).result as Obj)
+    .agent_input as Obj;
+  const claims = resultDoc.claims as Obj[];
+  const target = claims.find(
+    (claim) => claim.verdict === "met" && (claim.id as string).includes("::"),
+  )!;
+  const [conversationId, requirementRef] = (target.id as string).split("::");
+  for (const claim of claims)
+    if ((claim.id as string).startsWith(`${conversationId}::`)) {
+      claim.verdict = "met";
+      claim.sufficiency = "SATISFIED";
+    }
+  resultDoc.claims = claims.filter((claim) => claim !== target);
+  (resultDoc.aggregate as Obj).buckets = rebuildBuckets(
+    resultDoc.claims as Obj[],
+  );
+  const coverage = (resultDoc.aggregate as Obj).coverage as Obj;
+  coverage.evaluated_population = (coverage.evaluated_population as number) - 1;
+
+  const { bundle } = await sealEvidenceBundle(source);
+  const result = await buildResultRoot(bundle);
+  const model = buildOutcomeReportModel(result, { percentages: false });
+  const conversation = model.conversations.find(
+    (c) => c.conversationId === conversationId,
+  )!;
+  const criterion = conversation.criteria.find(
+    (c) => `${c.checkId}.${c.criterionId}` === requirementRef,
+  )!;
+  expect(criterion.verdict).toBe("no_claim");
+  expect(criterion.claim).toBeUndefined();
+  // the other eight are met, and still the conversation does not resolve
+  expect(conversation.verdict).toBe("not_evaluable");
+  expect(conversation.checkVerdicts.get(requirementRef!.split(".")[0]!)).toBe(
+    "not_evaluable",
+  );
+  expect(model.noClaimCount).toBe(1);
+  expect(model.notApplicableCount).toBe(0);
+});
+
+it("reads requirements_covered: a covered requirement no claim cites is a criterion, a contract requirement outside the list is not run", async () => {
+  const source = fixture("outcome-report-bundle.json");
+  const resultDoc = ((source.disclosures as Obj).result as Obj)
+    .agent_input as Obj;
+  const claims = resultDoc.claims as Obj[];
+  const contractRef = claims[0]!.contract_ref as string;
+  const conversations = new Set(
+    claims.map((claim) => (claim.id as string).split("::")[0]),
+  );
+  const claimed = [
+    ...new Set(claims.map((claim) => claim.requirement_ref as string)),
+  ];
+  const coverage = (resultDoc.aggregate as Obj).coverage as Obj;
+  // One more covered requirement, excluded as not applicable everywhere.
+  coverage.excluded_not_applicable =
+    (coverage.excluded_not_applicable as number) + conversations.size;
+  coverage.requirements_covered = [
+    ...claimed,
+    "task_resolution.no_follow_up_needed",
+  ].map((requirement_ref) => ({
+    contract_ref: contractRef,
+    requirement_ref,
+  }));
+
+  const { bundle } = await sealEvidenceBundle(source);
+  const result = await buildResultRoot(bundle);
+  expect(result.requirementsCovered).toHaveLength(claimed.length + 1);
+  const terms = readOutcomeReportTerms(result);
+  expect(
+    terms.checks.find((c) => c.id === "task_resolution")!.criteria.at(-1)!.id,
+  ).toBe("no_follow_up_needed");
+
+  const at = contractRef.lastIndexOf("@");
+  const records = new Map(result.records);
+  records.set("contract-rec", {
+    capsuleId: "contract-rec",
+    agentInput: {
+      state: "disclosed",
+      payload: {
+        id: contractRef.slice(0, at),
+        version: contractRef.slice(at + 1),
+        requirements: [
+          ...claimed.map((id) => ({ id })),
+          { id: "task_resolution.no_follow_up_needed" },
+          { id: "grounded_communication.cites_sources" },
+          { id: "resolved", profile: "outcome", statement: "Resolved." },
+        ],
+      },
+    },
+    agentOutput: { state: "absent" },
+    cites: [],
+  } as unknown as CitedRecord);
+  const model = buildOutcomeReportModel({ ...result, records } as ResultRoot, {
+    percentages: false,
+  });
+  // not run: in no conversation, no count
+  expect(model.notRun).toEqual(["grounded_communication.cites_sources"]);
+  for (const conversation of model.conversations) {
+    expect(conversation.criteria).toHaveLength(10);
+    expect(
+      conversation.criteria.some((c) => c.criterionId === "cites_sources"),
+    ).toBe(false);
+    expect(
+      conversation.criteria.find(
+        (c) => c.criterionId === "no_follow_up_needed",
+      )!.verdict,
+    ).toBe("not_applicable");
+  }
+  expect(model.notApplicableCount).toBe(conversations.size);
+  expect(model.noClaimCount).toBe(0);
+
+  // Without the list nothing is not run, even with the contract cited.
+  const unlisted = buildOutcomeReportModel(
+    {
+      ...result,
+      records,
+      requirementsCovered: undefined,
+    } as unknown as ResultRoot,
+    { percentages: false },
+  );
+  expect(unlisted.notRun).toEqual([]);
+});
+
 it("a claim that fails Result-root verification (or is unsupported) never lets its conversation read as resolved", async () => {
   const source = fixture("outcome-report-bundle.json");
   const resultDoc = ((source.disclosures as Obj).result as Obj)
@@ -814,6 +941,7 @@ describe("conversation transcript", () => {
       capsuleId: "result",
       claims,
       records,
+      coverage: { excludedNotApplicable: 0 },
     } as unknown as ResultRoot;
   }
   const options = { percentages: false };
@@ -1234,7 +1362,12 @@ describe("conversation dating", () => {
         cites: [],
         ...caseRecord,
       });
-    return { capsuleId: "result", claims, records } as unknown as ResultRoot;
+    return {
+      capsuleId: "result",
+      claims,
+      records,
+      coverage: { excludedNotApplicable: 0 },
+    } as unknown as ResultRoot;
   }
   const build = (root: ResultRoot) =>
     buildOutcomeReportModel(root, { percentages: false });
@@ -1332,6 +1465,8 @@ it("never resolves on not_applicable alone", () => {
       ...claimsFor("case-b", ["policy_compliance.within_fare_rules"]),
     ],
     records: new Map(),
+    // case-b's eight missing criteria, each excluded as not applicable
+    coverage: { excludedNotApplicable: 8 },
   } as unknown as ResultRoot;
   const model = buildOutcomeReportModel(result, { percentages: false });
   const b = model.conversations.find((c) => c.conversationId === "case-b")!;

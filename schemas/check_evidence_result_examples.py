@@ -200,6 +200,18 @@ mechanical half):
      validate and pass revision_findings; the eight schema negatives MUST
      fail, each with a strip-the-rule mutant; the REVISION_NEGATIVES MUST
      pass the schema and fail revision_findings, each flipped by its mutant.
+  14. Which requirements the run covered (spec section 3):
+     pos-example-org-requirements-covered-result (the claims positive listing
+     its three claimed requirements and req-claim-4, its one exclusion) MUST
+     validate and pass revision_findings. One schema negative MUST fail, with
+     a strip-the-rule mutant:
+       - neg-requirements-covered-duplicate: req-claim-4 listed twice.
+     Two REVISION_NEGATIVES MUST pass the schema and fail revision_findings,
+     each flipped by the mutant `skip_covered`:
+       - neg-requirements-covered-omits-claimed: claim-2's requirement left
+         out of the list.
+       - neg-requirements-covered-unaccounted: excluded_not_applicable 0, so
+         nothing accounts for req-claim-4, which no claim cites.
 
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
@@ -470,6 +482,7 @@ POSITIVES = [
     "pos-example-org-applicability-boundary-result",
     "pos-example-org-applicability-in-force-result",
     "pos-example-org-reconcile-later-result",
+    "pos-example-org-requirements-covered-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -503,6 +516,7 @@ NEGATIVES = [
     "neg-satisfied-not-evaluable",
     "neg-not-applicable-verdict",
     "neg-out-of-scope-on-reconcile-claim",
+    "neg-requirements-covered-duplicate",
 ]
 
 # Spec sections 3, 4.2 and 4.3: cross-element negatives that pass the schema
@@ -521,6 +535,8 @@ REVISION_NEGATIVES = [
     ("neg-generated-at-impossible", "skip_date_parse", "the date parse"),
     ("neg-generated-at-without-seconds", "skip_date_parse", "the date parse"),
     ("neg-not-yet-in-force-without-later", "skip_later_count", "the not_yet_in_force count"),
+    ("neg-requirements-covered-omits-claimed", "skip_covered", "the requirements_covered rules"),
+    ("neg-requirements-covered-unaccounted", "skip_covered", "the requirements_covered rules"),
 ]
 
 # Section 8a: the two levels that carry the x- slot, as $defs names.
@@ -650,8 +666,9 @@ def revision_findings(doc: EvidenceResultDoc, *, mutant: str | None = None) -> l
     not_yet_in_force the later ones; dates parse. ``mutant`` switches off one
     rule to prove a rejection is that rule's: ``trust_buckets``,
     ``skip_rows``, ``population_all_claims`` and ``unknown_all_claims`` (count
-    every claim, as before section 4.3), ``skip_later_count`` and
-    ``skip_date_parse``."""
+    every claim, as before section 4.3), ``skip_later_count``,
+    ``skip_date_parse`` and ``skip_covered`` (section 3's
+    requirements_covered rules)."""
     out: list[str] = []
     claims = doc["claims"]
     aggregate = doc["aggregate"]
@@ -713,6 +730,18 @@ def revision_findings(doc: EvidenceResultDoc, *, mutant: str | None = None) -> l
             out.append(f"not_yet_in_force {stated}, but {len(later)} later claim(s)")
         if not later and stated is not None:
             out.append("not_yet_in_force is present, but no claim is later")
+    covered = coverage.get("requirements_covered")
+    if covered is not None and mutant != "skip_covered":
+        listed = {(r["contract_ref"], r["requirement_ref"]) for r in covered}
+        cited = {(c["contract_ref"], c["requirement_ref"]) for c in claims}
+        for contract, requirement in sorted(cited - listed):
+            out.append(f"{contract} {requirement}: a claim cites it, but requirements_covered does not list it")
+        unclaimed = listed - cited
+        if len(unclaimed) > coverage["excluded_not_applicable"]:
+            out.append(
+                f"requirements_covered lists {len(unclaimed)} requirement(s) no claim cites, but "
+                f"excluded_not_applicable is {coverage['excluded_not_applicable']}"
+            )
     return out
 
 
@@ -990,6 +1019,17 @@ def main() -> int:
             "neg-claim-evidence-empty",
             mutant,
             "Claim.evidence's minItems: 1",
+        )
+
+    if negative_errors_by_name["neg-requirements-covered-duplicate"]:
+        mutant = copy.deepcopy(schema)
+        # Section 3: each pair is listed once. Without uniqueItems the list
+        # naming req-claim-4 twice validates again.
+        del mutant["$defs"]["Coverage"]["properties"]["requirements_covered"]["uniqueItems"]
+        _mutant_check(
+            "neg-requirements-covered-duplicate",
+            mutant,
+            "Coverage.requirements_covered's uniqueItems",
         )
 
     # --- 8. THE x- EXTENSION SLOT (spec section 8a) ---------------------------

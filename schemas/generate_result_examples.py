@@ -1236,6 +1236,39 @@ neg_applies_from_disagrees_in_row["aggregate"]["coverage"].update(
 )
 neg_applies_from_disagrees_in_row["aggregate"]["buckets"]["not_met"] = ["reconcile-1"]
 
+# ---------------------------------------------------------------------------
+# Section 3: requirements_covered. The claims positive names the three
+# requirements its claims cite and req-claim-4, the one evaluation it
+# excludes as NOT_APPLICABLE (excluded_not_applicable 1). Two checker
+# negatives drop a claimed requirement from the list and leave the listed
+# requirement no claim cites without an exclusion; one schema negative lists
+# a pair twice.
+# ---------------------------------------------------------------------------
+
+
+def _covered(*requirements: str) -> list:
+    return [{"contract_ref": CONTRACT_REF, "requirement_ref": r} for r in requirements]
+
+
+pos_example_org_requirements_covered_result = _mutated(pos_example_org_claims_result)
+pos_example_org_requirements_covered_result["aggregate"]["coverage"]["requirements_covered"] = _covered(
+    "req-claim-1", "req-claim-2", "req-claim-3", "req-claim-4"
+)
+
+neg_requirements_covered_omits_claimed = _mutated(pos_example_org_requirements_covered_result)
+neg_requirements_covered_omits_claimed["aggregate"]["coverage"]["requirements_covered"] = _covered(
+    "req-claim-1", "req-claim-3", "req-claim-4"
+)
+
+neg_requirements_covered_unaccounted = _mutated(pos_example_org_requirements_covered_result)
+neg_requirements_covered_unaccounted["aggregate"]["coverage"]["excluded_not_applicable"] = 0
+
+neg_requirements_covered_duplicate = _mutated(pos_example_org_requirements_covered_result)
+neg_requirements_covered_duplicate["aggregate"]["coverage"]["requirements_covered"] = _covered(
+    "req-claim-1", "req-claim-2", "req-claim-3", "req-claim-4", "req-claim-4"
+)
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("pos-example-org-claims-result", pos_example_org_claims_result)
@@ -1306,6 +1339,10 @@ def main() -> int:
     write("neg-not-yet-in-force-without-later", neg_not_yet_in_force_without_later)
     write("neg-applies-from-disagrees-in-row", neg_applies_from_disagrees_in_row)
     write("neg-claim-evidence-empty", neg_claim_evidence_empty)
+    write("pos-example-org-requirements-covered-result", pos_example_org_requirements_covered_result)
+    write("neg-requirements-covered-omits-claimed", neg_requirements_covered_omits_claimed)
+    write("neg-requirements-covered-unaccounted", neg_requirements_covered_unaccounted)
+    write("neg-requirements-covered-duplicate", neg_requirements_covered_duplicate)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)
     return 0

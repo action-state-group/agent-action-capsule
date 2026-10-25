@@ -205,6 +205,31 @@ with an unknown result", never "unresolved requirements": a requirement can have
 evaluation and one resolved one. An aggregate without a coverage statement is not a summary, it is a
 claim with the denominator hidden, and the companion schema refuses to validate one (§7).
 
+**Which requirements the run covered — `requirements_covered`.** Added 2026-10-25 under the
+2026-10-24 decision recorded on agent-action-capsule#355. `aggregate.coverage.requirements_covered`
+is OPTIONAL. When present, it lists every requirement the run evaluated or excluded as
+`NOT_APPLICABLE`, each as the (`contract_ref`, `requirement_ref`) pair a claim carries, each pair
+once. A requirement of a cited contract that is not in the list was **not run**: it has no claim and
+no exclusion, it is in no count and no bucket, and a reader that knows of it (from the contract, for
+example) shows it as not run, never as met, passing, not applicable or a gap. When the member is
+absent, the Result does not say which requirements the run covered, and a reader takes every
+requirement of every contract the claims cite as covered, which is how a Result written before this
+member existed reads. These hold when it is present (checker):
+
+- Every claim's (`contract_ref`, `requirement_ref`), a later claim's included, is in the list.
+- The listed requirements that no claim cites number at most `excluded_not_applicable`: each was
+  excluded at least once, or it was not covered.
+
+`excluded_not_applicable` is a count, not a list, so the checker cannot tell which requirement an
+exclusion belongs to, only that there are enough of them. A requirement with claims can also have
+exclusions, for example on other subjects.
+
+**A missing evaluation is not an exclusion.** Inside a covered requirement, a reader that expects an
+evaluation the Result has no claim for (a requirement evaluated on some subjects and not on others,
+for example) reads it as not applicable only when `excluded_not_applicable` can account for it, that
+is, when the evaluations it reads as excluded number at most that count. Otherwise it reads them as a
+gap: unjudged, never met, never passing and never not applicable.
+
 **No count rolls a requirement up to one verdict.** Coverage counts evaluations and the buckets list
 claims. Nothing in the aggregate states a verdict per requirement, so a requirement with both a `met`
 and a `not_met` claim is never counted as met; a reader shows each verdict's count.
@@ -520,6 +545,9 @@ aggregate:
     excluded_not_applicable: integer  # evaluations excluded as NOT_APPLICABLE, which have no claim — an EvidenceStatus value (§2), not §1's Sufficiency
     unknown_count: integer            # in-force evaluations whose sufficiency resolved UNKNOWN (§1, §3)
     not_yet_in_force: integer         # OPTIONAL — the later claims; present exactly when one is later (§4.3)
+    requirements_covered:             # OPTIONAL — the requirements the run evaluated or excluded (§3)
+      - contract_ref: string          #   <contract_id>@<version>, as on a claim (§1)
+        requirement_ref: string       #   each pair at most once
   coverage_declaration:               # OPTIONAL, PROPOSED — §7.2
     kind: holder_selected | stream_interval | source_authoritative
   buckets:
@@ -857,6 +885,14 @@ mutant proof.
 positive with `claim-2` evaluating `claim-1`'s requirement on a second subject, so one requirement
 has a `met` and a `not_met` claim. Its population is three evaluations of two requirements, and the
 checker requires every positive's `evaluated_population` and `unknown_count` to count claims.
+
+§3's `requirements_covered` adds one positive, `pos-example-org-requirements-covered-result.json`: the
+claims positive listing the three requirements its claims cite and `req-claim-4`, which no claim
+cites and its one exclusion accounts for. It adds one schema negative,
+`neg-requirements-covered-duplicate` (a pair listed twice), and two checker negatives,
+`neg-requirements-covered-omits-claimed` (a claimed requirement left out) and
+`neg-requirements-covered-unaccounted` (`excluded_not_applicable` 0, so nothing accounts for
+`req-claim-4`). Each has its own mutant proof.
 
 §4.2's `out_of_scope` adds three positives (`pos-example-org-out-of-scope-result.json`,
 `pos-example-org-out-of-scope-empty-result.json`, `pos-example-org-close-switched-on-result.json`),
