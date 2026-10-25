@@ -214,21 +214,25 @@ no exclusion, it is in no count and no bucket, and a reader that knows of it (fr
 example) shows it as not run, never as met, passing, not applicable or a gap. When the member is
 absent, the Result does not say which requirements the run covered, and a reader takes every
 requirement of every contract the claims cite as covered, which is how a Result written before this
-member existed reads. These hold when it is present (checker):
+member existed reads. A Result that carries the member:
 
-- Every claim's (`contract_ref`, `requirement_ref`), a later claim's included, is in the list.
-- The listed requirements that no claim cites number at most `excluded_not_applicable`: each was
-  excluded at least once, or it was not covered.
+- MUST NOT list a pair twice (schema).
+- MUST list every claim's (`contract_ref`, `requirement_ref`), a later claim's included (checker).
+- MUST NOT list more requirements that no claim cites than `excluded_not_applicable`: each of them
+  was excluded at least once, or it was not covered (checker).
 
 `excluded_not_applicable` is a count, not a list, so the checker cannot tell which requirement an
 exclusion belongs to, only that there are enough of them. A requirement with claims can also have
 exclusions, for example on other subjects.
 
-**A missing evaluation is not an exclusion.** Inside a covered requirement, a reader that expects an
+**A missing evaluation is not an exclusion.** Inside a covered requirement, a reader may expect an
 evaluation the Result has no claim for (a requirement evaluated on some subjects and not on others,
-for example) reads it as not applicable only when `excluded_not_applicable` can account for it, that
-is, when the evaluations it reads as excluded number at most that count. Otherwise it reads them as a
-gap: unjudged, never met, never passing and never not applicable.
+for example). It MUST NOT read such missing evaluations as not applicable unless
+`excluded_not_applicable` can account for all of them: they number at most that count less one
+exclusion for each listed requirement no claim cites that the reader does not already count among
+them. Because the count names no requirement, the reader MUST NOT split them: either every one reads
+as not applicable, or every one reads as a gap, which is unjudged, never met, never passing and
+never not applicable.
 
 **No count rolls a requirement up to one verdict.** Coverage counts evaluations and the buckets list
 claims. Nothing in the aggregate states a verdict per requirement, so a requirement with both a `met`

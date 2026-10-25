@@ -7,11 +7,17 @@
   requirement outside the list was not run: in no count and no bucket. Absent means every
   requirement of every cited contract, so existing Results read and digest unchanged. The checker
   and the TypeScript validator refuse a list that omits a claimed requirement, lists a pair twice,
-  or lists more unclaimed requirements than `excluded_not_applicable`. One positive and three
-  negative vectors in `vectors/evidence-result/`. The outcome-report model reads a criterion with
-  no claim as not applicable only when `excluded_not_applicable` accounts for every missing claim;
-  otherwise it is `no_claim`, a gap that rolls up as `not_evaluable`, never as passing. It also
-  lists the cited contract's requirements outside the covered list as `notRun`. (#355)
+  or lists more unclaimed requirements than `excluded_not_applicable`, and `ResultRoot` exposes it
+  as `requirementsCovered`. One positive and three negative vectors in `vectors/evidence-result/`.
+  A reader reads missing evaluations as not applicable only when the exclusions account for all of
+  them, and otherwise as a gap. (#355)
+- **Breaking**, TypeScript (ts 0.8.0): the outcome-report model reads a criterion with no claim as
+  not applicable only when `excluded_not_applicable` accounts for every missing claim; otherwise it
+  is the new verdict `no_claim`, a gap that rolls up as `not_evaluable`, never as passing. This
+  changes how existing Results read, without the member too: such a criterion used to read as not
+  applicable and count as passing. Without the member, the cited contract's `<check>.<criterion>`
+  requirements that no claim cites are criteria too. `OutcomeReportModel` adds `noClaimCount` and
+  `notRun`, the cited contract's requirements outside the covered list. (#355)
 - **Breaking**, TypeScript (ts 0.8.0): the page renderers under the `browser` condition are
   removed: `renderEvidenceGraph`, `mountPresentation`, the outcome-report, compliance and composed
   card renderers and their styles, the EU compliance card model, and `dist/evidence-graph.iife.js`.

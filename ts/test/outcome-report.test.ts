@@ -1476,6 +1476,82 @@ it("never resolves on not_applicable alone", () => {
   expect(model.checkPassCounts.get("task_resolution")).toBe(1);
 });
 
+// Result v0 section 3: without requirements_covered every requirement of
+// the cited contract is covered, so one no claim cites is still a criterion;
+// and a listed requirement this card draws no criterion for still uses up an
+// exclusion.
+describe("missing claims against the contract and the exclusions", () => {
+  const contractRecord = (requirements: readonly string[]) =>
+    ({
+      capsuleId: "contract-rec",
+      agentInput: {
+        state: "disclosed",
+        payload: {
+          id: "pack",
+          version: "1",
+          requirements: requirements.map((id) => ({ id })),
+        },
+      },
+      agentOutput: { state: "absent" },
+      cites: [],
+    }) as unknown as CitedRecord;
+  const root = (
+    excludedNotApplicable: number,
+    requirementsCovered?: readonly string[],
+  ) =>
+    ({
+      capsuleId: "result",
+      claims: ["check.a"].map((ref) => ({
+        id: `case-a::${ref}`,
+        type: "requirement",
+        recognized: true,
+        contractRef: "pack@1",
+        requirementRef: ref,
+        tier: "judged",
+        verdict: "met",
+        support: "supported",
+        failed: false,
+        evidence: [],
+      })),
+      records: new Map([
+        ["contract-rec", contractRecord(["check.a", "check.b", "resolved"])],
+      ]),
+      coverage: { excludedNotApplicable },
+      ...(requirementsCovered === undefined
+        ? {}
+        : {
+            requirementsCovered: requirementsCovered.map((requirementRef) => ({
+              contractRef: "pack@1",
+              requirementRef,
+            })),
+          }),
+    }) as unknown as ResultRoot;
+  const verdictOf = (result: ResultRoot) => {
+    const model = buildOutcomeReportModel(result, { percentages: false });
+    const conversation = model.conversations[0]!;
+    return [
+      conversation.criteria.find((c) => c.criterionId === "b")?.verdict,
+      conversation.verdict,
+    ];
+  };
+
+  it("without the list, a contract criterion no claim cites is a gap unless an exclusion accounts for it", () => {
+    expect(verdictOf(root(0))).toEqual(["no_claim", "not_evaluable"]);
+    expect(verdictOf(root(1))).toEqual(["not_applicable", "met"]);
+  });
+
+  it("a listed requirement no claim cites and the card does not draw uses up one exclusion first", () => {
+    expect(verdictOf(root(1, ["check.a", "check.b", "resolved"]))).toEqual([
+      "no_claim",
+      "not_evaluable",
+    ]);
+    expect(verdictOf(root(2, ["check.a", "check.b", "resolved"]))).toEqual([
+      "not_applicable",
+      "met",
+    ]);
+  });
+});
+
 it("reads the judge's probabilities only as probabilities: a value outside [0, 1] (an exponent) is not one", () => {
   expect(
     parseJudgeProbabilities(

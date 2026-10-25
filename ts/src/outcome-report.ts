@@ -1018,7 +1018,21 @@ function groupClaims(
   // Result v0 section 3: a missing claim inside a covered requirement reads
   // as not applicable only when the Result's excluded_not_applicable can
   // account for it. The count names no requirement, so it accounts for all
-  // the missing claims or for none of them.
+  // the missing claims or for none of them. A listed requirement no claim
+  // cites that this card draws no criterion for (another contract's, or one
+  // without the `<check>.<criterion>` shape) still used up one exclusion.
+  const contractRef = packRef(terms);
+  const cited = new Set(
+    result.claims.map((claim) =>
+      JSON.stringify([claim.contractRef, claim.requirementRef]),
+    ),
+  );
+  const reserved = (result.requirementsCovered ?? []).filter(
+    (ref) =>
+      !cited.has(JSON.stringify([ref.contractRef, ref.requirementRef])) &&
+      (ref.contractRef !== contractRef ||
+        criterionRef(ref.requirementRef) === undefined),
+  ).length;
   let missing = 0;
   for (const claims of byConversation.values())
     for (const check of terms.checks)
@@ -1031,7 +1045,7 @@ function groupClaims(
         )
           missing += 1;
   const missingVerdict =
-    missing <= result.coverage.excludedNotApplicable
+    missing <= result.coverage.excludedNotApplicable - reserved
       ? "not_applicable"
       : "no_claim";
   const conversations: Conversation[] = [];
@@ -1538,18 +1552,24 @@ export function readOutcomeReportTerms(result: ResultRoot): OutcomeReportTerms {
   }
   const contractRef = contracts.size === 1 ? [...contracts][0]! : undefined;
   // Result v0 section 3: a covered requirement no claim cites (one excluded
-  // everywhere) is still a criterion of the run.
-  for (const covered of result.requirementsCovered ?? []) {
-    if (covered.contractRef !== contractRef) continue;
-    const split = criterionRef(covered.requirementRef);
+  // everywhere) is still a criterion of the run. Without the list, every
+  // requirement of the cited contract is covered.
+  const contract =
+    contractRef === undefined ? undefined : citedContract(result, contractRef);
+  const coveredRefs =
+    result.requirementsCovered === undefined
+      ? contractCriteria(contract)
+      : result.requirementsCovered
+          .filter((covered) => covered.contractRef === contractRef)
+          .map((covered) => covered.requirementRef);
+  for (const ref of coveredRefs) {
+    const split = criterionRef(ref);
     if (split === undefined) continue;
     const criteria = checks.get(split.checkId) ?? [];
     if (!criteria.includes(split.criterionId)) criteria.push(split.criterionId);
     checks.set(split.checkId, criteria);
   }
   const at = contractRef?.lastIndexOf("@") ?? -1;
-  const contract =
-    contractRef === undefined ? undefined : citedContract(result, contractRef);
   const outcome = Array.isArray(contract?.requirements)
     ? contract.requirements.find(
         (r): r is ObjectValue =>
@@ -1599,27 +1619,34 @@ function notRunCriteria(
   terms: OutcomeReportTerms,
 ): string[] {
   const covered = result.requirementsCovered;
-  if (covered === undefined || terms.pack.id === NOT_STATED) return [];
-  const contractRef = `${terms.pack.id}@${terms.pack.version}`;
-  const contract = citedContract(result, contractRef);
-  if (contract === undefined) return [];
+  const contractRef = packRef(terms);
+  if (covered === undefined || contractRef === undefined) return [];
   const listed = new Set(
     covered
       .filter((ref) => ref.contractRef === contractRef)
       .map((ref) => ref.requirementRef),
   );
-  const notRun: string[] = [];
-  for (const requirement of contract.requirements as unknown[]) {
+  return contractCriteria(citedContract(result, contractRef)).filter(
+    (id) => !listed.has(id),
+  );
+}
+
+/** The contract's requirement ids this card draws as criteria: the `<checkId>.<criterionId>` ones, each once, in order. */
+function contractCriteria(contract: ObjectValue | undefined): string[] {
+  const ids: string[] = [];
+  for (const requirement of (contract?.requirements as unknown[]) ?? []) {
     const id = isObject(requirement) ? asString(requirement.id) : undefined;
-    if (
-      id !== undefined &&
-      criterionRef(id) !== undefined &&
-      !listed.has(id) &&
-      !notRun.includes(id)
-    )
-      notRun.push(id);
+    if (id !== undefined && criterionRef(id) !== undefined && !ids.includes(id))
+      ids.push(id);
   }
-  return notRun;
+  return ids;
+}
+
+/** The `<contract_id>@<version>` the terms name, when they name one. */
+function packRef(terms: OutcomeReportTerms): string | undefined {
+  return terms.pack.id === NOT_STATED || terms.pack.version === NOT_STATED
+    ? undefined
+    : `${terms.pack.id}@${terms.pack.version}`;
 }
 
 function buildDating(
