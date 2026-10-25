@@ -47,7 +47,7 @@ informative:
     author:
       - ins: S. Mih
         name: Steven Mih
-    date: 2026-10
+    date: 2026-09
     refcontent: Work in Progress
   I-D.mih-scitt-checkpointed-local-log:
     title: "The Checkpointed Local Log (CLL)"
@@ -74,13 +74,13 @@ informative:
   I-D.mih-zhang-agent-disclosure-bundle:
     title: "AAC Evidence Bundle"
     seriesinfo:
-      Internet-Draft: draft-mih-zhang-agent-disclosure-bundle-00
+      Internet-Draft: draft-mih-zhang-agent-disclosure-bundle-01
     author:
       - ins: S. Mih
         name: Steven Mih
       - ins: Y. Zhang
         name: Yiqun Zhang
-    date: 2026-09
+    date: 2026-10
     refcontent: Work in Progress
 
 --- abstract

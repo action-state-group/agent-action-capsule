@@ -1675,7 +1675,7 @@ set or a reference to it, and a reference. The initial contents are:</t>
             <author initials="S." surname="Mih" fullname="Steven Mih">
               <organization/>
             </author>
-            <date year="2026" month="October"/>
+            <date year="2026" month="September"/>
           </front>
           <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-05"/>
           <refcontent>Work in Progress</refcontent>
@@ -1719,9 +1719,9 @@ set or a reference to it, and a reference. The initial contents are:</t>
             <author initials="Y." surname="Zhang" fullname="Yiqun Zhang">
               <organization/>
             </author>
-            <date year="2026" month="September"/>
+            <date year="2026" month="October"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-mih-zhang-agent-disclosure-bundle-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-mih-zhang-agent-disclosure-bundle-01"/>
           <refcontent>Work in Progress</refcontent>
         </reference>
       </references>
