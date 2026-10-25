@@ -290,7 +290,7 @@ one of:
 | reason | the receipt |
 |---|---|
 | `receipt_not_passed` | is `withheld` or `fail` (`pos-witness-registration-time-no-directory`, `neg-witness-registration-time-wrong-key`) |
-| `iat_absent` | passed, and its protected header has no CWT claims map, or one without `iat`: the wire shape before witnesses signed a time (`pos-witness-cll`) |
+| `iat_absent` | passed, and its protected header has no CWT claims map, or one without `iat`: the wire shape before witnesses signed a time (`pos-witness-cll`). Labels and claim keys are CBOR integers; a float key such as `6.0` is another key (`pos-witness-registration-time-float-claim-key`) |
 | `iat_invalid` | passed, and its protected CWT claims are not a map, or its `iat` is not an integer from 0 to 2^53 - 1 (a float, text, a negative number or 2^53 and above; `pos-witness-registration-time-invalid`, `pos-witness-registration-time-claims-not-a-map`, `pos-witness-registration-time-out-of-range`) |
 | `binding_without_iat` | passed under the `rekor` binding, whose receipt is a Rekor entry, not a COSE Receipt (`pos-witness-rekor`) |
 
@@ -385,6 +385,7 @@ checkpoint is signed by another, the log key.
 | `pos-witness-registration-time-invalid` | a protected `iat` that is a float | VALID, `iat_invalid` |
 | `pos-witness-registration-time-claims-not-a-map` | protected CWT claims that are an integer | VALID, `iat_invalid` |
 | `pos-witness-registration-time-out-of-range` | a protected `iat` of 2^53 | VALID, `iat_invalid` |
+| `pos-witness-registration-time-float-claim-key` | protected CWT claims keyed by the float `6.0`, not the integer 6 | VALID, `iat_absent` |
 | `pos-witness-scrapi-registration-time` | a `scrapi` receipt with a protected `iat` | VALID, `registration_time` is the `iat` |
 | `incomplete-witness-on-unsigned-checkpoint` | a receipt on a checkpoint with no `cose` | INCOMPLETE, witnesses withheld |
 
@@ -423,8 +424,8 @@ For each `record_signatures` entry, the record's verdict must equal `expect`.
 
 ## Regenerating
 
-From the repository root, with `agent-action-capsule[bundle,envelope]`
-installed:
+From the repository root, with `agent-action-capsule[bundle,envelope]` and
+`scitt-cose` 0.3.0 or later installed:
 
 ```sh
 python3 python/scripts/generate_bundle_strict_vectors.py

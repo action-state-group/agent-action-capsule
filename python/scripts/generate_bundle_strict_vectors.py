@@ -17,7 +17,8 @@ Keys are fixed test seeds and every signature is deterministic (Ed25519, and
 RFC 6979 ECDSA for the Rekor key), so the output is a pure function of this
 file. ``README.md`` is hand-written and never rewritten here.
 
-Dependencies: ``agent-action-capsule[bundle,envelope]`` and ``cryptography``.
+Dependencies: ``agent-action-capsule[bundle,envelope]``, ``scitt-cose`` 0.3.0 or later (``build_receipt``'s
+``iat``) and ``cryptography``.
 """
 from __future__ import annotations
 
@@ -1048,15 +1049,20 @@ def build_cases() -> list[dict]:
                  witnessed(resigned_receipt(leaf, {15: {6: TIMESTAMP_SECONDS + 0.5}})),
                  {"status": "pass", "findings": [], "receipts": [
                      receipt_expect(CLL_URL, "cll", "pass", "mmr-verified", reason="iat_invalid")]})
-    for case_id, description, claims_value in (
+    for case_id, description, claims_value, reason in (
         ("pos-witness-registration-time-claims-not-a-map",
-         "A receipt whose protected CWT claims (label 15) are an integer, not a map: no registration time.", 7),
+         "A receipt whose protected CWT claims (label 15) are an integer, not a map: no registration time.", 7,
+         "iat_invalid"),
         ("pos-witness-registration-time-out-of-range",
-         "A receipt whose signed iat is 2^53, past the largest integer every language reads exactly.", {6: 2**53}),
+         "A receipt whose signed iat is 2^53, past the largest integer every language reads exactly.", {6: 2**53},
+         "iat_invalid"),
+        ("pos-witness-registration-time-float-claim-key",
+         "A receipt whose protected CWT claims key a time by the float 6.0: that is no iat claim.",
+         {6.0: TIMESTAMP_SECONDS}, "iat_absent"),
     ):
         witness_case(case_id, description, witnessed(resigned_receipt(leaf, {15: claims_value})),
                      {"status": "pass", "findings": [], "receipts": [
-                         receipt_expect(CLL_URL, "cll", "pass", "mmr-verified", reason="iat_invalid")]})
+                         receipt_expect(CLL_URL, "cll", "pass", "mmr-verified", reason=reason)]})
     witness_case("pos-witness-scrapi-registration-time", "A SCRAPI receipt with a signed iat.",
                  witnessed(scrapi_receipt(cose, iat=TIMESTAMP_SECONDS + 5)),
                  {"status": "pass", "findings": [], "receipts": [

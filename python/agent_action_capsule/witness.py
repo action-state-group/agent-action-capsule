@@ -297,6 +297,13 @@ def _grade(result: Any) -> str | None:
     return _GRADES.get(label) if isinstance(label, str) else None
 
 
+def _integer_key(mapping: dict, key: int, default: Any) -> Any:
+    """``mapping``'s value under the CBOR integer ``key``. A float or boolean
+    key that Python hashes equal (``6.0``, ``True`` for 1) is another key, as
+    the other languages read it."""
+    return next((v for k, v in mapping.items() if type(k) is int and k == key), default)
+
+
 def _registration_time(receipt: bytes) -> tuple[int | None, str | None]:
     """The ``iat`` (claim 6) of a verified COSE Receipt's protected CWT claims
     (label 15), as ``(time, None)``, or ``(None, reason)``. Read only after the
@@ -308,14 +315,15 @@ def _registration_time(receipt: bytes) -> tuple[int | None, str | None]:
         protected = cbor2.loads(protected_bytes) if protected_bytes else {}
     except Exception:  # noqa: BLE001 -- a verified receipt decodes; never raise
         return None, "iat_invalid"
-    if _CWT_CLAIMS_LABEL not in protected:
+    absent = object()
+    claims = _integer_key(protected, _CWT_CLAIMS_LABEL, absent)
+    if claims is absent:
         return None, "iat_absent"
-    claims = protected[_CWT_CLAIMS_LABEL]
     if not isinstance(claims, dict):
         return None, "iat_invalid"
-    if _CWT_IAT not in claims:
+    iat = _integer_key(claims, _CWT_IAT, absent)
+    if iat is absent:
         return None, "iat_absent"
-    iat = claims[_CWT_IAT]
     if type(iat) is not int or not 0 <= iat <= _MAX_IAT:
         return None, "iat_invalid"
     return iat, None

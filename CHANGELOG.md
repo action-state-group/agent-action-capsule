@@ -24,7 +24,7 @@
   in seconds since the epoch. It is never read from the unprotected header or the checkpoint's own
   `timestamp`. When there is no time, `registration_time_reason` names why: `receipt_not_passed`,
   `iat_absent`, `iat_invalid` or `binding_without_iat` (rekor). Existing members and every status
-  and verdict are unchanged. Nine new strict vectors, `pos-witness-registration-time` and its
+  and verdict are unchanged. Ten new strict vectors, `pos-witness-registration-time` and its
   siblings, pin it; every existing receipt result gains the three members. Rust's
   `WitnessReceiptResult` and `ReceiptCheck`, and TypeScript's `WitnessReceiptResult` and
   `ReceiptOutcome`, gain members, so code that builds them by hand must add them. (#392)

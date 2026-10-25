@@ -56,7 +56,7 @@ fn every_strict_case_matches() {
     let vectors = vectors();
     let directory = &vectors["witness_directory"];
     let cases = vectors["cases"].as_array().expect("cases");
-    assert_eq!(cases.len(), 71);
+    assert_eq!(cases.len(), 72);
     let mut failures = Vec::new();
     for case in cases {
         let options = StrictOptions {
