@@ -99,13 +99,13 @@
   siblings, pin it; every existing receipt result gains the three members. Rust's
   `WitnessReceiptResult` and `ReceiptCheck`, and TypeScript's `WitnessReceiptResult` and
   `ReceiptOutcome`, gain members, so code that builds them by hand must add them. (#392)
-- **Breaking**, TypeScript (ts 0.8.0): the page renderers under the `browser` condition are
-  removed: `renderEvidenceGraph`, `mountPresentation`, the outcome-report, compliance and composed
-  card renderers and their styles, the EU compliance card model, and `dist/evidence-graph.iife.js`.
+- **Breaking**, TypeScript (ts 0.8.0): the page renderers under the `browser` condition are removed:
+  `renderEvidenceGraph`, `mountPresentation`, the outcome-report, compliance and composed card
+  renderers and their styles, the EU compliance card model, and `dist/evidence-graph.iife.js`.
   capsule-viewer (`@action-state-group/capsule-viewer`) draws the page from AAC's verification
-  model. `browser.ts` now also exports `evidence-graph`, `outcome-report`,
-  `outcome-report-presentation` and `report-rows`, and `UNABLE_TO_VERIFY_LINES` moved to
-  `verification-page.ts` unchanged. (#379)
+  model. `browser.ts` now also exports `evidence-graph`, `outcome-report`, `report-rows` and
+  `contract-report` (`CONTRACT_REPORT_KIND`, `readContractReport`), and `UNABLE_TO_VERIFY_LINES`
+  moved to `verification-page.ts` unchanged. (#379)
 - Go presentation gate: `presentation.DescribeBundle` reads a producer-selected Bundle as the
   TypeScript context does, taking interval coverage and per-record membership from the strict
   checks when they do not reject it, and `presentation.Verified` exempts its interval coverage as
