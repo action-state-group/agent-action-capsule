@@ -164,10 +164,14 @@ def sign_body(body: dict, private: Ed25519PrivateKey = PRIMARY) -> str:
     return private.sign(jcs(body).encode("utf-8")).hex()
 
 
-def refusal(request_digest: Any, reason: Any, issued_at: Any = ISSUED_AT) -> dict:
-    """A refusal object signed with the primary key over the three members."""
+def refusal(request_digest: Any, reason: Any, issued_at: Any = ISSUED_AT, detail: str | None = None) -> dict:
+    """A refusal object signed with the primary key over the three members.
+    ``detail`` is carried outside the signed members."""
     body = {"issued_at": issued_at, "reason": reason, "request_digest": request_digest}
-    return {**body, "key_id": PRIMARY_PUB, "sig": sign_body(body)}
+    out = {**body, "key_id": PRIMARY_PUB, "sig": sign_body(body)}
+    if detail is not None:
+        out["detail"] = detail
+    return out
 
 
 # The refusal vector that three implementations already verify (Python signed it;
@@ -673,6 +677,15 @@ def refusal_cases(requests: list[dict]) -> list[dict]:
                    "The policy_declined refusal as a deterministic CBOR response frame. The signature is "
                    "unchanged: it covers the RFC 8785 body, not the frame.",
                    good, valid, refusal_cbor_hex=frame.hex(), refusal_cbor_digest=sha256_hex(frame)))
+    with_detail = refusal(digest, "request_malformed", detail="profiles supported: evidence-interop/0")
+    detail_frame = cbor(with_detail)
+    cases.append(c("pos-detail-outside-signature", [S_REF, S_BIND],
+                   "A request_malformed refusal with an optional detail (profile P-6), in both bindings. detail "
+                   "is outside the signed members: the signature is the one a refusal without detail carries, "
+                   "and the signing body is unchanged.",
+                   with_detail, valid, refusal_cbor_hex=detail_frame.hex(),
+                   refusal_cbor_digest=sha256_hex(detail_frame),
+                   signing_body=jcs({k: with_detail[k] for k in ("issued_at", "reason", "request_digest")})))
     bad_sig = {"signature": "invalid", "conformant": False}
     cases.append(c("neg-tamper-reason", [S_REF], "reason changed after signing.",
                    {**good, "reason": "not_authorized"}, {**bad_sig, "reason_registered": True}))

@@ -154,7 +154,7 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `neg-refusal-digest-recanonicalized` | 4.2 | does not identify | A2 |
 | `pos-refusal-digest-as-received` | 4.2 | identifies | A2 |
 
-### `refusal.json` (21 cases)
+### `refusal.json` (22 cases)
 
 | Case | § | Expect | Ambiguity |
 |---|---|---|---|
@@ -168,6 +168,7 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `pos-reason-retention_expired` | 4.2, 13 | conformant (sig valid) | A7 |
 | `pos-imported-interop-vector` | 4.2, 13 | conformant (sig valid) | A7 |
 | `pos-cbor-frame` | 4.2, 10 | conformant (sig valid) | A7 |
+| `pos-detail-outside-signature` | 4.2, 10 | conformant (sig valid); optional `detail` (profile P-6) outside the signed members, in JSON and CBOR | A7 |
 | `neg-tamper-reason` | 4.2 | not conformant (sig invalid) | A7 |
 | `neg-tamper-issued_at` | 4.2 | not conformant (sig invalid) | A7 |
 | `neg-tamper-request_digest` | 4.2 | not conformant (sig invalid) | A7 |

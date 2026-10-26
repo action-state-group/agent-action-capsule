@@ -7,7 +7,7 @@ use ed25519_dalek::SigningKey;
 use evidence_request::digest::{identifies_request, request_digest};
 use evidence_request::invariance::{compare, Observation};
 use evidence_request::outcome::{record, Received, Window};
-use evidence_request::refusal::{check, check_cbor, sign, verify_for, VerifyError};
+use evidence_request::refusal::{check, check_cbor, sign_with_detail, verify_for, VerifyError};
 use evidence_request::registry::{Reason, SubjectForm, SUBPROTOCOL};
 use evidence_request::request::{parse_cbor, parse_json, Derivation};
 use evidence_request::resolve::{resolve, Anchor, Resolution, Responder};
@@ -344,14 +344,19 @@ fn refusal_corpus() {
         // Every conforming refusal the primary key signed is reproduced byte
         // for byte by `sign` (Ed25519 is deterministic).
         if expect["conformant"] == Value::Bool(true) && r["key_id"] == primary["public_key_hex"] {
-            let ours = sign(
+            let ours = sign_with_detail(
                 s(r, "request_digest"),
                 Reason::from_token(s(r, "reason")).unwrap(),
                 s(r, "issued_at"),
+                r["detail"].as_str(),
                 &key,
             )
             .unwrap();
             assert_eq!(ours.sig, s(r, "sig"), "{id}: signature bytes");
+            assert_eq!(ours.to_json(), *r, "{id}: JSON binding");
+            if let Some(cbor_hex) = case["refusal_cbor_hex"].as_str() {
+                assert_eq!(hex::encode(ours.to_cbor()), cbor_hex, "{id}: CBOR frame");
+            }
             if let Some(body) = case["signing_body"].as_str() {
                 let object = ours.to_json();
                 let signed =

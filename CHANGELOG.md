@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Evidence Request refusals (Rust, Python): the signers carry the optional `detail` the Go signer
+  already does (profile P-6). Rust adds `refusal::sign_with_detail` and a `Refusal.detail` field
+  (`sign` is unchanged); Python adds `sign_refusal(..., detail=)` and a `Refusal.detail` field, and
+  `parse_reply` now keeps a refusal's `detail`. `detail` stays outside the signed members, so the
+  signature and the request digest are the same with or without it. One new vector,
+  `pos-detail-outside-signature`, is produced and read by Go, Python and Rust in both bindings.
+  (#340)
 - Evidence Result v0 §3: `aggregate.coverage.requirements_covered`, OPTIONAL, lists the requirements
   a run evaluated or excluded as `NOT_APPLICABLE`, as (`contract_ref`, `requirement_ref`) pairs. A
   requirement outside the list was not run: in no count and no bucket. Absent means every

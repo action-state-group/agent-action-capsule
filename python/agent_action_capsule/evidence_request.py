@@ -1046,7 +1046,7 @@ def parse_reply(octets: bytes, binding: str = "json") -> Envelope | Refusal:
     if is_envelope and is_refusal:
         raise VerificationError("reply carries both artifact_digest and reason")
     if is_refusal:
-        text = _text_members(fields, ("request_digest", "reason", "issued_at", "key_id", "sig"))
+        text = _text_members(fields, ("request_digest", "reason", "issued_at", "key_id", "sig"), ("detail",))
         return Refusal(**text)
     if is_envelope:
         return _read_envelope(fields, binding)
@@ -1194,13 +1194,17 @@ def _signing_body(members: Mapping[str, Any]) -> bytes:
 
 @dataclass(frozen=True)
 class Refusal:
-    """A signed refusal (§4.2) in the vectors' profile (A7)."""
+    """A signed refusal (§4.2) in the vectors' profile (A7). ``detail`` is
+    optional human-readable text outside the signature (profile P-6): it is
+    not authenticated, and the token, not the prose, is the answer. ``None``
+    and ``""`` are both absent on the wire."""
 
     request_digest: str
     reason: str
     issued_at: str
     key_id: str
     sig: str
+    detail: str | None = None
 
     def signing_body(self) -> bytes:
         """The bytes the signature covers: RFC 8785 of ``issued_at``,
@@ -1211,13 +1215,16 @@ class Refusal:
 
     def to_dict(self) -> dict:
         """The refusal object in the JSON binding."""
-        return {
+        out = {
             "request_digest": self.request_digest,
             "reason": self.reason,
             "issued_at": self.issued_at,
             "key_id": self.key_id,
             "sig": self.sig,
         }
+        if self.detail:
+            out["detail"] = self.detail
+        return out
 
     def to_cbor(self) -> bytes:
         """The refusal map in the CBOR binding, in core deterministic encoding
@@ -1231,11 +1238,14 @@ class Refusal:
         return _cbor.encode_head(5, len(entries)) + b"".join(k + v for k, v in entries)
 
 
-def sign_refusal(request_digest: str, reason: str, *, signer: Signer, issued_at: str) -> Refusal:
+def sign_refusal(
+    request_digest: str, reason: str, *, signer: Signer, issued_at: str, detail: str | None = None
+) -> Refusal:
     """Build and sign one :class:`Refusal`. Raises :class:`ValueError` unless
     ``reason`` is a registered token, ``request_digest`` a digest and
     ``issued_at`` an RFC 3339 UTC time: a responder never signs a
-    non-conforming refusal."""
+    non-conforming refusal. ``detail`` rides outside the signed members: the
+    signature is the same with or without it."""
     if reason not in REFUSAL_REASONS:
         raise ValueError(f"{reason!r} is not a registered refusal reason")
     if not is_digest(request_digest):
@@ -1244,7 +1254,10 @@ def sign_refusal(request_digest: str, reason: str, *, signer: Signer, issued_at:
         raise ValueError("issued_at must be an RFC 3339 UTC time")
     stub = Refusal(request_digest=request_digest, reason=reason, issued_at=issued_at, key_id="", sig="")
     sig, key_id = signer.sign(stub.signing_body())
-    return Refusal(request_digest=request_digest, reason=reason, issued_at=issued_at, key_id=key_id, sig=sig)
+    return Refusal(
+        request_digest=request_digest, reason=reason, issued_at=issued_at, key_id=key_id, sig=sig,
+        detail=detail or None,
+    )
 
 
 # The y coordinates (mod p) of the eight small-order points of edwards25519:
