@@ -9,6 +9,11 @@
   signature and the request digest are the same with or without it. One new vector,
   `pos-detail-outside-signature`, is produced and read by Go, Python and Rust in both bindings.
   (#340)
+- TypeScript: the outcome-report model keeps a claim not yet in force (Evidence Result v0 §4.3,
+  contract-report-v1 §2) instead of dropping it. It sits in `Conversation.notYetInForce`, outside
+  every tally, count and roll-up. A conversation whose every claim is later is in
+  `OutcomeReportModel.notYetInForce` and in no day, count or roll-up, so it no longer reads as
+  "could not decide". A later claim that failed verification is still drawn failed. (#393)
 - Evidence Result v0 §3: `aggregate.coverage.requirements_covered`, OPTIONAL, lists the requirements
   a run evaluated or excluded as `NOT_APPLICABLE`, as (`contract_ref`, `requirement_ref`) pairs. A
   requirement outside the list was not run: in no count and no bucket. Absent means every

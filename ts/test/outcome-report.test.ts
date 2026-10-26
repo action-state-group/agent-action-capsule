@@ -1644,3 +1644,78 @@ it("(ER 4.3) a criterion not yet in force that failed verification is still draw
   ).toBe("failed");
   expect(conversation.verdict).not.toBe("met");
 });
+
+async function withLater(pick: (claimId: string) => boolean): Promise<{
+  base: ReturnType<typeof buildOutcomeReportModel>;
+  model: ReturnType<typeof buildOutcomeReportModel>;
+  laterIds: string[];
+}> {
+  const { bundle } = await sealEvidenceBundle(
+    fixture("outcome-report-bundle.json"),
+  );
+  const result = await buildResultRoot(bundle);
+  const laterIds = result.claims.filter((c) => pick(c.id)).map((c) => c.id);
+  const changed = {
+    ...result,
+    claims: result.claims.map((claim) =>
+      laterIds.includes(claim.id) ? { ...claim, later: true } : claim,
+    ),
+  };
+  return {
+    base: buildOutcomeReportModel(result, { percentages: false }),
+    model: buildOutcomeReportModel(changed, { percentages: false }),
+    laterIds,
+  };
+}
+
+it("(ER 4.3) a conversation with none later has an empty not-yet-in-force list", async () => {
+  const { base } = await withLater(() => false);
+  expect(base.notYetInForce).toEqual([]);
+  expect(base.conversations.every((c) => c.notYetInForce.length === 0)).toBe(
+    true,
+  );
+});
+
+it("(ER 4.3) a later claim beside in-force claims is kept apart in its conversation, outside every tally", async () => {
+  const first = "tau2:airline:task-0:trial-0::";
+  const { base, model, laterIds } = await withLater(
+    (id) => id.startsWith(first) && id.endsWith("confirmed_before_acting"),
+  );
+  expect(laterIds).toHaveLength(1);
+  expect(model.notYetInForce).toEqual([]);
+  expect(model.totalCount).toBe(base.totalCount);
+  const conversation = model.conversations.find(
+    (c) => c.conversationId === "tau2:airline:task-0:trial-0",
+  )!;
+  expect(conversation.notYetInForce.map((c) => c.claim?.id)).toEqual(laterIds);
+  expect(conversation.criteria.some((c) => c.claim?.id === laterIds[0])).toBe(
+    false,
+  );
+  expect(conversation.criteria.length + 1).toBe(
+    base.conversations.find(
+      (c) => c.conversationId === conversation.conversationId,
+    )!.criteria.length,
+  );
+});
+
+it("(ER 4.3) a conversation whose every claim is later is in no tally and never could-not-decide", async () => {
+  const first = "tau2:airline:task-0:trial-0::";
+  const { base, model, laterIds } = await withLater((id) =>
+    id.startsWith(first),
+  );
+  expect(laterIds.length).toBeGreaterThan(0);
+  expect(model.notYetInForce.map((c) => c.conversationId)).toEqual([
+    "tau2:airline:task-0:trial-0",
+  ]);
+  const kept = model.notYetInForce[0]!;
+  expect(kept.notYetInForce.map((c) => c.claim?.id).sort()).toEqual(
+    [...laterIds].sort(),
+  );
+  expect(kept.criteria).toEqual([]);
+  expect(
+    model.conversations.some((c) => c.conversationId === kept.conversationId),
+  ).toBe(false);
+  expect(model.days.flatMap((d) => d.conversations)).not.toContain(kept);
+  expect(model.totalCount).toBe(base.totalCount - 1);
+  expect(model.noClaimCount).toBeLessThanOrEqual(base.noClaimCount);
+});
