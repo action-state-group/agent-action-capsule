@@ -60,7 +60,7 @@ impl Refusal {
             "key_id": self.key_id,
             "sig": self.sig,
         });
-        if let Some(detail) = &self.detail {
+        if let Some(detail) = self.detail.as_deref().filter(|d| !d.is_empty()) {
             out["detail"] = json!(detail);
         }
         out
@@ -85,7 +85,7 @@ impl Refusal {
             (text("key_id"), text(&self.key_id)),
             (text("sig"), text(&self.sig)),
         ];
-        if let Some(detail) = &self.detail {
+        if let Some(detail) = self.detail.as_deref().filter(|d| !d.is_empty()) {
             entries.push((text("detail"), text(detail)));
         }
         entries.sort_by_cached_key(|(k, _)| encoded(k));
@@ -532,6 +532,13 @@ mod tests {
         let empty =
             sign_with_detail(&digest, Reason::RequestMalformed, at, Some(""), &key()).unwrap();
         assert_eq!(empty, plain);
+        // Nor does a hand-set empty detail reach the wire in either binding.
+        let hand_set = Refusal {
+            detail: Some(String::new()),
+            ..plain.clone()
+        };
+        assert_eq!(hand_set.to_json(), plain.to_json());
+        assert_eq!(hand_set.to_cbor(), plain.to_cbor());
     }
 
     #[test]
