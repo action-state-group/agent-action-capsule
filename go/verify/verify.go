@@ -976,6 +976,21 @@ func Verify(capsule interface{}, store []interface{}, regs map[string]map[string
 			}
 		}
 	}
+	// The number walk and the identity check visit every member; a value
+	// nested deeper than any JSON text decodes to, or one that contains
+	// itself (only a value built in Go can be either), is refused before
+	// they run, since neither an endless walk nor a stack overflow can be
+	// recovered.
+	if canonical.TooDeep(capsule) {
+		return VerificationResult{
+			OK: false,
+			Findings: []Finding{{
+				Code:     "verifier_internal_error",
+				Detail:   "Capsule is nested too deeply or contains itself",
+				Severity: "error",
+			}},
+		}
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			result = VerificationResult{

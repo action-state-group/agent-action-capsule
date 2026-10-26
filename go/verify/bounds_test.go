@@ -127,3 +127,90 @@ func TestWideArrayUnderALongKeyIsBounded(t *testing.T) {
 		})
 	}
 }
+
+// withinSeconds runs f and fails the test if it has not returned in 10 s.
+func withinSeconds[T any](t *testing.T, f func() T) T {
+	t.Helper()
+	done := make(chan T, 1)
+	go func() { done <- f() }()
+	select {
+	case out := <-done:
+		return out
+	case <-time.After(10 * time.Second):
+		t.Fatal("did not return within 10 s")
+		var zero T
+		return zero
+	}
+}
+
+// smallRecord is a well-formed record whose model_attestation holds payload.
+func smallRecord(payload interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"spec_version":        "draft-mih-scitt-agent-action-capsule-05",
+		"format_version":      "4",
+		"canonicalization_id": "jcs",
+		"action_id":           "cycle",
+		"action_type":         "fyi",
+		"operator":            "op",
+		"developer":           "dev@v1",
+		"timestamp":           "2026-09-29T00:00:00Z",
+		"model_attestation":   map[string]interface{}{"payload": payload},
+	}
+}
+
+// A value built in Go can contain itself; encoding/json never produces one
+// (#388). Verify reports it as Python does, rather than walking it forever.
+func TestValueThatContainsItselfIsAnInternalError(t *testing.T) {
+	deep := func() interface{} {
+		var value interface{} = "leaf"
+		for range canonical.MaxNestingDepth + 1 {
+			value = []interface{}{value}
+		}
+		return value
+	}
+	cases := map[string]func() map[string]interface{}{
+		"map": func() map[string]interface{} {
+			record := smallRecord(nil)
+			record["self"] = record
+			return record
+		},
+		"slice": func() map[string]interface{} {
+			items := []interface{}{nil}
+			items[0] = items
+			return smallRecord(items)
+		},
+		"mutual": func() map[string]interface{} {
+			a := map[string]interface{}{}
+			b := map[string]interface{}{"a": a}
+			a["b"] = b
+			return smallRecord(a)
+		},
+		"too deep": func() map[string]interface{} { return smallRecord(deep()) },
+	}
+	for name, build := range cases {
+		t.Run(name, func(t *testing.T) {
+			record := build()
+			res := withinSeconds(t, func() verify.VerificationResult { return verify.Verify(record, nil, nil) })
+			assert.False(t, res.OK)
+			require.Len(t, res.Findings, 1)
+			assert.Equal(t, "verifier_internal_error", res.Findings[0].Code)
+
+			results := withinSeconds(t, func() []verify.VerificationResult {
+				return verify.VerifyStore([]interface{}{record}, nil)
+			})
+			require.Len(t, results, 1)
+			assert.Equal(t, "verifier_internal_error", results[0].Findings[0].Code)
+		})
+	}
+}
+
+// A sub-value reached twice without a cycle is not one and verifies as usual.
+func TestSharedSubValueStillVerifies(t *testing.T) {
+	shared := map[string]interface{}{"k": []interface{}{"v"}}
+	record := smallRecord([]interface{}{shared, shared, map[string]interface{}{"again": shared}})
+	id, err := canonical.ComputeCapsuleID(record)
+	require.NoError(t, err)
+	record["capsule_id"] = id
+	res := withinSeconds(t, func() verify.VerificationResult { return verify.Verify(record, nil, nil) })
+	assert.True(t, res.OK, res.Findings)
+}
