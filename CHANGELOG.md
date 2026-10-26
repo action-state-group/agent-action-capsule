@@ -16,6 +16,13 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.8.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Registry §15: an informational "Countersignature verification states" subsection lists the
+  words capsule-cli prints for a `countersignatures[]` entry (`invalid`, `unverified`,
+  `not_independent`, `unresolved_signer`, `resolved`), `none` for a Bundle with no entries, and
+  its receipt states (`verified`, `unverified`, `absent`), each beside the Evidence Bundle -01
+  term where the draft has one. They are report words, not wire values: the registered
+  countersignature types are unchanged, and no draft text changes.
+
 - **Breaking**, spec: the presentation contract moved to capsule-viewer, so this repository no
   longer states conformance for manifests, registries, resolution or I4; a claim of
   `presentation-contract-v0` conformance now refers to capsule-viewer's copy. What a page states
