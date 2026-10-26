@@ -35,6 +35,8 @@ IPR page:
   <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-mih-scitt-checkpointed-local-log>
 - `draft-bryce-cose-receipts-mmr-profile`:
   <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-bryce-cose-receipts-mmr-profile>
+- `draft-mih-sokolov-scitt-payload-binding`:
+  <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-mih-sokolov-scitt-payload-binding>
 
 ## Dependency boundary
 
@@ -67,13 +69,15 @@ and the discovery properties (§11.4).
 | A2A | Agent2Agent (A2A) Protocol Specification | v1.0.1, tag commit `3303592588e388e62e0f69f701af531d2f4e3991`: <https://github.com/a2aproject/A2A/blob/v1.0.1/docs/specification.md>, SHA-256 of that file `627ccfe6ffb1be2c56811c3dcc18780deb419f41cdc98248095c939b2d9dc9cb`, with `specification/a2a.proto` at the same tag, SHA-256 `e195bf96ab630c69797851970203e1b2b6b19528f2e9803b7d904b91a5104016` | the Agent Card extension declaration and default modes, the `Message`, `Part`, `Task`, `Artifact` and `TaskArtifactUpdateEvent` objects, task states and multi-turn continuation, `ListTasks` scoping, ProtoJSON bytes, Agent Card signing, and the `A2A-Version` and `A2A-Extensions` service parameters, behind the A2A binding (§11.4.4) |
 | MCP | Model Context Protocol specification | 2026-07-28, as published at <https://modelcontextprotocol.io/specification/2026-07-28>; source `docs/specification/2026-07-28/server/tools.mdx` (SHA-256 `ed550806a58eb7744b858fb9f26001aa5e55dac9e2babe88317cc81d9d4c490d`), `docs/specification/2026-07-28/basic/index.mdx` (SHA-256 `03586b10e3214c55478293f1199fffb0bbf95bbef5df3d6a8378e860697bd63f`), `docs/specification/2026-07-28/changelog.mdx` (SHA-256 `b327e576f4c96b34e92f338f8ffefc35e13d0e953ab76bdb3aab342d104c8e53`) and `schema/2026-07-28/schema.ts` (SHA-256 `742750af0bb8c716e7030c4977c992b55d1adc4407e9e66997db5846baedc2cd`) at commit `3778656b2e0ba6725035e816fe3085374cbaa736` of `github.com/modelcontextprotocol/modelcontextprotocol` | `tools/list`, `tools/call`, tool definitions, `structuredContent`, `content`, `isError`, `_meta`, `input_required` results and their retries, the error classes, `x-mcp-header` and the Streamable HTTP request headers, behind the MCP binding (§11.4.5); not the tasks extension |
 | MMR | `draft-bryce-cose-receipts-mmr-profile` | -02 as posted: <https://www.ietf.org/archive/id/draft-bryce-cose-receipts-mmr-profile-02.txt>, SHA-256 of that file `c6dc055aa61bcdea1566db5a754d055a199a89c9900810b336d99202a44e9893` | the inclusion and consistency proof encodings and the algorithms that check them; CLL -01 cites this revision normatively |
+| CPB | `draft-mih-sokolov-scitt-payload-binding` | -05 as posted: <https://www.ietf.org/archive/id/draft-mih-sokolov-scitt-payload-binding-05.txt>, SHA-256 of that file `938073e7ce4f4289ca6d45bebac0b319f2a701804eac5c32203124e65f2fb4fa` | the `as-transmitted` rule (§4.4) that SR §8 rule 1 names for foreign signed objects (§5) |
 
-**Why these CLL and MMR bytes.** CLL and MMR are pinned to the text posted in the IETF
+**Why these CLL, MMR and CPB bytes.** CLL, MMR and CPB are pinned to the text posted in the IETF
 Internet-Draft archive and identified by the SHA-256 of that `.txt` file. CLL's canonical source
 repository is not settled, and copies kept beside implementations can differ from what was posted.
-No unposted CLL revision is pinned. MMR -02 is pinned because it is the revision CLL -01 cites.
+No unposted CLL revision is pinned. MMR -02 is pinned because it is the revision CLL -01 cites. CPB -05 is pinned because it is the
+revision SR -00 cites.
 
-Section numbers for ER, DE, SR, BA, EL, CLL and MMR are those of the rendered `.txt` of the pinned revision. Section numbers for A2A are those of the pinned `specification.md`. MCP pages have no
+Section numbers for ER, DE, SR, BA, EL, CLL, MMR and CPB are those of the rendered `.txt` of the pinned revision. Section numbers for A2A are those of the pinned `specification.md`. MCP pages have no
 section numbers, so MCP is cited by page and heading, for example `[MCP Tools §Structured Content]`. In
 this document a requirement written as `[ER §4.2]` pins that section, and `[P-n]` marks a
 requirement this profile adds (§13).
@@ -253,12 +257,10 @@ type in both encodings (§5.2).
 carried inside an Artifact or cited by one, is digested over the exact octets that protocol
 delivered. It is never parsed and re-serialized, never re-signed, and never canonicalized with
 RFC 8785 unless its own type definition says so [SR §8, rule 1 and the section's opening
-paragraph]. SR §8 rule 1 identifies this as
-the `as-transmitted` rule of the Canonicalization Declaration
-(`draft-mih-sokolov-scitt-payload-binding`, Section 4.4). Carrying a foreign object by digest
-proves possession of those octets and nothing more. SR §8 lets a verifier check a wrapped object
-under its own protocol. This profile makes that a MUST: a verifier MUST run the object's native
-check before it reports any property of the object's signature or meaning (§7.2,
+paragraph]. SR §8 rule 1 identifies this as the `as-transmitted` rule of the Canonicalization
+Declaration [CPB §4.4]. Carrying a foreign object by digest proves possession of those octets and
+nothing more. SR §8 lets a verifier check a wrapped object under its own protocol. This profile
+makes that a MUST: a verifier MUST run the object's native check before it reports any property of the object's signature or meaning (§7.2,
 `native_check`) [P-11].
 
 **The signature is always over JCS, whatever the frame.** A refusal or envelope carried in a
@@ -3095,8 +3097,10 @@ a later draft revision.
   (Internet-Draft, work in progress).
 - `draft-mih-agent-evidence-layer-00`, `spec/draft-mih-agent-evidence-layer-00.md`
   (Internet-Draft, work in progress).
-- `draft-mih-sokolov-scitt-payload-binding`, Section 4.4, as cited by SR §8 (Internet-Draft, work
-  in progress).
+- `draft-mih-sokolov-scitt-payload-binding-05`,
+  <https://www.ietf.org/archive/id/draft-mih-sokolov-scitt-payload-binding-05.txt>, SHA-256
+  `938073e7ce4f4289ca6d45bebac0b319f2a701804eac5c32203124e65f2fb4fa`, Section 4.4, as cited by SR
+  §8 (Internet-Draft, work in progress).
 - `draft-mih-zhang-agent-disclosure-bundle` (Internet-Draft, work in progress).
 - `draft-mih-scitt-checkpointed-local-log-01`,
   <https://www.ietf.org/archive/id/draft-mih-scitt-checkpointed-local-log-01.txt>, SHA-256
