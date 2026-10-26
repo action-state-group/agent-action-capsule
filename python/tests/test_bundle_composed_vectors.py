@@ -148,10 +148,11 @@ def test_sha256sums_pin_every_file():
         assert top.get(f"bundle/composed/{name}") == _sha((VECTORS / name).read_bytes()), name
 
 
-def test_five_cases():
-    assert DATA["count"] == len(DATA["cases"]) == 5
+def test_six_cases():
+    assert DATA["count"] == len(DATA["cases"]) == 6
     assert set(CASES) == {"agree", "one-member-missing", "same-custody-redundant",
-                          "artifact-response-bound", "artifact-response-other-request"}
+                          "artifact-response-bound", "artifact-response-other-request",
+                          "agree-with-checkpoints"}
 
 
 # ---------------------------------------------------------------------------
@@ -294,3 +295,24 @@ def test_carried_records_verify_and_member_claims_are_reported_per_member(case_i
             "interval_coverage": result.interval_coverage.status,
             "per_record_membership": result.per_record_membership.status,
         } == want
+
+
+# ---------------------------------------------------------------------------
+# Strict verdicts: only a checkpointed composition reaches VALID
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("case_id", sorted(CASES))
+def test_strict_verdicts_and_the_full_verdict(case_id):
+    case = CASES[case_id]
+    container = case["container"]
+    outer = verify_bundle(container, strict=True)
+    members = {m["id"]: verify_bundle(m["bundle"], strict=True).verdict
+               for m in _block(case)["members"] if "bundle" in m}
+    full = (outer.verdict == "VALID" and case["expect"]["status"] == "pass"
+            and all(v == "VALID" for v in members.values()))
+    if "strict" not in case["expect"]:
+        assert not full, "only a case that states its verdict reaches VALID"
+        return
+    assert {"container": outer.verdict, "members": members} == case["expect"]["strict"]
+    assert ("VALID" if full else "INCOMPLETE") == case["expect"]["verdict"]

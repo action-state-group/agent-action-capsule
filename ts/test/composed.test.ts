@@ -224,6 +224,32 @@ describe("composed/v1 verification (port of go/bundle/composed.go)", () => {
     },
   );
 
+  it.each(VECTORS.cases.map((c) => [c.id, c] as const))(
+    "%s: the strict verdicts, and VALID only for a case that states it",
+    async (_id, c) => {
+      const verdict = async (bundle: unknown): Promise<string> =>
+        (await verifyBundle(bundle, { strict: true })).strict.verdict;
+      const block = (c.container.extensions as Obj)["composed/v1"] as {
+        members: Obj[];
+      };
+      const members: Record<string, string> = {};
+      for (const m of block.members)
+        if (m.bundle !== undefined)
+          members[m.id as string] = await verdict(m.bundle);
+      const strict = { container: await verdict(c.container), members };
+      const full =
+        strict.container === "VALID" &&
+        c.expect.status === "pass" &&
+        Object.values(members).every((v) => v === "VALID");
+      if (c.expect.strict === undefined) {
+        expect(full).toBe(false);
+        return;
+      }
+      expect(strict).toEqual(c.expect.strict);
+      expect(full ? "VALID" : "INCOMPLETE").toBe(c.expect.verdict);
+    },
+  );
+
   it.each(parityCases().map((c) => [c.name, c] as const))(
     "%s: every composed result equals capsulectl verify --bundle",
     async (_name, c) => {

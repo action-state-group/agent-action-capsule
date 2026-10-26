@@ -34,12 +34,12 @@ func composedCases(t *testing.T) map[string]composedCase {
 		Cases []composedCase `json:"cases"`
 	}
 	require.NoError(t, decoder.Decode(&file))
-	require.Equal(t, json.Number("5"), file.Count)
+	require.Equal(t, json.Number("6"), file.Count)
 	cases := map[string]composedCase{}
 	for _, c := range file.Cases {
 		cases[c.ID] = c
 	}
-	require.Len(t, cases, 5)
+	require.Len(t, cases, 6)
 	return cases
 }
 
@@ -150,7 +150,7 @@ func TestComposedVectors(t *testing.T) {
 
 			want := map[string]interface{}{}
 			for key, value := range c.Expect {
-				if key != "canonical_preimage" && key != "composed_digest_equals_case" {
+				if key != "canonical_preimage" && key != "composed_digest_equals_case" && key != "strict" && key != "verdict" {
 					want[key] = value
 				}
 			}
@@ -162,6 +162,27 @@ func TestComposedVectors(t *testing.T) {
 					require.Equal(t, memberByID(block, member.ID)["digest"], *member.Bundle.BundleDigest)
 					require.Equal(t, VerifyBundle(raw).GraphClosure, member.Bundle.GraphClosure)
 				}
+			}
+
+			// The strict verdicts of the container and each carried member
+			// Bundle, and the full verdict: VALID only when every strict
+			// verdict is and the block passes.
+			strict := map[string]interface{}{"container": VerifyStrict(c.Container, StrictOptions{}).Verdict}
+			members := map[string]interface{}{}
+			full := strict["container"] == VerdictValid && composed.Status == "pass"
+			for _, member := range composed.Members {
+				if member.Bundle != nil {
+					verdict := VerifyStrict(memberByID(block, member.ID)["bundle"], StrictOptions{}).Verdict
+					members[member.ID] = verdict
+					full = full && verdict == VerdictValid
+				}
+			}
+			strict["members"] = members
+			if want, stated := c.Expect["strict"]; stated {
+				require.Equal(t, want, strict)
+				require.Equal(t, c.Expect["verdict"], map[bool]string{true: VerdictValid, false: VerdictIncomplete}[full])
+			} else {
+				require.False(t, full, "only a case that states its verdict reaches VALID")
 			}
 		})
 	}
