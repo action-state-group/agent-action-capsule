@@ -37,6 +37,8 @@ IPR page:
   <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-bryce-cose-receipts-mmr-profile>
 - `draft-mih-sokolov-scitt-payload-binding`:
   <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-mih-sokolov-scitt-payload-binding>
+- `draft-mih-sato-agent-accountability-composition`:
+  <https://datatracker.ietf.org/ipr/search/?submit=draft&id=draft-mih-sato-agent-accountability-composition>
 
 ## Dependency boundary
 
@@ -70,12 +72,14 @@ and the discovery properties (§11.4).
 | MCP | Model Context Protocol specification | 2026-07-28, as published at <https://modelcontextprotocol.io/specification/2026-07-28>; source `docs/specification/2026-07-28/server/tools.mdx` (SHA-256 `ed550806a58eb7744b858fb9f26001aa5e55dac9e2babe88317cc81d9d4c490d`), `docs/specification/2026-07-28/basic/index.mdx` (SHA-256 `03586b10e3214c55478293f1199fffb0bbf95bbef5df3d6a8378e860697bd63f`), `docs/specification/2026-07-28/changelog.mdx` (SHA-256 `b327e576f4c96b34e92f338f8ffefc35e13d0e953ab76bdb3aab342d104c8e53`) and `schema/2026-07-28/schema.ts` (SHA-256 `742750af0bb8c716e7030c4977c992b55d1adc4407e9e66997db5846baedc2cd`) at commit `3778656b2e0ba6725035e816fe3085374cbaa736` of `github.com/modelcontextprotocol/modelcontextprotocol` | `tools/list`, `tools/call`, tool definitions, `structuredContent`, `content`, `isError`, `_meta`, `input_required` results and their retries, the error classes, `x-mcp-header` and the Streamable HTTP request headers, behind the MCP binding (§11.4.5); not the tasks extension |
 | MMR | `draft-bryce-cose-receipts-mmr-profile` | -02 as posted: <https://www.ietf.org/archive/id/draft-bryce-cose-receipts-mmr-profile-02.txt>, SHA-256 of that file `c6dc055aa61bcdea1566db5a754d055a199a89c9900810b336d99202a44e9893` | the inclusion and consistency proof encodings and the algorithms that check them; CLL -01 cites this revision normatively |
 | CPB | `draft-mih-sokolov-scitt-payload-binding` | -05 as posted: <https://www.ietf.org/archive/id/draft-mih-sokolov-scitt-payload-binding-05.txt>, SHA-256 of that file `938073e7ce4f4289ca6d45bebac0b319f2a701804eac5c32203124e65f2fb4fa` | the `as-transmitted` rule (§4.4) that SR §8 rule 1 names for foreign signed objects (§5) |
+| COMP | `draft-mih-sato-agent-accountability-composition` | -01 as posted: <https://www.ietf.org/archive/id/draft-mih-sato-agent-accountability-composition-01.txt>, SHA-256 of that file `05f8a9b3d9281bb3c6d9022d0798b5f7496b533503a76bf1a057d2cb63f8bf00` | nothing normative; pinned so the composition revision AAC -05 cites is fixed bytes |
 
-**Why these CLL, MMR and CPB bytes.** CLL, MMR and CPB are pinned to the text posted in the IETF
-Internet-Draft archive and identified by the SHA-256 of that `.txt` file. CLL's canonical source
-repository is not settled, and copies kept beside implementations can differ from what was posted.
-No unposted CLL revision is pinned. MMR -02 is pinned because it is the revision CLL -01 cites. CPB -05 is pinned because it is the
-revision SR -00 cites.
+**Why these CLL, MMR, CPB and COMP bytes.** CLL, MMR, CPB and COMP are pinned to the text posted
+in the IETF Internet-Draft archive and identified by the SHA-256 of that `.txt` file. CLL's
+canonical source repository is not settled, and copies kept beside implementations can differ from
+what was posted. No unposted CLL revision is pinned. MMR -02 is pinned because it is the revision
+CLL -01 cites. CPB -05 is pinned because it is the revision SR -00 cites. COMP -01 is pinned
+because it is the revision `draft-mih-scitt-agent-action-capsule-05` cites.
 
 Section numbers for ER, DE, SR, BA, EL, CLL, MMR and CPB are those of the rendered `.txt` of the pinned revision. Section numbers for A2A are those of the pinned `specification.md`. MCP pages have no
 section numbers, so MCP is cited by page and heading, for example `[MCP Tools §Structured Content]`. In
@@ -3101,6 +3105,10 @@ a later draft revision.
   <https://www.ietf.org/archive/id/draft-mih-sokolov-scitt-payload-binding-05.txt>, SHA-256
   `938073e7ce4f4289ca6d45bebac0b319f2a701804eac5c32203124e65f2fb4fa`, Section 4.4, as cited by SR
   §8 (Internet-Draft, work in progress).
+- `draft-mih-sato-agent-accountability-composition-01`,
+  <https://www.ietf.org/archive/id/draft-mih-sato-agent-accountability-composition-01.txt>, SHA-256
+  `05f8a9b3d9281bb3c6d9022d0798b5f7496b533503a76bf1a057d2cb63f8bf00` (Internet-Draft, work in
+  progress).
 - `draft-mih-zhang-agent-disclosure-bundle` (Internet-Draft, work in progress).
 - `draft-mih-scitt-checkpointed-local-log-01`,
   <https://www.ietf.org/archive/id/draft-mih-scitt-checkpointed-local-log-01.txt>, SHA-256

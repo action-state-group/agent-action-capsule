@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Interop profile v0: the "Pins, never redefines" table pins CPB
+  (`draft-mih-sokolov-scitt-payload-binding`) -05 and composition
+  (`draft-mih-sato-agent-accountability-composition`) -01 by the SHA-256 of the posted `.txt`, as
+  CLL and MMR are pinned. The profile's `as-transmitted` citation is now [CPB §4.4] of -05; the
+  profile takes nothing normative from composition -01. The README says a Capsule is declared
+  under CPB, not registered in it: CPB keeps no registry of payload profiles or artifact types.
+  (#405)
 - Evidence Request refusals (Rust, Python): the signers carry the optional `detail` the Go signer
   already does (profile P-6). Rust adds `refusal::sign_with_detail` and a `Refusal.detail` field
   (`sign` is unchanged); Python adds `sign_refusal(..., detail=)` and a `Refusal.detail` field, and
