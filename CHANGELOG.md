@@ -2,7 +2,9 @@
 
 This file covers the Go, Python and TypeScript packages. Each package tag has a heading that names
 the package and version (`## go 0.14.0`, `## ts 0.8.0`); an entry that changed several packages is
-listed under each of their tags. The Rust crates keep their own changelogs:
+listed under each of their tags. An entry that changed no package directory (spec, vectors, README)
+is listed under the first tag of each package cut after it, and under Unreleased for a package with
+no such tag. The Rust crates keep their own changelogs:
 [`rust/agent-action-capsule/CHANGELOG.md`](rust/agent-action-capsule/CHANGELOG.md) and
 [`rust/evidence-request/CHANGELOG.md`](rust/evidence-request/CHANGELOG.md). The headings that name
 only a version (`## 0.12.0` and older) are repository-wide releases from before per-package tags;
@@ -10,7 +12,9 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes after `go/v0.14.0` and `ts/v0.8.0`. The Rust crates keep their own Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or has not yet.
+Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes after `go/v0.14.0`
+and `ts/v0.8.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
+packages is listed under each package that shipped it, or has not yet.
 
 - **Breaking**, spec: the presentation contract moved to capsule-viewer, so this repository no
   longer states conformance for manifests, registries, resolution or I4; a claim of
@@ -362,6 +366,9 @@ Tag `ts/v0.6.1`.
 
 ## 0.12.0 — 2026-10-22
 
+Tags: `python/v0.12.0`, `ts/v0.6.0`, `go/v0.12.0`; the outcome report model entry also shipped in
+`ts/v0.5.0`.
+
 Python 0.12.0, TypeScript 0.6.0 and Go v0.12.0. The outcome report model entry (#317) already shipped
 in TypeScript 0.5.0.
 
@@ -547,7 +554,7 @@ in TypeScript 0.5.0.
 
 ## 0.11.0 — 2026-10-20
 
-Tags: `go/v0.11.0`, `python/v0.11.0`, `ts/v0.4.0`, `ts/v0.5.0`, `crates/agent-action-capsule-v0.4.0`.
+Tags: `go/v0.11.0`, `python/v0.11.0`, `ts/v0.4.0`, `crates/agent-action-capsule-v0.4.0`.
 
 - TypeScript: outcome-report and bundle-page fixes. A resolved conversation's summary and
   drill-down count the criteria the pack judged instead of always saying "nine", and the report
