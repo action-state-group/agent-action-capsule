@@ -26,7 +26,10 @@ Python releases up to 0.7.0 were tagged bare `v<version>` (`v0.0.3` to
    pushes `release/<package>-v<version>`.
 2. **Review.** Open the pull request from the link in the run summary. Open it
    yourself: a pull request opened by the workflow would not start CI. Add the
-   CHANGELOG entry for the release on the same branch if it is not in yet.
+   CHANGELOG entry for the release on the same branch if it is not in yet: move
+   the package's entries from Unreleased under a `## <package> <version> — <date>`
+   heading (Go, Python and TypeScript in `CHANGELOG.md`; each Rust crate in its
+   own file).
 3. **Merge.** [Release · Tag](https://github.com/action-state-group/agent-action-capsule/actions/workflows/tag-release.yml) runs on the
    merge. For each package whose version changed it creates the tag and GitHub
    Release on the merge commit and dispatches the package's publisher on that

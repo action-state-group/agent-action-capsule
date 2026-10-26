@@ -1,38 +1,17 @@
 # Changelog
 
+This file covers the Go, Python and TypeScript packages. Each package tag has a heading that names
+the package and version (`## go 0.14.0`, `## ts 0.8.0`); an entry that changed several packages is
+listed under each of their tags. The Rust crates keep their own changelogs:
+[`rust/agent-action-capsule/CHANGELOG.md`](rust/agent-action-capsule/CHANGELOG.md) and
+[`rust/evidence-request/CHANGELOG.md`](rust/evidence-request/CHANGELOG.md). The headings that name
+only a version (`## 0.12.0` and older) are repository-wide releases from before per-package tags;
+each says which tags it matches.
+
 ## Unreleased
 
-- **Breaking**, TypeScript (ts 0.8.0): the presentation registry, the built-in manifests and the
-  builder's fragment packaging moved to capsule-viewer (`@action-state-group/capsule-viewer`),
-  which carries them with every public name unchanged. Removed here: `presentation-registry.ts`
-  (`PresentationRegistry`, `resolveModules`, `describeContext`, `manifestMatches`,
-  `manifestsCoMatchable`, `manifestProblems`, the manifest, module, runtime, descriptor,
-  resolution and refusal types, `PresentationAmbiguityError`, `PresentationRegistrationError`,
-  `presentationRefusalRow`, `presentationRefusalLine`, `presentationRefusalReason` and the
-  `PRESENTATION_*` constants), `builtin-manifests.ts` (`BUILTIN_MANIFESTS`,
-  `BUILTIN_SECTION_MANIFESTS` and each `BUILTIN_MANIFEST_*`) and `presentation-fragment.ts`.
-  `bundleVerified`, the verification gate, moved unchanged to `verification-page.ts`. (#379)
-- **Breaking**, TypeScript (ts 0.8.0): presentation refusals leave AAC's verification page model.
-  `buildVerificationPageModel(bundle, verified, applied, options)` and
-  `extensionRows(extensions, applied)` drop their `refused` input, so the check-list options
-  move from the fifth argument to the fourth, and `ExtensionRow.refusal`,
-  `PresentationRefusalNotice`, `VerificationPageModel.presentationRefusals` and
-  `presentationRefusalNotices` are removed. capsule-viewer's registry adds its refusal rows and
-  notices on top of this model, taking the integrity words from each row's `integrity`. (#379)
-- **Breaking**, TypeScript (ts 0.8.0): the deprecated aliases of `contract-report/v1` lose their
-  readers, as `spec/REGISTRY.md` §14 schedules: `readOutcomeReportPresentation` and
-  `OutcomeReportPresentation` (`outcome-report-presentation.ts`), the internal compliance reader,
-  and their extension interpreters (`outcome-report-card` and `compliance-card` leave
-  `ExtensionInterpreterId`). `verifyBundle` now reports an `outcome-report/v1` or
-  `eu-ai-act-compliance/v1` block as uninterpreted; a producer writes `contract-report/v1`.
-  (#379, #351)
-- **Breaking**, Go (the next minor after go v0.13.x): `go/presentation` is removed; it is now
-  `github.com/action-state-group/capsule-viewer/go/presentation`. What a page needs from
-  verification stays in `go/bundle`: `bundle.Verified` (moved unchanged from
-  `presentation.Verified`) and `bundle.VerifyBundleForPage`, the reading
-  `presentation.DescribeBundle` did inline (the plain result, with a producer selection the
-  strict checks do not reject read through `VerifyStrict`). A new test runs the nine
-  producer-selected strict vectors through both. (#379)
+Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes after `go/v0.14.0` and `ts/v0.8.0`. The Rust crates keep their own Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or has not yet.
+
 - **Breaking**, spec: the presentation contract moved to capsule-viewer, so this repository no
   longer states conformance for manifests, registries, resolution or I4; a claim of
   `presentation-contract-v0` conformance now refers to capsule-viewer's copy. What a page states
@@ -47,6 +26,7 @@
   table of the earlier kinds is now in `spec/REGISTRY.md` §14, its removal column rewritten (ts
   0.8.0; the Go readers left with `go/presentation`). `spec/deal-reconcile-contract-v0.md` and
   `spec/personal-agent-history-outcome-v0.md` cite `sha256-jcs-nonce256` there. (#379)
+
 - Vectors and schemas: `vectors/presentation-resolution/`, `schemas/presentation-manifest-v0.json`
   with its examples and checker, and the contract-report wording-pack check moved to
   capsule-viewer. The fragment codec vectors moved unchanged from
@@ -61,6 +41,7 @@
   profile takes nothing normative from composition -01. The README says a Capsule is declared
   under CPB, not registered in it: CPB keeps no registry of payload classes or artifact types.
   (#405)
+
 - Evidence Request refusals (Rust, Python): the signers carry the optional `detail` the Go signer
   already does (profile P-6). Rust adds `refusal::sign_with_detail` and a `Refusal.detail` field
   (`sign` is unchanged); Python adds `sign_refusal(..., detail=)` and a `Refusal.detail` field, and
@@ -68,27 +49,7 @@
   signature and the request digest are the same with or without it. One new vector,
   `pos-detail-outside-signature`, is produced and read by Go, Python and Rust in both bindings.
   (#340)
-- TypeScript: the outcome-report model keeps a claim not yet in force (Evidence Result v0 §4.3,
-  contract-report-v1 §2) instead of dropping it. It sits in `Conversation.notYetInForce`, outside
-  every tally, count and roll-up. A conversation whose every claim is later is in
-  `OutcomeReportModel.notYetInForce` and in no day, count or roll-up, so it no longer reads as
-  "could not decide". A later claim that failed verification is still drawn failed. (#393)
-- Evidence Result v0 §3: `aggregate.coverage.requirements_covered`, OPTIONAL, lists the requirements
-  a run evaluated or excluded as `NOT_APPLICABLE`, as (`contract_ref`, `requirement_ref`) pairs. A
-  requirement outside the list was not run: in no count and no bucket. Absent means every
-  requirement of every cited contract, so existing Results read and digest unchanged. The checker
-  and the TypeScript validator refuse a list that omits a claimed requirement, lists a pair twice,
-  or lists more unclaimed requirements than `excluded_not_applicable`, and `ResultRoot` exposes it
-  as `requirementsCovered`. One positive and three negative vectors in `vectors/evidence-result/`.
-  A reader reads missing evaluations as not applicable only when the exclusions account for all of
-  them, and otherwise as a gap. (#355)
-- **Breaking**, TypeScript (ts 0.8.0): the outcome-report model reads a criterion with no claim as
-  not applicable only when `excluded_not_applicable` accounts for every missing claim; otherwise it
-  is the new verdict `no_claim`, a gap that rolls up as `not_evaluable`, never as passing. This
-  changes how existing Results read, without the member too: such a criterion used to read as not
-  applicable and count as passing. Without the member, the cited contract's `<check>.<criterion>`
-  requirements that no claim cites are criteria too. `OutcomeReportModel` adds `noClaimCount` and
-  `notRun`, the cited contract's requirements outside the covered list. (#355)
+
 - Strict witness receipts (Go, Python, Rust, TypeScript): each receipt result also reports
   `key_id`, the directory key id a passing receipt verified under, and `registration_time`, the
   `iat` (claim 6) the witness signed into a passing COSE Receipt's protected CWT claims (label 15),
@@ -99,27 +60,7 @@
   siblings, pin it; every existing receipt result gains the three members. Rust's
   `WitnessReceiptResult` and `ReceiptCheck`, and TypeScript's `WitnessReceiptResult` and
   `ReceiptOutcome`, gain members, so code that builds them by hand must add them. (#392)
-- **Breaking**, TypeScript (ts 0.8.0): the page renderers under the `browser` condition are removed:
-  `renderEvidenceGraph`, `mountPresentation`, the outcome-report, compliance and composed card
-  renderers and their styles, the EU compliance card model, and `dist/evidence-graph.iife.js`.
-  capsule-viewer (`@action-state-group/capsule-viewer`) draws the page from AAC's verification
-  model. `browser.ts` now also exports `evidence-graph`, `outcome-report`, `report-rows` and
-  `contract-report` (`CONTRACT_REPORT_KIND`, `readContractReport`), and `UNABLE_TO_VERIFY_LINES`
-  moved to `verification-page.ts` unchanged. (#379)
-- Go presentation gate: `presentation.DescribeBundle` reads a producer-selected Bundle as the
-  TypeScript context does, taking interval coverage and per-record membership from the strict
-  checks when they do not reject it, and `presentation.Verified` exempts its interval coverage as
-  `bundleVerified` does. Go refused the valid selection (`incomplete-producer-selected`) that the
-  TypeScript page renders, so capsule-cli's `presentation list` and `build` resolved a refusal for
-  it; every selection the strict checks call INVALID stays refused. The nine producer-selected
-  strict cases join `vectors/presentation-resolution/descriptors.json`, which both languages run;
-  no existing case changes. (#395)
-- TypeScript: `verificationBanner(context, stamps)` in `verification-page.ts` returns the banner a
-  page draws for a verified bundle context (presentation contract §6.2): its state, fixed line,
-  strict verdict, checkpoint state, details line, uncheckpointed count and, for a refused bundle,
-  the refusal line. The logic moved unchanged from the page renderer, which now draws from it, so a
-  viewer can state AAC's verdict in the core's words without computing one. Additive; the drawn page
-  does not change. (#379, capsule-viewer#79)
+
 - Strict witness receipts (Go, Python, Rust, TypeScript): a `checkpoint.witnesses` entry is
   malformed unless every member is present, `ts_url`, `entry_hash` and `receipt_b64` are non-empty
   strings, and `receipt_b64` is canonical standard base64. An entry with every member and a string
@@ -130,6 +71,7 @@
   `witness_receipt_malformed:<index>`, with or without a row. Three new strict vectors,
   `neg-witness-malformed-member-no-row`, `neg-witness-malformed-members` and
   `neg-witness-malformed-shapes`, pin it. (capsule-cli#438)
+
 - Class 1 verify (Go, Python, TypeScript) does bounded work on hostile numbers, as Rust does since
   #382. It reports at most 64 `float_in_digest_field` and 64 `unsafe_integer_in_digest_field`
   findings, each quoting at most 256 code points of its path, then `...`, and writes a path only for
@@ -142,6 +84,7 @@
   reports `capsule_id_uncomputable` where it reported `verifier_internal_error`. A new
   cross-language fixture, `vectors/cross-language/verify-number-findings.json`, pins the findings.
   (#383)
+
 - Strict Bundle verification (Go, Python, Rust, TypeScript): the `checkpoint` claim also holds the
   completeness certificate's `log_id`, when stated, to the signed log identifier, and reports
   `checkpoint_field_mismatch:log_id` when it differs (bundle -01 §Completeness). A producer-selected
@@ -149,6 +92,268 @@
   `neg-producer-selected-certificate-log-id`, pins it. Go exports the claim on its own as
   `bundle.VerifyCheckpoint`, which also returns the authenticated checkpoint and its COSE bytes.
   (capsule-cli#438)
+
+## ts 0.8.0 — 2026-10-26
+
+Tag `ts/v0.8.0`.
+
+- **Breaking**, TypeScript (ts 0.8.0): the presentation registry, the built-in manifests and the
+  builder's fragment packaging moved to capsule-viewer (`@action-state-group/capsule-viewer`),
+  which carries them with every public name unchanged. Removed here: `presentation-registry.ts`
+  (`PresentationRegistry`, `resolveModules`, `describeContext`, `manifestMatches`,
+  `manifestsCoMatchable`, `manifestProblems`, the manifest, module, runtime, descriptor,
+  resolution and refusal types, `PresentationAmbiguityError`, `PresentationRegistrationError`,
+  `presentationRefusalRow`, `presentationRefusalLine`, `presentationRefusalReason` and the
+  `PRESENTATION_*` constants), `builtin-manifests.ts` (`BUILTIN_MANIFESTS`,
+  `BUILTIN_SECTION_MANIFESTS` and each `BUILTIN_MANIFEST_*`) and `presentation-fragment.ts`.
+  `bundleVerified`, the verification gate, moved unchanged to `verification-page.ts`. (#379)
+
+- **Breaking**, TypeScript (ts 0.8.0): presentation refusals leave AAC's verification page model.
+  `buildVerificationPageModel(bundle, verified, applied, options)` and
+  `extensionRows(extensions, applied)` drop their `refused` input, so the check-list options
+  move from the fifth argument to the fourth, and `ExtensionRow.refusal`,
+  `PresentationRefusalNotice`, `VerificationPageModel.presentationRefusals` and
+  `presentationRefusalNotices` are removed. capsule-viewer's registry adds its refusal rows and
+  notices on top of this model, taking the integrity words from each row's `integrity`. (#379)
+
+- **Breaking**, TypeScript (ts 0.8.0): the deprecated aliases of `contract-report/v1` lose their
+  readers, as `spec/REGISTRY.md` §14 schedules: `readOutcomeReportPresentation` and
+  `OutcomeReportPresentation` (`outcome-report-presentation.ts`), the internal compliance reader,
+  and their extension interpreters (`outcome-report-card` and `compliance-card` leave
+  `ExtensionInterpreterId`). `verifyBundle` now reports an `outcome-report/v1` or
+  `eu-ai-act-compliance/v1` block as uninterpreted; a producer writes `contract-report/v1`.
+  (#379, #351)
+
+- **Breaking**, spec: the presentation contract moved to capsule-viewer, so this repository no
+  longer states conformance for manifests, registries, resolution or I4; a claim of
+  `presentation-contract-v0` conformance now refers to capsule-viewer's copy. What a page states
+  about verification stays here, in the new `spec/verification-display-v0.md`, with its words
+  unchanged except the edits listed in #400 and the contract's section numbers: the "Verified" gate
+  (§1), the check lists (§6.1), the banner (§6.2), evidentiary words (§7.1), `sha256-jcs-nonce256`
+  (§7.2) and invariants I1 (failure collapses to the refusal) and I3. It defines every term it uses
+  and has its own conformance line; `spec/check-verification-display-terms.py` checks the terms in
+  the Spec workflow. `spec/presentation-contract-v0.md` and `spec/presentation-builder-v0.md` are
+  now informative pointers that map each old section to its new home. `spec/contract-report-v1.md`
+  keeps §1 (the block) and §5 (earlier kinds); its §2 to §4 and example pack moved. The deprecation
+  table of the earlier kinds is now in `spec/REGISTRY.md` §14, its removal column rewritten (ts
+  0.8.0; the Go readers left with `go/presentation`). `spec/deal-reconcile-contract-v0.md` and
+  `spec/personal-agent-history-outcome-v0.md` cite `sha256-jcs-nonce256` there. (#379)
+
+- Vectors and schemas: `vectors/presentation-resolution/`, `schemas/presentation-manifest-v0.json`
+  with its examples and checker, and the contract-report wording-pack check moved to
+  capsule-viewer. The fragment codec vectors moved unchanged from
+  `ts/test/testdata/presentation-fragment-vectors.json` to `vectors/bundle/fragment/`, read by
+  the TypeScript and Go codec tests. `vectors/viewer-core-text/` cites the new document; its
+  bytes change, no case does. (#379)
+
+- Interop profile v0: the "Pins, never redefines" table pins CPB
+  (`draft-mih-sokolov-scitt-payload-binding`) -05 and composition
+  (`draft-mih-sato-agent-accountability-composition`) -01 by the SHA-256 of the posted `.txt`, as
+  CLL and MMR are pinned. The profile's `as-transmitted` citation is now [CPB §4.4] of -05; the
+  profile takes nothing normative from composition -01. The README says a Capsule is declared
+  under CPB, not registered in it: CPB keeps no registry of payload classes or artifact types.
+  (#405)
+
+- TypeScript: the outcome-report model keeps a claim not yet in force (Evidence Result v0 §4.3,
+  contract-report-v1 §2) instead of dropping it. It sits in `Conversation.notYetInForce`, outside
+  every tally, count and roll-up. A conversation whose every claim is later is in
+  `OutcomeReportModel.notYetInForce` and in no day, count or roll-up, so it no longer reads as
+  "could not decide". A later claim that failed verification is still drawn failed. (#393)
+
+- Evidence Result v0 §3: `aggregate.coverage.requirements_covered`, OPTIONAL, lists the requirements
+  a run evaluated or excluded as `NOT_APPLICABLE`, as (`contract_ref`, `requirement_ref`) pairs. A
+  requirement outside the list was not run: in no count and no bucket. Absent means every
+  requirement of every cited contract, so existing Results read and digest unchanged. The checker
+  and the TypeScript validator refuse a list that omits a claimed requirement, lists a pair twice,
+  or lists more unclaimed requirements than `excluded_not_applicable`, and `ResultRoot` exposes it
+  as `requirementsCovered`. One positive and three negative vectors in `vectors/evidence-result/`.
+  A reader reads missing evaluations as not applicable only when the exclusions account for all of
+  them, and otherwise as a gap. (#355)
+
+- **Breaking**, TypeScript (ts 0.8.0): the outcome-report model reads a criterion with no claim as
+  not applicable only when `excluded_not_applicable` accounts for every missing claim; otherwise it
+  is the new verdict `no_claim`, a gap that rolls up as `not_evaluable`, never as passing. This
+  changes how existing Results read, without the member too: such a criterion used to read as not
+  applicable and count as passing. Without the member, the cited contract's `<check>.<criterion>`
+  requirements that no claim cites are criteria too. `OutcomeReportModel` adds `noClaimCount` and
+  `notRun`, the cited contract's requirements outside the covered list. (#355)
+
+- Strict witness receipts (Go, Python, Rust, TypeScript): each receipt result also reports
+  `key_id`, the directory key id a passing receipt verified under, and `registration_time`, the
+  `iat` (claim 6) the witness signed into a passing COSE Receipt's protected CWT claims (label 15),
+  in seconds since the epoch. It is never read from the unprotected header or the checkpoint's own
+  `timestamp`. When there is no time, `registration_time_reason` names why: `receipt_not_passed`,
+  `iat_absent`, `iat_invalid` or `binding_without_iat` (rekor). Existing members and every status
+  and verdict are unchanged. Ten new strict vectors, `pos-witness-registration-time` and its
+  siblings, pin it; every existing receipt result gains the three members. Rust's
+  `WitnessReceiptResult` and `ReceiptCheck`, and TypeScript's `WitnessReceiptResult` and
+  `ReceiptOutcome`, gain members, so code that builds them by hand must add them. (#392)
+
+- **Breaking**, TypeScript (ts 0.8.0): the page renderers under the `browser` condition are removed:
+  `renderEvidenceGraph`, `mountPresentation`, the outcome-report, compliance and composed card
+  renderers and their styles, the EU compliance card model, and `dist/evidence-graph.iife.js`.
+  capsule-viewer (`@action-state-group/capsule-viewer`) draws the page from AAC's verification
+  model. `browser.ts` now also exports `evidence-graph`, `outcome-report`, `report-rows` and
+  `contract-report` (`CONTRACT_REPORT_KIND`, `readContractReport`), and `UNABLE_TO_VERIFY_LINES`
+  moved to `verification-page.ts` unchanged. (#379)
+
+## go 0.14.0 — 2026-10-26
+
+Tag `go/v0.14.0`.
+
+- **Breaking**, Go (the next minor after go v0.13.x): `go/presentation` is removed; it is now
+  `github.com/action-state-group/capsule-viewer/go/presentation`. What a page needs from
+  verification stays in `go/bundle`: `bundle.Verified` (moved unchanged from
+  `presentation.Verified`) and `bundle.VerifyBundleForPage`, the reading
+  `presentation.DescribeBundle` did inline (the plain result, with a producer selection the
+  strict checks do not reject read through `VerifyStrict`). A new test runs the nine
+  producer-selected strict vectors through both. (#379)
+
+- **Breaking**, spec: the presentation contract moved to capsule-viewer, so this repository no
+  longer states conformance for manifests, registries, resolution or I4; a claim of
+  `presentation-contract-v0` conformance now refers to capsule-viewer's copy. What a page states
+  about verification stays here, in the new `spec/verification-display-v0.md`, with its words
+  unchanged except the edits listed in #400 and the contract's section numbers: the "Verified" gate
+  (§1), the check lists (§6.1), the banner (§6.2), evidentiary words (§7.1), `sha256-jcs-nonce256`
+  (§7.2) and invariants I1 (failure collapses to the refusal) and I3. It defines every term it uses
+  and has its own conformance line; `spec/check-verification-display-terms.py` checks the terms in
+  the Spec workflow. `spec/presentation-contract-v0.md` and `spec/presentation-builder-v0.md` are
+  now informative pointers that map each old section to its new home. `spec/contract-report-v1.md`
+  keeps §1 (the block) and §5 (earlier kinds); its §2 to §4 and example pack moved. The deprecation
+  table of the earlier kinds is now in `spec/REGISTRY.md` §14, its removal column rewritten (ts
+  0.8.0; the Go readers left with `go/presentation`). `spec/deal-reconcile-contract-v0.md` and
+  `spec/personal-agent-history-outcome-v0.md` cite `sha256-jcs-nonce256` there. (#379)
+
+- Vectors and schemas: `vectors/presentation-resolution/`, `schemas/presentation-manifest-v0.json`
+  with its examples and checker, and the contract-report wording-pack check moved to
+  capsule-viewer. The fragment codec vectors moved unchanged from
+  `ts/test/testdata/presentation-fragment-vectors.json` to `vectors/bundle/fragment/`, read by
+  the TypeScript and Go codec tests. `vectors/viewer-core-text/` cites the new document; its
+  bytes change, no case does. (#379)
+
+- Interop profile v0: the "Pins, never redefines" table pins CPB
+  (`draft-mih-sokolov-scitt-payload-binding`) -05 and composition
+  (`draft-mih-sato-agent-accountability-composition`) -01 by the SHA-256 of the posted `.txt`, as
+  CLL and MMR are pinned. The profile's `as-transmitted` citation is now [CPB §4.4] of -05; the
+  profile takes nothing normative from composition -01. The README says a Capsule is declared
+  under CPB, not registered in it: CPB keeps no registry of payload classes or artifact types.
+  (#405)
+
+- Evidence Request refusals (Rust, Python): the signers carry the optional `detail` the Go signer
+  already does (profile P-6). Rust adds `refusal::sign_with_detail` and a `Refusal.detail` field
+  (`sign` is unchanged); Python adds `sign_refusal(..., detail=)` and a `Refusal.detail` field, and
+  `parse_reply` now keeps a refusal's `detail`. `detail` stays outside the signed members, so the
+  signature and the request digest are the same with or without it. One new vector,
+  `pos-detail-outside-signature`, is produced and read by Go, Python and Rust in both bindings.
+  (#340)
+
+- Strict witness receipts (Go, Python, Rust, TypeScript): each receipt result also reports
+  `key_id`, the directory key id a passing receipt verified under, and `registration_time`, the
+  `iat` (claim 6) the witness signed into a passing COSE Receipt's protected CWT claims (label 15),
+  in seconds since the epoch. It is never read from the unprotected header or the checkpoint's own
+  `timestamp`. When there is no time, `registration_time_reason` names why: `receipt_not_passed`,
+  `iat_absent`, `iat_invalid` or `binding_without_iat` (rekor). Existing members and every status
+  and verdict are unchanged. Ten new strict vectors, `pos-witness-registration-time` and its
+  siblings, pin it; every existing receipt result gains the three members. Rust's
+  `WitnessReceiptResult` and `ReceiptCheck`, and TypeScript's `WitnessReceiptResult` and
+  `ReceiptOutcome`, gain members, so code that builds them by hand must add them. (#392)
+
+- Go presentation gate: `presentation.DescribeBundle` reads a producer-selected Bundle as the
+  TypeScript context does, taking interval coverage and per-record membership from the strict
+  checks when they do not reject it, and `presentation.Verified` exempts its interval coverage as
+  `bundleVerified` does. Go refused the valid selection (`incomplete-producer-selected`) that the
+  TypeScript page renders, so capsule-cli's `presentation list` and `build` resolved a refusal for
+  it; every selection the strict checks call INVALID stays refused. The nine producer-selected
+  strict cases join `vectors/presentation-resolution/descriptors.json`, which both languages run;
+  no existing case changes. (#395)
+
+## ts 0.7.0 — 2026-10-24
+
+Tag `ts/v0.7.0`.
+
+- TypeScript: `verificationBanner(context, stamps)` in `verification-page.ts` returns the banner a
+  page draws for a verified bundle context (presentation contract §6.2): its state, fixed line,
+  strict verdict, checkpoint state, details line, uncheckpointed count and, for a refused bundle,
+  the refusal line. The logic moved unchanged from the page renderer, which now draws from it, so a
+  viewer can state AAC's verdict in the core's words without computing one. Additive; the drawn page
+  does not change. (#379, capsule-viewer#79)
+
+- Strict witness receipts (Go, Python, Rust, TypeScript): a `checkpoint.witnesses` entry is
+  malformed unless every member is present, `ts_url`, `entry_hash` and `receipt_b64` are non-empty
+  strings, and `receipt_b64` is canonical standard base64. An entry with every member and a string
+  `ts_url` that failed one of these checks was read as a receipt: withheld when no usable key
+  checked it (no directory row, a row without a usable key, or a stub), and passed when only its
+  `entry_hash` was empty or not a string beside a rekor or scrapi receipt that verified, since only
+  the cll binding reads it. The Bundle stayed VALID. It now fails as
+  `witness_receipt_malformed:<index>`, with or without a row. Three new strict vectors,
+  `neg-witness-malformed-member-no-row`, `neg-witness-malformed-members` and
+  `neg-witness-malformed-shapes`, pin it. (capsule-cli#438)
+
+- Class 1 verify (Go, Python, TypeScript) does bounded work on hostile numbers, as Rust does since
+  #382. It reports at most 64 `float_in_digest_field` and 64 `unsafe_integer_in_digest_field`
+  findings, each quoting at most 256 code points of its path, then `...`, and writes a path only for
+  a failing number. Python 0.12.0 needed about 200 MB for a 60 KB record with 2,000 floats under a
+  50 KB key (measured in #383). Python and TypeScript now list object members in code point order,
+  as Go and Rust do, so all four report the same findings. Verdicts don't change, and finding codes
+  change only in the Python case below. What does change, in all three: a record with more than 64
+  failing numbers of one kind lists only the first 64, and a long path is cut. Python and TypeScript
+  also list findings in a different order, and a Python record nested past the recursion limit
+  reports `capsule_id_uncomputable` where it reported `verifier_internal_error`. A new
+  cross-language fixture, `vectors/cross-language/verify-number-findings.json`, pins the findings.
+  (#383)
+
+- Strict Bundle verification (Go, Python, Rust, TypeScript): the `checkpoint` claim also holds the
+  completeness certificate's `log_id`, when stated, to the signed log identifier, and reports
+  `checkpoint_field_mismatch:log_id` when it differs (bundle -01 §Completeness). A producer-selected
+  Bundle whose certificate names another log was INCOMPLETE and is now INVALID; a new strict vector,
+  `neg-producer-selected-certificate-log-id`, pins it. Go exports the claim on its own as
+  `bundle.VerifyCheckpoint`, which also returns the authenticated checkpoint and its COSE bytes.
+  (capsule-cli#438)
+
+## go 0.13.1 — 2026-10-23
+
+Tag `go/v0.13.1`.
+
+- Strict witness receipts (Go, Python, Rust, TypeScript): a `checkpoint.witnesses` entry is
+  malformed unless every member is present, `ts_url`, `entry_hash` and `receipt_b64` are non-empty
+  strings, and `receipt_b64` is canonical standard base64. An entry with every member and a string
+  `ts_url` that failed one of these checks was read as a receipt: withheld when no usable key
+  checked it (no directory row, a row without a usable key, or a stub), and passed when only its
+  `entry_hash` was empty or not a string beside a rekor or scrapi receipt that verified, since only
+  the cll binding reads it. The Bundle stayed VALID. It now fails as
+  `witness_receipt_malformed:<index>`, with or without a row. Three new strict vectors,
+  `neg-witness-malformed-member-no-row`, `neg-witness-malformed-members` and
+  `neg-witness-malformed-shapes`, pin it. (capsule-cli#438)
+
+## go 0.13.0 — 2026-10-23
+
+Tag `go/v0.13.0`.
+
+- Class 1 verify (Go, Python, TypeScript) does bounded work on hostile numbers, as Rust does since
+  #382. It reports at most 64 `float_in_digest_field` and 64 `unsafe_integer_in_digest_field`
+  findings, each quoting at most 256 code points of its path, then `...`, and writes a path only for
+  a failing number. Python 0.12.0 needed about 200 MB for a 60 KB record with 2,000 floats under a
+  50 KB key (measured in #383). Python and TypeScript now list object members in code point order,
+  as Go and Rust do, so all four report the same findings. Verdicts don't change, and finding codes
+  change only in the Python case below. What does change, in all three: a record with more than 64
+  failing numbers of one kind lists only the first 64, and a long path is cut. Python and TypeScript
+  also list findings in a different order, and a Python record nested past the recursion limit
+  reports `capsule_id_uncomputable` where it reported `verifier_internal_error`. A new
+  cross-language fixture, `vectors/cross-language/verify-number-findings.json`, pins the findings.
+  (#383)
+
+- Strict Bundle verification (Go, Python, Rust, TypeScript): the `checkpoint` claim also holds the
+  completeness certificate's `log_id`, when stated, to the signed log identifier, and reports
+  `checkpoint_field_mismatch:log_id` when it differs (bundle -01 §Completeness). A producer-selected
+  Bundle whose certificate names another log was INCOMPLETE and is now INVALID; a new strict vector,
+  `neg-producer-selected-certificate-log-id`, pins it. Go exports the claim on its own as
+  `bundle.VerifyCheckpoint`, which also returns the authenticated checkpoint and its COSE bytes.
+  (capsule-cli#438)
+
+## ts 0.6.1 — 2026-10-23
+
+Tag `ts/v0.6.1`.
+
 - TypeScript: `contract-report/v1` has an extension interpreter, `contract-report` (a new
   `ExtensionInterpreterId` member), so a runtime whose contract-report module drew the page can
   list the block as interpreted (contract-report/v1 §4). Its reader is the descriptor's: a closed
@@ -341,6 +546,8 @@ in TypeScript 0.5.0.
   read as supported. Affects TypeScript releases 0.1.0 through 0.5.0. (#192)
 
 ## 0.11.0 — 2026-10-20
+
+Tags: `go/v0.11.0`, `python/v0.11.0`, `ts/v0.4.0`, `ts/v0.5.0`, `crates/agent-action-capsule-v0.4.0`.
 
 - TypeScript: outcome-report and bundle-page fixes. A resolved conversation's summary and
   drill-down count the criteria the pack judged instead of always saying "nine", and the report
@@ -545,6 +752,8 @@ in TypeScript 0.5.0.
 
 ## 0.10.0 — 2026-10-17
 
+Tags: `go/v0.10.0`, `python/v0.10.0`, `ts/v0.3.0`, `crates/agent-action-capsule-v0.3.0`.
+
 - **Breaking**, Python: `agent_action_capsule.emit` (the module and the root `emit` export) and
   `agent_action_capsule.integrations` (`crewai`, `langchain`) are removed, with the `langchain`
   and `crewai` extras. They were deprecated in 0.9.0 (#287). Use capsule-emit 0.11.0 or later:
@@ -610,6 +819,8 @@ in TypeScript 0.5.0.
 
 ## 0.9.1 — 2026-10-16
 
+Tags: `go/v0.9.1`, `python/v0.9.1`, `ts/v0.2.1`, `crates/agent-action-capsule-v0.2.1`.
+
 - Settlement, all four languages: the `wrapped_resigned` check reads an SD-JWT as the
   issuer-signed JWS before the first `~`. It stripped only trailing `~`, so an SD-JWT with a
   disclosure (`JWT~disclosure~`) re-signed with the wrapping leg's key was not reported. New
@@ -671,6 +882,8 @@ in TypeScript 0.5.0.
 
 ## 0.9.0 — 2026-10-16
 
+Tags: `go/v0.9.0`, `python/v0.9.0`, `ts/v0.2.0`, `crates/agent-action-capsule-v0.2.0`.
+
 - Python: `emit()` (`agent_action_capsule.emit.emit`, exported from the root as
   `agent_action_capsule.emit`) and the emit-tier adapters in `agent_action_capsule.integrations`
   (`LangChainCapsuleEmitter`, `CrewAICapsuleEmitter`, `emit_tool`, with the `langchain` and `crewai`
@@ -718,6 +931,8 @@ in TypeScript 0.5.0.
 
 ## 0.8.1 — 2026-10-15
 
+Tag: `python/v0.8.1`.
+
 - Python: `agent_action_capsule.evidence_request.sign_envelope` builds and signs the artifact
   response in the interop profile's form (`spec/interop-profile-v0.md` §6.2, `PROFILE =
   "evidence-interop/0"`): `Envelope.signing_body()` is JCS over the signed members, and
@@ -761,6 +976,8 @@ in TypeScript 0.5.0.
   (`2026-10-15T00:00:99Z`); it used to clamp them to 59.
 
 ## 0.8.0 — 2026-10-15
+
+Tags: `go/v0.8.0`, `python/v0.8.0`, `crates/evidence-request-v0.1.0`, `crates/evidence-request-v0.2.0`.
 
 - Evidence Request (`draft-mih-agent-evidence-request-00`): every implementation now lives in
   this repository next to the draft and its vectors, and passes `vectors/evidence-request/`
@@ -891,6 +1108,8 @@ in TypeScript 0.5.0.
   `capsule_id_mismatch`; previously the script stopped at Python's rejection.
 
 ## 0.7.1 — 2026-10-14
+
+Tags: `python/v0.7.1`, `ts/v0.1.1`, `crates/agent-action-capsule-v0.1.0`.
 
 - Release: Python and TypeScript releases are now a merged version bump. Run
   **Release · Prepare** with the package and `patch`, `minor` or `major`; merging the
@@ -1187,6 +1406,8 @@ in TypeScript 0.5.0.
 
 ## 0.7.0 — 2026-10-07
 
+Tags: `v0.7.0`, `go/v0.7.0`.
+
 **Headline: string-typed fields are type-checked in every verifier.** A list, an object or a
 null where the profile requires a string now fails check 1 (`field_not_string`) in Python, Go,
 TypeScript and Rust, and a malformed `references[].retention` declaration (§5.5.5) is rejected
@@ -1318,6 +1539,8 @@ pinning those files by name or hash re-pins.
 
 ## 0.6.0 — 2026-09-27
 
+Tags: `v0.6.0`, `go/v0.6.0`.
+
 **Headline: the -05 wire.** Producers now emit `spec_version`
 `draft-mih-scitt-agent-action-capsule-05`; verifiers accept both `-04` and `-05`. The -05
 registrations are seeded (below). Released vectors are unchanged: every vector case file
@@ -1448,6 +1671,8 @@ shipped in 0.5.0 / `go/v0.5.x` is byte-identical, and the -05 cases are added be
 
 ## 0.5.0 — 2026-09-22
 
+Tags: `v0.5.0`, `go/v0.5.1`.
+
 ### Spec
 - `spec/draft-mih-scitt-agent-action-capsule-05.md` — added `provenance_mode`,
   a MODE on the ordinary Capsule (never a distinct record type; ruled
@@ -1531,6 +1756,8 @@ shipped in 0.5.0 / `go/v0.5.x` is byte-identical, and the -05 cases are added be
 
 ## 0.4.0 — 2026-09-17
 
+Tag: `v0.4.0`.
+
 ### Reference (breaking)
 - **Format-4-only canonical reference.** The Python and Go reference verifiers and
   `capsule_id` computation now accept `format_version: "4"` only; any other value is
@@ -1543,6 +1770,8 @@ shipped in 0.5.0 / `go/v0.5.x` is byte-identical, and the -05 cases are added be
   the single pinned legacy artifact; do not re-tag.
 
 ## 0.3.0 — 2026-09-08 (Python library)
+
+No tag in this repository names it.
 
 ### Python
 - **draft-04 `references[]` — parity with the Go reference implementation.** The
@@ -1581,6 +1810,8 @@ shipped in 0.5.0 / `go/v0.5.x` is byte-identical, and the -05 cases are added be
   `go/verify/references_test.go`.
 
 ## 0.2.0 — 2026-08-28
+
+No tag in this repository names it.
 
 ### Spec
 - `spec/draft-mih-scitt-agent-action-capsule-03.md` §5.3 Assurance — added the
@@ -1658,6 +1889,8 @@ shipped in 0.5.0 / `go/v0.5.x` is byte-identical, and the -05 cases are added be
   future one, at which point the submodule shadow is fully resolved.
 
 ## 0.1.0 — 2026-07-06
+
+Tag: `v0.1.0`.
 
 ### Added
 - `history` module: `list_capsules`, `verify_chain_completeness`, `export_verifiable_bundle`, `ChainReport` — ledger-grade capsule history API
