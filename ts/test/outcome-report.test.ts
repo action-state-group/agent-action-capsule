@@ -1719,3 +1719,36 @@ it("(ER 4.3) a conversation whose every claim is later is in no tally and never 
   expect(model.totalCount).toBe(base.totalCount - 1);
   expect(model.noClaimCount).toBeLessThanOrEqual(base.noClaimCount);
 });
+
+it("(ER 4.3) an all-later conversation's missing claims use up no exclusion", async () => {
+  const { bundle } = await sealEvidenceBundle(
+    fixture("outcome-report-bundle.json"),
+  );
+  const result = await buildResultRoot(bundle);
+  const laterId = "tau2:airline:task-0:trial-0";
+  const inForceId = "tau2:airline:task-1:trial-0";
+  const dropped = new Set<string>();
+  for (const id of [laterId, inForceId]) {
+    const claim = result.claims.find((c) => c.id.startsWith(`${id}::`))!;
+    dropped.add(claim.id);
+  }
+  const changed = {
+    ...result,
+    claims: result.claims
+      .filter((c) => !dropped.has(c.id))
+      .map((c) =>
+        c.id.startsWith(`${laterId}::`) ? { ...c, later: true } : c,
+      ),
+    coverage: { ...result.coverage, excludedNotApplicable: 1 },
+  };
+  const model = buildOutcomeReportModel(changed, { percentages: false });
+  expect(model.notYetInForce.map((c) => c.conversationId)).toEqual([laterId]);
+  expect(model.notYetInForce[0]!.criteria).toEqual([]);
+  const conversation = model.conversations.find(
+    (c) => c.conversationId === inForceId,
+  )!;
+  expect(
+    conversation.criteria.filter((c) => c.verdict === "not_applicable"),
+  ).toHaveLength(1);
+  expect(model.noClaimCount).toBe(0);
+});

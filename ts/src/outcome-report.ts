@@ -454,7 +454,10 @@ export interface OutcomeReportModel {
    * Conversations whose every claim is not yet in force: in no day, count or
    * roll-up (never "could not decide"), drawn only in the not-yet-in-force
    * section. A conversation with both in-force and later claims stays in
-   * `conversations`, its later criteria in `Conversation.notYetInForce`.
+   * `conversations`, its later criteria in `Conversation.notYetInForce`. An
+   * all-later conversation has no in-force criterion: its `verdict` and
+   * `checkVerdicts` are the empty roll-up (`not_evaluable`) only as a
+   * placeholder, never a judgment a reader is shown.
    */
   readonly notYetInForce: readonly Conversation[];
   readonly runInfo: OutcomeReportRunInfo;
@@ -1052,17 +1055,35 @@ function groupClaims(
       (ref.contractRef !== contractRef ||
         criterionRef(ref.requirementRef) === undefined),
   ).length;
+  // A conversation whose every drawn claim is later has no in-force
+  // criterion: it is outside the population, so its missing claims neither
+  // draw an entry nor use up an exclusion (Result v0 section 4.3).
+  const allLater = new Set<string>();
+  for (const [conversationId, claims] of byConversation) {
+    const drawn = terms.checks.flatMap((check) =>
+      check.criteria.flatMap((criterion) => {
+        const claim = claims.find(
+          (candidate) =>
+            candidate.requirementRef === `${check.id}.${criterion.id}`,
+        );
+        return claim === undefined ? [] : [claim];
+      }),
+    );
+    if (drawn.length > 0 && drawn.every((c) => c.later && !c.failed))
+      allLater.add(conversationId);
+  }
   let missing = 0;
-  for (const claims of byConversation.values())
-    for (const check of terms.checks)
-      for (const criterion of check.criteria)
-        if (
-          !claims.some(
-            (candidate) =>
-              candidate.requirementRef === `${check.id}.${criterion.id}`,
+  for (const [conversationId, claims] of byConversation)
+    if (!allLater.has(conversationId))
+      for (const check of terms.checks)
+        for (const criterion of check.criteria)
+          if (
+            !claims.some(
+              (candidate) =>
+                candidate.requirementRef === `${check.id}.${criterion.id}`,
+            )
           )
-        )
-          missing += 1;
+            missing += 1;
   const missingVerdict =
     missing <= result.coverage.excludedNotApplicable - reserved
       ? "not_applicable"
@@ -1073,6 +1094,7 @@ function groupClaims(
   for (const [conversationId, claims] of byConversation) {
     const criteria: ConversationCriterion[] = [];
     const laterCriteria: ConversationCriterion[] = [];
+    const isAllLater = allLater.has(conversationId);
     for (const check of terms.checks) {
       for (const criterion of check.criteria) {
         const claim = claims.find(
@@ -1090,11 +1112,12 @@ function groupClaims(
           // criterion an exclusion belongs to cannot be verified from this
           // document alone (no digest, no rationale survives the exclusion);
           // flagged here as the known limit, not hidden.
-          criteria.push({
-            checkId: check.id,
-            criterionId: criterion.id,
-            verdict: missingVerdict,
-          });
+          if (!isAllLater)
+            criteria.push({
+              checkId: check.id,
+              criterionId: criterion.id,
+              verdict: missingVerdict,
+            });
           continue;
         }
         // Result v0 section 4.3: a claim not yet in force is readiness only,
@@ -1144,11 +1167,6 @@ function groupClaims(
         });
       }
     }
-    // Every claim of this conversation is later: it has no in-force criterion
-    // to tally, so its missing-claim entries are dropped with it.
-    const allLater =
-      laterCriteria.length > 0 && criteria.every((c) => c.claim === undefined);
-    if (allLater) criteria.length = 0;
     const firstClaim = [...criteria, ...laterCriteria].find(
       (c) => c.claim !== undefined,
     )?.claim;
@@ -1213,7 +1231,7 @@ function groupClaims(
       checkVerdicts,
       verdict: rollUp(criteria.map((c) => c.verdict)),
     };
-    if (allLater) {
+    if (isAllLater) {
       notYetInForce.push(conversation);
       continue;
     }
@@ -1222,15 +1240,11 @@ function groupClaims(
     dayList.push(conversation);
     byDay.set(date, dayList);
   }
-  conversations.sort((a, b) =>
-    a.day === b.day
-      ? a.conversationId.localeCompare(b.conversationId)
-      : a.day.localeCompare(b.day),
-  );
   const byId = (a: Conversation, b: Conversation): number =>
     a.day === b.day
       ? a.conversationId.localeCompare(b.conversationId)
       : a.day.localeCompare(b.day);
+  conversations.sort(byId);
   notYetInForce.sort(byId);
   return { conversations, days: byDay, notYetInForce };
 }
