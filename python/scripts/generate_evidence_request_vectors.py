@@ -169,7 +169,7 @@ def refusal(request_digest: Any, reason: Any, issued_at: Any = ISSUED_AT, detail
     ``detail`` is carried outside the signed members."""
     body = {"issued_at": issued_at, "reason": reason, "request_digest": request_digest}
     out = {**body, "key_id": PRIMARY_PUB, "sig": sign_body(body)}
-    if detail is not None:
+    if detail:
         out["detail"] = detail
     return out
 
