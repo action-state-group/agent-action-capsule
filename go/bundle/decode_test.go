@@ -27,12 +27,3 @@ func TestDecodeKeepsNumbersAndRefusesWhatIsNotOneObject(t *testing.T) {
 		require.True(t, strings.HasPrefix(err.Error(), "bundle "), "%s: %q", name, err)
 	}
 }
-
-func TestPublicVerifierURLTakesAFragment(t *testing.T) {
-	fragment, err := EncodeFragment(map[string]interface{}{"root": "a"})
-	require.NoError(t, err)
-	link := PublicVerifierURL + "#" + fragment
-	decoded, err := DecodeFragment(strings.SplitN(link, "#", 2)[1])
-	require.NoError(t, err)
-	require.Equal(t, "a", decoded.(map[string]interface{})["root"])
-}

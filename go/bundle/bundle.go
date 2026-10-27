@@ -109,14 +109,12 @@ func DecodeFragment(fragment string) (interface{}, error) {
 	return value, nil
 }
 
-// PublicVerifierURL is the public bundle page of the reference verifier, the
-// base a viewer permalink (EncodeFragment) is appended to after "#".
-const PublicVerifierURL = "https://verify.agentactioncapsule.org/bundle"
-
 // Decode reads one Evidence Bundle from its JSON text: one JSON object, with
 // numbers kept as json.Number (VerifyBundle, BundleDigest and the JCS
 // canonicalizer refuse float64), refusing invalid UTF-8, unpaired surrogate
-// escapes and trailing data, as DecodeFragment does.
+// escapes and trailing data, as DecodeFragment does. It checks transport
+// only; VerifyBundle applies the Bundle checks. It does not bound input
+// size: callers reading untrusted input should limit it.
 func Decode(raw []byte) (map[string]interface{}, error) {
 	value, err := decodeJSONText(raw)
 	if err != nil {
