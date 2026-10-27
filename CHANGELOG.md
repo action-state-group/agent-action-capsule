@@ -19,7 +19,7 @@ packages is listed under each package that shipped it, or has not yet.
 - Go: `bundle.Decode` reads an Evidence Bundle from its JSON text, with numbers kept as
   `json.Number` and invalid UTF-8, unpaired surrogates and trailing data refused (the decoding
   `DecodeFragment` already used). It checks transport only; `VerifyBundle` applies the Bundle
-  checks. It moves here from capsule-cli (`DecodeBundleJSON`), which consumes it from here.
+  checks. It moves here from capsule-cli (`DecodeBundleJSON`), which will consume it from here.
   (evidencebook#144)
 
 - **Breaking**, spec: the presentation contract moved to capsule-viewer, so this repository no
