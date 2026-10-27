@@ -867,9 +867,9 @@ Internet-Draft         Bilateral Agent Attestation          October 2026
    [I-D.mih-sokolov-scitt-payload-binding]
               Mih, S. and A. Sokolov, "Canonicalization Declaration for
               SCITT Signed Statements", Work in Progress, Internet-
-              Draft, draft-mih-sokolov-scitt-payload-binding-05, 12
-              September 2026, <https://datatracker.ietf.org/doc/html/
-              draft-mih-sokolov-scitt-payload-binding-05>.
+              Draft, draft-mih-sokolov-scitt-payload-binding-06, 25
+              October 2026, <https://datatracker.ietf.org/doc/html/
+              draft-mih-sokolov-scitt-payload-binding-06>.
 
    [I-D.mih-scitt-agent-action-capsule-sel-disc]
               Mih, S., "Selective Disclosure Profile for Agent Action
