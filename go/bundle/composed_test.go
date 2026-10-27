@@ -256,6 +256,20 @@ func TestComposedTamperedMemberDigestFails(t *testing.T) {
 	require.Equal(t, []string{"member_digest_mismatch:responder-a"}, result.CompositionClosure.Findings)
 }
 
+// A member whose checkpoint is present but tampered leaves the composed block
+// passing (the composed verifier does not inspect checkpoints), yet the member's
+// strict verdict is not VALID, so the full verdict cannot be VALID.
+func TestComposedTamperedMemberCheckpointIsNotValid(t *testing.T) {
+	container, block := cloneCase(t, composedCases(t)["agree-with-checkpoints"])
+	bundle := memberByID(block, "responder-a")["bundle"].(map[string]interface{})
+	checkpoint := bundle["checkpoint"].(map[string]interface{})
+	checkpoint["root"] = strings.Repeat("00", 32)
+	reseal(t, block)
+
+	require.Equal(t, "pass", verifyBlock(t, container, Options{}).Status)
+	require.NotEqual(t, VerdictValid, VerifyStrict(bundle, StrictOptions{}).Verdict)
+}
+
 func TestComposedDeclaredJoinStateWrongFails(t *testing.T) {
 	container, block := cloneCase(t, composedCases(t)["agree"])
 	block["joins"].([]interface{})[0].(map[string]interface{})["state"] = "mismatch"
