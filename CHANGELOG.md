@@ -16,6 +16,12 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.8.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Go: `bundle.Decode` reads an Evidence Bundle from its JSON text, with numbers kept as
+  `json.Number` and invalid UTF-8, unpaired surrogates and trailing data refused (the decoding
+  `DecodeFragment` already used), and `bundle.PublicVerifierURL` names the reference verifier's
+  bundle page. Both move here from capsule-cli (`DecodeBundleJSON`, `DefaultBundleURL`), which
+  consumes them from here. (evidencebook#144)
+
 - **Breaking**, spec: the presentation contract moved to capsule-viewer, so this repository no
   longer states conformance for manifests, registries, resolution or I4; a claim of
   `presentation-contract-v0` conformance now refers to capsule-viewer's copy. What a page states
