@@ -18,13 +18,14 @@ DRAFT    = draft-mih-scitt-agent-action-capsule-05
 # that is resolved would simply land a red gate.
 BILATERAL = draft-mih-agent-bilateral-attestation-03
 CPB      = draft-mih-sokolov-scitt-payload-binding-00
+SELDISC  = draft-mih-scitt-agent-action-capsule-sel-disc-01
 BUNDLE   = draft-mih-zhang-agent-disclosure-bundle-01
 EVREQ    = draft-mih-agent-evidence-request-00
 EVIDENCELAYER = draft-mih-agent-evidence-layer-00
 XML2RFC  ?= $(shell command -v xml2rfc)
 KDRFC    ?= $(shell command -v kramdown-rfc || ruby -e 'puts Gem.bindir + "/kramdown-rfc"')
 
-.PHONY: all bilateral cpb bundle evreq evidencelayer clean idnits idnits-evreq rebuild refresh-refs check
+.PHONY: all bilateral cpb seldisc bundle evreq evidencelayer clean idnits idnits-evreq rebuild refresh-refs check
 
 all: $(DRAFT).xml $(DRAFT).txt $(BUNDLE).xml $(BUNDLE).txt $(EVREQ).xml $(EVREQ).txt $(EVIDENCELAYER).xml $(EVIDENCELAYER).txt
 
@@ -64,6 +65,8 @@ bilateral: $(BILATERAL).xml $(BILATERAL).txt
 
 cpb: $(CPB).xml $(CPB).txt
 
+seldisc: $(SELDISC).xml $(SELDISC).txt
+
 bundle: $(BUNDLE).xml $(BUNDLE).txt
 
 evreq: $(EVREQ).xml $(EVREQ).txt
@@ -85,6 +88,11 @@ $(CPB).xml: $(CPB).md
 	$(KDRFC) $(CPB).md > .$(CPB).v2.xml
 	$(XML2RFC) --v2v3 .$(CPB).v2.xml -o $(CPB).xml
 	@rm -f .$(CPB).v2.xml
+
+$(SELDISC).xml: $(SELDISC).md
+	$(KDRFC) $(SELDISC).md > .$(SELDISC).v2.xml
+	$(XML2RFC) --v2v3 .$(SELDISC).v2.xml -o $(SELDISC).xml
+	@rm -f .$(SELDISC).v2.xml
 
 # The committed bundle .xml omits kramdown-rfc's embedded gzipped source copy,
 # as the evidence-request .xml does.
@@ -118,6 +126,9 @@ $(BILATERAL).txt: $(BILATERAL).xml
 $(CPB).txt: $(CPB).xml
 	$(XML2RFC) --text --v3 $(CPB).xml -o $(CPB).txt
 
+$(SELDISC).txt: $(SELDISC).xml
+	$(XML2RFC) --text --v3 $(SELDISC).xml -o $(SELDISC).txt
+
 $(BUNDLE).txt: $(BUNDLE).xml
 	$(XML2RFC) --text --v3 $(BUNDLE).xml -o $(BUNDLE).txt
 
@@ -137,4 +148,4 @@ check:
 	python3 check_verdict_class_refs.py
 
 clean:
-	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml .$(BUNDLE).v2.xml .$(EVREQ).v2.xml .$(EVREQ).v3.xml .$(EVIDENCELAYER).v2.xml .$(EVIDENCELAYER).v3.xml
+	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml .$(SELDISC).v2.xml .$(BUNDLE).v2.xml .$(EVREQ).v2.xml .$(EVREQ).v3.xml .$(EVIDENCELAYER).v2.xml .$(EVIDENCELAYER).v3.xml

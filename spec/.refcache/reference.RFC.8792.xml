@@ -1,0 +1,15 @@
+<reference anchor="RFC8792" target="https://www.rfc-editor.org/info/rfc8792">
+  <front>
+    <title>Handling Long Lines in Content of Internet-Drafts and RFCs</title>
+    <author fullname="K. Watsen" initials="K." surname="Watsen"/>
+    <author fullname="E. Auerswald" initials="E." surname="Auerswald"/>
+    <author fullname="A. Farrel" initials="A." surname="Farrel"/>
+    <author fullname="Q. Wu" initials="Q." surname="Wu"/>
+    <date month="June" year="2020"/>
+    <abstract>
+      <t>This document defines two strategies for handling long lines in width-bounded text content. One strategy, called the "single backslash" strategy, is based on the historical use of a single backslash ('\') character to indicate where line-folding has occurred, with the continuation occurring with the first character that is not a space character (' ') on the next line. The second strategy, called the "double backslash" strategy, extends the first strategy by adding a second backslash character to identify where the continuation begins and is thereby able to handle cases not supported by the first strategy. Both strategies use a self-describing header enabling automated reconstitution of the original content.</t>
+    </abstract>
+  </front>
+  <seriesInfo name="RFC" value="8792"/>
+  <seriesInfo name="DOI" value="10.17487/RFC8792"/>
+</reference>
