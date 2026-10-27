@@ -1,0 +1,12 @@
+{
+ "set": "aac-nostr-mailbox-v0",
+ "status": "EXPERIMENTAL. Vectors for a carriage binding that is not part of evidence-interop/0 and names no binding token. Every key is a test key derived from a public label; never use one for anything else.",
+ "document": "spec/bindings/nostr-mailbox-v0.md",
+ "generator": "python/scripts/generate_nostr_mailbox_vectors.py",
+ "files": [
+  {
+   "path": "vectors.json",
+   "sha256": "613e8535985502820c731e5365383017af600d08ba05723a4a268fecb83f92ca"
+  }
+ ]
+}

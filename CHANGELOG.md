@@ -1196,6 +1196,11 @@ Tag `python/v0.13.0`.
   which admits or refuses each candidate and never ranks them. The definition frame is unchanged, so
   no definition digest changes. (#451, #459)
 
+- Spec, experimental: `spec/bindings/nostr-mailbox-v0.md`, a carriage of the `evidence-interop/0`
+  exchange through a Nostr relay for a responder with no inbound reachability, with its adapter
+  declaration `spec/adapters/nostr-mailbox-v0.md`, vectors in `vectors/adapters/nostr-mailbox/` and
+  the drift workflow `nostr-mailbox.yml`. Not part of the profile; it defines no binding token.
+
 - Spec: `spec/interop-profile-v0.md` §11.1.5 rule 2 (`acceptance_ordering` `FAIL`) now applies only
   when the accepted record's `issued_at` is later than a time held for the action. An `issued_at`
   equal to that time after the reduction to the §5.2 form (to the second) no longer reads as an
