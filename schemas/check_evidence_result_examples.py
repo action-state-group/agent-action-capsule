@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""
+r"""
 check_evidence_result_examples.py
 
 Validates every committed Evidence Result v0 example fixture
@@ -212,6 +212,19 @@ mechanical half):
          out of the list.
        - neg-requirements-covered-unaccounted: excluded_not_applicable 0, so
          nothing accounts for req-claim-4, which no claim cites.
+  15. Patterns are ECMA-262's (JSON Schema 2020-12, section 6.3.3 of the
+     validation vocabulary): this checker validates with its own `pattern`
+     keyword, which reads `$` and `\s` as ECMA-262 does (`_ecma_regex`), not
+     as Python's `re` does. Three schema negatives MUST fail, each with the
+     mutant that reads `pattern` with plain `re.search` and accepts it:
+       - neg-digest-trailing-newline: claim-1's first evidence digest ends
+         in "\n" (Python's `$` matches before a final newline).
+       - neg-applies-from-trailing-newline: claim-2's applies_from ends in
+         "\n" (same).
+       - neg-contract-ref-ecma-whitespace: claim-1's contract_ref ends in
+         U+FEFF (ECMA-262 whitespace; not in Python's `\s`).
+     The converse case, a contract_ref holding U+001C (in Python's `\s`,
+     not ECMA-262's), MUST validate, and plain `re` MUST refuse it.
 
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
@@ -240,6 +253,7 @@ NOT covered here (explicitly named, not silently skipped):
 from __future__ import annotations
 
 import copy
+import functools
 import json
 import re
 import sys
@@ -517,7 +531,17 @@ NEGATIVES = [
     "neg-not-applicable-verdict",
     "neg-out-of-scope-on-reconcile-claim",
     "neg-requirements-covered-duplicate",
+    "neg-digest-trailing-newline",
+    "neg-applies-from-trailing-newline",
+    "neg-contract-ref-ecma-whitespace",
 ]
+
+# Section 15: the schema negatives Python's `re` would accept.
+PATTERN_NEGATIVES = (
+    "neg-digest-trailing-newline",
+    "neg-applies-from-trailing-newline",
+    "neg-contract-ref-ecma-whitespace",
+)
 
 # Spec sections 3, 4.2 and 4.3: cross-element negatives that pass the schema
 # and fail revision_findings, each with the mutant that switches its rule off.
@@ -816,13 +840,69 @@ def _load(name: str) -> EvidenceResultDoc:
 # `schema` is an arbitrary JSON Schema document: the keyword set is open-ended
 # and recursive ($defs/$ref/if/then/...), so a TypedDict here would assert a
 # fixed shape JSON Schema does not have, which is less honest than `dict`.
-def _validator_for(schema: dict):
+def _validator_for(schema: dict, *, python_patterns: bool = False):
     try:
         import jsonschema
     except ImportError as exc:  # pragma: no cover - environment problem, not a finding
         print(f"ERROR: the 'jsonschema' package is required to run this check: {exc}")
         sys.exit(2)
-    return jsonschema.Draft202012Validator(schema)
+    if python_patterns:  # the section 15 mutant: python-jsonschema's own `pattern`
+        return jsonschema.Draft202012Validator(schema)
+    validator_class = jsonschema.validators.extend(
+        jsonschema.Draft202012Validator, {"pattern": _ecma_pattern}
+    )
+    return validator_class(schema)
+
+
+# ECMA-262's \s (WhiteSpace and LineTerminator) as the body of a character
+# class, the set go/evidenceresult's ecmaWhitespace spells for RE2.
+ECMA_WHITESPACE = "\\t\\n\\x0b\\x0c\\r \\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff"
+
+
+@functools.cache
+def _ecma_regex(pattern: str) -> re.Pattern[str]:
+    r"""Compile a schema pattern for `re`, reading it as ECMA-262 does (JSON
+    Schema's dialect), as go/evidenceresult's ecmaRegexp does for RE2. `\s`
+    and `\S` become ECMA-262's whitespace set, where Python's `\s` adds
+    U+001C-U+001F and U+0085 and lacks U+FEFF. `$` becomes `\Z`: without the
+    m flag ECMA-262's `$` matches only at the end of the text, where Python's
+    also matches before a final newline. re.ASCII keeps `\d`, `\w` and `\b`
+    ASCII, as in ECMA-262 without the u flag. The schema's patterns use no
+    other construct whose meaning differs between the two."""
+    out = []
+    in_class = False
+    i = 0
+    while i < len(pattern):
+        c = pattern[i]
+        if c == "\\" and i + 1 < len(pattern):
+            nxt = pattern[i + 1]
+            i += 2
+            if nxt == "s":
+                out.append(ECMA_WHITESPACE if in_class else f"[{ECMA_WHITESPACE}]")
+            elif nxt == "S" and not in_class:
+                out.append(f"[^{ECMA_WHITESPACE}]")
+            elif nxt == "S":
+                raise ValueError(f"pattern {pattern!r}: \\S inside a character class is not supported")
+            else:
+                out.append(c + nxt)
+            continue
+        if c == "[" and not in_class:
+            in_class = True
+        elif c == "]" and in_class:
+            in_class = False
+        elif c == "$" and not in_class:
+            c = "\\Z"
+        out.append(c)
+        i += 1
+    return re.compile("".join(out), re.ASCII)
+
+
+def _ecma_pattern(validator, pattern: str, instance: object, schema: dict):
+    """The `pattern` keyword with the pattern read as ECMA-262."""
+    if validator.is_type(instance, "string") and not _ecma_regex(pattern).search(instance):
+        from jsonschema.exceptions import ValidationError
+
+        yield ValidationError(f"{instance!r} does not match {pattern!r}")
 
 
 # `schema` and the return value are the same open-ended JSON Schema document
@@ -1405,6 +1485,28 @@ def main() -> int:
             findings.append(f"MUTANT-RESTORE-FAILED {name}: the restored walk accepted the fixture")
         else:
             print(f"OK  MUTANT        {name} -- restored walk re-rejects the same fixture")
+
+    # --- 15. Patterns read as ECMA-262 ---------------------------------------
+    python_patterns = _validator_for(schema, python_patterns=True)
+    for name in PATTERN_NEGATIVES:
+        if not negative_errors_by_name[name]:
+            continue
+        if list(python_patterns.iter_errors(_load(name))):
+            findings.append(
+                f"MUTANT-DID-NOT-FLIP {name}: with `pattern` read by Python's re, the "
+                "fixture still failed -- the rejection is not the ECMA-262 reading"
+            )
+        else:
+            print(f"OK  MUTANT        {name} -- with `pattern` read by Python's re, "
+                  "the fixture VALIDATES CLEAN (confirms the ECMA-262 reading is load-bearing)")
+    converse = _load(POSITIVE_RESULT)
+    converse["claims"][0]["contract_ref"] += "\x1c"
+    if list(validator.iter_errors(converse)):
+        findings.append("PATTERN-NOT-ECMA a contract_ref holding U+001C is refused; ECMA-262's \\s excludes it")
+    elif not list(python_patterns.iter_errors(converse)):
+        findings.append("PATTERN-CONVERSE-VACUOUS Python's re accepts a contract_ref holding U+001C")
+    else:
+        print("OK  PATTERN       a contract_ref holding U+001C validates (Python's re would refuse it)")
 
     if findings:
         print("\nFAIL — findings:")

@@ -112,7 +112,7 @@ func TestVectorsParity(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 20, positives)
-	assert.Equal(t, 52, negatives)
+	assert.Equal(t, 55, negatives)
 	assert.Equal(t, 14, sidecars)
 	for name := range crossElementNegatives {
 		_, err := os.Stat(filepath.Join(vectorsDir, name+".json"))

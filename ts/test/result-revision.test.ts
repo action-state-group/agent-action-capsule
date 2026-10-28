@@ -56,6 +56,11 @@ const REFUSED = [
   "neg-requirements-covered-duplicate",
   "neg-requirements-covered-omits-claimed",
   "neg-requirements-covered-unaccounted",
+  // Schema patterns read as ECMA-262: `$` only at the end of the text, and
+  // `\s` includes U+FEFF.
+  "neg-digest-trailing-newline",
+  "neg-applies-from-trailing-newline",
+  "neg-contract-ref-ecma-whitespace",
 ];
 
 // Valid documents whose stated counts the claims do not bear out: the
