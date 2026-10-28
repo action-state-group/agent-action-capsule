@@ -96,6 +96,12 @@ same-commit files in CI.
   wrongly opened, and one mutant per property the level adds. Derived from the personal-history run
   and the x402 adapter corpus;
   `python/scripts/generate_personal_history_outcome_v0_vectors.py` regenerates them.
+- `standard-history-v0/`: the derivation `standard_history/1` of `spec/standard-history-v0.md`:
+  positive cards for a person and a node, checked with and without the policy, the anchor and the
+  deal entries, the month-end window clamp and an empty window, and one negative per property of
+  its §6 (a percentage, a count without its denominator, a counted shop purchase, a window not in
+  the policy, among others); `python/scripts/generate_standard_history_v0_vectors.py` regenerates
+  them.
 - `adapters/x402/`: the x402 adapter declaration `spec/adapters/x402-v0.md`: a positive and a
   native-check-fails case for an `exact`/`eip3009` payment, with the wrapped objects' octets, the
   relying party's policy and recorded lookup, and the expected `native_check` reports. Constructed,

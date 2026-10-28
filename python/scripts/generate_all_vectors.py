@@ -81,6 +81,7 @@ GENERATORS = (
     "generate_coverage_declaration_v0_vectors.py",
     "generate_controller_binding_v0_vectors.py",
     "generate_deal_reconcile_v0_vectors.py",
+    "generate_standard_history_v0_vectors.py",
     "generate_registry_conformance_vectors.py",
     "generate_adapter_x402_vectors.py",
     "generate_ucp_adapter_vectors.py",

@@ -1,0 +1,13 @@
+{
+  "set": "aac-standard-history-v0",
+  "status": "Conformance vectors for the informational Standard History Derivation v0 (spec/standard-history-v0.md), standard_history/1. Every digest is a label digest for these vectors only.",
+  "spec": "spec/standard-history-v0.md",
+  "generator": "python/scripts/generate_standard_history_v0_vectors.py",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "f52c5b88bd4c00f1f70a32fd71cc0e7ab6ec58a2bbfa92e796e03ca3f4a1b3a9",
+      "count": 15
+    }
+  ]
+}
