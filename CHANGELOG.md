@@ -16,6 +16,17 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.8.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Go: the new package `evidenceresult` is the Go gate for an Evidence Result v0 document, at
+  parity with the Python reference `schemas/check_evidence_result_examples.py`. `Decode` reads
+  one document with its numbers kept, and `Check` validates it against the schema and runs the
+  cross-element rules: claim ids are unique, the bucket partition with `out_of_scope`,
+  `applies_from`, `requirements_covered`, the coverage counts, a `coverage_report`, and each close
+  claim's state recomputed from the records it cites (`DecodeRecords`). It returns the claims. The
+  schema is embedded and a test keeps it byte-equal to `schemas/evidence-result-v0.json`. Every case
+  in `vectors/evidence-result/` (20 positive, 52 negative) gets the Python reference's verdict. New
+  dependency: `github.com/santhosh-tekuri/jsonschema/v6`. capsule-cli's own gate will move to
+  this one. (#428)
+
 - Go: `bundle.Decode` reads an Evidence Bundle from its JSON text, with numbers kept as
   `json.Number` and invalid UTF-8, unpaired surrogates and trailing data refused (the decoding
   `DecodeFragment` already used). It checks transport only; `VerifyBundle` applies the Bundle
