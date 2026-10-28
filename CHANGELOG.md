@@ -132,8 +132,9 @@ packages is listed under each package that shipped it, or has not yet.
 
 Tag `ts/v0.9.0`.
 
-- TypeScript: the `@action-state-group/cll` pin, dev and optional peer, is now exactly 0.3.0, so
-  upgrade cll to 0.3.0 alongside this release; cll 0.2.1 is a peer conflict. Its browser entry
+- **Breaking**, TypeScript (ts 0.9.0): the `@action-state-group/cll` pin, dev and optional peer, is now exactly 0.3.0, so
+  upgrade cll to 0.3.0 alongside this release; any other cll, 0.2.x included, is a peer
+  conflict. Its browser entry
   exports the COSE checkpoint verifier with strict Ed25519, and a page that bundles the browser
   entry now checks the checkpoint signature as Node does, with or without WebCrypto. With
   WebCrypto Ed25519, the strict `checkpoint` claim is no longer withheld as
@@ -156,7 +157,7 @@ Tag `ts/v0.9.0`.
   regular-expression dialect of JSON Schema's `pattern`, disagree: a digest and an `applies_from`
   followed by a newline, and a `contract_ref` holding U+FEFF. The Python reference
   `schemas/check_evidence_result_examples.py` now reads the schema's patterns as ECMA-262, as the Go
-  gate `evidenceresult` already did, so it refuses all three. The schema is unchanged. (#434)
+  gate `evidenceresult` already did, so it refuses all three. The schema is unchanged. (#434, #436)
 
 ## ts 0.8.0 — 2026-10-26
 
