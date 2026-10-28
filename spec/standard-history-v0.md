@@ -282,8 +282,10 @@ claim for a requirement to meet, and a requirement is never `SATISFIED` from a c
 in the stated window, how many deals in it were not counted, and how many counted deals are
 `undecided`; each count with its `of` on the same line; which checks ran and which did not,
 including `anchor_inclusion` `NOT_CHECKED` and, without their inputs, `window_from_policy`,
-`as_of` and `counts_recompute` `NOT_CHECKED`. It shows no ratio of two counts, and it never ranks
-or grades the holder.
+`as_of` and `counts_recompute` `NOT_CHECKED`. It shows the bands grouped by `currency`, each
+band with its own currency, and never merges bands of two currencies into one row or shows a band
+in another currency: amounts in different assets are never equal or converted [SR "Amounts"
+rule 4]. It shows no ratio of two counts, and it never ranks or grades the holder.
 
 **Vectors.** `vectors/standard-history-v0/` holds positive cards, among them a window across a
 year end, a sub-unit deal with a negative decade and a zero amount, and negatives each failing the
