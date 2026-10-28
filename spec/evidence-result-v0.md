@@ -790,7 +790,7 @@ result:
   claims: [claim, ...]                # §4
   aggregate: aggregate                # §7
   view: view                          # OPTIONAL — §8
-  coverage_report: coverage-report    # OPTIONAL — §7.1
+  coverage_report: coverage-report    # PROPOSED — §7.1
   plan_ref: digest-ref                # OPTIONAL, with dataset_ref — §7.3
   dataset_ref: digest-ref             # OPTIONAL, with plan_ref — §7.3
   x-<name>: any                       # OPTIONAL, any number — this section

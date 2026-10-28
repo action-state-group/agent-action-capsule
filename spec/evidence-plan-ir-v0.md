@@ -25,7 +25,8 @@ replay-determinism rule, the dataset plan (§5.1) and the dataset document it se
 `requirement_ref` — see below) and its two closed vocabularies: the seven-value `profile`
 discriminator and the eight-value per-requirement bundle assertion status. This document mirrors
 the status vocabulary by reference and does not maintain an independent copy; a drift between the
-two is a defect.
+two is a defect. A dataset plan (§5.1) also reads record headers in the Record Model of
+`draft-mih-agent-evidence-layer-00` §"The Record Model", referenced, not redefined.
 
 **Explicitly out of scope (never defined here):**
 
@@ -222,9 +223,12 @@ The date-time grammar is the one `spec/evidence-result-v0.md` §4.3 states for `
 and time whose UTC date falls in years 0001 to 9999, with no leap second, hour at most 23, offset
 hours at most 23, and ASCII digits only. `from` and `to` are calendar days from year 0001 on.
 
-A field path names a member of the record header as a bundle discloses it (the header shape of
-`vectors/evidence-result/`'s `.records.json` sidecars), and each further name a member of the object
-before it, for example `event_time_claim` or `statement.generated_at`. A scalar matches only a value
+A field path names a member of a record header as a bundle discloses it: a header in the Evidence
+Layer's Record Model, with the members its profile or deployment adds. The first name is a header
+member, and each further name is a member of the object before it, for example `committed_at` or
+`statement.generated_at`. The Record Model has no `book_id`; it is the member a book adds to name the
+store that assigned `seq`, so a dataset plan reads records only from a store whose headers carry
+it. A scalar matches only a value
 of its own type: the string `"true"` never equals the boolean `true`.
 
 **The chain (normative, not schema-enforced in v0).** A dataset plan holds dataset operators only.
@@ -246,17 +250,22 @@ or a predicate field that is not a string or boolean). A filter node reads the f
 predicate in `where` before it applies any, so the order of `where` never changes the outcome. A
 missing or unreadable field never counts as
 a non-match, so a dataset never silently loses a record. A window or predicate field therefore has to be
-one that every record reaching that node carries, such as the header's `event_time_claim`,
-`committed_at`, `record_type` or `subject_ref`: a payload field that only some record types carry
-refuses the run instead of dropping the others. In particular, a plan that keeps run records for
+one that every record reaching that node carries, such as the REQUIRED `record_type` or
+`epistemic_type`, or a header member the producer sets on every record, such as `committed_at`: a
+payload field that only some record types carry refuses the run instead of dropping the others. The
+Record Model makes `event_time_claim` OPTIONAL, so a window on it refuses a record that has none. In particular, a plan that keeps run records for
 "not run" (below) filters on fields the run records carry too. A record that a node earlier in the chain
 dropped is not read by the later nodes. A record past `through_seq`, or of a type the population
 does not list, is not read either, beyond its `book_id`, `seq` and `record_type`. A run reads only the plan and the book's committed record
 headers, so it is a deterministic function of them (§7), and its nodes are `recomputed` (§4.2).
 
 A record type a reader needs to tell "not run" from zero, such as the daily Result of a daily
-check, is listed in `record_types`, and the plan's filters keep it. A day with that record and no
-other row was run and counts 0. A day without it was not run. A day outside the window is neither.
+check, is listed in `record_types`, the plan has a window node, and the plan's filters keep the run
+records. A run's day is the UTC calendar day of the plan's window field on the run record, so a
+producer MUST set that field on a run record to an instant inside the day the run checks: a daily
+Result written after midnight UTC for the day before carries that day's time in the window field,
+not its writing time. A day with a run row and no row the reader counts was run and counts 0. A
+day without a run row was not run. A day outside the window is neither.
 The dataset records which records exist, never a count, so it never states a zero itself.
 
 A dataset plan states only what is selected. It names no metric, chart or wording; those belong to
