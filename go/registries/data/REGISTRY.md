@@ -92,6 +92,7 @@ binding). Initial contents:
 | `write_order` | Seeded example value of the profile (Internet-Draft §5.2). |
 | `send_payment` | Seeded example value of the profile (Internet-Draft §5.2). |
 | `inference_completion` | An inference request to a model-serving runtime whose committed effect is producing a completion. `request_digest` is the JSON digest of the request body as received at the serving boundary; `response_digest` is the JSON digest of the completion body as returned. |
+| `code_execution` | A request to a code-execution runtime (a sandbox) to run caller-supplied code, whose committed effect is the code having run and returned a result. `request_digest` is the JSON digest of the run request as received at the execution boundary; `response_digest` is the JSON digest of the result as returned, exit status included: a non-zero exit is part of the result. Reference: plimsoll run records, <https://github.com/plimsollmark/plimsoll/blob/bb4626c9/docs/run-records.md>. |
 
 ## 4. `irreversibility_class`
 
