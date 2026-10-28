@@ -272,9 +272,9 @@ Both checker negatives validate against the schema and fail `revision_findings`,
 
 ## Patterns are ECMA-262's
 
-JSON Schema 2020-12 reads `pattern` as an ECMA-262 regular expression. Python's `re` reads two of
-this schema's patterns differently: its `$` also matches before a final newline, and its `\s`
-covers U+001C to U+001F and U+0085 but not U+FEFF. So the checker validates with its own `pattern`
+JSON Schema 2020-12 reads `pattern` as an ECMA-262 regular expression. Python's `re` reads two
+constructs in this schema's patterns differently: its `$` also matches before a final newline,
+and its `\s` covers U+001C to U+001F and U+0085 but not U+FEFF. So the checker validates with its own `pattern`
 keyword, which reads `$` and `\s` as ECMA-262 does. Each negative below is one field away from its
 positive, and its mutant, `pattern` read by plain Python `re`, accepts it:
 
