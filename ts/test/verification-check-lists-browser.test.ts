@@ -18,10 +18,11 @@ import {
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 // A real browser, skipped when none is installed: the browser build checks
-// the checkpoint signature with CLL's browser entry (#435), as Node does. The page holds only the bundle, the verification model built
-// for the browser (test/helpers/page-model.ts, which reads only modules
-// src/browser.ts exports) and a bootstrap that reads it; capsule-viewer
-// draws the full page from the same model.
+// the checkpoint signature with CLL's browser entry (#435), as Node does.
+// The page holds only the bundle, the verification model built for the
+// browser (test/helpers/page-model.ts, which reads only modules src/browser.ts
+// exports) and a bootstrap that reads it; capsule-viewer draws the full page
+// from the same model.
 function browserPath(): string | undefined {
   return [
     process.env.AAC_CHROMIUM_PATH,

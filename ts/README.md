@@ -31,9 +31,9 @@ npm install @action-state-group/agent-action-capsule @action-state-group/cll@0.3
 verdict (`result.strict.verdict`: `VALID`, `INCOMPLETE` or `INVALID`). Pass
 `requireSignature` to fail unsigned records and `witnessDirectory` (a parsed
 `witnesses.json`) to check the witness receipts in `checkpoint.witnesses`; none
-is trusted without it. The signed checkpoint is verified only in Node, where
-CLL's COSE checkpoint verifier exists; elsewhere the `checkpoint` claim is
-`withheld` and the verdict is never `VALID`.
+is trusted without it. CLL's COSE checkpoint verifier verifies the signed
+checkpoint in Node and in a browser alike; without CLL the `checkpoint` claim
+is `withheld` and the verdict is never `VALID`.
 
 `verificationBanner(context, stamps)` states that verdict as the banner of a
 page, one of the states of
@@ -55,8 +55,9 @@ per-record membership `checkpoint_unverified` when they rest on a checkpoint
 the page did not authenticate. A runtime with no Ed25519 reaches no strict
 verdict; missing Ed25519 is never itself a failure, so a bundle that passes the
 page's own checks, with every record bound to a log position, reads
-`incomplete`. The browser build cannot authenticate a checkpoint, so it says
-at most `incomplete`. Match a page's state on these fields, not on its words.
+`incomplete`. The browser build authenticates the checkpoint with CLL's
+browser entry, with or without WebCrypto; with Ed25519 its banner is the one
+Node gives. Match a page's state on these fields, not on its words.
 
 `buildEvidenceBundle(source, { root, intervalFrom })` builds a Bundle from a
 `ProofSource`: the log's signed COSE checkpoint, its leaves, records by Capsule
@@ -80,9 +81,8 @@ omission. A range over a leaf that is not a record, a carried record below N
 and a record past the checkpoint are refused by name. A missing citation or an
 unsigned record is stated, not refused, and reads INCOMPLETE.
 `buildUnprovenBundle(records, { root })` is the form with no log proof, for
-Capsules that belong to no log. `buildEvidenceBundle` needs CLL and Node, where
-the checkpoint verifier runs; `buildUnprovenBundle` reads no checkpoint, so it
-runs wherever strict `verifyBundle` does, the browser included.
+Capsules that belong to no log. `buildEvidenceBundle` needs CLL's checkpoint
+verifier; `buildUnprovenBundle` reads no checkpoint.
 
 `@action-state-group/agent-action-capsule/settlement` exports
 `verifySettlements`, which derives the states of

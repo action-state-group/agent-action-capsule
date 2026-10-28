@@ -18,9 +18,10 @@ packages is listed under each package that shipped it, or has not yet.
 
 - TypeScript: the `@action-state-group/cll` pin, dev and optional peer, is now 0.3.0, whose browser
   entry exports the COSE checkpoint verifier with strict Ed25519. A page that bundles the browser
-  entry now checks the checkpoint signature as Node does, with or without WebCrypto: the strict
-  `checkpoint` claim is no longer withheld as `checkpoint_verifier_unavailable`, and an honest
-  signed Bundle reads verified instead of incomplete. Browser tests read a valid, a tampered and a
+  entry now checks the checkpoint signature as Node does, with or without WebCrypto. With
+  WebCrypto Ed25519, the strict `checkpoint` claim is no longer withheld as
+  `checkpoint_verifier_unavailable`, so an honest signed Bundle reads valid instead of incomplete;
+  without it there is still no strict verdict, as before, but the checkpoint reads verified. Browser tests read a valid, a tampered and a
   small-order-key forged checkpoint, the forgeries from checkpointed-local-log's Ed25519 vectors.
   (#435)
 

@@ -2402,9 +2402,10 @@ async function decodeRecord(
  * Build an Evidence Bundle around `options.root` from `source`
  * ({@link BuildEvidenceBundleOptions}).
  *
- * Needs `@action-state-group/cll` for its COSE checkpoint verifier. Rejects with {@link BundleBuildError} on every refusal,
- * including any result strict {@link verifyBundle} calls INVALID; a
- * declared-incomplete closure or an unsigned record is stated, not refused.
+ * Needs `@action-state-group/cll` for its COSE checkpoint verifier. Rejects
+ * with {@link BundleBuildError} on every refusal, including any result strict
+ * {@link verifyBundle} calls INVALID; a declared-incomplete closure or an
+ * unsigned record is stated, not refused.
  */
 export async function buildEvidenceBundle(
   source: ProofSource,
