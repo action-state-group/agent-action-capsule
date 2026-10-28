@@ -954,10 +954,9 @@ async function completeness(
       : { status: "pass", findings: ["checkpoint_unverified"] };
   return [relative(), findings.length ? fail(...findings) : relative()];
 }
-// Load cll's COSE checkpoint authenticator through a dynamic import, so that
-// without the optional cll peer (or with a cll that lacks it) it resolves to
-// undefined at runtime instead of failing to load. cll exports it from both its
-// Node and its browser entry.
+// Load cll's COSE checkpoint authenticator through a dynamic import, so that a
+// cll without it resolves to undefined instead of failing to load. The pinned
+// cll exports it from both its Node and its browser entry.
 type CheckpointMetadata = (cose: Uint8Array) => Promise<
   | {
       logId: string;

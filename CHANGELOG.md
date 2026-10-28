@@ -16,14 +16,17 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.8.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
-- TypeScript: the `@action-state-group/cll` pin, dev and optional peer, is now 0.3.0, whose browser
-  entry exports the COSE checkpoint verifier with strict Ed25519. A page that bundles the browser
+- TypeScript: the `@action-state-group/cll` pin, dev and optional peer, is now exactly 0.3.0, so
+  upgrade cll to 0.3.0 alongside this release; cll 0.2.1 is a peer conflict. Its browser entry
+  exports the COSE checkpoint verifier with strict Ed25519, and a page that bundles the browser
   entry now checks the checkpoint signature as Node does, with or without WebCrypto. With
   WebCrypto Ed25519, the strict `checkpoint` claim is no longer withheld as
-  `checkpoint_verifier_unavailable`, so an honest signed Bundle reads valid instead of incomplete;
-  without it there is still no strict verdict, as before, but the checkpoint reads verified. Browser tests read a valid, a tampered and a
-  small-order-key forged checkpoint, the forgeries from checkpointed-local-log's Ed25519 vectors.
-  (#435)
+  `checkpoint_verifier_unavailable`, so an honest signed Bundle reads valid instead of
+  incomplete; without it there is still no strict verdict, as before, but the checkpoint reads
+  verified. Browser pages now also report the checkpoint failures the library already reported,
+  so a Bundle that read incomplete there can now read failed. Browser tests read a valid, a
+  tampered and a small-order-key forged checkpoint, the forgeries from checkpointed-local-log's
+  Ed25519 vectors. (#435)
 
 - Vectors: three Evidence Result v0 schema negatives on which Python's `re` and ECMA-262, the
   regular-expression dialect of JSON Schema's `pattern`, disagree: a digest and an `applies_from`

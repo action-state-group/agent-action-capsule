@@ -32,8 +32,7 @@ verdict (`result.strict.verdict`: `VALID`, `INCOMPLETE` or `INVALID`). Pass
 `requireSignature` to fail unsigned records and `witnessDirectory` (a parsed
 `witnesses.json`) to check the witness receipts in `checkpoint.witnesses`; none
 is trusted without it. CLL's COSE checkpoint verifier verifies the signed
-checkpoint in Node and in a browser alike; without CLL the `checkpoint` claim
-is `withheld` and the verdict is never `VALID`.
+checkpoint in Node and in a browser alike.
 
 `verificationBanner(context, stamps)` states that verdict as the banner of a
 page, one of the states of
@@ -82,7 +81,8 @@ and a record past the checkpoint are refused by name. A missing citation or an
 unsigned record is stated, not refused, and reads INCOMPLETE.
 `buildUnprovenBundle(records, { root })` is the form with no log proof, for
 Capsules that belong to no log. `buildEvidenceBundle` needs CLL's checkpoint
-verifier; `buildUnprovenBundle` reads no checkpoint.
+verifier and is tested in Node; `buildUnprovenBundle` reads no checkpoint, so
+it runs wherever strict `verifyBundle` does, the browser included.
 
 `@action-state-group/agent-action-capsule/settlement` exports
 `verifySettlements`, which derives the states of
