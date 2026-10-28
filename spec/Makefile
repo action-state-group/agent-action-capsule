@@ -6,7 +6,7 @@
 #
 # Toolchain (one-time):
 #   gem install kramdown-rfc
-#   python3 -m venv ~/.venvs/x2r && ~/.venvs/x2r/bin/pip install xml2rfc
+#   python3 -m venv ~/.venvs/x2r && ~/.venvs/x2r/bin/pip install xml2rfc==3.34.1
 
 DRAFT    = draft-mih-scitt-agent-action-capsule-05
 # NOTE: this draft is NOT covered by the spec staleness gate, which follows
