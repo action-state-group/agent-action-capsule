@@ -35,7 +35,10 @@ jobs:
       - name: install toolchain
         run: |
           gem install kramdown-rfc
-          python -m pip install xml2rfc
+          # Pinned: the tracked .xml records the xml2rfc version in its v2v3
+          # conversion comment, so a new release fails the diff below on every
+          # draft. Bump this pin together with regenerated artifacts.
+          python -m pip install xml2rfc==3.34.1
 
       - name: build draft to temp + diff against tracked artifacts
         working-directory: spec
