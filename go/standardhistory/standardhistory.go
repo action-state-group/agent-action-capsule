@@ -85,6 +85,8 @@ var (
 	month     = regexp.MustCompile(`^\d{4}-(?:0[1-9]|1[0-2])$`)
 	timeForm  = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`) // IP §5.2
 	valueForm = regexp.MustCompile(`^(?:0|[1-9][0-9]*)$`)                    // SR "Amounts"
+	// A JSON integer literal: what Python's json reads as an int (-0 is 0).
+	intLiteral = regexp.MustCompile(`^-?(?:0|[1-9][0-9]*)$`)
 	// SR "Amounts" assetCode: an ISO 4217 alphabetic code (BTC included),
 	// or a CAIP-19 asset type.
 	currencyForm = regexp.MustCompile(`^(?:[A-Z]{3}|[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}/[-a-z0-9]{3,8}:[-.%a-zA-Z0-9]{1,128})$`)
@@ -181,7 +183,7 @@ func (d *Deal) UnmarshalJSON(data []byte) error {
 	if members.Class != nil && p.CounterpartyClass == nil {
 		return fmt.Errorf("deal %s: counterparty_class is not a string", p.Deal)
 	}
-	if !valueForm.Match(members.Amount.AssetScale) {
+	if !intLiteral.Match(members.Amount.AssetScale) {
 		return fmt.Errorf("deal %s: assetScale is not a JSON integer", p.Deal)
 	}
 	*d = Deal(p)

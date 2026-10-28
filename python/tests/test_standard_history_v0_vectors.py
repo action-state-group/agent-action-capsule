@@ -108,6 +108,7 @@ def test_malformed_input_raises() -> None:
 @pytest.mark.parametrize("change", [
     {"amount": {"value": "500", "assetCode": "USD", "assetScale": "2"}},   # SR "Amounts" rule 2
     {"amount": {"value": "500", "assetCode": "Example Bakery", "assetScale": 2}},
+    {"amount": {"value": "500", "assetCode": "USD", "assetScale": 2.0}},
     {"agreed_at": "\u0662\u0660\u0662\u0666-09-02T10:00:00Z"},   # Python's strptime reads these digits
     {"counterparty_class": None},
 ])

@@ -145,6 +145,10 @@ func TestMalformedInputIsAnError(t *testing.T) {
 	require.Error(t, json.Unmarshal([]byte(`{"deal":"d","counterparty_class":null}`), &d))
 	require.Error(t, json.Unmarshal([]byte(`{"months":0}`), new(standardhistory.Window)))
 	require.Error(t, json.Unmarshal([]byte(`{"deal":"d","amount":{"value":"1","assetCode":"USD","assetScale":"2"}}`), &d))
+	require.Error(t, json.Unmarshal([]byte(`{"deal":"d","amount":{"value":"1","assetCode":"USD","assetScale":2.0}}`), &d))
+	// -0 is the integer 0, as Python's json reads it.
+	require.NoError(t, json.Unmarshal([]byte(`{"deal":"d","amount":{"value":"1","assetCode":"USD","assetScale":-0}}`), &d))
+	assert.Equal(t, 0, d.Amount.AssetScale)
 }
 
 // A Deal built in code, not decoded, is counted by its CounterpartyClass

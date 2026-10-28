@@ -263,7 +263,7 @@ A verifier reports these properties of a card, in the IP §7.1 vocabulary [SH-1]
 | Property | Check | Needs |
 |---|---|---|
 | `card_form` | the card carries exactly §4's members, at every level, with the values §4 fixes for each; `since` is `YYYY-MM` in ASCII digits; each `currency` is of §4's form; `bands` is sorted as §4 says, with no two entries for one band. It does not check that a tally carries `of`, or that a count is an integer | the card |
-| `counts_integral` | every JSON number in the card, at every level, is an integer from 0 to 2^53 - 1 (§4 "Counts") | the card |
+| `counts_integral` | every JSON number in the card, at every level, is an integer of at most 2^53 - 1 in magnitude, and 0 or more except a band's `decade` (§4 "Counts") | the card |
 | `denominator` | every tally carries `of`; its counts partition `of` (for `class_missing`, `count` is at most `of`); every band's `of` is 1 or more; the tallies agree as §4 says. `NOT_CHECKED` when `card_form` or `counts_integral` is `FAIL` | the card |
 | `window_from_policy` | the card's `window` equals the policy's window, and its `policy` the policy's digest. `NOT_CHECKED` without the policy | the policy's two members (§5.1) |
 | `as_of` | the card's `anchor` equals the anchor the envelope names, and its `since` is the year and month of the stream's first checkpoint. `NOT_CHECKED` without the anchor | the anchor, its time, the first checkpoint's time |
