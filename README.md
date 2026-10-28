@@ -219,7 +219,7 @@ counted as completed runs.
 ```bash
 # one-time toolchain
 gem install kramdown-rfc
-python3 -m venv ~/.venvs/x2r && ~/.venvs/x2r/bin/pip install xml2rfc
+python3 -m venv ~/.venvs/x2r && ~/.venvs/x2r/bin/pip install xml2rfc==3.34.1
 
 # build (from spec/)
 cd spec && make            # md -> v2 xml -> v3 xml -> txt
