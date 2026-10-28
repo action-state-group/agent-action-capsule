@@ -13,8 +13,16 @@ each says which tags it matches.
 ## Unreleased
 
 Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes after `go/v0.14.0`
-and `ts/v0.8.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
+and `ts/v0.9.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
+
+- Vectors: `vectors/bundle/composed/` gains `agree-with-checkpoints`, the agree composition in
+  which the container and each member Bundle are their party's whole log, with a completeness
+  certificate and a signed COSE checkpoint under that party's published test seed. Every claim
+  passes, so the strict verdict of each Bundle and the full verdict are VALID; the case records
+  `expect.strict` and `expect.verdict`. The five existing cases are byte-identical. The Go, Python
+  and TypeScript vector tests check the strict verdicts and that no other case reaches VALID.
+  (#413)
 
 - Vectors: three Evidence Result v0 schema negatives on which Python's `re` and ECMA-262, the
   regular-expression dialect of JSON Schema's `pattern`, disagree: a digest and an `applies_from`
@@ -135,6 +143,14 @@ Tag `ts/v0.9.0`.
   so a Bundle that read incomplete there can now read failed. Browser tests read a valid, a
   tampered and a small-order-key forged checkpoint, the forgeries from checkpointed-local-log's
   Ed25519 vectors. (#435, #442)
+
+- Vectors: `vectors/bundle/composed/` gains `agree-with-checkpoints`, the agree composition in
+  which the container and each member Bundle are their party's whole log, with a completeness
+  certificate and a signed COSE checkpoint under that party's published test seed. Every claim
+  passes, so the strict verdict of each Bundle and the full verdict are VALID; the case records
+  `expect.strict` and `expect.verdict`. The five existing cases are byte-identical. The Go, Python
+  and TypeScript vector tests check the strict verdicts and that no other case reaches VALID.
+  (#413)
 
 - Vectors: three Evidence Result v0 schema negatives on which Python's `re` and ECMA-262, the
   regular-expression dialect of JSON Schema's `pattern`, disagree: a digest and an `applies_from`
