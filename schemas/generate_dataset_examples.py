@@ -168,6 +168,10 @@ def cases() -> list[tuple[str, str | None, str, dict]]:
         "exclusions",
     )
     positive("pos-every-predicate", _plan(POPULATION, WINDOW, FILTER, predicates))
+    # The string "true" never equals the boolean true: nothing is selected.
+    typed = copy.deepcopy(predicates)
+    typed["params"]["where"] = [{"field": "statement.sample", "equal": "true"}]
+    positive("pos-string-never-equals-boolean", _plan(POPULATION, WINDOW, FILTER, typed))
     # A record committed after through_seq with no canonical form (a float)
     # changes nothing: the book grew, and the plan still selects seq 2, 3, 5, 6.
     grown_book = copy.deepcopy(RECORDS)
@@ -229,6 +233,13 @@ def cases() -> list[tuple[str, str | None, str, dict]]:
         "field-missing",
         _case(_plan(POPULATION, WINDOW, later_missing), RECORDS),
     )
+
+    null_field = copy.deepcopy(RECORDS)
+    null_field[2]["subject_ref"] = None
+    negative("neg-filter-field-null", "field-type", _case(PLAN, null_field))
+    leap = copy.deepcopy(RECORDS)
+    leap[2]["event_time_claim"] = "2026-09-02T23:59:60Z"
+    negative("neg-window-field-leap-second", "field-type", _case(PLAN, leap))
 
     # plan-shape: not a dataset plan.
     first = copy.deepcopy(FILTER)

@@ -17,6 +17,10 @@
   },
   {
     "expect": "valid",
+    "name": "pos-string-never-equals-boolean"
+  },
+  {
+    "expect": "valid",
     "name": "pos-book-grew-past-through-seq"
   },
   {
@@ -83,6 +87,16 @@
     "base": "pos-window-and-exclusion",
     "expect": "field-missing",
     "name": "neg-later-predicate-field-missing"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "field-type",
+    "name": "neg-filter-field-null"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "field-type",
+    "name": "neg-window-field-leap-second"
   },
   {
     "base": "pos-window-and-exclusion",

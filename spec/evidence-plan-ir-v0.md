@@ -195,7 +195,7 @@ number against it.
 | `operator` | `family` | `tier` | `params` | What it selects |
 |---|---|---|---|---|
 | `traditional.population` | `traditional` | `recomputed` | `book_id`, `through_seq`, `record_types` | Every committed record of the book `book_id` whose `seq` is at most `through_seq` and whose `record_type` is in `record_types`. |
-| `traditional.window` | `traditional` | `recomputed` | `field`, `from`, `to` | The records of its input whose `field` holds an RFC 3339 date-time with an offset whose UTC calendar day is from `from` to `to`, both inclusive. |
+| `traditional.window` | `traditional` | `recomputed` | `field`, `from`, `to` | The records of its input whose `field` holds a date-time whose UTC calendar day is from `from` to `to`, both inclusive. |
 | `traditional.filter` | `traditional` | `recomputed` | `where` | The records of its input that satisfy every predicate in `where`. |
 
 ```
@@ -217,6 +217,11 @@ scalar: string | boolean
 field-path: name("." name)*            # name: [A-Za-z_][A-Za-z0-9_]*
 ```
 
+The date-time grammar is the one `spec/evidence-result-v0.md` §4.3 states for `generated_at`: RFC
+3339 §5.6 with an offset (`Z` or `+hh:mm`/`-hh:mm`; `T` and `Z` in either case), naming a real date
+and time whose UTC date falls in years 0001 to 9999, with no leap second, hour at most 23, offset
+hours at most 23, and ASCII digits only. `from` and `to` are calendar days from year 0001 on.
+
 A field path names a member of the record header as a bundle discloses it (the header shape of
 `vectors/evidence-result/`'s `.records.json` sidecars), and each further name a member of the object
 before it, for example `event_time_claim` or `statement.generated_at`. A scalar matches only a value
@@ -230,16 +235,21 @@ check this chain, node `id` uniqueness, every node's `contract_ref` against the 
 that every window day exists and `from` is not after `to`.
 
 **Running a dataset plan.** The population node reads the book's committed records in `seq` order.
+Every record header given to the run MUST carry a string `book_id`, and every header of the
+population's book a non-negative integer `seq`, unique within the book, and a string
+`record_type`; otherwise the run is refused. These are the members that place a record in the
+book's order, so they are checked on every header, past `through_seq` too.
 Each later node keeps or drops each record it receives, and keeps the order. A record that reaches a
 window or filter node and lacks the field the node names refuses the run; so does one whose field
 holds a value the node cannot read (a window field that is not an RFC 3339 date-time with an offset,
 or a predicate field that is not a string or boolean). A filter node reads the field of every
 predicate in `where` before it applies any, so the order of `where` never changes the outcome. A
 missing or unreadable field never counts as
-a non-match, so a dataset never silently loses a record. A window field therefore has to be one
-that every record type in `record_types` carries, such as the header's `event_time_claim` or
-`committed_at`: a payload field that only some types carry refuses the run instead of dropping the
-others. A record that a node earlier in the chain
+a non-match, so a dataset never silently loses a record. A window or predicate field therefore has to be
+one that every record reaching that node carries, such as the header's `event_time_claim`,
+`committed_at`, `record_type` or `subject_ref`: a payload field that only some record types carry
+refuses the run instead of dropping the others. In particular, a plan that keeps run records for
+"not run" (below) filters on fields the run records carry too. A record that a node earlier in the chain
 dropped is not read by the later nodes. A record past `through_seq`, or of a type the population
 does not list, is not read either, beyond its `book_id`, `seq` and `record_type`. A run reads only the plan and the book's committed record
 headers, so it is a deterministic function of them (§7), and its nodes are `recomputed` (§4.2).
@@ -435,9 +445,10 @@ validation; a matching `plan-result` document for each of the three plans; and o
 directory's `README.md` for how each was generated and validated, and
 `schemas/check_evidence_plan_ir_examples.py` for the validation run itself.
 
-`vectors/evidence-dataset/` — the dataset plans of §5.1 and the datasets of §6.2: five positives
+`vectors/evidence-dataset/` — the dataset plans of §5.1 and the datasets of §6.2: six positives
 (a population, window and exclusion over runs and events; the population alone; a window with no
-rows; every predicate form; and a book that grew past `through_seq`) and at least one negative for each reason a verifier refuses with, each named with its
+rows; every predicate form; a string that never equals a boolean; and a book that grew past
+`through_seq`) and at least one negative for each reason a verifier refuses with, each named with its
 reason in `cases.json`. The Python reference (`schemas/evidence_dataset.py`, run by
 `schemas/check_evidence_dataset_examples.py`) and the Go gate (`go/evidenceplan`) refuse each
 negative with the same reason. See that directory's `README.md`.
