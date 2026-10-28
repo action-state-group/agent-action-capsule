@@ -63,7 +63,8 @@ the form with no log proof, for Capsules that belong to no log.
 ## Evidence Result v0
 
 `evidenceresult.Check(doc, records)` is the gate for an Evidence Result v0
-document, at parity with the Python reference
+document (`doc` as `evidenceresult.Decode` reads it), at parity with the
+Python reference
 `../schemas/check_evidence_result_examples.py`. It validates the document
 against the embedded `evidence-result-v0.json`, a byte copy of
 `../schemas/evidence-result-v0.json`, then runs the cross-element rules the
@@ -73,4 +74,5 @@ the record headers the close claims cite (`DecodeRecords`). A close claim
 whose Close is not among them is refused, since its state is recomputed from
 the records' links, never trusted. Formats are annotations, as in the Python
 reference: `generated_at` is held to RFC 3339 by the applicability rule when a
-claim is dated.
+claim is dated. Schema patterns are read as ECMA-262, JSON Schema's dialect:
+`\s` is Unicode whitespace and `$` matches only at the end of the text.

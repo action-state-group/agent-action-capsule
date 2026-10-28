@@ -15,6 +15,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -62,6 +64,7 @@ func compiledSchema() (*jsonschema.Schema, error) {
 			return
 		}
 		compiler := jsonschema.NewCompiler()
+		compiler.UseRegexpEngine(ecmaRegexp)
 		if err = compiler.AddResource(SchemaID, doc); err != nil {
 			compiled.err = err
 			return
@@ -69,6 +72,48 @@ func compiledSchema() (*jsonschema.Schema, error) {
 		compiled.schema, compiled.err = compiler.Compile(SchemaID)
 	})
 	return compiled.schema, compiled.err
+}
+
+// ecmaWhitespace is ECMA-262's \s (WhiteSpace and LineTerminator) as the
+// body of an RE2 character class.
+const ecmaWhitespace = `\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}`
+
+// ecmaRegexp compiles a schema pattern with RE2, reading \s and \S as
+// ECMA-262 does (JSON Schema's regular-expression dialect): Unicode
+// whitespace, where RE2's \s is ASCII only. RE2's ^ and $ already match only
+// at the ends of the text, as ECMA-262's do without the m flag. The schema's
+// patterns use no other construct whose meaning differs between the two.
+func ecmaRegexp(pattern string) (jsonschema.Regexp, error) {
+	var out strings.Builder
+	inClass := false
+	for i := 0; i < len(pattern); i++ {
+		c := pattern[i]
+		switch {
+		case c == '\\' && i+1 < len(pattern):
+			next := pattern[i+1]
+			i++
+			switch {
+			case next == 's' && inClass:
+				out.WriteString(ecmaWhitespace)
+			case next == 's':
+				out.WriteString("[" + ecmaWhitespace + "]")
+			case next == 'S' && !inClass:
+				out.WriteString("[^" + ecmaWhitespace + "]")
+			case next == 'S':
+				return nil, fmt.Errorf("pattern %q: \\S inside a character class is not supported", pattern)
+			default:
+				out.WriteByte(c)
+				out.WriteByte(next)
+			}
+			continue
+		case c == '[' && !inClass:
+			inClass = true
+		case c == ']' && inClass:
+			inClass = false
+		}
+		out.WriteByte(c)
+	}
+	return regexp.Compile(out.String())
 }
 
 // Decode reads one Result document from its JSON text: one JSON object, its
@@ -179,7 +224,7 @@ type Close struct {
 // Reconcile is a reconcile claim's body.
 type Reconcile struct {
 	Peer        string
-	Tallies     map[string]int64
+	Tallies     map[string]*big.Int
 	PeriodStart string
 	PeriodEnd   string
 }
@@ -277,11 +322,15 @@ func readClaims(doc map[string]interface{}) ([]Claim, []string) {
 			claim.Close = c
 		}
 		if body, ok := object["reconcile"].(map[string]interface{}); ok {
-			r := &Reconcile{Tallies: map[string]int64{}}
+			r := &Reconcile{Tallies: map[string]*big.Int{}}
 			r.Peer, _ = body["peer"].(string)
 			tallies, _ := body["tallies"].(map[string]interface{})
 			for state, count := range tallies {
-				r.Tallies[state], _ = integer(count)
+				// The schema admits any integer value (7, 7.0, 1e100), so a
+				// tally is read exactly, never truncated to a machine word.
+				if n, ok := number(count); ok && n.IsInt() {
+					r.Tallies[state] = new(big.Int).Set(n.Num())
+				}
 			}
 			r.PeriodStart, r.PeriodEnd = period(body)
 			claim.Reconcile = r

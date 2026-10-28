@@ -409,14 +409,6 @@ func sumEquals(total interface{}, parts ...interface{}) bool {
 	return sum.Cmp(want) == 0
 }
 
-func integer(v interface{}) (int64, bool) {
-	n, ok := number(v)
-	if !ok || !n.IsInt() || !n.Num().IsInt64() {
-		return 0, false
-	}
-	return n.Num().Int64(), true
-}
-
 func sortedKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for key := range m {

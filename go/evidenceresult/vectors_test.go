@@ -152,7 +152,7 @@ func TestCheckReturnsTheClaims(t *testing.T) {
 	claims, err = Check(doc, records)
 	require.NoError(t, err)
 	require.NotNil(t, claims[1].Reconcile)
-	assert.Equal(t, int64(408), claims[1].Reconcile.Tallies["matched"])
+	assert.Equal(t, "408", claims[1].Reconcile.Tallies["matched"].String())
 }
 
 // A close claim is never accepted unchecked: without the records it cites,
@@ -250,4 +250,44 @@ func TestDateGrammar(t *testing.T) {
 		_, got := calendarDate(value)
 		assert.Equal(t, ok, got, value)
 	}
+}
+
+// A tally is read exactly, whatever its size or spelling.
+func TestTalliesAreExact(t *testing.T) {
+	doc, _ := load(t, "pos-example-org-reconcile-result")
+	tallies := doc["claims"].([]interface{})[1].(map[string]interface{})["reconcile"].(map[string]interface{})["tallies"].(map[string]interface{})
+	tallies["matched"] = json.Number("9223372036854775808")
+	tallies["a_only"] = json.Number("2.0")
+	claims, err := Check(doc, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "9223372036854775808", claims[1].Reconcile.Tallies["matched"].String())
+	assert.Equal(t, "2", claims[1].Reconcile.Tallies["a_only"].String())
+}
+
+// Schema patterns are ECMA-262's: \s is Unicode whitespace, and $ matches
+// only at the end of the text.
+func TestPatternsReadAsECMA262(t *testing.T) {
+	for name, mutate := range map[string]func(claim map[string]interface{}){
+		"no-break space in contract_ref": func(claim map[string]interface{}) { claim["contract_ref"] = "ec:\u00a0example@1" },
+		"line separator in contract_ref": func(claim map[string]interface{}) { claim["contract_ref"] = "ec:\u2028example@1" },
+		"newline after a digest": func(claim map[string]interface{}) {
+			ref := claim["evidence"].([]interface{})[0].(map[string]interface{})
+			ref["digest"] = ref["digest"].(string) + "\n"
+		},
+	} {
+		doc, _ := load(t, "pos-example-org-claims-result")
+		mutate(doc["claims"].([]interface{})[0].(map[string]interface{}))
+		_, err := Check(doc, nil)
+		var refused *Error
+		if assert.ErrorAs(t, err, &refused, name) {
+			assert.True(t, refused.Schema, name)
+		}
+	}
+	re, err := ecmaRegexp(`^[^@\s]+@\S+$`)
+	require.NoError(t, err)
+	assert.True(t, re.MatchString("a@b"))
+	assert.False(t, re.MatchString("a\u3000x@b"))
+	assert.False(t, re.MatchString("a@b\ufeff"))
+	_, err = ecmaRegexp(`[\S]`)
+	assert.Error(t, err)
 }
