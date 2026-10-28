@@ -1,7 +1,7 @@
 // The shipped browser build of the verification model: test/helpers/page-model.ts
 // (which reads only src/ modules that src/browser.ts exports) bundled for the
 // browser in memory, as capsule-viewer bundles src/browser.ts, so cll
-// resolves to its browser substrate, which has no checkpoint authenticator.
+// resolves to its browser entry.
 import { build } from "esbuild";
 import type { pageModel } from "./page-model.js";
 

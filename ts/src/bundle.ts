@@ -954,9 +954,9 @@ async function completeness(
       : { status: "pass", findings: ["checkpoint_unverified"] };
   return [relative(), findings.length ? fail(...findings) : relative()];
 }
-// Load cll's COSE checkpoint authenticator through a dynamic import so the
-// browser build (whose cll substrate omits it) resolves to undefined at runtime
-// instead of failing to bundle on a missing named export.
+// Load cll's COSE checkpoint authenticator through a dynamic import, so that a
+// cll without it resolves to undefined instead of failing to load. The pinned
+// cll exports it from both its Node and its browser entry.
 type CheckpointMetadata = (cose: Uint8Array) => Promise<
   | {
       logId: string;
@@ -995,11 +995,10 @@ async function authenticateCheckpoint(
     !/^[A-Za-z0-9_-]*$/u.test(checkpoint.cose)
   )
     return "invalid";
-  // The COSE checkpoint authenticator is node-only (cll keeps checkpoint crypto
-  // out of its browser substrate). When it is unavailable, a present checkpoint
-  // cannot be independently authenticated here, so it degrades to producer
-  // asserted (checkpoint_unverified) rather than invalid; the three completeness
-  // claims are still verified from the MMR. Node retains full authentication.
+  // Without cll's COSE checkpoint authenticator, a present checkpoint cannot be
+  // independently authenticated here, so it degrades to producer asserted
+  // (checkpoint_unverified) rather than invalid; the three completeness claims
+  // are still verified from the MMR.
   const checkpointMetadata = await loadCheckpointMetadata();
   if (!checkpointMetadata) return "unverified";
   try {
@@ -2402,10 +2401,10 @@ async function decodeRecord(
  * Build an Evidence Bundle around `options.root` from `source`
  * ({@link BuildEvidenceBundleOptions}).
  *
- * Needs `@action-state-group/cll` and Node, where its COSE checkpoint
- * verifier runs. Rejects with {@link BundleBuildError} on every refusal,
- * including any result strict {@link verifyBundle} calls INVALID; a
- * declared-incomplete closure or an unsigned record is stated, not refused.
+ * Needs `@action-state-group/cll` for its COSE checkpoint verifier. Rejects
+ * with {@link BundleBuildError} on every refusal, including any result strict
+ * {@link verifyBundle} calls INVALID; a declared-incomplete closure or an
+ * unsigned record is stated, not refused.
  */
 export async function buildEvidenceBundle(
   source: ProofSource,
@@ -2414,7 +2413,7 @@ export async function buildEvidenceBundle(
   const checkpointMetadata = await loadCheckpointMetadata();
   if (!checkpointMetadata)
     throw new BundleBuildError(
-      "building a Bundle needs @action-state-group/cll's checkpoint verifier, which runs in Node: install @action-state-group/cll",
+      "building a Bundle needs @action-state-group/cll's checkpoint verifier: install @action-state-group/cll",
     );
   const { root, intervalFrom, producerKey } = options;
   // By index, so a hole (which `every` would skip) is refused too.

@@ -12,20 +12,17 @@ import { build } from "esbuild";
 import { chromium, type Browser } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
-  CHECKPOINT_NOT_CHECKED_NOTE,
   VERIFICATION_BANNER_LINES,
-  VERIFICATION_CHECK_WORDS,
   verificationCheckWords,
 } from "../src/verification-page.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
-// The browser build has no checkpoint authenticator, so a signed checkpoint
-// is recorded as checkpoint_unverified there: this is the runtime in which
-// the not-checked list matters most. A real browser, skipped when none is
-// installed. The page holds only the bundle, the verification model built
-// for the browser (test/helpers/page-model.ts, which reads only modules
-// src/browser.ts exports) and a bootstrap that reads it; capsule-viewer
-// draws the full page from the same model.
+// A real browser, skipped when none is installed: the browser build checks
+// the checkpoint signature with CLL's browser entry (#435), as Node does.
+// The page holds only the bundle, the verification model built for the
+// browser (test/helpers/page-model.ts, which reads only modules src/browser.ts
+// exports) and a bootstrap that reads it; capsule-viewer draws the full page
+// from the same model.
 function browserPath(): string | undefined {
   return [
     process.env.AAC_CHROMIUM_PATH,
@@ -129,7 +126,7 @@ describe.skipIf(executablePath === undefined)(
       };
     }
 
-    it("a signed checkpoint: the rows render, the verdict is incomplete, and the checkpoint signature is listed as not checked", async () => {
+    it("a signed checkpoint: the browser checks its signature and refuses what the library refuses", async () => {
       const bundle = json(
         "..",
         "vectors",
@@ -138,27 +135,28 @@ describe.skipIf(executablePath === undefined)(
         "input.json",
       ).bundle;
       const shown = await open(bundle);
-      expect(shown.verify).toBe("incomplete");
-      // The checkpoint could not be authenticated here (#196): never "passed".
-      expect(shown.verdict).toBe("incomplete");
-      expect(shown.checkpoint).toBe("unverified");
-      expect(shown.banner).toBe(VERIFICATION_BANNER_LINES.incomplete);
-      expect(shown.detail).toContain(
-        "checkpoint_unverified: relative to a producer-asserted checkpoint this page could not authenticate.",
+      // The signed checkpoint covers a log_id the stated one omits: the
+      // signature was checked, so the page refuses it rather than say less.
+      expect(shown.verify).toBe("failed");
+      expect(shown.verdict).toBe("invalid");
+      expect(shown.checkpoint).toBe("invalid");
+      expect(shown.banner).toBe(VERIFICATION_BANNER_LINES.failed);
+      expect(shown.detail).toBe(
+        "What failed: the checkpoint is missing fields its signature covers (checkpoint_field_missing).",
       );
-      expect(shown.page).toEqual([
-        "record-digests",
-        "record-rules",
-        "closure",
-        "range",
-        "membership",
-        "disclosures",
-      ]);
-      expect(shown.failed).toEqual([]);
-      expect(shown.notChecked).toEqual(["checkpoint-signature"]);
-      expect(shown.checkpointLine).toBe(
-        `${VERIFICATION_CHECK_WORDS["checkpoint-signature"]} ${CHECKPOINT_NOT_CHECKED_NOTE}`,
+      expect(shown.notChecked).not.toContain("checkpoint-signature");
+      expect(shown.checkpointLine).toBeNull();
+    });
+
+    it("a valid signed checkpoint reads verified", async () => {
+      const vectors = json("..", "vectors", "bundle", "strict", "vectors.json")
+        .cases as { id: string; bundle: Obj }[];
+      const shown = await open(
+        vectors.find((c) => c.id === "pos-signed-whole-log")!.bundle,
       );
+      expect(shown.verify).toBe("verified");
+      expect(shown.checkpoint).toBe("verified");
+      expect(shown.notChecked).toEqual([]);
     });
 
     it("a page module that checked the signers it cites: they are on the page list, every record's signature is not", async () => {

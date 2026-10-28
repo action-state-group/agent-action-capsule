@@ -543,7 +543,7 @@ function bannerWords(
     entry.findings.includes("checkpoint_authentication_invalid"),
   );
   // With no strict result, the page's own checks may still have
-  // authenticated a signed checkpoint (Node's CLL needs no WebCrypto): the
+  // authenticated a signed checkpoint (CLL needs no WebCrypto): the
   // proofs over it then carry no `checkpoint_unverified`.
   const plainAuthenticated =
     typeof cose === "string" &&

@@ -107,30 +107,24 @@ describe("the banner never claims more than was checked", () => {
     expect(checks(model, "not-checked")).toEqual([]);
   });
 
-  it("browser build, signed checkpoint it cannot authenticate, unsigned records: incomplete, labelled checkpoint_unverified (issue #196)", async () => {
-    const model = await browserModel(await signedCheckpointUnsignedRecords());
+  it("browser build, signed checkpoint, unsigned records: incomplete only for the records, as the library says (#435)", async () => {
+    const bundle = await signedCheckpointUnsignedRecords();
+    const model = await browserModel(bundle);
     const top = banner(model);
     expect(top.verdict).toBe("incomplete");
-    expect(top.checkpoint).toBe("unverified");
-    expect(top.state).toBe("incomplete");
-    expect(top.line).toBe(LINES.incomplete);
-    expect(detail(model)).toBe(
-      "This page did not check " +
-        "any record's producer signature, because no record is signed (producer_signature_unclaimed); " +
-        "the checkpoint signature, which this page cannot check (checkpoint_verifier_unavailable). " +
-        "Interval coverage and per-record membership are checkpoint_unverified: " +
-        "relative to a producer-asserted checkpoint this page could not authenticate.",
-    );
-    // The verification page says the same.
-    expect(checks(model, "not-checked")).toContain("checkpoint-signature");
+    expect(top.checkpoint).toBe("verified");
+    expect(detail(model)).not.toContain("checkpoint_verifier_unavailable");
+    expect(detail(model)).not.toContain("checkpoint_unverified");
+    expect(checks(model, "page")).toContain("checkpoint-signature");
+    expect(top).toEqual(banner(await libraryModel(bundle)));
   });
 
-  it("browser build, a bundle the library calls valid: at most incomplete", async () => {
+  it("browser build, a bundle the library calls valid: valid", async () => {
     const bundle = await fullySigned();
     const top = banner(await browserModel(bundle));
-    expect(top.verdict).toBe("incomplete");
-    expect(top.checkpoint).toBe("unverified");
-    expect(top.line).not.toBe(LINES.verified);
+    expect(top.verdict).toBe("valid");
+    expect(top.checkpoint).toBe("verified");
+    expect(top.line).toBe(LINES.verified);
   });
 
   it("an unsigned checkpoint: incomplete, relative to a checkpoint that is not signed", async () => {
@@ -422,12 +416,11 @@ describe("the strict result beside the page's own checks", () => {
     }
   });
 
-  it("the browser build, which cannot read a selection's proofs, refuses it rather than claim more", async () => {
-    const model = await browserModel(
-      strictCase("incomplete-producer-selected"),
-    );
-    expect(banner(model).state).toBe("failed");
-    expect(refusal(model)).not.toBeNull();
+  it("the browser build reads a producer selection as the library does", async () => {
+    const bundle = strictCase("incomplete-producer-selected");
+    const model = await browserModel(bundle);
+    expect(banner(model).verdict).toBe("incomplete");
+    expect(banner(model)).toEqual(banner(await libraryModel(bundle)));
   });
 
   it("keeps the strict result when the countersigners change", async () => {
@@ -440,15 +433,8 @@ describe("the strict result beside the page's own checks", () => {
 // The page's verdict is the strict verifier's, so it agrees with every
 // implementation on the shared strict vectors. Only the cases a page can
 // reproduce: it has no witness directory and allows unsigned records. The
-// browser build cannot authenticate a checkpoint, so there it may claim
-// less than a full verifier. It says more only for a bundle whose one
-// failure is in a checkpoint it could not check, and then says so: it is
-// incomplete, with `data-checkpoint="unverified"`.
-const ORDER: Readonly<Record<string, number>> = {
-  invalid: 0,
-  incomplete: 1,
-  valid: 2,
-};
+// browser build authenticates the checkpoint with CLL's browser entry (#435),
+// so its banner is the library's.
 describe("the page's verdict on vectors/bundle/strict", () => {
   const vectors = JSON.parse(
     readFileSync(
@@ -486,24 +472,7 @@ describe("the page's verdict on vectors/bundle/strict", () => {
     const top = banner(pageRoot);
     expect(top.verdict).toBe(expected);
     const browserRoot = await browserModel(c.bundle);
-    const browser = banner(browserRoot);
-    expect(["invalid", "incomplete"]).toContain(browser.verdict);
-    if (ORDER[browser.verdict!]! > ORDER[expected]!) {
-      // Allowed only when every failure is the checkpoint's, which the
-      // browser build cannot check.
-      const { strict } = await verifyBundle(c.bundle, { strict: true });
-      expect(strict.witnesses?.status).not.toBe("fail");
-      for (const claim of strict.claims.filter((x) => x.status === "fail"))
-        expect(
-          claim.name === "checkpoint" ||
-            claim.findings.every(
-              (f) => f === "checkpoint_authentication_invalid",
-            ),
-        ).toBe(true);
-      expect(browser.verdict).toBe("incomplete");
-      expect(browser.checkpoint).toBe("unverified");
-      expect(detail(browserRoot)).toContain("checkpoint_verifier_unavailable");
-    }
+    expect(banner(browserRoot)).toEqual(top);
     for (const page of [pageRoot, browserRoot])
       if (banner(page).verdict !== "valid")
         expect(said(page)).not.toContain(LINES.verified);
