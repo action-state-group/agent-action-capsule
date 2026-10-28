@@ -16,6 +16,17 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.10.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Spec: `spec/bilateral-attestation-mapping-v0.md` (informational, pre-Internet-Draft) maps the
+  records two producers seal for a two-party exchange onto
+  `draft-mih-agent-bilateral-attestation-03`: a compute-exchange plugin's four settlement legs
+  and every record type of a marketplace plugin's deal profile, with its countersign and cadence.
+  Each row is an SR leg or plugin-local, and names its nearest BA object and what it lacks to be
+  one. Findings: no record either producer seals today is a BA object; countersign and cadence do
+  not fit without loss; BA has no slot for intent, and an optional digest reference carries it
+  with no new member; the negotiation trail is plugin-local; the agreed terms verify without it
+  only as an SR terms leg cited by the other side; the buying side seals none of SR's legs. It
+  changes no draft and registers nothing.
+
 - Spec and vectors, Interop Profile re-pinned to Evidence Request -01: `spec/interop-profile-v0.md`
   now pins `draft-mih-agent-evidence-request-01` as posted (SHA-256 of the `.txt`) instead of -00,
   still under `evidence-interop/0` (P-64). A responder under the profile ignores ER -01's
