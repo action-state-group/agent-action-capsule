@@ -7,7 +7,7 @@ requirement, what was judged and with what assurance, over an Evidence Contract.
 below** — the gate required before this schema could freeze. The gate is
 satisfied; the schema, validator, and fixtures below are encoded to the ruled text and are no
 longer DRAFT. §4.1's `type: reconcile` claim is normative; its `type: close` claim and §7.1's
-`coverage_report` are PROPOSED.
+`coverage_report` are PROPOSED. §7.3's `plan_ref` and `dataset_ref` are normative.
 
 **Companion schema.** `schemas/evidence-result-v0.json` — a JSON Schema (2020-12) encoding of
 every object model defined below. The schema is descriptive of the semantics fixed here; where
@@ -30,6 +30,8 @@ the aggregate coverage statement and bucket grouping.
   as `contract_ref`; this document uses the identical field name and shape on every claim).
 - The Witness/Countersign definitions' three-value assurance `grade` vocabulary, owned
   elsewhere and never redefined here.
+- The Evidence Plan IR's dataset plan (§5.1) and dataset document (§6.2), which §7.3 names by
+  digest.
 
 A drift between any of the above and this document's mirrored copy is a defect in this document,
 never a second legitimate spelling.
@@ -732,6 +734,30 @@ It is not `aggregate.coverage` (§3), which counts evaluations, one per claim. I
 evidence never implies completeness (interop profile §6.7). A Result rendering `kind` shows it
 beside the coverage statement and never as a grade.
 
+### 7.3 Plan and dataset — `plan_ref` and `dataset_ref`
+
+**Status: normative (ruled 2026-10-27).** A Result MAY name the selection its numbers were counted
+over:
+
+```
+result:
+  plan_ref: { digest_alg: "SHA-256", digest: <64-hex> }      # OPTIONAL: the dataset plan
+  dataset_ref: { digest_alg: "SHA-256", digest: <64-hex> }   # OPTIONAL: the dataset it selected
+```
+
+`plan_ref` is the digest of a dataset plan (`spec/evidence-plan-ir-v0.md` §5.1) and `dataset_ref`
+the digest of the dataset document that plan selected (§6.2 there), each over `UTF8(JCS(value))`.
+The two appear together or not at all; the schema enforces this (`dependentRequired`). They are
+digests only: a Result never carries the plan or the rows, which §2's disclosure ruling keeps out of
+it. The plan and the dataset are records of their own, which a bundle discloses or withholds like
+any other.
+
+A verifier that holds the plan, the dataset and the population's record headers checks that the
+plan's digest is `plan_ref`, the dataset's digest is `dataset_ref`, the dataset's own `plan_ref` is
+the same digest, and the dataset's rows are the rows the plan selects (§6.2 there). A Result without
+the two members is unchanged and still valid. What a Result counts from the rows, and how a page
+draws them, is the producer's and the reader's, never the plan's.
+
 ## 8. View
 
 Presentation hints only — **never data**. The `presentation/v1` header fields: producer
@@ -764,6 +790,9 @@ result:
   claims: [claim, ...]                # §4
   aggregate: aggregate                # §7
   view: view                          # OPTIONAL — §8
+  coverage_report: coverage-report    # OPTIONAL — §7.1
+  plan_ref: digest-ref                # OPTIONAL, with dataset_ref — §7.3
+  dataset_ref: digest-ref             # OPTIONAL, with plan_ref — §7.3
   x-<name>: any                       # OPTIONAL, any number — this section
 ```
 
@@ -897,6 +926,13 @@ cites and its one exclusion accounts for. It adds one schema negative,
 `neg-requirements-covered-omits-claimed` (a claimed requirement left out) and
 `neg-requirements-covered-unaccounted` (`excluded_not_applicable` 0, so nothing accounts for
 `req-claim-4`). Each has its own mutant proof.
+
+§7.3's `plan_ref` and `dataset_ref` add one positive, `pos-example-org-dataset-result.json`: the
+claims positive naming the plan and dataset of `vectors/evidence-dataset/pos-window-and-exclusion`.
+With both members removed it is byte-identical to the claims positive. Two schema negatives each
+have their own mutant proof: `neg-dataset-ref-without-plan-ref` (one member without the other) and
+`neg-plan-ref-inline-plan` (the plan in place of its digest). The dataset's own vectors are
+`vectors/evidence-dataset/`.
 
 §4.2's `out_of_scope` adds three positives (`pos-example-org-out-of-scope-result.json`,
 `pos-example-org-out-of-scope-empty-result.json`, `pos-example-org-close-switched-on-result.json`),

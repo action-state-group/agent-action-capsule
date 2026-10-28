@@ -18,8 +18,8 @@ they conflict, this document governs and the schema is corrected to match.
 
 **Owns:** the Evidence Plan document shape (header + ordered node list), the node object model,
 input references, the `classification` locality-tag vocabulary, the v0 operator catalogue, the
-per-node result envelope shape, the family-agnostic attestation record shape, and the
-replay-determinism rule.
+per-node result envelope shape, the family-agnostic attestation record shape, the
+replay-determinism rule, the dataset plan (§5.1) and the dataset document it selects (§6.2).
 
 **Depends on:** an Evidence Contract (referenced, not redefined, by `contract_ref`/
 `requirement_ref` — see below) and its two closed vocabularies: the seven-value `profile`
@@ -75,8 +75,13 @@ node:
   classification: LOCAL_ONLY | ABSTRACTABLE | CLOUD_SAFE | PUBLIC   # §4
   tier: recomputed | judged           # §4.2
   contract_ref: string                # MUST equal header.contract_ref — §2
-  requirement_ref: string             # a requirement id within that contract
+  requirement_ref: string             # a requirement id within that contract; OPTIONAL on a
+                                      # dataset operator (§5.1), REQUIRED otherwise
+  params: object                      # REQUIRED on a dataset operator (§5.1), absent otherwise
 ```
+
+`params` holds an operator's parameters. Only the dataset operators of §5.1 take any, so the six
+operators of §5 never carry it, and a plan written before §5.1 validates unchanged.
 
 `family` and `tier` are constrained by which `operator` is named (§5's catalogue table is
 closed for v0): a node whose `operator` belongs to the `semantic` family MUST carry `tier:
@@ -163,8 +168,8 @@ fixed elsewhere, not here.
 ## 5. Operator catalogue v0
 
 The minimal, closed set of operators the EXAMPLE-ORG synthetic fixtures (§9) exercise — nothing more. A
-node's `operator` MUST be one of these six values; `family` and `tier` are fixed by the choice of
-`operator` (§3).
+node's `operator` MUST be one of these six values or one of the three dataset operators of §5.1;
+`family` and `tier` are fixed by the choice of `operator` (§3).
 
 | `operator` | `family` | `tier` | What it names |
 |---|---|---|---|
@@ -178,6 +183,68 @@ node's `operator` MUST be one of these six values; `family` and `tier` are fixed
 No operator in this catalogue names, cites, or depends on a specific model, prompt, or planning
 heuristic. `semantic.judge_adjudicate` names the *existence* of a semantic-adjudication step; the
 policy it runs under is cited only by digest (`policy_digest`, §6), never inlined.
+
+### 5.1 Dataset operators
+
+**Status: normative (ruled 2026-10-27).** A **dataset plan** selects, from one book's committed
+records, the records a Result counts: its population, the time window it covers, and the filters
+and exclusions applied to them. Its output is a dataset document (§6.2). A Result names both by
+digest (`spec/evidence-result-v0.md` §7.3), so a reader can re-run the selection and check every
+number against it.
+
+| `operator` | `family` | `tier` | `params` | What it selects |
+|---|---|---|---|---|
+| `traditional.population` | `traditional` | `recomputed` | `book_id`, `through_seq`, `record_types` | Every committed record of the book `book_id` whose `seq` is at most `through_seq` and whose `record_type` is in `record_types`. |
+| `traditional.window` | `traditional` | `recomputed` | `field`, `from`, `to` | The records of its input whose `field` holds an RFC 3339 date-time with an offset whose UTC calendar day is from `from` to `to`, both inclusive. |
+| `traditional.filter` | `traditional` | `recomputed` | `where` | The records of its input that satisfy every predicate in `where`. |
+
+```
+population-params:
+  book_id: string                      # one book
+  through_seq: integer >= 0            # the last seq read; a book that grows later selects the same records
+  record_types: [string, ...]          # at least one, each once
+window-params:
+  field: field-path
+  from: YYYY-MM-DD                     # a UTC calendar day that exists
+  to: YYYY-MM-DD                       # the same day or a later one
+filter-params:
+  where: [predicate, ...]              # at least one; all MUST hold
+predicate:
+  { field: field-path, equal: scalar }
+  { field: field-path, one_of: [scalar, ...] }
+  { field: field-path, not_one_of: [scalar, ...] }   # an exclusion
+scalar: string | boolean
+field-path: name("." name)*            # name: [A-Za-z_][A-Za-z0-9_]*
+```
+
+A field path names a member of the record header as a bundle discloses it (the header shape of
+`vectors/evidence-result/`'s `.records.json` sidecars), and each further name a member of the object
+before it, for example `event_time_claim` or `statement.generated_at`. A scalar matches only a value
+of its own type: the string `"true"` never equals the boolean `true`.
+
+**The chain (normative, not schema-enforced in v0).** A dataset plan holds dataset operators only.
+Its first node is its one `traditional.population` node, with no inputs. Every later node is a
+`traditional.window` or `traditional.filter` node whose one input is a `by-node` reference to the
+node immediately before it. The plan's dataset is the output of its last node. A verifier MUST
+check this chain, node `id` uniqueness, every node's `contract_ref` against the header's (§2), and
+that every window day exists and `from` is not after `to`.
+
+**Running a dataset plan.** The population node reads the book's committed records in `seq` order.
+Each later node keeps or drops each record it receives, and keeps the order. A record that reaches a
+window or filter node and lacks the field the node names refuses the run; so does one whose field
+holds a value the node cannot read (a window field that is not an RFC 3339 date-time with an offset,
+or a predicate field that is not a string or boolean). A missing or unreadable field never counts as
+a non-match, so a dataset never silently loses a record. A record that a node earlier in the chain
+dropped is not read by the later nodes. A run reads only the plan and the book's committed record
+headers, so it is a deterministic function of them (§7), and its nodes are `recomputed` (§4.2).
+
+A record type a reader needs to tell "not run" from zero, such as the daily Result of a daily
+check, is listed in `record_types`, and the plan's filters keep it. A day with that record and no
+other row was run and counts 0. A day without it was not run. A day outside the window is neither.
+The dataset records which records exist, never a count, so it never states a zero itself.
+
+A dataset plan states only what is selected. It names no metric, chart or wording; those belong to
+the reader of the dataset.
 
 ## 6. Attestation record (family-agnostic)
 
@@ -262,6 +329,34 @@ This document does not define how a `status` value is derived from `outputs`; th
 the (private) executor's concern. It defines only the closed vocabulary the field is drawn from
 and the fact that a conforming result envelope always names one.
 
+## 6.2 Dataset
+
+The **dataset** is the output of a dataset plan (§5.1): one row for each record its last node
+keeps.
+
+```
+dataset:
+  dataset_version: "evidence-dataset-v0"
+  plan_ref: { digest_alg: "SHA-256", digest: <64-hex> }   # digest of the dataset plan (UTF8(JCS(plan)))
+  rows:
+    - seq: integer >= 0                # the record's seq in the population's book
+      record_type: string              # the record's record_type
+      digest_alg: "SHA-256"
+      digest: <64-hex>                 # digest of the record header, UTF8(JCS(header))
+```
+
+A row is a reference to one committed record, never a copy of its values: a reader reads a field
+through the record the row names, after checking the record against `digest`. The rows are in `seq`
+order, each record once. A dataset with no rows is valid: nothing in the window matched.
+
+The dataset's digest is the digest of `UTF8(JCS(dataset))`, the convention of §3.1. That digest is
+what a Result's `dataset_ref` names. A verifier that holds the plan and the book's record headers
+through `through_seq` MUST check that `plan_ref` is the plan's digest and that `rows` are exactly
+the rows the plan selects, in order. A dataset that drops, adds, repeats or reorders a row, or cites
+a record whose header has changed, fails that check. A verifier that cannot see every record of the
+population cannot run this check. It can still check each disclosed record against its row's
+digest, and it MUST NOT treat a withheld record's row as absent.
+
 ## 7. Replay determinism
 
 **Normative statement.** For a given plan `P` (identified by `plan_ref`, the digest of `P`'s own
@@ -333,3 +428,10 @@ validation; a matching `plan-result` document for each of the three plans; and o
 `attestation-record` document (the one `judged`-tier node across the three plans). See that
 directory's `README.md` for how each was generated and validated, and
 `schemas/check_evidence_plan_ir_examples.py` for the validation run itself.
+
+`vectors/evidence-dataset/` — the dataset plans of §5.1 and the datasets of §6.2: three positives
+(a population, window and exclusion over runs and events; the population alone; and a window with
+no rows) and at least one negative for each reason a verifier refuses with, each named with its
+reason in `cases.json`. The Python reference (`schemas/evidence_dataset.py`, run by
+`schemas/check_evidence_dataset_examples.py`) and the Go gate (`go/evidenceplan`) refuse each
+negative with the same reason. See that directory's `README.md`.

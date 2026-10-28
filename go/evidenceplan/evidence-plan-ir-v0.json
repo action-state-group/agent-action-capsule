@@ -1,0 +1,425 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentactioncapsule.org/schemas/evidence-plan-ir-v0.json",
+  "title": "Evidence Plan IR v0",
+  "description": "Companion schema for spec/evidence-plan-ir-v0.md. The root schema validates an Evidence Plan document. $defs/PlanResult, $defs/AttestationRecord and $defs/Dataset validate the three other document shapes this IR defines, each via a direct $ref to that $def.",
+  "$ref": "#/$defs/EvidencePlan",
+  "$defs": {
+    "HexDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "DigestRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest_alg", "digest"],
+      "properties": {
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" }
+      }
+    },
+    "InputRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["by", "digest_alg", "digest"],
+          "properties": {
+            "by": { "const": "digest" },
+            "digest_alg": { "const": "SHA-256" },
+            "digest": { "$ref": "#/$defs/HexDigest" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["by", "node_id"],
+          "properties": {
+            "by": { "const": "node" },
+            "node_id": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "Family": {
+      "enum": ["traditional", "semantic", "evidence", "assurance", "decision"]
+    },
+    "Classification": {
+      "enum": ["LOCAL_ONLY", "ABSTRACTABLE", "CLOUD_SAFE", "PUBLIC"]
+    },
+    "Tier": {
+      "enum": ["recomputed", "judged"]
+    },
+    "Operator": {
+      "description": "The closed v0 operator catalogue (spec §5). family/tier per operator are fixed by PlanNode's if/then blocks below, not re-listed here.",
+      "enum": [
+        "traditional.fold_replay",
+        "semantic.judge_adjudicate",
+        "evidence.request_answer",
+        "assurance.verify",
+        "assurance.bundle",
+        "decision.resolve_verdict",
+        "traditional.population",
+        "traditional.window",
+        "traditional.filter"
+      ]
+    },
+    "ContractRef": {
+      "description": "Compact versioned Evidence Contract reference: <contract_id>@<version>.",
+      "type": "string",
+      "pattern": "^[^@\\s]+@[^@\\s]+$"
+    },
+    "PlanHeader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_ref", "ir_version", "planner_id", "created_at", "replay_seed"],
+      "properties": {
+        "contract_ref": { "$ref": "#/$defs/ContractRef" },
+        "ir_version": { "const": "evidence-plan-ir-v0" },
+        "planner_id": {
+          "type": "string",
+          "pattern": "^(local|remote):[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "created_at": { "type": "string", "format": "date-time" },
+        "replay_seed": { "type": "string", "minLength": 1 }
+      }
+    },
+    "DatasetOperator": {
+      "description": "spec section 5.1: the three dataset operators.",
+      "enum": ["traditional.population", "traditional.window", "traditional.filter"]
+    },
+    "DatasetInput": {
+      "description": "spec section 5.1: a window or filter node reads exactly one earlier node, by id.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["by"],
+        "properties": { "by": { "const": "node" } }
+      }
+    },
+    "FieldPath": {
+      "description": "spec section 5.1: a dot path of member names into a record header, read through objects only.",
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$"
+    },
+    "CalendarDate": {
+      "description": "spec section 5.1: a UTC calendar day, YYYY-MM-DD. That the day exists is checked by the gate.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "PopulationParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["book_id", "through_seq", "record_types"],
+      "properties": {
+        "book_id": { "type": "string", "minLength": 1 },
+        "through_seq": { "type": "integer", "minimum": 0 },
+        "record_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "WindowParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "from", "to"],
+      "properties": {
+        "field": { "$ref": "#/$defs/FieldPath" },
+        "from": { "$ref": "#/$defs/CalendarDate" },
+        "to": { "$ref": "#/$defs/CalendarDate" }
+      }
+    },
+    "Scalar": { "type": ["string", "boolean"] },
+    "Predicate": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["field", "equal"],
+          "properties": { "field": { "$ref": "#/$defs/FieldPath" }, "equal": { "$ref": "#/$defs/Scalar" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["field", "one_of"],
+          "properties": {
+            "field": { "$ref": "#/$defs/FieldPath" },
+            "one_of": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Scalar" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["field", "not_one_of"],
+          "properties": {
+            "field": { "$ref": "#/$defs/FieldPath" },
+            "not_one_of": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Scalar" } }
+          }
+        }
+      ]
+    },
+    "FilterParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["where"],
+      "properties": {
+        "where": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Predicate" } }
+      }
+    },
+    "DatasetRow": {
+      "description": "spec section 6.2: one committed record, by the digest of its header.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seq", "record_type", "digest_alg", "digest"],
+      "properties": {
+        "seq": { "type": "integer", "minimum": 0 },
+        "record_type": { "type": "string", "minLength": 1 },
+        "digest_alg": { "const": "SHA-256" },
+        "digest": { "$ref": "#/$defs/HexDigest" }
+      }
+    },
+    "Dataset": {
+      "description": "spec section 6.2: the rows a dataset plan selected. A Result's dataset_ref is the digest of this document.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset_version", "plan_ref", "rows"],
+      "properties": {
+        "dataset_version": { "const": "evidence-dataset-v0" },
+        "plan_ref": { "$ref": "#/$defs/DigestRef" },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/DatasetRow" } }
+      }
+    },
+    "PlanNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "family", "operator", "inputs", "classification", "tier",
+        "contract_ref"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "family": { "$ref": "#/$defs/Family" },
+        "operator": { "$ref": "#/$defs/Operator" },
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/InputRef" }
+        },
+        "classification": { "$ref": "#/$defs/Classification" },
+        "tier": { "$ref": "#/$defs/Tier" },
+        "contract_ref": { "$ref": "#/$defs/ContractRef" },
+        "requirement_ref": { "type": "string", "minLength": 1 },
+        "params": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "description": "spec section 5.1: the six section 5 operators require requirement_ref and carry no params; a dataset operator requires params and may omit requirement_ref.",
+          "if": { "properties": { "operator": { "$ref": "#/$defs/DatasetOperator" } } },
+          "then": { "required": ["params"] },
+          "else": { "required": ["requirement_ref"], "not": { "required": ["params"] } }
+        },
+        {
+          "if": { "properties": { "operator": { "const": "traditional.population" } } },
+          "then": {
+            "properties": {
+              "family": { "const": "traditional" },
+              "tier": { "const": "recomputed" },
+              "inputs": { "maxItems": 0 },
+              "params": { "$ref": "#/$defs/PopulationParams" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "operator": { "const": "traditional.window" } } },
+          "then": {
+            "properties": {
+              "family": { "const": "traditional" },
+              "tier": { "const": "recomputed" },
+              "inputs": { "$ref": "#/$defs/DatasetInput" },
+              "params": { "$ref": "#/$defs/WindowParams" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "operator": { "const": "traditional.filter" } } },
+          "then": {
+            "properties": {
+              "family": { "const": "traditional" },
+              "tier": { "const": "recomputed" },
+              "inputs": { "$ref": "#/$defs/DatasetInput" },
+              "params": { "$ref": "#/$defs/FilterParams" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "operator": { "const": "traditional.fold_replay" } } },
+          "then": {
+            "properties": {
+              "family": { "const": "traditional" },
+              "tier": { "const": "recomputed" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "operator": { "const": "semantic.judge_adjudicate" } } },
+          "then": {
+            "properties": {
+              "family": { "const": "semantic" },
+              "tier": { "const": "judged" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "operator": { "const": "evidence.request_answer" } } },
+          "then": {
+            "properties": {
+              "family": { "const": "evidence" },
+              "tier": { "const": "recomputed" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operator": { "enum": ["assurance.verify", "assurance.bundle"] }
+            }
+          },
+          "then": {
+            "properties": {
+              "family": { "const": "assurance" },
+              "tier": { "const": "recomputed" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "operator": { "const": "decision.resolve_verdict" } } },
+          "then": {
+            "properties": {
+              "family": { "const": "decision" },
+              "tier": { "const": "recomputed" }
+            }
+          }
+        }
+      ]
+    },
+    "EvidencePlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["header", "nodes"],
+      "properties": {
+        "header": { "$ref": "#/$defs/PlanHeader" },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/PlanNode" }
+        }
+      },
+      "if": {
+        "properties": {
+          "header": {
+            "properties": {
+              "planner_id": { "not": { "pattern": "^local:" } }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "properties": {
+                "classification": { "not": { "const": "LOCAL_ONLY" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Verdict": {
+      "description": "The closed four-value decision-family verdict from decision.resolve_verdict (spec §5), the Evidence Contract's own set: out_of_scope only for a requirement whose contract allows it, which this document cannot check. Surfaced on the envelope so a Result emitter does not have to dereference an output digest to read it.",
+      "enum": ["met", "not_met", "not_evaluable", "out_of_scope"]
+    },
+    "ResultEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "status", "outputs", "attestation_ref"],
+      "properties": {
+        "family": { "$ref": "#/$defs/Family" },
+        "status": {
+          "enum": [
+            "SATISFIED", "INSUFFICIENT", "NOT_FOUND", "NOT_COMMITTED",
+            "WITHHELD", "CONTRADICTED", "NOT_APPLICABLE", "UNKNOWN"
+          ]
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DigestRef" }
+        },
+        "attestation_ref": { "$ref": "#/$defs/DigestRef" },
+        "verdict": { "$ref": "#/$defs/Verdict" }
+      },
+      "if": { "properties": { "family": { "const": "decision" } }, "required": ["family"] },
+      "then": { "required": ["verdict"] }
+    },
+    "PlanResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plan_ref", "results"],
+      "properties": {
+        "plan_ref": { "$ref": "#/$defs/DigestRef" },
+        "results": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/ResultEnvelope" }
+        }
+      }
+    },
+    "Adjudicator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "model_version": { "type": "string", "minLength": 1 }
+      },
+      "dependentRequired": {
+        "model": ["model_version"],
+        "model_version": ["model"]
+      }
+    },
+    "AttestationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adjudicator", "operator", "inputs", "policy_digest", "contract_ref"],
+      "properties": {
+        "adjudicator": { "$ref": "#/$defs/Adjudicator" },
+        "operator": { "$ref": "#/$defs/Operator" },
+        "inputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/DigestRef" }
+        },
+        "policy_digest": { "$ref": "#/$defs/DigestRef" },
+        "contract_ref": { "$ref": "#/$defs/ContractRef" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "operator": { "const": "semantic.judge_adjudicate" } } },
+          "then": { "properties": { "adjudicator": { "required": ["model", "model_version"] } } },
+          "else": {
+            "properties": {
+              "adjudicator": {
+                "not": { "anyOf": [{ "required": ["model"] }, { "required": ["model_version"] }] }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

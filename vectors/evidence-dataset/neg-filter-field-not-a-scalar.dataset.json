@@ -1,0 +1,33 @@
+{
+  "dataset_version": "evidence-dataset-v0",
+  "plan_ref": {
+    "digest": "048be75ce67e564f4a44bc3f627f7845293370f87e407ba146cbe99655db0964",
+    "digest_alg": "SHA-256"
+  },
+  "rows": [
+    {
+      "digest": "b3eeb4ed59132147c65b9c46778a7e429b8b2b8d6c27d858b426b82927ab3851",
+      "digest_alg": "SHA-256",
+      "record_type": "example-run",
+      "seq": 2
+    },
+    {
+      "digest": "e99d88663c1d06e8eb21bab03d9388c5aca3c62e80bb5d67ad56a48fc1776443",
+      "digest_alg": "SHA-256",
+      "record_type": "example-event",
+      "seq": 3
+    },
+    {
+      "digest": "68c7692400176bc88fa35a3c6ebdf655d0cf8b1dc70d5ef7f8c61c0df1f114eb",
+      "digest_alg": "SHA-256",
+      "record_type": "example-run",
+      "seq": 5
+    },
+    {
+      "digest": "e697d310ac94869e1cdcf20c0f1be5162f2881fe29266ee162ee1c9fee0e3ba0",
+      "digest_alg": "SHA-256",
+      "record_type": "example-event",
+      "seq": 6
+    }
+  ]
+}

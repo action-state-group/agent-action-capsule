@@ -151,6 +151,8 @@ export const RESULT_MEMBERS = Object.freeze([
   "aggregate",
   "view",
   "coverage_report",
+  "plan_ref",
+  "dataset_ref",
 ] as const);
 export const CLAIM_REQUIRED = Object.freeze([
   "id",
@@ -822,7 +824,8 @@ function claimFindings(path: string, value: unknown): string[] {
  * every bucket entry names a claim whose verdict is that bucket; and section
  * 3's `requirements_covered` rules, when the member is present: each pair
  * listed once, every claimed requirement listed, and the listed requirements
- * no claim cites at most `excluded_not_applicable`. Below the
+ * no claim cites at most `excluded_not_applicable`; and section 7.3's
+ * `plan_ref` and `dataset_ref`, digest refs present together. Below the
  * top level it is open-world on additional keys. `view` and the PROPOSED
  * `coverage_report` (spec section 7.1) are not checked, and
  * `generated_at` is checked as a string, not as a date-time. Empty findings
@@ -886,6 +889,13 @@ export function validateEvidenceResult(value: unknown): string[] {
     findings.push(
       "aggregate.coverage.requirements_covered: not an array of (contract_ref, requirement_ref) pairs",
     );
+  // Spec section 7.3: plan_ref and dataset_ref are digest refs, both or
+  // neither.
+  for (const member of ["plan_ref", "dataset_ref"])
+    if (Object.hasOwn(value, member))
+      findings.push(...digestRefFindings(member, value[member]));
+  if (Object.hasOwn(value, "plan_ref") !== Object.hasOwn(value, "dataset_ref"))
+    findings.push("plan_ref, dataset_ref: one is present without the other");
   const buckets = isObject(aggregate?.buckets) ? aggregate.buckets : undefined;
   if (buckets === undefined) findings.push("aggregate.buckets: not an object");
   else {
