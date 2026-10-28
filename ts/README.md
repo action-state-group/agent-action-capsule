@@ -23,7 +23,7 @@ CLL or its storage drivers. To use `@action-state-group/agent-action-capsule/bun
 or the existing broad root entry, explicitly install the pinned compatible CLL:
 
 ```bash
-npm install @action-state-group/agent-action-capsule @action-state-group/cll@0.2.1
+npm install @action-state-group/agent-action-capsule @action-state-group/cll@0.3.0
 ```
 
 `verifyBundle(bundle, { strict: true })` adds the strict checks of
