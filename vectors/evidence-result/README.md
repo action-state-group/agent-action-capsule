@@ -270,6 +270,23 @@ Every checker negative validates against the schema and fails `revision_findings
 Both checker negatives validate against the schema and fail `revision_findings`, and the mutant
 `skip_covered` accepts them.
 
+## Patterns are ECMA-262's
+
+JSON Schema 2020-12 reads `pattern` as an ECMA-262 regular expression. Python's `re` reads two of
+this schema's patterns differently: its `$` also matches before a final newline, and its `\s`
+covers U+001C to U+001F and U+0085 but not U+FEFF. So the checker validates with its own `pattern`
+keyword, which reads `$` and `\s` as ECMA-262 does. Each negative below is one field away from its
+positive, and its mutant, `pattern` read by plain Python `re`, accepts it:
+
+| File | Mutation | Pattern |
+|---|---|---|
+| `neg-digest-trailing-newline.json` | `claims[0].evidence[0].digest` of the claims positive followed by `\n` | `HexDigest`, `^[0-9a-f]{64}$` |
+| `neg-applies-from-trailing-newline.json` | `claims[1].applies_from` of the applicability positive followed by `\n` | `applies_from`, `^[0-9]{4}-[0-9]{2}-[0-9]{2}$` |
+| `neg-contract-ref-ecma-whitespace.json` | `claims[0].contract_ref` of the claims positive followed by U+FEFF | `ContractRef`, `^[^@\s]+@[^@\s]+$` |
+
+The checker also confirms the converse: a `contract_ref` holding U+001C, which is not ECMA-262
+whitespace, validates.
+
 ## Reproducing the validation run
 
 ```

@@ -16,6 +16,12 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.8.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Vectors: three Evidence Result v0 schema negatives on which Python's `re` and ECMA-262, the
+  regular-expression dialect of JSON Schema's `pattern`, disagree: a digest and an `applies_from`
+  followed by a newline, and a `contract_ref` holding U+FEFF. The Python reference
+  `schemas/check_evidence_result_examples.py` now reads the schema's patterns as ECMA-262, as the Go
+  gate `evidenceresult` already did, so it refuses all three. The schema is unchanged. (#434)
+
 - Go: the new package `evidenceresult` is the Go gate for an Evidence Result v0 document, at
   parity with the Python reference `schemas/check_evidence_result_examples.py`. `Decode` reads
   one document with its numbers kept, and `Check` validates it against the schema and runs the
@@ -23,7 +29,7 @@ packages is listed under each package that shipped it, or has not yet.
   `applies_from`, `requirements_covered`, the coverage counts, a `coverage_report`, and each close
   claim's state recomputed from the records it cites (`DecodeRecords`). It returns the claims. The
   schema is embedded and a test keeps it byte-equal to `schemas/evidence-result-v0.json`. Every case
-  in `vectors/evidence-result/` (20 positive, 52 negative) gets the Python reference's verdict. New
+  in `vectors/evidence-result/` (20 positive, 55 negative) gets the Python reference's verdict. New
   dependency: `github.com/santhosh-tekuri/jsonschema/v6`. capsule-cli's own gate will move to
   this one. (#428)
 

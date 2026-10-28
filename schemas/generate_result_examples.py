@@ -1269,6 +1269,21 @@ neg_requirements_covered_duplicate["aggregate"]["coverage"]["requirements_covere
 )
 
 
+# --- JSON Schema reads `pattern` as ECMA-262 ----------------------------------
+#     Three schema negatives on which Python's `re` and ECMA-262 disagree. In
+#     ECMA-262 `$` (no m flag) matches only at the end of the text, where
+#     Python's also matches before a final newline; and ECMA-262's `\s`
+#     includes U+FEFF, which Python's does not.
+neg_digest_trailing_newline = _mutated(pos_example_org_claims_result)
+neg_digest_trailing_newline["claims"][0]["evidence"][0]["digest"] += "\n"
+
+neg_applies_from_trailing_newline = _mutated(pos_example_org_applicability_result)
+neg_applies_from_trailing_newline["claims"][1]["applies_from"] += "\n"
+
+neg_contract_ref_ecma_whitespace = _mutated(pos_example_org_claims_result)
+neg_contract_ref_ecma_whitespace["claims"][0]["contract_ref"] += "\ufeff"
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("pos-example-org-claims-result", pos_example_org_claims_result)
@@ -1343,6 +1358,9 @@ def main() -> int:
     write("neg-requirements-covered-omits-claimed", neg_requirements_covered_omits_claimed)
     write("neg-requirements-covered-unaccounted", neg_requirements_covered_unaccounted)
     write("neg-requirements-covered-duplicate", neg_requirements_covered_duplicate)
+    write("neg-digest-trailing-newline", neg_digest_trailing_newline)
+    write("neg-applies-from-trailing-newline", neg_applies_from_trailing_newline)
+    write("neg-contract-ref-ecma-whitespace", neg_contract_ref_ecma_whitespace)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)
     return 0
