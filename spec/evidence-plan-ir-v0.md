@@ -260,11 +260,14 @@ does not list, is not read either, beyond its `book_id`, `seq` and `record_type`
 headers, so it is a deterministic function of them (§7), and its nodes are `recomputed` (§4.2).
 
 A record type a reader needs to tell "not run" from zero, such as the daily Result of a daily
-check, is listed in `record_types`, the plan has a window node, and the plan's filters keep the run
-records. A run's day is the UTC calendar day of the plan's window field on the run record, so a
-producer MUST set that field on a run record to an instant inside the day the run checks: a daily
-Result written after midnight UTC for the day before carries that day's time in the window field,
-not its writing time. A day with a run row and no row the reader counts was run and counts 0. A
+check, is listed in `record_types`, the plan has exactly one window node, and the plan's filters
+keep the run records. A run's day is the UTC calendar day of that window node's field on the run
+record, so a producer MUST set that field on a run record to an instant inside the day the run
+checks: a daily Result written after midnight UTC for the day before carries that day's time in
+the window field, not its writing time. That field is one the producer sets, such as
+`event_time_claim` or `statement.generated_at`, never `committed_at`, which is the store's own
+commit time. A reader MUST NOT tell "not run" from zero over a plan with no window node or with
+more than one. A day with a run row and no row the reader counts was run and counts 0. A
 day without a run row was not run. A day outside the window is neither.
 The dataset records which records exist, never a count, so it never states a zero itself.
 
