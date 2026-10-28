@@ -24,7 +24,7 @@ packages is listed under each package that shipped it, or has not yet.
   a `shop_preauth` deal is not counted) and the record kind `receipt_document`. Python:
   `agent_action_capsule.standard_history` (`derive_card`, `check_card`) is the reference. Go: the
   new package `standardhistory` (`Derive`, `Check`) is at parity with it. Both run
-  `vectors/standard-history-v0/` (6 positive, 9 negative). (#437)
+  `vectors/standard-history-v0/` (9 positive, 19 negative). (#437)
 
 - Security, strict witness receipts: an EdDSA witness receipt now verifies only under strict
   Ed25519. The key A and the signature's R must be canonical and not of small order, and S must

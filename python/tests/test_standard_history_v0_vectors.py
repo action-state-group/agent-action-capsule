@@ -105,6 +105,42 @@ def test_malformed_input_raises() -> None:
         sh.check_card(c["inputs"]["card"], policy=c["inputs"]["policy"], as_of=c["inputs"]["as_of"], deals=deals)
 
 
+@pytest.mark.parametrize("change", [
+    {"amount": {"value": "500", "assetCode": "USD", "assetScale": "2"}},   # SR "Amounts" rule 2
+    {"amount": {"value": "500", "assetCode": "Example Bakery", "assetScale": 2}},
+    {"agreed_at": "\u0662\u0660\u0662\u0666-09-02T10:00:00Z"},   # Python's strptime reads these digits
+    {"counterparty_class": None},
+])
+def test_malformed_deal_entry_raises(change: dict) -> None:
+    c = CASES[0]
+    deals = json.loads(json.dumps(c["inputs"]["deals"]))
+    deals[0].update(change)
+    with pytest.raises(ValueError):
+        sh.check_card(c["inputs"]["card"], policy=c["inputs"]["policy"], as_of=c["inputs"]["as_of"], deals=deals)
+
+
+def test_integral_float_months_is_a_whole_number_of_months() -> None:
+    """SH §4 "Counts": a policy window of 3.0 months is 3 months, as in Go."""
+    c = CASES[0]
+    policy = {**c["inputs"]["policy"], "window": {"months": 3.0}}
+    assert sh.check_card(c["inputs"]["card"], policy=policy, as_of=c["inputs"]["as_of"],
+                         deals=c["inputs"]["deals"]) == c["expected"]["properties"]
+
+
+def test_is_standard_needs_every_property() -> None:
+    props = dict(CASES[0]["expected"]["properties"])
+    props["counts_recompute"] = "INCONCLUSIVE"
+    assert not sh.is_standard(props)
+    del props["counts_recompute"]
+    assert not sh.is_standard(props)
+
+
+def test_card_of_null_has_no_numbers() -> None:
+    """As in Go: JSON null is a card with no numbers, so counts_integral is PASS and card_form FAIL."""
+    props = sh.check_card(None)
+    assert props["card_form"] == "FAIL" and props["counts_integral"] == "PASS"
+
+
 def _mutant_disagrees(monkeypatch: pytest.MonkeyPatch, name: str, replacement) -> bool:
     with monkeypatch.context() as m:
         m.setattr(sh, name, replacement)
@@ -130,7 +166,8 @@ def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
         "decade off by one": ("_decade", lambda a: real_decade(a) + 1),
         "accepts any number": ("_counts_integral", lambda card: True),
         "checks no cross-tally total": ("_denominator", _partitions_only),
-        "lets a person card carry any class": ("PERSON_CLASS", "example_node_class"),
+        "lets a node card carry the person class": ("CONTROLLER_CLASSES", {"person": "person_declared",
+                                                                            "node": "person_declared"}),
     }
     agreeing = [desc for desc, (name, value) in mutants.items()
                 if not _mutant_disagrees(monkeypatch, name, value)]

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/action-state-group/agent-action-capsule/go/standardhistory"
@@ -109,6 +110,17 @@ func TestCountsIntegralReadsTheValue(t *testing.T) {
 	}
 }
 
+func TestIsStandardNeedsEveryProperty(t *testing.T) {
+	p := map[string]string{}
+	for k, v := range baseCase(t).Expected.Properties {
+		p[k] = v
+	}
+	p["counts_recompute"] = "INCONCLUSIVE"
+	assert.False(t, standardhistory.IsStandard(p))
+	delete(p, "counts_recompute")
+	assert.False(t, standardhistory.IsStandard(p))
+}
+
 func TestCardFormRejectsABooleanCount(t *testing.T) {
 	tc := baseCase(t)
 	var card map[string]any
@@ -124,11 +136,39 @@ func TestCardFormRejectsABooleanCount(t *testing.T) {
 func TestMalformedInputIsAnError(t *testing.T) {
 	tc := baseCase(t)
 	deals := append([]standardhistory.Deal(nil), tc.Inputs.Deals...)
-	deals[0].CounterpartyClass = "a_shop"
+	unknown := "a_shop"
+	deals[0].CounterpartyClass = &unknown
 	_, err := standardhistory.Check(tc.Inputs.Card, tc.Inputs.Policy, tc.Inputs.AsOf, deals)
 	require.Error(t, err)
 
 	var d standardhistory.Deal
 	require.Error(t, json.Unmarshal([]byte(`{"deal":"d","counterparty_class":null}`), &d))
 	require.Error(t, json.Unmarshal([]byte(`{"months":0}`), new(standardhistory.Window)))
+	require.Error(t, json.Unmarshal([]byte(`{"deal":"d","amount":{"value":"1","assetCode":"USD","assetScale":"2"}}`), &d))
+}
+
+// A Deal built in code, not decoded, is counted by its CounterpartyClass
+// alone: a shop purchase set in a struct literal is not counted.
+func TestDealBuiltInCode(t *testing.T) {
+	shop := "shop_preauth"
+	deal := standardhistory.Deal{Deal: "d", AgreedAt: "2026-10-01T00:00:00Z", CounterpartyClass: &shop,
+		Role: "bought", Amount: standardhistory.Amount{Value: "500", AssetCode: "USD", AssetScale: 2},
+		Outcome: "held", Happened: "receipt_only", Disputes: []standardhistory.Dispute{}}
+	asOf := standardhistory.AsOf{Anchor: strings.Repeat("a", 64), AnchorTime: "2026-10-28T00:00:00Z",
+		FirstCheckpointTime: "2026-01-01T00:00:00Z"}
+	policy := standardhistory.Policy{Digest: strings.Repeat("b", 64), Window: standardhistory.Window{Months: 3}}
+	octets, err := standardhistory.Derive("person", "person_declared", asOf, policy, []standardhistory.Deal{deal})
+	require.NoError(t, err)
+	var card map[string]any
+	require.NoError(t, json.Unmarshal(octets, &card))
+	assert.Equal(t, map[string]any{"of": 1.0, "counted": 0.0, "not_counted": 1.0}, card["in_window"])
+
+	// A card of JSON null has no numbers, as in Python; octets that are not
+	// JSON fail it.
+	got, err := standardhistory.Check([]byte("null"), nil, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, standardhistory.Pass, got["counts_integral"])
+	got, err = standardhistory.Check([]byte("{"), nil, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, standardhistory.Fail, got["counts_integral"])
 }

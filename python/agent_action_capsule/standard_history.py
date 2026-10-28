@@ -40,7 +40,8 @@ COUNTERPARTY_CLASSES = ("person_agent", "business_agent", "shop_preauth")
 NOT_COUNTED = "shop_preauth"
 
 HOLDER_KINDS = ("person", "node")
-PERSON_CLASS = "person_declared"
+#: SH §4: the one controller class /1 allows for each holder kind.
+CONTROLLER_CLASSES = {"person": "person_declared", "node": "node_declared"}
 ROLES = ("provided", "bought")
 OUTCOMES = ("held", "did_not_hold", "undecided")
 HAPPENED = ("stamped_by_both", "receipt_only", "no_record")
@@ -62,10 +63,12 @@ BAND_KEYS = ("currency", "decade")
 MAX_COUNT = 2 ** 53 - 1
 
 HEX64 = re.compile(r"[0-9a-f]{64}")
-TOKEN = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
-MONTH = re.compile(r"\d{4}-(?:0[1-9]|1[0-2])")
-TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")   # IP §5.2
+# ASCII digits only: Python's \d also matches other scripts' digits, which RE2 does not.
+MONTH = re.compile(r"[0-9]{4}-(?:0[1-9]|1[0-2])")
+TIME = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")   # IP §5.2
 VALUE = re.compile(r"0|[1-9][0-9]*")                       # SR "Amounts"
+# SR "Amounts" assetCode: an ISO 4217 alphabetic code (BTC included), or a CAIP-19 asset type.
+CURRENCY = re.compile(r"[A-Z]{3}|[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}/[-a-z0-9]{3,8}:[-.%a-zA-Z0-9]{1,128}")
 
 
 def _is_number(v: Any) -> bool:
@@ -78,11 +81,14 @@ def _time(text: Any) -> datetime:
     return datetime.strptime(text, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
 
-def _window_start(anchor_time: datetime, months: int) -> datetime:
+def _window_start(anchor_time: datetime, months: int) -> datetime | None:
     """SH §5.1: the same time of day and day of the month, `months` calendar months earlier,
-    clamped to the last day of a shorter month."""
-    total = anchor_time.year * 12 + (anchor_time.month - 1) - months
+    clamped to the last day of a shorter month. None when that is before year 1, the first year a
+    time can name: every deal is then after the start."""
+    total = anchor_time.year * 12 + (anchor_time.month - 1) - int(months)
     year, month = divmod(total, 12)
+    if year < 1:
+        return None
     month += 1
     day = min(anchor_time.day, calendar.monthrange(year, month)[1])
     return anchor_time.replace(year=year, month=month, day=day)
@@ -93,18 +99,19 @@ def _in_window(agreed_at: datetime, window: Mapping[str, Any], anchor_time: date
         return False
     if window.get("all") is True:
         return True
-    return agreed_at >= _window_start(anchor_time, window["months"])
+    start = _window_start(anchor_time, window["months"])
+    return start is None or agreed_at >= start
 
 
-def _decade(amount: Mapping[str, Any]) -> int:
-    """SH §5.3: digits of the whole part, minus one; 0 when the whole part is 0."""
+def _decade(amount: Mapping[str, Any]) -> int | None:
+    """SH §5.3: floor(log10(value / 10^assetScale)), exactly digits(value) - assetScale - 1;
+    None for a zero amount."""
     value, scale = amount.get("value"), amount.get("assetScale")
     if not isinstance(value, str) or not VALUE.fullmatch(value):
         raise ValueError(f"amount value is not an exact integer string: {value!r}")
     if not isinstance(scale, int) or isinstance(scale, bool) or not 0 <= scale <= 255:
         raise ValueError(f"amount assetScale out of range: {scale!r}")
-    whole = int(value) // 10 ** scale
-    return len(str(whole)) - 1 if whole else 0
+    return None if value == "0" else len(value) - scale - 1
 
 
 def _check_entry(deal: Mapping[str, Any]) -> None:
@@ -120,8 +127,9 @@ def _check_entry(deal: Mapping[str, Any]) -> None:
         if deal.get(member) not in values:
             raise ValueError(f"deal {deal['deal']}: {member} {deal.get(member)!r}")
     amount = deal.get("amount")
-    if not isinstance(amount, Mapping) or not isinstance(amount.get("assetCode"), str) or not amount["assetCode"]:
-        raise ValueError(f"deal {deal['deal']}: amount without an assetCode")
+    if (not isinstance(amount, Mapping) or not isinstance(amount.get("assetCode"), str)
+            or not CURRENCY.fullmatch(amount["assetCode"])):
+        raise ValueError(f"deal {deal['deal']}: amount without an SR assetCode")
     _decade(amount)
     disputes = deal.get("disputes")
     if not isinstance(disputes, list):
@@ -167,9 +175,15 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
             for sub, member in (("by_outcome", "outcome"), ("by_forum", "forum")):
                 tally[sub]["of"] += 1
                 tally[sub][d[member]] += 1
-    t["bands"] = [bands[k] for k in sorted(bands)]
+    t["bands"] = [bands[k] for k in sorted(bands, key=_band_order)]
     t["disputes"] = disputes
     return t
+
+
+def _band_order(key: tuple) -> tuple:
+    """SH §4: by currency, then decade, the zero-amount band (decade null) first."""
+    currency, decade = key
+    return (currency, decade is not None, decade if decade is not None else 0)
 
 
 def derive_card(*, holder_kind: str, controller_class: str, anchor: str, anchor_time: str,
@@ -179,9 +193,9 @@ def derive_card(*, holder_kind: str, controller_class: str, anchor: str, anchor_
 
     Raises ``ValueError`` on a malformed input.
     """
-    window = policy["window"]
-    if not _policy_window(window):
-        raise ValueError(f"not a policy window: {window!r}")
+    if not _policy_window(policy["window"]):
+        raise ValueError(f"not a policy window: {policy['window']!r}")
+    window = _whole(policy["window"])
     _time(first_checkpoint_time)
     card = {"derivation": DERIVATION, "holder_kind": holder_kind, "controller_class": controller_class,
             "anchor": anchor, "since": first_checkpoint_time[:7], "window": dict(window),
@@ -196,6 +210,11 @@ def _window_form(w: Any) -> bool:
     if set(w) == {"all"}:
         return w["all"] is True
     return (set(w) == {"months"} and _is_number(w["months"]) and w["months"] >= 1)
+
+
+def _whole(w: Mapping[str, Any]) -> dict:
+    """A policy window with its month count as an int (3.0 is 3, as JCS writes it)."""
+    return {"all": True} if "all" in w else {"months": int(w["months"])}
 
 
 def _policy_window(w: Any) -> bool:
@@ -215,10 +234,7 @@ def _card_form(card: Any) -> bool:
         return False
     if card["derivation"] != DERIVATION or card["holder_kind"] not in HOLDER_KINDS:
         return False
-    cls = card["controller_class"]
-    if not isinstance(cls, str) or not TOKEN.fullmatch(cls):
-        return False
-    if (card["holder_kind"] == "person") != (cls == PERSON_CLASS):
+    if card["controller_class"] != CONTROLLER_CLASSES[card["holder_kind"]]:
         return False
     for member in ("anchor", "policy"):
         if not isinstance(card[member], str) or not HEX64.fullmatch(card[member]):
@@ -236,11 +252,13 @@ def _card_form(card: Any) -> bool:
     for band in bands:
         if not isinstance(band, Mapping) or not set(BAND_KEYS) <= set(band):
             return False
-        if not isinstance(band["currency"], str) or not band["currency"] or not _is_number(band["decade"]):
+        if not isinstance(band["currency"], str) or not CURRENCY.fullmatch(band["currency"]):
+            return False
+        if band["decade"] is not None and not _is_number(band["decade"]):
             return False
         if not _tally_form({k: v for k, v in band.items() if k not in BAND_KEYS}, OUTCOMES):
             return False
-        keys.append((band["currency"], band["decade"]))
+        keys.append(_band_order((band["currency"], band["decade"])))
     if any(a >= b for a, b in zip(keys, keys[1:])):
         return False
     disputes = card["disputes"]
@@ -267,15 +285,26 @@ def _numbers(v: Any):
         yield v
 
 
+def _integral(n: Any, low: int) -> bool:
+    return not (isinstance(n, float) and not n.is_integer()) and low <= n <= MAX_COUNT
+
+
 def _counts_integral(card: Any) -> bool:
-    """SH §6: every number an integer value from 0 to 2^53 - 1. A card travels as JCS, which
-    writes 75.0 as 75, so the check is on the value, not on how it was written."""
-    for n in _numbers(card):
-        if isinstance(n, float) and not n.is_integer():
-            return False
-        if not 0 <= n <= MAX_COUNT:
-            return False
-    return True
+    """SH §6: every number an integer of at most 2^53 - 1 in magnitude, and 0 or more except a
+    band's decade. A card travels as JCS, which writes 75.0 as 75, so the check is on the value,
+    not on how it was written."""
+    decades: list = []
+    rest = card
+    if isinstance(card, Mapping) and isinstance(card.get("bands"), list):
+        bands = []
+        for band in card["bands"]:
+            if isinstance(band, Mapping) and "decade" in band:
+                decades.append(band["decade"])
+                band = {k: v for k, v in band.items() if k != "decade"}
+            bands.append(band)
+        rest = {**card, "bands": bands}
+    return (all(_integral(n, 0) for n in _numbers(rest))
+            and all(_integral(n, -MAX_COUNT) for n in _numbers(decades)))
 
 
 def _partitions(t: Mapping[str, Any], parts: Sequence[str]) -> bool:
@@ -297,7 +326,7 @@ def _denominator(card: Mapping[str, Any]) -> bool:
     if any(card[name]["of"] != counted for name in ("class_missing", "outcomes", "roles", "happened")):
         return False
     for band in card["bands"]:
-        if not _partitions(band, OUTCOMES):
+        if not _partitions(band, OUTCOMES) or band["of"] < 1:
             return False
     for o in ("of",) + OUTCOMES:
         if sum(band[o] for band in card["bands"]) != card["outcomes"][o]:
@@ -344,20 +373,20 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
     if as_of is None:
         p["as_of"] = "NOT_CHECKED"
     else:
-        first = _time(as_of.get("first_checkpoint_time"))
+        _time(as_of.get("first_checkpoint_time"))
         p["as_of"] = _status(isinstance(card, Mapping) and card.get("anchor") == as_of.get("anchor")
-                             and card.get("since") == first.strftime("%Y-%m"))
+                             and card.get("since") == as_of["first_checkpoint_time"][:7])
     ready = (deals is not None and policy is not None and as_of is not None
              and all(p[k] == "PASS" for k in ("card_form", "counts_integral", "denominator")))
     if not ready:
         p["counts_recompute"] = "NOT_CHECKED"
     else:
-        derived = _counts(deals, policy["window"], _time(as_of.get("anchor_time")))
+        derived = _counts(deals, _whole(policy["window"]), _time(as_of.get("anchor_time")))
         p["counts_recompute"] = _status(all(card[k] == v for k, v in derived.items()))
     return p
 
 
 def is_standard(properties: Mapping[str, str]) -> bool:
     """SH §6: a standard card has no FAIL, and its form, counts and denominators PASS."""
-    return (all(properties[k] in ("PASS", "NOT_CHECKED") for k in PROPERTIES)
+    return (all(properties.get(k) in ("PASS", "NOT_CHECKED") for k in PROPERTIES)
             and all(properties[k] == "PASS" for k in ("card_form", "counts_integral", "denominator")))

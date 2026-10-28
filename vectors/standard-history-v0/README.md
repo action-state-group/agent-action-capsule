@@ -27,11 +27,16 @@ digest, SHA-256 of a text string, for these vectors only.
 
 Positive: a person's card with a 3-month window, checked with every input, with the deal entries
 left out, and with nothing beside it; a node's card with window everything over the same deals;
-the month-end clamp of SH §5.1; and a window with no deal in it.
+the month-end clamp of SH §5.1; a window with no deal in it; and a window across a year end with
+a sub-unit deal (a negative decade) and a zero amount (the band whose decade is null); and the decade of 1 msat, 1 sat, 250 sat and 1 BTC over Lightning and of
+1 cent of USDC; and a window that starts before year 1.
 
-Negative, each failing the property SH §6 names: `percentage-fraction`, `percentage-member`,
-`count-without-denominator`, `tallies-disagree`, `counted-shop-purchase`, `window-not-in-policy`,
-`counterparty-member`, `since-day` and `other-anchor`.
+Negative, each failing the properties its `expected.fails` lists: `percentage-fraction`,
+`percentage-member`, `count-without-denominator`, `tallies-disagree`, `counted-shop-purchase`,
+`window-not-in-policy`, `counterparty-member`, `since-day`, `since-non-ascii-digits`,
+`bands-unsorted`, `band-duplicate`, `band-empty`, `currency-free-text`, `node-person-class`,
+`node-class-free-text`, `window-all-false`,
+`class-missing-over`, `dispute-forum-total` and `other-anchor`.
 
 ## Gates
 

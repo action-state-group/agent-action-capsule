@@ -45,6 +45,8 @@ ANCHOR_TIME = "2026-10-28T12:00:00Z"
 FIRST_CHECKPOINT = "2026-03-04T09:00:00Z"
 AS_OF = {"anchor": ANCHOR, "anchor_time": ANCHOR_TIME, "first_checkpoint_time": FIRST_CHECKPOINT}
 POLICY_3M = {"digest": label("the holder's policy, window 3 months"), "window": {"months": 3}}
+# 30000 months back from 2026 is before year 1: every deal is after the start (SH §5.1).
+POLICY_FAR = {"digest": label("the holder's policy, window 30000 months"), "window": {"months": 30000}}
 POLICY_ALL = {"digest": label("the holder's policy, window everything"), "window": {"all": True}}
 
 
@@ -85,7 +87,7 @@ DEALS = [
     # One second before S: outside a 3-month window, inside "all". 300 USD: decade 2.
     deal("deal-07", "2026-07-28T11:59:59Z", "provided", amount("300", "USD", 0), "held", "stamped_by_both",
          "person_agent"),
-    # 21000 millisatoshi: whole part 0, decade 0.
+    # 21000 millisatoshi (21 sat): 5 digits, scale 11, so decade 5 - 11 - 1 = -7.
     deal("deal-08", "2026-10-27T10:00:00Z", "provided", amount("21000", "BTC", 11), "held", "receipt_only",
          "business_agent"),
 ]
@@ -95,7 +97,7 @@ def tally(of: int, **parts: int) -> dict:
     return {"of": of, **parts}
 
 
-def band(currency: str, decade: int, of: int, held: int = 0, did_not_hold: int = 0, undecided: int = 0) -> dict:
+def band(currency: str, decade: int | None, of: int, held: int = 0, did_not_hold: int = 0, undecided: int = 0) -> dict:
     return {"currency": currency, "decade": decade, "of": of, "held": held, "did_not_hold": did_not_hold,
             "undecided": undecided}
 
@@ -126,7 +128,7 @@ PERSON_3M = card(
     in_window=tally(7, counted=5, not_counted=2),
     class_missing=tally(5, count=1),
     outcomes=tally(5, held=3, did_not_hold=1, undecided=1),
-    bands=[band("BTC", 0, 1, held=1), band("EUR", 0, 1, did_not_hold=1),
+    bands=[band("BTC", -7, 1, held=1), band("EUR", 0, 1, did_not_hold=1),
            band("USD", 1, 2, held=1, undecided=1), band("USD", 2, 1, held=1)],
     roles=tally(5, provided=3, bought=2),
     happened=tally(5, stamped_by_both=2, receipt_only=2, no_record=1),
@@ -136,12 +138,12 @@ PERSON_3M = card(
 
 # The same stream with window "everything", as a node: deal-07 joins (held, stamped, USD decade 2).
 NODE_ALL = card(
-    holder_kind="node", controller_class="example_node_class",
+    holder_kind="node", controller_class="node_declared",
     window={"all": True}, policy=POLICY_ALL["digest"],
     in_window=tally(8, counted=6, not_counted=2),
     class_missing=tally(6, count=1),
     outcomes=tally(6, held=4, did_not_hold=1, undecided=1),
-    bands=[band("BTC", 0, 1, held=1), band("EUR", 0, 1, did_not_hold=1),
+    bands=[band("BTC", -7, 1, held=1), band("EUR", 0, 1, did_not_hold=1),
            band("USD", 1, 2, held=1, undecided=1), band("USD", 2, 2, held=2)],
     roles=tally(6, provided=4, bought=2),
     happened=tally(6, stamped_by_both=3, receipt_only=2, no_record=1),
@@ -174,6 +176,47 @@ EMPTY_CARD = card(
     disputes=NO_DISPUTES,
 )
 
+# A 3-month window across a year end, a sub-unit deal and a zero amount: anchor 2027-01-15, so S is
+# 2026-10-15. 250 sat (250000 msat) is decade 6 - 11 - 1 = -6; a zero amount has no decade (null)
+# and sorts first in its currency.
+SMALL_AS_OF = {"anchor": ANCHOR, "anchor_time": "2027-01-15T00:00:00Z", "first_checkpoint_time": FIRST_CHECKPOINT}
+SMALL_DEALS = [
+    deal("deal-31", "2026-10-15T00:00:00Z", "provided", amount("250000", "BTC", 11), "held", "stamped_by_both",
+         "person_agent"),
+    deal("deal-32", "2026-12-01T10:00:00Z", "bought", amount("0", "USD", 2), "undecided", "no_record", None),
+    deal("deal-33", "2026-11-01T10:00:00Z", "bought", amount("1500", "USD", 2), "held", "receipt_only",
+         "business_agent"),
+    deal("deal-34", "2026-10-14T23:59:59Z", "bought", amount("1500", "USD", 2), "held", "receipt_only",
+         "business_agent"),
+]
+SMALL_CARD = card(
+    window={"months": 3}, policy=POLICY_3M["digest"],
+    in_window=tally(3, counted=3, not_counted=0), class_missing=tally(3, count=1),
+    outcomes=tally(3, held=2, did_not_hold=0, undecided=1),
+    bands=[band("BTC", -6, 1, held=1), band("USD", None, 1, undecided=1), band("USD", 1, 1, held=1)],
+    roles=tally(3, provided=1, bought=2), happened=tally(3, stamped_by_both=1, receipt_only=1, no_record=1),
+    disputes=NO_DISPUTES,
+)
+
+# The decade rule on the amounts a payment adapter writes (SR "Amounts"): 1 msat, 1 sat, 250 sat and
+# 1 BTC over Lightning (BTC, scale 11), and 1 cent of USDC on Base (CAIP-19, scale 6).
+USDC = "eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+DECADE_DEALS = [
+    deal(f"deal-4{i}", f"2026-10-0{i}T10:00:00Z", "provided", amt, "held", "stamped_by_both", "person_agent")
+    for i, amt in enumerate([amount("1", "BTC", 11), amount("1000", "BTC", 11), amount("250000", "BTC", 11),
+                             amount("100000000000", "BTC", 11), amount("10000", USDC, 6)], start=1)
+]
+DECADE_CARD = card(
+    window={"months": 3}, policy=POLICY_3M["digest"],
+    in_window=tally(5, counted=5, not_counted=0), class_missing=tally(5, count=0),
+    outcomes=tally(5, held=5, did_not_hold=0, undecided=0),
+    # "BTC" sorts before "eip155:..." by code point.
+    bands=[band("BTC", -11, 1, held=1), band("BTC", -8, 1, held=1), band("BTC", -6, 1, held=1),
+           band("BTC", 0, 1, held=1), band(USDC, -2, 1, held=1)],
+    roles=tally(5, provided=5, bought=0), happened=tally(5, stamped_by_both=5, receipt_only=0, no_record=0),
+    disputes=NO_DISPUTES,
+)
+
 # deal-05 (a shop purchase paid up front: held, bought, receipt_only, USD decade 1, one received
 # open rail dispute) counted as if it were not shop_preauth. Every tally still agrees with the others.
 SHOP_COUNTED = copy.deepcopy(PERSON_3M)
@@ -181,7 +224,7 @@ SHOP_COUNTED.update(
     in_window=tally(7, counted=6, not_counted=1),
     class_missing=tally(6, count=1),
     outcomes=tally(6, held=4, did_not_hold=1, undecided=1),
-    bands=[band("BTC", 0, 1, held=1), band("EUR", 0, 1, did_not_hold=1),
+    bands=[band("BTC", -7, 1, held=1), band("EUR", 0, 1, did_not_hold=1),
            band("USD", 1, 3, held=2, undecided=1), band("USD", 2, 1, held=1)],
     roles=tally(6, provided=3, bought=3),
     happened=tally(6, stamped_by_both=2, receipt_only=3, no_record=1),
@@ -240,6 +283,15 @@ def cases() -> list:
              policy=POLICY_3M, as_of=CLAMP_AS_OF, deals=CLAMP_DEALS),
         case("empty-window", "No deal in the window: every tally is 0 of 0", ["§4", "§5.3"], EMPTY_CARD,
              props(), policy=POLICY_3M, as_of=EMPTY_AS_OF, deals=DEALS),
+        case("year-end-small-and-zero", "A 3-month window across a year end; a 250-sat deal in decade -6 "
+             "and a zero amount in the band without a decade", ["§4", "§5.1", "§5.3"], SMALL_CARD, props(),
+             policy=POLICY_3M, as_of=SMALL_AS_OF, deals=SMALL_DEALS),
+        case("window-before-year-one", "A 30000-month window starts before year 1, so it counts every deal",
+             ["§5.1"], mutate(NODE_ALL, lambda c: c.update(holder_kind="person", controller_class="person_declared",
+                                                           window={"months": 30000}, policy=POLICY_FAR["digest"])),
+             props(), policy=POLICY_FAR, as_of=AS_OF, deals=DEALS),
+        case("decade-examples", "Signed decades: 1 msat -11, 1 sat -8, 250 sat -6, 1 BTC 0, 1 cent of "
+             "USDC -2", ["§4", "§5.3"], DECADE_CARD, props(), policy=POLICY_3M, as_of=AS_OF, deals=DECADE_DEALS),
         # Negative.
         case("percentage-fraction", "A share stated as a fraction in place of a count",
              ["§4 Counts", "§6"], mutate(PERSON_3M, lambda c: c["outcomes"].update(held=0.6)),
@@ -266,6 +318,41 @@ def cases() -> list:
         case("since-day", "since carries a day, finer than a month", ["§4", "§6"],
              mutate(PERSON_3M, lambda c: c.update(since="2026-03-04")),
              props(card_form="FAIL", denominator=NC, as_of="FAIL", counts_recompute=NC), **FULL),
+        case("since-non-ascii-digits", "since written in Arabic-Indic digits", ["§4", "§6"],
+             mutate(PERSON_3M, lambda c: c.update(since="\u0662\u0660\u0662\u0666-03")),
+             props(card_form="FAIL", denominator=NC, as_of="FAIL", counts_recompute=NC), **FULL),
+        case("bands-unsorted", "Two bands out of order", ["§4", "§6"],
+             mutate(PERSON_3M, lambda c: c["bands"].insert(0, c["bands"].pop(1))),
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC), **FULL),
+        case("band-duplicate", "One band split into two entries", ["§4", "§6"],
+             mutate(PERSON_3M, lambda c: c["bands"].__setitem__(slice(2, 3), [band("USD", 1, 1, held=1),
+                                                                              band("USD", 1, 1, undecided=1)])),
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC), **FULL),
+        case("currency-free-text", "A band's currency is a name, not an SR assetCode", ["§4", "§6", "§9"],
+             mutate(PERSON_3M, lambda c: c["bands"][0].update(currency="Example Bakery")),
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC), **FULL),
+        case("node-person-class", "A node card with the person controller class", ["§4", "§6"],
+             mutate(NODE_ALL, lambda c: c.update(controller_class="person_declared")),
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC),
+             policy=POLICY_ALL, as_of=AS_OF, deals=DEALS),
+        case("node-class-free-text", "A node card whose controller_class is a name", ["§4", "§6", "§9"],
+             mutate(NODE_ALL, lambda c: c.update(controller_class="alice_smith")),
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC),
+             policy=POLICY_ALL, as_of=AS_OF, deals=DEALS),
+        case("band-empty", "A band with no counted deal in it", ["§4", "§6"],
+             mutate(EMPTY_CARD, lambda c: c["bands"].append(band("USD", 1, 0))),
+             props(denominator="FAIL", counts_recompute=NC), policy=POLICY_3M, as_of=EMPTY_AS_OF, deals=DEALS),
+        case("window-all-false", "A window of {\"all\": false}", ["§4", "§6"],
+             mutate(PERSON_3M, lambda c: c.update(window={"all": False})),
+             props(card_form="FAIL", denominator=NC, window_from_policy="FAIL", counts_recompute=NC), **FULL),
+        case("class-missing-over", "class_missing counts more deals than its of", ["§4 Denominators", "§6"],
+             mutate(PERSON_3M, lambda c: c.update(class_missing=tally(5, count=6))),
+             props(denominator="FAIL", counts_recompute=NC), **FULL),
+        case("dispute-forum-total", "A dispute tally's by_forum counts more disputes than the tally",
+             ["§4 Denominators", "§6"],
+             mutate(PERSON_3M, lambda c: c["disputes"]["raised"].update(
+                 by_forum={"of": 3, "auto": 1, "network": 0, "rail": 2, "external": 0})),
+             props(denominator="FAIL", counts_recompute=NC), **FULL),
         case("other-anchor", "The card names another anchor than the one answered at", ["§4", "§6"],
              mutate(PERSON_3M, lambda c: c.update(anchor=label("another anchor"))),
              props(as_of="FAIL"), **FULL),

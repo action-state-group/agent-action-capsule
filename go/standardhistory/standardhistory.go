@@ -17,7 +17,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"math/big"
 	"reflect"
 	"regexp"
 	"slices"
@@ -57,7 +56,9 @@ var (
 	forums          = []string{"auto", "network", "rail", "external"}
 )
 
-const personClass = "person_declared"
+// controllerClasses are the one controller class /1 allows for each holder
+// kind (SH §4).
+var controllerClasses = map[string]string{"person": "person_declared", "node": "node_declared"}
 
 // tallies are SH §4's tallies and their parts; `of` is every tally's
 // denominator.
@@ -81,10 +82,12 @@ const maxCount = 1<<53 - 1
 
 var (
 	hex64     = regexp.MustCompile(`^[0-9a-f]{64}$`)
-	token     = regexp.MustCompile(`^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$`)
 	month     = regexp.MustCompile(`^\d{4}-(?:0[1-9]|1[0-2])$`)
 	timeForm  = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`) // IP §5.2
 	valueForm = regexp.MustCompile(`^(?:0|[1-9][0-9]*)$`)                    // SR "Amounts"
+	// SR "Amounts" assetCode: an ISO 4217 alphabetic code (BTC included),
+	// or a CAIP-19 asset type.
+	currencyForm = regexp.MustCompile(`^(?:[A-Z]{3}|[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}/[-a-z0-9]{3,8}:[-.%a-zA-Z0-9]{1,128})$`)
 )
 
 // Window is the policy's window (SH §5.1): Months calendar months, or All.
@@ -132,9 +135,9 @@ type AsOf struct {
 
 // Amount is the settlement-records amount triple.
 type Amount struct {
-	Value      string      `json:"value"`
-	AssetCode  string      `json:"assetCode"`
-	AssetScale json.Number `json:"assetScale"`
+	Value      string `json:"value"`
+	AssetCode  string `json:"assetCode"`
+	AssetScale int    `json:"assetScale"`
 }
 
 // Dispute is one dispute about a record of a deal (SH §5.4).
@@ -144,13 +147,12 @@ type Dispute struct {
 	Forum   string `json:"forum"`
 }
 
-// Deal is one deal entry (SH §5.2). HasClass reports whether the entry
-// carries counterparty_class.
+// Deal is one deal entry (SH §5.2). A nil CounterpartyClass is a deal
+// without the member.
 type Deal struct {
 	Deal              string    `json:"deal"`
 	AgreedAt          string    `json:"agreed_at"`
-	CounterpartyClass string    `json:"counterparty_class,omitempty"`
-	HasClass          bool      `json:"-"`
+	CounterpartyClass *string   `json:"counterparty_class,omitempty"`
 	Role              string    `json:"role"`
 	Amount            Amount    `json:"amount"`
 	Outcome           string    `json:"outcome"`
@@ -158,74 +160,90 @@ type Deal struct {
 	Disputes          []Dispute `json:"disputes"`
 }
 
-// UnmarshalJSON records whether counterparty_class is present, so that a
-// present but unknown value is an error rather than an absent class.
+// UnmarshalJSON refuses a counterparty_class of null, which would otherwise
+// read as a deal without the member, and an assetScale that is not a JSON
+// integer (SR "Amounts" rule 2).
 func (d *Deal) UnmarshalJSON(data []byte) error {
 	type plain Deal
 	var p plain
 	if err := json.Unmarshal(data, &p); err != nil {
 		return err
 	}
-	var members map[string]json.RawMessage
+	var members struct {
+		Class  json.RawMessage `json:"counterparty_class"`
+		Amount struct {
+			AssetScale json.RawMessage `json:"assetScale"`
+		} `json:"amount"`
+	}
 	if err := json.Unmarshal(data, &members); err != nil {
 		return err
 	}
-	raw, ok := members["counterparty_class"]
-	p.HasClass = ok
-	if ok {
-		var s string
-		if string(bytes.TrimSpace(raw)) == "null" || json.Unmarshal(raw, &s) != nil {
-			return fmt.Errorf("deal %s: counterparty_class is not a string", p.Deal)
-		}
+	if members.Class != nil && p.CounterpartyClass == nil {
+		return fmt.Errorf("deal %s: counterparty_class is not a string", p.Deal)
+	}
+	if !valueForm.Match(members.Amount.AssetScale) {
+		return fmt.Errorf("deal %s: assetScale is not a JSON integer", p.Deal)
 	}
 	*d = Deal(p)
 	return nil
 }
 
+// parseTime reads an IP §5.2 time from year 1 on, as Python's datetime does.
 func parseTime(s string) (time.Time, error) {
 	if !timeForm.MatchString(s) {
 		return time.Time{}, fmt.Errorf("not an IP §5.2 time: %q", s)
 	}
-	return time.Parse("2006-01-02T15:04:05Z", s)
+	t, err := time.Parse("2006-01-02T15:04:05Z", s)
+	if err == nil && t.Year() < 1 {
+		err = fmt.Errorf("time before year 1: %q", s)
+	}
+	return t, err
 }
 
 // windowStart is SH §5.1: the same time of day and day of the month, months
-// calendar months earlier, clamped to the last day of a shorter month.
-func windowStart(t time.Time, months int) time.Time {
+// calendar months earlier, clamped to the last day of a shorter month. ok is
+// false when that is before year 1, the first year a time can name: every
+// deal is then after the start.
+func windowStart(t time.Time, months int) (start time.Time, ok bool) {
 	total := t.Year()*12 + int(t.Month()) - 1 - months
 	year := total / 12
 	if total%12 < 0 {
 		year--
 	}
+	if year < 1 {
+		return time.Time{}, false
+	}
 	m := time.Month(total-year*12) + 1
 	last := time.Date(year, m+1, 0, 0, 0, 0, 0, time.UTC).Day()
 	day := min(t.Day(), last)
-	return time.Date(year, m, day, t.Hour(), t.Minute(), t.Second(), 0, time.UTC)
+	return time.Date(year, m, day, t.Hour(), t.Minute(), t.Second(), 0, time.UTC), true
 }
 
 func inWindow(agreed time.Time, w Window, anchor time.Time) bool {
 	if agreed.After(anchor) {
 		return false
 	}
-	return w.All || !agreed.Before(windowStart(anchor, w.Months))
+	if w.All {
+		return true
+	}
+	start, ok := windowStart(anchor, w.Months)
+	return !ok || !agreed.Before(start)
 }
 
-// decade is SH §5.3: the digits of the whole part, minus one; 0 when the
-// whole part is 0.
-func decade(a Amount) (int, error) {
+// decade is SH §5.3: floor(log10(value / 10^assetScale)), exactly
+// digits(value) - assetScale - 1; nil for a zero amount.
+func decade(a Amount) (*int, error) {
 	if !valueForm.MatchString(a.Value) {
-		return 0, fmt.Errorf("amount value is not an exact integer string: %q", a.Value)
+		return nil, fmt.Errorf("amount value is not an exact integer string: %q", a.Value)
 	}
-	scale, err := strconv.Atoi(a.AssetScale.String())
-	if err != nil || scale < 0 || scale > 255 {
-		return 0, fmt.Errorf("amount assetScale out of range: %q", a.AssetScale)
+	if a.AssetScale < 0 || a.AssetScale > 255 {
+		return nil, fmt.Errorf("amount assetScale out of range: %d", a.AssetScale)
 	}
-	v, _ := new(big.Int).SetString(a.Value, 10)
-	whole := v.Quo(v, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(scale)), nil))
-	if whole.Sign() == 0 {
-		return 0, nil
+	if a.Value == "0" {
+		return nil, nil
 	}
-	return len(whole.String()) - 1, nil
+	d := len(a.Value) - a.AssetScale - 1
+	return &d, nil
 }
 
 func checkEntry(d Deal) error {
@@ -235,8 +253,8 @@ func checkEntry(d Deal) error {
 	if _, err := parseTime(d.AgreedAt); err != nil {
 		return err
 	}
-	if d.HasClass && !slices.Contains(CounterpartyClasses, d.CounterpartyClass) {
-		return fmt.Errorf("unknown counterparty_class: %q", d.CounterpartyClass)
+	if d.CounterpartyClass != nil && !slices.Contains(CounterpartyClasses, *d.CounterpartyClass) {
+		return fmt.Errorf("unknown counterparty_class: %q", *d.CounterpartyClass)
 	}
 	for _, c := range []struct {
 		member, value string
@@ -246,8 +264,8 @@ func checkEntry(d Deal) error {
 			return fmt.Errorf("deal %s: %s %q", d.Deal, c.member, c.value)
 		}
 	}
-	if d.Amount.AssetCode == "" {
-		return fmt.Errorf("deal %s: amount without an assetCode", d.Deal)
+	if !currencyForm.MatchString(d.Amount.AssetCode) {
+		return fmt.Errorf("deal %s: amount without an SR assetCode", d.Deal)
 	}
 	if _, err := decade(d.Amount); err != nil {
 		return err
@@ -285,9 +303,11 @@ func counts(deals []Deal, w Window, anchor time.Time) (map[string]any, error) {
 	for _, x := range tallies {
 		t[x.name] = zero(x.parts)
 	}
+	// A zero amount's band has no decade (null), and sorts first.
 	type key struct {
-		currency string
-		decade   int
+		currency  string
+		hasDecade bool
+		decade    int
 	}
 	bands := map[key]map[string]any{}
 	disputes := map[string]*disputeTally{}
@@ -303,13 +323,13 @@ func counts(deals []Deal, w Window, anchor time.Time) (map[string]any, error) {
 			continue
 		}
 		t["in_window"]["of"]++
-		if d.HasClass && d.CounterpartyClass == notCounted {
+		if d.CounterpartyClass != nil && *d.CounterpartyClass == notCounted {
 			t["in_window"]["not_counted"]++
 			continue
 		}
 		t["in_window"]["counted"]++
 		t["class_missing"]["of"]++
-		if !d.HasClass {
+		if d.CounterpartyClass == nil {
 			t["class_missing"]["count"]++
 		}
 		for _, x := range []struct{ name, value string }{
@@ -319,10 +339,14 @@ func counts(deals []Deal, w Window, anchor time.Time) (map[string]any, error) {
 			t[x.name][x.value]++
 		}
 		dec, _ := decade(d.Amount)
-		k := key{d.Amount.AssetCode, dec}
+		k := key{currency: d.Amount.AssetCode}
+		var decadeValue any
+		if dec != nil {
+			k.hasDecade, k.decade, decadeValue = true, *dec, *dec
+		}
 		b, ok := bands[k]
 		if !ok {
-			b = map[string]any{"currency": k.currency, "decade": k.decade}
+			b = map[string]any{"currency": k.currency, "decade": decadeValue}
 			for p, v := range zero(outcomes) {
 				b[p] = v
 			}
@@ -346,6 +370,9 @@ func counts(deals []Deal, w Window, anchor time.Time) (map[string]any, error) {
 	sort.Slice(keys, func(i, j int) bool {
 		if keys[i].currency != keys[j].currency {
 			return keys[i].currency < keys[j].currency
+		}
+		if keys[i].hasDecade != keys[j].hasDecade {
+			return !keys[i].hasDecade
 		}
 		return keys[i].decade < keys[j].decade
 	})
@@ -372,7 +399,7 @@ func Derive(holderKind, controllerClass string, asOf AsOf, policy Policy, deals 
 	if err != nil {
 		return nil, err
 	}
-	if !policy.Window.All && policy.Window.Months < 1 {
+	if !policy.Window.All && (policy.Window.Months < 1 || policy.Window.Months > maxCount) {
 		return nil, fmt.Errorf("not a policy window: %+v", policy.Window)
 	}
 	card, err := counts(deals, policy.Window, anchor)
@@ -492,8 +519,7 @@ func cardForm(v any) bool {
 	if !ok || !slices.Contains(holderKinds, kind) {
 		return false
 	}
-	cls, ok := str(card["controller_class"])
-	if !ok || !token.MatchString(cls) || (kind == "person") != (cls == personClass) {
+	if card["controller_class"] != controllerClasses[kind] {
 		return false
 	}
 	for _, member := range []string{"anchor", "policy"} {
@@ -517,6 +543,7 @@ func cardForm(v any) bool {
 		return false
 	}
 	var prevCurrency string
+	var prevHas bool
 	var prevDecade float64
 	for i, b := range bands {
 		m, ok := b.(map[string]any)
@@ -524,7 +551,11 @@ func cardForm(v any) bool {
 			return false
 		}
 		currency, ok := str(m["currency"])
-		if !ok || currency == "" || !isNumber(m["decade"]) {
+		if !ok || !currencyForm.MatchString(currency) {
+			return false
+		}
+		rawDecade, present := m["decade"]
+		if !present || (rawDecade != nil && !isNumber(rawDecade)) {
 			return false
 		}
 		rest := map[string]any{}
@@ -536,11 +567,15 @@ func cardForm(v any) bool {
 		if !tallyForm(rest, outcomes) {
 			return false
 		}
-		d := num(m["decade"])
-		if i > 0 && (currency < prevCurrency || (currency == prevCurrency && d <= prevDecade)) {
+		has, d := rawDecade != nil, 0.0
+		if has {
+			d = num(rawDecade)
+		}
+		if i > 0 && (currency < prevCurrency || (currency == prevCurrency &&
+			(prevHas && !has || prevHas == has && d <= prevDecade))) {
 			return false
 		}
-		prevCurrency, prevDecade = currency, d
+		prevCurrency, prevHas, prevDecade = currency, has, d
 	}
 	disputes, ok := card["disputes"].(map[string]any)
 	if !ok || !keysExactly(disputes, sides) {
@@ -594,14 +629,47 @@ func walkNumbers(v any, fn func(any) bool) bool {
 	return true
 }
 
-// countsIntegral is SH §6: every number an integer value from 0 to 2^53 - 1.
-// A card travels as JCS, which writes 75.0 as 75, so the check is on the
-// value, not on how it was written.
-func countsIntegral(card any) bool {
-	return walkNumbers(card, func(n any) bool {
+func integral(low float64) func(any) bool {
+	return func(n any) bool {
 		f := num(n)
-		return f == math.Trunc(f) && f >= 0 && f <= maxCount
-	})
+		return f == math.Trunc(f) && f >= low && f <= maxCount
+	}
+}
+
+// countsIntegral is SH §6: every number an integer of at most 2^53 - 1 in
+// magnitude, and 0 or more except a band's decade. A card travels as JCS,
+// which writes 75.0 as 75, so the check is on the value, not on how it was
+// written.
+func countsIntegral(card any) bool {
+	var decades []any
+	rest := card
+	if m, ok := card.(map[string]any); ok {
+		if bands, ok := m["bands"].([]any); ok {
+			stripped := make([]any, len(bands))
+			for i, b := range bands {
+				stripped[i] = b
+				if bm, ok := b.(map[string]any); ok {
+					if d, ok := bm["decade"]; ok {
+						decades = append(decades, d)
+						cp := make(map[string]any, len(bm))
+						for k, v := range bm {
+							if k != "decade" {
+								cp[k] = v
+							}
+						}
+						stripped[i] = cp
+					}
+				}
+			}
+			cp := make(map[string]any, len(m))
+			for k, v := range m {
+				cp[k] = v
+			}
+			cp["bands"] = stripped
+			rest = cp
+		}
+	}
+	return walkNumbers(rest, integral(0)) && walkNumbers(decades, integral(-maxCount))
 }
 
 func field(m any, k string) float64 {
@@ -649,7 +717,7 @@ func denominator(v any) bool {
 	}
 	bands := card["bands"].([]any)
 	for _, b := range bands {
-		if !partitions(b, outcomes) {
+		if !partitions(b, outcomes) || field(b, "of") < 1 {
 			return false
 		}
 	}
@@ -714,11 +782,12 @@ func numbers(v any) any {
 func Check(card []byte, policy *Policy, asOf *AsOf, deals []Deal) (map[string]string, error) {
 	p := map[string]string{}
 	v, err := decode(card)
-	if err != nil {
+	parsed := err == nil
+	if !parsed {
 		v = nil
 	}
 	p["card_form"] = status(cardForm(v))
-	p["counts_integral"] = status(v != nil && countsIntegral(v))
+	p["counts_integral"] = status(parsed && countsIntegral(v))
 	if p["card_form"] == Pass && p["counts_integral"] == Pass {
 		p["denominator"] = status(denominator(v))
 	} else {
@@ -728,7 +797,7 @@ func Check(card []byte, policy *Policy, asOf *AsOf, deals []Deal) (map[string]st
 	if policy == nil {
 		p["window_from_policy"] = NotChecked
 	} else {
-		if !policy.Window.All && policy.Window.Months < 1 {
+		if !policy.Window.All && (policy.Window.Months < 1 || policy.Window.Months > maxCount) {
 			return nil, fmt.Errorf("not a policy window: %+v", policy.Window)
 		}
 		w, ok := windowOf(m["window"])
@@ -737,11 +806,10 @@ func Check(card []byte, policy *Policy, asOf *AsOf, deals []Deal) (map[string]st
 	if asOf == nil {
 		p["as_of"] = NotChecked
 	} else {
-		first, err := parseTime(asOf.FirstCheckpointTime)
-		if err != nil {
+		if _, err := parseTime(asOf.FirstCheckpointTime); err != nil {
 			return nil, err
 		}
-		p["as_of"] = status(m != nil && m["anchor"] == asOf.Anchor && m["since"] == first.Format("2006-01"))
+		p["as_of"] = status(m != nil && m["anchor"] == asOf.Anchor && m["since"] == asOf.FirstCheckpointTime[:7])
 	}
 	ready := deals != nil && policy != nil && asOf != nil &&
 		p["card_form"] == Pass && p["counts_integral"] == Pass && p["denominator"] == Pass
@@ -775,11 +843,11 @@ func Check(card []byte, policy *Policy, asOf *AsOf, deals []Deal) (map[string]st
 	return p, nil
 }
 
-// IsStandard is SH §6: a standard card has no FAIL, and its form, counts and
-// denominators PASS.
+// IsStandard is SH §6: a standard card reports every property as PASS or
+// NOT_CHECKED, and its form, counts and denominators PASS.
 func IsStandard(p map[string]string) bool {
 	for _, k := range Properties {
-		if p[k] == Fail {
+		if p[k] != Pass && p[k] != NotChecked {
 			return false
 		}
 	}
