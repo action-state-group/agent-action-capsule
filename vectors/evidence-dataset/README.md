@@ -42,7 +42,11 @@ event. 2026-09-03 was run and has none, so its count is 0. 2026-09-04 has an eve
 so it was not run.
 
 `pos-population-only` is the population node alone: seq 1 to 7. `pos-empty-window` is a window
-with no record in it, so its dataset has no rows and is valid.
+with no record in it, so its dataset has no rows and is valid. `pos-every-predicate` adds a filter
+with `equal` on a string, `one_of` and `equal` on the boolean `statement.sample` (true on odd
+seq), which keeps seq 3 and 5. `pos-book-grew-past-through-seq` is the positive over the book with
+seq 10 appended, a record with no canonical form (it holds a float): it is past `through_seq`, so
+the plan still selects seq 2, 3, 5 and 6 and the dataset is unchanged.
 
 ## Negatives
 
@@ -51,10 +55,10 @@ with no record in it, so its dataset has no rows and is valid.
 | `rows-mismatch` | `neg-row-dropped`, `neg-row-duplicated`, `neg-rows-out-of-order`, `neg-row-past-through-seq` (seq 9 added), `neg-record-edited` (a record changed after the dataset was built, so its digest differs) |
 | `plan-ref-mismatch` | `neg-plan-ref-mismatch` (another plan's digest) |
 | `dataset-invalid` | `neg-dataset-extra-member`, `neg-row-carries-a-value` (a row is a ref, never a value) |
-| `field-missing` | `neg-window-field-missing` |
+| `field-missing` | `neg-window-field-missing`, `neg-later-predicate-field-missing` (the first predicate fails, and the record is still refused for lacking the second's field) |
 | `field-type` | `neg-window-field-not-a-timestamp`, `neg-window-field-without-offset`, `neg-filter-field-not-a-scalar` |
 | `plan-shape` | `neg-filter-before-population`, `neg-filter-skips-the-window`, `neg-mixed-operator` (a `decision.resolve_verdict` node), `neg-node-contract-differs` |
-| `plan-invalid` | `neg-population-without-params`, `neg-predicate-number`, `neg-field-path-trailing-newline`, `neg-window-day-impossible` (2026-09-31), `neg-window-reversed` |
+| `plan-invalid` | `neg-population-without-params`, `neg-predicate-number`, `neg-field-path-trailing-newline`, `neg-window-day-impossible` (2026-09-31), `neg-window-reversed`, `neg-contract-ref-ecma-whitespace` (U+FEFF, whitespace as JSON Schema's ECMA-262 patterns read `\s`) |
 | `records-invalid` | `neg-record-seq-twice` |
 
 `../evidence-result/pos-example-org-dataset-result.json` is a Result whose `plan_ref` and

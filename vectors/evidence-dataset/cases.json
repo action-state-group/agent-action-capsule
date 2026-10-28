@@ -12,6 +12,14 @@
     "name": "pos-empty-window"
   },
   {
+    "expect": "valid",
+    "name": "pos-every-predicate"
+  },
+  {
+    "expect": "valid",
+    "name": "pos-book-grew-past-through-seq"
+  },
+  {
     "base": "pos-window-and-exclusion",
     "expect": "rows-mismatch",
     "name": "neg-row-dropped"
@@ -73,6 +81,11 @@
   },
   {
     "base": "pos-window-and-exclusion",
+    "expect": "field-missing",
+    "name": "neg-later-predicate-field-missing"
+  },
+  {
+    "base": "pos-window-and-exclusion",
     "expect": "plan-shape",
     "name": "neg-filter-before-population"
   },
@@ -115,6 +128,11 @@
     "base": "pos-window-and-exclusion",
     "expect": "plan-invalid",
     "name": "neg-window-reversed"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "plan-invalid",
+    "name": "neg-contract-ref-ecma-whitespace"
   },
   {
     "base": "pos-window-and-exclusion",

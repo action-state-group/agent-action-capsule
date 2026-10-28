@@ -58,7 +58,7 @@ func TestVectorsParity(t *testing.T) {
 		}
 		reasons[c.Expect] = true
 	}
-	assert.Equal(t, 3, positives)
+	assert.Equal(t, 5, positives)
 	for _, r := range []Reason{PlanInvalid, PlanShape, DatasetInvalid, PlanRefMismatch, RecordsInvalid, FieldMissing, FieldType, RowsMismatch} {
 		assert.True(t, reasons[string(r)], "no vector refuses with %s", r)
 	}

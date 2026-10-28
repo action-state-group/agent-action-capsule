@@ -158,12 +158,18 @@ def _same(a: object, b: object) -> bool:
 
 
 def _passes(record: dict, params: dict, where: str) -> bool:
+    # Every predicate's field is read before any is applied, so a record
+    # missing a later predicate's field is refused whatever the earlier ones
+    # decide, and the order of `where` never changes the outcome.
+    values = []
     for predicate in params["where"]:
         value = _read(record, predicate["field"], where)
         if type(value) not in (str, bool):
             raise DatasetError(
                 "field-type", f"{where}: record seq {record['seq']} {predicate['field']} is not a string or boolean"
             )
+        values.append(value)
+    for predicate, value in zip(params["where"], values):
         if "equal" in predicate:
             ok = _same(value, predicate["equal"])
         elif "one_of" in predicate:
@@ -190,13 +196,17 @@ def _population(records: object, params: dict) -> list[dict]:
             raise DatasetError("records-invalid", f"records[{index}] has no non-negative integer seq and string record_type")
         if seq in by_seq:
             raise DatasetError("records-invalid", f"records[{index}]: seq {seq} appears twice in book {book!r}")
-        _digest(record, "records-invalid", f"records[{index}]")
         by_seq[seq] = record
-    return [
+    selected = [
         by_seq[seq]
         for seq in sorted(by_seq)
         if seq <= params["through_seq"] and by_seq[seq]["record_type"] in params["record_types"]
     ]
+    # Only a selected record is digested, so a record committed after
+    # through_seq never changes the run.
+    for record in selected:
+        _digest(record, "records-invalid", f"record seq {record['seq']}")
+    return selected
 
 
 def row(record: dict) -> dict:
@@ -221,10 +231,11 @@ def run_plan(plan: dict, records: object) -> list[dict]:
 
 
 def build_dataset(plan: dict, records: object) -> dict:
+    rows = run_plan(plan, records)  # validates the plan before it is digested
     return {
         "dataset_version": "evidence-dataset-v0",
         "plan_ref": {"digest_alg": "SHA-256", "digest": json_digest(plan)},
-        "rows": run_plan(plan, records),
+        "rows": rows,
     }
 
 

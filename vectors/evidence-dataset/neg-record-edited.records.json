@@ -8,7 +8,8 @@
     "record_type": "example-run",
     "seq": 1,
     "statement": {
-      "note": "EXAMPLE-ORG example-run placeholder, seq 1"
+      "note": "EXAMPLE-ORG example-run placeholder, seq 1",
+      "sample": true
     },
     "subject_ref": "example-org:subject-1",
     "v": 1
@@ -22,7 +23,8 @@
     "record_type": "example-run",
     "seq": 2,
     "statement": {
-      "note": "EXAMPLE-ORG example-run placeholder, seq 2"
+      "note": "EXAMPLE-ORG example-run placeholder, seq 2",
+      "sample": false
     },
     "subject_ref": "example-org:subject-1",
     "v": 1
@@ -36,7 +38,8 @@
     "record_type": "example-event",
     "seq": 3,
     "statement": {
-      "note": "EXAMPLE-ORG example-event placeholder, seq 3 (edited after the dataset was built)"
+      "note": "EXAMPLE-ORG example-event placeholder, seq 3 (edited after the dataset was built)",
+      "sample": true
     },
     "subject_ref": "example-org:subject-1",
     "v": 1
@@ -50,7 +53,8 @@
     "record_type": "example-event",
     "seq": 4,
     "statement": {
-      "note": "EXAMPLE-ORG example-event placeholder, seq 4"
+      "note": "EXAMPLE-ORG example-event placeholder, seq 4",
+      "sample": false
     },
     "subject_ref": "example-org:excluded",
     "v": 1
@@ -64,7 +68,8 @@
     "record_type": "example-run",
     "seq": 5,
     "statement": {
-      "note": "EXAMPLE-ORG example-run placeholder, seq 5"
+      "note": "EXAMPLE-ORG example-run placeholder, seq 5",
+      "sample": true
     },
     "subject_ref": "example-org:subject-1",
     "v": 1
@@ -78,7 +83,8 @@
     "record_type": "example-event",
     "seq": 6,
     "statement": {
-      "note": "EXAMPLE-ORG example-event placeholder, seq 6"
+      "note": "EXAMPLE-ORG example-event placeholder, seq 6",
+      "sample": false
     },
     "subject_ref": "example-org:subject-1",
     "v": 1
@@ -92,7 +98,8 @@
     "record_type": "example-event",
     "seq": 7,
     "statement": {
-      "note": "EXAMPLE-ORG example-event placeholder, seq 7"
+      "note": "EXAMPLE-ORG example-event placeholder, seq 7",
+      "sample": true
     },
     "subject_ref": "example-org:subject-1",
     "v": 1
@@ -106,7 +113,8 @@
     "record_type": "example-note",
     "seq": 8,
     "statement": {
-      "note": "EXAMPLE-ORG example-note placeholder, seq 8"
+      "note": "EXAMPLE-ORG example-note placeholder, seq 8",
+      "sample": false
     },
     "subject_ref": "example-org:subject-1",
     "v": 1
@@ -120,7 +128,8 @@
     "record_type": "example-event",
     "seq": 9,
     "statement": {
-      "note": "EXAMPLE-ORG example-event placeholder, seq 9"
+      "note": "EXAMPLE-ORG example-event placeholder, seq 9",
+      "sample": true
     },
     "subject_ref": "example-org:subject-1",
     "v": 1
@@ -134,7 +143,8 @@
     "record_type": "example-event",
     "seq": 3,
     "statement": {
-      "note": "EXAMPLE-ORG example-event placeholder, seq 3"
+      "note": "EXAMPLE-ORG example-event placeholder, seq 3",
+      "sample": true
     },
     "subject_ref": "example-org:subject-1",
     "v": 1

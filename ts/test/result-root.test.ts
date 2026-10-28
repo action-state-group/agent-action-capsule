@@ -585,6 +585,24 @@ describe("buildResultRoot", () => {
     ])
       expect(validateEvidenceResult(read(name)), name).not.toEqual([]);
   });
+
+  it("reads plan_ref and dataset_ref as digest refs present together (spec section 7.3)", () => {
+    const dir = new URL("../../vectors/evidence-result/", import.meta.url);
+    const read = (name: string): Obj =>
+      JSON.parse(readFileSync(new URL(name, dir), "utf8")) as Obj;
+    const source = read("pos-example-org-dataset-result.json");
+    expect(validateEvidenceResult(source)).toEqual([]);
+    expect(
+      validateEvidenceResult(read("neg-dataset-ref-without-plan-ref.json")),
+    ).toEqual(["plan_ref, dataset_ref: one is present without the other"]);
+    const { dataset_ref: _dataset, ...planOnly } = source;
+    expect(validateEvidenceResult(planOnly)).toEqual([
+      "plan_ref, dataset_ref: one is present without the other",
+    ]);
+    expect(
+      validateEvidenceResult(read("neg-plan-ref-inline-plan.json")),
+    ).toEqual(["plan_ref.digest_alg", "plan_ref.digest"]);
+  });
 });
 
 // ---------------------------------------------------------------------------

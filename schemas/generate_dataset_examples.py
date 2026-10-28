@@ -47,7 +47,7 @@ def _record(seq: int, record_type: str, at: str, subject: str = "example-org:sub
         "event_time_claim": at,
         "links": [],
         "subject_ref": subject,
-        "statement": {"note": f"EXAMPLE-ORG {record_type} placeholder, seq {seq}"},
+        "statement": {"note": f"EXAMPLE-ORG {record_type} placeholder, seq {seq}", "sample": seq % 2 == 1},
     }
 
 
@@ -153,6 +153,29 @@ def cases() -> list[tuple[str, str | None, str, dict]]:
     empty_window = copy.deepcopy(WINDOW)
     empty_window["params"].update({"from": "2026-10-01", "to": "2026-10-31"})
     positive("pos-empty-window", _plan(POPULATION, empty_window, FILTER))
+    # equal, one_of and a boolean in one filter, then a second filter: seq 3
+    # and 5 (odd seq is sample), of the four rows the window keeps.
+    predicates = _node(
+        "selection",
+        "traditional.filter",
+        {
+            "where": [
+                {"field": "epistemic_type", "equal": "producer_claim"},
+                {"field": "record_type", "one_of": [EVENT, RUN]},
+                {"field": "statement.sample", "equal": True},
+            ]
+        },
+        "exclusions",
+    )
+    positive("pos-every-predicate", _plan(POPULATION, WINDOW, FILTER, predicates))
+    # A record committed after through_seq with no canonical form (a float)
+    # changes nothing: the book grew, and the plan still selects seq 2, 3, 5, 6.
+    grown_book = copy.deepcopy(RECORDS)
+    tail = _record(10, EVENT, "2026-09-03T10:00:00Z")
+    tail["statement"]["ratio"] = 0.5
+    grown_book.append(tail)
+    out.append(("pos-book-grew-past-through-seq", None, "valid",
+                {"plan": PLAN, "records": grown_book, "dataset": build_dataset(PLAN, grown_book)}))
 
     # rows-mismatch: the rows are not what the plan selects.
     dropped = copy.deepcopy(DATASET)
@@ -196,6 +219,17 @@ def cases() -> list[tuple[str, str | None, str, dict]]:
     object_filter["params"]["where"] = [{"field": "statement", "not_one_of": ["example-org:excluded"]}]
     negative("neg-filter-field-not-a-scalar", "field-type", _case(_plan(POPULATION, WINDOW, object_filter), RECORDS))
 
+    later_missing = copy.deepcopy(FILTER)
+    later_missing["params"]["where"] = [
+        {"field": "subject_ref", "equal": "example-org:nobody"},
+        {"field": "statement.missing", "equal": True},
+    ]
+    negative(
+        "neg-later-predicate-field-missing",
+        "field-missing",
+        _case(_plan(POPULATION, WINDOW, later_missing), RECORDS),
+    )
+
     # plan-shape: not a dataset plan.
     first = copy.deepcopy(FILTER)
     first["inputs"] = [{"by": "node", "node_id": "population"}]
@@ -238,6 +272,11 @@ def cases() -> list[tuple[str, str | None, str, dict]]:
     reversed_window = copy.deepcopy(WINDOW)
     reversed_window["params"].update({"from": "2026-09-04", "to": "2026-09-02"})
     negative("neg-window-reversed", "plan-invalid", _case(_plan(POPULATION, reversed_window, FILTER), RECORDS))
+
+    whitespace = _plan(POPULATION, WINDOW, FILTER)
+    for holder in [whitespace["header"], *whitespace["nodes"]]:
+        holder["contract_ref"] = CONTRACT + "\ufeff"  # ECMA-262 whitespace: refused by \S
+    negative("neg-contract-ref-ecma-whitespace", "plan-invalid", _case(whitespace, RECORDS))
 
     # records-invalid.
     twice = copy.deepcopy(RECORDS)

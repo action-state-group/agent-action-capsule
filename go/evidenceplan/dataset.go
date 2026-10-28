@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
+	"github.com/action-state-group/agent-action-capsule/go/internal/ecmaregexp"
 	"github.com/action-state-group/agent-action-capsule/go/internal/rfc3339"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
@@ -101,6 +102,7 @@ func schemas() (plan, dataset *jsonschema.Schema, err error) {
 			return
 		}
 		compiler := jsonschema.NewCompiler()
+		compiler.UseRegexpEngine(ecmaregexp.Compile)
 		if err = compiler.AddResource(SchemaID, doc); err != nil {
 			compiled.err = err
 			return
@@ -269,9 +271,6 @@ func population(records interface{}, params map[string]interface{}) ([]record, e
 		if _, dup := bySeq[seq]; dup {
 			return nil, refuse(RecordsInvalid, "records[%d]: seq %d appears twice in book %q", i, seq, book)
 		}
-		if _, err := digest(header, RecordsInvalid, fmt.Sprintf("records[%d]", i)); err != nil {
-			return nil, err
-		}
 		bySeq[seq] = record{seq: seq, recordType: recordType, header: header}
 	}
 	seqs := make([]uint64, 0, len(bySeq))
@@ -282,9 +281,15 @@ func population(records interface{}, params map[string]interface{}) ([]record, e
 	var out []record
 	for _, seq := range seqs {
 		r := bySeq[seq]
-		if new(big.Rat).SetUint64(seq).Cmp(through) <= 0 && types[r.recordType] {
-			out = append(out, r)
+		if new(big.Rat).SetUint64(seq).Cmp(through) > 0 || !types[r.recordType] {
+			continue
 		}
+		// Only a selected record is digested, so a record committed after
+		// through_seq never changes the run.
+		if _, err := digest(r.header, RecordsInvalid, fmt.Sprintf("record seq %d", seq)); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
 	}
 	return out, nil
 }
@@ -337,9 +342,13 @@ func anySame(value interface{}, scalars interface{}) bool {
 }
 
 func passes(r record, params map[string]interface{}, where string) (bool, error) {
-	for _, item := range params["where"].([]interface{}) {
-		predicate := item.(map[string]interface{})
-		path := predicate["field"].(string)
+	// Every predicate's field is read before any is applied, so a record
+	// missing a later predicate's field is refused whatever the earlier ones
+	// decide, and the order of where never changes the outcome.
+	predicates := params["where"].([]interface{})
+	values := make([]interface{}, len(predicates))
+	for i, item := range predicates {
+		path := item.(map[string]interface{})["field"].(string)
 		value, err := read(r, path, where)
 		if err != nil {
 			return false, err
@@ -349,15 +358,19 @@ func passes(r record, params map[string]interface{}, where string) (bool, error)
 		default:
 			return false, refuse(FieldType, "%s: record seq %d %s is not a string or boolean", where, r.seq, path)
 		}
+		values[i] = value
+	}
+	for i, item := range predicates {
+		predicate := item.(map[string]interface{})
 		// Strings and booleans compare with their type, as == on
 		// interface values does.
 		var ok bool
 		if want, has := predicate["equal"]; has {
-			ok = value == want
+			ok = values[i] == want
 		} else if list, has := predicate["one_of"]; has {
-			ok = anySame(value, list)
+			ok = anySame(values[i], list)
 		} else {
-			ok = !anySame(value, predicate["not_one_of"])
+			ok = !anySame(values[i], predicate["not_one_of"])
 		}
 		if !ok {
 			return false, nil

@@ -233,9 +233,15 @@ that every window day exists and `from` is not after `to`.
 Each later node keeps or drops each record it receives, and keeps the order. A record that reaches a
 window or filter node and lacks the field the node names refuses the run; so does one whose field
 holds a value the node cannot read (a window field that is not an RFC 3339 date-time with an offset,
-or a predicate field that is not a string or boolean). A missing or unreadable field never counts as
-a non-match, so a dataset never silently loses a record. A record that a node earlier in the chain
-dropped is not read by the later nodes. A run reads only the plan and the book's committed record
+or a predicate field that is not a string or boolean). A filter node reads the field of every
+predicate in `where` before it applies any, so the order of `where` never changes the outcome. A
+missing or unreadable field never counts as
+a non-match, so a dataset never silently loses a record. A window field therefore has to be one
+that every record type in `record_types` carries, such as the header's `event_time_claim` or
+`committed_at`: a payload field that only some types carry refuses the run instead of dropping the
+others. A record that a node earlier in the chain
+dropped is not read by the later nodes. A record past `through_seq`, or of a type the population
+does not list, is not read either, beyond its `book_id`, `seq` and `record_type`. A run reads only the plan and the book's committed record
 headers, so it is a deterministic function of them (§7), and its nodes are `recomputed` (§4.2).
 
 A record type a reader needs to tell "not run" from zero, such as the daily Result of a daily
@@ -429,9 +435,9 @@ validation; a matching `plan-result` document for each of the three plans; and o
 directory's `README.md` for how each was generated and validated, and
 `schemas/check_evidence_plan_ir_examples.py` for the validation run itself.
 
-`vectors/evidence-dataset/` — the dataset plans of §5.1 and the datasets of §6.2: three positives
-(a population, window and exclusion over runs and events; the population alone; and a window with
-no rows) and at least one negative for each reason a verifier refuses with, each named with its
+`vectors/evidence-dataset/` — the dataset plans of §5.1 and the datasets of §6.2: five positives
+(a population, window and exclusion over runs and events; the population alone; a window with no
+rows; every predicate form; and a book that grew past `through_seq`) and at least one negative for each reason a verifier refuses with, each named with its
 reason in `cases.json`. The Python reference (`schemas/evidence_dataset.py`, run by
 `schemas/check_evidence_dataset_examples.py`) and the Go gate (`go/evidenceplan`) refuse each
 negative with the same reason. See that directory's `README.md`.
