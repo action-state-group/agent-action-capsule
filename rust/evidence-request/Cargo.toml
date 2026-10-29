@@ -3,7 +3,7 @@ name = "evidence-request"
 version = "0.2.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "The evidence request protocol (draft-mih-agent-evidence-request-00): parse, digest and resolve requests; sign and verify refusals and the interop profile's artifact envelope; check Checkpointed Local Log material; classify outcomes, invariance and retention."
+description = "The evidence request protocol (draft-mih-agent-evidence-request-00): parse, digest and resolve requests; sign and verify refusals and the interop profile's artifact envelope; check Checkpointed Local Log material and the profile's acceptance records; classify outcomes, invariance and retention."
 repository = "https://github.com/action-state-group/agent-action-capsule"
 readme = "README.md"
 keywords = ["scitt", "evidence", "transparency", "protocol", "agents"]
@@ -38,10 +38,17 @@ receipt = ["dep:coset"]
 # (`cll_material`). Without it the crate is the protocol core, with no
 # checkpointed-local-log dependency.
 cll = ["dep:cll"]
+# The interop profile's acceptance records and receipts (`acceptance`,
+# §11.1). No new dependency.
+acceptance = []
 
 [dev-dependencies]
 # receipt_vectors.rs decodes base64 fixtures.
 base64 = "0.22"
+
+[[test]]
+name = "acceptance_vectors"
+required-features = ["acceptance"]
 
 [[test]]
 name = "receipt_vectors"

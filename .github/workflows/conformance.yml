@@ -143,7 +143,7 @@ jobs:
       # must each build alone.
       - name: Check evidence-request's feature combinations
         run: |
-          for features in "--no-default-features" "--no-default-features --features receipt" "--no-default-features --features cll"; do
+          for features in "--no-default-features" "--no-default-features --features receipt" "--no-default-features --features cll" "--no-default-features --features acceptance"; do
             cargo clippy --locked -p evidence-request --all-targets $features -- -D warnings
             cargo test --locked -p evidence-request $features
           done

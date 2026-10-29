@@ -16,6 +16,15 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.10.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Interop profile verifier (Python): times take ASCII digits only, as RFC 3339's DIGIT is, so a
+  time written in another script's digits is no longer read (`_common.parse_time`,
+  `is_profile_time`); and a §11.5 fixture execution record that JCS cannot represent, for example
+  one holding an unpaired surrogate, is unreadable, as an acceptance record or receipt already was
+  (`acceptance.read_fixture_execution_record`); and `evaluate_acceptance` refuses a contract whose
+  `id` or `version` is not text, or whose `requirements` is not an array (`ValueError`), rather
+  than evaluating it. Found while porting §11.1 to Rust
+  (`rust/evidence-request`, feature `acceptance`).
+
 - Evidence Result v0 `plan_ref` and `dataset_ref` (Go, Python, TypeScript): the optional members,
   digest refs that must appear together, name the Plan IR and the dataset a Result was computed
   from (spec section 7.3). TypeScript's `validateEvidenceResult` accepts them and reports a
