@@ -28,7 +28,7 @@ import sys
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 
@@ -261,7 +261,8 @@ def derive(case: dict, env: dict, e: dict) -> tuple[str, str, str | None]:
     return "peer_confirmed", PEER_SHOWN, "NOT_CHECKED"
 
 
-Derive = Callable[[dict, dict, dict], tuple[str, str, str | None]]
+# A runtime alias, so Optional rather than `str | None` (Python 3.9).
+Derive = Callable[[dict, dict, dict], tuple[str, str, Optional[str]]]
 
 
 def exchanges_shown(case: dict, env: dict, derive_fn: Derive) -> list[dict]:
