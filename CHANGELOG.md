@@ -16,6 +16,18 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.9.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Security, strict witness receipts: an EdDSA witness receipt now verifies only under strict
+  Ed25519. The key A and the signature's R must be canonical and not of small order, and S must
+  be less than L, before the cofactorless check. Go's `crypto/ed25519.Verify` and Python's
+  `cryptography` accept a small-order key, and under the identity key the signature R = the
+  identity, S = 0 verifies over any root, so anyone could forge a receipt for a directory row
+  that pins such a key. Go (`witness.VerifyCOSEReceipt`), Python (`agent_action_capsule.witness`)
+  and TypeScript (`verifyCoseReceipt`, which no longer depends on the runtime's WebCrypto for
+  this) refuse it. `vectors/bundle/strict/` gains `neg-witness-cll-small-order-key` and its
+  directory row, and checkpointed-local-log's shared `ed25519-vectors.json` moves from
+  `ts/test/testdata/` to `vectors/cross-language/cll-ed25519-vectors.json`, which the Go, Python,
+  TypeScript and Rust tests all run. (#439)
+
 - Vectors: `vectors/bundle/composed/` gains `agree-with-checkpoints`, the agree composition in
   which the container and each member Bundle are their party's whole log, with a completeness
   certificate and a signed COSE checkpoint under that party's published test seed. Every claim

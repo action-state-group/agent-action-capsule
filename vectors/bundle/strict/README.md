@@ -258,7 +258,13 @@ A receipt verifies over a leaf when all of these hold:
   proofs under -1, each a byte string holding CBOR
   `[tree_size, leaf_index, [audit_path...]]`. Every entry must decode;
 - for some proof, the RFC 9162 root rebuilt from the leaf and that proof
-  verifies the signature under the key.
+  verifies the signature under the key. EdDSA is verified strictly, as
+  checkpointed-local-log's `checkpoint-conformance-vectors/ed25519-vectors.json`
+  pins it: the key A and the signature's R must be canonical encodings
+  (y < p) and not of small order, S must be less than L, and the
+  cofactorless equation must hold. A small-order key satisfies that equation
+  for any root, so anyone could sign under it
+  (`neg-witness-cll-small-order-key`).
 
 Decoding follows the scitt-cose verifiers (Python `scitt_cose.verify_receipt`,
 the Rust crate `scitt-cose-receipt`), including their `crit` handling.
@@ -359,6 +365,7 @@ checkpoint is signed by another, the log key.
 | `pos-witness-cll-es256` | a `cll` receipt signed ES256 under the row's P-256 key | VALID |
 | `neg-witness-cll-es256-other-curve` | a receipt declaring ES256, signed with the secp256k1 key the row lists (skipped) | INVALID |
 | `neg-witness-cll-key-not-a-point` | the row's key id is 32 bytes that are not an Ed25519 point | INVALID |
+| `neg-witness-cll-small-order-key` | the row's key is the identity point, a small-order Ed25519 key, and the receipt's signature is R = the identity, S = 0 | INVALID |
 | `pos-witness-cll-second-key` | the row's first key does not verify; its second does | VALID |
 | `pos-witness-row-binding-null` | the only row for the endpoint has `binding: null` | VALID, witnesses withheld |
 | `neg-witness-stub-not-boolean` | `is_stub: 1` on bytes that are not a receipt | INVALID |

@@ -12,7 +12,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 // strict result (records need Ed25519), and the banner reads the page's own
 // checks of the checkpoint instead.
 //
-// test/testdata/cll-ed25519-vectors.json is a verbatim copy of
+// vectors/cross-language/cll-ed25519-vectors.json is a verbatim copy of
 // checkpointed-local-log's checkpoint-conformance-vectors/ed25519-vectors.json
 // at c45422a: COSE checkpoints whose only defect, if any, is a small-order
 // signing key.
@@ -54,7 +54,13 @@ const strictVectors = JSON.parse(
 const coseCases = (
   JSON.parse(
     readFileSync(
-      resolve(tsRoot, "test", "testdata", "cll-ed25519-vectors.json"),
+      resolve(
+        tsRoot,
+        "..",
+        "vectors",
+        "cross-language",
+        "cll-ed25519-vectors.json",
+      ),
       "utf8",
     ),
   ) as { cose_cases: CoseCase[] }
