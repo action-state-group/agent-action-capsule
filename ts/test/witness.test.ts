@@ -203,15 +203,19 @@ describe("COSE Receipt", () => {
       identity,
       new Uint8Array(32),
     );
-    expect(
-      (
-        await verifyCoseReceipt(
-          forged,
-          leaf,
-          concat(ED25519_SPKI_PREFIX, identity),
-        )
-      ).ok,
-    ).toBe(false);
+    const key = concat(ED25519_SPKI_PREFIX, identity);
+    expect((await verifyCoseReceipt(forged, leaf, key)).ok).toBe(false);
+    // Node's WebCrypto refuses this key too. Without WebCrypto the receipt
+    // is still refused, not left unchecked: the pre-check refuses it, so the
+    // result does not depend on the runtime.
+    vi.stubGlobal("crypto", undefined);
+    try {
+      const result = await verifyCoseReceipt(forged, leaf, key);
+      expect(result.ok).toBe(false);
+      expect(result).not.toHaveProperty("unavailable");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("lets the alg fix the key type, and fails a key WebCrypto cannot import", async () => {
