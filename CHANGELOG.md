@@ -13,8 +13,15 @@ each says which tags it matches.
 ## Unreleased
 
 Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes after `go/v0.14.0`
-and `ts/v0.9.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
+and `ts/v0.10.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
+
+- Evidence Result v0 `plan_ref` and `dataset_ref` (Go, Python, TypeScript): the optional members,
+  digest refs that must appear together, name the Plan IR and the dataset a Result was computed
+  from (spec section 7.3). TypeScript's `validateEvidenceResult` accepts them and reports a
+  malformed ref or one present without the other; ts 0.9.0 refused a Result that carries either.
+  The Plan IR v0 also gains a dataset plan (population, window, filter) and a dataset document,
+  with Go and Python gates and vectors. (#443, evidencebook#107)
 
 - Spec: `spec/standard-history-v0.md` defines the derivation `standard_history/1`, now a row of
   the Evidence Request derivation registry (`spec/REGISTRY.md` §16): a recipient-free card, as of
@@ -149,6 +156,39 @@ packages is listed under each package that shipped it, or has not yet.
   `neg-producer-selected-certificate-log-id`, pins it. Go exports the claim on its own as
   `bundle.VerifyCheckpoint`, which also returns the authenticated checkpoint and its COSE bytes.
   (capsule-cli#438)
+
+## ts 0.10.0 — 2026-10-29
+
+Tag `ts/v0.10.0`.
+
+- Evidence Result v0 `plan_ref` and `dataset_ref` (Go, Python, TypeScript): the optional members,
+  digest refs that must appear together, name the Plan IR and the dataset a Result was computed
+  from (spec section 7.3). TypeScript's `validateEvidenceResult` accepts them and reports a
+  malformed ref or one present without the other; ts 0.9.0 refused a Result that carries either.
+  The Plan IR v0 also gains a dataset plan (population, window, filter) and a dataset document,
+  with Go and Python gates and vectors. (#443, evidencebook#107)
+
+- Security, strict witness receipts: an EdDSA witness receipt now verifies only under strict
+  Ed25519. The key A and the signature's R must be canonical and not of small order, and S must
+  be less than L, before the cofactorless check. Go's `crypto/ed25519.Verify` and Python's
+  `cryptography` accept a small-order key, and under the identity key the signature R = the
+  identity, S = 0 verifies over any root, so anyone could forge a receipt for a directory row
+  that pins such a key. Go (`witness.VerifyCOSEReceipt`), Python (`agent_action_capsule.witness`)
+  and TypeScript (`verifyCoseReceipt`, which no longer depends on the runtime's WebCrypto for
+  this) refuse it. `vectors/bundle/strict/` gains `neg-witness-cll-small-order-key` and its
+  directory row, and checkpointed-local-log's shared `ed25519-vectors.json` moves from
+  `ts/test/testdata/` to `vectors/cross-language/cll-ed25519-vectors.json`, which the Go, Python,
+  TypeScript and Rust tests all run. (#439)
+
+- Spec: `spec/standard-history-v0.md` defines the derivation `standard_history/1`, now a row of
+  the Evidence Request derivation registry (`spec/REGISTRY.md` §16): a recipient-free card, as of
+  one anchor, that counts the holder's deals in the window its policy sets, by outcome, value band,
+  role, how it happened and disputes, every count with its denominator and no ratio. It also
+  defines the deal member `counterparty_class` (`person_agent`, `business_agent`, `shop_preauth`;
+  a `shop_preauth` deal is not counted) and the record kind `receipt_document`. Python:
+  `agent_action_capsule.standard_history` (`derive_card`, `check_card`) is the reference. Go: the
+  new package `standardhistory` (`Derive`, `Check`) is at parity with it. Both run
+  `vectors/standard-history-v0/` (9 positive, 19 negative). (#437)
 
 ## ts 0.9.0 — 2026-10-28
 
