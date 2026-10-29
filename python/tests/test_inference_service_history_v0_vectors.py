@@ -403,7 +403,7 @@ def answered_at(env: dict) -> datetime:
 
 def period_fixed(envs: list[dict]) -> str:
     """§6.1 item 4: every period a History carries is carried, with the same cells, by every History
-    at a later anchor."""
+    at the same or a later anchor."""
     def periods(env: dict) -> dict[tuple[str, str], str]:
         return {(p["from"], p["to"]): jcs(p["cells"]).decode() for p in env["artifact"]["period_counts"]["periods"]}
 
@@ -443,8 +443,8 @@ def failing(result: dict) -> set:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 26
-    assert (len(HISTORY_CASES), len(PAIR_CASES), len(REFUSAL_CASES)) == (19, 3, 4)
+    assert DATA["count"] == len(CASES) == 27
+    assert (len(HISTORY_CASES), len(PAIR_CASES), len(REFUSAL_CASES)) == (20, 3, 4)
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     assert digest(DATA["period_policy"]["document"]) == DATA["period_policy"]["digest"]
     assert set(DATA["units"]) == UNITS and DATA["labels"] == list(RANK)
@@ -641,6 +641,18 @@ def _shared_periods_only(envs: list[dict]) -> str:
 def test_period_fixed_is_caught():
     for fixed in (lambda envs: "PASS", _shared_periods_only):
         assert any(run_pair(c, fixed) != run_pair(c) for c in PAIR_CASES)
+
+
+def test_period_fixed_at_one_anchor():
+    """§6.3: two Histories at the same anchor carry the same periods with the same cells."""
+    (case,) = [c for c in PAIR_CASES if c["id"] == "periods-fixed-across-anchors"]
+    _, env = run_reply(case, case["inputs"]["histories"][1])
+    changed, dropped = copy.deepcopy(env), copy.deepcopy(env)
+    changed["artifact"]["period_counts"]["periods"][0]["cells"][-1]["value"] += 1
+    del dropped["artifact"]["period_counts"]["periods"][1]
+    assert period_fixed([env, copy.deepcopy(env)]) == "PASS"
+    assert period_fixed([env, changed]) == period_fixed([changed, env]) == "FAIL"
+    assert period_fixed([env, dropped]) == period_fixed([dropped, env]) == "FAIL"
 
 
 # ---------------------------------------------------------------------------

@@ -358,10 +358,10 @@ Each is reported in the IP §7.1 vocabulary:
 
 | Property | Check |
 |---|---|
-| `period_alignment` | every period of every counts member is aligned to the policy's epoch, has exactly the policy's length, is closed at the anchor, and starts at the end of the period before it; the first starts before the time of the card's first checkpoint that commits a record, and the last ends at the latest period boundary at or before the anchor (§6.1 item 3); the member names the policy's digest |
+| `period_alignment` | every period of every counts member is aligned to the policy's epoch, has exactly the policy's length, is closed at the anchor, and starts at the end of the period before it; where a checkpoint of the card commits a record, the first starts before the time of the first such checkpoint, and the last ends at the latest period boundary at or before the anchor (§6.1 item 3); the member names the policy's digest |
 | `period_anchor` | the anchor's checkpoint time is a period boundary (§6.1 item 2) |
 | `period_floor` | no published cell is below the floor, every suppressed cell has no value and the reason `below_floor` or `complementary`, and §6.2 item 3 holds |
-| `period_fixed` | over two or more Histories under one definition held by one verifier, every period of a History is carried, with the same cells, by every History at a later anchor |
+| `period_fixed` | over two or more Histories under one definition held by one verifier, every period of a History is carried, with the same cells, by every History at the same or a later anchor |
 
 `period_fixed` is reported only by a verifier that holds two or more such Histories. A verifier
 that holds one states that it was not checked.
@@ -588,6 +588,7 @@ different client nonces, and one whose half cites no counterparty half. Each is 
 | `mutant-short-period` | `period_alignment` `FAIL` |
 | `mutant-omitted-first-period` | `period_alignment` `FAIL`: 1 October, the stream's first period, left out |
 | `mutant-omitted-period` | `period_alignment` `FAIL`: 2 October left out between 1 and 3 October |
+| `mutant-omitted-last-period` | `period_alignment` `FAIL`: 3 October, the last closed period, left out |
 | `mutant-cell-below-floor` | `period_floor` `FAIL` |
 | `mutant-complementary-not-suppressed` | `period_floor` `FAIL` |
 | `periods-fixed-across-anchors` | `period_fixed` `PASS` |
@@ -665,7 +666,10 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
 - **Self-reported counts.** Every count is the node's statement over its own stream. The History
   artifact is not itself logged or inclusion-checked: a changed or dropped closed period is caught
   only by `period_fixed`, by a verifier that holds two answers. The population check is
-  `NOT_CHECKED` for counts (§4.2).
+  `NOT_CHECKED` for counts (§4.2). `period_alignment` checks where the periods start only to the
+  resolution of the card's checkpoints: a first record is placed only before the first checkpoint
+  that commits a record, so periods left out before the one that checkpoint falls in, or before
+  the one it ends, are not detected, in one answer or across answers.
 - **What one key proves.** Every envelope verifies under the node key. That shows the key signed
   the answer, not who operates it, and not that the node is independent of any peer.
 - **Peer halves.** A peer half shows that the peer's key signed its record. It does not show the
@@ -693,4 +697,4 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
 | SH-11 | The History properties (§8.3, §6.3) as properties in IP's vocabulary that are not IP §7.2 envelope properties and never enter the IP §8 mapping. |
 | SH-12 | The vector-only formats of §9. |
 | SH-13 | A host's definition conforms by its digest (§4.1). A host definition fixed before it carries `profile`, `coverage_declaration` and `period_policy` conforms only as a new version. |
-| SH-14 | No vectors in this revision for: verdict counts and session coverage (§5.3, §10); `definition_form`, `definition_binding`, `artifact_form`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` under its key (§6.1 item 8), which a verifier sees only when it holds answers of both. |
+| SH-14 | No vectors in this revision for: verdict counts and session coverage (§5.3, §10); `definition_form`, `definition_binding`, `artifact_form`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` under its key (§6.1 item 8), which a verifier sees only when it holds answers of both; a stream whose card commits no record. |

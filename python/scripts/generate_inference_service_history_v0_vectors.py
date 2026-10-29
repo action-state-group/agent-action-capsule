@@ -7,9 +7,9 @@ are built here from one node's stream, minted by this script:
 
 - the Standard level: a served-only History, the same History at a later anchor, and the negatives
   of §5, §6 and §7 (a count that mixes units, a count labelled stronger than its evidence, an
-  overlapping, a duplicated, an open and a short period, a first and a middle period left out, a
-  cell below the floor, a missing complementary suppression, a closed period changed or dropped
-  between two anchors);
+  overlapping, a duplicated, an open and a short period, a first, a middle and a last period left
+  out, a cell below the floor, a missing complementary suppression, a closed period changed or
+  dropped between two anchors);
 - the Detailed level: one History whose exchanges are peer-confirmed, one-sided, signed twice by
   the node key, under two client nonces and uncited, each labelled as its evidence allows, and the
   negatives that label one stronger (§7);
@@ -493,6 +493,14 @@ def cases() -> list[dict]:
         ["§6.1", "§6.3", "§9.1"], "constructed: the served-only History without 2 October",
         standard(counts=gap), props(STANDARD_PROPS, period_alignment="FAIL"), standard_coverage(),
         ["period_alignment"]))
+
+    no_last = period_counts()
+    del no_last["periods"][-1]
+    out.append(history_case(
+        "mutant-omitted-last-period", "The last closed period left out",
+        ["§6.1", "§6.3", "§9.1"], "constructed: the served-only History without 3 October, the period that ends "
+        "at the anchor", standard(counts=no_last), props(STANDARD_PROPS, period_alignment="FAIL"),
+        standard_coverage(), ["period_alignment"]))
 
     floor = period_counts()
     floor["periods"][1]["cells"] = [cell(9, {"model": "model-a"}), cell(3, {"model": "model-b"}), cell(12, None)]

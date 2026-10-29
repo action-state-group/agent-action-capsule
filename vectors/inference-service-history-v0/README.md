@@ -4,8 +4,8 @@ These vectors exercise `spec/inference-service-history-profile-v0.md` (cited as 
 `spec/interop-profile-v0.md` (`evidence-interop/0`, cited as IP). They cover:
 
 - a served-only Standard History, with requested exchanges counted in no cell;
-- the period rules: overlapping, duplicated, open and short periods, a first and a middle period
-  left out, an answer at an anchor inside an open period, a cell below the floor, a missing
+- the period rules: overlapping, duplicated, open and short periods, a first, a middle and a last
+  period left out, an answer at an anchor inside an open period, a cell below the floor, a missing
   complementary suppression, and a closed period changed or dropped between two anchors;
 - peer confirmation at the Detailed level, and labels: `self_reported`, `peer_confirmed`, and
   `corroborated`, which no case derives;
