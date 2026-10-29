@@ -2,6 +2,9 @@
 package bundle
 
 import (
+	"crypto/ed25519"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -9,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/stretchr/testify/require"
 )
 
@@ -158,4 +162,176 @@ func TestComposedControllerBindingFractionalRecordTime(t *testing.T) {
 		composed := verifyBlock(t, container, bindingOptions(c))
 		require.Equal(t, derived, composed.Joins[0].Derived, stamp)
 	}
+}
+
+// Both root records under one bound key are not the record's two keys.
+func TestComposedControllerBindingNeedsBothKeys(t *testing.T) {
+	c := bindingCases(t)["controller-binding-linked"]
+	container := cloneJSON(t, c.Container)
+	members := composedBlockOf(container)["members"].([]interface{})
+	first := members[0].(map[string]interface{})["bundle"].(map[string]interface{})["records"].([]interface{})[0].(map[string]interface{})
+	second := members[1].(map[string]interface{})["bundle"].(map[string]interface{})["records"].([]interface{})[0].(map[string]interface{})
+	second["key_id"] = first["key_id"]
+	composed := verifyBlock(t, container, bindingOptions(c))
+	require.Equal(t, "unjoined", composed.Joins[0].Derived)
+}
+
+// signRevocation signs a revocation statement with the vectors' seed for name.
+func signRevocation(t *testing.T, name, binding, revokedAt string) map[string]interface{} {
+	t.Helper()
+	private := seedKey(t, name)
+	statement := map[string]interface{}{
+		"revocation_version": "controller-binding-revocation/0", "binding": binding,
+		"key_id": hex.EncodeToString(private.Public().(ed25519.PublicKey)), "revoked_at": revokedAt,
+	}
+	input, err := canonical.JCS(statement)
+	require.NoError(t, err)
+	statement["sig"] = hex.EncodeToString(ed25519.Sign(private, input))
+	return statement
+}
+
+// A revocation takes effect at revoked_at: one dated between the two root
+// records' times reaches the later one. One signed by a key the binding does
+// not bind does not apply.
+func TestComposedControllerBindingRevocationTimeAndSigner(t *testing.T) {
+	c := bindingCases(t)["controller-binding-linked"]
+	digest := composedBlockOf(c.Container)["joins"].([]interface{})[0].(map[string]interface{})["identifier_digest"].(string)
+	for _, tc := range []struct {
+		signer, at, derived string
+	}{
+		{"responder-a", "2026-10-02T12:10:30Z", "unjoined"},
+		{"responder-b", "2026-10-02T12:11:00Z", "unjoined"},
+		{"responder-b", "2026-10-02T12:11:01Z", "agree"},
+		{"runtime observer", "2026-10-02T00:00:00Z", "agree"},
+	} {
+		composed := verifyBlock(t, c.Container, Options{
+			ControllerBindings: c.ControllerBindings,
+			BindingRevocations: []map[string]interface{}{signRevocation(t, tc.signer, digest, tc.at)},
+		})
+		require.Equal(t, tc.derived, composed.Joins[0].Derived, tc)
+	}
+}
+
+// Each form rule of "Controller Binding Records", read on its own.
+func TestControllerBindingForm(t *testing.T) {
+	base := bindingCases(t)["controller-binding-linked"].ControllerBindings[0]
+	require.True(t, bindingForm(cloneJSON(t, base)))
+	keys := base["keys"].([]interface{})
+	cases := map[string]func(r map[string]interface{}){
+		"keys descending":           func(r map[string]interface{}) { r["keys"] = []interface{}{keys[1], keys[0]} },
+		"keys equal":                func(r map[string]interface{}) { r["keys"] = []interface{}{keys[0], keys[0]} },
+		"one key":                   func(r map[string]interface{}) { r["keys"] = []interface{}{keys[0]} },
+		"key not hex":               func(r map[string]interface{}) { r["keys"] = []interface{}{keys[0], strings.ToUpper(keys[1].(string))} },
+		"not_before after issued":   func(r map[string]interface{}) { r["not_before"] = "2026-10-01T00:00:01Z" },
+		"not_after at issued":       func(r map[string]interface{}) { r["not_after"] = r["issued_at"] },
+		"time with offset":          func(r map[string]interface{}) { r["issued_at"] = "2026-10-01T00:00:00+00:00" },
+		"time with fraction":        func(r map[string]interface{}) { r["not_after"] = "2027-10-01T00:00:00.5Z" },
+		"time not a date":           func(r map[string]interface{}) { r["not_after"] = "2027-02-30T00:00:00Z" },
+		"other version":             func(r map[string]interface{}) { r["binding_version"] = "controller-binding/1" },
+		"other revocation method":   func(r map[string]interface{}) { r["revocation"] = "x-revocation/0" },
+		"empty nonce":               func(r map[string]interface{}) { r["nonce"] = "" },
+		"unknown claim":             func(r map[string]interface{}) { r["claim"] = "x-claim" },
+		"extra member":              func(r map[string]interface{}) { r["x"] = "y" },
+		"missing member":            func(r map[string]interface{}) { delete(r, "nonce") },
+		"delegator on other claim":  func(r map[string]interface{}) { r["delegator"] = keys[0] },
+		"method of another claim":   func(r map[string]interface{}) { r["method"] = "dual_signature_credential/0" },
+		"method token with a space": func(r map[string]interface{}) { r["method"] = "x method" },
+		"sigs not an array":         func(r map[string]interface{}) { r["sigs"] = "x" },
+		"sig entry extra member": func(r map[string]interface{}) {
+			r["sigs"].([]interface{})[0].(map[string]interface{})["x"] = "y"
+		},
+		"delegator not bound": func(r map[string]interface{}) {
+			r["claim"], r["delegator"] = "delegated_by", strings.Repeat("1", 64)
+		},
+		"credential missing digest": func(r map[string]interface{}) {
+			r["claim"], r["method"] = "same_organization_credentialed", "dual_signature_credential/0"
+			r["credential"] = map[string]interface{}{"issuer": keys[0], "method": "m"}
+		},
+	}
+	for name, mutate := range cases {
+		record := cloneJSON(t, base)
+		mutate(record)
+		require.False(t, bindingForm(record), name)
+	}
+	for name, mutate := range map[string]func(r map[string]interface{}){
+		"undefined method token": func(r map[string]interface{}) { r["method"] = "x-example-method/0" },
+		"delegated_by":           func(r map[string]interface{}) { r["claim"], r["delegator"] = "delegated_by", keys[1] },
+		"same_organization_credentialed": func(r map[string]interface{}) {
+			r["claim"], r["method"] = "same_organization_credentialed", "dual_signature_credential/0"
+			r["credential"] = map[string]interface{}{"issuer": keys[0], "method": "m", "digest": strings.Repeat("a", 64)}
+		},
+	} {
+		record := cloneJSON(t, base)
+		mutate(record)
+		require.True(t, bindingForm(record), name)
+	}
+}
+
+// seedKey returns the vectors' private key for name.
+func seedKey(t *testing.T, name string) ed25519.PrivateKey {
+	t.Helper()
+	_, filename, _, _ := runtime.Caller(0)
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(filename), "..", "..", "vectors", "bundle", "composed-controller-binding", "vectors.json"))
+	require.NoError(t, err)
+	var file struct {
+		Keys map[string]struct {
+			Seed string `json:"seed_hex"`
+		} `json:"keys"`
+	}
+	require.NoError(t, json.Unmarshal(data, &file))
+	seed, err := hex.DecodeString(file.Keys[name].Seed)
+	require.NoError(t, err)
+	return ed25519.NewKeyFromSeed(seed)
+}
+
+// resignBinding re-signs record with the named keys in sigs order and points
+// the case's join at its new digest.
+func resignBinding(t *testing.T, c bindingCase, record map[string]interface{}, signers ...string) map[string]interface{} {
+	t.Helper()
+	input, ok := signingInput(record, "sigs")
+	require.True(t, ok)
+	sigs := record["sigs"].([]interface{})
+	for i, name := range signers {
+		sigs[i].(map[string]interface{})["sig"] = hex.EncodeToString(ed25519.Sign(seedKey(t, name), input))
+	}
+	container := cloneJSON(t, c.Container)
+	block := composedBlockOf(container)
+	sum := sha256.Sum256(input)
+	block["joins"].([]interface{})[0].(map[string]interface{})["identifier_digest"] = hex.EncodeToString(sum[:])
+	reseal(t, block)
+	return container
+}
+
+// A record both keys signed is still no binding when it is malformed (here,
+// keys out of order) or when sigs label the keys out of order: the join is
+// derivable and unjoined, never linked.
+func TestComposedControllerBindingSignedButMalformed(t *testing.T) {
+	c := bindingCases(t)["controller-binding-linked"]
+	keys := c.ControllerBindings[0]["keys"].([]interface{})
+	sigs := c.ControllerBindings[0]["sigs"].([]interface{})
+	first, second := sigs[0].(map[string]interface{}), sigs[1].(map[string]interface{})
+
+	descending := cloneJSON(t, c.ControllerBindings[0])
+	descending["keys"] = []interface{}{keys[1], keys[0]}
+	descending["sigs"] = []interface{}{cloneJSON(t, second), cloneJSON(t, first)}
+	container := resignBinding(t, c, descending, "responder-b", "responder-a")
+	composed := verifyBlock(t, container, Options{ControllerBindings: []map[string]interface{}{descending}})
+	require.Equal(t, "unjoined", composed.Joins[0].Derived)
+
+	// Each sig made by the right key, under the other key's key_id.
+	swapped := cloneJSON(t, c.ControllerBindings[0])
+	swapped["sigs"].([]interface{})[0].(map[string]interface{})["key_id"] = keys[1]
+	swapped["sigs"].([]interface{})[1].(map[string]interface{})["key_id"] = keys[0]
+	composed = verifyBlock(t, c.Container, Options{ControllerBindings: []map[string]interface{}{swapped}})
+	require.Equal(t, "unjoined", composed.Joins[0].Derived)
+}
+
+// A validly signed revocation of another binding leaves this one linked.
+func TestComposedControllerBindingRevocationOfAnotherBinding(t *testing.T) {
+	c := bindingCases(t)["controller-binding-linked"]
+	composed := verifyBlock(t, c.Container, Options{
+		ControllerBindings: c.ControllerBindings,
+		BindingRevocations: []map[string]interface{}{signRevocation(t, "responder-b", strings.Repeat("0", 64), "2026-10-02T00:00:00Z")},
+	})
+	require.Equal(t, "agree", composed.Joins[0].Derived)
 }
