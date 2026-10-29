@@ -1,0 +1,12 @@
+{
+  "draft": "draft-mih-zhang-agent-disclosure-bundle-02 (Controller Binding Records; Joins)",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_bundle_composed_cb_vectors.py",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "e6a2e9f218014f550577b72b4cf19ca75db7177e219fb7b3a403c8cdcf96d280",
+      "count": 8
+    }
+  ]
+}

@@ -76,3 +76,11 @@ func Verify(public ed25519.PublicKey, message, signature []byte) bool {
 	}
 	return ed25519.Verify(public, message, signature)
 }
+
+// VerifyEd25519Strict reports whether signature is a valid Ed25519 signature
+// by public over message under the strict conditions of verifyEd25519Strict.
+// Other packages use it for the Ed25519 signatures they check, so one rule
+// covers every signature this module verifies.
+func VerifyEd25519Strict(public ed25519.PublicKey, message, signature []byte) bool {
+	return verifyEd25519Strict(public, message, signature)
+}

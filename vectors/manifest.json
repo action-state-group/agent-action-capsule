@@ -11,6 +11,7 @@
     "bundle_producer_key": "bundle/producer-key/vectors.json",
     "minimum_necessary": "minimum-necessary/manifest.json",
     "bundle_composed": "bundle/composed/manifest.json",
+    "bundle_composed_controller_binding": "bundle/composed-controller-binding/manifest.json",
     "judgment": "judgment/manifest.json",
     "viewer_core_text": "viewer-core-text/manifest.json",
     "interop_profile_v0": "interop-profile-v0/manifest.json",
