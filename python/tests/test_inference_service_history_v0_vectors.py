@@ -643,6 +643,26 @@ def test_period_fixed_is_caught():
         assert any(run_pair(c, fixed) != run_pair(c) for c in PAIR_CASES)
 
 
+def test_period_start_at_a_boundary_and_empty_stream():
+    """§6.3 period_alignment: the first period starts strictly before the first checkpoint that
+    commits a record; a card that commits no record lists no period."""
+    (case,) = [c for c in HISTORY_CASES if c["id"] == "standard-served-only"]
+    d = case["inputs"]["definition"]
+    _, env = run_reply(case, case["inputs"])
+    assert periods_ok(d, env)
+    at_boundary = copy.deepcopy(env)
+    at_boundary["artifact"]["history_card"]["history"][0]["checkpoint"]["timestamp"] = "2026-10-02T00:00:00Z"
+    assert periods_ok(d, at_boundary)
+    del at_boundary["artifact"]["period_counts"]["periods"][0]
+    assert not periods_ok(d, at_boundary)
+    empty = copy.deepcopy(env)
+    for h in empty["artifact"]["history_card"]["history"]:
+        h["checkpoint"]["log_size"] = 0
+    assert not periods_ok(d, empty)
+    empty["artifact"]["period_counts"]["periods"] = []
+    assert periods_ok(d, empty)
+
+
 def test_period_fixed_at_one_anchor():
     """§6.3: two Histories at the same anchor carry the same periods with the same cells."""
     (case,) = [c for c in PAIR_CASES if c["id"] == "periods-fixed-across-anchors"]

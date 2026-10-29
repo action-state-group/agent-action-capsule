@@ -358,7 +358,7 @@ Each is reported in the IP §7.1 vocabulary:
 
 | Property | Check |
 |---|---|
-| `period_alignment` | every period of every counts member is aligned to the policy's epoch, has exactly the policy's length, is closed at the anchor, and starts at the end of the period before it; where a checkpoint of the card commits a record, the first starts before the time of the first such checkpoint, and the last ends at the latest period boundary at or before the anchor (§6.1 item 3); the member names the policy's digest |
+| `period_alignment` | every period of every counts member is aligned to the policy's epoch, has exactly the policy's length, is closed at the anchor, and starts at the end of the period before it; where a checkpoint of the card commits a record, the first starts before the time of the first such checkpoint, and the last ends at the latest period boundary at or before the anchor; where none does, the member lists no period (§6.1 item 3); the member names the policy's digest |
 | `period_anchor` | the anchor's checkpoint time is a period boundary (§6.1 item 2) |
 | `period_floor` | no published cell is below the floor, every suppressed cell has no value and the reason `below_floor` or `complementary`, and §6.2 item 3 holds |
 | `period_fixed` | over two or more Histories under one definition held by one verifier, every period of a History is carried, with the same cells, by every History at the same or a later anchor |
