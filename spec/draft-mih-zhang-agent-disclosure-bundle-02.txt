@@ -88,24 +88,24 @@ Table of Contents
        8.2.1.  Block . . . . . . . . . . . . . . . . . . . . . . . .  18
        8.2.2.  Members and Outcomes  . . . . . . . . . . . . . . . .  20
        8.2.3.  Composition Closure . . . . . . . . . . . . . . . . .  21
-       8.2.4.  Joins . . . . . . . . . . . . . . . . . . . . . . . .  22
-       8.2.5.  Observers and Redundancy  . . . . . . . . . . . . . .  23
-       8.2.6.  Composed Digest . . . . . . . . . . . . . . . . . . .  24
-       8.2.7.  Verifying composed/v1 . . . . . . . . . . . . . . . .  25
-     8.3.  Provisional Extension Kinds . . . . . . . . . . . . . . .  26
-   9.  Bundle Digest and Countersignatures . . . . . . . . . . . . .  26
-     9.1.  The countersign/v1 Entry  . . . . . . . . . . . . . . . .  27
-     9.2.  Verifying a countersign/v1 Entry  . . . . . . . . . . . .  29
-     9.3.  Self-Countersignature . . . . . . . . . . . . . . . . . .  29
-   10. Fragment Codec  . . . . . . . . . . . . . . . . . . . . . . .  30
-   11. Verification  . . . . . . . . . . . . . . . . . . . . . . . .  30
-   12. Security Considerations . . . . . . . . . . . . . . . . . . .  30
-     12.1.  composed/v1  . . . . . . . . . . . . . . . . . . . . . .  31
-     12.2.  Category Coverage  . . . . . . . . . . . . . . . . . . .  32
-   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  32
-   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  33
-   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  33
-     15.1.  Normative References . . . . . . . . . . . . . . . . . .  33
+       8.2.4.  Controller Binding Records  . . . . . . . . . . . . .  22
+       8.2.5.  Joins . . . . . . . . . . . . . . . . . . . . . . . .  25
+       8.2.6.  Observers and Redundancy  . . . . . . . . . . . . . .  27
+       8.2.7.  Composed Digest . . . . . . . . . . . . . . . . . . .  27
+       8.2.8.  Verifying composed/v1 . . . . . . . . . . . . . . . .  29
+     8.3.  Provisional Extension Kinds . . . . . . . . . . . . . . .  29
+   9.  Bundle Digest and Countersignatures . . . . . . . . . . . . .  30
+     9.1.  The countersign/v1 Entry  . . . . . . . . . . . . . . . .  30
+     9.2.  Verifying a countersign/v1 Entry  . . . . . . . . . . . .  32
+     9.3.  Self-Countersignature . . . . . . . . . . . . . . . . . .  33
+   10. Fragment Codec  . . . . . . . . . . . . . . . . . . . . . . .  33
+   11. Verification  . . . . . . . . . . . . . . . . . . . . . . . .  33
+   12. Security Considerations . . . . . . . . . . . . . . . . . . .  34
+     12.1.  composed/v1  . . . . . . . . . . . . . . . . . . . . . .  35
+     12.2.  Category Coverage  . . . . . . . . . . . . . . . . . . .  36
+   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  36
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  37
+   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  37
 
 
 
@@ -114,10 +114,11 @@ Mih & Zhang                Expires 2 May 2027                   [Page 2]
 Internet-Draft             AAC Evidence Bundle              October 2026
 
 
-     15.2.  Informative References . . . . . . . . . . . . . . . . .  35
-   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  36
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  37
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  37
+     15.1.  Normative References . . . . . . . . . . . . . . . . . .  37
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  39
+   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  40
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  41
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  41
 
 1.  Introduction
 
@@ -160,7 +161,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       report is a bundle.
 
    Countersigner:  The party that makes a countersignature.  A
-
 
 
 
@@ -1143,7 +1143,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    exactly as a refusal's is.  A verifier that does not implement that
    profile reports the response as signature-unverified, which is
    neither failed nor absent. response is not part of the composed
-   digest (Section 8.2.6).
+   digest (Section 8.2.7).
 
    An artifact that fails verification is still an artifact member.  The
    verifier reports the failure on that member.  It is not a fourth
@@ -1207,7 +1207,174 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    is in neither members nor not_requested is not visible to a verifier
    from this block (Section 12.1).
 
-8.2.4.  Joins
+8.2.4.  Controller Binding Records
+
+   A _controller binding record_ is a JSON object in which the holders
+   of two Ed25519 [RFC8032] signing keys both sign one statement about
+   how the two keys are related.  It is the linkage evidence of the
+   controller_binding join basis (Section 8.2.5).  Its signatures show
+   only that whoever held each private key signed the record.  They do
+   not show who holds either key, and this document never states who a
+   key holder is.
+
+   A binding record is not a member of the composed/v1 block.  It is
+   delivered beside the containing Bundle, with any revocation
+   statements that withdraw it; how they are delivered is outside this
+   document.  The block binds a record only through a join's
+   identifier_digest.
+
+
+
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 22]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
+   In this section a _key identifier_ is a raw 32-byte Ed25519 public
+   key as 64 lowercase hexadecimal characters, and a _time_ is an
+   [RFC3339] date-time in UTC with a "Z" suffix and seconds precision.
+   A root record's timestamp, against which a binding is checked, can
+   also carry fractional seconds.  Times compare as instants.
+
+   controller-binding = {
+     binding_version: "controller-binding/0",
+     claim: binding-claim,
+     method: tstr,                  ; a verification method token
+     keys: [key-id, key-id],        ; two distinct keys, ascending
+     issued_at: binding-time,       ; the ceremony, as stated
+     not_before: binding-time,      ; not later than issued_at
+     not_after: binding-time,       ; later than issued_at
+     revocation: "revocation_statement/0",
+     nonce: tstr,                   ; non-empty, chosen per ceremony
+     sigs: [* binding-sig],
+     ? delegator: key-id,           ; delegated_by only: one of keys
+     ? credential: binding-credential,
+                                    ; same_organization_credentialed
+   }
+
+   binding-claim = "same_controller_asserted" / "delegated_by" /
+                   "same_organization_credentialed"
+   binding-sig = { key_id: key-id, sig: sig-hex }
+   binding-credential = {
+     issuer: key-id,
+     method: tstr,
+     digest: digest-hex,
+   }
+
+   binding-revocation = {
+     revocation_version: "controller-binding-revocation/0",
+     binding: digest-hex,           ; the binding digest
+     key_id: key-id,                ; one of the binding's keys
+     revoked_at: binding-time,
+     sig: sig-hex,
+   }
+
+   key-id       = text .regexp "[0-9a-f]{64}"
+   sig-hex      = text .regexp "[0-9a-f]{128}"
+   binding-time = text .regexp
+     "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z"
+
+   The claim types, the member each adds, the method this document
+   defines for each, and what the two key holders state:
+
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 23]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
+   *  same_controller_asserted: no added member; dual_signature/0.  One
+      controller holds both keys.
+
+   *  delegated_by: adds delegator; dual_signature/0.  The holder of
+      delegator delegated to the holder of the other key, who accepted.
+
+   *  same_organization_credentialed: adds credential;
+      dual_signature_credential/0.  Both keys are held within one
+      organization, as a credential from a third key states.
+
+   A binding record is malformed when it lacks a member, carries a
+   member the CDDL does not allow for its claim, or has a value outside
+   its form; when its two keys are equal or not in ascending order; when
+   not_before is later than issued_at or not_after is not later than it;
+   when delegator is not one of keys; or when its method is one this
+   document defines for another claim type.  A method token this
+   document does not define is well formed.  A binding record or
+   revocation statement that is not a JSON object is malformed.
+   delegated_by states a relation, not a scope: a verifier reads no
+   authority from it.
+
+   *Signing input and binding digest.* The signing input is the UTF-8
+   octets of the JCS [RFC8785] serialization of the record without sigs.
+   Every other member is covered.  The _binding digest_ is the lowercase
+   hexadecimal SHA-256 of the signing input.  It does not cover sigs, so
+   a binding keeps its digest if a key signs it again.  Two ceremonies
+   over the same keys differ in nonce and so have two digests.
+
+   *Methods.* Under dual_signature/0, sigs has exactly two entries:
+   sigs[0].key_id is keys[0], sigs[1].key_id is keys[1], and each sig is
+   that key's Ed25519 signature over the signing input, in lowercase
+   hexadecimal.  A record with one signature, a third entry, or a
+   signature that does not verify is not signed by both keys.  One key
+   cannot bind another key to itself, because each key signs the other
+   key's identifier. dual_signature_credential/0 requires the same two
+   signatures.  Its credential names a signed object from the key
+   credential.issuer, delivered beside the record, whose SHA-256 is
+   credential.digest and which is verified by its native method
+   credential.method.  This document registers no credential format.  A
+   credential never decides whether a binding applies, and a verifier
+   MUST NOT present the organization it names as an identity.
+
+   *Revocation.* Either key holder can withdraw a binding with a
+   revocation statement (binding-revocation).  A statement _applies_ to
+   a binding when it is well formed, binding is the binding digest,
+   key_id is one of the binding's keys, and sig is that key's Ed25519
+   signature over the UTF-8 JCS serialization of the statement without
+   sig.  A statement names a binding by digest, so it reaches every copy
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 24]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
+   of the record.  From revoked_at on, the binding is not in effect.
+   revoked_at is the revoking key holder's statement; a backdated
+   revocation returns the joins it covered to unjoined, never further.
+   A verifier knows only the statements it received.
+
+   *When a binding applies.* A binding record _applies_ to two key
+   identifiers at a set of times T when all of these hold:
+
+   1.  it is well formed;
+
+   2.  the verifier implements its method, and both bound keys signed it
+       under that method;
+
+   3.  its keys are exactly the two key identifiers, in either order;
+
+   4.  for every T, not_before <= T < not_after;
+
+   5.  no revocation statement the verifier received that applies to it
+       has a revoked_at at or before any T.
+
+   *What a binding never states.* A binding is a statement by both key
+   holders that their two keys are not independent issuers.  A verifier
+   MUST NOT present a binding record as establishing who controls either
+   key; a person, name, account, organization identity or legal
+   relationship; that the keys were under one control at any time,
+   beyond the window and claim both key holders stated; or that two keys
+   with no binding between them have distinct controllers.
+
+8.2.5.  Joins
 
    A join declares that two members' records are about the same thing,
    and how that is established.  The producer DECLARES a state; a
@@ -1223,28 +1390,25 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       the linkage basis does not establish that their records are about
       the same thing.
 
-
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 22]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    *  *agree*: both members are artifacts and are linked, and every
       compare pointer resolves in both root records to values with
       identical JCS serializations.  A join with no compare and a link
       is agree.
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 25]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    *  *mismatch*: both members are artifacts and are linked, and at
       least one compare pointer resolves to different values, or does
       not resolve on one side.
 
    Linkage is evaluated on each artifact member's root record (its
-   bundle's root).  This document defines the derivation for two bases:
+   bundle's root).  This document defines the derivation for three
+   bases:
 
    *  *pre_agreed_identifier*: pointer selects a string in each root
       record.  The members are linked when SHA-256 of that string's
@@ -1255,15 +1419,27 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       root record.  The members are linked when the two values are
       identical.
 
-   The bases issued_receipt (the two records cite one Receipt),
-   same_interval (the two records fall in one declared interval) and
-   controller_binding (the holders of the two root records' signing keys
-   jointly signed a statement binding the keys) are reserved for a later
-   specification that defines their derivation.  A block MAY declare
-   joins on them; such joins are digest-covered.  A verifier that does
-   not implement a derivation for the basis reports such a join as
-   not_derivable.  It MUST NOT report the join as a derived agreement,
-   and MUST NOT count it as corroboration.
+   *  *controller_binding*: pointer selects a key identifier string in
+      each root record, for example /key_id, and identifier_digest is a
+      binding digest (Section 8.2.4).  The members are linked when a
+      delivered binding record whose binding digest equals
+      identifier_digest applies to the two selected values, with T the
+      timestamp of each root record
+      ([I-D.mih-scitt-agent-action-capsule]).  A record with that digest
+      that does not apply leaves the members unjoined.  A verifier that
+      received no record with that digest, or implements the method of
+      none it received, reports the join as not_derivable.  A join on
+      this basis states that the two root records are under keys whose
+      holders bound them, as both of them stated it; it says nothing
+      about who those holders are.
+
+   The bases issued_receipt (the two records cite one Receipt) and
+   same_interval (the two records fall in one declared interval) are
+   reserved for a later specification that defines their derivation.  A
+   block MAY declare joins on them; such joins are digest-covered.  A
+   verifier that does not implement a derivation for the basis reports
+   such a join as not_derivable.  It MUST NOT report the join as a
+   derived agreement, and MUST NOT count it as corroboration.
 
    A join one of whose artifact members is declared missing is also
    not_derivable.
@@ -1271,7 +1447,18 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    On a derived mismatch, a verifier reports each member's value at each
    differing pointer, and names no winner.
 
-8.2.5.  Observers and Redundancy
+
+
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 26]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
+8.2.6.  Observers and Redundancy
 
    observers[] states, for each member, which observer produced it, in
    what role, and in which custody_domain. role is a short token naming
@@ -1282,14 +1469,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    observers are in the same custody domain exactly when their labels
    are identical octet sequences.
 
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 23]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    *Same custody is redundant, not corroborating.* For every join that
    derives agree, a verifier MUST report the pair as redundant in any of
    these cases:
@@ -1298,11 +1477,16 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    *  the two observers have the same custody_domain;
 
-   *  the two members' root records carry the same key_id.
+   *  the two members' root records carry the same key_id;
+
+   *  the join's basis is controller_binding: the holders of the two
+      keys have stated that the keys are not independent issuers
+      (Section 8.2.4).
 
    It MUST present the result as "redundant, not corroborating", with
-   the reason.  Otherwise it MAY report the pair as corroborating, and
-   it MUST qualify that as resting on _declared_ custody.
+   the reason.  A controller_binding join therefore never yields
+   corroboration.  Otherwise it MAY report the pair as corroborating,
+   and it MUST qualify that as resting on _declared_ custody.
 
    Custody labels are the composing party's declaration.  Like producer-
    key/v1 (Section 8.1), they can only downgrade a result.  Identical
@@ -1314,12 +1498,21 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    the block.  A verifier lists results per pair.  It MUST NOT combine
    them into a count or score.
 
-8.2.6.  Composed Digest
+8.2.7.  Composed Digest
 
    The composed digest is the digest a judgment cites as the evidence
    set it was made from.  It is computed only from the declarations in
    the block, so it recomputes from the containing Bundle alone.  It
    stays the same whether or not the member bodies are carried.
+
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 27]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    1.  Build the _digest input_ D, a JSON object with exactly these five
        members:
@@ -1332,19 +1525,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
        *  observers: for each observer, an object with exactly its id,
           role and custody_domain.  Sort in ascending order of id.
-
-
-
-
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 24]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
        *  joins: for each join, an object with its members, basis and
           state, plus whichever of pointer, identifier_digest and
@@ -1382,25 +1562,24 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    Because the composed digest covers each member's outcome, observer
    and digest, all observers' roles and custody labels, and every join
    declaration, changing any of them changes the composed digest.  A
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 28]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    judgment that cites a composed digest therefore also binds the
    declared custody, and with it the redundancy result a verifier
    derives from that custody.
 
-8.2.7.  Verifying composed/v1
+8.2.8.  Verifying composed/v1
 
    A verifier that implements composed/v1 MUST report each of the
    following separately:
 
    1.  the recomputed composed digest, and whether it matches;
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 25]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    2.  per member: outcome, body carried or declared missing, digest
        reproduced, and, for a carried member bundle, its own three
@@ -1410,7 +1589,9 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    3.  composition closure;
 
    4.  per join: the declared state, the derived state (or
-       not_derivable), and whether they match;
+       not_derivable), and whether they match; for a controller_binding
+       join, the binding digest, the claim type of the record that
+       applies, and the revocation statements it received for it;
 
    5.  per derived agree: redundant (with reason) or corroborating on
        declared custody.
@@ -1431,6 +1612,20 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    kind it does not implement (Section 8): digest-covered and
    uninterpreted.
 
+
+
+
+
+
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 29]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
 9.  Bundle Digest and Countersignatures
 
    The bundle digest is SHA-256(UTF8(JCS(canonical bundle form))),
@@ -1450,14 +1645,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    The registered types are cose-sign1 and countersign/v1.  A cose-sign1
    object is {type: "cose-sign1", signature: "<base64url tagged
    COSE_Sign1>"}. It is a reserved neutral slot whose population and
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 26]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    verification are future scope; a current verifier MUST surface each
    such entry as unverified and MUST NOT present pass-through data as a
    verified countersignature.  The countersign/v1 object is defined in
@@ -1487,6 +1674,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
      "receipt": { ... }
    }
 
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 30]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    type, signer, over, statement, and signature are REQUIRED; receipt is
    OPTIONAL.
 
@@ -1506,13 +1701,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       name, a short phrase for what was recomputed, and gives its
       result, which is exactly one of the five values below.  A check
       name is unique within a statement.
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 27]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    *  recomputed_at is the [RFC3339] UTC time, with a "Z" suffix, at
       which the countersigner finished recomputing.
@@ -1542,6 +1730,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
                                   Table 2
 
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 31]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    Each result stands alone.  A statement MUST NOT carry an aggregate
    result, a score, a rating, or a claim of compliance, and a verifier
    MUST NOT derive one from the checks.  Capture coverage, meaning
@@ -1562,13 +1758,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    was registered with a Transparency Service, in that service's receipt
    encoding.  A verifier that cannot verify it MUST report it as
    unverified; its absence does not invalidate the entry.
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 28]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    A verifier MUST ignore entry members not defined here, and they MUST
    NOT change any result it reports.
@@ -1597,6 +1786,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    the signer's statement, and MUST NOT present them as its own
    findings.
 
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 32]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
 9.3.  Self-Countersignature
 
    A countersignature is a self-countersignature when signer.key_id
@@ -1611,20 +1808,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    the producer.  The verifier computes independence itself for each
    entry; no entry member and no directory entry can change that result,
    and a producer key declaration can only change it to not independent.
-
-
-
-
-
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 29]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
 10.  Fragment Codec
 
@@ -1660,6 +1843,13 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    Bundle, so that a certificate mode it does not implement is reported
    as not established, never as failed.
 
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 33]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
 12.  Security Considerations
 
    The Bundle does not make omitted evidence disappear.  Its explicit
@@ -1672,15 +1862,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    link, so every received Bundle requires independent verification.
    Unknown extension kinds are integrity-covered but semantically
    untrusted.
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 30]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    A producer-selected certificate proves that each carried record is in
    the log; it says nothing about the records the producer left out, so
@@ -1699,6 +1880,31 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    could be the identifier of a Capsule the producer chose not to show;
    recomputing the value from padding content, whose only free member is
    a random nonce, rules that out (Section 6.3).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 34]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    A countersignature's statement and signer are what a relying party
    reads, so both are inside the signing input (Section 9.1); a
@@ -1731,17 +1937,30 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       sealed topology.  A verifier MUST NOT describe composition closure
       as completeness of participation.
 
+   *  *Declarations versus derivations.* Declared join states are re-
+      derived; a mismatch fails.  Declared custody can only downgrade
+      (Section 8.2.6).  Nothing a producer declares can make two
+      observers independent.
+
+   *  *Controller bindings.* A binding can only make an agreement
+      redundant (Section 8.2.6); no binding, revocation or failed
+      signature can make two members corroborating.  Two keys bound by
+      their holders can sign agreeing records, and without the
+      redundancy rule they would read as two issuers.  A verifier knows
+      only the revocation statements it received: the party presenting a
+      composition can leave out a revocation, and a controller_binding
+      agreement is then reported redundant all the same, never more.  A
+      revocation the producer did not account for derives unjoined and
+      fails a declared agree (join_state_mismatch).
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 31]
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 35]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
-
-   *  *Declarations versus derivations.* Declared join states are re-
-      derived; a mismatch fails.  Declared custody can only downgrade
-      (Section 8.2.5).  Nothing a producer declares can make two
-      observers independent.
 
    *  *Outcomes.* Keeping refusal and absence distinct is evidentiary:
       synthesizing either one from the other forges the stronger record
@@ -1777,6 +1996,11 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    *  Join identifiers enter only as digests (identifier_digest).
 
+   *  A delivered controller binding record (Section 8.2.4) reveals that
+      the holders of its two keys bound them, its claim type and its
+      window.  It carries no name, and it is delivered only to whom the
+      presenting party chooses.
+
    *  custody_domain is an opaque label and SHOULD NOT be a network
       address, an account identifier or a personal name.
 
@@ -1789,7 +2013,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 32]
+Mih & Zhang                Expires 2 May 2027                  [Page 36]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1845,7 +2069,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 33]
+Mih & Zhang                Expires 2 May 2027                  [Page 37]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1901,7 +2125,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 34]
+Mih & Zhang                Expires 2 May 2027                  [Page 38]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1957,7 +2181,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 35]
+Mih & Zhang                Expires 2 May 2027                  [Page 39]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1983,7 +2207,11 @@ Change Log
       leaf of an undefined type leaves the claim not established, never
       established.  Stated that per-record membership is the claim, and
       that unknown completeness_certificate members are ignored.
-      Privacy Considerations: what a padded range reveals.
+      Privacy Considerations: what a padded range reveals.  Security
+      Considerations: reporting an unimplemented mode or an undefined
+      leaf type as not established can turn a failure into not
+      established, never into established; why a padding leaf is carried
+      in full.
 
    *  Category coverage (Section 7): the OPTIONAL category_coverage
       member, a producer's signed declaration of one status per category
@@ -1992,9 +2220,27 @@ Change Log
       the Evidence Request categories field; five verifier properties,
       reported separately and never combined; it declares and does not
       prove.  Created the "Evidence Bundle category set" registry, with
-      no initial values.
+      no initial values.  The Abstract mentions the declaration.
 
-   *  composed/v1: added controller_binding to the reserved join bases.
+   *  composed/v1: defined the controller binding record
+      (Section 8.2.4): its members and claim types, its signing input
+      and binding digest, the methods dual_signature/0 and
+      dual_signature_credential/0, revocation statements, and when a
+      binding applies; and the controller_binding join basis with its
+      derivation (Section 8.2.5).  A controller_binding agreement is
+      always redundant, never corroborating (Section 8.2.6).  A verifier
+      that implements only -01 reads a block that carries a
+      controller_binding join as malformed, since -01's join-basis does
+      not list it.  Security and Privacy Considerations: controller
+      bindings.
+
+
+
+
+Mih & Zhang                Expires 2 May 2027                  [Page 40]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    *  Cites Evidence Request -01 and, informatively, Evidence Layer -00.
 
@@ -2007,16 +2253,6 @@ Change Log
       independent; registered countersign/v1 as a second
       countersignature type; an entry with no type is processed as
       countersign/v1 (the legacy form).
-
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 36]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    *  Defined and registered the producer-key/v1 extension kind, which
       declares the producer's key and can only cause a countersignature
@@ -2057,16 +2293,4 @@ Authors' Addresses
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 37]
+Mih & Zhang                Expires 2 May 2027                  [Page 41]

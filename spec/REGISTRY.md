@@ -457,22 +457,27 @@ below). Example, with the producer's reverse-DNS prefix:
 `n/a` when no decision applied. `blocking: true` records that the action would
 not have run had the check failed.
 
-### Provisional: composed/v1 join basis values
+### composed/v1 join basis values
 
-**Held for ratification; not yet registered.** The Evidence Bundle draft
-(`-01`), "Joins", defines the `composed/v1` join basis as a closed list:
-`pre_agreed_identifier` and `shared_artifact_digest`, each with a derivation, and
-`issued_receipt` and `same_interval`, reserved for a later specification. The value
-below is proposed for a later Bundle revision. It is not part of `-01`. A `-01`
-verifier reads a block that carries it as malformed, so a producer MUST NOT put it
-in a `composed/v1` block until a posted Bundle revision lists it. Until then, the
-binding is used beside the composition, under issuer independence
+Defined in the Evidence Bundle draft, "Joins": the `composed/v1` join basis is a
+closed list. `-01` lists `pre_agreed_identifier` and `shared_artifact_digest`, each
+with a derivation, and `issued_receipt` and `same_interval`, reserved for a later
+specification. **`-02` registers `controller_binding`** with its derivation, and
+defines the controller binding record it rests on ("Controller Binding Records").
+A `-01` verifier reads a block that carries it as malformed, so a producer MUST NOT
+put it in a `composed/v1` block until `-02` is posted; from then on it MAY. Until
+then, the binding is used beside the composition, under issuer independence
 (`spec/interop-profile-v0.md` §6.7.4). Conformance vectors:
-`vectors/controller-binding-v0/`.
+`vectors/bundle/composed-controller-binding/` (the join) and
+`vectors/controller-binding-v0/` (the binding record under issuer independence).
 
-| Value | Semantics |
-|---|---|
-| `controller_binding` | `identifier_digest` is the digest of a controller binding record (`spec/controller-binding-v0.md` §4) delivered beside the block, and `pointer` selects each member root record's `key_id`. `identifier_digest` is SHA-256 of the record's signing input (the record without `sigs`). The two members are linked when the delivered record's digest equals `identifier_digest`, the two selected values are its two keys, and it applies to them (§6.2 of that document): it is well formed, both keys signed it under a method the verifier implements, it is in its window at each root record's time, and no received revocation applies. A `controller_binding` join that derives `agree` is redundant, not corroborating. The binding proves control of both keys at its ceremony, never who holds them. |
+| Value | Defined by | Semantics |
+|---|---|---|
+| `pre_agreed_identifier` | `-01` | `pointer` selects a string in each root record; linked when SHA-256 of its UTF-8 octets equals `identifier_digest` on both sides. |
+| `shared_artifact_digest` | `-01` | `pointer` selects a digest string in each root record; linked when the two values are identical. |
+| `issued_receipt` | `-01`, reserved | No derivation: a verifier reports the join `not_derivable`. |
+| `same_interval` | `-01`, reserved | No derivation: a verifier reports the join `not_derivable`. |
+| `controller_binding` | `-02` | `identifier_digest` is the binding digest of a controller binding record delivered beside the block (SHA-256 of the UTF-8 JCS of the record without `sigs`), and `pointer` selects a key identifier in each member root record, for example `key_id`. The two members are linked when a delivered record with that digest applies to the two selected values: it is well formed, both keys signed it under a method the verifier implements, each root record's `timestamp` is in its window, and no received revocation statement applies at or before either. A record that does not apply leaves them `unjoined`; no such record, or none under an implemented method, is `not_derivable`. A `controller_binding` join that derives `agree` is redundant, never corroborating. The binding proves control of both keys at its ceremony, never who holds them. |
 
 ## 15. Evidence Bundle countersignature type
 
