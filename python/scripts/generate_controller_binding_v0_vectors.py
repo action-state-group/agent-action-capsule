@@ -17,7 +17,8 @@ credential. CB §10 lists the cases:
 - bindings of an Ed25519 key to a ``bip340`` (Nostr) key, signed by the Nostr event of CB §4.1: a
   valid one, one read as two Ed25519 keys, one whose event names another digest, one whose event
   is of another kind, one revoked by the Nostr key, one whose nonce is too short and one whose
-  ``sig`` object has a third member. None binds the pair;
+  ``sig`` object has a third member, and two whose validly signed event has a ``created_at`` that
+  is negative or text. None binds the pair;
 - ``key_types`` holding one token (form ``FAIL``) and naming an unlisted token (signatures
   ``NOT_CHECKED``, and a revocation by that key does not apply).
 
@@ -131,11 +132,12 @@ CREATED_AT = 1790812800  # ISSUED, as the signer's clock gives it; nothing check
 NOSTR_NONCES = [shx(f"controller-binding-v0 vectors: nonce {i}".encode())[:32] for i in (1, 2)]
 
 
-def nostr_sig(version: str, signed_octets: bytes, *, kind: int = NOSTR_KIND, digest: str | None = None) -> dict:
+def nostr_sig(version: str, signed_octets: bytes, *, kind: int = NOSTR_KIND, digest: str | None = None,
+              created_at: Any = CREATED_AT) -> dict:
     """CB §4.1: the signing event's BIP-340 signature, with its ``created_at``."""
     content = f"{version}:{digest or shx(signed_octets)}"
-    event = json.dumps([0, PUB[NOSTR], CREATED_AT, kind, [], content], separators=(",", ":"), ensure_ascii=False)
-    return {"created_at": CREATED_AT, "sig": bip340_sign(NOSTR_SECRET, sha(event.encode()))}
+    event = json.dumps([0, PUB[NOSTR], created_at, kind, [], content], separators=(",", ":"), ensure_ascii=False)
+    return {"created_at": created_at, "sig": bip340_sign(NOSTR_SECRET, sha(event.encode()))}
 
 BINDING_PROPS = ["controller_binding_form", "controller_binding_signatures", "controller_binding_window",
                  "controller_binding_revocation", "controller_binding_credential"]
@@ -412,6 +414,18 @@ def cases() -> list[dict]:
                     ["CB §4.1", "CB §6.1"], r, ok(controller_binding_signatures="FAIL"),
                     binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
                     fails=["controller_binding_signatures"]))
+
+    signing_input = jcs({k: v for k, v in binding("same_controller_asserted", an, nonce=n1).items()
+                         if k != "sigs"}).encode()
+    for cid, created_at, what in [("nostr-created-at-negative", -1, "a negative created_at"),
+                                  ("nostr-created-at-text", str(CREATED_AT), "a created_at written as text")]:
+        r = binding("same_controller_asserted", an, nonce=n1)
+        r["sigs"] = [dict(s, sig=nostr_sig("controller-binding/0", signing_input, created_at=created_at))
+                     if s["key_id"] == PUB[NOSTR] else s for s in r["sigs"]]
+        out.append(case(cid, f"The Nostr event, validly signed, has {what}",
+                        ["CB §4.1", "CB §6.1"], r, ok(controller_binding_signatures="FAIL"),
+                        binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
+                        fails=["controller_binding_signatures"]))
 
     r = binding("same_controller_asserted", ab, types=["ed25519"])
     out.append(case("key-types-malformed", "key_types names one type for two keys",

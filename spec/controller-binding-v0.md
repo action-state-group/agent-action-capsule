@@ -422,6 +422,8 @@ These formats are fixed for the vectors only and are not registered:
 | `nostr-revoked` | a revocation by the `bip340` key, signed by the Nostr event, before the halves: revocation `FAIL`, the binding does not apply |
 | `nostr-nonce-short` | a binding with a `bip340` key whose `nonce` is `ceremony-1`: form `FAIL` (§3.1, §9.3) |
 | `nostr-sig-malformed` | the `bip340` key's `sig` object carries a third member beside a valid signature: signatures `FAIL` |
+| `nostr-created-at-negative` | the Nostr event is validly signed over a `created_at` of −1, which §4.1 does not allow: signatures `FAIL` |
+| `nostr-created-at-text` | the same over a `created_at` written as text: signatures `FAIL` |
 | `key-types-malformed` | `key_types` names one type for two keys: form `FAIL` |
 | `key-types-unknown` | `key_types` names a token §3.3 does not list: signatures `NOT_CHECKED`, the binding does not apply; a revocation by that key signed with Ed25519 does not apply either, so revocation is `NOT_CHECKED` |
 

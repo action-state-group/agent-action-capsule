@@ -104,6 +104,8 @@ already. No case reaches it, as in `vectors/coverage-declaration-v0/`.
 | `nostr-revoked` | revoked by the `bip340` key, with a Nostr event, before the halves | `controller_binding_revocation` | `NOT_CHECKED` |
 | `nostr-nonce-short` | a `bip340` binding whose `nonce` is `ceremony-1`, not 32 hex characters | `controller_binding_form` | `NOT_CHECKED` |
 | `nostr-sig-malformed` | the `bip340` key's `sig` object has a third member | `controller_binding_signatures` | `NOT_CHECKED` |
+| `nostr-created-at-negative` | the Nostr event is validly signed over `created_at` −1 | `controller_binding_signatures` | `NOT_CHECKED` |
+| `nostr-created-at-text` | the same over `created_at` written as text | `controller_binding_signatures` | `NOT_CHECKED` |
 | `key-types-malformed` | `key_types` holds one token | `controller_binding_form` | `NOT_CHECKED` |
 | `key-types-unknown` | `key_types` names an unlisted token: signatures `NOT_CHECKED`; a revocation by that key, signed with Ed25519, does not apply | nothing | `NOT_CHECKED` |
 
@@ -124,5 +126,7 @@ registers no evidence that does (IP P-60).
 - A verifier that does not implement a binding method (`controller_binding_signatures`
   `NOT_CHECKED`).
 - Binding records or statements the verifier could not parse.
+- A `created_at` above 2^53 − 1. JSON with such an integer has no JCS form (IP §5.1), so the
+  record cannot be carried as these vectors carry every input.
 - A `bip340` key bound to the key of the other half. Halves are signed with Ed25519, so no pair
   is under a `bip340` key, and every `bip340` case leaves the pair unbound.

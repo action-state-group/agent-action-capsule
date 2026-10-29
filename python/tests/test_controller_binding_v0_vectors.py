@@ -151,9 +151,10 @@ MAX_CREATED_AT = 2**53 - 1
 def nostr_ok(key_hex: str, sig: Any, version: str, signed_octets: bytes, rules: Rules) -> bool:
     """CB §4.1: ``sig`` is ``{created_at, sig}``, the BIP-340 signature over the id of the Nostr
     event (NIP-01) of kind 3374, no tags, and content ``<version>:<SHA-256 of signed_octets>``."""
-    if not (isinstance(sig, dict) and set(sig) == {"created_at", "sig"} and type(sig["created_at"]) is int
-            and 0 <= sig["created_at"] <= MAX_CREATED_AT and isinstance(sig["sig"], str)
+    if not (isinstance(sig, dict) and set(sig) == {"created_at", "sig"} and isinstance(sig["sig"], str)
             and HEX128.fullmatch(sig["sig"])):
+        return False
+    if rules.created_at_form and not (type(sig["created_at"]) is int and 0 <= sig["created_at"] <= MAX_CREATED_AT):
         return False
     content = f"{version}:{sha(signed_octets)}"
     for kind in ([NOSTR_KIND] if rules.event_kind else [NOSTR_KIND, 1]):
@@ -224,6 +225,7 @@ class Rules:
     binding_gives: str = "FAIL"             # §7 item 4
     key_types_read: bool = True             # §3.3: key_types gives each key's type
     event_kind: bool = True                 # §4.1: the signing event is of kind 3374
+    created_at_form: bool = True            # §4.1: created_at is an integer in 0..2^53-1
     bip340_nonce: bool = True               # §3.1, §9.3: a bip340 binding's nonce is 32+ hex
 
 
@@ -386,7 +388,7 @@ def comparable(expected: dict) -> dict:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 23
+    assert DATA["count"] == len(CASES) == 25
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     for case in CASES:
         assert case["pins"]["contract_digest"] == DATA["contract"]["contract_digest"]
@@ -489,6 +491,7 @@ DEFECTS = {
     "key_types ignored: every key is ed25519": replace(SPEC, key_types_read=False),
     "a Nostr event of any kind signs": replace(SPEC, event_kind=False),
     "any nonce with a bip340 key": replace(SPEC, bip340_nonce=False),
+    "any created_at": replace(SPEC, created_at_form=False),
 }
 
 

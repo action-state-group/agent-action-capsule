@@ -31,9 +31,10 @@ packages is listed under each package that shipped it, or has not yet.
   - **The nonce** of a record with a `bip340` key is at least 32 hex characters, drawn from 128
     random bits (§3.1, §9.3): the binding digest does not cover `sigs`, so the nonce alone keeps a
     publicly listed digest from being matched to a guessed pair of keys.
-  - `vectors/controller-binding-v0/`: nine new cases (`valid-nostr-key`, `nostr-key-read-as-ed25519`,
+  - `vectors/controller-binding-v0/`: eleven new cases (`valid-nostr-key`, `nostr-key-read-as-ed25519`,
     `nostr-wrong-digest`, `nostr-other-kind`, `nostr-revoked`, `nostr-nonce-short`,
-    `nostr-sig-malformed`, `key-types-malformed`, `key-types-unknown`), 23 in all. The Python test
+    `nostr-sig-malformed`, `nostr-created-at-negative`, `nostr-created-at-text`,
+    `key-types-malformed`, `key-types-unknown`), 25 in all. The Python test
     checks them with a BIP-340 check written from the BIP and run against five of its own test
     vectors.
 - Spec and vectors, Interop Profile re-pinned to Evidence Request -01: `spec/interop-profile-v0.md`
