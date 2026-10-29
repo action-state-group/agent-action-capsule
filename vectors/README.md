@@ -1,5 +1,7 @@
 # Authoritative conformance vectors
 
+The index of every vector set, with case counts, is [`../VECTORS.md`](../VECTORS.md).
+
 This directory is the language-agnostic, releasable conformance surface for
 the Agent Action Capsule repository. Python, Go, and TypeScript consume these
 same-commit files in CI.

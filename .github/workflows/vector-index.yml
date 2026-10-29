@@ -1,0 +1,21 @@
+name: Vector index
+
+# VECTORS.md lists every vector set with its case count; this fails when a
+# vector directory has no row or a count has drifted.
+on:
+  push:
+    paths: ["vectors/**", "provenance-mode-vectors/**", "VECTORS.md", "scripts/check_vector_index.py", ".github/workflows/vector-index.yml"]
+  pull_request:
+    paths: ["vectors/**", "provenance-mode-vectors/**", "VECTORS.md", "scripts/check_vector_index.py", ".github/workflows/vector-index.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with: { python-version: "3.12" }
+      - run: python3 scripts/check_vector_index.py
