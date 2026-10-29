@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **`acceptance` feature: the interop profile's acceptance records** (`acceptance`;
+  `spec/interop-profile-v0.md` §11.1), a port of the profile's Python verifier.
+  `acceptance::evaluate` reports each candidate's and each receipt's §11.1.7 properties and the
+  §11.1.8 finding, for a transaction or a session, with the execution-record reader supplied by
+  the caller (`read_fixture_execution_record` reads the §11.5 fixture format). `sign`,
+  `record_digest` and `parse` build and read records and receipts. `parse` is a strict decoder of
+  its own (not serde_json's, whose `arbitrary_precision` feature reads the member
+  `$serde_json::private::Number` as a number): it refuses duplicate member names, numbers other
+  than digits from 0 to 2^53 − 1, unpaired surrogates and nesting deeper than 128, so both
+  parties compute the same record digest. `TrustPolicy::from_pin` reads a vectors-form
+  `trust_policy` pin. Statuses and findings are the result; `method` and `detail` texts are
+  informative.
+  Every `acceptance-*` case in `vectors/interop-profile-v0/` gives its expected report, and
+  session-scoped cases frozen from the Python verifier give its report. No new dependency.
+- `status::Status`: the §7.1 statuses, now shared by `cll_material` (still re-exported there as
+  `cll_material::Status`) and `acceptance`, with `Status::as_str`.
+- `time::parse_rfc3339` reads any RFC 3339 time (offsets, lower-case `t`/`z`, a leap second), to
+  the microsecond, as the profile's verifier does; ASCII digits only, year 0001 or later.
 - `refusal::sign_with_detail` signs a refusal with the optional `detail` (profile P-6), carried
   outside the signed members as in the Go signer; `Refusal` gains `detail: Option<String>`, which
   `to_json` and `to_cbor` emit when present. `sign` is unchanged, and the signature is the same with

@@ -61,9 +61,10 @@ CLL_KINDS = ("cll-checkpoint", "cll-inclusion-proof", "cll-consistency-proof")
 
 _HEX64 = re.compile(r"[0-9a-f]{64}")
 _HEX128 = re.compile(r"[0-9a-f]{128}")
-_PROFILE_TIME = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ")
+# RFC 3339 DIGIT is ASCII (%x30-39): without re.ASCII, \d would also match other scripts' digits.
+_PROFILE_TIME = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", re.ASCII)
 _RFC3339 = re.compile(
-    r"(\d{4})-(\d\d)-(\d\d)[Tt](\d\d):(\d\d):(\d\d)(\.\d+)?([Zz]|[+-]\d\d:\d\d)")
+    r"(\d{4})-(\d\d)-(\d\d)[Tt](\d\d):(\d\d):(\d\d)(\.\d+)?([Zz]|[+-]\d\d:\d\d)", re.ASCII)
 _B64URL = re.compile(r"[A-Za-z0-9_-]*")
 _B64ANY = re.compile(r"[A-Za-z0-9+/_-]*={0,2}")
 _MAX_SAFE = 2**53 - 1

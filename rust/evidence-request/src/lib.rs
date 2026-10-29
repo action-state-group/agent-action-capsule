@@ -44,17 +44,26 @@
 //! accept an artifact, use [`envelope::Envelope::verify_for`], and then
 //! `cll_material::check_anchor_inclusion` for its material.
 //!
+//! - `acceptance` (feature `acceptance`): the interop profile's acceptance
+//!   records and receipts (§11.1): sign them, read them as both parties
+//!   must, and evaluate the §11.1.7 properties and the §11.1.8 finding.
+//!   This is the profile's, not the request protocol's; it lives here
+//!   beside the profile's envelope.
+//!
 //! Building an artifact from a store or a log is the responder's business:
 //! a Checkpointed Local Log responder is the `evidencebook` crate.
 //!
 //! Features: `cll` enables `cll_material` and depends on
-//! checkpointed-local-log; `receipt` enables `receipt`. With no features the
+//! checkpointed-local-log; `receipt` enables `receipt`; `acceptance` enables
+//! `acceptance`, with no new dependency. With no features the
 //! crate is the protocol core above, with no checkpointed-local-log
 //! dependency.
 //!
 //! Out of scope: transport, storage, and any store-and-forward or delivery
 //! guarantee.
 
+#[cfg(feature = "acceptance")]
+pub mod acceptance;
 #[cfg(feature = "cll")]
 pub mod cll_material;
 mod det_cbor;
@@ -70,5 +79,8 @@ pub mod registry;
 pub mod request;
 pub mod resolve;
 pub mod retention;
+pub mod status;
+#[cfg(feature = "acceptance")]
+mod strict_json;
 pub mod time;
 mod value;

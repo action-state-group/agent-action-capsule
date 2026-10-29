@@ -17,11 +17,13 @@ refusal, or the requester's own record that nothing arrived.
 | `receipt` (0.0.3) | check RFC 9162 Ed25519 receipt form and authenticate any matching inclusion proof under a pinned service key |
 | `envelope` (0.2.0) | the interop profile's artifact envelope (`evidence-interop/0` §6.2): sign it, encode it in either binding, read a reply as carried, and accept it as a responder's answer to your request |
 | `cll_material` (0.2.0, feature `cll`) | check the Checkpointed Local Log verification material an envelope carries (profile §6.2.1, `anchor_inclusion`) |
+| `acceptance` (unreleased, feature `acceptance`) | the interop profile's acceptance records and receipts (§11.1): sign them, read them as both parties must, and evaluate the §11.1.7 properties and the §11.1.8 finding. The profile's, not the request protocol's; it lives beside the profile's envelope |
 
 **Features.** None is on by default: with no features the crate is the
-protocol core (every module above except `receipt` and `cll_material`) and
-does not depend on checkpointed-local-log. `cll` enables `cll_material` and
-the checkpointed-local-log dependency; `receipt` enables `receipt`.
+protocol core (every module above except `receipt`, `cll_material` and
+`acceptance`) and does not depend on checkpointed-local-log. `cll` enables
+`cll_material` and the checkpointed-local-log dependency; `receipt` enables
+`receipt`; `acceptance` enables `acceptance`, with no new dependency.
 
 ```toml
 evidence-request = "0.2"                                     # protocol core
@@ -72,8 +74,10 @@ from this repository's `vectors/evidence-request/`, checked against that
 directory's `SHA256SUMS` first. The Apache-2.0 `scitt-proof-array/` copies also have their
 checksums validated before any test reads them; they cover proof ordering and
 malformed proof classification. See `tests/vectors/SOURCES.md`. The
-envelope and the CLL material checks run against the interop profile's
-corpus, `vectors/interop-profile-v0/`.
+envelope, the CLL material checks and `acceptance` run against the interop
+profile's corpus, `vectors/interop-profile-v0/`; `acceptance` is also compared
+with session-scoped cases frozen from the profile's Python verifier
+(`tests/vectors/acceptance-session.json`).
 
 ## License
 

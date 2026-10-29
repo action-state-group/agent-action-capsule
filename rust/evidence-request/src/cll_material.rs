@@ -38,15 +38,7 @@ pub const KIND_INCLUSION: &str = "cll-inclusion-proof";
 /// proof (P-31).
 pub const KIND_CONSISTENCY: &str = "cll-consistency-proof";
 
-/// A §7.1 verification status.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Status {
-    Pass,
-    Fail,
-    NotChecked,
-    NotPresent,
-    Inconclusive,
-}
+pub use crate::status::Status;
 
 /// The outcome of the check: a status, the method when it was checked, and
 /// a short reason.
