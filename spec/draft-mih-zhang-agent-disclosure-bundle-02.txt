@@ -91,7 +91,7 @@ Table of Contents
        8.2.4.  Controller Binding Records  . . . . . . . . . . . . .  22
        8.2.5.  Joins . . . . . . . . . . . . . . . . . . . . . . . .  25
        8.2.6.  Observers and Redundancy  . . . . . . . . . . . . . .  27
-       8.2.7.  Composed Digest . . . . . . . . . . . . . . . . . . .  27
+       8.2.7.  Composed Digest . . . . . . . . . . . . . . . . . . .  28
        8.2.8.  Verifying composed/v1 . . . . . . . . . . . . . . . .  29
      8.3.  Provisional Extension Kinds . . . . . . . . . . . . . . .  29
    9.  Bundle Digest and Countersignatures . . . . . . . . . . . . .  30
@@ -1301,15 +1301,17 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       organization, as a credential from a third key states.
 
    A binding record is malformed when it lacks a member, carries a
-   member the CDDL does not allow for its claim, or has a value outside
-   its form; when its two keys are equal or not in ascending order; when
-   not_before is later than issued_at or not_after is not later than it;
-   when delegator is not one of keys; or when its method is one this
-   document defines for another claim type.  A method token this
-   document does not define is well formed.  A binding record or
-   revocation statement that is not a JSON object is malformed.
-   delegated_by states a relation, not a scope: a verifier reads no
-   authority from it.
+   member the CDDL does not list, or has a value outside its form; when
+   it carries delegator and its claim is not delegated_by, or credential
+   and its claim is not same_organization_credentialed, or lacks the
+   member its claim adds; when its two keys are equal or not in
+   ascending order; when not_before is later than issued_at or not_after
+   is not later than it; when nonce is empty; when delegator is not one
+   of keys; or when its method is one this document defines for another
+   claim type.  A method token this document does not define is well
+   formed.  A binding record or revocation statement that is not a JSON
+   object is malformed. delegated_by states a relation, not a scope: a
+   verifier reads no authority from it.
 
    *Signing input and binding digest.* The signing input is the UTF-8
    octets of the JCS [RFC8785] serialization of the record without sigs.
@@ -1336,8 +1338,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    revocation statement (binding-revocation).  A statement _applies_ to
    a binding when it is well formed, binding is the binding digest,
    key_id is one of the binding's keys, and sig is that key's Ed25519
-   signature over the UTF-8 JCS serialization of the statement without
-   sig.  A statement names a binding by digest, so it reaches every copy
 
 
 
@@ -1346,6 +1346,8 @@ Mih & Zhang                Expires 2 May 2027                  [Page 24]
 Internet-Draft             AAC Evidence Bundle              October 2026
 
 
+   signature over the UTF-8 JCS serialization of the statement without
+   sig.  A statement names a binding by digest, so it reaches every copy
    of the record.  From revoked_at on, the binding is not in effect.
    revoked_at is the revoking key holder's statement; a backdated
    revocation returns the joins it covered to unjoined, never further.
@@ -1390,10 +1392,8 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       the linkage basis does not establish that their records are about
       the same thing.
 
-   *  *agree*: both members are artifacts and are linked, and every
-      compare pointer resolves in both root records to values with
-      identical JCS serializations.  A join with no compare and a link
-      is agree.
+
+
 
 
 
@@ -1401,6 +1401,11 @@ Mih & Zhang                Expires 2 May 2027                  [Page 25]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
+
+   *  *agree*: both members are artifacts and are linked, and every
+      compare pointer resolves in both root records to values with
+      identical JCS serializations.  A join with no compare and a link
+      is agree.
 
    *  *mismatch*: both members are artifacts and are linked, and at
       least one compare pointer resolves to different values, or does
@@ -1425,10 +1430,13 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       delivered binding record whose binding digest equals
       identifier_digest applies to the two selected values, with T the
       timestamp of each root record
-      ([I-D.mih-scitt-agent-action-capsule]).  A record with that digest
-      that does not apply leaves the members unjoined.  A verifier that
-      received no record with that digest, or implements the method of
-      none it received, reports the join as not_derivable.  A join on
+      ([I-D.mih-scitt-agent-action-capsule]).  A verifier that received
+      no record with that digest, or only well-formed records with that
+      digest whose method it does not implement, reports the join as
+      not_derivable; so does a join without pointer or
+      identifier_digest.  Any other record with that digest that does
+      not apply (malformed, not signed by both keys, other keys, outside
+      its window, or revoked) leaves the members unjoined.  A join on
       this basis states that the two root records are under keys whose
       holders bound them, as both of them stated it; it says nothing
       about who those holders are.
@@ -1441,14 +1449,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    such a join as not_derivable.  It MUST NOT report the join as a
    derived agreement, and MUST NOT count it as corroboration.
 
-   A join one of whose artifact members is declared missing is also
-   not_derivable.
-
-   On a derived mismatch, a verifier reports each member's value at each
-   differing pointer, and names no winner.
-
-
-
 
 
 
@@ -1457,6 +1457,12 @@ Mih & Zhang                Expires 2 May 2027                  [Page 26]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
+
+   A join one of whose artifact members is declared missing is also
+   not_derivable.
+
+   On a derived mismatch, a verifier reports each member's value at each
+   differing pointer, and names no winner.
 
 8.2.6.  Observers and Redundancy
 
@@ -1498,12 +1504,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    the block.  A verifier lists results per pair.  It MUST NOT combine
    them into a count or score.
 
-8.2.7.  Composed Digest
-
-   The composed digest is the digest a judgment cites as the evidence
-   set it was made from.  It is computed only from the declarations in
-   the block, so it recomputes from the containing Bundle alone.  It
-   stays the same whether or not the member bodies are carried.
 
 
 
@@ -1513,6 +1513,13 @@ Mih & Zhang                Expires 2 May 2027                  [Page 27]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
+
+8.2.7.  Composed Digest
+
+   The composed digest is the digest a judgment cites as the evidence
+   set it was made from.  It is computed only from the declarations in
+   the block, so it recomputes from the containing Bundle alone.  It
+   stays the same whether or not the member bodies are carried.
 
    1.  Build the _digest input_ D, a JSON object with exactly these five
        members:
@@ -1554,14 +1561,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    failed composed/v1 check.  It MUST NOT report the recomputed value as
    the digest of any member, nor as the containing Bundle's digest.
 
-   The containing Bundle's own digest (Section 9) still covers the whole
-   block, bodies included.  A countersignature over the containing
-   Bundle therefore binds the composition and everything carried with
-   it.  The composed digest binds only the evidence set.
 
-   Because the composed digest covers each member's outcome, observer
-   and digest, all observers' roles and custody labels, and every join
-   declaration, changing any of them changes the composed digest.  A
 
 
 
@@ -1570,6 +1570,14 @@ Mih & Zhang                Expires 2 May 2027                  [Page 28]
 Internet-Draft             AAC Evidence Bundle              October 2026
 
 
+   The containing Bundle's own digest (Section 9) still covers the whole
+   block, bodies included.  A countersignature over the containing
+   Bundle therefore binds the composition and everything carried with
+   it.  The composed digest binds only the evidence set.
+
+   Because the composed digest covers each member's outcome, observer
+   and digest, all observers' roles and custody labels, and every join
+   declaration, changing any of them changes the composed digest.  A
    judgment that cites a composed digest therefore also binds the
    declared custody, and with it the redundancy result a verifier
    derives from that custody.
@@ -1589,9 +1597,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    3.  composition closure;
 
    4.  per join: the declared state, the derived state (or
-       not_derivable), and whether they match; for a controller_binding
-       join, the binding digest, the claim type of the record that
-       applies, and the revocation statements it received for it;
+       not_derivable), and whether they match;
 
    5.  per derived agree: redundant (with reason) or corroborating on
        declared custody.
@@ -1611,12 +1617,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    that does not implement them treats them as it treats any extension
    kind it does not implement (Section 8): digest-covered and
    uninterpreted.
-
-
-
-
-
-
 
 
 

@@ -112,25 +112,41 @@ func TestComposedControllerBindingFailuresNeverCorroborate(t *testing.T) {
 
 // A revocation statement that does not apply (another binding, a key that is
 // not bound, a bad signature, a time after both records) leaves the link.
+// Each is signed, so only the condition it names stops it.
 func TestComposedControllerBindingRevocationMustApply(t *testing.T) {
-	cases := bindingCases(t)
-	linked, revoked := cases["controller-binding-linked"], cases["controller-binding-revoked-declared-agree"]
-	statement := revoked.BindingRevocations[0]
-	mutations := map[string]func(s map[string]interface{}){
-		"another binding": func(s map[string]interface{}) { s["binding"] = strings.Repeat("0", 64) },
-		"unbound key":     func(s map[string]interface{}) { s["key_id"] = strings.Repeat("1", 64) },
-		"bad signature":   func(s map[string]interface{}) { s["sig"] = strings.Repeat("0", 128) },
-		"after both":      func(s map[string]interface{}) { s["revoked_at"] = "2026-10-03T00:00:00Z" },
+	linked := bindingCases(t)["controller-binding-linked"]
+	digest := composedBlockOf(linked.Container)["joins"].([]interface{})[0].(map[string]interface{})["identifier_digest"].(string)
+	badSignature := signRevocation(t, "responder-b", digest, "2026-10-02T00:00:00Z")
+	badSignature["sig"] = strings.Repeat("0", 128)
+	statements := map[string]map[string]interface{}{
+		"another binding": signRevocation(t, "responder-b", strings.Repeat("0", 64), "2026-10-02T00:00:00Z"),
+		"unbound key":     signRevocation(t, "runtime observer", digest, "2026-10-02T00:00:00Z"),
+		"bad signature":   badSignature,
+		"after both":      signRevocation(t, "responder-b", digest, "2026-10-03T00:00:00Z"),
 	}
-	for name, mutate := range mutations {
-		s := cloneJSON(t, statement)
-		mutate(s)
+	for name, statement := range statements {
 		composed := verifyBlock(t, linked.Container, Options{
 			ControllerBindings: linked.ControllerBindings,
-			BindingRevocations: []map[string]interface{}{s},
+			BindingRevocations: []map[string]interface{}{statement},
 		})
 		require.Equal(t, "agree", composed.Joins[0].Derived, name)
 		require.Equal(t, "redundant", composed.Corroboration[0].Result, name)
+	}
+}
+
+// A controller_binding join without identifier_digest or pointer names no
+// binding record, so it is not derivable, whatever the verifier received.
+func TestComposedControllerBindingJoinWithoutDigest(t *testing.T) {
+	c := bindingCases(t)["controller-binding-linked"]
+	for _, member := range []string{"identifier_digest", "pointer"} {
+		container := cloneJSON(t, c.Container)
+		block := composedBlockOf(container)
+		join := block["joins"].([]interface{})[0].(map[string]interface{})
+		delete(join, member)
+		join["state"] = "unjoined"
+		reseal(t, block)
+		composed := verifyBlock(t, container, bindingOptions(c))
+		require.Equal(t, "not_derivable", composed.Joins[0].Result, member)
 	}
 }
 
@@ -218,25 +234,28 @@ func TestControllerBindingForm(t *testing.T) {
 	require.True(t, bindingForm(cloneJSON(t, base)))
 	keys := base["keys"].([]interface{})
 	cases := map[string]func(r map[string]interface{}){
-		"keys descending":           func(r map[string]interface{}) { r["keys"] = []interface{}{keys[1], keys[0]} },
-		"keys equal":                func(r map[string]interface{}) { r["keys"] = []interface{}{keys[0], keys[0]} },
-		"one key":                   func(r map[string]interface{}) { r["keys"] = []interface{}{keys[0]} },
-		"key not hex":               func(r map[string]interface{}) { r["keys"] = []interface{}{keys[0], strings.ToUpper(keys[1].(string))} },
-		"not_before after issued":   func(r map[string]interface{}) { r["not_before"] = "2026-10-01T00:00:01Z" },
-		"not_after at issued":       func(r map[string]interface{}) { r["not_after"] = r["issued_at"] },
-		"time with offset":          func(r map[string]interface{}) { r["issued_at"] = "2026-10-01T00:00:00+00:00" },
-		"time with fraction":        func(r map[string]interface{}) { r["not_after"] = "2027-10-01T00:00:00.5Z" },
-		"time not a date":           func(r map[string]interface{}) { r["not_after"] = "2027-02-30T00:00:00Z" },
-		"other version":             func(r map[string]interface{}) { r["binding_version"] = "controller-binding/1" },
-		"other revocation method":   func(r map[string]interface{}) { r["revocation"] = "x-revocation/0" },
-		"empty nonce":               func(r map[string]interface{}) { r["nonce"] = "" },
-		"unknown claim":             func(r map[string]interface{}) { r["claim"] = "x-claim" },
-		"extra member":              func(r map[string]interface{}) { r["x"] = "y" },
-		"missing member":            func(r map[string]interface{}) { delete(r, "nonce") },
-		"delegator on other claim":  func(r map[string]interface{}) { r["delegator"] = keys[0] },
-		"method of another claim":   func(r map[string]interface{}) { r["method"] = "dual_signature_credential/0" },
-		"method token with a space": func(r map[string]interface{}) { r["method"] = "x method" },
-		"sigs not an array":         func(r map[string]interface{}) { r["sigs"] = "x" },
+		"keys descending":          func(r map[string]interface{}) { r["keys"] = []interface{}{keys[1], keys[0]} },
+		"keys equal":               func(r map[string]interface{}) { r["keys"] = []interface{}{keys[0], keys[0]} },
+		"one key":                  func(r map[string]interface{}) { r["keys"] = []interface{}{keys[0]} },
+		"key not hex":              func(r map[string]interface{}) { r["keys"] = []interface{}{keys[0], strings.ToUpper(keys[1].(string))} },
+		"not_before after issued":  func(r map[string]interface{}) { r["not_before"] = "2026-10-01T00:00:01Z" },
+		"not_after at issued":      func(r map[string]interface{}) { r["not_after"] = r["issued_at"] },
+		"time with offset":         func(r map[string]interface{}) { r["issued_at"] = "2026-10-01T00:00:00+00:00" },
+		"time with fraction":       func(r map[string]interface{}) { r["not_after"] = "2027-10-01T00:00:00.5Z" },
+		"time not a date":          func(r map[string]interface{}) { r["not_after"] = "2027-02-30T00:00:00Z" },
+		"other version":            func(r map[string]interface{}) { r["binding_version"] = "controller-binding/1" },
+		"other revocation method":  func(r map[string]interface{}) { r["revocation"] = "x-revocation/0" },
+		"empty nonce":              func(r map[string]interface{}) { r["nonce"] = "" },
+		"unknown claim":            func(r map[string]interface{}) { r["claim"] = "x-claim" },
+		"extra member":             func(r map[string]interface{}) { r["x"] = "y" },
+		"missing member":           func(r map[string]interface{}) { delete(r, "nonce") },
+		"delegator on other claim": func(r map[string]interface{}) { r["delegator"] = keys[0] },
+		"method of another claim":  func(r map[string]interface{}) { r["method"] = "dual_signature_credential/0" },
+		"method not a string":      func(r map[string]interface{}) { r["method"] = 1 },
+		"sig not hex": func(r map[string]interface{}) {
+			r["sigs"].([]interface{})[0].(map[string]interface{})["sig"] = "zz"
+		},
+		"sigs not an array": func(r map[string]interface{}) { r["sigs"] = "x" },
 		"sig entry extra member": func(r map[string]interface{}) {
 			r["sigs"].([]interface{})[0].(map[string]interface{})["x"] = "y"
 		},
@@ -255,6 +274,7 @@ func TestControllerBindingForm(t *testing.T) {
 	}
 	for name, mutate := range map[string]func(r map[string]interface{}){
 		"undefined method token": func(r map[string]interface{}) { r["method"] = "x-example-method/0" },
+		"any method string":      func(r map[string]interface{}) { r["method"] = "x method" },
 		"delegated_by":           func(r map[string]interface{}) { r["claim"], r["delegator"] = "delegated_by", keys[1] },
 		"same_organization_credentialed": func(r map[string]interface{}) {
 			r["claim"], r["method"] = "same_organization_credentialed", "dual_signature_credential/0"
@@ -324,14 +344,4 @@ func TestComposedControllerBindingSignedButMalformed(t *testing.T) {
 	swapped["sigs"].([]interface{})[1].(map[string]interface{})["key_id"] = keys[0]
 	composed = verifyBlock(t, c.Container, Options{ControllerBindings: []map[string]interface{}{swapped}})
 	require.Equal(t, "unjoined", composed.Joins[0].Derived)
-}
-
-// A validly signed revocation of another binding leaves this one linked.
-func TestComposedControllerBindingRevocationOfAnotherBinding(t *testing.T) {
-	c := bindingCases(t)["controller-binding-linked"]
-	composed := verifyBlock(t, c.Container, Options{
-		ControllerBindings: c.ControllerBindings,
-		BindingRevocations: []map[string]interface{}{signRevocation(t, "responder-b", strings.Repeat("0", 64), "2026-10-02T00:00:00Z")},
-	})
-	require.Equal(t, "agree", composed.Joins[0].Derived)
 }

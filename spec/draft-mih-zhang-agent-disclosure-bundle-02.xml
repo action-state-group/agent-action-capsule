@@ -1034,9 +1034,12 @@ as a credential from a third key states.</t>
             </li>
           </ul>
           <t>A binding record is malformed when it lacks a member, carries a member the
-CDDL does not allow for its <tt>claim</tt>, or has a value outside its form; when its
+CDDL does not list, or has a value outside its form; when it carries
+<tt>delegator</tt> and its <tt>claim</tt> is not <tt>delegated_by</tt>, or <tt>credential</tt> and its
+<tt>claim</tt> is not <tt>same_organization_credentialed</tt>, or lacks the member its
+<tt>claim</tt> adds; when its
 two <tt>keys</tt> are equal or not in ascending order; when <tt>not_before</tt> is later
-than <tt>issued_at</tt> or <tt>not_after</tt> is not later than it; when <tt>delegator</tt> is not
+than <tt>issued_at</tt> or <tt>not_after</tt> is not later than it; when <tt>nonce</tt> is empty; when <tt>delegator</tt> is not
 one of <tt>keys</tt>; or when its <tt>method</tt> is one this document defines for another
 claim type. A <tt>method</tt> token this document does not define is well formed. A
 binding record or revocation statement that is not a JSON object is
@@ -1144,10 +1147,12 @@ root record, for example <tt>/key_id</tt>, and <tt>identifier_digest</tt> is a b
 digest (<xref target="composed-binding"/>). The members are linked when a delivered
 binding record whose binding digest equals <tt>identifier_digest</tt> applies to
 the two selected values, with T the <tt>timestamp</tt> of each root record
-(<xref target="I-D.mih-scitt-agent-action-capsule"/>). A record with that digest that
-does not apply leaves the members unjoined. A verifier that received no
-record with that digest, or implements the <tt>method</tt> of none it received,
-reports the join as <tt>not_derivable</tt>. A join on this basis states that the
+(<xref target="I-D.mih-scitt-agent-action-capsule"/>). A verifier that received no
+record with that digest, or only well-formed records with that digest whose
+<tt>method</tt> it does not implement, reports the join as <tt>not_derivable</tt>; so
+does a join without <tt>pointer</tt> or <tt>identifier_digest</tt>. Any other record with
+that digest that does not apply (malformed, not signed by both keys, other
+keys, outside its window, or revoked) leaves the members unjoined. A join on this basis states that the
 two root records are under keys whose holders bound them, as both of them
 stated it; it says nothing about who those holders are.</t>
             </li>
@@ -1284,9 +1289,7 @@ signature state;</t>
             </li>
             <li>
               <t>per join: the declared state, the derived state (or <tt>not_derivable</tt>), and
-whether they match; for a <tt>controller_binding</tt> join, the binding digest,
-the claim type of the record that applies, and the revocation statements
-it received for it;</t>
+whether they match;</t>
             </li>
             <li>
               <t>per derived <tt>agree</tt>: <tt>redundant</tt> (with reason) or corroborating on
@@ -1941,7 +1944,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 1540?>
+    <?line 1543?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>
