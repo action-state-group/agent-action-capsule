@@ -316,10 +316,14 @@ A record is in a period by the time the node's stream committed it.
    anchor is refused `policy_declined`, the same for every requester. A node serving Standard
    Histories therefore checkpoints its stream at the boundaries it answers at. The answer keeps the
    anchor's exact log size (§4.2, §12).
-3. **Non-overlapping.** A counts member lists its periods sorted by `from`, each once.
+3. **Non-overlapping and complete.** A counts member lists its periods sorted by `from`, each
+   once. It lists every closed period from the stream's first period to the anchor and leaves none
+   out: the first is the period that holds the stream's first record, each later one starts where
+   the one before it ends, and the last ends at the anchor. A period in which the node recorded
+   nothing is listed too, its cells suppressed below the floor like any other (§6.2).
 4. **Fixed once produced.** A period's cells are fixed when first produced. Every later answer, at
-   any later anchor, carries the same cells for that period. A record committed later is never
-   counted in an earlier period.
+   any later anchor, carries that period with the same cells; it never drops it. A record
+   committed later is never counted in an earlier period.
 5. **No other interval.** A request for counts over any interval that is not a run of whole closed
    periods, such as a `range` subject [ER §3.1], is refused `policy_declined`, the same for every
    requester. This is IP §6.3's exception: the more specific `no_such_subject` would tell the
@@ -354,10 +358,10 @@ Each is reported in the IP §7.1 vocabulary:
 
 | Property | Check |
 |---|---|
-| `period_alignment` | every period of every counts member is aligned to the policy's epoch, has exactly the policy's length, is closed at the anchor, and starts at or after the end of the period before it; the member names the policy's digest |
+| `period_alignment` | every period of every counts member is aligned to the policy's epoch, has exactly the policy's length, is closed at the anchor, and starts at the end of the period before it; the first starts before the time of the card's first checkpoint that commits a record, and the last ends at the latest period boundary at or before the anchor (§6.1 item 3); the member names the policy's digest |
 | `period_anchor` | the anchor's checkpoint time is a period boundary (§6.1 item 2) |
 | `period_floor` | no published cell is below the floor, every suppressed cell has no value and the reason `below_floor` or `complementary`, and §6.2 item 3 holds |
-| `period_fixed` | over two or more Histories under one definition held by one verifier, every period they share carries the same cells |
+| `period_fixed` | over two or more Histories under one definition held by one verifier, every period of a History is carried, with the same cells, by every History at a later anchor |
 
 `period_fixed` is reported only by a verifier that holds two or more such Histories. A verifier
 that holds one states that it was not checked.
@@ -558,7 +562,8 @@ suppressed, and the other model's cell with it, because the total is published.
 ### 9.2 Two anchors
 
 The same definition answered at the next boundary, midnight on 5 October, carries the same three
-earlier periods byte for byte, and 4 October now closed. The checkpoint at noon on 4 October lies
+earlier periods byte for byte, and 4 October now closed. A later answer that changes or drops an
+earlier period fails `period_fixed`. The checkpoint at noon on 4 October lies
 inside the open day: a Standard History is refused there, and one answered there fails
 `period_anchor`.
 
@@ -581,10 +586,13 @@ different client nonces, and one whose half cites no counterparty half. Each is 
 | `mutant-open-period` | `period_alignment` `FAIL`: the day the anchor falls in is counted |
 | `mutant-answered-at-open-anchor` | `period_anchor` `FAIL`: answered at the checkpoint of noon on 4 October |
 | `mutant-short-period` | `period_alignment` `FAIL` |
+| `mutant-omitted-first-period` | `period_alignment` `FAIL`: 1 October, the stream's first period, left out |
+| `mutant-omitted-period` | `period_alignment` `FAIL`: 2 October left out between 1 and 3 October |
 | `mutant-cell-below-floor` | `period_floor` `FAIL` |
 | `mutant-complementary-not-suppressed` | `period_floor` `FAIL` |
 | `periods-fixed-across-anchors` | `period_fixed` `PASS` |
 | `mutant-period-changed-across-anchors` | `period_fixed` `FAIL` |
+| `mutant-period-dropped-across-anchors` | `period_fixed` `FAIL`: the later History drops 2 October |
 | `refused-range-interval` | signed refusal `policy_declined` |
 | `refused-range-interval-other-requester` | the same token, for a second requester |
 | `refused-open-period-anchor` | signed refusal `policy_declined`: asked at the checkpoint of noon on 4 October |
@@ -655,9 +663,9 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
   serves this profile's Standard level to serve that card under the same key. A verifier sees a
   breach only when it holds both answers.
 - **Self-reported counts.** Every count is the node's statement over its own stream. The History
-  artifact is not itself logged or inclusion-checked: a changed closed period is caught only by
-  `period_fixed`, by a verifier that holds two answers. The population check is `NOT_CHECKED` for
-  counts (§4.2).
+  artifact is not itself logged or inclusion-checked: a changed or dropped closed period is caught
+  only by `period_fixed`, by a verifier that holds two answers. The population check is
+  `NOT_CHECKED` for counts (§4.2).
 - **What one key proves.** Every envelope verifies under the node key. That shows the key signed
   the answer, not who operates it, and not that the node is independent of any peer.
 - **Peer halves.** A peer half shows that the peer's key signed its record. It does not show the

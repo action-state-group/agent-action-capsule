@@ -7,8 +7,9 @@ are built here from one node's stream, minted by this script:
 
 - the Standard level: a served-only History, the same History at a later anchor, and the negatives
   of §5, §6 and §7 (a count that mixes units, a count labelled stronger than its evidence, an
-  overlapping, a duplicated, an open and a short period, a cell below the floor, a missing
-  complementary suppression, a closed period changed between two anchors);
+  overlapping, a duplicated, an open and a short period, a first and a middle period left out, a
+  cell below the floor, a missing complementary suppression, a closed period changed or dropped
+  between two anchors);
 - the Detailed level: one History whose exchanges are peer-confirmed, one-sided, signed twice by
   the node key, under two client nonces and uncited, each labelled as its evidence allows, and the
   negatives that label one stronger (§7);
@@ -476,6 +477,23 @@ def cases() -> list[dict]:
         standard(counts=short), props(STANDARD_PROPS, period_alignment="FAIL"), standard_coverage(),
         ["period_alignment"]))
 
+    no_first = period_counts()
+    del no_first["periods"][0]
+    out.append(history_case(
+        "mutant-omitted-first-period", "The stream's first closed period left out",
+        ["§6.1", "§6.3", "§9.1"], "constructed: the served-only History without 1 October, the period of the "
+        "stream's first record (the card's first checkpoint is 1 October 12:00, log size 10)",
+        standard(counts=no_first), props(STANDARD_PROPS, period_alignment="FAIL"), standard_coverage(),
+        ["period_alignment"]))
+
+    gap = period_counts()
+    del gap["periods"][1]
+    out.append(history_case(
+        "mutant-omitted-period", "A closed period left out between two listed ones",
+        ["§6.1", "§6.3", "§9.1"], "constructed: the served-only History without 2 October",
+        standard(counts=gap), props(STANDARD_PROPS, period_alignment="FAIL"), standard_coverage(),
+        ["period_alignment"]))
+
     floor = period_counts()
     floor["periods"][1]["cells"] = [cell(9, {"model": "model-a"}), cell(3, {"model": "model-b"}), cell(12, None)]
     out.append(history_case(
@@ -500,6 +518,10 @@ def cases() -> list[dict]:
     changed[2]["model-a"] += 1
     moved = standard(counts=period_counts(changed), last=5, anchor=ANCHOR_N1, nonce="requester-1/standard-later",
                      at="2026-10-05T00:00:05Z")
+    dropping = period_counts([*SERVED, SERVED_4])
+    del dropping["periods"][1]
+    dropped = standard(counts=dropping, last=5, anchor=ANCHOR_N1, nonce="requester-1/standard-later",
+                       at="2026-10-05T00:00:05Z")
 
     def pair_case(cid: str, title: str, source: str, histories: list[dict], status: str, fails: list[str]) -> dict:
         return {"id": cid, "title": title, "cites": ["§6.1", "§6.3", "§9.2"], "source": source, "kind": "pair",
@@ -516,6 +538,10 @@ def cases() -> list[dict]:
         "mutant-period-changed-across-anchors", "A closed period's count changed at the later anchor",
         "constructed: the later History with 3 October's model-a count raised by one", [first, moved], "FAIL",
         ["period_fixed"]))
+    out.append(pair_case(
+        "mutant-period-dropped-across-anchors", "A closed period answered at the first anchor, dropped at the later one",
+        "constructed: the later History without 2 October, which the first History carries", [first, dropped],
+        "FAIL", ["period_fixed"]))
 
     # --- Refusals (§6.1 item 5, §8.4) -----------------------------------------------------------
     d = standard_definition()

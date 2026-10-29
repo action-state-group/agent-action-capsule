@@ -285,22 +285,30 @@ def labels_ok(case: dict, env: dict, derive_fn: Derive) -> bool:
 
 
 def periods_ok(d: dict, env: dict) -> bool:
-    """§6.1: periods aligned to the epoch, the policy's length, sorted, not overlapping, closed at the anchor."""
+    """§6.1: periods aligned to the epoch, the policy's length, sorted, closed at the anchor, and
+    complete: no gap, from one holding the stream's first record to the last boundary at the anchor."""
     p = d["period_policy"]
     pc = env["artifact"]["period_counts"]
     if pc["policy"] != digest(p):
         return False
     epoch, length = when(p["epoch"]), timedelta(seconds=p["length_s"])
-    anchor_time = when(env["artifact"]["history_card"]["history"][-1]["checkpoint"]["timestamp"])
+    history = env["artifact"]["history_card"]["history"]
+    anchor_time = when(history[-1]["checkpoint"]["timestamp"])
     prev_to = None
     for period in pc["periods"]:
         start, end = when(period["from"]), when(period["to"])
         if (start - epoch) % length or end - start != length or end > anchor_time:
             return False
-        if prev_to is not None and start < prev_to:
+        if prev_to is not None and start != prev_to:
             return False
         prev_to = end
-    return True
+    # §6.1 item 3: the stream's first record is committed before the first checkpoint that commits a
+    # record, so the first period starts before that checkpoint; the last ends at the last boundary.
+    first = next((when(h["checkpoint"]["timestamp"]) for h in history if h["checkpoint"]["log_size"]), None)
+    if first is None:
+        return not pc["periods"]
+    return (bool(pc["periods"]) and when(pc["periods"][0]["from"]) < first
+            and anchor_time - when(pc["periods"][-1]["to"]) < length)
 
 
 def anchor_ok(d: dict, env: dict) -> bool:
@@ -389,14 +397,22 @@ def run_history(case: dict, evaluate: Evaluator = history_properties, derive_fn:
     return {"exchange": result, "history_properties": hprops, "coverage": cov, "shows": shows, "accepted": accepted}
 
 
+def answered_at(env: dict) -> datetime:
+    return when(env["artifact"]["history_card"]["history"][-1]["checkpoint"]["timestamp"])
+
+
 def period_fixed(envs: list[dict]) -> str:
-    """§6.1: a period answered at two anchors carries the same cells at both."""
-    seen: dict[tuple[str, str], str] = {}
-    for env in envs:
-        for p in env["artifact"]["period_counts"]["periods"]:
-            key, value = (p["from"], p["to"]), jcs(p["cells"]).decode()
-            if seen.setdefault(key, value) != value:
-                return "FAIL"
+    """§6.1 item 4: every period a History carries is carried, with the same cells, by every History
+    at a later anchor."""
+    def periods(env: dict) -> dict[tuple[str, str], str]:
+        return {(p["from"], p["to"]): jcs(p["cells"]).decode() for p in env["artifact"]["period_counts"]["periods"]}
+
+    for earlier in envs:
+        for later in envs:
+            if later is not earlier and answered_at(later) >= answered_at(earlier):
+                have = periods(later)
+                if any(have.get(k) != v for k, v in periods(earlier).items()):
+                    return "FAIL"
     return "PASS"
 
 
@@ -427,8 +443,8 @@ def failing(result: dict) -> set:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 23
-    assert (len(HISTORY_CASES), len(PAIR_CASES), len(REFUSAL_CASES)) == (17, 2, 4)
+    assert DATA["count"] == len(CASES) == 26
+    assert (len(HISTORY_CASES), len(PAIR_CASES), len(REFUSAL_CASES)) == (19, 3, 4)
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     assert digest(DATA["period_policy"]["document"]) == DATA["period_policy"]["digest"]
     assert set(DATA["units"]) == UNITS and DATA["labels"] == list(RANK)
@@ -547,6 +563,22 @@ def _overlap_allowed(case: dict, d: dict, env: dict) -> dict:
     return props
 
 
+def _gaps_allowed(case: dict, d: dict, env: dict) -> dict:
+    """Checks order and overlap, never that the periods run from the first to the anchor without a gap."""
+    props = history_properties(case, d, env)
+    if "period_alignment" in props:
+        p = d["period_policy"]
+        epoch, length = when(p["epoch"]), timedelta(seconds=p["length_s"])
+        prev_to, ok = None, True
+        for x in env["artifact"]["period_counts"]["periods"]:
+            start, end = when(x["from"]), when(x["to"])
+            ok &= not (start - epoch) % length and end - start == length and end <= answered_at(env)
+            ok &= prev_to is None or start >= prev_to
+            prev_to = end
+        props["period_alignment"] = "PASS" if ok else "FAIL"
+    return props
+
+
 DEFECTIVE: dict[str, Evaluator] = {
     "units not checked": _without("units"),
     "labels not checked": _without("labels"),
@@ -555,6 +587,7 @@ DEFECTIVE: dict[str, Evaluator] = {
     "floor not checked": _without("period_floor"),
     "floor without complementary suppression": _no_complement,
     "periods checked alone": _overlap_allowed,
+    "gaps allowed": _gaps_allowed,
 }
 
 
@@ -594,8 +627,20 @@ def test_every_defective_evaluator_is_caught():
         assert any(run_history(c, derive_fn=fn) != run_history(c) for c in HISTORY_CASES), name
 
 
+def _shared_periods_only(envs: list[dict]) -> str:
+    """Compares only the periods two Histories share, so a later answer may drop one."""
+    seen: dict[tuple[str, str], str] = {}
+    for env in envs:
+        for p in env["artifact"]["period_counts"]["periods"]:
+            key, value = (p["from"], p["to"]), jcs(p["cells"]).decode()
+            if seen.setdefault(key, value) != value:
+                return "FAIL"
+    return "PASS"
+
+
 def test_period_fixed_is_caught():
-    assert any(run_pair(c, lambda envs: "PASS") != run_pair(c) for c in PAIR_CASES)
+    for fixed in (lambda envs: "PASS", _shared_periods_only):
+        assert any(run_pair(c, fixed) != run_pair(c) for c in PAIR_CASES)
 
 
 # ---------------------------------------------------------------------------
