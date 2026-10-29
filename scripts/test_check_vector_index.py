@@ -1,7 +1,5 @@
 import importlib.util
 import os
-import subprocess
-import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SPEC = importlib.util.spec_from_file_location("check_vector_index", os.path.join(HERE, "check_vector_index.py"))
