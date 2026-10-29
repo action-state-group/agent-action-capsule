@@ -21,6 +21,7 @@
     "deal_reconcile_v0": "deal-reconcile-v0/manifest.json",
     "personal_history_outcome_v0": "personal-history-outcome-v0/manifest.json",
     "standard_history_v0": "standard-history-v0/manifest.json",
+    "inference_service_history_v0": "inference-service-history-v0/manifest.json",
     "evidence_layer_padding": "evidence-layer/padding/manifest.json",
     "bundle_strict": "bundle/strict/manifest.json",
     "bundle_fragment": "bundle/fragment/manifest.json",

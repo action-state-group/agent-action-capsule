@@ -104,6 +104,11 @@ same-commit files in CI.
   its §6 (a percentage, a count without its denominator, a counted shop purchase, a window not in
   the policy, among others); `python/scripts/generate_standard_history_v0_vectors.py` regenerates
   them.
+- `inference-service-history-v0/`: the Inference-Service History Profile
+  `spec/inference-service-history-profile-v0.md`: a served-only Standard History, the period
+  negatives, two anchors over the same closed periods, peer confirmation and labels at the
+  Detailed level, and the interval and recipient refusals. Constructed;
+  `python/scripts/generate_inference_service_history_v0_vectors.py` regenerates them.
 - `adapters/x402/`: the x402 adapter declaration `spec/adapters/x402-v0.md`: a positive and a
   native-check-fails case for an `exact`/`eip3009` payment, with the wrapped objects' octets, the
   relying party's policy and recorded lookup, and the expected `native_check` reports. Constructed,
