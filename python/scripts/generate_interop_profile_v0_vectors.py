@@ -1124,7 +1124,7 @@ def lifecycle_cases() -> list[dict]:
 # Cases: carriage over the native stream, A2A and MCP (§11.4, §11.4.8)
 # ---------------------------------------------------------------------------
 
-MANIFEST = {"bindings": ["a2a", "evidence-request/1", "mcp"], "drafts": ["draft-mih-agent-evidence-request-00"],
+MANIFEST = {"bindings": ["a2a", "evidence-request/1", "mcp"], "drafts": ["draft-mih-agent-evidence-request-01"],
             "profiles": [PROFILE], "subject_forms": ["record"]}
 
 

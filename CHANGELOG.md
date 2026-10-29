@@ -16,6 +16,20 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.10.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Spec and vectors, Interop Profile re-pinned to Evidence Request -01: `spec/interop-profile-v0.md`
+  now pins `draft-mih-agent-evidence-request-01` as posted (SHA-256 of the `.txt`) instead of -00,
+  still under `evidence-interop/0` (P-64). A responder under the profile ignores ER -01's
+  `categories`, so the artifact stays a function of (subject, resolved anchor, derivation). The
+  text no longer says the profile overrides ER on GET, credits the envelope's request digest,
+  issuance time and signature to ER -01 §4.1 items 4–6, and cites ER -01 §10.1–§10.3 for the A2A
+  and MCP bindings, which match §11.4. The MCP `evidence_request` schema's `request` pattern
+  now admits the empty string (`*`, not `+`), which ER -01 §10.3 refuses `request_malformed`;
+  the Python and Go carriage checks already did. **Vector change for every implementation:** the manifest
+  `drafts` value in `vectors/interop-profile-v0/` is now `draft-mih-agent-evidence-request-01`
+  (four occurrences, in the `carriage-*` cases); no other byte of the vectors and no case count
+  changes. The ER conformance vectors (`vectors/evidence-request/`) and the ER
+  implementations stay on -00. (#453)
+
 - Interop profile verifier (Python): times take ASCII digits only, as RFC 3339's DIGIT is, so a
   time written in another script's digits is no longer read (`_common.parse_time`,
   `is_profile_time`); and a §11.5 fixture execution record that JCS cannot represent, for example
