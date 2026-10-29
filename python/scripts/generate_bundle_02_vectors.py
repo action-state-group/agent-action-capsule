@@ -381,9 +381,13 @@ def mode_cases() -> list[dict]:
     other_log["completeness_certificate"]["log_id"] = "log:other"
     cases.append(case(
         "neg-producer-selected-certificate-log-id", "The producer-selected certificate names another log than the "
-        "checkpoint.", other_log,
-        expect(other_log, "INVALID", interval_coverage=claim("withheld", "selection_not_checkable"),
-               per_record_membership=claim("fail", "completeness_certificate_invalid"))))
+        "checkpoint: the certificate's log_id is a stated copy of the signed one, so the checkpoint claim fails and "
+        "anchors nothing (as vectors/bundle/strict).", other_log,
+        {**expect(other_log, "INVALID",
+                  checkpoint=claim("fail", "checkpoint_field_mismatch:log_id"),
+                  interval_coverage=claim("withheld", "selection_not_checkable", "checkpoint_unverified"),
+                  per_record_membership=claim("withheld", "checkpoint_unverified")),
+         "checkpoint_authenticated": False, "signer_matches_checkpoint": None}))
     return cases
 
 

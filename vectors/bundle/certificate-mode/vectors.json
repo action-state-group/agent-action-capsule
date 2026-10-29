@@ -3733,7 +3733,7 @@
     },
     {
       "id": "neg-producer-selected-certificate-log-id",
-      "description": "The producer-selected certificate names another log than the checkpoint.",
+      "description": "The producer-selected certificate names another log than the checkpoint: the certificate's log_id is a stated copy of the signed one, so the checkpoint claim fails and anchors nothing (as vectors/bundle/strict).",
       "options": {
         "require_signature": false,
         "witness_directory": false
@@ -4165,21 +4165,24 @@
           },
           {
             "name": "checkpoint",
-            "status": "pass",
-            "findings": []
+            "status": "fail",
+            "findings": [
+              "checkpoint_field_mismatch:log_id"
+            ]
           },
           {
             "name": "interval_coverage",
             "status": "withheld",
             "findings": [
-              "selection_not_checkable"
+              "selection_not_checkable",
+              "checkpoint_unverified"
             ]
           },
           {
             "name": "per_record_membership",
-            "status": "fail",
+            "status": "withheld",
             "findings": [
-              "completeness_certificate_invalid"
+              "checkpoint_unverified"
             ]
           }
         ],
@@ -4248,8 +4251,8 @@
             "seq": 35
           }
         ],
-        "checkpoint_authenticated": true,
-        "signer_matches_checkpoint": false
+        "checkpoint_authenticated": false,
+        "signer_matches_checkpoint": null
       }
     }
   ]
