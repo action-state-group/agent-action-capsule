@@ -26,18 +26,23 @@ describes how the sets are generated and checksummed.
 | `vectors/capsule/` | `draft-mih-scitt-agent-action-capsule-05` (format 4, Class-1) | record, verify | 119 |
 | `provenance-mode-vectors/` | `draft-mih-scitt-agent-action-capsule-05` (provenance mode) | record, verify | 27 |
 | `vectors/producer-envelope/` | `draft-mih-scitt-agent-action-capsule-04#producer-envelope` | record, verify | 47 |
-| `vectors/disclosure-envelope/` | `draft-mih-scitt-agent-action-capsule-disclosure-envelope-00` | record, verify | 9 |
-| `vectors/cross-language/` | Class-1 and Evidence Bundle inputs shared by every implementation | record, pack, verify | 5 |
-| `vectors/bundle/vectors.json` | `draft-mih-scitt-agent-action-capsule-evidence-bundle-00` | pack, verify | 14 |
+| `vectors/disclosure-envelope/` | `draft-mih-agent-disclosure-envelope-00` | record, verify | 9 |
+| `vectors/cross-language/` | Class-1 and Evidence Bundle inputs shared by every implementation | record, pack, verify | 72 |
+| `vectors/bundle/vectors.json` | `draft-mih-zhang-agent-disclosure-bundle-00` | pack, verify | 14 |
 | `vectors/bundle/composed/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`composed/v1`) | pack, verify | 6 |
 | `vectors/bundle/producer-key/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`producer-key/v1`) | pack, verify | 8 |
-| `vectors/bundle/report-single-record.json` | Evidence Bundle report of one record | report | 3 |
-| `vectors/bundle/strict/` | Evidence Bundle strict verification | verify | 73 |
+| `vectors/bundle/report-single-record.json` | `draft-mih-zhang-agent-disclosure-bundle-00` (report of one record) | report | 3 |
+| `vectors/bundle/strict/` | Evidence Bundle strict verification | verify | 82 |
 | `vectors/bundle/fragment/` | `draft-mih-zhang-agent-disclosure-bundle` (Fragment Codec) | pack, report | 7 |
 | `vectors/minimum-necessary/` | `spec/REGISTRY.md` §10, §14, §16 (provisional entries) | pack, verify | 15 |
 | `vectors/judgment/` | `x-judgment-v1` extension (provisional) | record, verify | 5 |
 | `vectors/evidence-layer/padding/` | `draft-mih-agent-evidence-layer-00` (What a Checkpoint Reveals) | record, verify | 17 |
 | `vectors/registry-conformance/` | `spec/REGISTRY.md` | verify | 26 |
+
+Counts that are not a set's own case list: `vectors/cross-language/` is the 54
+Ed25519 and 14 COSE cases of `cll-ed25519-vectors.json` plus one case for each
+of its four other input files; `vectors/bundle/strict/` is its 73 `cases` plus
+its 9 `record_signatures`.
 
 ## Request, respond and the interop profile
 

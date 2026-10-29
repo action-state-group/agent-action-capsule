@@ -44,8 +44,35 @@ def glob_count(pattern, *, dirs=False, exclude=None):
 
 
 def request_count():
-    files = jload("vectors/evidence-request/manifest.json")["files"]
-    return sum(f["count"] for f in files if f.get("count") is not None)
+    # Each file's own case list; a file without one (the single imported
+    # refusal) is one case when the manifest says so.
+    total = 0
+    for f in jload("vectors/evidence-request/manifest.json")["files"]:
+        doc = jload("vectors/evidence-request/" + f["path"])
+        if isinstance(doc, dict) and isinstance(doc.get("cases"), list):
+            total += len(doc["cases"])
+        elif f.get("count"):
+            total += 1
+    return total
+
+
+def cross_language_count():
+    # The Ed25519 and COSE cases of the strict-Ed25519 file, plus one case per
+    # other input file.
+    ed = jload("vectors/cross-language/cll-ed25519-vectors.json")
+    others = glob_count("vectors/cross-language/*.json") - 1
+    return len(ed["ed25519_cases"]) + len(ed["cose_cases"]) + others
+
+
+def strict_count():
+    # The checkpoint, bundle and witness cases plus the producer signature cases.
+    doc = jload("vectors/bundle/strict/vectors.json")
+    return len(doc["cases"]) + len(doc["record_signatures"])
+
+
+def viewer_count():
+    core = jload("vectors/viewer-core-text/core-text.json")
+    return len(core["banner"]) + len(core["check_lists"]["lines"])
 
 
 def profile_count():
@@ -59,12 +86,12 @@ COUNTERS = {
     "provenance-mode-vectors/": lambda: cases("provenance-mode-vectors/vectors.json"),
     "vectors/producer-envelope/": lambda: cases("vectors/producer-envelope/vectors.json"),
     "vectors/disclosure-envelope/": lambda: cases("vectors/disclosure-envelope/vectors.json"),
-    "vectors/cross-language/": lambda: glob_count("vectors/cross-language/*.json"),
+    "vectors/cross-language/": cross_language_count,
     "vectors/bundle/vectors.json": lambda: cases("vectors/bundle/vectors.json"),
     "vectors/bundle/composed/": lambda: cases("vectors/bundle/composed/vectors.json"),
     "vectors/bundle/producer-key/": lambda: cases("vectors/bundle/producer-key/vectors.json"),
     "vectors/bundle/report-single-record.json": lambda: cases("vectors/bundle/report-single-record.json"),
-    "vectors/bundle/strict/": lambda: cases("vectors/bundle/strict/vectors.json"),
+    "vectors/bundle/strict/": strict_count,
     "vectors/bundle/fragment/": lambda: cases("vectors/bundle/fragment/vectors.json"),
     "vectors/interop/": lambda: glob_count("vectors/interop/*/[pn]*-*", dirs=True),
     "vectors/evidence-request/": request_count,
@@ -88,11 +115,11 @@ COUNTERS = {
     "vectors/registry-conformance/": lambda: cases("vectors/registry-conformance/vectors.json"),
     "vectors/adapters/x402/": lambda: cases("vectors/adapters/x402/cases.json"),
     "vectors/adapters/ucp/": lambda: cases("vectors/adapters/ucp/cases.json"),
-    "vectors/viewer-core-text/": lambda: jload("vectors/viewer-core-text/core-text.json")["count"],
+    "vectors/viewer-core-text/": viewer_count,
 }
 
 
-def index_rows():
+def index_rows(errors):
     """Return {path: stated count} for the first section's tables (in-repo sets)."""
     rows = {}
     text = open(INDEX, encoding="utf-8").read()
@@ -105,7 +132,13 @@ def index_rows():
             continue
         m = re.fullmatch(r"`([^`]+)`", cells[0])
         last = cells[-1].replace(",", "")
-        if m and last.isdigit():
+        if not m or last == "none":
+            continue
+        if not last.isdigit():
+            errors.append(f"VECTORS.md row {m.group(1)} has no integer case count: {cells[-1]!r}")
+        elif m.group(1) in rows:
+            errors.append(f"VECTORS.md lists {m.group(1)} twice")
+        else:
             rows[m.group(1)] = int(last)
     return rows
 
@@ -125,7 +158,8 @@ def required_paths():
         else:
             need.append(f"vectors/{name}/")
     # `bundle` also carries top-level case files of its own.
-    need += ["vectors/bundle/vectors.json", "vectors/bundle/report-single-record.json"]
+    for path in sorted(glob.glob(os.path.join(vroot, "bundle", "*.json"))):
+        need.append("vectors/bundle/" + os.path.basename(path))
     return need
 
 
@@ -136,7 +170,7 @@ def main():
             print(f"{p}\t{n}")
         return 0
     errors = []
-    rows = index_rows()
+    rows = index_rows(errors)
     for p in required_paths():
         if p not in rows:
             errors.append(f"VECTORS.md has no row for {p}")
