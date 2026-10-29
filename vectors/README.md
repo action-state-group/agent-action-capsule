@@ -20,6 +20,10 @@ same-commit files in CI.
   `verify-number-findings.json` pins the number findings every verifier
   reports for one record (at most 64 per code, paths cut to 256 characters);
   `python/scripts/generate_verify_number_findings_fixture.py` regenerates it.
+  `cll-ed25519-vectors.json` is a verbatim copy of checkpointed-local-log's
+  `checkpoint-conformance-vectors/ed25519-vectors.json`, the strict Ed25519
+  cases the witness receipt tests of every
+  implementation run.
 - `interop/`: established composition and run-under interoperability suites.
 - `evidence-request/`: draft-mih-agent-evidence-request-00 cases (request map,
   subject forms, request digest, signed refusal, outcomes, caller invariance,

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Security, strict witness receipts (feature `strict`): an EdDSA witness
+  receipt now verifies only under strict Ed25519. scitt-cose-receipt 0.1.1
+  verifies with dalek's `verify`, which accepts a small-order key, so a
+  receipt under a directory row pinning such a key could be forged by
+  anyone. The key A and the signature's R must now be canonical and not of
+  small order, and S less than L, before that check; the strict vector
+  `neg-witness-cll-small-order-key` pins it (#439).
 - **Breaking**, strict witness receipts: `WitnessReceiptResult` gains `key_id`,
   `registration_time` and `registration_time_reason`, and `ReceiptCheck`
   gains `registration_time` and `registration_time_reason`, so a struct

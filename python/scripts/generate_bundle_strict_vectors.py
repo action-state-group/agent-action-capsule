@@ -330,6 +330,23 @@ def resigned_receipt(leaf: str, protected_overrides: dict[int, Any]) -> dict:
     return {**genuine, "receipt_b64": b64(forged)}
 
 
+# The identity point: a small-order Ed25519 public key.
+SMALL_ORDER_KEY = bytes([1]) + bytes(31)
+
+
+def small_order_receipt(leaf: str, ts_url: str) -> dict:
+    """A ``cll`` receipt for ``leaf`` whose signature is R = the identity and
+    S = 0. Under the identity key (``SMALL_ORDER_KEY``) the cofactorless
+    equation holds for every message, so anyone can make this receipt without
+    a private key; only a strict Ed25519 check refuses it."""
+    import cbor2
+
+    genuine = cll_receipt(leaf, ts_url=ts_url)
+    outer = cbor2.loads(base64.b64decode(genuine["receipt_b64"]))
+    forged = cbor2.dumps(cbor2.CBORTag(18, [outer.value[0], outer.value[1], None, SMALL_ORDER_KEY + bytes(32)]))
+    return {**genuine, "receipt_b64": b64(forged)}
+
+
 def unprotected_iat_receipt(leaf: str, iat: int) -> dict:
     """A genuine ``cll`` receipt with no protected ``iat``, given CWT claims
     carrying ``iat`` in its unprotected header, which no signature covers: it
@@ -407,6 +424,8 @@ DIRECTORY = {
         {"name": "Keyless witness", "endpoint": "https://keyless-witness.example", "since": "2026-01-01", "key_ids": []},
         {"name": "Off-curve witness", "endpoint": "https://off-curve-witness.example", "since": "2026-01-01",
          "key_ids": ["ff" * 32]},
+        {"name": "Small-order witness", "endpoint": "https://small-order-witness.example", "since": "2026-01-01",
+         "key_ids": [SMALL_ORDER_KEY.hex()]},
         {"name": "Null binding witness", "endpoint": "https://null-binding-witness.example", "since": "2026-01-01",
          "binding": None, "key_ids": [raw_public(CLL_WITNESS).hex()]},
         {"name": "P-256 witness", "endpoint": "https://p256-witness.example", "since": "2026-01-01",
@@ -918,6 +937,14 @@ def build_cases() -> list[dict]:
                  witnessed(cll_receipt(leaf, ts_url=off_curve)),
                  {"status": "fail", "findings": [f"witness_receipt_invalid:{off_curve}"],
                   "receipts": [receipt_expect(off_curve, "cll", "fail")]}, verdict="INVALID")
+    small_order = "https://small-order-witness.example"
+    witness_case("neg-witness-cll-small-order-key",
+                 "The row's key is the identity point, a small-order Ed25519 key, and the receipt's signature is "
+                 "R = the identity, S = 0: it satisfies the cofactorless equation for any root, and strict Ed25519 "
+                 "refuses it.",
+                 witnessed(small_order_receipt(leaf, small_order)),
+                 {"status": "fail", "findings": [f"witness_receipt_invalid:{small_order}"],
+                  "receipts": [receipt_expect(small_order, "cll", "fail")]}, verdict="INVALID")
     two_key = "https://two-key-witness.example"
     witness_case("pos-witness-cll-second-key", "The row's first key does not verify the receipt; its second does.",
                  witnessed(cll_receipt(leaf, ts_url=two_key)),

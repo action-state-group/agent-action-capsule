@@ -248,3 +248,47 @@ def test_registration_time_edges(protected, expected):
 
     receipt = cbor2.dumps(cbor2.CBORTag(18, [cbor2.dumps(protected), {}, None, b""]))
     assert _registration_time(receipt) == expected
+
+
+def test_strict_ed25519_matches_the_cll_vectors():
+    """checkpointed-local-log's shared strict Ed25519 cases
+    (``vectors/cross-language/cll-ed25519-vectors.json``, a verbatim copy):
+    the pre-check followed by ``cryptography``'s verify, as the receipt check
+    runs them, accepts exactly the valid ones."""
+    import json
+    from pathlib import Path
+
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    from agent_action_capsule.witness import _strict_ed25519
+
+    path = Path(__file__).resolve().parents[2] / "vectors" / "cross-language" / "cll-ed25519-vectors.json"
+    cases = json.loads(path.read_text())["ed25519_cases"]
+    assert len(cases) == 54
+    for case in cases:
+        key, signature = bytes.fromhex(case["public_key_hex"]), bytes.fromhex(case["signature_hex"])
+        verifies = _strict_ed25519(key, signature)
+        if verifies:
+            try:
+                Ed25519PublicKey.from_public_bytes(key).verify(signature, bytes.fromhex(case["message_hex"]))
+            except Exception:  # noqa: BLE001 -- any refusal is "does not verify"
+                verifies = False
+        assert verifies is case["valid"], case["name"]
+
+
+def test_a_small_order_key_receipt_is_refused():
+    """A receipt "signed" by the identity key (R the identity, S = 0)
+    satisfies the cofactorless equation for any root: ``scitt_cose`` alone
+    accepts it, and the strict pre-check refuses it."""
+    import base64
+
+    from scitt_cose import verify_receipt as scitt_verify_receipt
+
+    from agent_action_capsule.witness import _ed25519_spki_pem, _receipt_shape_error
+
+    g = _generator()
+    leaf = "ab" * 32
+    receipt = base64.b64decode(g.small_order_receipt(leaf, "https://small-order-witness.example")["receipt_b64"])
+    pem = _ed25519_spki_pem(g.SMALL_ORDER_KEY)
+    assert scitt_verify_receipt(receipt, leaf_entry_hex=leaf, log_public_key_pem=pem).ok
+    assert "strict Ed25519" in _receipt_shape_error(receipt, pem)

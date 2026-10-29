@@ -419,7 +419,7 @@ func verifySignature(alg int64, key crypto.PublicKey, message, signature []byte)
 	switch alg {
 	case algEdDSA:
 		public, isEd25519 := key.(ed25519.PublicKey)
-		return isEd25519 && len(public) == ed25519.PublicKeySize && ed25519.Verify(public, message, signature)
+		return isEd25519 && verifyEd25519Strict(public, message, signature)
 	case algES256:
 		public, isECDSA := key.(*ecdsa.PublicKey)
 		if !isECDSA || len(signature) != 64 {

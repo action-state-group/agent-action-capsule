@@ -2,9 +2,9 @@
   "format_version": "1",
   "files": {
     "vectors.json": {
-      "sha256": "759c69c029097dc54112c29bc3366679a7a58535507f3cbe7952df9631023b46"
+      "sha256": "c9e909862f3d810b4e89f7d2f703076a36f6081d1be4130642208fbe868063c7"
     }
   },
-  "case_count": 72,
+  "case_count": 73,
   "record_signature_count": 9
 }

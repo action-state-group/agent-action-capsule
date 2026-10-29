@@ -1,7 +1,9 @@
 import {
   createHash,
+  createPublicKey,
   generateKeyPairSync,
   sign,
+  verify,
   type KeyObject,
 } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -11,6 +13,7 @@ import { Ed25519UnavailableError, verifyBundle } from "../src/bundle.js";
 import {
   HDR_GRADE,
   spkiKeyType,
+  strictEd25519,
   verifyCoseReceipt,
 } from "../src/cose-receipt.js";
 import {
@@ -33,6 +36,7 @@ import {
   type SignedCheckpointFields,
 } from "../src/witness.js";
 
+const ED25519_SPKI_PREFIX = hexToBytes("302a300506032b6570032100");
 const spki = (key: KeyObject): Uint8Array =>
   new Uint8Array(key.export({ format: "der", type: "spki" }));
 const leaf = new TextEncoder().encode("leaf entry");
@@ -131,6 +135,83 @@ describe("COSE Receipt", () => {
       ok: false,
       reason: expect.stringContaining("attached"),
     });
+  });
+
+  it("pre-checks Ed25519 as checkpointed-local-log's strict vectors do", () => {
+    // vectors/cross-language/cll-ed25519-vectors.json, a verbatim copy. The
+    // pre-check followed by OpenSSL's verify accepts exactly the valid cases.
+    const cases = (
+      JSON.parse(
+        readFileSync(
+          resolve(
+            import.meta.dirname,
+            "..",
+            "..",
+            "vectors",
+            "cross-language",
+            "cll-ed25519-vectors.json",
+          ),
+          "utf8",
+        ),
+      ) as {
+        ed25519_cases: {
+          name: string;
+          public_key_hex: string;
+          message_hex: string;
+          signature_hex: string;
+          valid: boolean;
+        }[];
+      }
+    ).ed25519_cases;
+    expect(cases).toHaveLength(54);
+    for (const c of cases) {
+      const key = hexToBytes(c.public_key_hex);
+      const signature = hexToBytes(c.signature_hex);
+      let verifies = false;
+      try {
+        verifies =
+          strictEd25519(key, signature) &&
+          verify(
+            null,
+            hexToBytes(c.message_hex),
+            createPublicKey({
+              key: Buffer.from(concat(ED25519_SPKI_PREFIX, key)),
+              format: "der",
+              type: "spki",
+            }),
+            signature,
+          );
+      } catch {
+        verifies = false;
+      }
+      expect(verifies, c.name).toBe(c.valid);
+    }
+  });
+
+  it("refuses a receipt forged under a small-order key", async () => {
+    // The identity key with R the identity and S = 0 satisfies the
+    // cofactorless equation for any root.
+    const identity = new Uint8Array(32);
+    identity[0] = 1;
+    const protectedBytes = hexToBytes("a2012719018b01"); // {1: -8, 395: 1}
+    const forged = concat(
+      Uint8Array.of(0xd2, 0x84, 0x40 + protectedBytes.length),
+      protectedBytes,
+      unprotected,
+      hexToBytes("f6"),
+      Uint8Array.of(0x58, 64),
+      identity,
+      new Uint8Array(32),
+    );
+    expect(
+      (
+        await verifyCoseReceipt(
+          forged,
+          leaf,
+          concat(ED25519_SPKI_PREFIX, identity),
+        )
+      ).ok,
+    ).toBe(false);
   });
 
   it("lets the alg fix the key type, and fails a key WebCrypto cannot import", async () => {

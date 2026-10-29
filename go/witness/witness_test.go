@@ -352,6 +352,7 @@ type receiptSpec struct {
 	attached  bool
 	extraBlob []byte
 	key       crypto.Signer
+	signature []byte // used as is, instead of a signature by key
 }
 
 func buildReceipt(t *testing.T, leaf []byte, spec receiptSpec) []byte {
@@ -375,7 +376,7 @@ func buildReceipt(t *testing.T, leaf []byte, spec receiptSpec) []byte {
 		proofs = append(proofs, spec.extraBlob)
 	}
 	tbs := sigStructure(protectedBytes, root)
-	var signature []byte
+	signature := spec.signature
 	switch key := spec.key.(type) {
 	case ed25519.PrivateKey:
 		signature = ed25519.Sign(key, tbs)
