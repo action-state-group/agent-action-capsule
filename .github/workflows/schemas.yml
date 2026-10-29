@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Schema fixture checks: every committed example under vectors/evidence-result/
-# and schemas/examples/ validates (or is rejected) exactly as its checker
+# Schema fixture checks: every committed example under vectors/evidence-result/,
+# vectors/evidence-dataset/ and schemas/examples/ validates (or is rejected) exactly as its checker
 # documents, each rejection proven load-bearing by that checker's mutant
 # pass. Until 2026-09-28 no job ran these checkers, so the Result v0 link
 # walk (close_state recomputed from the cited Close's inbound links) was
@@ -14,6 +14,7 @@ on:
     paths:
       - "schemas/**"
       - "vectors/evidence-result/**"
+      - "vectors/evidence-dataset/**"
       - "vectors/judge/**"
       - "vectors/judgment/**"
       - "python/agent_action_capsule/canonical.py"
@@ -22,6 +23,7 @@ on:
     paths:
       - "schemas/**"
       - "vectors/evidence-result/**"
+      - "vectors/evidence-dataset/**"
       - "vectors/judge/**"
       - "vectors/judgment/**"
       - "python/agent_action_capsule/canonical.py"
@@ -56,6 +58,13 @@ jobs:
 
       - name: Evidence Plan IR v0 fixtures
         run: python3 schemas/check_evidence_plan_ir_examples.py
+
+      - name: Verify committed dataset vector checksums
+        working-directory: vectors/evidence-dataset
+        run: sha256sum --check SHA256SUMS
+
+      - name: Dataset plan and dataset vectors (Plan IR v0 sections 5.1 and 6.2)
+        run: python3 schemas/check_evidence_dataset_examples.py
 
       - name: Judge record family fixtures
         run: python3 schemas/check_judge_record_examples.py

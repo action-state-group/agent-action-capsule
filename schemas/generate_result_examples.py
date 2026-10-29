@@ -81,6 +81,7 @@ sys.path.insert(0, str(REPO_ROOT / "python"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from agent_action_capsule.canonical import json_digest  # noqa: E402
+from generate_dataset_examples import DATASET, PLAN  # noqa: E402
 from _result_types import (  # noqa: E402
     AggregateDoc,
     ClaimDoc,
@@ -1017,6 +1018,25 @@ neg_coverage_declaration_unknown_kind = _mutated(pos_example_org_coverage_declar
 neg_coverage_declaration_unknown_kind["aggregate"]["coverage_declaration"]["kind"] = "complete"
 
 
+# ---------------------------------------------------------------------------
+# Spec section 7.3: plan_ref and dataset_ref -- the claims positive naming the
+# dataset plan and dataset of vectors/evidence-dataset/pos-window-and-exclusion,
+# a Result carrying one of the two, and one inlining the plan.
+# ---------------------------------------------------------------------------
+pos_example_org_dataset_result = _mutated(pos_example_org_claims_result)
+pos_example_org_dataset_result["plan_ref"] = {"digest_alg": "SHA-256", "digest": json_digest(PLAN)}
+pos_example_org_dataset_result["dataset_ref"] = {"digest_alg": "SHA-256", "digest": json_digest(DATASET)}
+
+# --- neg-dataset-ref-without-plan-ref -- one member without the other -------
+#     (schema: EvidenceResult's dependentRequired).
+neg_dataset_ref_without_plan_ref = _mutated(pos_example_org_dataset_result)
+del neg_dataset_ref_without_plan_ref["plan_ref"]
+
+# --- neg-plan-ref-inline-plan -- the plan itself where its digest goes ------
+#     (schema: DigestRef is closed; section 7.3 carries digests only).
+neg_plan_ref_inline_plan = _mutated(pos_example_org_dataset_result)
+neg_plan_ref_inline_plan["plan_ref"] = PLAN
+
 # --- pos-example-org-recorded-absence-result -- a story claim about a -------
 #     recorded absence (spec section 2) cites the absence record itself by
 #     digest. The record is interop-profile-v0 section 10's absence-record
@@ -1361,6 +1381,9 @@ def main() -> int:
     write("neg-digest-trailing-newline", neg_digest_trailing_newline)
     write("neg-applies-from-trailing-newline", neg_applies_from_trailing_newline)
     write("neg-contract-ref-ecma-whitespace", neg_contract_ref_ecma_whitespace)
+    write("pos-example-org-dataset-result", pos_example_org_dataset_result)
+    write("neg-dataset-ref-without-plan-ref", neg_dataset_ref_without_plan_ref)
+    write("neg-plan-ref-inline-plan", neg_plan_ref_inline_plan)
     for name, records in CLOSE_RECORDS.items():
         write(f"{name}.records", records)
     return 0

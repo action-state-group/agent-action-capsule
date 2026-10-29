@@ -225,6 +225,18 @@ mechanical half):
          U+FEFF (ECMA-262 whitespace; not in Python's `\s`).
      The converse case, a contract_ref holding U+001C (in Python's `\s`,
      not ECMA-262's), MUST validate, and plain `re` MUST refuse it.
+  16. The plan and dataset digests (spec section 7.3): one positive,
+     pos-example-org-dataset-result (the claims positive with plan_ref and
+     dataset_ref naming vectors/evidence-dataset/pos-window-and-exclusion),
+     MUST validate, and with both removed MUST equal the claims positive
+     byte for byte. Two schema negatives MUST fail, each with a
+     strip-the-rule mutant:
+       - neg-dataset-ref-without-plan-ref: dataset_ref alone
+         (EvidenceResult's dependentRequired).
+       - neg-plan-ref-inline-plan: the plan itself in place of its digest
+         (plan_ref's closed DigestRef).
+     Whether the dataset is what the plan selects is
+     check_evidence_dataset_examples.py's.
 
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
@@ -497,6 +509,7 @@ POSITIVES = [
     "pos-example-org-applicability-in-force-result",
     "pos-example-org-reconcile-later-result",
     "pos-example-org-requirements-covered-result",
+    "pos-example-org-dataset-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -534,6 +547,8 @@ NEGATIVES = [
     "neg-digest-trailing-newline",
     "neg-applies-from-trailing-newline",
     "neg-contract-ref-ecma-whitespace",
+    "neg-dataset-ref-without-plan-ref",
+    "neg-plan-ref-inline-plan",
 ]
 
 # Section 15: the schema negatives Python's `re` would accept.
@@ -1282,6 +1297,28 @@ def main() -> int:
             mutant,
             "CoverageKind's closed enum",
         )
+    # Spec section 7.3: plan_ref and dataset_ref come together, each a closed
+    # digest ref, and are additive -- removing both from their positive gives
+    # the claims positive byte for byte.
+    if negative_errors_by_name["neg-dataset-ref-without-plan-ref"]:
+        mutant = copy.deepcopy(schema)
+        del mutant["$defs"]["EvidenceResult"]["dependentRequired"]
+        _mutant_check("neg-dataset-ref-without-plan-ref", mutant, "EvidenceResult's dependentRequired")
+    if negative_errors_by_name["neg-plan-ref-inline-plan"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["EvidenceResult"]["properties"]["plan_ref"] = {"type": "object"}
+        _mutant_check("neg-plan-ref-inline-plan", mutant, "plan_ref's DigestRef shape")
+    referenced = _load("pos-example-org-dataset-result")
+    del referenced["plan_ref"], referenced["dataset_ref"]
+    if json.dumps(referenced, indent=2, sort_keys=True) + "\n" != (VECTORS_DIR / f"{POSITIVE_RESULT}.json").read_text(encoding="utf-8"):
+        findings.append(
+            "DATASET-REFS-NOT-ISOLATED pos-example-org-dataset-result: with plan_ref and "
+            f"dataset_ref removed it is not {POSITIVE_RESULT}.json"
+        )
+    else:
+        print("OK  ADDITIVE      pos-example-org-dataset-result.json minus plan_ref and "
+              f"dataset_ref == {POSITIVE_RESULT}.json")
+
     declared = _load("pos-example-org-coverage-declaration-result")
     del declared["aggregate"]["coverage_declaration"]
     if json.dumps(declared, indent=2, sort_keys=True) + "\n" != (VECTORS_DIR / f"{POSITIVE_RESULT}.json").read_text(encoding="utf-8"):

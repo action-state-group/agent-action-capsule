@@ -76,3 +76,16 @@ the records' links, never trusted. Formats are annotations, as in the Python
 reference: `generated_at` is held to RFC 3339 by the applicability rule when a
 claim is dated. Schema patterns are read as ECMA-262, JSON Schema's dialect:
 `\s` is Unicode whitespace and `$` matches only at the end of the text.
+
+## Dataset plans and datasets
+
+`evidenceplan.Run(plan, records)` runs a dataset plan (spec
+`evidence-plan-ir-v0.md` section 5.1) over a book's committed record headers
+and returns its rows in log order. `evidenceplan.Build` wraps them in the
+dataset document of section 6.2, whose JSON digest is a Result's
+`dataset_ref`. `evidenceplan.CheckDataset(plan, dataset, records)` refuses a
+dataset that is not what the plan selects, with an `*evidenceplan.Error` whose
+`Reason` is the one the Python reference (`../schemas/evidence_dataset.py`)
+gives. Both run `../vectors/evidence-dataset/`. Values come from
+`evidenceplan.Decode`; the schema is an embedded byte copy of
+`../schemas/evidence-plan-ir-v0.json`.
