@@ -61,13 +61,18 @@ def text(obj: dict) -> str:
     return json.dumps(obj, separators=(",", ":"), sort_keys=True)
 
 
-def records(accepted_at: str) -> tuple[list[str], str]:
-    common = {"profile": PROFILE, "contract_ref": "C@1", "contract_digest": json_value_digest(CONTRACT),
-              "transaction": TRANSACTION, "proposer": pub(P), "acceptor": pub(Q), "session": SESSION}
-    proposed = signed({**common, "state": "proposed", "issued_at": "2026-10-12T00:00:00Z"}, P)
-    accepted = signed({**common, "state": "accepted", "issued_at": accepted_at,
-                       "proposal_digest": json_value_digest(proposed)}, Q)
-    return [text(proposed), text(accepted)], json_value_digest(accepted)
+COMMON = {"profile": PROFILE, "contract_ref": "C@1", "contract_digest": json_value_digest(CONTRACT),
+          "transaction": TRANSACTION, "proposer": pub(P), "acceptor": pub(Q), "session": SESSION}
+
+
+def answer(proposed: dict, at: str) -> dict:
+    return signed({**COMMON, "state": "accepted", "issued_at": at, "proposal_digest": json_value_digest(proposed)}, Q)
+
+
+def records(accepted_at: str) -> tuple[list[str], str, dict]:
+    proposed = signed({**COMMON, "state": "proposed", "issued_at": "2026-10-12T00:00:00Z"}, P)
+    accepted = answer(proposed, accepted_at)
+    return [text(proposed), text(accepted)], json_value_digest(accepted), proposed
 
 
 def execution(at: str, cites: str | None) -> str:
@@ -80,16 +85,26 @@ def receipt(digest: str, at: str, k: Ed25519PrivateKey) -> str:
 
 
 def case(case_id: str, description: str, *, accepted_at="2026-10-12T00:05:00Z", served="2026-10-12T00:10:00Z",
-         cite=True, receipt_at: str | None = "2026-10-12T00:06:00Z", receipt_key=P) -> dict:
-    recs, digest = records(accepted_at)
+         cite=True, receipt_at: str | None = "2026-10-12T00:06:00Z", receipt_key=P, form_ii=0,
+         second_answer: str | None = None, duplicate=False, other_proposal=False) -> dict:
+    recs, digest, proposed = records(accepted_at)
+    if second_answer:  # a second, different answer to the same proposal: equivocation (§11.1.1)
+        recs.append(text(answer(proposed, second_answer)))
+    if duplicate:  # a second copy of the accepted record, byte for byte
+        recs.append(recs[1])
+    if other_proposal:  # a second, separate proposal and its verified answer
+        other = signed({**COMMON, "state": "proposed", "issued_at": "2026-10-12T00:01:00Z"}, P)
+        recs += [text(other), text(answer(other, "2026-10-12T00:02:00Z"))]
     receipts = [receipt(digest, receipt_at, receipt_key)] if receipt_at else []
     parties = {pub(P): "N_P", pub(Q): "N_Q", pub(Q2): "N_Q"}
     pin = {"parties": parties, "require_action_time_from_other_party": False}
     inputs = {"transaction": TRANSACTION, "proposer": pub(P), "acceptor": pub(Q), "acceptance_records": recs,
-              "execution_records": [execution(served, digest if cite else None)], "acceptance_receipts": receipts}
+              "execution_records": [execution(served, digest if cite else None)], "acceptance_receipts": receipts,
+              "form_ii_objects": form_ii}
     res = evaluate_acceptance(CONTRACT, TRANSACTION, pub(P), pub(Q), [r.encode() for r in recs],
                               [e.encode() for e in inputs["execution_records"]], [r.encode() for r in receipts],
-                              TrustPolicy.from_dict(pin), EVALUATION, session=True)
+                              TrustPolicy.from_dict(pin), EVALUATION, session=True,
+                              form_ii_objects=[{}] * form_ii)
     expected = {
         "finding": res.finding,
         "candidates": [{"record_digest": c.record_digest, "properties": {p.property: p.status for p in c.properties}}
@@ -110,6 +125,11 @@ CASES = [
     case("session-K", "the receipt is signed by the provider's second key", receipt_key=Q2),
     case("session-U", "the served half does not cite the acceptance", cite=False),
     case("session-W", "the served half is outside the session window", served="2026-10-12T01:00:01Z"),
+    case("session-E", "two different verified answers to one proposal", second_answer="2026-10-12T00:05:30Z"),
+    case("session-C", "two copies of one accepted record are one record", duplicate=True),
+    case("session-E2", "equivocation on one proposal makes the finding not_accepted, whatever a separate verified answer gives",
+         second_answer="2026-10-12T00:05:30Z", other_proposal=True),
+    case("session-F2", "no receipt, one form (ii) object held: rule 6", receipt_at=None, form_ii=1),
 ]
 
 OUT.parent.mkdir(parents=True, exist_ok=True)

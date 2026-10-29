@@ -78,7 +78,8 @@ pub fn parse_utc(s: &str) -> Option<UtcTime> {
 }
 
 /// Any RFC 3339 date-time (`T` or `t`, `Z`, `z` or a numeric offset, an
-/// optional fraction, a leap second naming the instant after second 59), as
+/// optional fraction, a leap second naming the instant after second 59;
+/// ASCII digits only, year 0001 or later), as
 /// the interop profile reads a time it holds (§5.2, §11.1.5). The fraction
 /// is kept to the microsecond, as the profile's Python verifier keeps it, so
 /// both order the same times the same way.
@@ -131,7 +132,7 @@ pub fn parse_rfc3339(s: &str) -> Option<UtcTime> {
             }
         }
     };
-    if !(1..=12).contains(&month) || hour > 23 || minute > 59 || second > 60 {
+    if year == 0 || !(1..=12).contains(&month) || hour > 23 || minute > 59 || second > 60 {
         return None;
     }
     let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
@@ -207,6 +208,13 @@ mod tests {
         assert_eq!(parse_rfc3339("2026-10-12T00:00:61Z"), None);
         assert_eq!(parse_rfc3339("2026-10-12T00:00:00."), None);
         assert_eq!(parse_rfc3339("2026-02-30T00:00:00Z"), None);
+        assert_eq!(parse_rfc3339("0000-01-01T00:00:00Z"), None, "year 0");
+        assert!(parse_rfc3339("0001-01-01T00:00:00Z").is_some());
+        assert_eq!(
+            parse_rfc3339("\u{662}026-10-12T00:00:00Z"),
+            None,
+            "ASCII digits only"
+        );
     }
 
     use super::*;

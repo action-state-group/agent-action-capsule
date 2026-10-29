@@ -80,5 +80,7 @@ pub mod request;
 pub mod resolve;
 pub mod retention;
 pub mod status;
+#[cfg(feature = "acceptance")]
+mod strict_json;
 pub mod time;
 mod value;

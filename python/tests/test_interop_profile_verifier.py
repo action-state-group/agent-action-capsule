@@ -1155,3 +1155,19 @@ def test_n1_contract_number_outside_the_domain_gets_no_digest():
     with pytest.raises(ValueError):
         evaluate_acceptance(dup, {"scheme": "example", "id": "T"}, "00" * 32, "11" * 32, [], [], [], TrustPolicy(),
                             "2026-10-12T00:00:00Z")
+
+
+def test_times_take_ascii_digits_only():
+    from agent_action_capsule.interop_profile._common import is_profile_time, parse_time
+    assert is_profile_time("2026-10-12T00:00:00Z")
+    assert parse_time("2026-10-12T00:00:00Z") is not None
+    arabic_indic = "٢٠٢٦-10-12T00:00:00Z"  # 2026 in Arabic-Indic digits
+    assert not is_profile_time(arabic_indic)
+    assert parse_time(arabic_indic) is None
+
+
+def test_a_fixture_execution_record_jcs_cannot_represent_is_unreadable():
+    from agent_action_capsule.interop_profile.acceptance import read_fixture_execution_record
+    lone = b'{"action_at":"2026-10-12T00:10:00Z","issuer":"' + b"00" * 32 + b'","links":[],"note":"\\ud800",' \
+           b'"sig":"' + b"00" * 64 + b'","transaction":{"id":"T","scheme":"example"}}'
+    assert read_fixture_execution_record(lone) is None

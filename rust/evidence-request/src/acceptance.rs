@@ -21,7 +21,17 @@
 //!
 //! How an execution record is read is the caller's: [`evaluate`] takes a
 //! reader, and [`read_fixture_execution_record`] reads the format §11.5
-//! fixes for the conformance vectors only.
+//! fixes for the conformance vectors only. Choosing which execution records
+//! belong to the exchange evaluated is the caller's too: pass only that
+//! exchange's.
+//!
+//! The statuses, findings and claim fields are the result; each report's
+//! `method` and `detail` texts are informative and are not compared with
+//! another implementation's.
+//!
+//! One known difference from the Python verifier: this crate refuses a
+//! record nested deeper than 128 levels, which the Python verifier reads up
+//! to its recursion limit. The profile states no bound.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -122,7 +132,53 @@ pub struct TrustPolicy {
     pub require_action_time_from_other_party: bool,
 }
 
+/// Why a `trust_policy` pin could not be read.
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+pub enum PinError {
+    #[error("parties is not a map of key to party name")]
+    Parties,
+    #[error("key validity window is not RFC 3339")]
+    KeyValidity,
+    #[error("require_action_time_from_other_party is not a boolean")]
+    RequireOtherParty,
+}
+
 impl TrustPolicy {
+    /// The part of a `trust_policy` pin (the conformance vectors' form,
+    /// §11.5) this check reads: `parties`, the optional `key_validity`
+    /// (`{key: {not_before?, not_after?}}`) and
+    /// `require_action_time_from_other_party`. Absent members are empty or
+    /// false; other members are ignored.
+    pub fn from_pin(pin: &Value) -> Result<TrustPolicy, PinError> {
+        let mut policy = TrustPolicy::default();
+        if let Some(parties) = pin.get("parties") {
+            for (key, party) in parties.as_object().ok_or(PinError::Parties)? {
+                let party = party.as_str().ok_or(PinError::Parties)?;
+                policy.parties.insert(key.clone(), party.to_string());
+            }
+        }
+        if let Some(windows) = pin.get("key_validity") {
+            for (key, window) in windows.as_object().ok_or(PinError::KeyValidity)? {
+                let at = |name: &str| match window.get(name) {
+                    None => Ok(None),
+                    Some(t) => t
+                        .as_str()
+                        .and_then(parse_rfc3339)
+                        .map(Some)
+                        .ok_or(PinError::KeyValidity),
+                };
+                policy
+                    .key_validity
+                    .insert(key.clone(), (at("not_before")?, at("not_after")?));
+            }
+        }
+        if let Some(flag) = pin.get("require_action_time_from_other_party") {
+            policy.require_action_time_from_other_party =
+                flag.as_bool().ok_or(PinError::RequireOtherParty)?;
+        }
+        Ok(policy)
+    }
+
     fn valid_at(&self, key: &str, at: &str) -> Status {
         let Some((not_before, not_after)) = self.key_validity.get(key) else {
             return Status::Pass;
@@ -275,6 +331,10 @@ pub enum AcceptanceError {
     ContractDigest,
     #[error("two requirements share one id; the contract version is not evaluated (§11.3.7)")]
     DuplicateRequirement,
+    #[error(
+        "the contract's id or version is not text, or its requirements are not an array (§11.3.7)"
+    )]
+    ContractForm,
 }
 
 /// What [`evaluate`] is given.
@@ -323,12 +383,13 @@ pub fn evaluate(
             .iter()
             .map(|q| value_digest(q.get("id").unwrap_or(&Value::Null)).unwrap_or_default())
             .collect(),
-        _ => Vec::new(),
+        None => Vec::new(),
+        Some(_) => return Err(AcceptanceError::ContractForm),
     };
     if ids.iter().collect::<BTreeSet<_>>().len() != ids.len() {
         return Err(AcceptanceError::DuplicateRequirement);
     }
-    let contract_ref = contract_ref_of(inputs.contract);
+    let contract_ref = contract_ref_of(inputs.contract).ok_or(AcceptanceError::ContractForm)?;
     let implemented = inputs.profiles_implemented.contains(&PROFILE_ID);
     let trust = inputs.trust;
     let session = inputs.session;
@@ -1054,97 +1115,12 @@ pub fn record_digest(record: &Value) -> Result<String, JcsError> {
 }
 
 /// Read JSON octets in the profile's data model (§5.2): `None` when they
-/// are not JSON, hold a duplicate member name at any depth, or hold a number
-/// that is not an integer from 0 to 2^53 − 1. Both parties read records
+/// are not JSON, hold a duplicate member name or an unpaired surrogate
+/// escape, nest deeper than 128, or hold a number that is not an integer
+/// from 0 to 2^53 − 1 written as digits alone. Both parties read records
 /// this way, so the same octets give the same record digest.
 pub fn parse(octets: &[u8]) -> Option<Value> {
-    use serde::de::{DeserializeSeed, Deserializer as _, MapAccess, SeqAccess, Visitor};
-    struct V;
-    impl<'de> Visitor<'de> for V {
-        type Value = Value;
-        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-            f.write_str("a value in the profile's data model")
-        }
-        fn visit_unit<E>(self) -> Result<Value, E> {
-            Ok(Value::Null)
-        }
-        fn visit_bool<E>(self, b: bool) -> Result<Value, E> {
-            Ok(Value::Bool(b))
-        }
-        fn visit_u64<E: serde::de::Error>(self, n: u64) -> Result<Value, E> {
-            if n > MAX_INTEGER {
-                return Err(E::custom("an integer above 2^53 - 1"));
-            }
-            Ok(Value::from(n))
-        }
-        fn visit_i64<E: serde::de::Error>(self, n: i64) -> Result<Value, E> {
-            u64::try_from(n)
-                .map_err(|_| E::custom("a negative integer"))
-                .and_then(|u| self.visit_u64(u))
-        }
-        fn visit_f64<E: serde::de::Error>(self, _: f64) -> Result<Value, E> {
-            Err(E::custom("a number that is not an integer"))
-        }
-        fn visit_str<E>(self, s: &str) -> Result<Value, E> {
-            Ok(Value::from(s))
-        }
-        fn visit_string<E>(self, s: String) -> Result<Value, E> {
-            Ok(Value::String(s))
-        }
-        fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Value, A::Error> {
-            let mut out = Vec::new();
-            while let Some(item) = seq.next_element_seed(Seed)? {
-                out.push(item);
-            }
-            Ok(Value::Array(out))
-        }
-        fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Value, A::Error> {
-            let mut out = Map::new();
-            while let Some(key) = map.next_key::<String>()? {
-                // With serde_json's `arbitrary_precision` on anywhere in the
-                // build, a number reaches the visitor as a one-member map
-                // holding its source text; read that text by the same rule.
-                if out.is_empty() && key == ARBITRARY_PRECISION_TOKEN {
-                    let digits: String = map.next_value()?;
-                    if map.next_key::<String>()?.is_some() {
-                        return Err(serde::de::Error::custom("a malformed number"));
-                    }
-                    return profile_integer(&digits)
-                        .map(Value::from)
-                        .ok_or_else(|| serde::de::Error::custom("a number outside 0 to 2^53 - 1"));
-                }
-                let value = map.next_value_seed(Seed)?;
-                if out.insert(key, value).is_some() {
-                    return Err(serde::de::Error::custom("a duplicate member name"));
-                }
-            }
-            Ok(Value::Object(out))
-        }
-    }
-    struct Seed;
-    impl<'de> DeserializeSeed<'de> for Seed {
-        type Value = Value;
-        fn deserialize<D: serde::Deserializer<'de>>(self, d: D) -> Result<Value, D::Error> {
-            d.deserialize_any(V)
-        }
-    }
-    let mut de = serde_json::Deserializer::from_slice(octets);
-    let value = de.deserialize_any(V).ok()?;
-    de.end().ok()?;
-    Some(value)
-}
-
-/// The member name serde_json gives a number's source text under its
-/// `arbitrary_precision` feature.
-const ARBITRARY_PRECISION_TOKEN: &str = "$serde_json::private::Number";
-
-/// A number's source text as a profile integer: digits only, at most
-/// 2^53 − 1.
-fn profile_integer(text: &str) -> Option<u64> {
-    if text.is_empty() || !text.bytes().all(|b| b.is_ascii_digit()) {
-        return None;
-    }
-    text.parse::<u64>().ok().filter(|n| *n <= MAX_INTEGER)
+    crate::strict_json::decode(octets)
 }
 
 fn parse_object(octets: &[u8]) -> Option<(String, Map<String, Value>)> {
@@ -1174,14 +1150,11 @@ fn numbers_in_domain(value: &Value, depth: usize) -> bool {
     }
 }
 
-/// `id`, `@`, `version`, built from the contract held (§11.3.7); never split.
-fn contract_ref_of(contract: &Value) -> String {
-    let part = |k: &str| match contract.get(k) {
-        Some(Value::String(s)) => s.clone(),
-        Some(other) => other.to_string(),
-        None => String::new(),
-    };
-    format!("{}@{}", part("id"), part("version"))
+/// `id`, `@`, `version`, built from the contract held (§11.3.7); never
+/// split. `None` when either is not text.
+fn contract_ref_of(contract: &Value) -> Option<String> {
+    let part = |k: &str| contract.get(k).and_then(Value::as_str);
+    Some(format!("{}@{}", part("id")?, part("version")?))
 }
 
 /// The §5.2 time form, `YYYY-MM-DDTHH:MM:SSZ`, naming a real instant.
@@ -1216,8 +1189,9 @@ fn pass_if(ok: bool) -> Status {
     }
 }
 
+/// A held value as JSON text, for a detail; `absent` when there is none.
 fn repr(v: Option<&Value>) -> String {
-    v.map_or_else(|| "None".to_string(), Value::to_string)
+    v.map_or_else(|| "absent".to_string(), Value::to_string)
 }
 
 fn status_of(properties: &[PropertyReport], property: &str) -> Option<Status> {

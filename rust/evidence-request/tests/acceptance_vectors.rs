@@ -11,7 +11,6 @@ use ed25519_dalek::SigningKey;
 use evidence_request::acceptance::{
     self, read_fixture_execution_record, AcceptanceResult, Finding, Inputs, TrustPolicy,
 };
-use evidence_request::time::parse_rfc3339;
 use serde_json::{json, Map, Value};
 
 fn load(path: &str) -> Value {
@@ -24,37 +23,7 @@ fn as_slices(v: &[Vec<u8>]) -> Vec<&[u8]> {
 }
 
 fn trust_of(pin: &Value) -> TrustPolicy {
-    let parties = pin["parties"]
-        .as_object()
-        .map(|m| {
-            m.iter()
-                .map(|(k, v)| (k.clone(), v.as_str().unwrap().to_string()))
-                .collect()
-        })
-        .unwrap_or_default();
-    let key_validity = pin
-        .get("key_validity")
-        .and_then(Value::as_object)
-        .map(|m| {
-            m.iter()
-                .map(|(k, w)| {
-                    let at = |n: &str| {
-                        w.get(n)
-                            .and_then(Value::as_str)
-                            .map(|t| parse_rfc3339(t).unwrap())
-                    };
-                    (k.clone(), (at("not_before"), at("not_after")))
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    TrustPolicy {
-        parties,
-        key_validity,
-        require_action_time_from_other_party: pin["require_action_time_from_other_party"]
-            .as_bool()
-            .unwrap_or(false),
-    }
+    TrustPolicy::from_pin(pin).unwrap()
 }
 
 fn texts(v: &Value) -> Vec<Vec<u8>> {
@@ -117,7 +86,7 @@ fn run(case: &Value, contract: &Value, session: bool) -> Value {
             trust: &trust,
             evaluation_time: pins["evaluation_time"].as_str().unwrap(),
             session,
-            form_ii_objects: 0,
+            form_ii_objects: inp["form_ii_objects"].as_u64().unwrap_or(0) as usize,
             profiles_implemented: &implemented,
         },
         read_fixture_execution_record,
@@ -325,4 +294,86 @@ fn a_duplicated_record_is_unreadable_not_a_candidate() {
         run(&case, contract, false)["finding"],
         json!("not_accepted")
     );
+}
+
+#[test]
+fn a_contract_without_text_id_and_version_is_not_evaluated() {
+    let trust = TrustPolicy::default();
+    let eval = |contract: Value| {
+        acceptance::evaluate(
+            &Inputs {
+                contract: &contract,
+                transaction: &json!({"scheme": "x", "id": "t"}),
+                proposer: "p",
+                acceptor: "q",
+                records: &[],
+                execution_records: &[],
+                receipts: &[],
+                trust: &trust,
+                evaluation_time: "2026-10-12T00:00:00Z",
+                session: false,
+                form_ii_objects: 0,
+                profiles_implemented: &[acceptance::PROFILE_ID],
+            },
+            read_fixture_execution_record,
+        )
+        .map(|r| r.finding)
+    };
+    use acceptance::AcceptanceError::*;
+    assert_eq!(eval(json!({"id": "C", "version": true})), Err(ContractForm));
+    assert_eq!(eval(json!({"version": "1"})), Err(ContractForm));
+    assert_eq!(
+        eval(json!({"id": "C", "version": "1", "requirements": {"a": 1, "b": 2}})),
+        Err(ContractForm)
+    );
+    assert_eq!(
+        eval(json!({"id": "C", "version": "1", "requirements": [{"id": "r"}, {"id": "r"}]})),
+        Err(DuplicateRequirement)
+    );
+    assert_eq!(
+        eval(json!({"id": "C", "version": 1.5})),
+        Err(ContractDigest)
+    );
+    assert_eq!(
+        eval(json!({"id": "C", "version": "1"})),
+        Ok(Finding::NotAccepted)
+    );
+}
+
+#[test]
+fn a_pin_that_is_not_the_policy_shape_is_refused() {
+    use acceptance::PinError;
+    assert_eq!(
+        TrustPolicy::from_pin(&json!({"parties": {"k": 1}})),
+        Err(PinError::Parties)
+    );
+    assert_eq!(
+        TrustPolicy::from_pin(&json!({"key_validity": {"k": {"not_before": "yesterday"}}})),
+        Err(PinError::KeyValidity)
+    );
+    assert_eq!(
+        TrustPolicy::from_pin(&json!({"require_action_time_from_other_party": "yes"})),
+        Err(PinError::RequireOtherParty)
+    );
+    let policy = TrustPolicy::from_pin(&json!({
+        "parties": {"k": "P"},
+        "key_validity": {"k": {"not_after": "2026-10-12T00:00:00Z"}},
+        "responder_keys": []
+    }))
+    .unwrap();
+    assert_eq!(policy.parties.get("k").map(String::as_str), Some("P"));
+    assert_eq!(
+        policy.party_of(Some("k"), "2026-10-13T00:00:00Z").0,
+        evidence_request::status::Status::Fail,
+        "outside its window"
+    );
+}
+
+#[test]
+fn the_parse_reads_a_serde_json_number_token_as_a_member() {
+    assert_eq!(
+        acceptance::parse(br#"{"x":{"$serde_json::private::Number":"5"}}"#),
+        Some(json!({"x": {"$serde_json::private::Number": "5"}}))
+    );
+    assert!(acceptance::parse(br#"{"n":-0}"#).is_none());
 }

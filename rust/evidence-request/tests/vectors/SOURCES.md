@@ -14,7 +14,8 @@ Copied verbatim from the source; not edited here.
 verifier (`agent_action_capsule.interop_profile.acceptance`, session scope) on
 backdated-acceptance fixtures and writes its inputs and report, which
 `acceptance_vectors.rs` compares with the Rust port. These are test fixtures
-for this crate, not conformance vectors.
+for this crate, not conformance vectors. Nothing in CI regenerates them: rerun the script
+whenever `acceptance.py` or `_common.py` changes, and commit the result.
 
 The draft-mih-agent-evidence-request-00 conformance vectors are not copied:
 `vectors.rs` reads this repository's `vectors/evidence-request/` in place and
