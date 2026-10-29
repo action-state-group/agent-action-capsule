@@ -36,18 +36,11 @@ History properties (§8.3) and what a verifier shows (§8.5).
 | Tag | Document | What this profile takes from it |
 |---|---|---|
 | IP | `spec/interop-profile-v0.md` (`evidence-interop/0`) | the request (§6.1), the envelope and its signing input (§6.2), signed refusals (§6.3), recipient-specific disclosures as definition-digest derivations (§6.5), the coverage declaration, its properties and issuer independence (§6.7), the per-property statuses (§7), the result mapping (§8), the acceptance record and its session scope (§11.1), lifecycle statements (§11.2), carriage and discovery (§11.4) |
-| ER | `draft-mih-agent-evidence-request` -00 | the `full_history` and `range` subject forms [ER §3.1], derivation by definition digest [ER §3.3], the signed refusal [ER §4.2], caller invariance [ER §5], derivation-scoped disclosure [ER §8], the history card `history_card/1` [ER §8.1] |
+| ER | `draft-mih-agent-evidence-request` -01 | the `full_history` and `range` subject forms [ER §3.1], what a record carries [ER §3.1.1], derivation by definition digest [ER §3.3], the signed refusal [ER §4.2], caller invariance [ER §5], derivation-scoped disclosure [ER §8], the history card `history_card/1` [ER §8.1] |
 | RES | `spec/evidence-result-v0.md` | claim, sufficiency and verdict |
 
-Section numbers for ER are those of the rendered `.txt` of the revision IP pins. A requirement
+Section numbers for ER are those of the rendered `.txt` of the -01 revision. A requirement
 written `[IP §6.5]` is taken from IP; `[SH-n]` marks one this profile adds.
-
-**Dependency not yet in the pinned revision.** ER §3.1.1, "What a Record Carries", fixes which
-member of a record cites the other party's half (a `references` entry with `citation_purpose`
-`counterparty_half` in a Capsule, a `links` entry of type `cites` in an Evidence Layer record). It
-is added to the ER -00 source in this repository and is not yet merged. Peer confirmation (§7.2)
-uses it; until it is merged, it is not part of the revision this profile uses, and §7.2's join
-rule is this profile's own [SH-6].
 
 **Does not define:** any record format, any identity scheme, any trust policy, who may receive a
 History, or what a recipient should conclude. It defines no figure that combines units, labels or
@@ -664,7 +657,7 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
 | SH-3 | A Standard declaration split between the definition (`kind`, `rule`) and the artifact (`interval`, `live_set`), because one Standard definition is answered at every anchor (§4.2). |
 | SH-4 | `coverage_declaration_population` `NOT_CHECKED` for counts, which carry no records (§4.2). IP §7.1 could also be read to give `NOT_PRESENT`, which IP §6.7.3 item 4 maps to `INSUFFICIENT`; either way no completeness requirement is `SATISFIED`. A count checkable against records needs a disclosure of the records, or a verification-material kind for counts. Relatedly, ER §3.3 asks that a derivation result come with what the requester needs to check its binding; a count has nothing of the kind in this revision. |
 | SH-5 | The closed list of units (§5.1). The requirements' roles `conflict` and `unknown` are both counted in `exchanges_unattributed`; a later revision may split them. |
-| SH-6 | The labels and the peer-confirmation join (§7). The join's citation member is ER §3.1.1's, which is not yet in the pinned ER revision. The citation is one-way; a two-way join (the peer's half citing the node's) would let `peer_confirmed` show receipt of the answer. `corroborated` needs evidence of distinct controllers in a form IP does not register (IP P-60). |
+| SH-6 | The labels and the peer-confirmation join (§7). The join's citation member is ER §3.1.1's. The citation is one-way; a two-way join (the peer's half citing the node's) would let `peer_confirmed` show receipt of the answer. `corroborated` needs evidence of distinct controllers in a form IP does not register (IP P-60). |
 | SH-7 | The period rules (§6.1): time-aligned periods, answers only at period boundaries, the refusal token, fixed cells, one policy per node. No profile minimum for `length_s` or `floor` is set. The history card's exact log sizes are outside the period rules (§12). |
 | SH-8 | Complementary suppression (§6.2 item 3) fixed only for one suppressed cell beside a published total; larger tables of dimensions need a fuller rule. |
 | SH-9 | The Detailed level declares `holder_selected`. A Detailed History complete relative to the node's exchanges with the recipient needs the records in a form whose population can be checked. |
