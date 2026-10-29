@@ -928,6 +928,136 @@ Composition closure covers declared members only. A participant that is in
 neither `members` nor `not_requested` is not visible to a verifier from this
 block ({{composed-security}}).
 
+### Controller Binding Records {#composed-binding}
+
+A *controller binding record* is a JSON object in which the holders of two
+Ed25519 {{RFC8032}} signing keys both sign one statement about how the two
+keys are related. It is the linkage evidence of the `controller_binding` join
+basis ({{composed-joins}}). Its signatures show only that whoever held each
+private key signed the record. They do not show who holds either key, and
+this document never states who a key holder is.
+
+A binding record is not a member of the `composed/v1` block. It is delivered
+beside the containing Bundle, with any revocation statements that withdraw it;
+how they are delivered is outside this document. The block binds a record
+only through a join's `identifier_digest`.
+
+In this section a *key identifier* is a raw 32-byte Ed25519 public key as 64
+lowercase hexadecimal characters, and a *time* is an {{RFC3339}} date-time in
+UTC with a "Z" suffix and seconds precision. A root record's `timestamp`,
+against which a binding is checked, can also carry fractional seconds. Times
+compare as instants.
+
+~~~ cddl
+controller-binding = {
+  binding_version: "controller-binding/0",
+  claim: binding-claim,
+  method: tstr,                  ; a verification method token
+  keys: [key-id, key-id],        ; two distinct keys, ascending
+  issued_at: binding-time,       ; the ceremony, as stated
+  not_before: binding-time,      ; not later than issued_at
+  not_after: binding-time,       ; later than issued_at
+  revocation: "revocation_statement/0",
+  nonce: tstr,                   ; non-empty, chosen per ceremony
+  sigs: [* binding-sig],
+  ? delegator: key-id,           ; delegated_by only: one of keys
+  ? credential: binding-credential,
+                                 ; same_organization_credentialed
+}
+
+binding-claim = "same_controller_asserted" / "delegated_by" /
+                "same_organization_credentialed"
+binding-sig = { key_id: key-id, sig: sig-hex }
+binding-credential = {
+  issuer: key-id,
+  method: tstr,
+  digest: digest-hex,
+}
+
+binding-revocation = {
+  revocation_version: "controller-binding-revocation/0",
+  binding: digest-hex,           ; the binding digest
+  key_id: key-id,                ; one of the binding's keys
+  revoked_at: binding-time,
+  sig: sig-hex,
+}
+
+key-id       = text .regexp "[0-9a-f]{64}"
+sig-hex      = text .regexp "[0-9a-f]{128}"
+binding-time = text .regexp
+  "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z"
+~~~
+
+The claim types, the member each adds, the method this document defines for
+each, and what the two key holders state:
+
+- `same_controller_asserted`: no added member; `dual_signature/0`. One
+  controller holds both keys.
+- `delegated_by`: adds `delegator`; `dual_signature/0`. The holder of
+  `delegator` delegated to the holder of the other key, who accepted.
+- `same_organization_credentialed`: adds `credential`;
+  `dual_signature_credential/0`. Both keys are held within one organization,
+  as a credential from a third key states.
+
+A binding record is malformed when it lacks a member, carries a member the
+CDDL does not allow for its `claim`, or has a value outside its form; when its
+two `keys` are equal or not in ascending order; when `not_before` is later
+than `issued_at` or `not_after` is not later than it; when `delegator` is not
+one of `keys`; or when its `method` is one this document defines for another
+claim type. A `method` token this document does not define is well formed. A
+binding record or revocation statement that is not a JSON object is
+malformed. `delegated_by` states a relation, not a scope: a verifier reads no
+authority from it.
+
+**Signing input and binding digest.** The signing input is the UTF-8 octets of
+the JCS {{RFC8785}} serialization of the record without `sigs`. Every other
+member is covered. The *binding digest* is the lowercase hexadecimal SHA-256
+of the signing input. It does not cover `sigs`, so a binding keeps its digest
+if a key signs it again. Two ceremonies over the same keys differ in `nonce`
+and so have two digests.
+
+**Methods.** Under `dual_signature/0`, `sigs` has exactly two entries:
+`sigs[0].key_id` is `keys[0]`, `sigs[1].key_id` is `keys[1]`, and each `sig`
+is that key's Ed25519 signature over the signing input, in lowercase
+hexadecimal. A record with one signature, a third entry, or a signature that
+does not verify is not signed by both keys. One key cannot bind another key
+to itself, because each key signs the other key's identifier.
+`dual_signature_credential/0` requires the same two signatures. Its
+`credential` names a signed object from the key `credential.issuer`, delivered
+beside the record, whose SHA-256 is `credential.digest` and which is verified
+by its native method `credential.method`. This document registers no
+credential format. A credential never decides whether a binding applies, and
+a verifier MUST NOT present the organization it names as an identity.
+
+**Revocation.** Either key holder can withdraw a binding with a revocation
+statement (`binding-revocation`). A statement *applies* to a binding when it
+is well formed, `binding` is the binding digest, `key_id` is one of the
+binding's `keys`, and `sig` is that key's Ed25519 signature over the UTF-8
+JCS serialization of the statement without `sig`. A statement names a
+binding by digest, so it reaches every copy of the record. From `revoked_at`
+on, the binding is not in effect. `revoked_at` is the revoking key holder's
+statement; a backdated revocation returns the joins it covered to unjoined,
+never further. A verifier knows only the statements it received.
+
+**When a binding applies.** A binding record *applies* to two key identifiers
+at a set of times T when all of these hold:
+
+1. it is well formed;
+2. the verifier implements its `method`, and both bound keys signed it under
+   that method;
+3. its `keys` are exactly the two key identifiers, in either order;
+4. for every T, `not_before` <= T < `not_after`;
+5. no revocation statement the verifier received that applies to it has a
+   `revoked_at` at or before any T.
+
+**What a binding never states.** A binding is a statement by both key holders
+that their two keys are not independent issuers. A verifier MUST NOT present
+a binding record as establishing who controls either key; a person, name,
+account, organization identity or legal relationship; that the keys were
+under one control at any time, beyond the window and claim both key holders
+stated; or that two keys with no binding between them have distinct
+controllers.
+
 ### Joins {#composed-joins}
 
 A join declares that two members' records are about the same thing, and how
@@ -950,7 +1080,7 @@ The states derive as follows:
   side.
 
 Linkage is evaluated on each artifact member's root record (its bundle's
-`root`). This document defines the derivation for two bases:
+`root`). This document defines the derivation for three bases:
 
 - **`pre_agreed_identifier`**: `pointer` selects a string in each root record.
   The members are linked when SHA-256 of that string's UTF-8 octets equals
@@ -958,12 +1088,21 @@ Linkage is evaluated on each artifact member's root record (its bundle's
   block.
 - **`shared_artifact_digest`**: `pointer` selects a digest string in each root
   record. The members are linked when the two values are identical.
+- **`controller_binding`**: `pointer` selects a key identifier string in each
+  root record, for example `/key_id`, and `identifier_digest` is a binding
+  digest ({{composed-binding}}). The members are linked when a delivered
+  binding record whose binding digest equals `identifier_digest` applies to
+  the two selected values, with T the `timestamp` of each root record
+  ({{I-D.mih-scitt-agent-action-capsule}}). A record with that digest that
+  does not apply leaves the members unjoined. A verifier that received no
+  record with that digest, or implements the `method` of none it received,
+  reports the join as `not_derivable`. A join on this basis states that the
+  two root records are under keys whose holders bound them, as both of them
+  stated it; it says nothing about who those holders are.
 
-The bases `issued_receipt` (the two records cite one Receipt),
-`same_interval` (the two records fall in one declared interval) and
-`controller_binding` (the holders of the two root records' signing keys
-jointly signed a statement binding the keys) are reserved for a later
-specification that defines their derivation. A block MAY declare
+The bases `issued_receipt` (the two records cite one Receipt) and
+`same_interval` (the two records fall in one declared interval) are reserved
+for a later specification that defines their derivation. A block MAY declare
 joins on them; such joins are digest-covered. A verifier that does not
 implement a derivation for the basis reports such a join as `not_derivable`.
 It MUST NOT report the join as a derived agreement, and MUST NOT count it as
@@ -990,9 +1129,12 @@ labels are identical octet sequences.
 
 - both members name the same observer;
 - the two observers have the same `custody_domain`;
-- the two members' root records carry the same `key_id`.
+- the two members' root records carry the same `key_id`;
+- the join's basis is `controller_binding`: the holders of the two keys have
+  stated that the keys are not independent issuers ({{composed-binding}}).
 
 It MUST present the result as "redundant, not corroborating", with the reason.
+A `controller_binding` join therefore never yields corroboration.
 Otherwise it MAY report the pair as corroborating, and it MUST qualify that as
 resting on *declared* custody.
 
@@ -1065,7 +1207,9 @@ separately:
    signature state;
 3. composition closure;
 4. per join: the declared state, the derived state (or `not_derivable`), and
-   whether they match;
+   whether they match; for a `controller_binding` join, the binding digest,
+   the claim type of the record that applies, and the revocation statements
+   it received for it;
 5. per derived `agree`: `redundant` (with reason) or corroborating on
    declared custody.
 
@@ -1315,6 +1459,15 @@ are listed per check and never combined, because an aggregate would hide a
   a mismatch fails. Declared custody can only downgrade
   ({{composed-observers}}). Nothing a producer declares can make two
   observers independent.
+- **Controller bindings.** A binding can only make an agreement redundant
+  ({{composed-observers}}); no binding, revocation or failed signature can
+  make two members corroborating. Two keys bound by their holders can sign
+  agreeing records, and without the redundancy rule they would read as two
+  issuers. A verifier knows only the revocation statements it received: the
+  party presenting a composition can leave out a revocation, and a
+  `controller_binding` agreement is then reported redundant all the same,
+  never more. A revocation the producer did not account for derives
+  `unjoined` and fails a declared `agree` (`join_state_mismatch`).
 - **Outcomes.** Keeping refusal and absence distinct is evidentiary:
   synthesizing either one from the other forges the stronger record from the
   weaker.
@@ -1348,6 +1501,10 @@ those of the records it carries.
 For the `composed/v1` extension ({{composed}}):
 
 - Join identifiers enter only as digests (`identifier_digest`).
+- A delivered controller binding record ({{composed-binding}}) reveals that
+  the holders of its two keys bound them, its claim type and its window. It
+  carries no name, and it is delivered only to whom the presenting party
+  chooses.
 - `custody_domain` is an opaque label and SHOULD NOT be a network address, an
   account identifier or a personal name.
 - Withholding a member's body (`missing`) keeps the composed digest stable. A
@@ -1401,15 +1558,28 @@ Since -01:
   rule for per-record membership, and that a leaf of an undefined type leaves
   the claim not established, never established. Stated that per-record
   membership is the claim, and that unknown `completeness_certificate` members
-  are ignored. Privacy Considerations: what a padded range reveals.
+  are ignored. Privacy Considerations: what a padded range reveals. Security
+  Considerations: reporting an unimplemented mode or an undefined leaf type
+  as not established can turn a failure into not established, never into
+  established; why a padding leaf is carried in full.
 - Category coverage ({{category-coverage}}): the OPTIONAL `category_coverage`
   member, a producer's signed declaration of one status per category of a
   named category set (`AVAILABLE`, `PARTIAL`, `WITHHELD`, `DELETED`, `ABSENT`,
   `UNDISCLOSED`; `UNDISCLOSED` requires `policy_uri`), answering the Evidence
   Request `categories` field; five verifier properties, reported separately and
   never combined; it declares and does not prove. Created the "Evidence Bundle
-  category set" registry, with no initial values.
-- `composed/v1`: added `controller_binding` to the reserved join bases.
+  category set" registry, with no initial values. The Abstract mentions the
+  declaration.
+- `composed/v1`: defined the controller binding record
+  ({{composed-binding}}): its members and claim types, its signing input and
+  binding digest, the methods `dual_signature/0` and
+  `dual_signature_credential/0`, revocation statements, and when a binding
+  applies; and the `controller_binding` join basis with its derivation
+  ({{composed-joins}}). A `controller_binding` agreement is always redundant,
+  never corroborating ({{composed-observers}}). A verifier that implements
+  only -01 reads a block that carries a `controller_binding` join as
+  malformed, since -01's `join-basis` does not list it. Security and Privacy
+  Considerations: controller bindings.
 - Cites Evidence Request -01 and, informatively, Evidence Layer -00.
 
 Since -00:
