@@ -470,8 +470,17 @@ def _apply_strict(result: BundleVerificationResult, bundle: Mapping[str, Any], r
         result.interval_coverage = ClaimResult("withheld", ("selection_not_checkable",))
         if authenticated:
             result.per_record_membership = _selected_membership(bundle, signed["root"], signed["mmr_size"], signed["log_id"])
-        # Otherwise the plain reading stands: each proof against the stated
-        # checkpoint, withheld below unless it failed, as for a range Bundle.
+        elif result.checkpoint.status == "fail":
+            # A signed checkpoint the stated copies contradict anchors nothing
+            # (vectors/bundle/strict neg-producer-selected-*-log-id*).
+            result.per_record_membership = (
+                ClaimResult("fail", ("completeness_certificate_invalid",))
+                if _range_member_without_range(bundle)
+                else ClaimResult("withheld", ("checkpoint_unverified",))
+            )
+        # Without a signed checkpoint the plain reading stands: each proof
+        # against the stated checkpoint, withheld below unless it failed, as
+        # for a range Bundle.
     if not authenticated:
         result.interval_coverage = _unanchored(result.interval_coverage)
         result.per_record_membership = _unanchored(result.per_record_membership)
