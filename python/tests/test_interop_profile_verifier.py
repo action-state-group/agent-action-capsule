@@ -1171,3 +1171,21 @@ def test_a_fixture_execution_record_jcs_cannot_represent_is_unreadable():
     lone = b'{"action_at":"2026-10-12T00:10:00Z","issuer":"' + b"00" * 32 + b'","links":[],"note":"\\ud800",' \
            b'"sig":"' + b"00" * 64 + b'","transaction":{"id":"T","scheme":"example"}}'
     assert read_fixture_execution_record(lone) is None
+
+
+def test_a_fixture_execution_record_with_an_unrepresentable_sig_is_unreadable():
+    from agent_action_capsule.interop_profile.acceptance import read_fixture_execution_record
+    rec = b'{"action_at":"2026-10-12T00:10:00Z","issuer":"' + b"00" * 32 + b'","links":[],' \
+          b'"sig":"\\ud800","transaction":{"id":"T","scheme":"example"}}'
+    assert read_fixture_execution_record(rec) is None
+
+
+@pytest.mark.parametrize("change", [{"version": 1}, {"version": True}, {"id": None},
+                                    {"requirements": {"a": 1, "b": 2}}])
+def test_a_contract_without_text_id_and_version_is_not_evaluated(change):
+    bad = {**copy.deepcopy(CONTRACT), **change}
+    if change.get("id", "") is None:
+        del bad["id"]
+    with pytest.raises(ValueError, match="not text"):
+        evaluate_acceptance(bad, {"scheme": "example", "id": "T"}, "00" * 32, "11" * 32, [], [], [], TrustPolicy(),
+                            "2026-10-12T00:00:00Z")

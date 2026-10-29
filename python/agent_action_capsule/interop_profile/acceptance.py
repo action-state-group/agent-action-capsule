@@ -88,7 +88,7 @@ def read_fixture_execution_record(octets: bytes) -> ExecutionRecord | None:
         return None
     rec = parsed.value
     body = unsigned_jcs(rec)
-    if body is None:
+    if body is None or json_value_digest(rec) is None:  # sig included
         return None
     verified = ed25519_verify_hex(rec.get("issuer"), rec.get("sig"), body)
     links = rec.get("links") if isinstance(rec.get("links"), list) else []
@@ -216,6 +216,10 @@ def evaluate_acceptance(
     if contract_digest is None:
         raise ValueError("the contract carries a value JCS cannot represent, or a number outside 0 to 2^53 - 1; "
                          "no contract_digest (§11.3.7)")
+    if not (isinstance(contract.get("id"), str) and isinstance(contract.get("version"), str)
+            and isinstance(contract.get("requirements", []), list)):
+        raise ValueError("the contract's id or version is not text, or its requirements are not an array "
+                         "(§11.3.7)")
     ids = [q.get("id") if isinstance(q, dict) else None for q in contract.get("requirements", [])]
     if len({json_value_digest(i) for i in ids}) != len(ids):
         raise ValueError("two requirements share one id; the contract version is not evaluated (§11.3.7)")

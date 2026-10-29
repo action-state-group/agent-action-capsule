@@ -159,8 +159,10 @@ impl TrustPolicy {
         }
         if let Some(windows) = pin.get("key_validity") {
             for (key, window) in windows.as_object().ok_or(PinError::KeyValidity)? {
+                let window = window.as_object().ok_or(PinError::KeyValidity)?;
+                // An absent or null end is unbounded, as in the Python verifier.
                 let at = |name: &str| match window.get(name) {
-                    None => Ok(None),
+                    None | Some(Value::Null) => Ok(None),
                     Some(t) => t
                         .as_str()
                         .and_then(parse_rfc3339)
@@ -378,6 +380,7 @@ pub fn evaluate(
         .then(|| value_digest(inputs.contract).ok())
         .flatten()
         .ok_or(AcceptanceError::ContractDigest)?;
+    let contract_ref = contract_ref_of(inputs.contract).ok_or(AcceptanceError::ContractForm)?;
     let ids: Vec<String> = match inputs.contract.get("requirements") {
         Some(Value::Array(reqs)) => reqs
             .iter()
@@ -389,7 +392,6 @@ pub fn evaluate(
     if ids.iter().collect::<BTreeSet<_>>().len() != ids.len() {
         return Err(AcceptanceError::DuplicateRequirement);
     }
-    let contract_ref = contract_ref_of(inputs.contract).ok_or(AcceptanceError::ContractForm)?;
     let implemented = inputs.profiles_implemented.contains(&PROFILE_ID);
     let trust = inputs.trust;
     let session = inputs.session;

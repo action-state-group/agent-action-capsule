@@ -351,6 +351,23 @@ fn a_pin_that_is_not_the_policy_shape_is_refused() {
         TrustPolicy::from_pin(&json!({"key_validity": {"k": {"not_before": "yesterday"}}})),
         Err(PinError::KeyValidity)
     );
+    for window in [json!("2026-10-12T00:00:00Z"), json!([]), json!(null)] {
+        assert_eq!(
+            TrustPolicy::from_pin(&json!({"key_validity": {"k": window}})),
+            Err(PinError::KeyValidity),
+            "a window that is not a map"
+        );
+    }
+    let one_sided = TrustPolicy::from_pin(&json!({
+        "parties": {"k": "P"},
+        "key_validity": {"k": {"not_before": null, "not_after": "2026-10-12T00:00:00Z"}}
+    }))
+    .unwrap();
+    assert_eq!(
+        one_sided.party_of(Some("k"), "2000-01-01T00:00:00Z").0,
+        evidence_request::status::Status::Pass,
+        "a null end is unbounded"
+    );
     assert_eq!(
         TrustPolicy::from_pin(&json!({"require_action_time_from_other_party": "yes"})),
         Err(PinError::RequireOtherParty)
