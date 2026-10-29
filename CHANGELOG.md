@@ -31,7 +31,7 @@ packages is listed under each package that shipped it, or has not yet.
   a `shop_preauth` deal is not counted) and the record kind `receipt_document`. Python:
   `agent_action_capsule.standard_history` (`derive_card`, `check_card`) is the reference. Go: the
   new package `standardhistory` (`Derive`, `Check`) is at parity with it. Both run
-  `vectors/standard-history-v0/` (9 positive, 19 negative). (#437)
+  `vectors/standard-history-v0/` (9 positive, 19 negative). (#437, #440)
 
 - Security, strict witness receipts: an EdDSA witness receipt now verifies only under strict
   Ed25519. The key A and the signature's R must be canonical and not of small order, and S must
@@ -43,7 +43,7 @@ packages is listed under each package that shipped it, or has not yet.
   this) refuse it. `vectors/bundle/strict/` gains `neg-witness-cll-small-order-key` and its
   directory row, and checkpointed-local-log's shared `ed25519-vectors.json` moves from
   `ts/test/testdata/` to `vectors/cross-language/cll-ed25519-vectors.json`, which the Go, Python,
-  TypeScript and Rust tests all run. (#439)
+  TypeScript and Rust tests all run. (#439, #447)
 
 - Vectors: `vectors/bundle/composed/` gains `agree-with-checkpoints`, the agree composition in
   which the container and each member Bundle are their party's whole log, with a completeness
@@ -178,7 +178,7 @@ Tag `ts/v0.10.0`.
   this) refuse it. `vectors/bundle/strict/` gains `neg-witness-cll-small-order-key` and its
   directory row, and checkpointed-local-log's shared `ed25519-vectors.json` moves from
   `ts/test/testdata/` to `vectors/cross-language/cll-ed25519-vectors.json`, which the Go, Python,
-  TypeScript and Rust tests all run. (#439)
+  TypeScript and Rust tests all run. (#439, #447)
 
 - Spec: `spec/standard-history-v0.md` defines the derivation `standard_history/1`, now a row of
   the Evidence Request derivation registry (`spec/REGISTRY.md` §16): a recipient-free card, as of
@@ -188,7 +188,7 @@ Tag `ts/v0.10.0`.
   a `shop_preauth` deal is not counted) and the record kind `receipt_document`. Python:
   `agent_action_capsule.standard_history` (`derive_card`, `check_card`) is the reference. Go: the
   new package `standardhistory` (`Derive`, `Check`) is at parity with it. Both run
-  `vectors/standard-history-v0/` (9 positive, 19 negative). (#437)
+  `vectors/standard-history-v0/` (9 positive, 19 negative). (#437, #440)
 
 ## ts 0.9.0 — 2026-10-28
 
