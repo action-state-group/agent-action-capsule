@@ -111,6 +111,7 @@ COUNTERS = {
     "vectors/controller-binding-v0/": lambda: cases("vectors/controller-binding-v0/vectors.json"),
     "vectors/deal-reconcile-v0/": lambda: cases("vectors/deal-reconcile-v0/vectors.json"),
     "vectors/standard-history-v0/": lambda: cases("vectors/standard-history-v0/vectors.json"),
+    "vectors/inference-service-history-v0/": lambda: cases("vectors/inference-service-history-v0/vectors.json"),
     "vectors/profiles/": profile_count,
     "vectors/registry-conformance/": lambda: cases("vectors/registry-conformance/vectors.json"),
     "vectors/adapters/x402/": lambda: cases("vectors/adapters/x402/cases.json"),
