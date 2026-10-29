@@ -58,6 +58,7 @@ REVOCATION_MEMBERS = {"revocation_version", "binding", "key_id", "revoked_at", "
 CREDENTIAL_MEMBERS = {"issued_at", "issuer", "keys", "organization", "sig"}
 HEX64 = re.compile(r"[0-9a-f]{64}")
 HEX128 = re.compile(r"[0-9a-f]{128}")
+NONCE = re.compile(r"[0-9a-f]{32,}")
 TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
 
 # CB §7 items 2 and 4; IP §6.7.4.
@@ -174,7 +175,9 @@ def key_types(r: dict, rules: Rules) -> list[str]:
 def sig_ok(key_hex: str, key_type: str, sig: Any, version: str, signed_octets: bytes, rules: Rules) -> bool:
     if key_type == "bip340":
         return nostr_ok(key_hex, sig, version, signed_octets, rules)
-    return isinstance(sig, str) and HEX128.fullmatch(sig) is not None and ed25519_ok(key_hex, sig, signed_octets)
+    if key_type == "ed25519":
+        return isinstance(sig, str) and HEX128.fullmatch(sig) is not None and ed25519_ok(key_hex, sig, signed_octets)
+    return False  # §3.3: a key type the verifier does not know never verifies
 
 
 def without(d: dict, key: str) -> dict:
@@ -221,6 +224,7 @@ class Rules:
     binding_gives: str = "FAIL"             # §7 item 4
     key_types_read: bool = True             # §3.3: key_types gives each key's type
     event_kind: bool = True                 # §4.1: the signing event is of kind 3374
+    bip340_nonce: bool = True               # §3.1, §9.3: a bip340 binding's nonce is 32+ hex
 
 
 SPEC = Rules()
@@ -235,6 +239,9 @@ def form_ok(r: Any, rules: Rules) -> bool:
     if "key_types" in r and not (isinstance(r["key_types"], list) and len(r["key_types"]) == 2
                                  and all(isinstance(k, str) for k in r["key_types"])):
         return False
+    if (rules.bip340_nonce and "bip340" in r.get("key_types", [])
+            and not (isinstance(r["nonce"], str) and NONCE.fullmatch(r["nonce"]))):
+        return False  # §3.1, §9.3
     other_claims = {m for c, (m, _) in CLAIMS.items() if c != r["claim"]} - {method}
     if not isinstance(r["method"], str) or r["method"] in other_claims:
         return False
@@ -379,7 +386,7 @@ def comparable(expected: dict) -> dict:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 19
+    assert DATA["count"] == len(CASES) == 23
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     for case in CASES:
         assert case["pins"]["contract_digest"] == DATA["contract"]["contract_digest"]
@@ -481,6 +488,7 @@ DEFECTS = {
     "a binding is ignored": replace(SPEC, binding_gives="NOT_CHECKED"),
     "key_types ignored: every key is ed25519": replace(SPEC, key_types_read=False),
     "a Nostr event of any kind signs": replace(SPEC, event_kind=False),
+    "any nonce with a bip340 key": replace(SPEC, bip340_nonce=False),
 }
 
 

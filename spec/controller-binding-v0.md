@@ -84,7 +84,7 @@ A binding record is a JSON object with exactly these members, plus the ones its 
 | `not_before` | a time, not later than `issued_at`. An earlier `not_before` is the signers' statement about records signed before the ceremony, and nothing checks it |
 | `not_after` | a time, later than `issued_at` |
 | `revocation` | the revocation method; this revision defines one, `revocation_statement/0` (§5) |
-| `nonce` | a text string chosen for this ceremony, so that two ceremonies over the same keys and times give two records |
+| `nonce` | a text string chosen for this ceremony, so that two ceremonies over the same keys and times give two records. When `key_types` names a `bip340` key, at least 32 lowercase hexadecimal characters (§9.3) |
 | `sigs` | an array of exactly two objects `{key_id, sig}`, one per bound key, in the order of `keys` (§4) |
 
 A binding record with a duplicate member name, a missing member other than `key_types`, a member
@@ -371,9 +371,13 @@ composed is a signature over whatever that object says.
 A `bip340` key is usually a Nostr identity that its holder uses elsewhere. A binding record names
 it in the clear, so anyone shown the record can link the other key to everything that identity has
 signed. A key holder SHOULD show the record only to the parties that need to verify it. Where the
-record is listed publicly, the binding digest alone (§4) names it without naming either key: the
-signatures in `sigs` make the digest unguessable from a list of keys. Which of these a using
-profile chooses is outside this document (CB-9).
+record is listed publicly, the binding digest alone (§4) can name it. The digest does not cover
+`sigs`, and every other member but `nonce` can be guessed: the keys from a list of candidates, the
+times to the second. So `nonce` alone keeps a listed digest from being matched to a guessed pair
+of keys. A binding record whose `key_types` names a `bip340` key MUST carry a `nonce` of at least
+32 lowercase hexadecimal characters, and its key holders MUST draw it from at least 128 bits of a
+cryptographically secure random source. A verifier checks the form (§3.1) and cannot check the
+randomness. Which of these a using profile chooses is outside this document (CB-9).
 
 The signing event of §4.1 is a valid Nostr event. A key holder SHOULD NOT publish it to a relay,
 which would publish the link. Its kind and its `content` (a version and a digest) keep it from
@@ -416,6 +420,10 @@ These formats are fixed for the vectors only and are not registered:
 | `nostr-wrong-digest` | the Nostr event's `content` names the digest of another record (another `nonce`): signatures `FAIL` |
 | `nostr-other-kind` | the Nostr event is of kind 1 (a text note) over the right `content`: signatures `FAIL` |
 | `nostr-revoked` | a revocation by the `bip340` key, signed by the Nostr event, before the halves: revocation `FAIL`, the binding does not apply |
+| `nostr-nonce-short` | a binding with a `bip340` key whose `nonce` is `ceremony-1`: form `FAIL` (§3.1, §9.3) |
+| `nostr-sig-malformed` | the `bip340` key's `sig` object carries a third member beside a valid signature: signatures `FAIL` |
+| `key-types-malformed` | `key_types` names one type for two keys: form `FAIL` |
+| `key-types-unknown` | `key_types` names a token §3.3 does not list: signatures `NOT_CHECKED`, the binding does not apply; a revocation by that key signed with Ed25519 does not apply either, so revocation is `NOT_CHECKED` |
 
 No case reaches `issuer_independence` `PASS`. Nothing in this revision gives it (IP P-60).
 

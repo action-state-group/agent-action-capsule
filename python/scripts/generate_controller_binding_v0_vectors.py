@@ -16,7 +16,10 @@ credential. CB §10 lists the cases:
   same-key rule;
 - bindings of an Ed25519 key to a ``bip340`` (Nostr) key, signed by the Nostr event of CB §4.1: a
   valid one, one read as two Ed25519 keys, one whose event names another digest, one whose event
-  is of another kind, and one revoked by the Nostr key. None binds the pair.
+  is of another kind, one revoked by the Nostr key, one whose nonce is too short and one whose
+  ``sig`` object has a third member. None binds the pair;
+- ``key_types`` holding one token (form ``FAIL``) and naming an unlisted token (signatures
+  ``NOT_CHECKED``, and a revocation by that key does not apply).
 
 It states every expected status by hand from CB §6 and §7 and IP §6.7.4. Each case cites the
 sections it comes from. Nothing here imports or runs a verifier. The credential and its method are
@@ -123,6 +126,9 @@ NOSTR = "operator-nostr"
 PUB[NOSTR] = bip340_public(NOSTR_SECRET)
 NOSTR_KIND = 3374
 CREATED_AT = 1790812800  # ISSUED, as the signer's clock gives it; nothing checks it (CB §4.1)
+# CB §9.3: a record with a bip340 key carries a nonce of 128 random bits. Fixed here, so the
+# vectors reproduce; a real ceremony draws it from a secure random source.
+NOSTR_NONCES = [shx(f"controller-binding-v0 vectors: nonce {i}".encode())[:32] for i in (1, 2)]
 
 
 def nostr_sig(version: str, signed_octets: bytes, *, kind: int = NOSTR_KIND, digest: str | None = None) -> dict:
@@ -171,11 +177,11 @@ def octets(value: dict) -> dict:
 
 def binding(claim: str, holders: tuple[str, str], *, signers: tuple[str, ...] | None = None,
             not_after: str = NOT_AFTER, method: str | None = None, nonce: str = "ceremony-1",
-            typed: bool | None = None, **added: Any) -> dict:
+            typed: bool | None = None, types: list[Any] | None = None, **added: Any) -> dict:
     """A binding record over the two named keys (CB §3), signed by ``signers`` (default: both keys,
     in the order of ``keys``) over the record without ``sigs`` (CB §4), each key as its type signs
     (CB §4.1). ``key_types`` is present when a key is the ``bip340`` key, unless ``typed`` is
-    False."""
+    False; ``types`` sets it as given."""
     keys = sorted(PUB[h] for h in holders)
     by_key = {PUB[h]: h for h in holders}
     body = {"binding_version": "controller-binding/0", "claim": claim, "method": method or METHODS[claim],
@@ -183,6 +189,8 @@ def binding(claim: str, holders: tuple[str, str], *, signers: tuple[str, ...] | 
             "revocation": "revocation_statement/0", "nonce": nonce, **added}
     if typed if typed is not None else NOSTR in holders:
         body["key_types"] = ["bip340" if by_key[k] == NOSTR else "ed25519" for k in keys]
+    if types is not None:
+        body["key_types"] = types
     names = signers if signers is not None else tuple(by_key[k] for k in keys)
     data = jcs(body).encode()
     return dict(body, sigs=[{"key_id": PUB[n], "sig": nostr_sig("controller-binding/0", data) if n == NOSTR
@@ -354,19 +362,20 @@ def cases() -> list[dict]:
                     revocations=[revocation(r, "producer-c", "2026-10-12T00:00:00Z")], fails=[]))
 
     an = ("producer-a", NOSTR)
-    r = binding("same_controller_asserted", an)
+    n1, n2 = NOSTR_NONCES
+    r = binding("same_controller_asserted", an, nonce=n1)
     out.append(case("valid-nostr-key", "A half's Ed25519 key bound to a bip340 (Nostr) key, signed by the Nostr event",
                     ["CB §3.3", "CB §4.1", "CB §6.1", "CB §6.2", "IP §6.7.4"], r, ok(),
                     binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None, fails=[]))
 
-    r = binding("same_controller_asserted", an, typed=False)
+    r = binding("same_controller_asserted", an, typed=False, nonce=n1)
     out.append(case("nostr-key-read-as-ed25519", "The same keys and signatures with no key_types: both keys are ed25519",
                     ["CB §3.1", "CB §3.3", "CB §4.1", "CB §6.1"], r, ok(controller_binding_signatures="FAIL"),
                     binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
                     fails=["controller_binding_signatures"]))
 
-    r = binding("same_controller_asserted", an)
-    other = binding("same_controller_asserted", an, nonce="ceremony-2")
+    r = binding("same_controller_asserted", an, nonce=n1)
+    other = binding("same_controller_asserted", an, nonce=n2)
     r["sigs"] = [dict(s, sig=nostr_sig("controller-binding/0", b"", digest=binding_digest(other)))
                  if s["key_id"] == PUB[NOSTR] else s for s in r["sigs"]]
     out.append(case("nostr-wrong-digest", "The Nostr event names the digest of another record",
@@ -374,7 +383,7 @@ def cases() -> list[dict]:
                     binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
                     fails=["controller_binding_signatures"]))
 
-    r = binding("same_controller_asserted", an)
+    r = binding("same_controller_asserted", an, nonce=n1)
     signing_input = jcs({k: v for k, v in r.items() if k != "sigs"}).encode()
     r["sigs"] = [dict(s, sig=nostr_sig("controller-binding/0", signing_input, kind=1))
                  if s["key_id"] == PUB[NOSTR] else s for s in r["sigs"]]
@@ -383,12 +392,41 @@ def cases() -> list[dict]:
                     binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
                     fails=["controller_binding_signatures"]))
 
-    r = binding("same_controller_asserted", an)
+    r = binding("same_controller_asserted", an, nonce=n1)
     out.append(case("nostr-revoked", "A revocation by the bip340 key, signed by the Nostr event, before the halves",
                     ["CB §4.1", "CB §5", "CB §6.1"], r, ok(controller_binding_revocation="FAIL"),
                     binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
                     revocations=[revocation(r, NOSTR, "2026-10-12T00:00:00Z")],
                     fails=["controller_binding_revocation"]))
+
+    r = binding("same_controller_asserted", an, nonce="ceremony-1")
+    out.append(case("nostr-nonce-short", "A binding with a bip340 key whose nonce is not 32 hex characters",
+                    ["CB §3.1", "CB §9.3", "CB §6.1"], r, {"controller_binding_form": "FAIL"},
+                    binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
+                    fails=["controller_binding_form"]))
+
+    r = binding("same_controller_asserted", an, nonce=n1)
+    r["sigs"] = [dict(s, sig=dict(s["sig"], kind=NOSTR_KIND)) if s["key_id"] == PUB[NOSTR] else s
+                 for s in r["sigs"]]
+    out.append(case("nostr-sig-malformed", "The bip340 key's sig object carries a third member beside a valid signature",
+                    ["CB §4.1", "CB §6.1"], r, ok(controller_binding_signatures="FAIL"),
+                    binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
+                    fails=["controller_binding_signatures"]))
+
+    r = binding("same_controller_asserted", ab, types=["ed25519"])
+    out.append(case("key-types-malformed", "key_types names one type for two keys",
+                    ["CB §3.1", "CB §6.1"], r, {"controller_binding_form": "FAIL"},
+                    binds_pair=True, applies=False, independence="NOT_CHECKED", reason=None,
+                    fails=["controller_binding_form"]))
+
+    r = binding("same_controller_asserted", ab, types=["ed25519", "org.example.key-type"])
+    second = next(h for h in ab if PUB[h] == r["keys"][1])
+    out.append(case("key-types-unknown",
+                    "A key type this revision does not list, and a revocation by that key signed with Ed25519",
+                    ["CB §3.3", "CB §5", "CB §6.1", "CB §6.2", "IP §6.7.4"], r,
+                    ok(controller_binding_signatures="NOT_CHECKED"),
+                    binds_pair=True, applies=False, independence="NOT_CHECKED", reason=None,
+                    revocations=[revocation(r, second, "2026-10-12T00:00:00Z")], fails=[]))
     return out
 
 

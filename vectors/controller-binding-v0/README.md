@@ -53,7 +53,8 @@ identity (CB §3.2).
 **All keys are test keys.** Each private key is the Ed25519 seed SHA-256 of the label in
 `test_keys`, except `operator-nostr`, a `bip340` key whose secret key is SHA-256 of its label. Its
 signing events have `created_at` 1790812800 and are signed with BIP-340's all-zero `aux_rand`, so
-they are reproducible. Never use one for anything else.
+they are reproducible, and so are their nonces, which a real ceremony draws at random (CB §9.3).
+Never use one for anything else.
 
 ## Expected values
 
@@ -101,6 +102,10 @@ already. No case reaches it, as in `vectors/coverage-declaration-v0/`.
 | `nostr-wrong-digest` | the Nostr event's `content` names another record's digest | `controller_binding_signatures` | `NOT_CHECKED` |
 | `nostr-other-kind` | the Nostr event is of kind 1 over the right `content` | `controller_binding_signatures` | `NOT_CHECKED` |
 | `nostr-revoked` | revoked by the `bip340` key, with a Nostr event, before the halves | `controller_binding_revocation` | `NOT_CHECKED` |
+| `nostr-nonce-short` | a `bip340` binding whose `nonce` is `ceremony-1`, not 32 hex characters | `controller_binding_form` | `NOT_CHECKED` |
+| `nostr-sig-malformed` | the `bip340` key's `sig` object has a third member | `controller_binding_signatures` | `NOT_CHECKED` |
+| `key-types-malformed` | `key_types` holds one token | `controller_binding_form` | `NOT_CHECKED` |
+| `key-types-unknown` | `key_types` names an unlisted token: signatures `NOT_CHECKED`; a revocation by that key, signed with Ed25519, does not apply | nothing | `NOT_CHECKED` |
 
 No case shows `issuer_independence` `PASS`. A binding never gives it (CB §7), and this revision
 registers no evidence that does (IP P-60).
@@ -121,4 +126,3 @@ registers no evidence that does (IP P-60).
 - Binding records or statements the verifier could not parse.
 - A `bip340` key bound to the key of the other half. Halves are signed with Ed25519, so no pair
   is under a `bip340` key, and every `bip340` case leaves the pair unbound.
-- A `key_types` token CB §3.3 does not list (`controller_binding_signatures` `NOT_CHECKED`).
