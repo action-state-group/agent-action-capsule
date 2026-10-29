@@ -22,7 +22,9 @@ packages is listed under each package that shipped it, or has not yet.
   `categories`, so the artifact stays a function of (subject, resolved anchor, derivation). The
   text no longer says the profile overrides ER on GET, credits the envelope's request digest,
   issuance time and signature to ER -01 §4.1 items 4–6, and cites ER -01 §10.1–§10.3 for the A2A
-  and MCP bindings, which match §11.4. **Vector change for every implementation:** the manifest
+  and MCP bindings, which match §11.4. The MCP `evidence_request` schema's `request` pattern
+  now admits the empty string (`*`, not `+`), which ER -01 §10.3 refuses `request_malformed`;
+  the Python and Go carriage checks already did. **Vector change for every implementation:** the manifest
   `drafts` value in `vectors/interop-profile-v0/` is now `draft-mih-agent-evidence-request-01`
   (four occurrences, in the `carriage-*` cases); no other byte of the vectors and no case count
   changes. The ER conformance vectors (`vectors/evidence-request/`) and the ER

@@ -3128,8 +3128,11 @@ a later draft revision.
   lists `draft-mih-agent-evidence-request-00`. Such a responder stays conformant: a -00 request map
   is accepted unchanged under -01, which adds only `categories`, and `drafts` names the drafts
   whose request map the responder accepts (§11.4.2). The manifest `drafts` value in the vectors
-  changes to `draft-mih-agent-evidence-request-01` (§11.4.2, §11.5). The next change of this kind
-  takes a new identifier.
+  changes to `draft-mih-agent-evidence-request-01` (§11.4.2, §11.5). The `evidence_request` input
+  schema's `request` pattern changes from `^[A-Za-z0-9_-]+$` to `^[A-Za-z0-9_-]*$` (§11.4.5): an
+  empty string is the base64url of zero octets, which ER refuses `request_malformed` (ER §10.3).
+  A responder that lists the earlier `+` pattern follows the older text of `evidence-interop/0`
+  and should move to `*`. The next change of this kind takes a new identifier.
 
 ## References
 
