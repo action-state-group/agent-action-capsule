@@ -39,7 +39,8 @@ History properties (§8.3) and what a verifier shows (§8.5).
 | ER | `draft-mih-agent-evidence-request` -01 | the `full_history` and `range` subject forms [ER §3.1], what a record carries [ER §3.1.1], derivation by definition digest [ER §3.3], the signed refusal [ER §4.2], caller invariance [ER §5], derivation-scoped disclosure [ER §8], the history card `history_card/1` [ER §8.1] |
 | RES | `spec/evidence-result-v0.md` | claim, sufficiency and verdict |
 
-Section numbers for ER are those of the rendered `.txt` of the -01 revision. A requirement
+Section numbers for ER are those of the rendered `.txt` of the -01 revision. IP pins ER -00;
+every ER section cited here other than §3.1.1 has the same number in -00. A requirement
 written `[IP §6.5]` is taken from IP; `[SH-n]` marks one this profile adds.
 
 **Does not define:** any record format, any identity scheme, any trust policy, who may receive a
