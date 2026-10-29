@@ -74,17 +74,38 @@ const (
 	StatusFail     = "fail"
 )
 
+// Why a receipt result has no registration time: the receipt did not pass;
+// it passed with no iat in its protected CWT claims; its protected iat is not
+// an integer number of seconds from 0 to 2^53 - 1; or its binding (rekor) is
+// no COSE Receipt and so carries no iat.
+const (
+	ReasonReceiptNotPassed  = "receipt_not_passed"
+	ReasonIatAbsent         = "iat_absent"
+	ReasonIatInvalid        = "iat_invalid"
+	ReasonBindingWithoutIat = "binding_without_iat"
+)
+
 var recordFields = []string{"ts_url", "entry_hash", "receipt_b64", "leaf_index", "tree_size"}
+
+// textFields are the WitnessRecord members that must be non-empty strings.
+var textFields = []string{"ts_url", "entry_hash", "receipt_b64"}
 
 // ReceiptResult is one receipt's outcome. Status is pass, withheld or fail.
 // Reason is a human-readable explanation and is not part of the
 // cross-language contract. Grade is the verified receipt grade, or nil.
+// KeyID is the directory key id a passing receipt verified under, else nil.
+// RegistrationTime is the iat the witness signed into a passing COSE
+// Receipt's protected header, in seconds since the epoch; when it is nil,
+// RegistrationTimeReason (one of the Reason constants) says why.
 type ReceiptResult struct {
-	TSURL   string  `json:"ts_url"`
-	Binding string  `json:"binding"`
-	Status  string  `json:"status"`
-	Reason  string  `json:"reason"`
-	Grade   *string `json:"grade"`
+	TSURL                  string  `json:"ts_url"`
+	Binding                string  `json:"binding"`
+	Status                 string  `json:"status"`
+	Reason                 string  `json:"reason"`
+	Grade                  *string `json:"grade"`
+	KeyID                  *string `json:"key_id"`
+	RegistrationTime       *int64  `json:"registration_time"`
+	RegistrationTimeReason *string `json:"registration_time_reason"`
 }
 
 // BindingOf returns the binding a witness URL names: rekor+... is rekor,
@@ -205,10 +226,16 @@ func RowFor(directory Directory, tsURL string) (Row, bool) {
 // log ID, when one names no public_keys entry. Keys are ed25519.PublicKey or
 // *ecdsa.PublicKey (P-256).
 func (r Row) Keys() ([]crypto.PublicKey, error) {
+	keys, _, err := r.keysWithIDs()
+	return keys, err
+}
+
+// keysWithIDs is Keys with the key id each key was read from.
+func (r Row) keysWithIDs() ([]crypto.PublicKey, []string, error) {
 	entries, entriesOK := listMember(r.raw, "public_keys")
 	ids, idsOK := listMember(r.raw, "key_ids")
 	if !entriesOK || !idsOK {
-		return nil, fmt.Errorf("row %q: key_ids and public_keys must be lists", r.Name)
+		return nil, nil, fmt.Errorf("row %q: key_ids and public_keys must be lists", r.Name)
 	}
 	byID := map[string]crypto.PublicKey{}
 	for _, entry := range entries {
@@ -231,22 +258,24 @@ func (r Row) Keys() ([]crypto.PublicKey, error) {
 		}
 	}
 	keys := make([]crypto.PublicKey, 0, len(ids))
+	keyIDs := make([]string, 0, len(ids))
 	for _, rawID := range ids {
 		id, isString := rawID.(string)
 		if !isString || !hex64.MatchString(id) {
-			return nil, fmt.Errorf("row %q: a key id is not 64 lowercase hex characters", r.Name)
+			return nil, nil, fmt.Errorf("row %q: a key id is not 64 lowercase hex characters", r.Name)
 		}
+		keyIDs = append(keyIDs, id)
 		if key, listed := byID[id]; listed {
 			keys = append(keys, key)
 			continue
 		}
 		if r.raw["binding"] == BindingRekor {
-			return nil, fmt.Errorf("rekor row %q: no public key for log ID %.16s...", r.Name, id)
+			return nil, nil, fmt.Errorf("rekor row %q: no public key for log ID %.16s...", r.Name, id)
 		}
 		raw, _ := hex.DecodeString(id)
 		keys = append(keys, ed25519.PublicKey(raw))
 	}
-	return keys, nil
+	return keys, keyIDs, nil
 }
 
 var hex64 = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -312,13 +341,21 @@ func isRecord(entry interface{}) (map[string]interface{}, bool) {
 	if !isObject {
 		return nil, false
 	}
-	if _, isString := record["ts_url"].(string); !isString {
-		return nil, false
-	}
 	for _, name := range recordFields {
 		if _, present := record[name]; !present {
 			return nil, false
 		}
+	}
+	// ts_url, entry_hash and receipt_b64 are non-empty strings, and
+	// receipt_b64 is canonical standard base64: an entry that is not a receipt
+	// is malformed, never merely not checked.
+	for _, name := range textFields {
+		if text, isString := record[name].(string); !isString || text == "" {
+			return nil, false
+		}
+	}
+	if _, err := decodeStdBase64(record["receipt_b64"].(string)); err != nil {
+		return nil, false
 	}
 	return record, true
 }
@@ -379,7 +416,8 @@ func VerifyReceipts(receipts interface{}, signed *SignedCheckpoint, checkpointCO
 // key it verifies under; fail otherwise.
 func checkRecord(signed SignedCheckpoint, record map[string]interface{}, checkpointCOSE []byte, directory Directory) ReceiptResult {
 	tsURL := record["ts_url"].(string)
-	result := ReceiptResult{TSURL: tsURL, Binding: BindingOf(tsURL), Status: StatusWithheld}
+	notPassed := ReasonReceiptNotPassed
+	result := ReceiptResult{TSURL: tsURL, Binding: BindingOf(tsURL), Status: StatusWithheld, RegistrationTimeReason: &notPassed}
 	if stub, _ := record["is_stub"].(bool); stub {
 		result.Reason = "stub receipt (never reached a witness)"
 		return result
@@ -389,7 +427,7 @@ func checkRecord(signed SignedCheckpoint, record map[string]interface{}, checkpo
 		result.Reason = "not checked: no directory row for this witness"
 		return result
 	}
-	keys, err := row.Keys()
+	keys, keyIDs, err := row.keysWithIDs()
 	if err != nil {
 		result.Reason = fmt.Sprintf("not checked: unusable key in directory row (%v)", err)
 		return result
@@ -398,11 +436,16 @@ func checkRecord(signed SignedCheckpoint, record map[string]interface{}, checkpo
 		result.Reason = "not checked: no key in the directory row for this witness"
 		return result
 	}
-	for _, key := range keys {
-		ok, reason, grade := VerifyReceipt(signed, record, key, checkpointCOSE)
-		result.Reason = reason
-		if ok {
-			result.Status, result.Grade = StatusPass, grade
+	for index, key := range keys {
+		check := verifyReceipt(signed, record, key, checkpointCOSE)
+		result.Reason = check.reason
+		if check.ok {
+			result.Status, result.Grade, result.KeyID = StatusPass, check.grade, &keyIDs[index]
+			result.RegistrationTime, result.RegistrationTimeReason = check.registrationTime, nil
+			if check.registrationTime == nil {
+				reason := check.registrationTimeReason
+				result.RegistrationTimeReason = &reason
+			}
 			return result
 		}
 	}
@@ -416,6 +459,25 @@ func checkRecord(signed SignedCheckpoint, record map[string]interface{}, checkpo
 // whether it verified, a reason, and the receipt grade when it verified.
 // It never panics on a malformed receipt.
 func VerifyReceipt(signed SignedCheckpoint, record map[string]interface{}, key crypto.PublicKey, checkpointCOSE []byte) (bool, string, *string) {
+	check := verifyReceipt(signed, record, key, checkpointCOSE)
+	return check.ok, check.reason, check.grade
+}
+
+// receiptCheck is one receipt checked under one key. A verified receipt
+// carries its registration time, or the reason it has none.
+type receiptCheck struct {
+	ok                     bool
+	reason                 string
+	grade                  *string
+	registrationTime       *int64
+	registrationTimeReason string
+}
+
+func failed(reason string) receiptCheck {
+	return receiptCheck{reason: reason}
+}
+
+func verifyReceipt(signed SignedCheckpoint, record map[string]interface{}, key crypto.PublicKey, checkpointCOSE []byte) receiptCheck {
 	tsURL, _ := record["ts_url"].(string)
 	switch BindingOf(tsURL) {
 	case BindingCLL:
@@ -423,68 +485,69 @@ func VerifyReceipt(signed SignedCheckpoint, record map[string]interface{}, key c
 	case BindingRekor:
 		encoded, isString := record["receipt_b64"].(string)
 		if !isString {
-			return false, "unreadable receipt: receipt_b64 is not a string", nil
+			return failed("unreadable receipt: receipt_b64 is not a string")
 		}
 		raw, err := decodeStdBase64(encoded)
 		if err != nil {
-			return false, "unreadable receipt: " + err.Error(), nil
+			return failed("unreadable receipt: " + err.Error())
 		}
 		entry, err := decodeJSON(raw)
 		if err != nil {
-			return false, "unreadable receipt: " + err.Error(), nil
+			return failed("unreadable receipt: " + err.Error())
 		}
 		if err := VerifyRekorEntry(entry, checkpointCOSE, signed.KeyID, key); err != nil {
-			return false, err.Error(), nil
+			return failed(err.Error())
 		}
 		grade := GradeObservedOnly
-		return true, "ok", &grade
+		return receiptCheck{ok: true, reason: "ok", grade: &grade, registrationTimeReason: ReasonBindingWithoutIat}
 	}
 	encoded, isString := record["receipt_b64"].(string)
 	if !isString {
-		return false, "unreadable receipt: receipt_b64 is not a string", nil
+		return failed("unreadable receipt: receipt_b64 is not a string")
 	}
 	raw, err := decodeStdBase64(encoded)
 	if err != nil {
-		return false, "unreadable receipt: " + err.Error(), nil
+		return failed("unreadable receipt: " + err.Error())
 	}
 	leaf := sha256.Sum256(checkpointCOSE)
 	checked, err := VerifyCOSEReceipt(raw, leaf[:], key)
 	if err != nil {
-		return false, "receipt does not verify for this checkpoint under the pinned key: " + err.Error(), nil
+		return failed("receipt does not verify for this checkpoint under the pinned key: " + err.Error())
 	}
 	// A SCRAPI receipt with no grade label, or an unknown one, is observed-only.
 	grade := GradeObservedOnly
 	if checked.Grade != nil {
 		grade = *checked.Grade
 	}
-	return true, "ok", &grade
+	return receiptCheck{true, "ok", &grade, checked.RegistrationTime, checked.RegistrationTimeReason}
 }
 
 // verifyCLL is a CLL witness stamp under one key: bound to this checkpoint
 // (entry_hash), then the COSE Receipt verifies over that leaf.
-func verifyCLL(signed SignedCheckpoint, record map[string]interface{}, key crypto.PublicKey) (bool, string, *string) {
+func verifyCLL(signed SignedCheckpoint, record map[string]interface{}, key crypto.PublicKey) receiptCheck {
 	digest := CheckpointDigest(signed)
 	expected := sha256.Sum256(digest[:])
 	entryHash, _ := record["entry_hash"].(string)
 	if entryHash != hex.EncodeToString(expected[:]) {
-		return false, "witness.entry_hash does not match this checkpoint's digest -- stamp is not bound to this checkpoint", nil
+		return failed("witness.entry_hash does not match this checkpoint's digest -- stamp is not bound to this checkpoint")
 	}
 	encoded, isString := record["receipt_b64"].(string)
 	if !isString {
-		return false, "receipt_b64 is not a string", nil
+		return failed("receipt_b64 is not a string")
 	}
 	raw, err := decodeStdBase64(encoded)
 	if err != nil {
-		return false, "receipt_b64 is not valid base64: " + err.Error(), nil
+		return failed("receipt_b64 is not valid base64: " + err.Error())
 	}
 	checked, err := VerifyCOSEReceipt(raw, expected[:], key)
 	if err != nil {
-		return false, err.Error(), nil
+		return failed(err.Error())
 	}
+	reason := "ok"
 	if checked.Grade == nil {
-		return true, "ok (receipt carries no grade label)", nil
+		reason = "ok (receipt carries no grade label)"
 	}
-	return true, "ok", checked.Grade
+	return receiptCheck{true, reason, checked.Grade, checked.RegistrationTime, checked.RegistrationTimeReason}
 }
 
 // decodeJSON reads one JSON value with json.Number numbers and no trailing

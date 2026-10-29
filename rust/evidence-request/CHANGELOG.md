@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `refusal::sign_with_detail` signs a refusal with the optional `detail` (profile P-6), carried
+  outside the signed members as in the Go signer; `Refusal` gains `detail: Option<String>`, which
+  `to_json` and `to_cbor` emit when present. `sign` is unchanged, and the signature is the same with
+  or without a detail.
+
 ## 0.2.0
 
 - **The artifact response is the interop profile's envelope** (`envelope`;

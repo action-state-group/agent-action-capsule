@@ -102,18 +102,46 @@ func DecodeFragment(fragment string) (interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fragment is not UTF-8 JSON: %w", err)
 	}
-	if err := canonical.CheckJSONText(raw); err != nil {
+	value, err := decodeJSONText(raw)
+	if err != nil {
 		return nil, fmt.Errorf("fragment is not UTF-8 JSON: %w", err)
+	}
+	return value, nil
+}
+
+// Decode reads one Evidence Bundle from its JSON text: one JSON object, with
+// numbers kept as json.Number (VerifyBundle, BundleDigest and the JCS
+// canonicalizer refuse float64), refusing invalid UTF-8, unpaired surrogate
+// escapes and trailing data, as DecodeFragment does. It checks transport
+// only; VerifyBundle applies the Bundle checks. It does not bound input
+// size: callers reading untrusted input should limit it.
+func Decode(raw []byte) (map[string]interface{}, error) {
+	value, err := decodeJSONText(raw)
+	if err != nil {
+		return nil, fmt.Errorf("bundle is not one JSON text: %w", err)
+	}
+	bundle, ok := value.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("bundle must be a JSON object")
+	}
+	return bundle, nil
+}
+
+// decodeJSONText decodes one JSON text with integers kept as json.Number,
+// refusing invalid UTF-8, unpaired surrogate escapes and trailing data.
+func decodeJSONText(raw []byte) (interface{}, error) {
+	if err := canonical.CheckJSONText(raw); err != nil {
+		return nil, err
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	var value interface{}
 	if err := decoder.Decode(&value); err != nil {
-		return nil, fmt.Errorf("fragment is not UTF-8 JSON: %w", err)
+		return nil, err
 	}
 	var trailing interface{}
 	if err := decoder.Decode(&trailing); err != io.EOF {
-		return nil, fmt.Errorf("fragment is not UTF-8 JSON")
+		return nil, fmt.Errorf("trailing data after the JSON value")
 	}
 	return value, nil
 }

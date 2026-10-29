@@ -89,9 +89,22 @@ def render_requirements(reqs: dict) -> dict:
 
 
 def artifact_value(octets: bytes | None) -> Any:
+    """The Artifact's value, or None unless its octets are exactly UTF-8 of JCS of one JSON value
+    (§4.3): a duplicate member, trailing data or any other encoding could carry bytes that
+    artifact_form never reads."""
+    if octets is None:
+        return None
+
+    def no_duplicates(pairs: list) -> dict:
+        keys = [k for k, _ in pairs]
+        if len(keys) != len(set(keys)):
+            raise ValueError("duplicate member")
+        return dict(pairs)
+
     try:
-        return json.loads(octets) if octets is not None else None
-    except ValueError:
+        value = json.loads(octets, object_pairs_hook=no_duplicates)
+        return value if jcs(value) == octets else None
+    except (ValueError, TypeError):
         return None
 
 
@@ -139,7 +152,8 @@ def artifact_form(envs: list[dict], reads: set) -> bool:
         a = env["artifact"]
         if not isinstance(a, dict) or set(a) != ARTIFACT_MEMBERS:
             return False
-        if a["anchor"] != env["anchor"].get("digest") or a["derivation"] != env.get("derivation") \
+        if not (isinstance(a["anchor"], str) and re.fullmatch(r"[0-9a-f]{64}", a["anchor"])) \
+                or a["anchor"] != env["anchor"].get("digest") or a["derivation"] != env.get("derivation") \
                 or a["subject"] != env["subject"]:
             return False
         recs = a["records"]
@@ -148,6 +162,11 @@ def artifact_form(envs: list[dict], reads: set) -> bool:
         for r in recs:
             if not isinstance(r, dict) or not {"digest", "leaf_index"} <= set(r) \
                     or not set(r) <= {"digest", "leaf_index"} | reads:
+                return False
+            # Each value in its form, so no permitted member carries an object the holder chose.
+            if not (isinstance(r["digest"], str) and re.fullmatch(r"[0-9a-f]{64}", r["digest"])) \
+                    or type(r["leaf_index"]) is not int or not 0 <= r["leaf_index"] <= 2**53 - 1 \
+                    or not all(isinstance(v, str) for k, v in r.items() if k not in ("digest", "leaf_index")):
                 return False
         if not isinstance(a["evidence_stream"], str) or not a["evidence_stream"]:
             return False
@@ -169,7 +188,10 @@ def history_properties(definition: Any, envs: list[dict]) -> dict:
         "single_signer": len({e["responder"] for e in envs}) == 1,
         "single_anchor": len({jcs(e["anchor"]) for e in envs}) == 1,
         "artifact_form": artifact_form(envs, reads),
-        "record_kinds": all(r.get("record_type") in KINDS for e in envs for r in e["artifact"]["records"]),
+        "record_kinds": all(isinstance(e["artifact"], dict) and isinstance(e["artifact"].get("records"), list)
+                            and all(isinstance(r, dict) and isinstance(r.get("record_type"), str)
+                                    and r["record_type"] in KINDS for r in e["artifact"]["records"])
+                            for e in envs),
     }
     return {k: "PASS" if v else "FAIL" for k, v in ok.items()}
 
@@ -437,3 +459,76 @@ def test_does_not_import_the_generator():
     modules = [a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names]
     modules += [n.module or "" for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)]
     assert not [m for m in modules if m.startswith("generate_")]
+
+
+def test_artifact_bytes_and_values_beside_the_form_fail():
+    """An Artifact is exactly the JCS of one object (§4.3), and each entry's values are in their
+    forms: bytes or values a holder could re-sign but artifact_form would never read fail it."""
+    (positive,) = [c for c in CASES if c["id"] == "history-basic"]
+    envs = [x["_env"] for x in run_exchanges(positive)]
+    octets = jcs(envs[0]["artifact"])
+    assert artifact_value(octets) == envs[0]["artifact"]
+    for bad in (octets + b' {"counterparty":"private value"}', octets + b" ",
+                octets.replace(b'{"anchor"', b'{"anchor":"x","anchor"', 1),
+                octets.replace(b'{"anchor"', b'{ "anchor"', 1)):
+        assert artifact_value(bad) is None
+    reads = set(positive["inputs"]["definition"]["reads"])
+    assert artifact_form(envs, reads)
+    for member, value in (("leaf_index", {"counterparty": "private value"}), ("leaf_index", "1"),
+                          ("digest", "private value"), ("committed_at", {"counterparty": "private value"})):
+        changed = copy.deepcopy(envs)
+        changed[0]["artifact"]["records"][0][member] = value
+        assert not artifact_form(changed, reads), member
+
+
+def _resigned(case: dict, artifact: bytes) -> dict:
+    """The case with its first reply's Artifact replaced, its digest recomputed and the envelope
+    re-signed by the holder's test key, as a holder could."""
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    key = Ed25519PrivateKey.from_private_bytes(hashlib.sha256(DATA["test_keys"]["keys"]["holder"]["seed_label"].encode()).digest())
+    case = copy.deepcopy(case)
+    reply = case["inputs"]["exchanges"][0]["reply"]
+    env = json.loads(reply["octets_text"])
+    env["artifact_digest"] = sha(artifact)
+    signed = {k: env[k] for k in ("profile", "request_digest", "subject", "derivation", "anchor", "artifact_digest",
+                                  "verification", "responder", "issued_at") if k in env}
+    env["sig"] = key.sign(jcs(signed)).hex()
+    env["artifact"] = base64.urlsafe_b64encode(artifact).rstrip(b"=").decode()
+    reply["octets_text"] = jcs(env).decode()
+    return case
+
+
+def test_resigned_artifact_mutants_fail_artifact_form_end_to_end():
+    """Each re-signed mutant passes every envelope check and fails artifact_form through the whole
+    evaluation, with no evaluator error."""
+    (positive,) = [c for c in CASES if c["id"] == "history-basic"]
+    env = json.loads(positive["inputs"]["exchanges"][0]["reply"]["octets_text"])
+    octets = base64.urlsafe_b64decode(env["artifact"] + "=" * (-len(env["artifact"]) % 4))
+    assert run_history(_resigned(positive, octets))["accepted"], "re-signing the same Artifact changes nothing"
+    value = json.loads(octets)
+
+    def with_entry(member: str, v: Any) -> bytes:
+        changed = copy.deepcopy(value)
+        changed["records"][0][member] = v
+        return jcs(changed)
+
+    for name, bad in {
+        "trailing object": octets + b'{"counterparty":"private value"}',
+        "trailing space": octets + b" ",
+        "duplicate member": octets.replace(b'{"anchor"', b'{"anchor":"x","anchor"', 1),
+        "object in leaf_index": with_entry("leaf_index", {"counterparty": "private value"}),
+        "object in a read": with_entry("committed_at", {"counterparty": "private value"}),
+        "object in record_type": with_entry("record_type", {"counterparty": "private value"}),
+    }.items():
+        got = run_history(_resigned(positive, bad))
+        assert got["exchanges"][0]["accepted"], name
+        assert not got["accepted"], name
+        # The whole report, as the Go test states it for the same mutants: an unreadable Artifact
+        # fails record_kinds too; one whose entries are readable but malformed fails artifact_form
+        # only.
+        want = dict.fromkeys(got["history_properties"], "PASS")
+        want["artifact_form"] = "FAIL"
+        if not name.startswith("object in") or name == "object in record_type":
+            want["record_kinds"] = "FAIL"
+        assert got["history_properties"] == want, name

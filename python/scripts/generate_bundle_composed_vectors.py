@@ -28,25 +28,47 @@ Cases:
 * ``same-custody-redundant``: two observers in ONE custody domain agree. The
   join is ``agree`` and the verifier reports the pair as redundant, not
   corroborating.
+* ``artifact-response-bound`` and ``artifact-response-other-request``: the
+  ``agree`` composition with responder-a carrying its response envelope.
+* ``agree-with-checkpoints``: the ``agree`` composition in which the
+  container and every member Bundle carry a whole-log completeness
+  certificate and a signed COSE checkpoint of their own log (the composer's,
+  each responder's), so the strict verdict of each, and the full verdict, is
+  ``VALID``.
 
 Output: ``vectors/bundle/composed/`` (or ``--out DIR``). The run is a pure
 function of this file: no clock, no randomness (Ed25519 is deterministic).
 ``README.md`` is hand-written; when present in the output directory it is
 included in ``SHA256SUMS`` but never rewritten.
 
-Dependencies: the standard library and ``cryptography`` (Ed25519 only).
+Dependencies: the standard library, ``cryptography`` (Ed25519), and for the
+checkpointed case the CLL reference (``cll.checkpoint``: the MMR, its proofs
+and the COSE checkpoint) and ``scitt-cose`` (the checkpoint's Signed
+Statement), as ``generate_bundle_strict_vectors.py`` uses them.
 """
 from __future__ import annotations
 
 import argparse
+import base64
 import copy
 import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
+from cll.checkpoint import (
+    CheckpointRecord,
+    MemoryNodeStore,
+    add_leaf,
+    checkpoint_to_cose,
+    core,
+    leaf_hash,
+    peaks,
+    root_from_peaks,
+)
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, PublicFormat
+from scitt_cose.statement import build_signed_statement
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "bundle" / "composed"
@@ -164,6 +186,68 @@ def producer_envelope(capsule_id: str, key: Key) -> bytes:
 
 
 # ---------------------------------------------------------------------------
+# Logs: a whole-log completeness certificate and a signed COSE checkpoint
+# ---------------------------------------------------------------------------
+
+
+class _StatementSigner:
+    """``checkpoint_to_cose``'s signer: a SCITT Signed Statement under one key."""
+
+    def __init__(self, key: Key) -> None:
+        self.key = key
+        self.key_id = key.public_hex
+
+    def sign_cose_statement(self, payload, *, content_type, issuer, subject, extra_cwt_claims=None):
+        pem = self.key.private.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
+        return build_signed_statement(payload, alg="EdDSA", private_key_pem=pem, issuer=issuer, subject=subject,
+                                      content_type=content_type, extra_cwt_claims=extra_cwt_claims,
+                                      kid=self.key.public)
+
+
+def _b64u(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def logged(bundle: dict, key: Key, log_id: str, timestamp: str) -> dict:
+    """``bundle`` with its records as the whole log ``log_id`` (seq 1..n): a
+    completeness certificate over that interval and the log's first
+    checkpoint, signed by ``key`` as a COSE Signed Statement."""
+    records = bundle["records"]
+    store = MemoryNodeStore()
+    for record in records:
+        add_leaf(store, leaf_hash(bytes.fromhex(record["capsule_id"])))
+    size = store.size()
+    peak_hashes = [store.node(p) for p in peaks(size)]
+    root = root_from_peaks(peak_hashes).hex()
+    signer = _StatementSigner(key)
+    checkpoint = {"log_id": log_id, "mmr_size": size, "root": root, "prev_size": 0, "prev_root": "",
+                  "key_id": signer.key_id, "timestamp": timestamp}
+    cp = CheckpointRecord(v=1, kind="mmr_checkpoint", signature="", **checkpoint)
+    checkpoint["cose"] = _b64u(checkpoint_to_cose(cp, signer, peak_hashes))
+    n = len(records)
+    rp = core.range_proof(store, 0, n - 1, size)
+    ids = [r["capsule_id"] for r in records]
+    memberships = {}
+    for i, cid in enumerate(ids):
+        p = core.inclusion_proof(store, i, size)
+        memberships[cid] = {
+            "log_coordinates": {"log_id": log_id, "seq": i + 1, "leaf_index": i},
+            "inclusion_proof": {"v": p.v, "kind": p.kind, "size": p.size, "leaf_index": p.leaf_index,
+                                "witness": list(p.witness), "peaks_left": list(p.peaks_left),
+                                "peaks_right": list(p.peaks_right)},
+        }
+    out = dict(bundle)
+    out["completeness_certificate"] = {
+        "log_id": log_id, "range_root": root, "first_seq": 1, "last_seq": n, "body_digests": ids,
+        "range_proof": {"from_seq": 1, "to_seq": n, "size": rp.size, "from_index": rp.from_index,
+                        "to_index": rp.to_index, "witness": list(rp.witness)},
+        "memberships": memberships,
+    }
+    out["checkpoint"] = checkpoint
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Capsules, member bundles, requests
 # ---------------------------------------------------------------------------
 
@@ -224,8 +308,12 @@ def request(member_id: str) -> dict:
     return {"subject": {"correlation": RUN}, "coverage": {"min_freshness": 1}, "nonce": f"n-{member_id}"}
 
 
-def artifact_member(member_id: str, observer: str, record: dict) -> dict:
+def artifact_member(member_id: str, observer: str, record: dict, log_key: Key | None = None) -> dict:
+    """With ``log_key``, the member Bundle is that responder's whole log, with
+    a completeness certificate and a checkpoint signed by ``log_key``."""
     bundle = member_bundle(record)
+    if log_key is not None:
+        bundle = logged(bundle, log_key, f"log:composed-vectors/{member_id}", t(12))
     return {
         "id": member_id,
         "observer": observer,
@@ -289,8 +377,12 @@ def block(members: list[dict], observers: list[dict], joins: list[dict], missing
     return out
 
 
-def container(composition: dict) -> dict:
-    """An ordinary evidence-bundle/v2 whose root is the composing party's own record."""
+def container(composition: dict, *, checkpointed: bool = False) -> dict:
+    """An ordinary evidence-bundle/v2 whose root is the composing party's own record.
+
+    With ``checkpointed``, the container is the composer's whole log, with a
+    completeness certificate and a checkpoint signed by the composer's key.
+    """
     root = seal({
         "spec_version": AAC_SPEC_VERSION,
         "format_version": "4",
@@ -303,7 +395,7 @@ def container(composition: dict) -> dict:
         "assurance": {"attestation_mode": "self_attested", "effect_mode": "not_applicable",
                       "ledger_mode": "standalone"},
     }, COMPOSER)
-    return {
+    out = {
         "bundle_version": "2",
         "bundle_kind": "evidence-bundle/v2",
         "root": root["capsule_id"],
@@ -311,6 +403,7 @@ def container(composition: dict) -> dict:
         "completeness": {"closure_depth": 0, "records_mode": "complete", "payloads_mode": "all"},
         "extensions": {KIND: composition},
     }
+    return logged(out, COMPOSER, "log:composed-vectors/composer", t(31)) if checkpointed else out
 
 
 # ---------------------------------------------------------------------------
@@ -326,10 +419,13 @@ MEMBER_CLAIMS_DEPTH0 = {
 }
 
 
-def two_responders() -> tuple[list[dict], list[dict]]:
+def two_responders(*, checkpointed: bool = False) -> tuple[list[dict], list[dict]]:
     rec_a = observation("responder-a", "responder-a.example", RESPONDER_A, 10, transcript="shared transcript")
     rec_b = observation("responder-b", "responder-b.example", RESPONDER_B, 11, transcript="shared transcript")
-    members = [artifact_member("responder-a", "obs-a", rec_a), artifact_member("responder-b", "obs-b", rec_b)]
+    members = [
+        artifact_member("responder-a", "obs-a", rec_a, RESPONDER_A if checkpointed else None),
+        artifact_member("responder-b", "obs-b", rec_b, RESPONDER_B if checkpointed else None),
+    ]
     observers = [
         {"id": "obs-a", "role": "responder", "custody_domain": "custody-a.example"},
         {"id": "obs-b", "role": "responder", "custody_domain": "custody-b.example"},
@@ -494,10 +590,59 @@ def case_response(case_id: str, request_digest_of: str) -> dict:
     }
 
 
+MEMBER_CLAIMS_LOGGED = {
+    # The member Bundle is its responder's whole log: the certificate's range
+    # and membership proofs verify against a checkpoint whose COSE form
+    # verifies, so all three claims pass with no finding.
+    "graph_closure": "pass",
+    "interval_coverage": "pass",
+    "per_record_membership": "pass",
+}
+
+def case_agree_with_checkpoints() -> dict:
+    members, observers = two_responders(checkpointed=True)
+    comp = block(members, observers, [join("responder-a", "responder-b", "agree")])
+    digest, preimage = composed_digest(comp)
+    return {
+        "id": "agree-with-checkpoints",
+        "section": [S_SHAPE, S_MEMBERS, S_JOINS, S_OBSERVERS, S_DIGEST, S_CLOSURE, S_CLAIMS],
+        "description": "The agree composition, with every Bundle checkpointed. Each member Bundle is its "
+                       "responder's whole log (one record): a completeness certificate over seq 1..1 and the "
+                       "log's first checkpoint, signed as a COSE statement by the responder's key. The "
+                       "container is the composer's whole log, checkpointed the same way under the composer's "
+                       "key. Every claim of the container and of each member passes, so the strict verdict of "
+                       "each is VALID, and with the block passing the full verdict is VALID. The member digests "
+                       "cover the certificates and checkpoints, so the composed digest is not the agree case's.",
+        "container": container(comp, checkpointed=True),
+        "expect": {
+            "composed_digest": digest,
+            "canonical_preimage": preimage,
+            "status": "pass",
+            "members": {
+                "responder-a": {"outcome": "artifact", "body": "carried", "digest": "reproduced",
+                                "claims": MEMBER_CLAIMS_LOGGED},
+                "responder-b": {"outcome": "artifact", "body": "carried", "digest": "reproduced",
+                                "claims": MEMBER_CLAIMS_LOGGED},
+            },
+            "composition_closure": {"status": "pass", "missing": []},
+            "joins": [{"members": ["responder-a", "responder-b"], "declared": "agree", "derived": "agree",
+                       "result": "derived_matches"}],
+            "corroboration": [{"members": ["responder-a", "responder-b"], "result": "corroborating",
+                               "qualifier": "custody_declared"}],
+            # Strict verdicts (vectors/bundle/strict/README.md): the container's
+            # and each carried member Bundle's. The full verdict is VALID only
+            # when all of them are and the block's status is pass.
+            "strict": {"container": "VALID", "members": {"responder-a": "VALID", "responder-b": "VALID"}},
+            "verdict": "VALID",
+        },
+    }
+
+
 def cases() -> list[dict]:
     return [case_agree(), case_missing(), case_same_custody(),
             case_response("artifact-response-bound", "responder-a"),
-            case_response("artifact-response-other-request", "responder-b")]
+            case_response("artifact-response-other-request", "responder-b"),
+            case_agree_with_checkpoints()]
 
 
 # ---------------------------------------------------------------------------

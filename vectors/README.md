@@ -1,5 +1,7 @@
 # Authoritative conformance vectors
 
+The index of every vector set, with case counts, is [`../VECTORS.md`](../VECTORS.md).
+
 This directory is the language-agnostic, releasable conformance surface for
 the Agent Action Capsule repository. Python, Go, and TypeScript consume these
 same-commit files in CI.
@@ -14,7 +16,16 @@ same-commit files in CI.
 - `disclosure-envelope/`: Disclosure Envelope DE-1 through DE-3 cases.
 - `cross-language/`: format-4 inputs used by the all-producer/all-consumer
   interlock: the released `-04` `seal-input.json` and its `-05` twin
-  `seal-input-v05.json`.
+  `seal-input-v05.json`, and `bundle-producer-log.json`, one checkpointed log
+  of signed records every implementation builds the same Evidence Bundles
+  from; `python/scripts/generate_bundle_producer_fixture.py` regenerates it.
+  `verify-number-findings.json` pins the number findings every verifier
+  reports for one record (at most 64 per code, paths cut to 256 characters);
+  `python/scripts/generate_verify_number_findings_fixture.py` regenerates it.
+  `cll-ed25519-vectors.json` is a verbatim copy of checkpointed-local-log's
+  `checkpoint-conformance-vectors/ed25519-vectors.json`, the strict Ed25519
+  cases the witness receipt tests of every
+  implementation run.
 - `interop/`: established composition and run-under interoperability suites.
 - `evidence-request/`: draft-mih-agent-evidence-request-00 cases (request map,
   subject forms, request digest, signed refusal, outcomes, caller invariance,
@@ -47,6 +58,10 @@ same-commit files in CI.
   producer-selected Bundles, the `disclosures` claim and witness receipts of the
   `cll`, `rekor` and `scrapi` bindings under a supplied witness directory;
   `python/scripts/generate_bundle_strict_vectors.py` regenerates them.
+- `bundle/fragment/`: the Evidence Bundle permalink codec ("Fragment Codec" of
+  `draft-mih-zhang-agent-disclosure-bundle`): payloads and the tokens an
+  independent encoder wrote for them, run by the TypeScript and Go codecs
+  (see its README). Hand-maintained; `SHA256SUMS` pins it.
 - `judgment/`: PROVISIONAL judgment extension cases (the `x-judgment-v1`
   Capsule member: `rubric_digest`, `rubric_version`, `judge_parameters_digest`,
   schema `schemas/judgment/judgment-extension-v1.json`). The digest rules are
@@ -67,6 +82,28 @@ same-commit files in CI.
   declaring more than its evidence, two source negatives, and two pairs of agreeing halves for
   issuer independence. Built from the personal-history run;
   `python/scripts/generate_coverage_declaration_v0_vectors.py` regenerates them.
+- `controller-binding-v0/`: the controller binding record of `spec/controller-binding-v0.md` and
+  its use in issuer independence (`spec/interop-profile-v0.md` §6.7.4): one valid binding per claim
+  type, and expired, revoked, one-key-signed, same-key, other-keys, forged-credential,
+  unknown-method, unbound-delegator and revocation cases, each over a pair of agreeing halves;
+  `python/scripts/generate_controller_binding_v0_vectors.py` regenerates them.
+- `deal-reconcile-v0/`: the Evidence Contract `ec:deal-reconcile@1` of
+  `spec/deal-reconcile-contract-v0.md`: a deal whose two halves' amount and currency commitments
+  open and match, and one whose amount opening fails, with the six tallies and the Evidence Result
+  of each; `python/scripts/generate_deal_reconcile_v0_vectors.py` regenerates them.
+- `personal-history-outcome-v0/`: the Outcome level of the personal-agent History profile
+  (`spec/personal-agent-history-outcome-v0.md`): one positive per outcome source (the holder's
+  record, the other party's half, an x402 native object, a judge's verdict under consent), a
+  `not_evaluable` delivery beside an established payment, the deal commitment unopened and
+  wrongly opened, and one mutant per property the level adds. Derived from the personal-history run
+  and the x402 adapter corpus;
+  `python/scripts/generate_personal_history_outcome_v0_vectors.py` regenerates them.
+- `standard-history-v0/`: the derivation `standard_history/1` of `spec/standard-history-v0.md`:
+  positive cards for a person and a node, checked with and without the policy, the anchor and the
+  deal entries, the month-end window clamp and an empty window, and one negative per property of
+  its §6 (a percentage, a count without its denominator, a counted shop purchase, a window not in
+  the policy, among others); `python/scripts/generate_standard_history_v0_vectors.py` regenerates
+  them.
 - `inference-service-history-v0/`: the Inference-Service History Profile
   `spec/inference-service-history-profile-v0.md`: a served-only Standard History, the period
   negatives, two anchors over the same closed periods, peer confirmation and labels at the
@@ -78,11 +115,11 @@ same-commit files in CI.
   not recorded, and signed with a published development key;
   `python/scripts/generate_adapter_x402_vectors.py` regenerates them.
 
-- `presentation-resolution/`: shared presentation resolution vectors for
-  `spec/presentation-contract-v0.md` (ABI refusal, the descriptor, the match,
-  the tiers and the static ambiguity test), normative for the TypeScript
-  registry and the Go package `go/presentation`; the TypeScript registry
-  generates them (see its README).
+- `viewer-core-text/`: the core's fixed text of
+  `spec/verification-display-v0.md` sections 6.1 and 6.2 (the banner's line
+  for each verification state, the refusal, and the check lists' lines),
+  which a viewer's words must equal; the TypeScript viewer generates them
+  (see its README).
 - `adapters/ucp/`: the UCP adapter cases of `spec/adapters/ucp-v0.md` §3, a
   checkout carrying `ap2.merchant_authorization`: a positive and a
   native-check-fails case, signed with the RFC 7515 Appendix A.3 example key;

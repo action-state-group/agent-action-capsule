@@ -1,9 +1,6 @@
-// @vitest-environment jsdom
-
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { renderEvidenceGraph } from "../src/browser.js";
 import { verifyBundle } from "../src/bundle.js";
 import {
   CHECKED_ON_THIS_PAGE,
@@ -15,9 +12,12 @@ import {
   VERIFICATION_CHECK_IDS,
   VERIFICATION_CHECK_WORDS,
   verificationCheckLists,
+  verificationCheckWords,
   type VerificationCheckId,
+  type VerificationCheckLists,
 } from "../src/verification-page.js";
 import { derivedFixture } from "./helpers/derived-fixtures.js";
+import { pageModel, type PageModel } from "./helpers/page-model.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 type Obj = Record<string, unknown>;
@@ -37,48 +37,67 @@ const signedCheckpointBundle = (): Obj =>
 const sealed = async (name: string): Promise<Obj> =>
   (await sealEvidenceBundle(testdata(name))).bundle;
 
+// The check lists a page draws, read from the verification model.
 interface Shown {
-  readonly root: HTMLElement;
-  readonly page: string[];
-  readonly failed: string[];
-  readonly notChecked: string[];
+  readonly model: PageModel;
+  readonly page: readonly string[];
+  readonly failed: readonly string[];
+  readonly notChecked: readonly string[];
 }
 
 async function show(
   bundle: unknown,
-  options: { verifierHint?: string } = {},
+  options: { citedSigners?: boolean } = {},
 ): Promise<Shown> {
-  const root = document.createElement("main");
-  await renderEvidenceGraph(bundle, root, undefined, options);
-  const ids = (which: string): string[] =>
-    Array.from(
-      root.querySelectorAll<HTMLElement>(
-        `[data-page="verification"] ul[data-checks="${which}"] > li`,
-      ),
-      (item) => item.dataset.check!,
-    );
+  const model = await pageModel(bundle, options);
+  const lists = model.page.checkLists;
   return {
-    root,
-    page: ids("page"),
-    failed: ids("failed"),
-    notChecked: ids("not-checked"),
+    model,
+    page: lists.page,
+    failed: lists.failed,
+    notChecked: lists.notChecked,
   };
 }
 
-// Every word the panel's lists and their lines can show.
-function listText(root: HTMLElement): string[] {
-  return Array.from(
-    root.querySelectorAll<HTMLElement>(
-      '[data-page="verification"] [data-checks]',
-    ),
-    (node) => node.textContent ?? "",
+// Every line the lists show, with the list each id is in.
+function listLines(lists: VerificationCheckLists): [string, string][] {
+  return (["page", "failed", "notChecked"] as const).flatMap((list) =>
+    lists[list].map((id): [string, string] => [
+      `${list}:${id}`,
+      verificationCheckWords(id, list, lists),
+    ]),
   );
+}
+
+// Every line of the core's own text on the verification page: the checks'
+// names and results, the coverage reason, the extension lines,
+// the check lists and the pointer to a full verifier. Keyed by where it is
+// shown.
+function panelLines(model: PageModel): [string, string][] {
+  const { page } = model;
+  return [
+    ...page.checks.flatMap((check): [string, string][] => [
+      ["check", check.name],
+      ["check", check.result],
+    ]),
+    ...(page.coverage.status === "established"
+      ? []
+      : [["coverage", page.coverage.reason] as [string, string]]),
+    ...page.extensions.map((row): [string, string] => [
+      `extension:${row.id}`,
+      row.semantics,
+    ]),
+    ...listLines(page.checkLists),
+    ["verify-independently", page.verifyIndependentlyLine],
+  ];
 }
 
 describe("the verification page's check lists", () => {
   it("a Result page with a cited Close: the cited signers on the page, every record's signature not", async () => {
-    const { root, page, failed, notChecked } = await show(
+    // The Result page checks the producer signatures of the Close it cites.
+    const { page, failed, notChecked } = await show(
       await sealed("result-root-close-bundle.json"),
+      { citedSigners: true },
     );
     expect(page).toEqual([
       "record-digests",
@@ -91,19 +110,6 @@ describe("the verification page's check lists", () => {
     ]);
     expect(failed).toEqual([]);
     expect(notChecked).toEqual(["producer-signatures"]);
-    const headings = Array.from(
-      root.querySelectorAll('[data-page="verification"] h4'),
-      (h) => h.textContent,
-    );
-    expect(headings).toContain(CHECKED_ON_THIS_PAGE);
-    expect(headings).toContain(NOT_CHECKED_ON_THIS_PAGE);
-    expect(headings).not.toContain(FAILED_ON_THIS_PAGE);
-    expect(
-      root.querySelector('[data-checks="full-verifier"]')?.textContent,
-    ).toBe(FULL_VERIFIER_LINE);
-    expect(root.querySelector('[data-checks="scope"]')?.textContent).toBe(
-      CHECKS_SCOPE_LINE,
-    );
   });
 
   it("the same records on a page that cites no signer: the signatures stay off the page list", async () => {
@@ -196,6 +202,44 @@ describe("the verification page's check lists", () => {
     expect(lists.passedWithoutCheckpoint).toBe(true);
   });
 
+  it("a bundle that fails another check never says it passed without the checkpoint", async () => {
+    const bundle = signedCheckpointBundle();
+    const verified = await verifyBundle(bundle);
+    const unchecked = {
+      status: "pass" as const,
+      findings: ["checkpoint_unverified"],
+    };
+    const lists = verificationCheckLists(bundle, {
+      ...verified,
+      graphClosure: { status: "fail" as const, findings: ["missing_record"] },
+      intervalCoverage: unchecked,
+      perRecordMembership: unchecked,
+    });
+    expect(lists.failed).toEqual(["closure"]);
+    expect(lists.notChecked).toEqual(["checkpoint-signature"]);
+    expect(lists.passedWithoutCheckpoint).toBe(false);
+  });
+
+  it("a declared-incomplete bundle, which the banner fails, never says it passed without the checkpoint", async () => {
+    const bundle = signedCheckpointBundle();
+    const verified = await verifyBundle(bundle);
+    const unchecked = {
+      status: "pass" as const,
+      findings: ["checkpoint_unverified"],
+    };
+    // A declared missing record leaves closure withheld: no check on the
+    // page fails, but the page's verdict does not pass.
+    const lists = verificationCheckLists(bundle, {
+      ...verified,
+      graphClosure: { status: "withheld" as const, findings: [] },
+      intervalCoverage: unchecked,
+      perRecordMembership: unchecked,
+    });
+    expect(lists.failed).toEqual([]);
+    expect(lists.notChecked).toEqual(["checkpoint-signature"]);
+    expect(lists.passedWithoutCheckpoint).toBe(false);
+  });
+
   it("a checkpoint whose signature does not authenticate moves to the failed list", async () => {
     const bundle = signedCheckpointBundle();
     const verified = await verifyBundle(bundle);
@@ -235,9 +279,7 @@ describe("a tampered bundle", () => {
       index === 0 ? { ...record, operator: "edited-after-sealing" } : record,
     );
     const after = await show({ ...bundle, records });
-    expect(
-      after.root.querySelector("[data-verify]")?.getAttribute("data-verify"),
-    ).toBe("failed");
+    expect(after.model.banner.state).toBe("failed");
     expect(after.page).not.toContain("record-digests");
     expect(after.failed).toContain("record-digests");
     expect(after.failed).toContain("closure");
@@ -248,7 +290,9 @@ describe("a tampered bundle", () => {
       vector("minimum-necessary", "bundle-mismatch", "input.json").bundle,
     );
     expect(page).not.toContain("disclosures");
-    expect(failed).toEqual(["disclosures"]);
+    // The strict checkpoint claim fails too: the checkpoint's JSON copy
+    // states no log_id (checkpoint_field_missing:log_id).
+    expect(failed).toEqual(["checkpoint-signature", "disclosures"]);
   });
 
   it("an edited countersignature moves the countersignature check out of the page list", async () => {
@@ -257,7 +301,7 @@ describe("a tampered bundle", () => {
     );
     const [entry] = bundle.countersignatures as Obj[];
     const signature = entry!.signature as string;
-    const { page, failed } = await show({
+    const { page, failed, model } = await show({
       ...bundle,
       countersignatures: [
         {
@@ -268,6 +312,17 @@ describe("a tampered bundle", () => {
     });
     expect(page).not.toContain("countersignatures");
     expect(failed).toEqual(["countersignatures"]);
+    // A countersignature is not one of the bundle's own checks: the banner
+    // scopes its words to those, beside a failed countersignature line.
+    expect(model.banner.line).toMatch(/^None of the bundle's checks failed, /u);
+    // And the failed line says it does not change the verdict.
+    expect(
+      verificationCheckWords(
+        "countersignatures",
+        "failed",
+        model.page.checkLists,
+      ),
+    ).toMatch(/so its result never changes the bundle's verdict\.$/u);
   });
 
   it("a moved membership entry moves the membership check out of the page list", async () => {
@@ -302,7 +357,7 @@ describe("the lists' words", () => {
     }
   });
 
-  it("on every rendered page: no banned word, and verified only in the page list", async () => {
+  it("on every page: no banned word, and verified only in the page list", async () => {
     const bundles: unknown[] = [
       await sealed("result-root-close-bundle.json"),
       await sealed("week-bundle.json"),
@@ -312,24 +367,18 @@ describe("the lists' words", () => {
       vector("minimum-necessary", "bundle-mismatch", "input.json").bundle,
     ];
     for (const bundle of bundles) {
-      const { root } = await show(bundle);
-      for (const text of listText(root)) expect(text).not.toMatch(banned);
-      for (const item of root.querySelectorAll<HTMLElement>(
-        '[data-page="verification"] [data-checks]:not([data-checks="page"])',
-      ))
-        expect(item.textContent).not.toMatch(/verified/iu);
+      const { model } = await show(bundle, { citedSigners: true });
+      for (const [where, text] of listLines(model.page.checkLists)) {
+        expect(text).not.toMatch(banned);
+        if (!where.startsWith("page:")) expect(text).not.toMatch(/verified/iu);
+      }
     }
   });
 
-  // The whole panel, every row: the core's own text never says "identity"
-  // or "freshness", and says "verified" only of a check this page ran. The
-  // only such lines are the cited-signers item (the page checked those
-  // signatures) and the extension integrity cell, whose words the contract
-  // fixes (section 3.2): "Integrity verified" when the bundle digest covering
-  // the block was computed here, "Integrity not verified" when it could not
-  // be. The fixtures carry no such word in their own data (witness names,
-  // countersigner check names), so every hit would be the core's text.
-  it("on every row of the rendered panel: no banned word, and verified only for a check the page ran", async () => {
+  // The whole panel, every line of the core's own text: it never says
+  // "identity" or "freshness", and says "verified" only of a check this page
+  // ran, the cited-signers item (the page checked those signatures).
+  it("on every line of the panel: no banned word, and verified only for a check the page ran", async () => {
     const countersigned = await derivedFixture(
       "week-bundle-directory-countersigned.json",
     );
@@ -368,29 +417,15 @@ describe("the lists' words", () => {
         (c) => c.container,
       ),
     ];
-    const allowed = (node: Element, text: string): boolean =>
-      node.closest(
-        'ul[data-checks="page"] > li[data-check="cited-signers"]',
-      ) !== null ||
-      (node.closest("table[data-extensions] td") !== null &&
-        /^Integrity (?:not )?verified;/u.test(text));
     let rows = 0;
     for (const bundle of bundles) {
-      const { root } = await show(bundle);
-      const panel = root.querySelector('[data-page="verification"]')!;
-      for (const node of panel.querySelectorAll("*")) {
-        // Each element's own text, not its children's.
-        const text = Array.from(node.childNodes)
-          .filter((child) => child.nodeType === 3)
-          .map((child) => child.textContent ?? "")
-          .join("");
-        if (text.trim() === "") continue;
+      const { model } = await show(bundle, { citedSigners: true });
+      for (const [where, text] of panelLines(model)) {
         rows += 1;
         expect(text).not.toMatch(/\b(?:identity|freshness|fresh)\b/iu);
         if (/\bverified\b/iu.test(text))
-          expect(allowed(node, text), text).toBe(true);
+          expect(where, text).toBe("page:cited-signers");
       }
-      expect(panel.textContent).not.toContain("consistency-verified");
     }
     expect(rows).toBeGreaterThan(100);
   });
@@ -400,40 +435,5 @@ describe("the lists' words", () => {
     expect(Object.keys(VERIFICATION_CHECK_WORDS).sort()).toEqual(
       [...ids].sort(),
     );
-  });
-});
-
-describe("the host's verifier hint", () => {
-  it("is shown as text after the neutral pointer, under the not-checked list", async () => {
-    const hint = "example-verifier check <b>FILE</b>";
-    const { root } = await show(await sealed("result-root-close-bundle.json"), {
-      verifierHint: hint,
-    });
-    const pointer = root.querySelector('[data-checks="full-verifier"]')!;
-    const shown = root.querySelector<HTMLElement>("[data-verifier-hint]")!;
-    expect(shown.tagName).toBe("PRE");
-    expect(shown.textContent).toBe(hint);
-    expect(shown.querySelector("b")).toBeNull();
-    expect(pointer.nextElementSibling).toBe(shown);
-  });
-
-  it("changes no list", async () => {
-    const bundle = await sealed("result-root-close-bundle.json");
-    const plain = await show(bundle);
-    const hinted = await show(bundle, { verifierHint: "example-verifier" });
-    expect([hinted.page, hinted.failed, hinted.notChecked]).toEqual([
-      plain.page,
-      plain.failed,
-      plain.notChecked,
-    ]);
-  });
-
-  it("is not shown, nor the pointer, when every called-for check ran", async () => {
-    const { root } = await show(await sealed("week-bundle.json"), {
-      verifierHint: "example-verifier",
-    });
-    expect(root.querySelector('[data-checks="not-checked"]')).toBeNull();
-    expect(root.querySelector('[data-checks="full-verifier"]')).toBeNull();
-    expect(root.querySelector("[data-verifier-hint]")).toBeNull();
   });
 });

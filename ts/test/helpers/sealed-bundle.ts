@@ -1,4 +1,10 @@
-import { MmrTree, inclusionProof, rangeProof } from "@action-state-group/cll";
+import {
+  MmrTree,
+  createCheckpointIdentity,
+  inclusionProof,
+  rangeProof,
+  signCheckpoint,
+} from "@action-state-group/cll";
 // Imported directly, not via src/index.js.
 import { jsonDigest } from "../../src/json.js";
 import { computeCapsuleId } from "../../src/verify.js";
@@ -116,6 +122,12 @@ export interface SealOptions {
   readonly unsigned?: readonly string[];
   /** Alias -> test signer whose key signs the envelope, whatever `key_id` states. */
   readonly signWith?: Readonly<Record<string, "a" | "b" | "c">>;
+  /**
+   * Sign the checkpoint: a real cll COSE checkpoint (`checkpoint.cose`) over
+   * the fixture log, from a deterministic test seed, with the JSON copy
+   * carrying log_id, key_id and timestamp as the signed values.
+   */
+  readonly signCheckpoint?: boolean;
 }
 
 export async function sealEvidenceBundle(
@@ -251,6 +263,26 @@ export async function sealEvidenceBundle(
     };
   });
   const root = hex(await tree.root());
+  let checkpoint: Obj = { root, mmr_size: Number(size) };
+  if (options.signCheckpoint === true) {
+    const signed = await signCheckpoint({
+      logId,
+      mmrSize: size,
+      peaks: tree.peakHashes(),
+      previousSize: 0n,
+      previousPeaks: [],
+      timestamp: "2026-09-14T00:00:00Z",
+      identity: createCheckpointIdentity(new Uint8Array(32).fill(0x6b)),
+    });
+    checkpoint = {
+      log_id: signed.logId,
+      root: signed.root,
+      mmr_size: Number(signed.mmrSize),
+      key_id: signed.keyId,
+      timestamp: signed.timestamp,
+      cose: Buffer.from(signed.cose).toString("base64url"),
+    };
+  }
 
   const {
     records: _records,
@@ -291,7 +323,7 @@ export async function sealEvidenceBundle(
         },
         memberships: members,
       },
-      checkpoint: { root, mmr_size: Number(size) },
+      checkpoint,
     },
   };
 }

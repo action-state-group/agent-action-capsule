@@ -73,24 +73,86 @@ export async function computeCapsuleId(capsule: RecordValue): Promise<string> {
   return sha256Hex(jcs(copy));
 }
 
+/**
+ * At most this many `float_in_digest_field` (and, separately,
+ * `unsafe_integer_in_digest_field`) findings are reported; the verdict needs
+ * only one. Each quotes at most `MAX_PATH_CHARS` code points of its path, then
+ * `...`. The Python, Go and Rust verifiers use the same limits.
+ */
+const MAX_PATH_FINDINGS = 64;
+const MAX_PATH_CHARS = 256;
+
+/** Code point order: the Rust and Go byte order, unlike `sort()`'s UTF-16. */
+function byCodePoint(a: string, b: string): number {
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const x = a.codePointAt(i)!;
+    const y = b.codePointAt(i)!;
+    if (x !== y) return x - y;
+    if (x > 0xffff) i++;
+  }
+  return a.length - b.length;
+}
+
+type PathStep = string | number;
+
+/**
+ * The first `limit` JSON paths at which `predicate` holds, object members in
+ * code point order of their keys, each cut to `maxChars` code points followed
+ * by `...`. The walk keeps only each open container's step: a path is written
+ * only for a number that matches, so the work is linear in the input plus the
+ * paths returned. It recurses on purpose and visits every member, even past
+ * `limit`: input nested beyond the stack raises a RangeError, which
+ * verifyBundle refuses as bundle_malformed (vectors/bundle/strict/README.md).
+ */
 function pathFind(
   value: ParsedJson,
   predicate: (value: JsonNumber) => boolean,
-  path = "",
+  limit: number,
+  maxChars: number,
 ): string[] {
-  if (value instanceof JsonNumber)
-    return predicate(value) ? [path || "<root>"] : [];
-  if (Array.isArray(value))
-    return value.flatMap((child, index) =>
-      pathFind(child, predicate, `${path}[${index}]`),
-    );
-  const record = object(value);
-  if (record === undefined) return [];
-  return Object.keys(record)
-    .sort()
-    .flatMap((key) =>
-      pathFind(record[key]!, predicate, path === "" ? key : `${path}.${key}`),
-    );
+  const out: string[] = [];
+  const steps: PathStep[] = [];
+  const walk = (node: ParsedJson): void => {
+    if (node instanceof JsonNumber) {
+      if (out.length < limit && predicate(node))
+        out.push(joinPath(steps, maxChars));
+      return;
+    }
+    if (Array.isArray(node)) {
+      for (let index = 0; index < node.length; index++) {
+        steps.push(index);
+        walk(node[index]!);
+        steps.pop();
+      }
+      return;
+    }
+    const record = object(node);
+    if (record === undefined) return;
+    for (const key of Object.keys(record).sort(byCodePoint)) {
+      steps.push(key);
+      walk(record[key]!);
+      steps.pop();
+    }
+  };
+  walk(value);
+  return out;
+}
+
+/** `a.b[0]` from its steps; past `maxChars` code points the rest is dropped and `...` marks the cut. */
+function joinPath(steps: readonly PathStep[], maxChars: number): string {
+  let text = "";
+  let room = maxChars;
+  for (const step of steps) {
+    const piece =
+      typeof step === "number" ? `[${step}]` : text === "" ? step : `.${step}`;
+    for (const ch of piece) {
+      if (room === 0) return `${text}...`;
+      text += ch;
+      room--;
+    }
+  }
+  return text === "" ? "<root>" : text;
 }
 
 const v4IrreversibilityClasses = known.irreversibility_class;
@@ -242,7 +304,12 @@ export async function verifyClass1(
       "constraints MUST be an array when present (§8.1)",
       1,
     );
-  for (const path of pathFind(top, (n) => /[.eE]/u.test(n.raw)))
+  for (const path of pathFind(
+    top,
+    (n) => /[.eE]/u.test(n.raw),
+    MAX_PATH_FINDINGS,
+    MAX_PATH_CHARS,
+  ))
     add(
       "float_in_digest_field",
       `floating-point value at ${path}; §5.1 forbids it`,
@@ -253,6 +320,8 @@ export async function verifyClass1(
     (n) =>
       !/[.eE]/u.test(n.raw) &&
       (BigInt(n.raw) > 9007199254740991n || BigInt(n.raw) < -9007199254740991n),
+    MAX_PATH_FINDINGS,
+    MAX_PATH_CHARS,
   ))
     add(
       "unsafe_integer_in_digest_field",

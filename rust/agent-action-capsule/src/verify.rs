@@ -10,7 +10,9 @@
 //! registration and Receipt inclusion proofs belong to the SCITT/COSE
 //! substrate (§6); the Producer Envelope is [`crate::envelope`].
 
-use crate::canonical::{compute_capsule_id, float_paths, unsafe_int_paths, CanonicalError};
+use crate::canonical::{
+    compute_capsule_id, float_paths_limited, unsafe_int_paths_limited, CanonicalError,
+};
 use crate::references::reference_findings;
 use crate::registries::{provisional_values, Registries};
 use serde_json::{Map, Value};
@@ -26,6 +28,15 @@ pub fn is_hex64(s: &str) -> bool {
 fn is_hex64_value(v: Option<&Value>) -> bool {
     matches!(v, Some(Value::String(s)) if is_hex64(s))
 }
+
+/// At most this many `float_in_digest_field` (and, separately,
+/// `unsafe_integer_in_digest_field`) findings are reported. The verdict needs
+/// only one.
+const MAX_PATH_FINDINGS: usize = 64;
+
+/// A number finding quotes at most this many characters of its path, then
+/// `...`.
+const MAX_PATH_CHARS: usize = 256;
 
 const REQUIRED_FIELDS: [&str; 8] = [
     "spec_version",
@@ -429,7 +440,9 @@ pub fn verify_with(
         }
     }
 
-    for p in float_paths(capsule, "") {
+    // One finding of each kind is enough to fail the record; on hostile input
+    // the cap and the quoted-path limit keep the result small.
+    for p in float_paths_limited(capsule, MAX_PATH_FINDINGS, MAX_PATH_CHARS) {
         findings.push(mkf(
             "float_in_digest_field",
             &format!("floating-point value at {p}; §5.1 forbids it"),
@@ -438,7 +451,7 @@ pub fn verify_with(
         ));
     }
 
-    for p in unsafe_int_paths(capsule, "") {
+    for p in unsafe_int_paths_limited(capsule, MAX_PATH_FINDINGS, MAX_PATH_CHARS) {
         findings.push(mkf(
             "unsafe_integer_in_digest_field",
             &format!(

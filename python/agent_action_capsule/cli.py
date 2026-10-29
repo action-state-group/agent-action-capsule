@@ -11,7 +11,10 @@ Thin wrapper over the library: argument parsing -> ``verify`` / ``verify_store``
 
     agent-action-capsule verify --store <dir-or-file> [<capsule.json>]
         Store-level chain checks (supersedes / concurrent-supersedes /
-        open-items) over a set of capsules.
+        open-items) over a set of capsules: a directory of ``*.json`` files, a
+        ledger store directory, a JSONL ledger, or one JSON document. A
+        ledger's bookkeeping lines are counted, not verified; see
+        ``_load_store``.
 
     agent-action-capsule verify --transparent <signed-statement> --issuer-key <pem> \\
             [--log-key <pem> --leaf-entry-hex <hex>]
@@ -32,12 +35,16 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import hashlib
 import json
+import re
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 from . import verify, verify_store
+from .canonical import json_digest
 
 EXIT_OK = 0
 EXIT_NOT_OK = 1
@@ -50,32 +57,239 @@ def _load_json(path: str) -> Any:
         return json.load(fh)
 
 
-def _load_store(path: str) -> list[Any]:
-    """A store is a directory of ``*.json`` capsules, a JSONL ledger, or a
-    single file holding a JSON array or a ``{"ledger": [...]}`` object."""
+#: The lines a capsule ledger may hold that are not Capsules: the ledger's own
+#: bookkeeping, as capsule-emit writes it. Values are the names the summary
+#: prints.
+LEDGER_BOOKKEEPING_KINDS = {
+    "checkpoint_stamp": "checkpoint stamp",
+    "disclosure_record": "disclosure record",
+    "checkpoint_witness_backfill": "witness backfill",
+}
+
+#: The exact members each bookkeeping kind carries: (required, optional). A
+#: line is bookkeeping only when its members fit one of these, so a Capsule or
+#: a padding record cannot be relabelled with ``kind`` to skip its own checks.
+_BOOKKEEPING_MEMBERS = {
+    "checkpoint_stamp": ({"kind", "v", "capsule_id", "checkpoint"}, {"checkpoint_cose"}),
+    "checkpoint_witness_backfill": ({"kind", "v", "capsule_id", "checkpoint_entry_digest", "witness"}, set()),
+    "disclosure_record": (
+        {
+            "kind", "v", "capsule_id", "audience", "selector", "disclosed_capsule_ids",
+            "disclosed_fields", "suppressed_fields", "completeness", "timestamp",
+        },
+        {"signature", "key_id"},
+    ),
+}
+
+_HEX64 = re.compile(r"[0-9a-f]{64}")
+_PADDING_MEMBERS = {"capsule_id", "record_type", "epistemic_type", "store_nonce"}
+_SEGMENT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+@dataclasses.dataclass
+class _Store:
+    """What ``_load_store`` read: the Capsules to verify in ledger order, the
+    bookkeeping and padding lines it counted instead, notices (skipped lines),
+    and problems that make the run not ok."""
+
+    capsules: list[Any] = dataclasses.field(default_factory=list)
+    bookkeeping: Counter = dataclasses.field(default_factory=Counter)
+    padding: int = 0
+    notices: list[str] = dataclasses.field(default_factory=list)
+    problems: list[str] = dataclasses.field(default_factory=list)
+
+
+class _StoreUnreadable(ValueError):
+    """The store's own structure (a ledger store's manifest) is not readable."""
+
+
+def _padding_problem(record: dict) -> str | None:
+    """The Evidence Layer padding rules (vectors/evidence-layer/padding/README.md),
+    after removing the local-only ``signature``/``key_id``; None when valid."""
+    body = {k: v for k, v in record.items() if k not in ("signature", "key_id")}
+    nonce = body.get("store_nonce")
+    if not isinstance(nonce, str) or not _HEX64.fullmatch(nonce):
+        return "store_nonce is not 64 lowercase hex"
+    extra = sorted(set(body) - _PADDING_MEMBERS)
+    if extra:
+        return f"extra member {extra[0]!r}"
+    if body.get("epistemic_type") != "producer_claim":
+        return "epistemic_type is not producer_claim"
+    if body.get("capsule_id") != json_digest({k: v for k, v in body.items() if k != "capsule_id"}):
+        return "capsule_id does not recompute"
+    return None
+
+
+def _bookkeeping_problem(item: dict) -> str | None:
+    """Why ``item`` (which has ``kind``) is not one of the bookkeeping lines a
+    capsule ledger holds; None when it is one. Checks shape only: the
+    checkpoints themselves are ``verify --bundle``'s to verify."""
+    kind = item["kind"]
+    if not isinstance(kind, str) or kind not in _BOOKKEEPING_MEMBERS:
+        return f"kind={kind!r} is not a recognized bookkeeping line"
+    required, optional = _BOOKKEEPING_MEMBERS[kind]
+    members = set(item)
+    if not required <= members or not members <= required | optional:
+        return f"kind={kind!r} line does not have that kind's members"
+    if type(item["v"]) is not int or item["v"] != 1 or not isinstance(item["capsule_id"], str) or not _HEX64.fullmatch(item["capsule_id"]):
+        return f"kind={kind!r} line has a bad v or capsule_id"
+    if kind == "checkpoint_witness_backfill":
+        body = {"checkpoint_entry_digest": item["checkpoint_entry_digest"], "witness": item["witness"]}
+        expected = hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        if item["capsule_id"] != expected:
+            return "witness backfill capsule_id does not recompute"
+    return None
+
+
+def _add(store: _Store, item: Any, where: str) -> None:
+    """Sort one ledger item into a Capsule, a bookkeeping line or padding."""
+    if isinstance(item, dict) and "kind" in item:
+        problem = _bookkeeping_problem(item)
+        if problem:
+            store.problems.append(f"{where}: {problem}")
+        else:
+            store.bookkeeping[item["kind"]] += 1
+        return
+    if isinstance(item, dict) and item.get("record_type") == "padding":
+        problem = _padding_problem(item)
+        if problem:
+            store.problems.append(f"{where}: padding record: {problem}")
+        else:
+            store.padding += 1
+        return
+    store.capsules.append(item)
+
+
+def _add_lines(store: _Store, data: bytes, name: str, *, segment: str | None = None, seen: dict | None = None) -> None:
+    """Add a JSONL ledger's lines.
+
+    A flat file (``segment`` None): an unparseable line is skipped with a
+    notice, because a writer that crashed mid-line leaves such a fragment in
+    place and it was never an entry; a parseable last line counts, newline or
+    not, as capsule-emit's flat reader counts it.
+
+    A ledger store segment (``segment`` is ``"active"`` or ``"closed"``): the
+    store's index admits complete lines only, so the active segment's
+    unterminated last line is skipped before parsing, and any other line that
+    does not parse is a problem. ``seen`` maps each ``capsule_id`` to its first
+    line's bytes: the index admits one, so a byte-identical later line is noted
+    and not verified twice, and any other line under the same id is a problem
+    (bytes, not parsed values, so ``true`` and ``1`` never compare equal)."""
+    lines = data.split(b"\n")
+    for number, raw in enumerate(lines, start=1):
+        last = number == len(lines)
+        if not raw.strip():
+            continue
+        where = f"{name} line {number}"
+        if segment == "active" and last:
+            store.notices.append(f"{where}: unterminated last line of the active segment, skipped")
+            continue
+        try:
+            item = json.loads(raw)
+        except ValueError:
+            if segment is None:
+                store.notices.append(f"{where}: {'unterminated last line' if last else 'not JSON'}, skipped")
+            else:
+                store.problems.append(f"{where}: not JSON")
+            continue
+        if seen is not None and isinstance(item, dict) and isinstance(item.get("capsule_id"), str):
+            first = seen.get(item["capsule_id"])
+            if first is not None:
+                if first == raw.strip():
+                    store.notices.append(f"{where}: repeats capsule_id {item['capsule_id']}, skipped")
+                else:
+                    store.problems.append(f"{where}: a different line under capsule_id {item['capsule_id']}")
+                continue
+            seen[item["capsule_id"]] = raw.strip()
+        _add(store, item, where)
+
+
+def _load_ledger_store(root: Path) -> _Store:
+    """A ledger store directory (checkpointed-local-log's ``LedgerStore``,
+    managed): ``manifest.json`` lists the segments in order, and each mounted
+    segment under ``segments/`` is JSONL. Read from the segments, the store's
+    source of truth; its SQLite indexes are not opened. An unmounted (archived)
+    segment is a problem: the ledger cannot be checked whole without it."""
+    manifest_path = root / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        segments = manifest["segments"]
+        active = manifest["active_segment"]
+        if not isinstance(segments, list) or not all(isinstance(e, dict) for e in segments):
+            raise TypeError("segments must be a list of objects")
+        names = [entry["name"] for entry in segments]
+        if not all(_SEGMENT_NAME.fullmatch(n) for n in names if isinstance(n, str)) or not all(
+            isinstance(n, str) for n in names
+        ):
+            raise TypeError("a segment name is not a plain file name")
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise _StoreUnreadable(f"{manifest_path} is not a ledger store manifest: {exc}") from exc
+    if not names or len(set(names)) != len(names) or active != names[-1] or not segments[-1].get("mounted", True):
+        raise _StoreUnreadable(f"{manifest_path}: segments must be unique, ending with the mounted active segment")
+    store = _Store()
+    seen: dict = {}
+    for entry in segments:
+        name = entry["name"]
+        if not entry.get("mounted", True):
+            store.problems.append(f"segment {name} is archived (unmounted); mount it to verify the ledger")
+            continue
+        path = root / "segments" / name
+        if not path.is_file():
+            raise _StoreUnreadable(f"{path}: segment listed in the manifest is missing")
+        role = "active" if name == active else "closed"
+        _add_lines(store, path.read_bytes(), f"segments/{name}", segment=role, seen=seen)
+    return store
+
+
+def _load_store(path: str) -> _Store:
+    """A store is a directory of ``*.json`` capsules, a ledger store directory
+    (one holding ``manifest.json``), a single JSON document (a JSON array, a
+    ``{"ledger": [...]}`` object or one capsule), or a JSONL ledger."""
     p = Path(path)
     if p.is_dir():
-        return [_load_json(str(f)) for f in sorted(p.glob("*.json"))]
-    # Try JSONL first: if the file has multiple lines that each parse as JSON
-    # objects, treat it as a newline-delimited capsule ledger.
-    with open(path, encoding="utf-8") as fh:
-        lines = [ln.strip() for ln in fh if ln.strip()]
-    if len(lines) == 0:
-        return []
-    if len(lines) >= 2:
-        try:
-            return [json.loads(ln) for ln in lines]
-        except json.JSONDecodeError:
-            pass  # not valid JSONL; fall through to single-doc parse
+        if (p / "manifest.json").is_file():
+            return _load_ledger_store(p)
+        store = _Store()
+        for f in sorted(p.glob("*.json")):
+            _add(store, _load_json(str(f)), f.name)
+        return store
+    data = p.read_bytes()
+    store = _Store()
+    if not data.strip():
+        return store
     try:
-        doc = json.loads(lines[0])
-    except json.JSONDecodeError:
-        doc = _load_json(path)
+        doc = json.loads(data)
+    except ValueError:
+        _add_lines(store, data, p.name)
+        if not (store.capsules or store.bookkeeping or store.padding or store.problems):
+            raise _StoreUnreadable(f"{path}: no JSON document and no JSONL line parses") from None
+        return store
     if isinstance(doc, dict) and "ledger" in doc:
-        return list(doc["ledger"])
-    if isinstance(doc, list):
-        return doc
-    return [doc]
+        if not isinstance(doc["ledger"], list):
+            raise _StoreUnreadable(f"{path}: \"ledger\" is not a list")
+        items = doc["ledger"]
+    elif isinstance(doc, list):
+        items = doc
+    else:
+        items = [doc]
+    for number, item in enumerate(items):
+        _add(store, item, f"{p.name} item {number}")
+    return store
+
+
+def _store_summary(store: _Store) -> list[str]:
+    lines: list[str] = []
+    if store.bookkeeping:
+        total = sum(store.bookkeeping.values())
+        parts = ", ".join(
+            f"{n} {LEDGER_BOOKKEEPING_KINDS[k]}{'s' if n != 1 else ''}" for k, n in sorted(store.bookkeeping.items())
+        )
+        lines.append(f"{total} bookkeeping entr{'ies' if total != 1 else 'y'} not checked ({parts}); only capsules are checked")
+    if store.padding:
+        lines.append(f"{store.padding} padding record{'s' if store.padding != 1 else ''} checked against the padding rules")
+    lines.extend(f"notice: {n}" for n in store.notices)
+    lines.extend(f"problem: {n}" for n in store.problems)
+    return lines
 
 
 # ----------------------------------------------------------------- formatting
@@ -127,10 +341,13 @@ def _cmd_payload(args) -> int:
 
 def _cmd_store(args) -> int:
     try:
-        store = _load_store(args.store)
-    except (OSError, json.JSONDecodeError) as exc:
+        loaded = _load_store(args.store)
+    except (OSError, ValueError) as exc:
         print(f"error: cannot read store {args.store!r}: {exc}", file=sys.stderr)
         return EXIT_CANNOT_RUN
+    store = loaded.capsules
+    # The summary goes to stderr under --json, so stdout stays the result document.
+    summary_out = sys.stderr if args.as_json else sys.stdout
 
     if args.capsule:
         # Verify one capsule in the context of the store (chain-aware, check 6).
@@ -145,7 +362,9 @@ def _cmd_store(args) -> int:
         else:
             print(f"Class-1 verification of {args.capsule} against store {args.store}:")
             _print_result(res)
-        return EXIT_OK if res.ok else EXIT_NOT_OK
+        for line in _store_summary(loaded):
+            print(line, file=summary_out)
+        return EXIT_OK if res.ok and not loaded.problems else EXIT_NOT_OK
 
     # No focus capsule: verify the whole store (supersedes / concurrent-supersedes).
     results = verify_store(store)
@@ -155,7 +374,9 @@ def _cmd_store(args) -> int:
         print(f"Store-level verification of {len(results)} capsule(s) in {args.store}:")
         for i, r in enumerate(results):
             _print_result(r, label=str(i))
-    return EXIT_OK if all(r.ok for r in results) else EXIT_NOT_OK
+    for line in _store_summary(loaded):
+        print(line, file=summary_out)
+    return EXIT_OK if all(r.ok for r in results) and not loaded.problems else EXIT_NOT_OK
 
 
 def _cmd_transparent(args) -> int:
@@ -289,7 +510,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     v = sub.add_parser("verify", help="verify a capsule, a store, or a Signed Statement")
     v.add_argument("capsule", nargs="?", help="path to a capsule JSON (or a Signed Statement with --transparent)")
-    v.add_argument("--store", help="verify store-level chain checks over a dir-of-capsules or a ledger file")
+    v.add_argument("--store", help="verify store-level chain checks over a dir-of-capsules, a ledger store directory or a ledger file")
     v.add_argument("--transparent", action="store_true", help="input is a SCITT Signed Statement; verify substrate + payload")
     v.add_argument("--issuer-key", dest="issuer_key", help="PEM public key of the statement issuer (required with --transparent)")
     v.add_argument("--log-key", dest="log_key", help="PEM public key of the transparency log (to verify a receipt)")

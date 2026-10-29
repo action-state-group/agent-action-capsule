@@ -35,7 +35,8 @@ use serde_json::{json, Map, Value};
 /// The members the signature covers.
 pub const SIGNED_MEMBERS: [&str; 3] = ["issued_at", "reason", "request_digest"];
 
-/// A refusal as sent: the three signed members plus `key_id` and `sig`.
+/// A refusal as sent: the three signed members plus `key_id`, `sig` and an
+/// optional `detail`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Refusal {
     pub request_digest: String,
@@ -43,24 +44,32 @@ pub struct Refusal {
     pub issued_at: String,
     pub key_id: String,
     pub sig: String,
+    /// Optional human-readable text (§4.2; profile P-6). It is outside the
+    /// signature, so it is not authenticated: the token is the answer, never
+    /// the prose. `None` and the empty string are both absent on the wire.
+    pub detail: Option<String>,
 }
 
 impl Refusal {
     /// The refusal as a JSON object (the JSON binding).
     pub fn to_json(&self) -> Value {
-        json!({
+        let mut out = json!({
             "issued_at": self.issued_at,
             "reason": self.reason.token(),
             "request_digest": self.request_digest,
             "key_id": self.key_id,
             "sig": self.sig,
-        })
+        });
+        if let Some(detail) = self.detail.as_deref().filter(|d| !d.is_empty()) {
+            out["detail"] = json!(detail);
+        }
+        out
     }
 
     /// The refusal as a CBOR map (the CBOR binding), deterministically
     /// encoded (RFC 8949 §4.2.1, as §10 requires): the map's keys in the
     /// bytewise order of their encodings, so `sig`, `key_id`, `reason`,
-    /// `issued_at`, `request_digest`.
+    /// `detail` (when present), `issued_at`, `request_digest`.
     pub fn to_cbor(&self) -> Vec<u8> {
         use ciborium::Value as C;
         let text = |s: &str| C::Text(s.to_string());
@@ -76,6 +85,9 @@ impl Refusal {
             (text("key_id"), text(&self.key_id)),
             (text("sig"), text(&self.sig)),
         ];
+        if let Some(detail) = self.detail.as_deref().filter(|d| !d.is_empty()) {
+            entries.push((text("detail"), text(detail)));
+        }
         entries.sort_by_cached_key(|(k, _)| encoded(k));
         encoded(&C::Map(entries))
     }
@@ -107,6 +119,18 @@ pub fn sign(
     issued_at: &str,
     signing_key: &SigningKey,
 ) -> Result<Refusal, SignError> {
+    sign_with_detail(request_digest, reason, issued_at, None, signing_key)
+}
+
+/// [`sign`] with an optional `detail` carried outside the signed members: the
+/// signature and the signing body are the same with or without it.
+pub fn sign_with_detail(
+    request_digest: &str,
+    reason: Reason,
+    issued_at: &str,
+    detail: Option<&str>,
+    signing_key: &SigningKey,
+) -> Result<Refusal, SignError> {
     if !is_digest(request_digest) {
         return Err(SignError::RequestDigest);
     }
@@ -125,6 +149,7 @@ pub fn sign(
         issued_at: issued_at.to_string(),
         key_id: hex::encode(signing_key.verifying_key().to_bytes()),
         sig: hex::encode(sig.to_bytes()),
+        detail: detail.filter(|d| !d.is_empty()).map(str::to_string),
     })
 }
 
@@ -461,6 +486,59 @@ mod tests {
             verify_for_cbor(&[0xff], &responder.verifying_key(), &digest),
             Err(VerifyError::NotConformant)
         );
+    }
+
+    #[test]
+    fn a_detail_is_outside_the_signature_in_both_bindings() {
+        let digest = "a".repeat(64);
+        let at = "2026-09-28T00:00:00Z";
+        let plain = sign(&digest, Reason::RequestMalformed, at, &key()).unwrap();
+        let with = sign_with_detail(
+            &digest,
+            Reason::RequestMalformed,
+            at,
+            Some("profiles supported: evidence-interop/0"),
+            &key(),
+        )
+        .unwrap();
+        assert_eq!(plain.sig, with.sig);
+        assert_eq!(plain.detail, None);
+        assert!(plain.to_json().get("detail").is_none());
+        assert_eq!(
+            with.to_json()["detail"],
+            json!("profiles supported: evidence-interop/0")
+        );
+        let ok = RefusalCheck {
+            signature_valid: true,
+            reason_registered: true,
+            conformant: true,
+        };
+        assert_eq!(check(&with.to_json()), ok);
+        assert_eq!(check_cbor(&with.to_cbor()), ok);
+        let responder = key().verifying_key();
+        assert_eq!(
+            verify_for(&with.to_json(), &responder, &digest),
+            Ok(Reason::RequestMalformed)
+        );
+        assert_eq!(
+            verify_for_cbor(&with.to_cbor(), &responder, &digest),
+            Ok(Reason::RequestMalformed)
+        );
+        // Changing the detail does not touch the signature.
+        let mut edited = with.to_json();
+        edited["detail"] = json!("other prose");
+        assert!(check(&edited).conformant);
+        // An empty detail is absent, as in the Go signer.
+        let empty =
+            sign_with_detail(&digest, Reason::RequestMalformed, at, Some(""), &key()).unwrap();
+        assert_eq!(empty, plain);
+        // Nor does a hand-set empty detail reach the wire in either binding.
+        let hand_set = Refusal {
+            detail: Some(String::new()),
+            ..plain.clone()
+        };
+        assert_eq!(hand_set.to_json(), plain.to_json());
+        assert_eq!(hand_set.to_cbor(), plain.to_cbor());
     }
 
     #[test]

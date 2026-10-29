@@ -14,8 +14,10 @@ policy is online (FR-31).
 """
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Any, Callable, Optional
 
 from ._cbor import CborError, decode
@@ -98,9 +100,10 @@ _ROW_STATUS = {
 # §8: the rows a contract's uncertainty.on_missing applies to.
 _MISSING_ROWS = frozenset({"envelope-3", "envelope-4", "refusal-no_such_subject", "refusal-retention_expired",
                            "refusal-coverage_unsatisfiable", "refusal-deadline_or_malformed", "absence"})
-_ROW_7_NOTE = ("§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only if that gives "
-               "SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, so with no "
-               "content evaluator the requirement is UNKNOWN (§11.3.7).")
+_ROW_7_NOTE = ("§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met or, "
+               "where the requirement allows it, out_of_scope, and any other sufficiency gives not_evaluable "
+               "[RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is "
+               "UNKNOWN (§11.3.7).")
 
 
 @dataclass(frozen=True)
@@ -137,7 +140,10 @@ ContentEvaluator = Callable[[Mapping[str, Any], bytes, Optional[PropertyReport]]
 
 @dataclass
 class RequirementResult:
-    """One requirement's §8 result: the row, status, sufficiency and verdict, and the claim."""
+    """One requirement's §8 result: the row, status, sufficiency and verdict, and the claim.
+
+    ``applies_from`` and ``out_of_scope_allowed`` are the facts §8.3 copies from the requirement;
+    None and False are the absent member."""
 
     requirement_ref: str
     contract_ref: str | None
@@ -148,6 +154,8 @@ class RequirementResult:
     evidence: list = field(default_factory=list)
     proofs: list = field(default_factory=list)
     note: str | None = None
+    applies_from: str | None = None
+    out_of_scope_allowed: bool = False
 
     @property
     def presentation_kinds_allowed(self) -> list | None:
@@ -157,9 +165,14 @@ class RequirementResult:
     def claim(self) -> dict[str, Any]:
         """The claim fields this profile fills (§8.3). ``tier``, ``grade`` and the carrier's
         prose are the evaluator's [RES §1]."""
-        return {"contract_ref": self.contract_ref, "requirement_ref": self.requirement_ref,
-                "sufficiency": self.sufficiency, "verdict": self.verdict, "status": self.status,
-                "evidence": list(self.evidence), "proofs": list(self.proofs)}
+        out = {"contract_ref": self.contract_ref, "requirement_ref": self.requirement_ref,
+               "sufficiency": self.sufficiency, "verdict": self.verdict, "status": self.status,
+               "evidence": list(self.evidence), "proofs": list(self.proofs)}
+        if self.applies_from is not None:
+            out["applies_from"] = self.applies_from
+        if self.out_of_scope_allowed:
+            out["out_of_scope_allowed"] = True
+        return out
 
 
 @dataclass
@@ -279,6 +292,46 @@ def _requirement_shape(req: Mapping[str, Any]) -> str:
     return profile
 
 
+_UNSET = object()
+_CALENDAR_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+
+def _effective_from(req: Any) -> Any:
+    """The requirement's ``clause.effective_from`` as carried, or ``_UNSET``. Any shape may carry
+    it (§11.3.4)."""
+    clause = req.get("clause") if isinstance(req, Mapping) else None
+    return clause.get("effective_from", _UNSET) if isinstance(clause, Mapping) else _UNSET
+
+
+def _is_calendar_date(value: Any) -> bool:
+    """``YYYY-MM-DD`` naming a real date. The Evidence Contract schema checks only the pattern, so
+    2027-02-30 passes it."""
+    if not isinstance(value, str) or _CALENDAR_DATE.fullmatch(value) is None:
+        return False
+    try:
+        date(int(value[:4]), int(value[5:7]), int(value[8:]))
+    except ValueError:
+        return False
+    return True
+
+
+def _out_of_scope_allowed(req: Mapping[str, Any] | None) -> bool:
+    """The requirement's switch: only a native shape carries it, so the same member on an open stub
+    or an abstract shape grants nothing."""
+    if not req or _requirement_shape(req) not in ("native-outcome", "native-obligation"):
+        return False
+    return req.get("out_of_scope_allowed") is True
+
+
+def _pairs(sufficiency: str | None, verdict: str | None, allowed: bool) -> bool:
+    """§8.2 invariant 1, the verdict relation of [RES §1]: SATISFIED pairs with met, not_met or,
+    where the requirement allows it, out_of_scope; every other sufficiency pairs with not_evaluable
+    only."""
+    if sufficiency != "SATISFIED":
+        return verdict == "not_evaluable"
+    return verdict in ("met", "not_met") or (verdict == "out_of_scope" and allowed)
+
+
 def _apply_uncertainty(req: Mapping[str, Any] | None, row: str, status: str) -> str:
     """§8 and §11.3.7: ``uncertainty`` changes the defaults only where the schema types it, the
     abstract outcome and quality shapes."""
@@ -299,8 +352,8 @@ class InteropVerifier:
 
     ``evaluation_time`` is required and is the only "now" the verifier knows. ``contract`` is the
     contract version document evaluated; the claims carry its ``contract_ref``. Requirements are
-    identified by their ``id``; a contract with two requirements of one ``id`` is not evaluated
-    (§11.3.7).
+    identified by their ``id``; a contract with two requirements of one ``id``, or a requirement whose
+    ``clause.effective_from`` is not a calendar date, is not evaluated (§11.3.7).
     """
 
     def __init__(self, trust: TrustPolicy, verification: VerificationPolicy, evaluation_time: str,
@@ -317,6 +370,11 @@ class InteropVerifier:
             ids = [r.get("id") for r in contract.get("requirements", [])]
             if len(ids) != len(set(ids)):
                 raise ValueError("two requirements share one id; the contract version is not evaluated (§11.3.7)")
+            for r in contract.get("requirements", []):
+                dated = _effective_from(r)
+                if dated is not _UNSET and not _is_calendar_date(dated):
+                    raise ValueError(f"{r.get('id')}: clause.effective_from is not a calendar date; the contract "
+                                     "version is not evaluated (§11.3.7)")
             self.contract_digest = json_value_digest(contract) if numbers_in_domain(contract) else None
             if self.contract_digest is None:
                 raise ValueError("the contract carries a value JCS cannot represent; no contract_digest (§11.3.7)")
@@ -651,10 +709,14 @@ class InteropVerifier:
         if status == "NOT_APPLICABLE":
             return None  # excluded from the evaluated population [EC contractResult]
         sufficiency = _PROJECTION.get(status) if status is not None else None
-        if verdict in ("met", "not_met") and sufficiency != "SATISFIED":
-            raise ValueError(f"{req_id}: {verdict} with sufficiency {sufficiency} breaks §8.2 invariant 1")
+        allowed = _out_of_scope_allowed(req)
+        if not _pairs(sufficiency, verdict, allowed):
+            raise ValueError(f"{req_id}: {verdict!r} with sufficiency {sufficiency} breaks §8.2 invariant 1")
+        dated = _effective_from(req)
         return RequirementResult(req_id, self.contract_ref, row, status, sufficiency, verdict,
-                                 list(evidence), list(proofs), note)
+                                 list(evidence), list(proofs), note,
+                                 applies_from=dated if dated is not _UNSET else None,
+                                 out_of_scope_allowed=allowed)
 
     @staticmethod
     def _envelope_row(required: Mapping[str, str], contradicted: bool, native: str | None,

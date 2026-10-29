@@ -52,3 +52,19 @@ it("runs the browser entry with platform WebCrypto", async () => {
     ).ok,
   ).toBe(true);
 });
+
+// capsule-viewer bundles this entry for the page and imports these from it,
+// so they must resolve under the browser condition too (#379).
+it("exports what capsule-viewer's page imports", async () => {
+  const entry = await import("../src/browser.js");
+  for (const name of [
+    "CONTRACT_REPORT_KIND",
+    "readContractReport",
+    "bundleVerified",
+    "buildVerificationPageModel",
+    "verificationBanner",
+    "extensionRows",
+    "buildVerifiedBundleContext",
+  ])
+    expect(entry, name).toHaveProperty(name);
+});

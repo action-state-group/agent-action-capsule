@@ -8,32 +8,40 @@ package canonical
 const MaxNestingDepth = 10000
 
 // TooDeep reports whether value nests objects or arrays more than
-// MaxNestingDepth levels deep. It walks iteratively, so it cannot itself
-// exhaust the stack.
+// MaxNestingDepth levels deep; a value that contains itself is infinitely
+// deep. It walks iteratively, so it cannot itself exhaust the stack, and
+// steps through an array in place, so a wide array costs no extra memory.
 func TooDeep(value interface{}) bool {
-	type entry struct {
-		value interface{}
-		depth int
+	// Each frame holds the members of one open container still to visit.
+	type frame struct {
+		members []interface{}
+		next    int
 	}
-	stack := []entry{{value, 0}}
+	stack := []frame{{members: []interface{}{value}}}
 	for len(stack) != 0 {
-		top := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		switch node := top.value.(type) {
+		top := &stack[len(stack)-1]
+		if top.next == len(top.members) {
+			stack = stack[:len(stack)-1]
+			continue
+		}
+		member := top.members[top.next]
+		top.next++
+		// The member's own depth is len(stack) - 1.
+		switch node := member.(type) {
 		case map[string]interface{}:
-			if top.depth >= MaxNestingDepth {
+			if len(stack) > MaxNestingDepth {
 				return true
 			}
-			for _, member := range node {
-				stack = append(stack, entry{member, top.depth + 1})
+			members := make([]interface{}, 0, len(node))
+			for _, m := range node {
+				members = append(members, m)
 			}
+			stack = append(stack, frame{members: members})
 		case []interface{}:
-			if top.depth >= MaxNestingDepth {
+			if len(stack) > MaxNestingDepth {
 				return true
 			}
-			for _, member := range node {
-				stack = append(stack, entry{member, top.depth + 1})
-			}
+			stack = append(stack, frame{members: node})
 		}
 	}
 	return false

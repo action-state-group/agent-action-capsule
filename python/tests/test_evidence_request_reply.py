@@ -109,9 +109,11 @@ def test_parse_reply_reads_a_refusal_in_both_bindings():
         parsed = er.parse_reply(octets, binding)
         assert parsed == refusal
         assert er.verify_refusal_offline(parsed)
-    # detail is outside the signature and is not kept.
+    # detail is outside the signature: it is read, and verification ignores it.
     with_detail = dict(refusal.to_dict(), detail="no record by that digest")
-    assert er.parse_reply(jcs(with_detail)) == refusal
+    parsed = er.parse_reply(jcs(with_detail))
+    assert parsed == dataclasses.replace(refusal, detail="no record by that digest")
+    assert er.verify_refusal_offline(parsed)
 
 
 def test_unsigned_members_are_ignored():

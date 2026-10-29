@@ -1,13 +1,12 @@
-// @vitest-environment jsdom
-
 import { expect, it } from "vitest";
-import { renderEvidenceGraph } from "../src/browser.js";
+import { pageModel } from "./helpers/page-model.js";
 import { sealEvidenceBundle } from "./helpers/sealed-bundle.js";
 
 // A verified bundle whose root is none of report/v1, a Result v0 root or an
-// evaluation-summary/v1 aggregate (a deal root, for example) renders without
-// the aggregate panel instead of throwing and rendering nothing.
-it("renders a verified bundle with no evaluation summary, without the aggregate panel", async () => {
+// evaluation-summary/v1 aggregate (a deal root, for example) still has its
+// verification stated. capsule-viewer resolves it to the no-aggregate floor
+// and draws the page without the aggregate panel.
+it("states the verification of a verified bundle with no evaluation summary", async () => {
   const { bundle } = await sealEvidenceBundle({
     root: "deal",
     records: [{ capsule_id: "deal" }],
@@ -17,9 +16,8 @@ it("renders a verified bundle with no evaluation summary, without the aggregate 
       },
     },
   });
-  const root = document.createElement("main");
-  await renderEvidenceGraph(bundle, root);
-  expect(root.querySelector('[data-verify="verified"]')).not.toBeNull();
-  expect(root.querySelector('[data-notice="no-aggregate"]')).not.toBeNull();
-  expect(root.querySelector('[data-page="verification"]')).not.toBeNull();
+  const { banner, page } = await pageModel(bundle);
+  expect(banner.state).toBe("incomplete");
+  expect(banner.refusal).toBeUndefined();
+  expect(page.checks.length).toBeGreaterThan(0);
 });

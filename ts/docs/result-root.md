@@ -4,7 +4,9 @@ The report takes one input: a bundle whose root record is a sealed Evidence
 Result v0. Not a bundle plus a Result file. This note says what that root
 looks like, what the viewer reads from it, what it reads from the records it
 cites, and the two rules the root adds. Module: `src/result-root.ts`; view:
-`src/evidence-graph-view.ts`; fixture: `test/testdata/result-root-bundle.json`.
+capsule-viewer's `ts/src/evidence-graph-view.ts`
+([`action-state-group/capsule-viewer`](https://github.com/action-state-group/capsule-viewer));
+fixture: `test/testdata/result-root-bundle.json`.
 
 ## The record
 
@@ -69,7 +71,9 @@ viewer does not resolve them and says so on the row.
 
 From the root Result, and only from there: the coverage line
 (`evaluated_population`, `excluded_not_applicable`, `unknown_count`), the
-three buckets, and for every claim its `sufficiency`, `verdict`, `tier`,
+requirements the run covered (`requirements_covered`, as
+`ResultRoot.requirementsCovered`, when the Result lists them), the
+buckets (the fourth only when the contract switches it on), and for every claim its `sufficiency`, `verdict`, `tier`,
 `grade`, `type`, presentation carrier and status, and its cited digests.
 
 From the cited records, and only from there: every drill-down -- the
@@ -133,10 +137,33 @@ claim count is a finding from `validateEvidenceResult`, so the Result is
 refused with that error and never rendered. This is what stops "not met:
 none" over a `not_met` claim from reaching the page.
 
-**Counts are recomputed from the claims.** `evaluated_population` and
-`unknown_count` are recomputed (the claim count; the claims whose
-sufficiency is `UNKNOWN`), as is each bucket's headline count (from the
-claims' verdicts, never from the bucket lists' lengths). `recomputeCounts`
+**The fourth verdict and applicability** (`spec/evidence-result-v0.md` §4.2,
+§4.3). `VERDICTS` carries `out_of_scope`; `REQUIRED_BUCKETS` the three
+buckets every aggregate has. The validator refuses an `out_of_scope` claim
+without `out_of_scope_allowed`, on a typed claim, or with carrier status
+`NOT_APPLICABLE`; a fourth bucket present without a switched-on claim, or
+absent with one; two claims of one requirement that disagree on either
+copied fact; and, when a claim is dated, a `generated_at` that is not an RFC
+3339 date-time with an offset or an `applies_from` that is not a calendar
+date. A claim is `later` when `applies_from` is after the UTC date of
+`generated_at` (`laterClaimIds`, `utcDateOf`): it is in no bucket, outside
+`evaluated_population` and `unknown_count`, and counted as
+`coverage.notYetInForce`. The page draws the fourth bucket only when the
+Result carries it, a "not yet in force" list apart from the buckets, each
+later verdict as "(readiness)", and, whenever a claim is dated, "In force as
+of <date>" with the label that the dates and the switch come from the
+contract and are not re-checked here. `ResultClaim.outOfScopeAllowed`,
+`appliesFrom` and `later` carry the copied facts.
+
+**Counts are recomputed from the claims.** Coverage counts evaluations, one
+per claim (`spec/evidence-result-v0.md` §3), so `evaluated_population` and
+`unknown_count` are recomputed as the claim count and the claims whose
+sufficiency is `UNKNOWN`. The page's coverage line names them as evaluations
+beside the number of distinct requirements the claims cite ("3 evaluations
+of 2 requirements · 1 excluded as not applicable · 0 with an unknown
+result"), never as unresolved requirements. Each bucket's headline count is
+recomputed too, from the claims' verdicts, never from the bucket lists'
+lengths. `recomputeCounts`
 is a pure function of the document; `ResultRoot.coverage` and
 `ResultRoot.bucketCounts` carry the recomputed values, `statedCoverage` the
 producer's, and `countMismatches` every stated number the claims do not
@@ -145,7 +172,7 @@ disagreed a `count mismatch` marker (`data-count-mismatch=<field>`) sits
 beside it, with the stated figure on the marker's `data-stated` attribute
 and nowhere in the text a reader takes as the number. The one figure
 carried as stated is `excluded_not_applicable`
-(`data-excluded-basis="stated"`): requirements excluded as not applicable
+(`data-excluded-basis="stated"`): evaluations excluded as not applicable
 are outside the evaluated population by construction and are never
 claims, so the document holds nothing to recount them from. The bucket
 headings read `met: 1` / `not met: none`, from the recomputed counts; a
@@ -216,8 +243,8 @@ whatever bucket it wrote, marked `· failed`, and its `buckets.met` of two
 over one standing `met` claim reads as `met: 1 count mismatch` with the
 stated two on the marker. A relabelled-AGREED close therefore never
 contributes to `met`; `test/result-root.test.ts` and
-`test/result-root-view.test.ts` pin the row, the drill-down, the headings
-and the counts. Only a state mismatch fails a claim: a `peer_close_ref`
+`test/result-root-view.test.ts` pin the claim, its Close and the counts
+(capsule-viewer's tests pin the row, the drill-down and the headings). Only a state mismatch fails a claim: a `peer_close_ref`
 that is not the linking record is marked (`peerRefMismatch`), and a Close
 absent from the bundle is `producer-asserted` -- neither is a failure,
 since neither contradicts the state.

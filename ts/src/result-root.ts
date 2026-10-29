@@ -101,6 +101,17 @@ export const VERDICTS = Object.freeze([
   "met",
   "not_met",
   "not_evaluable",
+  "out_of_scope",
+] as const);
+/**
+ * The buckets every aggregate carries. The fourth, `out_of_scope`, is
+ * present exactly when a claim carries `out_of_scope_allowed` (spec section
+ * 4.2).
+ */
+export const REQUIRED_BUCKETS = Object.freeze([
+  "met",
+  "not_met",
+  "not_evaluable",
 ] as const);
 export const EVIDENCE_STATUSES = Object.freeze([
   "SATISFIED",
@@ -140,6 +151,8 @@ export const RESULT_MEMBERS = Object.freeze([
   "aggregate",
   "view",
   "coverage_report",
+  "plan_ref",
+  "dataset_ref",
 ] as const);
 export const CLAIM_REQUIRED = Object.freeze([
   "id",
@@ -173,6 +186,26 @@ export const REQUIREMENT_CLAIM = "requirement";
  * `counterpartyLinks` and `signerOf`).
  */
 export const CLOSE_CLAIM = "close";
+/**
+ * The claim type whose `reconcile` body this module reads
+ * (spec/evidence-result-v0.md section 4.1, normative): the six-state tally
+ * of one join between this book and one peer over one period. The tallies
+ * are carried as written; this module does not recompute sufficiency from
+ * them.
+ */
+export const RECONCILE_CLAIM = "reconcile";
+/** The six tally keys, keyed as schemas/judge/close-v1.json keys them. */
+export const RECONCILE_TALLY_KEYS = Object.freeze([
+  "matched",
+  "a_only",
+  "b_only",
+  "conflicting",
+  "insufficient",
+  "unresolved",
+] as const);
+export type ReconcileTallyKey = (typeof RECONCILE_TALLY_KEYS)[number];
+export const STATES_OF_RECORD = Object.freeze(["A", "B", "none"] as const);
+export type StateOfRecord = (typeof STATES_OF_RECORD)[number];
 export const CLOSE_STATES = Object.freeze([
   "UNILATERAL",
   "AGREED",
@@ -280,6 +313,14 @@ export interface ResultClose {
 }
 
 /** Which rule failed a claim, for the row's `data-failed` attribute. */
+export interface ResultReconcile {
+  readonly joinKey: string;
+  readonly peer: string;
+  readonly period: { readonly start: string; readonly end: string };
+  readonly tallies: Readonly<Record<ReconcileTallyKey, number>>;
+  readonly stateOfRecord: StateOfRecord;
+}
+
 export type ClaimFailure = "close_state" | "evidence" | "peer_close_ref";
 
 /**
@@ -323,6 +364,18 @@ export interface ResultClaim {
   readonly grade: Grade;
   readonly sufficiency: Sufficiency;
   readonly verdict: Verdict;
+  /**
+   * Copied from the contract requirement (spec sections 4.2, 4.3), never
+   * verified here: whether the requirement allows `out_of_scope`, and the
+   * date it applies from.
+   */
+  readonly outOfScopeAllowed: boolean;
+  readonly appliesFrom?: string;
+  /**
+   * `appliesFrom` is after the UTC date of `generated_at`: the claim's
+   * verdict is readiness only, in no bucket and outside the population.
+   */
+  readonly later: boolean;
   readonly support: ClaimSupport;
   readonly evidence: readonly ClaimEvidenceRef[];
   /** The cited digests no supplied record carries, in citation order. */
@@ -331,6 +384,8 @@ export interface ResultClaim {
   readonly presentation: ClaimPresentation;
   /** Present on a recognized `close` claim. */
   readonly close?: ResultClose;
+  /** Present on a recognized `reconcile` claim. */
+  readonly reconcile?: ResultReconcile;
   /**
    * The claim FAILED verification (maintainer's second and third passes,
    * 2026-09-28 / 2026-09-29): its close state, recomputed from this
@@ -353,12 +408,22 @@ export interface ResultCoverage {
   readonly evaluatedPopulation: number;
   readonly excludedNotApplicable: number;
   readonly unknownCount: number;
+  /** The later claims (spec section 4.3); absent when none is later. */
+  readonly notYetInForce?: number;
+}
+
+/** One requirement of one contract version, as a claim names it (spec section 3). */
+export interface ResultRequirementRef {
+  readonly contractRef: string;
+  readonly requirementRef: string;
 }
 
 export interface ResultBuckets {
   readonly met: readonly string[];
   readonly notMet: readonly string[];
   readonly notEvaluable: readonly string[];
+  /** Present exactly when the contract switches `out_of_scope` on. */
+  readonly outOfScope?: readonly string[];
 }
 
 /**
@@ -370,15 +435,19 @@ export interface ResultBucketCounts {
   readonly met: number;
   readonly notMet: number;
   readonly notEvaluable: number;
+  /** Present exactly when the Result carries the fourth bucket. */
+  readonly outOfScope?: number;
   readonly failed: number;
 }
 
 export type CountField =
   | "evaluated_population"
   | "unknown_count"
+  | "not_yet_in_force"
   | "buckets.met"
   | "buckets.not_met"
-  | "buckets.not_evaluable";
+  | "buckets.not_evaluable"
+  | "buckets.out_of_scope";
 
 /** A headline number the producer stated that the claims do not bear out. */
 export interface CountMismatch {
@@ -391,7 +460,7 @@ export interface RecomputedCounts {
   /**
    * `evaluatedPopulation` and `unknownCount` are recomputed from the
    * claims (the claim count; claims whose sufficiency is UNKNOWN).
-   * `excludedNotApplicable` is carried as stated: requirements excluded as
+   * `excludedNotApplicable` is carried as stated: evaluations excluded as
    * not applicable are outside the evaluated population by construction
    * and are never claims, so the document holds nothing to recount them
    * from -- the view says so beside the number.
@@ -449,6 +518,15 @@ export interface CitedRecord extends RecordTimes {
   readonly carriedCapsuleId?: string;
   readonly carriedInputDigest?: string;
   /**
+   * The carried capsule's own `action_id`, as it states it, under the same
+   * checks as `carriedCapsuleId` (absent when they fail or it states none).
+   * It is what the capsule declares itself to be (a benchmark case capsule
+   * is `urn:<benchmark>:<domain>:task-N:trial-T`), so a reader can tell a
+   * case capsule from a report, policy or rubric capsule without its
+   * input being disclosed.
+   */
+  readonly carriedActionId?: string;
+  /**
    * The occurrence-time fields the capsule itself states, verbatim, never
    * parsed or assigned a zone: its `timestamp` and, when present, its
    * `provenance_mode` block (AAC -05 "Provenance mode and backfilled
@@ -482,6 +560,13 @@ export interface ResultRoot extends RecordTimes {
    */
   readonly coverage: ResultCoverage;
   readonly statedCoverage: ResultCoverage;
+  /**
+   * `aggregate.coverage.requirements_covered` (spec section 3): the
+   * requirements the run evaluated or excluded. A requirement outside it was
+   * not run. Absent when the Result does not say, and then every requirement
+   * of every cited contract counts as covered.
+   */
+  readonly requirementsCovered?: readonly ResultRequirementRef[];
   readonly buckets: ResultBuckets;
   /** Headline counts per bucket, from the claims' verdicts, never from `buckets`' lengths. */
   readonly bucketCounts: ResultBucketCounts;
@@ -545,6 +630,104 @@ function presentationFindings(path: string, value: unknown): string[] {
   return findings;
 }
 
+const CALENDAR_DATE = /^(\d{4})-(\d{2})-(\d{2})$/u;
+// RFC 3339 section 5.6 with a required offset, read the same way by the
+// schema checker (schemas/check_evidence_result_examples.py `_utc_date`).
+// A leap second (60) is not accepted.
+const RFC3339_WITH_OFFSET =
+  /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|([+-])(\d{2}):(\d{2}))$/u;
+
+/** Milliseconds since the epoch of a proleptic UTC calendar instant; years below 100 stay as written. */
+function utcMillis(
+  year: number,
+  month: number,
+  day: number,
+  hours = 0,
+  minutes = 0,
+  seconds = 0,
+): number {
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(hours, minutes, seconds, 0);
+  return date.getTime();
+}
+
+function realDate(year: number, month: number, day: number): boolean {
+  if (year < 1) return false;
+  const date = new Date(utcMillis(year, month, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+/** `YYYY-MM-DD` naming a real calendar date (year 0001 on), as `applies_from` must. */
+export function isCalendarDate(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const match = CALENDAR_DATE.exec(value);
+  if (match === null) return false;
+  const [year, month, day] = match.slice(1).map(Number) as [
+    number,
+    number,
+    number,
+  ];
+  return realDate(year, month, day);
+}
+
+/**
+ * The UTC calendar date of an RFC 3339 date-time with an offset, as
+ * `YYYY-MM-DD`; undefined when it is not one, including an impossible date
+ * or time such as 2026-02-30 or 24:00 (spec section 4.3).
+ */
+export function utcDateOf(generatedAt: unknown): string | undefined {
+  if (typeof generatedAt !== "string") return undefined;
+  const match = RFC3339_WITH_OFFSET.exec(generatedAt);
+  if (match === null) return undefined;
+  const [year, month, day, hours, minutes, seconds] = match
+    .slice(1, 7)
+    .map(Number) as [number, number, number, number, number, number];
+  const sign = match[7];
+  const offsetHours = sign === undefined ? 0 : Number(match[8]);
+  const offsetMinutes = sign === undefined ? 0 : Number(match[9]);
+  if (
+    !realDate(year, month, day) ||
+    hours > 23 ||
+    minutes > 59 ||
+    seconds > 59 ||
+    offsetHours > 23 ||
+    offsetMinutes > 59
+  )
+    return undefined;
+  const offset =
+    (sign === "-" ? -1 : 1) * (offsetHours * 60 + offsetMinutes) * 60_000;
+  const utc = new Date(
+    utcMillis(year, month, day, hours, minutes, seconds) - offset,
+  );
+  // Before 0001-01-01 or after 9999-12-31 in UTC is no date this grammar
+  // names (the schema checker refuses it too).
+  if (utc.getUTCFullYear() < 1 || utc.getUTCFullYear() > 9999) return undefined;
+  return [
+    String(utc.getUTCFullYear()).padStart(4, "0"),
+    String(utc.getUTCMonth() + 1).padStart(2, "0"),
+    String(utc.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+/**
+ * The ids of the later claims: `applies_from` after the UTC date of
+ * `generated_at` (spec section 4.3). Assumes a document whose dates parse.
+ */
+export function laterClaimIds(document: ObjectValue): ReadonlySet<string> {
+  const asOf = utcDateOf(document.generated_at);
+  const later = new Set<string>();
+  if (asOf === undefined) return later;
+  for (const claim of document.claims as ObjectValue[])
+    if (typeof claim.applies_from === "string" && claim.applies_from > asOf)
+      later.add(claim.id as string);
+  return later;
+}
+
 function claimFindings(path: string, value: unknown): string[] {
   if (!isObject(value)) return [`${path}: not an object`];
   const findings: string[] = [];
@@ -565,8 +748,9 @@ function claimFindings(path: string, value: unknown): string[] {
   if (!oneOf(SUFFICIENCIES, value.sufficiency))
     findings.push(`${path}.sufficiency`);
   if (!oneOf(VERDICTS, value.verdict)) findings.push(`${path}.verdict`);
-  // The rule that binds the two axes (spec section 1): a verdict is met or
-  // not_met only under SATISFIED sufficiency, and not_evaluable otherwise.
+  // The rule that binds the two axes (spec section 1): a verdict is met,
+  // not_met or out_of_scope only under SATISFIED sufficiency, and
+  // not_evaluable otherwise.
   if (oneOf(SUFFICIENCIES, value.sufficiency) && oneOf(VERDICTS, value.verdict))
     if (
       value.sufficiency === "SATISFIED"
@@ -576,6 +760,39 @@ function claimFindings(path: string, value: unknown): string[] {
       findings.push(
         `${path}.verdict: ${value.verdict} is not a verdict under sufficiency ${value.sufficiency}`,
       );
+  if (
+    Object.hasOwn(value, "out_of_scope_allowed") &&
+    value.out_of_scope_allowed !== true
+  )
+    findings.push(`${path}.out_of_scope_allowed: not true`);
+  if (
+    Object.hasOwn(value, "applies_from") &&
+    (typeof value.applies_from !== "string" ||
+      !CALENDAR_DATE.test(value.applies_from))
+  )
+    findings.push(`${path}.applies_from: not YYYY-MM-DD`);
+  // Spec section 4.2: the requirement allows it, it is a requirement claim,
+  // and it never reads as the NOT_APPLICABLE population exclusion.
+  if (value.verdict === "out_of_scope") {
+    if (value.out_of_scope_allowed !== true)
+      findings.push(
+        `${path}.verdict: out_of_scope where the requirement does not allow it`,
+      );
+    if (Object.hasOwn(value, "type") && value.type !== REQUIREMENT_CLAIM)
+      findings.push(
+        `${path}.verdict: out_of_scope on a ${String(value.type)} claim`,
+      );
+    if (
+      isObject(value.presentation) &&
+      value.presentation.status === "NOT_APPLICABLE"
+    )
+      findings.push(
+        `${path}.presentation.status: NOT_APPLICABLE on an out_of_scope claim`,
+      );
+  }
+  // The schema requires at least one entry (minItems, spec section 1). The
+  // mirror deliberately admits an empty list: such a claim still renders,
+  // with support `unsupported`, rather than failing the whole root.
   if (!Array.isArray(value.evidence)) findings.push(`${path}.evidence`);
   else
     value.evidence.forEach((item, index) =>
@@ -604,7 +821,11 @@ function claimFindings(path: string, value: unknown): string[] {
  * if-then on the closed objects it mirrors -- claims, carriers, digest and
  * proof refs, `aggregate`, coverage and buckets; and the two cross-element
  * rules spec section 4 makes a verifier's duty: claim ids are unique, and
- * every bucket entry names a claim whose verdict is that bucket. Below the
+ * every bucket entry names a claim whose verdict is that bucket; and section
+ * 3's `requirements_covered` rules, when the member is present: each pair
+ * listed once, every claimed requirement listed, and the listed requirements
+ * no claim cites at most `excluded_not_applicable`; and section 7.3's
+ * `plan_ref` and `dataset_ref`, digest refs present together. Below the
  * top level it is open-world on additional keys. `view` and the PROPOSED
  * `coverage_report` (spec section 7.1) are not checked, and
  * `generated_at` is checked as a string, not as a date-time. Empty findings
@@ -645,16 +866,126 @@ export function validateEvidenceResult(value: unknown): string[] {
         findings.push(
           `aggregate.coverage.${member}: not a non-negative integer`,
         );
+  if (
+    coverage !== undefined &&
+    Object.hasOwn(coverage, "not_yet_in_force") &&
+    !nonNegativeInteger(coverage.not_yet_in_force)
+  )
+    findings.push(
+      "aggregate.coverage.not_yet_in_force: not a non-negative integer",
+    );
+  if (
+    coverage !== undefined &&
+    Object.hasOwn(coverage, "requirements_covered") &&
+    (!Array.isArray(coverage.requirements_covered) ||
+      !coverage.requirements_covered.every(
+        (entry) =>
+          isObject(entry) &&
+          typeof entry.contract_ref === "string" &&
+          CONTRACT_REF.test(entry.contract_ref) &&
+          nonEmptyString(entry.requirement_ref),
+      ))
+  )
+    findings.push(
+      "aggregate.coverage.requirements_covered: not an array of (contract_ref, requirement_ref) pairs",
+    );
+  // Spec section 7.3: plan_ref and dataset_ref are digest refs, both or
+  // neither.
+  for (const member of ["plan_ref", "dataset_ref"])
+    if (Object.hasOwn(value, member))
+      findings.push(...digestRefFindings(member, value[member]));
+  if (Object.hasOwn(value, "plan_ref") !== Object.hasOwn(value, "dataset_ref"))
+    findings.push("plan_ref, dataset_ref: one is present without the other");
   const buckets = isObject(aggregate?.buckets) ? aggregate.buckets : undefined;
   if (buckets === undefined) findings.push("aggregate.buckets: not an object");
-  else
-    for (const member of VERDICTS)
+  else {
+    for (const member of REQUIRED_BUCKETS)
       if (
         !Array.isArray(buckets[member]) ||
         !buckets[member].every(nonEmptyString)
       )
         findings.push(`aggregate.buckets.${member}: not an array of claim ids`);
+    if (
+      Object.hasOwn(buckets, "out_of_scope") &&
+      (!Array.isArray(buckets.out_of_scope) ||
+        !buckets.out_of_scope.every(nonEmptyString))
+    )
+      findings.push(
+        "aggregate.buckets.out_of_scope: not an array of claim ids",
+      );
+  }
   if (findings.length > 0) return findings;
+
+  const claimList = value.claims as ObjectValue[];
+  // Spec section 4.2: the fourth bucket is there exactly when the contract
+  // switches out_of_scope on.
+  const switchedOn = claimList.some(
+    (claim) => claim.out_of_scope_allowed === true,
+  );
+  if (switchedOn !== Object.hasOwn(buckets!, "out_of_scope"))
+    findings.push(
+      switchedOn
+        ? "aggregate.buckets.out_of_scope: absent, but a claim allows out_of_scope"
+        : "aggregate.buckets.out_of_scope: present, but no claim allows out_of_scope",
+    );
+  // Spec section 4.3: dates parse, and every claim of one requirement
+  // carries the same copied facts.
+  const dated = claimList.filter((claim) =>
+    Object.hasOwn(claim, "applies_from"),
+  );
+  if (dated.length > 0) {
+    if (utcDateOf(value.generated_at) === undefined)
+      findings.push(
+        "generated_at: not an RFC 3339 date-time with an offset, and a claim is dated",
+      );
+    dated.forEach((claim) => {
+      if (!isCalendarDate(claim.applies_from))
+        findings.push(
+          `claims: ${String(claim.id)}.applies_from ${String(claim.applies_from)} is not a calendar date`,
+        );
+    });
+  }
+  const rows = new Map<string, ObjectValue[]>();
+  for (const claim of claimList) {
+    const key = JSON.stringify([claim.contract_ref, claim.requirement_ref]);
+    rows.set(key, [...(rows.get(key) ?? []), claim]);
+  }
+  for (const [key, members] of rows)
+    for (const member of ["out_of_scope_allowed", "applies_from"])
+      if (new Set(members.map((claim) => String(claim[member]))).size > 1)
+        findings.push(`claims: the claims of ${key} disagree on ${member}`);
+  // Spec section 3: every claimed requirement is listed, each pair once, and
+  // the listed requirements no claim cites are no more than the exclusions.
+  if (Array.isArray(coverage!.requirements_covered)) {
+    const listed = new Set<string>();
+    for (const entry of coverage!.requirements_covered as ObjectValue[]) {
+      const key = JSON.stringify([entry.contract_ref, entry.requirement_ref]);
+      if (listed.has(key))
+        findings.push(
+          `aggregate.coverage.requirements_covered: ${key} is listed twice`,
+        );
+      listed.add(key);
+    }
+    for (const key of rows.keys())
+      if (!listed.has(key))
+        findings.push(
+          `aggregate.coverage.requirements_covered: a claim cites ${key}, which it does not list`,
+        );
+    const unclaimed = [...listed].filter((key) => !rows.has(key)).length;
+    if (unclaimed > (coverage!.excluded_not_applicable as number))
+      findings.push(
+        `aggregate.coverage.requirements_covered: ${unclaimed} listed requirement(s) no claim cites, but excluded_not_applicable is ${String(coverage!.excluded_not_applicable)}`,
+      );
+  }
+  if (findings.length > 0) return findings;
+  const later = laterClaimIds(value);
+  // Spec section 4.3: not_yet_in_force is there exactly when a claim is
+  // later. Its absence beside a later claim reads as a count mismatch
+  // (recomputeCounts); its presence with none later is malformed.
+  if (later.size === 0 && Object.hasOwn(coverage!, "not_yet_in_force"))
+    findings.push(
+      "aggregate.coverage.not_yet_in_force: present, but no claim is later",
+    );
 
   const verdictById = new Map<string, string>();
   (value.claims as ObjectValue[]).forEach((claim, index) => {
@@ -666,18 +997,24 @@ export function validateEvidenceResult(value: unknown): string[] {
   const appearances = new Map<string, number>();
   let entries = 0;
   for (const member of VERDICTS)
-    for (const id of buckets![member] as string[]) {
+    for (const id of (buckets![member] as string[] | undefined) ?? []) {
       entries += 1;
       appearances.set(id, (appearances.get(id) ?? 0) + 1);
-      if (verdictById.get(id) !== member)
+      if (later.has(id))
+        findings.push(
+          `aggregate.buckets.${member}: ${id} is not yet in force and belongs in no bucket`,
+        );
+      else if (verdictById.get(id) !== member)
         findings.push(
           `aggregate.buckets.${member}: ${id} is not a claim with that verdict`,
         );
     }
-  // The exact partition (2026-09-28): every claim in exactly one bucket, and
-  // exactly as many entries as claims. A claim in no bucket is a verdict the
+  // The exact partition (2026-09-28): every in-force claim in exactly one
+  // bucket, a later claim (spec section 4.3) in none, and exactly as many
+  // entries as in-force claims. A claim in no bucket is a verdict the
   // headline hides; one in two is a verdict counted twice.
   for (const [id, verdict] of verdictById) {
+    if (later.has(id)) continue;
     const count = appearances.get(id) ?? 0;
     if (count === 0)
       findings.push(
@@ -688,9 +1025,10 @@ export function validateEvidenceResult(value: unknown): string[] {
         `aggregate.buckets: ${id} appears ${count} times across the buckets`,
       );
   }
-  if (entries !== verdictById.size)
+  const inForce = verdictById.size - later.size;
+  if (entries !== inForce)
     findings.push(
-      `aggregate.buckets: ${entries} entries for ${verdictById.size} claims`,
+      `aggregate.buckets: ${entries} entries for ${inForce} ${later.size > 0 ? "in-force claims" : "claims"}`,
     );
   return findings;
 }
@@ -701,8 +1039,9 @@ const countOf = (value: unknown): number =>
 /**
  * The headline numbers as the claims bear them out. Takes a document that
  * passed `validateEvidenceResult` and returns coverage and per-bucket
- * counts recomputed from `claims[]` -- the claim count, the UNKNOWN
- * sufficiencies, and the verdicts -- beside a list of every stated number
+ * counts recomputed from `claims[]` -- the in-force claim count, their
+ * UNKNOWN sufficiencies and verdicts, and the later claims (spec section
+ * 4.3) -- beside a list of every stated number
  * that disagrees. `excluded_not_applicable` is carried as stated (no claim
  * backs it, by construction). Pure, so a disagreement the partition gate
  * makes unreachable through `buildResultRoot` is still provable here.
@@ -710,7 +1049,7 @@ const countOf = (value: unknown): number =>
  * `failed` names the claims that failed verification (a close-state
  * mismatch; `ResultClaim.failed`). They stay in `evaluated_population` --
  * the producer did evaluate them -- but contribute to no verdict count and
- * to no unresolved count: their sufficiency and verdict are withheld, and
+ * to no `unknown_count`: their sufficiency and verdict are withheld, and
  * they are counted under `bucketCounts.failed` instead. A producer's
  * `buckets.met` that lists a failed claim therefore reads as a count
  * mismatch beside the recomputed `met`.
@@ -723,44 +1062,60 @@ export function recomputeCounts(
   const aggregate = document.aggregate as ObjectValue;
   const coverage = aggregate.coverage as ObjectValue;
   const buckets = aggregate.buckets as ObjectValue;
-  const standing = claims.filter((claim) => !failed.has(claim.id as string));
-  const stated = {
+  const later = laterClaimIds(document);
+  // Spec section 4.3: a later claim is readiness only, outside the
+  // population and in no bucket.
+  const inForce = claims.filter((claim) => !later.has(claim.id as string));
+  const standing = inForce.filter((claim) => !failed.has(claim.id as string));
+  const fourth = Object.hasOwn(buckets, "out_of_scope");
+  const verdictCount = (verdict: Verdict): number =>
+    standing.filter((claim) => claim.verdict === verdict).length;
+  const stated: Partial<Record<CountField, number>> = {
     evaluated_population: countOf(coverage.evaluated_population),
     unknown_count: countOf(coverage.unknown_count),
     "buckets.met": (buckets.met as unknown[]).length,
     "buckets.not_met": (buckets.not_met as unknown[]).length,
     "buckets.not_evaluable": (buckets.not_evaluable as unknown[]).length,
-  } as const;
-  const recomputed = {
-    evaluated_population: claims.length,
+  };
+  const recomputed: Partial<Record<CountField, number>> = {
+    evaluated_population: inForce.length,
     unknown_count: standing.filter((claim) => claim.sufficiency === "UNKNOWN")
       .length,
-    "buckets.met": standing.filter((claim) => claim.verdict === "met").length,
-    "buckets.not_met": standing.filter((claim) => claim.verdict === "not_met")
-      .length,
-    "buckets.not_evaluable": standing.filter(
-      (claim) => claim.verdict === "not_evaluable",
-    ).length,
-  } as const;
+    "buckets.met": verdictCount("met"),
+    "buckets.not_met": verdictCount("not_met"),
+    "buckets.not_evaluable": verdictCount("not_evaluable"),
+  };
+  if (fourth) {
+    stated["buckets.out_of_scope"] = (buckets.out_of_scope as unknown[]).length;
+    recomputed["buckets.out_of_scope"] = verdictCount("out_of_scope");
+  }
+  if (later.size > 0 || Object.hasOwn(coverage, "not_yet_in_force")) {
+    stated.not_yet_in_force = countOf(coverage.not_yet_in_force);
+    recomputed.not_yet_in_force = later.size;
+  }
   const mismatches: CountMismatch[] = [];
-  for (const field of Object.keys(stated) as CountField[])
+  for (const field of Object.keys(recomputed) as CountField[])
     if (stated[field] !== recomputed[field])
       mismatches.push({
         field,
-        stated: stated[field],
-        recomputed: recomputed[field],
+        stated: stated[field]!,
+        recomputed: recomputed[field]!,
       });
   return {
     coverage: {
-      evaluatedPopulation: recomputed.evaluated_population,
+      evaluatedPopulation: recomputed.evaluated_population!,
       excludedNotApplicable: countOf(coverage.excluded_not_applicable),
-      unknownCount: recomputed.unknown_count,
+      unknownCount: recomputed.unknown_count!,
+      ...(later.size > 0 ? { notYetInForce: later.size } : {}),
     },
     bucketCounts: {
-      met: recomputed["buckets.met"],
-      notMet: recomputed["buckets.not_met"],
-      notEvaluable: recomputed["buckets.not_evaluable"],
-      failed: claims.length - standing.length,
+      met: recomputed["buckets.met"]!,
+      notMet: recomputed["buckets.not_met"]!,
+      notEvaluable: recomputed["buckets.not_evaluable"]!,
+      ...(fourth ? { outOfScope: recomputed["buckets.out_of_scope"]! } : {}),
+      // A later claim that failed verification is still a failure: applicability
+      // takes a claim out of the verdict counts, never out of verification.
+      failed: claims.filter((claim) => failed.has(claim.id as string)).length,
     },
     mismatches,
   };
@@ -776,6 +1131,36 @@ export function deriveCloseState(links: readonly CloseLink[]): CloseState {
   if (links.some((link) => link.type === "rebuts")) return "CONTESTED";
   if (links.some((link) => link.type === "acknowledges")) return "AGREED";
   return "UNILATERAL";
+}
+
+/**
+ * A `reconcile` body this module can read: every member present, the six
+ * tallies integers >= 0, and `state_of_record` in its vocabulary.
+ */
+function reconcileBody(raw: ObjectValue): ResultReconcile | undefined {
+  const body = raw.reconcile;
+  if (!isObject(body)) return undefined;
+  const { join_key, peer, period, tallies, state_of_record } = body;
+  if (
+    !nonEmptyString(join_key) ||
+    !nonEmptyString(peer) ||
+    !isObject(period) ||
+    typeof period.start !== "string" ||
+    typeof period.end !== "string" ||
+    !isObject(tallies) ||
+    !RECONCILE_TALLY_KEYS.every((key) => nonNegativeInteger(tallies[key])) ||
+    !oneOf(STATES_OF_RECORD, state_of_record)
+  )
+    return undefined;
+  return {
+    joinKey: join_key,
+    peer,
+    period: { start: period.start, end: period.end },
+    tallies: Object.fromEntries(
+      RECONCILE_TALLY_KEYS.map((key) => [key, tallies[key] as number]),
+    ) as Record<ReconcileTallyKey, number>,
+    stateOfRecord: state_of_record,
+  };
 }
 
 /** A `close` body this module can read: a state in the vocabulary and a Close cited by digest. */
@@ -1084,16 +1469,30 @@ function base64UrlBytes(value: string): Uint8Array | undefined {
   }
 }
 
+/**
+ * The payload committed under `digest`: `absent` when the bundle supplies
+ * nothing under it, `failed` when it supplies something that is not
+ * base64url or does not hash to the commitment, else the checked bytes.
+ */
+async function bookPayload(
+  payloads: ObjectValue,
+  digest: string,
+): Promise<"absent" | "failed" | Uint8Array> {
+  if (!Object.hasOwn(payloads, digest)) return "absent";
+  const encoded = asString(payloads[digest]);
+  if (encoded === undefined) return "failed";
+  const bytes = base64UrlBytes(encoded);
+  if (bytes === undefined) return "failed";
+  return (await sha256Hex(bytes)) === digest ? bytes : "failed";
+}
+
 /** The payload bytes committed under `digest`, only when they hash to it. */
 async function verifiedBookPayload(
   payloads: ObjectValue,
   digest: string,
 ): Promise<Uint8Array | undefined> {
-  const encoded = asString(payloads[digest]);
-  if (encoded === undefined) return undefined;
-  const bytes = base64UrlBytes(encoded);
-  if (bytes === undefined) return undefined;
-  return (await sha256Hex(bytes)) === digest ? bytes : undefined;
+  const payload = await bookPayload(payloads, digest);
+  return typeof payload === "string" ? undefined : payload;
 }
 
 /**
@@ -1109,19 +1508,25 @@ async function verifiedBookPayload(
  * the header commits to hashes to its commitment AND its JSON-DIGEST equals
  * the capsule's own `agent_input_digest`. A capsule published before the book
  * carried originals (two payloads, capsule and producer envelope) resolves
- * `withheld`; a broken link resolves `disclosure_mismatch`.
+ * `withheld`; a broken link resolves `disclosure_mismatch`. A payload the
+ * bundle supplies but that fails -- bytes that do not hash to their
+ * commitment, or a JSON original whose JSON-DIGEST is not the capsule's
+ * committed digest -- is a broken link, never `withheld`: only a payload the
+ * bundle leaves out is withheld.
  */
 /**
  * The capsule a `published_capsule` book header carries, checked link by link
  * (capsule bytes against their commitment, recomputed id against
- * `capsule_id` and `subject_ref`): its id and its agent_input commitment.
- * Undefined when any link fails or the header is not a published capsule.
+ * `capsule_id` and `subject_ref`), and its recomputed id. Undefined when any
+ * link fails or the header is not a published capsule. It asks nothing of the
+ * capsule's commitments, so a carried capsule with no `agent_input` digest
+ * still has an id.
  */
-export async function carriedCapsuleCommitment(
+async function carriedCapsuleId(
   header: unknown,
   payloads: ObjectValue,
 ): Promise<
-  { capsuleId: string; inputDigest: string; stated: StatedTimes } | undefined
+  { capsule: ReturnType<typeof decodeCapsuleJson>; id: string } | undefined
 > {
   if (!isObject(header) || header.record_type !== PUBLISHED_CAPSULE_RECORD_TYPE)
     return undefined;
@@ -1137,20 +1542,46 @@ export async function carriedCapsuleCommitment(
     const id = await computeCapsuleId(capsule);
     if (id !== capsule.capsule_id || id !== header.subject_ref)
       return undefined;
-    const committed = committedDigest(
-      capsule as unknown as RecordWithId,
-      "agent_input",
-    );
-    return isHex64(committed)
-      ? {
-          capsuleId: id,
-          inputDigest: committed,
-          stated: statedTimes(capsule as unknown as ObjectValue),
-        }
-      : undefined;
+    return { capsule, id };
   } catch {
     return undefined;
   }
+}
+
+/**
+ * The capsule a `published_capsule` book header carries, checked as
+ * `carriedCapsuleId` checks it: its id and its agent_input commitment.
+ * Undefined when any link fails, or when the capsule commits no agent_input
+ * digest.
+ */
+export async function carriedCapsuleCommitment(
+  header: unknown,
+  payloads: ObjectValue,
+): Promise<
+  | {
+      capsuleId: string;
+      inputDigest: string;
+      stated: StatedTimes;
+      actionId?: string;
+    }
+  | undefined
+> {
+  const carried = await carriedCapsuleId(header, payloads);
+  if (carried === undefined) return undefined;
+  const { capsule, id } = carried;
+  const committed = committedDigest(
+    capsule as unknown as RecordWithId,
+    "agent_input",
+  );
+  const actionId = asString((capsule as unknown as ObjectValue).action_id);
+  return isHex64(committed)
+    ? {
+        capsuleId: id,
+        inputDigest: committed,
+        stated: statedTimes(capsule as unknown as ObjectValue),
+        ...(actionId === undefined ? {} : { actionId }),
+      }
+    : undefined;
 }
 
 export async function resolveCarriedInput(
@@ -1183,17 +1614,39 @@ export async function resolveCarriedInput(
     return { state: "disclosure_mismatch" };
   }
   if (!isHex64(committed)) return { state: "withheld" };
+  // A supplied payload that fails is a broken link, whether or not another
+  // payload discloses: absent payloads are withheld, failing ones are not.
+  let disclosed: unknown;
+  let found = false;
+  let failed = false;
   for (const digest of commitments.slice(1)) {
-    const bytes = await verifiedBookPayload(payloads, digest);
-    if (bytes === undefined) continue;
+    const bytes = await bookPayload(payloads, digest);
+    if (bytes === "absent") continue;
+    if (bytes === "failed") {
+      failed = true;
+      continue;
+    }
+    let value: unknown;
     try {
-      const value: unknown = JSON.parse(utf8.decode(bytes));
-      if ((await jsonDigest(value)) === committed)
-        return { state: "disclosed", payload: value };
+      value = JSON.parse(utf8.decode(bytes));
     } catch {
-      /* not JSON (the producer envelope), or JCS cannot render it */
+      continue; /* not JSON: the producer envelope */
+    }
+    let digestOfValue: string | undefined;
+    try {
+      digestOfValue = await jsonDigest(value);
+    } catch {
+      digestOfValue = undefined; /* JCS cannot render it */
+    }
+    if (digestOfValue === committed) {
+      if (!found) disclosed = value;
+      found = true;
+    } else {
+      failed = true; /* a JSON original that is not the committed preimage */
     }
   }
+  if (failed) return { state: "disclosure_mismatch" };
+  if (found) return { state: "disclosed", payload: disclosed };
   // An original attached at disclose time (AGENT_INPUT_ORIGINALS_EXTENSION),
   // keyed by the capsule id just recomputed: disclosed only when its
   // JSON-DIGEST is the capsule's committed agent_input_digest.
@@ -1303,10 +1756,17 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
   // published capsule as the evidence-book record that carries it, under
   // the BOOK record's id; a claim cites the capsule by its own id (what
   // `publish` returned and the producer recorded). The carried capsule's id
-  // is the header's `subject_ref`, read only from a header that is itself
-  // disclosed and matched to the book record's committed digest -- never
-  // from an unverified value. Built on first need: a payload-form bundle,
-  // where every cited id is a record id, never pays for it.
+  // is never taken from the header's own `subject_ref` field directly --
+  // that is a producer-asserted value a dishonest bundle could set to any
+  // string, including a cited claim's evidence digest, with no carried
+  // capsule to back it. `carriedCapsuleId` recomputes the id from the
+  // carried capsule's own bytes (via `computeCapsuleId`) and only returns it
+  // once that recomputed id equals both the capsule's own `capsule_id` and
+  // the header's `subject_ref` -- the same check `resolveRecord` below
+  // applies, through `carriedCapsuleCommitment`, to every OTHER use of a
+  // carried capsule's id. It doesn't require an agent_input commitment, so a
+  // carried capsule without one still resolves a claim that cites it. Built on first need: a payload-form bundle, where every
+  // cited id is a record id, never pays for it.
   let carriersById: Map<string, RecordWithId> | undefined;
   const bookCarrier = async (id: string): Promise<RecordWithId | undefined> => {
     if (carriersById === undefined) {
@@ -1319,9 +1779,9 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
           header.payload.record_type !== PUBLISHED_CAPSULE_RECORD_TYPE
         )
           continue;
-        const subject = header.payload.subject_ref;
-        if (isHex64(subject) && !recordsById.has(subject))
-          carriersById.set(subject, record);
+        const carried = await carriedCapsuleId(header.payload, bookPayloads);
+        if (carried !== undefined && !recordsById.has(carried.id))
+          carriersById.set(carried.id, record);
       }
     }
     return carriersById.get(id);
@@ -1362,6 +1822,9 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
         : {
             carriedCapsuleId: carriedCapsule.capsuleId,
             carriedInputDigest: carriedCapsule.inputDigest,
+            ...(carriedCapsule.actionId === undefined
+              ? {}
+              : { carriedActionId: carriedCapsule.actionId }),
           }),
       ...(carriedCapsule !== undefined
         ? { stated: carriedCapsule.stated }
@@ -1387,6 +1850,7 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
     ? await inboundCloseLinks(context)
     : new Map<string, readonly CloseLink[]>();
 
+  const later = laterClaimIds(document);
   const claims: ResultClaim[] = [];
   for (const raw of document.claims as ObjectValue[]) {
     const evidence: ClaimEvidenceRef[] = [];
@@ -1409,6 +1873,7 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
       : REQUIREMENT_CLAIM;
     const presentation = raw.presentation as ObjectValue;
     const body = type === CLOSE_CLAIM ? closeBody(raw) : undefined;
+    const reconcile = type === RECONCILE_CLAIM ? reconcileBody(raw) : undefined;
     let close: ResultClose | undefined;
     if (body !== undefined) {
       const closeRef = body.close_ref.digest as string;
@@ -1527,13 +1992,21 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
     claims.push({
       id: raw.id as string,
       type,
-      recognized: type === REQUIREMENT_CLAIM || body !== undefined,
+      recognized:
+        type === REQUIREMENT_CLAIM ||
+        body !== undefined ||
+        reconcile !== undefined,
       contractRef: raw.contract_ref as string,
       requirementRef: raw.requirement_ref as string,
       tier: raw.tier as Tier,
       grade: raw.grade as Grade,
       sufficiency: raw.sufficiency as Sufficiency,
       verdict: raw.verdict as Verdict,
+      outOfScopeAllowed: raw.out_of_scope_allowed === true,
+      ...(typeof raw.applies_from === "string"
+        ? { appliesFrom: raw.applies_from }
+        : {}),
+      later: later.has(raw.id as string),
       support:
         evidence.length > 0 && missing.length === 0
           ? "supported"
@@ -1562,6 +2035,7 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
           : {}),
       },
       ...(close === undefined ? {} : { close }),
+      ...(reconcile === undefined ? {} : { reconcile }),
       failed: failure !== undefined,
       ...(failure === undefined ? {} : { failure }),
       ...(failedOn === undefined ? {} : { failedOn }),
@@ -1586,13 +2060,29 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
       evaluatedPopulation: coverage.evaluated_population as number,
       excludedNotApplicable: coverage.excluded_not_applicable as number,
       unknownCount: coverage.unknown_count as number,
+      ...(nonNegativeInteger(coverage.not_yet_in_force)
+        ? { notYetInForce: coverage.not_yet_in_force }
+        : {}),
     },
+    ...(Array.isArray(coverage.requirements_covered)
+      ? {
+          requirementsCovered: (
+            coverage.requirements_covered as ObjectValue[]
+          ).map((entry) => ({
+            contractRef: entry.contract_ref as string,
+            requirementRef: entry.requirement_ref as string,
+          })),
+        }
+      : {}),
     bucketCounts: counts.bucketCounts,
     countMismatches: counts.mismatches,
     buckets: {
       met: [...(buckets.met as string[])],
       notMet: [...(buckets.not_met as string[])],
       notEvaluable: [...(buckets.not_evaluable as string[])],
+      ...(Array.isArray(buckets.out_of_scope)
+        ? { outOfScope: [...(buckets.out_of_scope as string[])] }
+        : {}),
     },
     claims,
     records: cited,

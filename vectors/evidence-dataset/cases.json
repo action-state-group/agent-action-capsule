@@ -1,0 +1,156 @@
+[
+  {
+    "expect": "valid",
+    "name": "pos-window-and-exclusion"
+  },
+  {
+    "expect": "valid",
+    "name": "pos-population-only"
+  },
+  {
+    "expect": "valid",
+    "name": "pos-empty-window"
+  },
+  {
+    "expect": "valid",
+    "name": "pos-every-predicate"
+  },
+  {
+    "expect": "valid",
+    "name": "pos-string-never-equals-boolean"
+  },
+  {
+    "expect": "valid",
+    "name": "pos-book-grew-past-through-seq"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "rows-mismatch",
+    "name": "neg-row-dropped"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "rows-mismatch",
+    "name": "neg-row-duplicated"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "rows-mismatch",
+    "name": "neg-rows-out-of-order"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "rows-mismatch",
+    "name": "neg-row-past-through-seq"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "rows-mismatch",
+    "name": "neg-record-edited"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "plan-ref-mismatch",
+    "name": "neg-plan-ref-mismatch"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "dataset-invalid",
+    "name": "neg-dataset-extra-member"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "dataset-invalid",
+    "name": "neg-row-carries-a-value"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "field-missing",
+    "name": "neg-window-field-missing"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "field-type",
+    "name": "neg-window-field-not-a-timestamp"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "field-type",
+    "name": "neg-window-field-without-offset"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "field-type",
+    "name": "neg-filter-field-not-a-scalar"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "field-missing",
+    "name": "neg-later-predicate-field-missing"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "field-type",
+    "name": "neg-filter-field-null"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "field-type",
+    "name": "neg-window-field-leap-second"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "plan-shape",
+    "name": "neg-filter-before-population"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "plan-shape",
+    "name": "neg-filter-skips-the-window"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "plan-shape",
+    "name": "neg-mixed-operator"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "plan-shape",
+    "name": "neg-node-contract-differs"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "plan-invalid",
+    "name": "neg-population-without-params"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "plan-invalid",
+    "name": "neg-predicate-number"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "plan-invalid",
+    "name": "neg-field-path-trailing-newline"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "plan-invalid",
+    "name": "neg-window-day-impossible"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "plan-invalid",
+    "name": "neg-window-reversed"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "plan-invalid",
+    "name": "neg-contract-ref-ecma-whitespace"
+  },
+  {
+    "base": "pos-window-and-exclusion",
+    "expect": "records-invalid",
+    "name": "neg-record-seq-twice"
+  }
+]

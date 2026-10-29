@@ -1,0 +1,51 @@
+{
+  "plan_ref": {
+    "digest": "5948f41ee015c42bff8077f36975d5af04aa5645126c70842601e9ce49465b32",
+    "digest_alg": "SHA-256"
+  },
+  "results": {
+    "node-1": {
+      "attestation_ref": {
+        "digest": "7c43e7df555f558630e05699e2794c8078721fd9b2dc5e499dc58e2cc87ddc35",
+        "digest_alg": "SHA-256"
+      },
+      "family": "traditional",
+      "outputs": [
+        {
+          "digest": "73e3f394c23b84976dcf24993481a04d075eb4568e6461cf466d5466ef5be792",
+          "digest_alg": "SHA-256"
+        }
+      ],
+      "status": "SATISFIED"
+    },
+    "node-2": {
+      "attestation_ref": {
+        "digest": "224cebb8544d588e9d6dc7a6ced32a35f3e21d3920b967b0970bb3ee3ba7f1eb",
+        "digest_alg": "SHA-256"
+      },
+      "family": "semantic",
+      "outputs": [
+        {
+          "digest": "327505df62665cb7307256dfa606c543296c486241017dfbf5e3a4610fcc65d0",
+          "digest_alg": "SHA-256"
+        }
+      ],
+      "status": "SATISFIED"
+    },
+    "node-3": {
+      "attestation_ref": {
+        "digest": "035690a152d6242c6f47dc8d928ef8f11d68b8dc5dbc9f3a1a781241008db805",
+        "digest_alg": "SHA-256"
+      },
+      "family": "decision",
+      "outputs": [
+        {
+          "digest": "45ca29f67ab06a3b9f73d200287b2597809132bd7893cd5bfaaa393b8a0ee3a5",
+          "digest_alg": "SHA-256"
+        }
+      ],
+      "status": "SATISFIED",
+      "verdict": "not_applicable"
+    }
+  }
+}

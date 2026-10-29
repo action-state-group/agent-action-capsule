@@ -29,9 +29,13 @@ denied Capsule is affirmative evidence that a gate worked.
   registry for the seven profile vocabularies until IANA registries are
   established on RFC publication.
 - **Reader's guide:** [`spec/section-map.md`](spec/section-map.md).
-- **Presentation contract:** [`spec/presentation-contract-v0.md`](spec/presentation-contract-v0.md)
-  — how a verified bundle becomes a page: module interface, manifests and their resolution,
-  trust classes, text binding, invariants and depth levels.
+- **Verification display:** [`spec/verification-display-v0.md`](spec/verification-display-v0.md):
+  what a page states about verification: the verification gate, the check lists, the
+  banner, the refusal's text, evidentiary words and `sha256-jcs-nonce256`. How a verified
+  bundle becomes a page (the presentation contract) is now capsule-viewer's
+  ([`action-state-group/capsule-viewer`](https://github.com/action-state-group/capsule-viewer));
+  [`spec/presentation-contract-v0.md`](spec/presentation-contract-v0.md) maps each of its old
+  sections to its new home.
 
 The authoritative version of the draft is the one on the
 [Datatracker](https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/);
@@ -110,16 +114,17 @@ The producer consumes this repository's contract; this repository does not depen
 on the producer. The `go/` and `ts/` implementations here independently conform
 to the Python reference through the shared `vectors/` tree and cross-language CI.
 
-## Canonical Payload Binding (CPB)
+## CPB (Canonicalization Declaration)
 
-Agent Action Capsule is the first payload profile registered under the
-**Canonical Payload Binding** (CPB) profile — a payload-neutral SCITT binding
-(canonicalize → derive an identifier → bind a receipt → cite externals). CPB and
-its provisional registries have a dedicated repository:
+Agent Action Capsule is one payload profile that uses **CPB**,
+[`draft-mih-sokolov-scitt-payload-binding-05`](https://www.ietf.org/archive/id/draft-mih-sokolov-scitt-payload-binding-05.txt)
+("Canonicalization Declaration for SCITT Signed Statements"). A Capsule declares
+the canonicalization behind its derived identifier (`jcs`), named in the
+Canonicalization Algorithm Registry that CPB asks IANA to create. CPB keeps no
+registry of payload classes or artifact types, so a Capsule is declared under
+CPB, not registered in it.
+CPB's source and companion interop record live in
 **[action-state-group/scitt-payload-binding](https://github.com/action-state-group/scitt-payload-binding)**.
-
-The CPB `-00`, as posted, references this repository as its source; the `-01`
-revision updates that pointer to the dedicated repository.
 
 ## Transparency-layer design — VDS-agnostic
 
@@ -214,7 +219,7 @@ counted as completed runs.
 ```bash
 # one-time toolchain
 gem install kramdown-rfc
-python3 -m venv ~/.venvs/x2r && ~/.venvs/x2r/bin/pip install xml2rfc
+python3 -m venv ~/.venvs/x2r && ~/.venvs/x2r/bin/pip install xml2rfc==3.34.1
 
 # build (from spec/)
 cd spec && make            # md -> v2 xml -> v3 xml -> txt

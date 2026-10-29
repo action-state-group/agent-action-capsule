@@ -1,0 +1,14 @@
+{
+  "set": "aac-interop-profile-v0-requirement-facts",
+  "status": "Conformance vectors for the requirement facts evidence-interop/0 copies into the claim (§8.3). Every key is a test key derived from a public seed; never use one for anything else.",
+  "provenance": "spec-derived",
+  "spec": "spec/interop-profile-v0.md",
+  "generator": "python/scripts/generate_interop_profile_v0_vectors.py",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "6dff7ab66433d495d4a56a6a90205976c94216294a5e64596e892f952c1b8b17",
+      "count": 2
+    }
+  ]
+}

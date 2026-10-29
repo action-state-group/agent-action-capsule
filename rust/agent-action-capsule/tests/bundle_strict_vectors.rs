@@ -30,6 +30,8 @@ fn observed(bundle: &Value, options: &StrictOptions) -> Value {
             "findings": w.findings,
             "receipts": result.witness_receipts.iter().map(|r| json!({
                 "ts_url": r.ts_url, "binding": r.binding, "status": r.status, "grade": r.grade,
+                "key_id": r.key_id, "registration_time": r.registration_time,
+                "registration_time_reason": r.registration_time_reason,
             })).collect::<Vec<_>>(),
         })
     });
@@ -54,7 +56,7 @@ fn every_strict_case_matches() {
     let vectors = vectors();
     let directory = &vectors["witness_directory"];
     let cases = vectors["cases"].as_array().expect("cases");
-    assert_eq!(cases.len(), 56);
+    assert_eq!(cases.len(), 73);
     let mut failures = Vec::new();
     for case in cases {
         let options = StrictOptions {
@@ -240,8 +242,8 @@ fn scrapi_without_a_pinned_key_checks_nothing() {
 fn unreadable_receipts_fail_and_never_panic() {
     let directory = json!({"witnesses": [{"endpoint": "https://r.example", "binding": "rekor",
         "key_ids": ["22".repeat(32)], "public_keys": ["not base64!"]}]});
-    let record = json!({"ts_url": "rekor+https://r.example", "receipt_b64": "%%%",
-        "entry_hash": "", "leaf_index": 0, "tree_size": 1});
+    let record = json!({"ts_url": "rekor+https://r.example", "receipt_b64": "AA==",
+        "entry_hash": "ab", "leaf_index": 0, "tree_size": 1});
     let report = verify_witness_receipts(
         Some(&json!([record])),
         Some(&signed()),
@@ -253,9 +255,14 @@ fn unreadable_receipts_fail_and_never_panic() {
         .reason
         .starts_with("not checked: unusable key"));
 
-    // A cll row with a usable key and garbage receipts: each fails.
+    // A cll row with a usable key and receipts that are not one: each fails,
+    // as malformed ("%%%", "") or as a receipt that does not verify ("AAAA").
     let directory = json!([{"endpoint": "https://w.example", "key_ids": ["22".repeat(32)]}]);
-    for receipt in ["%%%", "AAAA", ""] {
+    for (receipt, finding) in [
+        ("%%%", "witness_receipt_malformed:0"),
+        ("AAAA", "witness_receipt_invalid:https://w.example"),
+        ("", "witness_receipt_malformed:0"),
+    ] {
         let record = json!({"ts_url": "https://w.example", "receipt_b64": receipt,
             "entry_hash": "00", "leaf_index": 0, "tree_size": 1});
         let report = verify_witness_receipts(
@@ -265,6 +272,7 @@ fn unreadable_receipts_fail_and_never_panic() {
             Some(&directory),
         );
         assert_eq!(report.status, "fail", "{receipt}");
+        assert_eq!(report.findings, [finding], "{receipt}");
     }
 }
 
@@ -273,7 +281,7 @@ fn malformed_and_stub_entries() {
     let directory = json!([]);
     let entries = json!([
         {"ts_url": "https://w.example"},
-        {"ts_url": "https://w.example", "receipt_b64": "", "entry_hash": "", "leaf_index": 0,
+        {"ts_url": "https://w.example", "receipt_b64": "AA==", "entry_hash": "ab", "leaf_index": 0,
          "tree_size": 1, "is_stub": true},
     ]);
     let report = verify_witness_receipts(
@@ -294,4 +302,44 @@ fn malformed_and_stub_entries() {
     assert_eq!(none.findings, ["witness_receipt_absent"]);
     let unsigned = verify_witness_receipts(Some(&entries), None, None, None);
     assert_eq!(unsigned.findings, ["checkpoint_unverified"]);
+}
+
+#[test]
+fn a_record_with_a_malformed_member_is_malformed() {
+    let good = json!({"ts_url": "https://w.example", "entry_hash": "ab", "receipt_b64": "AA==",
+        "leaf_index": 0, "tree_size": 1});
+    let edits = [
+        ("ts_url", json!("")),
+        ("entry_hash", json!("")),
+        ("entry_hash", json!(true)),
+        ("receipt_b64", json!("")),
+        ("receipt_b64", json!(7)),
+        ("receipt_b64", json!("!")),
+        ("receipt_b64", json!("AA")),
+        ("receipt_b64", json!("AB==")),
+        ("ts_url", json!(7)),
+    ];
+    for (field, value) in edits {
+        let mut record = good.clone();
+        record[field] = value.clone();
+        // A stub with the same member is no less malformed.
+        let mut stub = record.clone();
+        stub["is_stub"] = json!(true);
+        let report =
+            verify_witness_receipts(Some(&json!([stub])), Some(&signed()), Some(b"c"), None);
+        assert_eq!(
+            report.findings,
+            ["witness_receipt_malformed:0"],
+            "stub {field}={value}"
+        );
+        let report =
+            verify_witness_receipts(Some(&json!([record])), Some(&signed()), Some(b"c"), None);
+        assert_eq!(report.status, "fail", "{field}={value}");
+        assert_eq!(
+            report.findings,
+            ["witness_receipt_malformed:0"],
+            "{field}={value}"
+        );
+        assert!(report.receipts.is_empty(), "{field}={value}");
+    }
 }

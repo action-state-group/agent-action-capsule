@@ -43,6 +43,48 @@ $ agent-action-capsule verify ../vectors/capsule/neg-confirmed-without-response/
 Add `--json` for the raw `VerificationResult`, or `--store <dir-or-ledger-file>`
 for store-level chain checks (supersedes / concurrent-supersedes / open-items).
 
+### What `--store` reads
+
+- **A ledger store directory**, one holding `manifest.json`: checkpointed-local-log's
+  managed `LedgerStore`, which capsule-emit plans to make `seal()`'s default ledger
+  (capsule-emit#358). Its segments are read in manifest order; the SQLite indexes
+  are not opened. The store's entries are its complete lines, the first per
+  `capsule_id`: the active segment's unterminated last line is skipped with a notice,
+  as is a later line identical to an earlier one under the same `capsule_id`. Any
+  other line that does not parse, a different line under a `capsule_id` already
+  seen, or an archived (unmounted) segment makes the run not ok.
+- **Any other directory**: its `*.json` files, one capsule each.
+- **A file**: one JSON document first (an array, a `{"ledger": [...]}` object or one
+  capsule, compact or pretty-printed), otherwise JSONL. A JSONL line that does not
+  parse, such as a fragment left by a writer that crashed mid-line, is skipped with
+  a notice. An empty file is an empty ledger; a file with no parseable line cannot be
+  read (exit 2).
+
+A ledger holds lines that are not capsules. These are recognized and counted, not
+verified, and the summary names them, for example "3 bookkeeping entries not
+checked (2 checkpoint stamps, 1 disclosure record); only capsules are checked":
+
+| `kind` | What it is |
+|---|---|
+| `checkpoint_stamp` | a signed checkpoint the ledger's writer recorded over its own entries |
+| `disclosure_record` | the writer's record of disclosing entries to an audience |
+| `checkpoint_witness_backfill` | a witness receipt that arrived after its checkpoint was recorded |
+
+A line counts as bookkeeping only when its `kind` is one of these three and its
+members are exactly that kind's, with `v` equal to 1 and a `capsule_id` of 64
+lowercase hex. A witness backfill's `capsule_id` must also equal the SHA-256 of its
+`checkpoint_entry_digest` and `witness` members (as JSON with sorted keys and no
+spaces). A line with any other `kind`, or with a listed `kind` but other members (a
+capsule or a padding record relabelled), makes the run not ok. Bookkeeping lines are
+checked for shape only.
+
+A padding record (`record_type: "padding"`) is checked against the Evidence Layer
+padding rules ([vectors/evidence-layer/padding](../vectors/evidence-layer/padding/README.md)).
+Checkpoints themselves are not verified here; `--store` checks capsules and
+their chain rules only. Under `--json`, stdout keeps the result document and the
+summary, notices and problems go to stderr; a problem makes the exit code 1 even
+when every listed result is ok.
+
 ### The two layers
 
 Verification is two layers, and this package is honest about which it does:
@@ -95,6 +137,29 @@ calls a Bundle VALID, and sets `result.verdict` to `VALID`, `INCOMPLETE` or
 
 Strict mode needs `agent-action-capsule[bundle,envelope]`.
 [`vectors/bundle/strict/`](../vectors/bundle/strict/) states the rules.
+
+`build_evidence_bundle(source, root=..., interval_from=...)` builds a Bundle
+from a `ProofSource`: the log's signed COSE checkpoint, its leaves, records by
+Capsule ID, and inclusion and range proofs. It holds no key, and it checks the
+result with `verify_bundle(strict=True)` before returning it, refusing anything
+that verifier calls INVALID. `proof_source_from_cll(backend, records)` makes a
+`ProofSource` from a CLL backend (`scan_entries`, `load_cll`) and a record
+store whose `get(capsule_id)` returns `capsule` and `producer_envelope` bytes.
+
+- `interval_from=N` carries every record from seq N to the checkpoint tip, and
+  none below N, with a range proof: the Bundle can read VALID. `N=1` is the
+  whole log.
+- `interval_from=None` carries only the chosen records, each with its own
+  inclusion proof, and states `completeness.selection: "producer-selected"`:
+  nothing is claimed about the records between them, so it reads INCOMPLETE.
+
+`interval_from` has no default, so a caller never hands over the whole log by
+omission. A range over a leaf that is not a record, a carried record below N
+and a record past the checkpoint are refused by name. A missing citation or
+an unsigned record is stated, not refused, and reads INCOMPLETE.
+`build_unproven_bundle(records, root=...)` is the form with no log proof, for
+Capsules that belong to no log. `build_evidence_bundle` needs the `bundle` and
+`envelope` extras; `build_unproven_bundle` needs only `envelope`.
 
 `agent_action_capsule.settlement.verify_settlements(capsules, key_policy=...,
 wrapped_objects=...)` derives the payment and delivery states of

@@ -35,7 +35,11 @@ jobs:
       - name: install toolchain
         run: |
           gem install kramdown-rfc
-          python -m pip install xml2rfc
+          # Pinned: the tracked .xml records the xml2rfc version in its v2v3
+          # conversion comment, so a new release fails the diff below on the
+          # gated draft ($DRAFT). Bump this pin, the one in spec/Makefile and
+          # the one in README.md together with a regenerated $DRAFT.
+          python -m pip install xml2rfc==3.34.1
 
       - name: build draft to temp + diff against tracked artifacts
         working-directory: spec
@@ -107,3 +111,8 @@ jobs:
       - name: check verdict_class vocabulary references
         working-directory: spec
         run: python3 check_verdict_class_refs.py
+      - name: check verification-display terms
+        working-directory: spec
+        run: |
+          python3 check-verification-display-terms.py --self-test
+          python3 check-verification-display-terms.py

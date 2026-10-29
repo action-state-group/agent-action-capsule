@@ -6,7 +6,8 @@ requirement, what was judged and with what assurance, over an Evidence Contract.
 (result semantics, disclosure policy, aggregate/coverage) carry **the 2026-09-22 ruling, quoted verbatim
 below** — the gate required before this schema could freeze. The gate is
 satisfied; the schema, validator, and fixtures below are encoded to the ruled text and are no
-longer DRAFT.
+longer DRAFT. §4.1's `type: reconcile` claim is normative; its `type: close` claim and §7.1's
+`coverage_report` are PROPOSED. §7.3's `plan_ref` and `dataset_ref` are normative.
 
 **Companion schema.** `schemas/evidence-result-v0.json` — a JSON Schema (2020-12) encoding of
 every object model defined below. The schema is descriptive of the semantics fixed here; where
@@ -21,13 +22,16 @@ the aggregate coverage statement and bucket grouping.
 **Depends on, and mirrors by reference rather than redefines:**
 
 - The Evidence Contract's two closed result vocabularies — the four-value Sufficiency
-  (`SATISFIED | GAP | INSUFFICIENT | UNKNOWN`) and the three-value Verdict
-  (`met | not_met | not_evaluable`) — and its eight-value per-requirement bundle assertion status.
+  (`SATISFIED | GAP | INSUFFICIENT | UNKNOWN`) and the four-value Verdict
+  (`met | not_met | not_evaluable | out_of_scope`) — and its eight-value per-requirement bundle
+  assertion status.
 - The Evidence Plan IR's (`evidence-plan-ir-v0.md`) two-value `tier` vocabulary (§4.2) and its
   `<contract_id>@<version>` compact contract-reference convention (§2, carried on every IR node
   as `contract_ref`; this document uses the identical field name and shape on every claim).
 - The Witness/Countersign definitions' three-value assurance `grade` vocabulary, owned
   elsewhere and never redefined here.
+- The Evidence Plan IR's dataset plan (§5.1) and dataset document (§6.2), which §7.3 names by
+  digest.
 
 A drift between any of the above and this document's mirrored copy is a defect in this document,
 never a second legitimate spelling.
@@ -74,15 +78,19 @@ other:
   Contract's contract result: was enough of the right evidence found, committed, and
   disclosed to make a determination on this requirement at all. Owned by the Evidence
   Contract; mirrored here, never redefined.
-- **Verdict** (`verdict` — `met | not_met | not_evaluable`) — the Evidence Contract's judged
-  outcome, once sufficiency allows a determination at all. Owned by the Evidence Contract.
+- **Verdict** (`verdict` — `met | not_met | not_evaluable | out_of_scope`) — the Evidence
+  Contract's judged outcome, once sufficiency allows a determination at all. Owned by the Evidence
+  Contract. `out_of_scope` exists only where the claim's requirement allows it (§4.2).
 
 **The rule that binds them (the Evidence Contract's own rule, restated normatively here because a Result is exactly the
 artifact this rule constrains):** `verdict` MUST be `not_evaluable` whenever `sufficiency` is
-anything other than `SATISFIED`; `verdict` MUST be `met` or `not_met` only when `sufficiency` is
-`SATISFIED`. A claim asserting `met` or `not_met` against `GAP`, `INSUFFICIENT`, or `UNKNOWN`
-sufficiency is malformed. The companion schema enforces this structurally (§4, `Claim`'s
-`if`/`then`).
+anything other than `SATISFIED`; `verdict` MUST be `met`, `not_met` or, where the requirement allows
+it, `out_of_scope` only when `sufficiency` is `SATISFIED`. A claim asserting any of those three
+against `GAP`, `INSUFFICIENT`, or `UNKNOWN` sufficiency is malformed, and so is a `SATISFIED` claim
+asserting `not_evaluable`. The companion schema enforces this structurally (§4, `Claim`'s
+`if`/`then`). `out_of_scope` is the 2026-10-21 ruling ("a fourth Result verdict where a pack
+switches it on, shown with its own count, never folded into met"); the 2026-09-22 ruling quoted
+above lists the three judgments that existed then, and its rule holds for all four.
 
 Every claim also carries:
 
@@ -105,9 +113,10 @@ over that claim's cited evidence, never a property the evidence asserts about it
 
 **Traceability (the ruling's second paragraph, encoded).** "A claim that cannot be traced to
 evidence by digest" is structurally impossible here: `evidence[]` is REQUIRED on every claim
-(§4), by digest only. "A number that cannot be traced to claims" is §3's concern — every count in
-`aggregate.coverage` and every entry in `aggregate.buckets` resolves to real claim objects in this
-same Result, never a number computed and reported without the claims that back it.
+(§4), by digest only, and holds at least one entry. "A number that cannot be traced to claims" is
+§3's concern — every count in `aggregate.coverage` and every entry in `aggregate.buckets` resolves
+to real claim objects in this same Result, never a number computed and reported without the claims
+that back it.
 
 ## 2. Disclosure policy — `disclosure` · `analysis` · `story`
 
@@ -157,6 +166,8 @@ The three carriers, in descending order of what they show:
   derived characterization exists to share (e.g. a `recorded_absence` — nothing was ever produced
   to analyze). `story.narrative` describes what happened at the process level (a request was
   made, on this date, and no artifact resulted), never a claim about the withheld content itself.
+  A claim about a `recorded_absence` cites the absence record itself (`spec/interop-profile-v0.md`
+  §6.4) by digest in its `evidence[]`: the absence is a record, so it is evidence.
 
 **A Result never re-discloses payload bytes.** This holds for all three carriers, not only
 `analysis`/`story` — `disclosure` carries digests, never the bytes those digests address. The
@@ -177,25 +188,67 @@ The remainder of this section encodes the ruling above into this document's voca
 where the companion schema enforces it.
 
 A Result's top-level `aggregate` is what a sponsor-facing reader sees before any individual claim:
-a **coverage statement**, then **three buckets** — never a single number, score, grade, or
+a **coverage statement**, then the **buckets** — never a single number, score, grade, or
 percentage above the fold.
 
 **Coverage (mandatory) — "requirements evaluated, excluded as not applicable, and unresolved."**
-`aggregate.coverage` states the evaluated population precisely: `evaluated_population` (requirements
-evaluated), `excluded_not_applicable` (excluded as `NOT_APPLICABLE` — outside the evaluated
-population by construction, not a gap; `NOT_APPLICABLE` is an `EvidenceStatus` value, §2, not one of
-§1's four `Sufficiency` values), and `unknown_count` (the "unresolved" count — evaluated
-requirements whose `sufficiency` resolved `UNKNOWN`). An aggregate without a coverage statement is not a summary,
-it is a claim with the denominator hidden, and the companion schema refuses to validate one (§7).
+`aggregate.coverage` states the evaluated population precisely. Its unit is the **evaluation**: one
+requirement of one contract version evaluated once, which is exactly a claim (§1). A requirement
+evaluated on several subjects, or re-judged, is several evaluations, so the counts below can exceed
+the number of distinct requirements. `evaluated_population` counts the evaluations in the population
+(the Result's in-force claims, §4.3); `excluded_not_applicable` counts the evaluations excluded as
+`NOT_APPLICABLE`, which have no claim (outside the evaluated population by construction, not a gap;
+`NOT_APPLICABLE` is an `EvidenceStatus` value, §2, not one of §1's four `Sufficiency` values); and
+`unknown_count` counts the in-force evaluations whose `sufficiency` resolved `UNKNOWN`. A claim not
+yet in force is in neither; `not_yet_in_force` counts it (§4.3). A reader shows these as
+evaluations, beside the number of distinct requirements (`contract_ref`, `requirement_ref`) the
+claims cite, for example "24 evaluations of 4 requirements", and names `unknown_count` "evaluations
+with an unknown result", never "unresolved requirements": a requirement can have one `UNKNOWN`
+evaluation and one resolved one. An aggregate without a coverage statement is not a summary, it is a
+claim with the denominator hidden, and the companion schema refuses to validate one (§7).
 
-**Three buckets, never a single number.** Beneath coverage, `aggregate.buckets` groups every
-evaluated claim by its `verdict` — `met`, `not_met`, `not_evaluable` — never rolled up into one
-pass/fail figure or a percentage. A single number hides which requirements were actually judged
-versus which were skipped for lack of evidence; the three buckets keep that distinction visible at
+**Which requirements the run covered — `requirements_covered`.** Added 2026-10-25 under the
+2026-10-24 decision recorded on agent-action-capsule#355. `aggregate.coverage.requirements_covered`
+is OPTIONAL. When present, it lists every requirement the run evaluated or excluded as
+`NOT_APPLICABLE`, each as the (`contract_ref`, `requirement_ref`) pair a claim carries, each pair
+once. A requirement of a cited contract that is not in the list was **not run**: it has no claim and
+no exclusion, it is in no count and no bucket, and a reader that knows of it (from the contract, for
+example) shows it as not run, never as met, passing, not applicable or a gap. When the member is
+absent, the Result does not say which requirements the run covered, and a reader takes every
+requirement of every contract the claims cite as covered, which is how a Result written before this
+member existed reads. A Result that carries the member:
+
+- MUST NOT list a pair twice (schema).
+- MUST list every claim's (`contract_ref`, `requirement_ref`), a later claim's included (checker).
+- MUST NOT list more requirements that no claim cites than `excluded_not_applicable`: each of them
+  was excluded at least once, or it was not covered (checker).
+
+`excluded_not_applicable` is a count, not a list, so the checker cannot tell which requirement an
+exclusion belongs to, only that there are enough of them. A requirement with claims can also have
+exclusions, for example on other subjects.
+
+**A missing evaluation is not an exclusion.** Inside a covered requirement, a reader may expect an
+evaluation the Result has no claim for (a requirement evaluated on some subjects and not on others,
+for example). It MUST NOT read such missing evaluations as not applicable unless
+`excluded_not_applicable` can account for all of them: they number at most that count less one
+exclusion for each listed requirement no claim cites that the reader does not already count among
+them. Because the count names no requirement, the reader MUST NOT split them: either every one reads
+as not applicable, or every one reads as a gap, which is unjudged, never met, never passing and
+never not applicable.
+
+**No count rolls a requirement up to one verdict.** Coverage counts evaluations and the buckets list
+claims. Nothing in the aggregate states a verdict per requirement, so a requirement with both a `met`
+and a `not_met` claim is never counted as met; a reader shows each verdict's count.
+
+**Buckets, never a single number.** Beneath coverage, `aggregate.buckets` groups every in-force
+claim by its `verdict` — `met`, `not_met`, `not_evaluable`, and `out_of_scope` where the contract
+switches it on (§4.2) — never rolled up into one pass/fail figure or a percentage. A claim not yet
+in force is in no bucket (§4.3). A single number hides which requirements were actually judged
+versus which were skipped for lack of evidence; the buckets keep that distinction visible at
 the point a sponsor first looks at the Result. `not_evaluable` is not a failure and not a success
 — it is its own bucket, exactly as large as `sufficiency != SATISFIED` makes it (§1), and a Result
 that folds it into either of the other two has silently converted "we could not tell" into an
-answer.
+answer. `out_of_scope` is likewise its own bucket: never in `met`, and never in a pass figure.
 
 **Assurance stays attached to each claim.** The ruling's closing sentence — "who says so, and could
 I independently check it?" — is why `tier` and `grade` are per-claim fields (§1, §4), never
@@ -213,8 +266,10 @@ claim:
   tier: recomputed | judged           # §1, mirrors evidence-plan-ir-v0.md §4.2
   grade: self-attested | witnessed | countersigned   # §1, owned elsewhere
   sufficiency: SATISFIED | GAP | INSUFFICIENT | UNKNOWN   # §1, owned by the Evidence Contract
-  verdict: met | not_met | not_evaluable                  # §1, owned by the Evidence Contract
-  evidence: [digest-ref, ...]         # §5 — by digest only
+  verdict: met | not_met | not_evaluable | out_of_scope   # §1, owned by the Evidence Contract
+  out_of_scope_allowed: true          # OPTIONAL — §4.2, copied from the contract
+  applies_from: YYYY-MM-DD            # OPTIONAL — §4.3, copied from the contract
+  evidence: [digest-ref, ...]         # §5 — by digest only; at least one (§1)
   proofs: [proof-ref, ...]            # §5 — by digest only
   presentation: disclosure-carrier | analysis-carrier | story-carrier   # §2, §6
   x-<name>: any                       # OPTIONAL, any number — §8a, ignored by every verifier
@@ -226,9 +281,16 @@ are cross-element constraints over the `claims` array plain JSON Schema cannot e
 class of gap `evidence-plan-ir-v0.md` §3.1 documents for node `id` uniqueness and DAG order. A
 conforming verifier MUST check both in addition to schema validation.
 
-### 4.1 Claim types — `reconcile` and `close` (PROPOSED)
+### 4.1 Claim types — `reconcile` (normative) and `close` (PROPOSED)
 
-**Status: PROPOSED against the 2026-09-25 ruling, quoted verbatim:**
+**Status: `type: reconcile` is normative; `type: close` stays PROPOSED.** Normative for v0: the
+`type` member and its absent-means-`requirement` default; the `reconcile` body (`join_key`, `peer`,
+`period`, the six tallies, `state_of_record`); the reconcile sufficiency derivation; and, in the
+rendering paragraph, the `A_ONLY` / `B_ONLY` versus `CONFLICTING` rule and the `unrecognized`-row
+rule. Still PROPOSED: the `close` body, everything about `close_state` (its derivation and the three
+further bindings, whose "(normative)" labels give the force they take once `close` is ruled), and
+the `UNILATERAL` / `CONTESTED` rendering rules. Both types were staged against the 2026-09-25
+ruling, quoted verbatim:
 
 > close + reconcile as claim types in result v0, so they feed the same result. the constraint i
 > care about more than the vocabulary: A_ONLY / B_ONLY must never render like CONFLICTING, and
@@ -362,6 +424,77 @@ dropped. `ClaimType` is a closed enum here, so an unknown type fails *validation
 
 Fixtures: §11.
 
+### 4.2 `out_of_scope` — the fourth verdict
+
+**Status: RULED (2026-10-21, 2026-10-22).** `out_of_scope`
+is a judged outcome: the requirement was evaluated against sufficient evidence, and the situation it
+asks about did not arise in the evaluated subject. It is a claim with evidence, tier and grade like
+any other. It is not three nearby things:
+
+| Term | What it is |
+|---|---|
+| verdict `out_of_scope` | a claim's judged outcome: evaluated, the situation did not arise |
+| `coverage.excluded_not_applicable` | an evaluation excluded as `NOT_APPLICABLE`, which has no claim (§3) |
+| an `x-` member a producer names `out_of_scope` | the producer's own record, never read by a verifier (§8a) |
+
+A `not_applicable` token is still refused in any verdict field (§9).
+
+**Where a contract switches it on.** The Evidence Contract's native requirements carry an optional
+switch, `out_of_scope_allowed: true`; a pack that offers `out_of_scope` compiles to that switch on
+each requirement it offers it for, and to no switch on a requirement marked never out of scope. A
+claim copies the switch as its own `out_of_scope_allowed: true` (absent means not allowed; there is
+no `false`). The same name on a requirement shape other than a native one grants nothing. Any
+producer that emits a claim for a requirement, typed or not, copies the switch by this rule. These
+hold:
+
+- A claim whose `verdict` is `out_of_scope` MUST carry `out_of_scope_allowed`, MUST be a requirement
+  claim (`type` absent or `requirement`; never `reconcile` or `close`), and its carrier `status` MUST
+  NOT be `NOT_APPLICABLE` (schema).
+- `aggregate.buckets.out_of_scope` is REQUIRED when any claim carries `out_of_scope_allowed`, and
+  MUST be absent otherwise (schema). A Result whose contract does not switch it on carries the
+  buckets it did before this section existed: `met`, `not_met` and `not_evaluable`.
+- Every claim of one requirement (`contract_ref`, `requirement_ref`) carries the same value
+  (checker).
+- An in-force `out_of_scope` claim counts in `evaluated_population`, sits in `buckets.out_of_scope`
+  only, and is never in `met`. A later one follows §4.3.
+
+**What the Result alone cannot check.** The flag is the producer's copy. A producer that sets it on a
+requirement whose contract does not grant it passes every rule above. A conforming evaluator copies
+the contract's switch (`spec/interop-profile-v0.md` §8.3); checking another party's Result against
+its contract is not defined by this revision. A relying party that needs the copy to hold
+re-evaluates the contract.
+
+### 4.3 Applicability — `applies_from`
+
+**Status: RULED (2026-10-22).** A claim MAY carry `applies_from`, the date (`YYYY-MM-DD`) its
+requirement applies from, copied from the Evidence Contract requirement's `clause.effective_from`.
+Absent means in force. Presence follows the requirement, not its profile: a native outcome with a
+dated `clause` is dated too. Any producer that emits a claim for a dated requirement, typed or not,
+copies the date.
+
+A claim is **later** when `applies_from` is after the UTC calendar date of the Result's
+`generated_at`; on that date or before it, the claim is in force. The status is derived, never
+carried. When any claim carries `applies_from`, `generated_at` MUST be an RFC 3339 `date-time`
+(section 5.6) with an offset (`Z` or `+hh:mm`/`-hh:mm`; `T` and `Z` in either case), naming a real
+date and time whose UTC date falls in years 0001 to 9999: no leap second, hour at most 23,
+offset hours at most 23, ASCII digits only. Every `applies_from` MUST
+be a calendar date from year 0001 on. The checker and the TypeScript reader apply this one grammar;
+the schema's `pattern` checks only the shape.
+
+- A later claim keeps its own sufficiency and verdict, as readiness. It is in no verdict bucket (so
+  never in `met` or `out_of_scope`), and it is in neither `evaluated_population` nor
+  `unknown_count`. Applicability decides first: a later `out_of_scope` claim is later.
+- Every in-force claim is in exactly one verdict bucket (§4's cross-element rule).
+- `coverage.not_yet_in_force` counts the later claims (§3's unit). It is REQUIRED when any claim is
+  later and absent otherwise (checker: the schema cannot compare dates).
+- Every claim of one requirement carries the same `applies_from` (checker).
+
+A reader that shows the split prints the as-of date, the UTC date of `generated_at`, whenever any
+claim carries `applies_from`, including when every dated requirement is already in force, so a
+reader of an evaluation of past activity sees what "in force" is relative to. The date and the
+switch are copied facts (§4.2's last paragraph applies to both): a reader labels them as copied from
+the contract, never as verified.
+
 ## 5. Evidence and proofs
 
 `evidence[]` and `proofs[]` are both by-digest-only arrays; neither ever inlines bytes.
@@ -414,19 +547,25 @@ characterize or narrate instead; §2's gate is one-directional and this is delib
 ```
 aggregate:
   coverage:
-    evaluated_population: integer     # requirements actually evaluated
-    excluded_not_applicable: integer  # requirements excluded as NOT_APPLICABLE — an EvidenceStatus value (§2), not §1's Sufficiency
-    unknown_count: integer            # evaluated requirements whose sufficiency resolved UNKNOWN (§1)
+    evaluated_population: integer     # evaluations in the population: the in-force claims (§3, §4.3)
+    excluded_not_applicable: integer  # evaluations excluded as NOT_APPLICABLE, which have no claim — an EvidenceStatus value (§2), not §1's Sufficiency
+    unknown_count: integer            # in-force evaluations whose sufficiency resolved UNKNOWN (§1, §3)
+    not_yet_in_force: integer         # OPTIONAL — the later claims; present exactly when one is later (§4.3)
+    requirements_covered:             # OPTIONAL — the requirements the run evaluated or excluded (§3)
+      - contract_ref: string          #   <contract_id>@<version>, as on a claim (§1)
+        requirement_ref: string       #   each pair at most once
   coverage_declaration:               # OPTIONAL, PROPOSED — §7.2
     kind: holder_selected | stream_interval | source_authoritative
   buckets:
     met: [claim-id, ...]
     not_met: [claim-id, ...]
     not_evaluable: [claim-id, ...]
+    out_of_scope: [claim-id, ...]     # present exactly when a claim carries out_of_scope_allowed (§4.2)
 ```
 
-`buckets` always carries all three keys, each an array (possibly empty) — never an absent key,
-and never collapsed into a single figure (§3).
+`buckets` always carries the three keys `met`, `not_met` and `not_evaluable`, each an array
+(possibly empty) — never an absent key, and never collapsed into a single figure (§3) — and the
+fourth key `out_of_scope` exactly when the contract switches it on (§4.2).
 
 ### 7.1 Coverage per requirement — `coverage_report` (PROPOSED)
 
@@ -590,10 +729,34 @@ kind (its §6.7.5) and reports `coverage_declaration_aggregate` `FAIL` when the 
 another one. An
 aggregate whose claims rest on no declared set carries no `coverage_declaration`.
 
-It is not `aggregate.coverage` (§3), which counts requirements. It is not `coverage_report` (§7.1),
-which reports evidence per requirement. A valid signature on any of the evidence never implies
-completeness (interop profile §6.7). A Result rendering `kind` shows it beside the coverage
-statement and never as a grade.
+It is not `aggregate.coverage` (§3), which counts evaluations, one per claim. It is not
+`coverage_report` (§7.1), which reports evidence per requirement. A valid signature on any of the
+evidence never implies completeness (interop profile §6.7). A Result rendering `kind` shows it
+beside the coverage statement and never as a grade.
+
+### 7.3 Plan and dataset — `plan_ref` and `dataset_ref`
+
+**Status: normative (ruled 2026-10-27).** A Result MAY name the selection its numbers were counted
+over:
+
+```
+result:
+  plan_ref: { digest_alg: "SHA-256", digest: <64-hex> }      # OPTIONAL: the dataset plan
+  dataset_ref: { digest_alg: "SHA-256", digest: <64-hex> }   # OPTIONAL: the dataset it selected
+```
+
+`plan_ref` is the digest of a dataset plan (`spec/evidence-plan-ir-v0.md` §5.1) and `dataset_ref`
+the digest of the dataset document that plan selected (§6.2 there), each over `UTF8(JCS(value))`.
+The two appear together or not at all; the schema enforces this (`dependentRequired`). They are
+digests only: a Result never carries the plan or the rows, which §2's disclosure ruling keeps out of
+it. The plan and the dataset are records of their own, which a bundle discloses or withholds like
+any other.
+
+A verifier that holds the plan, the dataset and the population's record headers checks that the
+plan's digest is `plan_ref`, the dataset's digest is `dataset_ref`, the dataset's own `plan_ref` is
+the same digest, and the dataset's rows are the rows the plan selects (§6.2 there). A Result without
+the two members is unchanged and still valid. What a Result counts from the rows, and how a page
+draws them, is the producer's and the reader's, never the plan's.
 
 ## 8. View
 
@@ -627,6 +790,9 @@ result:
   claims: [claim, ...]                # §4
   aggregate: aggregate                # §7
   view: view                          # OPTIONAL — §8
+  coverage_report: coverage-report    # PROPOSED — §7.1
+  plan_ref: digest-ref                # OPTIONAL, with dataset_ref — §7.3
+  dataset_ref: digest-ref             # OPTIONAL, with plan_ref — §7.3
   x-<name>: any                       # OPTIONAL, any number — this section
 ```
 
@@ -669,7 +835,7 @@ shape has no counterpart field at all in Result v0 and is not tabulated below.
 | `AxisJudgment.rationale` | `presentation.summary` (`analysis` carrier) or `presentation.narrative` (`story` carrier) | Renamed and gated: #102's rationale is unconditional free text; Result v0 only allows the equivalent carriers when the disclosure policy (§2) permits, and `disclosure`-carried claims have neither field. |
 | `AxisJudgment.evidenceIds` | `claim.evidence[]` | Renamed; #102 carries bare ids (implicitly capsule ids), Result v0 carries `{digest_alg, digest}` refs — by digest only, never a bare id resolved against an unspecified namespace. |
 | `RatingNode.verdict` (`pass \| fail \| unsure`) | `claim.verdict` | A THIRD independent three-value spelling of the same pass/fail/unclear concept #102 already spells two ways (`AxisJudgment.status` and `RatingNode.verdict` disagree with each other). Result v0 has exactly one verdict vocabulary; both #102 fields rename onto it. |
-| `ReportNode.outcomes[].aggregate` (`pass \| fail \| null`) | *(no direct counterpart)* | Closest analogue is a claim's own `verdict`, but #102's `Outcome.aggregate` is a rollup across cases, and §3 forbids rolling verdicts up into anything narrower than the three named buckets. `aggregate.buckets` is the v0 replacement shape, not a per-outcome pass/fail/null field. |
+| `ReportNode.outcomes[].aggregate` (`pass \| fail \| null`) | *(no direct counterpart)* | Closest analogue is a claim's own `verdict`, but #102's `Outcome.aggregate` is a rollup across cases, and §3 forbids rolling verdicts up into anything narrower than the named buckets. `aggregate.buckets` is the v0 replacement shape, not a per-outcome pass/fail/null field. |
 | `ReportNode.withheldActs` | `presentation` = `analysis` or `story` carrier, `status` gated by §2 | #102 marks an act "withheld" structurally (missing `agentInput`/`agentOutput`) with no further typed distinction. Result v0 requires naming *why* via the eight-value `EvidenceStatus`, and gates which carrier may be used (§2) — a strictly more specific replacement. |
 | `SummaryNode.crossCaseAggregation` / `perAxis` / `counts` / `cohort` | *(no counterpart)* | Free-form cross-case aggregation and cohort fields; out of scope for v0's per-requirement claim model. A future revision MAY add a comparable rollup once a concrete need exists (the same deferral `evidence-plan-ir-v0.md` §3.1 uses for typed-ref alignment). |
 | `CalibrationNode.*` | *(no counterpart)* | Calibration (confusion matrix, agreement, corrected rate) is a derived-metric concept outside the per-requirement claim model; not part of v0. |
@@ -693,7 +859,8 @@ field, each failing at exactly one documented rule. See that directory's `README
 cases and `schemas/check_evidence_result_examples.py` for the validation run, including the
 mutant/load-bearing proof for each negative.
 
-§4.1's PROPOSED claim types add five positives (`pos-example-org-reconcile-result.json`,
+§4.1's claim types (`reconcile` normative, `close` PROPOSED) add five positives
+(`pos-example-org-reconcile-result.json`,
 `pos-example-org-close-agreed-result.json`, `pos-example-org-close-unilateral-result.json`,
 `pos-example-org-close-unilateral-named-peer-result.json`, `pos-example-org-close-contested-result.json` — each the
 untouched requirement `claim-1` beside its typed claims: one on each close positive, two on the
@@ -740,3 +907,36 @@ byte-identical to the claims positive. It also adds one schema negative,
 `neg-coverage-declaration-unknown-kind.json`, whose kind is outside the three, with its own mutant
 proof. The never-stronger rule needs the evidence sets. Its vector is the interop profile's
 `aggregate-stronger-than-evidence` (`vectors/coverage-declaration-v0/`).
+
+§1's Traceability rule adds one positive, `pos-example-org-recorded-absence-result.json`: the
+claims positive with `claim-3` a `story` claim about a recorded absence, whose `evidence[]` cites
+the absence record of `spec/interop-profile-v0.md` §10 by digest (§2). It also adds one schema
+negative, `neg-claim-evidence-empty.json`, the same claim with an empty `evidence[]`, with its own
+mutant proof.
+
+§3's counting rule adds one positive, `pos-example-org-repeated-requirement-result.json`: the claims
+positive with `claim-2` evaluating `claim-1`'s requirement on a second subject, so one requirement
+has a `met` and a `not_met` claim. Its population is three evaluations of two requirements, and the
+checker requires every positive's `evaluated_population` and `unknown_count` to count claims.
+
+§3's `requirements_covered` adds one positive, `pos-example-org-requirements-covered-result.json`: the
+claims positive listing the three requirements its claims cite and `req-claim-4`, which no claim
+cites and its one exclusion accounts for. It adds one schema negative,
+`neg-requirements-covered-duplicate` (a pair listed twice), and two checker negatives,
+`neg-requirements-covered-omits-claimed` (a claimed requirement left out) and
+`neg-requirements-covered-unaccounted` (`excluded_not_applicable` 0, so nothing accounts for
+`req-claim-4`). Each has its own mutant proof.
+
+§7.3's `plan_ref` and `dataset_ref` add one positive, `pos-example-org-dataset-result.json`: the
+claims positive naming the plan and dataset of `vectors/evidence-dataset/pos-window-and-exclusion`.
+With both members removed it is byte-identical to the claims positive. Two schema negatives each
+have their own mutant proof: `neg-dataset-ref-without-plan-ref` (one member without the other) and
+`neg-plan-ref-inline-plan` (the plan in place of its digest). The dataset's own vectors are
+`vectors/evidence-dataset/`.
+
+§4.2's `out_of_scope` adds three positives (`pos-example-org-out-of-scope-result.json`,
+`pos-example-org-out-of-scope-empty-result.json`, `pos-example-org-close-switched-on-result.json`),
+eight schema negatives and two checker negatives; §4.3's applicability adds four positives
+(`pos-example-org-applicability-result.json`, `-boundary-`, `-in-force-` and
+`pos-example-org-reconcile-later-result.json`) and eleven checker negatives. Each negative has its own
+mutant proof; `vectors/evidence-result/README.md` lists them.

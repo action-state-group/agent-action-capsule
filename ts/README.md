@@ -4,8 +4,8 @@ This package is the record-format reference conforming to the Python authority
 in this repository. It implements strict JSON/JCS, format-4 Capsule IDs, the
 typed record model, Class-1 and `references[]` verification, registries,
 Producer Envelopes, and Disclosure Envelopes through DE-3. It intentionally
-does not contain producer verbs, CLL storage, policy, adapters, or permalink
-transport.
+does not contain Capsule producer verbs, CLL storage, policy, adapters, or
+permalink transport.
 
 For record-only consumers, use the supported `@action-state-group/agent-action-capsule/core`
 entry. It exports the existing JSON/identity, typed Capsule model, Class-1/store,
@@ -23,7 +23,7 @@ CLL or its storage drivers. To use `@action-state-group/agent-action-capsule/bun
 or the existing broad root entry, explicitly install the pinned compatible CLL:
 
 ```bash
-npm install @action-state-group/agent-action-capsule @action-state-group/cll@0.2.1
+npm install @action-state-group/agent-action-capsule @action-state-group/cll@0.3.0
 ```
 
 `verifyBundle(bundle, { strict: true })` adds the strict checks of
@@ -31,9 +31,58 @@ npm install @action-state-group/agent-action-capsule @action-state-group/cll@0.2
 verdict (`result.strict.verdict`: `VALID`, `INCOMPLETE` or `INVALID`). Pass
 `requireSignature` to fail unsigned records and `witnessDirectory` (a parsed
 `witnesses.json`) to check the witness receipts in `checkpoint.witnesses`; none
-is trusted without it. The signed checkpoint is verified only in Node, where
-CLL's COSE checkpoint verifier exists; elsewhere the `checkpoint` claim is
-`withheld` and the verdict is never `VALID`.
+is trusted without it. CLL's COSE checkpoint verifier verifies the signed
+checkpoint in Node and in a browser alike.
+
+`verificationBanner(context, stamps)` states that verdict as the banner of a
+page, one of the states of
+[`spec/verification-display-v0.md`](../spec/verification-display-v0.md) section
+6.2; `bundleVerified` is its gate (section 1), and `buildVerificationPageModel`
+and `verificationCheckLists` give the rest of the verification page. This package draws no page: capsule-viewer
+([`action-state-group/capsule-viewer`](https://github.com/action-state-group/capsule-viewer),
+`ts/src/evidence-graph-view.ts` there) draws it from this model. The banner's
+`state` is `verified` only for a `valid` verdict, else `incomplete` or
+`failed`; a page shows `checking` until the checks finish and `unable` when it
+has no SHA-256 at all (`UNABLE_TO_VERIFY_LINES`). Each state has one fixed line
+(`VERIFICATION_BANNER_LINES`, pinned for every viewer in
+[`vectors/viewer-core-text/`](../vectors/viewer-core-text/README.md)), and no
+module, wording pack or bundle supplies it. `verdict` is `valid`, `incomplete`
+or `invalid`, and `checkpoint` is `verified`, `unverified`, `invalid` or
+`absent`. The `detail` line names what the page did not check or what failed,
+with the verifier's finding names, and labels interval coverage and
+per-record membership `checkpoint_unverified` when they rest on a checkpoint
+the page did not authenticate. A runtime with no Ed25519 reaches no strict
+verdict; missing Ed25519 is never itself a failure, so a bundle that passes the
+page's own checks, with every record bound to a log position, reads
+`incomplete`. The browser build authenticates the checkpoint with CLL's
+browser entry, with or without WebCrypto; with Ed25519 its banner is the one
+Node gives. Match a page's state on these fields, not on its words.
+
+`buildEvidenceBundle(source, { root, intervalFrom })` builds a Bundle from a
+`ProofSource`: the log's signed COSE checkpoint, its leaves, records by Capsule
+ID, and inclusion and range proofs in the Bundle's own wire shape. It holds no
+key, and it checks the result with `verifyBundle(bundle, { strict: true })`
+before returning it, rejecting with `BundleBuildError` anything that verifier
+calls INVALID. `proofSourceFromCll(backend, records)` makes a `ProofSource`
+from a CLL backend (`scanEntries`, `loadCll`) and a record store whose
+`get(capsuleId)` resolves to `capsule` and `producerEnvelope` bytes and rejects
+with `code: "not_found"` for a record it does not hold.
+
+- `intervalFrom: N` carries every record from seq N to the checkpoint tip, and
+  none below N, with a range proof: the Bundle can read VALID. `N = 1` is the
+  whole log.
+- `intervalFrom: null` carries only the chosen records, each with its own
+  inclusion proof, and states `completeness.selection: "producer-selected"`:
+  nothing is claimed about the records between them, so it reads INCOMPLETE.
+
+`intervalFrom` has no default, so a caller never hands over the whole log by
+omission. A range over a leaf that is not a record, a carried record below N
+and a record past the checkpoint are refused by name. A missing citation or an
+unsigned record is stated, not refused, and reads INCOMPLETE.
+`buildUnprovenBundle(records, { root })` is the form with no log proof, for
+Capsules that belong to no log. `buildEvidenceBundle` needs CLL's checkpoint
+verifier and is tested in Node; `buildUnprovenBundle` reads no checkpoint, so
+it runs wherever strict `verifyBundle` does, the browser included.
 
 `@action-state-group/agent-action-capsule/settlement` exports
 `verifySettlements`, which derives the states of

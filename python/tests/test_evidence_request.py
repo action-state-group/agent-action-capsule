@@ -253,17 +253,39 @@ def test_refusal_vector(case):
         assert hashlib.sha256(frame).hexdigest() == case["refusal_cbor_digest"]
         assert check_refusal_cbor(frame) == checked
         assert Refusal(**obj).to_cbor() == frame
-    if set(obj) == set(Refusal.__dataclass_fields__) and all(isinstance(v, str) for v in obj.values()):
+    members = set(Refusal.__dataclass_fields__) - {"detail"}
+    if members <= set(obj) <= members | {"detail"} and all(isinstance(v, str) for v in obj.values()):
         assert verify_refusal_offline(Refusal(**obj)) is checked.signature_valid
     # The responder reproduces every conforming primary-key refusal byte for
     # byte (Ed25519 is deterministic), and refuses to sign anything else.
     if obj.get("key_id") == PRIMARY.key_id and checked.signature_valid:
         args = (obj.get("request_digest"), obj.get("reason"))
         if checked.conformant:
-            assert sign_refusal(*args, signer=PRIMARY, issued_at=obj["issued_at"]).to_dict() == obj
+            signed = sign_refusal(*args, signer=PRIMARY, issued_at=obj["issued_at"], detail=obj.get("detail"))
+            assert signed.to_dict() == obj
+            if "refusal_cbor_hex" in case:
+                assert signed.to_cbor() == bytes.fromhex(case["refusal_cbor_hex"])
         else:
             with pytest.raises((ValueError, TypeError)):
                 sign_refusal(*args, signer=PRIMARY, issued_at=obj.get("issued_at"))
+
+
+def test_a_detail_is_outside_the_signature():
+    digest = "a" * 64
+    plain = sign_refusal(digest, "request_malformed", signer=PRIMARY, issued_at="2026-09-28T00:00:00Z")
+    with_detail = sign_refusal(
+        digest, "request_malformed", signer=PRIMARY, issued_at="2026-09-28T00:00:00Z", detail="profiles supported: x"
+    )
+    assert with_detail.sig == plain.sig and with_detail.signing_body() == plain.signing_body()
+    assert "detail" not in plain.to_dict() and with_detail.to_dict()["detail"] == "profiles supported: x"
+    # An empty detail is absent, as in the Go signer.
+    assert sign_refusal(digest, "request_malformed", signer=PRIMARY, issued_at="2026-09-28T00:00:00Z", detail="") == plain
+    assert verify_refusal_offline(with_detail) and check_refusal(with_detail.to_dict()).conformant
+    assert check_refusal_cbor(with_detail.to_cbor()).conformant
+    for binding, octets in (("json", json.dumps(with_detail.to_dict()).encode()), ("cbor", with_detail.to_cbor())):
+        assert er.parse_reply(octets, binding) == with_detail
+    # Editing the detail does not touch the signature.
+    assert verify_refusal_offline(Refusal(**{**with_detail.to_dict(), "detail": "other prose"}))
 
 
 # --- outcomes.json ----------------------------------------------------------------------------
@@ -326,7 +348,7 @@ def test_every_vector_case_is_parametrized():
     assert files == ["refusal-imported.json"] and counts["refusal-imported.json"] == 1
     assert set(counts) == {p.name for p in VECTORS.glob("*.json")} - {"manifest.json"}
     assert sum(counts[f"{n}.json"] for n in ("request", "resolution", "digest", "refusal", "outcomes",
-                                               "invariance", "retention")) == 124
+                                               "invariance", "retention")) == 125
 
 
 # --- the responder beyond the vectors -------------------------------------------------------------

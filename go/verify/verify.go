@@ -19,6 +19,8 @@ import (
 	"io"
 	"regexp"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/agent-action-capsule/go/registries"
@@ -208,75 +210,131 @@ func asMap(v interface{}) map[string]interface{} {
 	return m
 }
 
-// floatPaths returns all JSON paths in v where a JSON float appears.
-// Booleans are never floats; json.Number is checked via IsFloat.
-func floatPaths(v interface{}, path string) []string {
-	var out []string
+// At most maxPathFindings float_in_digest_field (and, separately,
+// unsafe_integer_in_digest_field) findings are reported; the verdict needs
+// only one. Each quotes at most maxPathChars characters of its path, then
+// "...". The Python, Rust and TS verifiers use the same limits.
+const (
+	maxPathFindings = 64
+	maxPathChars    = 256
+)
+
+func isUnsafeIntNumber(n json.Number) bool {
+	return !canonical.IsFloat(n) && canonical.IsUnsafeInt(n)
+}
+
+// pathStep is how one open array or object was reached from its parent.
+type pathStep struct {
+	key   string
+	index int
+	isKey bool
+}
+
+// pathFrame is one open array or object of the walk and its next child.
+type pathFrame struct {
+	obj  map[string]interface{}
+	keys []string
+	arr  []interface{}
+	next int
+}
+
+func newPathFrame(v interface{}) (pathFrame, bool) {
 	switch tv := v.(type) {
-	case bool:
-		// bool is never a float
-	case json.Number:
-		if canonical.IsFloat(tv) {
-			p := path
-			if p == "" {
-				p = "<root>"
-			}
-			out = append(out, p)
-		}
 	case map[string]interface{}:
-		keys := sortedKeysOf(tv)
-		for _, k := range keys {
-			child := k
-			if path != "" {
-				child = path + "." + k
-			}
-			out = append(out, floatPaths(tv[k], child)...)
-		}
+		return pathFrame{obj: tv, keys: sortedKeysOf(tv)}, true
 	case []interface{}:
-		for i, x := range tv {
-			child := fmt.Sprintf("[%d]", i)
-			if path != "" {
-				child = fmt.Sprintf("%s[%d]", path, i)
+		return pathFrame{arr: tv}, true
+	}
+	return pathFrame{}, false
+}
+
+// numberPaths returns the first limit JSON paths in v at which a json.Number
+// satisfies matches, object members in byte order of their keys, each cut to
+// maxChars characters followed by "...". The walk is depth-first without
+// recursion and keeps only each open container's step, so a path is written
+// only for a number that matches and the work is linear in the input plus the
+// paths returned.
+func numberPaths(v interface{}, matches func(json.Number) bool, limit, maxChars int) []string {
+	var out []string
+	if limit <= 0 {
+		return out
+	}
+	root, ok := newPathFrame(v)
+	if !ok {
+		if n, isNum := v.(json.Number); isNum && matches(n) {
+			out = append(out, joinPath(nil, maxChars))
+		}
+		return out
+	}
+	stack := []pathFrame{root}
+	var steps []pathStep // steps[i] reached stack[i+1]
+	for len(stack) > 0 {
+		f := &stack[len(stack)-1]
+		var child interface{}
+		var step pathStep
+		switch {
+		case f.obj != nil && f.next < len(f.keys):
+			k := f.keys[f.next]
+			child, step = f.obj[k], pathStep{key: k, isKey: true}
+		case f.obj == nil && f.next < len(f.arr):
+			child, step = f.arr[f.next], pathStep{index: f.next}
+		default:
+			stack = stack[:len(stack)-1]
+			if len(steps) > 0 {
+				steps = steps[:len(steps)-1]
 			}
-			out = append(out, floatPaths(x, child)...)
+			continue
+		}
+		f.next++
+		if frame, isContainer := newPathFrame(child); isContainer {
+			stack = append(stack, frame)
+			steps = append(steps, step)
+		} else if n, isNum := child.(json.Number); isNum && matches(n) {
+			out = append(out, joinPath(append(steps, step), maxChars))
+			if len(out) >= limit {
+				break
+			}
 		}
 	}
 	return out
 }
 
-// unsafeIntPaths returns all JSON paths in v where an integer exceeds ±MaxSafeInteger.
-func unsafeIntPaths(v interface{}, path string) []string {
-	var out []string
-	switch tv := v.(type) {
-	case bool:
-		// bool is never an integer here
-	case json.Number:
-		if !canonical.IsFloat(tv) && canonical.IsUnsafeInt(tv) {
-			p := path
-			if p == "" {
-				p = "<root>"
+// joinPath writes "a.b[0]" from its steps. Past maxChars characters the rest
+// is dropped and "..." marks the cut.
+func joinPath(steps []pathStep, maxChars int) string {
+	var b strings.Builder
+	room := maxChars
+	// write appends what fits of s and reports whether all of it did.
+	write := func(s string) bool {
+		for i := range s {
+			if room == 0 {
+				b.WriteString(s[:i])
+				b.WriteString("...")
+				return false
 			}
-			out = append(out, p)
+			room--
 		}
-	case map[string]interface{}:
-		keys := sortedKeysOf(tv)
-		for _, k := range keys {
-			child := k
-			if path != "" {
-				child = path + "." + k
-			}
-			out = append(out, unsafeIntPaths(tv[k], child)...)
+		b.WriteString(s)
+		return true
+	}
+	for _, s := range steps {
+		fits := true
+		switch {
+		case !s.isKey:
+			fits = write("[" + strconv.Itoa(s.index) + "]")
+		case b.Len() > 0:
+			fits = write(".") && write(s.key)
+		default:
+			fits = write(s.key)
 		}
-	case []interface{}:
-		for i, x := range tv {
-			child := fmt.Sprintf("[%d]", i)
-			if path != "" {
-				child = fmt.Sprintf("%s[%d]", path, i)
-			}
-			out = append(out, unsafeIntPaths(x, child)...)
+		if !fits {
+			return b.String()
 		}
 	}
-	return out
+	if b.Len() == 0 {
+		return "<root>"
+	}
+	return b.String()
 }
 
 // sortedKeysOf returns map keys in lexicographic order (deterministic walk for paths).
@@ -428,8 +486,9 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		}
 	}
 
-	// Float check: report all float paths in the capsule.
-	for _, p := range floatPaths(capsule, "") {
+	// Float check. One finding fails the record; on hostile input the cap and
+	// the quoted-path limit keep the result small.
+	for _, p := range numberPaths(capsule, canonical.IsFloat, maxPathFindings, maxPathChars) {
 		findings = append(findings, Finding{
 			Code:     "float_in_digest_field",
 			Detail:   fmt.Sprintf("floating-point value at %s; §5.1 forbids it", p),
@@ -438,7 +497,7 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 	}
 
 	// Unsafe integer check.
-	for _, p := range unsafeIntPaths(capsule, "") {
+	for _, p := range numberPaths(capsule, isUnsafeIntNumber, maxPathFindings, maxPathChars) {
 		findings = append(findings, Finding{
 			Code: "unsafe_integer_in_digest_field",
 			Detail: fmt.Sprintf(
@@ -915,6 +974,21 @@ func Verify(capsule interface{}, store []interface{}, regs map[string]map[string
 					Code: "verifier_internal_error", Detail: err.Error(), Severity: "error",
 				}},
 			}
+		}
+	}
+	// The number walk and the identity check visit every member; a value
+	// nested deeper than any JSON text decodes to, or one that contains
+	// itself (only a value built in Go can be either), is refused before
+	// they run, since neither an endless walk nor a stack overflow can be
+	// recovered.
+	if canonical.TooDeep(capsule) {
+		return VerificationResult{
+			OK: false,
+			Findings: []Finding{{
+				Code:     "verifier_internal_error",
+				Detail:   "Capsule is nested too deeply or contains itself",
+				Severity: "error",
+			}},
 		}
 	}
 	defer func() {

@@ -119,6 +119,11 @@ FIXTURES = {
     ),
 }
 
+# Further positives: record_version -> [(vectors subdir, name)].
+EXTRA_POSITIVES = {
+    "evaluation-report/v1": [("evaluation-report", "pos-example-org-evaluation-report-out-of-scope")],
+}
+
 # Superseded vectors kept byte-for-byte: record_version -> [(vectors subdir,
 # file name, pinned SHA-256 of the file bytes, why the current schema rejects
 # it)]. pos-example-org-close.json carried the peer-Close link as
@@ -293,6 +298,20 @@ def main() -> int:
             findings.append(f"POSITIVE-REJECTED {record_version}/{pos_name}: {pos_errors[0].message}")
         else:
             print(f"OK  {record_version:<28} {pos_name}.json")
+
+        for extra_subdir, extra_name in EXTRA_POSITIVES.get(record_version, []):
+            extra = _load_fixture(VECTORS_DIR / extra_subdir / f"{extra_name}.json")
+            extra_errors = sorted(validator.iter_errors(extra), key=lambda e: e.path)
+            if extra_errors:
+                findings.append(f"POSITIVE-REJECTED {record_version}/{extra_name}: {extra_errors[0].message}")
+            else:
+                print(f"OK  {record_version:<28} {extra_name}.json")
+            if record_version == "evaluation-report/v1":
+                # not_applicable is a population exclusion, never a verdict.
+                refused = json.loads(json.dumps(extra))
+                refused["cases"][-1]["verdict"] = "not_applicable"
+                if not list(validator.iter_errors(refused)):
+                    findings.append(f"VERDICT-NOT-CLOSED {record_version}: a not_applicable case verdict validates")
 
         neg_instance = _load_fixture(vec_dir / f"{neg_name}.json")
         neg_errors = list(validator.iter_errors(neg_instance))

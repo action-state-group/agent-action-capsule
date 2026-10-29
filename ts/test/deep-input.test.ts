@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { verifyBundle } from "../src/bundle.js";
+import { buildVerifiedBundleContext, verifyBundle } from "../src/bundle.js";
+import { UNVERIFIED_BUNDLE_REFUSAL } from "../src/verification-page.js";
 import { verifyRecordSignature } from "../src/producer-envelope-verification.js";
+import { pageModel } from "./helpers/page-model.js";
 
 // vectors/bundle/strict/README.md: a verifier never raises on its input. A
 // Bundle or record nested beyond what an implementation can read is
@@ -96,5 +98,114 @@ describe("input nested beyond the stack", () => {
     const { strict } = await verifyBundle(bundle, { strict: true });
     expect(strict.verdict).toBe("INVALID");
     expect(strict.records[0]!.capsuleId).toBe("");
+  });
+});
+
+// #360: the viewer's context copies and freezes its input before verifying
+// it. Both walks are iterative, so the copy succeeds and the verifier's own
+// refusal is what the page states. A million levels take a few seconds on a
+// slow runner, hence the longer timeouts.
+describe("a context over input nested beyond the stack", () => {
+  it("is built over the refused result, never rejects", async () => {
+    const context = await buildVerifiedBundleContext(deepBundle());
+    expect(context.verification.graphClosure).toEqual({
+      status: "fail",
+      findings: ["bundle_malformed"],
+    });
+    expect(context.strict?.verdict).toBe("INVALID");
+    // The copy goes all the way down, and every level is frozen.
+    let level = (context.bundle as { records: Record<string, unknown>[] })
+      .records[0]!.deep;
+    let depth = 0;
+    while (Array.isArray(level)) {
+      if (depth % 100_000 === 0) expect(Object.isFrozen(level)).toBe(true);
+      level = level[0];
+      depth += 1;
+    }
+    expect(depth).toBe(DEPTH);
+  }, 60_000);
+
+  it("states the refusal, never rejects", async () => {
+    const { banner } = await pageModel(deepBundle());
+    expect(banner.state).toBe("failed");
+    expect(banner.refusal).toBe(UNVERIFIED_BUNDLE_REFUSAL);
+  }, 60_000);
+});
+
+describe("the context's copy keeps its semantics", () => {
+  it("keeps a __proto__ member, shared references and non-plain objects, reads each key once and invokes no accessor", async () => {
+    const shared = { n: 1 };
+    const bundle = JSON.parse(
+      '{"records": [], "extensions": {"__proto__": {"x": 1}}}',
+    ) as Record<string, unknown>;
+    bundle.a = shared;
+    bundle.b = [shared, shared];
+    const date = new Date(0);
+    bundle.when = date;
+    let reads = 0;
+    Object.defineProperty(bundle, "counted", {
+      enumerable: true,
+      get: () => {
+        reads += 1;
+        return { v: 1 };
+      },
+    });
+    const { bundle: owned } = await buildVerifiedBundleContext(bundle);
+    const copy = owned as Record<string, unknown>;
+    expect(Object.hasOwn(copy.extensions as object, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(copy.extensions)).toBe(Object.prototype);
+    expect(copy.a).not.toBe(shared);
+    expect((copy.b as unknown[])[0]).toBe(copy.a);
+    expect((copy.b as unknown[])[1]).toBe(copy.a);
+    expect(copy.when).toBe(date);
+    expect(Object.isFrozen(date)).toBe(false);
+    expect(reads).toBe(1);
+    expect(Object.isFrozen(copy.counted)).toBe(true);
+    expect(Object.isFrozen(copy.extensions)).toBe(true);
+  });
+
+  it("reads every value in the order a depth-first copy reads it", async () => {
+    let n = 0;
+    const bundle: Record<string, unknown> = {
+      records: [],
+      a: {
+        get value() {
+          n += 1;
+          return n;
+        },
+      },
+      get b() {
+        return n;
+      },
+      list: [
+        {
+          get first() {
+            n += 1;
+            return n;
+          },
+        },
+        {
+          get second() {
+            return n;
+          },
+        },
+      ],
+    };
+    const { bundle: owned } = await buildVerifiedBundleContext(bundle);
+    const copy = owned as Record<string, unknown>;
+    expect((copy.a as Record<string, unknown>).value).toBe(1);
+    expect(copy.b).toBe(1);
+    const list = copy.list as Record<string, unknown>[];
+    expect(list[0]!.first).toBe(2);
+    expect(list[1]!.second).toBe(2);
+  });
+
+  it("copies a cycle as a cycle", async () => {
+    const bundle: Record<string, unknown> = { records: [] };
+    bundle.self = bundle;
+    const { bundle: owned } = await buildVerifiedBundleContext(bundle);
+    const copy = owned as Record<string, unknown>;
+    expect(copy.self).toBe(copy);
+    expect(copy).not.toBe(bundle);
   });
 });

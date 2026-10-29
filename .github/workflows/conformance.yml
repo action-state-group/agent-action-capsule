@@ -9,6 +9,8 @@ on:
       - "rust/**"
       - "vectors/**"
       - "provenance-mode-vectors/**"
+      - "schemas/evidence-result-v0.json"
+      - "schemas/evidence-plan-ir-v0.json"
       - "scripts/cross-language-interlock.sh"
       - "scripts/evidence-request-interlock.sh"
       - "scripts/browser-conformance.mjs"
@@ -24,6 +26,8 @@ on:
       - "rust/**"
       - "vectors/**"
       - "provenance-mode-vectors/**"
+      - "schemas/evidence-result-v0.json"
+      - "schemas/evidence-plan-ir-v0.json"
       - "scripts/cross-language-interlock.sh"
       - "scripts/evidence-request-interlock.sh"
       - "scripts/browser-conformance.mjs"
@@ -48,7 +52,9 @@ jobs:
           cache: pip
       - name: Install Python reference
         working-directory: python
-        run: pip install -e ".[dev]"
+        # `bundle` (checkpointed-local-log) is the Evidence Bundle producer's
+        # dependency, which the interlock's producer step runs.
+        run: pip install -e ".[dev,bundle]"
       - name: Check Python reference
         working-directory: python
         run: |
@@ -92,7 +98,7 @@ jobs:
 
       - name: Build the Rust interlock adapter
         working-directory: rust
-        run: cargo build --locked --example cross_language
+        run: cargo build --locked --features agent-action-capsule/strict --example cross_language
 
       - name: Verify every producer in every consumer
         run: scripts/cross-language-interlock.sh
@@ -107,6 +113,7 @@ jobs:
         run: |
           echo "Python, Go, and TypeScript passed the same committed vector tree; Rust runs it in rust-conformance."
           echo "Capsules sealed in Python, Go, TypeScript and Rust verified in all four."
+          echo "Evidence Bundles built in Python, Go, TypeScript and Rust were byte-identical and read as expected by all four strict verifiers."
           echo "Python- and Go-built Disclosure Envelopes passed DE-3 verification in all three runtimes."
 
   rust-conformance:

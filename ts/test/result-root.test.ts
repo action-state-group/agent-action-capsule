@@ -5,6 +5,8 @@ import { verifyBundle } from "../src/bundle.js";
 import { EvidenceGraphError } from "../src/evidence-graph.js";
 import {
   buildResultRoot,
+  carriedCapsuleCommitment,
+  type CitedRecord,
   CLAIM_REQUIRED,
   counterpartyLinks,
   deriveCloseState,
@@ -16,14 +18,22 @@ import {
   GRADES,
   isResultRoot,
   PROOF_KINDS,
+  RECONCILE_TALLY_KEYS,
   RESULT_MEMBERS,
   RESULT_VERSION,
+  STATES_OF_RECORD,
   SUFFICIENCIES,
   TIERS,
   UNVERIFIED_KEY_LABEL,
   validateEvidenceResult,
   VERDICTS,
+  type ResultClaim,
 } from "../src/result-root.js";
+import {
+  claimsCitedCase,
+  reportSealedDay,
+  reportState,
+} from "../src/outcome-report.js";
 import { jsonDigest, sha256Hex } from "../src/json.js";
 import { computeCapsuleId } from "../src/verify.js";
 import { sealEvidenceBundle, TEST_KEYS } from "./helpers/sealed-bundle.js";
@@ -239,7 +249,7 @@ describe("buildResultRoot", () => {
   it("carries an unknown claim type as unrecognized, with its axes, never dropped", async () => {
     const source = fixture("result-root-bundle.json");
     const claims = resultOf(source).claims as Obj[];
-    claims[2]!.type = "reconcile";
+    claims[2]!.type = "adjudication";
     claims[1]!.type = 7;
     const result = await buildResultRoot(
       (await sealEvidenceBundle(source)).bundle,
@@ -255,12 +265,66 @@ describe("buildResultRoot", () => {
       verdict: "not_met",
     });
     expect(result.claims[2]).toMatchObject({
-      type: "reconcile",
+      type: "adjudication",
       recognized: false,
       sufficiency: "GAP",
       tier: "recomputed",
       grade: "countersigned",
     });
+  });
+
+  it("reads a reconcile claim's body and recognizes it; a malformed body stays unrecognized", async () => {
+    // reconcile-2's body from the reconcile positive vector: insufficient 3, so GAP
+    const vector = JSON.parse(
+      readFileSync(
+        new URL(
+          "../../vectors/evidence-result/pos-example-org-reconcile-result.json",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ) as { claims: Obj[] };
+    const body = vector.claims.find((claim) => claim.id === "reconcile-2")!
+      .reconcile as Obj;
+    const source = fixture("result-root-bundle.json");
+    const claims = resultOf(source).claims as Obj[];
+    claims[2]!.type = "reconcile";
+    claims[2]!.reconcile = body;
+    claims[1]!.type = "reconcile";
+    const tallies = { ...(body.tallies as Obj) };
+    delete tallies.unresolved;
+    claims[1]!.reconcile = { ...body, tallies };
+    const result = await buildResultRoot(
+      (await sealEvidenceBundle(source)).bundle,
+    );
+    expect(result.claims[2]).toMatchObject({
+      type: "reconcile",
+      recognized: true,
+      sufficiency: "GAP",
+      reconcile: {
+        joinKey: "reservation_id",
+        peer: "example-org-sor",
+        period: {
+          start: "2026-09-01T00:00:00Z",
+          end: "2026-10-01T00:00:00Z",
+        },
+        tallies: {
+          matched: 380,
+          a_only: 0,
+          b_only: 0,
+          conflicting: 0,
+          insufficient: 3,
+          unresolved: 0,
+        },
+        stateOfRecord: "B",
+      },
+    });
+    // a tally missing: the row is kept, unrecognized, with no body
+    expect(result.claims[1]).toMatchObject({
+      type: "reconcile",
+      recognized: false,
+    });
+    expect(result.claims[1]!.reconcile).toBeUndefined();
   });
 
   it("accepts a Result carried in the root's agent_output member", async () => {
@@ -392,6 +456,8 @@ describe("buildResultRoot", () => {
       enum: [...PROOF_KINDS],
     });
     expect(defs.Claim!.required).toEqual([...CLAIM_REQUIRED]);
+    expect(defs.ReconcileTallies!.required).toEqual([...RECONCILE_TALLY_KEYS]);
+    expect(defs.StateOfRecord!.enum).toEqual([...STATES_OF_RECORD]);
     expect(
       ((defs.EvidenceResult!.properties as Obj).result_version as Obj).const,
     ).toBe(RESULT_VERSION);
@@ -518,6 +584,24 @@ describe("buildResultRoot", () => {
       "neg-disclosure-carrier-under-withheld.json",
     ])
       expect(validateEvidenceResult(read(name)), name).not.toEqual([]);
+  });
+
+  it("reads plan_ref and dataset_ref as digest refs present together (spec section 7.3)", () => {
+    const dir = new URL("../../vectors/evidence-result/", import.meta.url);
+    const read = (name: string): Obj =>
+      JSON.parse(readFileSync(new URL(name, dir), "utf8")) as Obj;
+    const source = read("pos-example-org-dataset-result.json");
+    expect(validateEvidenceResult(source)).toEqual([]);
+    expect(
+      validateEvidenceResult(read("neg-dataset-ref-without-plan-ref.json")),
+    ).toEqual(["plan_ref, dataset_ref: one is present without the other"]);
+    const { dataset_ref: _dataset, ...planOnly } = source;
+    expect(validateEvidenceResult(planOnly)).toEqual([
+      "plan_ref, dataset_ref: one is present without the other",
+    ]);
+    expect(
+      validateEvidenceResult(read("neg-plan-ref-inline-plan.json")),
+    ).toEqual(["plan_ref.digest_alg", "plan_ref.digest"]);
   });
 });
 
@@ -1298,6 +1382,81 @@ describe("resolveCarriedInput", () => {
     };
   }
 
+  // How a report record reads through reportState and both claims-fallback
+  // gates (reportSealedDay's stated-timestamp day, claimsCitedCase's case),
+  // the claim citing the report record and this conversation's case record.
+  const conversation = "benchmark:airline:task-1:trial-1";
+  const caseDigest = "ee".repeat(32);
+  async function gates(
+    header: Obj,
+    payloads: Obj,
+  ): Promise<{ state: string; day?: string; case?: string }> {
+    const checked = await carriedCapsuleCommitment(header, payloads);
+    const reportRecord = {
+      capsuleId: header.subject_ref as string,
+      agentInput: { state: "disclosed", payload: header },
+      carriedInput: (await resolveCarriedInput(header, payloads))!,
+      ...(checked === undefined
+        ? {}
+        : {
+            carriedCapsuleId: checked.capsuleId,
+            carriedInputDigest: checked.inputDigest,
+            stated: checked.stated,
+          }),
+      agentOutput: { state: "absent" },
+      cites: [],
+    } as unknown as CitedRecord;
+    const caseRecord = {
+      capsuleId: caseDigest,
+      agentInput: { state: "withheld" },
+      carriedInput: { state: "withheld" },
+      carriedCapsuleId: caseDigest,
+      carriedInputDigest: "ff".repeat(32),
+      carriedActionId: `urn:${conversation}`,
+      agentOutput: { state: "absent" },
+      cites: [],
+    } as unknown as CitedRecord;
+    const records = new Map<string, CitedRecord>([
+      [header.subject_ref as string, reportRecord],
+      [caseDigest, caseRecord],
+    ]);
+    const claim = {
+      id: `${conversation}::req-1`,
+      evidence: [
+        { digest: header.subject_ref as string },
+        { digest: caseDigest },
+      ],
+    } as unknown as ResultClaim;
+    const day = reportSealedDay(records, claim);
+    const found = claimsCitedCase(records, conversation, [claim]);
+    return {
+      state: reportState(records, claim),
+      ...(day === undefined ? {} : { day }),
+      ...(found === undefined ? {} : { case: found }),
+    };
+  }
+
+  it("a withheld report (original left out) unlocks both claims-fallback gates", async () => {
+    const { header, payloads } = await carried({ withOriginal: false });
+    expect(await gates(header, payloads)).toEqual({
+      state: "withheld",
+      day: "2026-09-23",
+      case: caseDigest,
+    });
+    // An original committed but left out of the payloads is withheld too.
+    const left = await carried();
+    const commitments = left.header.payload_commitments as string[];
+    delete left.payloads[commitments[2]!];
+    expect(await resolveCarriedInput(left.header, left.payloads)).toEqual({
+      state: "withheld",
+    });
+    expect(await gates(left.header, left.payloads)).toEqual({
+      state: "withheld",
+      day: "2026-09-23",
+      case: caseDigest,
+    });
+  });
+
   it("discloses the carried capsule's agent_input original when every link checks", async () => {
     const { header, payloads } = await carried();
     expect(await resolveCarriedInput(header, payloads)).toEqual({
@@ -1313,23 +1472,35 @@ describe("resolveCarriedInput", () => {
     });
   });
 
-  it("never discloses an original that is not the capsule's committed preimage", async () => {
+  it("reads a supplied original that is not the capsule's committed preimage as a mismatch, never withheld, and it unlocks no claims fallback", async () => {
     const { header, payloads } = await carried({
       original: { ...report, period: "day:2026-01-01" },
     });
     expect(await resolveCarriedInput(header, payloads)).toEqual({
-      state: "withheld",
+      state: "disclosure_mismatch",
     });
+    expect(await gates(header, payloads)).toEqual({ state: "mismatch" });
   });
 
-  it("never discloses payload bytes that do not hash to their commitment", async () => {
+  it("reads supplied payload bytes that do not hash to their commitment as a mismatch, never withheld, and they unlock no claims fallback", async () => {
     const { header, payloads } = await carried();
     const commitments = header.payload_commitments as string[];
     payloads[commitments[2]!] = b64url(
       enc.encode(JSON.stringify({ ...report, period: "day:2026-01-01" })),
     );
     expect(await resolveCarriedInput(header, payloads)).toEqual({
-      state: "withheld",
+      state: "disclosure_mismatch",
+    });
+    expect(await gates(header, payloads)).toEqual({ state: "mismatch" });
+    // Bytes that are not base64url at all fail the same way.
+    payloads[commitments[2]!] = "not base64url!";
+    expect(await gates(header, payloads)).toEqual({ state: "mismatch" });
+    // And a failing payload beside a disclosing one still breaks the link.
+    const both = await carried();
+    const all = both.header.payload_commitments as string[];
+    both.payloads[all[1]!] = b64url(enc.encode("tampered envelope"));
+    expect(await resolveCarriedInput(both.header, both.payloads)).toEqual({
+      state: "disclosure_mismatch",
     });
   });
 
@@ -1375,6 +1546,57 @@ describe("resolveCarriedInput", () => {
     });
   });
 
+  it("a report capsule whose bytes are missing or corrupted resolves withheld, but has no checked carried capsule, so reportState says invalid, never withheld", async () => {
+    const intact = await carried({ withOriginal: false });
+    const commitment = await carriedCapsuleCommitment(
+      intact.header,
+      intact.payloads,
+    );
+    expect(commitment?.actionId).toBe("urn:test:report");
+    const asRecord = async (
+      header: Obj,
+      payloads: Obj,
+    ): Promise<CitedRecord> => {
+      const checked = await carriedCapsuleCommitment(header, payloads);
+      return {
+        capsuleId: header.subject_ref as string,
+        agentInput: { state: "disclosed", payload: header },
+        carriedInput: (await resolveCarriedInput(header, payloads))!,
+        ...(checked === undefined
+          ? {}
+          : {
+              carriedCapsuleId: checked.capsuleId,
+              carriedInputDigest: checked.inputDigest,
+            }),
+        agentOutput: { state: "absent" },
+        cites: [],
+      } as unknown as CitedRecord;
+    };
+    const claim = {
+      evidence: [{ digest: intact.header.subject_ref as string }],
+    } as unknown as ResultClaim;
+    const state = async (header: Obj, payloads: Obj) =>
+      reportState(
+        new Map([
+          [header.subject_ref as string, await asRecord(header, payloads)],
+        ]),
+        claim,
+      );
+    expect(await state(intact.header, intact.payloads)).toBe("withheld");
+    const commitments = intact.header.payload_commitments as string[];
+    const corrupted = { ...intact.payloads };
+    corrupted[commitments[0]!] = b64url(enc.encode('{"capsule_id":"x"}'));
+    expect(await resolveCarriedInput(intact.header, corrupted)).toEqual({
+      state: "withheld",
+    });
+    expect(await state(intact.header, corrupted)).toBe("invalid");
+    const missing = { ...intact.payloads };
+    delete missing[commitments[0]!];
+    expect(await state(intact.header, missing)).toBe("invalid");
+    const noCommitments = { ...intact.header, payload_commitments: [] };
+    expect(await state(noCommitments, intact.payloads)).toBe("invalid");
+  });
+
   it("still reads an original committed as a third book payload", async () => {
     const { header, payloads } = await carried();
     expect(await resolveCarriedInput(header, payloads, {})).toEqual({
@@ -1403,16 +1625,66 @@ describe("resolveCarriedInput", () => {
 // ---------------------------------------------------------------------------
 
 describe("claims citing a capsule a book record carries", () => {
-  const carried = "ab".repeat(32);
+  const enc = new TextEncoder();
+  const b64url = (bytes: Uint8Array): string =>
+    btoa(String.fromCharCode(...bytes))
+      .replaceAll("+", "-")
+      .replaceAll("/", "_")
+      .replace(/=+$/u, "");
 
-  function bookCited(subjectRef: string): Obj {
+  // A real capsule, so its id is recomputed from its own bytes
+  // (computeCapsuleId) rather than taken from the header's self-asserted
+  // subject_ref -- a dishonest book could set subject_ref to anything,
+  // including a claim's own cited evidence digest, with no real capsule
+  // behind it (the case the second test below exists to close).
+  async function carriedCapsule(options?: {
+    // Omit model_attestation, so the capsule commits no agent_input digest.
+    noAttestation?: boolean;
+    // The capsule_id written into the capsule's bytes, in place of its
+    // recomputed id.
+    statedId?: string;
+  }): Promise<{ id: string; digest: string }> {
+    const capsule: Obj = {
+      action_id: "urn:test:carried",
+      action_type: "fyi",
+      assurance: {
+        attestation_mode: "self_attested",
+        effect_mode: "not_applicable",
+        ledger_mode: "standalone",
+      },
+      canonicalization_id: "jcs",
+      developer: "test",
+      format_version: "4",
+      model_attestation: {
+        compute_attestation: { agent_input_digest: "ef".repeat(32) },
+      },
+      operator: "test",
+      spec_version: "draft-mih-scitt-agent-action-capsule-05",
+      timestamp: "2026-09-23T23:59:59Z",
+    };
+    if (options?.noAttestation) delete capsule.model_attestation;
+    const id = await computeCapsuleId(capsule as never);
+    capsule.capsule_id = options?.statedId ?? id;
+    const bytes = enc.encode(JSON.stringify(capsule));
+    const digest = await sha256Hex(bytes);
+    carriedPayloads[digest] = b64url(bytes);
+    return { id, digest };
+  }
+
+  let carriedPayloads: Record<string, string>;
+
+  function bookCited(
+    citedDigest: string,
+    header: { subjectRef: string; commitments: string[] },
+  ): Obj {
     const source = fixture("result-root-book-bundle.json");
     const statement = (
       ((source.disclosures as Obj).result as Obj).agent_input as Obj
     ).statement as Obj;
     const claim = (statement.claims as Obj[])[0]!;
     const cite = (refs: Obj[]): void => {
-      for (const ref of refs) if (ref.digest === "day-1") ref.digest = carried;
+      for (const ref of refs)
+        if (ref.digest === "day-1") ref.digest = citedDigest;
     };
     cite(claim.evidence as Obj[]);
     cite((claim.presentation as Obj).evidence as Obj[]);
@@ -1422,37 +1694,111 @@ describe("claims citing a capsule a book record carries", () => {
         book_id: "sealed-fixture-log",
         record_type: "published_capsule",
         epistemic_type: "producer_claim",
-        subject_ref: subjectRef,
-        payload_commitments: [],
+        subject_ref: header.subjectRef,
+        payload_commitments: header.commitments,
         links: [],
       },
     };
+    source.extensions = { "evidencebook/payloads": carriedPayloads };
     return source;
   }
 
   it("resolves the cited capsule id to the book record carrying it, keeping the cited id", async () => {
-    const { bundle, ids } = await sealEvidenceBundle(bookCited(carried));
+    carriedPayloads = {};
+    const { id, digest } = await carriedCapsule();
+    const { bundle, ids } = await sealEvidenceBundle(
+      bookCited(id, { subjectRef: id, commitments: [digest] }),
+    );
     const result = await buildResultRoot(bundle);
     const claim = result.claims.find((c) => c.id === "claim-1")!;
     expect(claim.evidence.map((e) => e.resolved)).toEqual([true, true]);
     expect(claim.support).toBe("supported");
-    const record = result.records.get(carried)!;
-    expect(record.capsuleId).toBe(carried);
+    const record = result.records.get(id)!;
+    expect(record.capsuleId).toBe(id);
     expect(record.bookRecordId).toBe(ids["day-1"]);
     expect(record.agentInput.state).toBe("disclosed");
   });
 
+  it("never resolves through a header whose subject_ref the carried capsule's own recomputed id does not match", async () => {
+    // The capsule is real and genuinely committed (payload_commitments is
+    // correct and passes resolveDisclosure's own commitment check) -- only
+    // subject_ref lies, naming the claim's cited digest instead of the
+    // capsule's true recomputed id. Before the fix, bookCarrier trusted
+    // subject_ref directly and this claim would resolve as supported with
+    // no real capsule behind the citation.
+    carriedPayloads = {};
+    const forged = "ab".repeat(32);
+    const { digest } = await carriedCapsule();
+    const { bundle } = await sealEvidenceBundle(
+      bookCited(forged, { subjectRef: forged, commitments: [digest] }),
+    );
+    const result = await buildResultRoot(bundle);
+    const claim = result.claims.find((c) => c.id === "claim-1")!;
+    expect(claim.evidence[0]).toEqual({ digest: forged, resolved: false });
+    expect(claim.support).toBe("unsupported");
+    expect(result.records.has(forged)).toBe(false);
+  });
+
+  it("resolves a carried capsule that commits no agent_input digest", async () => {
+    // model_attestation is RECOMMENDED, not required, so a conforming
+    // capsule may commit no agent_input digest; its id still checks.
+    carriedPayloads = {};
+    const { id, digest } = await carriedCapsule({ noAttestation: true });
+    const { bundle } = await sealEvidenceBundle(
+      bookCited(id, { subjectRef: id, commitments: [digest] }),
+    );
+    const result = await buildResultRoot(bundle);
+    const claim = result.claims.find((c) => c.id === "claim-1")!;
+    expect(claim.evidence[0]).toEqual({ digest: id, resolved: true });
+    expect(claim.support).toBe("supported");
+    expect(result.records.has(id)).toBe(true);
+  });
+
+  it("never resolves when the capsule's bytes and the header both state a forged id", async () => {
+    // The strongest forgery: capsule_id inside the committed bytes and the
+    // header's subject_ref both name the cited digest. Only the recomputed
+    // id differs.
+    carriedPayloads = {};
+    const forged = "ab".repeat(32);
+    const { digest } = await carriedCapsule({ statedId: forged });
+    const { bundle } = await sealEvidenceBundle(
+      bookCited(forged, { subjectRef: forged, commitments: [digest] }),
+    );
+    const result = await buildResultRoot(bundle);
+    const claim = result.claims.find((c) => c.id === "claim-1")!;
+    expect(claim.evidence[0]).toEqual({ digest: forged, resolved: false });
+    expect(claim.support).toBe("unsupported");
+    expect(result.records.has(forged)).toBe(false);
+  });
+
+  it("never resolves when only the capsule's stated capsule_id differs from its recomputed id", async () => {
+    carriedPayloads = {};
+    const { id, digest } = await carriedCapsule({ statedId: "cd".repeat(32) });
+    const { bundle } = await sealEvidenceBundle(
+      bookCited(id, { subjectRef: id, commitments: [digest] }),
+    );
+    const result = await buildResultRoot(bundle);
+    const claim = result.claims.find((c) => c.id === "claim-1")!;
+    expect(claim.evidence[0]).toEqual({ digest: id, resolved: false });
+    expect(claim.support).toBe("unsupported");
+    expect(result.records.has(id)).toBe(false);
+  });
+
   it("never resolves through a header that does not match its record's committed digest", async () => {
+    // subject_ref stays the capsule's true id, so the identity check passes:
+    // only the header's commitment fails.
+    carriedPayloads = {};
+    const { id, digest } = await carriedCapsule();
     const { bundle, ids } = await sealEvidenceBundle(
-      bookCited("cd".repeat(32)),
+      bookCited(id, { subjectRef: id, commitments: [digest] }),
     );
     const header = ((bundle.disclosures as Obj)[ids["day-1"]!] as Obj)
       .agent_input as Obj;
-    header.subject_ref = carried;
+    header.book_id = "another-log";
     const result = await buildResultRoot(bundle);
     const claim = result.claims.find((c) => c.id === "claim-1")!;
-    expect(claim.evidence[0]).toEqual({ digest: carried, resolved: false });
+    expect(claim.evidence[0]).toEqual({ digest: id, resolved: false });
     expect(claim.support).toBe("unsupported");
-    expect(result.records.has(carried)).toBe(false);
+    expect(result.records.has(id)).toBe(false);
   });
 });

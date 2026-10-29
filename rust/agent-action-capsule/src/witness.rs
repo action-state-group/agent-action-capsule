@@ -55,6 +55,19 @@ pub const GRADE_OBSERVED_ONLY: &str = "observed-only";
 /// Receipt grade: MMR consistency checked.
 pub const GRADE_MMR_VERIFIED: &str = "mmr-verified";
 
+/// Registration-time reason: the receipt did not pass.
+pub const REASON_RECEIPT_NOT_PASSED: &str = "receipt_not_passed";
+/// Registration-time reason: the receipt's protected CWT claims carry no `iat`.
+pub const REASON_IAT_ABSENT: &str = "iat_absent";
+/// Registration-time reason: the protected CWT claims are not a map, or `iat`
+/// is not an integer from 0 to 2^53 - 1.
+pub const REASON_IAT_INVALID: &str = "iat_invalid";
+/// Registration-time reason: the binding (`rekor`) is no COSE Receipt.
+pub const REASON_BINDING_WITHOUT_IAT: &str = "binding_without_iat";
+const CWT_CLAIMS_LABEL: i64 = 15;
+const CWT_IAT: u64 = 6;
+const MAX_IAT: u64 = (1 << 53) - 1;
+
 /// Strict standard base64 in its one canonical spelling: padding required,
 /// and non-zero trailing bits refused, so the bytes re-encode to the text.
 const STANDARD: GeneralPurpose = GeneralPurpose::new(
@@ -110,6 +123,10 @@ impl From<&cll::checkpoint::DecodedCheckpointCose> for SignedCheckpoint {
 ///
 /// `reason` is a human-readable explanation and is not part of the
 /// cross-language contract; `grade` is the verified receipt grade, or `None`.
+/// `key_id` is the directory key id a passing receipt verified under.
+/// `registration_time` is the `iat` the witness signed into a passing COSE
+/// Receipt's protected header, in seconds since the epoch; when it is `None`,
+/// `registration_time_reason` (one of the `REASON_` constants) says why.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WitnessReceiptResult {
     pub ts_url: String,
@@ -117,6 +134,9 @@ pub struct WitnessReceiptResult {
     pub status: String,
     pub reason: String,
     pub grade: Option<String>,
+    pub key_id: Option<String>,
+    pub registration_time: Option<u64>,
+    pub registration_time_reason: Option<String>,
 }
 
 /// What [`verify_witness_receipts`] found: the overall `status`, the
@@ -128,13 +148,16 @@ pub struct WitnessReport {
     pub receipts: Vec<WitnessReceiptResult>,
 }
 
-/// One receipt check: whether it verified, why, and the verified grade. A
-/// `reason` starting with `not checked` means nothing was checked.
+/// One receipt check: whether it verified, why, the verified grade, and its
+/// registration time or the reason it has none. A `reason` starting with
+/// `not checked` means nothing was checked.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReceiptCheck {
     pub ok: bool,
     pub reason: String,
     pub grade: Option<String>,
+    pub registration_time: Option<u64>,
+    pub registration_time_reason: Option<String>,
 }
 
 impl ReceiptCheck {
@@ -143,7 +166,56 @@ impl ReceiptCheck {
             ok: false,
             reason: reason.into(),
             grade: None,
+            registration_time: None,
+            registration_time_reason: Some(REASON_RECEIPT_NOT_PASSED.to_string()),
         }
+    }
+
+    /// A receipt that verified, with the registration time of its protected
+    /// header.
+    fn verified(reason: &str, grade: Option<String>, receipt: &[u8]) -> Self {
+        let (registration_time, registration_time_reason) = match registration_time(receipt) {
+            Ok(time) => (Some(time), None),
+            Err(reason) => (None, Some(reason.to_string())),
+        };
+        ReceiptCheck {
+            ok: true,
+            reason: reason.to_string(),
+            grade,
+            registration_time,
+            registration_time_reason,
+        }
+    }
+}
+
+/// The `iat` (claim 6) of a verified COSE Receipt's protected CWT claims
+/// (label 15), or why there is none: absent with no claims map or no `iat`
+/// in it, invalid when the claims are not a map or `iat` is not an integer
+/// from 0 to 2^53 - 1. Only the protected header is signed.
+fn registration_time(receipt: &[u8]) -> Result<u64, &'static str> {
+    let sign1 = CoseSign1::from_tagged_slice(receipt).map_err(|_| REASON_IAT_INVALID)?;
+    let claims = match sign1
+        .protected
+        .header
+        .rest
+        .iter()
+        .find(|(label, _)| *label == Label::Int(CWT_CLAIMS_LABEL))
+    {
+        None => return Err(REASON_IAT_ABSENT),
+        Some((_, coset::cbor::Value::Map(claims))) => claims,
+        Some(_) => return Err(REASON_IAT_INVALID),
+    };
+    let iat = claims
+        .iter()
+        .find(|(key, _)| matches!(key, coset::cbor::Value::Integer(i) if u64::try_from(*i) == Ok(CWT_IAT)))
+        .map(|(_, value)| value)
+        .ok_or(REASON_IAT_ABSENT)?;
+    match iat {
+        coset::cbor::Value::Integer(i) => u64::try_from(*i)
+            .ok()
+            .filter(|seconds| *seconds <= MAX_IAT)
+            .ok_or(REASON_IAT_INVALID),
+        _ => Err(REASON_IAT_INVALID),
     }
 }
 
@@ -337,8 +409,8 @@ pub fn checkpoint_digest(signed: &SignedCheckpoint) -> String {
 /// profile: a receipt must be a tag-18 COSE_Sign1 with a detached (`nil`)
 /// payload, so its signature covers the rebuilt Merkle root, its protected
 /// `vds` (label 395) must be 1 (RFC9162_SHA256), and its `alg` EdDSA (-8) or
-/// ES256 (-7). Returns the receipt's `alg`.
-fn receipt_shape(receipt: &[u8]) -> Result<Algorithm, String> {
+/// ES256 (-7). Returns the receipt's `alg` and signature.
+fn receipt_shape(receipt: &[u8]) -> Result<(Algorithm, Vec<u8>), String> {
     let sign1 = CoseSign1::from_tagged_slice(receipt)
         .map_err(|e| format!("receipt could not be decoded: {e:?}"))?;
     if sign1.payload.is_some() {
@@ -355,7 +427,7 @@ fn receipt_shape(receipt: &[u8]) -> Result<Algorithm, String> {
     }
     match header.alg {
         Some(RegisteredLabelWithPrivate::Assigned(alg @ (Algorithm::EdDSA | Algorithm::ES256))) => {
-            Ok(alg)
+            Ok((alg, sign1.signature))
         }
         _ => Err("receipt alg is not EdDSA (-8) or ES256 (-7)".into()),
     }
@@ -369,6 +441,47 @@ fn key_fits_alg(alg: Algorithm, key_der: &[u8]) -> bool {
         Algorithm::ES256 => p256::PublicKey::from_public_key_der(key_der).is_ok(),
         _ => false,
     }
+}
+
+/// Whether a 32-byte point encoding has y < p (RFC 8032 section 5.1.3).
+fn canonical_point(encoded: &[u8; 32]) -> bool {
+    !(encoded[0] >= 0xed && encoded[1..31].iter().all(|&b| b == 0xff) && encoded[31] & 0x7f == 0x7f)
+}
+
+/// Whether a point encoding decodes to a point of small order.
+fn small_order(encoded: &[u8; 32]) -> bool {
+    ed25519_dalek::VerifyingKey::from_bytes(encoded).is_ok_and(|point| point.is_weak())
+}
+
+/// The Ed25519 group order L, little-endian.
+const ED25519_L: [u8; 32] = [
+    0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x10,
+];
+
+/// The strict Ed25519 conditions of checkpointed-local-log's
+/// `ed25519-vectors.json` that do not need the message: A and R canonical
+/// (y < p) and not of small order, and S < L. scitt-cose-receipt 0.1.1
+/// verifies with dalek's `verify`, which checks the same cofactorless
+/// equation as `verify_strict` but accepts a small-order A, and a small-order
+/// A verifies a forged signature over any message. Refusing these first makes
+/// that check strict.
+fn strict_ed25519(public_key: &[u8; 32], signature: &[u8]) -> bool {
+    let Ok(signature) = <&[u8; 64]>::try_from(signature) else {
+        return false;
+    };
+    let r: &[u8; 32] = signature[..32].try_into().expect("32 bytes");
+    let s_below_l = signature[32..]
+        .iter()
+        .rev()
+        .zip(ED25519_L.iter().rev())
+        .find(|(s, l)| s != l)
+        .is_some_and(|(s, l)| s < l);
+    canonical_point(public_key)
+        && canonical_point(r)
+        && !small_order(public_key)
+        && !small_order(r)
+        && s_below_l
 }
 
 /// The grade a known grade label names; `countersigned-observed` is the
@@ -387,11 +500,16 @@ fn cose_receipt(
     leaf: &[u8],
     key_der: &[u8],
 ) -> Result<scitt_cose_receipt::ReceiptResult, String> {
-    let alg = receipt_shape(receipt)?;
+    let (alg, signature) = receipt_shape(receipt)?;
     if !key_fits_alg(alg, key_der) {
         return Err(format!(
             "receipt alg {alg:?} does not match the key type (ES256 needs ECDSA P-256, EdDSA Ed25519)"
         ));
+    }
+    if alg == Algorithm::EdDSA
+        && !raw_ed25519(key_der).is_some_and(|key| strict_ed25519(&key, &signature))
+    {
+        return Err("receipt EdDSA signature is not strict Ed25519: a non-canonical or small-order key or R, or S >= L".into());
     }
     let result = scitt_cose_receipt::verify_receipt(receipt, leaf, &pem(key_der));
     if !result.ok {
@@ -429,16 +547,15 @@ fn verify_cll(
         }),
         Ok(result) => {
             let grade = known_grade(result.grade.as_deref());
-            ReceiptCheck {
-                ok: true,
-                reason: if grade.is_some() {
+            ReceiptCheck::verified(
+                if grade.is_some() {
                     "ok"
                 } else {
                     "ok (receipt carries no grade label)"
-                }
-                .to_string(),
-                grade: grade.map(str::to_string),
-            }
+                },
+                grade.map(str::to_string),
+                &receipt,
+            )
         }
     }
 }
@@ -626,16 +743,15 @@ pub fn verify_scrapi_receipt(
         }
         Ok(result) => {
             let grade = known_grade(result.grade.as_deref());
-            ReceiptCheck {
-                ok: true,
-                reason: if grade.is_none() && result.grade.is_some() {
+            ReceiptCheck::verified(
+                if grade.is_none() && result.grade.is_some() {
                     "ok (unknown grade label ignored)"
                 } else {
                     "ok"
-                }
-                .to_string(),
-                grade: Some(grade.unwrap_or(GRADE_OBSERVED_ONLY).to_string()),
-            }
+                },
+                Some(grade.unwrap_or(GRADE_OBSERVED_ONLY).to_string()),
+                receipt,
+            )
         }
     }
 }
@@ -677,17 +793,37 @@ pub fn verify_receipt(
             ok,
             reason,
             grade: ok.then(|| GRADE_OBSERVED_ONLY.to_string()),
+            registration_time: None,
+            registration_time_reason: Some(
+                if ok {
+                    REASON_BINDING_WITHOUT_IAT
+                } else {
+                    REASON_RECEIPT_NOT_PASSED
+                }
+                .to_string(),
+            ),
         };
     }
     verify_scrapi_receipt(&receipt, cose, Some(key_der))
 }
 
+/// A WitnessRecord: every member present; `ts_url`, `entry_hash` and
+/// `receipt_b64` non-empty strings; `receipt_b64` canonical standard base64.
+/// Anything else is malformed, never merely not checked.
 fn is_record(entry: &Value) -> Option<&Map<String, Value>> {
     let record = entry.as_object()?;
-    (record.get("ts_url").is_some_and(Value::is_string)
-        && RECORD_FIELDS
-            .iter()
-            .all(|field| record.contains_key(*field)))
+    let text = |field: &str| {
+        record
+            .get(field)
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+    };
+    (RECORD_FIELDS
+        .iter()
+        .all(|field| record.contains_key(*field))
+        && text("ts_url").is_some()
+        && text("entry_hash").is_some()
+        && text("receipt_b64").is_some_and(|b64| STANDARD.decode(b64).is_ok()))
     .then_some(record)
 }
 
@@ -729,6 +865,7 @@ pub fn verify_witness_receipts(
     for record in entries.iter().filter_map(is_record) {
         let ts_url = record["ts_url"].as_str().expect("checked by is_record");
         let mut check = ReceiptCheck::fail("");
+        let mut key_id = None;
         if record.get("is_stub") == Some(&Value::Bool(true)) {
             check.reason = "stub receipt (never reached a witness)".to_string();
         } else {
@@ -739,9 +876,11 @@ pub fn verify_witness_receipts(
                         check.reason = format!("not checked: unusable key in directory row ({e})")
                     }
                     Ok(keys) => {
-                        for key in keys {
-                            check = verify_receipt(signed, record, &key, Some(cose));
+                        for (index, key) in keys.iter().enumerate() {
+                            check = verify_receipt(signed, record, key, Some(cose));
                             if check.ok {
+                                // row_public_keys returns one key per key id, in order.
+                                key_id = row["key_ids"][index].as_str().map(str::to_string);
                                 break;
                             }
                         }
@@ -771,6 +910,9 @@ pub fn verify_witness_receipts(
             status: status.to_string(),
             reason: check.reason,
             grade: if check.ok { check.grade } else { None },
+            key_id,
+            registration_time: check.registration_time,
+            registration_time_reason: check.registration_time_reason,
         });
     }
     let status = if malformed || results.iter().any(|r| r.status == "fail") {
@@ -809,6 +951,44 @@ mod tests {
                 Cbor::Bytes(vec![]),
             ])),
         ))
+    }
+
+    /// The registration-time edges no shared vector reaches.
+    #[test]
+    fn registration_time_reads_only_a_whole_iat() {
+        let int = |i: i64| Cbor::Integer(i.into());
+        let with_claims = |claims: Cbor| {
+            receipt(
+                vec![(int(1), int(-8)), (int(15), claims), (int(395), int(1))],
+                Cbor::Null,
+            )
+        };
+        let iat = |value: Cbor| with_claims(Cbor::Map(vec![(int(6), value)]));
+        let plain = receipt(vec![(int(1), int(-8)), (int(395), int(1))], Cbor::Null);
+        assert_eq!(registration_time(&plain), Err(REASON_IAT_ABSENT));
+        assert_eq!(
+            registration_time(&with_claims(Cbor::Map(vec![]))),
+            Err(REASON_IAT_ABSENT)
+        );
+        assert_eq!(
+            registration_time(&iat(int(1_792_022_400))),
+            Ok(1_792_022_400)
+        );
+        assert_eq!(registration_time(&iat(int(0))), Ok(0));
+        assert_eq!(
+            registration_time(&iat(int((1 << 53) - 1))),
+            Ok((1 << 53) - 1)
+        );
+        for invalid in [
+            iat(int(1 << 53)),
+            iat(int(-1)),
+            iat(Cbor::Bool(true)),
+            iat(Cbor::Text("1792022400".into())),
+            iat(Cbor::Float(1.5)),
+            with_claims(Cbor::Array(vec![int(6)])),
+        ] {
+            assert_eq!(registration_time(&invalid), Err(REASON_IAT_INVALID));
+        }
     }
 
     #[test]
@@ -918,6 +1098,51 @@ mod tests {
         assert!(verify_scrapi_receipt(&es256, cose, Some(&ec_der)).ok);
         let wrong = verify_scrapi_receipt(&es256, cose, Some(&k1_der));
         assert!(!wrong.ok && !wrong.reason.starts_with("not checked"));
+    }
+
+    /// checkpointed-local-log's shared strict Ed25519 cases: the pre-check
+    /// followed by dalek's `verify`, as `cose_receipt` and scitt-cose-receipt
+    /// run them, accepts exactly the valid ones.
+    #[test]
+    fn strict_ed25519_matches_the_cll_vectors() {
+        use ed25519_dalek::Verifier as _;
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../vectors/cross-language/cll-ed25519-vectors.json"
+        );
+        let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        let cases = vectors["ed25519_cases"].as_array().unwrap();
+        assert_eq!(cases.len(), 54);
+        let bytes = |case: &Value, name: &str| hex::decode(case[name].as_str().unwrap()).unwrap();
+        for case in cases {
+            let key: [u8; 32] = bytes(case, "public_key_hex").try_into().unwrap();
+            let signature: [u8; 64] = bytes(case, "signature_hex").try_into().unwrap();
+            let message = bytes(case, "message_hex");
+            let verifies = strict_ed25519(&key, &signature)
+                && ed25519_dalek::VerifyingKey::from_bytes(&key).is_ok_and(|key| {
+                    key.verify(&message, &ed25519_dalek::Signature::from_bytes(&signature))
+                        .is_ok()
+                });
+            assert_eq!(
+                verifies,
+                case["valid"].as_bool().unwrap(),
+                "{}",
+                case["name"]
+            );
+        }
+    }
+
+    /// A receipt "signed" by the identity key (R the identity, S = 0)
+    /// verifies over any root under dalek's `verify`; it must be refused.
+    #[test]
+    fn small_order_key_receipt_is_refused() {
+        let mut identity = [0u8; 32];
+        identity[0] = 1;
+        let forged = signed_receipt(Algorithm::EdDSA, b"any leaf", |_| {
+            [identity, [0u8; 32]].concat()
+        });
+        let err = cose_receipt(&forged, b"any leaf", &ed25519_spki(&identity)).unwrap_err();
+        assert!(err.contains("strict Ed25519"), "{err}");
     }
 
     #[test]

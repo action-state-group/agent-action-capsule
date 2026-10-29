@@ -410,10 +410,22 @@ registered.
 |---|---|
 | `producer-key/v1` | `{"public_key": "<64 lowercase hex>"}`: the declaring producer's Ed25519 public key, one key per block, defined in the Evidence Bundle draft (`-01` and later), "The producer-key/v1 Extension". Covered by the bundle digest like every extension. A verifier uses it only to classify a countersignature whose `signer.key_id` equals it as not independent (a self-countersignature). It can only downgrade an entry to not independent, never upgrade one, and it is not an identity or authority claim. A malformed block is ignored and does not fail the Bundle. |
 | `composed/v1` | `{"members", "observers", "joins"?, "not_requested"?, "missing"?, "composed_digest"}`: a composition of several responders' Evidence Request outcomes, defined in the Evidence Bundle draft (`-01` and later), "The composed/v1 Extension". Each member records one responder's outcome (`artifact`, `refusal` or `absence`), the observer that produced it and its digest; each observer has a `role` and an opaque `custody_domain`; each join declares a linkage basis and a state (`agree`, `mismatch`, `unjoined` or `one_sided`) that a verifier re-derives. `composed_digest` is SHA-256 over the JCS form of the member, observer, join and `not_requested` declarations (member bodies and `missing` excluded). A verifier reports composition closure (every member present or declared missing) separately from each member Bundle's own three claims, and reports two agreeing members in one custody domain as redundant, not corroborating. Conformance vectors: `vectors/bundle/composed/`. |
+| `contract-report/v1` | `{}`: a closed empty object, defined in `spec/contract-report-v1.md` with the schema `schemas/contract-report-v1.json`. A producer's opt-in to the contract-report view of a verified Evidence Result (`spec/evidence-result-v0.md`): the Result's sealed aggregate first, then one row per (`contract_ref`, `requirement_ref`) with its claims counted by verdict, each claim keeping its tier, grade and carrier status. The block carries no words, data, grouping or flags; the words come from the rendering module's wording pack, never from the bundle. A block that is not an empty object is declined: the kind is not engaged. Earlier unregistered display kinds that it replaces are listed in the deprecation table below. |
 
 A company-specific row model such as `report/v1` is an extension only when
 its independently available specification is registered; this registry does
 not define that row model.
+
+### Deprecated: earlier display kinds
+
+**Deprecation table.** These kinds are deprecated aliases of `contract-report/v1`. This
+repository's TypeScript readers of them and their extension interpreters are removed in ts
+0.8.0; it carries no built-in card or manifest for them. A producer SHOULD NOT write them.
+
+| Kind | Deprecated in | Removed in |
+|---|---|---|
+| `outcome-report/v1` | ts 0.6.0, go v0.12.0 | ts 0.8.0, which removes its TypeScript reader (`outcome-report-presentation.ts`) and its extension interpreter. Its Go reader and built-in manifest left this repository with `go/presentation` and are not removed by a Go release here. |
+| `eu-ai-act-compliance/v1` | ts 0.6.0, go v0.12.0 | ts 0.8.0, which removes its TypeScript reader (`compliance-presentation.ts`) and its extension interpreter. The removal waited for a Result revision that carries applicability; Results now do (`spec/evidence-result-v0.md` §4.3). Its Go reader and built-in manifest left this repository with `go/presentation` and are not removed by a Go release here. |
 
 ### Provisional: minimum-necessary extension kinds
 
@@ -445,6 +457,23 @@ below). Example, with the producer's reverse-DNS prefix:
 `n/a` when no decision applied. `blocking: true` records that the action would
 not have run had the check failed.
 
+### Provisional: composed/v1 join basis values
+
+**Held for ratification; not yet registered.** The Evidence Bundle draft
+(`-01`), "Joins", defines the `composed/v1` join basis as a closed list:
+`pre_agreed_identifier` and `shared_artifact_digest`, each with a derivation, and
+`issued_receipt` and `same_interval`, reserved for a later specification. The value
+below is proposed for a later Bundle revision. It is not part of `-01`. A `-01`
+verifier reads a block that carries it as malformed, so a producer MUST NOT put it
+in a `composed/v1` block until a posted Bundle revision lists it. Until then, the
+binding is used beside the composition, under issuer independence
+(`spec/interop-profile-v0.md` §6.7.4). Conformance vectors:
+`vectors/controller-binding-v0/`.
+
+| Value | Semantics |
+|---|---|
+| `controller_binding` | `identifier_digest` is the digest of a controller binding record (`spec/controller-binding-v0.md` §4) delivered beside the block, and `pointer` selects each member root record's `key_id`. `identifier_digest` is SHA-256 of the record's signing input (the record without `sigs`). The two members are linked when the delivered record's digest equals `identifier_digest`, the two selected values are its two keys, and it applies to them (§6.2 of that document): it is well formed, both keys signed it under a method the verifier implements, it is in its window at each root record's time, and no received revocation applies. A `controller_binding` join that derives `agree` is redundant, not corroborating. The binding proves control of both keys at its ceremony, never who holds them. |
+
 ## 15. Evidence Bundle countersignature type
 
 Defined in `draft-mih-zhang-agent-disclosure-bundle`,
@@ -469,6 +498,7 @@ refuses rather than truncating the result.
 | Token | Description | Declared fields |
 |---|---|---|
 | `history_card/1` | Checkpoints, receipts, and consistency proofs for a stream. | None (no record content). |
+| `standard_history/1` | Counts of the holder's counted deals in the window its policy sets, as of one anchor: by outcome, value band, role, how it happened, and disputes. Recipient-free. Defined in `spec/standard-history-v0.md`. | The card members of `spec/standard-history-v0.md` §4: counts and their denominators only, no record content. |
 
 ### Provisional: minimum-necessary report
 

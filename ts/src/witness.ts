@@ -10,6 +10,8 @@
 // checked (`withheld`), never failed. WebCrypto only.
 
 import {
+  CborMap,
+  HDR_CWT_CLAIMS,
   HDR_GRADE,
   spkiKeyType,
   verifyCoseReceipt,
@@ -42,6 +44,21 @@ const GRADES: ReadonlyMap<string, WitnessGrade> = new Map([
   ["countersigned-observed", GRADE_OBSERVED_ONLY],
   [GRADE_MMR_VERIFIED, GRADE_MMR_VERIFIED],
 ]);
+/**
+ * Why a receipt result has no `registrationTime`: the receipt did not pass;
+ * it passed with no `iat` in its protected CWT claims; its protected `iat` is
+ * not an integer number of seconds from 0 to 2^53 - 1; or its binding
+ * (`rekor`) is no COSE Receipt and so carries no `iat`.
+ */
+export const REGISTRATION_TIME_REASONS = [
+  "receipt_not_passed",
+  "iat_absent",
+  "iat_invalid",
+  "binding_without_iat",
+] as const;
+export type RegistrationTimeReason = (typeof REGISTRATION_TIME_REASONS)[number];
+const CWT_IAT = 6n;
+const MAX_IAT = 2n ** 53n - 1n;
 const RECORD_FIELDS = [
   "ts_url",
   "entry_hash",
@@ -53,6 +70,10 @@ const RECORD_FIELDS = [
 /**
  * One receipt's outcome. `reason` explains it and is not part of the
  * cross-language contract; `grade` is the verified receipt grade, or null.
+ * `keyId` is the directory key id a passing receipt verified under, else
+ * null. `registrationTime` is the `iat` the witness signed into a passing
+ * COSE Receipt's protected header, in seconds since the epoch; when it is
+ * null, `registrationTimeReason` says why.
  */
 export interface WitnessReceiptResult {
   readonly tsUrl: string;
@@ -60,6 +81,9 @@ export interface WitnessReceiptResult {
   readonly status: "pass" | "withheld" | "fail";
   readonly reason: string;
   readonly grade: WitnessGrade | null;
+  readonly keyId: string | null;
+  readonly registrationTime: number | null;
+  readonly registrationTimeReason: RegistrationTimeReason | null;
 }
 
 /** The checkpoint fields the signed COSE checkpoint states. */
@@ -258,6 +282,8 @@ export type ReceiptOutcome =
       readonly ok: true;
       readonly reason: string;
       readonly grade: WitnessGrade | null;
+      readonly registrationTime: number | null;
+      readonly registrationTimeReason: RegistrationTimeReason | null;
     }
   | {
       readonly ok: false;
@@ -280,6 +306,29 @@ function gradeOf(label: unknown): WitnessGrade | null {
   return typeof label === "string" ? (GRADES.get(label) ?? null) : null;
 }
 
+/**
+ * The `iat` (claim 6) of a verified COSE Receipt's protected CWT claims
+ * (label 15): absent with no claims map or no `iat` in it, invalid when the
+ * claims are not a map or `iat` is not an integer from 0 to 2^53 - 1.
+ */
+function registrationTimeOf(headers: CborMap): {
+  readonly registrationTime: number | null;
+  readonly registrationTimeReason: RegistrationTimeReason | null;
+} {
+  const none = (reason: RegistrationTimeReason) => ({
+    registrationTime: null,
+    registrationTimeReason: reason,
+  });
+  if (!headers.has(HDR_CWT_CLAIMS)) return none("iat_absent");
+  const claims = headers.get(HDR_CWT_CLAIMS);
+  if (!(claims instanceof CborMap)) return none("iat_invalid");
+  if (!claims.has(CWT_IAT)) return none("iat_absent");
+  const iat = claims.get(CWT_IAT);
+  if (typeof iat !== "bigint" || iat < 0n || iat > MAX_IAT)
+    return none("iat_invalid");
+  return { registrationTime: Number(iat), registrationTimeReason: null };
+}
+
 /** A CLL witness stamp: bound to this checkpoint by `entry_hash`, then a COSE
  * Receipt over that leaf. */
 async function verifyCll(
@@ -299,7 +348,12 @@ async function verifyCll(
   const result = await verifyCoseReceipt(receipt, hexToBytes(expected), key);
   if (!result.ok) return fromCoseResult(result);
   const label = result.protectedHeaders.get(HDR_GRADE);
-  return { ok: true, reason: "ok", grade: gradeOf(label) };
+  return {
+    ok: true,
+    reason: "ok",
+    grade: gradeOf(label),
+    ...registrationTimeOf(result.protectedHeaders),
+  };
 }
 
 /**
@@ -331,6 +385,7 @@ export async function verifyScrapiReceipt(
       ok: true,
       reason: "ok",
       grade: gradeOf(label) ?? GRADE_OBSERVED_ONLY,
+      ...registrationTimeOf(result.protectedHeaders),
     };
   } catch (error) {
     return failed(`unreadable receipt: ${String(error)}`);
@@ -501,7 +556,13 @@ export async function verifyRekorReceipt(
     const expected = ed25519Pem(raw);
     if (verifiers.size !== 1 || !verifiers.has(expected))
       return fail("entry is not signed by the checkpoint's key");
-    return { ok: true, reason: "ok", grade: GRADE_OBSERVED_ONLY };
+    return {
+      ok: true,
+      reason: "ok",
+      grade: GRADE_OBSERVED_ONLY,
+      registrationTime: null,
+      registrationTimeReason: "binding_without_iat",
+    };
   } catch (error) {
     // Verification degrades to "no", never throws.
     return fail(`unreadable receipt: ${String(error)}`);
@@ -550,10 +611,30 @@ export async function verifyReceipt(
   });
 }
 
-const isRecord = (entry: unknown): entry is Row =>
-  object(entry) &&
-  typeof entry.ts_url === "string" &&
-  RECORD_FIELDS.every((name) => Object.hasOwn(entry, name));
+/**
+ * A WitnessRecord: every member present; `ts_url`, `entry_hash` and
+ * `receipt_b64` non-empty strings; `receipt_b64` canonical standard base64.
+ * Anything else is malformed, never merely not checked.
+ */
+const isRecord = (entry: unknown): entry is Row => {
+  if (
+    !object(entry) ||
+    !RECORD_FIELDS.every((name) => Object.hasOwn(entry, name))
+  )
+    return false;
+  if (
+    !(["ts_url", "entry_hash", "receipt_b64"] as const).every(
+      (name) => typeof entry[name] === "string" && entry[name] !== "",
+    )
+  )
+    return false;
+  try {
+    base64Canonical(entry.receipt_b64);
+  } catch {
+    return false;
+  }
+  return true;
+};
 
 /**
  * Check every receipt in `receipts` (a Bundle's `checkpoint.witnesses`)
@@ -594,7 +675,9 @@ export async function verifyWitnessReceipts(
     if (!isRecord(record)) continue;
     const tsUrl = record.ts_url as string;
     const row = witnessRowFor(directory, tsUrl);
-    let outcome: ReceiptOutcome | undefined, withheld: string | undefined;
+    let outcome: ReceiptOutcome | undefined,
+      withheld: string | undefined,
+      keyId: string | null = null;
     if (record.is_stub === true)
       withheld = "stub receipt (never reached a witness)";
     else if (row === undefined)
@@ -606,9 +689,13 @@ export async function verifyWitnessReceipts(
       } catch (error) {
         withheld = `not checked: unusable key in directory row (${String(error)})`;
       }
-      for (const key of keys) {
+      for (const [index, key] of keys.entries()) {
         outcome = await verifyReceipt(signed, record, key, cose);
-        if (outcome.ok) break;
+        if (outcome.ok) {
+          // witnessRowKeys returns one key per key id, in order.
+          keyId = (row.key_ids as string[])[index]!;
+          break;
+        }
       }
       // A check that could not run at all withholds the receipt.
       if (outcome !== undefined && !outcome.ok && outcome.notChecked) {
@@ -627,6 +714,9 @@ export async function verifyWitnessReceipts(
         status: "pass",
         reason: outcome.reason,
         grade: outcome.grade,
+        keyId,
+        registrationTime: outcome.registrationTime,
+        registrationTimeReason: outcome.registrationTimeReason,
       });
     } else if (outcome === undefined) {
       findings.push(`witness_unverified:${tsUrl}`);
@@ -636,6 +726,9 @@ export async function verifyWitnessReceipts(
         status: "withheld",
         reason: withheld ?? "not checked",
         grade: null,
+        keyId: null,
+        registrationTime: null,
+        registrationTimeReason: "receipt_not_passed",
       });
     } else {
       findings.push(`witness_receipt_invalid:${tsUrl}`);
@@ -645,6 +738,9 @@ export async function verifyWitnessReceipts(
         status: "fail",
         reason: outcome.reason,
         grade: null,
+        keyId: null,
+        registrationTime: null,
+        registrationTimeReason: "receipt_not_passed",
       });
     }
   }

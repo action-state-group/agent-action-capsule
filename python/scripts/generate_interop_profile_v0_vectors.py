@@ -14,7 +14,9 @@ every expected status with its own evaluator.
 Each case pins its trust policy (test keys only), its verification policy, the contract version
 (``contract_ref`` and ``contract_digest``), its evaluation time, and its inputs as octets.
 
-Output: ``vectors/interop-profile-v0/`` (or ``--out DIR``). Deterministic: no clock, no
+Output: ``vectors/interop-profile-v0/`` (or ``--out DIR``). ``--set requirement-facts`` writes the
+second set, ``vectors/interop-profile-v0-requirement-facts/``: its own contract, whose requirements
+carry the facts §8.3 copies into the claim, and its own pins and exchanges. Deterministic: no clock, no
 randomness. Every key is derived from a public seed and is for testing only. ``README.md`` is
 hand-written; when present in the output directory it is included in ``SHA256SUMS`` but never
 rewritten. Dependencies: the standard library and ``cryptography`` (Ed25519 only).
@@ -34,6 +36,8 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "interop-profile-v0"
 SET = "aac-interop-profile-v0"
+FACTS_OUT = ROOT / "vectors" / "interop-profile-v0-requirement-facts"
+FACTS_SET = "aac-interop-profile-v0-requirement-facts"
 PROFILE = "evidence-interop/0"
 SPEC = "spec/interop-profile-v0.md"
 STATUS = ("Conformance vectors for the pre-Internet-Draft profile evidence-interop/0. Every key is a "
@@ -44,7 +48,7 @@ KINDS = ["cll-checkpoint", "cll-inclusion-proof", "cll-consistency-proof"]
 # The Evidence Contract v0 schema this corpus's contract validates against (the profile's EC pin).
 EC_SCHEMA = {
     "name": "evidence-contract-v0.json",
-    "sha256": "6d10d5eb97e15421db0ab922b5f6d1f0a2e9f453fb64e52fb45306ba029ad480",
+    "sha256": "6b969610e6f120a9f5b98555aa5045644c62665f14075bb83fb9e78bab21b770",
 }
 
 # ---------------------------------------------------------------------------
@@ -324,9 +328,11 @@ def verification_policy(**over: Any) -> dict:
     return base
 
 
-def pins(evaluation_time: str, policy: dict | None = None, vpolicy: dict | None = None) -> dict:
+def pins(evaluation_time: str, policy: dict | None = None, vpolicy: dict | None = None, *,
+         contract: dict | None = None) -> dict:
+    contract = contract or CONTRACT
     return {"trust_policy": policy or trust_policy(), "verification_policy": vpolicy or verification_policy(),
-            "contract_ref": CONTRACT_REF, "contract_digest": CONTRACT_DIGEST,
+            "contract_ref": f"{contract['id']}@{contract['version']}", "contract_digest": json_digest(contract),
             "evaluation_time": evaluation_time}
 
 
@@ -443,9 +449,10 @@ def mapped(row: str) -> dict:
     status, sufficiency, verdict = ROW[row]
     out = {"row": row, "status": status, "sufficiency": sufficiency, "verdict": verdict}
     if row == "envelope-7":
-        out["note"] = ("§8.1 row 7: the contract evaluates the Artifact's content; met or not_met only "
-                       "if that gives SATISFIED, else not_evaluable [RES §1]. This profile fixes no content rule, "
-                       "so with no content evaluator the requirement is UNKNOWN (§11.3.7).")
+        out["note"] = ("§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met "
+                       "or, where the requirement allows it, out_of_scope, and any other sufficiency gives "
+                       "not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator "
+                       "the requirement is UNKNOWN (§11.3.7).")
     return out
 
 
@@ -1285,12 +1292,144 @@ def carriage_cases() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# The requirement-facts set (§8.3): a contract whose requirements carry the facts the claim copies
+# ---------------------------------------------------------------------------
+
+# The set's contract validates against the EC pin. Every row is UNKNOWN or GAP with no content
+# evaluator; the point is what the requirement block copies: the date a clause states, and the
+# out_of_scope switch on a native requirement. The open stub carries the same name, which grants
+# nothing there (§8.3).
+_NATIVE = {"forward_verdict": "DETERMINISTIC", "backward_verdict": "DETERMINISTIC"}
+FACTS_CONTRACT = {
+    "id": "C-facts",
+    "version": "1",
+    "requirements": [
+        {"id": "r-obligation-dated", "profile": "obligation",
+         "statement": "The evidence record named by the request is kept as the example instrument requires.",
+         "evidence_rule": "the record is served under a verified envelope", **_NATIVE,
+         "clause": {"instrument": "Example Instrument A", "article": "Article 1",
+                    "effective_from": "2027-08-02"}},
+        {"id": "r-outcome-dated", "profile": "outcome",
+         "statement": "The evidence record named by the request is served under a verified envelope.",
+         "evidence_rule": "the record is served under a verified envelope", **_NATIVE,
+         "clause": {"instrument": "Example Instrument B", "article": "Article 2",
+                    "effective_from": "2026-01-01"}},
+        {"id": "r-outcome", "profile": "outcome",
+         "statement": "The evidence record named by the request is served at all.",
+         "evidence_rule": "a reply names the record", **_NATIVE},
+        {"id": "r-outcome-switched-on", "profile": "outcome",
+         "statement": "The situation the evidence record answers arose in the session.",
+         "evidence_rule": "a reply names the record", **_NATIVE, "out_of_scope_allowed": True},
+        {"id": "r-process-stub", "profile": "process",
+         "statement": "The steps were taken in order.", "out_of_scope_allowed": True},
+    ],
+}
+FACTS_IDS = [r["id"] for r in FACTS_CONTRACT["requirements"]]
+FACTS_STATUS = ("Conformance vectors for the requirement facts evidence-interop/0 copies into the claim "
+                "(§8.3). Every key is a test key derived from a public seed; never use one for anything else.")
+
+
+def with_facts(row: str) -> dict:
+    """Each requirement's §8.1 block, with the date its clause states copied as applies_from."""
+    out = {}
+    for req in FACTS_CONTRACT["requirements"]:
+        block = mapped(row)
+        if "effective_from" in req.get("clause", {}):
+            block["applies_from"] = req["clause"]["effective_from"]
+        # the switch counts on a native shape only (evidence_rule present)
+        if req.get("out_of_scope_allowed") is True and "evidence_rule" in req:
+            block["out_of_scope_allowed"] = True
+        out[req["id"]] = block
+    return out
+
+
+def facts_cases() -> list[dict]:
+    J = "application/json"
+    facts_pins = pins(EVAL, contract=FACTS_CONTRACT)
+    req_e = encode(J, request("2026-10-12T00:02:10Z/facts-e", ART, ANCHOR1))
+    env_e = envelope(req_e, ART, ANCHOR1, ARTIFACT, MATERIAL1, "2026-10-12T00:02:11Z", J)
+    req_r = encode(J, request("2026-10-12T00:02:20Z/facts-r", ART, ANCHOR1))
+    ref_r = refusal(req_r, "no_such_subject", "2026-10-12T00:02:21Z")
+    return [
+        {"id": "facts-row-7",
+         "description": "A verified envelope for the record, evaluated against three native requirements: a "
+                        "dated obligation, a dated outcome and an undated outcome. §8.1 row 7 with no content "
+                        "evaluator, so each is UNKNOWN; each dated block carries its clause's effective_from "
+                        "as applies_from, whether or not that date has passed at the evaluation time.",
+         "cites": ["§8.1 row 7", "§8.3", "§11.3.4", "§11.3.7"],
+         "pins": facts_pins,
+         "inputs": {"request": octets(J, req_e), "replies": [reply("http", env_e, J)], "requirements": FACTS_IDS},
+         "expected": {
+             "request_digest": shx(req_e),
+             "replies": [{"message_type": "envelope", "properties": env_props(),
+                          "requirements": with_facts("envelope-7"),
+                          "claim": {"evidence": [ref(ART)], "proofs": proofs_of(MATERIAL1)}}],
+             "set_properties": {"caller_invariance": "NOT_CHECKED"},
+         }},
+        {"id": "facts-refusal",
+         "description": "A conforming refusal with reason no_such_subject for the same requirements. NOT_FOUND, "
+                        "projecting to GAP; the copied facts do not depend on the row.",
+         "cites": ["§6.3", "§8.1 no_such_subject", "§8.3"],
+         "pins": facts_pins,
+         "inputs": {"request": octets(J, req_r), "replies": [reply("http", ref_r, J)], "requirements": FACTS_IDS},
+         "expected": {
+             "request_digest": shx(req_r),
+             "replies": [{"message_type": "refusal", "properties": ref_props(),
+                          "requirements": with_facts("refusal-no_such_subject"),
+                          "claim": {"evidence": [ref(shx(ref_r))], "proofs": []}}],
+         }},
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Writing
 # ---------------------------------------------------------------------------
 
 
 def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def _manifest(set_id: str, status: str, files: dict[str, bytes]) -> bytes:
+    return _dump({
+        "set": set_id,
+        "status": status,
+        "provenance": "spec-derived",
+        "spec": SPEC,
+        "generator": "python/scripts/generate_interop_profile_v0_vectors.py",
+        "files": [{"path": name, "sha256": shx(data), "count": json.loads(data).get("count")}
+                  for name, data in sorted(files.items())],
+    })
+
+
+def build_facts() -> dict[str, bytes]:
+    cases = facts_cases()
+    corpus = {
+        "set": FACTS_SET,
+        "status": FACTS_STATUS,
+        "provenance": "spec-derived",
+        "profile": PROFILE,
+        "spec": SPEC,
+        "test_keys": {
+            "note": "TEST-ONLY. Each private key is the 32-byte Ed25519 seed SHA-256(seed_label).",
+            "keys": {name: {"seed_label": SEED_LABELS[name], "public": PUB[name]} for name in SEED_LABELS},
+        },
+        "contract": {
+            "document": FACTS_CONTRACT,
+            "document_jcs": jcs(FACTS_CONTRACT),
+            "contract_ref": f"{FACTS_CONTRACT['id']}@{FACTS_CONTRACT['version']}",
+            "contract_digest": json_digest(FACTS_CONTRACT),
+            "schema": EC_SCHEMA,
+        },
+        "logs": {"log-1": {"iss": "https://producer.example", "sub": LOG1["sub"], "log_key": PUB["log"],
+                           "entries": [e.hex() for e in _entries1], "checkpoint_hex": LOG1["checkpoint"].hex(),
+                           "anchor_digest": shx(LOG1["checkpoint"])}},
+        "count": len(cases),
+        "cases": cases,
+    }
+    files = {"vectors.json": _dump(corpus)}
+    files["manifest.json"] = _manifest(FACTS_SET, FACTS_STATUS, files)
+    return files
 
 
 def build() -> dict[str, bytes]:
@@ -1332,21 +1471,17 @@ def build() -> dict[str, bytes]:
         "cases": cases,
     }
     files = {"vectors.json": _dump(corpus)}
-    files["manifest.json"] = _dump({
-        "set": SET,
-        "status": STATUS,
-        "provenance": "spec-derived",
-        "spec": SPEC,
-        "generator": "python/scripts/generate_interop_profile_v0_vectors.py",
-        "files": [{"path": name, "sha256": shx(data), "count": json.loads(data).get("count")}
-                  for name, data in sorted(files.items())],
-    })
+    files["manifest.json"] = _manifest(SET, STATUS, files)
     return files
 
 
-def write(out: Path) -> None:
+# Each set: its builder and default output directory.
+SETS = {"interop-profile-v0": (build, DEFAULT_OUT), "requirement-facts": (build_facts, FACTS_OUT)}
+
+
+def write(out: Path, set_name: str = "interop-profile-v0") -> None:
     out.mkdir(parents=True, exist_ok=True)
-    for name, data in build().items():
+    for name, data in SETS[set_name][0]().items():
         (out / name).write_bytes(data)
     lines = [f"{shx(p.read_bytes())}  {p.name}"
              for p in sorted(out.iterdir()) if p.is_file() and p.name != "SHA256SUMS"]
@@ -1355,8 +1490,10 @@ def write(out: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
-    write(parser.parse_args().out)
+    parser.add_argument("--set", choices=sorted(SETS), default="interop-profile-v0")
+    parser.add_argument("--out", type=Path, help="default: the set's directory under vectors/")
+    args = parser.parse_args()
+    write(args.out or SETS[args.set][1], args.set)
 
 
 if __name__ == "__main__":

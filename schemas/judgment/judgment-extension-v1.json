@@ -90,7 +90,7 @@
               "required": ["agent_output_digest", "x-judgment-v1"],
               "properties": {
                 "agent_output_digest": {
-                  "description": "Base field. JSON-DIGEST of the judge's answer object (JudgeAnswer).",
+                  "description": "Base field. JSON-DIGEST of the judge's answer object, which validates against JudgeAnswerWithOutOfScope (spec/judgment-extension-v1.md, Answer schema).",
                   "$ref": "#/$defs/HexDigest"
                 },
                 "x-judgment-v1": { "$ref": "#/$defs/JudgmentMember" }
@@ -115,6 +115,16 @@
       "required": ["verdict"],
       "properties": {
         "verdict": { "enum": ["met", "not_met", "not_evaluable"] },
+        "rationale": { "type": "string" }
+      }
+    },
+    "JudgeAnswerWithOutOfScope": {
+      "description": "A judge's answer. out_of_scope only for a requirement with out_of_scope_allowed (spec/judgment-extension-v1.md, Answer schema).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict"],
+      "properties": {
+        "verdict": { "enum": ["met", "not_met", "not_evaluable", "out_of_scope"] },
         "rationale": { "type": "string" }
       }
     },

@@ -47,6 +47,7 @@ __all__ = [
     "BINDING_SCRAPI",
     "GRADE_MMR_VERIFIED",
     "GRADE_OBSERVED_ONLY",
+    "REGISTRATION_TIME_REASONS",
     "WitnessReceiptResult",
     "binding_of",
     "checkpoint_digest",
@@ -76,9 +77,21 @@ _GRADES = {
 }
 _GRADE_LABEL = -65537
 
+#: Why a receipt result has no ``registration_time``: the receipt did not
+#: pass; it passed with no ``iat`` in its protected CWT claims; its protected
+#: ``iat`` is not an integer number of seconds from 0 to 2^53 - 1; or its
+#: binding (``rekor``) is no COSE Receipt and so carries no ``iat``.
+REGISTRATION_TIME_REASONS = ("receipt_not_passed", "iat_absent", "iat_invalid", "binding_without_iat")
+_CWT_CLAIMS_LABEL = 15
+_CWT_IAT = 6
+#: The largest ``iat`` reported: every language reads it as an exact integer.
+_MAX_IAT = 2**53 - 1
+
 # The CLL checkpoint fields its signing body covers, besides ``v``/``kind``.
 _SIGNED_FIELDS = ("log_id", "mmr_size", "root", "prev_size", "prev_root", "key_id", "timestamp")
 _RECORD_FIELDS = ("ts_url", "entry_hash", "receipt_b64", "leaf_index", "tree_size")
+#: The WitnessRecord members that must be non-empty strings.
+_TEXT_FIELDS = ("ts_url", "entry_hash", "receipt_b64")
 
 
 @dataclass(frozen=True)
@@ -87,7 +100,11 @@ class WitnessReceiptResult:
 
     ``reason`` is a human-readable explanation and is not part of the
     cross-language contract; ``grade`` is the verified receipt grade, or
-    ``None``.
+    ``None``. A passing receipt names the directory ``key_id`` it verified
+    under. ``registration_time`` is the ``iat`` the witness signed into a
+    passing COSE Receipt's protected header, in seconds since the epoch;
+    otherwise it is ``None`` and ``registration_time_reason`` (one of
+    :data:`REGISTRATION_TIME_REASONS`) says why.
     """
 
     ts_url: str
@@ -95,6 +112,9 @@ class WitnessReceiptResult:
     status: str
     reason: str
     grade: str | None = None
+    key_id: str | None = None
+    registration_time: int | None = None
+    registration_time_reason: str | None = None
 
 
 def binding_of(url: str) -> str:
@@ -269,12 +289,74 @@ def _receipt_shape_error(receipt: bytes, key_pem: bytes | str | None = None) -> 
             return "receipt alg ES256 needs an ECDSA P-256 key"
         if alg == -8 and not isinstance(key, Ed25519PublicKey):
             return "receipt alg EdDSA needs an Ed25519 key"
+        if alg == -8:
+            from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+            raw = key.public_bytes(Encoding.Raw, PublicFormat.Raw)
+            if not isinstance(value[3], bytes) or not _strict_ed25519(raw, value[3]):
+                return "receipt EdDSA signature is not strict Ed25519: a non-canonical or small-order key or R, or S >= L"
     return None
+
+
+# The y coordinates (mod p) of the eight small-order points of edwards25519:
+# order 4 (0), the identity (1), order 2 (p - 1) and order 8 (Y8, p - Y8).
+# Either sign of x gives the same set.
+_P25519 = (1 << 255) - 19
+_Y8 = int.from_bytes(bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"), "little")
+_SMALL_ORDER_Y = frozenset({0, 1, _P25519 - 1, _Y8, _P25519 - _Y8})
+_ED25519_L = (1 << 252) + 27742317777372353535851937790883648493
+
+
+def _strict_ed25519(public_key: bytes, signature: bytes) -> bool:
+    """The strict Ed25519 conditions of checkpointed-local-log's
+    ``ed25519-vectors.json`` that do not need the message: A and R canonical
+    (y < p) and not of small order, and S < L. ``cryptography`` checks the
+    cofactorless equation but accepts a small-order A, and a small-order A
+    verifies a forged signature over any message."""
+    if len(public_key) != 32 or len(signature) != 64:
+        return False
+    for point in (public_key, signature[:32]):
+        y = int.from_bytes(point, "little") & ((1 << 255) - 1)
+        if y >= _P25519 or y in _SMALL_ORDER_Y:
+            return False
+    return int.from_bytes(signature[32:], "little") < _ED25519_L
 
 
 def _grade(result: Any) -> str | None:
     label = (getattr(result, "protected_header_ext", None) or {}).get(_GRADE_LABEL)
     return _GRADES.get(label) if isinstance(label, str) else None
+
+
+def _integer_key(mapping: dict, key: int, default: Any) -> Any:
+    """``mapping``'s value under the CBOR integer ``key``. A float or boolean
+    key that Python hashes equal (``6.0``, ``True`` for 1) is another key, as
+    the other languages read it."""
+    return next((v for k, v in mapping.items() if type(k) is int and k == key), default)
+
+
+def _registration_time(receipt: bytes) -> tuple[int | None, str | None]:
+    """The ``iat`` (claim 6) of a verified COSE Receipt's protected CWT claims
+    (label 15), as ``(time, None)``, or ``(None, reason)``. Read only after the
+    signature verified: only the protected header is signed."""
+    import cbor2
+
+    try:
+        protected_bytes = cbor2.loads(receipt).value[0]
+        protected = cbor2.loads(protected_bytes) if protected_bytes else {}
+    except Exception:  # noqa: BLE001 -- a verified receipt decodes; never raise
+        return None, "iat_invalid"
+    absent = object()
+    claims = _integer_key(protected, _CWT_CLAIMS_LABEL, absent)
+    if claims is absent:
+        return None, "iat_absent"
+    if not isinstance(claims, dict):
+        return None, "iat_invalid"
+    iat = _integer_key(claims, _CWT_IAT, absent)
+    if iat is absent:
+        return None, "iat_absent"
+    if type(iat) is not int or not 0 <= iat <= _MAX_IAT:
+        return None, "iat_invalid"
+    return iat, None
 
 
 def _verify_cll(signed: Mapping[str, Any], record: Mapping[str, Any], pem: bytes) -> tuple[bool, str, str | None]:
@@ -438,7 +520,18 @@ def verify_receipt(
 
 
 def _is_record(entry: Any) -> bool:
-    return isinstance(entry, Mapping) and isinstance(entry.get("ts_url"), str) and all(k in entry for k in _RECORD_FIELDS)
+    """A WitnessRecord: every member present; ``ts_url``, ``entry_hash`` and
+    ``receipt_b64`` non-empty strings; ``receipt_b64`` canonical standard
+    base64. Anything else is malformed, never merely not checked."""
+    if not isinstance(entry, Mapping) or not all(k in entry for k in _RECORD_FIELDS):
+        return False
+    if not all(isinstance(entry[k], str) and entry[k] for k in _TEXT_FIELDS):
+        return False
+    try:
+        _b64_canonical(entry["receipt_b64"])
+    except ValueError:  # binascii.Error included
+        return False
+    return True
 
 
 def verify_witness_receipts(
@@ -469,7 +562,7 @@ def verify_witness_receipts(
             continue
         ts_url = record["ts_url"]
         row = row_for(directory, ts_url)
-        ok, reason, grade = False, "", None
+        ok, reason, grade, key_id = False, "", None, None
         if record.get("is_stub") is True:
             reason = "stub receipt (never reached a witness)"
         elif row is None:
@@ -479,12 +572,19 @@ def verify_witness_receipts(
                 pems = row_public_keys_pem(row)
             except Exception as exc:  # noqa: BLE001 -- an unusable row key is "not checked"
                 pems, reason = [], f"not checked: unusable key in directory row ({exc})"
-            for pem in pems:
+            for index, pem in enumerate(pems):
                 ok, reason, grade = verify_receipt(signed, record, pem, checkpoint_cose)
                 if ok:
+                    # row_public_keys_pem returns one key per key id, in order.
+                    key_id = row["key_ids"][index]
                     break
+        registration_time, time_reason = None, "receipt_not_passed"
         if ok:
             status = "pass"
+            if binding_of(ts_url) == BINDING_REKOR:
+                time_reason = "binding_without_iat"
+            else:
+                registration_time, time_reason = _registration_time(_b64_canonical(record["receipt_b64"]))
         elif not reason or reason.startswith(("not checked", "stub receipt")):
             status = "withheld"
             reason = reason or "not checked: no key in the directory row for this witness"
@@ -492,7 +592,9 @@ def verify_witness_receipts(
         else:
             status = "fail"
             findings.append(f"witness_receipt_invalid:{ts_url}")
-        results.append(WitnessReceiptResult(ts_url, binding_of(ts_url), status, reason, grade if ok else None))
+        results.append(WitnessReceiptResult(
+            ts_url, binding_of(ts_url), status, reason, grade if ok else None, key_id, registration_time, time_reason,
+        ))
     statuses = {r.status for r in results}
     if malformed or "fail" in statuses:
         overall = "fail"

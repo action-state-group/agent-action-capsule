@@ -26,7 +26,7 @@ npm ci && npm run check
 cargo fmt --check && cargo clippy --locked --all-targets --all-features -- -D warnings && cargo test --locked --all-features
 
 # repository root
-scripts/cross-language-interlock.sh                 # Python, Go, TypeScript and Rust agree
+scripts/cross-language-interlock.sh                 # Python, Go, TypeScript and Rust agree (Python needs the bundle extra)
 ```
 
 `spec/` builds with `kramdown-rfc` and `xml2rfc`; CI fails when the built

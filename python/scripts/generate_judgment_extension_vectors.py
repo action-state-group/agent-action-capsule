@@ -265,6 +265,43 @@ AI_JUDGE = judgment_capsule(
     references=[judged_from(), calibrated_against_expert()],
 )
 
+# A judge whose pack lets it answer out_of_scope (spec section 3): its own rubric
+# and instruction template list the fourth answer, and its parameters carry no
+# prompt file (the published judge-prompt.md lists three answers).
+RUBRIC_OOS = {
+    "rubric_id": "org.example.refund-policy-adherence-scoped",
+    "criteria": [
+        {"id": "C3", "claim": "A refund to a different payment method carries a supervisor approval reference."},
+    ],
+    "verdicts": ["met", "not_met", "not_evaluable", "out_of_scope"],
+    "policy_digest": raw_digest("policy.md"),
+}
+INSTRUCTION_TEMPLATE_OOS = {
+    "template": "Criterion: {claim}\nEvidence: {evidence}\nAnswer with one option.",
+    "na_instructions": "Choose not_evaluable when the evidence does not bear on the criterion.",
+    "out_of_scope_instructions": "Choose out_of_scope when nothing the criterion describes happened.",
+    "options": ["met", "not_met"],
+    "na_option": "not_evaluable",
+    "out_of_scope_option": "out_of_scope",
+}
+JUDGE_PARAMETERS_OOS = {
+    "instruction_template_digest": json_digest(INSTRUCTION_TEMPLATE_OOS),
+    "axes_digest": raw_digest("axes.json"),
+    "sampling_params": {"temperature": "0", "max_output_tokens": 512, "seed": 7},
+    "judge_batch": 1,
+}
+JUDGE_ANSWER_OOS = {"verdict": "out_of_scope",
+                    "rationale": "The refund went back to the original payment method; no change of method happened."}
+
+AI_JUDGE_OOS = judgment_capsule(
+    action_id="example-judgment-model-C3-0001",
+    developer=JUDGE_DEVELOPER,
+    timestamp=TIMESTAMP_JUDGE,
+    answer=JUDGE_ANSWER_OOS,
+    member=member_for(RUBRIC_OOS, RUBRIC_VERSION, JUDGE_PARAMETERS_OOS),
+    references=[judged_from()],
+)
+
 # ---------------------------------------------------------------------------
 # Cases
 # ---------------------------------------------------------------------------
@@ -404,8 +441,37 @@ def case_missing_rubric_version() -> dict:
     }
 
 
+def case_ai_judge_out_of_scope() -> dict:
+    return {
+        "id": "pos-ai-judge-out-of-scope",
+        "kind": "positive",
+        "description": "A model judge answers out_of_scope: the situation its criterion describes did not "
+                       "happen. Its answer validates against JudgeAnswerWithOutOfScope and not against "
+                       "JudgeAnswer, so it joins only a judge declaration that pinned the wider definition "
+                       "(spec sections 3 and 4.2, check 7).",
+        "capsule": AI_JUDGE_OOS,
+        "preimages": _preimages(RUBRIC_OOS, JUDGE_PARAMETERS_OOS, JUDGE_ANSWER_OOS,
+                                {"instruction_template": INSTRUCTION_TEMPLATE_OOS}),
+        "expect": {
+            "schema_valid": True,
+            "capsule_id": AI_JUDGE_OOS["capsule_id"],
+            "digests": _digests(AI_JUDGE_OOS),
+            "inner_digests": {
+                "judge_parameters.instruction_template_digest": "json-digest of preimages.values.instruction_template",
+                "judge_parameters.axes_digest": "sha256 of raw_files['axes.json']",
+                "rubric.policy_digest": "sha256 of raw_files['policy.md']",
+            },
+            "answer_schema": "JudgeAnswerWithOutOfScope",
+            "judged_from_target": "evidence.capsule_id",
+            "result": "pass",
+            "findings": [],
+        },
+    }
+
+
 def cases() -> list[dict]:
-    return [case_ai_judge(), case_human_expert(), case_params_mismatch(), case_missing_rubric_version()]
+    return [case_ai_judge(), case_human_expert(), case_params_mismatch(), case_missing_rubric_version(),
+            case_ai_judge_out_of_scope()]
 
 
 # ---------------------------------------------------------------------------

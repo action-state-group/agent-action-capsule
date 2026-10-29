@@ -25,9 +25,9 @@ old-field → new-field mapping in §9.
   `schemas/vendor/epistemic-types.json` for this family's own parity check (§0).
 - The Evidence Layer's six-state reconcile vocabulary and Close model (section "Reconcile and
   Close") — `close/v1` (§3) is a direct schema encoding of that prose, not a second model.
-- The Evidence Contract's three-value `Verdict` (`met | not_met | not_evaluable`),
-  mirrored by `evaluation-report/v1`'s `cases[].verdict`, identical to `evidence-result-v0.json`'s
-  `Claim.verdict`.
+- The Evidence Contract's `Verdict` (`met | not_met | not_evaluable | out_of_scope`), mirrored by
+  `evaluation-report/v1`'s `cases[].verdict`, the same vocabulary as `evidence-result-v0.json`'s
+  `Claim.verdict` (Result v0 §4.2).
 - `evidence-result-v0.json`'s and `evidence-plan-ir-v0.json`'s `<contract_id>@<version>`
   `contract_ref` convention.
 
@@ -119,7 +119,7 @@ record cites, never a boolean this record sets on itself.
 
 `epistemic_type: semantic_judgment` — a judgment reached by interpretation, not direct observation.
 Unifies capsule-judge's `judge_judgment`/`judge_adjudication` and capsule-compiler's
-`judge_judgment_adapter` row convention into one schema: per-case `met`/`not_met`/`not_evaluable`,
+`judge_judgment_adapter` row convention into one schema: a per-case verdict in the Evidence Contract's vocabulary,
 each case citing the acts it grounds on and the method it was judged against, all cases sharing one
 judge pin.
 
@@ -133,16 +133,26 @@ evaluation-report:
   judge_pin: basis                  # §6 — model_id, prompt_digest, axes_digest, sampling
   cases:
     - case_id: string
-      verdict: met | not_met | not_evaluable   # owned by the Evidence Contract
+      verdict: met | not_met | not_evaluable | out_of_scope   # owned by the Evidence Contract
       acts: [citation, ...]         # citation_purpose: grounds, >=1
       method: citation              # citation_purpose: method — REQUIRED
 ```
+
+**`out_of_scope` (Result v0 §4.2).** A case is `out_of_scope` when the judge found that the situation
+its criterion describes did not arise. A judge answers it only for a requirement whose contract
+carries `out_of_scope_allowed`, and a producer MUST NOT map such an answer to any other verdict: where
+the requirement has no switch, the case is malformed and backs no counting claim. A case names a
+`case_id`, not its requirement, so the record alone cannot show the switch; the claim that cites the
+case is held to Result v0 §4.2, and a third party that needs more re-evaluates. A reader that counts
+case verdicts counts `out_of_scope` on its own: never as `met` or `not_evaluable`, and never as the
+not-applicable exclusion (Result v0 §3). (No reader
+in this repository counts case verdicts today: the presentation views take verdicts from claims.)
 
 **This is the single-party case of `adjudication/v1`'s shape, not a parallel family.** A `Case`'s
 `verdict`/`basis` fields are named identically to `adjudication/v1`'s — see §6 — because a
 single-party evaluation is an adjudication where the rubric stands in for a second party, not a
 structurally different act of judgment. The two schemas differ only in verdict vocabulary
-(`met`/`not_met`/`not_evaluable`, owned by the Evidence Contract, vs.
+(the Evidence Contract's `met`/`not_met`/`not_evaluable`/`out_of_scope` vs.
 `corroborated`/`inconclusive`/`contradicted`, mesh's twin-comparison vocabulary) and in how many
 parties `basis` judges (a rubric citation via `method`, vs. one or two `parties` citations).
 
@@ -328,7 +338,7 @@ table is the schema-level unification that convergence did not itself produce.
 | Old field (source) | New field (this family) | Note |
 |---|---|---|
 | capsule-judge `judge_judgment.detail.prompt_digest`, `.model_id` | `evaluation-report/v1 judge_pin.prompt_digest`, `.model_id` | same names; `prompt_digest` becomes a `digest-ref` object, was a bare digest string |
-| capsule-judge `judge_judgment.detail.label` | `evaluation-report/v1 cases[].verdict` | renamed and revocabularied: `label` was an open string; `verdict` is the closed `met`/`not_met`/`not_evaluable` set owned by the Evidence Contract |
+| capsule-judge `judge_judgment.detail.label` | `evaluation-report/v1 cases[].verdict` | renamed and revocabularied: `label` was an open string; `verdict` is the closed set owned by the Evidence Contract (`met`/`not_met`/`not_evaluable`, and `out_of_scope` where the requirement allows it) |
 | capsule-judge `judge_judgment.detail.confidence_micros` | *(no counterpart)* | a confidence figure has no field in this family — the same "never a score above the fold" discipline `evidence-result-v0.md` §3 rules; `calibration-summary/v1` reports k-of-n counts, never a confidence value |
 | capsule-judge `judge_judgment.detail.evidence.turn_capsule_ids[]` | `evaluation-report/v1 cases[].acts[]` | renamed and typed: bare ids become `citation` objects (`citation_purpose: grounds`), by digest only — the identical `evidenceIds` → digest-ref rename `evidence-result-v0.md` §9 already made for its own family |
 | capsule-judge `judge_judgment.detail.judge_pin.judge_pin_digest` | *(no counterpart — recomputed, not carried)* | this family cites the judge pin's own fields directly; a reader who wants the digest computes it over the same canonicalization, same discipline as every other digest here |

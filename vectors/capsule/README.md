@@ -28,6 +28,12 @@ SHA-256 value records the exact canonical string in `canonical_preimages`.
   null when format/canonicalization selection fails closed or the input is not
   canonicalizable.
 - `code` and `detail`: stable diagnostic labels and explanatory text.
+- `canonical_preimages.capsule_id`, when present on a single-Capsule case: the
+  exact RFC 8785 text of the Capsule without `capsule_id` and the local-only
+  fields. An implementation's JCS output must equal it byte for byte.
+- `same_capsule_id_as`, when present: the name of another case whose
+  `capsule_id_recomputed` this case must equal, such as a value written `-0`
+  and the same value written `0`.
 
 Store-level inputs use `{"ledger": [...]}` and expected results use
 `{"results": [...]}`. All other cases contain one Capsule.

@@ -2,6 +2,64 @@
 
 ## Unreleased
 
+- Security, strict witness receipts (feature `strict`): an EdDSA witness
+  receipt now verifies only under strict Ed25519. scitt-cose-receipt 0.1.1
+  verifies with dalek's `verify`, which accepts a small-order key, so a
+  receipt under a directory row pinning such a key could be forged by
+  anyone. The key A and the signature's R must now be canonical and not of
+  small order, and S less than L, before that check; the strict vector
+  `neg-witness-cll-small-order-key` pins it (#439).
+- **Breaking**, strict witness receipts: `WitnessReceiptResult` gains `key_id`,
+  `registration_time` and `registration_time_reason`, and `ReceiptCheck`
+  gains `registration_time` and `registration_time_reason`, so a struct
+  literal must add them. A passing receipt names the directory key id it
+  verified under and the protected CWT `iat` its witness signed, or a
+  `REASON_` constant saying why it has none, as the strict vectors pin (#392).
+- Strict Bundle verification (feature `strict`): `verify_bundle_strict`'s
+  `checkpoint` claim also holds the completeness certificate's `log_id`, when
+  stated (a `null` counts as stated), to the signed log identifier, and
+  reports `checkpoint_field_mismatch:log_id` once when it differs, whatever
+  the checkpoint's own copy says. A producer-selected Bundle whose certificate
+  names another log was INCOMPLETE and is now INVALID (#380, the strict
+  vectors `neg-producer-selected-certificate-log-id`,
+  `neg-producer-selected-both-log-ids` and
+  `neg-producer-selected-certificate-log-id-null`).
+- Witness receipts: a `checkpoint.witnesses` entry is malformed unless every
+  member is present, `ts_url`, `entry_hash` and `receipt_b64` are non-empty
+  strings, and `receipt_b64` is canonical standard base64. An entry with every
+  member and a string `ts_url` that fails one of the new checks (an empty
+  `ts_url`, an empty or non-string `entry_hash`, or an empty, non-string or
+  non-canonical `receipt_b64`) was read as a receipt. It was withheld when no
+  usable key checked it (no directory row, a row without a usable key, or a
+  stub), and an empty or non-string `entry_hash` beside a rekor or scrapi
+  receipt that verified passed, since only the cll binding reads it. In each
+  case the Bundle stayed VALID. It now fails as
+  `witness_receipt_malformed:<index>`, with or without a row (#386, the strict
+  vectors `neg-witness-malformed-member-no-row`,
+  `neg-witness-malformed-members` and `neg-witness-malformed-shapes`).
+
+## 0.4.1
+
+- `verify::verify` does bounded work on hostile numbers. The float and
+  unsafe-integer walk writes a path only for a number that fails, where it
+  used to build one for every member it visited. It reports at most 64
+  `float_in_digest_field` and 64 `unsafe_integer_in_digest_field` findings,
+  and each quotes at most 256 characters of its path, then `...`. Verdicts do
+  not change, but on a record with more than 64 of either, Rust now lists
+  fewer findings than the Go and Python verifiers, which list every one. A
+  1 MB record holding 250,000 floats under a 500 KB key used to keep about
+  125 GB of path text (250,000 paths of 500 KB each), and now verifies in a
+  few times the memory of one parsed copy. `canonical::float_paths` and
+  `unsafe_int_paths` still return every path, in full.
+
+## 0.4.0
+
+- Evidence Bundle producer (feature `strict`): `bundle::build_evidence_bundle`
+  over a `ProofSource`, `proof_source_from_cll` for a CLL backend and a
+  `RecordSource`, and `build_unproven_bundle`. Each Bundle is checked with
+  `verify_bundle_strict` and refused when INVALID. Requires
+  `checkpointed-local-log` 0.3.1.
+
 ## 0.3.0
 
 - `settlement`: a `fee_asset_differs` finding names the leg or legs whose

@@ -99,7 +99,15 @@ record is unclaimed and the caller passed `require_signature`. It is
   decodes them, are strings for `log_id`, `root` (lowercase hex), `key_id`
   (lowercase hex), `timestamp` (the statement's `issued_at` text as signed)
   and `prev_root` (`""` for a first checkpoint, never `null`), and integers
-  for `mmr_size` and `prev_size` (`1.0` and `true` are not `1`). Each of `log_id`,
+  for `mmr_size` and `prev_size` (`1.0` and `true` are not `1`). The
+  completeness certificate's `log_id`, when the certificate is an object that
+  states one, is a second copy of the signed log identifier (the Bundle draft,
+  §Completeness: equal to "the certificate and checkpoint values"): when it is
+  not the signed `log_id`, the claim gets `checkpoint_field_mismatch:log_id`,
+  once, whatever the checkpoint's own copy says
+  (`neg-producer-selected-certificate-log-id`, `neg-producer-selected-both-log-ids`;
+  a `null` copy is stated and is not the signed value,
+  `neg-producer-selected-certificate-log-id-null`). Each of `log_id`,
   `mmr_size` and `root` that the copy lacks gets
   `checkpoint_field_missing:<name>`. Any such finding fails the claim.
 - Otherwise the claim passes, and the checkpoint is authenticated.
@@ -142,13 +150,19 @@ checkpoint's `key_id`. It is reported and never gates. Otherwise it is
   `withheld` (`witness_receipt_absent`).
 - When the checkpoint is not authenticated, it is `withheld`
   (`checkpoint_unverified`).
-- Otherwise, an entry that is not an object with a string `ts_url` and all of
-  `entry_hash`, `receipt_b64`, `leaf_index` and `tree_size` is malformed. Its
+- Otherwise, an entry is malformed unless it is an object with all of
+  `ts_url`, `entry_hash`, `receipt_b64`, `leaf_index` and `tree_size`, whose
+  `ts_url`, `entry_hash` and `receipt_b64` are non-empty strings and whose
+  `receipt_b64` is canonical standard base64 (padded, no non-zero trailing
+  bits, no whitespace; `neg-witness-malformed-member-no-row`,
+  `neg-witness-malformed-members`, `neg-witness-malformed-shapes`). A malformed entry is never merely not
+  checked: it fails with or without a directory row for its witness. Its
   finding, `witness_receipt_malformed:<index>`, is listed before every other
   finding.
 
-Each other entry gets one result `{ts_url, binding, status, grade}`, worked
-out in this order:
+Each other entry gets one result `{ts_url, binding, status, grade, key_id,
+registration_time, registration_time_reason}`, its status worked out in this
+order:
 
 1. A receipt with `is_stub` set to JSON `true` is `withheld`. Any other
    `is_stub` value (`1`, `"true"`) does not make it a stub
@@ -175,6 +189,9 @@ out in this order:
 
 A verifier that cannot run a receipt check at all (for example, no COSE
 library) reports the receipt `withheld`, never `fail`.
+
+`key_id` is the row's `key_ids` entry the receipt passed under, and `null`
+for a receipt that did not pass.
 
 A `withheld` receipt adds `witness_unverified:<ts_url>`; a `fail` adds
 `witness_receipt_invalid:<ts_url>`. Overall, `witnesses` fails when an entry
@@ -241,7 +258,13 @@ A receipt verifies over a leaf when all of these hold:
   proofs under -1, each a byte string holding CBOR
   `[tree_size, leaf_index, [audit_path...]]`. Every entry must decode;
 - for some proof, the RFC 9162 root rebuilt from the leaf and that proof
-  verifies the signature under the key.
+  verifies the signature under the key. EdDSA is verified strictly, as
+  checkpointed-local-log's `checkpoint-conformance-vectors/ed25519-vectors.json`
+  pins it: the key A and the signature's R must be canonical encodings
+  (y < p) and not of small order, S must be less than L, and the
+  cofactorless equation must hold. A small-order key satisfies that equation
+  for any root, so anyone could sign under it
+  (`neg-witness-cll-small-order-key`).
 
 Decoding follows the scitt-cose verifiers (Python `scitt_cose.verify_receipt`,
 the Rust crate `scitt-cose-receipt`), including their `crit` handling.
@@ -259,6 +282,26 @@ row has no key and is unusable (`pos-witness-rekor-row-rsa-key`,
 `pos-witness-rekor-row-unknown-key`). A row
 whose `key_ids` or `public_keys` is not a list, or with a key id that is not 64
 lowercase hex characters, is unusable (`withheld`).
+
+**Registration time.** `registration_time` is the time the witness signed
+into a receipt that passed: the `iat` claim (6, RFC 8392) of the CWT claims
+map (header label 15, RFC 9597) in the protected header of its COSE Receipt,
+in seconds since the epoch. It is read only from the protected header, which the verified
+signature covers. It is never taken from the unprotected header
+(`pos-witness-registration-time-unprotected`), from the checkpoint's own
+`timestamp` (`pos-witness-registration-time-not-checkpoint-time`), or from
+any other value. When it is `null`, `registration_time_reason` names why, as
+one of:
+
+| reason | the receipt |
+|---|---|
+| `receipt_not_passed` | is `withheld` or `fail` (`pos-witness-registration-time-no-directory`, `neg-witness-registration-time-wrong-key`) |
+| `iat_absent` | passed, and its protected header has no CWT claims map, or one without `iat`: the wire shape before witnesses signed a time (`pos-witness-cll`). Labels and claim keys are CBOR integers; a float key such as `6.0` is another key (`pos-witness-registration-time-float-claim-key`) |
+| `iat_invalid` | passed, and its protected CWT claims are not a map, or its `iat` is not an integer from 0 to 2^53 - 1 (a float, text, a negative number or 2^53 and above; `pos-witness-registration-time-invalid`, `pos-witness-registration-time-claims-not-a-map`, `pos-witness-registration-time-out-of-range`) |
+| `binding_without_iat` | passed under the `rekor` binding, whose receipt is a Rekor entry, not a COSE Receipt (`pos-witness-rekor`) |
+
+When `registration_time` is set, `registration_time_reason` is `null`. An
+`iat` that is absent or invalid never changes the receipt's `status`.
 
 The `reason` text a verifier reports for a receipt is not part of these
 vectors.
@@ -294,6 +337,9 @@ checkpoint is signed by another, the log key.
 | `neg-record-duplicate` | the third record appears twice | INVALID |
 | `incomplete-producer-selected` | records 1 and 3 of 3, producer-selected | INCOMPLETE |
 | `neg-producer-selected-proof-invalid` | the same with one inclusion proof edited | INVALID |
+| `neg-producer-selected-certificate-log-id` | producer-selected: the certificate's `log_id` is not the signed one | INVALID |
+| `neg-producer-selected-both-log-ids` | producer-selected: both `log_id` copies name another log, one mismatch | INVALID |
+| `neg-producer-selected-certificate-log-id-null` | producer-selected: the certificate's `log_id` is `null`, the checkpoint has none | INVALID |
 | `neg-producer-selected-coordinates-log-and-seq` | producer-selected: one membership names another log, another has `seq` 0 | INVALID |
 | `neg-producer-selected-leaf-index` | producer-selected: `leaf_index` is not `seq - 1` | INVALID |
 | `neg-producer-selected-repeated-seq` | producer-selected: two memberships claim `seq` 1 | INVALID |
@@ -319,10 +365,14 @@ checkpoint is signed by another, the log key.
 | `pos-witness-cll-es256` | a `cll` receipt signed ES256 under the row's P-256 key | VALID |
 | `neg-witness-cll-es256-other-curve` | a receipt declaring ES256, signed with the secp256k1 key the row lists (skipped) | INVALID |
 | `neg-witness-cll-key-not-a-point` | the row's key id is 32 bytes that are not an Ed25519 point | INVALID |
+| `neg-witness-cll-small-order-key` | the row's key is the identity point, a small-order Ed25519 key, and the receipt's signature is R = the identity, S = 0 | INVALID |
 | `pos-witness-cll-second-key` | the row's first key does not verify; its second does | VALID |
 | `pos-witness-row-binding-null` | the only row for the endpoint has `binding: null` | VALID, witnesses withheld |
 | `neg-witness-stub-not-boolean` | `is_stub: 1` on bytes that are not a receipt | INVALID |
 | `neg-witness-malformed` | an entry without `tree_size`, beside a good receipt | INVALID |
+| `neg-witness-malformed-member-no-row` | a receipt with an empty `receipt_b64`, for a witness with no directory row | INVALID |
+| `neg-witness-malformed-members` | beside a good receipt, a non-canonical `receipt_b64` and a non-string `entry_hash` | INVALID |
+| `neg-witness-malformed-shapes` | beside a good receipt, five more malformed shapes, a stub among them | INVALID |
 | `pos-witness-scrapi` | a `scrapi` receipt, no grade label | VALID, grade `observed-only` |
 | `pos-witness-scrapi-unknown-grade` | an unknown grade label | VALID, grade `observed-only` |
 | `neg-witness-scrapi-other-statement` | a `scrapi` receipt over other bytes | INVALID |
@@ -334,6 +384,16 @@ checkpoint is signed by another, the log key.
 | `neg-witness-rekor-string-integer` | `integratedTime` is the signed value as a JSON string | INVALID |
 | `pos-witness-rekor-row-without-key` | a `rekor` row with a log ID and no public key | VALID, witnesses withheld |
 | `pos-witness-three-bindings` | one receipt of each binding | VALID |
+| `pos-witness-registration-time` | a `cll` receipt with a protected `iat` equal to the checkpoint's timestamp | VALID, `registration_time` is the `iat` |
+| `pos-witness-registration-time-not-checkpoint-time` | a protected `iat` 90 seconds after the checkpoint's timestamp | VALID, `registration_time` is the `iat` |
+| `pos-witness-registration-time-no-directory` | a receipt with an `iat` and no directory | VALID, witnesses withheld, `receipt_not_passed` |
+| `neg-witness-registration-time-wrong-key` | a receipt with an `iat`, signed by a key the row does not list | INVALID, `receipt_not_passed` |
+| `pos-witness-registration-time-unprotected` | no protected `iat`; the unprotected header carries one | VALID, `iat_absent` |
+| `pos-witness-registration-time-invalid` | a protected `iat` that is a float | VALID, `iat_invalid` |
+| `pos-witness-registration-time-claims-not-a-map` | protected CWT claims that are an integer | VALID, `iat_invalid` |
+| `pos-witness-registration-time-out-of-range` | a protected `iat` of 2^53 | VALID, `iat_invalid` |
+| `pos-witness-registration-time-float-claim-key` | protected CWT claims keyed by the float `6.0`, not the integer 6 | VALID, `iat_absent` |
+| `pos-witness-scrapi-registration-time` | a `scrapi` receipt with a protected `iat` | VALID, `registration_time` is the `iat` |
 | `incomplete-witness-on-unsigned-checkpoint` | a receipt on a checkpoint with no `cose` | INCOMPLETE, witnesses withheld |
 
 ## Record signatures (`record_signatures`)
@@ -361,7 +421,8 @@ directory). Then compare:
 - `kind_ok` (expected `true` unless stated);
 - `claims` (`name`, `status`, `findings`, in order);
 - `witnesses` (`status`, `findings`, and `receipts` with `ts_url`, `binding`,
-  `status` and `grade`);
+  `status`, `grade`, `key_id`, `registration_time` and
+  `registration_time_reason`);
 - `records` (`capsule_id`, `identity_ok`, `signature`, `key_id`, `seq`);
 - `checkpoint_authenticated` (the `checkpoint` claim passed);
 - `signer_matches_checkpoint`.
@@ -370,8 +431,8 @@ For each `record_signatures` entry, the record's verdict must equal `expect`.
 
 ## Regenerating
 
-From the repository root, with `agent-action-capsule[bundle,envelope]`
-installed:
+From the repository root, with `agent-action-capsule[bundle,envelope]` and
+`scitt-cose` 0.3.0 or later installed:
 
 ```sh
 python3 python/scripts/generate_bundle_strict_vectors.py

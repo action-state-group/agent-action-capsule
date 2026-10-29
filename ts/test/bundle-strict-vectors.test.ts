@@ -62,6 +62,9 @@ describe("strict Evidence Bundle vectors", () => {
                 binding: r.binding,
                 status: r.status,
                 grade: r.grade,
+                key_id: r.keyId,
+                registration_time: r.registrationTime,
+                registration_time_reason: r.registrationTimeReason,
               })),
             },
       records: strict.records.map((r) => ({

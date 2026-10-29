@@ -3,6 +3,7 @@ package bundle_test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -56,11 +57,23 @@ func observed(result bundle.StrictResult) map[string]interface{} {
 	if result.Witnesses != nil {
 		receipts := []interface{}{}
 		for _, receipt := range result.WitnessReceipts {
-			var grade interface{}
+			var grade, keyID, registrationTime, registrationTimeReason interface{}
 			if receipt.Grade != nil {
 				grade = *receipt.Grade
 			}
-			receipts = append(receipts, map[string]interface{}{"ts_url": receipt.TSURL, "binding": receipt.Binding, "status": receipt.Status, "grade": grade})
+			if receipt.KeyID != nil {
+				keyID = *receipt.KeyID
+			}
+			if receipt.RegistrationTime != nil {
+				registrationTime = json.Number(jsonInt(*receipt.RegistrationTime))
+			}
+			if receipt.RegistrationTimeReason != nil {
+				registrationTimeReason = *receipt.RegistrationTimeReason
+			}
+			receipts = append(receipts, map[string]interface{}{
+				"ts_url": receipt.TSURL, "binding": receipt.Binding, "status": receipt.Status, "grade": grade,
+				"key_id": keyID, "registration_time": registrationTime, "registration_time_reason": registrationTimeReason,
+			})
 		}
 		witnesses = map[string]interface{}{"status": result.Witnesses.Status, "findings": strings(result.Witnesses.Findings), "receipts": receipts}
 	}
@@ -235,4 +248,31 @@ func TestStrictRefusesValuesNestedTooDeeply(t *testing.T) {
 	verdict, messages := envelope.VerifyRecordSignature(deep)
 	require.Equal(t, envelope.Invalid, verdict)
 	require.NotEmpty(t, messages)
+}
+
+// VerifyCheckpoint is VerifyStrict's checkpoint claim on its own: on every
+// strict case it gives the same claim and authenticated checkpoint, and on a
+// pass the COSE bytes it returns are the Bundle's checkpoint.cose.
+func TestVerifyCheckpointIsTheStrictCheckpointClaim(t *testing.T) {
+	for _, c := range loadStrictVectors(t).Cases {
+		value, isObject := c.Bundle.(map[string]interface{})
+		if !isObject {
+			continue
+		}
+		strict := bundle.VerifyStrict(value, bundle.StrictOptions{})
+		claim, signed, cose := bundle.VerifyCheckpoint(value)
+		if strict.Claim("checkpoint") == nil {
+			continue
+		}
+		require.Equal(t, *strict.Claim("checkpoint"), claim, c.ID)
+		require.Equal(t, strict.SignedCheckpoint, signed, c.ID)
+		if claim.Status != "pass" {
+			require.Nil(t, cose, c.ID)
+			continue
+		}
+		stated := value["checkpoint"].(map[string]interface{})
+		encoded, err := base64.RawURLEncoding.DecodeString(stated["cose"].(string))
+		require.NoError(t, err, c.ID)
+		require.Equal(t, encoded, cose, c.ID)
+	}
 }

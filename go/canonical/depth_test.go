@@ -29,3 +29,20 @@ func TestTooDeep(t *testing.T) {
 	cycle["self"] = cycle
 	require.True(t, canonical.TooDeep(cycle))
 }
+
+// Canonicalization refuses what TooDeep refuses instead of recursing without
+// end (#388).
+func TestJCSRefusesAValueThatContainsItself(t *testing.T) {
+	cycle := map[string]interface{}{}
+	cycle["self"] = cycle
+	items := []interface{}{nil}
+	items[0] = items
+	for _, value := range []interface{}{cycle, items} {
+		_, err := canonical.JCS(value)
+		require.ErrorContains(t, err, "contains itself")
+	}
+	cycle["format_version"] = "4"
+	cycle["canonicalization_id"] = canonical.CanonicalizationJCS
+	_, err := canonical.ComputeCapsuleID(cycle)
+	require.ErrorContains(t, err, "contains itself")
+}

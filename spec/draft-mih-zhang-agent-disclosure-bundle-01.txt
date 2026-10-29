@@ -5,8 +5,8 @@
 SCITT                                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
 Intended status: Standards Track                                Y. Zhang
-Expires: 5 April 2027                                        Independent
-                                                          2 October 2026
+Expires: 22 April 2027                                       Independent
+                                                         19 October 2026
 
 
                           AAC Evidence Bundle
@@ -43,7 +43,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 5 April 2027.
+   This Internet-Draft will expire on 22 April 2027.
 
 Copyright Notice
 
@@ -53,7 +53,7 @@ Copyright Notice
 
 
 
-Mih & Zhang               Expires 5 April 2027                  [Page 1]
+Mih & Zhang               Expires 22 April 2027                 [Page 1]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -83,25 +83,25 @@ Table of Contents
        7.2.3.  Composition Closure . . . . . . . . . . . . . . . . .  13
        7.2.4.  Joins . . . . . . . . . . . . . . . . . . . . . . . .  14
        7.2.5.  Observers and Redundancy  . . . . . . . . . . . . . .  15
-       7.2.6.  Composed Digest . . . . . . . . . . . . . . . . . . .  15
+       7.2.6.  Composed Digest . . . . . . . . . . . . . . . . . . .  16
        7.2.7.  Verifying composed/v1 . . . . . . . . . . . . . . . .  17
-     7.3.  Provisional Extension Kinds . . . . . . . . . . . . . . .  17
+     7.3.  Provisional Extension Kinds . . . . . . . . . . . . . . .  18
    8.  Bundle Digest and Countersignatures . . . . . . . . . . . . .  18
      8.1.  The countersign/v1 Entry  . . . . . . . . . . . . . . . .  18
      8.2.  Verifying a countersign/v1 Entry  . . . . . . . . . . . .  20
      8.3.  Self-Countersignature . . . . . . . . . . . . . . . . . .  21
    9.  Fragment Codec  . . . . . . . . . . . . . . . . . . . . . . .  21
-   10. Verification  . . . . . . . . . . . . . . . . . . . . . . . .  21
+   10. Verification  . . . . . . . . . . . . . . . . . . . . . . . .  22
    11. Security Considerations . . . . . . . . . . . . . . . . . . .  22
-     11.1.  composed/v1  . . . . . . . . . . . . . . . . . . . . . .  22
+     11.1.  composed/v1  . . . . . . . . . . . . . . . . . . . . . .  23
    12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  23
    13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  23
-   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  23
-     14.1.  Normative References . . . . . . . . . . . . . . . . . .  23
-     14.2.  Informative References . . . . . . . . . . . . . . . . .  25
+   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  24
+     14.1.  Normative References . . . . . . . . . . . . . . . . . .  24
+     14.2.  Informative References . . . . . . . . . . . . . . . . .  26
    Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  26
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  26
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  26
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  27
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  27
 
 
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Mih & Zhang               Expires 5 April 2027                  [Page 2]
+Mih & Zhang               Expires 22 April 2027                 [Page 2]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -165,7 +165,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang               Expires 5 April 2027                  [Page 3]
+Mih & Zhang               Expires 22 April 2027                 [Page 3]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -221,7 +221,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang               Expires 5 April 2027                  [Page 4]
+Mih & Zhang               Expires 22 April 2027                 [Page 4]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -277,7 +277,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang               Expires 5 April 2027                  [Page 5]
+Mih & Zhang               Expires 22 April 2027                 [Page 5]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -333,7 +333,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang               Expires 5 April 2027                  [Page 6]
+Mih & Zhang               Expires 22 April 2027                 [Page 6]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -389,7 +389,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang               Expires 5 April 2027                  [Page 7]
+Mih & Zhang               Expires 22 April 2027                 [Page 7]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -445,7 +445,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang               Expires 5 April 2027                  [Page 8]
+Mih & Zhang               Expires 22 April 2027                 [Page 8]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -501,7 +501,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang               Expires 5 April 2027                  [Page 9]
+Mih & Zhang               Expires 22 April 2027                 [Page 9]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -557,7 +557,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang               Expires 5 April 2027                 [Page 10]
+Mih & Zhang               Expires 22 April 2027                [Page 10]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -565,7 +565,8 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    )
 
    artifact-member = { member-common, outcome: "artifact",
-                       ? bundle: { * tstr => any } }  ; a Bundle
+                       ? bundle: { * tstr => any },   ; a Bundle
+                       ? response: artifact-response }
    refusal-member  = { member-common, outcome: "refusal",
                        ? refusal: signed-refusal }
    absence-member  = { member-common, outcome: "absence",
@@ -576,6 +577,12 @@ Internet-Draft             AAC Evidence Bundle              October 2026
      reason: tstr,                   ; Evidence Request refusal reason
      issued_at: tstr,                ; RFC 3339
      * tstr => any,                  ; deployment signature members
+   }
+
+   artifact-response = {             ; as received, minus artifact bytes
+     request_digest: digest-hex,
+     artifact_digest: digest-hex,
+     * tstr => any,                  ; deployment members and signature
    }
 
    recorded-absence = {              ; the requester's own record
@@ -604,20 +611,19 @@ Internet-Draft             AAC Evidence Bundle              October 2026
                 "issued_receipt" / "same_interval"
    join-state = "agree" / "mismatch" / "unjoined" / "one_sided"
 
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 11]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    label-id   = text .regexp "[A-Za-z0-9._:-]{1,128}"
    digest-hex = text .regexp "[0-9a-f]{64}"
 
    A join's pointer and each compare element are JSON Pointers
    [RFC6901].  Member id values are unique, and so are observer id
    values.  Every member's observer names a declared observer.  Every
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 11]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    join names two distinct declared members, in ascending order.  No two
    joins share the same members, basis and pointer. not_requested names
    participants that the composing party knew of but did not ask.  A
@@ -660,19 +666,32 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    refusal as signature-unverified.  It does not report it as failed,
    and it does not report it as absent.
 
-   An artifact that fails verification is still an artifact member.  The
-   verifier reports the failure on that member.  It is not a fourth
-   outcome, and the verifier MUST NOT report it as a successful grant.
 
 
 
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 12]
+Mih & Zhang               Expires 22 April 2027                [Page 12]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
+
+   An artifact member MAY carry response: the responder's signed
+   response to the request, as received, with the artifact bytes
+   removed.  A response signature that names the artifact by digest
+   therefore still verifies without them.  When the bundle and response
+   are both carried, a verifier MUST require the response's
+   request_digest to equal the member's, and its artifact_digest to
+   equal the member's digest.  Either mismatch is a failed composed/v1
+   check.  This binds the artifact to the request it answered, as a
+   refusal's or absence's own request_digest does.  The response's
+   signature is verified under the deployment's signature profile,
+   exactly as a refusal's is.  A verifier that does not implement that
+   profile reports the response as signature-unverified, which is
+   neither failed nor absent. response is not part of the composed
+   digest (Section 7.2.6).
+
+   An artifact that fails verification is still an artifact member.  The
+   verifier reports the failure on that member.  It is not a fourth
+   outcome, and the verifier MUST NOT report it as a successful grant.
 
    *Each member keeps its own claims.* A verifier MUST verify every
    carried member bundle as an Evidence Bundle under this document.  It
@@ -704,6 +723,13 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    *  *fail*: in any of these cases:
 
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 13]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
       -  a member neither carries a body nor is listed in missing;
 
       -  a listed member carries a body;
@@ -719,16 +745,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    Declaring a member missing withholds its body, not its existence.
    Its id, observer, request_digest, outcome and digest remain in the
    composed digest.
-
-
-
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 13]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    Composition closure covers declared members only.  A participant that
    is in neither members nor not_requested is not visible to a verifier
@@ -762,6 +778,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    Linkage is evaluated on each artifact member's root record (its
    bundle's root).  This document defines the derivation for two bases:
 
+
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 14]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    *  *pre_agreed_identifier*: pointer selects a string in each root
       record.  The members are linked when SHA-256 of that string's
       UTF-8 octets equals identifier_digest on both sides.  The
@@ -778,13 +802,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    verifier that does not implement a derivation for the basis reports
    such a join as not_derivable.  It MUST NOT report the join as a
    derived agreement, and MUST NOT count it as corroboration.
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 14]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    A join one of whose artifact members is declared missing is also
    not_derivable.
@@ -817,6 +834,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    the reason.  Otherwise it MAY report the pair as corroborating, and
    it MUST qualify that as resting on _declared_ custody.
 
+
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 15]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    Custody labels are the composing party's declaration.  Like producer-
    key/v1 (Section 7.1), they can only downgrade a result.  Identical
    labels make a pair redundant.  Distinct labels never establish that
@@ -833,14 +858,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    set it was made from.  It is computed only from the declarations in
    the block, so it recomputes from the containing Bundle alone.  It
    stays the same whether or not the member bodies are carried.
-
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 15]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    1.  Build the _digest input_ D, a JSON object with exactly these five
        members:
@@ -869,13 +886,26 @@ Internet-Draft             AAC Evidence Bundle              October 2026
        order.  The order in which arrays are carried does not affect the
        digest.
 
+
+
+
+
+
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 16]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    2.  composed_digest is the lowercase hexadecimal SHA-256 of the UTF-8
        octets of the JCS [RFC8785] serialization of D.  This is the
        canonicalization algorithm jcs of
        [I-D.mih-sokolov-scitt-payload-binding]: RFC 8785 with no
        normalization pass, SHA-256, bare hex.  D contains no numbers.
 
-   3.  Member bodies, missing and composed_digest itself are excluded.
+   3.  Member bodies, each member's response, missing and
+       composed_digest itself are excluded.
 
    A verifier MUST recompute composed_digest and report a mismatch as a
    failed composed/v1 check.  It MUST NOT report the recomputed value as
@@ -885,18 +915,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    block, bodies included.  A countersignature over the containing
    Bundle therefore binds the composition and everything carried with
    it.  The composed digest binds only the evidence set.
-
-
-
-
-
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 16]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    Because the composed digest covers each member's outcome, observer
    and digest, all observers' roles and custody labels, and every join
@@ -914,7 +932,8 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    2.  per member: outcome, body carried or declared missing, digest
        reproduced, and, for a carried member bundle, its own three
-       completeness claims;
+       completeness claims and, when it carries response, whether the
+       response's digests match and its signature state;
 
    3.  composition closure;
 
@@ -928,6 +947,13 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    reports the block as uninterpreted and integrity-covered.  It MUST
    NOT present any member, join or composed digest as checked.
 
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 17]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
 7.3.  Provisional Extension Kinds
 
    The interim registry (Section 13) also records two extension kinds
@@ -939,20 +965,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    that does not implement them treats them as it treats any extension
    kind it does not implement (Section 7): digest-covered and
    uninterpreted.
-
-
-
-
-
-
-
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 17]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
 8.  Bundle Digest and Countersignatures
 
@@ -978,10 +990,25 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    verified countersignature.  The countersign/v1 object is defined in
    Section 8.1.  A verifier MUST report an entry of a type it does not
    implement as unverified and MUST NOT let it change any other result.
-   An entry with no type member MUST be processed as countersign/v1, and
-   its signing input then uses the value countersign/v1 for type.
+   An entry with no type member is the legacy form of countersign/v1.  A
+   verifier MUST process it as countersign/v1, and its signing input
+   then uses the value countersign/v1 for type.  A producer MUST NOT
+   emit the legacy form.
 
 8.1.  The countersign/v1 Entry
+
+
+
+
+
+
+
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 18]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    {
      "type": "countersign/v1",
@@ -1002,13 +1029,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    type, signer, over, statement, and signature are REQUIRED; receipt is
    OPTIONAL.
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 18]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    signer.id identifies the countersigner, for example a did:web
    identifier. signer.key_id is the countersigner's 32-byte Ed25519
@@ -1037,6 +1057,15 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       interval of [RFC3339] timestamps the checks covered; it is absent
       when the Bundle declares no such interval.
 
+
+
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 19]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    +==============+====================================================+
    | result       | Meaning                                            |
    +==============+====================================================+
@@ -1058,14 +1087,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    Each result stands alone.  A statement MUST NOT carry an aggregate
    result, a score, a rating, or a claim of compliance, and a verifier
    MUST NOT derive one from the checks.  Capture coverage, meaning
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 19]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    whether every action that occurred was recorded, cannot be recomputed
    from the records a Bundle carries; a statement MUST NOT report it as
    a check result.  Profile identifiers naming a recomputation policy,
@@ -1091,6 +1112,16 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    A verifier MUST, for each countersign/v1 entry:
 
+
+
+
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 20]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    1.  recompute the bundle digest and compare it to over.  An entry
        whose over differs is not a countersignature of this Bundle and
        MUST be reported as invalid;
@@ -1110,17 +1141,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    is found).  It MUST attribute each check and result to the signer, as
    the signer's statement, and MUST NOT present them as its own
    findings.
-
-
-
-
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 20]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
 8.3.  Self-Countersignature
 
@@ -1148,6 +1168,16 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    base64url-decode the unpadded fragment, UTF-8 decode it, parse it as
    JSON, and then apply the Bundle checks in this document.
 
+
+
+
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 21]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    The /v/<id> route carries a Bundle of one using this same codec;
    /bundle uses no different decoder.  The path is a locator only.  URL
    fragments are not sent in HTTP requests, so a hosted service receives
@@ -1168,15 +1198,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    record membership as separate results.  It MUST distinguish WITHHELD,
    REVEALED-match, REVEALED-mismatch, declared incomplete, and absent or
    invalid membership proofs.
-
-
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 21]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
 11.  Security Considerations
 
@@ -1205,6 +1226,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    declaration can only cause an entry to be reported as not
    independent: a producer that declares a key it does not hold weakens
    only its own Bundle's countersignatures, and a producer that
+
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 22]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    countersigns with a key it does not declare is still reported at most
    as an unresolved signer unless a directory the verifier chose lists
    that key.  Results are listed per check and never combined, because
@@ -1226,13 +1255,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       derived; a mismatch fails.  Declared custody can only downgrade
       (Section 7.2.5).  Nothing a producer declares can make two
       observers independent.
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 22]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    *  *Outcomes.* Keeping refusal and absence distinct is evidentiary:
       synthesizing either one from the other forges the stronger record
@@ -1260,6 +1282,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    [RFC8174] and [RFC2119] terminology and the designated-expert
    criteria of [RFC8126]:
 
+
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 23]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    1.  "Evidence Bundle kind", initial value evidence-bundle/v2.
 
    2.  "Evidence Bundle extension kind", initial values producer-key/v1
@@ -1279,16 +1309,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 14.  References
 
 14.1.  Normative References
-
-
-
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 23]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    [I-D.mih-agent-disclosure-envelope]
               Mih, S., "Disclosure Envelope Profile for Agent Action
@@ -1319,6 +1339,13 @@ Internet-Draft             AAC Evidence Bundle              October 2026
               Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
               <https://www.rfc-editor.org/rfc/rfc3339>.
 
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 24]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
               Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
               <https://www.rfc-editor.org/rfc/rfc4648>.
@@ -1337,14 +1364,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
               Writing an IANA Considerations Section in RFCs", BCP 26,
               RFC 8126, DOI 10.17487/RFC8126, June 2017,
               <https://www.rfc-editor.org/rfc/rfc8126>.
-
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 24]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
@@ -1371,6 +1390,18 @@ Internet-Draft             AAC Evidence Bundle              October 2026
               Receipts", RFC 9942, DOI 10.17487/RFC9942, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9942>.
 
+
+
+
+
+
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 25]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
               Y., and S. Lasker, "An Architecture for Trustworthy and
               Transparent Digital Supply Chains", RFC 9943,
@@ -1382,25 +1413,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    [I-D.mih-sokolov-scitt-payload-binding]
               Mih, S. and A. Sokolov, "Canonicalization Declaration for
               SCITT Signed Statements", Work in Progress, Internet-
-              Draft, draft-mih-sokolov-scitt-payload-binding-06, 26
+              Draft, draft-mih-sokolov-scitt-payload-binding-05, 13
               September 2026, <https://datatracker.ietf.org/doc/html/
-              draft-mih-sokolov-scitt-payload-binding-06>.
+              draft-mih-sokolov-scitt-payload-binding-05>.
 
    [RFC9338]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
               Countersignatures", STD 96, RFC 9338,
               DOI 10.17487/RFC9338, December 2022,
               <https://www.rfc-editor.org/rfc/rfc9338>.
-
-
-
-
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 25]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    [RFC9901]  Fett, D., Yasuda, K., and B. Campbell, "Selective
               Disclosure for JSON Web Tokens", RFC 9901,
@@ -1416,11 +1436,27 @@ Change Log
       countersignature, countersigner, and self-countersignature, and
       required a self-countersignature to be rendered as not
       independent; registered countersign/v1 as a second
-      countersignature type.
+      countersignature type; an entry with no type is processed as
+      countersign/v1 (the legacy form).
 
    *  Defined and registered the producer-key/v1 extension kind, which
       declares the producer's key and can only cause a countersignature
       to be reported as not independent.
+
+
+
+
+
+
+
+
+
+
+
+Mih & Zhang               Expires 22 April 2027                [Page 26]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    *  Defined and registered the composed/v1 extension kind: one member
       per responder carrying its Evidence Request outcome (artifact,
@@ -1450,14 +1486,6 @@ Authors' Addresses
 
    Yiqun Zhang
    Independent
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 26]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    Email: zhangyiqun9164@gmail.com
 
 
@@ -1481,32 +1509,4 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih & Zhang               Expires 5 April 2027                 [Page 27]
+Mih & Zhang               Expires 22 April 2027                [Page 27]

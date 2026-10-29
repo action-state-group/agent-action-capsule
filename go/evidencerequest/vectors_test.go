@@ -25,7 +25,7 @@ import (
 // repository's vectors/evidence-request. Every expected result there was
 // written from draft-mih-agent-evidence-request-00, never from an
 // implementation. Each corpus test requires the corpus's full case count,
-// and TestVectorChecksums requires those counts to total the manifest's 124.
+// and TestVectorChecksums requires those counts to total the manifest's 125.
 func vectorDir(t *testing.T) string {
 	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)
@@ -35,7 +35,7 @@ func vectorDir(t *testing.T) string {
 
 // corpusCounts is the case count of each corpus, as manifest.json states it.
 var corpusCounts = map[string]int{
-	"request.json": 33, "resolution.json": 19, "digest.json": 7, "refusal.json": 21,
+	"request.json": 33, "resolution.json": 19, "digest.json": 7, "refusal.json": 22,
 	"outcomes.json": 13, "invariance.json": 6, "retention.json": 25,
 }
 
@@ -101,7 +101,7 @@ func TestVectorChecksums(t *testing.T) {
 		}
 	}
 	require.Len(t, corpusCounts, 7)
-	assert.Equal(t, 124, total)
+	assert.Equal(t, 125, total)
 }
 
 // TestRegistryVector: the strings the draft fixes are this package's.
@@ -301,7 +301,7 @@ func TestRefusalVectors(t *testing.T) {
 					assert.Equal(t, c.SigningBody, string(body))
 				}
 				if key, held := keys[r.KeyID]; held && c.Expect.Conformant {
-					resigned, err := er.Refusal{RequestDigest: r.RequestDigest, Reason: r.Reason, IssuedAt: r.IssuedAt, KeyID: r.KeyID}.Sign(context.Background(), seededSigner{key})
+					resigned, err := er.Refusal{RequestDigest: r.RequestDigest, Reason: r.Reason, IssuedAt: r.IssuedAt, KeyID: r.KeyID, Detail: r.Detail}.Sign(context.Background(), seededSigner{key})
 					require.NoError(t, err)
 					assert.Equal(t, r.Sig, resigned.Sig, "Ed25519 is deterministic: the same key signs the same body identically")
 					if m.MediaType == er.MediaTypeCBOR {

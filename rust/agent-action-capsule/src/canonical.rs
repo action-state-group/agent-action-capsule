@@ -245,18 +245,41 @@ pub fn compute_capsule_id(capsule: &Map<String, Value>) -> Result<String, Canoni
 /// floating-point number appears in `v`, object members in byte order of
 /// their keys (the Go and Python walk order). `path` prefixes every result.
 pub fn float_paths(v: &Value, path: &str) -> Vec<String> {
-    walk_paths(v, path, is_float)
+    walk_paths(v, path, is_float, usize::MAX, usize::MAX)
 }
 
 /// Every JSON path at which an integer exceeds ±`MAX_SAFE_INTEGER`.
 pub fn unsafe_int_paths(v: &Value, path: &str) -> Vec<String> {
-    walk_paths(v, path, |n| !is_float(n) && is_unsafe_int(n))
+    walk_paths(v, path, is_unsafe_only, usize::MAX, usize::MAX)
 }
 
-/// One open array or object of the walk: its remaining children, and the
-/// path they extend.
+/// The first `limit` paths [`float_paths`] would return, in its order, each
+/// cut to `max_chars` characters followed by `...`.
+pub(crate) fn float_paths_limited(v: &Value, limit: usize, max_chars: usize) -> Vec<String> {
+    walk_paths(v, "", is_float, limit, max_chars)
+}
+
+/// The first `limit` paths [`unsafe_int_paths`] would return, in its order,
+/// each cut as [`float_paths_limited`] cuts them.
+pub(crate) fn unsafe_int_paths_limited(v: &Value, limit: usize, max_chars: usize) -> Vec<String> {
+    walk_paths(v, "", is_unsafe_only, limit, max_chars)
+}
+
+fn is_unsafe_only(n: &Number) -> bool {
+    !is_float(n) && is_unsafe_int(n)
+}
+
+/// How one open array or object was reached from its parent.
+enum Step<'a> {
+    Root,
+    Key(&'a str),
+    Index(usize),
+}
+
+/// One open array or object of the walk: how it was reached, and its
+/// remaining children.
 struct Frame<'a> {
-    path: String,
+    step: Step<'a>,
     children: Children<'a>,
 }
 
@@ -266,61 +289,133 @@ enum Children<'a> {
 }
 
 /// Depth-first, without recursion: memory grows with nesting depth, not with
-/// the input's size, and a path is built only for a number that matches.
-fn walk_paths(root: &Value, root_path: &str, matches: impl Fn(&Number) -> bool) -> Vec<String> {
+/// the input's size. A path is written only for a number that matches, and
+/// the walk stops after `limit` of them, each cut to `max_chars` characters,
+/// so the work is linear in the input plus the paths returned.
+fn walk_paths(
+    root: &Value,
+    root_path: &str,
+    matches: impl Fn(&Number) -> bool,
+    limit: usize,
+    max_chars: usize,
+) -> Vec<String> {
     let mut out = Vec::new();
     let mut stack: Vec<Frame<'_>> = Vec::new();
-    visit(root, root_path.to_string(), &mut stack, &mut out, &matches);
+    if limit == 0 {
+        return out;
+    }
+    if let Some(children) = children_of(root) {
+        stack.push(Frame {
+            step: Step::Root,
+            children,
+        });
+    } else if matches!(root, Value::Number(n) if matches(n)) {
+        out.push(join(root_path, &stack, None, max_chars));
+        return out;
+    }
     while let Some(frame) = stack.last_mut() {
-        let next = match &mut frame.children {
-            Children::Object(members) => members.next().map(|(key, child)| {
-                let path = if frame.path.is_empty() {
-                    key.clone()
-                } else {
-                    format!("{}.{key}", frame.path)
-                };
-                (child, path)
-            }),
-            Children::Array(items) => items
-                .next()
-                .map(|(i, child)| (child, format!("{}[{i}]", frame.path))),
+        let (child, step) = match &mut frame.children {
+            Children::Object(members) => match members.next() {
+                Some((key, child)) => (child, Step::Key(key.as_str())),
+                None => {
+                    stack.pop();
+                    continue;
+                }
+            },
+            Children::Array(items) => match items.next() {
+                Some((i, child)) => (child, Step::Index(i)),
+                None => {
+                    stack.pop();
+                    continue;
+                }
+            },
         };
-        match next {
-            Some((child, path)) => visit(child, path, &mut stack, &mut out, &matches),
-            None => {
-                stack.pop();
+        if let Some(children) = children_of(child) {
+            stack.push(Frame { step, children });
+        } else if matches!(child, Value::Number(n) if matches(n)) {
+            out.push(join(root_path, &stack, Some(&step), max_chars));
+            if out.len() >= limit {
+                break;
             }
         }
     }
     out
 }
 
-fn visit<'a>(
-    v: &'a Value,
-    path: String,
-    stack: &mut Vec<Frame<'a>>,
-    out: &mut Vec<String>,
-    matches: &impl Fn(&Number) -> bool,
-) {
+fn children_of(v: &Value) -> Option<Children<'_>> {
     match v {
-        Value::Number(n) if matches(n) => out.push(if path.is_empty() {
-            "<root>".to_string()
-        } else {
-            path
-        }),
         Value::Object(map) => {
             let mut members: Vec<(&String, &Value)> = map.iter().collect();
             members.sort_by(|a, b| a.0.cmp(b.0));
-            stack.push(Frame {
-                path,
-                children: Children::Object(members.into_iter()),
-            });
+            Some(Children::Object(members.into_iter()))
         }
-        Value::Array(items) => stack.push(Frame {
-            path,
-            children: Children::Array(items.iter().enumerate()),
-        }),
-        _ => {}
+        Value::Array(items) => Some(Children::Array(items.iter().enumerate())),
+        _ => None,
+    }
+}
+
+/// The path of a matching number: `root_path`, then each open frame's step
+/// below the root, then `last` (the number's own step, `None` for the root).
+/// Past `max_chars` characters the rest is dropped and `...` marks the cut.
+fn join(root_path: &str, stack: &[Frame<'_>], last: Option<&Step<'_>>, max_chars: usize) -> String {
+    let mut path = Clipped::new(max_chars);
+    path.push(root_path);
+    let steps = stack.iter().map(|f| &f.step).chain(last);
+    for step in steps {
+        if path.full {
+            break;
+        }
+        match step {
+            Step::Root => {}
+            Step::Key(key) => {
+                if !path.text.is_empty() {
+                    path.push(".");
+                }
+                path.push(key);
+            }
+            Step::Index(i) => path.push(&format!("[{i}]")),
+        }
+    }
+    if path.text.is_empty() && !path.full {
+        return "<root>".to_string();
+    }
+    if path.full {
+        path.text.push_str("...");
+    }
+    path.text
+}
+
+/// A string that keeps at most `room` characters of what is pushed onto it.
+struct Clipped {
+    text: String,
+    room: usize,
+    full: bool,
+}
+
+impl Clipped {
+    fn new(room: usize) -> Self {
+        Clipped {
+            text: String::new(),
+            room,
+            full: false,
+        }
+    }
+
+    fn push(&mut self, s: &str) {
+        if self.full {
+            return;
+        }
+        match s.char_indices().nth(self.room) {
+            Some((cut, _)) => {
+                self.text.push_str(&s[..cut]);
+                self.room = 0;
+                self.full = true;
+            }
+            None => {
+                self.room -= s.chars().count();
+                self.text.push_str(s);
+            }
+        }
     }
 }
 
@@ -375,6 +470,30 @@ mod tests {
         let big: Value =
             serde_json::from_str("[9007199254740992,-9007199254740991]").expect("json");
         assert_eq!(unsafe_int_paths(&big, ""), ["[0]"]);
+    }
+
+    #[test]
+    fn limited_paths_stop_at_the_limit_and_clip_each_path() {
+        let v: Value = serde_json::from_str(r#"{"b":[1.5,2.5,3.5],"a":{"xyz":0.5}}"#).unwrap();
+        assert_eq!(
+            float_paths(&v, "pre"),
+            ["pre.a.xyz", "pre.b[0]", "pre.b[1]", "pre.b[2]"]
+        );
+        assert_eq!(float_paths_limited(&v, 2, usize::MAX), ["a.xyz", "b[0]"]);
+        assert_eq!(
+            float_paths_limited(&v, 9, 3),
+            ["a.x...", "b[0...", "b[1...", "b[2..."]
+        );
+        assert_eq!(float_paths_limited(&v, 0, 9), Vec::<String>::new());
+        assert_eq!(float_paths_limited(&Value::from(1.5), 9, 2), ["<root>"]);
+        assert_eq!(float_paths_limited(&v, 1, 0), ["..."]);
+        // Characters, not bytes: a cut never splits one.
+        let wide: Value = serde_json::from_str("{\"é\u{10000}x\": 1.5}").unwrap();
+        assert_eq!(float_paths_limited(&wide, 1, 2), ["é\u{10000}..."]);
+        assert_eq!(float_paths_limited(&wide, 1, 3), ["é\u{10000}x"]);
+        let big: Value =
+            serde_json::from_str(r#"[9007199254740992, 1.5, 9007199254740993]"#).unwrap();
+        assert_eq!(unsafe_int_paths_limited(&big, 1, 9), ["[0]"]);
     }
 
     #[test]

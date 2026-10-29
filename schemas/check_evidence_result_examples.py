@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""
+r"""
 check_evidence_result_examples.py
 
 Validates every committed Evidence Result v0 example fixture
@@ -29,7 +29,8 @@ mechanical half):
      above can actually fail, not just report green by construction. The
      rule is then restored in memory (the committed schema file is never
      modified) and re-verified red.
-  4. PROPOSED CLAIM TYPES (the 2026-09-25 ruling -- "close +
+  4. CLAIM TYPES, reconcile normative, close PROPOSED (the 2026-09-25
+     ruling -- "close +
      reconcile as claim types in result v0"): five more positives
      (pos-example-org-reconcile-result, pos-example-org-close-agreed-result,
      pos-example-org-close-unilateral-result, pos-example-org-close-unilateral-named-peer-
@@ -183,6 +184,59 @@ mechanical half):
          closed CoverageKind enum.
      The never-stronger-than-the-evidence rule needs the evidence sets; its
      vector is vectors/coverage-declaration-v0/aggregate-stronger-than-evidence.
+  11. Traceability (spec sections 1 and 2): pos-example-org-recorded-absence-result
+     (the claims positive with claim-3 a story claim about a recorded absence,
+     citing the absence record by digest) MUST validate. One schema negative
+     MUST fail, with a strip-the-rule mutant:
+       - neg-claim-evidence-empty: the same claim with `evidence: []`.
+  12. Coverage counts evaluations, one per claim (spec section 3):
+     pos-example-org-repeated-requirement-result (two claims of one
+     requirement, one met and one not_met) MUST validate, and every positive's
+     `evaluated_population` MUST equal its in-force claim count and
+     `unknown_count` its in-force UNKNOWN claims (section 4.3). `excluded_not_applicable` has no claim and is not
+     recomputed.
+  13. The fourth verdict and applicability (spec sections 4.2, 4.3): the
+     out_of_scope, close-switched-on and applicability positives MUST
+     validate and pass revision_findings; the eight schema negatives MUST
+     fail, each with a strip-the-rule mutant; the REVISION_NEGATIVES MUST
+     pass the schema and fail revision_findings, each flipped by its mutant.
+  14. Which requirements the run covered (spec section 3):
+     pos-example-org-requirements-covered-result (the claims positive listing
+     its three claimed requirements and req-claim-4, its one exclusion) MUST
+     validate and pass revision_findings. One schema negative MUST fail, with
+     a strip-the-rule mutant:
+       - neg-requirements-covered-duplicate: req-claim-4 listed twice.
+     Two REVISION_NEGATIVES MUST pass the schema and fail revision_findings,
+     each flipped by the mutant `skip_covered`:
+       - neg-requirements-covered-omits-claimed: claim-2's requirement left
+         out of the list.
+       - neg-requirements-covered-unaccounted: excluded_not_applicable 0, so
+         nothing accounts for req-claim-4, which no claim cites.
+  15. Patterns are ECMA-262's (JSON Schema 2020-12, section 6.3.3 of the
+     validation vocabulary): this checker validates with its own `pattern`
+     keyword, which reads `$` and `\s` as ECMA-262 does (`_ecma_regex`), not
+     as Python's `re` does. Three schema negatives MUST fail, each with the
+     mutant that reads `pattern` with plain `re.search` and accepts it:
+       - neg-digest-trailing-newline: claim-1's first evidence digest ends
+         in "\n" (Python's `$` matches before a final newline).
+       - neg-applies-from-trailing-newline: claim-2's applies_from ends in
+         "\n" (same).
+       - neg-contract-ref-ecma-whitespace: claim-1's contract_ref ends in
+         U+FEFF (ECMA-262 whitespace; not in Python's `\s`).
+     The converse case, a contract_ref holding U+001C (in Python's `\s`,
+     not ECMA-262's), MUST validate, and plain `re` MUST refuse it.
+  16. The plan and dataset digests (spec section 7.3): one positive,
+     pos-example-org-dataset-result (the claims positive with plan_ref and
+     dataset_ref naming vectors/evidence-dataset/pos-window-and-exclusion),
+     MUST validate, and with both removed MUST equal the claims positive
+     byte for byte. Two schema negatives MUST fail, each with a
+     strip-the-rule mutant:
+       - neg-dataset-ref-without-plan-ref: dataset_ref alone
+         (EvidenceResult's dependentRequired).
+       - neg-plan-ref-inline-plan: the plan itself in place of its digest
+         (plan_ref's closed DigestRef).
+     Whether the dataset is what the plan selects is
+     check_evidence_dataset_examples.py's.
 
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
@@ -197,11 +251,11 @@ NOT covered here (explicitly named, not silently skipped):
     attached) -- a garbage generated_at value currently validates clean.
     Same caveat evidence-plan-ir-v0.md's checker documents; not a defect
     introduced here.
-  - Claim `id` uniqueness within a Result, and `aggregate.buckets` entries
-    actually naming a claim `id` that exists with the matching `verdict`,
-    are, by spec/evidence-result-v0.md section 4's own text, cross-element
-    constraints plain JSON Schema cannot express. Nothing in this repository
-    enforces them yet; they are a verifier's obligation, not this schema's.
+  - Claim `id` uniqueness within a Result is a cross-element constraint
+    plain JSON Schema cannot express (spec section 4); the TypeScript reader
+    enforces it, this checker does not. The bucket partition (every in-force
+    claim in the bucket of its verdict, a later claim in none) is checked
+    here by revision_findings (item 13).
   - The one-directional disclosure gate (disclosure-carrier status is
     restricted; analysis/story are not) is exercised by exactly one negative
     fixture (kind: disclosure under WITHHELD). The converse -- an
@@ -211,13 +265,16 @@ NOT covered here (explicitly named, not silently skipped):
 from __future__ import annotations
 
 import copy
+import functools
 import json
+import re
 import sys
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _result_types import EvidenceResultDoc, RecordDoc  # noqa: E402
+from _result_types import ClaimDoc, EvidenceResultDoc, RecordDoc  # noqa: E402
 
 SCHEMAS_DIR = (
     Path(__file__).parent
@@ -426,7 +483,8 @@ def close_state_findings(
 
 POSITIVE_RESULT = "pos-example-org-claims-result"
 
-# PROPOSED claim types (2026-09-25 ruling): every positive keeps the
+# Claim types (2026-09-25 ruling; reconcile normative, close PROPOSED):
+# every positive keeps the
 # untouched requirement claim-1 beside its typed claims -- one typed claim
 # on each close positive, two on the reconcile positive (reconcile-1
 # SATISFIED, reconcile-2 GAP).
@@ -441,6 +499,17 @@ POSITIVES = [
     "pos-judge-producer-x-judge-result",
     "pos-example-org-coverage-result",
     "pos-example-org-coverage-declaration-result",
+    "pos-example-org-recorded-absence-result",
+    "pos-example-org-repeated-requirement-result",
+    "pos-example-org-out-of-scope-result",
+    "pos-example-org-out-of-scope-empty-result",
+    "pos-example-org-close-switched-on-result",
+    "pos-example-org-applicability-result",
+    "pos-example-org-applicability-boundary-result",
+    "pos-example-org-applicability-in-force-result",
+    "pos-example-org-reconcile-later-result",
+    "pos-example-org-requirements-covered-result",
+    "pos-example-org-dataset-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -465,6 +534,48 @@ NEGATIVES = [
     "neg-coverage-unknown-epistemic-type",
     "neg-coverage-uppercase-epistemic-type",
     "neg-coverage-declaration-unknown-kind",
+    "neg-claim-evidence-empty",
+    "neg-out-of-scope-without-switch",
+    "neg-out-of-scope-bucket-absent",
+    "neg-out-of-scope-bucket-without-switch",
+    "neg-out-of-scope-with-gap",
+    "neg-out-of-scope-not-applicable-carrier",
+    "neg-satisfied-not-evaluable",
+    "neg-not-applicable-verdict",
+    "neg-out-of-scope-on-reconcile-claim",
+    "neg-requirements-covered-duplicate",
+    "neg-digest-trailing-newline",
+    "neg-applies-from-trailing-newline",
+    "neg-contract-ref-ecma-whitespace",
+    "neg-dataset-ref-without-plan-ref",
+    "neg-plan-ref-inline-plan",
+]
+
+# Section 15: the schema negatives Python's `re` would accept.
+PATTERN_NEGATIVES = (
+    "neg-digest-trailing-newline",
+    "neg-applies-from-trailing-newline",
+    "neg-contract-ref-ecma-whitespace",
+)
+
+# Spec sections 3, 4.2 and 4.3: cross-element negatives that pass the schema
+# and fail revision_findings, each with the mutant that switches its rule off.
+REVISION_NEGATIVES = [
+    ("neg-out-of-scope-listed-in-met", "trust_buckets", "the bucket partition"),
+    ("neg-later-claim-in-bucket", "trust_buckets", "the bucket partition"),
+    ("neg-switch-disagrees-in-row", "skip_rows", "the one-value-per-requirement rule"),
+    ("neg-applies-from-disagrees-in-row", "skip_rows", "the one-value-per-requirement rule"),
+    ("neg-later-claim-in-population", "population_all_claims", "counting in-force claims only"),
+    ("neg-later-unknown-counted", "unknown_all_claims", "counting in-force claims only"),
+    ("neg-not-yet-in-force-absent", "skip_later_count", "the not_yet_in_force count"),
+    ("neg-not-yet-in-force-wrong", "skip_later_count", "the not_yet_in_force count"),
+    ("neg-generated-at-unparseable", "skip_date_parse", "the date parse"),
+    ("neg-applies-from-not-a-date", "skip_date_parse", "the date parse"),
+    ("neg-generated-at-impossible", "skip_date_parse", "the date parse"),
+    ("neg-generated-at-without-seconds", "skip_date_parse", "the date parse"),
+    ("neg-not-yet-in-force-without-later", "skip_later_count", "the not_yet_in_force count"),
+    ("neg-requirements-covered-omits-claimed", "skip_covered", "the requirements_covered rules"),
+    ("neg-requirements-covered-unaccounted", "skip_covered", "the requirements_covered rules"),
 ]
 
 # Section 8a: the two levels that carry the x- slot, as $defs names.
@@ -540,6 +651,139 @@ _STATUS_TO_SUFFICIENCY = {
 }
 
 
+# RFC 3339 section 5.6 with a required offset, the same grammar the TypeScript
+# reader applies (ts/src/result-root.ts `utcDateOf`). A leap second (60) is
+# not accepted.
+RFC3339_WITH_OFFSET = re.compile(
+    r"\A(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|([+-])(\d{2}):(\d{2}))\Z",
+    re.ASCII,
+)
+CALENDAR_DATE = re.compile(r"\A(\d{4})-(\d{2})-(\d{2})\Z", re.ASCII)
+
+
+def _calendar_date(value: str) -> date | None:
+    match = CALENDAR_DATE.match(value)
+    if match is None:
+        return None
+    try:
+        return date(*(int(part) for part in match.groups()))
+    except ValueError:
+        return None
+
+
+def _utc_date(generated_at: str) -> date | None:
+    match = RFC3339_WITH_OFFSET.match(generated_at)
+    if match is None:
+        return None
+    year, month, day, hours, minutes, seconds = (int(part) for part in match.groups()[:6])
+    sign, offset_hours, offset_minutes = match.group(7), match.group(8), match.group(9)
+    if hours > 23 or minutes > 59 or seconds > 59:
+        return None
+    if sign is not None and (int(offset_hours) > 23 or int(offset_minutes) > 59):
+        return None
+    try:
+        local = datetime(year, month, day, hours, minutes, seconds)
+    except ValueError:
+        return None
+    offset = timedelta(0)
+    if sign is not None:
+        offset = timedelta(hours=int(offset_hours), minutes=int(offset_minutes))
+        if sign == "-":
+            offset = -offset
+    try:
+        utc = local - offset
+    except OverflowError:
+        return None  # before 0001-01-01 or after 9999-12-31 in UTC
+    return utc.date()
+
+
+def revision_findings(doc: EvidenceResultDoc, *, mutant: str | None = None) -> list[str]:
+    """Spec sections 3, 4.2 and 4.3's cross-element rules, which JSON Schema
+    cannot express: every in-force claim is in exactly the bucket of its
+    verdict and a later claim in none; every claim of one requirement carries
+    the same copied facts; coverage counts in-force claims, and
+    not_yet_in_force the later ones; dates parse. ``mutant`` switches off one
+    rule to prove a rejection is that rule's: ``trust_buckets``,
+    ``skip_rows``, ``population_all_claims`` and ``unknown_all_claims`` (count
+    every claim, as before section 4.3), ``skip_later_count``,
+    ``skip_date_parse`` and ``skip_covered`` (section 3's
+    requirements_covered rules)."""
+    out: list[str] = []
+    claims = doc["claims"]
+    aggregate = doc["aggregate"]
+    coverage = aggregate["coverage"]
+    dated = [c for c in claims if "applies_from" in c]
+    later: set[str] = set()
+    if dated and mutant == "skip_date_parse":
+        # the rule switched off: dates compared as text, nothing parsed
+        as_of_text = doc["generated_at"][:10]
+        later = {c["id"] for c in dated if c["applies_from"] > as_of_text}
+    elif dated:
+        as_of = _utc_date(doc["generated_at"])
+        if as_of is None:
+            out.append(f"generated_at {doc['generated_at']!r} is not an RFC 3339 date-time with an offset")
+            return out
+        for claim in dated:
+            applies = _calendar_date(claim["applies_from"])
+            if applies is None:
+                out.append(f"{claim['id']}: applies_from {claim['applies_from']!r} is not a calendar date")
+            elif applies > as_of:
+                later.add(claim["id"])
+    in_force = [c for c in claims if c["id"] not in later]
+
+    if mutant != "trust_buckets":
+        buckets = aggregate["buckets"]
+        placed: dict[str, list[str]] = {}
+        for key, ids in buckets.items():
+            for claim_id in ids:
+                placed.setdefault(claim_id, []).append(key)
+        for claim in claims:
+            where = placed.pop(claim["id"], [])
+            if claim["id"] in later:
+                if where:
+                    out.append(f"{claim['id']} is not yet in force but is in buckets {where}")
+            elif where != [claim["verdict"]]:
+                out.append(f"{claim['id']} ({claim['verdict']}) is in buckets {where}")
+        for claim_id in placed:
+            out.append(f"buckets name {claim_id!r}, which has no claim")
+
+    if mutant != "skip_rows":
+        rows: dict[tuple[str, str], list[ClaimDoc]] = {}
+        for claim in claims:
+            rows.setdefault((claim["contract_ref"], claim["requirement_ref"]), []).append(claim)
+        for (contract, requirement), members in rows.items():
+            for member in ("out_of_scope_allowed", "applies_from"):
+                if len({json.dumps(c.get(member)) for c in members}) > 1:
+                    out.append(f"{contract} {requirement}: its claims disagree on {member}")
+
+    population = claims if mutant == "population_all_claims" else in_force
+    if coverage["evaluated_population"] != len(population):
+        out.append(f"evaluated_population {coverage['evaluated_population']}, but {len(population)} in-force claim(s)")
+    counted = claims if mutant == "unknown_all_claims" else in_force
+    unknown = sum(1 for c in counted if c["sufficiency"] == "UNKNOWN")
+    if coverage["unknown_count"] != unknown:
+        out.append(f"unknown_count {coverage['unknown_count']}, but {unknown} in-force UNKNOWN claim(s)")
+    if mutant != "skip_later_count":
+        stated = coverage.get("not_yet_in_force")
+        if later and stated != len(later):
+            out.append(f"not_yet_in_force {stated}, but {len(later)} later claim(s)")
+        if not later and stated is not None:
+            out.append("not_yet_in_force is present, but no claim is later")
+    covered = coverage.get("requirements_covered")
+    if covered is not None and mutant != "skip_covered":
+        listed = {(r["contract_ref"], r["requirement_ref"]) for r in covered}
+        cited = {(c["contract_ref"], c["requirement_ref"]) for c in claims}
+        for contract, requirement in sorted(cited - listed):
+            out.append(f"{contract} {requirement}: a claim cites it, but requirements_covered does not list it")
+        unclaimed = listed - cited
+        if len(unclaimed) > coverage["excluded_not_applicable"]:
+            out.append(
+                f"requirements_covered lists {len(unclaimed)} requirement(s) no claim cites, but "
+                f"excluded_not_applicable is {coverage['excluded_not_applicable']}"
+            )
+    return out
+
+
 def coverage_findings(doc: EvidenceResultDoc, *, mutant: str | None = None) -> list[str]:
     """Spec section 7.1's cross-element rules, which JSON Schema cannot
     express. Not checkable here, by design (spec section 7.1, "What a
@@ -611,13 +855,69 @@ def _load(name: str) -> EvidenceResultDoc:
 # `schema` is an arbitrary JSON Schema document: the keyword set is open-ended
 # and recursive ($defs/$ref/if/then/...), so a TypedDict here would assert a
 # fixed shape JSON Schema does not have, which is less honest than `dict`.
-def _validator_for(schema: dict):
+def _validator_for(schema: dict, *, python_patterns: bool = False):
     try:
         import jsonschema
     except ImportError as exc:  # pragma: no cover - environment problem, not a finding
         print(f"ERROR: the 'jsonschema' package is required to run this check: {exc}")
         sys.exit(2)
-    return jsonschema.Draft202012Validator(schema)
+    if python_patterns:  # the section 15 mutant: python-jsonschema's own `pattern`
+        return jsonschema.Draft202012Validator(schema)
+    validator_class = jsonschema.validators.extend(
+        jsonschema.Draft202012Validator, {"pattern": _ecma_pattern}
+    )
+    return validator_class(schema)
+
+
+# ECMA-262's \s (WhiteSpace and LineTerminator) as the body of a character
+# class, the set go/evidenceresult's ecmaWhitespace spells for RE2.
+ECMA_WHITESPACE = "\\t\\n\\x0b\\x0c\\r \\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff"
+
+
+@functools.cache
+def _ecma_regex(pattern: str) -> re.Pattern[str]:
+    r"""Compile a schema pattern for `re`, reading it as ECMA-262 does (JSON
+    Schema's dialect), as go/evidenceresult's ecmaRegexp does for RE2. `\s`
+    and `\S` become ECMA-262's whitespace set, where Python's `\s` adds
+    U+001C-U+001F and U+0085 and lacks U+FEFF. `$` becomes `\Z`: without the
+    m flag ECMA-262's `$` matches only at the end of the text, where Python's
+    also matches before a final newline. re.ASCII keeps `\d`, `\w` and `\b`
+    ASCII, as in ECMA-262 without the u flag. The schema's patterns use no
+    other construct whose meaning differs between the two."""
+    out = []
+    in_class = False
+    i = 0
+    while i < len(pattern):
+        c = pattern[i]
+        if c == "\\" and i + 1 < len(pattern):
+            nxt = pattern[i + 1]
+            i += 2
+            if nxt == "s":
+                out.append(ECMA_WHITESPACE if in_class else f"[{ECMA_WHITESPACE}]")
+            elif nxt == "S" and not in_class:
+                out.append(f"[^{ECMA_WHITESPACE}]")
+            elif nxt == "S":
+                raise ValueError(f"pattern {pattern!r}: \\S inside a character class is not supported")
+            else:
+                out.append(c + nxt)
+            continue
+        if c == "[" and not in_class:
+            in_class = True
+        elif c == "]" and in_class:
+            in_class = False
+        elif c == "$" and not in_class:
+            c = "\\Z"
+        out.append(c)
+        i += 1
+    return re.compile("".join(out), re.ASCII)
+
+
+def _ecma_pattern(validator, pattern: str, instance: object, schema: dict):
+    """The `pattern` keyword with the pattern read as ECMA-262."""
+    if validator.is_type(instance, "string") and not _ecma_regex(pattern).search(instance):
+        from jsonschema.exceptions import ValidationError
+
+        yield ValidationError(f"{instance!r} does not match {pattern!r}")
 
 
 # `schema` and the return value are the same open-ended JSON Schema document
@@ -741,7 +1041,7 @@ def main() -> int:
             "DisclosureCarrier.status's restriction to DisclosedStatus",
         )
 
-    # --- PROPOSED claim types (2026-09-25 ruling) ---------------------------
+    # --- Claim types (2026-09-25 ruling) -----------------------------------
 
     if negative_errors_by_name["neg-close-agreed-without-peer"]:
         mutant = copy.deepcopy(schema)
@@ -803,6 +1103,28 @@ def main() -> int:
             "neg-close-contested-verdict-met",
             mutant,
             "Claim's CONTESTED-is-never-met if/then rule",
+        )
+
+    if negative_errors_by_name["neg-claim-evidence-empty"]:
+        mutant = copy.deepcopy(schema)
+        # Section 1, Traceability: a claim cites at least one record. Without
+        # minItems the story claim citing nothing validates again.
+        del mutant["$defs"]["Claim"]["properties"]["evidence"]["minItems"]
+        _mutant_check(
+            "neg-claim-evidence-empty",
+            mutant,
+            "Claim.evidence's minItems: 1",
+        )
+
+    if negative_errors_by_name["neg-requirements-covered-duplicate"]:
+        mutant = copy.deepcopy(schema)
+        # Section 3: each pair is listed once. Without uniqueItems the list
+        # naming req-claim-4 twice validates again.
+        del mutant["$defs"]["Coverage"]["properties"]["requirements_covered"]["uniqueItems"]
+        _mutant_check(
+            "neg-requirements-covered-duplicate",
+            mutant,
+            "Coverage.requirements_covered's uniqueItems",
         )
 
     # --- 8. THE x- EXTENSION SLOT (spec section 8a) ---------------------------
@@ -930,6 +1252,43 @@ def main() -> int:
     # PROPOSED aggregate.coverage_declaration (spec section 7.2): the kind is
     # a closed enum, and the member is additive -- removing it from its
     # positive gives the claims positive byte for byte.
+    # --- Spec sections 4.2 and 1: the fourth verdict -----------------------
+    def _without_claim_rule(marker: str) -> dict:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["Claim"]["allOf"] = [
+            rule for rule in mutant["$defs"]["Claim"]["allOf"]
+            if marker not in json.dumps(rule)
+        ]
+        return mutant
+
+    out_of_scope_rule = "an out_of_scope claim's requirement allows it"
+    pairing_rule = '"const": "SATISFIED"'
+    for name, mutant_schema, label in (
+        ("neg-out-of-scope-without-switch", _without_claim_rule(out_of_scope_rule),
+         "Claim's out_of_scope if/then rule"),
+        ("neg-out-of-scope-not-applicable-carrier", _without_claim_rule(out_of_scope_rule),
+         "Claim's out_of_scope if/then rule"),
+        ("neg-out-of-scope-on-reconcile-claim", _without_claim_rule(out_of_scope_rule),
+         "Claim's out_of_scope if/then rule"),
+        ("neg-out-of-scope-with-gap", _without_claim_rule(pairing_rule),
+         "Claim's sufficiency/verdict if/then rule"),
+        ("neg-satisfied-not-evaluable", _without_claim_rule(pairing_rule),
+         "Claim's sufficiency/verdict if/then rule"),
+    ):
+        if negative_errors_by_name[name]:
+            _mutant_check(name, mutant_schema, label)
+    bucket_mutant = copy.deepcopy(schema)
+    bucket_mutant["$defs"]["EvidenceResult"]["allOf"] = []
+    for name in ("neg-out-of-scope-bucket-absent", "neg-out-of-scope-bucket-without-switch"):
+        if negative_errors_by_name[name]:
+            _mutant_check(name, bucket_mutant, "EvidenceResult's out_of_scope bucket rule")
+    # A not_applicable token is refused twice over: by the closed Verdict enum
+    # and by the pairing rule, so the mutant opens both.
+    if negative_errors_by_name["neg-not-applicable-verdict"]:
+        mutant = _without_claim_rule(pairing_rule)
+        mutant["$defs"]["Verdict"] = {"type": "string"}
+        _mutant_check("neg-not-applicable-verdict", mutant, "the closed Verdict enum and the pairing rule")
+
     if negative_errors_by_name["neg-coverage-declaration-unknown-kind"]:
         mutant = copy.deepcopy(schema)
         mutant["$defs"]["CoverageKind"] = {"type": "string"}
@@ -938,6 +1297,28 @@ def main() -> int:
             mutant,
             "CoverageKind's closed enum",
         )
+    # Spec section 7.3: plan_ref and dataset_ref come together, each a closed
+    # digest ref, and are additive -- removing both from their positive gives
+    # the claims positive byte for byte.
+    if negative_errors_by_name["neg-dataset-ref-without-plan-ref"]:
+        mutant = copy.deepcopy(schema)
+        del mutant["$defs"]["EvidenceResult"]["dependentRequired"]
+        _mutant_check("neg-dataset-ref-without-plan-ref", mutant, "EvidenceResult's dependentRequired")
+    if negative_errors_by_name["neg-plan-ref-inline-plan"]:
+        mutant = copy.deepcopy(schema)
+        mutant["$defs"]["EvidenceResult"]["properties"]["plan_ref"] = {"type": "object"}
+        _mutant_check("neg-plan-ref-inline-plan", mutant, "plan_ref's DigestRef shape")
+    referenced = _load("pos-example-org-dataset-result")
+    del referenced["plan_ref"], referenced["dataset_ref"]
+    if json.dumps(referenced, indent=2, sort_keys=True) + "\n" != (VECTORS_DIR / f"{POSITIVE_RESULT}.json").read_text(encoding="utf-8"):
+        findings.append(
+            "DATASET-REFS-NOT-ISOLATED pos-example-org-dataset-result: with plan_ref and "
+            f"dataset_ref removed it is not {POSITIVE_RESULT}.json"
+        )
+    else:
+        print("OK  ADDITIVE      pos-example-org-dataset-result.json minus plan_ref and "
+              f"dataset_ref == {POSITIVE_RESULT}.json")
+
     declared = _load("pos-example-org-coverage-declaration-result")
     del declared["aggregate"]["coverage_declaration"]
     if json.dumps(declared, indent=2, sort_keys=True) + "\n" != (VECTORS_DIR / f"{POSITIVE_RESULT}.json").read_text(encoding="utf-8"):
@@ -987,6 +1368,73 @@ def main() -> int:
         else:
             print(f"OK  MUTANT        {name} -- under the mutant ({mutation_label}) the fixture "
                   "PASSES (confirms the rule is load-bearing)")
+
+    # Coverage counts evaluations (spec section 3): one per in-force claim,
+    # so a requirement evaluated twice counts twice; and spec sections 4.2 and
+    # 4.3's bucket, row and applicability rules. Every positive passes; each
+    # revision negative passes the schema, fails the check, and its mutant
+    # flips it.
+    # The date grammar, case by case, as the TypeScript reader's tests pin it
+    # (ts/test/result-revision.test.ts).
+    for stamp, expected in (
+        ("2026-09-22T23:30:00-05:00", "2026-09-23"),
+        ("2026-09-22t23:30:00-05:00", "2026-09-23"),
+        ("2026-09-22T00:30:00+01:00", "2026-09-21"),
+        ("2026-02-30T00:00:00Z", None),
+        ("2026-09-22T24:00:00Z", None),
+        ("2026-09-22T10:00+00:00", None),
+        ("2026-09-22X00:00:00+00:00", None),
+        ("2026-09-22T00:00:00+00:00:30", None),
+        ("2026-09-22", None),
+        ("\u0662\u0660\u0662\u0666-09-22T00:00:00Z", None),
+        ("0001-01-01T00:00:00+01:00", None),
+        ("9999-12-31T23:00:00-05:00", None),
+    ):
+        got = _utc_date(stamp)
+        if (got.isoformat() if got else None) != expected:
+            findings.append(f"DATE-GRAMMAR {stamp!r}: read as {got}, expected {expected}")
+    for value, ok in (("0099-01-01", True), ("2024-02-29", True), ("0000-01-01", False), ("2027-02-30", False),
+                      ("\u0662\u0660\u0662\u0666-09-22", False)):
+        if (_calendar_date(value) is not None) != ok:
+            findings.append(f"DATE-GRAMMAR {value!r}: calendar date should be {ok}")
+
+    count_findings = len(findings)
+    for name in POSITIVES:
+        for line in revision_findings(_load(name)):
+            findings.append(f"REVISION-RULE {name}: {line}")
+    repeated = _load("pos-example-org-repeated-requirement-result")
+    rows = {(c["contract_ref"], c["requirement_ref"]) for c in repeated["claims"]}
+    # Load-bearing: the same positive counted per requirement (2, not 3) is
+    # what the rule refuses.
+    if repeated["aggregate"]["coverage"]["evaluated_population"] == len(rows):
+        findings.append("COVERAGE-COUNT-NOT-LOAD-BEARING: the repeated-requirement positive "
+                        "counts as many requirements as evaluations")
+    if len(findings) == count_findings:
+        print(f"OK  COUNTS        every positive counts evaluations and passes the bucket, row and "
+              f"applicability rules; the repeated-requirement positive has "
+              f"{len(repeated['claims'])} evaluations of {len(rows)} requirements")
+    for name, rule_mutant, mutation_label in REVISION_NEGATIVES:
+        instance = _load(name)
+        schema_errors = list(validator.iter_errors(instance))
+        if schema_errors:
+            findings.append(
+                f"REVISION-NEGATIVE-SCHEMA-REJECTED {name}: this fixture exists to show the schema "
+                f"ALONE accepts it; it was rejected instead ({schema_errors[0].message!r})"
+            )
+            continue
+        rule = revision_findings(instance)
+        if not rule:
+            findings.append(f"REVISION-NEGATIVE-DID-NOT-FAIL {name}: the cross-element rules accepted it")
+            continue
+        print(f"OK  REVISION      {name}.json correctly REJECTED ({rule[0]!r})")
+        if revision_findings(instance, mutant=rule_mutant):
+            findings.append(
+                f"MUTANT-DID-NOT-FLIP {name}: without {mutation_label} the fixture still failed "
+                f"({revision_findings(instance, mutant=rule_mutant)[0]!r})"
+            )
+        else:
+            print(f"OK  MUTANT        {name} -- without {mutation_label} the fixture PASSES "
+                  "(confirms the rule is load-bearing)")
 
     # --- 5. CLOSE STATE IS DERIVABLE: the link walk ----------------------------
     #        Schema validation cannot see across records; this can. Every
@@ -1075,6 +1523,28 @@ def main() -> int:
         else:
             print(f"OK  MUTANT        {name} -- restored walk re-rejects the same fixture")
 
+    # --- 15. Patterns read as ECMA-262 ---------------------------------------
+    python_patterns = _validator_for(schema, python_patterns=True)
+    for name in PATTERN_NEGATIVES:
+        if not negative_errors_by_name[name]:
+            continue
+        if list(python_patterns.iter_errors(_load(name))):
+            findings.append(
+                f"MUTANT-DID-NOT-FLIP {name}: with `pattern` read by Python's re, the "
+                "fixture still failed -- the rejection is not the ECMA-262 reading"
+            )
+        else:
+            print(f"OK  MUTANT        {name} -- with `pattern` read by Python's re, "
+                  "the fixture VALIDATES CLEAN (confirms the ECMA-262 reading is load-bearing)")
+    converse = _load(POSITIVE_RESULT)
+    converse["claims"][0]["contract_ref"] += "\x1c"
+    if list(validator.iter_errors(converse)):
+        findings.append("PATTERN-NOT-ECMA a contract_ref holding U+001C is refused; ECMA-262's \\s excludes it")
+    elif not list(python_patterns.iter_errors(converse)):
+        findings.append("PATTERN-CONVERSE-VACUOUS Python's re accepts a contract_ref holding U+001C")
+    else:
+        print("OK  PATTERN       a contract_ref holding U+001C validates (Python's re would refuse it)")
+
     if findings:
         print("\nFAIL — findings:")
         for f in findings:
@@ -1083,7 +1553,7 @@ def main() -> int:
 
     print(f"\nOK — {len(POSITIVES)} positive result(s), {len(NEGATIVES)} negative fixture(s), "
           f"{len(LINK_NEGATIVES)} link-walk negative(s), {len(COVERAGE_NEGATIVES)} coverage "
-          "negative(s), and all mutant checks passed.")
+          f"negative(s), {len(REVISION_NEGATIVES)} revision negative(s), and all mutant checks passed.")
     return 0
 
 

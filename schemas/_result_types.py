@@ -104,6 +104,9 @@ class _ClaimTypedBodyDoc(TypedDict, total=False):
     type: Literal["requirement", "reconcile", "close"]
     reconcile: ReconcileClaimDoc
     close: CloseClaimDoc
+    # Copied from the contract requirement (spec sections 4.2, 4.3).
+    out_of_scope_allowed: Literal[True]
+    applies_from: str
 
 
 class ClaimDoc(_ClaimTypedBodyDoc):
@@ -119,13 +122,27 @@ class ClaimDoc(_ClaimTypedBodyDoc):
     presentation: PresentationDoc
 
 
-class CoverageDoc(TypedDict):
+class RequirementRefDoc(TypedDict):
+    contract_ref: str
+    requirement_ref: str
+
+
+class _CoverageOptionalDoc(TypedDict, total=False):
+    not_yet_in_force: int  # spec section 4.3: present exactly when a claim is later
+    requirements_covered: List[RequirementRefDoc]  # spec section 3: the requirements the run covered
+
+
+class CoverageDoc(_CoverageOptionalDoc):
     evaluated_population: int
     excluded_not_applicable: int
     unknown_count: int
 
 
-class BucketsDoc(TypedDict):
+class _BucketsOptionalDoc(TypedDict, total=False):
+    out_of_scope: List[str]  # spec section 4.2: present exactly when a claim allows it
+
+
+class BucketsDoc(_BucketsOptionalDoc):
     met: List[str]
     not_met: List[str]
     not_evaluable: List[str]

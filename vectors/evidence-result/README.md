@@ -30,7 +30,7 @@ gate (spec section 2):
 | `claim-3` | `GAP` | `not_evaluable` | `not_evaluable` | `analysis` | `WITHHELD` — the disclosure gate case: `disclosure` is not legal here (spec section 2) |
 
 `aggregate.coverage` reports `evaluated_population: 3` (the three claims above),
-`excluded_not_applicable: 1` (one requirement excluded from the evaluated population entirely, not
+`excluded_not_applicable: 1` (one evaluation excluded from the evaluated population entirely, not
 represented by a claim — the `EvidenceStatus` value `NOT_APPLICABLE` (spec sections 2 and 6), which is
 not one of section 1's four `Sufficiency` values), and
 `unknown_count: 0`.
@@ -52,7 +52,7 @@ each MUST fail `$defs/EvidenceResult` validation for exactly one documented reas
 rejection is load-bearing (not vacuous) by removing the specific schema rule it depends on in
 memory, confirming that SAME fixture then validates clean, and restoring the rule.
 
-## PROPOSED claim types — `reconcile` and `close` (the 2026-09-25 ruling)
+## Claim types — `reconcile` (normative) and `close` (PROPOSED) (the 2026-09-25 ruling)
 
 > close + reconcile as claim types in result v0, so they feed the same result. … A_ONLY / B_ONLY
 > must never render like CONFLICTING, and UNILATERAL never like AGREED. one side missing isn't a
@@ -205,6 +205,87 @@ records.
 The never-stronger-than-the-evidence rule of spec section 7.2 needs the evidence sets the claims rest
 on, so no fixture here can show it. Its vector is `aggregate-stronger-than-evidence` in
 `vectors/coverage-declaration-v0/`.
+
+## Traceability — a claim cites at least one record (spec sections 1 and 2)
+
+| File | What it shows |
+|---|---|
+| `pos-example-org-recorded-absence-result.json` | the claims positive with `claim-3` replaced by a `story` claim about a recorded absence, mapped as `spec/interop-profile-v0.md` §8.1 maps one: status `UNKNOWN`, sufficiency `UNKNOWN`, `not_evaluable`, so `unknown_count` is 1. Its `evidence` cites the absence record by digest: the record is the absence-record example of `spec/interop-profile-v0.md` §10, digest `82108c56…` |
+| `neg-claim-evidence-empty.json` | the same claim with `evidence: []`. `Claim.evidence` has `minItems: 1`. Mutant: removing `minItems` accepts the fixture |
+
+## Coverage counts evaluations (spec section 3)
+
+| File | What it shows |
+|---|---|
+| `pos-example-org-repeated-requirement-result.json` | the claims positive with `claim-2` evaluating `claim-1`'s requirement `req-claim-1` on a second subject: one `met` and one `not_met` evaluation of one requirement. `evaluated_population` stays 3, three evaluations of two requirements, and each claim stays in its own bucket: nothing rolls the requirement up to one verdict. The checker also requires every positive's `evaluated_population` to equal its claim count and `unknown_count` its `UNKNOWN` claims, and fails if this positive counted requirements instead |
+
+## The fourth verdict, `out_of_scope` (spec section 4.2)
+
+| File | What it shows |
+|---|---|
+| `pos-example-org-out-of-scope-result.json` | the claims positive with `claim-1` and `claim-2` copying the contract's switch (`out_of_scope_allowed`) and `claim-2` judged `out_of_scope` (`SATISFIED`). It sits in the fourth bucket, never in `met` |
+| `pos-example-org-out-of-scope-empty-result.json` | switched on, nothing judged `out_of_scope`: the fourth bucket is present and empty |
+| `pos-example-org-close-switched-on-result.json` | a requirement claim and a `close` claim of one requirement, both switched on, neither `out_of_scope`: the copied switch is allowed on a typed claim (its records ship beside it) |
+| `neg-out-of-scope-without-switch.json` | `claim-2`'s switch removed. Mutant: the out_of_scope `Claim` rule removed accepts it |
+| `neg-out-of-scope-bucket-absent.json` | switched on, no fourth bucket. Mutant: the `EvidenceResult` bucket rule removed |
+| `neg-out-of-scope-bucket-without-switch.json` | the claims positive with an empty fourth bucket and no switch. Same mutant |
+| `neg-out-of-scope-with-gap.json` | `out_of_scope` under `GAP`. Mutant: the sufficiency/verdict rule removed |
+| `neg-out-of-scope-not-applicable-carrier.json` | an `out_of_scope` claim whose carrier status is `NOT_APPLICABLE`. Mutant: the out_of_scope rule removed |
+| `neg-satisfied-not-evaluable.json` | `not_evaluable` under `SATISFIED`. Mutant: the sufficiency/verdict rule removed |
+| `neg-not-applicable-verdict.json` | the token `not_applicable` as a verdict. Refused by the closed `Verdict` enum and the pairing rule; the mutant opens both |
+| `neg-out-of-scope-on-reconcile-claim.json` | `out_of_scope` on a `reconcile` claim. Mutant: the out_of_scope rule removed |
+| `neg-out-of-scope-listed-in-met.json` | schema-valid; the checker refuses the `out_of_scope` claim listed under `met` (bucket partition) |
+| `neg-switch-disagrees-in-row.json` | schema-valid; two claims of one requirement disagree on the switch (one value per requirement) |
+
+## Applicability, `applies_from` (spec section 4.3)
+
+| File | What it shows |
+|---|---|
+| `pos-example-org-applicability-result.json` | `generated_at` 2026-09-22. `claim-1` in force since 2026-01-01; `claim-2` (`not_met`), `claim-4` (`UNKNOWN`) and `claim-5` (`out_of_scope`) apply from 2027-08-02, keep their verdicts as readiness and are in no bucket. Population 2, `not_yet_in_force` 3, `unknown_count` 0, the fourth bucket empty |
+| `pos-example-org-applicability-boundary-result.json` | `generated_at` 2026-09-22T23:30:00-05:00, which is 2026-09-23 in UTC: a claim dated that day is in force, the next day's is later, a leap day long past is in force |
+| `pos-example-org-applicability-in-force-result.json` | two dated claims, both in force (one from year 0099, a year like any other): no `not_yet_in_force`, but a reader still prints the as-of date |
+| `pos-example-org-reconcile-later-result.json` | a requirement claim and a `reconcile` claim of one requirement, both later |
+| `neg-later-claim-in-bucket.json` | checker: a later claim listed in `not_met` |
+| `neg-later-claim-in-population.json`, `neg-later-unknown-counted.json` | checker: later claims counted in `evaluated_population` or `unknown_count` |
+| `neg-not-yet-in-force-absent.json`, `neg-not-yet-in-force-wrong.json` | checker: the later count absent or wrong |
+| `neg-generated-at-unparseable.json` | checker: a dated Result whose `generated_at` is a bare date |
+| `neg-generated-at-impossible.json` | checker: `generated_at` 2026-02-30T00:00:00Z, a date that does not exist |
+| `neg-generated-at-without-seconds.json` | checker: `generated_at` 2026-09-22T10:00+00:00, outside RFC 3339's `date-time` |
+| `neg-not-yet-in-force-without-later.json` | checker: `not_yet_in_force` 0 present though no claim is later |
+| `neg-applies-from-not-a-date.json` | checker: `applies_from` 2027-02-30 |
+| `neg-applies-from-disagrees-in-row.json` | checker: two claims of one requirement disagree on the date |
+
+Every checker negative validates against the schema and fails `revision_findings`, and its mutant
+(the rule switched off) accepts it.
+
+## Which requirements the run covered, `requirements_covered` (spec section 3)
+
+| File | What it shows |
+|---|---|
+| `pos-example-org-requirements-covered-result.json` | the claims positive listing `req-claim-1` to `req-claim-3`, which its claims cite, and `req-claim-4`, which no claim cites and its one exclusion (`excluded_not_applicable` 1) accounts for |
+| `neg-requirements-covered-duplicate.json` | `req-claim-4` listed twice. Mutant: the list's `uniqueItems` removed |
+| `neg-requirements-covered-omits-claimed.json` | checker: `claim-2`'s requirement left out of the list |
+| `neg-requirements-covered-unaccounted.json` | checker: `excluded_not_applicable` 0, so nothing accounts for `req-claim-4` |
+
+Both checker negatives validate against the schema and fail `revision_findings`, and the mutant
+`skip_covered` accepts them.
+
+## Patterns are ECMA-262's
+
+JSON Schema 2020-12 reads `pattern` as an ECMA-262 regular expression. Python's `re` reads two
+constructs in this schema's patterns differently: its `$` also matches before a final newline,
+and its `\s` covers U+001C to U+001F and U+0085 but not U+FEFF. So the checker validates with its own `pattern`
+keyword, which reads `$` and `\s` as ECMA-262 does. Each negative below is one field away from its
+positive, and its mutant, `pattern` read by plain Python `re`, accepts it:
+
+| File | Mutation | Pattern |
+|---|---|---|
+| `neg-digest-trailing-newline.json` | `claims[0].evidence[0].digest` of the claims positive followed by `\n` | `HexDigest`, `^[0-9a-f]{64}$` |
+| `neg-applies-from-trailing-newline.json` | `claims[1].applies_from` of the applicability positive followed by `\n` | `applies_from`, `^[0-9]{4}-[0-9]{2}-[0-9]{2}$` |
+| `neg-contract-ref-ecma-whitespace.json` | `claims[0].contract_ref` of the claims positive followed by U+FEFF | `ContractRef`, `^[^@\s]+@[^@\s]+$` |
+
+The checker also confirms the converse: a `contract_ref` holding U+001C, which is not ECMA-262
+whitespace, validates.
 
 ## Reproducing the validation run
 

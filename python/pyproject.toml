@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-action-capsule"
-version = "0.10.0"
+version = "0.12.0"
 description = "Reference verifier for the Agent Action Capsule SCITT profile (draft-mih-scitt-agent-action-capsule), with the typed Capsule carriers and their sealing boundary Capsule.seal(), and the anchor client."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -36,7 +36,7 @@ Draft = "https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/"
 # §3.2.2) names as its reference RFC 8785 implementation, used only by the
 # TRACE digest-agreement interop test to cross-check AAC's in-repo JCS against
 # an independent implementation. Not a runtime dependency.
-dev = ["pytest>=7.0", "ruff>=0.4,<0.16", "scitt-cose>=0.1.1", "rfc8785==0.1.4", "cryptography>=42"]
+dev = ["pytest>=7.0", "ruff>=0.4,<0.16", "scitt-cose>=0.3.0", "rfc8785==0.1.4", "cryptography>=42"]
 envelope = ["scitt-cose>=0.1.1"]
 # OPTIONAL two-layer verification: the SCITT/COSE substrate verifier. The
 # payload-only core stays stdlib-only; this extra is needed only for
@@ -52,7 +52,7 @@ anchor = ["scitt-cose>=0.1.1"]
 # extra those two claims fail closed as `completeness_verifier_unavailable`
 # (never pass, and never reported as an invalid certificate). Not a core
 # dependency: checkpointed-local-log itself depends on this package.
-bundle = ["checkpointed-local-log>=0.4.0"]
+bundle = ["checkpointed-local-log>=0.6.0"]
 
 [project.scripts]
 agent-action-capsule = "agent_action_capsule.cli:main"

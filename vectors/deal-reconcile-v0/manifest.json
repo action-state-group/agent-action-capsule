@@ -1,0 +1,13 @@
+{
+  "set": "aac-deal-reconcile-v0",
+  "status": "Conformance vectors for the informational Deal Reconcile Contract v0 (spec/deal-reconcile-contract-v0.md), cited by a type: reconcile claim of Evidence Result v0. Every nonce is a label digest for these vectors only; never use one as a nonce.",
+  "spec": "spec/deal-reconcile-contract-v0.md",
+  "generator": "python/scripts/generate_deal_reconcile_v0_vectors.py",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "be76d853cb41736f32c2ed48fc939f530a192cf3d0ba198b7a1bbcd101f26079",
+      "count": 14
+    }
+  ]
+}

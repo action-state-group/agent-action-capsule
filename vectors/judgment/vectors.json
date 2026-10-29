@@ -40,7 +40,7 @@
     },
     "capsule_id": "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea"
   },
-  "count": 4,
+  "count": 5,
   "cases": [
     {
       "id": "pos-ai-judge",
@@ -494,6 +494,117 @@
             "pointer": "/model_attestation/compute_attestation/x-judgment-v1/rubric_version"
           }
         ]
+      }
+    },
+    {
+      "id": "pos-ai-judge-out-of-scope",
+      "kind": "positive",
+      "description": "A model judge answers out_of_scope: the situation its criterion describes did not happen. Its answer validates against JudgeAnswerWithOutOfScope and not against JudgeAnswer, so it joins only a judge declaration that pinned the wider definition (spec sections 3 and 4.2, check 7).",
+      "capsule": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+        "format_version": "4",
+        "canonicalization_id": "jcs",
+        "action_id": "example-judgment-model-C3-0001",
+        "action_type": "fyi",
+        "operator": "EXAMPLE-ORG",
+        "developer": "example-judge-model@2026-09-15",
+        "timestamp": "2026-10-01T11:00:00Z",
+        "assurance": {
+          "attestation_mode": "self_attested",
+          "effect_mode": "not_applicable",
+          "ledger_mode": "standalone"
+        },
+        "model_attestation": {
+          "compute_attestation": {
+            "agent_output_digest": "fb7c4d58b3cde79deceabc9adca282401287ebcb0215ca6f95375a7e107f2c63",
+            "x-judgment-v1": {
+              "rubric_digest": "ed1b6ca6138ba0d3f70d77c03ddc4b57d166b3ce0e64b59b769069681f9e270b",
+              "rubric_version": "1.2",
+              "judge_parameters_digest": "dc7a8c9078df1436212ae0150bd653841aad0d37810d1c68811a1f0d710c9b46"
+            }
+          }
+        },
+        "references": [
+          {
+            "type": "agent-action-capsule",
+            "digest_alg": "SHA-256",
+            "digest": "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea",
+            "citation_purpose": "judged_from"
+          }
+        ],
+        "capsule_id": "63131958072361dece09876090c5de1657dc2f0283662d142916c2193e6f7c76"
+      },
+      "preimages": {
+        "values": {
+          "rubric": {
+            "rubric_id": "org.example.refund-policy-adherence-scoped",
+            "criteria": [
+              {
+                "id": "C3",
+                "claim": "A refund to a different payment method carries a supervisor approval reference."
+              }
+            ],
+            "verdicts": [
+              "met",
+              "not_met",
+              "not_evaluable",
+              "out_of_scope"
+            ],
+            "policy_digest": "588f66faa5ff26a06786f09dfa15d58946c4daf869511c2d300f572366877bde"
+          },
+          "judge_parameters": {
+            "instruction_template_digest": "b27a154f764ae23e093c9da0c9601aa295461903c042b4407ad0567bdbbb1c19",
+            "axes_digest": "a81c839d374ca12329572815925aa251c369e82e22d7ea0a5dd3e32c4e4d5c58",
+            "sampling_params": {
+              "temperature": "0",
+              "max_output_tokens": 512,
+              "seed": 7
+            },
+            "judge_batch": 1
+          },
+          "agent_output": {
+            "verdict": "out_of_scope",
+            "rationale": "The refund went back to the original payment method; no change of method happened."
+          },
+          "instruction_template": {
+            "template": "Criterion: {claim}\nEvidence: {evidence}\nAnswer with one option.",
+            "na_instructions": "Choose not_evaluable when the evidence does not bear on the criterion.",
+            "out_of_scope_instructions": "Choose out_of_scope when nothing the criterion describes happened.",
+            "options": [
+              "met",
+              "not_met"
+            ],
+            "na_option": "not_evaluable",
+            "out_of_scope_option": "out_of_scope"
+          }
+        },
+        "canonical": {
+          "rubric": "{\"criteria\":[{\"claim\":\"A refund to a different payment method carries a supervisor approval reference.\",\"id\":\"C3\"}],\"policy_digest\":\"588f66faa5ff26a06786f09dfa15d58946c4daf869511c2d300f572366877bde\",\"rubric_id\":\"org.example.refund-policy-adherence-scoped\",\"verdicts\":[\"met\",\"not_met\",\"not_evaluable\",\"out_of_scope\"]}",
+          "judge_parameters": "{\"axes_digest\":\"a81c839d374ca12329572815925aa251c369e82e22d7ea0a5dd3e32c4e4d5c58\",\"instruction_template_digest\":\"b27a154f764ae23e093c9da0c9601aa295461903c042b4407ad0567bdbbb1c19\",\"judge_batch\":1,\"sampling_params\":{\"max_output_tokens\":512,\"seed\":7,\"temperature\":\"0\"}}",
+          "agent_output": "{\"rationale\":\"The refund went back to the original payment method; no change of method happened.\",\"verdict\":\"out_of_scope\"}",
+          "instruction_template": "{\"na_instructions\":\"Choose not_evaluable when the evidence does not bear on the criterion.\",\"na_option\":\"not_evaluable\",\"options\":[\"met\",\"not_met\"],\"out_of_scope_instructions\":\"Choose out_of_scope when nothing the criterion describes happened.\",\"out_of_scope_option\":\"out_of_scope\",\"template\":\"Criterion: {claim}\\nEvidence: {evidence}\\nAnswer with one option.\"}"
+        }
+      },
+      "expect": {
+        "schema_valid": true,
+        "capsule_id": "63131958072361dece09876090c5de1657dc2f0283662d142916c2193e6f7c76",
+        "digests": {
+          "rubric_digest": "ed1b6ca6138ba0d3f70d77c03ddc4b57d166b3ce0e64b59b769069681f9e270b",
+          "judge_parameters_digest": "dc7a8c9078df1436212ae0150bd653841aad0d37810d1c68811a1f0d710c9b46",
+          "agent_output_digest": "fb7c4d58b3cde79deceabc9adca282401287ebcb0215ca6f95375a7e107f2c63",
+          "judged_from": [
+            "e24391f09c05abff5078d32902bb62e11262621c613dd8ef3249f5716a559cea"
+          ]
+        },
+        "inner_digests": {
+          "judge_parameters.instruction_template_digest": "json-digest of preimages.values.instruction_template",
+          "judge_parameters.axes_digest": "sha256 of raw_files['axes.json']",
+          "rubric.policy_digest": "sha256 of raw_files['policy.md']"
+        },
+        "answer_schema": "JudgeAnswerWithOutOfScope",
+        "judged_from_target": "evidence.capsule_id",
+        "result": "pass",
+        "findings": []
       }
     }
   ]

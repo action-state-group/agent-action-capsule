@@ -2,7 +2,7 @@
 title: "AAC Evidence Bundle"
 abbrev: "AAC Evidence Bundle"
 docname: draft-mih-zhang-agent-disclosure-bundle-01
-date: 2026-10-02
+date: 2026-10-19
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -70,7 +70,7 @@ informative:
   I-D.mih-sokolov-scitt-payload-binding:
     title: "Canonicalization Declaration for SCITT Signed Statements"
     seriesinfo:
-      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-06
+      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-05
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -78,7 +78,7 @@ informative:
       - ins: A. Sokolov
         name: Anton Sokolov
         organization: Tyche Institute
-    date: 2026-09-26
+    date: 2026-09-13
 
 --- abstract
 
@@ -454,7 +454,7 @@ signed-refusal = {                ; as received, unmodified
   * tstr => any,                  ; deployment signature members
 }
 
-artifact-response = {             ; as received, artifact bytes removed
+artifact-response = {             ; as received, minus artifact bytes
   request_digest: digest-hex,
   artifact_digest: digest-hex,
   * tstr => any,                  ; deployment members and signature
@@ -762,8 +762,10 @@ MUST NOT present pass-through data as a verified countersignature. The
 `countersign/v1` object is defined in {{countersign-entry}}. A verifier MUST
 report an entry of a type it does not implement as `unverified` and MUST NOT
 let it change any other result.
-An entry with no `type` member MUST be processed as `countersign/v1`,
-and its signing input then uses the value `countersign/v1` for `type`.
+An entry with no `type` member is the legacy form of `countersign/v1`.
+A verifier MUST process it as `countersign/v1`, and its signing input then
+uses the value `countersign/v1` for `type`. A producer MUST NOT emit the
+legacy form.
 
 ## The countersign/v1 Entry {#countersign-entry}
 
@@ -998,7 +1000,8 @@ Since -00:
   statement, and its five check results; defined countersignature,
   countersigner, and self-countersignature, and required a
   self-countersignature to be rendered as not independent; registered
-  `countersign/v1` as a second countersignature type.
+  `countersign/v1` as a second countersignature type; an entry with no
+  `type` is processed as `countersign/v1` (the legacy form).
 - Defined and registered the `producer-key/v1` extension kind, which declares
   the producer's key and can only cause a countersignature to be reported as
   not independent.
