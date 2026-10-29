@@ -16,6 +16,21 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.10.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Controller Binding v0: a `bip340` key type, so a key can be bound to a Nostr identity
+  (`spec/controller-binding-v0.md` §3.3, §4.1, §9.3; new open points CB-8 and CB-9). Additive: a
+  record without the new optional `key_types` member binds two `ed25519` keys, as before, and no
+  existing vector changes.
+  - **`key_types`** names each bound key's type, because an Ed25519 key and a BIP-340 x-only key are
+    both 64 hex characters. A token a verifier does not know gives `controller_binding_signatures`
+    `NOT_CHECKED`.
+  - **How a `bip340` key signs** a binding record or a revocation statement: a Nostr event (NIP-01)
+    of kind 3374, with no tags and the content `<version>:<digest>`, so a key holder signs with the
+    tools that already hold a Nostr key. `sig` carries the event's `created_at` and its BIP-340
+    signature.
+  - `spec/REGISTRY.md`: new provisional rows for the two key types and the event kind.
+  - `vectors/controller-binding-v0/`: five new cases (`valid-nostr-key`, `nostr-key-read-as-ed25519`,
+    `nostr-wrong-digest`, `nostr-other-kind`, `nostr-revoked`), 19 in all. The Python test checks
+    them with a BIP-340 check written from the BIP and run against five of its own test vectors.
 - Spec and vectors, Interop Profile re-pinned to Evidence Request -01: `spec/interop-profile-v0.md`
   now pins `draft-mih-agent-evidence-request-01` as posted (SHA-256 of the `.txt`) instead of -00,
   still under `evidence-interop/0` (P-64). A responder under the profile ignores ER -01's

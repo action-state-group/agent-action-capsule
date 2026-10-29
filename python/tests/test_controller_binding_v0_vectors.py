@@ -5,7 +5,8 @@ Every case is run from its inputs alone, by an evaluator written here from
 ``spec/controller-binding-v0.md`` (CB) §3 to §7 and IP §6.7.4:
 
 - the halves' signatures and agreement;
-- the binding properties of CB §6.1;
+- the binding properties of CB §6.1, with each key signing as its type says (CB §3.3, §4.1): an
+  ``ed25519`` key with Ed25519, a ``bip340`` key with a Nostr event checked here under BIP-340;
 - whether the binding binds the pair and applies to it (CB §6.2);
 - what it proves (CB §7 item 2);
 - the pair's ``issuer_independence`` (CB §7 item 4).
@@ -90,6 +91,92 @@ def ed25519_ok(key_hex: Any, sig_hex: Any, data: bytes) -> bool:
     return True
 
 
+# BIP-340 verification, written here from BIP-340's specification.
+_P = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
+_N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+_G = (0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
+      0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8)
+
+
+def _tagged(tag: str, msg: bytes) -> bytes:
+    t = hashlib.sha256(tag.encode()).digest()
+    return hashlib.sha256(t + t + msg).digest()
+
+
+def _add(a: Any, b: Any) -> Any:
+    if a is None or b is None:
+        return a or b
+    if a[0] == b[0] and a[1] != b[1]:
+        return None
+    lam = (3 * a[0] * a[0] * pow(2 * a[1], _P - 2, _P) if a == b
+           else (b[1] - a[1]) * pow(b[0] - a[0], _P - 2, _P)) % _P
+    x = (lam * lam - a[0] - b[0]) % _P
+    return x, (lam * (a[0] - x) - a[1]) % _P
+
+
+def _mul(pt: Any, n: int) -> Any:
+    r = None
+    for i in range(256):
+        if (n >> i) & 1:
+            r = _add(r, pt)
+        pt = _add(pt, pt)
+    return r
+
+
+def bip340_ok(key: bytes, msg: bytes, sig: bytes) -> bool:
+    """BIP-340 Verify(pk, m, sig)."""
+    if len(key) != 32 or len(sig) != 64:
+        return False
+    x = int.from_bytes(key, "big")
+    y_sq = (pow(x, 3, _P) + 7) % _P
+    y = pow(y_sq, (_P + 1) // 4, _P)
+    if x >= _P or pow(y, 2, _P) != y_sq:
+        return False
+    pt = (x, y if y % 2 == 0 else _P - y)
+    r, s = int.from_bytes(sig[:32], "big"), int.from_bytes(sig[32:], "big")
+    if r >= _P or s >= _N:
+        return False
+    e = int.from_bytes(_tagged("BIP0340/challenge", sig[:32] + key + msg), "big") % _N
+    rr = _add(_mul(_G, s), _mul(pt, _N - e))
+    return rr is not None and rr[1] % 2 == 0 and rr[0] == r
+
+
+# CB §4.1.
+NOSTR_KIND = 3374
+KEY_TYPES = {"ed25519", "bip340"}
+MAX_CREATED_AT = 2**53 - 1
+
+
+def nostr_ok(key_hex: str, sig: Any, version: str, signed_octets: bytes, rules: Rules) -> bool:
+    """CB §4.1: ``sig`` is ``{created_at, sig}``, the BIP-340 signature over the id of the Nostr
+    event (NIP-01) of kind 3374, no tags, and content ``<version>:<SHA-256 of signed_octets>``."""
+    if not (isinstance(sig, dict) and set(sig) == {"created_at", "sig"} and type(sig["created_at"]) is int
+            and 0 <= sig["created_at"] <= MAX_CREATED_AT and isinstance(sig["sig"], str)
+            and HEX128.fullmatch(sig["sig"])):
+        return False
+    content = f"{version}:{sha(signed_octets)}"
+    for kind in ([NOSTR_KIND] if rules.event_kind else [NOSTR_KIND, 1]):
+        event = json.dumps([0, key_hex, sig["created_at"], kind, [], content], separators=(",", ":"),
+                           ensure_ascii=False)
+        if bip340_ok(bytes.fromhex(key_hex), hashlib.sha256(event.encode()).digest(), bytes.fromhex(sig["sig"])):
+            return True
+    return False
+
+
+def key_types(r: dict, rules: Rules) -> list[str]:
+    """CB §3.1 and §3.3: the binding's key types, in the order of ``keys``; ``ed25519`` for both
+    when ``key_types`` is absent."""
+    if rules.key_types_read and "key_types" in r:
+        return list(r["key_types"])
+    return ["ed25519", "ed25519"]
+
+
+def sig_ok(key_hex: str, key_type: str, sig: Any, version: str, signed_octets: bytes, rules: Rules) -> bool:
+    if key_type == "bip340":
+        return nostr_ok(key_hex, sig, version, signed_octets, rules)
+    return isinstance(sig, str) and HEX128.fullmatch(sig) is not None and ed25519_ok(key_hex, sig, signed_octets)
+
+
 def without(d: dict, key: str) -> dict:
     return {k: v for k, v in d.items() if k != key}
 
@@ -132,6 +219,8 @@ class Rules:
     binds_pair: bool = True                 # §6.2
     not_checked_revocation_applies: bool = True  # §6.2: only a FAIL revocation blocks
     binding_gives: str = "FAIL"             # §7 item 4
+    key_types_read: bool = True             # §3.3: key_types gives each key's type
+    event_kind: bool = True                 # §4.1: the signing event is of kind 3374
 
 
 SPEC = Rules()
@@ -141,7 +230,10 @@ def form_ok(r: Any, rules: Rules) -> bool:
     if not isinstance(r, dict) or r.get("claim") not in CLAIMS:
         return False
     method, added = CLAIMS[r["claim"]]
-    if set(r) != COMMON | added or r["binding_version"] != "controller-binding/0":
+    if set(r) - {"key_types"} != COMMON | added or r["binding_version"] != "controller-binding/0":
+        return False
+    if "key_types" in r and not (isinstance(r["key_types"], list) and len(r["key_types"]) == 2
+                                 and all(isinstance(k, str) for k in r["key_types"])):
         return False
     other_claims = {m for c, (m, _) in CLAIMS.items() if c != r["claim"]} - {method}
     if not isinstance(r["method"], str) or r["method"] in other_claims:
@@ -174,22 +266,29 @@ def signatures(r: dict, case: dict, rules: Rules) -> str:
     if rules.method_implemented and r["method"] not in case["pins"]["verification_policy"][
             "binding_methods_implemented"]:
         return "NOT_CHECKED"
+    types = key_types(r, rules)
+    if not set(types) <= KEY_TYPES:
+        return "NOT_CHECKED"
+    type_of = dict(zip(r["keys"], types))
     data = jcs(without(r, "sigs"))
     sigs = r["sigs"]
     if rules.both_sign:
         good = len(sigs) == 2 and [s["key_id"] for s in sigs] == r["keys"]
     else:
         good = 0 < len(sigs) <= 2 and all(s["key_id"] in r["keys"] for s in sigs)
-    return "PASS" if good and all(ed25519_ok(s["key_id"], s["sig"], data) for s in sigs) else "FAIL"
+    return "PASS" if good and all(sig_ok(s["key_id"], type_of[s["key_id"]], s["sig"], "controller-binding/0",
+                                         data, rules) for s in sigs) else "FAIL"
 
 
 def revocation_applies(statement: dict, r: dict, rules: Rules) -> bool:
+    type_of = dict(zip(r["keys"], key_types(r, rules)))
     return (set(statement) == REVOCATION_MEMBERS
             and statement["revocation_version"] == "controller-binding-revocation/0"
             and statement["binding"] == digest_of(r)
             and (statement["key_id"] in r["keys"] or not rules.revocation_by_bound_key)
             and is_time(statement["revoked_at"])
-            and ed25519_ok(statement["key_id"], statement["sig"], jcs(without(statement, "sig"))))
+            and sig_ok(statement["key_id"], type_of.get(statement["key_id"], "ed25519"), statement["sig"],
+                       "controller-binding-revocation/0", jcs(without(statement, "sig")), rules))
 
 
 def revocation_status(r: dict, case: dict, times: list[str], rules: Rules) -> str:
@@ -280,7 +379,7 @@ def comparable(expected: dict) -> dict:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 14
+    assert DATA["count"] == len(CASES) == 19
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     for case in CASES:
         assert case["pins"]["contract_digest"] == DATA["contract"]["contract_digest"]
@@ -295,7 +394,11 @@ def test_test_keys_derive_from_their_labels():
     from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
     for k in DATA["test_keys"]["keys"].values():
-        priv = Ed25519PrivateKey.from_private_bytes(hashlib.sha256(k["seed_label"].encode()).digest())
+        secret = hashlib.sha256(k["seed_label"].encode()).digest()
+        if k.get("key_type") == "bip340":
+            assert _mul(_G, int.from_bytes(secret, "big"))[0].to_bytes(32, "big").hex() == k["public"]
+            continue
+        priv = Ed25519PrivateKey.from_private_bytes(secret)
         assert priv.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex() == k["public"]
 
 
@@ -333,8 +436,10 @@ def test_both_keys_sign_the_same_bytes():
         if case["expected"]["binding"]["properties"].get("controller_binding_signatures") != "PASS":
             continue
         data = jcs(without(r, "sigs"))
+        type_of = dict(zip(r["keys"], key_types(r, SPEC)))
         assert [s["key_id"] for s in r["sigs"]] == r["keys"]
-        assert all(ed25519_ok(s["key_id"], s["sig"], data) for s in r["sigs"])
+        assert all(sig_ok(s["key_id"], type_of[s["key_id"]], s["sig"], "controller-binding/0", data, SPEC)
+                   for s in r["sigs"])
 
 
 def test_one_key_signed_carries_a_valid_signature_by_one_bound_key():
@@ -374,6 +479,8 @@ DEFECTS = {
     "NOT_CHECKED revocation blocks a binding": replace(SPEC, not_checked_revocation_applies=False),
     "a binding gives PASS": replace(SPEC, binding_gives="PASS"),
     "a binding is ignored": replace(SPEC, binding_gives="NOT_CHECKED"),
+    "key_types ignored: every key is ed25519": replace(SPEC, key_types_read=False),
+    "a Nostr event of any kind signs": replace(SPEC, event_kind=False),
 }
 
 
@@ -461,3 +568,35 @@ def test_revocation_names_the_signing_input_not_the_signed_record():
 def test_parse_rejects_duplicate_member_names():
     with pytest.raises(ValueError):
         parse('{"a":1,"a":2}')
+
+
+# BIP-340's own test vectors (bitcoin/bips, bip-0340/test-vectors.csv), rows 0, 1, 5, 6 and 9: the
+# BIP-340 check above against the BIP's answers, two valid and three invalid.
+BIP340_ROWS = [
+    ("F9308A019258C31049344F85F89D5229B531C845836F99B08601F113BCE036F9",
+     "0000000000000000000000000000000000000000000000000000000000000000",
+     "E907831F80848D1069A5371B402410364BDF1C5F8307B0084C55F1CE2DCA821525F66A4A85EA8B71E482A74F382D2CE5EBEEE8FDB2172F477DF4900D310536C0",
+     True),
+    ("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659",
+     "243F6A8885A308D313198A2E03707344A4093822299F31D0082EFA98EC4E6C89",
+     "6896BD60EEAE296DB48A229FF71DFE071BDE413E6D43F917DC8DCF8C78DE33418906D11AC976ABCCB20B091292BFF4EA897EFCB639EA871CFA95F6DE339E4B0A",
+     True),
+    ("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34",
+     "243F6A8885A308D313198A2E03707344A4093822299F31D0082EFA98EC4E6C89",
+     "6CFF5C3BA86C69EA4B7376F31A9BCB4F74C1976089B2D9963DA2E5543E17776969E89B4C5564D00349106B8497785DD7D1D713A8AE82B32FA79D5F7FC407D39B",
+     False),
+    ("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659",
+     "243F6A8885A308D313198A2E03707344A4093822299F31D0082EFA98EC4E6C89",
+     "FFF97BD5755EEEA420453A14355235D382F6472F8568A18B2F057A14602975563CC27944640AC607CD107AE10923D9EF7A73C643E166BE5EBEAFA34B1AC553E2",
+     False),
+    ("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659",
+     "243F6A8885A308D313198A2E03707344A4093822299F31D0082EFA98EC4E6C89",
+     "0000000000000000000000000000000000000000000000000000000000000000123DDA8328AF9C23A94C1FEECFD123BA4FB73476F0D594DCB65C6425BD186051",
+     False),
+]
+
+
+@pytest.mark.parametrize("row", range(len(BIP340_ROWS)))
+def test_the_bip340_check_agrees_with_the_bips_vectors(row):
+    key, msg, sig, valid = BIP340_ROWS[row]
+    assert bip340_ok(bytes.fromhex(key), bytes.fromhex(msg), bytes.fromhex(sig)) is valid

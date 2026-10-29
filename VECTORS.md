@@ -55,7 +55,7 @@ its 9 `record_signatures`.
 | `vectors/interop-profile-v0-requirement-facts/` | `spec/interop-profile-v0.md` §8.3 | evaluate | 2 |
 | `vectors/cll-material/` | `spec/interop-profile-v0.md` §6.2.1 | respond, verify | 184 |
 | `vectors/coverage-declaration-v0/` | `spec/interop-profile-v0.md` §6.7 | evaluate, verify | 13 |
-| `vectors/controller-binding-v0/` | `spec/controller-binding-v0.md` | verify | 14 |
+| `vectors/controller-binding-v0/` | `spec/controller-binding-v0.md` | verify | 19 |
 | `vectors/personal-history-basic-v0/` | `spec/personal-agent-history-profile-v0.md` §6.4 (Basic) | respond, verify | 14 |
 | `vectors/personal-history-outcome-v0/` | `spec/personal-agent-history-outcome-v0.md` (Outcome) | respond, evaluate | 25 |
 | `vectors/standard-history-v0/` | `spec/standard-history-v0.md` (`standard_history/1`) | evaluate, report | 28 |
