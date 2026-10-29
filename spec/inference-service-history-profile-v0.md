@@ -55,8 +55,9 @@ written `[IP §6.5]` is taken from IP; `[SH-n]` marks one this profile adds.
 History, or what a recipient should conclude. It defines no figure that combines units, labels or
 nodes, and no score, rank or ordering of nodes, providers or exchanges, and a verifier that follows
 this profile outputs none. A requester MAY read a History or a history card as an input to its own
-admission policy. That policy filters: it admits or refuses each candidate, and never ranks
-candidates. The History stays the node's statement, not the requester's conclusion.
+admission policy. That policy filters: it decides for each candidate node on its own whether, and
+on what terms, to admit it, and never ranks candidate nodes or compares them with each other. The
+History stays the node's statement, not the requester's conclusion.
 
 ## 1. Conventions
 
@@ -681,9 +682,9 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
   the node's statement, shown as such, and never "ran" or "verified".
 - **No ordering.** This profile defines no score, rank or ordering of nodes, providers or
   exchanges, and a verifier that follows it shows none and outputs none. A requester's own
-  admission policy may read a History to admit or refuse a candidate ([Dependency
-  boundary](#dependency-boundary)); it never ranks candidates, and its decision is the requester's
-  conclusion, not the node's statement.
+  admission policy may read a History to decide on one candidate node on its own ([Dependency
+  boundary](#dependency-boundary)); it never ranks candidate nodes, and its decision is the
+  requester's conclusion, not the node's statement.
 
 ## 13. Open points
 
