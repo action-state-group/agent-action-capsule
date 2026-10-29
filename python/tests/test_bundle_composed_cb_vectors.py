@@ -99,11 +99,22 @@ def _well_formed(record: dict) -> bool:
     issued, before, after = (_time(record[k]) for k in ("issued_at", "not_before", "not_after"))
     if None in (issued, before, after) or not before <= issued < after:
         return False
+    sigs_ok = isinstance(record["sigs"], list) and all(
+        isinstance(s, dict) and set(s) == {"key_id", "sig"} and isinstance(s["key_id"], str)
+        and HEX64.fullmatch(s["key_id"]) is not None and isinstance(s["sig"], str) and HEX128.fullmatch(s["sig"]) is not None
+        for s in record["sigs"])
+    if claim == "delegated_by" and record["delegator"] not in keys:
+        return False
+    if claim == "same_organization_credentialed":
+        credential = record["credential"]
+        if not (isinstance(credential, dict) and set(credential) == {"issuer", "method", "digest"}
+                and all(isinstance(credential[k], str) for k in credential)
+                and HEX64.fullmatch(credential["issuer"]) and HEX64.fullmatch(credential["digest"])):
+            return False
     return (record["binding_version"] == "controller-binding/0"
             and record["revocation"] == "revocation_statement/0"
             and isinstance(record["nonce"], str) and record["nonce"] != ""
-            and isinstance(record["sigs"], list)
-            and all(isinstance(s, dict) and set(s) == {"key_id", "sig"} for s in record["sigs"]))
+            and sigs_ok)
 
 
 def _signed_by_both(record: dict) -> bool:
@@ -124,6 +135,8 @@ def _revokes(statement: dict, digest: str, keys: list[str], times: tuple[str, st
 
 def _link(join: dict, ra: dict, rb: dict, bindings: list[dict], revocations: list[dict]) -> bool | None:
     """Joins, controller_binding: linked, unjoined (False) or not derivable (None)."""
+    if "pointer" not in join or "identifier_digest" not in join:
+        return None
     va, vb = _pointer(ra, join["pointer"]), _pointer(rb, join["pointer"])
     times = (_time(ra.get("timestamp"), RECORD_TIME), _time(rb.get("timestamp"), RECORD_TIME))
     derivable = False

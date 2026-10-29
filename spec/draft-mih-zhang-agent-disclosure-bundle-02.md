@@ -1000,9 +1000,12 @@ each, and what the two key holders state:
   as a credential from a third key states.
 
 A binding record is malformed when it lacks a member, carries a member the
-CDDL does not allow for its `claim`, or has a value outside its form; when its
+CDDL does not list, or has a value outside its form; when it carries
+`delegator` and its `claim` is not `delegated_by`, or `credential` and its
+`claim` is not `same_organization_credentialed`, or lacks the member its
+`claim` adds; when its
 two `keys` are equal or not in ascending order; when `not_before` is later
-than `issued_at` or `not_after` is not later than it; when `delegator` is not
+than `issued_at` or `not_after` is not later than it; when `nonce` is empty; when `delegator` is not
 one of `keys`; or when its `method` is one this document defines for another
 claim type. A `method` token this document does not define is well formed. A
 binding record or revocation statement that is not a JSON object is
@@ -1093,10 +1096,12 @@ Linkage is evaluated on each artifact member's root record (its bundle's
   digest ({{composed-binding}}). The members are linked when a delivered
   binding record whose binding digest equals `identifier_digest` applies to
   the two selected values, with T the `timestamp` of each root record
-  ({{I-D.mih-scitt-agent-action-capsule}}). A record with that digest that
-  does not apply leaves the members unjoined. A verifier that received no
-  record with that digest, or implements the `method` of none it received,
-  reports the join as `not_derivable`. A join on this basis states that the
+  ({{I-D.mih-scitt-agent-action-capsule}}). A verifier that received no
+  record with that digest, or only well-formed records with that digest whose
+  `method` it does not implement, reports the join as `not_derivable`; so
+  does a join without `pointer` or `identifier_digest`. Any other record with
+  that digest that does not apply (malformed, not signed by both keys, other
+  keys, outside its window, or revoked) leaves the members unjoined. A join on this basis states that the
   two root records are under keys whose holders bound them, as both of them
   stated it; it says nothing about who those holders are.
 
@@ -1207,9 +1212,7 @@ separately:
    signature state;
 3. composition closure;
 4. per join: the declared state, the derived state (or `not_derivable`), and
-   whether they match; for a `controller_binding` join, the binding digest,
-   the claim type of the record that applies, and the revocation statements
-   it received for it;
+   whether they match;
 5. per derived `agree`: `redundant` (with reason) or corroborating on
    declared custody.
 

@@ -39,7 +39,6 @@ var bindingClaims = map[string]struct {
 
 var (
 	bindingMembers  = []string{"binding_version", "claim", "method", "keys", "issued_at", "not_before", "not_after", "revocation", "nonce", "sigs"}
-	methodTokenRE   = regexp.MustCompile(`^[A-Za-z0-9._:/-]{1,128}$`)
 	signatureHexRE  = regexp.MustCompile(`^[0-9a-f]{128}$`)
 	bindingTimeRE   = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$`)
 	recordTimeRE    = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?Z$`)
@@ -101,7 +100,7 @@ func bindingForm(record map[string]interface{}) bool {
 		return false
 	}
 	method, ok := record["method"].(string)
-	if !ok || !methodTokenRE.MatchString(method) {
+	if !ok {
 		return false
 	}
 	for _, other := range bindingClaims {
@@ -131,7 +130,8 @@ func bindingForm(record map[string]interface{}) bool {
 	}
 	for _, raw := range sigs {
 		entry, ok := raw.(map[string]interface{})
-		if !ok || !exactMembers(entry, []string{"key_id", "sig"}) || !isDigest(entry["key_id"]) || !isString(entry["sig"]) {
+		sig, _ := entry["sig"].(string)
+		if !ok || !exactMembers(entry, []string{"key_id", "sig"}) || !isDigest(entry["key_id"]) || !signatureHexRE.MatchString(sig) {
 			return false
 		}
 	}
@@ -160,9 +160,8 @@ func bindingSignatures(record map[string]interface{}, input []byte) bool {
 			return false
 		}
 		public, errKey := hex.DecodeString(keys[i].(string))
-		sig, _ := entry["sig"].(string)
-		signature, errSig := hex.DecodeString(sig)
-		if errKey != nil || errSig != nil || !signatureHexRE.MatchString(sig) ||
+		signature, errSig := hex.DecodeString(entry["sig"].(string))
+		if errKey != nil || errSig != nil ||
 			!witness.VerifyEd25519Strict(ed25519.PublicKey(public), input, signature) {
 			return false
 		}
@@ -198,10 +197,11 @@ func revocationRevokes(statement map[string]interface{}, digest string, keys []i
 // a method this verifier does not implement. Otherwise linked is true when
 // one such record applies: well formed, signed by both bound keys, its keys
 // exactly the two values pointer selects, in effect at both root records'
-// timestamps, and revoked by no delivered statement at or before either.
+// timestamps, and revoked by no delivered statement at or before either. A
+// join without pointer or identifier_digest names no record: not derivable.
 func controllerBindingLink(j composedJoin, ra, rb map[string]interface{}, opts Options) (linked, derivable bool) {
 	if j.pointer == nil || j.identifier == nil {
-		return false, true
+		return false, false
 	}
 	// Asserted as strings: two resolved objects would not compare.
 	rawA, _ := resolvePointer(ra, *j.pointer)
