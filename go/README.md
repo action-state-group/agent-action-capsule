@@ -60,6 +60,17 @@ checkpoint are refused by name. A missing citation or an unsigned record is
 stated, not refused, and reads INCOMPLETE. `bundle.BuildUnprovenBundle` is
 the form with no log proof, for Capsules that belong to no log.
 
+## Standard history
+
+`standardhistory.Check(card, policy, asOf, deals)` reports the six card
+properties of the `standard_history/1` derivation (spec
+`standard-history-v0.md` section 6) for a card's JSON octets, from whatever
+the caller holds beside it: a property that needs a missing input is
+`NOT_CHECKED`. `standardhistory.Derive` builds the card from the deal
+entries. Both are at parity with the Python reference
+`agent_action_capsule.standard_history`, and both run
+`../vectors/standard-history-v0/`.
+
 ## Evidence Result v0
 
 `evidenceresult.Check(doc, records)` is the gate for an Evidence Result v0

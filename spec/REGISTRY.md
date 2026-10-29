@@ -498,6 +498,7 @@ refuses rather than truncating the result.
 | Token | Description | Declared fields |
 |---|---|---|
 | `history_card/1` | Checkpoints, receipts, and consistency proofs for a stream. | None (no record content). |
+| `standard_history/1` | Counts of the holder's counted deals in the window its policy sets, as of one anchor: by outcome, value band, role, how it happened, and disputes. Recipient-free. Defined in `spec/standard-history-v0.md`. | The card members of `spec/standard-history-v0.md` §4: counts and their denominators only, no record content. |
 
 ### Provisional: minimum-necessary report
 

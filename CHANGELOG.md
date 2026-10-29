@@ -16,6 +16,16 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.9.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Spec: `spec/standard-history-v0.md` defines the derivation `standard_history/1`, now a row of
+  the Evidence Request derivation registry (`spec/REGISTRY.md` §16): a recipient-free card, as of
+  one anchor, that counts the holder's deals in the window its policy sets, by outcome, value band,
+  role, how it happened and disputes, every count with its denominator and no ratio. It also
+  defines the deal member `counterparty_class` (`person_agent`, `business_agent`, `shop_preauth`;
+  a `shop_preauth` deal is not counted) and the record kind `receipt_document`. Python:
+  `agent_action_capsule.standard_history` (`derive_card`, `check_card`) is the reference. Go: the
+  new package `standardhistory` (`Derive`, `Check`) is at parity with it. Both run
+  `vectors/standard-history-v0/` (9 positive, 19 negative). (#437)
+
 - Security, strict witness receipts: an EdDSA witness receipt now verifies only under strict
   Ed25519. The key A and the signature's R must be canonical and not of small order, and S must
   be less than L, before the cofactorless check. Go's `crypto/ed25519.Verify` and Python's
