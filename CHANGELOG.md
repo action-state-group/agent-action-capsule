@@ -33,6 +33,26 @@ packages is listed under each package that shipped it, or has not yet.
   `vectors/bundle/non-record-leaves/`, `vectors/bundle/certificate-mode/` and
   `vectors/bundle/category-coverage/` (`python/scripts/generate_bundle_02_vectors.py`).
 
+- Evidence Bundle -02, `controller_binding` join basis: the draft defines the controller binding
+  record (members, claim types, signing input and binding digest, `dual_signature/0` and
+  `dual_signature_credential/0`, revocation statements, when a binding applies) and the join's
+  derivation in its `composed/v1` section; a `controller_binding` agreement is always redundant,
+  never corroborating. Go: `bundle.Options` gains `ControllerBindings` and `BindingRevocations`,
+  the binding records and revocation statements delivered beside the Bundle; `VerifyComposed`
+  derives the join from them (`not_derivable` when no record with the join's digest was
+  delivered, or none under a method it implements) and reports a derived `agree` as `redundant`
+  with reason `controller_binding`. A block carrying the basis is no longer malformed in Go;
+  TypeScript and Rust still read it as malformed, as -01 does. `witness.VerifyEd25519Strict`
+  exports the strict Ed25519 check. Vectors: `vectors/bundle/composed-controller-binding/` (eight
+  cases, `python/scripts/generate_bundle_composed_cb_vectors.py`), rederived by
+  `python/tests/test_bundle_composed_cb_vectors.py` and run by Go. Spec:
+  `spec/controller-binding-v0.md` §8 and `spec/REGISTRY.md` "composed/v1 join basis values" now
+  record the basis as registered by -02; a producer emits it once -02 is posted.
+- Python, strict: a producer-selected Bundle whose signed checkpoint is contradicted by a stated
+  copy (#380) keeps per-record membership withheld (`checkpoint_unverified`), as Go, Rust and
+  TypeScript report; the -02 reading against the stated checkpoint applies only when no signed
+  checkpoint is carried.
+
 - Security, strict witness receipts: an EdDSA witness receipt now verifies only under strict
   Ed25519. The key A and the signature's R must be canonical and not of small order, and S must
   be less than L, before the cofactorless check. Go's `crypto/ed25519.Verify` and Python's
