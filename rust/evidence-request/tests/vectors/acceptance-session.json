@@ -1,0 +1,464 @@
+{
+ "contract": {
+  "id": "C",
+  "version": "1",
+  "requirements": [
+   {
+    "id": "R-prior",
+    "statement": "accepted before the action"
+   },
+   {
+    "id": "R-served",
+    "statement": "the served half is present and verifies"
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "session-P",
+   "description": "receipt at 00:06 before the served half at 00:10; the half cites",
+   "pins": {
+    "trust_policy": {
+     "parties": {
+      "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa": "N_P",
+      "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73": "N_Q",
+      "d253b70028d8ea340abc4eed8c4191926cf220de30821316d3b1436a7c3930f8": "N_Q"
+     },
+     "require_action_time_from_other_party": false
+    },
+    "evaluation_time": "2026-10-12T02:00:00Z"
+   },
+   "inputs": {
+    "transaction": {
+     "scheme": "x-example/session",
+     "id": "session-1"
+    },
+    "proposer": "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa",
+    "acceptor": "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73",
+    "acceptance_records": [
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:00:00Z\",\"profile\":\"evidence-interop/0\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"5d79012ffca4259299a158674561d453f89b01a8ae610430915c7bba7c0712228ef8fe71e8cabf2340f578c98de6282734c2bb2a04bc524eb1dde174992bf40a\",\"state\":\"proposed\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}",
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:05:00Z\",\"profile\":\"evidence-interop/0\",\"proposal_digest\":\"6bef2d2c5383efff29b375d43b3d13a477e6c98b34394e33cc5ee4d7795f6843\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"3f4d1e524bbf5a580f3e8b77c3d23ecf720993ee14f6103e2e4ddad7f75c6790e3d50b90b8ff23f031953952f1d1a09aa707a5f1412433551b7c9de485ce740d\",\"state\":\"accepted\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "execution_records": [
+     "{\"action_at\":\"2026-10-12T00:10:00Z\",\"issuer\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"links\":[{\"target\":\"2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd\",\"type\":\"cites\"}],\"sig\":\"c1f8b884fbbaf149f45bc75ff5afc54d21d9295ea404d8d4c9579bf63495792b3e771f0ee159cfda65b30d9d46e3bce3d45a90b1a41c6464addaadb335f1dd0c\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "acceptance_receipts": [
+     "{\"acceptance_digest\":\"2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd\",\"profile\":\"evidence-interop/0\",\"received_at\":\"2026-10-12T00:06:00Z\",\"receiver\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"sig\":\"20277ade4dcb8698b5efca1a1be6a6fd113cee4566995645418cf170da710c34d1d64ae8d7f1670c6cd28bd400e5888206f598d77804828225072872145edc00\"}"
+    ]
+   },
+   "expected": {
+    "finding": "accepted_before_action",
+    "candidates": [
+     {
+      "record_digest": "2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd",
+      "properties": {
+       "acceptance_form": "PASS",
+       "acceptance_signature": "PASS",
+       "acceptance_signer_trust": "PASS",
+       "acceptance_binding": "PASS",
+       "proposal_binding": "PASS",
+       "acceptance_unique": "NOT_CHECKED",
+       "execution_cites_acceptance": "PASS",
+       "acceptance_ordering": "PASS"
+      }
+     }
+    ],
+    "receipts": [
+     {
+      "receipt_digest": "b5ccc1d100fa4943e75d6c8223d0636a5d9911442d2c03e726ac5359c819c3bf",
+      "properties": {
+       "receipt_signature": "PASS",
+       "receipt_signer": "PASS"
+      }
+     }
+    ],
+    "claim": {
+     "contract_ref": "C@1",
+     "evidence_includes": [
+      {
+       "digest_alg": "SHA-256",
+       "digest": "2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd"
+      },
+      {
+       "digest_alg": "SHA-256",
+       "digest": "b5ccc1d100fa4943e75d6c8223d0636a5d9911442d2c03e726ac5359c819c3bf"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "session-F1",
+   "description": "the half cites, no receipt: a citation alone is not ordering evidence",
+   "pins": {
+    "trust_policy": {
+     "parties": {
+      "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa": "N_P",
+      "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73": "N_Q",
+      "d253b70028d8ea340abc4eed8c4191926cf220de30821316d3b1436a7c3930f8": "N_Q"
+     },
+     "require_action_time_from_other_party": false
+    },
+    "evaluation_time": "2026-10-12T02:00:00Z"
+   },
+   "inputs": {
+    "transaction": {
+     "scheme": "x-example/session",
+     "id": "session-1"
+    },
+    "proposer": "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa",
+    "acceptor": "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73",
+    "acceptance_records": [
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:00:00Z\",\"profile\":\"evidence-interop/0\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"5d79012ffca4259299a158674561d453f89b01a8ae610430915c7bba7c0712228ef8fe71e8cabf2340f578c98de6282734c2bb2a04bc524eb1dde174992bf40a\",\"state\":\"proposed\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}",
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:05:00Z\",\"profile\":\"evidence-interop/0\",\"proposal_digest\":\"6bef2d2c5383efff29b375d43b3d13a477e6c98b34394e33cc5ee4d7795f6843\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"3f4d1e524bbf5a580f3e8b77c3d23ecf720993ee14f6103e2e4ddad7f75c6790e3d50b90b8ff23f031953952f1d1a09aa707a5f1412433551b7c9de485ce740d\",\"state\":\"accepted\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "execution_records": [
+     "{\"action_at\":\"2026-10-12T00:10:00Z\",\"issuer\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"links\":[{\"target\":\"2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd\",\"type\":\"cites\"}],\"sig\":\"c1f8b884fbbaf149f45bc75ff5afc54d21d9295ea404d8d4c9579bf63495792b3e771f0ee159cfda65b30d9d46e3bce3d45a90b1a41c6464addaadb335f1dd0c\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "acceptance_receipts": []
+   },
+   "expected": {
+    "finding": "accepted_execution_cites",
+    "candidates": [
+     {
+      "record_digest": "2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd",
+      "properties": {
+       "acceptance_form": "PASS",
+       "acceptance_signature": "PASS",
+       "acceptance_signer_trust": "PASS",
+       "acceptance_binding": "PASS",
+       "proposal_binding": "PASS",
+       "acceptance_unique": "NOT_CHECKED",
+       "execution_cites_acceptance": "PASS",
+       "acceptance_ordering": "NOT_PRESENT"
+      }
+     }
+    ],
+    "receipts": [],
+    "claim": {
+     "contract_ref": "C@1",
+     "evidence_includes": [
+      {
+       "digest_alg": "SHA-256",
+       "digest": "2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "session-L",
+   "description": "an honest late receipt at 00:20",
+   "pins": {
+    "trust_policy": {
+     "parties": {
+      "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa": "N_P",
+      "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73": "N_Q",
+      "d253b70028d8ea340abc4eed8c4191926cf220de30821316d3b1436a7c3930f8": "N_Q"
+     },
+     "require_action_time_from_other_party": false
+    },
+    "evaluation_time": "2026-10-12T02:00:00Z"
+   },
+   "inputs": {
+    "transaction": {
+     "scheme": "x-example/session",
+     "id": "session-1"
+    },
+    "proposer": "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa",
+    "acceptor": "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73",
+    "acceptance_records": [
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:00:00Z\",\"profile\":\"evidence-interop/0\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"5d79012ffca4259299a158674561d453f89b01a8ae610430915c7bba7c0712228ef8fe71e8cabf2340f578c98de6282734c2bb2a04bc524eb1dde174992bf40a\",\"state\":\"proposed\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}",
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:05:00Z\",\"profile\":\"evidence-interop/0\",\"proposal_digest\":\"6bef2d2c5383efff29b375d43b3d13a477e6c98b34394e33cc5ee4d7795f6843\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"3f4d1e524bbf5a580f3e8b77c3d23ecf720993ee14f6103e2e4ddad7f75c6790e3d50b90b8ff23f031953952f1d1a09aa707a5f1412433551b7c9de485ce740d\",\"state\":\"accepted\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "execution_records": [
+     "{\"action_at\":\"2026-10-12T00:10:00Z\",\"issuer\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"links\":[{\"target\":\"2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd\",\"type\":\"cites\"}],\"sig\":\"c1f8b884fbbaf149f45bc75ff5afc54d21d9295ea404d8d4c9579bf63495792b3e771f0ee159cfda65b30d9d46e3bce3d45a90b1a41c6464addaadb335f1dd0c\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "acceptance_receipts": [
+     "{\"acceptance_digest\":\"2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd\",\"profile\":\"evidence-interop/0\",\"received_at\":\"2026-10-12T00:20:00Z\",\"receiver\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"sig\":\"0b89734214476bfe2deda1698d5bf80949c5694986dbfbeb6d6353fac2269f799a81278065b71438a1a2f32f40137bde1c519550437149d7f8187120bf1ea609\"}"
+    ]
+   },
+   "expected": {
+    "finding": "accepted_execution_cites",
+    "candidates": [
+     {
+      "record_digest": "2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd",
+      "properties": {
+       "acceptance_form": "PASS",
+       "acceptance_signature": "PASS",
+       "acceptance_signer_trust": "PASS",
+       "acceptance_binding": "PASS",
+       "proposal_binding": "PASS",
+       "acceptance_unique": "NOT_CHECKED",
+       "execution_cites_acceptance": "PASS",
+       "acceptance_ordering": "INCONCLUSIVE"
+      }
+     }
+    ],
+    "receipts": [
+     {
+      "receipt_digest": "6e66efd64963eee0d101cfe3ebf24dc8d444113759de996ef57db254c9f89285",
+      "properties": {
+       "receipt_signature": "PASS",
+       "receipt_signer": "PASS"
+      }
+     }
+    ],
+    "claim": {
+     "contract_ref": "C@1",
+     "evidence_includes": [
+      {
+       "digest_alg": "SHA-256",
+       "digest": "2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "session-D",
+   "description": "the accepted record states 00:20, after the served half",
+   "pins": {
+    "trust_policy": {
+     "parties": {
+      "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa": "N_P",
+      "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73": "N_Q",
+      "d253b70028d8ea340abc4eed8c4191926cf220de30821316d3b1436a7c3930f8": "N_Q"
+     },
+     "require_action_time_from_other_party": false
+    },
+    "evaluation_time": "2026-10-12T02:00:00Z"
+   },
+   "inputs": {
+    "transaction": {
+     "scheme": "x-example/session",
+     "id": "session-1"
+    },
+    "proposer": "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa",
+    "acceptor": "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73",
+    "acceptance_records": [
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:00:00Z\",\"profile\":\"evidence-interop/0\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"5d79012ffca4259299a158674561d453f89b01a8ae610430915c7bba7c0712228ef8fe71e8cabf2340f578c98de6282734c2bb2a04bc524eb1dde174992bf40a\",\"state\":\"proposed\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}",
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:20:00Z\",\"profile\":\"evidence-interop/0\",\"proposal_digest\":\"6bef2d2c5383efff29b375d43b3d13a477e6c98b34394e33cc5ee4d7795f6843\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"fe7a474e98c2603226aba31a44593ea1e716f41c436c6dca691e72dba1a7319a104289fbb29841f43816a595c4f136df71af20799c5f27b387f861b623f96906\",\"state\":\"accepted\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "execution_records": [
+     "{\"action_at\":\"2026-10-12T00:10:00Z\",\"issuer\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"links\":[{\"target\":\"cef8c668def875cb3961210f56c380c90e005648be8039f823aad46cecb26c38\",\"type\":\"cites\"}],\"sig\":\"89ddc400406e0367ae6df8761917d47229215d26dcd3d2c20c79d964cc2533d76060574a830e4c2276a59bf182ce5ce9221e9dcc56aa8d19b16d887490d0e604\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "acceptance_receipts": [
+     "{\"acceptance_digest\":\"cef8c668def875cb3961210f56c380c90e005648be8039f823aad46cecb26c38\",\"profile\":\"evidence-interop/0\",\"received_at\":\"2026-10-12T00:06:00Z\",\"receiver\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"sig\":\"18f2479b9f97318d4734506dd8d8e3d27c5de912e85cb9f60a8a0b42703464de3a600c0b632b61eefaaed8177732da9ffeb2f5d33acaa7dc2abd0b8e55422904\"}"
+    ]
+   },
+   "expected": {
+    "finding": "accepted_after_action",
+    "candidates": [
+     {
+      "record_digest": "cef8c668def875cb3961210f56c380c90e005648be8039f823aad46cecb26c38",
+      "properties": {
+       "acceptance_form": "PASS",
+       "acceptance_signature": "PASS",
+       "acceptance_signer_trust": "PASS",
+       "acceptance_binding": "PASS",
+       "proposal_binding": "PASS",
+       "acceptance_unique": "NOT_CHECKED",
+       "execution_cites_acceptance": "PASS",
+       "acceptance_ordering": "FAIL"
+      }
+     }
+    ],
+    "receipts": [
+     {
+      "receipt_digest": "7bd5a760b0e87a696fcee511a0ef93736258309a033cb8f49a0a283145baa07c",
+      "properties": {
+       "receipt_signature": "PASS",
+       "receipt_signer": "PASS"
+      }
+     }
+    ],
+    "claim": {
+     "contract_ref": "C@1",
+     "evidence_includes": [
+      {
+       "digest_alg": "SHA-256",
+       "digest": "cef8c668def875cb3961210f56c380c90e005648be8039f823aad46cecb26c38"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "session-K",
+   "description": "the receipt is signed by the provider's second key",
+   "pins": {
+    "trust_policy": {
+     "parties": {
+      "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa": "N_P",
+      "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73": "N_Q",
+      "d253b70028d8ea340abc4eed8c4191926cf220de30821316d3b1436a7c3930f8": "N_Q"
+     },
+     "require_action_time_from_other_party": false
+    },
+    "evaluation_time": "2026-10-12T02:00:00Z"
+   },
+   "inputs": {
+    "transaction": {
+     "scheme": "x-example/session",
+     "id": "session-1"
+    },
+    "proposer": "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa",
+    "acceptor": "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73",
+    "acceptance_records": [
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:00:00Z\",\"profile\":\"evidence-interop/0\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"5d79012ffca4259299a158674561d453f89b01a8ae610430915c7bba7c0712228ef8fe71e8cabf2340f578c98de6282734c2bb2a04bc524eb1dde174992bf40a\",\"state\":\"proposed\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}",
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:05:00Z\",\"profile\":\"evidence-interop/0\",\"proposal_digest\":\"6bef2d2c5383efff29b375d43b3d13a477e6c98b34394e33cc5ee4d7795f6843\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"3f4d1e524bbf5a580f3e8b77c3d23ecf720993ee14f6103e2e4ddad7f75c6790e3d50b90b8ff23f031953952f1d1a09aa707a5f1412433551b7c9de485ce740d\",\"state\":\"accepted\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "execution_records": [
+     "{\"action_at\":\"2026-10-12T00:10:00Z\",\"issuer\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"links\":[{\"target\":\"2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd\",\"type\":\"cites\"}],\"sig\":\"c1f8b884fbbaf149f45bc75ff5afc54d21d9295ea404d8d4c9579bf63495792b3e771f0ee159cfda65b30d9d46e3bce3d45a90b1a41c6464addaadb335f1dd0c\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "acceptance_receipts": [
+     "{\"acceptance_digest\":\"2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd\",\"profile\":\"evidence-interop/0\",\"received_at\":\"2026-10-12T00:06:00Z\",\"receiver\":\"d253b70028d8ea340abc4eed8c4191926cf220de30821316d3b1436a7c3930f8\",\"sig\":\"e97f3f92366d797b8cf551bca66adca4ab9018108a4615df32a20c13996140c6028f218bc04ceefe0c93563e43b2f455d192294be764dc4f480da6eb9e9f820e\"}"
+    ]
+   },
+   "expected": {
+    "finding": "accepted_execution_cites",
+    "candidates": [
+     {
+      "record_digest": "2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd",
+      "properties": {
+       "acceptance_form": "PASS",
+       "acceptance_signature": "PASS",
+       "acceptance_signer_trust": "PASS",
+       "acceptance_binding": "PASS",
+       "proposal_binding": "PASS",
+       "acceptance_unique": "NOT_CHECKED",
+       "execution_cites_acceptance": "PASS",
+       "acceptance_ordering": "NOT_PRESENT"
+      }
+     }
+    ],
+    "receipts": [
+     {
+      "receipt_digest": "f7180925ab559dda412b79b37238c6b32b2603d55170517d1168b22ce3aeb97d",
+      "properties": {
+       "receipt_signature": "PASS",
+       "receipt_signer": "FAIL"
+      }
+     }
+    ],
+    "claim": {
+     "contract_ref": "C@1",
+     "evidence_includes": [
+      {
+       "digest_alg": "SHA-256",
+       "digest": "2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "session-U",
+   "description": "the served half does not cite the acceptance",
+   "pins": {
+    "trust_policy": {
+     "parties": {
+      "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa": "N_P",
+      "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73": "N_Q",
+      "d253b70028d8ea340abc4eed8c4191926cf220de30821316d3b1436a7c3930f8": "N_Q"
+     },
+     "require_action_time_from_other_party": false
+    },
+    "evaluation_time": "2026-10-12T02:00:00Z"
+   },
+   "inputs": {
+    "transaction": {
+     "scheme": "x-example/session",
+     "id": "session-1"
+    },
+    "proposer": "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa",
+    "acceptor": "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73",
+    "acceptance_records": [
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:00:00Z\",\"profile\":\"evidence-interop/0\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"5d79012ffca4259299a158674561d453f89b01a8ae610430915c7bba7c0712228ef8fe71e8cabf2340f578c98de6282734c2bb2a04bc524eb1dde174992bf40a\",\"state\":\"proposed\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}",
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:05:00Z\",\"profile\":\"evidence-interop/0\",\"proposal_digest\":\"6bef2d2c5383efff29b375d43b3d13a477e6c98b34394e33cc5ee4d7795f6843\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"3f4d1e524bbf5a580f3e8b77c3d23ecf720993ee14f6103e2e4ddad7f75c6790e3d50b90b8ff23f031953952f1d1a09aa707a5f1412433551b7c9de485ce740d\",\"state\":\"accepted\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "execution_records": [
+     "{\"action_at\":\"2026-10-12T00:10:00Z\",\"issuer\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"links\":[],\"sig\":\"c0c2efecb26a0b9287e3ae7add6706cc8f6ee0460438229183865963186bb26acd393aa38383d98e93a5d723108d37dc08069662e112dd992964aa9c328ca603\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "acceptance_receipts": [
+     "{\"acceptance_digest\":\"2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd\",\"profile\":\"evidence-interop/0\",\"received_at\":\"2026-10-12T00:06:00Z\",\"receiver\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"sig\":\"20277ade4dcb8698b5efca1a1be6a6fd113cee4566995645418cf170da710c34d1d64ae8d7f1670c6cd28bd400e5888206f598d77804828225072872145edc00\"}"
+    ]
+   },
+   "expected": {
+    "finding": "accepted_not_cited",
+    "candidates": [
+     {
+      "record_digest": "2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd",
+      "properties": {
+       "acceptance_form": "PASS",
+       "acceptance_signature": "PASS",
+       "acceptance_signer_trust": "PASS",
+       "acceptance_binding": "PASS",
+       "proposal_binding": "PASS",
+       "acceptance_unique": "NOT_CHECKED",
+       "execution_cites_acceptance": "FAIL",
+       "acceptance_ordering": "PASS"
+      }
+     }
+    ],
+    "receipts": [
+     {
+      "receipt_digest": "b5ccc1d100fa4943e75d6c8223d0636a5d9911442d2c03e726ac5359c819c3bf",
+      "properties": {
+       "receipt_signature": "PASS",
+       "receipt_signer": "PASS"
+      }
+     }
+    ],
+    "claim": {
+     "contract_ref": "C@1",
+     "evidence_includes": [
+      {
+       "digest_alg": "SHA-256",
+       "digest": "2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "session-W",
+   "description": "the served half is outside the session window",
+   "pins": {
+    "trust_policy": {
+     "parties": {
+      "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa": "N_P",
+      "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73": "N_Q",
+      "d253b70028d8ea340abc4eed8c4191926cf220de30821316d3b1436a7c3930f8": "N_Q"
+     },
+     "require_action_time_from_other_party": false
+    },
+    "evaluation_time": "2026-10-12T02:00:00Z"
+   },
+   "inputs": {
+    "transaction": {
+     "scheme": "x-example/session",
+     "id": "session-1"
+    },
+    "proposer": "94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa",
+    "acceptor": "d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73",
+    "acceptance_records": [
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:00:00Z\",\"profile\":\"evidence-interop/0\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"5d79012ffca4259299a158674561d453f89b01a8ae610430915c7bba7c0712228ef8fe71e8cabf2340f578c98de6282734c2bb2a04bc524eb1dde174992bf40a\",\"state\":\"proposed\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}",
+     "{\"acceptor\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"contract_digest\":\"bc923cc16ed7903d3e6e559581c76549773c86664b2320185267c1a1d521947e\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:05:00Z\",\"profile\":\"evidence-interop/0\",\"proposal_digest\":\"6bef2d2c5383efff29b375d43b3d13a477e6c98b34394e33cc5ee4d7795f6843\",\"proposer\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"session\":{\"not_after\":\"2026-10-12T01:00:00Z\",\"not_before\":\"2026-10-12T00:00:00Z\"},\"sig\":\"3f4d1e524bbf5a580f3e8b77c3d23ecf720993ee14f6103e2e4ddad7f75c6790e3d50b90b8ff23f031953952f1d1a09aa707a5f1412433551b7c9de485ce740d\",\"state\":\"accepted\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "execution_records": [
+     "{\"action_at\":\"2026-10-12T01:00:01Z\",\"issuer\":\"d7f7eabc83eafc8cfe44463d8568793a9ec37484a6253fb3961ddcac10044b73\",\"links\":[{\"target\":\"2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd\",\"type\":\"cites\"}],\"sig\":\"276054d6eee2ad90c4cb4a3989db047c0458c9f1b53454658c9bb4c718a7b24c011457ea68ba0b66418f0df18fcb69424af55f68653b45a426b6b681548a000b\",\"transaction\":{\"id\":\"session-1\",\"scheme\":\"x-example/session\"}}"
+    ],
+    "acceptance_receipts": [
+     "{\"acceptance_digest\":\"2e1c247e03c3c74e75d1bde448515ffa44f298f2b567441096e50c95375507fd\",\"profile\":\"evidence-interop/0\",\"received_at\":\"2026-10-12T00:06:00Z\",\"receiver\":\"94695150158fc20a5e6e5f721c1f1924a3142a3d19c9afb126f7be960ba85afa\",\"sig\":\"20277ade4dcb8698b5efca1a1be6a6fd113cee4566995645418cf170da710c34d1d64ae8d7f1670c6cd28bd400e5888206f598d77804828225072872145edc00\"}"
+    ]
+   },
+   "expected": {
+    "finding": "not_accepted",
+    "candidates": [],
+    "receipts": []
+   }
+  }
+ ]
+}
