@@ -13,8 +13,9 @@ import (
 // Interoperability Profile this package implements (profile §3.1).
 const ProfileID = "evidence-interop/0"
 
-// RequestDraft is the Internet-Draft whose request map this package accepts
-// (profile §11.4.2 `drafts`).
+// RequestDraft is the Internet-Draft this package implements. Its request map
+// is also a valid -01 map, so a manifest's `drafts` (profile §11.4.2) may list
+// it; the profile now pins -01.
 const RequestDraft = "draft-mih-agent-evidence-request-00"
 
 // Subprotocol is the stream binding's subprotocol identifier (ER §10).

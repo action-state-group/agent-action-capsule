@@ -51,8 +51,8 @@ per-property verification status vocabulary and property catalogue (§7),
 the outcome-to-status mapping (§8), the acceptance record, acceptance receipt, ordering
 evidence rules and acceptance findings (§11.1), the lifecycle statement, its issuer rules,
 lifecycle findings and what a verifier shows (§11.2), the rules for using an Evidence Contract
-under this profile (§11.3.7), and the A2A and MCP carriages, the manifest, the discovery rules
-and the discovery properties (§11.4).
+under this profile (§11.3.7), and its additions to ER's A2A and MCP bindings, the manifest, the
+discovery rules and the discovery properties (§11.4).
 
 **Pins, never redefines:**
 
@@ -149,8 +149,7 @@ and properties [P-1].
 
 `evidence-interop/0` pins the revisions in the Dependency boundary table. A new revision of
 any of those documents does not change what `evidence-interop/0` means. Adopting a new revision
-requires a new profile identifier [P-1]. The one exception is the move of ER from -00 to -01, made
-before `evidence-interop/0` was first published (P-64).
+requires a new profile identifier, except before the profile is first published [P-1].
 
 ### 3.3 Negotiation
 
@@ -344,8 +343,8 @@ the request map [P-22]. That includes the pinned, parameterless requests ER also
 [ER §10]. ER says a GET returns the static resource, which is not an artifact response and carries
 no envelope, and that a requester that needs the request binding sends a POST [ER §10]. This
 profile makes that POST a requirement, because only a body gives the request octets that
-`request_binding` needs. ER defines no request field naming the evidence stream [ER §2]. In v0 a responder holding
-several streams says how each is addressed outside this profile (P-23).
+`request_binding` needs. ER defines no request field naming the evidence stream [ER §2]. In v0 a
+responder holding several streams says how each is addressed outside this profile (P-23).
 
 ### 6.2 Artifact response: canonical Artifact and signed envelope
 
@@ -911,7 +910,7 @@ that can give a status; §6.7.3 item 4 and §6.7.4 can only turn a `SATISFIED` i
 | `anchor_inclusion` | envelope | the artifact verifies against `anchor.digest` using `verification_content`, by the method each `kind` names [ER §4.1 item 3]; for the `cll-*` kinds, the procedure of §6.2.1 [P-31]; for the `checkpoints` subject and the derivation of ER §8.1, the `artifact` is itself the material [ER §4.1] | yes |
 | `caller_invariance` | two or more envelopes | for envelopes with the same `responder`, `subject`, `derivation` and `anchor.digest`, each of which has passed `envelope_signature`, `responder_trust` and `artifact_digest`: identical `artifact_digest` [ER §5]. `NOT_CHECKED` with fewer than two such envelopes [P-17] | a `FAIL` is adverse (§8) |
 | `reason_registered` | refusal | `reason` is exactly one token of §9.1, exact case [ERV A13] | yes |
-| `issued_at_form` | envelope, refusal | present and of the §5.2 time form. ER requires it on a refusal [ER §4.2 item 3]; for the envelope and for the form, see [ERV A5; P-12] | yes |
+| `issued_at_form` | envelope, refusal | present and of the §5.2 time form. ER requires it on an envelope and on a refusal [ER §4.1 item 5, §4.2 item 3]; for the form, see [ERV A5; P-12] | yes |
 | `native_check` | each foreign object in a verified Artifact | the object's own verification method over its as-transmitted octets (§5.1); `method` names that method | per requirement (§8) |
 | acceptance properties | acceptance records and receipts | §11.1.7 | decide the acceptance finding (§11.1.8), never a status of §8 |
 | lifecycle properties | lifecycle statements | §11.2.5 | decide the lifecycle finding (§11.2.5), never a status of §8 |
@@ -2621,7 +2620,7 @@ The `evidence_request` input schema is:
 {
  "type": "object",
  "properties": {
-  "request": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
+  "request": {"type": "string", "pattern": "^[A-Za-z0-9_-]*$"},
   "media_type": {"enum": ["application/cbor", "application/json"]}
  },
  "required": ["request", "media_type"],
@@ -2850,7 +2849,8 @@ a later draft revision.
 
 - **P-1** The profile identifier names one exact revision. Before first publication, filling a §11
   placeholder that only adds objects, rows and properties keeps it. Any byte-level change requires a new
-  identifier (§3.1, §3.2).
+  identifier (§3.1, §3.2). Before first publication, a change has also kept the identifier when it is
+  recorded as its own entry here that says so: P-8, P-31 and P-64.
 - **P-2** The `profile` request member and the `profiles` manifest member (§3.3, §6.1).
 - **P-3** An unsupported profile version is refused `request_malformed`. ER has no dedicated token.
   Candidate for ER -01: register a token such as `version_unsupported` (§3.3, §9.1).
@@ -2996,9 +2996,10 @@ a later draft revision.
   says an extension URI should carry version information and that a breaking change to an
   extension needs a new URI [A2A §4.6.3]. Here versions are negotiated inside the exchange, through
   `profiles`, `drafts` and the request's `profile`. A breaking change to the carriage itself, as
-  opposed to the profile or the draft, has no URI to move to. Candidate for a later revision: a
-  versioned URI under the draft's Datatracker URL, or a statement that the carriage never changes
-  incompatibly.
+  opposed to the profile or the draft, has no URI to move to. ER -01 now fixes the URI and
+  `required` `false` itself and forbids any other URI (ER §10.2), so a profile revision cannot
+  version it. Candidate for ER: a versioned URI under the draft's Datatracker URL, or a statement
+  that the carriage never changes incompatibly.
 - **P-38** The A2A request: one `Message` with exactly one `raw` `Part` holding the request octets,
   `application/cbor` or `application/json`, the extension URI in `extensions` and in
   `A2A-Extensions`, `A2A-Version` `1.0`, no `taskId`, and the request's media type in any
@@ -3030,6 +3031,8 @@ a later draft revision.
   decoded octets on every carriage. Deterministic CBOR SHOULD be used across carriages. The reply
   MUST take the request's encoding and media type, media types are compared exactly, each reply
   is verified on its own, and carriage-added fields never influence the artifact (§11.4.1).
+  P-37 to P-40 and P-43 were written before ER defined these bindings. ER -01 §10.1–§10.3 now
+  states the same rules, and ER governs them. What each entry adds beyond ER is listed in §11.4.
 - **P-44** "Exchange inquiry" names a request on the `exchange` subject, sent by one party of an
   exchange to the other. It has no message, tool, task type or extension of its own. Its subject
   is the half digest, never a transaction reference, and it does not reference the original A2A
@@ -3119,10 +3122,14 @@ a later draft revision.
   (subject, resolved anchor, derivation) and carries no category declaration (§3.3, §6.1, §6.2).
   ER makes implementing `categories` OPTIONAL and defines no category set. Candidate for a later
   revision: honor `categories` once a category-set registry exists. The re-pin keeps the
-  identifier `evidence-interop/0` (P-1), because no revision of this profile has been published
-  yet and it changes no signing input, byte rule, member name, status vocabulary or mapping.
-  The manifest `drafts` value in the vectors changes to `draft-mih-agent-evidence-request-01`
-  (§11.4.2, §11.5).
+  identifier `evidence-interop/0` (P-1), because the text of this profile has not been published
+  yet and the re-pin changes no signing input, byte rule, member name, status vocabulary or
+  mapping. Implementations already serve `evidence-interop/0` with a manifest whose `drafts`
+  lists `draft-mih-agent-evidence-request-00`. Such a responder stays conformant: a -00 request map
+  is accepted unchanged under -01, which adds only `categories`, and `drafts` names the drafts
+  whose request map the responder accepts (§11.4.2). The manifest `drafts` value in the vectors
+  changes to `draft-mih-agent-evidence-request-01` (§11.4.2, §11.5). The next change of this kind
+  takes a new identifier.
 
 ## References
 
