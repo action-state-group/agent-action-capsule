@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.5.0 — 2026-10-30
+
+Tag `crates/agent-action-capsule-v0.5.0`.
+
 - Security, strict witness receipts (feature `strict`): an EdDSA witness
   receipt now verifies only under strict Ed25519. scitt-cose-receipt 0.1.1
   verifies with dalek's `verify`, which accepts a small-order key, so a
