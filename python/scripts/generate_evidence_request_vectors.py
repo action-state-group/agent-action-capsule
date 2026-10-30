@@ -1357,6 +1357,10 @@ def unavailable_window_cases() -> list[dict]:
              state: str = "recorded_absence", shown_as: str | None = None) -> None:
         if shown_as is None:
             shown_as = UW_SHOWN if covered_by else "recorded_absence"
+        # §4.7 item 1: the reader shows each covering statement's stated period too.
+        by_id = {entry["id"]: entry["statement"] for entry in statements}
+        labels = {sid: {**label, "stated_period": [by_id[sid]["start"], by_id[sid]["end"]]}
+                  for sid, label in labels.items()}
         expect: dict[str, Any] = {"state": state, "covered_by": covered_by, "shown_as": shown_as,
                                   "labels": labels}
         expect["must_not_show_as"] = never if covered_by else ["refusal", "proof_of_attack"]
@@ -1400,6 +1404,11 @@ def unavailable_window_cases() -> list[dict]:
          "afterwards.",
          a_window, [st("s1", flood, ["2026-10-29T10:20:01Z"])], ["s1"],
          {"s1": lab("flood", True, "2026-10-29T10:20:01Z")})
+    disp("uw-long-period-shown", "A flood statement stating a year-long period: the reader shows that "
+         "period, so it does not read like a 40-minute window.",
+         a_window, [st("s1", uw_statement("2026-01-01T00:00:00Z", "2026-12-31T23:59:59Z", "flood"),
+                       ["2026-10-29T10:06:00Z"])], ["s1"],
+         {"s1": lab("flood", False, "2026-10-29T10:06:00Z")})
     disp("uw-partial-overlap", "A statement that ends inside the waiting window still covers it.",
          a_window, [st("s1", uw_statement("2026-10-29T09:00:00Z", "2026-10-29T10:12:00Z", "maintenance"),
                        ["2026-10-29T08:55:00Z"])], ["s1"],

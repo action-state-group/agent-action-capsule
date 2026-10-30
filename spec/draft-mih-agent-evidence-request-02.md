@@ -864,7 +864,9 @@ sent the request to the window's close.
 A reader that holds an absence and a statement covering it:
 
 1. MUST show the absence as "no answer; holder states unavailability",
-   with the statement's `reason_class`. It MUST NOT show the absence as a
+   with the statement's `reason_class` and its stated period from `start`
+   to `end`, so that a long stated window does not read like a short one.
+   It MUST NOT show the absence as a
    refusal, and MUST NOT show it as an absence with no statement.
 2. MUST show the statement as the responder's own statement, and MUST NOT
    show or treat it as proof that the responder was attacked, flooded, or
@@ -1583,15 +1585,16 @@ From 10:00 to 10:40 the node is flooded and answers nothing.
   the registration time is 10:06.
 - Requester A asks at 10:10 with a `deadline` of 10:20. No answer comes, and
   at 10:20 A records an absence citing the commitment. A reader holding
-  both shows "no answer; holder states unavailability" with class `flood`,
-  stated at 10:06, before A's window closed at 10:20.
+  both shows "no answer; holder states unavailability" with class `flood`
+  and the stated period 10:00 to 10:40, stated at 10:06, before A's window
+  closed at 10:20.
 - Requester B asked at 09:40 with a `deadline` of 09:55 and recorded an
   absence at 09:55. The 10:00 to 10:40 statement does not cover it. At
   11:30 the node seals a second statement, `start` 09:30, `end` 09:58,
   class `outage`, with a receipt at 11:31. It covers B's absence, and a
   reader shows "no answer; holder states unavailability" with class
-  `outage`, labelled "stated afterwards": registered at 11:31, after B's
-  window closed at 09:55.
+  `outage` and the stated period 09:30 to 09:58, labelled "stated
+  afterwards": registered at 11:31, after B's window closed at 09:55.
 
 Neither reader shows a refusal, and neither shows the node as having been
 attacked. Both absences remain A's and B's own records, still citing the
@@ -1639,7 +1642,8 @@ that the two can cite each other without either defining the other.
   `start` to `end`, with one `reason_class` from a closed list (`flood`,
   `maintenance`, `outage`, `other_declared`). A reader that holds an
   absence and a statement covering it shows "no answer; holder states
-  unavailability", never a refusal and never silence; shows the statement
+  unavailability" with the class and the stated period, never a refusal
+  and never silence; shows the statement
   as the responder's own word, never as proof of attack; and shows its
   registration time relative to the absence, labelled "stated afterwards"
   when it was registered after the waiting window closed. New terms

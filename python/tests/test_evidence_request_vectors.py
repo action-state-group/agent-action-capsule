@@ -494,7 +494,8 @@ def test_unavailable_window_expectations_follow_from_the_text():
             if ok and _uw_time(st["start"]) <= closed and _uw_time(st["end"]) >= opened:
                 covering.append(entry["id"])
                 labels[entry["id"]] = {"reason_class": st["reason_class"], "registration_time": registered,
-                                       "stated_afterwards": _uw_time(registered) > closed}
+                                       "stated_afterwards": _uw_time(registered) > closed,
+                                       "stated_period": [st["start"], st["end"]]}
         assert expect["covered_by"] == covering, case["id"]
         assert expect["labels"] == labels, case["id"]
         assert expect["state"] == "recorded_absence", case["id"]

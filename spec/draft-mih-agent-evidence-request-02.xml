@@ -981,7 +981,9 @@ sent the request to the window's close.</t>
         <t>A reader that holds an absence and a statement covering it:</t>
         <ol spacing="normal" type="1"><li>
             <t><bcp14>MUST</bcp14> show the absence as "no answer; holder states unavailability",
-with the statement's <tt>reason_class</tt>. It <bcp14>MUST NOT</bcp14> show the absence as a
+with the statement's <tt>reason_class</tt> and its stated period from <tt>start</tt>
+to <tt>end</tt>, so that a long stated window does not read like a short one.
+It <bcp14>MUST NOT</bcp14> show the absence as a
 refusal, and <bcp14>MUST NOT</bcp14> show it as an absence with no statement.</t>
           </li>
           <li>
@@ -1874,7 +1876,7 @@ action.</t>
         </reference>
       </references>
     </references>
-    <?line 1542?>
+    <?line 1544?>
 
 <section anchor="field-evidence">
       <name>Example Deployments</name>
@@ -1934,8 +1936,9 @@ the registration time is 10:06.</t>
         <li>
           <t>Requester A asks at 10:10 with a <tt>deadline</tt> of 10:20. No answer comes, and
 at 10:20 A records an absence citing the commitment. A reader holding
-both shows "no answer; holder states unavailability" with class <tt>flood</tt>,
-stated at 10:06, before A's window closed at 10:20.</t>
+both shows "no answer; holder states unavailability" with class <tt>flood</tt>
+and the stated period 10:00 to 10:40, stated at 10:06, before A's window
+closed at 10:20.</t>
         </li>
         <li>
           <t>Requester B asked at 09:40 with a <tt>deadline</tt> of 09:55 and recorded an
@@ -1943,8 +1946,8 @@ absence at 09:55. The 10:00 to 10:40 statement does not cover it. At
 11:30 the node seals a second statement, <tt>start</tt> 09:30, <tt>end</tt> 09:58,
 class <tt>outage</tt>, with a receipt at 11:31. It covers B's absence, and a
 reader shows "no answer; holder states unavailability" with class
-<tt>outage</tt>, labelled "stated afterwards": registered at 11:31, after B's
-window closed at 09:55.</t>
+<tt>outage</tt> and the stated period 09:30 to 09:58, labelled "stated
+afterwards": registered at 11:31, after B's window closed at 09:55.</t>
         </li>
       </ul>
       <t>Neither reader shows a refusal, and neither shows the node as having been
@@ -2022,7 +2025,8 @@ that the two can cite each other without either defining the other.</t>
 <tt>start</tt> to <tt>end</tt>, with one <tt>reason_class</tt> from a closed list (<tt>flood</tt>,
 <tt>maintenance</tt>, <tt>outage</tt>, <tt>other_declared</tt>). A reader that holds an
 absence and a statement covering it shows "no answer; holder states
-unavailability", never a refusal and never silence; shows the statement
+unavailability" with the class and the stated period, never a refusal
+and never silence; shows the statement
 as the responder's own word, never as proof of attack; and shows its
 registration time relative to the absence, labelled "stated afterwards"
 when it was registered after the waiting window closed. New terms

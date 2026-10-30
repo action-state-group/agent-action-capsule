@@ -40,7 +40,7 @@ section and the reading used (the most literal one); the list is below, for -01.
 | `outcomes.json` | The three outcomes and pending, as facts in and one state out, with the states each case must never be recorded as (§4.5). |
 | `invariance.json` | Caller invariance (§5): observations of the same subject under the same anchor must carry byte-identical artifacts. |
 | `retention.json` | Retention commitments (§9): every reason inside and after `until`, absence with and without a commitment, and which subject forms a commitment may name. |
-| `unavailable-window.json` | Unavailable-window statements (-02 §4.7). `kind` `statement`: whether a reader recognizes the statement (well formed, signed by `responder_key`, registered) and its registration time, the earliest of its `receipts` marked `accepted` (from a transparency service the reader accepts as independent of the responder). `kind` `display`: an absence (`sent_at` to `closed_at`) and statements; expect the ids of the statements that cover it, `shown_as`, and per covering statement its `reason_class`, registration time and `stated_afterwards`. `must_not_show_as` lists what the reader must never show. Statements are signed with the primary key of `refusal.json` under the profile in the file. |
+| `unavailable-window.json` | Unavailable-window statements (-02 §4.7). `kind` `statement`: whether a reader recognizes the statement (well formed, signed by `responder_key`, registered) and its registration time, the earliest of its `receipts` marked `accepted` (from a transparency service the reader accepts as independent of the responder). `kind` `display`: an absence (`sent_at` to `closed_at`) and statements; expect the ids of the statements that cover it, `shown_as`, and per covering statement its `reason_class`, `stated_period`, registration time and `stated_afterwards`. `must_not_show_as` lists what the reader must never show. Statements are signed with the primary key of `refusal.json` under the profile in the file. |
 | `manifest.json` | SHA-256 and case count of every generated file, and the ambiguity list. |
 | `SHA256SUMS` | SHA-256 of every file in this directory except itself. |
 | `DIFFS.md` | Known differences between one existing Python responder and -00. |
@@ -326,7 +326,7 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `ret-commitment-subject-checkpoints` | 9, 3.1 | malformed | A1, A11 |
 | `ret-commitment-missing-until` | 9 | malformed | A1 |
 
-### `unavailable-window.json` (34 cases)
+### `unavailable-window.json` (35 cases)
 
 | Case | Kind | § | Expect |
 |---|---|---|---|
@@ -354,6 +354,7 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `uw-backdated-receipt-not-accepted` | display | 4.7, 4.4, 4.6 | holder states unavailability: outage, stated afterwards |
 | `uw-registered-at-close` | display | 4.7, 4.4, 4.6 | holder states unavailability: flood |
 | `uw-registered-after-close-by-a-second` | display | 4.7, 4.4, 4.6 | holder states unavailability: flood, stated afterwards |
+| `uw-long-period-shown` | display | 4.7, 4.4, 4.6 | holder states unavailability: flood |
 | `uw-partial-overlap` | display | 4.7, 4.4, 4.6 | holder states unavailability: maintenance |
 | `uw-touching-boundary` | display | 4.7, 4.4, 4.6 | holder states unavailability: outage |
 | `uw-no-overlap` | display | 4.7, 4.4 | not covered; shown as recorded_absence |
