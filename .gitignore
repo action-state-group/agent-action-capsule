@@ -19,3 +19,9 @@ spec/.draft-*.v2.xml
 # test vectors are FROZEN committed bytes — exempt from the key/artifact ignore
 !vectors/**/*.cose
 !vectors/**/*.pem
+
+# local dependency trees from the offline vector setup (VECTORS.md)
+.venv/
+go/vendor/
+rust/vendor/
+rust/.cargo/

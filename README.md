@@ -74,6 +74,13 @@ For the SCITT receipt + anchor paths: `pip install -e "python[transparent,anchor
 reference-library detail — the producer side, `--transparent` Signed-Statement verification, and
 every option — is in [`python/README.md`](python/README.md).
 
+## Run the conformance vectors
+
+One offline command per language runs the published vectors and prints pass/fail
+per set with case counts, and a `--break-one-byte` step shows a mutated vector
+fail: [`VECTORS.md`](VECTORS.md#run-the-vectors) lists the Python, TypeScript,
+Go and Rust commands and their one-time setup.
+
 ## Repository layout
 
 ```
