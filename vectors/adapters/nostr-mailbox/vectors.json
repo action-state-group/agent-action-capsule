@@ -84,7 +84,7 @@
   "contract_ref": "C@1",
   "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561"
  },
- "count": 12,
+ "count": 13,
  "cases": [
   {
    "id": "mailbox-exchange",
@@ -1796,6 +1796,201 @@
        }
       ],
       "proofs": []
+     }
+    }
+   }
+  },
+  {
+   "id": "mailbox-late-reply-after-absence",
+   "description": "No event arrives before the deadline, and the requester records an absence. Then the relay delivers reply event 1, which it had delayed past the deadline. The absence record is unchanged; the late event is a reply that verifies as in mailbox-exchange, kept as its own later fact that cites the request by its digest and its event id.",
+   "cites": [
+    "§5.3",
+    "§6",
+    "interop §6.4",
+    "interop §11.2",
+    "interop §11.4.1 rule 8"
+   ],
+   "pins": {
+    "trust_policy": {
+     "responder_keys": [
+      "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+     ],
+     "log_keys": [
+      {
+       "iss": "https://producer.example",
+       "sub": "evidence-stream-1",
+       "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+      },
+      {
+       "iss": "https://producer.example",
+       "sub": "evidence-stream-2",
+       "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+      }
+     ],
+     "foreign_keys": [],
+     "parties": {},
+     "successions": [],
+     "require_action_time_from_other_party": false
+    },
+    "verification_policy": {
+     "online": false,
+     "profiles_implemented": [
+      "evidence-interop/0"
+     ],
+     "kinds_implemented": [
+      "cll-checkpoint",
+      "cll-inclusion-proof",
+      "cll-consistency-proof"
+     ]
+    },
+    "contract_ref": "C@1",
+    "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+    "evaluation_time": "2026-10-12T01:00:00Z"
+   },
+   "inputs": {
+    "request": {
+     "media_type": "application/cbor",
+     "octets_hex": "a5656e6f6e636577323032362d31302d31325430303a30303a31305a2f6e316770726f66696c657265766964656e63652d696e7465726f702f30677375626a656374a1667265636f726478403266626462393562646562613632663934396263623630323630363166636436366330323135323361333965353866633264653163643434666636333132343468636f766572616765a16c65787065637465645f70696e78403136663135646435343735643565386563316662376138343437303339316531316437363633323332333635633137343963363063613734383963666665393968646561646c696e6574323032362d31302d31325430303a30313a31305a"
+    },
+    "mailbox": {
+     "relay": "wss://relay.example",
+     "mailbox_key": "aa7f247898e87299d2a61d1cda441a874115c9726ce2beeeedcf7a49f3077673",
+     "route": "nostr:nprofile1qqs25ley0zvwsu5e62np68x6gsdgwsg4e9exec47amku77jf7vrhvucpzdmhxue69uhhyetvv9ujuetcv9khqmr98nmcfs",
+     "request_event": {
+      "id": "43435e3ab87dac35105f92c7ac175a09161b86cdf1baf35217c813e81aa88a9c",
+      "pubkey": "df2f1640bbd21ab794735396fd3e5e2cc6cde3e25521b83b7fbcb0a90f913a27",
+      "created_at": 1791763210,
+      "kind": 4700,
+      "tags": [
+       [
+        "p",
+        "aa7f247898e87299d2a61d1cda441a874115c9726ce2beeeedcf7a49f3077673",
+        "wss://relay.example"
+       ],
+       [
+        "m",
+        "application/cbor"
+       ],
+       [
+        "expiration",
+        "1791763270"
+       ]
+      ],
+      "content": "pWVub25jZXcyMDI2LTEwLTEyVDAwOjAwOjEwWi9uMWdwcm9maWxlcmV2aWRlbmNlLWludGVyb3AvMGdzdWJqZWN0oWZyZWNvcmR4QDJmYmRiOTViZGViYTYyZjk0OWJjYjYwMjYwNjFmY2Q2NmMwMjE1MjNhMzllNThmYzJkZTFjZDQ0ZmY2MzEyNDRoY292ZXJhZ2WhbGV4cGVjdGVkX3BpbnhAMTZmMTVkZDU0NzVkNWU4ZWMxZmI3YTg0NDcwMzkxZTExZDc2NjMyMzIzNjVjMTc0OWM2MGNhNzQ4OWNmZmU5OWhkZWFkbGluZXQyMDI2LTEwLTEyVDAwOjAxOjEwWg",
+      "sig": "15c12ed341175512b2bf476285bee9aa1c41ac95e9b592c640cd48f87b1ec456d67578fd8d884bf2c945daa11f77ee8f0970608951785f831c1875d1e2c04112"
+     },
+     "events": [],
+     "late_events": [
+      {
+       "received_at": "2026-10-12T00:01:40Z",
+       "event": {
+        "id": "9b25fd3c92058b42bfa2a98a4321d77cc46d7cdc96e7680b04615c9f15d440ea",
+        "pubkey": "aa7f247898e87299d2a61d1cda441a874115c9726ce2beeeedcf7a49f3077673",
+        "created_at": 1791763212,
+        "kind": 4701,
+        "tags": [
+         [
+          "e",
+          "43435e3ab87dac35105f92c7ac175a09161b86cdf1baf35217c813e81aa88a9c",
+          "wss://relay.example"
+         ],
+         [
+          "p",
+          "df2f1640bbd21ab794735396fd3e5e2cc6cde3e25521b83b7fbcb0a90f913a27"
+         ],
+         [
+          "m",
+          "application/cbor"
+         ]
+        ],
+        "content": "q2NzaWd4gGMyMGYxYzgwYzJjYjZhZmQwOTBmYzBmYzM5YjJhNjZjNmE3ZWY3YTcxNTM2Y2FkMzg1MDhjNDcyYTJjNTUyMzkwOTNmOTllNzJkZGE1NmZkNGMwZTA0ZTk3Yjg5YzJmYzM4ZDBlM2U2NTRhYzQyNzY5YTY5N2ViMjlhM2IyNTBmZmFuY2hvcqFmZGlnZXN0eEAxNmYxNWRkNTQ3NWQ1ZThlYzFmYjdhODQ0NzAzOTFlMTFkNzY2MzIzMjM2NWMxNzQ5YzYwY2E3NDg5Y2ZmZTk5Z3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8wZ3N1YmplY3ShZnJlY29yZHhAMmZiZGI5NWJkZWJhNjJmOTQ5YmNiNjAyNjA2MWZjZDY2YzAyMTUyM2EzOWU1OGZjMmRlMWNkNDRmZjYzMTI0NGhhcnRpZmFjdFgleyJleGFtcGxlIjoiZXZpZGVuY2UgcmVjb3JkIiwic2VxIjoxfWlpc3N1ZWRfYXR0MjAyNi0xMC0xMlQwMDowMDoxMlppcmVzcG9uZGVyeEBlODRmZWQ4MTkwYTYxMTYwMTZiZjY4ZWYyZmMxNzgwYTkxOWU5ZWQyZDlmODhlZmI4OTVhOTU0ZmZkN2YwMTE3bHZlcmlmaWNhdGlvboOiZGtpbmRuY2xsLWNoZWNrcG9pbnRmZGlnZXN0eEAxNmYxNWRkNTQ3NWQ1ZThlYzFmYjdhODQ0NzAzOTFlMTFkNzY2MzIzMjM2NWMxNzQ5YzYwY2E3NDg5Y2ZmZTk5omRraW5kc2NsbC1pbmNsdXNpb24tcHJvb2ZmZGlnZXN0eEAwMTNhYzVhM2JkZmY5Y2Y2MmEzZWEyODE2YjNjZDE5NzE1MTkzMGY2ZGQ0OWQ2N2Q5Mjg2ZjEyYzNjNDc1MjdhomRraW5kdWNsbC1jb25zaXN0ZW5jeS1wcm9vZmZkaWdlc3R4QDA2NTUwY2NhNzUzMTkyNDJlYTQwZTdmM2ZkOWZmMGI4ZTVlM2JmYThhMDYxMjJmNjc4NTc4YTU3Y2I0YmRjNzFucmVxdWVzdF9kaWdlc3R4QDBhZmVkZDRhYjQ3YmEwZDM5MjYzODEyZDFjZDk1MGFkZGU4ZjY5YWQxMjEzNTMyMjA3YzUxNmM2YjdmZDVkYzdvYXJ0aWZhY3RfZGlnZXN0eEAyZmJkYjk1YmRlYmE2MmY5NDliY2I2MDI2MDYxZmNkNjZjMDIxNTIzYTM5ZTU4ZmMyZGUxY2Q0NGZmNjMxMjQ0dHZlcmlmaWNhdGlvbl9jb250ZW50g1kBv9KEWFajAScEWCDIKs9m7yvcEGAXVEuRhz373JLwljsJnUmw9iG-33birw-iAXgYaHR0cHM6Ly9wcm9kdWNlci5leGFtcGxlAnFldmlkZW5jZS1zdHJlYW0tMaBZAR-nZGtpbmRuY2xsLWNoZWNrcG9pbnRnY2FkZW5jZRkOEGhsb2dfc2l6ZQdpaXNzdWVkX2F0dDIwMjYtMTAtMTJUMDA6MDA6MDBaaXByZXZfc2l6ZQNqY29tbWl0bWVudFhng1ggNh7-V19Ceva2zufeDyGkxaxLt2h0G6EElcoDAj2FSiJYIABgasCy-_-a6ir67pF4LV_fWbI8bB3ID68YUoCUyKXTWCBBw5Jf42DCCwJ7qUKc1hRVkC77MrEJbj1BLR7rQhhNP29wcmV2X2NvbW1pdG1lbnRYRYJYIBd1LNoPWuVSaHYSv-Lts1zkFLdp0n3jabOGDgRHXC4fWCBhTIaBYcPVWb9UHRlmFB6htyado8QhVQTtqf1IgiY_jVhA718vVrpfXtLElydLzJQtgZOn0xjRGYneO0CQCfqJXnOej6CK2xJAbeXytr4ud-nzOYj7GcfN9XNECDMG_I6zC1hHggOCWCBFM6JlYBMmRSZBwsJwARda_HwkBzP_qfTteo-1NSM9dVggF3Us2g9a5VJodhK_4u2zXOQUt2nSfeNps4YOBEdcLh9YsYQEC4KBWCBf1rzf-hHbV6aL5RLDbQnOCr0ARIRXJLY3nRx34a-O3IJYIEUzomVgEyZFJkHCwnABF1r8fCQHM_-p9O16j7U1Iz11WCAXdSzaD1rlUmh2Er_i7bNc5BS3adJ942mzhg4ER1wuH4JYIABgasCy-_-a6ir67pF4LV_fWbI8bB3ID68YUoCUyKXTWCBBw5Jf42DCCwJ7qUKc1hRVkC77MrEJbj1BLR7rQhhNPw",
+        "sig": "4deecd587027cf3bbeb03e68d4f2e9dceccb2ec04b543fa4e4b5cbf0cd735a32c14406d32e85dc02f559e61522d943827ce86e43e8cc80b8d00922cae8d1c22b"
+       }
+      }
+     ]
+    },
+    "absence_record": {
+     "media_type": "application/json",
+     "octets_text": "{\"outcome\":\"recorded_absence\",\"recorded_at\":\"2026-10-12T00:01:10Z\",\"request_digest\":\"0afedd4ab47ba0d39263812d1cd950adde8f69ad1213532207c516c6b7fd5dc7\",\"route\":\"nostr:nprofile1qqs25ley0zvwsu5e62np68x6gsdgwsg4e9exec47amku77jf7vrhvucpzdmhxue69uhhyetvv9ujuetcv9khqmr98nmcfs\",\"window\":{\"closed\":\"2026-10-12T00:01:10Z\",\"opened\":\"2026-10-12T00:00:10Z\"}}"
+    }
+   },
+   "expected": {
+    "request_digest": "0afedd4ab47ba0d39263812d1cd950adde8f69ad1213532207c516c6b7fd5dc7",
+    "request_event_id": "43435e3ab87dac35105f92c7ac175a09161b86cdf1baf35217c813e81aa88a9c",
+    "classification": [],
+    "replies": [],
+    "absence": {
+     "form": "conforming",
+     "window_closes_at": "deadline",
+     "requirements": {
+      "r-record": {
+       "row": "absence",
+       "status": "UNKNOWN",
+       "sufficiency": "UNKNOWN",
+       "verdict": "not_evaluable"
+      }
+     },
+     "presentation_kind_recommended": "story",
+     "claim": {
+      "evidence": [
+       {
+        "digest_alg": "SHA-256",
+        "digest": "3e86fb50785e1593bf77d2038e4d1d29f95ae19dbab9fc7da221b2e10aab49b9"
+       }
+      ],
+      "proofs": []
+     }
+    },
+    "late": {
+     "classification": [
+      "reply"
+     ],
+     "replies": [
+      {
+       "message_type": "envelope",
+       "properties": {
+        "profile_version": "PASS",
+        "envelope_signature": "PASS",
+        "responder_trust": "PASS",
+        "responder_key_current": "NOT_CHECKED",
+        "issued_at_form": "PASS",
+        "request_binding": "PASS",
+        "subject_binding": "PASS",
+        "artifact_digest": "PASS",
+        "verification_binding": "PASS",
+        "anchor_match": "PASS",
+        "anchor_inclusion": "PASS"
+       },
+       "requirements": {
+        "r-record": {
+         "row": "envelope-7",
+         "status": "UNKNOWN",
+         "sufficiency": "UNKNOWN",
+         "verdict": "not_evaluable",
+         "note": "§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met or, where the requirement allows it, out_of_scope, and any other sufficiency gives not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
+        }
+       },
+       "claim": {
+        "evidence": [
+         {
+          "digest_alg": "SHA-256",
+          "digest": "2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244"
+         }
+        ],
+        "proofs": [
+         {
+          "kind": "inclusion_proof",
+          "digest_alg": "SHA-256",
+          "digest": "013ac5a3bdff9cf62a3ea2816b3cd197151930f6dd49d67d9286f12c3c47527a"
+         }
+        ]
+       }
+      }
+     ],
+     "absence_record_unchanged": true,
+     "cites": {
+      "request_digest": "0afedd4ab47ba0d39263812d1cd950adde8f69ad1213532207c516c6b7fd5dc7",
+      "request_event_id": "43435e3ab87dac35105f92c7ac175a09161b86cdf1baf35217c813e81aa88a9c"
      }
     }
    }

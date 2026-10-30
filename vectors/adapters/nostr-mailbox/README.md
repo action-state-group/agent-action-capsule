@@ -6,8 +6,9 @@ Vectors for `spec/bindings/nostr-mailbox-v0.md`, an experimental carriage of the
 binding token. These vectors are not conformance vectors for that profile.
 
 - `vectors.json`: the cases (binding §9). Each carries the request octets, the request event, the
-  events a relay delivered, and, where the window closed with no reply, the absence record, with
-  the expected classification of each event and the expected verifier results.
+  events a relay delivered, and, where the window closed with no reply, the absence record and any
+  events delivered after it, with the expected classification of each event and the expected
+  verifier results.
 - `manifest.json`: the set, its status and the SHA-256 of each generated file.
 - `SHA256SUMS`: every file here.
 

@@ -222,6 +222,8 @@ C, J = "application/cbor", "application/json"
 SENT, DEADLINE = "2026-10-12T00:00:10Z", "2026-10-12T00:01:10Z"
 # The requester's local timeout, for a request that carries no deadline (§5.3).
 LOCAL_TIMEOUT = "2026-10-12T00:05:10Z"
+# When a delayed reply reaches the requester, after the deadline and the absence record (§5.3).
+LATE = "2026-10-12T00:01:40Z"
 
 
 def mailbox_request(nonce: str, deadline: str | None = DEADLINE) -> dict:
@@ -263,7 +265,8 @@ def build_cases() -> list[dict]:
 
     def case(case_id: str, description: str, cites: list, req: bytes, media_type: str, req_event: dict,
              events: list[dict], classification: list[str], replies: list[dict], *,
-             closed: str | None = None, set_props: dict | None = None) -> dict:
+             closed: str | None = None, set_props: dict | None = None,
+             late: list[tuple[str, dict]] | None = None, late_replies: list[dict] | None = None) -> dict:
         inputs: dict[str, Any] = {
             "request": ip.octets(media_type, req),
             "mailbox": {"relay": RELAY, "mailbox_key": NOSTR_PUB["mailbox"], "route": ROUTE,
@@ -281,6 +284,12 @@ def build_cases() -> list[dict]:
                                    "requirements": {"r-record": ip.mapped("absence")},
                                    "presentation_kind_recommended": "story",
                                    "claim": {"evidence": [ip.ref(ip.shx(record))], "proofs": []}}
+        if late:
+            # §5.3: events that reach the requester after the absence is recorded, by its own clock.
+            inputs["mailbox"]["late_events"] = [{"received_at": t, "event": ev} for t, ev in late]
+            expected["late"] = {"classification": ["reply"] * len(late), "replies": late_replies,
+                                "absence_record_unchanged": True,
+                                "cites": {"request_digest": ip.shx(req), "request_event_id": req_event["id"]}}
         return {"id": case_id, "description": description, "cites": cites, "pins": pins(),
                 "inputs": inputs, "expected": expected}
 
@@ -363,6 +372,13 @@ def build_cases() -> list[dict]:
              "No event arrives before the deadline. The requester records an absence whose window closes "
              "at the request's deadline and whose route is the mailbox it addressed.",
              ["§5.3", "interop §6.4", "interop §8.1"], r1, C, q1, [], [], [], closed=DEADLINE),
+        case("mailbox-late-reply-after-absence",
+             "No event arrives before the deadline, and the requester records an absence. Then the relay "
+             "delivers reply event 1, which it had delayed past the deadline. The absence record is "
+             "unchanged; the late event is a reply that verifies as in mailbox-exchange, kept as its own "
+             "later fact that cites the request by its digest and its event id.",
+             ["§5.3", "§6", "interop §6.4", "interop §11.2", "interop §11.4.1 rule 8"], r1, C, q1, [], [], [],
+             closed=DEADLINE, late=[(LATE, a1)], late_replies=[ok_reply]),
         case("mailbox-no-deadline-no-reply",
              "Request 4 has no deadline, so its request event has no expiration tag. No event arrives; the "
              "window closes at the requester's local timeout.",

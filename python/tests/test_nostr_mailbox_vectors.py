@@ -235,6 +235,11 @@ def seen_before(event_id: str, seen: set) -> bool:
     return event_id in seen
 
 
+def keep_late(absence: bytes, late: list[bytes]) -> tuple[bytes, list[bytes]]:
+    """§5.3: the absence record stays as written, and each late reply is kept beside it."""
+    return absence, late
+
+
 def unix(t: str) -> int:
     return int(datetime.strptime(t, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp())
 
@@ -258,6 +263,27 @@ def decode_request(data: bytes, media_type: str) -> dict:
 def render_requirements(reqs: dict) -> dict:
     return {q: {"row": r.row, "status": r.status, "sufficiency": r.sufficiency, "verdict": r.verdict}
             | ({"note": r.note} if r.note is not None else {}) for q, r in reqs.items()}
+
+
+def render_replies(ex) -> list[dict]:
+    return [{"message_type": r.message_type,
+             "properties": {p.property: p.status for p in r.properties},
+             "requirements": render_requirements(r.requirements),
+             "claim": {"evidence": r.evidence, "proofs": r.proofs}}
+            for r in ex.replies]
+
+
+def render_absence(ex, absence_record: Message, box: dict, deadline: str | None) -> dict:
+    record = json.loads(absence_record.octets)
+    # §5.3: the window closes at the request's deadline, and the route is the mailbox addressed.
+    key, relays = nprofile(record["route"])
+    assert key == box["mailbox_key"] and relays == [box["relay"]]
+    closed = record["window"]["closed"]
+    closes_at = "local_timeout" if deadline is None else ("deadline" if closed == deadline else "mismatch")
+    return {"form": ex.absence.form, "window_closes_at": closes_at,
+            "requirements": render_requirements(ex.absence.requirements),
+            "presentation_kind_recommended": ex.absence.presentation_kind_recommended,
+            "claim": {"evidence": ex.absence.evidence, "proofs": []}}
 
 
 def run_case(case: dict) -> dict:
@@ -294,35 +320,53 @@ def run_case(case: dict) -> dict:
     verifier = InteropVerifier(TrustPolicy.from_dict(pins["trust_policy"]),
                                VerificationPolicy.from_dict(pins["verification_policy"]),
                                pins["evaluation_time"], contract=CONTRACT)
-    result = verifier.verify([Exchange(Message(request, media_type), [Message(r, media_type) for r in replies],
-                                       absence_record)], requirements=["r-record"])
+    def verify(replies: list[bytes], absence: Message | None):
+        return verifier.verify([Exchange(Message(request, media_type), [Message(r, media_type) for r in replies],
+                                         absence)], requirements=["r-record"])
+
+    result = verify(replies, absence_record)
     ex = result.exchanges[0]
     out: dict[str, Any] = {"request_digest": ex.request_digest, "request_event_id": req_ev["id"],
-                           "classification": classification,
-                           "replies": [{"message_type": r.message_type,
-                                        "properties": {p.property: p.status for p in r.properties},
-                                        "requirements": render_requirements(r.requirements),
-                                        "claim": {"evidence": r.evidence, "proofs": r.proofs}}
-                                       for r in ex.replies]}
+                           "classification": classification, "replies": render_replies(ex)}
     if ex.replies:
         out["set_properties"] = {"caller_invariance": result.caller_invariance.status}
     if ex.absence is not None:
-        record = json.loads(absence_record.octets)
-        # §5.3: the window closes at the request's deadline, and the route is the mailbox addressed.
-        key, relays = nprofile(record["route"])
-        assert key == box["mailbox_key"] and relays == [box["relay"]]
-        closed = record["window"]["closed"]
-        closes_at = "local_timeout" if deadline is None else ("deadline" if closed == deadline else "mismatch")
-        out["absence"] = {"form": ex.absence.form, "window_closes_at": closes_at,
-                          "requirements": render_requirements(ex.absence.requirements),
-                          "presentation_kind_recommended": ex.absence.presentation_kind_recommended,
-                          "claim": {"evidence": ex.absence.evidence, "proofs": []}}
+        out["absence"] = render_absence(ex, absence_record, box, deadline)
+
+    if "late_events" in box:
+        # §5.3: events reaching the requester after the absence record, by its own clock.
+        written = absence_record.octets
+        record = json.loads(written)
+        late_classification, late = [], []
+        for item in box["late_events"]:
+            assert unix(item["received_at"]) > unix(record["window"]["closed"])
+            assert unix(item["received_at"]) >= unix(record["recorded_at"])
+            outcome, data = classify(item["event"], req_ev, box["mailbox_key"], media_type, content_proves)
+            if data is not None and seen_before(item["event"]["id"], seen):
+                outcome = "duplicate"
+            elif data is not None:
+                seen.add(item["event"]["id"])
+                late.append(data)
+            late_classification.append(outcome)
+        kept, held = keep_late(written, late)
+        # The kept record, verified again, gives what it gave before the late replies arrived.
+        again = verify([], Message(kept, "application/json")).exchanges[0]
+        unchanged = kept == written and render_absence(again, Message(kept, "application/json"), box,
+                                                       deadline) == out["absence"]
+        late_ex = verify(held, None).exchanges[0]
+        # What each late reply cites: the request digest it signs, and the request event its e tag names.
+        digests = {decode_request(r, media_type)["request_digest"] for r in held} | {record["request_digest"]}
+        event_ids = {e for item in box["late_events"] for e in tag_values(item["event"], "e")}
+        out["late"] = {"classification": late_classification, "replies": render_replies(late_ex),
+                       "absence_record_unchanged": unchanged,
+                       "cites": {"request_digest": digests.pop() if len(digests) == 1 else sorted(digests),
+                                 "request_event_id": event_ids.pop() if len(event_ids) == 1 else sorted(event_ids)}}
     return out
 
 
 def _comparable(expected: dict) -> dict:
     out = json.loads(json.dumps(expected))
-    for r in out.get("replies", []):
+    for r in out.get("replies", []) + out.get("late", {}).get("replies", []):
         r.pop("presentation_kinds_allowed", None)
     return out
 
@@ -366,6 +410,12 @@ def test_corpus_covers_the_acceptance():
     assert got["mailbox-envelope-replayed"]["replies"][0]["properties"]["request_binding"] == "FAIL"
     assert got["mailbox-no-reply"]["absence"]["window_closes_at"] == "deadline"
     assert got["mailbox-no-deadline-no-reply"]["absence"]["window_closes_at"] == "local_timeout"
+    late = got["mailbox-late-reply-after-absence"]
+    assert late["absence"] == got["mailbox-no-reply"]["absence"]
+    assert late["late"]["absence_record_unchanged"] is True
+    assert late["late"]["replies"] == ok["replies"]
+    assert late["late"]["cites"] == {"request_digest": ok["request_digest"],
+                                     "request_event_id": ok["request_event_id"]}
     assert DATA["count"] == len(CASES)
 
 
@@ -539,3 +589,15 @@ def test_mutant_content_proof_ignores_request_binding(monkeypatch):
 def test_mutant_content_never_proves(monkeypatch):
     assert {"mailbox-relayed-by-other-key", "mailbox-event-bad-signature"} <= \
         _disagreeing(monkeypatch, "proves", lambda *a: False)
+
+
+def test_mutant_late_reply_rewrites_absence(monkeypatch):
+    def rewrite(absence, late):
+        record = json.loads(absence)
+        record["window"]["closed"] = record["recorded_at"] = "2026-10-12T00:01:40Z"
+        return json.dumps(record, separators=(",", ":"), sort_keys=True).encode(), late
+    assert "mailbox-late-reply-after-absence" in _disagreeing(monkeypatch, "keep_late", rewrite)
+
+
+def test_mutant_late_reply_dropped(monkeypatch):
+    assert "mailbox-late-reply-after-absence" in _disagreeing(monkeypatch, "keep_late", lambda absence, late: (absence, []))

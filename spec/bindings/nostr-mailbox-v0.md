@@ -257,8 +257,25 @@ deadline, a responder that was offline, and a responder that chose not to answer
 same absence [ER §4.4]. The record SHOULD NOT say which.
 
 A reply event that reaches the requester after it has written the absence record is still a reply,
-and the requester keeps it [IP §11.4.1 rule 8]. This revision does not say how a later reply
-relates to an absence already recorded (N-2).
+and the requester keeps it [IP §11.4.1 rule 8]. It is checked as §4.2 says and verified on its own,
+as every reply is (§5.2). It never rewrites the absence:
+
+- The absence record stays as written, byte for byte. The requester MUST NOT edit or delete it, and
+  MUST NOT replace it with a record that says a reply arrived in time.
+- The late reply is its own, later fact. It already cites the request: an envelope or a refusal
+  signs the `request_digest` of the request it answers [IP §6.2, §6.3], which is the
+  `request_digest` of the absence record [IP §6.4], and its reply event names the request event in
+  its `e` tag (§4.2). The requester keeps the reply beside the absence record. Neither refers to
+  the other. What joins them is the request digest both carry.
+- This is the append-only rule of lifecycle links [IP §11.2]: a signed record is never edited, and
+  a later record names the earlier one by digest. The later record is the reply, and the record
+  it names is the request. No lifecycle statement is issued. `supersedes` would replace the
+  absence for current use and `amends` would change it [IP §11.2.1], and a late reply corrects
+  nothing: the window closed with no reply, and that stays true. A requester MUST NOT issue a
+  lifecycle statement against an absence record because a reply arrived late.
+
+A verifier given both shows both: the absence for the window, and the reply with its own results.
+Vector `mailbox-late-reply-after-absence` (§9).
 
 ## 6. What a relay can and cannot do
 
@@ -268,7 +285,7 @@ responder key, end to end, and the relay holds no key that matters.
 | A relay can | What the requester sees | Detected? |
 |---|---|---|
 | drop or not store the request or the reply | no reply; absence at the deadline | no: indistinguishable from silence [ER §4.4] |
-| delay either past the deadline | absence; a late reply if it arrives later (N-2) | no, beyond the envelope's signed `issued_at` |
+| delay either past the deadline | absence; a late reply, if it arrives later, kept beside it (§5.3) | no, beyond the envelope's signed `issued_at` |
 | deliver a request event twice | the responder answers each request event `id` once, and SHOULD NOT answer a redelivery; if it does, two replies with one request digest | both verified; `caller_invariance` compares them [IP §7.2] (vector `mailbox-request-redelivered`) |
 | deliver a reply event twice | one event (§4.2) | yes, by `id` |
 | deliver an old reply event for a new request | an `e` tag naming another request event | not a reply: check 2 (vector `mailbox-reply-to-other-request`) |
@@ -330,7 +347,8 @@ The vectors are in `vectors/adapters/nostr-mailbox/`.
 `python/tests/test_nostr_mailbox_vectors.py` checks them offline. The evidence side reuses the IP
 corpus: its responder key, log, artifact and envelope builders, and its contract pin. Each case
 carries the request octets, the request event, the events the relay delivered, and, where the
-window closed, the absence record. The test recomputes every event `id`, verifies every BIP-340
+window closed, the absence record and any events delivered after it, each with the time it reached
+the requester. The test recomputes every event `id`, verifies every BIP-340
 signature with its own code, applies the checks of §4.2, and passes each reply to the reference
 verifier of IP. It also checks its NIP-01 `id` and BIP-340 against the rumor and seal published in
 NIP-59, its BIP-340 against BIP-340 test vectors 0, 1, 5, 6, 12, 13 and 14, and its bech32 against
@@ -349,6 +367,7 @@ the NIP-19 `nprofile` example.
 | `mailbox-event-tampered` | the reply event's content changed after signing, to an envelope under an untrusted key: not a reply; absence | §4.2 |
 | `mailbox-reply-to-other-request` | a genuine reply event delivered for another request: not a reply; absence | §4.2 check 2 |
 | `mailbox-no-reply` | no event before the deadline: an absence whose window closes at the deadline and whose route is the mailbox | §5.3 |
+| `mailbox-late-reply-after-absence` | no event before the deadline, then reply event 1, delayed by the relay, after the absence is recorded: the absence record is unchanged, and the late event is a reply that verifies as in `mailbox-exchange` and cites the request's digest and event id | §5.3, §6 |
 | `mailbox-no-deadline-no-reply` | a request with no deadline and no `expiration` tag: the window closes at the local timeout | §4.1, §5.3 |
 
 The test also shows each check of §4.2 that has a vector failing when the check is removed. Checks
@@ -361,10 +380,10 @@ committed files differ, and runs the test. No relay is contacted, in the vectors
 
 - **N-1. Event kinds.** `4700` and `4701` are placeholders. They are absent from the kind list at
   the pinned NIPs commit and outside NIP-90's range. They are not registered or proposed anywhere.
-  Whether and where to propose them is an operator decision.
-- **N-2. A reply after the absence.** IP keeps every reply received [IP §11.4.1 rule 8] and fixes
-  the absence record [IP §6.4]. Neither says how a reply that arrives after the record relates to
-  it. A mailbox makes this case ordinary, not rare.
+  They stay placeholders in this experimental text. A NIP or registered kinds are proposed only
+  once a second, independent implementation exists.
+- **N-2. A reply after the absence.** Resolved in §5.3: the absence record stays as written, and
+  the late reply is its own later fact, citing the request.
 - **N-3. Encryption.** NIP-44 and NIP-59 (§8) are not specified in v0. Until they are, §8 limits
   where this binding may be used.
 - **N-4. The relay list member.** The responder's declared relay list is carried in its
