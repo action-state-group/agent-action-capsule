@@ -16,6 +16,14 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.10.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Go: `cross_language signature` reads one record on stdin (a Capsule with its local-only
+  `signature` and `key_id`) and prints its producer-signature verdict from
+  `envelope.VerifyRecordSignature`: `authored` (exit 0), `invalid` (exit 1) or `unclaimed`
+  (exit 3); exit 2 is input that is not one JSON value. `authored` means the Producer Envelope
+  verifies under the record's own, self-attested `key_id`; the caller decides whether that is the
+  key it expects. It gives a consumer of the command a producer signature check in a second
+  implementation (agent-action-capsule#431).
+
 - Spec: `spec/interop-profile-v0.md` §11.1.5 rule 2 (`acceptance_ordering` `FAIL`) now applies only
   when the accepted record's `issued_at` is later than a time held for the action. An `issued_at`
   equal to that time after the reduction to the §5.2 form (to the second) no longer reads as an
