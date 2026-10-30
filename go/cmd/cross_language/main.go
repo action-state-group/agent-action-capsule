@@ -3,7 +3,8 @@
 //
 // seal and verify read a Capsule. signature reads one record (a Capsule with
 // its local-only signature and key_id) and prints its producer-signature
-// verdict. bundle-produce <kind> reads the producer
+// verdict. binding reads a Controller Binding v0 record with what was
+// received beside it and prints its report. bundle-produce <kind> reads the producer
 // fixture (vectors/cross-language/bundle-producer-log.json) and writes the
 // JCS bytes of the Bundle kind names in its builds. bundle-verify reads a
 // Bundle's JSON text and prints its strict verdict.
@@ -27,7 +28,7 @@ import (
 	"github.com/action-state-group/checkpointed-local-log/go/cll"
 )
 
-const usage = "usage: cross_language seal|verify|signature|bundle-produce <kind>|bundle-verify"
+const usage = "usage: cross_language seal|verify|signature|binding|bundle-produce <kind>|bundle-verify"
 
 func main() {
 	args := os.Args[1:]
@@ -38,6 +39,8 @@ func main() {
 		os.Exit(bundleVerify())
 	case len(args) == 1 && args[0] == "signature":
 		os.Exit(signature(os.Stdin, os.Stdout, os.Stderr))
+	case len(args) == 1 && args[0] == "binding":
+		os.Exit(binding(os.Stdin, os.Stdout, os.Stderr))
 	case len(args) != 1 || (args[0] != "seal" && args[0] != "verify"):
 		fmt.Fprintln(os.Stderr, usage)
 		os.Exit(2)

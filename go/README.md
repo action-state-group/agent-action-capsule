@@ -71,6 +71,41 @@ entries. Both are at parity with the Python reference
 `agent_action_capsule.standard_history`, and both run
 `../vectors/standard-history-v0/`.
 
+## Controller binding v0
+
+`controllerbinding.Verify(record, times, opts)` checks one binding record
+(spec `controller-binding-v0.md`, CB) as received, at the times asked about:
+its form, both signatures over the one signing input, its window, and the
+revocation statements in `opts.Revocations`. It reports the CB section 6.1
+properties, the claim type, the two keys and what the binding proves.
+`Report.AppliesTo(a, b)` says whether it applies to a pair (CB section 6.2),
+and `controllerbinding.PairIndependence` gives the pair's
+`issuer_independence` (CB section 7 item 4): `FAIL`, redundant, when a
+binding applies, never `PASS`. The package ships no credential verifier,
+trust anchors or accepted issuers. A `same_organization_credentialed`
+credential is `NOT_CHECKED` unless the caller passes a verifier for its
+method in `opts.CredentialVerifiers`, which holds the caller's own trust
+policy. It runs `../vectors/controller-binding-v0/`.
+
+`cross_language binding` is the same check on stdin and stdout. Stdin is one
+JSON object: `binding` (the record's text as received), `at` (the times, in
+the form `YYYY-MM-DDTHH:MM:SSZ`), and optionally `revocations` (statements'
+text), `credential` (its text) and `key` (a key the binding must name, such as
+a node's evidence key). Stdout is the report as JSON with `applies`.
+
+| Exit | Meaning |
+|---|---|
+| 0 | The binding applies: form, signatures and window `PASS` at every time, revocation not `FAIL`, and it names `key` when one is given |
+| 1 | It does not apply: a property is `FAIL`, or it does not name `key` |
+| 3 | It does not apply because its method is not implemented (signatures `NOT_CHECKED`) |
+| 2 | Bad input, or a report that could not be written |
+
+Exit 0 is not a trust verdict. It says that whoever held each key signed the
+record. It does not say who controls either key. A binding that applies to a
+pair makes the pair redundant, not corroborating.
+Revocation is `NOT_CHECKED` unless a received statement revokes the binding
+(CB-1), and the credential never decides the exit code.
+
 ## Evidence Result v0
 
 `evidenceresult.Check(doc, records)` is the gate for an Evidence Result v0
