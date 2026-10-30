@@ -97,7 +97,7 @@ section and the reading used (the most literal one); the list is below, for -01.
    `classify` result must equal `expect.classified_as` and must not be any of
    `expect.must_not_classify_as`.
 11. `unavailable-window.json`: for a `statement` case, recognize the
-   statement against `responder_key` and its `registration_times`; for a
+   statement against `responder_key` and its `receipts` marked `accepted`; for a
    `display` case, find the covering statements, show the absence, and check
    each label. The result must equal `expect` and must not be any of
    `expect.must_not_show_as`.
