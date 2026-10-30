@@ -123,7 +123,10 @@ def run_selector(lang, selectors):
 
 # A language whose test reads a pinned copy of a published vector file: the run
 # fails when the copy has drifted from the file the index counts.
-PINNED_COPIES = {"go": {"vectors/bundle/vectors.json": "go/bundle/testdata/vectors.json"}}
+PINNED_COPIES = {
+    "go": {"vectors/bundle/vectors.json": "go/bundle/testdata/vectors.json"},
+    "ts": {"vectors/bundle/vectors.json": "ts/test/testdata/bundle-vectors.json"},
+}
 
 
 def run_set(lang, path, sel, cache=None):

@@ -94,17 +94,18 @@ def test_each_mapped_test_reads_its_set():
             assert names_set(path, text), (lang, path, selectors)
 
 
-def test_pinned_copies_are_checked_by_the_go_run(monkeypatch):
-    # go/bundle's test reads a pinned copy, not vectors/bundle/vectors.json, so
-    # the runner itself must compare the two before it reports the set.
-    for published, copy in rv.PINNED_COPIES["go"].items():
-        assert open(os.path.join(ROOT, published), "rb").read() == open(os.path.join(ROOT, copy), "rb").read()
-    published, copy = next(iter(rv.PINNED_COPIES["go"].items()))
-    monkeypatch.setattr(rv, "run_selector", lambda lang, sel: (True, [], ""))
-    assert rv.run_set("go", published, ("./bundle",))[0] is True
-    monkeypatch.setitem(rv.PINNED_COPIES["go"], published, "scripts/vector_sets.json")
-    ok, reasons, _ = rv.run_set("go", published, ("./bundle",))
-    assert ok is False and "differs" in reasons[0]
+def test_pinned_copies_are_checked_by_the_run(monkeypatch):
+    # go/bundle and ts bundle.test.ts read a pinned copy, not vectors/bundle/vectors.json,
+    # so the runner itself must compare the two before it reports the set.
+    for lang, copies in rv.PINNED_COPIES.items():
+        for published, copy in copies.items():
+            assert open(os.path.join(ROOT, published), "rb").read() == open(os.path.join(ROOT, copy), "rb").read()
+            monkeypatch.setattr(rv, "run_selector", lambda l, sel: (True, [], ""))
+            assert rv.run_set(lang, published, ("x",))[0] is True
+            monkeypatch.setitem(copies, published, "scripts/vector_sets.json")
+            ok, reasons, _ = rv.run_set(lang, published, ("x",))
+            assert ok is False and "differs" in reasons[0]
+            monkeypatch.setitem(copies, published, copy)
 
 
 def _fake(monkeypatch, results):
