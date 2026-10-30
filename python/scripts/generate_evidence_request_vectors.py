@@ -1251,9 +1251,10 @@ UW_SIGNATURE_PROFILE = {
     "sig": "Ed25519 signature, lowercase hex",
 }
 UW_NOTES = (
-    "Times are RFC 3339 UTC strings and compare chronologically. A statement's registration_times "
-    "are the times attested by the receipts on checkpoints covering it; an empty list means no "
-    "receipt attests a time, so it is not registered. An absence's waiting window runs from sent_at, when the requester sent the request, to closed_at, both included. "
+    "Times are RFC 3339 UTC strings and compare chronologically. A statement's receipts are those "
+    "on checkpoints covering it that attest a time; accepted is true when the receipt comes from a "
+    "transparency service the reader accepts as independent of the responder. Only accepted "
+    "receipts register a statement and give its registration time. An absence's waiting window runs from sent_at, when the requester sent the request, to closed_at, both included. "
     "A statement case expects whether a reader recognizes it (well formed, signed by the key named, "
     "registered) and its registration time. A display case expects which statements cover the "
     "absence, how the reader shows it, and per covering statement the reason class and whether it "
@@ -1275,7 +1276,10 @@ def uw_statement(start: Any, end: Any, reason_class: Any = "flood", *,
 def unavailable_window_cases() -> list[dict]:
     cases: list[dict] = []
 
-    def stmt_case(case_id: str, description: str, statement: dict, receipts: list[str],
+    def receipts_of(times: list) -> list[dict]:
+        return [t if isinstance(t, dict) else {"time": t, "accepted": True} for t in times]
+
+    def stmt_case(case_id: str, description: str, statement: dict, receipts: list,
                   recognized: bool, *, registration_time: str | None = None,
                   why: str | None = None, shown_reason: str | None = None) -> None:
         expect: dict[str, Any] = {"recognized": recognized}
@@ -1286,7 +1290,7 @@ def unavailable_window_cases() -> list[dict]:
             expect["why"] = why
         cases.append({"id": case_id, "kind": "statement", "section": [S_UW], "description": description,
                       "responder_key": PRIMARY_PUB, "statement": statement,
-                      "registration_times": receipts, "expect": expect})
+                      "receipts": receipts_of(receipts), "expect": expect})
 
     for cls in UW_CLASSES:
         stmt_case(f"uw-class-{cls}", f"A registered statement with reason_class {cls}.",
@@ -1311,6 +1315,14 @@ def unavailable_window_cases() -> list[dict]:
                            detail="a botnet hit us"),
               ["2026-10-29T10:06:00Z"], True, registration_time="2026-10-29T10:06:00Z",
               shown_reason="flood")
+    stmt_case("uw-neg-start-missing", "A statement with no start: malformed.",
+              uw_statement(None, "2026-10-29T10:40:00Z"), ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-neg-end-missing", "A statement with no end is malformed, not open-ended.",
+              uw_statement("2026-10-29T10:00:00Z", None), ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-neg-time-unparseable", "An end that is not a time in the deployment's representation: "
+              "malformed.",
+              uw_statement("2026-10-29T10:00:00Z", "later today"), ["2026-10-29T10:06:00Z"], False,
+              why="malformed")
     stmt_case("uw-neg-end-before-start", "end earlier than start: malformed.",
               uw_statement("2026-10-29T10:40:00Z", "2026-10-29T10:00:00Z"),
               ["2026-10-29T10:06:00Z"], False, why="malformed")
@@ -1327,6 +1339,10 @@ def unavailable_window_cases() -> list[dict]:
     stmt_case("uw-neg-unregistered", "A statement no receipt covers is not registered.",
               uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z"), [], False,
               why="not_registered")
+    stmt_case("uw-neg-receipt-not-accepted", "The only receipt comes from a transparency service the "
+              "responder operates: not accepted, so the statement is not registered.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z"),
+              [{"time": "2026-10-29T10:06:00Z", "accepted": False}], False, why="not_registered")
     stmt_case("uw-registration-earliest-receipt", "Two receipts: the registration time is the earliest.",
               uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z"),
               ["2026-10-29T10:30:00Z", "2026-10-29T10:06:00Z"], True,
@@ -1349,7 +1365,7 @@ def unavailable_window_cases() -> list[dict]:
                       "statements": statements, "expect": expect})
 
     def st(sid: str, statement: dict, receipts: list[str]) -> dict:
-        return {"id": sid, "statement": statement, "registration_times": receipts}
+        return {"id": sid, "statement": statement, "receipts": receipts_of(receipts)}
 
     def lab(cls: str, afterwards: bool, registered: str) -> dict:
         return {"reason_class": cls, "registration_time": registered, "stated_afterwards": afterwards}
@@ -1370,6 +1386,12 @@ def unavailable_window_cases() -> list[dict]:
                     st("s2", outage, ["2026-10-29T11:31:00Z"])], ["s2"],
          {"s2": lab("outage", True, "2026-10-29T11:31:00Z")},
          section=[S_UW, S_ABS, S_DISC])
+    disp("uw-backdated-receipt-not-accepted", "Requester B again, but the outage statement also carries "
+         "a receipt dated 09:50 from a service the responder runs. Only the accepted 11:31 receipt "
+         "counts, so the statement is still stated afterwards.",
+         b_window, [st("s2", outage, [{"time": "2026-10-29T09:50:00Z", "accepted": False},
+                                      {"time": "2026-10-29T11:31:00Z", "accepted": True}])], ["s2"],
+         {"s2": lab("outage", True, "2026-10-29T11:31:00Z")})
     disp("uw-registered-at-close", "Registration time equal to the window's close is not later than "
          "it: not stated afterwards.",
          a_window, [st("s1", flood, ["2026-10-29T10:20:00Z"])], ["s1"],

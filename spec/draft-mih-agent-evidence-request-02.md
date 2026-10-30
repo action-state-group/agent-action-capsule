@@ -827,8 +827,12 @@ evidence streams. The statement carries:
 3. The responder's signature over items 1 and 2, in the signature
    format of the deployment's evidence mechanism.
 
-The statement is registered when a checkpoint whose coverage includes it
-carries at least one receipt {{RFC9942}} that attests a time. Its
+The statement is registered, for a given reader, when a checkpoint whose
+coverage includes it carries at least one receipt {{RFC9942}} that attests
+a time and that comes from a transparency service the reader accepts as
+independent of the responder. Which services a reader accepts is reader
+policy, as it is for an artifact's receipts ({{artifact}}); a receipt from
+a service the responder operates or controls is never one. The statement's
 **registration time** is the earliest time attested by such a receipt. A
 statement with no such receipt is not registered, and a reader MUST NOT
 apply this section to it.
@@ -842,9 +846,10 @@ The reason classes are a closed list:
 | `outage` | the responder states an unplanned failure other than request volume |
 | `other_declared` | the responder states it was unavailable and gives no class |
 
-The reason is the token alone, never free text. A statement whose
-`reason_class` is missing or is not one of these four tokens is
-malformed, as is one whose `end` is earlier than its `start`; a reader
+The reason is the token alone, never free text. A statement is malformed
+when its `reason_class` is missing or is not one of these four tokens,
+when its `start` or `end` is missing or is not a time in the deployment's
+representation, or when its `end` is earlier than its `start`; a reader
 treats a malformed statement as if it did not exist. A reader MUST NOT
 show any other member of a statement as its reason. The list changes only
 with a revision of this document; it is not a registry ({{iana}}).
@@ -1390,8 +1395,10 @@ statement is attributable for exactly that reason: it is signed and
 registered, and a counterparty's records can contradict it ({{symmetric}}).
 A statement registered after an absence it covers may have been written to
 explain that absence away; the "stated afterwards" label
-({{unavailable-window}}) shows this, and the registration time comes from a
-receipt the responder does not issue alone. A party flooding a responder
+({{unavailable-window}}) shows this. The label holds only because the
+registration time comes from a receipt by a transparency service the reader
+accepts as independent of the responder; a responder that could date its
+own statements could backdate them. A party flooding a responder
 cannot forge a statement and cannot make a requester's absence read as a
 refusal. A statement read as proof of attack would let any responder
 excuse any absence, which is why a reader never shows it as one.
@@ -1474,8 +1481,10 @@ identity scheme, outside this document's control.
 
 **An unavailable-window statement discloses operational state.** A
 statement tells every reader that the responder was unavailable, when, and
-in which of four coarse classes. The list is closed and carries no free
-text partly so that a statement discloses no more than the class.
+in which of four coarse classes. Only the reason is limited to the closed
+list: any other member a responder adds to a statement is not limited by
+this document, never shown as the reason, and disclosed to every reader of
+the stream the statement is sealed in.
 
 # IANA Considerations {#iana}
 

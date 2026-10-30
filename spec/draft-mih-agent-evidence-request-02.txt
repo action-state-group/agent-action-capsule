@@ -99,7 +99,7 @@ Table of Contents
      4.5.  The Three-State Discipline  . . . . . . . . . . . . . . .  20
      4.6.  Mapping to a Requirement-Satisfaction Status  . . . . . .  21
      4.7.  Unavailable-Window Statements . . . . . . . . . . . . . .  23
-   5.  Caller Invariance . . . . . . . . . . . . . . . . . . . . . .  24
+   5.  Caller Invariance . . . . . . . . . . . . . . . . . . . . . .  25
    6.  The Symmetric Ask . . . . . . . . . . . . . . . . . . . . . .  26
    7.  Recording the Exchange  . . . . . . . . . . . . . . . . . . .  27
    8.  Derivation-Scoped Disclosure  . . . . . . . . . . . . . . . .  27
@@ -1251,11 +1251,16 @@ Internet-Draft              Evidence Request                October 2026
    3.  The responder's signature over items 1 and 2, in the signature
        format of the deployment's evidence mechanism.
 
-   The statement is registered when a checkpoint whose coverage includes
-   it carries at least one receipt [RFC9942] that attests a time.  Its
-   *registration time* is the earliest time attested by such a receipt.
-   A statement with no such receipt is not registered, and a reader MUST
-   NOT apply this section to it.
+   The statement is registered, for a given reader, when a checkpoint
+   whose coverage includes it carries at least one receipt [RFC9942]
+   that attests a time and that comes from a transparency service the
+   reader accepts as independent of the responder.  Which services a
+   reader accepts is reader policy, as it is for an artifact's receipts
+   (Section 4.1); a receipt from a service the responder operates or
+   controls is never one.  The statement's *registration time* is the
+   earliest time attested by such a receipt.  A statement with no such
+   receipt is not registered, and a reader MUST NOT apply this section
+   to it.
 
    The reason classes are a closed list:
 
@@ -1280,23 +1285,19 @@ Internet-Draft              Evidence Request                October 2026
 
 
 
-
-
-
-
-
 Mih                        Expires 3 May 2027                  [Page 23]
 
 Internet-Draft              Evidence Request                October 2026
 
 
-   The reason is the token alone, never free text.  A statement whose
-   reason_class is missing or is not one of these four tokens is
-   malformed, as is one whose end is earlier than its start; a reader
-   treats a malformed statement as if it did not exist.  A reader MUST
-   NOT show any other member of a statement as its reason.  The list
-   changes only with a revision of this document; it is not a registry
-   (Section 13).
+   The reason is the token alone, never free text.  A statement is
+   malformed when its reason_class is missing or is not one of these
+   four tokens, when its start or end is missing or is not a time in the
+   deployment's representation, or when its end is earlier than its
+   start; a reader treats a malformed statement as if it did not exist.
+   A reader MUST NOT show any other member of a statement as its reason.
+   The list changes only with a revision of this document; it is not a
+   registry (Section 13).
 
    A statement *covers* an absence when it is signed by the responder
    the absent request was addressed to, meaning the key a response would
@@ -1334,9 +1335,8 @@ Internet-Draft              Evidence Request                October 2026
    response or a signed refusal: a request that received either has no
    absence for a statement to cover.
 
-5.  Caller Invariance
 
-   This is the normative core of the document.
+
 
 
 
@@ -1345,6 +1345,10 @@ Mih                        Expires 3 May 2027                  [Page 24]
 
 Internet-Draft              Evidence Request                October 2026
 
+
+5.  Caller Invariance
+
+   This is the normative core of the document.
 
    For a given responder, the same subject under the same coverage
    anchor MUST yield a byte-identical evidence artifact, regardless of
@@ -1389,10 +1393,6 @@ Internet-Draft              Evidence Request                October 2026
    discussed in Section 11.
 
    Two consequences for implementers:
-
-
-
-
 
 
 
@@ -1982,10 +1982,12 @@ Internet-Draft              Evidence Request                October 2026
    reason: it is signed and registered, and a counterparty's records can
    contradict it (Section 6).  A statement registered after an absence
    it covers may have been written to explain that absence away; the
-   "stated afterwards" label (Section 4.7) shows this, and the
-   registration time comes from a receipt the responder does not issue
-   alone.  A party flooding a responder cannot forge a statement and
-   cannot make a requester's absence read as a refusal.  A statement
+   "stated afterwards" label (Section 4.7) shows this.  The label holds
+   only because the registration time comes from a receipt by a
+   transparency service the reader accepts as independent of the
+   responder; a responder that could date its own statements could
+   backdate them.  A party flooding a responder cannot forge a statement
+   and cannot make a requester's absence read as a refusal.  A statement
    read as proof of attack would let any responder excuse any absence,
    which is why a reader never shows it as one.
 
@@ -2008,8 +2010,6 @@ Internet-Draft              Evidence Request                October 2026
    entropy value (an enumerable identifier, a small-range field) can be
    reversed by dictionary: an observer holding candidate values checks
    each against the digest.  Subjects, correlation identifiers, and
-   digests-only responses over low-entropy content SHOULD therefore be
-   constructed with salting or equivalent hardening, per the conventions
 
 
 
@@ -2018,6 +2018,8 @@ Mih                        Expires 3 May 2027                  [Page 36]
 Internet-Draft              Evidence Request                October 2026
 
 
+   digests-only responses over low-entropy content SHOULD therefore be
+   constructed with salting or equivalent hardening, per the conventions
    of the deployment's evidence format; this document does not define
    the salt discipline but requires deployments to have one wherever
    digests are relied on to conceal enumerable content.
@@ -2067,8 +2069,6 @@ Internet-Draft              Evidence Request                October 2026
 
 
 
-
-
 Mih                        Expires 3 May 2027                  [Page 37]
 
 Internet-Draft              Evidence Request                October 2026
@@ -2090,9 +2090,11 @@ Internet-Draft              Evidence Request                October 2026
 
    *An unavailable-window statement discloses operational state.* A
    statement tells every reader that the responder was unavailable,
-   when, and in which of four coarse classes.  The list is closed and
-   carries no free text partly so that a statement discloses no more
-   than the class.
+   when, and in which of four coarse classes.  Only the reason is
+   limited to the closed list: any other member a responder adds to a
+   statement is not limited by this document, never shown as the reason,
+   and disclosed to every reader of the stream the statement is sealed
+   in.
 
 13.  IANA Considerations
 
@@ -2101,8 +2103,6 @@ Internet-Draft              Evidence Request                October 2026
    Specification Required.  Each entry consists of a reason token
    (lowercase ASCII, underscore-separated), a one-line description, and
    a reference.  The initial contents are:
-
-
 
 
 

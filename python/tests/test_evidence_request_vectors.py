@@ -434,20 +434,24 @@ def _uw_signed(statement: dict, responder_key: str) -> bool:
     return True
 
 
-def _uw_time(text: str):
+def _uw_time(text):
     from datetime import datetime
+    if not isinstance(text, str) or not re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", text):
+        return None
     return datetime.fromisoformat(text.replace("Z", "+00:00"))
 
 
 def _uw_recognize(statement: dict, receipts: list, responder_key: str):
     """-02 §4.7: (recognized, why, registration time), read from the text."""
-    if statement.get("reason_class") not in UW_CLASSES or _uw_time(statement["end"]) < _uw_time(statement["start"]):
+    start, end = _uw_time(statement.get("start")), _uw_time(statement.get("end"))
+    if statement.get("reason_class") not in UW_CLASSES or start is None or end is None or end < start:
         return False, "malformed", None
     if not _uw_signed(statement, responder_key):
         return False, "not_signed_by_responder", None
-    if not receipts:
+    accepted = [r["time"] for r in receipts if r["accepted"]]
+    if not accepted:
         return False, "not_registered", None
-    return True, None, min(receipts, key=_uw_time)
+    return True, None, min(accepted, key=_uw_time)
 
 
 def test_unavailable_window_expectations_follow_from_the_text():
@@ -459,7 +463,7 @@ def test_unavailable_window_expectations_follow_from_the_text():
         kinds.add(case["kind"])
         expect = case["expect"]
         if case["kind"] == "statement":
-            ok, why, registered = _uw_recognize(case["statement"], case["registration_times"],
+            ok, why, registered = _uw_recognize(case["statement"], case["receipts"],
                                                 case["responder_key"])
             assert ok is expect["recognized"], case["id"]
             if ok:
@@ -470,15 +474,21 @@ def test_unavailable_window_expectations_follow_from_the_text():
             continue
         assert case["kind"] == "display", case["id"]
         absence = case["absence"]
+        # -02 §4.7 last paragraph: the retention classification of §9 is unchanged.
+        want_retention = ("attributable_absence" if absence.get("retention_commitment") == "in_force"
+                          and absence["received"] == "nothing" and absence["closed_at"] else None)
+        assert expect.get("retention_classification") == want_retention, case["id"]
         if absence["received"] != "nothing" or absence["closed_at"] is None:
-            # A refusal or a pending request has no absence for a statement to cover.
-            assert expect["covered_by"] == [] and expect["shown_as"] == expect["state"], case["id"]
-            assert UW_SHOWN in expect["must_not_show_as"], case["id"]
+            # A refusal or a pending request has no absence for a statement to cover (§4.3, §4.5).
+            state = "refusal" if absence["received"] == "refusal" else "pending"
+            assert expect["state"] == state and expect["shown_as"] == state, case["id"]
+            assert expect["covered_by"] == [] and expect["labels"] == {}, case["id"]
+            assert {UW_SHOWN, "recorded_absence"} <= set(expect["must_not_show_as"]), case["id"]
             continue
         opened, closed = _uw_time(absence["sent_at"]), _uw_time(absence["closed_at"])
         covering, labels = [], {}
         for entry in case["statements"]:
-            ok, _, registered = _uw_recognize(entry["statement"], entry["registration_times"],
+            ok, _, registered = _uw_recognize(entry["statement"], entry["receipts"],
                                               case["responder_key"])
             st = entry["statement"]
             if ok and _uw_time(st["start"]) <= closed and _uw_time(st["end"]) >= opened:
