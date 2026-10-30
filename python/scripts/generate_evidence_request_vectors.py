@@ -3,8 +3,8 @@
 """Generate the draft-mih-agent-evidence-request conformance vectors.
 
 Every expected result below is written by hand from the text of
-``spec/draft-mih-agent-evidence-request-00.md``, or of -01 for the corpora
-that name -01 in their ``draft`` member, and cites the section it comes
+``spec/draft-mih-agent-evidence-request-00.md``, or of the later revision a
+corpus names in its ``draft`` member, and cites the section it comes
 from. Nothing here imports or runs an implementation of the interaction: the
 script only encodes the literal inputs (JSON per RFC 8785, CBOR per RFC 8949
 section 4.2.1), hashes them, and signs the refusal cases with a fixed Ed25519
@@ -36,6 +36,7 @@ DRAFT = "draft-mih-agent-evidence-request-00"
 # Corpora written from text that first appears in -01 name that revision. The
 # -00 corpora keep DRAFT, which also seeds the refusal keys.
 DRAFT_01 = "draft-mih-agent-evidence-request-01"
+DRAFT_02 = "draft-mih-agent-evidence-request-02"
 
 # ---------------------------------------------------------------------------
 # Encodings
@@ -1227,6 +1228,210 @@ def retention_cases() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# unavailable-window.json: unavailable-window statements and how a reader
+# shows an absence they cover (-02)
+# ---------------------------------------------------------------------------
+
+S_UW = "§4.7 Unavailable-Window Statements"
+S_MAP = "§4.6 Mapping to a Requirement-Satisfaction Status"
+UW_CLASSES = ["flood", "maintenance", "outage", "other_declared"]
+UW_SHOWN = "no answer; holder states unavailability"
+UW_SIGNED_MEMBERS = ("end", "reason_class", "start")
+UW_SIGNATURE_PROFILE = {
+    "note": (
+        "-02 section 4.7 item 3 leaves the signature format to the deployment. These vectors use the "
+        "refusal.json profile: Ed25519 over the RFC 8785 serialization of the JSON object with "
+        "exactly the members of the statement present among end, reason_class and start, signed "
+        "with the primary key of refusal.json."
+    ),
+    "algorithm": "Ed25519",
+    "signed_members": list(UW_SIGNED_MEMBERS),
+    "signing_body": "RFC 8785 (JCS) of the signed members",
+    "key_id": "raw Ed25519 public key, lowercase hex",
+    "sig": "Ed25519 signature, lowercase hex",
+}
+UW_NOTES = (
+    "Times are RFC 3339 UTC strings and compare chronologically. A statement's registration_times "
+    "are the times attested by the receipts on checkpoints covering it; an empty list means no "
+    "receipt attests a time, so it is not registered. An absence's waiting window runs from sent_at, when the requester sent the request, to closed_at, both included. "
+    "A statement case expects whether a reader recognizes it (well formed, signed by the key named, "
+    "registered) and its registration time. A display case expects which statements cover the "
+    "absence, how the reader shows it, and per covering statement the reason class and whether it "
+    "is labelled stated afterwards."
+)
+
+
+def uw_statement(start: Any, end: Any, reason_class: Any = "flood", *,
+                 private: Ed25519PrivateKey = PRIMARY, public: str = PRIMARY_PUB,
+                 tamper: bool = False, **extra: Any) -> dict:
+    body = {k: v for k, v in (("start", start), ("end", end), ("reason_class", reason_class))
+            if v is not None}
+    sig = sign_body(body, private)
+    if tamper:
+        sig = ("0" if sig[0] != "0" else "1") + sig[1:]
+    return {**body, **extra, "key_id": public, "sig": sig}
+
+
+def unavailable_window_cases() -> list[dict]:
+    cases: list[dict] = []
+
+    def stmt_case(case_id: str, description: str, statement: dict, receipts: list[str],
+                  recognized: bool, *, registration_time: str | None = None,
+                  why: str | None = None, shown_reason: str | None = None) -> None:
+        expect: dict[str, Any] = {"recognized": recognized}
+        if recognized:
+            expect["registration_time"] = registration_time
+            expect["shown_reason"] = shown_reason or statement["reason_class"]
+        else:
+            expect["why"] = why
+        cases.append({"id": case_id, "kind": "statement", "section": [S_UW], "description": description,
+                      "responder_key": PRIMARY_PUB, "statement": statement,
+                      "registration_times": receipts, "expect": expect})
+
+    for cls in UW_CLASSES:
+        stmt_case(f"uw-class-{cls}", f"A registered statement with reason_class {cls}.",
+                  uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", cls),
+                  ["2026-10-29T10:06:00Z"], True, registration_time="2026-10-29T10:06:00Z")
+    stmt_case("uw-neg-class-unlisted", "A reason_class outside the closed list: malformed.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", "ddos"),
+              ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-neg-class-free-text", "A reason_class that is free text: malformed.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", "flooded by a botnet"),
+              ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-neg-class-wrong-case", "A reason_class differing from a listed token only in case: "
+              "malformed (exact token comparison).",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", "Flood"),
+              ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-neg-class-missing", "A statement with no reason_class: malformed.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", None),
+              ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-extra-member-not-the-reason", "An extra prose member beside a listed class: the "
+              "statement is recognized, and the reader shows only the class as the reason.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", "flood",
+                           detail="a botnet hit us"),
+              ["2026-10-29T10:06:00Z"], True, registration_time="2026-10-29T10:06:00Z",
+              shown_reason="flood")
+    stmt_case("uw-neg-end-before-start", "end earlier than start: malformed.",
+              uw_statement("2026-10-29T10:40:00Z", "2026-10-29T10:00:00Z"),
+              ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-end-equals-start", "end equal to start: well formed (end MUST NOT be earlier).",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:00:00Z"),
+              ["2026-10-29T10:06:00Z"], True, registration_time="2026-10-29T10:06:00Z")
+    stmt_case("uw-neg-bad-signature", "A statement whose signature does not verify is not the "
+              "responder's statement.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", tamper=True),
+              ["2026-10-29T10:06:00Z"], False, why="not_signed_by_responder")
+    stmt_case("uw-neg-other-key", "A statement validly signed by a key other than the responder's.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", private=OTHER, public=OTHER_PUB),
+              ["2026-10-29T10:06:00Z"], False, why="not_signed_by_responder")
+    stmt_case("uw-neg-unregistered", "A statement no receipt covers is not registered.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z"), [], False,
+              why="not_registered")
+    stmt_case("uw-registration-earliest-receipt", "Two receipts: the registration time is the earliest.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z"),
+              ["2026-10-29T10:30:00Z", "2026-10-29T10:06:00Z"], True,
+              registration_time="2026-10-29T10:06:00Z")
+
+    flood = uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", "flood")
+    outage = uw_statement("2026-10-29T09:30:00Z", "2026-10-29T09:58:00Z", "outage")
+    never = ["refusal", "proof_of_attack", "absence_without_statement"]
+
+    def disp(case_id: str, description: str, absence: dict, statements: list[dict],
+             covered_by: list[str], labels: dict[str, dict], *, section: list[str] | None = None,
+             state: str = "recorded_absence", shown_as: str | None = None) -> None:
+        if shown_as is None:
+            shown_as = UW_SHOWN if covered_by else "recorded_absence"
+        expect: dict[str, Any] = {"state": state, "covered_by": covered_by, "shown_as": shown_as,
+                                  "labels": labels}
+        expect["must_not_show_as"] = never if covered_by else ["refusal", "proof_of_attack"]
+        cases.append({"id": case_id, "kind": "display", "section": section or [S_UW, S_ABS],
+                      "description": description, "responder_key": PRIMARY_PUB, "absence": absence,
+                      "statements": statements, "expect": expect})
+
+    def st(sid: str, statement: dict, receipts: list[str]) -> dict:
+        return {"id": sid, "statement": statement, "registration_times": receipts}
+
+    def lab(cls: str, afterwards: bool, registered: str) -> dict:
+        return {"reason_class": cls, "registration_time": registered, "stated_afterwards": afterwards}
+
+    a_window = {"sent_at": "2026-10-29T10:10:00Z", "closed_at": "2026-10-29T10:20:00Z",
+                "received": "nothing"}
+    b_window = {"sent_at": "2026-10-29T09:40:00Z", "closed_at": "2026-10-29T09:55:00Z",
+                "received": "nothing"}
+    disp("uw-show-stated-before-close", "The worked example's requester A: a flood statement "
+         "registered at 10:06 covers an absence whose window closed at 10:20.",
+         a_window, [st("s1", flood, ["2026-10-29T10:06:00Z"])], ["s1"],
+         {"s1": lab("flood", False, "2026-10-29T10:06:00Z")},
+         section=[S_UW, S_ABS, S_DISC])
+    disp("uw-show-stated-afterwards", "The worked example's requester B: an outage statement "
+         "registered at 11:31 covers an absence whose window closed at 09:55, so it is stated "
+         "afterwards.",
+         b_window, [st("s1", flood, ["2026-10-29T10:06:00Z"]),
+                    st("s2", outage, ["2026-10-29T11:31:00Z"])], ["s2"],
+         {"s2": lab("outage", True, "2026-10-29T11:31:00Z")},
+         section=[S_UW, S_ABS, S_DISC])
+    disp("uw-registered-at-close", "Registration time equal to the window's close is not later than "
+         "it: not stated afterwards.",
+         a_window, [st("s1", flood, ["2026-10-29T10:20:00Z"])], ["s1"],
+         {"s1": lab("flood", False, "2026-10-29T10:20:00Z")})
+    disp("uw-registered-after-close-by-a-second", "Registration one second after the close: stated "
+         "afterwards.",
+         a_window, [st("s1", flood, ["2026-10-29T10:20:01Z"])], ["s1"],
+         {"s1": lab("flood", True, "2026-10-29T10:20:01Z")})
+    disp("uw-partial-overlap", "A statement that ends inside the waiting window still covers it.",
+         a_window, [st("s1", uw_statement("2026-10-29T09:00:00Z", "2026-10-29T10:12:00Z", "maintenance"),
+                       ["2026-10-29T08:55:00Z"])], ["s1"],
+         {"s1": lab("maintenance", False, "2026-10-29T08:55:00Z")})
+    disp("uw-touching-boundary", "A statement whose end equals the time the request was sent shares one "
+         "instant with the window: it covers.",
+         a_window, [st("s1", uw_statement("2026-10-29T09:00:00Z", "2026-10-29T10:10:00Z", "outage"),
+                       ["2026-10-29T10:11:00Z"])], ["s1"],
+         {"s1": lab("outage", False, "2026-10-29T10:11:00Z")})
+    disp("uw-no-overlap", "A statement that ends before the request was sent does not cover the "
+         "absence: the reader shows the absence as it is.",
+         a_window, [st("s1", uw_statement("2026-10-29T09:00:00Z", "2026-10-29T10:09:59Z", "outage"),
+                       ["2026-10-29T10:11:00Z"])], [], {})
+    disp("uw-other-key-does-not-cover", "A statement signed by another key does not cover an absence "
+         "from this responder.",
+         a_window, [st("s1", uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z",
+                                          private=OTHER, public=OTHER_PUB), ["2026-10-29T10:06:00Z"])],
+         [], {})
+    disp("uw-unregistered-does-not-cover", "An unregistered statement does not cover.",
+         a_window, [st("s1", flood, [])], [], {})
+    disp("uw-malformed-does-not-cover", "A statement with an unlisted class does not cover.",
+         a_window, [st("s1", uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", "ddos"),
+                       ["2026-10-29T10:06:00Z"])], [], {})
+    disp("uw-two-statements-cover", "Two statements cover one absence: the reader labels each.",
+         a_window, [st("s1", flood, ["2026-10-29T10:06:00Z"]),
+                    st("s2", uw_statement("2026-10-29T10:15:00Z", "2026-10-29T11:00:00Z", "maintenance"),
+                       ["2026-10-29T12:00:00Z"])], ["s1", "s2"],
+         {"s1": lab("flood", False, "2026-10-29T10:06:00Z"),
+          "s2": lab("maintenance", True, "2026-10-29T12:00:00Z")})
+    disp("uw-commitment-unchanged", "An absence citing a retention commitment and covered by a "
+         "statement still cites the commitment and is still attributable to the responder.",
+         {**a_window, "retention_commitment": "in_force"},
+         [st("s1", flood, ["2026-10-29T10:06:00Z"])], ["s1"],
+         {"s1": lab("flood", False, "2026-10-29T10:06:00Z")}, section=[S_UW, S_ABS, S_RET])
+    cases[-1]["expect"]["retention_classification"] = "attributable_absence"
+    disp("uw-refusal-not-affected", "A request that received a signed refusal has no absence: a "
+         "statement over the same period changes nothing.",
+         {**a_window, "received": "refusal", "refusal_reason": "policy_declined"},
+         [st("s1", flood, ["2026-10-29T10:06:00Z"])], [], {}, section=[S_UW, S_DISC],
+         state="refusal", shown_as="refusal")
+    cases[-1]["expect"]["must_not_show_as"] = ["recorded_absence", UW_SHOWN]
+    disp("uw-pending-not-absence", "A request still inside its window is pending; a statement does not "
+         "make it an absence.",
+         {"sent_at": "2026-10-29T10:10:00Z", "closed_at": None, "received": "nothing"},
+         [st("s1", flood, ["2026-10-29T10:06:00Z"])], [], {}, section=[S_UW, S_PEND, S_DISC],
+         state="pending", shown_as="pending")
+    cases[-1]["expect"]["must_not_show_as"] = ["recorded_absence", "refusal", UW_SHOWN]
+    for c in cases:
+        if c["kind"] == "display" and c["expect"]["covered_by"]:
+            c["section"] = list(dict.fromkeys(c["section"] + [S_MAP]))
+    return cases
+
+
+# ---------------------------------------------------------------------------
 # registry.json: the exact strings -00 fixes
 # ---------------------------------------------------------------------------
 
@@ -1313,6 +1518,11 @@ def build() -> dict[str, bytes]:
         "retention.json": _dump(_corpus(
             "retention", "Retention commitments: the breach table and commitment subject forms.",
             retention_cases())),
+        "unavailable-window.json": _dump(_corpus(
+            "unavailable-window", "Unavailable-window statements: which a reader recognizes, which "
+            "cover an absence, and how the reader shows a covered absence.", unavailable_window_cases(),
+            draft=DRAFT_02, notes=UW_NOTES, reason_classes=UW_CLASSES, shown_as=UW_SHOWN,
+            signature_profile=UW_SIGNATURE_PROFILE)),
     }
     if sha256_hex(files["refusal-imported.json"]) != IMPORTED_REFUSAL_SHA256:
         raise SystemExit("imported refusal vector bytes drifted")

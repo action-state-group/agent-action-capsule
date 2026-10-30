@@ -1,22 +1,25 @@
-# Evidence request conformance vectors (draft-mih-agent-evidence-request-00 and -01)
+# Evidence request conformance vectors (draft-mih-agent-evidence-request-00, -01 and -02)
 
 Conformance vectors for the evidence request interaction defined in
-`spec/draft-mih-agent-evidence-request-00.md` and
-`spec/draft-mih-agent-evidence-request-01.md`: the request map, the six subject
+`spec/draft-mih-agent-evidence-request-00.md`,
+`spec/draft-mih-agent-evidence-request-01.md` and
+`spec/draft-mih-agent-evidence-request-02.md`: the request map, the six subject
 forms, which record members carry a correlation identifier or cite an exchange
 half, coverage, the request digest, the signed refusal, the three outcomes and
 the pending state, caller invariance, retention commitments, the `categories`
-request field, and A2A and MCP carriage.
+request field, A2A and MCP carriage, and unavailable-window statements.
 
 Each corpus names the revision it is written from in its `draft` member.
 `carries.json`, `categories.json` and `carriage.json` follow text that first
-appears in -01, and name -01; every other corpus names -00, and every -00 case
-also holds under -01. Section numbers below are those of the revision the
+appears in -01, and name -01; `unavailable-window.json` follows text that first
+appears in -02, and names -02; every other corpus names -00, and every -00 and
+-01 case also holds under -02. Section numbers below are those of the revision the
 corpus names.
 
 **Derived from the draft text, not from any implementation.** Every expected
 result is written by hand in the generator from the section it cites. The
-generator only encodes inputs, hashes them and signs the refusal cases; it runs
+generator only encodes inputs, hashes them and signs the refusal and statement
+cases; it runs
 no responder or verifier. Every case is marked `"provenance": "spec-derived"`.
 Where -00 leaves a choice open, the case carries an `ambiguity` note with the
 section and the reading used (the most literal one); the list is below, for -01.
@@ -37,6 +40,7 @@ section and the reading used (the most literal one); the list is below, for -01.
 | `outcomes.json` | The three outcomes and pending, as facts in and one state out, with the states each case must never be recorded as (§4.5). |
 | `invariance.json` | Caller invariance (§5): observations of the same subject under the same anchor must carry byte-identical artifacts. |
 | `retention.json` | Retention commitments (§9): every reason inside and after `until`, absence with and without a commitment, and which subject forms a commitment may name. |
+| `unavailable-window.json` | Unavailable-window statements (-02 §4.7). `kind` `statement`: whether a reader recognizes the statement (well formed, signed by `responder_key`, registered) and its registration time, the earliest of `registration_times`. `kind` `display`: an absence (`sent_at` to `closed_at`) and statements; expect the ids of the statements that cover it, `shown_as`, and per covering statement its `reason_class`, registration time and `stated_afterwards`. `must_not_show_as` lists what the reader must never show. Statements are signed with the primary key of `refusal.json` under the profile in the file. |
 | `manifest.json` | SHA-256 and case count of every generated file, and the ambiguity list. |
 | `SHA256SUMS` | SHA-256 of every file in this directory except itself. |
 | `DIFFS.md` | Known differences between one existing Python responder and -00. |
@@ -92,6 +96,11 @@ section and the reading used (the most literal one); the list is below, for -01.
 10. `carriage.json`: check each case by its `kind` (table above). A
    `classify` result must equal `expect.classified_as` and must not be any of
    `expect.must_not_classify_as`.
+11. `unavailable-window.json`: for a `statement` case, recognize the
+   statement against `responder_key` and its `registration_times`; for a
+   `display` case, find the covering statements, show the absence, and check
+   each label. The result must equal `expect` and must not be any of
+   `expect.must_not_show_as`.
 
 Regenerate from the repository root with
 `python3 python/scripts/generate_evidence_request_vectors.py`. The output is a
@@ -316,6 +325,40 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `ret-commitment-subject-full_history` | 9, 3.1 | malformed | A1, A11 |
 | `ret-commitment-subject-checkpoints` | 9, 3.1 | malformed | A1, A11 |
 | `ret-commitment-missing-until` | 9 | malformed | A1 |
+
+### `unavailable-window.json` (29 cases)
+
+| Case | Kind | § | Expect |
+|---|---|---|---|
+| `uw-class-flood` | statement | 4.7 | recognized, registered 10:06 |
+| `uw-class-maintenance` | statement | 4.7 | recognized, registered 10:06 |
+| `uw-class-outage` | statement | 4.7 | recognized, registered 10:06 |
+| `uw-class-other_declared` | statement | 4.7 | recognized, registered 10:06 |
+| `uw-neg-class-unlisted` | statement | 4.7 | not recognized (malformed) |
+| `uw-neg-class-free-text` | statement | 4.7 | not recognized (malformed) |
+| `uw-neg-class-wrong-case` | statement | 4.7 | not recognized (malformed) |
+| `uw-neg-class-missing` | statement | 4.7 | not recognized (malformed) |
+| `uw-extra-member-not-the-reason` | statement | 4.7 | recognized, registered 10:06 |
+| `uw-neg-end-before-start` | statement | 4.7 | not recognized (malformed) |
+| `uw-end-equals-start` | statement | 4.7 | recognized, registered 10:06 |
+| `uw-neg-bad-signature` | statement | 4.7 | not recognized (not_signed_by_responder) |
+| `uw-neg-other-key` | statement | 4.7 | not recognized (not_signed_by_responder) |
+| `uw-neg-unregistered` | statement | 4.7 | not recognized (not_registered) |
+| `uw-registration-earliest-receipt` | statement | 4.7 | recognized, registered 10:06 |
+| `uw-show-stated-before-close` | display | 4.7, 4.4, 4.5, 4.6 | holder states unavailability: flood |
+| `uw-show-stated-afterwards` | display | 4.7, 4.4, 4.5, 4.6 | holder states unavailability: outage, stated afterwards |
+| `uw-registered-at-close` | display | 4.7, 4.4, 4.6 | holder states unavailability: flood |
+| `uw-registered-after-close-by-a-second` | display | 4.7, 4.4, 4.6 | holder states unavailability: flood, stated afterwards |
+| `uw-partial-overlap` | display | 4.7, 4.4, 4.6 | holder states unavailability: maintenance |
+| `uw-touching-boundary` | display | 4.7, 4.4, 4.6 | holder states unavailability: outage |
+| `uw-no-overlap` | display | 4.7, 4.4 | not covered; shown as recorded_absence |
+| `uw-other-key-does-not-cover` | display | 4.7, 4.4 | not covered; shown as recorded_absence |
+| `uw-unregistered-does-not-cover` | display | 4.7, 4.4 | not covered; shown as recorded_absence |
+| `uw-malformed-does-not-cover` | display | 4.7, 4.4 | not covered; shown as recorded_absence |
+| `uw-two-statements-cover` | display | 4.7, 4.4, 4.6 | holder states unavailability: flood; maintenance, stated afterwards |
+| `uw-commitment-unchanged` | display | 4.7, 4.4, 9, 4.6 | holder states unavailability: flood |
+| `uw-refusal-not-affected` | display | 4.7, 4.5 | not covered; shown as refusal |
+| `uw-pending-not-absence` | display | 4.7, 4.3, 4.5 | not covered; shown as pending |
 
 ## Readings in the -01 corpora
 

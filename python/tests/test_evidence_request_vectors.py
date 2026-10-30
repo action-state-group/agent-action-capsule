@@ -30,7 +30,7 @@ GENERATOR = ROOT / "python" / "scripts" / "generate_evidence_request_vectors.py"
 SPEC = ROOT / "spec"
 HAND_WRITTEN = ("README.md", "DIFFS.md")
 CORPORA = ("request", "resolution", "carries", "categories", "carriage", "digest", "refusal", "outcomes",
-           "invariance", "retention")
+           "invariance", "retention", "unavailable-window")
 
 
 def _sha(data: bytes) -> str:
@@ -115,7 +115,8 @@ def test_every_cited_section_exists_in_the_draft():
         corpus = _load(name)
         cited.update((corpus["draft"], ref) for case in corpus["cases"] for ref in case["section"])
     drafts = {draft for draft, _ in cited}
-    assert drafts == {"draft-mih-agent-evidence-request-00", "draft-mih-agent-evidence-request-01"}
+    assert drafts == {"draft-mih-agent-evidence-request-00", "draft-mih-agent-evidence-request-01",
+                      "draft-mih-agent-evidence-request-02"}
     headings = {draft: _draft_headings(draft) for draft in drafts}
     for draft, ref in cited:
         m = re.match(r"^§(\d+(?:\.\d+)*) (.+)$", ref)
@@ -414,3 +415,84 @@ def test_carriage_expectations_follow_from_the_text():
     # The A2A and MCP texts of one request give one digest.
     assert len(digests) == 1
     assert seen == {(k, b) for k in ("digest", "binding", "media_type", "classify") for b in (True, False)}
+
+
+UW_CLASSES = ("flood", "maintenance", "outage", "other_declared")
+UW_SHOWN = "no answer; holder states unavailability"
+
+
+def _uw_signed(statement: dict, responder_key: str) -> bool:
+    if statement.get("key_id") != responder_key:
+        return False
+    body = {k: statement[k] for k in ("end", "reason_class", "start") if k in statement}
+    signing_body = json.dumps(body, separators=(",", ":"), sort_keys=True, ensure_ascii=False).encode("utf-8")
+    try:
+        Ed25519PublicKey.from_public_bytes(bytes.fromhex(statement["key_id"])).verify(
+            bytes.fromhex(statement["sig"]), signing_body)
+    except (InvalidSignature, ValueError):
+        return False
+    return True
+
+
+def _uw_time(text: str):
+    from datetime import datetime
+    return datetime.fromisoformat(text.replace("Z", "+00:00"))
+
+
+def _uw_recognize(statement: dict, receipts: list, responder_key: str):
+    """-02 §4.7: (recognized, why, registration time), read from the text."""
+    if statement.get("reason_class") not in UW_CLASSES or _uw_time(statement["end"]) < _uw_time(statement["start"]):
+        return False, "malformed", None
+    if not _uw_signed(statement, responder_key):
+        return False, "not_signed_by_responder", None
+    if not receipts:
+        return False, "not_registered", None
+    return True, None, min(receipts, key=_uw_time)
+
+
+def test_unavailable_window_expectations_follow_from_the_text():
+    corpus = _load("unavailable-window")
+    assert corpus["reason_classes"] == list(UW_CLASSES)
+    assert corpus["shown_as"] == UW_SHOWN
+    kinds = set()
+    for case in corpus["cases"]:
+        kinds.add(case["kind"])
+        expect = case["expect"]
+        if case["kind"] == "statement":
+            ok, why, registered = _uw_recognize(case["statement"], case["registration_times"],
+                                                case["responder_key"])
+            assert ok is expect["recognized"], case["id"]
+            if ok:
+                assert registered == expect["registration_time"], case["id"]
+                assert expect["shown_reason"] == case["statement"]["reason_class"], case["id"]
+            else:
+                assert why == expect["why"], case["id"]
+            continue
+        assert case["kind"] == "display", case["id"]
+        absence = case["absence"]
+        if absence["received"] != "nothing" or absence["closed_at"] is None:
+            # A refusal or a pending request has no absence for a statement to cover.
+            assert expect["covered_by"] == [] and expect["shown_as"] == expect["state"], case["id"]
+            assert UW_SHOWN in expect["must_not_show_as"], case["id"]
+            continue
+        opened, closed = _uw_time(absence["sent_at"]), _uw_time(absence["closed_at"])
+        covering, labels = [], {}
+        for entry in case["statements"]:
+            ok, _, registered = _uw_recognize(entry["statement"], entry["registration_times"],
+                                              case["responder_key"])
+            st = entry["statement"]
+            if ok and _uw_time(st["start"]) <= closed and _uw_time(st["end"]) >= opened:
+                covering.append(entry["id"])
+                labels[entry["id"]] = {"reason_class": st["reason_class"], "registration_time": registered,
+                                       "stated_afterwards": _uw_time(registered) > closed}
+        assert expect["covered_by"] == covering, case["id"]
+        assert expect["labels"] == labels, case["id"]
+        assert expect["state"] == "recorded_absence", case["id"]
+        assert expect["shown_as"] == (UW_SHOWN if covering else "recorded_absence"), case["id"]
+        assert {"refusal", "proof_of_attack"} <= set(expect["must_not_show_as"]), case["id"]
+        if covering:
+            assert "absence_without_statement" in expect["must_not_show_as"], case["id"]
+    assert kinds == {"statement", "display"}
+    ids = {c["id"] for c in corpus["cases"]}
+    for cls in UW_CLASSES:
+        assert f"uw-class-{cls}" in ids
