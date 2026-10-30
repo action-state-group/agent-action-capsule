@@ -381,8 +381,8 @@ close_bound_set_content = {"note": "EXAMPLE-ORG 2026-09-01 record set bound by t
 
 def _close_v1_body(book_id: str, seq: int, closed_at: str, bound_set_note: str) -> dict:
     """A counts-only close/v1 body for the 2026-09-01 period. `head` is the
-    last record the Close binds and `counts_by_kind` counts the records it
-    binds (judge-record-family-v1 section 3); both are placeholders here."""
+    last record of the range the Close covers and `counts_by_kind` counts
+    that range (judge-record-family-v1 section 3); both are placeholders here."""
     return {
         "record_version": "close/v1",
         "record_id": f"{book_id}#{seq}",

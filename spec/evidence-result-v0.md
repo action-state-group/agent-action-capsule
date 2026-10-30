@@ -284,8 +284,8 @@ conforming verifier MUST check both in addition to schema validation.
 ### 4.1 Claim types — `reconcile` and `close`
 
 **Status: normative.** `type: reconcile` was made normative first; `type: close` is normative under
-the C-5 ruling (2026-10-26: `type: close` becomes normative in this section, using the
-`close/v1` body). Normative for v0: the `type` member and its absent-means-`requirement` default;
+the 2026-10-26 ruling (`type: close` becomes normative in this section, using the `close/v1`
+body). Normative for v0: the `type` member and its absent-means-`requirement` default;
 the `reconcile` body (`join_key`, `peer`, `period`, the six tallies, `state_of_record`) and its
 sufficiency derivation; the `close` body, the Close it cites, `close_state`'s derivation and the
 three further bindings; and every rule in the rendering paragraph. Both types were staged against
@@ -331,13 +331,14 @@ claim (type: close) adds:
 **The Close a close claim cites is a `close/v1` record (normative).** `close_ref` MUST name a record
 of `record_type` `close` whose statement is a `close/v1` body (`spec/judge-record-family-v1.md` §3,
 `schemas/judge/close-v1.json`), and the claim's `period` MUST equal that body's `period`. The body's
-`head` and `counts_by_kind` describe the records the Close binds, not the period: `head` is the last
-record it binds and `counts_by_kind` counts those records, which can begin before `period.start`
-(that document's §3). A verifier in this revision reads only the cited Close's header (`book_id` and
-the links to it) for the walk below; it neither validates the Close's body nor compares periods, so
-a relying party that needs either checks the cited record against `close-v1.json` itself. Every
-Close record in the §11 close fixtures carries a `close/v1` body, and the fixture checker validates
-it.
+`head` and `counts_by_kind` describe the range of its store's records the Close covers, not the
+period: `head` is the last record of that range and `counts_by_kind` counts the records in it, which
+can begin before `period.start` (that document's §3). A verifier in this revision reads only the
+cited Close's header (`book_id` and the links to it) for the walk below; it neither validates the
+Close's body nor compares periods. A relying party that needs either validates the cited record's
+statement against `close-v1.json` and compares the claim's `period` with the statement's `period`
+itself. Every Close record in the §11 close fixtures carries a `close/v1` body, and the fixture
+checker checks both.
 
 **`close_state` is the Evidence Layer's three-state Close status** (`draft-mih-agent-evidence-layer-00`,
 "Reconcile and Close"), the same three values `schemas/judge/close-v1.json`'s `reconcile.status` carries:

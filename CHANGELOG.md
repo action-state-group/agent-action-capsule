@@ -78,16 +78,17 @@ has not yet.
   than evaluating it. Found while porting §11.1 to Rust
   (`rust/evidence-request`, feature `acceptance`).
 - Spec, schemas and vectors: Result v0's `type: close` claim is normative
-  (`spec/evidence-result-v0.md` §4.1, the C-5 ruling), using the `close/v1` body. A close claim's
-  `close_ref` MUST cite a `close/v1` record and its `period` MUST equal that Close's; a verifier in
-  this revision still reads only the cited Close's header. `close/v1`'s `head` is the last record
-  the Close binds (for an empty range, the record just before it), not necessarily the store's last
-  record when the Close is appended, and `counts_by_kind` counts the records it binds, which can
-  begin before `period.start` (`spec/judge-record-family-v1.md` §3; descriptions only in
-  `schemas/judge/close-v1.json`, so validation is unchanged). The close fixtures' Close records now
-  carry `close/v1` bodies, which changes every close fixture's digests, and the checker validates
-  them. The `ClaimType` description in `schemas/evidence-result-v0.json` and the Go copy say `close`
-  is normative.
+  (`spec/evidence-result-v0.md` §4.1, the 2026-10-26 ruling), using the `close/v1` body. A close
+  claim's `close_ref` MUST cite a `close/v1` record and its `period` MUST equal that Close's; a
+  verifier in this revision still reads only the cited Close's header. `close/v1`'s `head` and
+  `counts_by_kind` describe the range of its store's records the Close covers: `head` is that
+  range's last record (for an empty range, the record just before it), not necessarily the store's
+  last record when the Close is appended, and `counts_by_kind` counts the records in it, which can
+  begin before `period.start`; the Close's `closes` links can name a subset of that range
+  (`spec/judge-record-family-v1.md` §3; descriptions only in `schemas/judge/close-v1.json`, so
+  validation is unchanged). The close fixtures' Close records now carry `close/v1` bodies, which
+  changes every close fixture's digests, and the checker validates them. The `ClaimType` description
+  in `schemas/evidence-result-v0.json` and the Go copy say `close` is normative.
 
 ## go 0.16.0 — 2026-10-30
 
