@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Command cross_language is the stdin/stdout adapter for the CI interlock.
 //
-// seal and verify read a Capsule. bundle-produce <kind> reads the producer
+// seal and verify read a Capsule. signature reads one record (a Capsule with
+// its local-only signature and key_id) and prints its producer-signature
+// verdict. bundle-produce <kind> reads the producer
 // fixture (vectors/cross-language/bundle-producer-log.json) and writes the
 // JCS bytes of the Bundle kind names in its builds. bundle-verify reads a
 // Bundle's JSON text and prints its strict verdict.
@@ -20,11 +22,12 @@ import (
 
 	"github.com/action-state-group/agent-action-capsule/go/bundle"
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
+	"github.com/action-state-group/agent-action-capsule/go/envelope"
 	"github.com/action-state-group/agent-action-capsule/go/verify"
 	"github.com/action-state-group/checkpointed-local-log/go/cll"
 )
 
-const usage = "usage: cross_language seal|verify|bundle-produce <kind>|bundle-verify"
+const usage = "usage: cross_language seal|verify|signature|bundle-produce <kind>|bundle-verify"
 
 func main() {
 	args := os.Args[1:]
@@ -33,6 +36,8 @@ func main() {
 		os.Exit(bundleProduce(args[1]))
 	case len(args) == 1 && args[0] == "bundle-verify":
 		os.Exit(bundleVerify())
+	case len(args) == 1 && args[0] == "signature":
+		os.Exit(signature(os.Stdin, os.Stdout, os.Stderr))
 	case len(args) != 1 || (args[0] != "seal" && args[0] != "verify"):
 		fmt.Fprintln(os.Stderr, usage)
 		os.Exit(2)
@@ -199,6 +204,42 @@ func bundleProduce(kind string) int {
 		return 1
 	}
 	return 0
+}
+
+// signatureExit is each producer-signature verdict's exit code. A caller
+// tells unclaimed (unsigned, not checked) from invalid (a forgery or a
+// malformed claim) by the code alone; 2 stays the usage and input code.
+var signatureExit = map[string]int{envelope.Authored: 0, envelope.Invalid: 1, envelope.Unclaimed: 3}
+
+// signature prints the producer-signature verdict of the one JSON value on
+// in; anything after that value is refused, so a stream of records is never
+// read as its first. authored means the Producer Envelope verifies under the record's own
+// key_id over its recomputed Capsule ID; that key is self-attested, so the
+// caller still decides whether it is the key it expects.
+func signature(in io.Reader, out, errOut io.Writer) int {
+	raw, err := io.ReadAll(in)
+	if err != nil {
+		fmt.Fprintln(errOut, err)
+		return 2
+	}
+	// The verifier's strict decoder: one value, numbers as written, and no
+	// invalid UTF-8 or lone surrogate that encoding/json would repair.
+	record, err := verify.DecodeCapsuleJSON(raw)
+	if err != nil {
+		fmt.Fprintln(errOut, err)
+		return 2
+	}
+	verdict, messages := envelope.VerifyRecordSignature(record)
+	for _, message := range messages {
+		fmt.Fprintln(errOut, message)
+	}
+	code, known := signatureExit[verdict]
+	if !known {
+		fmt.Fprintf(errOut, "unknown verdict %q\n", verdict)
+		return 1
+	}
+	fmt.Fprintln(out, verdict)
+	return code
 }
 
 func bundleVerify() int {
