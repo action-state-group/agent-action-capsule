@@ -116,7 +116,7 @@ fn every_corpus_acceptance_case_gives_the_expected_report() {
         assert_eq!(run(case, contract, false), case["expected"], "{id}");
         ran += 1;
     }
-    assert_eq!(ran, 9, "the corpus has nine acceptance cases");
+    assert_eq!(ran, 11, "the corpus has eleven acceptance cases");
 }
 
 #[test]
@@ -240,6 +240,24 @@ fn records_this_crate_signs_verify_and_order() {
     // Without the receipt the citation alone is not ordering evidence (P-28).
     let res = evaluate(&[], &[&execs[0]]);
     assert_eq!(res.finding, Finding::AcceptedExecutionCites);
+    // An action time is rounded down before rule 4: an action at 00:06:00.5
+    // is 00:06:00, so the receipt at 00:06:00 is not earlier (INCONCLUSIVE);
+    // unrounded, 00:06:00 < 00:06:00.5 would pass.
+    let fractional = octets(&Value::Object(
+        acceptance::sign(
+            obj(json!({"action_at": "2026-10-12T00:06:00.5Z", "issuer": qk,
+                       "links": [{"type": "cites", "target": acceptance_digest}],
+                       "transaction": transaction})),
+            &q,
+        )
+        .unwrap(),
+    ));
+    let res = evaluate(&[&receipts[0]], &[&fractional]);
+    assert_eq!(res.finding, Finding::AcceptedExecutionCites);
+    assert_eq!(
+        res.candidates[0].status("acceptance_ordering"),
+        Some(evidence_request::status::Status::Inconclusive)
+    );
 }
 
 #[test]

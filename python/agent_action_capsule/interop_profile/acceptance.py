@@ -453,9 +453,12 @@ def _ordering(r, rps, action_times, other_times, trust, form_ii) -> tuple[Proper
     if not action_times:
         return PropertyReport("acceptance_ordering", NOT_PRESENT, method, "rule 1: no time for the action"), []
     issued = parse_time(r.get("issued_at"))
-    if issued is not None and any(issued >= t for t in action_times):
+    # Strictly later only: an equal time, after the reduction to the second, does not order the
+    # acceptance after the action (a producer holding committed times to the minute writes equal
+    # times for a same-minute acceptance and action).
+    if issued is not None and any(issued > t for t in action_times):
         return PropertyReport("acceptance_ordering", FAIL, method,
-                              "rule 2: the record's own issued_at is not earlier than a time held for the action"), []
+                              "rule 2: the record's own issued_at is later than a time held for the action"), []
     if trust.require_action_time_from_other_party and not other_times:
         return PropertyReport("acceptance_ordering", NOT_PRESENT, method,
                               "rule 3: the policy requires a time for the action from another party; none held"), []

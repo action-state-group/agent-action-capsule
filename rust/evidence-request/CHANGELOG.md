@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `acceptance`: §11.1.5 rule 2 is `FAIL` only for an `issued_at` later than a time held for the
+  action; an equal time no longer is (the profile's change; corpus cases
+  `acceptance-equal-time-H` and `acceptance-after-action-by-a-second-I`).
 - **`acceptance` feature: the interop profile's acceptance records** (`acceptance`;
   `spec/interop-profile-v0.md` §11.1), a port of the profile's Python verifier.
   `acceptance::evaluate` reports each candidate's and each receipt's §11.1.7 properties and the
