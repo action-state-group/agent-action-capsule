@@ -1067,6 +1067,16 @@ def test_b3_action_time_is_rounded_down_before_rule_4():
     assert res.finding == "accepted_execution_cites"
 
 
+def test_rule_2_an_issued_at_equal_to_the_action_time_passes_with_an_earlier_receipt():
+    """§11.1.5 rule 2: E's issued_at (00:05:00) equal to the action time is not a FAIL, and the
+    proposer's receipt at 00:04:59 orders it: PASS (the path a minute-granular producer relies on)."""
+    res = _acceptance_with("acceptance-backdated-E-control",
+                           receipts=lambda signed, rc: [signed("P", {**rc, "received_at": "2026-10-12T00:04:59Z"})],
+                           exec_changes={"action_at": "2026-10-12T00:05:00Z"})
+    assert res.candidates[0].status("acceptance_ordering") == "PASS"
+    assert res.finding == "accepted_before_action"
+
+
 def test_n4_fractional_receipt_time_is_rounded_up_not_dropped():
     res = _acceptance_with("acceptance-backdated-E-control",
                            receipts=lambda signed, rc: [signed("P", {**rc, "received_at": "2026-10-12T00:09:59.2Z"})])
