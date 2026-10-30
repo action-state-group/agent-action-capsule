@@ -78,130 +78,6 @@ has not yet.
   than evaluating it. Found while porting §11.1 to Rust
   (`rust/evidence-request`, feature `acceptance`).
 
-- Evidence Result v0 `plan_ref` and `dataset_ref` (Go, Python, TypeScript): the optional members,
-  digest refs that must appear together, name the Plan IR and the dataset a Result was computed
-  from (spec section 7.3). TypeScript's `validateEvidenceResult` accepts them and reports a
-  malformed ref or one present without the other; ts 0.9.0 refused a Result that carries either.
-  The Plan IR v0 also gains a dataset plan (population, window, filter) and a dataset document,
-  with Go and Python gates and vectors. (#443, evidencebook#107)
-
-- Spec: `spec/standard-history-v0.md` defines the derivation `standard_history/1`, now a row of
-  the Evidence Request derivation registry (`spec/REGISTRY.md` §16): a recipient-free card, as of
-  one anchor, that counts the holder's deals in the window its policy sets, by outcome, value band,
-  role, how it happened and disputes, every count with its denominator and no ratio. It also
-  defines the deal member `counterparty_class` (`person_agent`, `business_agent`, `shop_preauth`;
-  a `shop_preauth` deal is not counted) and the record kind `receipt_document`. Python:
-  `agent_action_capsule.standard_history` (`derive_card`, `check_card`) is the reference. Go: the
-  new package `standardhistory` (`Derive`, `Check`) is at parity with it. Both run
-  `vectors/standard-history-v0/` (9 positive, 19 negative). (#437, #440)
-
-- Security, strict witness receipts: an EdDSA witness receipt now verifies only under strict
-  Ed25519. The key A and the signature's R must be canonical and not of small order, and S must
-  be less than L, before the cofactorless check. Go's `crypto/ed25519.Verify` and Python's
-  `cryptography` accept a small-order key, and under the identity key the signature R = the
-  identity, S = 0 verifies over any root, so anyone could forge a receipt for a directory row
-  that pins such a key. Go (`witness.VerifyCOSEReceipt`), Python (`agent_action_capsule.witness`)
-  and TypeScript (`verifyCoseReceipt`, which no longer depends on the runtime's WebCrypto for
-  this) refuse it. `vectors/bundle/strict/` gains `neg-witness-cll-small-order-key` and its
-  directory row, and checkpointed-local-log's shared `ed25519-vectors.json` moves from
-  `ts/test/testdata/` to `vectors/cross-language/cll-ed25519-vectors.json`, which the Go, Python,
-  TypeScript and Rust tests all run. (#439, #447)
-
-- Vectors: `vectors/bundle/composed/` gains `agree-with-checkpoints`, the agree composition in
-  which the container and each member Bundle are their party's whole log, with a completeness
-  certificate and a signed COSE checkpoint under that party's published test seed. Every claim
-  passes, so the strict verdict of each Bundle and the full verdict are VALID; the case records
-  `expect.strict` and `expect.verdict`. The five existing cases are byte-identical. The Go, Python
-  and TypeScript vector tests check the strict verdicts and that no other case reaches VALID.
-  (#413)
-
-- Vectors: three Evidence Result v0 schema negatives on which Python's `re` and ECMA-262, the
-  regular-expression dialect of JSON Schema's `pattern`, disagree: a digest and an `applies_from`
-  followed by a newline, and a `contract_ref` holding U+FEFF. The Python reference
-  `schemas/check_evidence_result_examples.py` now reads the schema's patterns as ECMA-262, as the Go
-  gate `evidenceresult` already did, so it refuses all three. The schema is unchanged. (#434, #436)
-
-- **Breaking**, spec: the presentation contract moved to capsule-viewer, so this repository no
-  longer states conformance for manifests, registries, resolution or I4; a claim of
-  `presentation-contract-v0` conformance now refers to capsule-viewer's copy. What a page states
-  about verification stays here, in the new `spec/verification-display-v0.md`, with its words
-  unchanged except the edits listed in #400 and the contract's section numbers: the "Verified" gate
-  (§1), the check lists (§6.1), the banner (§6.2), evidentiary words (§7.1), `sha256-jcs-nonce256`
-  (§7.2) and invariants I1 (failure collapses to the refusal) and I3. It defines every term it uses
-  and has its own conformance line; `spec/check-verification-display-terms.py` checks the terms in
-  the Spec workflow. `spec/presentation-contract-v0.md` and `spec/presentation-builder-v0.md` are
-  now informative pointers that map each old section to its new home. `spec/contract-report-v1.md`
-  keeps §1 (the block) and §5 (earlier kinds); its §2 to §4 and example pack moved. The deprecation
-  table of the earlier kinds is now in `spec/REGISTRY.md` §14, its removal column rewritten (ts
-  0.8.0; the Go readers left with `go/presentation`). `spec/deal-reconcile-contract-v0.md` and
-  `spec/personal-agent-history-outcome-v0.md` cite `sha256-jcs-nonce256` there. (#379)
-
-- Vectors and schemas: `vectors/presentation-resolution/`, `schemas/presentation-manifest-v0.json`
-  with its examples and checker, and the contract-report wording-pack check moved to
-  capsule-viewer. The fragment codec vectors moved unchanged from
-  `ts/test/testdata/presentation-fragment-vectors.json` to `vectors/bundle/fragment/`, read by
-  the TypeScript and Go codec tests. `vectors/viewer-core-text/` cites the new document; its
-  bytes change, no case does. (#379)
-
-- Interop profile v0: the "Pins, never redefines" table pins CPB
-  (`draft-mih-sokolov-scitt-payload-binding`) -05 and composition
-  (`draft-mih-sato-agent-accountability-composition`) -01 by the SHA-256 of the posted `.txt`, as
-  CLL and MMR are pinned. The profile's `as-transmitted` citation is now [CPB §4.4] of -05; the
-  profile takes nothing normative from composition -01. The README says a Capsule is declared
-  under CPB, not registered in it: CPB keeps no registry of payload classes or artifact types.
-  (#405)
-
-- Evidence Request refusals (Rust, Python): the signers carry the optional `detail` the Go signer
-  already does (profile P-6). Rust adds `refusal::sign_with_detail` and a `Refusal.detail` field
-  (`sign` is unchanged); Python adds `sign_refusal(..., detail=)` and a `Refusal.detail` field, and
-  `parse_reply` now keeps a refusal's `detail`. `detail` stays outside the signed members, so the
-  signature and the request digest are the same with or without it. One new vector,
-  `pos-detail-outside-signature`, is produced and read by Go, Python and Rust in both bindings.
-  (#340)
-
-- Strict witness receipts (Go, Python, Rust, TypeScript): each receipt result also reports
-  `key_id`, the directory key id a passing receipt verified under, and `registration_time`, the
-  `iat` (claim 6) the witness signed into a passing COSE Receipt's protected CWT claims (label 15),
-  in seconds since the epoch. It is never read from the unprotected header or the checkpoint's own
-  `timestamp`. When there is no time, `registration_time_reason` names why: `receipt_not_passed`,
-  `iat_absent`, `iat_invalid` or `binding_without_iat` (rekor). Existing members and every status
-  and verdict are unchanged. Ten new strict vectors, `pos-witness-registration-time` and its
-  siblings, pin it; every existing receipt result gains the three members. Rust's
-  `WitnessReceiptResult` and `ReceiptCheck`, and TypeScript's `WitnessReceiptResult` and
-  `ReceiptOutcome`, gain members, so code that builds them by hand must add them. (#392)
-
-- Strict witness receipts (Go, Python, Rust, TypeScript): a `checkpoint.witnesses` entry is
-  malformed unless every member is present, `ts_url`, `entry_hash` and `receipt_b64` are non-empty
-  strings, and `receipt_b64` is canonical standard base64. An entry with every member and a string
-  `ts_url` that failed one of these checks was read as a receipt: withheld when no usable key
-  checked it (no directory row, a row without a usable key, or a stub), and passed when only its
-  `entry_hash` was empty or not a string beside a rekor or scrapi receipt that verified, since only
-  the cll binding reads it. The Bundle stayed VALID. It now fails as
-  `witness_receipt_malformed:<index>`, with or without a row. Three new strict vectors,
-  `neg-witness-malformed-member-no-row`, `neg-witness-malformed-members` and
-  `neg-witness-malformed-shapes`, pin it. (capsule-cli#438)
-
-- Class 1 verify (Go, Python, TypeScript) does bounded work on hostile numbers, as Rust does since
-  #382. It reports at most 64 `float_in_digest_field` and 64 `unsafe_integer_in_digest_field`
-  findings, each quoting at most 256 code points of its path, then `...`, and writes a path only for
-  a failing number. Python 0.12.0 needed about 200 MB for a 60 KB record with 2,000 floats under a
-  50 KB key (measured in #383). Python and TypeScript now list object members in code point order,
-  as Go and Rust do, so all four report the same findings. Verdicts don't change, and finding codes
-  change only in the Python case below. What does change, in all three: a record with more than 64
-  failing numbers of one kind lists only the first 64, and a long path is cut. Python and TypeScript
-  also list findings in a different order, and a Python record nested past the recursion limit
-  reports `capsule_id_uncomputable` where it reported `verifier_internal_error`. A new
-  cross-language fixture, `vectors/cross-language/verify-number-findings.json`, pins the findings.
-  (#383)
-
-- Strict Bundle verification (Go, Python, Rust, TypeScript): the `checkpoint` claim also holds the
-  completeness certificate's `log_id`, when stated, to the signed log identifier, and reports
-  `checkpoint_field_mismatch:log_id` when it differs (bundle -01 §Completeness). A producer-selected
-  Bundle whose certificate names another log was INCOMPLETE and is now INVALID; a new strict vector,
-  `neg-producer-selected-certificate-log-id`, pins it. Go exports the claim on its own as
-  `bundle.VerifyCheckpoint`, which also returns the authenticated checkpoint and its COSE bytes.
-  (capsule-cli#438)
-
 ## python 0.13.0 — 2026-10-30
 
 Tag `python/v0.13.0`.
@@ -391,6 +267,16 @@ Tag `python/v0.13.0`.
   `neg-producer-selected-certificate-log-id`, pins it. Go exports the claim on its own as
   `bundle.VerifyCheckpoint`, which also returns the authenticated checkpoint and its COSE bytes.
   (capsule-cli#438)
+
+- Evidence Result v0 §3: `aggregate.coverage.requirements_covered`, OPTIONAL, lists the requirements
+  a run evaluated or excluded as `NOT_APPLICABLE`, as (`contract_ref`, `requirement_ref`) pairs. A
+  requirement outside the list was not run: in no count and no bucket. Absent means every
+  requirement of every cited contract, so existing Results read and digest unchanged. The checker
+  and the TypeScript validator refuse a list that omits a claimed requirement, lists a pair twice,
+  or lists more unclaimed requirements than `excluded_not_applicable`, and `ResultRoot` exposes it
+  as `requirementsCovered`. One positive and three negative vectors in `vectors/evidence-result/`.
+  A reader reads missing evaluations as not applicable only when the exclusions account for all of
+  them, and otherwise as a gap. (#355)
 
 ## go 0.15.0 — 2026-10-30
 
