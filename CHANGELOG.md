@@ -16,6 +16,16 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.10.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Go: `controllerbinding` verifies a Controller Binding v0 record (`spec/controller-binding-v0.md`)
+  as received: form, both signatures, window and received revocation statements. It reports the
+  binding properties, claim type and keys, whether the binding applies to a pair, and the pair's
+  `issuer_independence`. It ships no credential verifier or trust anchors: a credential is
+  `NOT_CHECKED` unless the caller passes a verifier for its method. `cross_language binding` runs it
+  on stdin. Exit 0 means the binding applies and names the given `key`. It is not a trust verdict.
+  Exit 1 means it does not apply because a property is `FAIL` or the key is not named. Exit 3 means
+  it does not apply because its method is not implemented. Exit 2 is bad input. Both run
+  `vectors/controller-binding-v0/` (agent-action-capsule#432).
+
 - Go: `cross_language signature` reads one record on stdin (a Capsule with its local-only
   `signature` and `key_id`) and prints its producer-signature verdict from
   `envelope.VerifyRecordSignature`: `authored` (exit 0), `invalid` (exit 1) or `unclaimed`
