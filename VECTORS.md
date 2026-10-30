@@ -19,6 +19,58 @@ runs it. A case is one entry of the set's own case list, or, where a set has
 none, one case file or case directory. [`vectors/README.md`](vectors/README.md)
 describes how the sets are generated and checksummed.
 
+## Run the vectors
+
+One command per language runs every set below that the language has tests for,
+offline, and prints `PASS`, `FAIL`, `PARTIAL` or `SKIP` per set with the set's
+case count (the count in the table below). A set a language has no tests for is
+listed as `SKIP`, never left out; `PARTIAL` means some of its tests were skipped
+(a missing optional tool), and the reason is printed.
+
+| Language | Command (from the repository root) |
+|---|---|
+| Python | `python3 scripts/run_vectors.py python` |
+| TypeScript | `python3 scripts/run_vectors.py ts` |
+| Go | `python3 scripts/run_vectors.py go` |
+| Rust | `python3 scripts/run_vectors.py rust` |
+
+The runner is stdlib-only Python 3 that calls each language's own test runner on
+the tests mapped to each set in [`scripts/vector_sets.json`](scripts/vector_sets.json).
+It exits non-zero when any set fails.
+
+**Setup, once per language (this is the only step that needs a network).**
+The runner itself never touches the network.
+
+| Language | Setup |
+|---|---|
+| Python | `python3 -m venv python/.venv && python/.venv/bin/pip install -e "python[dev,bundle]" jsonschema` |
+| TypeScript | `cd ts && npm ci` |
+| Go | `cd go && GOWORK=off go mod vendor` (the runner then uses `-mod=vendor` and `GOPROXY=off`) |
+| Rust | `cd rust && mkdir -p .cargo && cargo vendor --locked vendor > .cargo/config.toml` (the runner passes `--offline --locked`) |
+
+The vendored trees and `python/.venv` are local build output; do not commit
+them. [`scripts/build_offline_bundle.sh`](scripts/build_offline_bundle.sh) packs
+all of the above, with a Python wheelhouse and an npm cache, into one tarball
+with a `setup-offline.sh` that needs no network;
+[`scripts/verify_offline_bundle.sh`](scripts/verify_offline_bundle.sh) unpacks
+it and runs everything with the network denied. Each language also needs its
+toolchain installed.
+
+**Break one byte.** Add `--break-one-byte` to any command above:
+
+```bash
+python3 scripts/run_vectors.py go --break-one-byte
+```
+
+It changes the last character of `action_id` in
+`vectors/capsule/pos-v4-jcs-chain-committed/input.json`, runs the
+`vectors/capsule/` set, and the case `pos-v4-jcs-chain-committed` fails with a
+`capsule_id_mismatch` (the recomputed `capsule_id` no longer equals the carried
+one). The file is restored afterwards and the command exits 0 only when the set
+failed and the restore is byte for byte. To do it by hand, edit one character
+of any positive vector's `input.json`, run the language's command, then
+`git checkout -- vectors`.
+
 ## Capsule, envelopes and bundles
 
 | Set | Owning specification | Verbs | Cases |
