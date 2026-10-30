@@ -41,7 +41,10 @@ func TestSignatureRecordSignatureVectors(t *testing.T) {
 }
 
 func TestSignatureRefusesInput(t *testing.T) {
-	for name, input := range map[string]string{"empty": "", "not JSON": "{", "bare word": "signed"} {
+	for name, input := range map[string]string{
+		"empty": "", "not JSON": "{", "bare word": "signed",
+		"two records": `{"capsule_id": "a"} {"capsule_id": "b"}`, "trailing garbage": `{} x`,
+	} {
 		var out, errOut bytes.Buffer
 		require.Equal(t, 2, signature(strings.NewReader(input), &out, &errOut), name)
 		require.Empty(t, out.String(), name)

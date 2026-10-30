@@ -212,7 +212,8 @@ func bundleProduce(kind string) int {
 var signatureExit = map[string]int{envelope.Authored: 0, envelope.Invalid: 1, envelope.Unclaimed: 3}
 
 // signature prints the producer-signature verdict of the one JSON value on
-// in. authored means the Producer Envelope verifies under the record's own
+// in; anything after that value is refused, so a stream of records is never
+// read as its first. authored means the Producer Envelope verifies under the record's own
 // key_id over its recomputed Capsule ID; that key is self-attested, so the
 // caller still decides whether it is the key it expects.
 func signature(in io.Reader, out, errOut io.Writer) int {
@@ -223,12 +224,21 @@ func signature(in io.Reader, out, errOut io.Writer) int {
 		fmt.Fprintln(errOut, err)
 		return 2
 	}
+	if _, err := decoder.Token(); err != io.EOF {
+		fmt.Fprintln(errOut, "input holds more than one JSON value")
+		return 2
+	}
 	verdict, messages := envelope.VerifyRecordSignature(record)
 	for _, message := range messages {
 		fmt.Fprintln(errOut, message)
 	}
+	code, known := signatureExit[verdict]
+	if !known {
+		fmt.Fprintf(errOut, "unknown verdict %q\n", verdict)
+		return 1
+	}
 	fmt.Fprintln(out, verdict)
-	return signatureExit[verdict]
+	return code
 }
 
 func bundleVerify() int {
