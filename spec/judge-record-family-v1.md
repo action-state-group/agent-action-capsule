@@ -160,8 +160,8 @@ parties `basis` judges (a rubric citation via `method`, vs. one or two `parties`
 
 `epistemic_type: producer_claim` — a store's own statement about its own history. Direct schema
 encoding of the Evidence Layer's reconcile model (`draft-mih-agent-evidence-layer-00.md`, section
-"Reconcile and Close"): period, counts by kind, and the head digest at close time, with an optional
-reconcile block.
+"Reconcile and Close"): period, counts by kind, and the head digest of the records it binds, with an
+optional reconcile block. Result v0's `type: close` claim cites a Close of this shape (Result v0 §4.1).
 
 ```
 close:
@@ -170,8 +170,8 @@ close:
   epistemic_type: "producer_claim"
   closed_at: date-time
   period: { start: date-time, end: date-time }
-  counts_by_kind: { <record_type>: integer, ... }
-  head: digest-ref
+  counts_by_kind: { <record_type>: integer, ... }   # over the records the Close binds
+  head: digest-ref                                  # the last record the Close binds
   reconcile?:
     tallies: { matched, a_only, b_only, conflicting, insufficient, unresolved: integer }
     status: AGREED | UNILATERAL | CONTESTED
@@ -179,6 +179,16 @@ close:
                                                  #   exactly one `cites` link: target = the
                                                  #   peer's Close for the same period
 ```
+
+**`head` and `counts_by_kind` describe the records the Close binds**, not the period and not the
+store. The records a Close binds are records of its own store, and `head` is the digest of the last
+of them in the store's append order. That is not necessarily the store's last record when the Close
+is appended: a store can append records after the bound ones and before the Close. When the Close
+binds an empty range, `head` is the digest of the record immediately before that range.
+`counts_by_kind` counts every record the Close binds, by `record_type`, and never the Close itself.
+`period` is the period the Close is for, which is how Closes of the same period are matched across
+stores; the records the Close binds can begin before `period.start`, for example when a store binds
+every record since its previous Close, and the counts include them.
 
 **One schema serves both the single-store period Close and capsule-emit-mesh's two-party Close** —
 no mesh-specific record kind exists for the latter; mesh's own repo has no formal schema for it

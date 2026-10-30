@@ -6,8 +6,8 @@ requirement, what was judged and with what assurance, over an Evidence Contract.
 (result semantics, disclosure policy, aggregate/coverage) carry **the 2026-09-22 ruling, quoted verbatim
 below** — the gate required before this schema could freeze. The gate is
 satisfied; the schema, validator, and fixtures below are encoded to the ruled text and are no
-longer DRAFT. §4.1's `type: reconcile` claim is normative; its `type: close` claim and §7.1's
-`coverage_report` are PROPOSED. §7.3's `plan_ref` and `dataset_ref` are normative.
+longer DRAFT. §4.1's `type: reconcile` and `type: close` claims are normative; §7.1's
+`coverage_report` is PROPOSED. §7.3's `plan_ref` and `dataset_ref` are normative.
 
 **Companion schema.** `schemas/evidence-result-v0.json` — a JSON Schema (2020-12) encoding of
 every object model defined below. The schema is descriptive of the semantics fixed here; where
@@ -281,16 +281,15 @@ are cross-element constraints over the `claims` array plain JSON Schema cannot e
 class of gap `evidence-plan-ir-v0.md` §3.1 documents for node `id` uniqueness and DAG order. A
 conforming verifier MUST check both in addition to schema validation.
 
-### 4.1 Claim types — `reconcile` (normative) and `close` (PROPOSED)
+### 4.1 Claim types — `reconcile` and `close`
 
-**Status: `type: reconcile` is normative; `type: close` stays PROPOSED.** Normative for v0: the
-`type` member and its absent-means-`requirement` default; the `reconcile` body (`join_key`, `peer`,
-`period`, the six tallies, `state_of_record`); the reconcile sufficiency derivation; and, in the
-rendering paragraph, the `A_ONLY` / `B_ONLY` versus `CONFLICTING` rule and the `unrecognized`-row
-rule. Still PROPOSED: the `close` body, everything about `close_state` (its derivation and the three
-further bindings, whose "(normative)" labels give the force they take once `close` is ruled), and
-the `UNILATERAL` / `CONTESTED` rendering rules. Both types were staged against the 2026-09-25
-ruling, quoted verbatim:
+**Status: normative.** `type: reconcile` was made normative first; `type: close` is normative under
+the C-5 ruling (2026-10-26: `type: close` becomes normative in this section, using the
+`close/v1` body). Normative for v0: the `type` member and its absent-means-`requirement` default;
+the `reconcile` body (`join_key`, `peer`, `period`, the six tallies, `state_of_record`) and its
+sufficiency derivation; the `close` body, the Close it cites, `close_state`'s derivation and the
+three further bindings; and every rule in the rendering paragraph. Both types were staged against
+the 2026-09-25 ruling, quoted verbatim:
 
 > close + reconcile as claim types in result v0, so they feed the same result. the constraint i
 > care about more than the vocabulary: A_ONLY / B_ONLY must never render like CONFLICTING, and
@@ -329,6 +328,17 @@ claim (type: close) adds:
                                       #   peer's Close reconciled with, which does not link back)
 ```
 
+**The Close a close claim cites is a `close/v1` record (normative).** `close_ref` MUST name a record
+of `record_type` `close` whose statement is a `close/v1` body (`spec/judge-record-family-v1.md` §3,
+`schemas/judge/close-v1.json`), and the claim's `period` MUST equal that body's `period`. The body's
+`head` and `counts_by_kind` describe the records the Close binds, not the period: `head` is the last
+record it binds and `counts_by_kind` counts those records, which can begin before `period.start`
+(that document's §3). A verifier in this revision reads only the cited Close's header (`book_id` and
+the links to it) for the walk below; it neither validates the Close's body nor compares periods, so
+a relying party that needs either checks the cited record against `close-v1.json` itself. Every
+Close record in the §11 close fixtures carries a `close/v1` body, and the fixture checker validates
+it.
+
 **`close_state` is the Evidence Layer's three-state Close status** (`draft-mih-agent-evidence-layer-00`,
 "Reconcile and Close"), the same three values `schemas/judge/close-v1.json`'s `reconcile.status` carries:
 `AGREED` — this Close is **acknowledged by the named peer's book under a different key**: a record whose
@@ -353,9 +363,9 @@ what `peer_close_ref` cites on a `UNILATERAL` row). That link is an Evidence Lay
 purpose `reconciles_with`, moved off the citation axis on 2026-10-04 (released vector frozen; see
 `judge-record-family-v1.md` §3). The earlier staging that forbade
 both on `UNILATERAL` was stricter than the draft, not required by it, and pinned an open question with a
-MUST-reject — it no longer does (whether a report *should* name the peer on a unilateral row stays open
-for the ruling; the schema no longer decides it). What keeps a unilateral row from *reading* as agreement
-is the rendering rule below, not the schema.
+MUST-reject — it no longer does: v0 neither requires nor forbids naming the peer on a unilateral
+row. What keeps a unilateral row from *reading* as agreement is the rendering rule below, not the
+schema.
 
 **`close_state` is derivable, never asserted (normative; otherwise a contested close relabelled
 'agreed' would validate).** A close claim MUST cite the Close it reports
@@ -368,9 +378,10 @@ verifier MUST recompute the state from the bundle's records and MUST fail the cl
 `close_state` differs — a producer's `AGREED` over a Close a peer has rebutted is a malformed claim, not a
 reporting choice. When the state is `AGREED` or `CONTESTED`, `peer_close_ref` MUST be the digest of a
 record that carries that link, and the verifier checks that too. The ranking is one-directional in v0: a
-standing `rebuts` keeps a Close out of `AGREED` whatever else links to it; whether a later `acknowledges`
-can retire an earlier rebuttal is open (§4.1 will say once ruled). The schema alone cannot see across
-records — `neg-close-agreed-relabelled-contested.json` (§11) is schema-valid and is rejected by the
+standing `rebuts` keeps a Close out of `AGREED` whatever else links to it; whether a later counterparty
+record can withdraw an earlier `rebuts` is not defined by this revision, as the Evidence Layer draft
+leaves it. The schema alone cannot see across records —
+`neg-close-agreed-relabelled-contested.json` (§11) is schema-valid and is rejected by the
 checker's link walk over the fixture's `.records.json`; a renderer that cannot see the cited records
 MUST mark the state it shows as producer-asserted, never bare.
 
@@ -859,7 +870,7 @@ field, each failing at exactly one documented rule. See that directory's `README
 cases and `schemas/check_evidence_result_examples.py` for the validation run, including the
 mutant/load-bearing proof for each negative.
 
-§4.1's claim types (`reconcile` normative, `close` PROPOSED) add five positives
+§4.1's claim types (`reconcile` and `close`, both normative) add five positives
 (`pos-example-org-reconcile-result.json`,
 `pos-example-org-close-agreed-result.json`, `pos-example-org-close-unilateral-result.json`,
 `pos-example-org-close-unilateral-named-peer-result.json`, `pos-example-org-close-contested-result.json` — each the
@@ -876,7 +887,9 @@ mutant proof. One further schema negative
 `verdict: met`) and three link-walk negatives, schema-valid and walk-rejected, each with its own mutant:
 `neg-close-agreed-self-acknowledged` (the acknowledging record from the Close's own `book_id`),
 `neg-close-ref-not-in-evidence` and `neg-close-peer-ref-not-in-evidence` (a cited digest missing from
-`evidence[]`). The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against these same
+`evidence[]`). Every `record_type: close` record in those `.records.json` files carries a `close/v1`
+body, and the checker validates each against `schemas/judge/close-v1.json` and checks that each close
+claim's `period` is its cited Close's. The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against these same
 fixtures, not here.
 
 §8a's extension slot adds three fixtures derived from `pos-example-org-claims-result.json`, plus a

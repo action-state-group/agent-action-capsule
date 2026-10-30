@@ -52,7 +52,7 @@ each MUST fail `$defs/EvidenceResult` validation for exactly one documented reas
 rejection is load-bearing (not vacuous) by removing the specific schema rule it depends on in
 memory, confirming that SAME fixture then validates clean, and restoring the rule.
 
-## Claim types — `reconcile` (normative) and `close` (PROPOSED) (the 2026-09-25 ruling)
+## Claim types — `reconcile` and `close`, both normative (the 2026-09-25 ruling)
 
 > close + reconcile as claim types in result v0, so they feed the same result. … A_ONLY / B_ONLY
 > must never render like CONFLICTING, and UNILATERAL never like AGREED. one side missing isn't a
@@ -98,7 +98,10 @@ see across records, so each close fixture ships the record headers its claim cit
 `links[{type, target}]`, `subject_ref`, `statement`). Every digest the claim cites (`close_ref`,
 `peer_close_ref`, `evidence[]`) is `json_digest` of a record in the sidecar, exactly as written.
 `check_evidence_result_examples.py` walks the links for every close positive and fails on mismatch;
-a close positive with no sidecar is a finding, not a skip.
+a close positive with no sidecar is a finding, not a skip. Every `record_type: close` record's
+`statement` is a counts-only `close/v1` body (spec §4.1; its `head` and `counts_by_kind` are
+placeholders), which the checker validates against `schemas/judge/close-v1.json`, and each close
+claim's `period` equals its cited Close's.
 
 | File | Records | Inbound links at `close_ref` | Recomputed |
 |---|---|---|---|
