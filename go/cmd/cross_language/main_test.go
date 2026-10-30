@@ -55,6 +55,34 @@ func TestSignatureRefusesInput(t *testing.T) {
 	}
 }
 
+func TestCapsuleModesRefuseInput(t *testing.T) {
+	for _, mode := range []string{"seal", "verify"} {
+		for name, input := range map[string]string{
+			"empty": "", "not JSON": "{", "non-object": `["capsule"]`,
+			"two values": `{"capsule_id": "a"} {"capsule_id": "b"}`, "trailing garbage": `{} x`,
+			"lone surrogate": `{"capsule_id": "\ud800"}`, "invalid UTF-8": "{\"capsule_id\": \"\xff\"}",
+		} {
+			var out, errOut bytes.Buffer
+			require.Equal(t, 2, capsuleMode(mode, strings.NewReader(input), &out, &errOut), mode+": "+name)
+			require.Empty(t, out.String(), mode+": "+name)
+			require.NotEmpty(t, errOut.String(), mode+": "+name)
+		}
+	}
+}
+
+func TestCapsuleModesSealThenVerify(t *testing.T) {
+	_, filename, _, _ := runtime.Caller(0)
+	fixture, err := os.ReadFile(filepath.Join(filepath.Dir(filename), "..", "..", "..", "vectors", "cross-language", "seal-input.json"))
+	require.NoError(t, err)
+	var sealed, errOut bytes.Buffer
+	require.Equal(t, 0, capsuleMode("seal", bytes.NewReader(fixture), &sealed, &errOut), errOut.String())
+	var capsule map[string]interface{}
+	require.NoError(t, json.Unmarshal(sealed.Bytes(), &capsule))
+	var verified bytes.Buffer
+	require.Equal(t, 0, capsuleMode("verify", &sealed, &verified, &errOut), errOut.String())
+	require.Equal(t, capsule["capsule_id"].(string)+"\n", verified.String())
+}
+
 func TestSignatureNonObjectIsInvalid(t *testing.T) {
 	var out, errOut bytes.Buffer
 	require.Equal(t, 1, signature(strings.NewReader(`["capsule"]`), &out, &errOut))
