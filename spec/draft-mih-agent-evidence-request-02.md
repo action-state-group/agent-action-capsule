@@ -488,7 +488,10 @@ it, and normative in one respect: a responder that determines it cannot
 answer by the deadline SHOULD send a refusal with reason `deadline_unmet`
 before the deadline rather than let the exchange lapse into absence. A
 refusal is cheap and citable; an absence is neither party's record of
-anything except the requester's attempt.
+anything except the requester's attempt. `deadline_unmet` states that the
+deadline itself cannot be met; a responder that cannot answer in time only
+because of its own load or limits refuses `capacity_exceeded`
+({{security}}).
 
 ## Nonce {#nonce}
 
@@ -711,7 +714,9 @@ prose, is the machine-readable answer. A responder MUST select the most
 specific applicable token, with one deliberate exception noted in
 {{privacy}}: a responder MAY uniformly answer `policy_declined` wherever a
 more specific token would disclose information its policy protects,
-overriding the most-specific-token rule. That choice is policy, made by
+overriding the most-specific-token rule. The exception does not cover
+load shedding, which is always `capacity_exceeded` ({{security}}). That
+choice is policy, made by
 the responder, applied
 uniformly; it is not a license to select tokens per-requester in a way that
 leaks by differentiation ({{privacy}}).
@@ -1090,9 +1095,10 @@ the commitment ({{absence}}). Within `until`, a refusal carrying
 `request_unauthenticated`, or `derivation_unsupported` reflects a property
 of the request or of this responder's capabilities, not a failure to honor
 the commitment, and is not a breach. A refusal carrying
-`capacity_exceeded` is never a breach, within `until` or after it: anyone
-can load a responder, so counting it would let any requester manufacture
-broken commitments against the responder by flooding it. Any other refusal reason — `no_such_subject`,
+`capacity_exceeded` is never a breach, within `until` or after it:
+anyone can load a responder, so counting it would let any requester
+manufacture broken commitments against the responder by flooding it.
+Any other refusal reason — `no_such_subject`,
 `policy_declined`, or `deadline_unmet` — within `until` is a broken
 commitment: the responder promised this subject would remain answerable
 and is refusing it on a ground the promise foreclosed; the refusal is
@@ -1431,7 +1437,11 @@ does not extend to load shedding. A responder MUST NOT let load-shedding
 take the form of caller-variant artifacts, which would violate
 {{invariance}} where refusal would not. Because `capacity_exceeded` is
 never a breach of a retention commitment ({{retention}}), flooding a
-responder cannot manufacture broken commitments against it.
+responder cannot manufacture broken commitments against it. The trade
+runs the other way too: a responder can withhold a committed subject
+indefinitely by answering `capacity_exceeded`, and a retention commitment
+cannot be enforced against that refusal. A requester can only retry and
+treat the requirement's status as unknown ({{status-mapping}}).
 
 # Privacy Considerations {#privacy}
 
@@ -1455,9 +1465,11 @@ relied on to conceal enumerable content.
 `no_such_subject` and `not_authorized` reveals whether the subject exists;
 other token distinctions leak analogously. A responder MAY answer
 `policy_declined` uniformly wherever a more specific token would disclose
-information its policy protects ({{refusal}}). The uniformity is the
-point: a per-requester choice of token leaks by differentiation exactly
-what the uniform token conceals.
+information its policy protects ({{refusal}}), except for load shedding
+({{security}}). The uniformity is the point: a per-requester choice of
+token leaks by differentiation exactly what the uniform token conceals.
+A `capacity_exceeded` refusal discloses operational state: that the
+responder was at a limit when the request arrived.
 
 **Coverage probing leaks log size.** A size-based `min_freshness` is a
 threshold query on current log size — granted at or above the threshold,

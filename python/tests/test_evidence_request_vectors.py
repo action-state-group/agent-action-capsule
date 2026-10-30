@@ -523,18 +523,26 @@ def test_refusal_02_expectations_follow_from_the_text():
             assert _signature_valid(obj) is (expect["signature"] == "valid"), case["id"]
             assert (obj["reason"] in corpus["refusal_reasons"]) is expect["reason_registered"], case["id"]
             assert expect["conformant"] is (expect["signature"] == "valid" and expect["reason_registered"])
+            if "signing_body" in case:
+                body = {k: obj[k] for k in ("issued_at", "reason", "request_digest")}
+                assert case["signing_body"] == json.dumps(body, separators=(",", ":"), sort_keys=True), case["id"]
             seen.add(("refusal", obj["reason"]))
         elif "commitment" in facts:
             # -02 §9: request_unauthenticated is a property of the request; capacity_exceeded is never a breach.
             assert facts["refusal_reason"] in added and expect["classification"] == "no_breach", case["id"]
             seen.add((facts["commitment"], facts["refusal_reason"]))
         elif facts.get("cause") == "responder_load":
-            # -02 §11: load shedding refuses capacity_exceeded, not policy_declined or not_authorized.
-            assert expect == {"reason": "capacity_exceeded", "not_reason": ["policy_declined", "not_authorized"]}
+            # -02 §11 and §3.4: load shedding refuses capacity_exceeded, never a policy reason, and never
+            # deadline_unmet when the deadline is missed only because of load.
+            assert expect["reason"] in added and expect["reason"] not in expect["not_reason"], case["id"]
+            assert set(expect["not_reason"]) <= set(REGISTRY["refusal_reasons"]), case["id"]
+            seen.add(("load", facts.get("deadline")))
         else:
-            # -02 §4.6: neither reason maps to evidence withheld by policy.
-            assert facts["refusal_reason"] in added and expect["withheld_by_policy"] is False, case["id"]
+            # -02 §4.6: the status stays unknown; neither reason is withholding by policy or non-satisfaction.
+            assert facts["refusal_reason"] in added, case["id"]
+            assert expect == {"status_unknown": True, "withheld_by_policy": False,
+                              "evidence_of_non_satisfaction": False}, case["id"]
             seen.add(("map", facts["refusal_reason"]))
     for reason in added:
         assert {("refusal", reason), ("in_force", reason), ("lapsed", reason), ("map", reason)} <= seen, reason
-
+    assert {("load", None), ("load", "would_be_missed")} <= seen

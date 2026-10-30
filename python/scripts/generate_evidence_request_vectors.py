@@ -1475,10 +1475,6 @@ REFUSAL_02_NOTES = (
     "profile defines does not verify). registry.json and refusal.json stay as -00 fixes them; under "
     "-00 and -01 both tokens are unregistered. Signatures use the profile in refusal.json."
 )
-STATUS_02 = {
-    "capacity_exceeded": "status_unknown_responder_limit",
-    "request_unauthenticated": "request_not_authenticated",
-}
 
 
 def refusal_02_cases(requests: list[dict]) -> list[dict]:
@@ -1515,13 +1511,20 @@ def refusal_02_cases(requests: list[dict]) -> list[dict]:
         "not_authorized are statements about policy and are not used for load shedding.",
         "facts": {"cause": "responder_load"},
         "expect": {"reason": "capacity_exceeded", "not_reason": ["policy_declined", "not_authorized"]}})
+    cases.append({
+        "id": "r02-deadline-missed-under-load", "section": [S_DEADLINE, S_SEC],
+        "description": "A responder cannot answer by the deadline only because of its own load. It refuses "
+        "capacity_exceeded, not deadline_unmet, which states that the deadline itself cannot be met.",
+        "facts": {"cause": "responder_load", "deadline": "would_be_missed"},
+        "expect": {"reason": "capacity_exceeded", "not_reason": ["deadline_unmet"]}})
     for reason in REASONS_02_ADDED:
         cases.append({
             "id": f"r02-map-{reason}", "section": [S_MAP],
-            "description": f"The illustrative status mapping of a refusal with reason {reason}: never withheld by "
-            "policy, never evidence of non-satisfaction.",
+            "description": f"The illustrative status mapping of a refusal with reason {reason}: the requirement's "
+            "status stays unknown; never withheld by policy, never evidence of non-satisfaction.",
             "facts": {"refusal_reason": reason},
-            "expect": {"maps_to": STATUS_02[reason], "withheld_by_policy": False}})
+            "expect": {"status_unknown": True, "withheld_by_policy": False,
+                       "evidence_of_non_satisfaction": False}})
     return cases
 
 

@@ -42,7 +42,7 @@ section and the reading used (the most literal one); the list is below, for -01.
 | `invariance.json` | Caller invariance (§5): observations of the same subject under the same anchor must carry byte-identical artifacts. |
 | `retention.json` | Retention commitments (§9): every reason inside and after `until`, absence with and without a commitment, and which subject forms a commitment may name. |
 | `unavailable-window.json` | Unavailable-window statements (-02 §4.7). `kind` `statement`: whether a reader recognizes the statement (well formed, signed by `responder_key`, registered) and its registration time, the earliest of its `receipts` marked `accepted` (from a transparency service the reader accepts as independent of the responder). `kind` `display`: an absence (`sent_at` to `closed_at`) and statements; expect the ids of the statements that cover it, `shown_as`, and per covering statement its `reason_class`, `stated_period`, registration time and `stated_afterwards`. `must_not_show_as` lists what the reader must never show. Statements are signed with the primary key of `refusal.json` under the profile in the file. |
-| `refusal-02.json` | The two refusal reasons -02 adds (§4.2, §13): `capacity_exceeded` and `request_unauthenticated`. `refusal_reasons` is the -02 registry; `registry.json` stays the -00 one, under which both are unregistered. A case with `refusal` checks the signature (profile of `refusal.json`) and registration against `refusal_reasons`; one with `facts.commitment` is the retention classification (§9); `facts.cause` is the reason load shedding uses (§11); `facts.refusal_reason` alone is the illustrative status mapping (§4.6). |
+| `refusal-02.json` | The two refusal reasons -02 adds (§4.2, §13): `capacity_exceeded` and `request_unauthenticated`. `refusal_reasons` is the -02 registry; `registry.json` stays the -00 one, under which both are unregistered. A case with `refusal` checks the signature (profile of `refusal.json`) and registration against `refusal_reasons`; one with `facts.commitment` is the retention classification (§9); `facts.cause` is the reason load shedding uses (§11, §3.4); `facts.refusal_reason` alone is the illustrative status mapping (§4.6). |
 | `manifest.json` | SHA-256 and case count of every generated file, and the ambiguity list. |
 | `SHA256SUMS` | SHA-256 of every file in this directory except itself. |
 | `DIFFS.md` | Known differences between one existing Python responder and -00. |
@@ -371,7 +371,7 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `uw-refusal-not-affected` | display | 4.7, 4.5 | not covered; shown as refusal |
 | `uw-pending-not-absence` | display | 4.7, 4.3, 4.5 | not covered; shown as pending |
 
-### `refusal-02.json` (10 cases)
+### `refusal-02.json` (11 cases)
 
 | Case | § | Expect |
 |---|---|---|
@@ -383,8 +383,9 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `r02-ret-inside-request_unauthenticated` | 9 | no breach |
 | `r02-ret-after-request_unauthenticated` | 9 | no breach |
 | `r02-load-shedding-is-capacity_exceeded` | 11, 4.2 | `capacity_exceeded`, never `policy_declined` or `not_authorized` |
-| `r02-map-capacity_exceeded` | 4.6 | status unknown, responder limit; not withheld by policy |
-| `r02-map-request_unauthenticated` | 4.6 | request not authenticated; not withheld by policy |
+| `r02-deadline-missed-under-load` | 3.4, 11 | `capacity_exceeded`, never `deadline_unmet` |
+| `r02-map-capacity_exceeded` | 4.6 | status unknown; not withheld by policy, not evidence of non-satisfaction |
+| `r02-map-request_unauthenticated` | 4.6 | status unknown; not withheld by policy, not evidence of non-satisfaction |
 
 ## Readings in the -01 corpora
 

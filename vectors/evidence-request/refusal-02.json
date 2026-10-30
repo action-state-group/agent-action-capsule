@@ -28,7 +28,7 @@
     "key_id": "raw Ed25519 public key, lowercase hex",
     "sig": "Ed25519 signature, lowercase hex"
   },
-  "count": 10,
+  "count": 11,
   "cases": [
     {
       "id": "r02-reason-capacity_exceeded",
@@ -170,17 +170,36 @@
       }
     },
     {
+      "id": "r02-deadline-missed-under-load",
+      "section": [
+        "§3.4 Deadline",
+        "§11 Security Considerations"
+      ],
+      "description": "A responder cannot answer by the deadline only because of its own load. It refuses capacity_exceeded, not deadline_unmet, which states that the deadline itself cannot be met.",
+      "facts": {
+        "cause": "responder_load",
+        "deadline": "would_be_missed"
+      },
+      "expect": {
+        "reason": "capacity_exceeded",
+        "not_reason": [
+          "deadline_unmet"
+        ]
+      }
+    },
+    {
       "id": "r02-map-capacity_exceeded",
       "section": [
         "§4.6 Mapping to a Requirement-Satisfaction Status"
       ],
-      "description": "The illustrative status mapping of a refusal with reason capacity_exceeded: never withheld by policy, never evidence of non-satisfaction.",
+      "description": "The illustrative status mapping of a refusal with reason capacity_exceeded: the requirement's status stays unknown; never withheld by policy, never evidence of non-satisfaction.",
       "facts": {
         "refusal_reason": "capacity_exceeded"
       },
       "expect": {
-        "maps_to": "status_unknown_responder_limit",
-        "withheld_by_policy": false
+        "status_unknown": true,
+        "withheld_by_policy": false,
+        "evidence_of_non_satisfaction": false
       }
     },
     {
@@ -188,13 +207,14 @@
       "section": [
         "§4.6 Mapping to a Requirement-Satisfaction Status"
       ],
-      "description": "The illustrative status mapping of a refusal with reason request_unauthenticated: never withheld by policy, never evidence of non-satisfaction.",
+      "description": "The illustrative status mapping of a refusal with reason request_unauthenticated: the requirement's status stays unknown; never withheld by policy, never evidence of non-satisfaction.",
       "facts": {
         "refusal_reason": "request_unauthenticated"
       },
       "expect": {
-        "maps_to": "request_not_authenticated",
-        "withheld_by_policy": false
+        "status_unknown": true,
+        "withheld_by_policy": false,
+        "evidence_of_non_satisfaction": false
       }
     }
   ]

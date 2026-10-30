@@ -693,7 +693,9 @@ Internet-Draft              Evidence Request                October 2026
    refusal with reason deadline_unmet before the deadline rather than
    let the exchange lapse into absence.  A refusal is cheap and citable;
    an absence is neither party's record of anything except the
-   requester's attempt.
+   requester's attempt. deadline_unmet states that the deadline itself
+   cannot be met; a responder that cannot answer in time only because of
+   its own load or limits refuses capacity_exceeded (Section 11).
 
 3.5.  Nonce
 
@@ -715,8 +717,6 @@ Internet-Draft              Evidence Request                October 2026
    (Section 11).  The field exists so that the route actually attempted
    is part of the requester's record of asking, and so a failed route is
    part of any absence recorded (Section 4.4).
-
-
 
 
 
@@ -1015,10 +1015,11 @@ Internet-Draft              Evidence Request                October 2026
    the most specific applicable token, with one deliberate exception
    noted in Section 12: a responder MAY uniformly answer policy_declined
    wherever a more specific token would disclose information its policy
-   protects, overriding the most-specific-token rule.  That choice is
-   policy, made by the responder, applied uniformly; it is not a license
-   to select tokens per-requester in a way that leaks by differentiation
-   (Section 12).
+   protects, overriding the most-specific-token rule.  The exception
+   does not cover load shedding, which is always capacity_exceeded
+   (Section 11).  That choice is policy, made by the responder, applied
+   uniformly; it is not a license to select tokens per-requester in a
+   way that leaks by differentiation (Section 12).
 
    A refusal refuses the request, once.  It creates no standing
    obligation and no standing prohibition; the same request MAY be made
@@ -1053,11 +1054,10 @@ Internet-Draft              Evidence Request                October 2026
    digest, the transport attempted, and the window in which no answer
    came.
 
-   Absence is an outcome about the exchange, not about the responder's
-   intent.  A network partition, a crashed responder, and a responder
-   deliberately ignoring the request produce identical absences, and the
-   requester's record SHOULD NOT embellish the absence with an inferred
-   intent.
+
+
+
+
 
 
 
@@ -1065,6 +1065,12 @@ Mih                        Expires 3 May 2027                  [Page 19]
 
 Internet-Draft              Evidence Request                October 2026
 
+
+   Absence is an outcome about the exchange, not about the responder's
+   intent.  A network partition, a crashed responder, and a responder
+   deliberately ignoring the request produce identical absences, and the
+   requester's record SHOULD NOT embellish the absence with an inferred
+   intent.
 
    An absence record SHOULD cite any retention commitment (Section 9)
    the requester holds for the subject, and the route attempted.
@@ -1109,18 +1115,16 @@ Internet-Draft              Evidence Request                October 2026
       does not make it a signed act of the responder, and no party may
       record it as one.
 
-   *  *Pending is never recorded as absence.* A request still inside its
-      waiting window is pending (Section 4.3), not absent; only the
-      close of the window resolves it one way or the other.
-
-
-
 
 
 Mih                        Expires 3 May 2027                  [Page 20]
 
 Internet-Draft              Evidence Request                October 2026
 
+
+   *  *Pending is never recorded as absence.* A request still inside its
+      waiting window is pending (Section 4.3), not absent; only the
+      close of the window resolves it one way or the other.
 
    *  *An unavailable-window statement never converts an absence into a
       refusal.* The statement is signed, but it answers no request
@@ -1139,10 +1143,6 @@ Internet-Draft              Evidence Request                October 2026
    deployment composing this interaction with an evidence-contract or
    evidence-bundle layer typically derives one from the three outcomes
    above.  The mapping shape — not a specific registry — is informative:
-
-
-
-
 
 
 
@@ -2059,11 +2059,11 @@ Internet-Draft              Evidence Request                October 2026
    caller-variant artifacts, which would violate Section 5 where refusal
    would not.  Because capacity_exceeded is never a breach of a
    retention commitment (Section 9), flooding a responder cannot
-   manufacture broken commitments against it.
-
-
-
-
+   manufacture broken commitments against it.  The trade runs the other
+   way too: a responder can withhold a committed subject indefinitely by
+   answering capacity_exceeded, and a retention commitment cannot be
+   enforced against that refusal.  A requester can only retry and treat
+   the requirement's status as unknown (Section 4.6).
 
 
 
@@ -2096,9 +2096,12 @@ Internet-Draft              Evidence Request                October 2026
    no_such_subject and not_authorized reveals whether the subject
    exists; other token distinctions leak analogously.  A responder MAY
    answer policy_declined uniformly wherever a more specific token would
-   disclose information its policy protects (Section 4.2).  The
-   uniformity is the point: a per-requester choice of token leaks by
-   differentiation exactly what the uniform token conceals.
+   disclose information its policy protects (Section 4.2), except for
+   load shedding (Section 11).  The uniformity is the point: a per-
+   requester choice of token leaks by differentiation exactly what the
+   uniform token conceals.  A capacity_exceeded refusal discloses
+   operational state: that the responder was at a limit when the request
+   arrived.
 
    *Coverage probing leaks log size.* A size-based min_freshness is a
    threshold query on current log size — granted at or above the
@@ -2119,9 +2122,6 @@ Internet-Draft              Evidence Request                October 2026
    sees the request learns that they interacted.  Both parties already
    know; transport confidentiality is the only mitigation for everyone
    else.
-
-
-
 
 
 
