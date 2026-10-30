@@ -532,10 +532,10 @@ def test_refusal_02_expectations_follow_from_the_text():
             assert facts["refusal_reason"] in added and expect["classification"] == "no_breach", case["id"]
             seen.add((facts["commitment"], facts["refusal_reason"]))
         elif facts.get("cause") == "responder_load":
-            # -02 §11 and §3.4: load shedding refuses capacity_exceeded, never a policy reason, and never
-            # deadline_unmet when the deadline is missed only because of load.
-            assert expect["reason"] in added and expect["reason"] not in expect["not_reason"], case["id"]
-            assert set(expect["not_reason"]) <= set(REGISTRY["refusal_reasons"]), case["id"]
+            # -02 §11: load shedding refuses capacity_exceeded, never a policy reason. -02 §3.4: a deadline
+            # missed only because of load is capacity_exceeded, not deadline_unmet.
+            excluded = ["deadline_unmet"] if facts.get("deadline") else ["policy_declined", "not_authorized"]
+            assert expect == {"reason": "capacity_exceeded", "not_reason": excluded}, case["id"]
             seen.add(("load", facts.get("deadline")))
         else:
             # -02 §4.6: the status stays unknown; neither reason is withholding by policy or non-satisfaction.
