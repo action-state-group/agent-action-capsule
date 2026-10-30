@@ -23,7 +23,9 @@ describes how the sets are generated and checksummed.
 
 One command per language runs every set below that the language has tests for,
 offline, and prints `PASS`, `FAIL`, `PARTIAL` or `SKIP` per set with the set's
-case count (the count in the table below). A set a language has no tests for is
+case count (the count in the table below).
+`PASS` means every test mapped to the set passed; the count is the set's size in
+the files, not the number of cases the tests executed. A set a language has no tests for is
 listed as `SKIP`, never left out; `PARTIAL` means some of its tests were skipped
 (a missing optional tool), and the reason is printed.
 
