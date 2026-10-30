@@ -217,15 +217,16 @@ var signatureExit = map[string]int{envelope.Authored: 0, envelope.Invalid: 1, en
 // key_id over its recomputed Capsule ID; that key is self-attested, so the
 // caller still decides whether it is the key it expects.
 func signature(in io.Reader, out, errOut io.Writer) int {
-	decoder := json.NewDecoder(in)
-	decoder.UseNumber()
-	var record interface{}
-	if err := decoder.Decode(&record); err != nil {
+	raw, err := io.ReadAll(in)
+	if err != nil {
 		fmt.Fprintln(errOut, err)
 		return 2
 	}
-	if _, err := decoder.Token(); err != io.EOF {
-		fmt.Fprintln(errOut, "input holds more than one JSON value")
+	// The verifier's strict decoder: one value, numbers as written, and no
+	// invalid UTF-8 or lone surrogate that encoding/json would repair.
+	record, err := verify.DecodeCapsuleJSON(raw)
+	if err != nil {
+		fmt.Fprintln(errOut, err)
 		return 2
 	}
 	verdict, messages := envelope.VerifyRecordSignature(record)

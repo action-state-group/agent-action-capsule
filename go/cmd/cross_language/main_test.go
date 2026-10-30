@@ -44,6 +44,7 @@ func TestSignatureRefusesInput(t *testing.T) {
 	for name, input := range map[string]string{
 		"empty": "", "not JSON": "{", "bare word": "signed",
 		"two records": `{"capsule_id": "a"} {"capsule_id": "b"}`, "trailing garbage": `{} x`,
+		"lone surrogate": `{"capsule_id": "\ud800"}`, "invalid UTF-8": "{\"capsule_id\": \"\xff\"}",
 	} {
 		var out, errOut bytes.Buffer
 		require.Equal(t, 2, signature(strings.NewReader(input), &out, &errOut), name)
