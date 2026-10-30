@@ -78,6 +78,42 @@ has not yet.
   than evaluating it. Found while porting §11.1 to Rust
   (`rust/evidence-request`, feature `acceptance`).
 
+## go 0.16.0 — 2026-10-30
+
+Tag `go/v0.16.0`.
+
+- Go: `controllerbinding` verifies the `bip340` key type of Controller Binding v0. It reads
+  `key_types` (absent means both `ed25519`; a token §3.3 does not list gives
+  `controller_binding_signatures` `NOT_CHECKED`), requires a `nonce` of at least 32 lowercase hex
+  characters when a `bip340` key is named, and checks a `bip340` key's signature and revocation statement by
+  rebuilding the kind 3374 Nostr event's id and verifying it under BIP-340, with
+  `github.com/btcsuite/btcd/btcec/v2/schnorr` (new dependency), checked against the five BIP-340
+  test vectors the Python test uses. `cross_language binding` accepts these records unchanged.
+  Both run all 25 cases of `vectors/controller-binding-v0/`. `Applies()` and the CLI's exit codes
+  are unchanged.
+
+- Controller Binding v0: a `bip340` key type, so a key can be bound to a Nostr identity
+  (`spec/controller-binding-v0.md` §3.3, §4.1, §9.3; new open points CB-8 and CB-9). Additive: a
+  record without the new optional `key_types` member binds two `ed25519` keys, as before, and no
+  existing vector changes.
+  - **`key_types`** names each bound key's type, because an Ed25519 key and a BIP-340 x-only key are
+    both 64 hex characters. A token a verifier does not know gives `controller_binding_signatures`
+    `NOT_CHECKED`.
+  - **How a `bip340` key signs** a binding record or a revocation statement: a Nostr event (NIP-01)
+    of kind 3374, with no tags and the content `<version>:<digest>`, so a key holder signs with the
+    tools that already hold a Nostr key. `sig` carries the event's `created_at` and its BIP-340
+    signature.
+  - `spec/REGISTRY.md`: new provisional rows for the two key types and the event kind.
+  - **The nonce** of a record with a `bip340` key is at least 32 hex characters, drawn from 128
+    random bits (§3.1, §9.3): the binding digest does not cover `sigs`, so the nonce alone keeps a
+    publicly listed digest from being matched to a guessed pair of keys.
+  - `vectors/controller-binding-v0/`: eleven new cases (`valid-nostr-key`, `nostr-key-read-as-ed25519`,
+    `nostr-wrong-digest`, `nostr-other-kind`, `nostr-revoked`, `nostr-nonce-short`,
+    `nostr-sig-malformed`, `nostr-created-at-negative`, `nostr-created-at-text`,
+    `key-types-malformed`, `key-types-unknown`), 25 in all. The Python test
+    checks them with a BIP-340 check written from the BIP and run against five of its own test
+    vectors.
+
 ## python 0.13.0 — 2026-10-30
 
 Tag `python/v0.13.0`.

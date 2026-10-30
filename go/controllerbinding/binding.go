@@ -2,7 +2,8 @@
 
 // Package controllerbinding verifies a Controller Binding v0 binding record
 // (spec/controller-binding-v0.md, cited as CB): its form (§3), both
-// signatures over the one signing input (§4), its window, the revocation
+// signatures over the one signing input, each by its key's type (§4, §4.1),
+// its window, the revocation
 // statements the caller received (§5), and, for same_organization_credentialed,
 // a credential through a verifier the caller passes. It reports the binding
 // properties of §6.1 in the profile's §7.1 vocabulary, what the binding proves
@@ -24,9 +25,11 @@ import (
 	"encoding/hex"
 	"regexp"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/action-state-group/agent-action-capsule/go/evidencerequest"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 )
 
 // Version is the binding_version of a binding record (CB §3.1), and
@@ -46,6 +49,18 @@ const (
 	MethodDualSignature       = "dual_signature/0"
 	MethodDualSignatureCredit = "dual_signature_credential/0"
 )
+
+// The key types of CB §3.3, and the kind of the Nostr event a bip340 key
+// signs with (§4.1, provisional under CB-8).
+const (
+	KeyEd25519 = "ed25519"
+	KeyBIP340  = "bip340"
+	NostrKind  = 3374
+)
+
+// maxCreatedAt is the largest created_at a bip340 signature may carry
+// (CB §4.1): 2^53 − 1.
+const maxCreatedAt = 1<<53 - 1
 
 // The binding properties of CB §6.1.
 const (
@@ -78,7 +93,11 @@ var claims = map[string]struct {
 var common = []string{"binding_version", "claim", "method", "keys", "issued_at", "not_before", "not_after",
 	"revocation", "nonce", "sigs"}
 
-var hex128 = regexp.MustCompile(`^[0-9a-f]{128}$`)
+var (
+	hex128 = regexp.MustCompile(`^[0-9a-f]{128}$`)
+	// nonce32 is the nonce of a record naming a bip340 key (CB §3.1, §9.3).
+	nonce32 = regexp.MustCompile(`^[0-9a-f]{32,}$`)
+)
 
 // Credential is the credential member of a same_organization_credentialed
 // record (CB §3.2).
@@ -158,7 +177,8 @@ func Verify(record []byte, ts []time.Time, opts Options) Report {
 	report.Delegator, _ = r["delegator"].(string)
 	report.NotBefore, report.NotAfter = r["not_before"].(string), r["not_after"].(string)
 
-	report.Properties[PropertySignatures] = signatures(r, keys)
+	types := keyTypes(r)
+	report.Properties[PropertySignatures] = signatures(r, keys, types)
 	report.Properties[PropertyWindow] = evidencerequest.StatusPass
 	if len(ts) == 0 {
 		report.Properties[PropertyWindow] = evidencerequest.StatusNotChecked
@@ -170,7 +190,7 @@ func Verify(record []byte, ts []time.Time, opts Options) Report {
 			report.Properties[PropertyWindow] = evidencerequest.StatusFail
 		}
 	}
-	report.Properties[PropertyRevocation] = revocation(report.BindingDigest, keys, ts, opts.Revocations)
+	report.Properties[PropertyRevocation] = revocation(report.BindingDigest, keys, types, ts, opts.Revocations)
 	if report.Claim == ClaimSameOrganization {
 		report.Properties[PropertyCredential] = credential(credentialOf(r), keys, opts)
 	}
@@ -270,9 +290,12 @@ func wellFormed(r map[string]any) bool {
 	if !ok || !known {
 		return false
 	}
-	names := common
+	names := slices.Clone(common)
 	if spec.added != "" {
-		names = append(slices.Clone(common), spec.added)
+		names = append(names, spec.added)
+	}
+	if _, ok := r["key_types"]; ok {
+		names = append(names, "key_types") // OPTIONAL (§3.1)
 	}
 	if !hasMembers(r, names) || r["binding_version"] != Version {
 		return false
@@ -301,8 +324,25 @@ func wellFormed(r map[string]any) bool {
 	if r["revocation"] != RevocationMethod {
 		return false
 	}
-	if _, ok := r["nonce"].(string); !ok {
+	nonce, ok := r["nonce"].(string)
+	if !ok {
 		return false
+	}
+	if types, present := r["key_types"]; present {
+		list, ok := types.([]any)
+		if !ok || len(list) != 2 {
+			return false
+		}
+		for _, t := range list {
+			if _, ok := t.(string); !ok {
+				return false
+			}
+		}
+		// A bip340 key is often a public Nostr identity, so the nonce alone
+		// keeps a listed binding digest from being matched to guessed keys.
+		if slices.Contains(list, any(KeyBIP340)) && !nonce32.MatchString(nonce) {
+			return false
+		}
 	}
 	sigs, ok := r["sigs"].([]any)
 	if !ok {
@@ -328,11 +368,27 @@ func wellFormed(r map[string]any) bool {
 	return true
 }
 
+// keyTypes is each key's type, in the order of keys (CB §3.1): both
+// ed25519 when key_types is absent. The record is well formed.
+func keyTypes(r map[string]any) [2]string {
+	list, ok := r["key_types"].([]any)
+	if !ok {
+		return [2]string{KeyEd25519, KeyEd25519}
+	}
+	return [2]string{list[0].(string), list[1].(string)}
+}
+
 // signatures is controller_binding_signatures (CB §4): exactly two entries,
-// naming keys in order, each verifying over the one signing input.
-func signatures(r map[string]any, keys [2]string) string {
+// naming keys in order, each verifying over the one signing input by its
+// key's type (§4.1).
+func signatures(r map[string]any, keys, types [2]string) string {
 	if method := r["method"].(string); method != claims[r["claim"].(string)].method {
 		return evidencerequest.StatusNotChecked // a method this revision does not define
+	}
+	for _, t := range types {
+		if t != KeyEd25519 && t != KeyBIP340 {
+			return evidencerequest.StatusNotChecked // a key type §3.3 does not list
+		}
 	}
 	signingInput, err := evidencerequest.EncodeJCS(without(r, "sigs"))
 	sigs := r["sigs"].([]any)
@@ -341,11 +397,24 @@ func signatures(r map[string]any, keys [2]string) string {
 	}
 	for i, s := range sigs {
 		entry := s.(map[string]any)
-		if entry["key_id"] != keys[i] || !verifyHex(keys[i], entry["sig"], signingInput) {
+		if entry["key_id"] != keys[i] || !verifySig(keys[i], types[i], entry["sig"], Version, signingInput) {
 			return evidencerequest.StatusFail
 		}
 	}
 	return evidencerequest.StatusPass
+}
+
+// verifySig checks sig by key, of type keyType, over the signed octets of an
+// object of the given version (CB §4.1). A key type §3.3 does not list never
+// verifies.
+func verifySig(key, keyType string, sig any, version string, signed []byte) bool {
+	switch keyType {
+	case KeyEd25519:
+		return verifyHex(key, sig, signed)
+	case KeyBIP340:
+		return verifyNostr(key, sig, version, signed)
+	}
+	return false
 }
 
 func verifyHex(key string, sig any, message []byte) bool {
@@ -357,10 +426,63 @@ func verifyHex(key string, sig any, message []byte) bool {
 	return evidencerequest.VerifySignature(key, message, raw) == nil
 }
 
+// verifyNostr checks a bip340 key's sig, {created_at, sig}: the BIP-340
+// signature over the id of the Nostr event (NIP-01) of kind 3374, no tags, and
+// content <version>:<SHA-256 of signed> (CB §4.1).
+func verifyNostr(key string, sig any, version string, signed []byte) bool {
+	s, ok := sig.(map[string]any)
+	if !ok || !hasMembers(s, []string{"created_at", "sig"}) {
+		return false
+	}
+	text, ok := s["sig"].(string)
+	if !ok || !hex128.MatchString(text) {
+		return false
+	}
+	// created_at is an integer token: ParseInt refuses a fraction or an
+	// exponent, so 1.0 and 1e3 are not integers here, as in the reference.
+	number, ok := s["created_at"].(evidencerequest.JSONNumber)
+	if !ok {
+		return false
+	}
+	createdAt, err := strconv.ParseInt(string(number), 10, 64)
+	if err != nil || createdAt < 0 || createdAt > maxCreatedAt {
+		return false
+	}
+	digest := sha256.Sum256(signed)
+	// key is 64 lowercase hex characters and version and the digest are
+	// ASCII with nothing JSON escapes, so this is NIP-01's serialization.
+	event := `[0,"` + key + `",` + strconv.FormatInt(createdAt, 10) + `,` + strconv.Itoa(NostrKind) +
+		`,[],"` + version + `:` + hex.EncodeToString(digest[:]) + `"]`
+	id := sha256.Sum256([]byte(event))
+	return verifyBIP340(key, id[:], text)
+}
+
+// verifyBIP340 checks a BIP-340 signature, as hex, over a 32-byte message
+// under an x-only public key, as hex.
+func verifyBIP340(key string, message []byte, sig string) bool {
+	rawKey, err := hex.DecodeString(key)
+	if err != nil {
+		return false
+	}
+	rawSig, err := hex.DecodeString(sig)
+	if err != nil {
+		return false
+	}
+	pub, err := schnorr.ParsePubKey(rawKey)
+	if err != nil {
+		return false
+	}
+	parsed, err := schnorr.ParseSignature(rawSig)
+	if err != nil {
+		return false
+	}
+	return parsed.Verify(message, pub)
+}
+
 // revocation is controller_binding_revocation (CB §5, §6.1): FAIL when a
 // received statement applies with revoked_at at or before some T, otherwise
 // NOT_CHECKED, since a statement not received cannot be excluded (CB-1).
-func revocation(digest string, keys [2]string, ts []time.Time, statements [][]byte) string {
+func revocation(digest string, keys, types [2]string, ts []time.Time, statements [][]byte) string {
 	for _, octets := range statements {
 		value, err := evidencerequest.DecodeJSON(octets)
 		s, ok := value.(map[string]any)
@@ -369,8 +491,12 @@ func revocation(digest string, keys [2]string, ts []time.Time, statements [][]by
 			(s["key_id"] != keys[0] && s["key_id"] != keys[1]) {
 			continue
 		}
+		keyType := types[0]
+		if s["key_id"] == keys[1] {
+			keyType = types[1]
+		}
 		signed, err := evidencerequest.EncodeJCS(without(s, "sig"))
-		if err != nil || !verifyHex(s["key_id"].(string), s["sig"], signed) {
+		if err != nil || !verifySig(s["key_id"].(string), keyType, s["sig"], RevocationVersion, signed) {
 			continue
 		}
 		revokedAt, ok := instant(s["revoked_at"])

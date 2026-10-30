@@ -68,7 +68,7 @@ func readCorpus(t *testing.T) corpus {
 	require.NoError(t, err)
 	var c corpus
 	require.NoError(t, json.Unmarshal(data, &c))
-	require.Len(t, c.Cases, 14)
+	require.Len(t, c.Cases, 25)
 	return c
 }
 
