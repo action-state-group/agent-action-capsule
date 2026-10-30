@@ -124,7 +124,7 @@ func bindingCases(t *testing.T) []bindingCase {
 		Cases []bindingCase `json:"cases"`
 	}
 	require.NoError(t, json.Unmarshal(data, &vectors))
-	require.Len(t, vectors.Cases, 25)
+	require.Len(t, vectors.Cases, 26)
 	return vectors.Cases
 }
 

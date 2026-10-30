@@ -135,6 +135,13 @@ has not yet.
   validation is unchanged). The close fixtures' Close records now carry `close/v1` bodies, which
   changes every close fixture's digests, and the checker validates them. The `ClaimType` description
   in `schemas/evidence-result-v0.json` and the Go copy say `close` is normative.
+- Vectors: `vectors/controller-binding-v0/` gains `no-half-key-bound`, its 26th case: a valid
+  binding of the third producer key to the `bip340` key, naming neither half's key, so it does not
+  bind the pair (`spec/controller-binding-v0.md` §6.2, §10). It catches a port that decides
+  `binds_pair` by whether the record names both halves' keys alike, which `other-keys` does not,
+  and it is the case where the `cross_language binding` vector test's node key is not named
+  (exit 1). Go: `Binds` documents that it reports membership only; a caller that needs the key's
+  role reads `Claim` and `Delegator` (#468). No behavior change.
 
 ## go 0.16.0 — 2026-10-30
 

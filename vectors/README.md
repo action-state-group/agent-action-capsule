@@ -86,7 +86,7 @@ same-commit files in CI.
   `python/scripts/generate_coverage_declaration_v0_vectors.py` regenerates them.
 - `controller-binding-v0/`: the controller binding record of `spec/controller-binding-v0.md` and
   its use in issuer independence (`spec/interop-profile-v0.md` §6.7.4): one valid binding per claim
-  type, and expired, revoked, one-key-signed, same-key, other-keys, forged-credential,
+  type, and expired, revoked, one-key-signed, same-key, other-keys, no-half-key-bound, forged-credential,
   unknown-method, unbound-delegator and revocation cases, each over a pair of agreeing halves;
   `python/scripts/generate_controller_binding_v0_vectors.py` regenerates them.
 - `deal-reconcile-v0/`: the Evidence Contract `ec:deal-reconcile@1` of

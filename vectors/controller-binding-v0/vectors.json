@@ -82,7 +82,7 @@
     "controller_binding_revocation",
     "controller_binding_credential"
   ],
-  "count": 25,
+  "count": 26,
   "cases": [
     {
       "id": "valid-same-controller",
@@ -2327,6 +2327,94 @@
           "binds_pair": true,
           "applies": false,
           "proves": []
+        },
+        "issuer_independence": {
+          "status": "NOT_CHECKED",
+          "shown_as": "not corroborating",
+          "reason": null,
+          "satisfied_becomes": {
+            "r-corroborated": "UNKNOWN"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "no-half-key-bound",
+      "title": "A valid binding of a third key to the bip340 key: it names neither half's key",
+      "cites": [
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"key_types\":[\"bip340\",\"ed25519\"],\"keys\":[\"7865159584c6329b8b1d52cda7468eb0041baeccd09e3dd81e708718930d0b68\",\"c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a\"],\"method\":\"dual_signature/0\",\"nonce\":\"ba7049943ee012d57f9f2bd4aae91bd2\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"7865159584c6329b8b1d52cda7468eb0041baeccd09e3dd81e708718930d0b68\",\"sig\":{\"created_at\":1790812800,\"sig\":\"398f53e2485b80e68c05fd44003144d8b142d737c0be4c782efb60bc543bd096c26e20d6c8ae834cdaf017d212c4b275e958372fd73ccd280bdfce4aba85d5d2\"}},{\"key_id\":\"c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a\",\"sig\":\"38d19ef2be2978f42c683c1c218fa3cd5777343aa7ee692d23b953f7cb10039381b3ff026f8400802938c007520dc7ef5466dab511bdc7c1be35077f5ab01d01\"}]}"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "cd87c0c07a233a4f846d1328c573ab9771aa61f99152529e4e0506421bf0fd62",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "NOT_CHECKED"
+          },
+          "binds_pair": false,
+          "applies": false,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ]
         },
         "issuer_independence": {
           "status": "NOT_CHECKED",

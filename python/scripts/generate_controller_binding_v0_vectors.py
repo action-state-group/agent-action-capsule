@@ -20,7 +20,8 @@ credential. CB §10 lists the cases:
   ``sig`` object has a third member, and two whose validly signed event has a ``created_at`` that
   is negative or text. None binds the pair;
 - ``key_types`` holding one token (form ``FAIL``) and naming an unlisted token (signatures
-  ``NOT_CHECKED``, and a revocation by that key does not apply).
+  ``NOT_CHECKED``, and a revocation by that key does not apply);
+- a valid binding that names neither half's key: it does not bind the pair.
 
 It states every expected status by hand from CB §6 and §7 and IP §6.7.4. Each case cites the
 sections it comes from. Nothing here imports or runs a verifier. The credential and its method are
@@ -441,6 +442,11 @@ def cases() -> list[dict]:
                     ok(controller_binding_signatures="NOT_CHECKED"),
                     binds_pair=True, applies=False, independence="NOT_CHECKED", reason=None,
                     revocations=[revocation(r, second, "2026-10-12T00:00:00Z")], fails=[]))
+
+    r = binding("same_controller_asserted", ("producer-c", NOSTR), nonce=n1)
+    out.append(case("no-half-key-bound", "A valid binding of a third key to the bip340 key: it names neither half's key",
+                    ["CB §6.2", "IP §6.7.4"], r, ok(),
+                    binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None, fails=[]))
     return out
 
 

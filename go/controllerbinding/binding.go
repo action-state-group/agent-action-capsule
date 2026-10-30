@@ -212,7 +212,11 @@ func (r Report) Applies() bool {
 		p[PropertyWindow] == evidencerequest.StatusPass && p[PropertyRevocation] != evidencerequest.StatusFail
 }
 
-// Binds reports whether key is one of the two keys the record names.
+// Binds reports whether key is one of the two keys the record names. It
+// does not say which role the key has: CB §6.2 gives none, except that a
+// delegated_by record names its Delegator. A caller that needs the direction
+// reads Claim and Delegator; the other key of a delegated_by record is the
+// delegate.
 func (r Report) Binds(key string) bool { return slices.Contains(r.Keys, key) }
 
 // BindsPair reports whether the record's two keys are exactly a and b, in
