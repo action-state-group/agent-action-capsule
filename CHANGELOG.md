@@ -18,9 +18,11 @@ packages is listed under each package that shipped it, or has not yet.
 
 - Spec: `spec/interop-profile-v0.md` §11.1.5 rule 2 (`acceptance_ordering` `FAIL`) now applies only
   when the accepted record's `issued_at` is later than a time held for the action. An `issued_at`
-  equal to that time at the precision held, as when a producer holds committed times to the minute
-  (Evidence Layer -00 §12.1), no longer reads as an acceptance made after the action; rules 4 and 5
-  decide, and a receipt at that same time gives `INCONCLUSIVE`. The Python verifier follows, and
+  equal to that time after the reduction to the §5.2 form (to the second) no longer reads as an
+  acceptance made after the action; rules 4 and 5 decide, and a receipt at that same time gives
+  `INCONCLUSIVE`. Times are compared as written, so a producer that coarsens committed times (for
+  example to the minute, Evidence Layer -00 §12.1) coarsens `issued_at` and `received_at` the same
+  way. The Python verifier follows, and
   `vectors/interop-profile-v0/` adds `acceptance-equal-time-H` and
   `acceptance-after-action-by-a-second-I`, one on each side of the boundary.
 

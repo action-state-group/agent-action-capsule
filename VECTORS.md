@@ -51,7 +51,7 @@ its 9 `record_signatures`.
 | `vectors/evidence-request/` | `draft-mih-agent-evidence-request-00` | request, respond, verify | 126 |
 | `vectors/settlement/` | `draft-mih-agent-settlement-records-00` | record, verify | 24 |
 | `vectors/interop/` | composition and run-under suites | verify | 11 |
-| `vectors/interop-profile-v0/` | `spec/interop-profile-v0.md` (`evidence-interop/0`) | respond, verify | 53 |
+| `vectors/interop-profile-v0/` | `spec/interop-profile-v0.md` (`evidence-interop/0`) | respond, verify | 55 |
 | `vectors/interop-profile-v0-requirement-facts/` | `spec/interop-profile-v0.md` §8.3 | evaluate | 2 |
 | `vectors/cll-material/` | `spec/interop-profile-v0.md` §6.2.1 | respond, verify | 184 |
 | `vectors/coverage-declaration-v0/` | `spec/interop-profile-v0.md` §6.7 | evaluate, verify | 13 |

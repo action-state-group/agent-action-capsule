@@ -878,9 +878,10 @@ fn ordering(
         );
     };
     if let Some(issued) = text(r, "issued_at").and_then(parse_rfc3339) {
-        // Strictly later only: an equal time, at the precision held (a
-        // producer may hold times to the minute), does not order the
-        // acceptance after the action.
+        // Strictly later only: an equal time, after the reduction to the
+        // second, does not order the acceptance after the action (a producer
+        // holding committed times to the minute writes equal times for a
+        // same-minute acceptance and action).
         if action_times.iter().any(|t| issued > *t) {
             return (
                 order(
