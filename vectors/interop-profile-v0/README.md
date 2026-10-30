@@ -54,7 +54,7 @@ over UTF-8 of JCS of the whole object, `sig` included.
 |---|---|---|
 | Exchange | `valid-exchange` (the §10.1 bytes, PASS through the CLL material); `invariance-two-nonces-two-transports`; `tampered-artifact`; `wrong-request-digest`; `envelope-bad-signature`; `envelope-untrusted-responder`; `envelope-subject-mismatch`; `envelope-anchor-not-the-pin`; `verification-material-tampered`; `inclusion-proof-forged-and-signed`; `forged-refusal-untrusted-key`; `forged-refusal-bad-signature`; `declined`; `missing-evidence-no-such-subject` (GAP); `missing-evidence-recorded-absence`, `-signed`, `-key-id-unsigned`, `-key-id-without-sig` and `-sig-without-key-id` (§6.4's signing input); `unsupported-version-mismatch`, `-absent`, `-unimplemented`, `-refused` | §3.3, §6, §7, §8, §9, §10.1 |
 | Foreign object | `foreign-native-check-fails` (row 5 for the requirement that IS the check, row 6 for one it SUPPORTS); `foreign-native-check-passes`; `foreign-native-check-fails-envelope-fails` | §5.1, §7.2, §8.1 |
-| Acceptance | `acceptance-absent`; §11.1.9 variants A to G, and G under a policy requiring a time from another party | §11.1 |
+| Acceptance | `acceptance-absent`; §11.1.9 variants A to G, and G under a policy requiring a time from another party; the §11.1.5 rule 2 boundary: an `issued_at` equal to the action time (H, not a FAIL) and one second after it (I, FAIL) | §11.1 |
 | Lifecycle | §11.2.7 variants A to I, and D in the other order of receipt | §11.2 |
 | Carriage | `carriage-invariance` and the seven negative halves of §11.4.8 | §11.4 |
 

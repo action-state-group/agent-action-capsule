@@ -878,11 +878,14 @@ fn ordering(
         );
     };
     if let Some(issued) = text(r, "issued_at").and_then(parse_rfc3339) {
-        if action_times.iter().any(|t| issued >= *t) {
+        // Strictly later only: an equal time, at the precision held (a
+        // producer may hold times to the minute), does not order the
+        // acceptance after the action.
+        if action_times.iter().any(|t| issued > *t) {
             return (
                 order(
                     Status::Fail,
-                    "rule 2: the record's own issued_at is not earlier than a time held for the action",
+                    "rule 2: the record's own issued_at is later than a time held for the action",
                 ),
                 Vec::new(),
             );

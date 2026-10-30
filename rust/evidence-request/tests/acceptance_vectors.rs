@@ -116,7 +116,7 @@ fn every_corpus_acceptance_case_gives_the_expected_report() {
         assert_eq!(run(case, contract, false), case["expected"], "{id}");
         ran += 1;
     }
-    assert_eq!(ran, 9, "the corpus has nine acceptance cases");
+    assert_eq!(ran, 11, "the corpus has eleven acceptance cases");
 }
 
 #[test]

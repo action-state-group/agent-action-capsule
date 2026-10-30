@@ -591,7 +591,7 @@ class Verifier:
             relied: list[str] = []
             if arp is None:
                 order = "NOT_PRESENT"
-            elif any(r["issued_at"] >= t for t in action_times):
+            elif any(r["issued_at"] > t for t in action_times):
                 order = "FAIL"
             elif self.policy["require_action_time_from_other_party"]:
                 order = "NOT_PRESENT"

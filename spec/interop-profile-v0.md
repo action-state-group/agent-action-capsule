@@ -1531,10 +1531,11 @@ Rules [P-28]:
 **`acceptance_ordering` status.** The first rule that applies decides [P-28]:
 
 1. `NOT_PRESENT`: the verifier holds no time for the action.
-2. `FAIL`: the record's own `issued_at` is not earlier than some time the verifier holds for the
+2. `FAIL`: the record's own `issued_at` is later than some time the verifier holds for the
    action, including the acceptor's own claim. The acceptor's own record then states that it
-   accepted at or after the action. This test is applied even when the trust policy requires a
-   time from another party.
+   accepted after the action. An `issued_at` equal to that time, at the precision held, does not
+   order the two, and the rules below decide. This test is applied even when the trust policy
+   requires a time from another party.
 3. `NOT_PRESENT`: the trust policy requires a time for the action from a party other than the
    acceptor, and none is held.
 4. `PASS`: at least one form (i) or form (ii) object counts, and its ordering point is earlier

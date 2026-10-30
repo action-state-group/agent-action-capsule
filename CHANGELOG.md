@@ -16,6 +16,14 @@ Not in any tag yet: Python (the latest tag is python 0.12.0) and the changes aft
 and `ts/v0.10.0`. The Rust crates keep their own Unreleased sections. An entry that touches several
 packages is listed under each package that shipped it, or has not yet.
 
+- Spec: `spec/interop-profile-v0.md` §11.1.5 rule 2 (`acceptance_ordering` `FAIL`) now applies only
+  when the accepted record's `issued_at` is later than a time held for the action. An `issued_at`
+  equal to that time at the precision held, as when a producer holds committed times to the minute
+  (Evidence Layer -00 §12.1), no longer reads as an acceptance made after the action; rules 4 and 5
+  decide, and a receipt at that same time gives `INCONCLUSIVE`. The Python verifier follows, and
+  `vectors/interop-profile-v0/` adds `acceptance-equal-time-H` and
+  `acceptance-after-action-by-a-second-I`, one on each side of the boundary.
+
 - Spec and vectors, Interop Profile re-pinned to Evidence Request -01: `spec/interop-profile-v0.md`
   now pins `draft-mih-agent-evidence-request-01` as posted (SHA-256 of the `.txt`) instead of -00,
   still under `evidence-interop/0` (P-64). A responder under the profile ignores ER -01's

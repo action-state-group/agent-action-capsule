@@ -260,7 +260,7 @@ def comparable(expected: dict) -> dict:
 
 
 def test_corpus_size_and_contract_pin():
-    assert DATA["count"] == len(CASES) == 53
+    assert DATA["count"] == len(CASES) == 55
     verifier = InteropVerifier(TrustPolicy(), VerificationPolicy(), "2026-10-12T00:00:00Z", contract=CONTRACT)
     assert verifier.contract_digest == DATA["contract"]["contract_digest"]
     assert verifier.contract_ref == DATA["contract"]["contract_ref"]
@@ -1058,10 +1058,14 @@ def _acceptance_with(case_id: str, exec_changes=None, extra_execs=(), trust_pin=
 
 
 def test_b3_action_time_is_rounded_down_before_rule_2():
-    """§11.1.5: an action at 00:05:00.5 is 00:05:00, which the record's issued_at is not before."""
-    res = _acceptance_with("acceptance-backdated-E-control",
-                           receipts=lambda signed, rc: [signed("P", {**rc, "received_at": "2026-10-12T00:04:59Z"})],
+    """§11.1.5: an action at 00:05:00.5 is 00:05:00, equal to the record's issued_at: not a FAIL, and the
+    earlier receipt orders it. An action at 00:04:59.5 is 00:04:59, before the issued_at: FAIL."""
+    receipt_before = lambda signed, rc: [signed("P", {**rc, "received_at": "2026-10-12T00:04:58Z"})]  # noqa: E731
+    res = _acceptance_with("acceptance-backdated-E-control", receipts=receipt_before,
                            exec_changes={"action_at": "2026-10-12T00:05:00.5Z"})
+    assert res.candidates[0].status("acceptance_ordering") == "PASS"
+    res = _acceptance_with("acceptance-backdated-E-control", receipts=receipt_before,
+                           exec_changes={"action_at": "2026-10-12T00:04:59.5Z"})
     assert res.candidates[0].status("acceptance_ordering") == "FAIL"
     assert res.finding == "accepted_after_action"
 

@@ -922,6 +922,13 @@ def acceptance_cases() -> list[dict]:
     ld = json_digest(late)
     exe = execution_record([bd], "2026-10-12T00:10:00Z")
     exe_late = execution_record([ld], "2026-10-12T00:10:00Z")
+    same = acc_record("accepted", "Q", "2026-10-12T00:10:00Z", pd)
+    sd = json_digest(same)
+    exe_same = execution_record([sd], "2026-10-12T00:10:00Z")
+    r_p_same = receipt(sd, "P", "2026-10-12T00:10:00Z")
+    second_late = acc_record("accepted", "Q", "2026-10-12T00:10:01Z", pd)
+    sld = json_digest(second_late)
+    exe_second_late = execution_record([sld], "2026-10-12T00:10:00Z")
     parties = {PUB["P"]: "party-proposer", PUB["Q"]: "party-acceptor"}
     same_party = {PUB["P"]: "party-acceptor", PUB["Q"]: "party-acceptor"}
     policy = trust_policy(responder_keys=[], parties=parties)
@@ -992,6 +999,18 @@ def acceptance_cases() -> list[dict]:
              backdated, exe, [r_p], [{"receipt_signature": "PASS", "receipt_signer": "PASS"}],
              acc_props(), "accepted_before_action", claim=[bd, json_digest(r_p)],
              extra_inputs={"not_an_input_true_action_time": "2026-10-12T00:01:00Z"}),
+        case("acceptance-equal-time-H",
+             "§11.1.5 rule 2 at the boundary: the accepted record's issued_at equals the action time at the "
+             "precision held, as when a producer holds times to the minute. Equal times do not order the "
+             "two, so rule 2 does not apply; the proposer's receipt at that same time is not earlier: "
+             "INCONCLUSIVE.",
+             same, exe_same, [r_p_same], [{"receipt_signature": "PASS", "receipt_signer": "PASS"}],
+             acc_props(acceptance_ordering="INCONCLUSIVE"), "accepted_execution_cites", claim=[sd]),
+        case("acceptance-after-action-by-a-second-I",
+             "§11.1.5 rule 2 at the boundary: the accepted record's issued_at is one second after the action "
+             "time: acceptance_ordering FAIL, accepted_after_action.",
+             second_late, exe_second_late, [], [], acc_props(acceptance_ordering="FAIL"),
+             "accepted_after_action", claim=[sld]),
         case("acceptance-backdated-G-policy-requires-other-party",
              "§11.1.9 G under a trust policy requiring a time for the action from a party other than the "
              "acceptor: none is held, so acceptance_ordering is NOT_PRESENT (§11.1.5 rule 3).",
