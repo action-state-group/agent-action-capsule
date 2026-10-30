@@ -53,8 +53,10 @@ them. [`scripts/build_offline_bundle.sh`](scripts/build_offline_bundle.sh) packs
 all of the above, with a Python wheelhouse and an npm cache, into one tarball
 with a `setup-offline.sh` that needs no network;
 [`scripts/verify_offline_bundle.sh`](scripts/verify_offline_bundle.sh) unpacks
-it and runs everything with the network denied. Each language also needs its
-toolchain installed.
+it and runs everything with the network denied. A bundle is built for one OS,
+CPU and Python minor version (its compiled Python wheels are platform-specific),
+so build one per target platform; `setup-offline.sh` stops on any other machine.
+Each language also needs its toolchain installed.
 
 **Break one byte.** Add `--break-one-byte` to any command above:
 

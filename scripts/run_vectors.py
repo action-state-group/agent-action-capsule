@@ -13,8 +13,9 @@ count is a property of the vector files, not of the number of tests.
 
 --break-one-byte changes one character of one positive vector
 (vectors/capsule/pos-v4-jcs-chain-committed/input.json), runs the
-vectors/capsule/ set, shows the failure and restores the file. It exits 0 only
-when the set fails and the file is restored byte for byte.
+vectors/capsule/ set, shows the failure and restores the file. It first checks
+that the unmodified set passes, and exits 0 only when that case then fails and
+the file is restored byte for byte.
 
 Nothing here touches the network: Go runs with GOPROXY=off (and the vendor
 directory when present), Cargo with --offline --locked, npm and pip are not
@@ -33,13 +34,14 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANGS = ("python", "ts", "go", "rust")
 BREAK_SET = "vectors/capsule/"
 BREAK_FILE = os.path.join(ROOT, "vectors", "capsule", "pos-v4-jcs-chain-committed", "input.json")
+BREAK_CASE = "pos-v4-jcs-chain-committed"
 BREAK_KEY = '"action_id": "'
 FAIL_LINE = re.compile(
     r"(FAIL|FAILED|Error|error|assert|panicked|mismatch|expected|--- FAIL)", re.IGNORECASE
 )
 
 
-SKIP_LINE = re.compile(r"(\b\d+ skipped\b|--- SKIP|\bskipped\b.*\btests?\b)", re.IGNORECASE)
+SKIP_LINE = re.compile(r"(^SKIPPED \[|\b\d+ skipped\b|--- SKIP|\bskipped\b.*\btests?\b)", re.IGNORECASE)
 
 
 def load_counts():
@@ -67,7 +69,7 @@ def command(lang, selectors):
     """Return (argv, cwd, env) running the selectors, or raise RuntimeError with a setup hint."""
     env = dict(os.environ)
     if lang == "python":
-        return ([python_exe(), "-m", "pytest", "-q", "--tb=short", "-p", "no:cacheprovider"]
+        return ([python_exe(), "-m", "pytest", "-q", "-rs", "--tb=short", "-p", "no:cacheprovider"]
                 + ["tests/" + s for s in selectors]), os.path.join(ROOT, "python"), env
     if lang == "ts":
         bin_ = os.path.join(ROOT, "ts", "node_modules", ".bin", "vitest")
@@ -94,29 +96,29 @@ def command(lang, selectors):
 
 
 def run_selector(lang, selectors):
-    """Run once; return (ok, reason lines)."""
+    """Run once; return (ok, reason lines, full output). ok is True, False or "partial"."""
     try:
         argv, cwd, env = command(lang, selectors)
     except RuntimeError as e:
-        return False, [str(e)]
+        return False, [str(e)], ""
     if shutil.which(argv[0]) is None and not os.path.isabs(argv[0]):
-        return False, ["%s is not installed" % argv[0]]
+        return False, ["%s is not installed" % argv[0]], ""
     try:
         proc = subprocess.run(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               universal_newlines=True, timeout=1500)
     except subprocess.TimeoutExpired:
-        return False, ["timed out after 1500 s"]
+        return False, ["timed out after 1500 s"], ""
     if proc.returncode == 0:
         # A skipped test means part of the set did not run (a missing optional
         # dependency); that must not read as a pass.
         skips = [l.strip() for l in proc.stdout.splitlines() if SKIP_LINE.search(l)]
         if skips:
-            return "partial", ["some tests were skipped, so part of the set did not run (see VECTORS.md setup):"] + skips[:4]
-        return True, []
+            return "partial", ["some tests were skipped, so part of the set did not run (see VECTORS.md setup):"] + skips[:6], proc.stdout
+        return True, [], proc.stdout
     lines = [l.rstrip() for l in proc.stdout.splitlines() if l.strip()]
     picked = [l for l in lines if FAIL_LINE.search(l)][:12] or lines[-12:]
-    return False, picked
+    return False, picked, proc.stdout
 
 
 def run_language(lang, only=None):
@@ -137,7 +139,7 @@ def run_language(lang, only=None):
             continue
         if sel not in results:
             results[sel] = run_selector(lang, sel)
-        ok, reasons = results[sel]
+        ok, reasons, _ = results[sel]
         word = "PARTIAL" if ok == "partial" else "PASS" if ok else "FAIL"
         tally[word] += 1
         print("%-7s %-52s %5d cases" % (word, path, n))
@@ -151,6 +153,14 @@ def run_language(lang, only=None):
 
 
 def break_one_byte(lang):
+    selectors = tuple(load_map()[BREAK_SET][lang])
+    print("break-one-byte: first run the unmodified %s set" % BREAK_SET)
+    ok, reasons, _ = run_selector(lang, selectors)
+    if ok is not True:
+        print("break-one-byte: PROBLEM, the unmodified set does not pass, so a failure would prove nothing:")
+        for r in reasons:
+            print("        " + r)
+        return False
     with open(BREAK_FILE, "rb") as f:
         original = f.read()
     text = original.decode("utf-8")
@@ -170,17 +180,21 @@ def break_one_byte(lang):
         with open(BREAK_FILE, "wb") as f:
             f.write(mutated)
         print("break-one-byte: %s, last character of action_id %r -> %r" % (rel, old, new))
-        failed = not run_language(lang, only=BREAK_SET)
+        ok, reasons, output = run_selector(lang, selectors)
     finally:
         restore()
         for s, h in previous.items():
             signal.signal(s, h)
     with open(BREAK_FILE, "rb") as f:
         restored = f.read() == original
-    if failed and restored:
-        print("\nbreak-one-byte: OK, the mutated vector failed and %s is restored" % rel)
+    print("%s  %s" % ("FAIL" if ok is False else "PASS", BREAK_SET))
+    for r in reasons:
+        print("        " + r)
+    caught = ok is False and BREAK_CASE in output
+    if caught and restored:
+        print("\nbreak-one-byte: OK, case %s failed and %s is restored" % (BREAK_CASE, rel))
         return True
-    print("\nbreak-one-byte: PROBLEM, failed=%s restored=%s" % (failed, restored))
+    print("\nbreak-one-byte: PROBLEM, case %s failed=%s restored=%s" % (BREAK_CASE, caught, restored))
     return False
 
 

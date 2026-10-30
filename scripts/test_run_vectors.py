@@ -54,23 +54,74 @@ def test_break_one_byte_target_is_a_positive_vector_of_the_break_set():
     assert os.path.basename(os.path.dirname(rv.BREAK_FILE)).startswith("pos-")
 
 
-def test_break_one_byte_restores_the_file_when_the_run_fails(monkeypatch, capsys):
+def test_each_mapped_test_reads_its_set():
+    # A mapping to a test that never reads the set would print PASS for a set
+    # that did not run. Tests that build the path from parts are listed.
+    split_path = {"test_bundle_vectors.py", "bundle.test.ts", "bundle-report-vector.test.ts"}
+    for path, langs in rv.load_map().items():
+        name = os.path.basename(path.rstrip("/"))
+        name = name[: -len(".json")] if name.endswith(".json") else name
+        for lang, selectors in langs.items():
+            files = []
+            for s in selectors:
+                if lang == "python":
+                    files.append(os.path.join(ROOT, "python", "tests", s))
+                elif lang == "ts":
+                    files.append(os.path.join(ROOT, "ts", "test", s))
+                elif lang == "rust":
+                    crate, test = s.split(":")
+                    files.append(os.path.join(ROOT, "rust", crate, "tests", test + ".rs"))
+                else:
+                    pkg = os.path.join(ROOT, "go", s)
+                    files += [os.path.join(pkg, f) for f in os.listdir(pkg) if f.endswith("_test.go")]
+            if all(os.path.basename(f) in split_path for f in files):
+                continue
+            text = "".join(open(f, encoding="utf-8").read() for f in files)
+            assert name in text, (lang, path, selectors)
+
+
+def test_go_bundle_testdata_copy_is_the_published_file():
+    # go/bundle's test reads this pinned copy, not vectors/bundle/vectors.json.
+    copy = os.path.join(ROOT, "go", "bundle", "testdata", "vectors.json")
+    published = os.path.join(ROOT, "vectors", "bundle", "vectors.json")
+    assert open(copy, "rb").read() == open(published, "rb").read()
+
+
+def _fake(monkeypatch, results):
+    calls = []
+
+    def fake_run(lang, selectors):
+        calls.append(open(rv.BREAK_FILE, "rb").read())
+        return results[len(calls) - 1]
+
+    monkeypatch.setattr(rv, "run_selector", fake_run)
+    return calls
+
+
+def test_break_one_byte_restores_the_file_when_the_case_fails(monkeypatch):
     before = open(rv.BREAK_FILE, "rb").read()
-    seen = {}
-
-    def fake_run(lang, only=None):
-        seen["during"] = open(rv.BREAK_FILE, "rb").read()
-        return False
-
-    monkeypatch.setattr(rv, "run_language", fake_run)
+    calls = _fake(monkeypatch, [(True, [], ""), (False, ["x"], "FAIL " + rv.BREAK_CASE)])
     assert rv.break_one_byte("go") is True
     assert open(rv.BREAK_FILE, "rb").read() == before
-    assert len(seen["during"]) == len(before) and seen["during"] != before
-    assert sum(a != b for a, b in zip(seen["during"], before)) == 1
+    assert calls[0] == before and len(calls[1]) == len(before)
+    assert sum(a != b for a, b in zip(calls[1], before)) == 1
 
 
 def test_break_one_byte_reports_a_problem_when_the_mutation_is_not_caught(monkeypatch):
     before = open(rv.BREAK_FILE, "rb").read()
-    monkeypatch.setattr(rv, "run_language", lambda lang, only=None: True)
+    _fake(monkeypatch, [(True, [], ""), (True, [], "")])
     assert rv.break_one_byte("go") is False
     assert open(rv.BREAK_FILE, "rb").read() == before
+
+
+def test_break_one_byte_rejects_a_failure_that_is_not_the_mutated_case(monkeypatch):
+    # Missing dependency, timeout or another case failing must not read as a catch.
+    _fake(monkeypatch, [(True, [], ""), (False, ["vitest is not installed"], "")])
+    assert rv.break_one_byte("ts") is False
+
+
+def test_break_one_byte_needs_a_passing_baseline(monkeypatch):
+    before = open(rv.BREAK_FILE, "rb").read()
+    calls = _fake(monkeypatch, [(False, ["setup missing"], "")])
+    assert rv.break_one_byte("ts") is False
+    assert len(calls) == 1 and open(rv.BREAK_FILE, "rb").read() == before
