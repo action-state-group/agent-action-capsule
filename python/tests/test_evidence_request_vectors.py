@@ -30,7 +30,7 @@ GENERATOR = ROOT / "python" / "scripts" / "generate_evidence_request_vectors.py"
 SPEC = ROOT / "spec"
 HAND_WRITTEN = ("README.md", "DIFFS.md")
 CORPORA = ("request", "resolution", "carries", "categories", "carriage", "digest", "refusal", "outcomes",
-           "invariance", "retention", "unavailable-window")
+           "invariance", "retention", "unavailable-window", "refusal-02")
 
 
 def _sha(data: bytes) -> str:
@@ -507,3 +507,34 @@ def test_unavailable_window_expectations_follow_from_the_text():
     ids = {c["id"] for c in corpus["cases"]}
     for cls in UW_CLASSES:
         assert f"uw-class-{cls}" in ids
+
+
+def test_refusal_02_expectations_follow_from_the_text():
+    corpus = _load("refusal-02")
+    added = ["capacity_exceeded", "request_unauthenticated"]
+    # -02 §13: the eight -00 tokens, then the two -02 adds; -00's registry.json is unchanged.
+    assert corpus["refusal_reasons"] == REGISTRY["refusal_reasons"] + added
+    assert not set(added) & set(REGISTRY["refusal_reasons"])
+    seen = set()
+    for case in corpus["cases"]:
+        expect, facts = case["expect"], case.get("facts", {})
+        if "refusal" in case:
+            obj = case["refusal"]
+            assert _signature_valid(obj) is (expect["signature"] == "valid"), case["id"]
+            assert (obj["reason"] in corpus["refusal_reasons"]) is expect["reason_registered"], case["id"]
+            assert expect["conformant"] is (expect["signature"] == "valid" and expect["reason_registered"])
+            seen.add(("refusal", obj["reason"]))
+        elif "commitment" in facts:
+            # -02 §9: request_unauthenticated is a property of the request; capacity_exceeded is never a breach.
+            assert facts["refusal_reason"] in added and expect["classification"] == "no_breach", case["id"]
+            seen.add((facts["commitment"], facts["refusal_reason"]))
+        elif facts.get("cause") == "responder_load":
+            # -02 §11: load shedding refuses capacity_exceeded, not policy_declined or not_authorized.
+            assert expect == {"reason": "capacity_exceeded", "not_reason": ["policy_declined", "not_authorized"]}
+        else:
+            # -02 §4.6: neither reason maps to evidence withheld by policy.
+            assert facts["refusal_reason"] in added and expect["withheld_by_policy"] is False, case["id"]
+            seen.add(("map", facts["refusal_reason"]))
+    for reason in added:
+        assert {("refusal", reason), ("in_force", reason), ("lapsed", reason), ("map", reason)} <= seen, reason
+

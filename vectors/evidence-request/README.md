@@ -7,12 +7,13 @@ Conformance vectors for the evidence request interaction defined in
 forms, which record members carry a correlation identifier or cite an exchange
 half, coverage, the request digest, the signed refusal, the three outcomes and
 the pending state, caller invariance, retention commitments, the `categories`
-request field, A2A and MCP carriage, and unavailable-window statements.
+request field, A2A and MCP carriage, unavailable-window statements, and the
+two refusal reasons -02 adds.
 
 Each corpus names the revision it is written from in its `draft` member.
 `carries.json`, `categories.json` and `carriage.json` follow text that first
-appears in -01, and name -01; `unavailable-window.json` follows text that first
-appears in -02, and names -02; every other corpus names -00, and every -00 and
+appears in -01, and name -01; `unavailable-window.json` and `refusal-02.json`
+follow text that first appears in -02, and name -02; every other corpus names -00, and every -00 and
 -01 case also holds under -02. Section numbers below are those of the revision the
 corpus names.
 
@@ -41,6 +42,7 @@ section and the reading used (the most literal one); the list is below, for -01.
 | `invariance.json` | Caller invariance (§5): observations of the same subject under the same anchor must carry byte-identical artifacts. |
 | `retention.json` | Retention commitments (§9): every reason inside and after `until`, absence with and without a commitment, and which subject forms a commitment may name. |
 | `unavailable-window.json` | Unavailable-window statements (-02 §4.7). `kind` `statement`: whether a reader recognizes the statement (well formed, signed by `responder_key`, registered) and its registration time, the earliest of its `receipts` marked `accepted` (from a transparency service the reader accepts as independent of the responder). `kind` `display`: an absence (`sent_at` to `closed_at`) and statements; expect the ids of the statements that cover it, `shown_as`, and per covering statement its `reason_class`, `stated_period`, registration time and `stated_afterwards`. `must_not_show_as` lists what the reader must never show. Statements are signed with the primary key of `refusal.json` under the profile in the file. |
+| `refusal-02.json` | The two refusal reasons -02 adds (§4.2, §13): `capacity_exceeded` and `request_unauthenticated`. `refusal_reasons` is the -02 registry; `registry.json` stays the -00 one, under which both are unregistered. A case with `refusal` checks the signature (profile of `refusal.json`) and registration against `refusal_reasons`; one with `facts.commitment` is the retention classification (§9); `facts.cause` is the reason load shedding uses (§11); `facts.refusal_reason` alone is the illustrative status mapping (§4.6). |
 | `manifest.json` | SHA-256 and case count of every generated file, and the ambiguity list. |
 | `SHA256SUMS` | SHA-256 of every file in this directory except itself. |
 | `DIFFS.md` | Known differences between one existing Python responder and -00. |
@@ -101,6 +103,9 @@ section and the reading used (the most literal one); the list is below, for -01.
    `display` case, find the covering statements, show the absence, and check
    each label. The result must equal `expect` and must not be any of
    `expect.must_not_show_as`.
+12. `refusal-02.json`: verify each `refusal` case as in step 5, but against
+   the corpus's own `refusal_reasons`; classify each `facts.commitment` case
+   as in step 8; the other cases state what the -02 text requires.
 
 Regenerate from the repository root with
 `python3 python/scripts/generate_evidence_request_vectors.py`. The output is a
@@ -365,6 +370,21 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `uw-commitment-unchanged` | display | 4.7, 4.4, 9, 4.6 | holder states unavailability: flood |
 | `uw-refusal-not-affected` | display | 4.7, 4.5 | not covered; shown as refusal |
 | `uw-pending-not-absence` | display | 4.7, 4.3, 4.5 | not covered; shown as pending |
+
+### `refusal-02.json` (10 cases)
+
+| Case | § | Expect |
+|---|---|---|
+| `r02-reason-capacity_exceeded` | 4.2, 13 | signature valid, registered, conformant |
+| `r02-reason-request_unauthenticated` | 4.2, 13 | signature valid, registered, conformant |
+| `r02-neg-unregistered-rate_limited` | 4.2, 13 | signature valid, not registered, not conformant |
+| `r02-ret-inside-capacity_exceeded` | 9 | no breach |
+| `r02-ret-after-capacity_exceeded` | 9 | no breach |
+| `r02-ret-inside-request_unauthenticated` | 9 | no breach |
+| `r02-ret-after-request_unauthenticated` | 9 | no breach |
+| `r02-load-shedding-is-capacity_exceeded` | 11, 4.2 | `capacity_exceeded`, never `policy_declined` or `not_authorized` |
+| `r02-map-capacity_exceeded` | 4.6 | status unknown, responder limit; not withheld by policy |
+| `r02-map-request_unauthenticated` | 4.6 | request not authenticated; not withheld by policy |
 
 ## Readings in the -01 corpora
 
