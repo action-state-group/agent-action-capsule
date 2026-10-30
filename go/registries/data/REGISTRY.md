@@ -474,6 +474,23 @@ binding is used beside the composition, under issuer independence
 |---|---|
 | `controller_binding` | `identifier_digest` is the digest of a controller binding record (`spec/controller-binding-v0.md` §4) delivered beside the block, and `pointer` selects each member root record's `key_id`. `identifier_digest` is SHA-256 of the record's signing input (the record without `sigs`). The two members are linked when the delivered record's digest equals `identifier_digest`, the two selected values are its two keys, and it applies to them (§6.2 of that document): it is well formed, both keys signed it under a method the verifier implements, it is in its window at each root record's time, and no received revocation applies. A `controller_binding` join that derives `agree` is redundant, not corroborating. The binding proves control of both keys at its ceremony, never who holds them. |
 
+### Provisional: controller binding key types and signing event kind
+
+**Held for ratification; not yet registered.** `spec/controller-binding-v0.md`
+(an informational document, not an Internet-Draft) names the type of each key a
+binding record binds (§3.3) and how each type signs (§4.1). A record without
+`key_types` binds two `ed25519` keys. A verifier that meets a token it does not
+know reports the record's signatures `NOT_CHECKED` and does not use it. The
+Nostr event kind is chosen from the kinds no NIP lists and is not registered
+with the NIPs (that document's CB-8). Conformance vectors:
+`vectors/controller-binding-v0/`.
+
+| Value | Semantics |
+|---|---|
+| `ed25519` | Key type. The key identifier is a raw Ed25519 public key (RFC 8032); the key signs with Ed25519 over the signed octets. |
+| `bip340` | Key type. The key identifier is a BIP-340 x-only secp256k1 public key, as a Nostr identity is; the key signs a Nostr event (NIP-01) of kind 3374, with no tags, whose `content` is the signed object's version and the SHA-256 of its signed octets (`<version>:<digest>`); `sig` carries the event's `created_at` and its BIP-340 signature. |
+| `3374` | Nostr event kind of the `bip340` signing event. Its events are signatures over one binding record or revocation statement, and are not published. |
+
 ## 15. Evidence Bundle countersignature type
 
 Defined in `draft-mih-zhang-agent-disclosure-bundle`,

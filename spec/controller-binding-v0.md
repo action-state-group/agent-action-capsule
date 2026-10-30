@@ -14,7 +14,8 @@ signatures show. It does not show who controls either key, and it never establis
 ## Dependency boundary
 
 **Owns:** the binding record, its member names and signing input (§3, §4), the claim types and
-their verification methods (§3.2), the revocation statement (§5), the binding properties (§6),
+their verification methods (§3.2), the key types and how each signs (§3.3, §4.1), the revocation
+statement (§5), the binding properties (§6),
 what a verifier reports (§7), and the proposed `controller_binding` join basis (§8).
 
 **Uses unchanged:**
@@ -23,6 +24,8 @@ what a verifier reports (§7), and the proposed `controller_binding` join basis 
 |---|---|---|
 | IP | `spec/interop-profile-v0.md` (`evidence-interop/0`) | the value conventions (§5.2), the as-transmitted rule for foreign objects (§5.1), the per-property status vocabulary (§7.1), issuer independence (§6.7.4) |
 | EB | `draft-mih-zhang-agent-disclosure-bundle` -01 working revision (`spec/draft-mih-zhang-agent-disclosure-bundle-01.md`) | the `composed/v1` block, its joins and its redundancy rule ("The composed/v1 Extension") |
+| BIP-340 | Bitcoin Improvement Proposal 340, "Schnorr Signatures for secp256k1" | x-only public keys and signature verification, for the `bip340` key type (§3.3, §4.1) |
+| NIP-01 | Nostr Implementation Possibilities 01, "Basic protocol flow description" | the event, its serialization and its id, for the `bip340` key type (§4.1) |
 
 **Does not define:** any identity, account or naming scheme; any identity provider; any registry of
 keys, controllers or organizations; any trust policy; how two key holders meet to sign; or what a
@@ -46,7 +49,8 @@ Terms from IP §1 are used unchanged. This document adds:
 
 All values follow IP §5.2: digests and key identifiers are 64 lowercase hexadecimal characters, a
 key identifier is a raw Ed25519 public key, signatures are Ed25519, and times are RFC 3339 UTC with
-`Z` and seconds precision.
+`Z` and seconds precision. The one exception is a bound key whose key type (§3.3) is not
+`ed25519`: its key identifier and its signatures follow that key type (§4.1).
 
 ## 2. What a binding is for
 
@@ -75,15 +79,16 @@ A binding record is a JSON object with exactly these members, plus the ones its 
 | `claim` | one claim type of §3.2 |
 | `method` | a verification method token: one of §3.2 for that claim type, or one this revision does not define |
 | `keys` | an array of exactly two distinct key identifiers, in ascending order |
+| `key_types` | OPTIONAL: an array of exactly two key type tokens (§3.3), one per entry of `keys` and in its order. When it is absent, both keys are `ed25519` |
 | `issued_at` | a time: the ceremony, as the signers state it |
 | `not_before` | a time, not later than `issued_at`. An earlier `not_before` is the signers' statement about records signed before the ceremony, and nothing checks it |
 | `not_after` | a time, later than `issued_at` |
 | `revocation` | the revocation method; this revision defines one, `revocation_statement/0` (§5) |
-| `nonce` | a text string chosen for this ceremony, so that two ceremonies over the same keys and times give two records |
+| `nonce` | a text string chosen for this ceremony, so that two ceremonies over the same keys and times give two records. When `key_types` names a `bip340` key, at least 32 lowercase hexadecimal characters (§9.3) |
 | `sigs` | an array of exactly two objects `{key_id, sig}`, one per bound key, in the order of `keys` (§4) |
 
-A binding record with a duplicate member name, a missing member, a member this section or §3.2
-does not list for its claim type, or a value outside its form is malformed. So is a record whose
+A binding record with a duplicate member name, a missing member other than `key_types`, a member
+this section or §3.2 does not list for its claim type, or a value outside its form is malformed. So is a record whose
 `method` is defined in §3.2 for another claim type, and a record whose two `keys` are the same key:
 a key bound to itself is redundant, and binding it states nothing.
 
@@ -112,6 +117,26 @@ used (§6.2), because its signatures were not verified.
 `delegated_by` states a relation, not a scope. It does not say what was delegated, and a verifier
 reads no authority from it (CB-4).
 
+### 3.3 Key types
+
+A key type says what a key identifier is and how that key signs (§4.1). An Ed25519 public key and a
+BIP-340 public key are both 32 octets, so a verifier cannot tell them apart from the key
+identifier. The record states the type of each key in `key_types`, and both keys sign it, so
+neither key holder can change the other key's type without that key's signature.
+
+| Token | Key identifier | Signs by |
+|---|---|---|
+| `ed25519` | a raw Ed25519 public key (RFC 8032) | Ed25519 over the signed octets |
+| `bip340` | a BIP-340 x-only secp256k1 public key, the key a Nostr identity (NIP-01) is | a Nostr event over the signed octets' digest (§4.1) |
+
+A record whose `key_types` holds a token this table does not list is well formed. A verifier
+reports its `controller_binding_signatures` as `NOT_CHECKED`, as for a method it does not
+implement (§3.2), and the record is then not used (§6.2). A verifier that implements this revision
+implements both tokens.
+
+A key type is a statement about the key, not about who holds it. A `bip340` key is often a Nostr
+identity, and binding it links that identity to the other key wherever the record is shown (§9.3).
+
 ## 4. Signature coverage
 
 The **signing input** is the UTF-8 octets of the JCS (RFC 8785) serialization of the binding record
@@ -119,7 +144,8 @@ with `sigs` removed. Every other member is covered, including `claim`, `method`,
 claim type's added members, the three times, `revocation` and `nonce`.
 
 **Both bound keys sign the same signing input.** `sigs[0].key_id` is `keys[0]` and `sigs[1].key_id`
-is `keys[1]`, and each `sig` is that key's Ed25519 signature over the signing input. A record that
+is `keys[1]`, and each `sig` is that key's signature over the signing input, made as its key type
+says (§4.1). A record that
 lacks either signature, carries a signature that does not verify, or carries a third entry is not a
 binding: `controller_binding_signatures` is `FAIL`. One key cannot bind another key to itself.
 Because each key signs the other key's identifier, neither key holder can add or replace the other
@@ -129,6 +155,33 @@ The **binding digest** is the SHA-256 of the signing input. It does not cover `s
 keeps its digest if either key signs it again. A revocation statement (§5) and a join (§8) name a
 binding by its digest. A revocation therefore reaches every copy of the record, whatever signatures
 it carries. Two ceremonies over the same keys differ in `nonce` and so have two digests.
+
+### 4.1 How each key type signs
+
+A signature names what it signs: the signed object's version (`controller-binding/0` for a binding
+record, `controller-binding-revocation/0` for a revocation statement, §5) and its **signed octets**
+(the signing input of a binding record, or a revocation statement's octets of §5).
+
+- **`ed25519`:** `sig` is 128 lowercase hexadecimal characters: the Ed25519 signature over the
+  signed octets.
+- **`bip340`:** `sig` is an object with exactly two members:
+
+  | Member | Value |
+  |---|---|
+  | `created_at` | a non-negative integer, at most 2^53 − 1: the event's `created_at` |
+  | `sig` | 128 lowercase hexadecimal characters: the event's BIP-340 signature |
+
+  The **signing event** is the Nostr event (NIP-01) with `pubkey` the key identifier, `created_at`
+  as above, `kind` 3374, `tags` an empty array, and `content` the text string `<version>:<digest>`,
+  where `<version>` is the signed object's version and `<digest>` is the SHA-256 of the signed
+  octets, in lowercase hexadecimal. A verifier rebuilds the event id as NIP-01 defines it, the
+  SHA-256 of the UTF-8 octets of `[0,"<pubkey>",<created_at>,3374,[],"<content>"]` with no
+  whitespace, and verifies `sig` over that id under BIP-340.
+
+The `bip340` form exists so that a key holder signs with the tools that already hold a Nostr
+key, which sign events and not arbitrary octets. The event is never published (§9.3), and
+`created_at` is the signer's clock, which nothing checks; the binding's times are its own (CB-2).
+The kind is provisional (CB-8).
 
 ## 5. Revocation
 
@@ -141,7 +194,7 @@ these members:
 | `binding` | the binding digest (§4) |
 | `key_id` | one of the binding's two `keys` |
 | `revoked_at` | a time |
-| `sig` | Ed25519 by `key_id` over UTF-8 of JCS of the other four members |
+| `sig` | by `key_id`, as the binding's `key_types` gives that key's type (§4.1), over UTF-8 of JCS of the other four members |
 
 A revocation statement **applies** to a binding when its form is valid, `binding` equals the
 binding's digest, `key_id` is one of its `keys`, and `sig` verifies. From `revoked_at` on, the
@@ -164,7 +217,7 @@ the binding is asked about: for a pair under IP §6.7.4, each member's `issued_a
 | Property | Check |
 |---|---|
 | `controller_binding_form` | the record is well formed (§3.1, §3.2) |
-| `controller_binding_signatures` | both entries of `sigs` are present, name `keys` in order, and verify over the signing input (§4), with no third entry; `NOT_CHECKED` when the verifier does not implement `method` |
+| `controller_binding_signatures` | both entries of `sigs` are present, name `keys` in order, and verify over the signing input by each key's type (§4, §4.1), with no third entry; `NOT_CHECKED` when the verifier does not implement `method` or a key type in `key_types` |
 | `controller_binding_window` | the binding is in its window at every T: `not_before` ≤ T < `not_after`. The window is the signers' statement; the check is against it, not against when the keys were in fact held |
 | `controller_binding_revocation` | `FAIL` when a received revocation statement applies with `revoked_at` ≤ some T; otherwise `NOT_CHECKED`, because a statement the verifier did not receive cannot be excluded (CB-1) |
 | `controller_binding_credential` | `same_organization_credentialed` only: the credential is present, hashes to `credential.digest`, verifies by `credential.method` under `credential.issuer`, `credential.issuer` is accepted by the relying party's trust policy, and the credential names both bound keys. `FAIL` when any of these fails, as `responder_trust` does for an unaccepted key (IP §7.2). `NOT_PRESENT` when it was not delivered, `NOT_CHECKED` when the verifier does not implement `credential.method`, `INCONCLUSIVE` when the trust policy cannot decide |
@@ -313,6 +366,23 @@ other object has. A key holder SHOULD sign a binding record only when it has rea
 and in particular the other key and the claim. A signature over JCS of an object someone else
 composed is a signature over whatever that object says.
 
+### 9.3 A `bip340` key and its Nostr identity
+
+A `bip340` key is usually a Nostr identity that its holder uses elsewhere. A binding record names
+it in the clear, so anyone shown the record can link the other key to everything that identity has
+signed. A key holder SHOULD show the record only to the parties that need to verify it. Where the
+record is listed publicly, the binding digest alone (§4) can name it. The digest does not cover
+`sigs`, and every other member but `nonce` can be guessed: the keys from a list of candidates, the
+times to the second. So `nonce` alone keeps a listed digest from being matched to a guessed pair
+of keys. A binding record whose `key_types` names a `bip340` key MUST carry a `nonce` of at least
+32 lowercase hexadecimal characters, and its key holders MUST draw it from at least 128 bits of a
+cryptographically secure random source. A verifier checks the form (§3.1) and cannot check the
+randomness. Which of these a using profile chooses is outside this document (CB-9).
+
+The signing event of §4.1 is a valid Nostr event. A key holder SHOULD NOT publish it to a relay,
+which would publish the link. Its kind and its `content` (a version and a digest) keep it from
+being read as any other event: it is a signature over one binding record and nothing else.
+
 ## 10. Vectors
 
 The vectors are in `vectors/controller-binding-v0/`.
@@ -345,6 +415,17 @@ These formats are fixed for the vectors only and are not registered:
 | `unknown-method` | a method this revision does not define, over two valid signatures: signatures `NOT_CHECKED`, the binding does not apply, `NOT_CHECKED` |
 | `delegator-not-bound` | `delegated_by` whose `delegator` is neither bound key: form `FAIL`, `NOT_CHECKED` |
 | `revocation-by-other-key` | a revocation before the halves, signed by a key the binding does not bind: it does not apply, so revocation is `NOT_CHECKED` and the binding applies |
+| `valid-nostr-key` | a `same_controller_asserted` binding of a half's Ed25519 key to a `bip340` key, signed by the Nostr event of §4.1: form, signatures and window `PASS`. It does not bind the pair, whose other half is under another key: `NOT_CHECKED` |
+| `nostr-key-read-as-ed25519` | the same keys and signatures with no `key_types`, so both keys are `ed25519`: the `bip340` key's object `sig` is not an Ed25519 signature, signatures `FAIL` |
+| `nostr-wrong-digest` | the Nostr event's `content` names the digest of another record (another `nonce`): signatures `FAIL` |
+| `nostr-other-kind` | the Nostr event is of kind 1 (a text note) over the right `content`: signatures `FAIL` |
+| `nostr-revoked` | a revocation by the `bip340` key, signed by the Nostr event, before the halves: revocation `FAIL`, the binding does not apply |
+| `nostr-nonce-short` | a binding with a `bip340` key whose `nonce` is `ceremony-1`: form `FAIL` (§3.1, §9.3) |
+| `nostr-sig-malformed` | the `bip340` key's `sig` object carries a third member beside a valid signature: signatures `FAIL` |
+| `nostr-created-at-negative` | the Nostr event is validly signed over a `created_at` of −1, which §4.1 does not allow: signatures `FAIL` |
+| `nostr-created-at-text` | the same over a `created_at` written as text: signatures `FAIL` |
+| `key-types-malformed` | `key_types` names one type for two keys: form `FAIL` |
+| `key-types-unknown` | `key_types` names a token §3.3 does not list: signatures `NOT_CHECKED`, the binding does not apply; a revocation by that key signed with Ed25519 does not apply either, so revocation is `NOT_CHECKED` |
 
 No case reaches `issuer_independence` `PASS`. Nothing in this revision gives it (IP P-60).
 
@@ -359,3 +440,5 @@ No case reaches `issuer_independence` `PASS`. Nothing in this revision gives it 
 | CB-5 | Registration of `controller_binding` as an EB join basis (§8). It needs a posted EB revision that adds it to `join-basis` and to the redundancy cases, with its co-authors' agreement. Until then it is provisional in `REGISTRY.md`. |
 | CB-6 | More than two keys. A record binds exactly two keys. Three keys under one controller take three records, one per pair. |
 | CB-7 | A revocation the producer of a `composed/v1` block did not have makes a declared `agree` a `join_state_mismatch` (§8.3). A later EB revision may report that join as `not_derivable`, or as a finding on the join alone, rather than failing the block. |
+| CB-8 | The Nostr event kind of §4.1, 3374, is chosen from the kinds no NIP lists. It is provisional in `REGISTRY.md` and not registered with the NIPs. |
+| CB-9 | Showing a `bip340` key. Whether a using profile lists a binding record, or only its digest, where anyone can read it is the using profile's choice (§9.3). A binding verifies the same either way. |

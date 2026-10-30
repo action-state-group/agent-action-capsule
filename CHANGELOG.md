@@ -121,6 +121,27 @@ Tag `python/v0.13.0`.
   `vectors/interop-profile-v0/` adds `acceptance-equal-time-H` and
   `acceptance-after-action-by-a-second-I`, one on each side of the boundary.
 
+- Controller Binding v0: a `bip340` key type, so a key can be bound to a Nostr identity
+  (`spec/controller-binding-v0.md` §3.3, §4.1, §9.3; new open points CB-8 and CB-9). Additive: a
+  record without the new optional `key_types` member binds two `ed25519` keys, as before, and no
+  existing vector changes.
+  - **`key_types`** names each bound key's type, because an Ed25519 key and a BIP-340 x-only key are
+    both 64 hex characters. A token a verifier does not know gives `controller_binding_signatures`
+    `NOT_CHECKED`.
+  - **How a `bip340` key signs** a binding record or a revocation statement: a Nostr event (NIP-01)
+    of kind 3374, with no tags and the content `<version>:<digest>`, so a key holder signs with the
+    tools that already hold a Nostr key. `sig` carries the event's `created_at` and its BIP-340
+    signature.
+  - `spec/REGISTRY.md`: new provisional rows for the two key types and the event kind.
+  - **The nonce** of a record with a `bip340` key is at least 32 hex characters, drawn from 128
+    random bits (§3.1, §9.3): the binding digest does not cover `sigs`, so the nonce alone keeps a
+    publicly listed digest from being matched to a guessed pair of keys.
+  - `vectors/controller-binding-v0/`: eleven new cases (`valid-nostr-key`, `nostr-key-read-as-ed25519`,
+    `nostr-wrong-digest`, `nostr-other-kind`, `nostr-revoked`, `nostr-nonce-short`,
+    `nostr-sig-malformed`, `nostr-created-at-negative`, `nostr-created-at-text`,
+    `key-types-malformed`, `key-types-unknown`), 25 in all. The Python test
+    checks them with a BIP-340 check written from the BIP and run against five of its own test
+    vectors.
 - Spec and vectors, Interop Profile re-pinned to Evidence Request -01: `spec/interop-profile-v0.md`
   now pins `draft-mih-agent-evidence-request-01` as posted (SHA-256 of the `.txt`) instead of -00,
   still under `evidence-interop/0` (P-64). A responder under the profile ignores ER -01's
