@@ -25,8 +25,8 @@ const vectorsDir = "../../vectors/evidence-result"
 var crossElementNegatives = map[string]string{
 	"neg-close-agreed-relabelled-contested":   "asserted AGREED but the cited Close's counterparty links read CONTESTED",
 	"neg-close-agreed-self-acknowledged":      "asserted AGREED but the cited Close's counterparty links read UNILATERAL",
-	"neg-close-ref-not-in-evidence":           "close.close_ref (761923a4e7b9...) does not resolve inside the claim's evidence[]",
-	"neg-close-peer-ref-not-in-evidence":      "close.peer_close_ref (a6747053e3fe...) does not resolve inside the claim's evidence[]",
+	"neg-close-ref-not-in-evidence":           "close.close_ref (7b9e508ea9d1...) does not resolve inside the claim's evidence[]",
+	"neg-close-peer-ref-not-in-evidence":      "close.peer_close_ref (3ecbca8f4ab6...) does not resolve inside the claim's evidence[]",
 	"neg-close-agreed-third-book":             "asserted AGREED but the cited Close's counterparty links read UNILATERAL",
 	"neg-close-agreed-bookless-close":         "asserted AGREED but the cited Close's counterparty links read UNILATERAL",
 	"neg-coverage-correlated-counted-as-met":  "req-claim-1: independence.met is true but 1 producer(s) against 2 required",

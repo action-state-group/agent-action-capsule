@@ -29,7 +29,7 @@ mechanical half):
      above can actually fail, not just report green by construction. The
      rule is then restored in memory (the committed schema file is never
      modified) and re-verified red.
-  4. CLAIM TYPES, reconcile normative, close PROPOSED (the 2026-09-25
+  4. CLAIM TYPES, reconcile and close both normative (the 2026-09-25
      ruling -- "close +
      reconcile as claim types in result v0"): five more positives
      (pos-example-org-reconcile-result, pos-example-org-close-agreed-result,
@@ -237,6 +237,15 @@ mechanical half):
          (plan_ref's closed DigestRef).
      Whether the dataset is what the plan selects is
      check_evidence_dataset_examples.py's.
+  17. The fixtures' Closes are close/v1 (spec section 4.1): in every
+     `.records.json` sidecar, each `record_type: close` record's statement
+     MUST validate against schemas/judge/close-v1.json, and each close
+     claim's `period` MUST equal the period of the Close its `close_ref`
+     cites. This checks the fixtures, not a verifier rule: section 4.1's
+     verifier reads only the cited Close's header. Two in-memory mutants
+     prove the check can fail: the AGREED positive's cited Close with
+     `head` removed MUST be reported CLOSE-NOT-V1, and its claim with a
+     different `period` MUST be reported CLOSE-PERIOD.
 
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
@@ -283,6 +292,7 @@ SCHEMAS_DIR = (
 )
 VECTORS_DIR = SCHEMAS_DIR.parent / "vectors" / "evidence-result"
 SCHEMA_PATH = SCHEMAS_DIR / "evidence-result-v0.json"
+CLOSE_V1_SCHEMA_PATH = SCHEMAS_DIR / "judge" / "close-v1.json"
 
 # The link walk keys the sidecar's records by this repository's own
 # canonicalization (lowercase-hex SHA-256 of UTF8(JCS(record))) -- the same
@@ -483,7 +493,7 @@ def close_state_findings(
 
 POSITIVE_RESULT = "pos-example-org-claims-result"
 
-# Claim types (2026-09-25 ruling; reconcile normative, close PROPOSED):
+# Claim types (2026-09-25 ruling; reconcile and close both normative):
 # every positive keeps the
 # untouched requirement claim-1 beside its typed claims -- one typed claim
 # on each close positive, two on the reconcile positive (reconcile-1
@@ -844,6 +854,35 @@ def coverage_findings(doc: EvidenceResultDoc, *, mutant: str | None = None) -> l
         }
         if report.get("summary") != expected:
             out.append(f"summary {report.get('summary')!r} does not recompute; expected {expected!r}")
+    return out
+
+
+# Item 17's mutant period: the whole month, not the cited Close's day.
+MONTH_PERIOD_MUTANT = {"start": "2026-09-01T00:00:00Z", "end": "2026-10-01T00:00:00Z"}
+
+
+def close_v1_findings(name: str, instance: EvidenceResultDoc, records: list[RecordDoc], close_v1) -> list[str]:
+    """Item 17: every `record_type: close` record's statement validates
+    against close-v1.json, and every close claim's `period` is the period of
+    the close/v1 Close its `close_ref` cites."""
+    out: list[str] = []
+    closes = {json_digest(r): r for r in records if r.get("record_type") == "close"}
+    for digest, record in closes.items():
+        errors = list(close_v1.iter_errors(record.get("statement")))
+        if errors:
+            out.append(
+                f"CLOSE-NOT-V1 {name}: Close {digest[:12]}... statement fails "
+                f"close-v1.json ({errors[0].message!r})"
+            )
+    for claim in instance.get("claims", []):
+        if claim.get("type") != "close":
+            continue
+        cited = closes.get(claim["close"]["close_ref"]["digest"])
+        if cited is None or cited["statement"].get("period") != claim["close"]["period"]:
+            out.append(
+                f"CLOSE-PERIOD {name}: claim {claim['id']}'s period is not the period "
+                "of a close/v1 Close its close_ref cites"
+            )
     return out
 
 
@@ -1544,6 +1583,38 @@ def main() -> int:
         findings.append("PATTERN-CONVERSE-VACUOUS Python's re accepts a contract_ref holding U+001C")
     else:
         print("OK  PATTERN       a contract_ref holding U+001C validates (Python's re would refuse it)")
+
+    # --- 17. The fixtures' Closes are close/v1 (spec section 4.1) ------------
+    close_v1 = _validator_for(json.loads(CLOSE_V1_SCHEMA_PATH.read_text(encoding="utf-8")))
+    for sidecar in sorted(VECTORS_DIR.glob("*.records.json")):
+        name = sidecar.name.removesuffix(".records.json")
+        records = _records_for(name) or []
+        found = close_v1_findings(name, _load(name), records, close_v1)
+        findings.extend(found)
+        closes = [r for r in records if r.get("record_type") == "close"]
+        if not found:
+            print(f"OK  CLOSE-V1      {name}.records.json -- {len(closes)} close/v1 Close record(s), "
+                  "and every close claim's period is its cited Close's")
+    # MUTANTS: a body missing `head`, and a claim period the Close does not
+    # carry, must each be reported -- otherwise item 17 can never go red.
+    name = "pos-example-org-close-agreed-result"
+    instance, records = _load(name), _records_for(name) or []
+    cited = instance["claims"][1]["close"]["close_ref"]["digest"]
+    headless = copy.deepcopy(records)
+    for record in headless:
+        if json_digest(record) == cited:
+            del record["statement"]["head"]
+    # The mutated Close no longer hashes to close_ref, so check its body only.
+    if not any(f.startswith("CLOSE-NOT-V1") for f in close_v1_findings(name, {"claims": []}, headless, close_v1)):
+        findings.append(f"MUTANT-DID-NOT-FLIP {name}: a Close body without `head` was not reported CLOSE-NOT-V1")
+    else:
+        print(f"OK  MUTANT        {name} -- a Close body without `head` is reported CLOSE-NOT-V1")
+    shifted = copy.deepcopy(instance)
+    shifted["claims"][1]["close"]["period"] = MONTH_PERIOD_MUTANT
+    if not any(f.startswith("CLOSE-PERIOD") for f in close_v1_findings(name, shifted, records, close_v1)):
+        findings.append(f"MUTANT-DID-NOT-FLIP {name}: a claim period the cited Close does not carry was not reported CLOSE-PERIOD")
+    else:
+        print(f"OK  MUTANT        {name} -- a claim period the cited Close does not carry is reported CLOSE-PERIOD")
 
     if findings:
         print("\nFAIL — findings:")
