@@ -84,8 +84,8 @@ Tag `go/v0.16.0`.
 
 - Go: `controllerbinding` verifies the `bip340` key type of Controller Binding v0. It reads
   `key_types` (absent means both `ed25519`; a token §3.3 does not list gives
-  `controller_binding_signatures` `NOT_CHECKED`), requires the 32-hex-character `nonce` when a
-  `bip340` key is named, and checks a `bip340` key's signature and revocation statement by
+  `controller_binding_signatures` `NOT_CHECKED`), requires a `nonce` of at least 32 lowercase hex
+  characters when a `bip340` key is named, and checks a `bip340` key's signature and revocation statement by
   rebuilding the kind 3374 Nostr event's id and verifying it under BIP-340, with
   `github.com/btcsuite/btcd/btcec/v2/schnorr` (new dependency), checked against the five BIP-340
   test vectors the Python test uses. `cross_language binding` accepts these records unchanged.
