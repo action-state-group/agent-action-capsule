@@ -16,6 +16,32 @@ Not in any tag yet: the changes after `ts/v0.10.0`. The Rust crates keep their o
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- Evidence Request -01 (`spec/draft-mih-agent-evidence-request-01.md`, dated and posted
+  2026-10-29). The source edited in place below is now the -01 file. `spec/draft-mih-agent-evidence-request-00.{md,xml,txt}`
+  are restored to the posted -00 (commit `bab723f`; xml and txt byte-equal to the IETF archive),
+  and `spec/Makefile` `EVREQ` builds -01. New in -01 besides §3.1.1 below: the artifact response
+  envelope carries the request digest, an issuance time and a signature over both, the artifact
+  digest and the resolved anchor (§4.1); the OPTIONAL `categories` request field, a category set
+  identifier and category names, OPTIONAL to implement, an input of the artifact when honored
+  and honored alike for every requester, with `coverage` unchanged (§3.9, §5); carriage rules
+  and A2A and MCP bindings (§10.1-§10.3); RFC 4648 normative. Vectors: new
+  `vectors/evidence-request/categories.json` (14 cases) and `carriage.json` (21 cases), both
+  naming -01; `carries.json` now names -01, its cases unchanged. The -00 corpora are unchanged.
+  `python/tests/test_evidence_request_vectors.py` checks each corpus's cited sections against the
+  revision it names.
+- Evidence Request (source then named `-00.md`, now `spec/draft-mih-agent-evidence-request-01.md`): new §3.1.1 "What
+  a Record Carries" defines which record members carry a `correlation` identifier and what makes
+  a record cite an `exchange` half. The record's format fixes it. For Evidence Layer records that
+  is the header's `subject_ref` and any field a profile adds as an equivalent correlation field
+  (such as a `correlation` map), and a `links` entry of type `cites`. For Capsules it is the
+  correlation fields the Capsule draft names (§3.4 there), and a `references` entry with `citation_purpose` `counterparty_half`
+  (`responds_to` does not cite a half). A requester that does not implement a record's format
+  treats the record as unchecked, never as not carrying. Vectors: new
+  `vectors/evidence-request/carries.json` (5 cases: a positive and a negative per subject form,
+  plus a `counterparty_half` entry naming another half). Changed released files: `vectors/evidence-request/manifest.json`,
+  `vectors/evidence-request/SHA256SUMS` and `vectors/evidence-request/README.md`, plus
+  `vectors/SHA256SUMS` and `vectors/README.md`. No existing case file changed.
+
 - Inference-Service History Profile v0 (`spec/inference-service-history-profile-v0.md`, new open
   points SH-1 to SH-14), a host profile beside the personal-agent one. A History's subject is a node
   key; it counts exchanges served and requested apart, checkpoints, witness receipts and referee
@@ -1215,31 +1241,6 @@ Tags: `go/v0.11.0`, `python/v0.11.0`, `ts/v0.4.0`, `crates/agent-action-capsule-
   unchanged, the Basic level corpus included.
 - Changed released files: `spec/personal-agent-history-profile-v0.md`, `vectors/README.md`,
   `vectors/manifest.json`, `vectors/SHA256SUMS` and `python/scripts/generate_all_vectors.py`.
-- Evidence Request -01 (`spec/draft-mih-agent-evidence-request-01.md`, dated 2026-10-29, not
-  posted). The source edited in place above is now the -01 file. `spec/draft-mih-agent-evidence-request-00.{md,xml,txt}`
-  are restored to the posted -00 (commit `bab723f`; xml and txt byte-equal to the IETF archive),
-  and `spec/Makefile` `EVREQ` builds -01. New in -01 besides §3.1.1 below: the artifact response
-  envelope carries the request digest, an issuance time and a signature over both, the artifact
-  digest and the resolved anchor (§4.1); the OPTIONAL `categories` request field, a category set
-  identifier and category names, OPTIONAL to implement, an input of the artifact when honored
-  and honored alike for every requester, with `coverage` unchanged (§3.9, §5); carriage rules
-  and A2A and MCP bindings (§10.1-§10.3); RFC 4648 normative. Vectors: new
-  `vectors/evidence-request/categories.json` (14 cases) and `carriage.json` (21 cases), both
-  naming -01; `carries.json` now names -01, its cases unchanged. The -00 corpora are unchanged.
-  `python/tests/test_evidence_request_vectors.py` checks each corpus's cited sections against the
-  revision it names.
-- Evidence Request (source then named `-00.md`, now `spec/draft-mih-agent-evidence-request-01.md`): new §3.1.1 "What
-  a Record Carries" defines which record members carry a `correlation` identifier and what makes
-  a record cite an `exchange` half. The record's format fixes it. For Evidence Layer records that
-  is the header's `subject_ref` and any field a profile adds as an equivalent correlation field
-  (such as a `correlation` map), and a `links` entry of type `cites`. For Capsules it is the
-  correlation fields the Capsule draft names (§3.4 there), and a `references` entry with `citation_purpose` `counterparty_half`
-  (`responds_to` does not cite a half). A requester that does not implement a record's format
-  treats the record as unchecked, never as not carrying. Vectors: new
-  `vectors/evidence-request/carries.json` (5 cases: a positive and a negative per subject form,
-  plus a `counterparty_half` entry naming another half). Changed released files: `vectors/evidence-request/manifest.json`,
-  `vectors/evidence-request/SHA256SUMS` and `vectors/evidence-request/README.md`, plus
-  `vectors/SHA256SUMS` and `vectors/README.md`. No existing case file changed.
 
 ## 0.10.0 — 2026-10-17
 
