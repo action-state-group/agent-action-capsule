@@ -199,6 +199,13 @@ func TestForm(t *testing.T) {
 		text = strings.Replace(text, `"nonce":"ceremony-1"`, `"nonce":"ceremony-1","nonce":"ceremony-2"`, 1)
 		assert.Equal(t, er.StatusFail, cb.Verify([]byte(text), during, cb.Options{}).Properties[cb.PropertyForm])
 	})
+	t.Run("not_before at the first instant the form names", func(t *testing.T) {
+		r := unsigned()
+		r["not_before"] = "0001-01-01T00:00:00Z"
+		report := cb.Verify(jcs(t, signed(t, r)), during, cb.Options{})
+		assert.Equal(t, er.StatusPass, report.Properties[cb.PropertyForm])
+		assert.True(t, report.Applies())
+	})
 	t.Run("not JSON", func(t *testing.T) {
 		assert.Equal(t, er.StatusFail, cb.Verify([]byte("{"), during, cb.Options{}).Properties[cb.PropertyForm])
 	})
@@ -224,6 +231,16 @@ func TestWindow(t *testing.T) {
 	assert.Equal(t, er.StatusFail, cb.Verify(r, at("2027-10-01T00:00:00Z"), cb.Options{}).Properties[cb.PropertyWindow])
 	both := append(at("2026-10-15T00:00:00Z"), at("2027-11-01T00:00:00Z")...)
 	assert.Equal(t, er.StatusFail, cb.Verify(r, both, cb.Options{}).Properties[cb.PropertyWindow])
+
+	// With no time asked about, the window is not checked and the binding
+	// does not apply, whatever revocation was received.
+	for _, ts := range [][]time.Time{nil, {}} {
+		report := cb.Verify(r, ts, cb.Options{})
+		assert.Equal(t, er.StatusNotChecked, report.Properties[cb.PropertyWindow])
+		assert.False(t, report.Applies())
+		assert.False(t, report.AppliesTo(keyA.id, keyB.id))
+		assert.Equal(t, er.StatusNotChecked, cb.PairIndependence(keyA.id, keyB.id, report).Status)
+	}
 }
 
 func TestRevocation(t *testing.T) {
@@ -246,6 +263,8 @@ func TestRevocation(t *testing.T) {
 	forged["sig"] = keyC.sign(t, forged)
 	assert.Equal(t, er.StatusNotChecked, status(jcs(t, forged)), "a signature that does not verify")
 	assert.Equal(t, er.StatusNotChecked, status([]byte("not json")), "unreadable")
+	assert.Equal(t, er.StatusFail, status(revocationBy(t, keyA, digest, "0001-01-01T00:00:00Z")),
+		"backdated to the first instant the form names")
 
 	// The digest leaves out sigs, so a re-signed copy is revoked too (CB §4).
 	resigned := signed(t, unsigned())

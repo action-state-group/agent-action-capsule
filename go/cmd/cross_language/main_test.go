@@ -4,6 +4,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -228,4 +229,21 @@ func TestBindingMalformedRecordIsFail(t *testing.T) {
 	code, report, _ := runBinding(t, map[string]any{"binding": "not json", "at": []any{"2026-10-15T00:00:00Z"}})
 	require.Equal(t, 1, code)
 	require.Equal(t, map[string]any{"controller_binding_form": "FAIL"}, report["properties"])
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
+
+func TestBindingUnwrittenReportIsNoVerdict(t *testing.T) {
+	c := bindingCases(t)[0]
+	var half struct {
+		IssuedAt string `json:"issued_at"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(c.Inputs.Halves[0].OctetsText), &half))
+	input, err := json.Marshal(map[string]any{"binding": c.Inputs.Binding.OctetsText, "at": []any{half.IssuedAt}})
+	require.NoError(t, err)
+	var errOut bytes.Buffer
+	require.Equal(t, 2, binding(bytes.NewReader(input), failingWriter{}, &errOut))
+	require.NotEmpty(t, errOut.String())
 }

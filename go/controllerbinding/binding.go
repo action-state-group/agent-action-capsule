@@ -78,10 +78,7 @@ var claims = map[string]struct {
 var common = []string{"binding_version", "claim", "method", "keys", "issued_at", "not_before", "not_after",
 	"revocation", "nonce", "sigs"}
 
-var (
-	hex128   = regexp.MustCompile(`^[0-9a-f]{128}$`)
-	timeText = regexp.MustCompile(`^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$`)
-)
+var hex128 = regexp.MustCompile(`^[0-9a-f]{128}$`)
 
 // Credential is the credential member of a same_organization_credentialed
 // record (CB §3.2).
@@ -127,7 +124,8 @@ type Report struct {
 }
 
 // Verify checks one binding record, given as the octets received, at the
-// times ts: for a pair under IP §6.7.4, each member's issued_at.
+// times ts: for a pair under IP §6.7.4, each member's issued_at. With no
+// time the window is NOT_CHECKED, so the binding does not apply.
 func Verify(record []byte, ts []time.Time, opts Options) Report {
 	report := Report{Properties: map[string]string{}, Proves: []string{}}
 	value, err := evidencerequest.DecodeJSON(record)
@@ -162,7 +160,11 @@ func Verify(record []byte, ts []time.Time, opts Options) Report {
 
 	report.Properties[PropertySignatures] = signatures(r, keys)
 	report.Properties[PropertyWindow] = evidencerequest.StatusPass
-	notBefore, notAfter := instant(report.NotBefore), instant(report.NotAfter)
+	if len(ts) == 0 {
+		report.Properties[PropertyWindow] = evidencerequest.StatusNotChecked
+	}
+	notBefore, _ := instant(report.NotBefore)
+	notAfter, _ := instant(report.NotAfter)
 	for _, t := range ts {
 		if t.Before(notBefore) || !t.Before(notAfter) {
 			report.Properties[PropertyWindow] = evidencerequest.StatusFail
@@ -249,21 +251,12 @@ func hasMembers(m map[string]any, names []string) bool {
 	return true
 }
 
-// instant reads a §5.2 time naming a real calendar instant; the zero time
-// when it is not one.
-func instant(v any) time.Time {
-	s, ok := v.(string)
-	if !ok || !timeText.MatchString(s) {
-		return time.Time{}
-	}
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		return time.Time{}
-	}
-	return t
+// instant reads a §5.2 time naming a real calendar instant. ok is false when
+// it is not one; the zero time is a valid instant, not a sentinel.
+func instant(v any) (time.Time, bool) {
+	s, _ := v.(string)
+	return evidencerequest.ParseProfileTime(s)
 }
-
-func isTime(v any) bool { return !instant(v).IsZero() }
 
 func isKey(v any) bool {
 	s, ok := v.(string)
@@ -299,9 +292,10 @@ func wellFormed(r map[string]any) bool {
 	if !ok || len(keys) != 2 || !isKey(keys[0]) || !isKey(keys[1]) || keys[0].(string) >= keys[1].(string) {
 		return false // ascending, so also distinct: a key bound to itself states nothing
 	}
-	issued, notBefore, notAfter := instant(r["issued_at"]), instant(r["not_before"]), instant(r["not_after"])
-	if issued.IsZero() || notBefore.IsZero() || notAfter.IsZero() ||
-		notBefore.After(issued) || !issued.Before(notAfter) {
+	issued, ok1 := instant(r["issued_at"])
+	notBefore, ok2 := instant(r["not_before"])
+	notAfter, ok3 := instant(r["not_after"])
+	if !ok1 || !ok2 || !ok3 || notBefore.After(issued) || !issued.Before(notAfter) {
 		return false
 	}
 	if r["revocation"] != RevocationMethod {
@@ -372,14 +366,17 @@ func revocation(digest string, keys [2]string, ts []time.Time, statements [][]by
 		s, ok := value.(map[string]any)
 		if err != nil || !ok || !hasMembers(s, []string{"revocation_version", "binding", "key_id", "revoked_at", "sig"}) ||
 			s["revocation_version"] != RevocationVersion || s["binding"] != digest ||
-			(s["key_id"] != keys[0] && s["key_id"] != keys[1]) || !isTime(s["revoked_at"]) {
+			(s["key_id"] != keys[0] && s["key_id"] != keys[1]) {
 			continue
 		}
 		signed, err := evidencerequest.EncodeJCS(without(s, "sig"))
 		if err != nil || !verifyHex(s["key_id"].(string), s["sig"], signed) {
 			continue
 		}
-		revokedAt := instant(s["revoked_at"])
+		revokedAt, ok := instant(s["revoked_at"])
+		if !ok {
+			continue
+		}
 		for _, t := range ts {
 			if !revokedAt.After(t) {
 				return evidencerequest.StatusFail

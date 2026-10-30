@@ -98,7 +98,7 @@ a node's evidence key). Stdout is the report as JSON with `applies`.
 | 0 | The binding applies: form, signatures and window `PASS` at every time, revocation not `FAIL`, and it names `key` when one is given |
 | 1 | It does not apply: a property is `FAIL`, or it does not name `key` |
 | 3 | It does not apply because its method is not implemented (signatures `NOT_CHECKED`) |
-| 2 | Bad input |
+| 2 | Bad input, or a report that could not be written |
 
 Exit 0 is not a trust verdict. It says that whoever held each key signed the
 record. It does not say who controls either key. A binding that applies to a

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"regexp"
 	"time"
 
 	"github.com/action-state-group/agent-action-capsule/go/controllerbinding"
@@ -18,8 +17,6 @@ import (
 // what was received beside it; at is the times T; key is the key the binding
 // must name, such as a node's advertised evidence key.
 var bindingMembers = map[string]bool{"binding": true, "revocations": false, "credential": false, "at": true, "key": false}
-
-var bindingTime = regexp.MustCompile(`^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$`)
 
 // bindingOutput is the binding mode's stdout: the controllerbinding report,
 // the key asked about, and whether the binding applies.
@@ -37,8 +34,8 @@ type bindingOutput struct {
 // 4), and it never says who controls either key. Exit 1 means it does not
 // apply because a property is FAIL or the record does not name key; 3 means
 // it does not apply because its method is not implemented (signatures
-// NOT_CHECKED); 2 is bad input. The credential never decides the code
-// (CB §6.2), and with no credential verifier here it is NOT_CHECKED, or
+// NOT_CHECKED); 2 is bad input, or a report that could not be written. The
+// credential never decides the code (CB §6.2), and with no credential verifier here it is NOT_CHECKED, or
 // NOT_PRESENT when none was given.
 func binding(in io.Reader, out, errOut io.Writer) int {
 	raw, err := io.ReadAll(in)
@@ -58,7 +55,10 @@ func binding(in io.Reader, out, errOut io.Writer) int {
 		fmt.Fprintln(errOut, err)
 		return 2
 	}
-	fmt.Fprintln(out, string(encoded))
+	if _, err := fmt.Fprintln(out, string(encoded)); err != nil {
+		fmt.Fprintln(errOut, err)
+		return 2 // no report reached the caller, so no verdict did either
+	}
 	if result.Applies {
 		return 0
 	}
@@ -126,13 +126,10 @@ func readBindingInput(raw []byte) ([]byte, []time.Time, string, controllerbindin
 	}
 	var ts []time.Time
 	for _, item := range list {
-		text, ok := item.(string)
-		if !ok || !bindingTime.MatchString(text) {
+		text, _ := item.(string)
+		t, ok := evidencerequest.ParseProfileTime(text)
+		if !ok {
 			return nil, nil, "", opts, fmt.Errorf("at holds %v, not a time YYYY-MM-DDTHH:MM:SSZ", item)
-		}
-		t, err := time.Parse(time.RFC3339, text)
-		if err != nil {
-			return nil, nil, "", opts, err
 		}
 		ts = append(ts, t)
 	}
