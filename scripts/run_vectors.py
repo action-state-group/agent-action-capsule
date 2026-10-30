@@ -121,6 +121,25 @@ def run_selector(lang, selectors):
     return False, picked, proc.stdout
 
 
+# A language whose test reads a pinned copy of a published vector file: the run
+# fails when the copy has drifted from the file the index counts.
+PINNED_COPIES = {"go": {"vectors/bundle/vectors.json": "go/bundle/testdata/vectors.json"}}
+
+
+def run_set(lang, path, sel, cache=None):
+    """Run one set's selectors, first checking any pinned copy; returns run_selector's triple."""
+    copy = PINNED_COPIES.get(lang, {}).get(path)
+    if copy:
+        with open(os.path.join(ROOT, path), "rb") as a, open(os.path.join(ROOT, copy), "rb") as b:
+            if a.read() != b.read():
+                return False, ["%s differs from the published %s; the %s test reads the copy" % (copy, path, lang)], ""
+    if cache is None:
+        return run_selector(lang, sel)
+    if sel not in cache:
+        cache[sel] = run_selector(lang, sel)
+    return cache[sel]
+
+
 def run_language(lang, only=None):
     counts, mapping = load_counts(), load_map()
     results = {}  # selector tuple -> (ok, reasons), so shared tests run once
@@ -137,9 +156,7 @@ def run_language(lang, only=None):
             skipped.append(path)
             print("SKIP    %-52s %5d cases  (no %s tests for this set)" % (path, n, lang))
             continue
-        if sel not in results:
-            results[sel] = run_selector(lang, sel)
-        ok, reasons, _ = results[sel]
+        ok, reasons, _ = run_set(lang, path, sel, results)
         word = "PARTIAL" if ok == "partial" else "PASS" if ok else "FAIL"
         tally[word] += 1
         print("%-7s %-52s %5d cases" % (word, path, n))

@@ -54,13 +54,27 @@ def test_break_one_byte_target_is_a_positive_vector_of_the_break_set():
     assert os.path.basename(os.path.dirname(rv.BREAK_FILE)).startswith("pos-")
 
 
+# Tests that build their vector path from parts the guard below cannot match.
+SPLIT_PATH = {"test_bundle_vectors.py", "bundle.test.ts", "bundle-report-vector.test.ts"}
+
+
+def names_set(path, text):
+    """True when text mentions the set's whole path, joined by / or by quoted path parts."""
+    parts = path.rstrip("/").split("/")
+    return re.search(r"""["'/,\s)(]{0,8}""".join(re.escape(p) for p in parts), text) is not None
+
+
+def test_guard_rejects_the_two_removed_mappings():
+    judge_test = os.path.join(ROOT, "python", "tests", "test_personal_history_outcome_v0_vectors.py")
+    profiles_test = os.path.join(ROOT, "rust", "evidence-request", "tests", "acceptance_vectors.rs")
+    assert not names_set("vectors/judge/", open(judge_test, encoding="utf-8").read())
+    assert not names_set("vectors/profiles/", open(profiles_test, encoding="utf-8").read())
+
+
 def test_each_mapped_test_reads_its_set():
     # A mapping to a test that never reads the set would print PASS for a set
-    # that did not run. Tests that build the path from parts are listed.
-    split_path = {"test_bundle_vectors.py", "bundle.test.ts", "bundle-report-vector.test.ts"}
+    # that did not run.
     for path, langs in rv.load_map().items():
-        name = os.path.basename(path.rstrip("/"))
-        name = name[: -len(".json")] if name.endswith(".json") else name
         for lang, selectors in langs.items():
             files = []
             for s in selectors:
@@ -74,17 +88,23 @@ def test_each_mapped_test_reads_its_set():
                 else:
                     pkg = os.path.join(ROOT, "go", s)
                     files += [os.path.join(pkg, f) for f in os.listdir(pkg) if f.endswith("_test.go")]
-            if all(os.path.basename(f) in split_path for f in files):
+            if all(os.path.basename(f) in SPLIT_PATH for f in files):
                 continue
             text = "".join(open(f, encoding="utf-8").read() for f in files)
-            assert name in text, (lang, path, selectors)
+            assert names_set(path, text), (lang, path, selectors)
 
 
-def test_go_bundle_testdata_copy_is_the_published_file():
-    # go/bundle's test reads this pinned copy, not vectors/bundle/vectors.json.
-    copy = os.path.join(ROOT, "go", "bundle", "testdata", "vectors.json")
-    published = os.path.join(ROOT, "vectors", "bundle", "vectors.json")
-    assert open(copy, "rb").read() == open(published, "rb").read()
+def test_pinned_copies_are_checked_by_the_go_run(monkeypatch):
+    # go/bundle's test reads a pinned copy, not vectors/bundle/vectors.json, so
+    # the runner itself must compare the two before it reports the set.
+    for published, copy in rv.PINNED_COPIES["go"].items():
+        assert open(os.path.join(ROOT, published), "rb").read() == open(os.path.join(ROOT, copy), "rb").read()
+    published, copy = next(iter(rv.PINNED_COPIES["go"].items()))
+    monkeypatch.setattr(rv, "run_selector", lambda lang, sel: (True, [], ""))
+    assert rv.run_set("go", published, ("./bundle",))[0] is True
+    monkeypatch.setitem(rv.PINNED_COPIES["go"], published, "scripts/vector_sets.json")
+    ok, reasons, _ = rv.run_set("go", published, ("./bundle",))
+    assert ok is False and "differs" in reasons[0]
 
 
 def _fake(monkeypatch, results):
