@@ -388,6 +388,17 @@ def mode_cases() -> list[dict]:
                   interval_coverage=claim("withheld", "selection_not_checkable", "checkpoint_unverified"),
                   per_record_membership=claim("withheld", "checkpoint_unverified")),
          "checkpoint_authenticated": False, "signer_matches_checkpoint": None}))
+    leaves_other_log = copy.deepcopy(other_log)
+    leaves_other_log["completeness_certificate"]["non_record_leaves"] = []
+    cases.append(case(
+        "neg-producer-selected-certificate-log-id-non-record-leaves", "The certificate-log-id case whose certificate "
+        "also carries non_record_leaves: invalid on its face, so per-record membership fails even though the "
+        "contradicted checkpoint anchors nothing.", leaves_other_log,
+        {**expect(leaves_other_log, "INVALID",
+                  checkpoint=claim("fail", "checkpoint_field_mismatch:log_id"),
+                  interval_coverage=claim("withheld", "selection_not_checkable", "checkpoint_unverified"),
+                  per_record_membership=claim("fail", "completeness_certificate_invalid")),
+         "checkpoint_authenticated": False, "signer_matches_checkpoint": None}))
     return cases
 
 

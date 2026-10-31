@@ -91,7 +91,7 @@ fn every_certificate_case_matches() {
             }
         }
     }
-    assert_eq!(count, 34);
+    assert_eq!(count, 35);
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 

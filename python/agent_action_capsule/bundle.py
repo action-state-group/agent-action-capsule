@@ -487,9 +487,14 @@ def _apply_strict(result: BundleVerificationResult, bundle: Mapping[str, Any], r
             result.per_record_membership = _selected_membership(bundle, signed["root"], signed["mmr_size"], signed["log_id"])
         elif result.checkpoint.status == "fail":
             # A signed checkpoint that does not verify, or that a stated copy
-            # contradicts, anchors nothing, as in Go's selectedMembership
-            # (vectors/bundle/strict neg-producer-selected-*-log-id*).
-            result.per_record_membership = ClaimResult("withheld", ("checkpoint_unverified",))
+            # contradicts, anchors nothing (vectors/bundle/strict
+            # neg-producer-selected-*-log-id*); a certificate carrying
+            # non_record_leaves is invalid on its face all the same.
+            result.per_record_membership = (
+                ClaimResult("fail", ("completeness_certificate_invalid",))
+                if _range_member_without_range(bundle)
+                else ClaimResult("withheld", ("checkpoint_unverified",))
+            )
         # Without a signed checkpoint the plain reading stands: each proof
         # against the stated checkpoint, withheld below unless it failed, as
         # for a range Bundle.

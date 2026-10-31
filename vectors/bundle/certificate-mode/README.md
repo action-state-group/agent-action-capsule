@@ -45,6 +45,7 @@ The log is the 64-leaf padded log of `../non-record-leaves/`.
 | `incomplete-certificate-mode-null` | the valid range [33, 64] under `selection` `null` | INCOMPLETE |
 | `neg-producer-selected-unsigned-checkpoint-tampered` | the tampered Bundle without `checkpoint.cose` | INVALID |
 | `neg-producer-selected-certificate-log-id` | the certificate names another log | INVALID |
+| `neg-producer-selected-certificate-log-id-non-record-leaves` | the same, with `non_record_leaves` carried: per-record membership fails | INVALID |
 
 ## Regenerating
 

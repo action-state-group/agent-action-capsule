@@ -83,7 +83,9 @@ has not yet.
   plain claims with per-record membership failed, so the page still refuses it.
 - Python, strict: a producer-selected Bundle whose signed checkpoint is contradicted by a stated
   copy (#380) keeps per-record membership withheld (`checkpoint_unverified`), as Go, Rust and
-  TypeScript report; the -02 reading against the stated checkpoint applies only when no signed
+  TypeScript report, unless its certificate carries `non_record_leaves`, which fails it
+  (`completeness_certificate_invalid`, vector `neg-producer-selected-certificate-log-id-non-record-leaves`);
+  the -02 reading against the stated checkpoint applies only when no signed
   checkpoint is carried.
 
 ## go 0.18.0 — 2026-10-31

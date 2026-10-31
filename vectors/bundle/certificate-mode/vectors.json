@@ -4254,6 +4254,531 @@
         "checkpoint_authenticated": false,
         "signer_matches_checkpoint": null
       }
+    },
+    {
+      "id": "neg-producer-selected-certificate-log-id-non-record-leaves",
+      "description": "The certificate-log-id case whose certificate also carries non_record_leaves: invalid on its face, so per-record membership fails even though the contradicted checkpoint anchors nothing.",
+      "options": {
+        "require_signature": false,
+        "witness_directory": false
+      },
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "ef1eb459d91e76616dd8f0b173a2c4fde52cb97a4cacb7ce1243362ea70c73fd",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "padded-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "95347002fd13f1b348bfc107a7c48e96a9a5e67ba21f9d1c1bb6a17583227ec8",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a0582095347002fd13f1b348bfc107a7c48e96a9a5e67ba21f9d1c1bb6a17583227ec858408f20c5fe07f2cd27976fee23da2ce7152a4e5067414f9d43f31870f0ee49d535bdce23ca87f526871563763bce929d4f46342fab77be5a5c86b604579c369e05",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "padded-2",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "628d325d13300f8669830268174b985b5b60bbb7790b34b8f015f8e2067814a7",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820628d325d13300f8669830268174b985b5b60bbb7790b34b8f015f8e2067814a75840e44ff8fb55c5e2e310b1d1dc214543fb89a0694d06125e470092919a94b3c813ae463944e279d62887ac4e828a5bcc44959f8152bdd24f109963692135ac060d",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "padded-3",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "7f056ea2035abb434048730bec09ba039ca0da9621348aaca08895cc9637beb2",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a058207f056ea2035abb434048730bec09ba039ca0da9621348aaca08895cc9637beb258405ff0138781b93a2f8d7bbbf2c82b773c432aded36301aa73177c2a2cb753a906a430d250561f325857237b64f9fcef57056e56c02b337d350aaabe4179ad3f07",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "padded-4",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "436f728efdeebeb08433e48dd2d0a6efe85715f69817a44414b0a1361c1a880b",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820436f728efdeebeb08433e48dd2d0a6efe85715f69817a44414b0a1361c1a880b58407ba6f2e2e0bac9f48e832e7fa388d50a1a25d905c2263ced37a3b8211028663db20ee0565aaf2a828fc0b939f3da86eac688056b9f6e06609fcd6d2ad47c0c0c",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "padded-5",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "af54375175419a9e3f954d64780b4b64721a5ad14af689fd5824cd764bac8d31",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820af54375175419a9e3f954d64780b4b64721a5ad14af689fd5824cd764bac8d3158407efeaf42cd15a9742b3b4912cae3e60025ad90d697945bbe5dadd16c325c34226dd35f2e90b797213fbe2f86a1429254aa5132426e683873114cf40434467a00",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "padded-33",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "151159fc33e6f6db3331c6eea9dafb61d4b98aca787da5d2ab0b7a85ad5aa50f",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820151159fc33e6f6db3331c6eea9dafb61d4b98aca787da5d2ab0b7a85ad5aa50f5840d24ff5c5b86c0d7488bc2200bc68a282cd5b0cffa2228cfed011ad34587b473524d30d4db7ef055ee0123edbd53c0889998c1a09bb891dbadfcaca4a85c83300",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "padded-34",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "d51ce3603c39395ad1c2ec2e29c62371485e0cd11734d59992f507924849ed15",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820d51ce3603c39395ad1c2ec2e29c62371485e0cd11734d59992f507924849ed155840a65b20143192b5618d4e93c76930598a414dcda1c61337038c46d99964e3a5b09477d996108d20ff63ed5717418f785b5eb466418fc0f22edcd7669af5414505",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          },
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "padded-35",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-10-15T00:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "capsule_id": "ef1eb459d91e76616dd8f0b173a2c4fde52cb97a4cacb7ce1243362ea70c73fd",
+            "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820ef1eb459d91e76616dd8f0b173a2c4fde52cb97a4cacb7ce1243362ea70c73fd5840dea844a3dfa16e84312f386fabf0e5b0b1a13a25950773282ee97ed102c302e21df87dcf99c0f6fb04f2d20570ad5a9d31ec4516eb0fab2a616316f3752e6109",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "none",
+          "suppressed_fields": [],
+          "missing": [],
+          "selection": "producer-selected"
+        },
+        "completeness_certificate": {
+          "log_id": "log:other",
+          "range_root": "892fead5661e717110c1a65c46678ca513e642bb068f7aa40c01f9f6bddcb578",
+          "memberships": {
+            "95347002fd13f1b348bfc107a7c48e96a9a5e67ba21f9d1c1bb6a17583227ec8": {
+              "log_coordinates": {
+                "log_id": "log:bundle-02-vectors",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 127,
+                "leaf_index": 0,
+                "witness": [
+                  "f1560ef8679d1929011481b148f1660c64586e2778443f85fea028cda8db6e6a",
+                  "15946230bf9bac9883c783385922dfddd4b2bcaee5b4e4ffa49c45f6000ad6f2",
+                  "d72906c18487177639cad17d195e856e8cc312af88aaccc0209d41d0c4a22d56",
+                  "1d910d03822cc824de778cb56ccd1ffdd0bbb0ac4fab8396b08e5cd12009bb80",
+                  "42379dc2edb2208f36de7247b0f15dfed630ff6d22161cda3aaa8baaef4469c7",
+                  "f3701d7abc004c48700adbcf9c026af27fc837d1ad4526ba6a100d160fb0b829"
+                ],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            },
+            "628d325d13300f8669830268174b985b5b60bbb7790b34b8f015f8e2067814a7": {
+              "log_coordinates": {
+                "log_id": "log:bundle-02-vectors",
+                "seq": 2,
+                "leaf_index": 1
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 127,
+                "leaf_index": 1,
+                "witness": [
+                  "a2f2b83bae577438be9325244f521a992efed309261d8c1f7304aa069380f62b",
+                  "15946230bf9bac9883c783385922dfddd4b2bcaee5b4e4ffa49c45f6000ad6f2",
+                  "d72906c18487177639cad17d195e856e8cc312af88aaccc0209d41d0c4a22d56",
+                  "1d910d03822cc824de778cb56ccd1ffdd0bbb0ac4fab8396b08e5cd12009bb80",
+                  "42379dc2edb2208f36de7247b0f15dfed630ff6d22161cda3aaa8baaef4469c7",
+                  "f3701d7abc004c48700adbcf9c026af27fc837d1ad4526ba6a100d160fb0b829"
+                ],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            },
+            "7f056ea2035abb434048730bec09ba039ca0da9621348aaca08895cc9637beb2": {
+              "log_coordinates": {
+                "log_id": "log:bundle-02-vectors",
+                "seq": 3,
+                "leaf_index": 2
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 127,
+                "leaf_index": 2,
+                "witness": [
+                  "6912b58a1a60ac65de476980168e630183426f3dc48812097f1b2565b3341d4d",
+                  "7f8583631f03bf8c67bd52c257fc9a8e1851ee07a79e7f004b30ea6291925393",
+                  "d72906c18487177639cad17d195e856e8cc312af88aaccc0209d41d0c4a22d56",
+                  "1d910d03822cc824de778cb56ccd1ffdd0bbb0ac4fab8396b08e5cd12009bb80",
+                  "42379dc2edb2208f36de7247b0f15dfed630ff6d22161cda3aaa8baaef4469c7",
+                  "f3701d7abc004c48700adbcf9c026af27fc837d1ad4526ba6a100d160fb0b829"
+                ],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            },
+            "436f728efdeebeb08433e48dd2d0a6efe85715f69817a44414b0a1361c1a880b": {
+              "log_coordinates": {
+                "log_id": "log:bundle-02-vectors",
+                "seq": 4,
+                "leaf_index": 3
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 127,
+                "leaf_index": 3,
+                "witness": [
+                  "1c5b80426416adac6bd6eddb3520be26a0c02eb41fc670ec466c002f8e6ab093",
+                  "7f8583631f03bf8c67bd52c257fc9a8e1851ee07a79e7f004b30ea6291925393",
+                  "d72906c18487177639cad17d195e856e8cc312af88aaccc0209d41d0c4a22d56",
+                  "1d910d03822cc824de778cb56ccd1ffdd0bbb0ac4fab8396b08e5cd12009bb80",
+                  "42379dc2edb2208f36de7247b0f15dfed630ff6d22161cda3aaa8baaef4469c7",
+                  "f3701d7abc004c48700adbcf9c026af27fc837d1ad4526ba6a100d160fb0b829"
+                ],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            },
+            "af54375175419a9e3f954d64780b4b64721a5ad14af689fd5824cd764bac8d31": {
+              "log_coordinates": {
+                "log_id": "log:bundle-02-vectors",
+                "seq": 5,
+                "leaf_index": 4
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 127,
+                "leaf_index": 4,
+                "witness": [
+                  "f96bbe441b03d07c5e067f4d76a2d24fedf433d4a74c944bb93ebefdb8a14a14",
+                  "ed2b95fd3a8a3382229f3cc380116ef797255a53d274485aaa59b90bbfa021c2",
+                  "c4f36feaefb0e8324b1bfd16b698fcf71a885a5fdc2b892f995a85506f87c60f",
+                  "1d910d03822cc824de778cb56ccd1ffdd0bbb0ac4fab8396b08e5cd12009bb80",
+                  "42379dc2edb2208f36de7247b0f15dfed630ff6d22161cda3aaa8baaef4469c7",
+                  "f3701d7abc004c48700adbcf9c026af27fc837d1ad4526ba6a100d160fb0b829"
+                ],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            },
+            "151159fc33e6f6db3331c6eea9dafb61d4b98aca787da5d2ab0b7a85ad5aa50f": {
+              "log_coordinates": {
+                "log_id": "log:bundle-02-vectors",
+                "seq": 33,
+                "leaf_index": 32
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 127,
+                "leaf_index": 32,
+                "witness": [
+                  "4f0d8fce044676b2eb4fc2e398c8fa4b7f055cbd44e954a8589bd1a202188c46",
+                  "49423edc2a0a194bdfd2e6dff6a8a0d838a069944edb4e968c1e204dd462806e",
+                  "f4aa2662ae2b316c40ec51cbed6200a0ffc250da37059a550b115dfe4253e1a6",
+                  "82431262903d8268509bffd3ad3634c465ff9aee1a11554ec0afc30ed6c56ed8",
+                  "50eebacea83bfe9a44784f1fe8d45a12c04f0872ddc7c89b474c4480c0983fe6",
+                  "b8c9d69a504fecb6a204f9d2cf1358ea6746e6aabbb567f3d09c4299450c5bb3"
+                ],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            },
+            "d51ce3603c39395ad1c2ec2e29c62371485e0cd11734d59992f507924849ed15": {
+              "log_coordinates": {
+                "log_id": "log:bundle-02-vectors",
+                "seq": 34,
+                "leaf_index": 33
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 127,
+                "leaf_index": 33,
+                "witness": [
+                  "0d0d24e4394c4931b194821c6357a39c8a88e278549645aa05e4680905ddce83",
+                  "49423edc2a0a194bdfd2e6dff6a8a0d838a069944edb4e968c1e204dd462806e",
+                  "f4aa2662ae2b316c40ec51cbed6200a0ffc250da37059a550b115dfe4253e1a6",
+                  "82431262903d8268509bffd3ad3634c465ff9aee1a11554ec0afc30ed6c56ed8",
+                  "50eebacea83bfe9a44784f1fe8d45a12c04f0872ddc7c89b474c4480c0983fe6",
+                  "b8c9d69a504fecb6a204f9d2cf1358ea6746e6aabbb567f3d09c4299450c5bb3"
+                ],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            },
+            "ef1eb459d91e76616dd8f0b173a2c4fde52cb97a4cacb7ce1243362ea70c73fd": {
+              "log_coordinates": {
+                "log_id": "log:bundle-02-vectors",
+                "seq": 35,
+                "leaf_index": 34
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 127,
+                "leaf_index": 34,
+                "witness": [
+                  "5560133a3a0b595db49a6a2b404b18f44ef53f2ff78b64f3ebaad3fbe53ebd55",
+                  "0903dd7cb6f20e5d5373fcdfe446717ea84f66de7ce48c4334ce4e8670169281",
+                  "f4aa2662ae2b316c40ec51cbed6200a0ffc250da37059a550b115dfe4253e1a6",
+                  "82431262903d8268509bffd3ad3634c465ff9aee1a11554ec0afc30ed6c56ed8",
+                  "50eebacea83bfe9a44784f1fe8d45a12c04f0872ddc7c89b474c4480c0983fe6",
+                  "b8c9d69a504fecb6a204f9d2cf1358ea6746e6aabbb567f3d09c4299450c5bb3"
+                ],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          },
+          "non_record_leaves": []
+        },
+        "checkpoint": {
+          "log_id": "log:bundle-02-vectors",
+          "mmr_size": 127,
+          "root": "892fead5661e717110c1a65c46678ca513e642bb068f7aa40c01f9f6bddcb578",
+          "prev_size": 0,
+          "prev_root": "",
+          "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
+          "timestamp": "2026-10-15T00:00:00Z",
+          "cose": "0oRYfaQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBdWxvZzpidW5kbGUtMDItdmVjdG9ycwJ4GWxvZzpidW5kbGUtMDItdmVjdG9ycyMxMjcEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiLpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplGH9paXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggiS_q1WYecXEQwaZcRmeMpRPmQrsGj3qkDAH59r3ctXhvcHJldl9jb21taXRtZW50QFhAnB79fl3Hl0BdMOQ4PvjHNdqGieo1zbM0u7AMBaEB1beMXt7LiSLpYnMQlFHSzBn7dWNErdU_B06jWekP6OrFDQ"
+        }
+      },
+      "expect": {
+        "verdict": "INVALID",
+        "claims": [
+          {
+            "name": "records",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "signatures",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "graph_closure",
+            "status": "pass",
+            "findings": []
+          },
+          {
+            "name": "checkpoint",
+            "status": "fail",
+            "findings": [
+              "checkpoint_field_mismatch:log_id"
+            ]
+          },
+          {
+            "name": "interval_coverage",
+            "status": "withheld",
+            "findings": [
+              "selection_not_checkable",
+              "checkpoint_unverified"
+            ]
+          },
+          {
+            "name": "per_record_membership",
+            "status": "fail",
+            "findings": [
+              "completeness_certificate_invalid"
+            ]
+          }
+        ],
+        "witnesses": {
+          "status": "withheld",
+          "findings": [
+            "witness_receipt_absent"
+          ],
+          "receipts": []
+        },
+        "records": [
+          {
+            "capsule_id": "95347002fd13f1b348bfc107a7c48e96a9a5e67ba21f9d1c1bb6a17583227ec8",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 1
+          },
+          {
+            "capsule_id": "628d325d13300f8669830268174b985b5b60bbb7790b34b8f015f8e2067814a7",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 2
+          },
+          {
+            "capsule_id": "7f056ea2035abb434048730bec09ba039ca0da9621348aaca08895cc9637beb2",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 3
+          },
+          {
+            "capsule_id": "436f728efdeebeb08433e48dd2d0a6efe85715f69817a44414b0a1361c1a880b",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 4
+          },
+          {
+            "capsule_id": "af54375175419a9e3f954d64780b4b64721a5ad14af689fd5824cd764bac8d31",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 5
+          },
+          {
+            "capsule_id": "151159fc33e6f6db3331c6eea9dafb61d4b98aca787da5d2ab0b7a85ad5aa50f",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 33
+          },
+          {
+            "capsule_id": "d51ce3603c39395ad1c2ec2e29c62371485e0cd11734d59992f507924849ed15",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 34
+          },
+          {
+            "capsule_id": "ef1eb459d91e76616dd8f0b173a2c4fde52cb97a4cacb7ce1243362ea70c73fd",
+            "identity_ok": true,
+            "signature": "authored",
+            "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a",
+            "seq": 35
+          }
+        ],
+        "checkpoint_authenticated": false,
+        "signer_matches_checkpoint": null
+      }
     }
   ]
 }
