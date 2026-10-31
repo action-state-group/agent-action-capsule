@@ -29,6 +29,59 @@ has not yet.
   Rust crate had the same gap and is fixed too. New strict vector `neg-witness-cll-undefined-payload`
   (`vectors/bundle/strict/`, now 74 cases).
 
+- Evidence Bundle -02 (`spec/draft-mih-zhang-agent-disclosure-bundle-02.md`, Python reference).
+  Certificate modes: `verify_bundle` reads
+  `completeness.selection` as the certificate's mode; a producer-selected Bundle is no longer a
+  failure in plain mode, and any other value withholds interval coverage and per-record
+  membership with `certificate_mode_unsupported`, never a failure. Non-record leaves: a range
+  covers padding leaves carried in full in `completeness_certificate.non_record_leaves`; each
+  position of the interval is a record's membership, a recomputed padding leaf, or missing; a leaf
+  of an undefined `record_type` makes the Bundle INCOMPLETE. `build_evidence_bundle` carries them
+  only with `carry_non_record_leaves=True` and a source with the optional `leaf_content`
+  capability; a source without it builds exactly as before. Category coverage: the
+  `category_coverage` member is reported as five properties
+  (`agent_action_capsule.category_coverage`, `BundleVerificationResult.category_coverage`), with
+  `verify_bundle` inputs `category_sets`, `category_request` and `record_categories`; in strict
+  mode a `FAIL` of its form, signature or consistency is INVALID. Vectors:
+  `vectors/bundle/non-record-leaves/`, `vectors/bundle/certificate-mode/` and
+  `vectors/bundle/category-coverage/` (`python/scripts/generate_bundle_02_vectors.py`).
+- Evidence Bundle -02 in Go, TypeScript and Rust, as the Python reference reads it: every case of
+  the three -02 vector directories passes in all four languages. Go: `CertificateModeUnsupported`,
+  `CheckCategoryCoverage`, `VerificationResult.CategoryCoverage`, the `Options` inputs
+  `CategorySets`, `CategoryRequest` and `RecordCategories`, and the producer's optional
+  `LeafContentSource` with `BuildOptions.CarryNonRecordLeaves`. TypeScript: `CERTIFICATE_MODE_UNSUPPORTED`,
+  `checkCategoryCoverage` (`category-coverage.ts`), `categoryCoverage` on every result, the
+  `verifyBundle` options `categorySets`, `categoryRequest` and `recordCategories`, and the optional
+  `ProofSource.leafContent` with `carryNonRecordLeaves`. Rust: see its changelog. The interlock
+  (`scripts/cross-language-interlock.sh`) adds `padded-whole-log` and `padded-tampered`, built by
+  every language from `vectors/cross-language/bundle-producer-padded-log.json` and read by every
+  strict verifier.
+- Evidence Bundle -02 `category_coverage_request`: an Evidence Request holding an unpaired surrogate
+  escape such as `\ud800` is not read (`NOT_CHECKED`) in Python, Go, TypeScript and Rust (I-JSON,
+  RFC 7493 Section 2.1); Python no longer keeps the surrogate and Go no longer reads it as U+FFFD.
+  Vector `request-lone-surrogate`. How large an integer and how deep a nesting a request may hold
+  is implementation-defined and not pinned.
+
+- Evidence Bundle -02, `controller_binding` join basis: the draft defines the controller binding
+  record (members, claim types, signing input and binding digest, `dual_signature/0` and
+  `dual_signature_credential/0`, revocation statements, when a binding applies) and the join's
+  derivation in its `composed/v1` section; a `controller_binding` agreement is always redundant,
+  never corroborating. Go: `bundle.Options` gains `ControllerBindings` and `BindingRevocations`,
+  the binding records and revocation statements delivered beside the Bundle; `VerifyComposed`
+  derives the join from them (`not_derivable` when no record with the join's digest was
+  delivered, or none under a method it implements) and reports a derived `agree` as `redundant`
+  with reason `controller_binding`. A block carrying the basis is no longer malformed in Go;
+  TypeScript and Rust still read it as malformed, as -01 does. `witness.VerifyEd25519Strict`
+  exports the strict Ed25519 check. Vectors: `vectors/bundle/composed-controller-binding/` (eight
+  cases, `python/scripts/generate_bundle_composed_cb_vectors.py`), rederived by
+  `python/tests/test_bundle_composed_cb_vectors.py` and run by Go. Spec:
+  `spec/controller-binding-v0.md` §8 and `spec/REGISTRY.md` "composed/v1 join basis values" now
+  record the basis as registered by -02; a producer emits it once -02 is posted.
+- Python, strict: a producer-selected Bundle whose signed checkpoint is contradicted by a stated
+  copy (#380) keeps per-record membership withheld (`checkpoint_unverified`), as Go, Rust and
+  TypeScript report; the -02 reading against the stated checkpoint applies only when no signed
+  checkpoint is carried.
+
 ## go 0.18.0 — 2026-10-31
 
 Tag `go/v0.18.0`.
@@ -954,59 +1007,6 @@ Tag `python/v0.13.0`.
   `agent_action_capsule.standard_history` (`derive_card`, `check_card`) is the reference. Go: the
   new package `standardhistory` (`Derive`, `Check`) is at parity with it. Both run
   `vectors/standard-history-v0/` (9 positive, 19 negative). (#437, #440)
-
-- Evidence Bundle -02 (`spec/draft-mih-zhang-agent-disclosure-bundle-02.md`, Python reference;
-  Go, TypeScript and Rust follow). Certificate modes: `verify_bundle` reads
-  `completeness.selection` as the certificate's mode; a producer-selected Bundle is no longer a
-  failure in plain mode, and any other value withholds interval coverage and per-record
-  membership with `certificate_mode_unsupported`, never a failure. Non-record leaves: a range
-  covers padding leaves carried in full in `completeness_certificate.non_record_leaves`; each
-  position of the interval is a record's membership, a recomputed padding leaf, or missing; a leaf
-  of an undefined `record_type` makes the Bundle INCOMPLETE. `build_evidence_bundle` carries them
-  only with `carry_non_record_leaves=True` and a source with the optional `leaf_content`
-  capability; a source without it builds exactly as before. Category coverage: the
-  `category_coverage` member is reported as five properties
-  (`agent_action_capsule.category_coverage`, `BundleVerificationResult.category_coverage`), with
-  `verify_bundle` inputs `category_sets`, `category_request` and `record_categories`; in strict
-  mode a `FAIL` of its form, signature or consistency is INVALID. Vectors:
-  `vectors/bundle/non-record-leaves/`, `vectors/bundle/certificate-mode/` and
-  `vectors/bundle/category-coverage/` (`python/scripts/generate_bundle_02_vectors.py`).
-- Evidence Bundle -02 in Go, TypeScript and Rust, as the Python reference reads it: every case of
-  the three -02 vector directories passes in all four languages. Go: `CertificateModeUnsupported`,
-  `CheckCategoryCoverage`, `VerificationResult.CategoryCoverage`, the `Options` inputs
-  `CategorySets`, `CategoryRequest` and `RecordCategories`, and the producer's optional
-  `LeafContentSource` with `BuildOptions.CarryNonRecordLeaves`. TypeScript: `CERTIFICATE_MODE_UNSUPPORTED`,
-  `checkCategoryCoverage` (`category-coverage.ts`), `categoryCoverage` on every result, the
-  `verifyBundle` options `categorySets`, `categoryRequest` and `recordCategories`, and the optional
-  `ProofSource.leafContent` with `carryNonRecordLeaves`. Rust: see its changelog. The interlock
-  (`scripts/cross-language-interlock.sh`) adds `padded-whole-log` and `padded-tampered`, built by
-  every language from `vectors/cross-language/bundle-producer-padded-log.json` and read by every
-  strict verifier.
-- Evidence Bundle -02 `category_coverage_request`: an Evidence Request holding an unpaired surrogate
-  escape such as `\ud800` is not read (`NOT_CHECKED`) in Python, Go, TypeScript and Rust (I-JSON,
-  RFC 7493 Section 2.1); Python no longer keeps the surrogate and Go no longer reads it as U+FFFD.
-  Vector `request-lone-surrogate`. How large an integer and how deep a nesting a request may hold
-  is implementation-defined and not pinned.
-
-- Evidence Bundle -02, `controller_binding` join basis: the draft defines the controller binding
-  record (members, claim types, signing input and binding digest, `dual_signature/0` and
-  `dual_signature_credential/0`, revocation statements, when a binding applies) and the join's
-  derivation in its `composed/v1` section; a `controller_binding` agreement is always redundant,
-  never corroborating. Go: `bundle.Options` gains `ControllerBindings` and `BindingRevocations`,
-  the binding records and revocation statements delivered beside the Bundle; `VerifyComposed`
-  derives the join from them (`not_derivable` when no record with the join's digest was
-  delivered, or none under a method it implements) and reports a derived `agree` as `redundant`
-  with reason `controller_binding`. A block carrying the basis is no longer malformed in Go;
-  TypeScript and Rust still read it as malformed, as -01 does. `witness.VerifyEd25519Strict`
-  exports the strict Ed25519 check. Vectors: `vectors/bundle/composed-controller-binding/` (eight
-  cases, `python/scripts/generate_bundle_composed_cb_vectors.py`), rederived by
-  `python/tests/test_bundle_composed_cb_vectors.py` and run by Go. Spec:
-  `spec/controller-binding-v0.md` §8 and `spec/REGISTRY.md` "composed/v1 join basis values" now
-  record the basis as registered by -02; a producer emits it once -02 is posted.
-- Python, strict: a producer-selected Bundle whose signed checkpoint is contradicted by a stated
-  copy (#380) keeps per-record membership withheld (`checkpoint_unverified`), as Go, Rust and
-  TypeScript report; the -02 reading against the stated checkpoint applies only when no signed
-  checkpoint is carried.
 
 - Security, strict witness receipts: an EdDSA witness receipt now verifies only under strict
   Ed25519. The key A and the signature's R must be canonical and not of small order, and S must
