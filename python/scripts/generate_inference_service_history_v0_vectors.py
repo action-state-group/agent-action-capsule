@@ -14,7 +14,8 @@ are built here from one node's stream, minted by this script:
   the node key, under two client nonces and uncited, each labelled as its evidence allows, and the
   negatives that label one stronger (§7);
 - refusals: an interval that is not a run of whole closed periods, asked by two requesters, and a
-  Detailed History asked by another requester, each ``policy_declined``.
+  Detailed History asked by another requester, each ``policy_declined``; and, under
+  ``evidence-interop/1`` only, a History the node declines for its own load, ``capacity_exceeded``.
 
 It states every expected status by hand from the profile text. Each case cites the sections it
 comes from. Nothing here imports or runs a verifier.
@@ -23,7 +24,13 @@ The definitions, the history card, the period counts and the halves are fixed fo
 only and are not registered (§9.4). The checkpoint roots are label digests: no consistency proof is
 carried, so the card's consistency is not checked here.
 
-Output: ``vectors/inference-service-history-v0/`` (or ``--out DIR``). Deterministic: no clock, no
+The History is served under either interop profile identifier, negotiated per request (IP §3.3).
+The ``evidence-interop/0`` set is frozen; ``--profile 1`` writes the ``evidence-interop/1`` set, the
+same cases with every request and envelope naming /1, plus the ``capacity_exceeded`` refusal.
+Definitions, Histories and their digests are the same in both.
+
+Output: ``vectors/inference-service-history-v0/``, or ``vectors/inference-service-history-v0-interop-v1/``
+under ``--profile 1`` (or ``--out DIR``). Deterministic: no clock, no
 randomness. ``README.md`` is never rewritten; every file in the directory is listed in
 ``SHA256SUMS``. Dependencies: the standard library, ``cryptography`` (Ed25519 only) and the
 interop profile generator beside this script, for its encodings and statuses.
@@ -41,7 +48,6 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from generate_interop_profile_v0_vectors import (
     EC_SCHEMA,
     KINDS,
-    PROFILE,
     REFUSAL_PROPS,
     b64u,
     env_props,
@@ -58,9 +64,23 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "inference-service-history-v0"
 SET = "aac-inference-service-history-v0"
 SPEC = "spec/inference-service-history-profile-v0.md"
+# The interop profile identifier the requests and envelopes name; use_profile(1) switches the set.
+PROFILE = "evidence-interop/0"
 STATUS = ("Conformance vectors for the informational Inference-Service History Profile v0, over "
           "evidence-interop/0. Every key is a test key derived from a public seed; never use one for "
           "anything else.")
+
+
+def use_profile(version: int) -> None:
+    """Write the set for ``evidence-interop/<version>``; 0 is the frozen set."""
+    global PROFILE, DEFAULT_OUT, SET, STATUS
+    PROFILE = f"evidence-interop/{version}"
+    if version:
+        DEFAULT_OUT = ROOT / "vectors" / f"inference-service-history-v0-interop-v{version}"
+        SET = f"aac-inference-service-history-v0-interop-v{version}"
+    STATUS = ("Conformance vectors for the informational Inference-Service History Profile v0, over "
+              f"{PROFILE}. Every key is a test key derived from a public seed; never use one for "
+              "anything else.")
 HISTORY_PROFILE = "inference-service-history/0"
 STANDARD = "service_history_example/0"
 DETAILED = "service_history_detail_example/0"
@@ -583,6 +603,16 @@ def cases() -> list[dict]:
                              "requirements": {REQUIREMENT: mapped("refusal-withheld")},
                              "claim": {"evidence": [ref(shx(rep["octets_text"].encode()))], "proofs": []}}})
 
+    if PROFILE != "evidence-interop/0":  # capacity_exceeded is unregistered under /0 (IP v1 §9.1)
+        req = request(json_digest(d), "requester-4/under-load")
+        rep = refusal(req, "capacity_exceeded", "2026-10-04T00:00:25Z")
+        out.append({"id": "refused-capacity-exceeded", "title": "A Standard History the node declines for its own load",
+                    "cites": ["§6.1", "§8.4", "IP §6.3", "IP §8.1"], "source": "constructed", "kind": "refusal",
+                    "pins": pins(), "inputs": {"definition": d, "request": req, "reply": rep},
+                    "expected": {"message_type": "refusal", "reason": "capacity_exceeded", "properties": ref_props(),
+                                 "requirements": {REQUIREMENT: mapped("refusal-capacity_exceeded")},
+                                 "claim": {"evidence": [ref(shx(rep["octets_text"].encode()))], "proofs": []}}})
+
     # --- Detailed level (§7) --------------------------------------------------------------------
     def detailed(labels: list[str], *, untrusted: bool = False) -> tuple[dict, list[dict]]:
         p1 = peer_half("x-1", "2026-10-02T09:00:00Z", "untrusted-peer" if untrusted else "peer")
@@ -696,9 +726,12 @@ def write(out: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--profile", type=int, choices=(0, 1), default=0,
+                        help="the interop profile identifier: 0 (the frozen set) or 1")
+    parser.add_argument("--out", type=Path)
     args = parser.parse_args()
-    write(args.out)
+    use_profile(args.profile)
+    write(args.out or DEFAULT_OUT)
 
 
 if __name__ == "__main__":
