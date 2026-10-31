@@ -314,6 +314,20 @@ def attached_payload_receipt(leaf: str) -> dict:
     return {**genuine, "receipt_b64": b64(forged)}
 
 
+def undefined_payload_receipt(leaf: str) -> dict:
+    """The genuine ``cll`` receipt with its payload rewritten from CBOR null
+    (``0xf6``) to undefined (``0xf7``). The signature still covers the rebuilt
+    root, so only the detached-payload check refuses it: a payload is detached
+    only when it is null."""
+    import cbor2
+
+    genuine = cll_receipt(leaf)
+    outer = cbor2.loads(base64.b64decode(genuine["receipt_b64"]))
+    protected, unprotected, _, signature = outer.value
+    forged = cbor2.dumps(cbor2.CBORTag(18, [protected, unprotected, cbor2.undefined, signature]))
+    return {**genuine, "receipt_b64": b64(forged)}
+
+
 def resigned_receipt(leaf: str, protected_overrides: dict[int, Any]) -> dict:
     """A ``cll`` receipt for ``leaf`` signed over the right root by the listed
     key, but with protected-header values the profile refuses (``vds``,
@@ -912,6 +926,11 @@ def build_cases() -> list[dict]:
     witness_case("neg-witness-cll-attached-payload",
                  "A receipt whose payload is attached and signed by the listed key: not bound to the root.",
                  witnessed(attached_payload_receipt(leaf)),
+                 {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
+                  "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
+    witness_case("neg-witness-cll-undefined-payload",
+                 "A receipt over the right root whose payload is CBOR undefined (0xf7), not null: not detached.",
+                 witnessed(undefined_payload_receipt(leaf)),
                  {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
                   "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
     for case_id, description, overrides in (

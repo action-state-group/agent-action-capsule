@@ -249,7 +249,8 @@ A receipt verifies over a leaf when all of these hold:
 - it is a CBOR tag-18 COSE_Sign1 whose payload is detached (`nil`), so the
   signature covers the rebuilt Merkle root. An attached payload is refused
   even when its signature verifies: it binds nothing
-  (`neg-witness-cll-attached-payload`);
+  (`neg-witness-cll-attached-payload`). Only CBOR null (`0xf6`) is detached;
+  undefined (`0xf7`) is refused (`neg-witness-cll-undefined-payload`);
 - its protected header has `vds` (395) equal to the integer 1
   (RFC9162_SHA256) and an `alg` (1) of the integer -8 (EdDSA) or -7 (ES256).
   No other `vds` or `alg` is accepted, nor `true` or a float. The `alg`
@@ -361,6 +362,7 @@ checkpoint is signed by another, the log key.
 | `neg-witness-cll-other-checkpoint` | a genuine receipt for another checkpoint | INVALID |
 | `neg-witness-cll-wrong-key` | a receipt signed by a key the row does not list | INVALID |
 | `neg-witness-cll-attached-payload` | a receipt with an attached payload signed by the listed key | INVALID |
+| `neg-witness-cll-undefined-payload` | a receipt over the right root whose payload is CBOR undefined (`0xf7`), not null | INVALID |
 | `neg-witness-cll-vds-ccf` | a receipt signed over the right root that declares `vds` 2 | INVALID |
 | `neg-witness-cll-alg-unsupported` | a receipt signed over the right root that declares `alg` -257 | INVALID |
 | `pos-witness-cll-es256` | a `cll` receipt signed ES256 under the row's P-256 key | VALID |

@@ -8,6 +8,7 @@ package witness
 // vds 1 (RFC9162_SHA256) and alg EdDSA or ES256.
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
@@ -123,6 +124,19 @@ func VerifyCOSEReceipt(receipt, leaf []byte, key crypto.PublicKey) (COSEReceipt,
 	}
 	if parts[2] != nil {
 		return COSEReceipt{}, errors.New("receipt payload is attached; a receipt's payload must be detached")
+	}
+	// fxamacker decodes both null (0xf6) and undefined (0xf7) to nil, so
+	// read the payload's raw bytes: only null is detached, as scitt-cose has it.
+	var raw cbor.RawTag
+	if err := strictDecoding.Unmarshal(receipt, &raw); err != nil {
+		return COSEReceipt{}, fmt.Errorf("receipt rejected: %w", err)
+	}
+	var rawParts []cbor.RawMessage
+	if err := strictDecoding.Unmarshal(raw.Content, &rawParts); err != nil || len(rawParts) != 4 {
+		return COSEReceipt{}, errors.New("receipt is not a COSE_Sign1 message")
+	}
+	if !bytes.Equal(rawParts[2], []byte{0xf6}) {
+		return COSEReceipt{}, errors.New("receipt payload is not null; a detached payload must be CBOR null")
 	}
 	signature, isBytes := parts[3].([]byte)
 	if !isBytes {
