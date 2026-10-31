@@ -258,6 +258,19 @@ signature MUST be a 64-byte Ed25519 signature over the COSE Sig_structure
 with context `Signature1`, the encoded protected map, an empty external AAD,
 and the attached payload.
 
+Every CBOR data item of a Producer Envelope, including each item inside the
+protected-header byte string, MUST have a definite length and use preferred
+serialization ({{Section 4.1 of RFC8949}}): each integer, length, and tag
+argument in its shortest form, and each floating-point value in the shortest
+of the half-, single-, and double-precision forms that represents it exactly,
+with any NaN in half precision. Map keys MUST be unique; their order is not
+constrained. The outermost tag 18 is the only CBOR tag in a Producer
+Envelope. The unprotected header MUST be a map, and the payload and signature
+MUST be byte strings; `null` and `undefined` do not stand in for them. A
+verifier MUST reject an envelope that violates this paragraph, so a given
+protected-header byte string, payload, and signature have exactly one
+acceptable encoding.
+
 A Capsule MAY have zero, one, or multiple Producer Envelopes. Each envelope
 is an independent object and MUST verify independently against the same
 Capsule ID. Envelopes are not embedded in the Capsule-ID preimage. Adding,
@@ -1919,6 +1932,12 @@ before publication.
   rejects deeper input as malformed before any check and never rejects
   input 128 levels deep or less for its depth alone ({{conventions}},
   {{verification}}).
+* Producer Envelope encoding: every CBOR data item of a Producer Envelope,
+  including those inside the protected-header byte string, has a definite
+  length and preferred serialization, map keys are unique, the outermost
+  tag 18 is the only tag, the unprotected header is a map, and the payload
+  and signature are byte strings; a verifier rejects any violation
+  ({{envelope}}).
 * Wire version unchanged: a producer conforming to this revision still
   emits "draft-mih-scitt-agent-action-capsule-05", and verifier acceptance
   of `spec_version` is unchanged ({{identity}}).
