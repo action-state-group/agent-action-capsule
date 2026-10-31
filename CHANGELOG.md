@@ -28,7 +28,8 @@ has not yet.
   (2), from the same generator with `--profile 1`. The six host profiles that cite
   `evidence-interop/0` each state that they stay on it. Python `interop_profile` and Go
   `evidencerequest` verify both identifiers (`PROFILE_IDS`, `Profiles`); Python
-  `evidence_request.sign_envelope` takes `profile`, and Go `ParseRequest` accepts a /1 request and
+  `evidence_request.sign_envelope` and `Envelope.verify_for` take `profile` (default /0; the
+  envelope must name the identifier requested), and Go `ParseRequest` accepts a /1 request and
   `Refusal.ConformingUnder` and `VerifyForProfile` check a refusal under a given identifier
   (`Conforming` and `VerifyFor` stay /0's).
 - Evidence Request -02 refusal reasons `capacity_exceeded` (a limit of the responder's own: load, a

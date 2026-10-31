@@ -815,14 +815,18 @@ class Envelope:
             if hashlib.sha256(octets).hexdigest() != entry["digest"]:
                 raise VerificationError(f"verification item {i} does not hash to its signed digest")
 
-    def verify_for(self, request_bytes: bytes, responder: str) -> None:
-        """:meth:`verify`, and that the envelope is under one of the
-        profile's identifiers (:data:`PROFILES`), is signed by ``responder`` (the key you pinned for
-        the responder, as lowercase hex) and answers the request whose octets
-        you sent were ``request_bytes`` (§6.2 ``request_digest``). Raises
-        :class:`VerificationError`."""
-        if self.profile not in PROFILES:
-            raise VerificationError(f"profile is {self.profile!r}, not one of {sorted(PROFILES)}")
+    def verify_for(self, request_bytes: bytes, responder: str, *, profile: str = PROFILE) -> None:
+        """:meth:`verify`, and that the envelope names ``profile``, the
+        identifier your request asked for (:data:`PROFILE` when it named
+        none, profile §3.3 steps 2 and 5), is signed by ``responder`` (the key
+        you pinned for the responder, as lowercase hex) and answers the
+        request whose octets you sent were ``request_bytes`` (§6.2
+        ``request_digest``). Raises :class:`VerificationError`, and
+        :class:`ValueError` for a ``profile`` not in :data:`PROFILES`."""
+        if profile not in PROFILES:
+            raise ValueError(f"profile must be one of {sorted(PROFILES)}")
+        if self.profile != profile:
+            raise VerificationError(f"profile is {self.profile!r}, not the {profile!r} requested")
         if self.responder != responder:
             raise VerificationError("the envelope is signed by another key than the responder's")
         if self.request_digest != request_digest(request_bytes):

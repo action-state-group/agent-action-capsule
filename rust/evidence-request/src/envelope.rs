@@ -250,16 +250,29 @@ impl Envelope {
 
     /// Accept the envelope as the answer of the responder whose key is
     /// `responder_key` to the request whose octets as sent are
-    /// `request_bytes`: the profile, the key and the request digest must be
-    /// those, and [`Envelope::verify`] must pass. Whether the artifact is the
-    /// answer you wanted (its subject, its anchor, its material) is for you
-    /// to judge from the verified members.
+    /// `request_bytes`, a request that named [`PROFILE`] or no profile:
+    /// [`Envelope::verify_for_profile`] with [`PROFILE`].
     pub fn verify_for(
         &self,
         responder_key: &VerifyingKey,
         request_bytes: &[u8],
     ) -> Result<(), EnvelopeError> {
-        if !PROFILES.contains(&self.profile.as_str()) {
+        self.verify_for_profile(PROFILE, responder_key, request_bytes)
+    }
+
+    /// Accept the envelope as the answer to a request that asked for
+    /// `profile`: the envelope must name exactly that identifier (profile
+    /// §3.3 step 5), one of [`PROFILES`], the key and the request digest must
+    /// be those, and [`Envelope::verify`] must pass. Whether the artifact is
+    /// the answer you wanted (its subject, its anchor, its material) is for
+    /// you to judge from the verified members.
+    pub fn verify_for_profile(
+        &self,
+        profile: &str,
+        responder_key: &VerifyingKey,
+        request_bytes: &[u8],
+    ) -> Result<(), EnvelopeError> {
+        if !PROFILES.contains(&profile) || self.profile != profile {
             return Err(EnvelopeError::Profile);
         }
         if self.responder != hex::encode(responder_key.to_bytes()) {
@@ -287,7 +300,7 @@ pub enum EnvelopeError {
     VerificationCount,
     #[error("verification item {0} does not hash to its signed digest")]
     VerificationDigest(usize),
-    #[error("the envelope is not under evidence-interop/0 or evidence-interop/1")]
+    #[error("the envelope does not name the profile requested, or that profile is not evidence-interop/0 or /1")]
     Profile,
     #[error("the envelope is signed by another key than the responder's")]
     WrongKey,

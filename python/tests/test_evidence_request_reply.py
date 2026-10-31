@@ -186,16 +186,18 @@ def test_verify_for_binds_profile_responder_and_request():
         env.verify_for(REQUEST, OTHER.key_id)
     with pytest.raises(er.VerificationError, match="request_digest"):
         env.verify_for(REQUEST + b" ", SIGNER.key_id)
-    for profile, accepted in (("evidence-interop/1", True), ("evidence-interop/2", False)):
-        other_profile = er.Envelope(**{**{f.name: getattr(env, f.name) for f in dataclasses.fields(env)},
-                                       "profile": profile, "sig": ""})
-        signed = dataclasses.replace(other_profile, sig=SIGNER.sign(other_profile.signing_body())[0])
-        signed.verify()
-        if accepted:  # v1 shares the envelope (spec/interop-profile-v1.md §6.2)
-            signed.verify_for(REQUEST, SIGNER.key_id)
-            continue
-        with pytest.raises(er.VerificationError, match="profile"):
-            signed.verify_for(REQUEST, SIGNER.key_id)
+    v1 = er.Envelope(**{**{f.name: getattr(env, f.name) for f in dataclasses.fields(env)},
+                        "profile": "evidence-interop/1", "sig": ""})
+    v1 = dataclasses.replace(v1, sig=SIGNER.sign(v1.signing_body())[0])
+    v1.verify()
+    # §3.3 step 5: the envelope must name the identifier requested; a request with none asks for /0.
+    v1.verify_for(REQUEST, SIGNER.key_id, profile="evidence-interop/1")
+    with pytest.raises(er.VerificationError, match="profile"):
+        v1.verify_for(REQUEST, SIGNER.key_id)
+    with pytest.raises(er.VerificationError, match="profile"):
+        env.verify_for(REQUEST, SIGNER.key_id, profile="evidence-interop/1")
+    with pytest.raises(ValueError, match="profile"):
+        env.verify_for(REQUEST, SIGNER.key_id, profile="evidence-interop/2")
 
 
 # --- parse_reply refusals ---------------------------------------------------------------

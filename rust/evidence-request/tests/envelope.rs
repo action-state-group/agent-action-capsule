@@ -123,10 +123,22 @@ fn verify_names_what_is_wrong() {
         t.verify_for(&k.verifying_key(), REQUEST),
         Err(EnvelopeError::Profile)
     );
-    // v1 shares the envelope (spec/interop-profile-v1.md §6.2).
+    // v1 shares the envelope (spec/interop-profile-v1.md §6.2), and the
+    // envelope must name the identifier requested (§3.3 step 5).
     let v1 = sign_with_profile(PROFILE_V1, REQUEST, parts(), &k).unwrap();
     assert_eq!(v1.profile, PROFILE_V1);
-    assert_eq!(v1.verify_for(&k.verifying_key(), REQUEST), Ok(()));
+    assert_eq!(
+        v1.verify_for_profile(PROFILE_V1, &k.verifying_key(), REQUEST),
+        Ok(())
+    );
+    assert_eq!(
+        v1.verify_for(&k.verifying_key(), REQUEST),
+        Err(EnvelopeError::Profile)
+    );
+    assert_eq!(
+        env.verify_for_profile(PROFILE_V1, &k.verifying_key(), REQUEST),
+        Err(EnvelopeError::Profile)
+    );
 }
 
 #[test]

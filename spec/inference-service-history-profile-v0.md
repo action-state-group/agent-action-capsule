@@ -56,8 +56,8 @@ written `[IP §6.5]` is taken from IP; `[SH-n]` marks one this profile adds.
 frozen, not `spec/interop-profile-v1.md` (`evidence-interop/1`). `evidence-interop/1` changes two
 things this profile uses, the refusal reasons (IP v1 §9.1) and their mapping (IP v1 §8.1), and the
 requests and envelopes of its vectors name `evidence-interop/0`. Under `evidence-interop/0` a node
-that sheds load refuses `policy_declined`, as ER -01 allows. Re-pinning to `evidence-interop/1` is a
-revision of this profile.
+that sheds load refuses `policy_declined`, as ER -01 allows, which a /0 verifier reads as
+`WITHHELD`. Re-pinning to `evidence-interop/1` is a revision of this profile.
 
 **Does not define:** any record format, any identity scheme, any trust policy, who may receive a
 History, or what a recipient should conclude. It defines no figure that combines units, labels or
