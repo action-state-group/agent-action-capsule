@@ -15,9 +15,16 @@
 //!
 //! These hold at every depth, inside members this crate ignores too.
 
-/// The deepest nesting checked. A -00 request nests three deep; the CBOR
-/// parser that runs first stops well before this.
-const MAX_DEPTH: usize = 512;
+/// The deepest nesting read: 128 levels, an array, a map or a tag around an
+/// item being one level, the JSON limit (`vectors/cbor-nesting/`, #504), so a
+/// request reads the same in both bindings.
+pub(crate) const MAX_NESTING: usize = 128;
+
+/// Decode one CBOR value from `reader` under [`MAX_NESTING`]; ciborium
+/// counts arrays, maps and tags as levels exactly as the limit does.
+pub(crate) fn decode_value(reader: &mut &[u8]) -> Option<ciborium::Value> {
+    ciborium::de::from_reader_with_recursion_limit(reader, MAX_NESTING).ok()
+}
 
 /// The largest integer accepted: 2^53 - 1.
 const MAX_INTEGER: u64 = (1 << 53) - 1;
@@ -104,11 +111,11 @@ impl Reader<'_> {
     }
 
     fn item(&mut self, depth: usize) -> Result<(), &'static str> {
-        if depth > MAX_DEPTH {
-            return Err("nested too deeply");
-        }
         let start = self.at;
         let (major, argument) = self.head()?;
+        if (4..=6).contains(&major) && depth >= MAX_NESTING {
+            return Err("nested too deeply");
+        }
         match major {
             0 if argument <= MAX_INTEGER => Ok(()),
             0 => Err("an integer above 2^53 - 1"),
@@ -257,7 +264,7 @@ mod tests {
 
     #[test]
     fn nesting_is_bounded() {
-        let mut deep = vec![0x81; super::MAX_DEPTH + 2];
+        let mut deep = vec![0x81; super::MAX_NESTING + 1];
         deep.push(0x00);
         assert_eq!(check(&deep), Err("nested too deeply"));
     }

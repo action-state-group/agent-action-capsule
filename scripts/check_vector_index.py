@@ -104,6 +104,7 @@ COUNTERS = {
     "vectors/cll-material/": lambda: cases("vectors/cll-material/cases.json"),
     "vectors/anchor-witness-v1/": lambda: cases("vectors/anchor-witness-v1/vectors.json"),
     "vectors/json-nesting/": lambda: cases("vectors/json-nesting/cases.json"),
+    "vectors/cbor-nesting/": lambda: cases("vectors/cbor-nesting/cases.json"),
     "vectors/minimum-necessary/": lambda: cases("vectors/minimum-necessary/manifest.json"),
     "vectors/judgment/": lambda: cases("vectors/judgment/vectors.json"),
     "vectors/judge/": lambda: glob_count("vectors/judge/*/[pn]*-*.json"),

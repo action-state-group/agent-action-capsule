@@ -49,11 +49,11 @@ var hex64 = regexp.MustCompile(`^[0-9a-f]{64}$`)
 // IsDigest reports whether s is a digest in the form Digest returns.
 func IsDigest(s string) bool { return hex64.MatchString(s) }
 
-// maxCBORNesting bounds how deep a received CBOR value may nest. No object
-// the profile defines nests deeper than a handful of levels. A received JSON
-// value may nest canonical.MaxNestingDepth objects and arrays deep, the
-// limit every implementation shares (vectors/json-nesting/).
-const maxCBORNesting = 32
+// maxCBORNesting bounds how deep a received CBOR value may nest: the limit
+// every reader shares, the JSON limit (vectors/cbor-nesting/, #504), so a
+// request reads the same in its JSON and CBOR bindings. An array, a map or a
+// tag around an item is one level, as fxamacker counts them.
+const maxCBORNesting = canonical.MaxNestingDepth
 
 // errNotWellFormed marks a received map that is not well formed (§5.2): a
 // duplicate member, trailing bytes, invalid UTF-8, or a value outside the
