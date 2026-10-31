@@ -78,6 +78,11 @@
       "path": "retention.json",
       "sha256": "1257cdae0334526816e9c892def34e07ecae33960edd252819eaaff8c33080ad",
       "count": 25
+    },
+    {
+      "path": "unavailable-window.json",
+      "sha256": "9e54bcdd567e8c79091e8d2c88ce68ecc6f2fe415dac60b9e74e7116ea7b2a51",
+      "count": 35
     }
   ]
 }
