@@ -17,8 +17,8 @@ sections. An entry that touches several packages is listed under each package th
 has not yet.
 
 - Interop profile `evidence-interop/1` (`spec/interop-profile-v1.md`, AAC#479): `evidence-interop/0`
-  with Evidence Request re-pinned from -01 to -02 as posted (archive SHA-256 to be filled in when -02
-  is posted). §9.1 lists ten refusal reasons, and §8.1 maps `capacity_exceeded` and
+  with Evidence Request re-pinned from -01 to -02 as posted (2026-10-31, archive SHA-256
+  `ee5e2b90…`). §9.1 lists ten refusal reasons, and §8.1 maps `capacity_exceeded` and
   `request_unauthenticated` to `UNKNOWN`, never `WITHHELD`. Load shedding is `capacity_exceeded`,
   so `policy_declined` and `not_authorized` are statements about policy. A refusal's reason is
   checked against the tokens of the identifier its request asks for. -02 §4.7 (unavailable-window

@@ -64,7 +64,7 @@ discovery rules and the discovery properties (§11.4).
 
 | Tag | Document | Revision pinned | What this profile takes from it |
 |---|---|---|---|
-| ER | `draft-mih-agent-evidence-request` | -02 as posted: <https://www.ietf.org/archive/id/draft-mih-agent-evidence-request-02.txt>, SHA-256 of that file `TBD` (set when -02 is posted; this revision is not complete without it) | the request, the six subject forms, coverage, the three outcomes, the artifact response's required contents, caller invariance, the refusal registry, the transport bindings, including the A2A and MCP bindings (§11.4) |
+| ER | `draft-mih-agent-evidence-request` | -02 as posted: <https://www.ietf.org/archive/id/draft-mih-agent-evidence-request-02.txt>, SHA-256 of that file `ee5e2b90bda08fd956c271f512b52f4a834bcff3a1cae0144f644f5955bef948` | the request, the six subject forms, coverage, the three outcomes, the artifact response's required contents, caller invariance, the refusal registry, the transport bindings, including the A2A and MCP bindings (§11.4) |
 | ERV | Evidence Request conformance vectors | `vectors/evidence-request/`, README readings A1–A14 | the wire readings of ER that -00 leaves open. ERV is written against -00. -01 and -02 change none of the request, coverage or refusal members those readings fix, and -01 states A4's ordering in its own text [ER §3.2]. ERV's `refusal-02.json` holds the -02 registry |
 | DE | `draft-mih-agent-disclosure-envelope` | -00 (`spec/draft-mih-agent-disclosure-envelope-00.md`) | the JSON value digest rule |
 | SR | `draft-mih-agent-settlement-records` | -00 (`spec/draft-mih-agent-settlement-records-00.md`) | the as-transmitted rule for wrapped foreign objects |
@@ -83,7 +83,8 @@ discovery rules and the discovery properties (§11.4).
 **Why these ER, CLL, MMR, CPB and COMP bytes.** ER, CLL, MMR, CPB and COMP are pinned to the text
 posted in the IETF Internet-Draft archive and identified by the SHA-256 of that `.txt` file. ER -02
 has a source in `spec/` (`spec/draft-mih-agent-evidence-request-02.md`), but as for every
-Internet-Draft here the pin is the posted text, not the source. CLL's
+Internet-Draft here the pin is the posted text, not the source. The posted `.txt` is
+byte-identical to the tracked `spec/draft-mih-agent-evidence-request-02.txt`. CLL's
 canonical source repository is not settled, and copies kept beside implementations can differ from
 what was posted. No unposted CLL revision is pinned. MMR -02 is pinned because it is the revision
 CLL -01 cites. CPB -05 is pinned because it is the revision SR -00 cites. COMP -01 is pinned
@@ -3181,7 +3182,7 @@ it defers.
   empty string is the base64url of zero octets, which ER refuses `request_malformed` (ER §10.3).
   A responder that lists the earlier `+` pattern follows the older text of `evidence-interop/0`
   and should move to `*`. The next change of this kind takes a new identifier.
-- **P-65** `evidence-interop/1` re-pins ER from -01 to -02 and takes a new identifier, because -02
+- **P-65** `evidence-interop/1` re-pins ER from -01 to -02 (posted 2026-10-31) and takes a new identifier, because -02
   adds to the refusal vocabulary and the mapping (§3.1, P-1, P-64). It changes, against
   `evidence-interop/0`:
   - §9.1 lists ten tokens: -02 adds `capacity_exceeded` and `request_unauthenticated`. §8.1 maps
@@ -3220,8 +3221,9 @@ it defers.
 ## References
 
 - `draft-mih-agent-evidence-request-02`,
-  <https://www.ietf.org/archive/id/draft-mih-agent-evidence-request-02.txt>, SHA-256 `TBD`
-  (Internet-Draft, work in progress); source `spec/draft-mih-agent-evidence-request-02.md`.
+  <https://www.ietf.org/archive/id/draft-mih-agent-evidence-request-02.txt>, SHA-256
+  `ee5e2b90bda08fd956c271f512b52f4a834bcff3a1cae0144f644f5955bef948` (Internet-Draft, work in progress); source
+  `spec/draft-mih-agent-evidence-request-02.md`.
 - Minimum Evidence Interoperability Profile v0 (`evidence-interop/0`),
   `spec/interop-profile-v0.md` as of commit `1456285979bd759b7828fd3ccc4a24296074e552`.
 - `draft-mih-agent-evidence-request-00`, `spec/draft-mih-agent-evidence-request-00.md`, the
