@@ -71,12 +71,16 @@ has not yet.
   derives the join from them (`not_derivable` when no record with the join's digest was
   delivered, or none under a method it implements) and reports a derived `agree` as `redundant`
   with reason `controller_binding`. A block carrying the basis is no longer malformed in Go;
-  TypeScript and Rust still read it as malformed, as -01 does. `witness.VerifyEd25519Strict`
-  exports the strict Ed25519 check. Vectors: `vectors/bundle/composed-controller-binding/` (eight
+  TypeScript and Rust still read it as malformed, as -01 does. Binding signatures verify under
+  strict Ed25519. Vectors: `vectors/bundle/composed-controller-binding/` (eight
   cases, `python/scripts/generate_bundle_composed_cb_vectors.py`), rederived by
   `python/tests/test_bundle_composed_cb_vectors.py` and run by Go. Spec:
   `spec/controller-binding-v0.md` §8 and `spec/REGISTRY.md` "composed/v1 join basis values" now
   record the basis as registered by -02; a producer emits it once -02 is posted.
+- Evidence Bundle -02, page reading (Go `bundle.VerifyBundleForPage`, TypeScript
+  `buildVerifiedBundleContext`): since the plain checks now read a producer selection, a selection
+  the strict checks call INVALID, or that a page without Ed25519 cannot check strictly, keeps its
+  plain claims with per-record membership failed, so the page still refuses it.
 - Python, strict: a producer-selected Bundle whose signed checkpoint is contradicted by a stated
   copy (#380) keeps per-record membership withheld (`checkpoint_unverified`), as Go, Rust and
   TypeScript report; the -02 reading against the stated checkpoint applies only when no signed
