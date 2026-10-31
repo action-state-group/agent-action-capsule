@@ -1,6 +1,6 @@
 [package]
 name = "evidence-request"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "The evidence request protocol (draft-mih-agent-evidence-request-00): parse, digest and resolve requests; sign and verify refusals and the interop profile's artifact envelope; check Checkpointed Local Log material and the profile's acceptance records; classify outcomes, invariance and retention."
